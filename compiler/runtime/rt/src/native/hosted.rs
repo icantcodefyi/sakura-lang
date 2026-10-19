@@ -14,7 +14,7 @@ use super::host::{FileMode, HandleId, Host, HostError, Hosted};
 use crate::cx::{Cx, TOO_LARGE};
 use crate::vt::{DIR, t};
 
-/// The hosted builtins by index, the order of the compiler's `HOSTED` table (`sakura_codegen_wasm`;
+/// The hosted builtins by index, the order of the compiler's `HOSTED` table (`sakura_lir::image`;
 /// a test in `sakura_host_native` keeps the two equal). The ones past N1a's services answer
 /// `D091` through the `Host` defaults until their milestone (N1b).
 pub const HOSTED: &[&str] = &[

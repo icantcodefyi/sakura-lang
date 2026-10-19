@@ -117,6 +117,19 @@ fn run_mode(mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> 
 
 /// [`run_mode`] with its files under the target's `tmp/<sub>`.
 fn run_in(sub: &str, mode: &str, target: &str, name: &str, dir: &Path, rest: &[&str]) -> Run {
+    run_env(sub, mode, target, name, dir, rest, &[])
+}
+
+/// [`run_in`] with more environment for `sakura`.
+fn run_env(
+    sub: &str,
+    mode: &str,
+    target: &str,
+    name: &str,
+    dir: &Path,
+    rest: &[&str],
+    env: &[(&str, &Path)],
+) -> Run {
     let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join(sub);
     std::fs::create_dir_all(&tmp).unwrap();
     let label = if name.is_empty() {
@@ -146,14 +159,12 @@ fn run_in(sub: &str, mode: &str, target: &str, name: &str, dir: &Path, rest: &[&
         args.push("--");
         args.extend(rest);
     }
-    let out = sakura_env(
-        &args,
-        dir,
-        &[
-            ("SAKURA_TRACE", &trace),
-            ("SAKURA_WASM_COVERAGE", &coverage),
-        ],
-    );
+    let mut vars = vec![
+        ("SAKURA_TRACE", trace.as_path()),
+        ("SAKURA_WASM_COVERAGE", coverage.as_path()),
+    ];
+    vars.extend(env);
+    let out = sakura_env(&args, dir, &vars);
     Run {
         imports: imports(&coverage),
         code: if out.timed_out { None } else { out.code },
@@ -636,6 +647,140 @@ fn wasm_twins_agree_with_wasm_frames() {
             ))
         })
         .collect();
+    assert!(!jobs.is_empty(), "the corpus must not be empty");
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
+}
+
+/// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
+/// the test until it is removed (as [`KNOWN`]).
+#[cfg(feature = "native")]
+const KNOWN_NATIVE: &[(&str, &str)] = &[
+    (
+        "nested_options_json.sak",
+        "Json.encode and Json.decode are N1b's",
+    ),
+    ("sql_untrusted_param.sak", "Sql.memory is N1b's"),
+    ("trace_decode_then_spawn.sak", "Json.decode is N1b's"),
+    ("uuid_decode.sak", "Json.decode is N1b's"),
+    ("example cli_files", "Cli.parse is N1b's (D091)"),
+    ("example json_refined", "Json.decode is N1b's (D091)"),
+    ("example secrets", "a hosted builtin N1b ports (D091)"),
+    ("example word_count", "Cli.parse is N1b's (D091)"),
+];
+
+/// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
+/// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and
+/// WASM are held to. The native profile's `Int` is WASM's exact `i64`, so a fixture's `@wasm`
+/// expectation is native's too. Test mode waits for `sakura test --target native` (after N1b).
+#[cfg(feature = "native")]
+#[test]
+fn native_agrees_with_js_on_run_mode_programs() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(std::env::var_os("CI").is_none(), "node is missing");
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    let mut jobs: Vec<Job> = vec![];
+    for path in fixtures("semantics") {
+        let d = directives(&std::fs::read_to_string(&path).unwrap());
+        if d.get("mode").is_none_or(|m| m == "run")
+            && skip_reason(&d, SEMANTICS_MILESTONE).is_none()
+        {
+            jobs.push(Job::Fixture(path, d, "run".into()));
+        }
+    }
+    let root = manifest.join("../../examples");
+    let mut dirs: Vec<_> = std::fs::read_dir(&root)
+        .unwrap()
+        .filter_map(|e| Some(e.ok()?.path()))
+        .filter(|p| p.join("sakura.toml").exists())
+        .collect();
+    dirs.sort();
+    for dir in dirs {
+        let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
+        if d.get("mode").map(String::as_str) == Some("run") {
+            jobs.push(Job::Example(dir, d, "run".into()));
+        }
+    }
+    let runs = par_map(&jobs, |job| {
+        let (name, dir, args): (String, &Path, Vec<&str>) = match job {
+            Job::Fixture(path, _, _) => (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                path.parent().unwrap(),
+                vec![],
+            ),
+            Job::Example(dir, d, _) => (
+                String::new(),
+                dir,
+                d.get("args")
+                    .map_or("", String::as_str)
+                    .split_whitespace()
+                    .collect(),
+            ),
+        };
+        // An example's flags would be its program's arguments: its twins alone run.
+        let frames = (!name.is_empty()).then(|| {
+            run_env(
+                "native",
+                "run",
+                "native",
+                &name,
+                dir,
+                &["--no-direct"],
+                &env,
+            )
+        });
+        (
+            run_env("native", "run", "js", &name, dir, &args, &[]),
+            run_env("native", "run", "native", &name, dir, &args, &env),
+            frames,
+        )
+    });
+    let (mut agree, mut failures) = (0, vec![]);
+    for (job, (js, mut twins, frames)) in jobs.iter().zip(runs) {
+        let (label, expect) = match job {
+            Job::Fixture(path, d, _) => (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                Some((path.as_path(), d)),
+            ),
+            Job::Example(dir, d, _) => {
+                if d.get("stdout-regex").is_some_and(|v| v == "true") {
+                    twins.stdout.clone_from(&js.stdout);
+                }
+                (
+                    format!("example {}", dir.file_name().unwrap().to_string_lossy()),
+                    None,
+                )
+            }
+        };
+        let why = compare(expect, "run", &js, &twins)
+            .map(|w| format!("twins: {w}"))
+            .or_else(|| {
+                let w = compare(expect, "run", &js, frames.as_ref()?)?;
+                Some(format!("--no-direct: {w}"))
+            });
+        let known = KNOWN_NATIVE.iter().any(|(n, _)| *n == label);
+        match (why, known) {
+            (None, false) => agree += 1,
+            (None, true) => {
+                failures.push(format!("{label}: agrees now; drop it from KNOWN_NATIVE"))
+            }
+            (Some(_), true) => {}
+            (Some(why), false) => failures.push(format!("{label}: {why}")),
+        }
+    }
+    eprintln!(
+        "native parity: {agree} of {} run-mode fixtures and examples agree with JS; {} known; \
+         {} failures",
+        jobs.len(),
+        KNOWN_NATIVE.len(),
+        failures.len()
+    );
     assert!(!jobs.is_empty(), "the corpus must not be empty");
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }

@@ -468,3 +468,10 @@ fn native_codes_follow_the_shared_order() {
     let names: Vec<&str> = sakura_rt::native::CODES.iter().map(|(n, _)| *n).collect();
     assert_eq!(sakura_lir::image::code_order(names.iter().copied()), names);
 }
+
+/// The native runtime numbers the hosted builtins as the compiler's table does.
+#[test]
+fn hosted_builtins_follow_the_compiler_table() {
+    let compiler: Vec<&str> = sakura_lir::image::HOSTED.iter().map(|(n, _)| *n).collect();
+    assert_eq!(sakura_rt::native::HOSTED, compiler.as_slice());
+}

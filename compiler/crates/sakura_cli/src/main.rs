@@ -17,6 +17,8 @@ mod audit;
 mod doc;
 mod fix;
 mod manifest;
+#[cfg(feature = "native")]
+mod native;
 mod new;
 mod setup;
 mod testing;
@@ -101,8 +103,9 @@ enum Command {
         #[arg(long)]
         json: bool,
         /// `js`, or `wasm`: one module linked with the `sakura_rt` runtime (`main.wasm`, with
-        /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default.
-        #[arg(long, default_value = "js", value_parser = TARGETS)]
+        /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default; with the
+        /// `native` feature, `native` (experimental): an executable `main`.
+        #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
         #[arg(long, default_value = "js", value_parser = ["js", "lir"])]
@@ -147,8 +150,9 @@ enum Command {
     Run {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
-        /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`).
-        #[arg(long, default_value = "js", value_parser = TARGETS)]
+        /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`); with the `native`
+        /// feature, `native` (experimental: the executable runs directly).
+        #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
         #[arg(long)]
@@ -310,6 +314,13 @@ enum McpAction {
 
 /// The backends `--target` accepts; `compiler_info` reports the same list.
 const TARGETS: [&str; 2] = ["js", "wasm"];
+
+/// The targets `build` and `run` accept: [`TARGETS`], and `native` (experimental, plan M5 N2)
+/// in a compiler built with the `native` feature.
+#[cfg(feature = "native")]
+const RUN_TARGETS: [&str; 3] = ["js", "wasm", "native"];
+#[cfg(not(feature = "native"))]
+const RUN_TARGETS: [&str; 2] = TARGETS;
 
 const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
@@ -513,6 +524,17 @@ fn dispatch(command: Command) -> ExitCode {
             }
             if wasi && (target != "wasm" || emit != "js") {
                 return Err(usage_error("`--wasi` needs `--target wasm`"));
+            }
+            #[cfg(feature = "native")]
+            if target == "native" && emit == "js" {
+                if manifest {
+                    return Err(usage_error(
+                        "`--manifest` is not available for `--target native` yet",
+                    ));
+                }
+                let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/native").into());
+                native::build(json, &snapshot, &out_dir, &opts, false)?;
+                return Ok(());
             }
             if target == "wasm" && emit == "js" {
                 let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/wasm").into());
@@ -854,6 +876,13 @@ fn run(
     };
     let built = if target == "wasm" {
         wasm::build(false, &snapshot, out_dir, &opts, true, Default::default())
+    } else if target == "native" {
+        #[cfg(feature = "native")]
+        {
+            native::build(false, &snapshot, out_dir, &opts, true)
+        }
+        #[cfg(not(feature = "native"))]
+        unreachable!("`--target native` needs the `native` feature")
     } else {
         build(false, &snapshot, out_dir, opts, true)
     };
@@ -887,6 +916,8 @@ fn run(
         .and_then(|p| p.parent().map(Path::to_path_buf));
     let mut node = if target == "wasm" {
         wasm::command(&dir)
+    } else if target == "native" {
+        std::process::Command::new(std::path::absolute(dir.join("main")).unwrap_or_default())
     } else {
         let mut node = testing::node();
         node.arg(std::path::absolute(dir.join("__main__.js")).unwrap_or_default());

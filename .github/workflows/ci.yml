@@ -414,10 +414,15 @@ jobs:
           esac
       - name: Build opt-in native toolchain
         run: cargo build --features native --locked
-      - name: Clippy native runtime, host, backend and driver
-        run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --all-targets --features native --locked -- -D warnings
+      - name: Clippy native runtime, host, backend, driver and CLI
+        run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver -p sakura_cli --all-targets --features native --locked -- -D warnings
       - name: Native runtime, host, compiled corpus and staticlib tests
         run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --features native --locked -- --nocapture
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Native parity with JS (run-mode fixtures and examples)
+        run: cargo test -p sakura_cli --features native --locked --test parity native_agrees_with_js -- --nocapture
       - name: Install pinned sanitizer toolchain
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: rustup toolchain install "$NATIVE_NIGHTLY" --profile minimal --component miri,rust-src

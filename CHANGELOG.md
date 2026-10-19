@@ -48,6 +48,11 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Added
 
+- Experimental `sakura build --target native` and `sakura run --target native` in a compiler
+  built with the `native` feature (plan M5 N2): Cranelift compiles the program to an
+  executable `main` linked with the native runtime, whose defect records carry the same spans
+  as JS and WASM. Native stays experimental at `v0.2.0`; release builds do not include it.
+
 - Draft grammar and diagnostic specification in `docs/spec/`, indexed by fixtures,
   with a generated diagnostic identity table and a Python drift check; lexical boundary,
   grammar-alternative and tree-sitter divergence fixtures back its rules, and `V8003` has an

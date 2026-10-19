@@ -18,7 +18,7 @@ pub const TESTS: &str = "__tests__.wasm";
 /// `@external(js, …)` in a user package: the WASM backend has no JS to call (design §17.81).
 /// Std's externals are the runtime's builtins, which this backend implements or reports at
 /// run time as `D090`.
-fn js_externals(snapshot: &Snapshot) -> Vec<Diagnostic> {
+pub(crate) fn js_externals(snapshot: &Snapshot, target: &str) -> Vec<Diagnostic> {
     let a = Analysis::analyze(snapshot);
     let mut out = vec![];
     for symbol in a.symbols() {
@@ -34,7 +34,7 @@ fn js_externals(snapshot: &Snapshot) -> Vec<Diagnostic> {
                         codes::V8004,
                         Phase::Package,
                         format!(
-                            "`{}` is `@external(js, …)`, which the WASM target cannot call; \
+                            "`{}` is `@external(js, …)`, which the {target} target cannot call; \
                              build with `--target js`",
                             def.name
                         ),
@@ -61,7 +61,7 @@ pub fn build(
     then: bool,
     host: sakura_codegen_wasm::Host,
 ) -> Result<PathBuf, ExitCode> {
-    let refused = js_externals(snapshot);
+    let refused = js_externals(snapshot, "WASM");
     if !refused.is_empty() {
         report(json, snapshot, &refused, &[], true);
         return Err(ExitCode::from(EXIT_ERRORS));
