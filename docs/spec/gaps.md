@@ -52,7 +52,8 @@ Decided in design §17.243 (round 27); the fixtures follow the decisions, which 
   → one `_` between two digits of one run; the five cases become `V0006` (§17.243 (2)).
 - A non-UTF-8 file has no diagnostic code, only the usage error; `sakura_syntax::lex`
   accepts a Rust string, so totality is claimed over text, not arbitrary bytes.
-  → `V0014 source_not_utf8` from the loader, a `tests/ui` fixture; `lex` keeps `&str` (§17.243 (3)).
+  → `V0015 source_not_utf8` (planned) from the loader, a `tests/ui` fixture; `lex` keeps `&str`
+  (§17.243 (3), read with `V0015` by §17.253 (1); `V0014` stays `named_argument`).
 
 ## Grammar alternatives and divergence fixtures
 
