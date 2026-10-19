@@ -24,9 +24,11 @@ the reason recorded. The implementation order is
 - Discussion and PR: not opened; drafted on `main` at the owner's request. The pitch is the
   owner's message and design §17.262 (round 34).
 - Decision status: Draft.
-- Implementation status: Phase 0 (`7dd9dd47`) and phase 1 (`d0222605`) are on `main` and
-  ship in `v0.1.0`; phases 2–3 and 7a may follow before the tag, 4a/4b are held for it
-  (design §17.263). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+- Implementation status: Phase 0 (`7dd9dd47`), phase 1 (`d0222605`), phase 2
+  (`3481039f`), row R (`3a027001`) and phase 7a on JS and native (`3eab0003`) are on
+  `main` and ship in `v0.1.0`; phase 3 may follow before the tag; 4b (PR #5, ABI 1.5.0),
+  7a's WASM step (ABI 1.6.0, stacked on #5) and 4a are held for it (design §17.263,
+  §17.266, §17.267). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -85,7 +87,7 @@ import std/crypto
 fn upload(base: Url, name: String, data: Bytes) -> String ! {Http, Fail<HttpError | UrlError>} {
   let parts = try Url.parse(base)
   let target = parts.with_path("/v1/files/" ++ Url.encode_component(name)).to_url()
-  let digest = Bytes.to_base64(Crypto.digest(Sha256, data), Standard, true)
+  let digest = Bytes.to_base64(crypto.digest(Sha256, data), Standard, true)
   let req = Request.of(Post, target)
     .with_header("content-type", "application/octet-stream")
     .with_header("x-digest", "sha-256=" ++ digest)
@@ -169,9 +171,11 @@ Rejected uses, each a diagnostic or a typed error rather than a surprise:
 - `Headers.of([("content length", "3")])` is `Err(HeaderError(InvalidName("content length")))`.
 - `Bytes.from_base64("ab=c", Standard)` is `Err(Base64Error(...))`; the lenient decoder
   (`atob` semantics) is a different function, `Bytes.from_base64_lenient`.
-- `Crypto.digest(Sha1, b)` is `V1002 unresolved_name` at check time, because
-  `Sha1` is not a `Digest` variant in 0.2.0; `Crypto.sign(key, b)` with a key whose
-  `usages` lack `Sign` is `Err(KeyUsage)`.
+- `crypto.digest(Sha1, b)` is `V1002 unresolved_name` at check time, because
+  `Sha1` is not a `Digest` variant in 0.2.0; `crypto.hmac(key, b)` with a key whose
+  `usages` lack `Sign` is a caller defect, `D020` (`requires permits(key, Sign)`; design
+  §17.266 (2)): which key a call passes is a fact about the program, so `permits(key,
+  usage)` is the test to make first.
 - A `WebSocket.connect` to a host outside `net` is `Err(SocketError("… is not in the
   manifest's net list"))`, exactly as `Http.host()` answers today.
 - `Compress.gunzip(b, max_out)` whose output would exceed `max_out` is
@@ -409,12 +413,34 @@ capability, the Sakura form that covers the need, and the reason.
 - Operations: `digest(alg, b) -> Bytes` and `verify(key, signature, b) -> Bool` are pure.
   `hmac(key, b) -> Bytes` is pure. `encrypt(key, nonce, aad, plaintext) -> Result<Bytes,
   CryptoError>` and `decrypt` are pure with the nonce an argument (12 bytes for GCM;
-  obtain it from `Random.bytes(12)`). `derive_bits(key, params, len)` is pure.
+  obtain it from `Random.bytes(12)`). `derive_bits(key, params, bits) -> Result<Bytes,
+  CryptoError>` is pure, with `bits` a positive multiple of 8 and `params: DeriveParams =
+  HkdfWith(HkdfParams { salt, info }) | Pbkdf2With(Pbkdf2Params { salt, iterations })`.
   `generate_key(alg, usages, extractable) -> CryptoKey ! {Random}` and `sign(key, b) ->
   Bytes ! {Random}` perform `Random` (ECDSA nonces and PSS salts; Ed25519 and HMAC signing
   ignore it). `import_key(format, alg, usages, extractable, material) -> Result<CryptoKey,
   KeyError>` and `export_key(key, format) -> Result<Bytes, KeyError>` with `KeyFormat = Raw
-  | Pkcs8 | Spki | Jwk` (JWK as JSON text bytes).
+  | Pkcs8 | Spki | Jwk` (JWK as JSON text bytes); `KeyError(reason: KeyReason)` with
+  `KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty`;
+  `CryptoError(reason: CryptoReason)` with `CryptoReason = Length(Int) | Iterations(Int) |
+  Info(Int)` (tier 1b adds its variants).
+- Names: `import std/crypto` binds `crypto`, so calls are `crypto.digest(alg, b)` and
+  `crypto.verify(key, sig, b)` (or `key.verify(sig, b)`); `verify` stays a reserved word
+  outside member position (design §2.1, §17.266 (3)).
+- Key usage is a program fact: `hmac`, `verify`, `sign`, `encrypt`, `decrypt` and
+  `derive_bits` are declared `requires permits(key, usage)` (and the algorithm family), so a
+  key without the usage is `D020`, never a `Result`. `allows(alg, usage) -> Bool` and
+  `permits(key, usage) -> Bool` are `@total` and public: a caller with a runtime-chosen key
+  tests first. `algorithm(key)`, `usages(key)` and `extractable(key)` read the record.
+  `import_key` and `generate_key` return `Err(KeyError(NotAllowed(u)))` for a usage the
+  algorithm does not allow, because there the usages are data (design §17.266 (2), (6)).
+- `extractable` is the caller's import choice for every `Raw` key, HKDF and PBKDF2 keys
+  included; Web Crypto imports those two non-extractable, and the doc comment says so
+  (design §17.266 (8)).
+- Backends: JS calls `node:crypto`'s synchronous functions (`createHash`, `createHmac`,
+  `timingSafeEqual`, `hkdfSync`, `pbkdf2Sync`), not `crypto.subtle`; WASM and native share
+  `runtime/rt`'s RustCrypto implementation, which the wasm32 object reaches through
+  `hosted` imports (ABI 1.6.0, design §17.266 (1), (9), (10); §7 below).
 - Entropy authority is `Random`: `Random.host()` is the OS CSPRNG on every backend;
   `Random.seeded` is for tests and the docs state that keys made under it are not secret.
   No `Crypto` effect and no manifest key: nothing here touches the network or disk.
@@ -439,8 +465,11 @@ capability, the Sakura form that covers the need, and the reason.
 - `Console.alert(msg) -> Unit ! {Console}` prints `msg` and waits for a line; `confirm(msg)
   -> Bool` prints `msg [y/N]` and reads a line, where only `y`/`yes` (case-insensitive) is
   `true` and end of input is `false`; `prompt(msg, default: Option<String>) ->
-  Option<String>` returns the line, the default on an empty line, `None` at end of input.
-  Under `Console.captured` the input comes from the test's scripted lines. `reportError`
+  Option<String>` prints `msg`, or `msg [default]` when there is one, and returns the
+  line, the default on an empty line, `None` at end of input. The three are std functions
+  over `Console.print` and `Console.read_line`, not operations, so every `Console` handler
+  serves them (design §17.267 (1)). In tests the input comes from `Console.scripted(lines)`,
+  whose `read_line` answers from `lines` and then `None`; `Console.captured` keeps `None`. `reportError`
   and `console.error` are `Log.event(Level.Error, …)`; `console.time` is
   `Clock.monotonic_micros` plus a `Log.event`.
 
@@ -518,6 +547,11 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 | `Channel`, `Worker` queues | `capacity` per channel | `SendError(Full)` only on `try_send`; `send` waits |
 | Workers | 16 live per instance; heap per worker `SAKURA_MAX_HEAP` | `WorkerError(Limit)`, worker `D096` reported as `Failed` |
 | `UrlPattern.compile` | pattern length 4 KiB, 64 groups | `PatternError(Limit)` |
+- `std/crypto` (design §17.266 (7)): HKDF `info` at most 1,024 bytes (`Err(CryptoError(Info(n)))`),
+  PBKDF2 iterations `1..=2^31 − 1` (`Iterations(n)`), HKDF output at most 255 × the hash
+  length and PBKDF2 output at most 2^20 bytes (`Length(bits)`), all checked in Sakura before
+  the external, on every backend. The lowest host's bound is the contract, and a limit is a
+  typed error, never a defect that differs by backend.
 
 ### 7. Backend coverage rule
 
@@ -526,9 +560,11 @@ startup, exit 75, with a message naming the effect and the target ("`WebSocket` 
 available on target `native`"). This replaces the current native behaviour of answering
 `D091` at first use for `Http`, `Serve` and `Llm`, and applies to them too. Pure modules
 run everywhere by construction: std is Sakura source, and their externals live in the JS
-runtime and in `runtime/rt`, which WASM and native share. `hosted` WASM imports (crypto
-in 0.2.0) are a stated interim: a non-JS WASM embedder gets a link-time `V8003`-class
-refusal, never a silent fallback.
+runtime and in `runtime/rt`, which WASM and native share. `hosted` WASM imports (crypto,
+ABI 1.6.0 in 0.2.0, design §17.266 (1)) are a stated interim: a non-JS WASM embedder gets
+a link-time `V8003`-class refusal, never a silent fallback. In 0.1.0 `std/crypto` runs on
+JS and native and is `D090` at first use on WASM, a stated limitation of a module that
+precedes the contract.
 
 ### 8. Sections of the design that change
 
@@ -575,10 +611,15 @@ MINOR revision per phase that adds imports.
 ## Compatibility and migration
 
 - **Before the `v0.1.0` tag** (design §17.263): additive phases land on `main` as their
-  gates go green and ship in whatever release is next (phase 0 `7dd9dd47` and phase 1
-  `d0222605` are in `v0.1.0`); 0.1.0 precedes RFC 0001's compatibility start, so an added
+  gates go green and ship in whatever release is next (phase 0 `7dd9dd47`, phase 1
+  `d0222605`, phase 2 `3481039f`, row R `3a027001` and phase 7a on JS and native
+  `3eab0003` are in `v0.1.0`); 0.1.0 precedes RFC 0001's compatibility start, so an added
   module breaks no promise. Phases 4a and 4b and any ABI version bump are held as PR
-  branches, rebased daily, and merged right after the tag.
+  branches, rebased daily, and merged right after the tag in this order: PR #5 (4b, ABI
+  1.5.0), 7a's WASM step (ABI 1.6.0, stacked on #5), PR #4, then 4a once phase 3 is on
+  `main` (design §17.266 (1)). A runtime fix that brings a backend to its own written rule,
+  changes no contract text and carries a fixture on every backend lands on `main` before the
+  tag as its own commit (`ff66cded`, design §17.267 (2)).
 - **`v0.2.0`** is the one breaking window before 1.0 (RFC 0001 starts within-minor
   compatibility at 0.2.0, and the roadmap goes from 0.2.0 to `1.0.0-rc.1`). Everything that
   changes an existing record, variant or effect lands there: `Payload` bodies, `Method`

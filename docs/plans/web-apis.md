@@ -12,11 +12,12 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 
 - The RFC's inventory table (§1) and shapes (§2) are the scope; a phase does not add a
   signature the RFC does not name without a `design-question` in `compiler/REQUESTS.md`.
-- Versions (design §17.263): an additive phase ships in whichever release is next; phases
-  0 and 1 are in `v0.1.0`, and 2, 3, 7a and R land on `main` before the tag if their gates
-  are green first. Phases 4a and 4b (the breaking set, and any ABI version bump) are held
-  as PR branches, rebased daily, merged right after the `v0.1.0` tag and on `main` before
-  the `v0.2.0` preparation commit; phases 5–10 are additive and land before
+- Versions (design §17.263, §17.266): an additive phase ships in whichever release is
+  next; phases 0, 1, 2, R and 7a (JS and native) are in `v0.1.0`, and 3 lands on `main`
+  before the tag if its gates are green first. Phases 4a and 4b (the breaking set, and any
+  ABI version bump, which includes 7a's WASM step) are held as PR branches, rebased daily,
+  merged right after the `v0.1.0` tag in the order #5 (4b, 1.5.0), 7a-W (1.6.0, stacked
+  on #5), #4, then 4a, and on `main` before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
   `v1.0.0-rc.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
   STABILITY inventory rows.
 - Gates per phase, from `compiler/`: `cargo fmt --all -- --check`, `cargo clippy
@@ -56,13 +57,14 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 |---|---|---|---|---|
 | 0 | Redirect authority fix | 0.1.0 (`7dd9dd47`) | Opus | landed |
 | 1 | `std/bytes` growth and Base64; `std/encoding` | 0.1.0 (`d0222605`) | Opus | landed |
-| 2 | `std/url` parser, `std/searchparams` | next release | Opus | 1 |
+| 2 | `std/url` parser, `std/searchparams` | 0.1.0 (`3481039f`) | Opus | landed |
 | 3 | `std/headers`, `std/blob`, `std/form` | next release | Opus | 2 |
 | 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`; the redirect loop moves into `std/http` | 0.2.0; PR branch until the `v0.1.0` tag | Opus | 3, tag |
-| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR branch until the `v0.1.0` tag | Opus | 0, tag |
+| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
 | 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a |
 | 6 | `std/compress` | pre-rc | Opus | 5 |
-| 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | next release | Opus | 1 |
+| 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
+| 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR branch stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc | Opus | 7a |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
 | 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
@@ -70,7 +72,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 10 | `std/channel` | pre-rc | Opus | 4b |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
-| R | Land research/15 and the fixture-vector tables | now | Sol | — |
+| R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
 
 "After" names what must be on `main`. 4b and 7a can run beside 1–3 in separate worktrees.
 
@@ -231,6 +233,12 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Acceptance.** Fixtures green on three backends; `Console.captured` needs scripted input
   lines, so if it lacks them today the phase adds `Console.scripted(lines)` and says so in
   the changelog (a `design-question` is not needed: the RFC's dialogs require it).
+- **As built (PR #5 `24e944a2`, design §17.267).** The dialogs are std functions over
+  `print` and `read_line`, not operations, so a user `handler Console` serves them
+  unchanged; `Console.scripted(lines)` is the test handler; `confirm` prints `msg [y/N]`
+  and `prompt` prints `msg [default]`. PR #5's first commit `ff66cded` (a scope's failure
+  propagates, not a sibling it cancelled) is not 4b: it lands on `main` before the tag as
+  its own commit and #5 rebases onto it.
 
 ### Phase 5: `std/stream`
 
@@ -280,25 +288,45 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   `import_key`/`export_key` for `Raw` (HMAC, HKDF, PBKDF2 keys), `generate_key` for HMAC,
   `KeyError`, `CryptoError`. `verify` for HMAC (constant-time compare).
 - **Files.** New `compiler/std/crypto.sak`; `sakura_core::builtins`; `sakura_runtime.js`
-  (`crypto.subtle` with a per-instance import cache keyed by material hash);
-  `sakura_wasm_host.js` + `validate.rs` `hosted` imports (`crypto_*`), `ABI.md` §8.2
-  (MINOR bump; the import list); `runtime/rt`: RustCrypto `sha2`, `hmac`, `hkdf`,
-  `pbkdf2` (`no_std`, exact pins) so native has them now and a non-JS WASM embedder can
-  switch to the guest implementation later (the plan records that switch as a one-line
-  `validate.rs` change plus a corpus run); `Cargo.toml`/`Cargo.lock`.
+  (`node:crypto`'s synchronous `createHash`, `createHmac`, `timingSafeEqual`, `hkdfSync`,
+  `pbkdf2Sync`; builtins are direct calls, so `crypto.subtle` and an import cache are
+  struck, §17.266 (9)); `runtime/rt`: RustCrypto `sha2`, `hmac`, `hkdf`, `pbkdf2` at exact
+  pins behind the `native` feature (with `ctutils`/`cmov` transitively; the wasm32 object
+  is bare `rustc` and carries none of them), `Cargo.toml`/`Cargo.lock`.
+- **WASM step (7a-W, held; design §17.266 (1)).** `sakura_wasm_host.js` + `validate.rs`
+  `hosted` imports (`crypto_*`), `ABI.md` §0 and §8.2 (MINOR, 1.6.0; `sakura_abi_version`
+  `0x010600` on both hosts), the seven `KNOWN` rows in `parity.rs` and the three "waits"
+  sentences (`INDEX.md`, the skill, the capabilities tour) deleted, `cookbook/sign_webhook`
+  and its example project. Branch from `hold/webapis-4b`, rebase with it, merge right after
+  it. A non-JS WASM embedder can switch to the guest implementation later (a one-line
+  `validate.rs` change plus a corpus run, once the wasm32 object builds with dependencies).
 - **Tests.** `crypto_sha2_cavp.sak` (NIST short-message vectors, Sol's table),
-  `crypto_hmac_rfc4231.sak`, `crypto_hkdf_rfc5869.sak`, `crypto_pbkdf2_rfc6070.sak`,
+  `crypto_hmac_rfc4231.sak`, `crypto_hkdf_rfc5869.sak` (A.1–A.3; A.4–A.7 are SHA-1),
+  `crypto_pbkdf2_rfc7914.sak` (§11, PBKDF2-HMAC-SHA-256; RFC 6070 is SHA-1 and SHA-1 is not
+  offered), `crypto_derive_rejects_bounds.sak` (`Length`, `Iterations`, `Info`, including
+  the 2^20-byte PBKDF2 output bound of §17.266 (7)), `crypto_verify_rejects_tampered.sak`,
   `crypto_key_never_shows.sak` (a `CryptoKey` in `show` is `V2031`, a UI fixture),
   `crypto_export_rejects_not_extractable.sak`, `crypto_usage_rejected.sak`,
   `crypto_generate_under_seeded_random_is_deterministic.sak` (and the docs sentence that
   this is why `Random.seeded` is test-only).
-- **Docs.** Stdlib regenerated; `tour/capabilities.mdx` section "Secrets and keys";
-  `cookbook/sign_webhook.mdx` (HMAC verify of an incoming request).
+- **Docs.** Stdlib regenerated; `tour/capabilities.mdx` section "Secrets and keys" (a
+  tested HMAC webhook check); `cookbook/sign_webhook.mdx` (HMAC verify of an incoming
+  request) in 7a-W, because example projects run on WASM with no `KNOWN`.
 - **Who.** Opus; Sol: `compiler/tests/vectors/sha2.txt`, `hmac.txt`, `hkdf.txt`,
   `pbkdf2.txt` from the RFCs/CAVP with source URLs.
 - **Acceptance.** Every vector passes on three backends (WASM through the host, native
-  through `rt`); the UI fixture pins the no-`Show` rule; `cargo deny`-style licence check
-  if the workspace has one, else the licences listed in the PR.
+  through `rt`), met when 7a-W merges; the UI fixture pins the no-`Show` rule; `cargo
+  deny`-style licence check if the workspace has one, else the licences listed in the PR;
+  the owner reviews the crate set as security reviewer. SHA-384/512 HKDF and PBKDF2 have
+  no published vectors: JS (OpenSSL) = native (RustCrypto) parity on literal inputs is the
+  evidence (§17.266 (5)).
+- **Landed (`3a027001`, `3eab0003`; design §17.266).** JS and native; WASM `D090` until
+  7a-W. Beyond the RFC's list, endorsed and now RFC text: `algorithm`, `usages`,
+  `extractable`, `allows`, `permits` (`@total`), `HkdfParams`, `Pbkdf2Params`,
+  `DeriveParams`, `KeyReason`, `CryptoReason`; a key without the operation's usage is
+  `D020`; `crypto.verify`; HKDF and PBKDF2 keys extractable when imported so; the host-floor
+  limits as typed errors on every backend. Still to do on `main` now: the 2^20-byte PBKDF2
+  output bound as `Err(CryptoError(Length(bits)))`, replacing native `D096` / JS `D090`.
 
 ### Phase 7b: `std/crypto` tier 1b
 
@@ -444,6 +472,13 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   do not land after the tag. Additive phases never wait for a tag (design §17.263 (2)).
 - `.wasm.stdout` is a declared difference, never a convenience.
 - Nothing prints compressed bytes or signatures; nothing shows, logs or records a key.
+- One held PR per ABI revision, stacked in merge order (#5 at 1.5.0, 7a-W at 1.6.0); a
+  MINOR number is never shared between two PRs (§17.266 (1)).
+- A limit is a typed error on every backend, checked in Sakura before the external; a
+  defect whose code differs by backend is a parity bug (§17.266 (7)).
+- A runtime fix that brings a backend to its own written rule, changes no contract text
+  and carries a three-backend fixture is a `fix` commit on `main`, even while the tag is
+  pending; a held PR never carries one (§17.267 (2)).
 
 ## 5. Open items for Fable
 
