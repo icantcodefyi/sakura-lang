@@ -1,3 +1,5 @@
+import { RELEASE, releaseLabel } from "@/lib/release";
+
 type Mark = "yes" | "partial" | "no";
 type Cell = [Mark, string?];
 
@@ -152,7 +154,7 @@ export function Compare() {
           <table className="w-full min-w-[50rem] sm:min-w-[54rem] border-collapse text-left text-[14px]">
             <caption className="sr-only">
               Comparison of language defaults relevant to agent-written code. The Sakura Lang column
-              describes v0.1.0-alpha.1.
+              describes v{RELEASE}.
             </caption>
             <thead>
               <tr className="border-b border-border">
@@ -171,7 +173,7 @@ export function Compare() {
                     {l}
                     {i === 0 ? (
                       <span className="ml-1.5 font-sans text-[11.5px] font-medium text-sakura-text">
-                        alpha.1
+                        {releaseLabel()}
                       </span>
                     ) : null}
                   </th>
@@ -221,7 +223,7 @@ export function Compare() {
           <span className="inline-flex items-center gap-1.5">
             <Glyph mark="no" /> not provided
           </span>
-          <span>The Sakura Lang column describes v0.1.0-alpha.1.</span>
+          <span>The Sakura Lang column describes v{RELEASE}.</span>
         </p>
       </div>
     </section>

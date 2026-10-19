@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { isReleased, RELEASE as VERSION, releaseLabel, type Version } from "@/lib/release";
 import { CopyCommand } from "./copy-command";
 
 // Commands and platform rows from /docs/install (content/docs/install.mdx) and
-// packaging/targets.json. Update both together when a release publishes.
-const VERSION = "0.1.0-alpha.1";
+// packaging/targets.json. A row's `since` is the release that first ships it.
 
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   {
@@ -26,37 +26,36 @@ const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   },
 ];
 
-type Stage = "published" | "v0.1.0" | "v0.2.0";
-
-const PLATFORMS: { name: string; target: string; stage: Stage; note?: string }[] = [
-  { name: "macOS, Apple silicon", target: "aarch64-apple-darwin", stage: "published" },
+const PLATFORMS: { name: string; target: string; since: Version; note?: string }[] = [
+  { name: "macOS, Apple silicon", target: "aarch64-apple-darwin", since: "0.1.0-alpha.1" },
   {
     name: "Linux x64",
     target: "x86_64-unknown-linux-gnu",
-    stage: "published",
+    since: "0.1.0-alpha.1",
     note: "glibc 2.35+",
   },
   {
     name: "Linux ARM64",
     target: "aarch64-unknown-linux-gnu",
-    stage: "v0.1.0",
+    since: "0.1.0",
     note: "Raspberry Pi 4 and 5 expected to work",
   },
-  { name: "Windows x64", target: "x86_64-pc-windows-msvc", stage: "v0.2.0" },
-  { name: "macOS, Intel", target: "x86_64-apple-darwin", stage: "v0.2.0" },
+  { name: "Windows x64", target: "x86_64-pc-windows-msvc", since: "0.2.0" },
+  { name: "macOS, Intel", target: "x86_64-apple-darwin", since: "0.2.0" },
 ];
 
-const STAGE: Record<Stage, { label: string; className: string }> = {
-  published: { label: "in alpha.1", className: "border-ok/45 bg-ok-wash text-ok" },
-  "v0.1.0": {
-    label: "coming in v0.1.0",
-    className: "border-sakura/55 bg-sakura-wash text-sakura-text",
-  },
-  "v0.2.0": {
-    label: "coming in v0.2.0",
-    className: "border-dashed border-strong text-muted-foreground",
-  },
-};
+// Published rows, then the next release in sakura, then later ones dashed.
+const next = PLATFORMS.find((p) => !isReleased(p.since))?.since;
+const stage = (since: Version) =>
+  isReleased(since)
+    ? { label: `in ${releaseLabel()}`, className: "border-ok/45 bg-ok-wash text-ok" }
+    : {
+        label: `coming in v${since}`,
+        className:
+          since === next
+            ? "border-sakura/55 bg-sakura-wash text-sakura-text"
+            : "border-dashed border-strong text-muted-foreground",
+      };
 
 export function Install() {
   return (
@@ -99,24 +98,29 @@ export function Install() {
                 platforms
               </caption>
               <tbody className="border-t border-foreground/80">
-                {PLATFORMS.map((p) => (
-                  <tr key={p.target} className="border-b border-border">
-                    <th scope="row" className="py-3.5 pr-4 align-top font-normal">
-                      <span className="block text-[14.5px] font-medium">{p.name}</span>
-                      <span className="block font-mono text-[11.5px] text-faint">{p.target}</span>
-                      {p.note ? (
-                        <span className="block text-[12.5px] text-muted-foreground">{p.note}</span>
-                      ) : null}
-                    </th>
-                    <td className="py-3.5 text-right align-top">
-                      <span
-                        className={`inline-block rounded-full border px-2.5 py-0.5 font-mono text-[11.5px] whitespace-nowrap ${STAGE[p.stage].className}`}
-                      >
-                        {STAGE[p.stage].label}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {PLATFORMS.map((p) => {
+                  const { label, className } = stage(p.since);
+                  return (
+                    <tr key={p.target} className="border-b border-border">
+                      <th scope="row" className="py-3.5 pr-4 align-top font-normal">
+                        <span className="block text-[14.5px] font-medium">{p.name}</span>
+                        <span className="block font-mono text-[11.5px] text-faint">{p.target}</span>
+                        {p.note ? (
+                          <span className="block text-[12.5px] text-muted-foreground">
+                            {p.note}
+                          </span>
+                        ) : null}
+                      </th>
+                      <td className="py-3.5 text-right align-top">
+                        <span
+                          className={`inline-block rounded-full border px-2.5 py-0.5 font-mono text-[11.5px] whitespace-nowrap ${className}`}
+                        >
+                          {label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">

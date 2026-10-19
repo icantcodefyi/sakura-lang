@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Seal } from "@/components/seal";
 import { Code } from "@/components/code";
+import { releaseLabel } from "@/lib/release";
 import { sample } from "./samples";
 import { Tabs } from "./tabs";
 
@@ -209,7 +210,7 @@ export function AgentView() {
       <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:px-8 md:pb-32">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h3 className="font-display text-[1.25rem] font-semibold tracking-[-0.015em]">
-            In the alpha.1 binary
+            In the {releaseLabel()} binary
           </h3>
           <p className="text-[14.5px] text-muted-foreground">
             Agents can also{" "}

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Wordmark } from "@/components/brand";
 import { GitHubIcon } from "@/components/github-icon";
 import { LinkedInIcon, XIcon } from "@/components/social-icons";
+import { RELEASE } from "@/lib/release";
 import { site } from "@/lib/site";
 
 const COLUMNS = [
@@ -49,8 +50,8 @@ export function SiteFooter() {
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-muted-foreground">
-            The language agents write. Pre-alpha: the compiler is under construction and nothing is
-            released.
+            The language agents write. In preview: v{RELEASE} is published, and nothing is stable
+            before 1.0.
           </p>
         </div>
         {COLUMNS.map((c) => (

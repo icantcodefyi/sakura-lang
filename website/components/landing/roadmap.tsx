@@ -1,31 +1,36 @@
 import Link from "next/link";
+import { isReleased, releaseLabel, type Version } from "@/lib/release";
 
-// The release stages of docs/plans/road-to-1.0.md. When a user-visible milestone lands, move
-// its `status` along here and in the hero badge (website/AGENTS.md). No dates: the plan has none.
-const PHASES: { id: string; name: string; body: string; status?: "shipped" | "now" }[] = [
+// The release stages of docs/plans/road-to-1.0.md. Shipped and next follow RELEASE in
+// lib/release.ts. No dates: the plan has none.
+const STAGES: { id: Version; name: string; body: string }[] = [
   {
-    id: "v0.1.0-alpha.1",
+    id: "0.1.0-alpha.1",
     name: "The preview",
     body: "M0 to M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh.",
-    status: "shipped",
   },
   {
-    id: "v0.1.0",
+    id: "0.1.0",
     name: "M4 exit",
     body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64.",
-    status: "now",
   },
   {
-    id: "v0.2.0",
+    id: "0.2.0",
     name: "Native and stability",
     body: "Native backend behind an experimental flag, Windows x64 and Intel Mac, and the stability guarantees of RFC 0001.",
   },
   {
-    id: "v1.0.0",
+    id: "1.0.0",
     name: "Stable",
     body: "A release candidate, a seven-day soak with no P1 defect, then 1.0. Packages follow in 1.x.",
   },
 ];
+
+const nextId = STAGES.find((p) => !isReleased(p.id))?.id;
+const PHASES = STAGES.map((p) => ({
+  ...p,
+  status: isReleased(p.id) ? ("shipped" as const) : p.id === nextId ? ("now" as const) : undefined,
+}));
 
 export function Roadmap() {
   return (
@@ -36,8 +41,8 @@ export function Roadmap() {
             Shipping in the open.
           </h2>
           <p className="max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            alpha.1 is out. The rest of the road to 1.0 is weeks of work, not dated: each step ships
-            when its evidence is in.{" "}
+            {releaseLabel()} is out. The rest of the road to 1.0 is weeks of work, not dated: each
+            step ships when its evidence is in.{" "}
             <Link
               href="/docs/roadmap"
               className="font-medium text-foreground underline decoration-sakura underline-offset-4"
@@ -84,7 +89,7 @@ export function Roadmap() {
                 ) : null}
               </span>
               <p className="font-mono text-[11.5px] text-faint md:mt-5">
-                {p.id}
+                v{p.id}
                 {p.status === "now" ? (
                   <span className="ml-2 rounded-full bg-sakura-wash px-2 py-0.5 font-sans font-medium text-sakura-text">
                     Next

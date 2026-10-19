@@ -10,9 +10,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Landing page
 
-When a user-visible milestone lands, update the landing page's status/roadmap strip: the hero
-badge (`components/landing/hero.tsx`), the install rows (`install.tsx`), the agent list
-(`agent-view.tsx`) and the release strip (`roadmap.tsx`), so the page shows only what has shipped.
+Every displayed version comes from `RELEASE` in `lib/release.ts`: the hero badge, install
+commands and platform rows, release strip, footer, changelog page and llms.txt. Change it only
+once the tag is published; then check that the copy beside it (`install.tsx` platform `since`,
+`roadmap.tsx` bodies, `agent-view.tsx` list) still shows only what has shipped. `/changelog`
+renders the repository `CHANGELOG.md`, and `vercel.json` redeploys when it changes.
 Its Sakura samples live in `components/landing/samples/*.sak` and are checked by
 `scripts/check-doc-sweep.py`; the outputs shown beside them are recorded from the compiler and
 must be re-recorded when they change.

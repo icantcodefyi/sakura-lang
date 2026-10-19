@@ -63,7 +63,7 @@ const REFUSED: { code: string; why: string; tag: string }[] = [
   },
 ];
 
-// Security fixes on main since alpha.1 (CHANGELOG Unreleased, Security); they ship in v0.1.0.
+// Security fixes since alpha.1 (CHANGELOG [0.1.0], Security); they ship in v0.1.0.
 const HARDENED: ReactNode[] = [
   <>
     A write through a dangling symlink inside an <code className="font-mono">fs.write</code> grant

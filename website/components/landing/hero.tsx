@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { GitHubIcon } from "@/components/github-icon";
 import { Button } from "@/components/ui/button";
+import { releaseLabel } from "@/lib/release";
 import { tokenize } from "@/lib/sakura/highlight";
 import { site } from "@/lib/site";
 import { HeroDemo } from "./hero-demo";
@@ -18,7 +19,7 @@ export async function Hero() {
           href="/docs/install"
           className="rise group flex max-w-xl items-center gap-3 font-mono whitespace-nowrap text-[12px] text-foreground sm:text-[12.5px]"
         >
-          <span className="bg-foreground px-1.5 py-0.5 text-background">alpha.1</span>
+          <span className="bg-foreground px-1.5 py-0.5 text-background">{releaseLabel()}</span>
           <span
             aria-hidden
             className="h-px min-w-6 flex-1 translate-y-[0.2em] border-b border-dotted border-foreground/50"

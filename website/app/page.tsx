@@ -16,6 +16,7 @@ import { Review } from "@/components/landing/review";
 import { Roadmap } from "@/components/landing/roadmap";
 import { homeImageAlt } from "@/lib/og";
 import { absolute, author, ids, JsonLd, pageMetadata } from "@/lib/seo";
+import { RELEASE } from "@/lib/release";
 import { site } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -51,7 +52,8 @@ const jsonLd = {
       codeRepository: site.github,
       programmingLanguage: "Rust",
       license: ["https://spdx.org/licenses/MIT.html", "https://spdx.org/licenses/Apache-2.0.html"],
-      creativeWorkStatus: "Pre-alpha",
+      creativeWorkStatus: "Preview",
+      version: RELEASE,
       author: { "@id": ids.author },
       maintainer: { "@id": ids.author },
       image: absolute("/opengraph-image"),
