@@ -14,12 +14,12 @@ metadata:
 
 Run `sakura --version`, then start with `sakura prompt --budget 3000` before
 editing. Retrieve a specific symbol with `sakura doc` or a diagnostic with
-`sakura explain` as needed. Every tool result stays in the conversation; do not
-reload guides. The CLI fills the two `sakura-compiler-*` fields; if they do not
+`sakura explain` as needed. Do not reload guides. The CLI fills the two
+`sakura-compiler-*` fields; if they do not
 match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
 `explain`.
 
-## Syntax to keep in view
+## Syntax
 
 - Write parameter and return types on top-level functions. Pure functions omit
   `!`; effectful signatures name a row, such as `! {Console, Fail<Missing>}`.
@@ -30,6 +30,7 @@ match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
 - Use `let` for a fixed binding and `var` for rebinding. Collections have value
   semantics: `List.set` and `Map.set` return a new collection. Assign that result
   back to the `var`; neither call mutates the input. Check index bounds first.
+  Prefer `List` for dense integer IDs (as in DeltaBlue), `Map` for sparse keys.
 - For a zero-length case, use `if n == 0 { return ... }` before computing
   `n - 1` or indexing. State the nonnegative-input requirement when needed;
   an empty-input guard alone does not establish it. Ranges are half-open.
@@ -65,7 +66,7 @@ match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
 6. **Build and report.** Run `sakura build` for the requested target (`js` by
    default). Build rejects holes with `V2050`. Report exact commands, results,
    remaining limitations and any authorized signature or permission changes.
-   A build is not evidence that an untested behavior works.
+   A build does not test behavior.
 
 ## Four complete examples
 
