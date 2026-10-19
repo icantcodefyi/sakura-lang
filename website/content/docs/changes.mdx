@@ -1,138 +1,137 @@
 ---
 title: Changes since alpha.1
-description: Current-main behavior, migration notes and limits after the published preview.
+description: What v0.1.0 changes from the published 0.1.0-alpha.1 preview, with migration notes for breaking changes.
 ---
 
-These docs track **main**, including [Unreleased changes](https://github.com/icantcodefyi/sakuralang/blob/main/CHANGELOG.md#unreleased).
-The published npm `latest` is `0.1.0-alpha.1`; use a [source build](/docs/quickstart#install-from-source)
-for the changes below until a newer release publishes. This page does not declare
-M4 complete or stabilize experimental native execution.
+These docs track **main**, which is the content of the
+[0.1.0 section of the changelog](https://github.com/icantcodefyi/sakuralang/blob/main/CHANGELOG.md#010---unreleased).
+`v0.1.0` closes milestone M4 and is not tagged yet; the published npm `latest` is
+`0.1.0-alpha.1`. Until `v0.1.0` publishes, use a [source build](/docs/quickstart#install-from-source)
+for the changes below. Neither release has a compatibility promise; see [Stability](/docs/stability).
+The changelog is the complete list; this page covers what a program or an agent notices.
 
-## Sources, diagnostics and portability
+## Breaking changes
 
-- Sources now end in `.sak`, with no old-extension fallback. Rename old files with
-  `git mv main.sakura main.sak`. `sakura.toml`, the `sakura` language id and
-  `sakura:///std/…` URIs stay unchanged.
-- CRLF and LF have the same meaning, including newlines in strings. `sakura fmt`
-  writes LF; `fmt --check` identifies CRLF as a formatting difference. A snapshot
-  differing only in line endings is reported as a line-ending mismatch. Scaffolding
-  writes `.gitattributes` with `*.sak text eol=lf` and `*.snap -text`.
-- JSON file URIs follow RFC 8089, including `file:///C:/dir/main.sak`. Terminal
-  diagnostics use OS paths, without URI escapes. MCP path filters accept equivalent
-  file URI spellings. On Windows, Node lookup honors `PATHEXT` and solver lookup uses
-  `.exe`. These fixes are not a claim of a supported Windows release.
-- `V1002` on `Type.member` can suggest a unique prefix/extension match when there
-  is no near spelling: `List.lenght` → `len`, `List.fil` → `filter`. These fixes are
-  `suggested`, never automatically safe; `List.size` no longer suggests `slice`.
-- `V2002` names a declared callee and its module, with expected and actual argument
-  counts. A function-value call retains the type form. `V3001` can propose the
-  effect's unique deterministic std handler; that edit remains `incomplete`.
-- Syntax-error suppression follows **place**: diagnostics whose spans point into
-  the broken body are suppressed, as is its cascading `V3001`. An error in another
-  module used from that body remains visible. Rechecks invalidate refinement
-  dependencies through contracts and no longer duplicate reused tests' diagnostics.
-- `V4004` limits a `match`, `catch` or `let` pattern decision tree to 1,048,576 nodes, not a fixed arm count.
-  Or-pattern combinations and copied wildcard rows can expand the tree. It is
-  diagnosed during lowering (`build`, `run`, `test`), not `check`. Thousands of
-  flat literal or guarded rows can compile and run; split combinatorial matches
-  into one column at a time. See [`V4004`](/docs/errors/V4004).
+Each of these can change what a program that worked on alpha.1 does.
 
-## Analysis cache and check latency
+- **`[dependencies]` is refused.** A `sakura.toml` that declares it in any form, even empty,
+  is [`V8005`](/docs/errors/V8005) before anything runs. Remove the table; packages arrive
+  after 1.0.
+- **An invalid manifest is a diagnostic.** An unknown table or key, a value of the wrong
+  type, a missing `[package] name` or malformed TOML is [`V8006`](/docs/errors/V8006) from
+  `check`, `build`, `run`, `test`, `verify` and the LSP, with exit status `1` and a `--json`
+  record, instead of a text usage error with exit `2`. The unused `[targets]` table is now
+  an unknown key: delete it. See [sakura.toml](/docs/manifest).
+- **Line endings do not change meaning.** A `\r\n` inside a string literal is `\n`, and a
+  line comment ends before the `\r`, so a CRLF checkout prints the same strings as an LF one.
+  `sakura fmt` writes LF, `fmt --check` names CRLF as the reason a file is listed, and a
+  snapshot that differs only in line endings is reported as a line-ending mismatch.
+  `sakura new` and `sakura init` also write `.gitattributes` (`*.sak text eol=lf`,
+  `*.snap -text`).
+- **A response body cut short is `HttpError`.** When the connection drops while
+  `Http.host()`'s `send` reads the body, `send` fails with `HttpError` on both backends,
+  instead of the defect `D091` on JS or a crash on WASM. A program that retries on
+  `HttpError` now retries this case too.
+- **`SAKURA_MAX_COPY_BYTES` is strict.** It must be decimal digits from 1 to 2^53−1; any other
+  value is the defect `D091` at first use. Unset it for the 256 MiB default.
+- **JS responses are bounded.** On the JS backend, `Http.host()`'s `send` reads at most
+  `SAKURA_MAX_COPY_BYTES` of a response body, as WASM already did; a larger body fails with
+  `HttpError` "response too large". Raise the limit or read large responses with
+  `Http.stream`.
+- **Recorded responses are bounded.** `sakura test --record` stores at most 16 MiB of a
+  response body; past that, the call fails with `HttpError` and nothing is appended to the
+  cassette.
 
-`check`, `build`, `run`, `test`, LSP and MCP reuse std analysis from a disk cache,
-one file per compiler build at `<cache>/sakuralang/std`. The base is
-`SAKURA_CACHE_DIR`, otherwise `XDG_CACHE_HOME` or `~/.cache` on Unix and
-`LOCALAPPDATA` on Windows. `SAKURA_NO_CACHE=1` disables it. Missing, damaged or
-foreign entries are recomputed; files are disposable and have no format guarantee.
-This is separate from the authenticated [proof cache](/docs/agents/verify#proof-cache-and-build-behavior).
-Concurrent test jobs should set distinct `SAKURA_CACHE_DIR` directories.
+## WebAssembly backend complete
 
-The recorded release-build measurements on one quiet macOS host fell from about
-22 to 7 ms for `sakura new cli` and from 54 to 39 ms for a 10k-line check. These are
-observations, not platform guarantees. Long-lived servers also reuse std in memory.
-`bench/bench compile --json compile.json` reproduces the compile-latency workloads;
-its cache lives in `bench/target/cache` unless overridden.
+`--target wasm` now builds, runs, tests and verifies programs as `--target js` does. CI
+compares the two backends' output, effect traces and defect records on Linux x64 and ARM64,
+Apple silicon and Intel macOS, and Windows x64. On WASM:
 
-## Server limits and failures
+- `sakura test --contracts` runs the generated contract properties. `sakura test --record`
+  still needs `--target js`; both backends replay the cassette it writes.
+- `sakura build` drops the checks `sakura verify --target wasm` proved, and
+  `sakura build --manifest` writes `target/sakura/manifest.json` with `target` naming the backend.
+- `sakura verify --target wasm` replays a disproved obligation with WASM's 64-bit `Int`, where
+  an overflow is `D001`.
+- Modules carry runtime ABI 1.4.0. An older 1.2 host refuses them with `V8003`.
 
-`Serve.host()` bounds request bodies to 1 MiB. It rejects oversized bodies with
-`413`, closes the connection and never calls the handler. The following additional
-cases are distinct:
+`Serve.host()` on WASM no longer ends the process on a host fault:
 
 | Condition | HTTP response | Diagnostic and lifecycle |
 | --- | --- | --- |
-| Reply status or headers cannot be sent | `500` | `D091`; server keeps running |
-| WASM request exceeds `SAKURA_MAX_COPY_BYTES` | `413`, connection closed | `D091` on stderr; handler not run, server keeps running |
-| WASM handler response exceeds that budget | `500` | `D091` on stderr; server keeps running |
-| WASM heap cannot admit a request | `503`, `retry-after: 1` | `D096` on stderr; server keeps running |
-| WASM runtime trap during a request | `500` | One `D090` naming function and PC; server stops and program exits 70 |
-| Request still waiting when program ends | `500` | One `D090` “server stopped”, unless a defect already ended the program |
-| Request arriving on an open connection after server stops, either backend | `503`, connection closed | Handler never runs |
+| Request exceeds `SAKURA_MAX_COPY_BYTES` | `413`, connection closed | `D091` on stderr; handler not run, server keeps running |
+| Handler response exceeds that budget | `500` | `D091` on stderr; server keeps running |
+| Heap cannot admit a request | `503`, `retry-after: 1` | `D096` on stderr; server keeps running |
+| Runtime trap during a request | `500` | One `D090` naming function and PC; server stops and program exits 70 |
+| Request still waiting when the program ends | `500` | One `D090` "server stopped", unless a defect already ended the program |
+| Request arriving after the server stops, either backend | `503`, connection closed | Handler never runs |
 
-WASM tests resume after host faults or traps on a fresh instance. Invalid host
-operation indices or result shapes are `D090`; exhausted request tables are `D091`
-for `Clock.sleep` and `serve_listen`. Defect records now carry JS-compatible messages
-and source spans from `sakura.debug` (omitted by `--strip`).
+The 1 MiB request-body limit and its `413` answer are unchanged from alpha.1.
 
-## HTTP, cassettes and filesystem security
+## Diagnostics and JSON
 
-`SAKURA_MAX_COPY_BYTES` must be decimal digits representing 1 through 2^53−1.
-Empty, zero, signed, fractional, exponential, hexadecimal or spaced values cause
-`D091` at first use; unset it for the 256 MiB default. JS `Http.host().send` now
-bounds the response body too. An oversized HTTP response is `HttpError` with
-“response too large”, not a runtime defect; use streaming for larger responses.
-A connection lost while reading a body is also `HttpError` on JS and WASM.
+- Every `--json` record carries `kind` and `schema_version`: `sakura doc --json` is a
+  `symbol_query` record and `manifest.json` has `kind: "manifest"`. `sakura verify --json`
+  writes schema 1.1 on every record, including a program that does not compile. The fields of
+  every kind are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt).
+  The summary records split by command before v0.2.0; see [Stability](/docs/stability#changes-planned-before-v020).
+- [`V4004`](/docs/errors/V4004) limits a `match`, `catch` or `let` pattern decision tree to
+  1,048,576 nodes. Or-patterns and copied wildcard rows can expand the tree. It is reported
+  while lowering (`build`, `run`, `test`), not by `check`. Thousands of flat literal or guarded
+  rows compile and run; split a combinatorial match into one column at a time.
+- `V1002` on `Type.member` suggests the one exported function that is a prefix of the name or
+  extends it (`List.lenght` → `len`, `List.fil` → `filter`), as a `suggested` fix.
+- `V2002` names a `Type.member` callee as written (``List.map` (std/list) takes 2 arguments``).
+- The JS and WASM hosts report an OS error by its class, such as `Err("permission denied")`,
+  instead of Node's message, as the native host does.
+- A syntax error hides only the diagnostics that point into the body holding it, and its
+  cascading `V3001`. An error in another module used from that body stays visible.
 
-`test --record` stores at most 16 MiB of a sent or streamed response; exceeding it
-fails with `HttpError` without appending the exchange. Malformed exchanges fail
-when the cassette opens. Recording requires JS; WASM can replay the cassette and
-run `test --contracts`. Tests without `--record` have empty host permissions;
-`Test.fixtures()` retains its own grants. Secret HTTP headers work on WASM and
-remain redacted in cassettes. `Secret.map` now requires an explicit trust reason,
-and `sakura audit` lists it beside `Secret.expose`.
+## Analysis cache and check latency
 
-Writes through dangling symlinks inside an `fs.write` grant are refused with
-“escapes the directory”, even when the link points back inside the grant. This
-covers `Fs.write`, write/append `File`, cassette recording and `Sql.sqlite` on JS
-and WASM. **Write to the target path instead of the dangling link.**
+`check`, `build`, `run`, `test`, the LSP and MCP read std's analysis from a disk cache, one
+file per compiler build at `<cache>/sakuralang/std`. The base is `SAKURA_CACHE_DIR`, otherwise
+`XDG_CACHE_HOME` or `~/.cache` on Unix and `LOCALAPPDATA` on Windows. `SAKURA_NO_CACHE=1`
+turns it off. Output is the same with and without it; missing, damaged or foreign files are
+recomputed and have no format guarantee. It is separate from the authenticated
+[proof cache](/docs/agents/verify#proof-cache-and-build-behavior). Concurrent test jobs should
+set distinct `SAKURA_CACHE_DIR` directories.
 
-## Verification and performance
+## Filesystem security
 
-[`sakura verify`](/docs/agents/verify) reuses authenticated verdicts, including
-`unknown(resource_limit)` at the same budget, and replays eligible i64
-counterexamples. JS and WASM builds remove eligible proved checks; total predicates
-go with them, while predicates calling functions still execute. `requires`, entry
-checks and checked arithmetic stay in this proof-removal pass. Proof key ownership,
-directory permissions and location are checked; builds never create the key.
+On the JS backend and WASM, a write through a dangling symbolic link inside an `fs.write`
+grant is refused with "escapes the directory", even when the link points back inside the
+grant. Writes and reads open the resolved path with `O_NOFOLLOW` and do their I/O through the
+descriptor, so a link planted during the call is refused. **Write to the target path instead
+of the link.** Known limits: a parent directory swapped for a link during the call,
+`Sql.sqlite`'s database file, the names `Fs.list` reads, and Windows are not covered on the JS
+hosts.
 
-Direct WASM local-handler/callback calls, fused collection access, tag comparisons,
-tail-call loops and large-match lowering reduce work while preserving semantics.
-Core output and snapshot hashes are now independent of earlier analyses in a
-process; std-first file ordering can change dump IDs and hashes. Finished WASM
-root tasks are freed between benchmark samples.
+## Native code, experimental
 
-For dense integer IDs, prefer `List` to `Map`, as the DeltaBlue benchmark now does.
-Both return updated values: assign the result back. Use `Map` for sparse keys.
-The [benchmark guide](https://github.com/icantcodefyi/sakuralang/blob/main/bench/README.md)
-documents `bench/bench envelope wasm.json native.json --json envelope.json`.
-Inputs must share commit and host; the native file must use the **matched** lane.
-Exit 0 means a report was produced, not that every ceiling passed. Loaded-host and
-CI results are advisory. The native comparison ports are Rust/Go/OCaml/Koka,
-not a stable Sakura Lang native backend.
+A compiler built from source with the Cargo `native` feature accepts `--target native` on
+`build`, `run` and `test`. It runs `Json`, `Cli` and `Sql` natively; `Http`, serving and `Llm`
+stop with a `D090` or `D091` defect. Release binaries do not include it, and it carries no
+promise. See [Backends](/docs/tour/memory#backends).
 
-## Distribution and editor tooling
+## Distribution and tooling
 
-See [Install](/docs/install) for the published platforms and next-release additions:
-Linux ARM64 (glibc) archives and npm package, coming in v0.1.0, and Windows x64 MSVC
-ZIP, npm and `install.ps1` packaging, coming in v0.2.0. Neither is in alpha.1.
-New macOS tag releases require Developer ID signing (team `P62B65A837`) and Apple
-notarization before archives and packages are assembled; this does not retroactively
-sign alpha.1. Bare Mach-O executables cannot carry a stapled ticket. The installer
-checks checksums and, when `gh` is available, requires successful attestation
-verification; without it, it reports “integrity verified, not attested”. Custom
-prefixes must be absolute.
+- **Linux ARM64** (glibc) archives and the `sakuralang-linux-arm64-gnu` npm package are new in
+  v0.1.0. See [Install](/docs/install).
+- **Windows x64** (ZIP, npm and a checksum-verifying `install.ps1`) and **Intel macOS**
+  (archive, npm and Homebrew) are packaged and tested in CI. Their install instructions
+  appear once a release passes the published-install smoke, planned for v0.2.0.
+- New macOS releases are signed with a Developer ID (team `P62B65A837`) and notarized by
+  Apple. This does not retroactively sign alpha.1.
+- The documented npm install is the plain `npm install --global sakuralang`. The packages
+  ship no install scripts.
+- A [Tree-sitter grammar](/docs/editors#tree-sitter) is in the repository, not published.
 
-The [tree-sitter grammar](/docs/editors#tree-sitter) is available in the repository.
-The generated skill, manifest and ZIP normalize Windows separators and are
-byte-identical across OSes. The skill entry point retains a 7,000-byte source
-working target and a tested 7,500-byte limit after release metadata is filled.
+## Performance advice
+
+For dense integer ids, prefer `List` to `Map`, as the DeltaBlue benchmark now does. Both
+return updated values: assign the result back. Use `Map` for sparse keys. Benchmark numbers
+stay advisory until a quiet-window run is blessed, so this page quotes none; the
+[benchmark guide](https://github.com/icantcodefyi/sakuralang/blob/main/bench/README.md)
+describes how to measure on your own machine.

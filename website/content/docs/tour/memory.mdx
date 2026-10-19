@@ -3,7 +3,7 @@ title: Memory model
 description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Sakura Lang.
 ---
 
-<Callout type="warn" title="Pre-alpha">
+<Callout type="warn" title="Alpha preview">
   The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
@@ -160,7 +160,7 @@ WASM builds write `main.wasm` and the Node host files to `target/sakura/wasm`; `
 
 HTTP sends and streams, `Sql.sqlite`, `Llm.stream`, `Serve.host()` and `Log.json()` are implemented on WASM, including requests carrying `Secret` HTTP headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`): the header's value reaches the host's `fetch` and nothing else, and cassettes record it redacted, as on JS. Offline scripted/replayed streams are available. `test --record` requires `--target js` (both backends read the cassette it writes); ordinary tests and `test --contracts` run on both backends. User `@external(js, …)` bindings are rejected for WASM with `V8004`.
 
-WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM defect codes, dynamic messages and source spans now match JS. Spans come from `sakura.debug`; `--strip` removes them. See [server limits and failures](/docs/changes#server-limits-and-failures) for host fault handling.
+WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM defect codes, dynamic messages and source spans now match JS. Spans come from `sakura.debug`; `--strip` removes them. See [server limits and failures](/docs/changes#webassembly-backend-complete) for host fault handling.
 
 A compiler built from source with `cargo build --release -p sakura_cli --features native` also accepts `--target native` on `build`, `run` and `test`, producing an executable that runs directly. It is **experimental**: it agrees with JavaScript on the semantics corpus, but `Http`, serving and `Llm` are not ported yet and stop with a `D090` or `D091` defect. See the [roadmap](/docs/roadmap#m5-native-code-experimental).
 
