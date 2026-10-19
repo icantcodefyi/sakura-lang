@@ -296,8 +296,11 @@ new version, with owner-approved deprecation/yank guidance if necessary.
 Record tag/SHA, run IDs, hashes, URLs, tap commit, package versions, verification
 and credential expiry/rotation reminders without secrets. Retain qualification
 evidence/provenance. State unsigned artifacts, deferred channels and incomplete
-client acceptance honestly. Only after A is published and verified begin B;
-repeat this procedure for later matrix expansions.
+client acceptance honestly. After every channel has published, dispatch
+`verify-published.yml` with the version and record its run URL: it installs from the public
+channels on fresh GitHub-hosted runners and runs the acceptance list (design §17.227); a red
+row is a release defect fixed forward in a new version. Only after A is published and verified
+begin B; repeat this procedure for later matrix expansions.
 
 This draft was researched and written with GPT-6-Astra. It claims no existing
 release, credential, account, App installation or native release test.

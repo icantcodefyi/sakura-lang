@@ -1,7 +1,7 @@
 # ADR 0003: Hand-written release workflow and installers over cargo-dist
 
 - Date: 2026-10-18
-- Status: Accepted (by @icantcodefyi, 2026-10-18)
+- Status: Accepted (by @icantcodefyi, 2026-10-18); amended 2026-10-19 by [design §17.227](../design.md): the "fresh host" below is a fresh GitHub-hosted runner installing from the published channels, and a stage's packaging may start once the previous stage's dry-run smoke is green
 - Decision owner: @icantcodefyi
 - Design entry: [design §17.157](../design.md); evidence: [research/13](../../research/13-release.md)
 
@@ -46,8 +46,10 @@ Release tooling is hand-written and small, with one source of truth:
 
 - The project owns OS detection, archive safety, download errors, hashing and their tests
   (`tools/install/test.sh`); no release ships without those tests green.
-- Platform logic is written once per stage, by hand; a stage is added only after the previous one
-  has shipped and been accepted on a fresh host.
+- Platform logic is written once per stage, by hand. A stage exits when `verify-published.yml`
+  is green on every row of the first release carrying its archives, each row a fresh GitHub-hosted
+  runner installing from the public channels (§17.227); the next stage's packaging may start once
+  the previous stage's dry-run smoke is green. Device runs are optional confirmation, not gates.
 - Dry runs produce no public side effect (no release, no registry write, no attestation).
 - Integrity is SHA-256 over every asset plus GitHub artifact attestations on approved
   publication; signing keys and notarization are the owner's later choice.
