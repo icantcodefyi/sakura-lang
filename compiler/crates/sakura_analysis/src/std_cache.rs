@@ -27,6 +27,8 @@ use crate::{Analyzed, Calls, CheckResult, Snapshot, Symbol};
 const LIMIT: usize = 16 << 20;
 const MAGIC: &[u8; 8] = b"sakstd\0\0";
 const HEADER: usize = MAGIC.len() + 32;
+/// Temporary files this process has written, for their names.
+static WRITES: AtomicUsize = AtomicUsize::new(0);
 /// Files of other builds kept beside this one's (every build writes its own).
 const KEEP: usize = 4;
 
@@ -88,7 +90,31 @@ fn file_in(dir: &Path) -> PathBuf {
 
 /// std's analysis from the cache, or `None` (disabled, missing, or not this build's valid file).
 pub(crate) fn load(snapshot: &Snapshot) -> Option<Analyzed> {
-    load_from(&file_in(&dir()?), snapshot)
+    load_in(&dir()?, snapshot)
+}
+
+fn load_in(dir: &Path, snapshot: &Snapshot) -> Option<Analyzed> {
+    if !private(dir) {
+        return None;
+    }
+    load_from(&file_in(dir), snapshot)
+}
+
+/// Whether `dir` is a directory this user alone can write (on Unix: owned by the effective user,
+/// not writable by group or others), as the proof key's must be: whoever can write it could
+/// plant an analysis, a FIFO or a symlink there.
+fn private(dir: &Path) -> bool {
+    let Ok(meta) = std::fs::symlink_metadata(dir) else {
+        return false;
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let me = rustix::process::geteuid().as_raw();
+        meta.is_dir() && meta.mode() & 0o022 == 0 && meta.uid() == me
+    }
+    #[cfg(not(unix))]
+    meta.is_dir()
 }
 
 /// Writes std's analysis for the next process; a failure is ignored.
@@ -99,11 +125,13 @@ pub(crate) fn store(analyzed: &Analyzed) {
 }
 
 fn load_from(path: &Path, snapshot: &Snapshot) -> Option<Analyzed> {
-    let file = std::fs::File::open(path).ok()?;
-    let len = usize::try_from(file.metadata().ok()?.len()).ok()?;
-    if !(HEADER..=LIMIT).contains(&len) {
+    // A regular file only: opening a FIFO would block.
+    let meta = std::fs::symlink_metadata(path).ok()?;
+    let len = usize::try_from(meta.len()).ok()?;
+    if !meta.is_file() || !(HEADER..=LIMIT).contains(&len) {
         return None;
     }
+    let file = std::fs::File::open(path).ok()?;
     let mut bytes = Vec::with_capacity(len);
     file.take(LIMIT as u64 + 1).read_to_end(&mut bytes).ok()?;
     let (magic, rest) = bytes.split_at_checked(MAGIC.len())?;
@@ -121,19 +149,33 @@ fn store_in(dir: &Path, analyzed: &Analyzed) -> std::io::Result<()> {
             "std's analysis is over the cache limit",
         ));
     }
+    // A file that would not read back (a code or symbol kind a later std adds and the decoder
+    // refuses) would be rewritten by every process instead.
+    if decode(&payload, &analyzed.snapshot).is_none() {
+        return Err(std::io::Error::other("std's analysis does not read back"));
+    }
     let mut bytes = Vec::with_capacity(HEADER + payload.len());
     bytes.extend_from_slice(MAGIC);
     bytes.extend_from_slice(&Sha256::digest(&payload));
     bytes.extend_from_slice(&payload);
     create_dir(dir)?;
-    // A name of its own per writer, so concurrent processes never interleave one file.
-    static WRITES: AtomicUsize = AtomicUsize::new(0);
+    if !private(dir) {
+        return Err(std::io::Error::other("the cache directory is not private"));
+    }
+    // A name of its own per writer, so concurrent processes never interleave one file; created
+    // new, so an existing file or symlink of that name is refused rather than written through.
     let n = WRITES.fetch_add(1, Ordering::Relaxed);
     let tmp = dir.join(format!(".{KEY}.{}.{n}.tmp", std::process::id()));
-    std::fs::write(&tmp, &bytes)?;
-    std::fs::rename(&tmp, file_in(dir)).inspect_err(|_| {
-        let _ = std::fs::remove_file(&tmp);
-    })?;
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let written = (options.open(&tmp)).and_then(|mut f| std::io::Write::write_all(&mut f, &bytes));
+    written
+        .and_then(|()| std::fs::rename(&tmp, file_in(dir)))
+        .inspect_err(|_| {
+            let _ = std::fs::remove_file(&tmp);
+        })?;
     evict(dir);
     Ok(())
 }
@@ -147,15 +189,21 @@ fn create_dir(dir: &Path) -> std::io::Result<()> {
     builder.create(dir)
 }
 
-/// Removes all but the [`KEEP`] newest files of other builds.
+/// Removes all but the [`KEEP`] newest files of other builds, and temporary files a writer that
+/// was killed left over ten minutes ago.
 fn evict(dir: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
-    let mut files: Vec<_> = (entries.flatten())
-        .filter(|e| e.path().extension().is_some_and(|x| x == "bin"))
-        .filter_map(|e| Some((e.metadata().ok()?.modified().ok()?, e.path())))
-        .collect();
+    let dated = |e: std::fs::DirEntry| Some((e.metadata().ok()?.modified().ok()?, e.path()));
+    let (mut files, temps): (Vec<_>, Vec<_>) = (entries.flatten())
+        .filter_map(dated)
+        .filter(|(_, p)| p.extension().is_some_and(|x| x == "bin" || x == "tmp"))
+        .partition(|(_, p)| p.extension().is_some_and(|x| x == "bin"));
+    let stale = std::time::SystemTime::now() - std::time::Duration::from_secs(600);
+    for (_, path) in temps.iter().filter(|(t, _)| *t < stale) {
+        let _ = std::fs::remove_file(path);
+    }
     files.sort();
     let mine = file_in(dir);
     files.retain(|(_, p)| *p != mine);
@@ -241,7 +289,7 @@ mod tests {
         let dir = temp("round");
         let std = std_analysis();
         store_in(&dir, std).unwrap();
-        let loaded = load_from(&file_in(&dir), &std.snapshot).expect("reads back");
+        let loaded = load_in(&dir, &std.snapshot).expect("reads back");
         assert_eq!(format!("{:?}", loaded.check), format!("{:?}", std.check));
         assert_eq!(loaded.symbols, std.symbols);
         assert_eq!(loaded.interfaces, std.interfaces);
@@ -286,6 +334,40 @@ mod tests {
             store_in(&dir, std).unwrap();
             assert_eq!(std::fs::read(&path).unwrap().len(), good.len(), "{what}");
         }
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    /// A directory others can write, or a FIFO in place of the file, is not read; a planted
+    /// temporary name is not written through.
+    #[cfg(unix)]
+    #[test]
+    fn only_a_private_directory_and_a_regular_file_are_used() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp("private");
+        let std = std_analysis();
+        store_in(&dir, std).unwrap();
+        assert!(load_in(&dir, &std.snapshot).is_some());
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o777)).unwrap();
+        assert!(load_in(&dir, &std.snapshot).is_none(), "world-writable");
+        assert!(store_in(&dir, std).is_err(), "world-writable");
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        std::fs::remove_file(file_in(&dir)).unwrap();
+        let made = std::process::Command::new("mkfifo")
+            .arg(file_in(&dir))
+            .status();
+        if made.is_ok_and(|s| s.success()) {
+            assert!(load_in(&dir, &std.snapshot).is_none(), "a FIFO");
+            std::fs::remove_file(file_in(&dir)).unwrap();
+        }
+        // The next names this process will use: other tests write concurrently.
+        let target = dir.join("target");
+        let n = WRITES.load(Ordering::Relaxed);
+        for n in n..n + 256 {
+            let planted = dir.join(format!(".{KEY}.{}.{n}.tmp", std::process::id()));
+            std::os::unix::fs::symlink(&target, &planted).unwrap();
+        }
+        assert!(store_in(&dir, std).is_err(), "a planted symlink");
+        assert!(!target.exists(), "not written through");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -357,7 +439,7 @@ mod tests {
         );
     }
 
-    /// Only the newest files of other builds stay.
+    /// Only the newest files of other builds stay, and no stale temporary file.
     #[test]
     fn old_builds_are_evicted() {
         let dir = temp("evict");
@@ -366,12 +448,17 @@ mod tests {
             std::fs::write(dir.join(format!("0.0.0-old{i}-x.bin")), [0]).unwrap();
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
+        let hour_ago = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+        let stale = std::fs::File::create(dir.join(".killed.tmp")).unwrap();
+        stale.set_modified(hour_ago).unwrap();
+        std::fs::write(dir.join(".writing.tmp"), [0]).unwrap();
         store_in(&dir, std_analysis()).unwrap();
         let names: Vec<_> = (std::fs::read_dir(&dir).unwrap().flatten())
             .map(|e| e.file_name().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(names.len(), KEEP + 1, "{names:?}");
+        assert_eq!(names.len(), KEEP + 2, "{names:?}");
         assert!(names.contains(&format!("{KEY}.bin")));
+        assert!(names.contains(&".writing.tmp".to_owned()));
         assert!(!names.contains(&"0.0.0-old0-x.bin".to_owned()));
         std::fs::remove_dir_all(&dir).unwrap();
     }

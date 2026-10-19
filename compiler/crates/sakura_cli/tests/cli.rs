@@ -2070,6 +2070,7 @@ fn std_cache_changes_no_output() {
             "tests/ui",
             &["check", "--json", "V1006_opaque_constructor.sak"],
         ),
+        ("tests/ui", &["check", "--json", "V1006_opaque_field.sak"]),
         ("tests/ui", &["check", "--json", "V1006_private_item.sak"]),
         ("tests/ui/V1030_import_cycle", &["check", "--json", "."]),
     ];
@@ -2082,18 +2083,19 @@ fn std_cache_changes_no_output() {
         assert_eq!(bins.len(), 1, "{bins:?}");
         bins[0].clone()
     };
+    let modified = || std::fs::metadata(file()).unwrap().modified().unwrap();
     for (dir, args) in cases {
         let fresh = run(dir, args, None);
-        assert_eq!(
-            run(dir, args, Some(&cache)),
-            fresh,
-            "{dir} {args:?} writing"
-        );
+        assert_eq!(run(dir, args, Some(&cache)), fresh, "{dir} {args:?}");
+        let written = modified();
+        std::thread::sleep(std::time::Duration::from_millis(20));
         assert_eq!(
             run(dir, args, Some(&cache)),
             fresh,
             "{dir} {args:?} reading"
         );
+        // Read, not silently rejected and rewritten.
+        assert_eq!(modified(), written, "{dir} {args:?} rewrote the file");
     }
     let (dir, args) = cases[0];
     let fresh = run(dir, args, None);

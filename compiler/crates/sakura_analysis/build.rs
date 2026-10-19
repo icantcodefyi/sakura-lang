@@ -55,13 +55,34 @@ fn main() {
     // The crates that produce `Analyzed`, and the lockfile that pins what they build with.
     let compiler = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut sources = vec![compiler.join("Cargo.toml"), compiler.join("Cargo.lock")];
-    for krate in [
+    let crates = [
         "sakura_analysis",
         "sakura_diagnostics",
         "sakura_hir",
         "sakura_syntax",
         "sakura_types",
-    ] {
+    ];
+    // A workspace crate one of them comes to depend on shapes the analysis too. `analyze` uses
+    // no code of `sakura_analysis`'s other dependencies (Core, JS, fmt).
+    for krate in &crates[1..] {
+        let manifest =
+            std::fs::read_to_string(compiler.join("crates").join(krate).join("Cargo.toml"));
+        let manifest = manifest.unwrap_or_default();
+        let deps = manifest
+            .split("\n[")
+            .find(|t| t.starts_with("dependencies]"));
+        for dep in deps
+            .unwrap_or_default()
+            .lines()
+            .filter_map(|l| l.split('.').next())
+        {
+            assert!(
+                !dep.starts_with("sakura_") || crates.contains(&dep),
+                "{krate} depends on {dep}: add it to the build id's crates"
+            );
+        }
+    }
+    for krate in crates {
         let dir = compiler.join("crates").join(krate);
         println!("cargo::rerun-if-changed={}", dir.join("src").display());
         sources.extend([dir.join("Cargo.toml"), dir.join("build.rs")]);
