@@ -203,6 +203,8 @@ was REAL), and a tuple type that is only decoded, never built, now gets its layo
 `sql_cancel_committed` (Sql.memory). The `Sql.sqlite` cancellation case is a host test, because
 the corpus has no scratch directory for a database file. The native corpus agrees on all 179
 programs, from the evaluator, with twins and under `--no-direct`. `KNOWN_NATIVE` there is empty.
+**Round 27 (§17.240, §17.241, §17.245).** Native gates no tag: `--target native` ships as an experimental flag in the first minor whose matrix and §17.173 lanes are green (owner to confirm §17.245 (2)); N1b's remainder, N2's controls and N2f stay on one Opus line at the queue's lowest priority; N0b and N5 join N3 and N4 in M5b. N1b's four readings (§17.241): `begin`, `release` and `rollback` become worker requests (a host test with a slow statement under `timeout` beside a transaction); an `INTEGER` beyond ±(2^53 − 1) is a decode `Err` on the JS hosts and exact natively (documented beside `D003`; the exact-i64 lane is native's); one statement per query is `Err` on every host (Node scans the literal for a second statement), the malformed-cell message follows the JS text, a `__proto__` key is kept; the decode depth counts value nodes, never refinement layers, and the JS runtime enforces the same 64. N2f (§17.240 (3)) also records the compile phases at 4,096, 8,192, 16,384 and 32,768 guarded rows in one function (30 s at 16,384 and 115 s at 32,768 today): ours is a fix inside N2f, Cranelift's is a stated limit and an M5b split.
+
 **Left of N1b:** Http and cassettes (`KNOWN_NATIVE` in `parity.rs` keeps the `secrets`
 example), serve, Llm, `secret_*`, `log_json`, the test runner's codes, `V8004` and the exclusion
 table. The WASI command does not call the codec yet (no Wasmtime `json_validate` cell).
@@ -214,7 +216,8 @@ table. The WASI command does not call the codec yet (no Wasmtime `json_validate`
 - **When M4-OPT's first commit lands the 1.2.0 text:** N1a (N0a is in; §17.191 (1), (3)).
 - **M4-OPT is whole (round 18, §17.199; the niche left M4):** N0b after §17.200's LIR commit (both edit `sakura_lir/src/lower.rs`), then N5; N1a's condition has held since `f93e7ab7`, so it starts now (§17.203).
 - **When N1a lands:** N1b and (after L5) N2 in parallel.
-- **When N2 and N0b have landed:** N3; then N4.
+- **Round 27 (§17.245 (2)):** no tag waits for native; N0b and N5 are M5b with N3 and N4; the line that remains is N1b's remainder → N2's controls and lanes → N2f, at the lowest priority.
+- **When N2 and N0b have landed (M5b):** N3; then N4.
 - **M5 exit** (§17.178): §14.3's amended M5 line; `{js, wasm, native} × {ubuntu, macos}` green on
   four fields; the four §17.173 lanes green with their detection controls; the paired `rbtree`
   hit rate in every record; the §17.109 M5 envelope measured at a quiet window on platform A with
@@ -235,6 +238,7 @@ table. The WASI command does not call the codec yet (no Wasmtime `json_validate`
 | WASM allocation-bound set: `nbody`, `sieve`, `spectral_norm`, `rbtree`, `binary_trees`, `deltablue` (§17.211 (5)) | first window after N0b (owned facts on the LIR, `List.set` on its owned path), then N3/N4's windows, WASM and native lanes | carried with their JS carries; no WASM-only representation work |
 | WASM frame cliffs after WS-W1/WS-W2 (§17.230 (2): an aborting clause, a performing lambda, `deltablue`'s closure-calling entries) | WS-W3's attribution, then WS-W4 (`performance-r1.md` §9), M5 | frames stay; the programs read at the windows with their carries |
 | Fan-in into the WASM dispatch loop (§17.236; plan `m3-completion-and-m4.md` §3.8 row 31): past about 16,000 guarded rows in one function V8's optimising tier aborts on the loop header's input count | M5, before `v0.2.0`, beside N2 (`sakura_codegen_native` reads the same LIR and is checked on the same fixture); never before the M4 window | the 0.1.0 notes state the limit; jumps grouped through one stub per 256-block chunk |
+| Native compile of one wide function (§17.240 (3)): superlinear, 30 s at 16,384 guarded rows, 115 s at 32,768 | N2f's per-phase report at 4,096–32,768 rows | the limit is stated on the native page; splitting one LIR function into several native functions is M5b |
 | `ptr64-v1` pointer profile (§17.169 (4)) | after N2's `offset32-v1` baseline is measured | `offset32-v1` only |
 
 ## 4. Sanitizer lanes (§17.173)
