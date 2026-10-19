@@ -2,84 +2,134 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Seal } from "@/components/seal";
-import { site } from "@/lib/site";
 import { Code } from "@/components/code";
-import { llmsTxt } from "@/lib/source";
+import { sample } from "./samples";
 import { Tabs } from "./tabs";
 
-const MCP = `// → tools/call (planned for M3; sakura check --json emits the same record today)
-{ "name": "hole_context", "arguments": { "snapshot": "sha256:41c2…", "hole_id": "h:9b07…" } }
+// Every output below is the compiler's, recorded from main on the checked samples in
+// ./samples (long values trimmed with …). Re-record them when the record shapes change.
 
-// ← result: the hole record of design §12.2
+const SETUP = `$ sakura new cli app && cd app
+$ sakura setup --client claude --apply
+sakura setup --client claude: ~/app (writing)
+  keep   AGENTS.md (exists)
+  keep   CLAUDE.md (exists)
+  create .claude/skills/sakura/SKILL.md
+  create .claude/skills/sakura/assets/AGENTS.md
+  create .claude/skills/sakura/assets/CLAUDE.md
+  create .claude/skills/sakura/assets/mcp-claude.json
+  create .claude/skills/sakura/assets/mcp-codex.toml
+  create .claude/skills/sakura/assets/mcp-cursor.json
+  create .claude/skills/sakura/assets/sakura.mdc
+  create .claude/skills/sakura/references/diagnostics.md
+  create .claude/skills/sakura/references/language.md
+  create .claude/skills/sakura/references/recipes.md
+  create .claude/skills/sakura/references/repairs.md
+  create .claude/skills/sakura/references/stdlib.md
+  create .mcp.json`;
+
+const MCP = `// → tools/call
+{ "name": "hole_context", "arguments": { "snapshot": "sha256:fb278f9e…", "hole_id": "h:8e8d4a0debc0ca2c" } }
+
+// ← result
 {
-  "schema_version": "1.0",
-  "kind": "hole",
-  "id": "h:9b07…",
-  "name": "receipt",
-  "snapshot": "sha256:41c2…",
-  "span": { "uri": "file:///app/src/cart.sak", "start_byte": 142, "end_byte": 150, "role": "primary" },
-  "expected_type": { "render": "Receipt" },
-  "allowed_effects": { "render": "{Payments, Fail<CheckoutError>}" },
-  "locals": [
-    { "name": "cart", "type": { "render": "Cart" } },
-    { "name": "card", "type": { "render": "Card" } },
-    { "name": "total", "type": { "render": "Int" } }
-  ],
-  "candidates": [{ "expr": "Payments.charge(card, total)", "fit": "function" }],
-  "contracts_in_scope": []
+  "hole": {
+    "kind": "hole",
+    "name": "receipt",
+    "expected_type": { "render": "Receipt" },
+    "allowed_effects": { "render": "{Payments, Fail<Declined | Expired>}", "row": { … } },
+    "locals": [
+      { "name": "cart", "type": { "render": "Cart" } },
+      { "name": "card", "type": { "render": "Card" } },
+      { "name": "total", "type": { "render": "Int" } }
+    ],
+    "candidates": [{ "expr": "charge(?card, ?amount)", "fit": "function" }],
+    "contracts_in_scope": []
+  },
+  "enclosing": {
+    "id": "app::main::checkout",
+    "signature": "fn checkout(cart: Cart, card: Card) -> Receipt ! {Payments, Fail<CheckoutError>}", …
+  },
+  "related": [{ "id": "app::main::charge", … }]
 }`;
 
 const DIAGNOSTIC = `{
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:7f3a",
+  "id": "d:55fbcebe8f6a7c64",
   "code": "V3001",
   "severity": "error",
   "phase": "effect",
-  "message": "function \`signup\` performs \`Http\`, which its signature does not allow",
-  "snapshot": "sha256:9c1e…",
+  "message": "function \`signup\` performs \`Http\` and \`Fail<HttpError | RateLimited>\`, which its signature does not allow (allowed: \`{Clock, Db, Random, Fail<Banned | EmailTaken>}\`)",
   "symbol_id": "app::users::signup",
-  "spans": [{
-    "uri": "file:///app/src/users.sak", "content_hash": "sha256:52b0…",
-    "start_byte": 431, "end_byte": 461, "role": "cause",
-    "label": "\`Http.post_json\` introduces \`Http\` here"
-  }],
-  "related_ids": [],
-  "expected": { "render": "{Clock, Db, Random, Fail<SignupError>}", "row": { /* … */ } },
-  "actual": { "render": "{Clock, Db, Http, Random, Fail<SignupError>}", "row": { /* … */ } },
-  "obligation": null,
-  "counterexample": null,
+  "spans": [
+    { "uri": "file:///app/src/users.sak", "start_byte": 87, "end_byte": 93, "role": "primary" },
+    { "uri": "file:///app/src/users.sak", "start_byte": 379, "end_byte": 409, "role": "cause",
+      "label": "\`post_json\` performs \`Http\` here" }, …
+  ],
+  "expected": { "render": "{Clock, Db, Random, Fail<Banned | EmailTaken>}", "row": { … } },
+  "actual": { "render": "{Clock, Db, Http, Random, Fail<EmailTaken | HttpError | RateLimited>}", "row": { … } },
   "explanation_uri": "sakura://explain/V3001",
   "fixes": [
-    { "id": "f:1", "title": "Add \`Http\` to the signature",
-      "applicability": "suggested", "impact": "interface_change", "edits": [/* … */] },
-    { "id": "f:2", "title": "Handle the effect locally with \`with\`",
-      "applicability": "incomplete", "impact": "local", "edits": [/* … */] }
+    { "id": "f:55fbcebe8f6a7c64.0",
+      "title": "Add \`Http\` and \`Fail<HttpError | RateLimited>\` to the signature",
+      "applicability": "suggested", "impact": "interface_change", "edits": [ … ] },
+    { "id": "f:55fbcebe8f6a7c64.1",
+      "title": "Handle the effect locally with \`with Http.scripted(…)\`",
+      "applicability": "incomplete", "impact": "local", "edits": [ … ] }
   ]
 }`;
 
-const HOLE = `fn checkout(cart: Cart, card: Card) -> Receipt ! {Payments, Fail<CheckoutError>} {
-  let total = List.fold(cart.items, 0, fn(sum, i) { sum + i.price })
-  ?receipt
-}`;
+const HOLE = sample("checkout");
 
-const HOLE_REPLY = `hole ?receipt: expected Receipt, effects {Payments, Fail<CheckoutError>};
-  locals [cart: Cart, card: Card, total: Int];
-  candidates [Payments.charge(card, total)]`;
+const HOLE_REPLY =
+  "hole ?receipt: expected Receipt, effects {Payments, Fail<Declined | Expired>}; locals [cart: Cart, card: Card, total: Int]; candidates [charge(?card, ?amount)]";
 
-const PATHS = [
-  { href: "/llms.txt", path: "/llms.txt", what: "Index of every docs page, with summaries." },
-  { href: "/llms-full.txt", path: "/llms-full.txt", what: "All of the docs in one file." },
-  { href: "/docs/tour/effects.md", path: "/docs/<page>.md", what: "Any page as plain Markdown." },
+// What ships in v0.1.0-alpha.1 for an agent, each with the page that documents it.
+const SHIPPED: { name: ReactNode; what: string; href: string }[] = [
   {
-    href: `${site.github}/blob/main/docs/llms.txt`,
-    path: "docs/llms.txt",
-    what: "The whole core language, in one file.",
+    name: "Skill",
+    what: "sakura setup writes SKILL.md, its references and the MCP entry for Claude, Codex or Cursor.",
+    href: "/docs/agents",
+  },
+  {
+    name: "MCP",
+    what: "check, check_patch, apply_patch, hole_context, test and five more tools over stdio.",
+    href: "/docs/agents/mcp",
+  },
+  {
+    name: "LSP",
+    what: "Diagnostics, hover, completion, formatting and quick fixes that state their impact.",
+    href: "/docs/editors",
+  },
+  {
+    name: <code className="font-mono">--json</code>,
+    what: "Versioned diagnostic records; every fix says how it applies and how far it reaches.",
+    href: "/docs/agents/diagnostics",
+  },
+  {
+    name: "Holes",
+    what: "A ?name passes check and reports its type, effects, locals and candidates.",
+    href: "/docs/agents/typed-holes",
+  },
+  {
+    name: "Grants",
+    what: "Effects live in signatures; [permissions] in sakura.toml caps what the host hands out.",
+    href: "/docs/tour/capabilities",
+  },
+  {
+    name: <code className="font-mono">verify</code>,
+    what: "Z3 proves contracts and arithmetic, cvc5 cross-checks, and builds drop proved checks.",
+    href: "/docs/agents/verify",
+  },
+  {
+    name: "Deterministic",
+    what: "The same input gives the same bytes; tests run under fixed seeds and test handlers.",
+    href: "/docs/tour/testing",
   },
 ];
 
-export async function AgentView() {
-  const index = llmsTxt().split("\n").slice(0, 12).join("\n");
+export function AgentView() {
   return (
     <section id="agents" className="border-b border-border bg-muted/50">
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 pt-24 sm:px-8 md:pt-32 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
@@ -97,26 +147,26 @@ export async function AgentView() {
           <Tabs
             items={[
               {
-                label: "llms.txt",
+                label: "Skill",
                 panel: (
                   <div>
-                    <Code code={index} lang="md" title={<span>GET /llms.txt</span>} wrap />
+                    <Code code={SETUP} lang="text" title={<span>terminal</span>} />
                     <p className="mt-3 text-[13px] text-muted-foreground">
-                      Live from this site.{" "}
-                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
+                      Or fetch it directly:{" "}
+                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- static file, not a page */}
                       <a
-                        href="/llms.txt"
+                        href="/skills/sakura/SKILL.md"
                         className="font-medium text-foreground underline decoration-sakura underline-offset-4"
                       >
-                        Open llms.txt
+                        SKILL.md
                       </a>{" "}
-                      or{" "}
-                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
+                      or the{" "}
+                      {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- static file, not a page */}
                       <a
-                        href="/llms-full.txt"
+                        href="/skills/sakura-skill.zip"
                         className="font-medium text-foreground underline decoration-sakura underline-offset-4"
                       >
-                        llms-full.txt
+                        checksummed ZIP
                       </a>
                       .
                     </p>
@@ -131,7 +181,7 @@ export async function AgentView() {
                 label: "Diagnostics",
                 short: "Errors",
                 panel: (
-                  <Code code={DIAGNOSTIC} lang="json" title={<span>sakura check --json</span>} />
+                  <Code code={DIAGNOSTIC} lang="jsonc" title={<span>sakura check --json</span>} />
                 ),
               },
               {
@@ -140,54 +190,61 @@ export async function AgentView() {
                   <div className="grid gap-3">
                     <Code
                       code={HOLE}
-                      title={<span>src/cart.sak</span>}
+                      title={<span>src/main.sak</span>}
                       numbers
-                      mark={{ 2: "seal" }}
+                      mark={{ 6: "seal" }}
                     />
-                    <Code code={HOLE_REPLY} lang="text" title={<span>sakura check</span>} />
+                    <Code code={HOLE_REPLY} lang="text" title={<span>sakura check</span>} wrap />
                   </div>
                 ),
               },
             ]}
           />
           <p className="mt-3 text-[12.5px] text-faint">
-            Diagnostic and hole records are what{" "}
-            <code className="font-mono">sakura check --json</code> emits today; the MCP server is
-            planned for M3.
+            Recorded from the current compiler on the hero&apos;s program and the one in the Holes
+            tab; long values are trimmed.
           </p>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:px-8 md:pb-32">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h3 className="font-display text-[1.25rem] font-semibold tracking-[-0.015em]">
-            Start here if you are an agent
+            In the alpha.1 binary
           </h3>
-          <Link
-            href="/docs/agents"
-            className="text-[14.5px] font-medium underline decoration-sakura underline-offset-4"
-          >
-            For agents docs
-          </Link>
+          <p className="text-[14.5px] text-muted-foreground">
+            Agents can also{" "}
+            {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
+            <a
+              href="/llms.txt"
+              className="font-medium text-foreground underline decoration-sakura underline-offset-4"
+            >
+              GET /llms.txt
+            </a>{" "}
+            or{" "}
+            <Link
+              href="/docs/agents"
+              className="font-medium text-foreground underline decoration-sakura underline-offset-4"
+            >
+              read the agent docs
+            </Link>
+            .
+          </p>
         </div>
         <ul className="mt-5 grid border-t border-foreground/80 sm:grid-cols-2 lg:grid-cols-4">
-          {PATHS.map((p) => (
-            <li
-              key={p.path}
-              className="border-b border-border sm:odd:border-r lg:border-r lg:last:border-r-0"
-            >
-              {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text routes, not pages */}
-              <a
+          {SHIPPED.map((p) => (
+            <li key={p.href} className="border-b border-border">
+              <Link
                 href={p.href}
-                className="group block h-full px-1 py-5 transition-colors duration-150 hover:bg-muted sm:px-5"
+                className="group block h-full py-5 transition-colors duration-150 hover:bg-muted sm:px-5"
               >
-                <code className="font-mono text-[14px] text-foreground">
-                  {p.path}
+                <span className="font-display text-[1.05rem] font-semibold tracking-[-0.01em] text-foreground">
+                  {p.name}
                   <ArrowUpRight className="ml-1 inline size-3.5 align-[-1px] text-faint transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-sakura-text" />
-                </code>
+                </span>
                 <span className="mt-1.5 block text-[14px] leading-snug text-muted-foreground">
                   {p.what}
                 </span>
-              </a>
+              </Link>
             </li>
           ))}
         </ul>
@@ -213,7 +270,7 @@ const LOOP = [
     what: "diagnostics and hole records as JSON Lines",
   },
   {
-    cmd: "apply fixes",
+    cmd: "sakura fix",
     who: "agent",
     what: "local fixes go in; signature changes go to a person",
   },

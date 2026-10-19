@@ -3,14 +3,11 @@ import { Seal } from "@/components/seal";
 import { TokenSpans } from "@/components/token-spans";
 import { tokenize } from "@/lib/sakura/highlight";
 import { cn } from "@/lib/utils";
+import { sample } from "./samples";
 import { WINDOW, WindowBar } from "./window";
 
 // One signature, in the formatter's multi-line form (design §12.5), read clause by clause.
-const SIGNATURE = `fn withdraw(acct: Account, amount: Cents)
-  -> Account
-  ! {Ledger, Fail<Overdrawn | Frozen>}
-  requires positive: amount > 0
-  ensures result.balance == acct.balance - amount`;
+const SIGNATURE = sample("withdraw");
 
 const C = ({ children }: { children: ReactNode }) => (
   <code className="font-mono text-[0.9em] text-foreground">{children}</code>

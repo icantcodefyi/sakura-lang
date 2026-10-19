@@ -1,40 +1,29 @@
 import Link from "next/link";
 
-// Milestones from docs/design.md §14.3. "works": its acceptance programs run on JavaScript today.
-const PHASES: { id: string; name: string; body: string; status?: "works" | "now" }[] = [
+// The release stages of docs/plans/road-to-1.0.md. When a user-visible milestone lands, move
+// its `status` along here and in the hero badge (website/AGENTS.md). No dates: the plan has none.
+const PHASES: { id: string; name: string; body: string; status?: "shipped" | "now" }[] = [
   {
-    id: "M0",
-    name: "Hello, effects",
-    body: "Lexer, parser, Console, inference, CPS JavaScript, sakura run and sakura check --json.",
-    status: "works",
+    id: "v0.1.0-alpha.1",
+    name: "The preview",
+    body: "M0 to M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh.",
+    status: "shipped",
   },
   {
-    id: "M1",
-    name: "Pure language, typed errors",
-    body: "Records, variants, exhaustive match, Fail with try/catch, std in Sakura Lang, tests, sakura fmt.",
-    status: "works",
-  },
-  {
-    id: "M2",
-    name: "Handlers and holes",
-    body: "User effects and handlers, row variables, deterministic test handlers, typed holes.",
-    status: "works",
-  },
-  {
-    id: "M3",
-    name: "Contracts and agents",
-    body: "Runtime contracts, permissions, Secret and Untrusted, Task, Http, Sql, LSP and MCP.",
+    id: "v0.1.0",
+    name: "M4 exit",
+    body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64.",
     status: "now",
   },
   {
-    id: "M4",
-    name: "WASM and verify",
-    body: "WASM backend; sakura verify discharges contracts with Z3 and drops proved checks.",
+    id: "v0.2.0",
+    name: "Native and stability",
+    body: "Native backend behind an experimental flag, Windows x64 and Intel Mac, and the stability guarantees of RFC 0001.",
   },
   {
-    id: "M5",
-    name: "Native",
-    body: "Cranelift backend with Perceus reference counting and in-place reuse.",
+    id: "v1.0.0",
+    name: "Stable",
+    body: "A release candidate, a seven-day soak with no P1 defect, then 1.0. Packages follow in 1.x.",
   },
 ];
 
@@ -44,11 +33,11 @@ export function Roadmap() {
       <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 md:py-32">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-xl font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            Designed. Running in part.
+            Shipping in the open.
           </h2>
           <p className="max-w-sm text-[15px] leading-relaxed text-muted-foreground">
-            The compiler checks and runs M0 to M2 programs on JavaScript today. M3 is under way, in
-            the open, and nothing is released yet.{" "}
+            alpha.1 is out. The rest of the road to 1.0 is weeks of work, not dated: each step ships
+            when its evidence is in.{" "}
             <Link
               href="/docs/roadmap"
               className="font-medium text-foreground underline decoration-sakura underline-offset-4"
@@ -58,7 +47,7 @@ export function Roadmap() {
           </p>
         </div>
 
-        <ol className="relative mt-14 grid gap-8 md:grid-cols-3 lg:grid-cols-6 lg:gap-5">
+        <ol className="relative mt-14 grid gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           <span
             aria-hidden
             className="absolute top-[7px] right-0 left-0 hidden h-px bg-strong lg:block"
@@ -74,14 +63,14 @@ export function Roadmap() {
                 className={`absolute top-0 left-0 grid size-[15px] place-items-center rounded-full border ${
                   p.status === "now"
                     ? "border-sakura bg-sakura"
-                    : p.status === "works"
+                    : p.status === "shipped"
                       ? "border-ok bg-ok text-background"
                       : "border-strong bg-background"
                 } md:relative`}
               >
                 {p.status === "now" ? (
                   <span className="absolute inset-[-5px] rounded-full border border-sakura/50 motion-safe:animate-[ping_2.4s_var(--ease-out)_infinite]" />
-                ) : p.status === "works" ? (
+                ) : p.status === "shipped" ? (
                   <svg viewBox="0 0 12 12" className="size-[9px]">
                     <path
                       d="M2.5 6.3 5 8.6l4.5-5"
@@ -98,11 +87,11 @@ export function Roadmap() {
                 {p.id}
                 {p.status === "now" ? (
                   <span className="ml-2 rounded-full bg-sakura-wash px-2 py-0.5 font-sans font-medium text-sakura-text">
-                    In progress
+                    Next
                   </span>
-                ) : p.status === "works" ? (
+                ) : p.status === "shipped" ? (
                   <span className="ml-2 rounded-full bg-ok-wash px-2 py-0.5 font-sans font-medium text-ok">
-                    Runs today
+                    Shipped
                   </span>
                 ) : null}
               </p>

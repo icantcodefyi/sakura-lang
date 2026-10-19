@@ -45,7 +45,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Memory without GC pauses or lifetimes",
     cells: [
-      ["yes", "native RC with reuse; JS GC"],
+      ["partial", "host GC today; native RC planned"],
       ["no", "tracing GC"],
       ["partial", "RC plus cycle GC"],
       ["partial", "no GC, lifetimes"],
@@ -55,7 +55,7 @@ const ROWS: { label: string; cells: Cell[] }[] = [
   {
     label: "Contracts and refinement types",
     cells: [
-      ["yes", "always checked at runtime"],
+      ["yes", "checked at runtime, proved by SMT"],
       ["no"],
       ["no", "runtime libraries"],
       ["partial", "external verifiers"],
@@ -152,7 +152,7 @@ export function Compare() {
           <table className="w-full min-w-[50rem] sm:min-w-[54rem] border-collapse text-left text-[14px]">
             <caption className="sr-only">
               Comparison of language defaults relevant to agent-written code. The Sakura Lang column
-              describes design goals.
+              describes v0.1.0-alpha.1.
             </caption>
             <thead>
               <tr className="border-b border-border">
@@ -171,7 +171,7 @@ export function Compare() {
                     {l}
                     {i === 0 ? (
                       <span className="ml-1.5 font-sans text-[11.5px] font-medium text-sakura-text">
-                        design
+                        alpha.1
                       </span>
                     ) : null}
                   </th>
@@ -221,7 +221,7 @@ export function Compare() {
           <span className="inline-flex items-center gap-1.5">
             <Glyph mark="no" /> not provided
           </span>
-          <span>The Sakura Lang column states design goals; the M0 to M2 parts run today.</span>
+          <span>The Sakura Lang column describes v0.1.0-alpha.1.</span>
         </p>
       </div>
     </section>

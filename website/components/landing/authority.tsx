@@ -63,6 +63,23 @@ const REFUSED: { code: string; why: string; tag: string }[] = [
   },
 ];
 
+// Security fixes on main since alpha.1 (CHANGELOG Unreleased, Security); they ship in v0.1.0.
+const HARDENED: ReactNode[] = [
+  <>
+    A write through a dangling symlink inside an <code className="font-mono">fs.write</code> grant
+    is refused, even when the link points back inside it.
+  </>,
+  <>
+    A link planted between the grant check and the open is refused too: writes open with{" "}
+    <code className="font-mono">O_NOFOLLOW</code> and work through the descriptor.
+  </>,
+  <>
+    <code className="font-mono">install.sh</code> checks{" "}
+    <code className="font-mono">SHA256SUMS</code> and, with <code className="font-mono">gh</code>{" "}
+    installed, GitHub attestations. macOS releases are signed and notarized from v0.1.0.
+  </>,
+];
+
 /** One row per scope; the bar under each shows how much of the host's authority is left. */
 export function Scopes(): ReactNode {
   return (
@@ -121,6 +138,18 @@ export function Authority() {
                   {r.tag}
                 </span>
                 <span className="text-[13.5px] leading-snug text-muted-foreground">{r.why}</span>
+              </li>
+            ))}
+          </ul>
+          <h3 className="mt-10 font-mono text-[11.5px] text-faint">hardened since alpha.1</h3>
+          <ul className="mt-3 grid max-w-[30rem] gap-2.5 text-[13.5px] leading-snug text-muted-foreground">
+            {HARDENED.map((h, i) => (
+              <li key={i} className="flex gap-3">
+                <span
+                  aria-hidden
+                  className="mt-[0.45em] size-1.5 shrink-0 rounded-full bg-sakura"
+                />
+                <span>{h}</span>
               </li>
             ))}
           </ul>

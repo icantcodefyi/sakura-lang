@@ -1,0 +1,22 @@
+fn withdraw(acct: Account, amount: Cents)
+  -> Account
+  ! {Ledger, Fail<Overdrawn | Frozen>}
+  requires positive: amount > 0
+  ensures result.balance == acct.balance - amount
+// @landing-context
+{
+  if Ledger.frozen(acct.id) { fail Frozen }
+  if amount > acct.balance { fail Overdrawn { balance: acct.balance } }
+  let next = Account { id: acct.id, balance: Cents.from(acct.balance - amount) }
+  Ledger.record(next)
+  next
+}
+
+type Cents = Int where it >= 0
+type Account = { id: String, balance: Cents }
+error Overdrawn(balance: Cents)
+error Frozen
+effect Ledger {
+  fn frozen(id: String) -> Bool
+  fn record(acct: Account) -> Unit
+}

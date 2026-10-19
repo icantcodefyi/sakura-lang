@@ -1,32 +1,34 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
-/** Memory and toolchain, side by side: the parts underneath the promises. */
+/** Speed and the toolchain, side by side: what an agent waits on, and what it calls. */
 export function Pillars() {
   return (
-    <section id="pillars" className="border-b border-border">
+    <section id="toolchain" className="border-b border-border">
       <div className="mx-auto grid max-w-6xl px-5 py-24 sm:px-8 md:py-28 lg:grid-cols-2">
         <div className="pb-14 lg:pr-14 lg:pb-0">
-          <Heading href="/docs/tour/memory">Values, without a borrow checker.</Heading>
+          <Heading href="/docs/changes#analysis-cache-and-check-latency">
+            Fast where an agent waits.
+          </Heading>
           <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-muted-foreground">
-            Every value is independent: no aliasing, no lifetimes, no cycles. Native code (M5)
-            counts references at compile time and updates a uniquely owned value in place. The
-            JavaScript backend uses the host GC; the semantics are the same.
+            An agent runs{" "}
+            <code className="font-mono text-[15px] text-foreground">sakura check</code> after every
+            edit, so check latency is the number it feels. The standard library&apos;s analysis is
+            cached on disk per compiler build, and the LSP and MCP servers keep it in memory.
           </p>
-          <div className="mt-8 max-w-[22rem]">
-            <ReuseDiagram />
-          </div>
+          <Latency />
+          <Backends />
         </div>
         <div className="border-t border-border pt-14 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
-          <Heading href="/docs/stdlib">One binary for the whole loop.</Heading>
+          <Heading href="/docs/agents">One binary for the whole loop.</Heading>
           <p className="mt-4 max-w-[30rem] text-[16px] leading-relaxed text-pretty text-muted-foreground">
-            Checker, runner, formatter and test runner already share one compiler library; packages,
-            LSP and MCP join them in M3, with a standard library for HTTP, SQLite, JSON schemas,
-            CLIs and typed LLM calls.
+            Checker, verifier, runner, formatter, test runner, language server and MCP server are
+            one compiler library behind one command, so every tool gives the same answer.
           </p>
           <div className="mt-8">
             <Toolchain />
           </div>
+          <Editors />
         </div>
       </div>
     </section>
@@ -47,99 +49,125 @@ function Heading({ href, children }: { href: string; children: string }) {
   );
 }
 
-/** A uniquely-owned list is extended in place instead of copied. */
-function ReuseDiagram() {
-  const cells = ["1", "2", "3"];
+// `bench/bench compile` workloads: `check_hello` on the `sakura new cli` project and
+// `check_cold_10k` on its generated 10,084-line package; medians of repeated runs on the
+// owner's reference machine. Runtime ratios stay off this page until the quiet-window
+// baselines are blessed (docs/release.md §2).
+const LATENCY = [
+  { ms: "7", what: "sakura check", on: "a new project" },
+  { ms: "35", what: "sakura check", on: "a cold 10k-line package" },
+];
+
+function Latency() {
   return (
-    <svg viewBox="0 0 260 136" className="mx-auto w-full max-w-[18rem]" role="presentation">
-      <text x="0" y="16" className="fill-faint font-mono text-[10px]">
-        xs = List.push(xs, 4)
-      </text>
-      {/* rc badge */}
-      <g transform="translate(0 38)">
-        {cells.map((c, i) => (
-          <g key={c} transform={`translate(${i * 44} 0)`}>
-            <rect
-              width="40"
-              height="40"
-              rx="7"
-              className="fill-card stroke-strong"
-              strokeWidth="1"
-            />
-            <text
-              x="20"
-              y="25"
-              textAnchor="middle"
-              className="fill-foreground font-mono text-[13px]"
-            >
-              {c}
-            </text>
-          </g>
+    <figure className="mt-8">
+      <dl className="grid grid-cols-2 border-t border-foreground/80">
+        {LATENCY.map((l, i) => (
+          <div key={l.on} className={`py-5 ${i === 0 ? "pr-5" : "border-l border-border pl-5"}`}>
+            <dt className="sr-only">
+              {l.what}, {l.on}
+            </dt>
+            <dd>
+              <span className="font-display text-[clamp(2.6rem,5vw,3.6rem)] leading-none font-semibold tracking-[-0.04em] tabular-nums">
+                {l.ms}
+                <span className="ml-1 text-[0.45em] tracking-normal text-muted-foreground">ms</span>
+              </span>
+              <span aria-hidden className="mt-2 block font-mono text-[12px] text-foreground">
+                {l.what}
+              </span>
+              <span aria-hidden className="block text-[13px] text-muted-foreground">
+                {l.on}
+              </span>
+            </dd>
+          </div>
         ))}
-        <g transform="translate(132 0)">
-          <rect
-            width="40"
-            height="40"
-            rx="7"
-            className="fill-sakura-wash stroke-sakura"
-            strokeWidth="1.5"
-            strokeDasharray="0"
-          />
-          <text
-            x="20"
-            y="25"
-            textAnchor="middle"
-            className="fill-sakura-text font-mono text-[13px] font-semibold"
-          >
-            4
-          </text>
-        </g>
-        <rect x="186" y="9" width="62" height="22" rx="11" className="fill-ok-wash" />
-        <text x="217" y="24" textAnchor="middle" className="fill-ok font-mono text-[10.5px]">
-          rc = 1
-        </text>
-      </g>
-      <text x="0" y="112" className="fill-muted-foreground font-sans text-[11px]">
-        unique, so the buffer is
-      </text>
-      <text x="0" y="128" className="fill-foreground font-sans text-[11px] font-semibold">
-        reused in place: no copy
-      </text>
-    </svg>
+      </dl>
+      <figcaption className="border-t border-border pt-3 text-[12.5px] leading-relaxed text-faint">
+        Measured on an Apple M4 Pro: release build, medians of repeated runs on the{" "}
+        <code className="font-mono">bench/bench compile</code> workloads. Other machines will
+        differ.
+      </figcaption>
+    </figure>
   );
 }
 
-// The first six exist in the compiler today; the rest are planned for M3.
+const BACKENDS: { name: string; how: string; state: "ships" | "experimental" }[] = [
+  { name: "JavaScript", how: "the default; runs on Node 26", state: "ships" },
+  { name: "WebAssembly", how: "--target wasm, held to the same outputs", state: "ships" },
+  { name: "Native", how: "Cranelift; in progress, not in any release", state: "experimental" },
+];
+
+function Backends() {
+  return (
+    <ul className="mt-8 grid border-t border-border">
+      {BACKENDS.map((b) => (
+        <li
+          key={b.name}
+          className="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
+        >
+          <span className="text-[14.5px]">
+            <span className="font-medium">{b.name}</span>{" "}
+            <span className="text-muted-foreground">{b.how}</span>
+          </span>
+          <span
+            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] ${
+              b.state === "ships"
+                ? "border-ok/45 bg-ok-wash text-ok"
+                : "border-dashed border-strong text-muted-foreground"
+            }`}
+          >
+            {b.state}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// `sakura --help` on main; every one ships in v0.1.0-alpha.1.
 const COMMANDS = [
-  ["check", "types, effects, exhaustiveness, holes", ""],
-  ["run", "build to JavaScript and run main", ""],
-  ["test", "deterministic handlers, properties, snapshots", ""],
-  ["fmt", "one canonical format", ""],
-  ["explain", "any code, with a wrong and a fixed program", ""],
-  ["prompt", "the language guide for agents", ""],
-  ["fix", "fixes gated by impact class", "planned"],
-  ["mcp serve", "the compiler as MCP tools", "planned"],
+  ["check", "types, effects, exhaustiveness, holes"],
+  ["fix", "applies fixes by impact class, never authority"],
+  ["verify", "proves contracts with Z3, cross-checked by cvc5"],
+  ["test", "deterministic handlers, properties, snapshots"],
+  ["build", "JavaScript or WebAssembly, minus proved checks"],
+  ["run", "builds and runs main under its grants"],
+  ["fmt", "one canonical format"],
+  ["audit", "trust, totality, refinement and external sites"],
+  ["explain", "any code, with a wrong and a fixed program"],
+  ["mcp serve", "the compiler as MCP tools"],
+  ["lsp", "the language server editors talk to"],
+  ["setup", "the skill and MCP entry for your agent"],
 ] as const;
 
 function Toolchain() {
   return (
     <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-border font-mono text-[13px]">
-      {COMMANDS.map(([cmd, what, planned]) => (
+      {COMMANDS.map(([cmd, what]) => (
         <div key={cmd} className="col-span-2 grid grid-cols-subgrid border-b border-border py-2">
           <dt className="whitespace-nowrap">
             <span className="text-faint">sakura </span>
-            <span className={planned ? "text-muted-foreground" : "text-sakura-text"}>{cmd}</span>
+            <span className="text-sakura-text">{cmd}</span>
           </dt>
-          <dd className="font-sans text-[13.5px] text-muted-foreground">
-            {what}
-            {planned ? (
-              <span className="ml-2 rounded-full border border-dashed border-strong px-1.5 py-px font-mono text-[11px] text-muted-foreground">
-                {planned}
-              </span>
-            ) : null}
-          </dd>
+          <dd className="font-sans text-[13.5px] text-muted-foreground">{what}</dd>
         </div>
       ))}
     </dl>
+  );
+}
+
+function Editors() {
+  return (
+    <p className="mt-8 text-[14.5px] leading-relaxed text-muted-foreground">
+      <span className="font-medium text-foreground">Editors.</span> A VS Code extension (also for
+      Cursor and VSCodium) and a tree-sitter grammar for Neovim, Helix and Zed. Both build from the
+      repository; neither is in a marketplace yet.{" "}
+      <Link
+        href="/docs/editors"
+        className="font-medium text-foreground underline decoration-sakura underline-offset-4"
+      >
+        Editor setup
+      </Link>
+    </p>
   );
 }

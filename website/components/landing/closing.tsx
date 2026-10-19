@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Seal } from "@/components/seal";
-import { GitHubIcon } from "@/components/github-icon";
-import { site } from "@/lib/site";
 
 export function Closing() {
   return (
@@ -13,26 +11,25 @@ export function Closing() {
             Read the design. Then hold us to it.
           </h2>
           <p className="mt-5 max-w-[34rem] text-[17px] leading-relaxed text-[oklch(0.78_0.012_255)]">
-            The docs are written for people and for the agents that work with them. Every page is
-            one fetch away as Markdown.
+            alpha.1 is one command away. The docs are written for people and for the agents that
+            work with them, and every page is one fetch away as Markdown.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
-              href="/docs"
+              href="/docs/install"
               className="group inline-flex h-11 items-center gap-2 rounded-full bg-sakura pr-2 pl-5 text-[15px] font-semibold text-ink transition-transform duration-150 active:scale-[0.97]"
             >
-              Read the docs
+              Install alpha.1
               <span className="grid size-7 place-items-center rounded-full bg-ink/10 transition-transform duration-200 group-hover:translate-x-0.5">
                 <ArrowRight className="size-3.5" />
               </span>
             </Link>
-            <a
-              href={site.github}
+            <Link
+              href="/docs"
               className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 px-5 text-[15px] font-medium transition-[background-color,transform] duration-150 hover:bg-white/10 active:scale-[0.97]"
             >
-              <GitHubIcon className="size-4" />
-              View on GitHub
-            </a>
+              Read the docs
+            </Link>
           </div>
         </div>
         <Seal className="pointer-events-none mt-10 ml-auto block size-28 rotate-[-14deg] lg:absolute lg:top-1/2 lg:right-12 lg:mt-0 lg:size-[17rem] lg:-translate-y-1/2" />

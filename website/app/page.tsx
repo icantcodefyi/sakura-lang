@@ -10,6 +10,7 @@ import { Compare } from "@/components/landing/compare";
 import { Effects } from "@/components/landing/effects";
 import { Guarantees } from "@/components/landing/guarantees";
 import { Hero } from "@/components/landing/hero";
+import { Install } from "@/components/landing/install";
 import { Pillars } from "@/components/landing/pillars";
 import { Review } from "@/components/landing/review";
 import { Roadmap } from "@/components/landing/roadmap";
@@ -67,6 +68,7 @@ export default function Home() {
       </SiteHeader>
       <main id="main" className="flex-1">
         <Hero />
+        <Install />
         <Anatomy />
         <Review />
         <Effects />

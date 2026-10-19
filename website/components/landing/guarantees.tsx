@@ -5,7 +5,7 @@ const ROWS = [
   {
     status: "proved",
     tone: "text-ok border-ok/45 bg-ok-wash",
-    by: "the type and effect checker, on every build",
+    by: "the checker on every build, or sakura verify",
     examples: [
       "every effect has a handler",
       "every Fail tag is caught or declared",
@@ -78,16 +78,17 @@ export function Guarantees() {
           ))}
         </ol>
         <p className="mt-6 max-w-[44rem] text-[14.5px] leading-relaxed text-muted-foreground">
-          In v0 every contract is <code className="font-mono text-foreground">runtime_checked</code>
-          , in every build including <code className="font-mono text-foreground">--release</code>.
-          From M4, <code className="font-mono text-foreground">sakura verify</code> can move a
-          single obligation to <code className="font-mono text-foreground">proved</code> and drop
-          only that check.{" "}
+          Every contract starts <code className="font-mono text-foreground">runtime_checked</code>,
+          in every build including <code className="font-mono text-foreground">--release</code>.{" "}
+          <code className="font-mono text-foreground">sakura verify</code> asks Z3, cross-checked by
+          cvc5 when it is installed, to prove each obligation; a proof moves that obligation to{" "}
+          <code className="font-mono text-foreground">proved</code> and the next build drops its
+          check where it is eligible, while a failure comes back as a counterexample.{" "}
           <Link
-            href="/docs/tour/contracts"
+            href="/docs/agents/verify"
             className="font-medium text-foreground underline decoration-sakura underline-offset-4"
           >
-            Contracts
+            Verify contracts
           </Link>
         </p>
       </div>

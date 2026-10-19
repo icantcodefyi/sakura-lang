@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { TokenSpans } from "@/components/token-spans";
 import { tokenize } from "@/lib/sakura/highlight";
+import { sample } from "./samples";
 import { WINDOW, WindowBar } from "./window";
 
 const FILES = [
@@ -11,10 +12,9 @@ const FILES = [
   { path: "test/billing_test.sak", add: 73, del: 61 },
 ];
 
-const BEFORE =
-  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Payments, Fail<ChargeError>}";
-const AFTER =
-  "pub fn charge(card: Card, amount: Cents) -> Receipt ! {Http, Payments, Fail<ChargeError>}";
+// The removed line is the checked sample without the effect it adds.
+const AFTER = sample("charge");
+const BEFORE = AFTER.replace("{Http, ", "{");
 
 /** One unbroken line from `sm` up; on phones, wrap with a hanging indent. */
 const WRAP =
@@ -111,8 +111,12 @@ export async function Review() {
             </ul>
           </div>
           <figcaption className="mt-3 text-[12.5px] text-faint">
-            Illustrative review of an agent&apos;s change. The tooling is part of the design, not a
-            shipped product.
+            Illustrative review screen. The flagged row is real: MCP{" "}
+            <code className="font-mono">check_patch</code> returns this change as{" "}
+            <code className="font-mono">interface_delta</code> with{" "}
+            <code className="font-mono">effects_changed: true</code>, and with{" "}
+            <code className="font-mono">frozen_specs</code> set it is reported as{" "}
+            <code className="font-mono">V8020</code>.
           </figcaption>
         </figure>
       </div>

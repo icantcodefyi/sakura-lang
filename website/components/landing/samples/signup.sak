@@ -1,0 +1,32 @@
+error EmailTaken(email: Email)
+error Banned
+type SignupError = EmailTaken | Banned
+
+fn signup(email: Email, pw: Password)
+  -> User ! {Clock, Db, Random, Fail<SignupError>}
+  ensures result.email == email
+{
+  if Db.exists(users, email) { fail EmailTaken { email } }
+  let id = Random.uuid()
+  let user = User { id, email, joined: Clock.now() }
+  Db.insert(users, user)
+  let _ = Http.post_json(crm_hook, user)
+  user
+}
+// @landing-context expect=V3001
+
+import std/http.{Http}
+import std/url.{Url}
+
+type Email = String where String.contains(it, "@")
+type Password = String
+type User = { id: String, email: Email, joined: Instant }
+type Table = String
+
+let users: Table = "users"
+let crm_hook: Url = "https://crm.example/hook"
+
+effect Db {
+  fn exists(table: Table, key: String) -> Bool
+  fn insert(table: Table, row: User) -> Unit
+}
