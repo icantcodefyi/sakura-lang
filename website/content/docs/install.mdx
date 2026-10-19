@@ -158,14 +158,14 @@ the checksum-verifying `install.ps1` are built and dry-run tested on main, with 
 compiler suites and JS/WASM parity on hosted Windows runners. After v0.1.0 publishes,
 use Node 26 and:
 
-```powershell
+```powershell title="npm"
 npm install --global sakuralang@0.1.0
 sakura --version
 ```
 
 Or download and inspect the installer in PowerShell, then run it:
 
-```powershell
+```powershell title="install.ps1"
 Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0/install.ps1" -OutFile install.ps1
 Get-Content install.ps1
 ./install.ps1 -Version 0.1.0
