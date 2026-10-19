@@ -46,3 +46,11 @@ against your own temporary adapter until it lands. Never rewrite another owner's
   separate steps, and push only if each one exited 0 (a piped or chained failure has published
   untested commits before). Never use `git stash`: `refs/stash` is shared by every worktree, so
   another agent's `pop` can take your changes; save a patch or commit to a temporary branch.
+
+## CI coverage
+
+Compiler-directory changes select the Rust partitions, MSRV, backend parity,
+native and editor jobs, plus website and documentation checks. A cancelled main
+run does not discard its outstanding changes; the next push compares against the
+last green CI commit. See [the CI policy](../CONTRIBUTING.md#ci-policy) before
+interpreting a docs-only push that still selects compiler jobs.
