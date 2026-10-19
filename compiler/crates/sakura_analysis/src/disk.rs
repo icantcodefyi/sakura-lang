@@ -310,7 +310,11 @@ mod tests {
         assert_eq!(uri, "file:///tmp/a%20b/%C3%BC.sak");
         assert_eq!(uri_path(&uri).unwrap(), p);
         assert_eq!(uri_path("sakura:///std/list.sak"), None);
-        assert_eq!(uri_path("file://host/tmp/x.sak"), None);
+        assert_eq!(uri_file_path("file://host/tmp/x.sak", false), None);
+        assert_eq!(
+            uri_file_path("file://host/tmp/x.sak", true).as_deref(),
+            Some(r"\\host\tmp\x.sak")
+        );
         assert_eq!(
             uri_path("file://LocalHost/tmp/x.sak").unwrap(),
             Path::new("/tmp/x.sak")

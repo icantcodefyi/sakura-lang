@@ -84,9 +84,12 @@ fn fmt_clean() {
         }
     }
     assert!(check.len() > 150, "only {} files found", check.len());
-    match unformatted(&check) {
-        Ok(list) => errors.extend(list.into_iter().map(|f| format!("{f}: not formatted"))),
-        Err(e) => errors.push(e),
+    // The complete fixture list exceeds Windows' command-line limit with absolute paths.
+    for batch in check.chunks(32) {
+        match unformatted(batch) {
+            Ok(list) => errors.extend(list.into_iter().map(|f| format!("{f}: not formatted"))),
+            Err(e) => errors.push(e),
+        }
     }
     assert!(errors.is_empty(), "gate 8:\n{}", errors.join("\n"));
 }

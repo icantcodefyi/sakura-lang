@@ -318,6 +318,9 @@ def lsp_smoke(sakura, cwd, env):
                          "params": {"capabilities": {}, "rootUri": cwd.as_uri()}})
         if reply.get("result", {}).get("serverInfo", {}).get("name") != "sakura":
             fail(f"unexpected LSP initialize reply: {reply}")
+        data = json.dumps({"jsonrpc": "2.0", "method": "initialized", "params": {}}).encode()
+        process.stdin.write(f"Content-Length: {len(data)}\r\n\r\n".encode() + data)
+        process.stdin.flush()
         request({"jsonrpc": "2.0", "id": 2, "method": "shutdown", "params": None})
         data = json.dumps({"jsonrpc": "2.0", "method": "exit"}).encode()
         process.stdin.write(f"Content-Length: {len(data)}\r\n\r\n".encode() + data)
