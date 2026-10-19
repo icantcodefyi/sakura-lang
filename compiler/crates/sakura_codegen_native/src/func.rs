@@ -25,9 +25,11 @@ use cranelift_codegen::ir::{
     self, AbiParam, BlockArg, InstBuilder, JumpTableData, MemFlagsData, Signature, Type, Value,
     types,
 };
+use cranelift_codegen::isa::CallConv;
 use cranelift_frontend::{FunctionBuilder, Switch};
 use cranelift_module::{FuncId, Linkage, Module as _};
 use cranelift_object::ObjectModule;
+use sakura_lir::direct::{GAUGE_LIMIT, gauge_cost};
 use sakura_lir::layout::{FrameDesc, SlotKind};
 use sakura_lir::lir::*;
 use sakura_rt::native::{BUILTINS, HOSTED};
@@ -65,7 +67,25 @@ pub struct Env<'a> {
     pub obj: &'a mut ObjectModule,
     /// Runtime functions declared so far, by symbol.
     pub rt: &'a mut HashMap<String, FuncId>,
+    /// Each function's direct twin (`sakura_lir::direct::regions`), when it has one.
+    pub twins: &'a [Option<FuncId>],
+    /// Per function, frame-protocol code calls its twin (`sakura_lir::direct::entries`).
+    pub enter: &'a [bool],
+    /// Per function, its twin can run out of gauge or be abandoned
+    /// (`sakura_lir::direct::may_abort`).
+    pub may_abort: &'a [bool],
+    /// The twin table, when a twin calls a closure: per code, the address of its
+    /// closure-convention twin or null (design §17.211 (2)).
+    pub twin_of: Option<cranelift_module::DataId>,
 }
+
+/// A twin's state, its last result (ABI §5 "direct style", design §17.118): returned,
+/// a defect was raised (the runtime holds it), the gauge ran out (the frame-protocol caller
+/// runs the call again through frames), or a bound perform found the task cancelled.
+const OK: i64 = 0;
+const DEFECTED: i64 = 1;
+const ABORTED: i64 = 2;
+const CANCELLED: i64 = 3;
 
 /// How the trampoline enters a block.
 #[derive(Clone, Debug, PartialEq)]
@@ -103,6 +123,21 @@ pub fn code_signature(obj: &ObjectModule) -> Signature {
         .push(AbiParam::new(obj.target_config().pointer_type()));
     sig.params.push(AbiParam::new(types::I32));
     sig.params.push(AbiParam::new(types::I32));
+    sig.returns.push(AbiParam::new(types::I32));
+    sig
+}
+
+/// The signature of `f`'s direct twin, in Cranelift's private `tail` convention: the context,
+/// the gauge budget left (bytes, as an `i32`) and `f`'s parameters, to its result and state.
+pub fn twin_signature(obj: &ObjectModule, f: &Func) -> Signature {
+    let mut sig = Signature::new(CallConv::Tail);
+    sig.params
+        .push(AbiParam::new(obj.target_config().pointer_type()));
+    sig.params.push(AbiParam::new(types::I32));
+    for &p in f.params() {
+        sig.params.extend(ty(f.repr(p)).map(AbiParam::new));
+    }
+    sig.returns.extend(ty(f.ret).map(AbiParam::new));
     sig.returns.push(AbiParam::new(types::I32));
     sig
 }
@@ -206,11 +241,22 @@ fn resume_kinds(
     Ok(resume)
 }
 
-/// Compile `f` into `b`'s function, whose signature is [`code_signature`].
-pub fn compile(e: &mut Env<'_>, b: FunctionBuilder<'_>, f: &Func) -> Result<(), String> {
+/// Compile `f` into `b`'s function, whose signature is [`code_signature`], or with `twin` its
+/// direct twin ([`twin_signature`]): the same blocks with no continuation frame, whose calls
+/// are native calls of other twins.
+pub fn compile(
+    e: &mut Env<'_>,
+    b: FunctionBuilder<'_>,
+    f: &Func,
+    twin: bool,
+) -> Result<(), String> {
     let desc = FrameDesc::of(f);
     let stacks = region_stacks(f)?;
-    let resume = resume_kinds(f, &desc, &stacks)?;
+    let resume = if twin {
+        vec![Resume::No; f.blocks.len()]
+    } else {
+        resume_kinds(f, &desc, &stacks)?
+    };
     let config = e.obj.target_config();
     let ptr = config.pointer_type();
     let mut g = Gen {
@@ -226,6 +272,9 @@ pub fn compile(e: &mut Env<'_>, b: FunctionBuilder<'_>, f: &Func) -> Result<(), 
         ptr,
         ctx: Value::from_u32(0),
         frame: Value::from_u32(0),
+        twin,
+        budget: Value::from_u32(0),
+        open: 0,
     };
     g.body()?;
     let Gen { mut b, .. } = g;
@@ -256,6 +305,14 @@ struct Gen<'e, 'm, 'f> {
     ptr: Type,
     ctx: Value,
     frame: Value,
+    /// Compiling the direct twin: no frame; a defect, abort or cancellation returns a
+    /// placeholder with its state.
+    twin: bool,
+    /// A twin's gauge budget after its own charge, which its twin calls receive.
+    budget: Value,
+    /// The `with` regions a twin has open at the instruction being emitted, which it closes
+    /// when it leaves early.
+    open: u32,
 }
 
 impl Gen<'_, '_, '_> {
@@ -456,7 +513,38 @@ impl Gen<'_, '_, '_> {
             None => self.iconst32(0),
         };
         let step = self.call1("rt_raise", &[c, m, len, site], types::I32)?;
-        self.ret(step);
+        if self.twin {
+            self.leave(DEFECTED)
+        } else {
+            self.ret(step);
+            Ok(())
+        }
+    }
+
+    /// A twin's result for an exit without one, which nothing reads.
+    fn placeholder(&mut self) -> Vec<Value> {
+        match ty(self.f.ret) {
+            Some(types::F64) => vec![self.b.ins().f64const(0.0)],
+            Some(t) => vec![self.b.ins().iconst(t, 0)],
+            None => vec![],
+        }
+    }
+
+    /// The activations a twin opened and has not closed end when it leaves early: an aborted
+    /// twin runs again from its region's entry, and every twin closes its own.
+    fn close_open(&mut self) -> Result<(), String> {
+        for _ in 0..self.open {
+            self.call0("rt_handle_close", &[])?;
+        }
+        Ok(())
+    }
+
+    /// A twin's exit without a result: close its activations, return `state`.
+    fn leave(&mut self, state: i64) -> Result<(), String> {
+        self.close_open()?;
+        let mut out = self.placeholder();
+        out.push(self.iconst32(state));
+        self.b.ins().return_(&out);
         Ok(())
     }
 
@@ -475,6 +563,7 @@ impl Gen<'_, '_, '_> {
         self.release(live)?;
         match own {
             Some((code, msg)) => self.raise(code, msg, None),
+            None if self.twin => self.leave(DEFECTED),
             None => {
                 self.ret_const(DEFECT);
                 Ok(())
@@ -541,6 +630,9 @@ impl Gen<'_, '_, '_> {
         }
         self.b.switch_to_block(entry);
         let params = self.b.block_params(entry).to_vec();
+        if self.twin {
+            return self.twin_entry(&params);
+        }
         (self.ctx, self.frame) = (params[0], params[2]);
         let bad = self.b.create_block();
         self.b.set_cold_block(bad);
@@ -572,6 +664,41 @@ impl Gen<'_, '_, '_> {
             self.b.switch_to_block(rb);
             self.resume_block(lb)?;
         }
+        for i in 0..f.blocks.len() {
+            self.block(BlockId(i as u32))?;
+        }
+        Ok(())
+    }
+
+    /// A twin's entry: charge [`gauge_cost`] against the budget; past it release the arguments
+    /// and return [`ABORTED`], so the frame-protocol caller runs the call through frames
+    /// (direct code performs nothing, so the attempt is not observable).
+    fn twin_entry(&mut self, params: &[Value]) -> Result<(), String> {
+        self.ctx = params[0];
+        let cost = i64::from(gauge_cost(self.f));
+        self.budget = self.b.ins().iadd_imm_s(params[1], -cost);
+        let out = self
+            .b
+            .ins()
+            .icmp_imm_s(IntCC::SignedLessThan, self.budget, 0);
+        let f = self.f;
+        let args: Vec<Value> = params[2..].to_vec();
+        self.cold_if(out, |g| {
+            let mut it = args.iter();
+            for &p in f.params() {
+                let x = if g.repr(p) == Repr::Unit {
+                    None
+                } else {
+                    it.next()
+                };
+                if g.repr(p).is_managed() {
+                    g.call0("drop", &[*x.expect("a parameter")])?;
+                }
+            }
+            g.leave(ABORTED)
+        })?;
+        let args: Vec<BlockArg> = args.into_iter().map(BlockArg::Value).collect();
+        self.b.ins().jump(self.blocks[0], &args);
         for i in 0..f.blocks.len() {
             self.block(BlockId(i as u32))?;
         }
@@ -645,6 +772,7 @@ impl Gen<'_, '_, '_> {
             }
         }
         let mut regions = self.stacks[b.index()].clone().unwrap_or_default();
+        self.open = regions.iter().filter(|r| **r == Region::Handle).count() as u32;
         for inst in &block.insts {
             if self.inst(inst, &mut live, &mut regions)? == Flow::Stop {
                 return Ok(());
@@ -882,6 +1010,18 @@ impl Gen<'_, '_, '_> {
                     return Ok(Flow::Stop);
                 }
             }
+            Inst::HandlePush { handler, act } if self.twin => {
+                // An activation owned by the current frame that changes no frame's
+                // `activation`: only bound performs reach it (§17.211 (1)).
+                let h = self.val(*handler)?;
+                let u = self.call1("rt_handle_open", &[h], types::I32)?;
+                self.check_zero(u, live)?;
+                regions.push(Region::Handle);
+                self.open += 1;
+                if let Some(a) = act {
+                    self.set(*a, u);
+                }
+            }
             Inst::HandlePush { handler, act } => {
                 regions.push(Region::Handle);
                 let h = self.val(*handler)?;
@@ -909,10 +1049,18 @@ impl Gen<'_, '_, '_> {
                 let held = before.clone();
                 self.cold_if(cancelled, |g| {
                     g.release(&held)?;
+                    if g.twin {
+                        return g.leave(CANCELLED);
+                    }
                     g.ret_const(YIELD);
                     Ok(())
                 })?;
                 self.set(*dst, d);
+            }
+            Inst::HandlePop if self.twin => {
+                regions.pop();
+                self.open -= 1;
+                self.call0("rt_handle_close", &[])?;
             }
             Inst::HandlePop => {
                 regions.pop();
@@ -1344,7 +1492,205 @@ impl Gen<'_, '_, '_> {
         Ok(())
     }
 
+    /// Call `g`'s twin with `budget` and `args`: its result (if not `unit`) and state.
+    fn call_twin(
+        &mut self,
+        g: sakura_lir::lir::FuncId,
+        budget: Value,
+        args: &[Var],
+    ) -> Result<(Option<Value>, Value), String> {
+        let id = self.e.twins[g.index()]
+            .ok_or_else(|| format!("{}: a twin calls a function without one", self.f.name))?;
+        let key = format!("twin${}", g.0);
+        let r = match self.refs.get(&key) {
+            Some(&r) => r,
+            None => {
+                let r = self.e.obj.declare_func_in_func(id, self.b.func);
+                self.refs.insert(key, r);
+                r
+            }
+        };
+        let mut all = vec![self.ctx, budget];
+        all.extend(self.arg_values(args)?);
+        let call = self.b.ins().call(r, &all);
+        let res = self.b.inst_results(call).to_vec();
+        let state = *res.last().expect("a twin returns its state");
+        Ok((
+            res.get(..res.len() - 1).and_then(|r| r.first().copied()),
+            state,
+        ))
+    }
+
+    /// Jump to `cont` with a call's result first and the carried values after it.
+    fn continue_at(&mut self, cont: &Edge, ret: Option<Value>) -> Result<(), String> {
+        let mut args: Vec<BlockArg> = ret.into_iter().map(BlockArg::Value).collect();
+        args.extend(self.args_of(&cont.args)?);
+        self.b.ins().jump(self.blocks[cont.block.index()], &args);
+        Ok(())
+    }
+
+    /// A terminator of a twin: a return gives the result and [`OK`], a call is a twin call
+    /// whose failure leaves this twin too with the callee's state; nothing else occurs in a
+    /// direct region (`sakura_lir::direct::regions`).
+    fn twin_term(&mut self, t: &Term, live: &mut Live) -> Result<(), String> {
+        match t {
+            Term::Return(v) => {
+                let mut out = match self.repr(*v) {
+                    Repr::Unit => vec![],
+                    _ => vec![self.val(*v)?],
+                };
+                out.push(self.iconst32(OK));
+                self.b.ins().return_(&out);
+            }
+            Term::Call {
+                callee: Callee::Direct(g),
+                args,
+                cont,
+            } => {
+                for &a in args {
+                    Self::consume(live, a);
+                }
+                let (ret, state) = self.call_twin(*g, self.budget, args)?;
+                let held = live.clone();
+                self.cold_if(state, |g| {
+                    g.release(&held)?;
+                    g.close_open()?;
+                    let mut out = g.placeholder();
+                    out.push(state);
+                    g.b.ins().return_(&out);
+                    Ok(())
+                })?;
+                self.continue_at(cont, ret)?;
+            }
+            Term::Call {
+                callee: Callee::Closure(c),
+                args,
+                cont,
+            } => {
+                // The closure's twin from the twin table, or the region is abandoned and its
+                // frame-protocol caller runs it again through frames.
+                let table = self.e.twin_of.ok_or_else(|| {
+                    format!("{}: a closure call without a twin table", self.f.name)
+                })?;
+                let gv = self.e.obj.declare_data_in_func(table, self.b.func);
+                let base = self.b.ins().symbol_value(types::I64, gv);
+                let clo = self.val(*c)?;
+                let code = self.load(types::I32, clo, 8);
+                let code = self.b.ins().uextend(types::I64, code);
+                let off = self.b.ins().ishl_imm_u(code, 3);
+                let at = self.b.ins().iadd(base, off);
+                let twin = self
+                    .b
+                    .ins()
+                    .load(types::I64, MemFlagsData::trusted(), at, 0);
+                let none = self.b.ins().icmp_imm_s(IntCC::Equal, twin, 0);
+                let held = live.clone();
+                self.cold_if(none, |g| {
+                    g.release(&held)?;
+                    g.leave(ABORTED)
+                })?;
+                Self::consume(live, *c);
+                for &a in args {
+                    Self::consume(live, a);
+                }
+                // The budget, then the closure convention: every argument and the result a word.
+                let mut sig = Signature::new(CallConv::Tail);
+                sig.params.push(AbiParam::new(types::I64));
+                sig.params
+                    .extend((0..args.len() + 2).map(|_| AbiParam::new(types::I32)));
+                sig.returns.extend([AbiParam::new(types::I32); 2]);
+                let sig = self.b.import_signature(sig);
+                let mut all = vec![self.ctx, self.budget, clo];
+                all.extend(self.arg_values(args)?);
+                let call = self.b.ins().call_indirect(sig, twin, &all);
+                let (ret, state) = match *self.b.inst_results(call) {
+                    [r, s] => (r, s),
+                    _ => unreachable!("a closure twin returns its result and state"),
+                };
+                let held = live.clone();
+                self.cold_if(state, |g| {
+                    g.release(&held)?;
+                    g.close_open()?;
+                    let mut out = g.placeholder();
+                    out.push(state);
+                    g.b.ins().return_(&out);
+                    Ok(())
+                })?;
+                self.continue_at(cont, Some(ret))?;
+            }
+            _ => return Err(format!("{}: a twin cannot compile {t:?}", self.f.name)),
+        }
+        Ok(())
+    }
+
+    /// Frame-protocol code entering a direct region (design §17.118): a native call of the
+    /// callee's twin with a full budget. When the twin can abort (`hold`) the arguments stay
+    /// held (`Dup`ed) until it returns, because an aborted twin is run again through frames,
+    /// counted by `rt_restart` (ABI 1.2.0 `restarts`); the code after this is that call.
+    /// Returns whether the frame-protocol call follows (it does not when the region cannot
+    /// abort, whose abort is a defect).
+    fn enter_twin(
+        &mut self,
+        g: sakura_lir::lir::FuncId,
+        args: &[Var],
+        cont: &Edge,
+        live: &Live,
+    ) -> Result<bool, String> {
+        let hold = self.e.may_abort[g.index()];
+        let held_args: Vec<Var> = args
+            .iter()
+            .copied()
+            .filter(|&a| hold && self.repr(a).is_managed())
+            .collect();
+        let mut held = live.clone();
+        for &a in &held_args {
+            let x = self.val(a)?;
+            self.dup(x, &held)?;
+            *held.entry(a).or_default() += 1;
+        }
+        let budget = self.iconst32(i64::from(GAUGE_LIMIT));
+        let (ret, state) = self.call_twin(g, budget, args)?;
+        let ok = self.b.create_block();
+        let not_ok = self.b.create_block();
+        self.b.ins().brif(state, not_ok, &[], ok, &[]);
+        self.b.switch_to_block(ok);
+        for &a in &held_args {
+            let x = self.val(a)?;
+            self.call0("drop", &[x])?;
+        }
+        self.continue_at(cont, ret)?;
+        self.b.switch_to_block(not_ok);
+        // A held twin consumed the copies, so the block still holds the arguments; otherwise
+        // the twin consumed them.
+        let mut rest = live.clone();
+        if !hold {
+            for &a in args {
+                Self::consume(&mut rest, a);
+            }
+        }
+        let defected = self.b.ins().icmp_imm_s(IntCC::Equal, state, DEFECTED);
+        let r = rest.clone();
+        self.cold_if(defected, |g| g.pad(&r, None))?;
+        let cancelled = self.b.ins().icmp_imm_s(IntCC::Equal, state, CANCELLED);
+        let r = rest.clone();
+        self.cold_if(cancelled, |g| {
+            g.release(&r)?;
+            g.ret_const(YIELD);
+            Ok(())
+        })?;
+        if hold {
+            self.call0("rt_restart", &[])?;
+        } else {
+            // `may_abort` bounds this region below the gauge, and its arguments are gone.
+            self.pad(&rest, Some((90, "a direct region ran out of gauge")))?;
+        }
+        Ok(hold)
+    }
+
     fn term(&mut self, t: &Term, live: &mut Live) -> Result<(), String> {
+        if self.twin && !matches!(t, Term::Jump(_) | Term::If { .. } | Term::Switch { .. }) {
+            return self.twin_term(t, live);
+        }
         match t {
             Term::Return(v) => {
                 let bits = self.bits(*v, UNIT)?;
@@ -1418,6 +1764,13 @@ impl Gen<'_, '_, '_> {
                 self.b.ins().jump(self.blocks[cont.block.index()], &args);
             }
             Term::Call { callee, args, cont } => {
+                if let Callee::Direct(g) = callee
+                    && self.e.twins[g.index()].is_some()
+                    && self.e.enter[g.index()]
+                    && !self.enter_twin(*g, args, cont, live)?
+                {
+                    return Ok(());
+                }
                 self.suspend_at(cont, live)?;
                 let (f2, base) = match callee {
                     Callee::Direct(g) => {

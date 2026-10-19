@@ -19,13 +19,27 @@ use cranelift_codegen::settings::{self, Configurable};
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataDescription, Linkage, Module as _};
 use cranelift_object::{ObjectBuilder, ObjectModule};
-use sakura_lir::lir::Module;
+use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
 const DESCRIPTOR: usize = 56;
 
+/// How [`emit`] compiles.
+#[derive(Clone, Copy, Debug)]
+pub struct Options {
+    /// Emit direct twins for direct regions (design §17.118); `false` (`--no-direct`) runs
+    /// every call through frames.
+    pub direct: bool,
+}
+
+impl Default for Options {
+    fn default() -> Options {
+        Options { direct: true }
+    }
+}
+
 /// Compile `m` for the host target to a relocatable object (ELF or Mach-O).
-pub fn emit(m: &Module) -> Result<Vec<u8>, String> {
+pub fn emit(m: &Module, opts: Options) -> Result<Vec<u8>, String> {
     let mut flags = settings::builder();
     for (k, v) in [
         ("is_pic", "true"),
@@ -56,11 +70,95 @@ pub fn emit(m: &Module) -> Result<Vec<u8>, String> {
                 .map_err(|e| e.to_string())?,
         );
     }
+    // Direct regions get a twin in Cranelift's `tail` convention, which the platform-A ISAs
+    // implement; without it every call runs through frames (plan N2: a fallback, never a
+    // prerequisite).
+    let tail = matches!(
+        target_lexicon::HOST.architecture,
+        target_lexicon::Architecture::X86_64 | target_lexicon::Architecture::Aarch64(_)
+    );
+    let regions = if opts.direct && tail {
+        sakura_lir::direct::regions(m)
+    } else {
+        vec![false; m.funcs.len()]
+    };
+    let may_abort = sakura_lir::direct::may_abort(m, &regions);
+    let enter = sakura_lir::direct::entries(m, &regions, &may_abort);
+    let mut twins = vec![];
+    for (i, (f, &r)) in m.funcs.iter().zip(&regions).enumerate() {
+        twins.push(if r {
+            let name = format!("sakura${i}${}::{}$direct", f.module, f.name);
+            let tsig = func::twin_signature(&obj, f);
+            Some(
+                obj.declare_function(&name, Linkage::Local, &tsig)
+                    .map_err(|e| e.to_string())?,
+            )
+        } else {
+            None
+        });
+    }
+    // The twin table (design §17.211 (2)): per code, its closure-convention twin or null, for
+    // the closure calls of twins; absent when no region calls a closure.
+    let closes = m.funcs.iter().zip(&regions).any(|(f, &r)| {
+        r && f.blocks.iter().any(|b| {
+            matches!(
+                b.term,
+                Term::Call {
+                    callee: Callee::Closure(_),
+                    ..
+                }
+            )
+        })
+    });
+    let twin_of = if closes {
+        let id = obj
+            .declare_data("sakura$twins", Linkage::Local, false, false)
+            .map_err(|e| e.to_string())?;
+        let codes = m.funcs.len() + sakura_rt::native::CODES.len();
+        let mut d = DataDescription::new();
+        d.define(vec![0u8; 8 * codes].into_boxed_slice());
+        d.set_align(8);
+        // A twin the call's word signature does not match stays out (and is abandoned).
+        let words = |f: &sakura_lir::lir::Func| {
+            let s = func::twin_signature(&obj, f);
+            s.params[2..].iter().all(|p| p.value_type == types::I32)
+                && s.params.len() == f.params().len() + 2
+                && s.returns.len() == 2
+                && s.returns[0].value_type == types::I32
+        };
+        for f in sakura_lir::direct::closure_twins(m, &regions) {
+            if !words(&m.funcs[f]) {
+                continue;
+            }
+            let r = obj.declare_func_in_data(twins[f].expect("a closure twin"), &mut d);
+            d.write_function_addr(8 * f as u32, r);
+        }
+        obj.define_data(id, &d).map_err(|e| e.to_string())?;
+        Some(id)
+    } else {
+        None
+    };
     let mut rt = HashMap::new();
     let mut ctx = obj.make_context();
     let mut fctx = FunctionBuilderContext::new();
-    for (f, &id) in m.funcs.iter().zip(&ids) {
-        ctx.func.signature = sig.clone();
+    let bodies = ids.iter().map(|&id| (id, false));
+    let twin_bodies = twins.iter().map(|t| t.map(|id| (id, true)));
+    let all: Vec<(usize, cranelift_module::FuncId, bool)> = bodies
+        .enumerate()
+        .map(|(i, (id, t))| (i, id, t))
+        .chain(
+            twin_bodies
+                .enumerate()
+                .filter_map(|(i, t)| t.map(|(id, tw)| (i, id, tw))),
+        )
+        .collect();
+    for (i, id, twin) in all {
+        let f = &m.funcs[i];
+        ctx.func.signature = if twin {
+            func::twin_signature(&obj, f)
+        } else {
+            sig.clone()
+        };
         {
             let b = FunctionBuilder::new(&mut ctx.func, &mut fctx);
             let mut env = func::Env {
@@ -68,8 +166,12 @@ pub fn emit(m: &Module) -> Result<Vec<u8>, String> {
                 t: &mut tables,
                 obj: &mut obj,
                 rt: &mut rt,
+                twins: &twins,
+                enter: &enter,
+                may_abort: &may_abort,
+                twin_of,
             };
-            func::compile(&mut env, b, f)?;
+            func::compile(&mut env, b, f, twin)?;
         }
         obj.define_function(id, &mut ctx)
             .map_err(|e| format!("{}: {e:?}", f.name))?;

@@ -218,6 +218,7 @@ fn exe_ending(status: std::process::ExitStatus, stderr: &str) -> String {
 /// Compile, link and run `core`: `(ending, stdout, stderr, the stats line)`.
 fn run_compiled(
     name: &str,
+    opts: sakura_codegen_native::Options,
     core: &snapshot::Module,
     dir: &Path,
 ) -> (String, String, String, String) {
@@ -226,11 +227,15 @@ fn run_compiled(
         Ok(m) => m,
         Err(e) => return fail(format!("lowering failed: {e}")),
     };
-    let object = match sakura_codegen_native::emit(&m) {
+    let object = match sakura_codegen_native::emit(&m, opts) {
         Ok(o) => o,
         Err(e) => return fail(format!("codegen failed: {e}")),
     };
-    let stem = name.replace('/', "-");
+    let stem = format!(
+        "{}{}",
+        name.replace('/', "-"),
+        if opts.direct { "" } else { "-frames" }
+    );
     let (o, exe, stats) = (
         dir.join(format!("{stem}.o")),
         dir.join(&stem),
@@ -297,42 +302,65 @@ fn counters(s: &Stats) -> Vec<(String, u64)> {
 }
 
 /// Plan N2: every corpus program compiled by Cranelift agrees with the expected ending and
-/// stdout, and ends with the evaluator's live objects, frames, boxes, `Dup`s and `Drop`s: the
-/// frame-protocol code keeps the LIR's ownership count.
+/// stdout, with direct twins and with `--no-direct`. Frame-protocol code (`--no-direct`, as the
+/// evaluator runs) ends with the evaluator's live objects, frames, boxes, `Dup`s and `Drop`s:
+/// it keeps the LIR's ownership count. With twins the frames, boxes and counts differ by
+/// design, and the live objects at the end must still be the evaluator's.
 #[test]
 fn the_corpus_compiles_links_and_runs_natively() {
+    use sakura_codegen_native::Options;
     let programs = programs();
     driver();
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-corpus");
     std::fs::create_dir_all(&dir).unwrap();
     let results = big_stack_map(&programs, |p| {
         let (_, _, _, want) = run_with_stats(&p.core);
-        (run_compiled(&p.name, &p.core, &dir), counters(&want))
+        (
+            run_compiled(&p.name, Options { direct: true }, &p.core, &dir),
+            run_compiled(&p.name, Options { direct: false }, &p.core, &dir),
+            counters(&want),
+        )
     });
     let mut failures = vec![];
-    let mut passed = 0;
-    for (p, ((got, stdout, stderr, stats), want)) in programs.iter().zip(results) {
-        let ok = got == p.ending && stdout == p.stdout;
-        passed += usize::from(ok);
-        match (ok, KNOWN_NATIVE.iter().find(|(n, _)| *n == p.name)) {
-            (true, Some(_)) => failures.push(format!("{}: passes now; drop it from KNOWN_NATIVE", p.name)),
-            (false, None) => failures.push(format!(
-                "{}: expected {} got {got}\n--- expected stdout\n{}--- stdout\n{stdout}--- stderr\n{stderr}",
-                p.name, p.ending, p.stdout
-            )),
-            _ => {}
-        }
-        if ok && ownership(&stats) != want {
-            failures.push(format!(
-                "{}: counters differ from the evaluator's\n  compiled  {:?}\n  evaluator {want:?}",
-                p.name,
-                ownership(&stats)
-            ));
+    let mut passed = [0; 2];
+    for (p, (direct, frames, want)) in programs.iter().zip(results) {
+        for (k, (mode, (got, stdout, stderr, stats))) in
+            [("direct", direct), ("--no-direct", frames)]
+                .into_iter()
+                .enumerate()
+        {
+            let ok = got == p.ending && stdout == p.stdout;
+            passed[k] += usize::from(ok);
+            match (ok, KNOWN_NATIVE.iter().find(|(n, _)| *n == p.name)) {
+                (true, Some(_)) => failures.push(format!(
+                    "{} ({mode}): passes now; drop it from KNOWN_NATIVE",
+                    p.name
+                )),
+                (false, None) => failures.push(format!(
+                    "{} ({mode}): expected {} got {got}\n--- expected stdout\n{}--- stdout\n{stdout}--- stderr\n{stderr}",
+                    p.name, p.ending, p.stdout
+                )),
+                _ => {}
+            }
+            let got = ownership(&stats);
+            let same = if k == 0 {
+                got.first() == want.first()
+            } else {
+                got == want
+            };
+            if ok && !same {
+                failures.push(format!(
+                    "{} ({mode}): counters differ from the evaluator's\n  compiled  {got:?}\n  evaluator {want:?}",
+                    p.name
+                ));
+            }
         }
     }
     eprintln!(
-        "native (compiled): {passed} of {} programs agree",
-        programs.len()
+        "native (compiled): {} of {n} programs agree with twins, {} of {n} with --no-direct",
+        passed[0],
+        passed[1],
+        n = programs.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
@@ -346,8 +374,8 @@ fn native_objects_are_deterministic() {
         .filter(|p| p.name.starts_with("semantics/c"))
     {
         let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
-        let a = sakura_codegen_native::emit(&m).unwrap();
-        let b = sakura_codegen_native::emit(&m).unwrap();
+        let a = sakura_codegen_native::emit(&m, Default::default()).unwrap();
+        let b = sakura_codegen_native::emit(&m, Default::default()).unwrap();
         assert!(a == b, "{}: two compilations differ", p.name);
     }
 }
