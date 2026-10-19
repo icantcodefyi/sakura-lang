@@ -1,0 +1,450 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::fs::Dir
+layout 2 record std::fs::Entry | Entry 32b (name: word*, is_dir: bool)
+layout 3 record std::fs::File | File 40b (id: i64, path: word*, mode: word*)
+layout 4 error std::fs::FsError | FsError 32b (path: word*, reason: word*)
+layout 5 variant std::fs::Mode | Read 16b () | Write 16b () | Append 16b ()
+layout 6 variant std::list::Builder
+layout 7 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 8 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 9 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+layout 12 shape |  16b ()
+layout 13 shape |  32b (word*, bool)
+layout 14 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word*, %9 word*, %14 word*, %17 word*, %21 bool, %28 bool, %34 bool, %40 bool, %46 bool, %52 bool, %58 bool, %62 word*, %63 bool, %71 word*, %72 word*, %73 bool, %74 word*, %77 bool, %83 bool, %89 bool, %93 word*, %99 bool, %100 word*, %106 bool, %108 word*, %113 word*, %115 word*, %116 word*, %121 word*, %122 word*, %126 word*, %127 word*, %131 word*, %132 word*, %134 word*, %136 word*, %138 word*, %141 word*, %143 word*, %145 word*, %146 word*, %151 word*, %152 word*, %155 word*, %156 word*, %160 word*, %161 word*, %163 word*, %165 word*, %169 word*, %172 bool, %175 word*, %179 word*, %182 bool, %185 word*, %189 word*, %190 word*, %194 word*, %198 word*, %199 word*, %203 word*, %207 word*, %208 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 $site: i64 = const 3
+    call of#7(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: ptr = const str 1
+    %4 r: ptr = $string_to_bytes(%3)
+    %5 tup: ptr = alloc tuple#10(word, word)(%2, %4)
+    %6 lit: ptr = const str 2
+    %7 $site: i64 = const 4
+    call of#7(%6, %7) -> b2(%5)
+  b2(%8 r: ptr, %9 tup: ptr):
+    %10 lit: ptr = const str 3
+    %11 r: ptr = $string_to_bytes(%10)
+    %12 tup: ptr = alloc tuple#10(word, word)(%8, %11)
+    %13 xs: ptr = alloc list(%9, %12)
+    call memory#10(%13) -> b3()
+  b3(%14 r: ptr):
+    handle_push %14
+    try_push -> b66(err, )
+    %205 lit: ptr = const str 0
+    %206 $site: i64 = const 14
+    call of#7(%205, %206) -> b67()
+  b4(%15 v: word):
+    drop %15
+    %16 lit: ptr = const str 4
+    perform std::env::Env.get(%16) -> b5()
+  b5(%17 r: ptr):
+    %18 s: ptr = show %17
+    drop %17
+    %19 lit: ptr = const str 5
+    %20 s: ptr = concat %19, %18
+    drop %18
+    drop %19
+    perform std::console::Console.print(%20) -> b6()
+  b6(%21 r: unit):
+    %22 box: word = box %21
+    %23 unbox: unit = unbox %22
+    drop %22
+    ret %23
+  b7(%24 v: ptr) [handle]:
+    %25 s: ptr = show %24
+    drop %24
+    %26 lit: ptr = const str 6
+    %27 s: ptr = concat %26, %25
+    drop %25
+    drop %26
+    perform std::console::Console.print(%27) -> b8()
+  b8(%28 r: unit) [handle]:
+    %29 box: word = box %28
+    drop %29
+    try_push -> b63(err, )
+    %196 lit: ptr = const str 28
+    %197 $site: i64 = const 13
+    call of#7(%196, %197) -> b64()
+  b9(%30 v: ptr) [handle]:
+    %31 s: ptr = show %30
+    drop %30
+    %32 lit: ptr = const str 7
+    %33 s: ptr = concat %32, %31
+    drop %31
+    drop %32
+    perform std::console::Console.print(%33) -> b10()
+  b10(%34 r: unit) [handle]:
+    %35 box: word = box %34
+    drop %35
+    try_push -> b60(err, )
+    %187 lit: ptr = const str 22
+    %188 $site: i64 = const 12
+    call of#7(%187, %188) -> b61()
+  b11(%36 v: ptr) [handle]:
+    %37 s: ptr = show %36
+    drop %36
+    %38 lit: ptr = const str 8
+    %39 s: ptr = concat %38, %37
+    drop %37
+    drop %38
+    perform std::console::Console.print(%39) -> b12()
+  b12(%40 r: unit) [handle]:
+    %41 box: word = box %40
+    drop %41
+    try_push -> b57(err, )
+    %177 lit: ptr = const str 26
+    %178 $site: i64 = const 11
+    call of#7(%177, %178) -> b58()
+  b13(%42 v: ptr) [handle]:
+    %43 s: ptr = show %42
+    drop %42
+    %44 lit: ptr = const str 9
+    %45 s: ptr = concat %44, %43
+    drop %43
+    drop %44
+    perform std::console::Console.print(%45) -> b14()
+  b14(%46 r: unit) [handle]:
+    %47 box: word = box %46
+    drop %47
+    try_push -> b54(err, )
+    %167 lit: ptr = const str 24
+    %168 $site: i64 = const 10
+    call of#7(%167, %168) -> b55()
+  b15(%48 v: ptr) [handle]:
+    %49 s: ptr = show %48
+    drop %48
+    %50 lit: ptr = const str 10
+    %51 s: ptr = concat %50, %49
+    drop %49
+    drop %50
+    perform std::console::Console.print(%51) -> b16()
+  b16(%52 r: unit) [handle]:
+    %53 box: word = box %52
+    drop %53
+    try_push -> b50(err, )
+    %158 lit: ptr = const str 22
+    %159 $site: i64 = const 9
+    call of#7(%158, %159) -> b51()
+  b17(%54 v: ptr) [handle]:
+    %55 s: ptr = show %54
+    drop %54
+    %56 lit: ptr = const str 11
+    %57 s: ptr = concat %56, %55
+    drop %55
+    drop %56
+    perform std::console::Console.print(%57) -> b18()
+  b18(%58 r: unit) [handle]:
+    %59 box: word = box %58
+    drop %59
+    %60 lit: ptr = const str 12
+    %61 $site: i64 = const 5
+    call of#7(%60, %61) -> b19()
+  b19(%62 r: ptr) [handle]:
+    perform std::fs::Fs.exists(%62) -> b20()
+  b20(%63 r: bool) [handle]:
+    %64 s: ptr = show %63
+    %65 lit: ptr = const str 13
+    %66 s: ptr = concat %65, %64
+    drop %64
+    drop %65
+    %67 lit: ptr = const str 14
+    %68 s: ptr = concat %66, %67
+    drop %66
+    drop %67
+    %69 lit: ptr = const str 15
+    %70 $site: i64 = const 6
+    call of#7(%69, %70) -> b21(%68)
+  b21(%71 r: ptr, %72 s: ptr) [handle]:
+    perform std::fs::Fs.exists(%71) -> b22(%72)
+  b22(%73 r: bool, %74 s: ptr) [handle]:
+    %75 s: ptr = show %73
+    %76 s: ptr = concat %74, %75
+    drop %74
+    drop %75
+    perform std::console::Console.print(%76) -> b23()
+  b23(%77 r: unit) [handle]:
+    %78 box: word = box %77
+    drop %78
+    try_push -> b42(err, )
+    perform std::fs::Fs.root() -> b43()
+  b24(%79 v: ptr) [handle]:
+    %80 s: ptr = show %79
+    drop %79
+    %81 lit: ptr = const str 16
+    %82 s: ptr = concat %81, %80
+    drop %80
+    drop %81
+    perform std::console::Console.print(%82) -> b25()
+  b25(%83 r: unit) [handle]:
+    %84 box: word = box %83
+    drop %84
+    try_push -> b39(err, )
+    perform std::fs::Fs.root() -> b40()
+  b26(%85 v: ptr) [handle]:
+    %86 s: ptr = show %85
+    drop %85
+    %87 lit: ptr = const str 17
+    %88 s: ptr = concat %87, %86
+    drop %86
+    drop %87
+    perform std::console::Console.print(%88) -> b27()
+  b27(%89 r: unit) [handle]:
+    %90 box: word = box %89
+    drop %90
+    %91 lit: ptr = const str 18
+    %92 $site: i64 = const 7
+    call of#7(%91, %92) -> b28()
+  b28(%93 r: ptr) [handle]:
+    dup %93
+    try_push -> b35(err, %93)
+    %118 v: ptr = const static std::fs::Mode.Write
+    %119 f: ptr = closure main$2#16[]
+    %120 callback: ptr = callback %119
+    dup %93
+    perform std::fs::Fs.with_file(%93, %118, %120) -> b36(%93)
+  b29(%94 v: ptr, %95 r: ptr) [handle]:
+    %96 s: ptr = show %94
+    drop %94
+    %97 lit: ptr = const str 19
+    %98 s: ptr = concat %97, %96
+    drop %96
+    drop %97
+    perform std::console::Console.print(%98) -> b30(%95)
+  b30(%99 r: unit, %100 r: ptr) [handle]:
+    %101 box: word = box %99
+    drop %101
+    try_push -> b33(err, )
+    %110 v: ptr = const static std::fs::Mode.Read
+    %111 f: ptr = closure main$5#20[]
+    %112 callback: ptr = callback %111
+    perform std::fs::Fs.with_file(%100, %110, %112) -> b34()
+  b31(%102 v: ptr) [handle]:
+    %103 s: ptr = show %102
+    drop %102
+    %104 lit: ptr = const str 20
+    %105 s: ptr = concat %104, %103
+    drop %103
+    drop %104
+    perform std::console::Console.print(%105) -> b32()
+  b32(%106 r: unit) [handle]:
+    %107 box: word = box %106
+    handle_pop
+    jump b4(%107)
+  b33(%108 e: word) [handle]:
+    %109 err: ptr = alloc std::result::Result.Err(%108)
+    jump b31(%109)
+  b34(%113 r: word) [handle, try]:
+    %114 ok: ptr = alloc std::result::Result.Ok(%113)
+    try_pop
+    jump b31(%114)
+  b35(%115 e: word, %116 r: ptr) [handle]:
+    %117 err: ptr = alloc std::result::Result.Err(%115)
+    jump b29(%117, %116)
+  b36(%121 r: word, %122 r: ptr) [handle, try]:
+    drop %121
+    %123 v: ptr = const static std::fs::Mode.Append
+    %124 f: ptr = closure main$3#17[]
+    %125 callback: ptr = callback %124
+    dup %122
+    perform std::fs::Fs.with_file(%122, %123, %125) -> b37(%122)
+  b37(%126 r: word, %127 r: ptr) [handle, try]:
+    drop %126
+    %128 v: ptr = const static std::fs::Mode.Read
+    %129 f: ptr = closure main$4#18[]
+    %130 callback: ptr = callback %129
+    dup %127
+    perform std::fs::Fs.with_file(%127, %128, %130) -> b38(%127)
+  b38(%131 r: word, %132 r: ptr) [handle, try]:
+    %133 ok: ptr = alloc std::result::Result.Ok(%131)
+    try_pop
+    jump b29(%133, %132)
+  b39(%134 e: word) [handle]:
+    %135 err: ptr = alloc std::result::Result.Err(%134)
+    jump b26(%135)
+  b40(%136 r: ptr) [handle, try]:
+    %137 lit: ptr = const str 0
+    call subdir#13(%136, %137) -> b41()
+  b41(%138 r: ptr) [handle, try]:
+    drop %138
+    %139 lit: ptr = const str 21
+    %140 ok: ptr = alloc std::result::Result.Ok(%139)
+    try_pop
+    jump b26(%140)
+  b42(%141 e: word) [handle]:
+    %142 err: ptr = alloc std::result::Result.Err(%141)
+    jump b24(%142)
+  b43(%143 r: ptr) [handle, try]:
+    %144 lit: ptr = const str 22
+    call subdir#13(%143, %144) -> b44()
+  b44(%145 r: ptr) [handle, try]:
+    call rooted#14(%145) -> b45()
+  b45(%146 r: ptr) [handle, try]:
+    handle_push %146
+    %149 lit: ptr = const str 23
+    %150 $site: i64 = const 8
+    call of#7(%149, %150) -> b47()
+  b46(%147 v: ptr) [handle, try]:
+    %148 ok: ptr = alloc std::result::Result.Ok(%147)
+    try_pop
+    jump b24(%148)
+  b47(%151 r: ptr) [handle, try, handle]:
+    perform std::fs::Fs.read_text(%151) -> b48()
+  b48(%152 r: ptr) [handle, try, handle]:
+    %153 lit: unit = const ()
+    %154 box: word = box %153
+    call trust#15(%152, %154) -> b49()
+  b49(%155 r: word) [handle, try, handle]:
+    handle_pop
+    jump b46(%155)
+  b50(%156 e: word) [handle]:
+    %157 err: ptr = alloc std::result::Result.Err(%156)
+    jump b17(%157)
+  b51(%160 r: ptr) [handle, try]:
+    perform std::fs::Fs.list(%160) -> b52()
+  b52(%161 r: ptr) [handle, try]:
+    %162 f: ptr = closure main$1#11[]
+    call map#12(%161, %162) -> b53()
+  b53(%163 r: ptr) [handle, try]:
+    %164 ok: ptr = alloc std::result::Result.Ok(%163)
+    try_pop
+    jump b17(%164)
+  b54(%165 e: word) [handle]:
+    %166 err: ptr = alloc std::result::Result.Err(%165)
+    jump b15(%166)
+  b55(%169 r: ptr) [handle, try]:
+    %170 lit: ptr = const str 25
+    %171 r: ptr = $string_to_bytes(%170)
+    perform std::fs::Fs.write(%169, %171) -> b56()
+  b56(%172 r: unit) [handle, try]:
+    %173 box: word = box %172
+    %174 ok: ptr = alloc std::result::Result.Ok(%173)
+    try_pop
+    jump b15(%174)
+  b57(%175 e: word) [handle]:
+    %176 err: ptr = alloc std::result::Result.Err(%175)
+    jump b13(%176)
+  b58(%179 r: ptr) [handle, try]:
+    %180 lit: ptr = const str 27
+    %181 r: ptr = $string_to_bytes(%180)
+    perform std::fs::Fs.write(%179, %181) -> b59()
+  b59(%182 r: unit) [handle, try]:
+    %183 box: word = box %182
+    %184 ok: ptr = alloc std::result::Result.Ok(%183)
+    try_pop
+    jump b13(%184)
+  b60(%185 e: word) [handle]:
+    %186 err: ptr = alloc std::result::Result.Err(%185)
+    jump b11(%186)
+  b61(%189 r: ptr) [handle, try]:
+    perform std::fs::Fs.read(%189) -> b62()
+  b62(%190 r: ptr) [handle, try]:
+    %191 r: i64 = $bytes_len(%190)
+    %192 box: word = box %191
+    %193 ok: ptr = alloc std::result::Result.Ok(%192)
+    try_pop
+    jump b11(%193)
+  b63(%194 e: word) [handle]:
+    %195 err: ptr = alloc std::result::Result.Err(%194)
+    jump b9(%195)
+  b64(%198 r: ptr) [handle, try]:
+    perform std::fs::Fs.read(%198) -> b65()
+  b65(%199 r: ptr) [handle, try]:
+    %200 r: i64 = $bytes_len(%199)
+    %201 box: word = box %200
+    %202 ok: ptr = alloc std::result::Result.Ok(%201)
+    try_pop
+    jump b9(%202)
+  b66(%203 e: word) [handle]:
+    %204 err: ptr = alloc std::result::Result.Err(%203)
+    jump b7(%204)
+  b67(%207 r: ptr) [handle, try]:
+    perform std::fs::Fs.read(%207) -> b68()
+  b68(%208 r: ptr) [handle, try]:
+    %209 r: i64 = $bytes_len(%208)
+    %210 box: word = box %209
+    %211 ok: ptr = alloc std::result::Result.Ok(%210)
+    try_pop
+    jump b7(%211)
+
+fn $entry#2 top -> unit ; main::host_fs_env, frame 1 slots [%4 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 get: ptr = closure host$Env_get#3[]
+    %2 secret: ptr = closure host$Env_secret#4[]
+    %3 env: ptr = handler std::env::Env row 12 state() clauses(%1, %2)
+    handle_push %3
+    call main#0() -> b1()
+  b1(%4 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %4
+
+fn main$1#11 lambda -> word ; main::host_fs_env, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 e: word):
+    drop %0
+    %2 name: word = proj %1.0 std::fs::Entry
+    %3 is_dir: bool = proj %1.1 std::fs::Entry
+    drop %1
+    %4 tup: ptr = alloc tuple#13(word, bool)(%2, %3)
+    ret %4
+
+fn main$2#16 lambda -> word ; main::host_fs_env, captures [], frame 5 slots [%0 word*, %1 word*, %4 bool, %5 word*, %9 bool]
+  b0(%0 env: ptr, %1 f: word):
+    drop %0
+    %2 lit: ptr = const str 34
+    %3 r: ptr = $string_to_bytes(%2)
+    dup %1
+    perform std::fs::Fs.write_chunk(%1, %3) -> b1(%1)
+  b1(%4 r: unit, %5 f: ptr):
+    %6 box: word = box %4
+    drop %6
+    %7 lit: ptr = const str 35
+    %8 r: ptr = $string_to_bytes(%7)
+    perform std::fs::Fs.write_chunk(%5, %8) -> b2()
+  b2(%9 r: unit):
+    %10 box: word = box %9
+    ret %10
+
+fn main$3#17 lambda -> word ; main::host_fs_env, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
+  b0(%0 env: ptr, %1 f: word):
+    drop %0
+    %2 lit: ptr = const str 36
+    %3 r: ptr = $string_to_bytes(%2)
+    perform std::fs::Fs.write_chunk(%1, %3) -> b1()
+  b1(%4 r: unit):
+    %5 box: word = box %4
+    ret %5
+
+fn main$4#18 lambda -> word ; main::host_fs_env, captures [], frame 6 slots [%0 word*, %1 word*, %3 word*, %4 word*, %6 word*, %7 i64]
+  b0(%0 env: ptr, %1 f: word):
+    drop %0
+    %2 lit: i64 = const 2
+    dup %1
+    perform std::fs::Fs.read_chunk(%1, %2) -> b1(%1)
+  b1(%3 r: ptr, %4 f: ptr):
+    %5 r: i64 = $bytes_len(%3)
+    call read_all#19(%4) -> b2(%5)
+  b2(%6 r: ptr, %7 r: i64):
+    %8 r: i64 = $bytes_len(%6)
+    %9 tup: ptr = alloc tuple#14(i64, i64)(%7, %8)
+    ret %9
+
+fn main$5#20 lambda -> word ; main::host_fs_env, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
+  b0(%0 env: ptr, %1 f: word):
+    drop %0
+    %2 lit: ptr = const str 37
+    %3 r: ptr = $string_to_bytes(%2)
+    perform std::fs::Fs.write_chunk(%1, %3) -> b1()
+  b1(%4 r: unit):
+    %5 box: word = box %4
+    ret %5

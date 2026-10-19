@@ -1,0 +1,12 @@
+read: Ok(5)
+missing: Err(FsError { path: "nope.txt", reason: "not found" })
+directory: Err(FsError { path: "data", reason: "is a directory" })
+write: Ok(())
+no parent: Err(FsError { path: "x/y.txt", reason: "not found" })
+list: Ok([("a.txt", false), ("c.txt", false), ("sub", true)])
+exists: true false
+subdir: Ok("beta")
+file as directory: Err(FsError { path: "data/a.txt", reason: "not a directory" })
+with_file: Ok((2, 3))
+read-only: Err(FsError { path: "log.txt", reason: "opened for reading" })
+env: None

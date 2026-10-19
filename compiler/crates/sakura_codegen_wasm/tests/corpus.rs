@@ -36,6 +36,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.encode` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/host_fs_env",
+        None,
+        "`Fs.list`'s `Entry` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
+    ),
+    (
         "semantics/host_root_handlers",
         Some(Host::Wasi),
         "the root Clock, Random and Console imports are impure, which a WASI command traps (W1 note 8)",

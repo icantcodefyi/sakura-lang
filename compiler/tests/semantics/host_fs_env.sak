@@ -1,0 +1,58 @@
+// milestone: M5
+// covers: WithExpr TryExpr Lambda
+
+// The `hosted` services a native host provides first (plan m5-native N1a, design §17.170 (1)),
+// held to what does not depend on the machine so every backend prints the same: `Fs.memory`
+// (reads, writes, lists, subdirectories, `with_file` in each mode, the host's messages) and
+// `Env` (a variable that is unset everywhere).
+
+import std/fs.{Append, Dir, Fs, Read, Write}
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console, Env} {
+  let files = [
+    (Path.of("data/a.txt"), String.to_bytes("alpha")),
+    (Path.of("data/sub/b.txt"), String.to_bytes("beta")),
+  ]
+  with Fs.memory(files) {
+    let read = try { Bytes.len(Fs.read(Path.of("data/a.txt"))) }
+    Console.print("read: {read}")
+    let missing = try { Bytes.len(Fs.read(Path.of("nope.txt"))) }
+    Console.print("missing: {missing}")
+    let dir = try { Bytes.len(Fs.read(Path.of("data"))) }
+    Console.print("directory: {dir}")
+    let wrote = try { Fs.write(Path.of("data/c.txt"), String.to_bytes("gamma")) }
+    Console.print("write: {wrote}")
+    let orphan = try { Fs.write(Path.of("x/y.txt"), String.to_bytes("")) }
+    Console.print("no parent: {orphan}")
+    let listed = try { List.map(Fs.list(Path.of("data")), fn(e) { (e.name, e.is_dir) }) }
+    Console.print("list: {listed}")
+    Console.print("exists: {Fs.exists(Path.of("data/sub"))} {Fs.exists(Path.of("data/zzz"))}")
+    let inner = try {
+      with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+        Untrusted.trust(Fs.read_text(Path.of("sub/b.txt")), @trust("fixture"))
+      }
+    }
+    Console.print("subdir: {inner}")
+    let file_as_dir = try {
+      let _ = Dir.subdir(Fs.root(), "data/a.txt")
+      "opened"
+    }
+    Console.print("file as directory: {file_as_dir}")
+    let log = Path.of("log.txt")
+    let chunks = try {
+      Fs.with_file(log, Write, fn(f) {
+        Fs.write_chunk(f, String.to_bytes("ab"))
+        Fs.write_chunk(f, String.to_bytes("cd"))
+      })
+      Fs.with_file(log, Append, fn(f) { Fs.write_chunk(f, String.to_bytes("e")) })
+      Fs.with_file(log, Read, fn(f) { (Bytes.len(Fs.read_chunk(f, 2)), Bytes.len(Fs.read_all(f))) })
+    }
+    Console.print("with_file: {chunks}")
+    let read_only = try {
+      Fs.with_file(log, Read, fn(f) { Fs.write_chunk(f, String.to_bytes("x")) })
+    }
+    Console.print("read-only: {read_only}")
+  }
+  Console.print("env: {Env.get("SAKURA_SURELY_UNSET")}")
+}

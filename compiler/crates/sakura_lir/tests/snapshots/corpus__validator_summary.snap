@@ -61,6 +61,7 @@ semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 9 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid
 semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 9 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 4 drop, valid
+semantics/host_fs_env: 48 funcs, 242 blocks, 46 dup, 138 drop, valid
 semantics/host_root_handlers: 15 funcs, 75 blocks, 6 dup, 44 drop, valid
 semantics/if_else: 3 funcs, 20 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 21 blocks, 0 dup, 20 drop, valid
