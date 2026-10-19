@@ -17,7 +17,8 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   breaking set, and any ABI version bump, which includes 7a's WASM step) are held as PR
   branches, rebased daily, each green on its own base (its own `test_bench.py` ABI
   assertion, §17.270 (2)), merged right after the `v0.1.0` tag in the order #5 (4b,
-  1.5.0), #6 (7a-W, 1.6.0, stacked on #5), #4, then 4a (stacked on #6, 1.7.0; §17.270 (3)),
+  1.5.0), #6 (7a-W, 1.6.0, stacked on #5), #4, then 4a (PR #7, stacked on #6, 1.7.0; §17.270 (3),
+  §17.271),
   and on `main` before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
   `v1.0.0-rc.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
   STABILITY inventory rows.
@@ -60,9 +61,10 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 1 | `std/bytes` growth and Base64; `std/encoding` | 0.1.0 (`d0222605`) | Opus | landed |
 | 2 | `std/url` parser, `std/searchparams` | 0.1.0 (`3481039f`) | Opus | landed |
 | 3 | `std/headers`, `std/blob`, `std/form` | 0.1.0 (`d506e2b1`; §17.269) | Opus | landed |
-| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`; the redirect loop moves into `std/http` | 0.2.0; `hold/webapis-4a` stacked on #6, ABI 1.7.0, merged last (§17.270 (3)) | Opus | 3, #6, tag |
+| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 0.2.0; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
+| B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (§17.271 (9)) | Opus | 4a merged |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
-| 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a |
+| 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a, B |
 | 6 | `std/compress` | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
@@ -232,6 +234,31 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   ABI.md §0 and §8.2, `test_bench.py` `0x010700` in one commit), since the host reads a
   `Payload` body and `redirect` on every send; if no §8.2 line changes, the number stays
   1.6.0 and the base still holds. It rebases with the stack and onto `main` after #4 merges.
+- **Built (design §17.271).** PR #7, `1f7f0ea9`, one commit on #6 at ABI 1.7.0; every
+  reading ratified. Before merge, Opus adds `Request.bytes(req, limit) -> Bytes !
+  {Fail<BadRequest>}` and `Request.text(req, limit) -> String ! {Fail<BadRequest>}` (strict
+  UTF-8, `BadRequest("body is not UTF-8")`; `json` reads through `text`), moves
+  `sign_webhook` and `form_upload` onto `Request.bytes`, regenerates `INDEX.md`, the stdlib
+  page and the skill, adds the changelog line, drops the PR's `REQUESTS.md` hunk (the question
+  and its answer are on `main`) and cites §17.271 in `follow`'s doc comment and ABI §0.
+  The eval task `07-health-route` is revision 3 in the same PR (§17.271 (8)).
+
+### Row B: backend coverage refusal (RFC §7)
+
+- **Scope.** A native binary whose `main`'s effect row, after handling, leaves `Http`,
+  `Serve` or `Llm` to the runtime exits 75 at startup, before any user code runs, with one
+  stderr line naming the effect first ("`Http` is not available on target `native`").
+  `D091` stays for any other use. A program that handles the effect inside `main`
+  (`Http.scripted`, every redirect fixture) is not refused. Not a build-time diagnostic and
+  no new diagnostic code (design §17.271 (9)). `WebSocket` joins the set in phase 8.
+- **Files.** The native driver's entry (where `main`'s row is known at compile time, so the
+  check is emitted into the binary's startup), `STABILITY.md`'s native row, the native page.
+- **Tests.** One run-mode fixture under `compiler/tests/semantics` with a native-only
+  expectation through `parity.rs`'s mechanism for declared differences, cited in the
+  fixture header; JS and WASM unchanged. `CHANGELOG.md` `[Unreleased]` → Changed.
+- **Who.** Opus, right after 4a merges and before phase 5.
+- **Acceptance.** The fixture exits 75 with the message on native and runs on JS and WASM;
+  gates green.
 
 ### Phase 4b: effect additions and small functions
 

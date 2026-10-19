@@ -27,8 +27,8 @@ the reason recorded. The implementation order is
 - Implementation status: Phase 0 (`7dd9dd47`), phase 1 (`d0222605`), phase 2
   (`3481039f`), phase 3 (`d506e2b1`), row R (`3a027001`) and phase 7a on JS and native
   (`3eab0003`) are on `main` and ship in `v0.1.0`; 4b (PR #5, ABI 1.5.0), 7a's WASM step
-  (PR #6, ABI 1.6.0, stacked on #5) and 4a (stacked on #6, ABI 1.7.0) are held for the tag
-  (design §17.263, §17.266, §17.267, §17.270). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  (PR #6, ABI 1.6.0, stacked on #5) and 4a (PR #7, `1f7f0ea9`, stacked on #6, ABI 1.7.0, ratified in design §17.271) are held
+  for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -380,26 +380,55 @@ capability, the Sakura form that covers the need, and the reason.
 
 #### 2.4 HTTP in 0.2.0 (`std/request`, `std/response`, `std/http`)
 
+Built as phase 4a (PR #7, `1f7f0ea9`, ABI 1.7.0, held for the tag); the readings below are
+design §17.271.
+
 - `type Payload = Empty | Text(String) | Bytes(Bytes)`. `Request.body` and `Response.body`
-  become `Payload`. `Request.of`, `post`, `post_json`, `Response.status`, `ok_json`,
-  `html` keep their signatures and produce `Text`/`Empty`. `Response.bytes(r, limit) ->
-  Bytes ! {Fail<HttpError>}` joins `text` and `json`. `Request.with_payload`,
-  `with_header`, `with_headers(h: Headers)` are the builders.
+  are `Payload`. `Request.of`, `post`, `post_json`, `Response.status`, `ok_json`, `html`
+  keep their signatures and produce `Text`/`Empty`. A body that arrives from a host
+  (`Http.host()`, `Serve.host()`, cassette replay) is always `Bytes`, `Empty` when there are
+  none, never `Text`: the variant is decided by where the body comes from, not by whether
+  its bytes happen to be UTF-8. Readers: `Response.bytes(r, limit) -> Bytes !
+  {Fail<HttpError>}` joins `text` and `json`, which substitute U+FFFD as Fetch's `text()`
+  does; `Request.bytes(req, limit) -> Bytes ! {Fail<BadRequest>}` and `Request.text(req,
+  limit) -> String ! {Fail<BadRequest>}` join `Request.json`, and `text` and `json` are
+  strict (`BadRequest("body is not UTF-8")`): a server answers a client's bad bytes with a
+  400 rather than reading a different document. Builders: `Request.with_payload(req,
+  body)`; `with_header(req, name, value)` sets (earlier pairs of that name, any case, are
+  removed) and does not validate, since the example above chains it without `try`;
+  `with_headers(req, h: Headers)` replaces the list with `h`'s pairs. The host refuses an
+  invalid pair at send with `HttpError`.
 - `Method` gains `Options` and `Trace`. `Connect` is a proxy verb and is not added.
-- `Request.redirect: Redirect = Follow | Manual | Error` (default `Follow` from the
-  builders). Under `Follow`, `std/http` follows at most 20 hops in one Sakura loop shared
-  by `Http.host()` and `Http.scoped()`: every send reaches the host with `redirect: "manual"`,
-  each hop is its own send, so **every hop's `host:port` is checked against `net` before it is
-  fetched** and against `scoped`'s list when there is one, and a refused hop fails
-  `HttpError` with the same message as a refused first request; `authorization` and every
-  `secret_headers` entry are dropped when the hop changes origin, as Fetch does.
-  `Manual` returns the 3xx response. `Error` fails `HttpError(status: Some(3xx), …)`. Today
-  the JS host calls `fetch` with its default `redirect: "follow"` after checking only the
-  initial URL (`sakura_runtime.js` `fetchArgs`), so a granted host can redirect the program
-  to an ungranted one. That is a security fix independent of the field: it lands first,
-  as plan phase 0, in whichever version is next.
+- `Request.redirect: Redirect = Follow | Manual | Error` (default `Follow` from every
+  builder). Redirects are followed by the `Http` handler that receives the program's
+  request, never by the host: one Sakura loop in `std/http` serves `Http.host()`,
+  `scoped()`, `scripted()` and `recording()`. Every hop is a separate request to the next
+  handler with `redirect: Manual`, so a stacked handler sees one hop at a time: **every hop's
+  `host:port` is checked against `net` before it is fetched** and against `scoped`'s list
+  when there is one, `recording` writes one exchange per hop, and a refused hop fails
+  `HttpError` with the same message as a refused first request. `Http.scripted` follows a
+  scripted 3xx with a `location`, so the redirect cases are semantics fixtures on every
+  backend. The rules are Fetch's HTTP-redirect fetch: the statuses are 301, 302, 303, 307
+  and 308; `Error` fails `HttpError(status: Some(3xx), "unexpected redirect")` on any of
+  them, with or without a `location`; `Manual` returns the 3xx; under `Follow` a 3xx with no
+  `location` is returned as it is; at most 20 hops, the 21st redirect failing `too many
+  redirects` with no request sent; `location` resolves with `Url.resolve` against the hop's
+  URL, and one that does not parse or resolve fails `invalid redirect location <location>`,
+  one that is not `http`/`https` fails `redirect to <scheme>: refused`; a hop whose origin
+  (scheme, host or port) differs drops every `secret_headers` entry and any ordinary header
+  named `authorization` or named like a `secret_headers` entry, for the rest of the chain
+  (`cookie` and `proxy-authorization` are not in the set: std sends neither, and an author
+  who sends one as a credential puts it in `secret_headers`); a 303 (not after `HEAD`) and
+  a 301/302 after `POST` become a body-less `GET` without `content-type`, `content-encoding`,
+  `content-language` and `content-location`. `Http.stream` closes a 3xx body before the
+  next hop opens. Before phase 4a the JS host followed with its own loop (`7dd9dd47`, plan
+  phase 0), which checked `net` per hop but could not see `scoped`'s list; that loop is
+  deleted.
+- Cassettes (`Http.recording`) store a body that is not UTF-8 as `body_base64` or
+  `response_body_base64` and match a request on its body's bytes, so `Text` and `Bytes` of
+  one body are one exchange.
 - `Http.body_source(body: Body, chunk: Int) -> Source<Bytes, {Http, Fail<HttpError>}>`
-  adapts a streamed body. Nothing else in `std/http` changes.
+  adapts a streamed body (phase 5). Nothing else in `std/http` changes.
 
 #### 2.5 Streams (`std/stream`)
 
@@ -587,7 +616,11 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 A backend that lacks the host service of a std effect `main` declares refuses the program at
 startup, exit 75, with a message naming the effect and the target ("`WebSocket` is not
 available on target `native`"). This replaces the current native behaviour of answering
-`D091` at first use for `Http`, `Serve` and `Llm`, and applies to them too. Pure modules
+`D091` at first use for `Http`, `Serve` and `Llm`, and applies to them too. "Declares" is
+`main`'s effect row after handling: a program that handles `Http` inside `main` (`Http.scripted`)
+is not refused. It is a startup check, not a build-time diagnostic, since a binary is built
+once and may run where the service exists later. Built as plan row B right after phase 4a
+merges (design §17.271 (9)); `WebSocket` joins the set in phase 8. Pure modules
 run everywhere by construction: std is Sakura source, and their externals live in the JS
 runtime and in `runtime/rt`, which WASM and native share. `hosted` WASM imports (crypto,
 ABI 1.6.0 in 0.2.0, design §17.266 (1)) are a stated interim: a non-JS WASM embedder gets
@@ -646,7 +679,7 @@ MINOR revision per phase that adds imports.
   module breaks no promise. Phases 4a and 4b and any ABI version bump are held as PR
   branches, rebased daily, and merged right after the tag in this order: PR #5 (4b, ABI
   1.5.0), PR #6 (7a's WASM step, ABI 1.6.0, stacked on #5), PR #4, then 4a (stacked on #6,
-  ABI 1.7.0; design §17.266 (1), §17.270 (3)). Each held PR is green on its own base, so each
+  ABI 1.7.0, PR #7 `1f7f0ea9`; design §17.266 (1), §17.270 (3), §17.271). Each held PR is green on its own base, so each
   ABI bump carries `test_bench.py`'s assertion (§17.270 (2)). A runtime fix that brings a
   backend to its own written rule, changes no contract text and carries a fixture or runtime
   test on every backend lands on `main` before the tag as its own commit (`ff66cded`, design
@@ -657,7 +690,7 @@ MINOR revision per phase that adds imports.
   changes an existing record, variant or effect lands there: `Payload` bodies, `Method`
   variants, `Request.redirect`, `Clock.monotonic_micros`, `Task.cancel`/`cancelled`.
   Migration: `body: "s"` becomes `body: Text("s")` and `r.body` reads become a `match` or
-  `Response.text`; a user `match` on `Method` gains two arms; a user `handler Clock`/`Task`
+  `Response.text`/`json`/`bytes` and `Request.text`/`json`/`bytes`; a user `match` on `Method` gains two arms; a user `handler Clock`/`Task`
   gains the new operations. Astra's migration list for the dogfood corpus (§17.255 (3))
   carries these; Opus applies them.
 - **After `v0.2.0`, before the rc:** only additive modules (`std/stream`, `std/compress`,
