@@ -26,7 +26,7 @@ pub(crate) fn audit(json: bool, paths: &[PathBuf]) -> ExitCode {
         }
         println!(
             "{}",
-            json!({"schema_version": "1.0", "kind": "summary", "snapshot": snapshot.hash(),
+            json!({"schema_version": "1.0", "kind": "audit_summary", "snapshot": snapshot.hash(),
                 "sites": sites.len(), "by_site": by_site})
         );
     } else {

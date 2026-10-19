@@ -4,7 +4,10 @@
 # without listed children is open (its keys or elements are not part of the contract). Types:
 # string, integer, number, boolean, null, object, array, joined with `|`. Text fields (`message`,
 # `title`, `render`) are `string` only: their wording is not part of the contract.
+# `baseline 0.2.0`: the history of this file is append-only from the release named here (design
+# §17.257 (1)); the one reset it records is spent.
 
+baseline 0.2.0
 audit 1.0 schema_version string required
 audit 1.0 kind string required
 audit 1.0 site string required
@@ -17,6 +20,21 @@ audit 1.0 span.start_byte integer required
 audit 1.0 span.end_byte integer required
 audit 1.0 span.role string required
 audit 1.0 sink string optional
+audit_summary 1.0 schema_version string required
+audit_summary 1.0 kind string required
+audit_summary 1.0 snapshot string required
+audit_summary 1.0 sites integer required
+audit_summary 1.0 by_site object required
+defect 1.0 schema_version string required
+defect 1.0 kind string required
+defect 1.0 code string required
+defect 1.0 message string required
+defect 1.0 spans array optional
+defect 1.0 spans[] object required
+defect 1.0 spans[].uri string required
+defect 1.0 spans[].start_byte integer required
+defect 1.0 spans[].end_byte integer required
+defect 1.0 spans[].role string required
 diagnostic 1.0 schema_version string required
 diagnostic 1.0 kind string required
 diagnostic 1.0 id string required
@@ -251,36 +269,22 @@ obligation 1.1 warnings array required
 obligation 1.1 warnings[] string required
 obligation 1.1 manifest_id string|null required
 obligation 1.1 snapshot string required
+regression 1.0 schema_version string required
+regression 1.0 kind string required
+regression 1.0 function string required
+regression 1.0 seed integer required
+regression 1.0 inputs object required
+regression 1.0 failure string required
 summary 1.0 schema_version string required
 summary 1.0 kind string required
-summary 1.0 snapshot string optional
-summary 1.0 errors integer optional
-summary 1.0 warnings integer optional
-summary 1.0 notes integer optional
-summary 1.0 total integer optional
-summary 1.0 emitted integer optional
-summary 1.0 truncated boolean optional
-summary 1.0 holes integer optional
-summary 1.0 passed integer optional
-summary 1.0 failed integer optional
-summary 1.0 skipped integer optional
-summary 1.0 seed integer optional
-summary 1.0 sites integer optional
-summary 1.0 by_site object optional
-summary 1.1 schema_version string required
-summary 1.1 kind string required
-summary 1.1 snapshot string required
-summary 1.1 errors integer required
-summary 1.1 warnings integer required
-summary 1.1 notes integer required
-summary 1.1 total integer required
-summary 1.1 emitted integer required
-summary 1.1 truncated boolean required
-summary 1.1 proved integer required
-summary 1.1 disproved integer required
-summary 1.1 unknown integer required
-summary 1.1 unsupported integer required
-summary 1.1 reused integer required
+summary 1.0 snapshot string required
+summary 1.0 errors integer required
+summary 1.0 warnings integer required
+summary 1.0 notes integer required
+summary 1.0 total integer required
+summary 1.0 emitted integer required
+summary 1.0 truncated boolean required
+summary 1.0 holes integer required
 symbol_query 1.0 schema_version string required
 symbol_query 1.0 kind string required
 symbol_query 1.0 snapshot string required
@@ -320,3 +324,24 @@ test 1.0 output[] string required
 test 1.0 defect object|null required
 test 1.0 defect.code string required
 test 1.0 defect.message string required
+test_summary 1.0 schema_version string required
+test_summary 1.0 kind string required
+test_summary 1.0 passed integer required
+test_summary 1.0 failed integer required
+test_summary 1.0 skipped integer required
+test_summary 1.0 total integer required
+test_summary 1.0 seed integer required
+verify_summary 1.0 schema_version string required
+verify_summary 1.0 kind string required
+verify_summary 1.0 snapshot string required
+verify_summary 1.0 errors integer required
+verify_summary 1.0 warnings integer required
+verify_summary 1.0 notes integer required
+verify_summary 1.0 total integer required
+verify_summary 1.0 emitted integer required
+verify_summary 1.0 truncated boolean required
+verify_summary 1.0 proved integer required
+verify_summary 1.0 disproved integer required
+verify_summary 1.0 unknown integer required
+verify_summary 1.0 unsupported integer required
+verify_summary 1.0 reused integer required

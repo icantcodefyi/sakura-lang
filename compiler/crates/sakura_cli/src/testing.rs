@@ -213,7 +213,7 @@ pub fn mcp_run_tests(
             let mut records =
                 sakura_diagnostics::diagnostic_records(&diags, snapshot.files(), snapshot.hash());
             records.push(serde_json::Value::Object(
-                sakura_diagnostics::summary_record(&diags, snapshot.hash()),
+                sakura_diagnostics::summary_record(&diags, 0, snapshot.hash()),
             ));
             return Ok(sakura_mcp::TestRun {
                 records,
@@ -264,9 +264,11 @@ pub fn contract_outcomes(
         let r: serde_json::Value = serde_json::from_str(line).unwrap_or_default();
         let s = |k: &str| r[k].as_str().unwrap_or("");
         if r["kind"] == "regression" {
-            let path = regressions.join(format!("{}.json", s("name")));
+            // The file holds the runner's record itself (`regression` 1.0, design §17.242 (5b)).
+            let path = regressions.join(format!("{}.json", s("function")));
+            let text = serde_json::to_string_pretty(&r).expect("a JSON value") + "\n";
             std::fs::create_dir_all(regressions)
-                .and_then(|()| std::fs::write(&path, s("text")))
+                .and_then(|()| std::fs::write(&path, text))
                 .map_err(|e| format!("{}: {e}", path.display()))?;
             continue;
         }
@@ -321,10 +323,10 @@ pub fn only_std(snapshot: &Snapshot) -> bool {
     snapshot.user_files().next().is_none()
 }
 
-/// The summary record of a run without tests.
+/// The `test_summary` record of a run without tests.
 pub fn no_tests_summary(seed: u64) -> String {
     format!(
-        r#"{{"schema_version":"1.0","kind":"summary","passed":0,"failed":0,"skipped":0,"total":0,"seed":{seed}}}"#
+        r#"{{"schema_version":"1.0","kind":"test_summary","passed":0,"failed":0,"skipped":0,"total":0,"seed":{seed}}}"#
     )
 }
 

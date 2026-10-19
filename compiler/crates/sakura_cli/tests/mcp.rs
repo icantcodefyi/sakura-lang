@@ -145,9 +145,27 @@ fn check_patch_apply_and_test_over_stdio() {
     );
     assert!(found.to_string().contains("main::double"), "{found}");
 
+    // Design §17.242 (5c): the tool's result is the `symbol_query` record `sakura doc --json`
+    // prints, `kind` and `schema_version` included.
+    let (by_id, err) = s.call("symbol_query", json!({"id": "main::double"}));
+    assert!(!err, "{by_id}");
+    let doc = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .args(["doc", "--json", "main::double"])
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    let doc: Value = serde_json::from_slice(&doc.stdout).unwrap();
+    assert_eq!(by_id, doc);
+    assert_eq!(
+        (by_id["kind"].as_str(), by_id["schema_version"].as_str()),
+        (Some("symbol_query"), Some("1.0")),
+        "{by_id}"
+    );
+
     let (tests, err) = s.call("test", json!({}));
     assert!(!err, "{tests}");
     assert_eq!(tests["tests"][0]["status"], "passed", "{tests}");
+    assert_eq!(tests["summary"]["kind"], "test_summary", "{tests}");
 
     let _ = std::fs::remove_dir_all(&dir);
 }

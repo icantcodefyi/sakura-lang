@@ -97,7 +97,7 @@ fn example_tests_pass_on_wasm() {
         let summary = json_lines(&out.stdout)
             .unwrap_or_default()
             .into_iter()
-            .find(|r| r["kind"] == "summary");
+            .find(|r| r["kind"] == "test_summary");
         let ok = out.code == Some(0)
             && summary.is_some_and(|s| s["failed"] == 0 && s["passed"].as_u64() > Some(0));
         if !ok {

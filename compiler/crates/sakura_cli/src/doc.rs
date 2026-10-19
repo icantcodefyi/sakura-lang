@@ -3,7 +3,7 @@
 use std::process::ExitCode;
 
 use sakura_analysis::{Analysis, Analyzed, SymbolQuery};
-use serde_json::{Value, json};
+use serde_json::Value;
 
 pub(crate) fn doc(json: bool, search: Option<&str>, symbol: Option<&str>) -> ExitCode {
     let snapshot = match crate::load(&[]) {
@@ -39,22 +39,14 @@ pub(crate) fn doc(json: bool, search: Option<&str>, symbol: Option<&str>) -> Exi
 
 fn query(a: &Analyzed, search: Option<&str>, symbol: Option<&str>) -> Value {
     let by_id = symbol.is_some_and(|s| s.contains("::"));
-    let hits = a.search(&SymbolQuery {
+    let q = SymbolQuery {
         id: symbol.filter(|_| by_id).map(str::to_owned),
         name: symbol.filter(|_| !by_id).map(str::to_owned),
         type_pattern: search.map(str::to_owned),
         include_std: true,
         ..Default::default()
-    });
-    let symbols: Vec<_> = hits
-        .iter()
-        .map(|s| {
-            let mut value = json!(s);
-            value["type"] = json!(a.symbol_type(s));
-            value
-        })
-        .collect();
-    json!({"schema_version": "1.0", "kind": "symbol_query", "snapshot": a.snapshot.hash(), "total": symbols.len(), "symbols": symbols, "truncated": false})
+    };
+    a.symbol_query_record(&q, usize::MAX)
 }
 
 #[cfg(test)]

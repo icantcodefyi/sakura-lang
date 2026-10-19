@@ -1572,7 +1572,7 @@ function snapshot(runner, module, name, rendered) {
 /**
  * `sakura test --target wasm`: every test of the module (or those whose name contains
  * `filter`) as a task under the runner's `Test` handler, reported with `test_runner.js`'s JSON
- * records (one `test` per test, then a `summary`). Returns the exit code: 3 if any failed.
+ * records (one `test` per test, then a `test_summary`). Returns the exit code: 3 if any failed.
  * A test a trap or host fault ends is a `defect`, and the rest run on a fresh instance.
  */
 export async function runTests(bytes, seed, filter, snapshotDir, update, host = new Host()) {
@@ -1585,7 +1585,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
     fixtures: snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures"),
   };
   // Contract regressions (design §7.4) as `test_runner.js` keeps them: stored inputs are read,
-  // a new shrunk failure goes to the CLI as a `regression` record.
+  // a new shrunk failure goes to the CLI as its `regression` record.
   const fs = proc.getBuiltinModule("node:fs");
   const regressions = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "regressions");
   rt.regressions.load = (name) => {
@@ -1595,7 +1595,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
       return null;
     }
   };
-  rt.regressions.save = (name, text) => emit({ kind: "regression", name, text });
+  rt.regressions.save = (_name, text) => emit(JSON.parse(text));
   await loadTypes();
   try {
     await host.instantiate(bytes);
@@ -1656,7 +1656,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
     });
   }
   host.close();
-  emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
+  emit({ kind: "test_summary", passed, failed, skipped, total: tests.length, seed });
   return failed > 0 ? 3 : 0;
 }
 

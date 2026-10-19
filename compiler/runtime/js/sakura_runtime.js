@@ -2167,7 +2167,7 @@ export function* propertySteps(seed, schemas, names, regression) {
   const save = (vs, why) => {
     if (regression === "") return;
     const inputs = Object.fromEntries(vs.map((v, i) => [names[i], toJs(v, schemas[i])]));
-    const record = { schema_version: "1.0", function: regression, seed, inputs, failure: why };
+    const record = { schema_version: "1.0", kind: "regression", function: regression, seed, inputs, failure: why };
     regressions.save(regression, `${JSON.stringify(record, null, 2)}\n`);
   };
   let discards = 0;

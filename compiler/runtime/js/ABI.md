@@ -592,8 +592,9 @@ attempts) and reported once: `property falsified by x = 50: expected true, got f
 `regression` (the function name of a property synthesized by `sakura test --contracts`, design
 §7.4) is read through `$rt.regressions.load(name)` and its stored inputs (JSON by parameter name,
 decoded by the schemas; ignored when they no longer decode) run before the generated cases; a
-shrunk failure is passed to `$rt.regressions.save(name, text)` as `{schema_version, function,
-seed, inputs, failure}`. The `sakura test` runner backs these with `tests/regressions/<fn>.json`.
+shrunk failure is passed to `$rt.regressions.save(name, text)` as the `regression` record
+`{schema_version, kind, function, seed, inputs, failure}`. The `sakura test` runner backs these
+with `tests/regressions/<fn>.json`, which holds that record.
 
 ## 9. Core deviations from design §13.2
 

@@ -736,8 +736,7 @@ fn report(
             out.push('\n');
         }
         if summary {
-            let mut record = summary_record(diags, snapshot.hash());
-            record.insert("holes".into(), holes.len().into());
+            let record = summary_record(diags, holes.len(), snapshot.hash());
             out.push_str(&serde_json::Value::Object(record).to_string());
             out.push('\n');
         }
@@ -1043,10 +1042,10 @@ fn test(
         Err(e) => return usage_error(e),
     };
     if json {
-        // `W7001` records go before the runner's closing `summary` record.
+        // `W7001` records go before the runner's closing `test_summary` record.
         let records = diagnostic_records(&warnings, snapshot.files(), snapshot.hash());
         for line in stdout.lines() {
-            if line.contains(r#""kind":"summary""#) {
+            if line.contains(r#""kind":"test_summary""#) {
                 for r in &records {
                     println!("{r}");
                 }
@@ -1125,7 +1124,7 @@ fn print_test_results(jsonl: &str, skips: &[String]) {
                     }
                 }
             }
-            Some("summary") => {
+            Some("test_summary") => {
                 for s in skips {
                     println!("{s}");
                 }

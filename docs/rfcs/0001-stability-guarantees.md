@@ -376,7 +376,8 @@ text above is unchanged and the owner still accepts at `v0.2.0`:
   per kind); the gate is a checked-in field baseline `compiler/contracts/json.txt`, a
   `sakura_cli` test that derives each record's fields from real output, and an append-only
   history check in the `check_history.py` shape. A MAJOR bump is refused inside a compiler
-  major.
+  major. The baseline's history is append-only from the commit that writes its
+  `baseline 0.2.0` line, before the tag (design §17.257 (1)).
 - Cross-version ABI fixtures are one committed module per shipped ABI version under
   `compiler/runtime/rt/tests/fixtures/abi/`, loaded by the host tests; the refusal case is a
   fixture with its version global rewritten.
