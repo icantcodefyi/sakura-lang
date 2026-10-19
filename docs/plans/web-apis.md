@@ -13,11 +13,12 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - The RFC's inventory table (§1) and shapes (§2) are the scope; a phase does not add a
   signature the RFC does not name without a `design-question` in `compiler/REQUESTS.md`.
 - Versions (design §17.263, §17.266): an additive phase ships in whichever release is
-  next; phases 0, 1, 2, R and 7a (JS and native) are in `v0.1.0`, and 3 lands on `main`
-  before the tag if its gates are green first. Phases 4a and 4b (the breaking set, and any
-  ABI version bump, which includes 7a's WASM step) are held as PR branches, rebased daily,
-  merged right after the `v0.1.0` tag in the order #5 (4b, 1.5.0), 7a-W (1.6.0, stacked
-  on #5), #4, then 4a, and on `main` before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
+  next; phases 0, 1, 2, 3, R and 7a (JS and native) are in `v0.1.0`. Phases 4a and 4b (the
+  breaking set, and any ABI version bump, which includes 7a's WASM step) are held as PR
+  branches, rebased daily, each green on its own base (its own `test_bench.py` ABI
+  assertion, §17.270 (2)), merged right after the `v0.1.0` tag in the order #5 (4b,
+  1.5.0), #6 (7a-W, 1.6.0, stacked on #5), #4, then 4a (stacked on #6, 1.7.0; §17.270 (3)),
+  and on `main` before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
   `v1.0.0-rc.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
   STABILITY inventory rows.
 - Gates per phase, from `compiler/`: `cargo fmt --all -- --check`, `cargo clippy
@@ -58,13 +59,13 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 0 | Redirect authority fix | 0.1.0 (`7dd9dd47`) | Opus | landed |
 | 1 | `std/bytes` growth and Base64; `std/encoding` | 0.1.0 (`d0222605`) | Opus | landed |
 | 2 | `std/url` parser, `std/searchparams` | 0.1.0 (`3481039f`) | Opus | landed |
-| 3 | `std/headers`, `std/blob`, `std/form` | next release | Opus | 2 |
-| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`; the redirect loop moves into `std/http` | 0.2.0; PR branch until the `v0.1.0` tag | Opus | 3, tag |
+| 3 | `std/headers`, `std/blob`, `std/form` | 0.1.0 (`d506e2b1`; §17.269) | Opus | landed |
+| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`; the redirect loop moves into `std/http` | 0.2.0; `hold/webapis-4a` stacked on #6, ABI 1.7.0, merged last (§17.270 (3)) | Opus | 3, #6, tag |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
 | 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a |
 | 6 | `std/compress` | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
-| 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR branch stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)) | Opus | 7a, #5, tag |
+| 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc | Opus | 7a |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
 | 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
@@ -181,6 +182,12 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Who.** Opus.
 - **Acceptance.** Fixtures green on three backends; `Form.parse_multipart` on a 1 MiB
   body with the limits set runs within the std test's default budget.
+- **As built (`753d00fd`, `d506e2b1`, design §17.269).** Every reading endorsed and now
+  RFC §2.3 text: `HeaderReason`, `FormLimit`, `FormReason`, `is_boundary` with
+  `encode_multipart`'s `requires`, `Form` as a transparent record, `get(h, "set-cookie")`
+  is `None`, Fetch's byte-sequence value rule, no credential names refused, `Blob.text`
+  strict and `parse_multipart` substituting, `----SakuraFormBoundary` + 96 bits.
+  `Blob.source` waits for phase 5; a binary file in an HTTP body waits for 4a.
 
 ### Phase 4a: HTTP 0.2.0 shape
 
@@ -220,6 +227,11 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Acceptance.** Corpus and parity green; `sakura test --record` round-trips a binary
   body; the changelog names the migration and the moved redirect loop; no `.wasm.stdout`
   added; the owner reviews the PR as security reviewer, since it relocates phase 0.
+- **Branch (design §17.270 (3)).** `hold/webapis-4a`, started from `hold/webapis-7a-wasm`
+  (PR #6) and opened as a PR against it; ABI 1.7.0 (`abi.rs`, the host's `ABI_VERSION`,
+  ABI.md §0 and §8.2, `test_bench.py` `0x010700` in one commit), since the host reads a
+  `Payload` body and `redirect` on every send; if no §8.2 line changes, the number stays
+  1.6.0 and the base still holds. It rebases with the stack and onto `main` after #4 merges.
 
 ### Phase 4b: effect additions and small functions
 

@@ -25,10 +25,10 @@ the reason recorded. The implementation order is
   owner's message and design §17.262 (round 34).
 - Decision status: Draft.
 - Implementation status: Phase 0 (`7dd9dd47`), phase 1 (`d0222605`), phase 2
-  (`3481039f`), row R (`3a027001`) and phase 7a on JS and native (`3eab0003`) are on
-  `main` and ship in `v0.1.0`; phase 3 may follow before the tag; 4b (PR #5, ABI 1.5.0),
-  7a's WASM step (ABI 1.6.0, stacked on #5) and 4a are held for it (design §17.263,
-  §17.266, §17.267). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  (`3481039f`), phase 3 (`d506e2b1`), row R (`3a027001`) and phase 7a on JS and native
+  (`3eab0003`) are on `main` and ship in `v0.1.0`; 4b (PR #5, ABI 1.5.0), 7a's WASM step
+  (PR #6, ABI 1.6.0, stacked on #5) and 4a (stacked on #6, ABI 1.7.0) are held for the tag
+  (design §17.263, §17.266, §17.267, §17.270). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -342,24 +342,41 @@ capability, the Sakura form that covers the need, and the reason.
 #### 2.3 Headers, Blob, FileData, Form (`std/headers`, `std/blob`, `std/form`)
 
 - `Headers` is a validated, immutable, ordered multimap. `Headers.of(list) ->
-  Result<Headers, HeaderError>` validates names (token) and values (no CR/LF, trimmed) per
-  Fetch; `get(h, name)` joins repeats with `", "` as Fetch does, except `set-cookie`, which
-  only `get_set_cookie(h) -> List<String>` returns; `get_all`, `has`, `append`, `set`,
-  `remove`, `entries` (lowercase names, sorted, combined), `to_list`. Secret headers stay in
-  `Request.secret_headers`; `Headers` never holds a `Secret`. Forbidden-header rules are
-  browser policy and do not apply.
+  Result<Headers, HeaderError>` validates names (token) and values per Fetch: a value is
+  trimmed, then refused for NUL, CR, LF or any character above U+00FF (Fetch's byte
+  sequence, what Node's `fetch` refuses). `HeaderError(name, reason)` with `HeaderReason =
+  InvalidName | InvalidValue` never repeats the value, which may be a credential.
+  `get(h, name)` joins repeats with `", "` as Fetch does, except `set-cookie`, for which
+  `get` is `None` and only `get_set_cookie(h) -> List<String>` returns the values (Fetch's
+  join is lossy there, since `Expires` holds a comma; design §17.269 (2)); `get_all`, `has`,
+  `append`, `set`, `remove`, `entries` (lowercase names, sorted, combined), `to_list`; a
+  lookup or `remove` with a non-token name matches nothing. Secret headers stay in
+  `Request.secret_headers`; `Headers` never holds a `Secret` and refuses no name, since
+  `Serve` delivers an incoming `authorization` as an ordinary header. Forbidden-header rules
+  are browser policy and do not apply.
 - `Blob { bytes: Bytes, media_type: String }` with `Blob.of(bytes, media_type)`, `size`,
-  `slice(b, start, end, media_type)`, `text(b) -> Result<String, Utf8Error>` (UTF-8 only,
-  as the File API says), `source(b, chunk)` for streams. `FileData { blob: Blob, name:
+  `slice(b, start, end, media_type)`, `text(b) -> Result<String, Utf8Error>` (strict UTF-8
+  with the offset, a leading BOM dropped; the File API substitutes U+FFFD, and a decode the
+  caller asks for reports instead, design §17.269 (4)), `source(b, chunk)` for streams. `FileData { blob: Blob, name:
   String, last_modified: Instant }` is the `File` interface; it is a value and names no file
   on disk. Reading a disk file into it is `Fs` work under the grant.
-- `Form` is an ordered list of `(String, Part)`, `Part = Text(String) | File(FileData)`.
+- `Form { entries: List<(String, Part)> }` is a transparent record, `Part = Text(String) |
+  File(FileData)`; list functions serve, there is no `get`/`append`/`set`.
   `Form.encode_urlencoded(f) -> String`; `Form.encode_multipart(f, boundary) -> Bytes`
-  with an explicit boundary for deterministic output and `Form.boundary() -> String !
-  {Random}` for a fresh one; `Form.parse_urlencoded(text) -> Form`;
+  with an explicit boundary for deterministic output, `requires is_boundary(boundary)`
+  (`pub`, `@total`, RFC 2046's rule; a bad boundary is `D020`, like `Encoding.encode`'s
+  `encodable`), and `Form.boundary() -> String ! {Random}` for a fresh one,
+  `----SakuraFormBoundary` followed by 16 Base64url characters (96 bits); the parts are not
+  scanned for the boundary. Encoding follows HTML's algorithms (CRLF normalization, `"`, CR
+  and LF escaped in names and file names). `Form.parse_urlencoded(text) -> Form`;
   `Form.parse_multipart(bytes, content_type, limits) -> Result<Form, FormError>` with
-  `FormLimits { max_parts, max_bytes, max_field_bytes }` required. A part's filename is
-  data; nothing is read from disk.
+  `FormLimits { max_parts, max_bytes, max_field_bytes }` required and `FormReason =
+  Limit(FormLimit) | ContentType | Malformed(offset)`, `FormLimit = MaxParts | MaxBytes |
+  MaxFieldBytes`: `max_bytes` is checked against the input before anything is read; a text
+  part is decoded with U+FFFD as Fetch's `formData()` does (the form is the unit, design
+  §17.269 (4)); a part with `filename` is a `File` with media type `text/plain` when absent
+  and `last_modified` the epoch (a pure function has no clock); `filename*` is not read
+  (RFC 7578 §4.2). A part's filename is data; nothing is read from disk.
 
 #### 2.4 HTTP in 0.2.0 (`std/request`, `std/response`, `std/http`)
 
@@ -550,7 +567,7 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 | Surface | Limit | Failure |
 |---|---|---|
 | Base64, encoding, URL, headers, form parsing | input is an in-memory `Bytes`/`String`; heap-bound | `D096` as today |
-| `Form.parse_multipart` | `FormLimits` required | `FormError(Limit)` |
+| `Form.parse_multipart` | `FormLimits` required | `FormError(Limit(MaxParts \| MaxBytes \| MaxFieldBytes))` |
 | `Compress.decompress*` | `max_out` required | `CompressionError(OutputLimit)` |
 | `Stream.buffer`, `tee` | `Limit`/`max_lag` required | producer waits (backpressure) |
 | `Http` bodies | unchanged: `SAKURA_MAX_COPY_BYTES`, 16 MiB cassettes | unchanged |
@@ -624,14 +641,17 @@ MINOR revision per phase that adds imports.
 
 - **Before the `v0.1.0` tag** (design §17.263): additive phases land on `main` as their
   gates go green and ship in whatever release is next (phase 0 `7dd9dd47`, phase 1
-  `d0222605`, phase 2 `3481039f`, row R `3a027001` and phase 7a on JS and native
-  `3eab0003` are in `v0.1.0`); 0.1.0 precedes RFC 0001's compatibility start, so an added
+  `d0222605`, phase 2 `3481039f`, phase 3 `d506e2b1`, row R `3a027001` and phase 7a on
+  JS and native `3eab0003` are in `v0.1.0`); 0.1.0 precedes RFC 0001's compatibility start, so an added
   module breaks no promise. Phases 4a and 4b and any ABI version bump are held as PR
   branches, rebased daily, and merged right after the tag in this order: PR #5 (4b, ABI
-  1.5.0), 7a's WASM step (ABI 1.6.0, stacked on #5), PR #4, then 4a once phase 3 is on
-  `main` (design §17.266 (1)). A runtime fix that brings a backend to its own written rule,
-  changes no contract text and carries a fixture on every backend lands on `main` before the
-  tag as its own commit (`ff66cded`, design §17.267 (2)).
+  1.5.0), PR #6 (7a's WASM step, ABI 1.6.0, stacked on #5), PR #4, then 4a (stacked on #6,
+  ABI 1.7.0; design §17.266 (1), §17.270 (3)). Each held PR is green on its own base, so each
+  ABI bump carries `test_bench.py`'s assertion (§17.270 (2)). A runtime fix that brings a
+  backend to its own written rule, changes no contract text and carries a fixture or runtime
+  test on every backend lands on `main` before the tag as its own commit (`ff66cded`, design
+  §17.267 (2); the zeroing of every freed copy of a kind-`secret` import's arguments,
+  §17.270 (1)).
 - **`v0.2.0`** is the one breaking window before 1.0 (RFC 0001 starts within-minor
   compatibility at 0.2.0, and the roadmap goes from 0.2.0 to `1.0.0-rc.1`). Everything that
   changes an existing record, variant or effect lands there: `Payload` bodies, `Method`
