@@ -85,6 +85,12 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
                 }
             }
             FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool).def(&mut w);
+            // A consuming def without a direct twin gets a CPS owned entry (design §17.201 (3)).
+            if !cx.direct.direct(id) && cx.summaries[i].consumes.is_some() {
+                let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool);
+                e.owned_entry();
+                e.def(&mut w);
+            }
         }
     }
 
@@ -654,12 +660,21 @@ impl<'a> FnEmit<'a> {
                     params.push("$site".into());
                 }
                 let ps = params.join(", ");
+                // The owned entry's name; the plain CPS entry has none.
+                let body_name = match self.twin {
+                    "$o" => format!("{body_name}$o"),
+                    _ => body_name,
+                };
                 w.line(&format!("{body_export}function {body_name}({ps}) {{"));
                 w.depth += 1;
                 w.line(&format!("if (++$G.d > $L) return $b({body_name}, [{ps}]);"));
                 self.expr(w, &d.body, "$ctx");
                 w.depth -= 1;
                 w.line("}");
+                if self.twin == "$o" {
+                    w.line("");
+                    return;
+                }
                 // A recursive direct def keeps its CPS body as the entry, so `runSync` and
                 // values called from CPS code never re-enter the twin (design §17.112).
                 if self.cx.direct.exposes(self.id) && d.captures.is_empty() {
@@ -1315,6 +1330,14 @@ impl<'a> FnEmit<'a> {
                 a.push(ctx.to_owned());
                 let f = match callee {
                     Atom::Builtin(name) => format!("$rt.{name}"),
+                    // An owned argument goes to the callee's CPS owned entry.
+                    Atom::Global(d)
+                        if self.owned.owned(x)
+                            && !self.cx.direct.direct(*d)
+                            && self.cx.summaries[d.index()].consumes.is_some() =>
+                    {
+                        format!("{}$o", self.def_ref(*d))
+                    }
                     other => self.atom(other),
                 };
                 format!("{f}({}, ", a.join(", "))
