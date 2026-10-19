@@ -139,7 +139,8 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   paragraphs in §8.4 and §8.5. No wasm32 byte, import or export changes. The text lands before
   N0b's 1.3.0 counters, and versions never reorder (§17.169 (3)), so the constant
   `sakura_abi_version` stays `0x010200` on both targets until 1.3.0 is in and becomes
-  `0x010400` then; no native module is emitted before N2.
+  `0x010400` then, in one step; no module ever records `0x010300` (design §17.229 (1)); no
+  native module is emitted before N2.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen

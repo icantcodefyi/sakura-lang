@@ -365,6 +365,31 @@ run having passed.
 - Sol must establish the MSRV build prerequisites and required CI integration.
   The current development pin alone does not establish support.
 
+### Round-25 design decisions (2026-10-19)
+
+Design §17.232 settles the enforcement details so implementation can start; this RFC's
+text above is unchanged and the owner still accepts at `v0.2.0`:
+
+- `V8005 dependencies_not_supported` (PACKAGE) is confirmed free and allocated by Opus with
+  a project-shaped `tests/ui` fixture directory.
+- The JSON contract is the existing per-record `kind` and `schema_version` (`MAJOR.MINOR`
+  per kind); the gate is a checked-in field baseline `compiler/contracts/json.txt`, a
+  `sakura_cli` test that derives each record's fields from real output, and an append-only
+  history check in the `check_history.py` shape. A MAJOR bump is refused inside a compiler
+  major.
+- Cross-version ABI fixtures are one committed module per shipped ABI version under
+  `compiler/runtime/rt/tests/fixtures/abi/`, loaded by the host tests; the refusal case is a
+  fixture with its version global rewritten.
+- Deprecation metadata is `compiler/deprecations.toml` (empty at 0.2.0), checked against
+  `codes.rs` and by `release.py prepare`, which also refuses a patch release whose
+  `rust-version` changed.
+- The historical corpus is the previous tag's `tests/semantics`, `tests/ui` and `examples`,
+  run by a `compat` CI job with an allow-list that cites a CHANGELOG anchor.
+- The stable-interface inventory is a table in STABILITY.md pinned by a generated
+  `compiler/contracts/cli.txt`; experimental items carry `experimental` in `--help`.
+- The 0.2.x-within-a-minor, full-within-a-major-from-1.0 boundary is the designer's reading,
+  pending the owner's acceptance at the tag.
+
 ## Decision record
 
 Draft requested for roadmap stage 5. No FCP or acceptance has been recorded.
