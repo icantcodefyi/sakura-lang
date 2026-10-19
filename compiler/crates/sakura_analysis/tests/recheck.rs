@@ -37,7 +37,14 @@ fn a_private_body_edit_rechecks_only_its_module() {
     let before = stats();
     let _ = Analysis::analyze(&snap(LIB, false));
     let cold = stats();
-    assert!(cold.checked_modules - before.checked_modules > 2);
+    // std's analysis is made here or read from the disk cache (design §17.204 (1a)), then the
+    // three user modules are checked.
+    let std_made = cold.analyses - before.analyses - 1;
+    assert_eq!(std_made + cold.std_cache_reads - before.std_cache_reads, 1);
+    assert_eq!(
+        cold.checked_modules - before.checked_modules,
+        std_made * sakura_analysis::std_sources().count() + 3
+    );
 
     // A private body changes, and it now fails to type-check.
     let edited = LIB.replace("{ x }", "{ x + \"1\" }");

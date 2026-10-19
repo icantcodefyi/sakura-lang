@@ -13,8 +13,9 @@ fn edits_reparse_only_the_edited_file_and_queries_share_one_analysis() {
     let before = stats();
     let first = Analysis::analyze(&snap);
     let cold = stats();
-    // Its own, after std's unless std's came from the disk cache (design §17.204 (1a)).
-    assert!((1..=2).contains(&(cold.analyses - before.analyses)));
+    // Its own, after std's, which is made here or read from the disk cache (design §17.204 (1a)).
+    let std_made = cold.analyses - before.analyses - 1;
+    assert_eq!(std_made + cold.std_cache_reads - before.std_cache_reads, 1);
 
     // Every later query on the same snapshot reuses the analysis.
     let again = Analysis::analyze(&snap);

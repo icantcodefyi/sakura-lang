@@ -1,0 +1,4 @@
+[env]
+# Tests (`cargo test`, `cargo nextest`) and the `sakura` processes they spawn keep std's analysis
+# cache here, not in the developer's ~/.cache; an explicit SAKURA_CACHE_DIR still wins.
+SAKURA_CACHE_DIR = { value = "target/test-cache", relative = true }

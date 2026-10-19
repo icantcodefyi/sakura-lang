@@ -182,12 +182,15 @@ pub struct Stats {
     pub lowers: usize,
     /// Modules whose bodies were type-checked (not reused from an earlier analysis).
     pub checked_modules: usize,
+    /// Times std's analysis was read from the disk cache instead of made (`analyses`).
+    pub std_cache_reads: usize,
 }
 
 static PARSES: AtomicUsize = AtomicUsize::new(0);
 static ANALYSES: AtomicUsize = AtomicUsize::new(0);
 static LOWERS: AtomicUsize = AtomicUsize::new(0);
 static CHECKED_MODULES: AtomicUsize = AtomicUsize::new(0);
+static STD_CACHE_READS: AtomicUsize = AtomicUsize::new(0);
 
 pub fn stats() -> Stats {
     Stats {
@@ -195,6 +198,7 @@ pub fn stats() -> Stats {
         analyses: ANALYSES.load(Ordering::Relaxed),
         lowers: LOWERS.load(Ordering::Relaxed),
         checked_modules: CHECKED_MODULES.load(Ordering::Relaxed),
+        std_cache_reads: STD_CACHE_READS.load(Ordering::Relaxed),
     }
 }
 
@@ -437,11 +441,17 @@ fn std_analysis<'a>() -> &'a Analyzed {
     static STD: OnceLock<Analyzed> = OnceLock::new();
     STD.get_or_init(|| {
         let snapshot = Snapshot::new(std_sources());
-        std_cache::load(&snapshot).unwrap_or_else(|| {
-            let analyzed = analyze(&snapshot, []);
-            std_cache::store(&analyzed);
-            analyzed
-        })
+        match std_cache::load(&snapshot) {
+            Some(loaded) => {
+                STD_CACHE_READS.fetch_add(1, Ordering::Relaxed);
+                loaded
+            }
+            None => {
+                let analyzed = analyze(&snapshot, []);
+                std_cache::store(&analyzed);
+                analyzed
+            }
+        }
     })
 }
 

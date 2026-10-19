@@ -42,7 +42,8 @@ fn unrelated_programs_reuse_std_and_nothing_else() {
     // std first (design §17.204 (1a)): std's analysis is read from the disk cache, or made here
     // once per process, then the program's modules are checked.
     let std_fresh = cold.analyses - before.analyses - 1;
-    assert!(std_fresh <= 1, "analyses");
+    let std_read = cold.std_cache_reads - before.std_cache_reads;
+    assert_eq!(std_fresh + std_read, 1, "std's analysis, made or read");
     assert_eq!(
         cold.checked_modules - before.checked_modules,
         std_fresh * std_modules + 2
