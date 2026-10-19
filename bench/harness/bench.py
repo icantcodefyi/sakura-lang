@@ -153,9 +153,10 @@ def wasmtime(p, entry, inputs, forever=False):
 # from the WASI command would replace both.
 def no_wasi(error):
     """Why a WASI command could not run the program, from its failure: a host operation the
-    embedding traps (`unreachable` in `wasm::host::<name>`: clocks, files, network), or a
+    embedding traps (`unreachable` in `cx::wasm::<name>`, `wasm::host::<name>` before N1a:
+    clocks, files, network), or a
     builtin only the Node host implements, in JS (`D090`: `Json`). None for any other failure."""
-    m = re.search(r"\b0:\s+0x[0-9a-f]+ - .*::wasm::host::(\w+)", error)
+    m = re.search(r"\b0:\s+0x[0-9a-f]+ - .*::wasm::(?:host::)?(\w+)", error)
     if m and "wasm `unreachable`" in error:
         return f"the host operation `{m[1]}` is not pure; the WASI embedding traps it"
     m = re.search(r"defect D090: builtin (\w+) is not supported by the WASM backend", error)
