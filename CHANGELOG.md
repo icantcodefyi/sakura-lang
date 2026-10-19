@@ -18,6 +18,9 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Documentation
 
+- CI requires authored guide examples and rendered documentation links to pass,
+  reusing the existing compiler and website builds.
+
 - Draft public-interface inventory in `STABILITY.md`, with a generated clap/environment/exit-code
   baseline and workspace drift test; classifications await RFC 0001 acceptance at v0.2.0.
 

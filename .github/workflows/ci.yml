@@ -44,6 +44,21 @@ jobs:
         run: bun run typecheck
       - name: Build
         run: bun run build
+      - name: Check documentation links and rendered routes
+        run: |
+          node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000 > "$RUNNER_TEMP/docs-server.log" 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true; wait "$server" 2>/dev/null || true' EXIT
+          ready=false
+          for _attempt in {1..60}; do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:3000/docs >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then cat "$RUNNER_TEMP/docs-server.log"; exit 1; fi
+          python3 scripts/check-doc-links.py http://127.0.0.1:3000
 
   rust:
     name: Rust (${{ matrix.label }})
@@ -240,6 +255,11 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         if: matrix.checks
         run: cargo run -p agent_docs --locked -- --check
+      - name: Check authored documentation examples
+        if: matrix.os == 'ubuntu-latest' && matrix.checks
+        env:
+          SAKURA_BIN: ${{ github.workspace }}/compiler/target/debug/sakura
+        run: python3 ../website/scripts/check-doc-sweep.py
       - name: Windows installer fixture tests
         if: runner.os == 'Windows' && matrix.checks
         shell: pwsh
