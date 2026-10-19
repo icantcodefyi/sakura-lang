@@ -215,6 +215,32 @@ fn fmt_refuses_files_that_do_not_parse() {
     );
 }
 
+/// Design §17.243 (5), through the driver: the runner's 0, 2, 3 and 70 are `sakura test`'s
+/// exit, with no message of the CLI's own; another status is "the test runner crashed" and 70.
+/// A preload ends the runner's Node process with the status under test before any test runs.
+#[test]
+fn sakura_test_relays_the_runners_exit() {
+    let dir = tmp("test-relay", "test \"adds\" { expect_eq(1 + 1, 2) }\n");
+    for (status, exit, crashed) in [
+        (0, 0, false),
+        (2, 2, false),
+        (3, 3, false),
+        (70, 70, false),
+        (4, 70, true),
+    ] {
+        let preload = format!("--import=data:text/javascript,process.exit({status})");
+        let env = [("NODE_OPTIONS", Path::new(&preload))];
+        let out = common::sakura_env(&["test", "main.sak"], &dir, &env);
+        assert_eq!(out.code, Some(exit), "status {status}: {}", out.stderr);
+        assert_eq!(
+            out.stderr.contains("the test runner crashed"),
+            crashed,
+            "status {status}: {}",
+            out.stderr
+        );
+    }
+}
+
 #[test]
 fn test_json_has_exactly_one_summary_at_the_end() {
     let dir = tmp(
