@@ -359,6 +359,9 @@ needs the pinned Z3, which is not bundled.
 Install: download `install.sh`, read it, then `sh install.sh --prefix ~/.local`; or
 `npm install -g sakuralang@{ver}`, or verify and extract an archive by hand
 (docs/release.md).
+
+What changed, what is and is not stable, and how to migrate:
+{REPO_URL}/blob/v{ver}/CHANGELOG.md
 """
 
 
