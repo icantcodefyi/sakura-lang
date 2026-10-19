@@ -534,6 +534,61 @@ test("after the server stops a request still arriving is 503 and invoke is not c
   );
 });
 
+/** The export `f` of a module whose one function, named as Rust names a trait method, traps at 0x1e. */
+function trapping() {
+  const text = (s) => [s.length, ...new TextEncoder().encode(s)];
+  const name = text("<boom as core::ops::Drop>::drop");
+  const names = [1, name.length + 2, 1, 0, ...name];
+  const section = [...text("name"), ...names];
+  const header = [0, 0x61, 0x73, 0x6d, 1, 0, 0, 0];
+  const body = [1, 4, 1, 0x60, 0, 0, 3, 2, 1, 0, 7, 5, 1, 1, 0x66, 0, 0, 10, 5, 1, 3, 0, 0x00, 0x0b];
+  const bytes = Uint8Array.from([...header, ...body, 0, section.length, ...section]);
+  return new WebAssembly.Instance(new WebAssembly.Module(bytes)).exports.f;
+}
+
+test("a trap in a served request is 500 with one D090, the server stops (503 after it) and the run ends", { timeout: 10_000 }, async () => {
+  const boom = trapping();
+  for (const where of ["run", "invoke", "test"]) {
+    const port = await freePort();
+    const g = serving(port, where === "invoke" ? { invoke: () => boom() } : { trap: (t) => (t === 2 ? boom : null) });
+    g.h.tests = () => [{ code: 0, name: "serves", module: "m" }];
+    g.h.fresh = async () => {};
+    const out = [];
+    const [statuses, records] = await recording(async () => {
+      const write = process.stdout.write;
+      if (where === "test") process.stdout.write = (line) => out.push(JSON.parse(line));
+      try {
+        const exit = where === "test" ? runTests(new Uint8Array(), 0, "", "", false, g.h) : runMain(new Uint8Array(), [], g.h);
+        const c = await wire(port);
+        c.send(ARRIVING);
+        assert.equal((await c.next()).status, 100);
+        const t = await wire(port);
+        t.send(GET("/trap"));
+        const trapped = await t.next();
+        const code = await exit;
+        c.send("ab");
+        const late = await c.next();
+        c.close();
+        t.close();
+        return [trapped.status, code, late.status];
+      } finally {
+        process.stdout.write = write;
+      }
+    });
+    const defect = "D090 trap: unreachable in <boom as core::ops::Drop>::drop at 0x1e";
+    assert.deepEqual(g.invoked, [2], `${where}: the request after the trap never reached invoke`);
+    if (where === "test") {
+      assert.deepEqual(statuses, [500, 3, 503]);
+      assert.deepEqual(records, [], "the test's record holds the defect");
+      const [r] = out.filter((r) => r.kind === "test");
+      assert.equal(`${r.defect?.code} ${r.defect?.message}`, defect);
+    } else {
+      assert.deepEqual(statuses, [500, 70, 503], where);
+      assert.deepEqual(records.map((r) => `${r.code} ${r.message}`), [defect], where);
+    }
+  }
+});
+
 /** A module of nothing but a `sakura.debug` custom section holding `payload` (ABI §12). */
 function debugModule(payload) {
   const name = [...new TextEncoder().encode("sakura.debug")];

@@ -405,6 +405,8 @@ export class Host {
     // Served requests by task (`serve_listen`): how to reply, and the answer once the response
     // is sent (its `D091` past the copy budget).
     this.served = new Map();
+    // What ended the instance inside a request callback (a trap in `invoke`), for `runTask`.
+    this.trapped = null;
     // Handle tables (ABI §8.4): `${kind}:${slot}` → { generation, object }.
     this.handles = new Map();
     this.nextSlot = 1;
@@ -683,7 +685,18 @@ export class Host {
               const message = `request too large: ${bytes.length} bytes over SAKURA_MAX_COPY_BYTES`;
               return reply({ kind: "too large", code: "D091", message });
             }
-            const task = this.exports.invoke(listener, this.copyOut(bytes), bytes.length);
+            let task;
+            try {
+              task = this.exports.invoke(listener, this.copyOut(bytes), bytes.length);
+            } catch (e) {
+              // A trap (ABI §8.6): the server stops and `runTask` ends the run with it; the
+              // instance is not entered again (design §17.223 (2)).
+              this.trapped = e;
+              s.close();
+              reply({ kind: "ended" });
+              this.wake?.();
+              return;
+            }
             // `serveHttp` calls this only while the server runs, so the listener is live and 0 is
             // the guest heap (design §17.223 (1)).
             if (task === 0) return reply({ kind: "defect", code: "D096", message: "heap exhausted: request not started" });
@@ -1186,6 +1199,7 @@ export class Host {
     this.props = [];
     this.jsHandlers = [];
     this.escaping = null;
+    this.trapped = null;
   }
 
   /** Answer the served requests whose tasks finished (`serve_listen`), as JS `serveHttp`. */
@@ -1194,8 +1208,9 @@ export class Host {
       const [kind, b] = this.exports.outcome(task);
       if (b !== 0) this.exports.drop(b);
       if (kind === OUTCOME.pending) continue;
-      this.served.delete(task);
+      // Read before the entry goes: a trap here leaves the request for `close` to answer.
       const o = this.outcome(task, kind);
+      this.served.delete(task);
       s.reply(o.kind === "ok" && s.answer !== null ? s.answer : o);
     }
   }
@@ -1271,6 +1286,7 @@ export class Host {
           this.wake = resolve;
         });
         this.wake = null;
+        if (this.trapped !== null) throw this.trapped;
       }
       this.deliver();
       kind = e.run(task);
@@ -1374,12 +1390,15 @@ export async function loadTypes() {
 
 /**
  * The outcome of a run an exception ended inside the guest: a trap is a runtime bug (ABI §8.6),
- * reported as `D090` with what the engine says; a host defect where the import has no answer
- * to carry it (the copy budget, `D091`) keeps its code.
+ * reported as `D090` with what the engine says and, from its stack, the function (by the names
+ * section, else its index) and the PC; a host defect where the import has no answer to carry
+ * it (the copy budget, `D091`) keeps its code.
  */
 function aborted(e) {
   if (e instanceof rt.Defect) return { kind: "defect", code: e.code, message: e.detail };
-  return { kind: "defect", code: "D090", message: `trap: ${e.message}` };
+  const at = /^\s*at (?:(.+) \()?wasm:\/\/[^\s)]*:(wasm-function\[\d+\]):(0x[0-9a-f]+)/m.exec(e?.stack ?? "");
+  const where = at === null ? "" : ` in ${at[1] ?? at[2]} at ${at[3]}`;
+  return { kind: "defect", code: "D090", message: `trap: ${e.message}${where}` };
 }
 
 function writeErr(line) {

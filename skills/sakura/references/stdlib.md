@@ -115,7 +115,9 @@ checked skill reference; they are not additional APIs.
   A request the guest heap cannot take is `503` with `retry-after: 1` and the defect `D096`
   on stderr, and the server keeps serving. On both backends, once the server stops a request
   still arriving is `503` with the connection closed and the handler not run, and on
-  `--target wasm` a request still waiting when the program ends is `500` (§17.223). A request
+  `--target wasm` a request still waiting when the program ends is `500`. A runtime trap
+  while serving answers that request `500`, stops the server and ends the program with the
+  defect `D090` (exit 70) (§17.223). A request
   pipelined behind one refused with `413` may be served before the connection closes.
 
 ## Module dependencies (non-test code)

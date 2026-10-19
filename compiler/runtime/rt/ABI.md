@@ -117,9 +117,10 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
 - 1.2.3 is an erratum (design §17.223): §8.5 states when the host calls `invoke` and what it
   answers a served request the guest cannot take (heap exhaustion: `503` and `D096`), one left
   waiting when the instance ends (`500`) and one arriving after the server stops (`503`, never
-  invoked); §9 reads a 0 from `invoke` as heap exhaustion. Until then the Node host answered
-  heap exhaustion `500` with no record and requests waiting at the end got no answer. Failure
-  modes are specified; no byte, import or export changes, so `sakura_abi_version` stays
+  invoked); §8.6 states a trap inside a served request; §9 reads a 0 from `invoke` as heap
+  exhaustion. Until then the Node host answered heap exhaustion `500` with no record, a trap
+  in `invoke` ended the process and requests waiting at the end got no answer. Failure modes
+  are specified; no byte, import or export changes, so `sakura_abi_version` stays
   `0x010200`.
 - 1.2.4 is an erratum (design §17.211 (1), WS-W1; 1.2.3 is plan §3.8 row 27's, design
   §17.224): §5 and §6.3 state how a perform bound to a handler literal (design §17.113 (a))
@@ -879,6 +880,9 @@ runs its own **resource ledger**: it closes every open handle and aborts every r
 the instance, because guest finalizers cannot run after a trap (research/08 §3.4). The same
 ledger runs at process exit. The instance is never entered again (1.1.2): `sakura test`
 reports the test as a defect and runs the rest on a fresh instance of the module.
+A trap inside `invoke` or a served request's task (1.2.3, design §17.223 (2)) answers that
+request `500` and stops the server, so every later request is `503` (§8.5); the run ends with
+the trap's `D090` (exit 70 for `main`), and the `serve_listen` request is never completed.
 
 ## 9. Exports
 

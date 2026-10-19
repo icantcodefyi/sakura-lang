@@ -229,6 +229,12 @@ published yet.
 
 ### Fixed
 
+- A runtime trap while `Serve.host()` serves on `--target wasm` no longer ends the process
+  with an unhandled exception: the request is answered `500`, the server stops (later
+  requests are `503`), and the program exits 70 with one `D090` record that names the
+  function and the PC (design §17.223 (2), ABI 1.2.3). `sakura test` reports the test as a
+  defect and runs the rest on a fresh instance, as for any trap.
+
 - `Serve.host()` on `--target wasm` answers a request the guest heap cannot take with `503`
   and `retry-after: 1`, writing the defect `D096` to stderr, where it was a `500` with nothing
   on stderr; the server keeps serving. A request still waiting when the program ends is now
