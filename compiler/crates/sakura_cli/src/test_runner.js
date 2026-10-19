@@ -12,6 +12,12 @@ const filter = process.argv[3] ?? "";
 const snapshotDir = process.argv[4] ?? "";
 const update = process.argv[5] === "1";
 const emit = (record) => process.stdout.write(`${JSON.stringify({ schema_version: "1.0", ...record })}\n`);
+// The CLI reads stdout to the end, so EPIPE means it is gone (killed, e.g. at a time limit) and
+// no one is left to report to: stop as a writer killed by SIGPIPE would, without Node's trace.
+process.stdout.on("error", (e) => {
+  if (e.code !== "EPIPE") throw e;
+  process.exit(141);
+});
 const fs = process.getBuiltinModule("node:fs");
 const path = process.getBuiltinModule("node:path");
 

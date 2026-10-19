@@ -125,6 +125,8 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   unchanged.
 - `sakura test --record` holds a recorded streamed body as its chunks, joined once with
   `Bytes.concat` (design §17.205 (4)), not as one boxed `Int` per byte.
+- `sakura test`'s runner stops quietly with status `141` when the CLI that reads its output is
+  gone (killed, for example at a time limit), instead of Node's unhandled `EPIPE` trace.
 
 ### Security
 
