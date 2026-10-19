@@ -700,7 +700,7 @@ class WasmCompare(unittest.TestCase):
 
 
 def counted_doc(sakura, js, quiet=False, suite="js"):
-    """An `--instructions` run (§17.263) from instructions per call, measured on a loaded host."""
+    """An `--instructions` run (§17.264) from instructions per call, measured on a loaded host."""
     d = loaded(doc(pair(50.0, 10.0)), load=10.4 if not quiet else 1.0)
     d["meta"]["flags"] = {"suite": suite, "metric": "instructions"}
     for r, v in zip(d["results"], (sakura, js)):
@@ -709,7 +709,7 @@ def counted_doc(sakura, js, quiet=False, suite="js"):
 
 
 class Instructions(unittest.TestCase):
-    """§17.263: instructions retired per call are the primary metric; no quiet host is needed."""
+    """§17.264: instructions retired per call are the primary metric; no quiet host is needed."""
 
     def test_a_cell_is_the_median_of_its_pairs_over_the_median_one_call_process(self):
         c = lambda i, s=1.0: {"instructions": i, "cycles": i // 2, "wall_s": s, "rss_bytes": 7}
