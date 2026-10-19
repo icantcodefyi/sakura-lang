@@ -7,6 +7,14 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
 
 ## [Unreleased]
 
+### Changed
+
+- Diagnostic, explanation and generated-page text no longer names milestones, design-log
+  entries or another release: `V8005` reads "Sakura Lang does not support packages yet",
+  `V9002`'s root-handler message says which effects get root handlers, and `D096` no longer
+  names `SAKURA_MAX_HEAP`, which the WASM host does not read. Codes, `kind`s and JSON fields
+  are unchanged; occurrence ids, which hash the message, change with it.
+
 ## [0.1.0] - Unreleased
 
 The first non-alpha preview and the close of milestone M4, the WebAssembly backend (exit

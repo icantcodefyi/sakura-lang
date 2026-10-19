@@ -467,7 +467,7 @@ fn f(s: String) -> Result<Report, DecodeError> { Json.decode(s) }
 "#,
     );
     insta::assert_snapshot!(report.render(), @r"
-    V2033 5:50 `Report` holds `Report.q: Query<Row>`, which is opaque outside `std/sql`, so it is not `Schema`: a value comes from its module's constructors, not from data (design §17.130)
+    V2033 5:50 `Report` holds `Report.q: Query<Row>`, which is opaque outside `std/sql`, so it is not `Schema`: a value comes from its module's constructors, not from data
       expected: Schema
       actual: Report
     ");

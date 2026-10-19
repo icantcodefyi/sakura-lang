@@ -9,7 +9,7 @@ An error from the `contract` phase. `sakura explain V5004` prints this explanati
 A literal stands where a refined type is expected, and the compiler evaluated the type's
 `where` clause on it: the predicate is false, or evaluating it defects (an integer division
 by zero, a failed `requires` of a function it calls). The literal can never be a value of the
-type, so the program would stop with `D010` before `main` (design §4.3, §17.87). Use a value
+type, so the program would stop with `D010` before `main` (design §4.3). Use a value
 that satisfies the clause; there is no mechanical fix.
 
 The compiler evaluates predicates over scalars (`Bool`, `Int`, `Float`, `String`), operators,

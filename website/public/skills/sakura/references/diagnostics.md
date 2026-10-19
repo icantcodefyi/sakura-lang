@@ -130,7 +130,7 @@ The left side of `=` must be a `var` name or a field path on one (`u.email = e`)
 ## V0014 `named_argument` (parse)
 
 ```text
-Calls take positional arguments only (design §3.2 rule 13, §17.21); `name: value` exists only
+Calls take positional arguments only (design §3.2 rule 13); `name: value` exists only
 inside attribute arguments. Pass the value positionally, or pass a record when the call needs
 an options bag.
 
@@ -207,7 +207,7 @@ Fixed:
 
 ```text
 The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field
-of a `pub opaque` type, which only the declaring module may use (design §9, §17.10). Mark a
+of a `pub opaque` type, which only the declaring module may use (design §9). Mark a
 private item `pub` (an interface change) or use a public API; build and read an opaque value
 through the functions its module exports.
 
@@ -431,7 +431,7 @@ Fixed:
 ```text
 A `Schema` bound (`Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of`
 arguments, a `property` parameter) reaches an opaque type outside its declaring module, directly
-or through a field (design §17.130). Private construction comes in two kinds: an invariant that
+or through a field. Private construction comes in two kinds: an invariant that
 is a predicate over the representation is a refinement type and decodes through its predicate
 (`Uuid`, `Path`, `Decimal`); an invariant about how the value was produced (`Query<R>` from a
 `sql"…"` literal, `Html` by escaping, `UrlPart` by encoding, `File` by the runtime) is opaque,
@@ -451,7 +451,7 @@ Fixed:
 
 ```text
 A field assignment changes a field of a `var` whose type, or the type of a prefix of the path,
-is a refined type (design §17.135). `x.n = v` on `var x` is sugar for
+is a refined type. `x.n = v` on `var x` is sugar for
 `x = PosRepr { ..x, n: v }` (§8.1), and a record update yields the base type, so the statement
 would put an unchecked `PosRepr` where a `Pos` is promised and skip the predicate. The rule
 holds in every module, the declaring one included. Rebuild the value through the refinement:
@@ -652,7 +652,7 @@ Fixed:
 
 ```text
 A `match` compiles to a decision tree of more than 1,048,576 nodes (tests and leaves, counting
-the rows its or-patterns expand into), so the compiler stops building it (design §17.193). The
+the rows its or-patterns expand into), so the compiler stops building it. The
 count is a function of the source alone. The number of arms is not limited: a flat `match` of
 thousands of literals or constructors stays far under the budget. The tree grows with the
 product of the alternatives when several columns are each matched by or-patterns, and when rows
@@ -688,7 +688,7 @@ Fixed:
 ## V5002 `refinement_checked_at_runtime` (contract)
 
 ```text
-Retired (design §17.87, §12.3): never reported. It warned that a literal into a refined type
+Retired (design §12.3): never reported. It warned that a literal into a refined type
 was checked at start-up. The predicate is now evaluated on the literal at compile time: a
 literal that satisfies it compiles silently, one that cannot is `V5004`, and one the compiler
 cannot decide is checked once through `T.from` when the module is initialised (`D010` before
@@ -699,7 +699,7 @@ cannot decide is checked once through `T.from` when the module is initialised (`
 
 ```text
 `Untrusted.validate(u)` takes its target `V` from the expected type `Result<V, Violation>`.
-`V` must be a refined type whose base is the type inside the `Untrusted` (design §6.4, §17.71):
+`V` must be a refined type whose base is the type inside the `Untrusted` (design §6.4):
 a plain type has no predicate, so nothing would be validated. Annotate the binding or the
 function's return type with a refined type, or use `Untrusted.check(u, clause, pred)` for an
 ad-hoc predicate.
@@ -719,7 +719,7 @@ Fixed:
 A literal stands where a refined type is expected, and the compiler evaluated the type's
 `where` clause on it: the predicate is false, or evaluating it defects (an integer division
 by zero, a failed `requires` of a function it calls). The literal can never be a value of the
-type, so the program would stop with `D010` before `main` (design §4.3, §17.87). Use a value
+type, so the program would stop with `D010` before `main` (design §4.3). Use a value
 that satisfies the clause; there is no mechanical fix.
 
 The compiler evaluates predicates over scalars (`Bool`, `Int`, `Float`, `String`), operators,
@@ -744,7 +744,7 @@ code. Obtain one from a root handler or attenuate an existing one (design §6.2)
 An `@external` declaration outside std is the one door the checker cannot see through, so
 its parameter and result types may not mention, at any depth, an external or `@resource`
 type declared in another package (`Dir`, `File`, `Body`, …) or a `Handler<…>` (design
-§17.91). A package may declare externals over external types it declares itself.
+§6.2). A package may declare externals over external types it declares itself.
 
 Wrong:
     import std/fs.{Dir}
@@ -769,7 +769,7 @@ Fixed:
 ## V6002 `scoped_value_escape` (capability)
 
 ```text
-A scoped value escapes the `with` that bounds it (design §6.3, §17.70). Scoped types are
+A scoped value escapes the `with` that bounds it (design §6.3). Scoped types are
 external types (`Dir`, `File`, `Scope`, …), `Handler<…>` and any type containing one; a lambda is
 scoped when its type is, or when it captures a scoped local. This fires when the value of a
 `with` expression is scoped, when a top-level `let` has a scoped type, and when the lambda given
@@ -794,7 +794,7 @@ Fixed (use the handler inside the `with` and return data):
 ```text
 A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the
 callback returns a type containing it (directly, or inside a record, list or closure), or the
-value is stored in handler `var` state (design §8.4, §17.70). The runtime closes the file when
+value is stored in handler `var` state (design §8.4). The runtime closes the file when
 the callback returns, so an escaped `File` cannot be used. Read or write inside the callback and
 return ordinary data. Use-at-most-once is not checked statically in v0.
 
@@ -836,7 +836,7 @@ Fixed:
 ## V8002 `reserved_package_name` (package)
 
 ```text
-`sakura.toml` names its package `std` or `main` (design §9, §17.131). The first segment of an
+`sakura.toml` names its package `std` or `main` (design §9). The first segment of an
 import is a package name: `std` is the standard library and `main` is the package of a file run
 without a manifest, so a package under either name would make `import std/…` or `import main/…`
 mean two things.
@@ -862,14 +862,14 @@ backend, runtime and host share one ABI revision.
 
 ```text
 A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript
-to call (design §17.81): the WASM backend runs std's host operations through the runtime's own
+to call: the WASM backend runs std's host operations through the runtime's own
 imports only. Build with `--target js`, or write the function in Sakura Lang.
 ```
 
 ## V8005 `dependencies_not_supported` (package)
 
 ```text
-Packages are not supported yet: `sakura.toml` declares `[dependencies]` (design §17.232, RFC
+Packages are not supported yet: `sakura.toml` declares `[dependencies]` (RFC
 0001). This release compiles one package over std; packages arrive in a later minor release, and
 the key is reserved until then. Any form is refused before anything runs: an empty table, entries,
 an inline `dependencies = {}` or a dotted key. Nothing is fetched and `sakura.lock` is untouched.
@@ -887,7 +887,7 @@ Fixed:
 ## V8006 `manifest_invalid` (package)
 
 ```text
-sakura.toml is not a valid manifest (design §17.239): the TOML is malformed, a key is unknown,
+sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown,
 a value has the wrong type, or `[package]` has no `name`. The message is the parser's and the span
 points at the key, the value or the syntax error. Nothing builds or runs until it is fixed. The
 manifest has `[package]` (`name`, `version`, `edition`), `[permissions]` and `[verify]`; any other
@@ -919,7 +919,7 @@ and the output of `sakura --version`.
 ## V9002 `phase_unavailable` (internal)
 
 ```text
-A compiler phase needed by this command is not implemented yet in this pre-alpha build. The
+A compiler phase needed by this command is not implemented yet in this build. The
 message names the missing piece (a backend feature, a `@contract_test` handler other than
 `Effect.constructor()`, …). Rewrite the program to avoid it, use another command or target
 (`sakura check` runs every front-end phase), or report it if the feature is documented as
@@ -959,7 +959,7 @@ Fixed:
 ```text
 A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`,
 `List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole
-value (design §7.2, §17.72). One warning per clause; std is exempt. Keep the clause when a linear
+value (design §7.2). One warning per clause; std is exempt. Keep the clause when a linear
 check is what you want, or move the invariant into a refined type so it is checked once, where
 values are introduced.
 
@@ -976,7 +976,7 @@ Fixed (the invariant is a type):
 
 ```text
 A property discarded more than 90% of its generated inputs, so it tested almost nothing
-(design §7.4, §17.64). For a property synthesized by `sakura test --contracts`, inputs come from
+(design §7.4). For a property synthesized by `sakura test --contracts`, inputs come from
 the parameter types and `requires`: ranges, lengths, enums and non-empty lists are generated
 directly, anything else is a filter. The test fails rather than passing vacuously. Restate the
 parameters so the generator builds valid inputs.
@@ -995,7 +995,7 @@ Fixed (a range the generator constructs):
 
 ```text
 A contract obligation was proved only because the assumptions on its path are contradictory, so
-the path can never run and the proof says nothing useful (design §17.98, §17.105). The verifier
+the path can never run and the proof says nothing useful. The verifier
 checks the path's feasibility first; `unsat` is reported as `proved` with `path_feasible: false`
 and this warning. Usually a `requires` or a branch condition rules out every input; remove the
 contradiction or the dead branch.
@@ -1017,7 +1017,7 @@ Fixed:
 ```text
 An update to a shared collection is forced to copy inside a loop because another reference
 retains the old value (design §8.2). Drop the retaining use or restructure the loop. The code is
-registered ahead of its check, which comes with the native backend's reuse analysis (M5); no
+registered ahead of its check, which comes with the native backend's reuse analysis; no
 command reports it yet.
 ```
 
@@ -1142,7 +1142,6 @@ bug; please report it (`runtime/rt/ABI.md` §13).
 ## D096 `heap_exhausted` (runtime defect)
 
 ```text
-On the WASM runtime, the heap limit (`SAKURA_MAX_HEAP`) was reached or memory could not grow.
-The task ends without running further user code. Raise the limit or reduce live data
-(`runtime/rt/ABI.md` §13).
+The WASM runtime's heap limit (`runtime/rt/ABI.md` §13) was reached or memory could not grow.
+The task ends without running further user code. Reduce live data.
 ```

@@ -893,7 +893,7 @@ fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
     }
     let message = format!(
         "sakura.toml names the package `{name}`, which is reserved: `std` is the standard \
-         library and `main` the package of a file run without a manifest (design §17.131)"
+         library and `main` the package of a file run without a manifest"
     );
     Some(
         Diagnostic::error(codes::V8002, Phase::Package, message).with_span(Span::primary(

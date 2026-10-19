@@ -1079,7 +1079,7 @@ impl Checker<'_> {
             sakura_diagnostics::codes::V2034,
             Phase::Type,
             format!(
-                "`{target} = …` rebuilds `{prefix}` as {base}, but `{prefix}` is a `{ty}`; a field assignment would skip its predicate. Rebuild it through `{tname}.from(…)` (trusted, listed by `sakura audit`) or `{tname}.validate(…)?` for data (design §17.135)"
+                "`{target} = …` rebuilds `{prefix}` as {base}, but `{prefix}` is a `{ty}`; a field assignment would skip its predicate. Rebuild it through `{tname}.from(…)` (trusted, listed by `sakura audit`) or `{tname}.validate(…)?` for data"
             ),
         )
         .with_span(self.span(range))

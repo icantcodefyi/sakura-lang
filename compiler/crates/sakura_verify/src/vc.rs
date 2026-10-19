@@ -316,7 +316,7 @@ pub fn generate_def(m: &Module, profile: Profile, def: DefId) -> DefVc {
         f.env.insert(p, v);
     }
     if has_loop(&d.body) {
-        g.unsupported = Some("a loop (no invariants in M4)".into());
+        g.unsupported = Some("a loop (loop invariants are not supported yet)".into());
     }
     g.block(&mut f, &d.body, path);
     if let Some(why) = g.unsupported.clone() {
@@ -668,7 +668,8 @@ impl<'m> Gen<'m> {
         for e in self.block(f, join, path) {
             match e {
                 Exit::Jump(l, ..) if l == label => {
-                    self.unsupported = Some("a loop (no invariants in M4)".into());
+                    self.unsupported =
+                        Some("a loop (loop invariants are not supported yet)".into());
                 }
                 e => out.push(e),
             }

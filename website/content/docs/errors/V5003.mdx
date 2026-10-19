@@ -7,7 +7,7 @@ description: "Untrusted.validate(u) takes its target V from the expected type Re
 An error from the `contract` phase. `sakura explain V5003` prints this explanation offline.
 
 `Untrusted.validate(u)` takes its target `V` from the expected type `Result<V, Violation>`.
-`V` must be a refined type whose base is the type inside the `Untrusted` (design §6.4, §17.71):
+`V` must be a refined type whose base is the type inside the `Untrusted` (design §6.4):
 a plain type has no predicate, so nothing would be validated. Annotate the binding or the
 function's return type with a refined type, or use `Untrusted.check(u, clause, pred)` for an
 ad-hoc predicate.

@@ -415,8 +415,8 @@ impl<'p> Lower<'p> {
             let Some(host) = host else {
                 let range = self.p.def(main).range;
                 let what = format!(
-                    "a root `{}` handler (no parameterless std `host()`; capability scopes from \
-                     `[permissions]` arrive in M3)",
+                    "a root `{}` handler (the driver installs root handlers only for std \
+                     effects with a parameterless `host()`, limited by `[permissions]`)",
                     self.p.def(eff).name
                 );
                 self.unsupported(main.module, range, &what);

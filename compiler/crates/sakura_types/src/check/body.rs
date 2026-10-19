@@ -614,7 +614,7 @@ impl<'p> Checker<'p> {
                     V2033,
                     format!(
                         "`{shown}`{held} is opaque outside `{pkg}/{}`, so it is not `Schema`: a \
-                         value comes from its module's constructors, not from data (design §17.130)",
+                         value comes from its module's constructors, not from data",
                         m.path
                     ),
                 )

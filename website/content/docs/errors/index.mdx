@@ -25,7 +25,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V0011](/docs/errors/V0011) | `call_site_type_arguments` | Expressions cannot take type arguments in v0 (design §3.2). |
 | [V0012](/docs/errors/V0012) | `keyword_expression_operand` | `if`, `match`, `with`, `try`, `fn`, `handler` and `fail` expressions cannot be operands of a binary or postfix operator without parentheses (design §3.2). |
 | [V0013](/docs/errors/V0013) | `invalid_assign_target` | The left side of `=` must be a `var` name or a field path on one (`u.email = e`). |
-| [V0014](/docs/errors/V0014) | `named_argument` | Calls take positional arguments only (design §3.2 rule 13, §17.21); `name: value` exists only inside attribute arguments. |
+| [V0014](/docs/errors/V0014) | `named_argument` | Calls take positional arguments only (design §3.2 rule 13); `name: value` exists only inside attribute arguments. |
 
 ## Names and modules
 
@@ -36,7 +36,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V1003](/docs/errors/V1003) | `unresolved_type` | No type, effect, variant or error tag with this name is in scope. |
 | [V1004](/docs/errors/V1004) | `name_case_mismatch` | Values are `lower_snake` identifiers and types, variants, error tags and effects are `UpperCamel` (design §2.1). |
 | [V1005](/docs/errors/V1005) | `unresolved_module` | An `import` names a module that does not exist in the snapshot, std, or the declared dependencies. |
-| [V1006](/docs/errors/V1006) | `private_item` | The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field of a `pub opaque` type, which only the declaring module may use (design §9, §17.10). |
+| [V1006](/docs/errors/V1006) | `private_item` | The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field of a `pub opaque` type, which only the declaring module may use (design §9). |
 | [V1007](/docs/errors/V1007) | `wrong_kind` | A name resolved to the wrong kind of item for where it is used: an effect where a type is expected, a type where a value is expected, and so on. |
 | [V1010](/docs/errors/V1010) | `unknown_attribute` | Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, `@test_only` on items, and `@trust("reason")` as an expression (design §2.5). |
 | [V1011](/docs/errors/V1011) | `missing_body` | A function has no body. |
@@ -59,8 +59,8 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V2015](/docs/errors/V2015) | `error_union_annotation_needed` | Two different error unions meet in synthesis mode (for example the branches of an `if`). |
 | [V2031](/docs/errors/V2031) | `not_show` | A value whose type is not `Show` was interpolated or printed. |
 | [V2032](/docs/errors/V2032) | `constraint_not_satisfied` | A type does not satisfy a constraint the operation requires: `Eq`, `Ord`, `Hash` or `Schema` (`Show` is `V2031`). |
-| [V2033](/docs/errors/V2033) | `opaque_not_schema` | A `Schema` bound (`Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of` arguments, a `property` parameter) reaches an opaque type outside its declaring module, directly or through a field (design §17.130). |
-| [V2034](/docs/errors/V2034) | `refined_field_assignment` | A field assignment changes a field of a `var` whose type, or the type of a prefix of the path, is a refined type (design §17.135). |
+| [V2033](/docs/errors/V2033) | `opaque_not_schema` | A `Schema` bound (`Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of` arguments, a `property` parameter) reaches an opaque type outside its declaring module, directly or through a field. |
+| [V2034](/docs/errors/V2034) | `refined_field_assignment` | A field assignment changes a field of a `var` whose type, or the type of a prefix of the path, is a refined type. |
 | [V2040](/docs/errors/V2040) | `unused_value` | A non-final expression statement produces a non-`Unit` value that is dropped. |
 | [V2041](/docs/errors/V2041) | `assign_captured_var` | A lambda, or a `try` body, assigns to a `var` declared outside it. |
 | [V2050](/docs/errors/V2050) | `hole_in_build` | `sakura build`, `sakura run` and `sakura test` reject typed holes (`?name`). |
@@ -84,14 +84,14 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V4001](/docs/errors/V4001) | `non_exhaustive_match` | A `match` does not cover every value. |
 | [V4002](/docs/errors/V4002) | `unreachable_arm` | A `match` arm can never be reached because earlier arms already cover every value it matches. |
 | [V4003](/docs/errors/V4003) | `or_pattern_bindings` | All alternatives of an or-pattern must bind the same names with the same types (design §3.2). |
-| [V4004](/docs/errors/V4004) | `match_too_large` | A `match` compiles to a decision tree of more than 1,048,576 nodes (tests and leaves, counting the rows its or-patterns expand into), so the compiler stops building it (design §17.193). |
+| [V4004](/docs/errors/V4004) | `match_too_large` | A `match` compiles to a decision tree of more than 1,048,576 nodes (tests and leaves, counting the rows its or-patterns expand into), so the compiler stops building it. |
 
 ## Contracts and refinements
 
 | Code | Title | Summary |
 | --- | --- | --- |
 | [V5001](/docs/errors/V5001) | `impure_contract` | Predicates in `where`, `requires`, `ensures` and `property` bodies must be pure, terminating and deterministic: no loops, no recursion, and calls only to `@total` functions in the contract subset (design §7.1). |
-| [V5002](/docs/errors/V5002) | `refinement_checked_at_runtime` (retired) | Retired (design §17.87, §12.3): never reported. |
+| [V5002](/docs/errors/V5002) | `refinement_checked_at_runtime` (retired) | Retired (design §12.3): never reported. |
 | [V5003](/docs/errors/V5003) | `validate_target_not_refined` | `Untrusted.validate(u)` takes its target `V` from the expected type `Result<V, Violation>`. |
 | [V5004](/docs/errors/V5004) | `literal_violates_refinement` | A literal stands where a refined type is expected, and the compiler evaluated the type's `where` clause on it: the predicate is false, or evaluating it defects (an integer division by zero, a failed `requires` of a function it calls). |
 
@@ -100,8 +100,8 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | Code | Title | Summary |
 | --- | --- | --- |
 | [V6001](/docs/errors/V6001) | `capability_construction` | Capability values (`Dir`, `NetScope`, `EnvScope`, `SecretStore`) cannot be constructed by user code. |
-| [V6002](/docs/errors/V6002) | `scoped_value_escape` | A scoped value escapes the `with` that bounds it (design §6.3, §17.70). |
-| [V6003](/docs/errors/V6003) | `resource_escape` | A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the callback returns a type containing it (directly, or inside a record, list or closure), or the value is stored in handler `var` state (design §8.4, §17.70). |
+| [V6002](/docs/errors/V6002) | `scoped_value_escape` | A scoped value escapes the `with` that bounds it (design §6.3). |
+| [V6003](/docs/errors/V6003) | `resource_escape` | A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the callback returns a type containing it (directly, or inside a record, list or closure), or the value is stored in handler `var` state (design §8.4). |
 | [V6010](/docs/errors/V6010) | `non_std_effect_in_main` | `main`'s effect row may contain only std effects, because only they have host root handlers (design §9). |
 
 ## Packages and build
@@ -109,11 +109,11 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | Code | Title | Summary |
 | --- | --- | --- |
 | [V8001](/docs/errors/V8001) | `missing_entry_point` | `sakura run` needs `pub fn main() -> Unit ! {…}` in the program it runs (design §9). |
-| [V8002](/docs/errors/V8002) | `reserved_package_name` | `sakura.toml` names its package `std` or `main` (design §9, §17.131). |
+| [V8002](/docs/errors/V8002) | `reserved_package_name` | `sakura.toml` names its package `std` or `main` (design §9). |
 | [V8003](/docs/errors/V8003) | `abi_version_mismatch` | The WASM module was compiled against a runtime ABI this host does not implement (`runtime/rt/ABI.md` §0): its major version differs, or its minor version is newer than the host's, so it may need imports the host lacks. |
-| [V8004](/docs/errors/V8004) | `target_unsupported_external` | A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript to call (design §17.81): the WASM backend runs std's host operations through the runtime's own imports only. |
-| [V8005](/docs/errors/V8005) | `dependencies_not_supported` | Packages are not supported yet: `sakura.toml` declares `[dependencies]` (design §17.232, RFC 0001). |
-| [V8006](/docs/errors/V8006) | `manifest_invalid` | sakura.toml is not a valid manifest (design §17.239): the TOML is malformed, a key is unknown, a value has the wrong type, or `[package]` has no `name`. |
+| [V8004](/docs/errors/V8004) | `target_unsupported_external` | A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript to call: the WASM backend runs std's host operations through the runtime's own imports only. |
+| [V8005](/docs/errors/V8005) | `dependencies_not_supported` | Packages are not supported yet: `sakura.toml` declares `[dependencies]` (RFC 0001). |
+| [V8006](/docs/errors/V8006) | `manifest_invalid` | sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown, a value has the wrong type, or `[package]` has no `name`. |
 | [V8020](/docs/errors/V8020) | `spec_frozen` | A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body (design §7.3). |
 
 ## Internal
@@ -121,7 +121,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | Code | Title | Summary |
 | --- | --- | --- |
 | [V9001](/docs/errors/V9001) | `internal_error` | The compiler hit a bug. |
-| [V9002](/docs/errors/V9002) | `phase_unavailable` | A compiler phase needed by this command is not implemented yet in this pre-alpha build. |
+| [V9002](/docs/errors/V9002) | `phase_unavailable` | A compiler phase needed by this command is not implemented yet in this build. |
 
 ## Warnings
 
@@ -129,9 +129,9 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | --- | --- | --- |
 | [W1002](/docs/errors/W1002) | `shadowed_import` | A local binding shadows an imported name. |
 | [W4010](/docs/errors/W4010) | `catch_all_on_open_union` | A `catch` uses `_ => …` on an error union that may grow. |
-| [W5005](/docs/errors/W5005) | `linear_contract_on_hot_path` | A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`, `List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole value (design §7.2, §17.72). |
-| [W7001](/docs/errors/W7001) | `property_discard_budget` | A property discarded more than 90% of its generated inputs, so it tested almost nothing (design §7.4, §17.64). |
-| [W7002](/docs/errors/W7002) | `vacuous_obligation` | A contract obligation was proved only because the assumptions on its path are contradictory, so the path can never run and the proof says nothing useful (design §17.98, §17.105). |
+| [W5005](/docs/errors/W5005) | `linear_contract_on_hot_path` | A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`, `List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole value (design §7.2). |
+| [W7001](/docs/errors/W7001) | `property_discard_budget` | A property discarded more than 90% of its generated inputs, so it tested almost nothing (design §7.4). |
+| [W7002](/docs/errors/W7002) | `vacuous_obligation` | A contract obligation was proved only because the assumptions on its path are contradictory, so the path can never run and the proof says nothing useful. |
 | [W8001](/docs/errors/W8001) | `copy_on_write` | An update to a shared collection is forced to copy inside a loop because another reference retains the old value (design §8.2). |
 
 ## Runtime defects
@@ -154,4 +154,4 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [D093](/docs/errors/D093) | `finalizer_failed` | On the WASM runtime, a finalizer (the cleanup of `Fs.with_file` and similar) failed with an error. |
 | [D094](/docs/errors/D094) | `context_escaped` | On the WASM runtime, an operation callback was called after its handler's perform site was gone. |
 | [D095](/docs/errors/D095) | `fiber_retired` | On the WASM runtime, `join` was called on a fiber that had already been retired. |
-| [D096](/docs/errors/D096) | `heap_exhausted` | On the WASM runtime, the heap limit (`SAKURA_MAX_HEAP`) was reached or memory could not grow. |
+| [D096](/docs/errors/D096) | `heap_exhausted` | The WASM runtime's heap limit (`runtime/rt/ABI.md` §13) was reached or memory could not grow. |

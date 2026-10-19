@@ -45,7 +45,7 @@ pub enum Layout {
 /// Lowers live Core to LIR.
 pub fn from_core(core: &sakura_core::Module, layout: Layout) -> Result<lir::Module, String> {
     if layout == Layout::Niche {
-        return Err("`--layout=niche` is not implemented yet (M4-OPT, design §17.99)".into());
+        return Err("`--layout=niche` is not implemented yet".into());
     }
     lower::lower(&snapshot::convert::convert(core), &builtin_sigs())
 }

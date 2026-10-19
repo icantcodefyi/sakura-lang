@@ -93,11 +93,9 @@ pub fn dependencies_key(text: &str) -> Option<std::ops::Range<usize>> {
 
 /// `V8005`'s message (design §17.232).
 pub fn dependencies_message() -> String {
-    format!(
-        "this project declares [dependencies]; Sakura {} compiles one package over std, and \
-         packages arrive in a later minor release",
-        env!("CARGO_PKG_VERSION")
-    )
+    "Sakura Lang does not support packages yet: `[dependencies]` is reserved and refused; \
+     packages arrive in a later minor release"
+        .to_owned()
 }
 
 impl Permissions {
