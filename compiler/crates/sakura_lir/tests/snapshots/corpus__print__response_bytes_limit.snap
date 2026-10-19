@@ -1,0 +1,161 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 2 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 3 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*, %17 word*, %18 word*, %22 bool, %23 word*, %26 word*, %27 word*, %31 bool, %32 word*, %37 word*, %38 word*, %45 word*, %46 word*, %47 word*, %51 bool, %52 word*, %53 word*, %56 word*, %57 word*, %61 bool, %62 word*, %67 word*, %68 word*, %70 word*, %71 word*, %75 bool, %76 word*, %83 word*, %87 bool]
+  b0():
+    %0 lit: i64 = const 200
+    %1 lit: ptr = const str 0
+    %2 $site: i64 = const 3
+    call status#3(%0, %1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 lit: i64 = const 1
+    %5 box: word = box %4
+    %6 lit: i64 = const 2
+    %7 box: word = box %6
+    %8 lit: i64 = const 3
+    %9 box: word = box %8
+    %10 xs: ptr = alloc list(%5, %7, %9)
+    %11 r: ptr = $bytes_from_list(%10)
+    %12 r: ptr = alloc std::request::Payload.Bytes(%11)
+    %13 status: i64 = proj %3.0 std::response::Response
+    %14 headers: word = proj %3.1 std::response::Response
+    drop %3
+    %15 rec: ptr = alloc std::response::Response(%13, %14, %12)
+    %16 lit: i64 = const 3
+    dup %15
+    call read#4(%15, %16) -> b2(%15)
+  b2(%17 r: ptr, %18 rec: ptr):
+    %19 s: ptr = show %17
+    drop %17
+    %20 lit: ptr = const str 1
+    %21 s: ptr = concat %20, %19
+    drop %19
+    drop %20
+    perform std::console::Console.print(%21) -> b3(%18)
+  b3(%22 r: unit, %23 rec: ptr):
+    %24 box: word = box %22
+    drop %24
+    %25 lit: i64 = const 2
+    dup %23
+    call read#4(%23, %25) -> b4(%23)
+  b4(%26 r: ptr, %27 rec: ptr):
+    %28 s: ptr = show %26
+    drop %26
+    %29 lit: ptr = const str 2
+    %30 s: ptr = concat %29, %28
+    drop %28
+    drop %29
+    perform std::console::Console.print(%30) -> b5(%27)
+  b5(%31 r: unit, %32 rec: ptr):
+    %33 box: word = box %31
+    drop %33
+    %34 lit: i64 = const 201
+    %35 lit: ptr = const str 0
+    %36 $site: i64 = const 4
+    call status#3(%34, %35, %36) -> b6(%32)
+  b6(%37 r: ptr, %38 rec: ptr):
+    %39 lit: ptr = const str 3
+    %40 r: ptr = alloc std::request::Payload.Text(%39)
+    %41 status: i64 = proj %37.0 std::response::Response
+    %42 headers: word = proj %37.1 std::response::Response
+    drop %37
+    %43 rec: ptr = alloc std::response::Response(%41, %42, %40)
+    %44 lit: i64 = const 2
+    dup %43
+    call read#4(%43, %44) -> b7(%38, %43)
+  b7(%45 r: ptr, %46 rec: ptr, %47 rec: ptr):
+    %48 s: ptr = show %45
+    drop %45
+    %49 lit: ptr = const str 4
+    %50 s: ptr = concat %49, %48
+    drop %48
+    drop %49
+    perform std::console::Console.print(%50) -> b8(%46, %47)
+  b8(%51 r: unit, %52 rec: ptr, %53 rec: ptr):
+    %54 box: word = box %51
+    drop %54
+    %55 lit: i64 = const 1
+    call read#4(%53, %55) -> b9(%52)
+  b9(%56 r: ptr, %57 rec: ptr):
+    %58 s: ptr = show %56
+    drop %56
+    %59 lit: ptr = const str 5
+    %60 s: ptr = concat %59, %58
+    drop %58
+    drop %59
+    perform std::console::Console.print(%60) -> b10(%57)
+  b10(%61 r: unit, %62 rec: ptr):
+    %63 box: word = box %61
+    drop %63
+    %64 lit: i64 = const 404
+    %65 lit: ptr = const str 6
+    %66 $site: i64 = const 5
+    call status#3(%64, %65, %66) -> b11(%62)
+  b11(%67 r: ptr, %68 rec: ptr):
+    %69 lit: i64 = const 100
+    call read#4(%67, %69) -> b12(%68)
+  b12(%70 r: ptr, %71 rec: ptr):
+    %72 s: ptr = show %70
+    drop %70
+    %73 lit: ptr = const str 7
+    %74 s: ptr = concat %73, %72
+    drop %72
+    drop %73
+    perform std::console::Console.print(%74) -> b13(%71)
+  b13(%75 r: unit, %76 rec: ptr):
+    %77 box: word = box %75
+    drop %77
+    %78 v: ptr = const static std::request::Payload.Empty
+    %79 status: i64 = proj %76.0 std::response::Response
+    %80 headers: word = proj %76.1 std::response::Response
+    drop %76
+    %81 rec: ptr = alloc std::response::Response(%79, %80, %78)
+    %82 lit: i64 = const 0
+    call read#4(%81, %82) -> b14()
+  b14(%83 r: ptr):
+    %84 s: ptr = show %83
+    drop %83
+    %85 lit: ptr = const str 8
+    %86 s: ptr = concat %85, %84
+    drop %84
+    drop %85
+    perform std::console::Console.print(%86) -> b15()
+  b15(%87 r: unit):
+    %88 box: word = box %87
+    %89 unbox: unit = unbox %88
+    drop %88
+    ret %89
+
+fn $entry#1 top -> unit ; main::response_bytes_limit, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn read#4 top -> ptr ; main::response_bytes_limit, frame 4 slots [%0 word*, %1 i64, %4 word*, %6 word*]
+  b0(%0 r: ptr, %1 limit: i64):
+    try_push -> b2(err, )
+    call bytes#5(%0, %1) -> b3()
+  b1(%2 v: ptr):
+    %3 s: ptr = show %2
+    drop %2
+    ret %3
+  b2(%4 e: word):
+    %5 err: ptr = alloc std::result::Result.Err(%4)
+    jump b1(%5)
+  b3(%6 r: ptr) [try]:
+    %7 ok: ptr = alloc std::result::Result.Ok(%6)
+    try_pop
+    jump b1(%7)

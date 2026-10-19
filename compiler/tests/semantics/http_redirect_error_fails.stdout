@@ -1,0 +1,6 @@
+  send https://a.example/old
+/old: Err(HttpError { status: Some(308), reason: "unexpected redirect" })
+  send https://a.example/bare
+/bare: Err(HttpError { status: Some(303), reason: "unexpected redirect" })
+  send https://a.example/new
+/new: Ok(200)

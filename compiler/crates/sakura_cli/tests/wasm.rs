@@ -193,11 +193,11 @@ fn http_host_sends_on_wasm_as_on_js() {
         dir.join("src/main.sak"),
         format!(
             "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
-             import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
+             import std/response.{{HttpError, Response}}\nimport std/url.{{Url}}\n\n\
              pub fn main() -> Unit ! {{Console, Http, Fail<HttpError>}} {{\n\
              \x20 let req = Http.bearer(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/hi\")), Secret.of(\"s3cr3t\"))\n\
              \x20 match try {{ Http.send(req) }} {{\n\
-             \x20   Ok(r) => Console.print(\"{{r.status}} {{r.body == \"path=/hi auth=Bearer s3cr3t\"}} {{List.len(req.secret_headers)}}\"),\n\
+             \x20   Ok(r) => Console.print(\"{{r.status}} {{Response.bytes(r, 1024) == String.to_bytes(\"path=/hi auth=Bearer s3cr3t\")}} {{List.len(req.secret_headers)}}\"),\n\
              \x20   Err(e) => Console.print(\"refused: {{e.reason}}\"),\n\
              \x20 }}\n\
              \x20 let streamed = Http.stream(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/s\")), fn(i) {{\n\
@@ -277,14 +277,14 @@ import std/request.{{Method, Request}}
 import std/response.{{HttpError, Response}}
 import std/url.{{Url}}
 
-fn get() -> String ! {{Http, Fail<HttpError>}} {{
+fn get() -> Bytes ! {{Http, Fail<HttpError>}} {{
   let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/a")), Secret.of("s3cr3t-wasm"))
-  Http.send(req).body
+  Response.bytes(Http.send(req), 64)
 }}
 
 test "replays" {{
   with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
-    expect_eq(try {{ get() }}, Ok("live"))
+    expect_eq(try {{ get() }}, Ok(String.to_bytes("live")))
   }}
 }}
 "#
@@ -642,12 +642,15 @@ fn serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving() {
         std::fs::write(
             dir.join("src/main.sak"),
             format!(
-                "import std/request.{{Request}}\nimport std/response.{{Response}}\n\
+                "import std/request.{{Bytes, Request}}\nimport std/response.{{Response}}\n\
                  import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
                  pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
                  \x20 let router = Router.new()\n\
                  \x20   .get(\"/hi\", fn(_req) {{ Response.status(200, \"hello\") }})\n\
-                 \x20   .post(\"/echo\", fn(req) {{ Response.status(200, \"{{String.len(req.body)}}\") }})\n\
+                 \x20   .post(\"/echo\", fn(req) {{\n\
+                 \x20     let n = match req.body {{ Bytes(b) => Bytes.len(b), _ => 0 }}\n\
+                 \x20     Response.status(200, \"{{n}}\")\n\
+                 \x20   }})\n\
                  \x20   .get(\"/big\", fn(_req) {{ Response.status(200, String.repeat(\"y\", 2048)) }})\n\
                  \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
             ),
@@ -738,8 +741,8 @@ fn serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving() {
     assert_eq!(
         wasm_defects,
         &[
-            "D091 request too large: 2191 bytes over SAKURA_MAX_COPY_BYTES",
-            "D091 response too large: 2081 bytes over SAKURA_MAX_COPY_BYTES"
+            "D091 request too large: 2217 bytes over SAKURA_MAX_COPY_BYTES",
+            "D091 response too large: 2094 bytes over SAKURA_MAX_COPY_BYTES"
         ],
         "{wasm_err}"
     );
@@ -933,7 +936,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x010600, "{name}");
+        assert_eq!(v["abi_version"], 0x010700, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),
@@ -1218,10 +1221,11 @@ fn http_send_with_a_body_cut_short_is_err_alike_on_both_backends() {
         dir.join("src/main.sak"),
         format!(
             "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
-             import std/task.{{Task, timeout}}\nimport std/url.{{Url}}\n\n\
+             import std/response.{{Response}}\nimport std/task.{{Task, timeout}}\n\
+             import std/url.{{Url}}\n\n\
              pub fn main() -> Unit ! {{Clock, Console, Http, Task}} {{\n\
-             \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/cut\"))) }} {{\n\
-             \x20   Ok(r) => Console.print(\"read {{String.len(r.body)}}\"),\n\
+             \x20 match try {{ Response.bytes(Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/cut\"))), 1_048_576) }} {{\n\
+             \x20   Ok(b) => Console.print(\"read {{Bytes.len(b)}}\"),\n\
              \x20   Err(e) => Console.print(\"failed: {{e.reason}}\"),\n\
              \x20 }}\n\
              \x20 let stall = Url.from(\"http://127.0.0.1:{port}/stall\")\n\
@@ -1300,10 +1304,10 @@ fn http_send_over_the_copy_budget_fails_alike_on_both_backends() {
         dir.join("src/main.sak"),
         format!(
             "import std/http.{{Http}}\nimport std/request.{{Get, Request}}\n\
-             import std/response.{{HttpError}}\nimport std/url.{{Url}}\n\n\
+             import std/response.{{HttpError, Response}}\nimport std/url.{{Url}}\n\n\
              pub fn main() -> Unit ! {{Console, Http}} {{\n\
-             \x20 match try {{ Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/big\"))) }} {{\n\
-             \x20   Ok(r) => Console.print(\"read {{String.len(r.body)}}\"),\n\
+             \x20 match try {{ Response.bytes(Http.send(Request.of(Get, Url.from(\"http://127.0.0.1:{port}/big\"))), 1_048_576) }} {{\n\
+             \x20   Ok(b) => Console.print(\"read {{Bytes.len(b)}}\"),\n\
              \x20   Err(e) => Console.print(\"failed: {{e.reason}}\"),\n\
              \x20 }}\n}}\n"
         ),

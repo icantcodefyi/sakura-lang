@@ -2,7 +2,7 @@
 // mode: test
 // spec: design §17.145
 
-import std/request.{BadRequest, Get, Request}
+import std/request.{BadRequest, Get, Request, Text}
 import std/response.{Response, Status}
 import std/router.{Router}
 import std/url.{Url}
@@ -26,7 +26,7 @@ test "route dispatch calls the endpoint without a server" {
     Request.post("/greet", Json.encode(Greeting { name: "Mina" })),
   )
   expect_eq(response.status, Status.from(200))
-  expect_eq(response.body, "Hello, Mina!")
+  expect_eq(response.body, Text("Hello, Mina!"))
 }
 
 test "malformed, invalid and oversized bodies return 400" {

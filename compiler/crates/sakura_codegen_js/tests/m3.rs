@@ -688,15 +688,15 @@ fn http_send_uses_fetch_and_sends_the_bearer_only_as_a_header() {
         req
     });
     let src = r#"import std/http.{Http}
-import std/request.{Method, Request}
+import std/request.{Bytes, Method, Request, Text}
 import std/url.{Url}
 pub fn main() -> Unit ! {Console, Env, Http} {
   let url = Url.from(Env.get("TEST_URL").unwrap_or("/"))
-  let base = Request { ..Request.of(Method.Post, url), body: "ping", headers: [("x-test", "1")] }
+  let base = Request { ..Request.of(Method.Post, url), body: Text("ping"), headers: [("x-test", "1")] }
   let req = match Env.secret("TEST_TOKEN") { Some(t) => Http.bearer(base, t), None => base }
   let r = try { Http.send(req) }
   match r {
-    Ok(resp) => Console.print("{resp.status} {resp.body} {List.contains(resp.headers, ("x-reply", "yes"))}"),
+    Ok(resp) => Console.print("{resp.status} {resp.body == Bytes(String.to_bytes("pong"))} {List.contains(resp.headers, ("x-reply", "yes"))}"),
     Err(e) => Console.print("error {e}"),
   }
 }
@@ -712,7 +712,7 @@ pub fn main() -> Unit ! {Console, Env, Http} {
         .unwrap();
     assert_eq!(
         String::from_utf8_lossy(&out.stdout),
-        "201 pong true\n",
+        "201 true true\n",
         "{}",
         String::from_utf8_lossy(&out.stderr)
     );
@@ -1027,7 +1027,7 @@ pub fn main() -> Unit ! {{Console}} {{
   let r = Router.new()
     .get("/health", fn(_) {{ Response.status(200, "ok") }})
     .get("/boom", fn(_) {{ Response.status(200, "{{1 / (1 - 1)}}") }})
-    .post("/echo", fn(req) {{ Response.status(201, req.body) }})
+    .post("/echo", fn(req) {{ Response {{ ..Response.status(201, ""), body: req.body }} }})
   let s = try {{ with host() {{ Serve.listen(r, Address {{ host: "127.0.0.1", port: {port} }}) }} }}
   Console.print("{{s}}")
 }}
@@ -1098,7 +1098,7 @@ fn serve_listen_caps_request_bodies_and_survives_invalid_replies() {
     let src = format!(
         r#"import std/serve.{{Serve, ServeError, Address}}
 import std/router.{{Router}}
-import std/request.{{Request}}
+import std/request.{{Bytes, Request, Text}}
 import std/response.{{Response, Status}}
 @external(js, "sakura_runtime", "serve_listen")
 fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never ! {{Fail<ServeError> | e}}
@@ -1108,8 +1108,11 @@ fn host() -> Handler<Serve> {{
 pub fn main() -> Unit ! {{Console}} {{
   let r = Router.new()
     .get("/health", fn(_) {{ Response.status(200, "ok") }})
-    .get("/bad", fn(_) {{ Response {{ status: Status.from(200), headers: [("bad name", "x")], body: "x" }} }})
-    .post("/len", fn(req) {{ Response.status(201, "{{String.len(req.body)}}") }})
+    .get("/bad", fn(_) {{ Response {{ status: Status.from(200), headers: [("bad name", "x")], body: Text("x") }} }})
+    .post("/len", fn(req) {{
+      let n = match req.body {{ Bytes(b) => Bytes.len(b), _ => 0 }}
+      Response.status(201, "{{n}}")
+    }})
   let s = try {{ with host() {{ Serve.listen(r, Address {{ host: "127.0.0.1", port: {port} }}) }} }}
   Console.print("{{s}}")
 }}
@@ -1426,14 +1429,14 @@ import std/http.{{Any, Http}}
 import std/request.{{Method, Request}}
 import std/response.{{HttpError, Response}}
 import std/url.{{Url}}
-fn get(path: String) -> String ! {{Http, Fail<HttpError>}} {{
+fn get(path: String) -> Bytes ! {{Http, Fail<HttpError>}} {{
   let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/{{path}}")), Secret.of("sk-live"))
-  Http.send(req).body
+  Response.bytes(Http.send(req), 64)
 }}
 test "replays" {{
   with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
-    expect_eq(try {{ get("a") }}, Ok("live"))
-    expect_eq(try {{ get("a") }}, Ok("live"))
+    expect_eq(try {{ get("a") }}, Ok(String.to_bytes("live")))
+    expect_eq(try {{ get("a") }}, Ok(String.to_bytes("live")))
   }}
 }}
 "#

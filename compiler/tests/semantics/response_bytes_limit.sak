@@ -1,0 +1,25 @@
+// milestone: M3
+// spec: RFC 0002 §2.4, §6
+// Spec: https://fetch.spec.whatwg.org/#dom-body-bytes
+
+// `Response.bytes(r, limit)` joins `text` and `json`: the body of a 2xx response that is at
+// most `limit` bytes, else `HttpError` (the status for a non-2xx, `body exceeds` past the
+// limit, counted in bytes for a `Text` body too).
+import std/request.{Bytes, Empty, Text}
+import std/response.{HttpError, Response}
+
+fn read(r: Response, limit: Int) -> String {
+  let got: Result<Bytes, HttpError> = try { Response.bytes(r, limit) }
+  "{got}"
+}
+
+pub fn main() -> Unit ! {Console} {
+  let binary = Response { ..Response.status(200, ""), body: Bytes(Bytes.from_list([1, 2, 3])) }
+  Console.print("3 of 3: {read(binary, 3)}")
+  Console.print("3 of 2: {read(binary, 2)}")
+  let text = Response { ..Response.status(201, ""), body: Text("\u{E9}") }
+  Console.print("text 2 of 2: {read(text, 2)}")
+  Console.print("text 2 of 1: {read(text, 1)}")
+  Console.print("404: {read(Response.status(404, "gone"), 100)}")
+  Console.print("empty: {read(Response { ..binary, body: Empty }, 0)}")
+}

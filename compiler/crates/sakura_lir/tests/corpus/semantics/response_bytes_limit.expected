@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+3 of 3: Ok(Bytes.of([1, 2, 3]))
+3 of 2: Err(HttpError { status: Some(200), reason: "body exceeds 2 bytes" })
+text 2 of 2: Ok(Bytes.of([195, 169]))
+text 2 of 1: Err(HttpError { status: Some(201), reason: "body exceeds 1 bytes" })
+404: Err(HttpError { status: Some(404), reason: "status 404" })
+empty: Ok(Bytes.of([]))

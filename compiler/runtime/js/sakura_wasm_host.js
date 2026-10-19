@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010600;
+export const ABI_VERSION = 0x010700;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [

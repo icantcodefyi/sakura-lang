@@ -1,0 +1,46 @@
+// milestone: M3
+// spec: RFC 0002 §2.4; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#concept-request-redirect-mode
+
+// `redirect: Manual` returns the 3xx response itself, with its `location`, and sends nothing
+// more; `Follow` on the same script sends the second request. A 3xx without a `location`, and
+// a 3xx that is not a redirect status (300, 304), are returned under `Follow` too.
+import std/http.{Http, Path}
+import std/request.{Get, Manual, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn logged() -> Handler<Http, {Console, Http}> {
+  handler Http {
+    fn send(req) {
+      Console.print("  send {req.url}")
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let moved = Response { ..Response.status(301, "moved"), headers: [("Location", "/new")] }
+  let script = [
+    (Path("/old"), moved),
+    (Path("/new"), Response.status(200, "new")),
+    (Path("/bare"), Response.status(302, "no location")),
+    (Path("/choices"), Response { ..Response.status(300, ""), headers: [("location", "/new")] }),
+    (Path("/cached"), Response { ..Response.status(304, ""), headers: [("location", "/new")] }),
+  ]
+  with Http.scripted(script), logged(), Http.scoped(["a.example:443"]) {
+    let req = Request.of(Get, Url.from("https://a.example/old"))
+    let manual: Result<Response, HttpError> = try { Http.send(Request { ..req, redirect: Manual }) }
+    Console.print("Manual: {manual}")
+    let follow: Result<Response, HttpError> = try { Http.send(req) }
+    Console.print("Follow: {follow}")
+    for path in ["/bare", "/choices", "/cached"] {
+      let got: Result<Response, HttpError> = try {
+        Http.send(Request.of(Get, Url.from("https://a.example{path}")))
+      }
+      Console.print("{path}: {got.map(fn(r) { r.status })}")
+    }
+  }
+}

@@ -1,27 +1,31 @@
 // HTTP responses (design §10.4, M3), the home module of `Response` (see `std/request`).
 
+import std/encoding.{Encoding, Errors}
 import std/html.{Html}
 import std/json.{DecodeError}
+import std/request.{Bytes, Empty, Payload, Text}
 import std/untrusted
 
 /// `Status.from(200)`; `Status.validate(code)` for untrusted codes.
 pub type Status = Int where it >= 100 && it <= 599
 
-pub type Response = { status: Status, headers: List<(String, String)>, body: String }
+/// A host handler's response body is `Bytes` (`Empty` when it has no bytes); `text`, `json` and
+/// `bytes` read any `Payload`.
+pub type Response = { status: Status, headers: List<(String, String)>, body: Payload }
 
 /// Transport failure (`status` is `None`), a status outside 2xx, or a body over its limit.
 pub error HttpError(status: Option<Status>, reason: String)
 
 pub fn status(code: Int, body: String) -> Response
   requires code >= 100 && code <= 599
-{ Response { status: Status.from(code), headers: [], body } }
+{ Response { status: Status.from(code), headers: [], body: Text(body) } }
 
 /// A 200 response with `value` encoded as JSON.
 pub fn ok_json<T: Schema>(value: T) -> Response {
   Response {
     status: Status.from(200),
     headers: [("content-type", "application/json")],
-    body: Json.encode(value),
+    body: Text(Json.encode(value)),
   }
 }
 
@@ -30,30 +34,77 @@ pub fn html(h: Html) -> Response {
   Response {
     status: Status.from(200),
     headers: [("content-type", "text/html; charset=utf-8")],
-    body: Html.to_string(h),
+    body: Text(Html.to_string(h)),
   }
 }
 
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
 pub fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<DecodeError | HttpError>} {
-  match Json.decode(checked_body(r, limit)) {
+  match Json.decode(checked_text(r, limit)) {
     Ok(value) => value,
     Err(e) => fail e,
   }
 }
 
-/// The body as text, still untrusted.
+/// The body as text, still untrusted. Bytes that are not UTF-8 become U+FFFD, as Fetch's
+/// `text()` does.
 pub fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>} {
-  untrusted.of(checked_body(r, limit))
+  untrusted.of(checked_text(r, limit))
 }
 
-/// The body of a 2xx response that is at most `limit` bytes.
-fn checked_body(r: Response, limit: Int) -> String ! {Fail<HttpError>} {
+/// The body's bytes (Fetch's `bytes()`); a `Text` body as UTF-8.
+pub fn bytes(r: Response, limit: Int) -> Bytes ! {Fail<HttpError>} {
+  let b = match r.body {
+    Empty => Bytes.from_list([]),
+    Text(s) => String.to_bytes(s),
+    Bytes(b) => b,
+  }
+  checked(r, Bytes.len(b), limit)
+  b
+}
+
+/// The text of a 2xx response's body that is at most `limit` bytes.
+fn checked_text(r: Response, limit: Int) -> String ! {Fail<HttpError>} {
+  match r.body {
+    Empty => {
+      checked(r, 0, limit)
+      ""
+    },
+    Text(s) => {
+      checked(r, String.len(s), limit)
+      s
+    },
+    Bytes(b) => {
+      checked(r, Bytes.len(b), limit)
+      Encoding.decode(b, Encoding.Utf8, Errors.Replace).unwrap_or("")
+    },
+  }
+}
+
+/// Fails unless `r` is 2xx and `size` is at most `limit`.
+fn checked(r: Response, size: Int, limit: Int) -> Unit ! {Fail<HttpError>} {
   if r.status < 200 || r.status > 299 {
     fail HttpError { status: Some(r.status), reason: "status {r.status}" }
   }
-  if String.len(r.body) > limit {
+  if size > limit {
     fail HttpError { status: Some(r.status), reason: "body exceeds {limit} bytes" }
   }
-  r.body
+}
+
+test "text, json and bytes read every payload" {
+  let raw = Response { ..status(200, ""), body: Bytes(String.to_bytes("[1,2]")) }
+  let xs: Result<List<Int>, DecodeError | HttpError> = try { json(raw, 5) }
+  expect_eq(xs, Ok([1, 2]))
+  expect_eq(try { bytes(status(200, "hé"), 3) }, Ok(String.to_bytes("hé")))
+  expect_eq(try { Bytes.len(bytes(Response { ..raw, body: Empty }, 0)) }, Ok(0))
+  let bad = Response { ..raw, body: Bytes(Bytes.from_list([104, 255])) }
+  expect_eq(try { untrusted.trust(text(bad, 2), @trust("test")) }, Ok("h\u{FFFD}"))
+  expect_eq(
+    try { bytes(raw, 4) },
+    Err(HttpError { status: Some(Status.from(200)), reason: "body exceeds 4 bytes" }),
+  )
+  expect_eq(
+    try { bytes(status(404, ""), 10) },
+    Err(HttpError { status: Some(Status.from(404)), reason: "status 404" }),
+  )
 }

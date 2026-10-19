@@ -3624,16 +3624,34 @@ function netRefusal(u) {
   return net === undefined || net.includes(host) ? undefined : `${host} is not in the manifest's net list`;
 }
 
-/** `fetch` arguments for `req`, or `{ err }` when its host is outside the manifest's `net`. */
+// `std::request::Payload` (RFC 0002 §2.4): `Empty`, `Text(String)`, `Bytes(Bytes)`.
+/** The bytes `p` puts on the wire: `Text` as UTF-8. */
+function payloadBytes(p) {
+  return p.tag === 0 ? new Uint8Array(0) : p.tag === 1 ? string_to_bytes(p.fields[0]) : p.fields[0];
+}
+/** The body a host delivers: `Empty` with no bytes, otherwise `Bytes`. */
+function payloadOf(bytes) {
+  return bytes.length === 0 ? variant("std::request::Payload", 0, []) : variant("std::request::Payload", 2, [bytes]);
+}
+/** `bytes` as text when they are UTF-8 (a byte order mark kept, so they round-trip), else `null`. */
+function exactUtf8(bytes) {
+  try {
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `fetch` arguments for `req`, or `{ err }` when its host is outside the manifest's `net`. Every
+ * send is `redirect: "manual"`: `std/http`'s `follow` sends each hop as its own request, so this
+ * check runs on every hop (RFC 0002 §2.4, design §17.263 (4)).
+ */
 function fetchArgs(req) {
   const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
   const headers = new Headers();
   for (const [name, value] of items(req.headers)) headers.append(name, value);
-  const secret = [];
-  for (const [name, value] of items(req.secret_headers)) {
-    headers.set(name, Secret.expose(value));
-    secret.push(name);
-  }
+  for (const [name, value] of items(req.secret_headers)) headers.set(name, Secret.expose(value));
   if (granted()?.net !== undefined) {
     let u;
     try {
@@ -3645,45 +3663,8 @@ function fetchArgs(req) {
     if (err !== undefined) return { err };
   }
   const abort = new AbortController();
-  const body = method === "GET" || method === "HEAD" ? undefined : req.body;
-  return { abort, secret, init: { method, headers, body, signal: abort.signal, redirect: "manual" } };
-}
-
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
-const MAX_REDIRECTS = 20;
-const BODY_HEADERS = ["content-encoding", "content-language", "content-location", "content-type"];
-
-/**
- * `fetch(url, a.init)` following redirects as Fetch does, but checking each hop's `host:port`
- * against the manifest's `net` before it is fetched (design §17.262 (4)): at most 20 hops, the
- * 21st `too many redirects`; a hop to another origin drops `authorization` and every
- * `secret_headers` name for the rest of the chain. Rejects with the refusal as its message.
- */
-async function fetchFollowing(url, a) {
-  const init = a.init;
-  for (let hops = 0; ; hops++) {
-    const r = await fetch(url, init);
-    const location = REDIRECT_STATUSES.has(r.status) ? r.headers.get("location") : null;
-    if (location === null) return r;
-    r.body?.cancel().catch(() => {});
-    if (hops === MAX_REDIRECTS) throw new Error("too many redirects");
-    let next;
-    try {
-      next = new URL(location, url);
-    } catch {
-      throw new Error(`invalid redirect location ${location}`);
-    }
-    if (next.protocol !== "http:" && next.protocol !== "https:") throw new Error(`redirect to ${next.protocol} refused`);
-    const refused = netRefusal(next);
-    if (refused !== undefined) throw new Error(refused);
-    if (next.origin !== new URL(url).origin) for (const name of ["authorization", ...a.secret]) init.headers.delete(name);
-    if (r.status === 303 ? init.method !== "HEAD" : r.status <= 302 && init.method === "POST") {
-      init.method = "GET";
-      init.body = undefined;
-      for (const name of BODY_HEADERS) init.headers.delete(name);
-    }
-    url = next.href;
-  }
+  const body = method === "GET" || method === "HEAD" || req.body.tag === 0 ? undefined : req.body.fields[0];
+  return { abort, init: { method, headers, body, signal: abort.signal, redirect: "manual" } };
 }
 
 const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
@@ -3707,42 +3688,47 @@ export const DEFAULT_COPY_BYTES = 256 * 1024 * 1024;
 const maxCopyBytes = () => bytesEnv("SAKURA_MAX_COPY_BYTES", DEFAULT_COPY_BYTES);
 const TOO_LARGE = "response too large";
 
-/** `r`'s body as text, or `undefined` once it is over `max` bytes. */
-async function boundedText(r, max) {
+/** `r`'s body, or `undefined` once it is over `max` bytes. */
+async function boundedBytes(r, max) {
   // A HEAD or 304 answer may declare a length with no body to follow.
   if (r.body !== null && Number(r.headers.get("content-length")) > max) return undefined;
-  const decoder = new TextDecoder();
-  let text = "";
+  const chunks = [];
   let size = 0;
   for await (const chunk of r.body ?? []) {
     size += chunk.length;
     if (size > max) return undefined;
-    text += decoder.decode(chunk, { stream: true });
+    chunks.push(chunk);
   }
-  return text + decoder.decode();
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
 }
 
 /**
- * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
- * `Err(reason)` when no response arrives or its body is cut short (design §17.209 (2)), and
- * `Err("response too large")`, the fetch aborted, past `SAKURA_MAX_COPY_BYTES` of body. Every
- * `req.secret_headers` entry is sent as a header and is readable nowhere else. Redirects follow
- * `fetchFollowing`, `net` checked on every hop. Cancelling the task aborts the request.
+ * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status, a 3xx
+ * as it is, its body a `Payload` (`payloadOf`); `Err(reason)` when no response arrives or its
+ * body is cut short (design §17.209 (2)), and `Err("response too large")`, the fetch aborted,
+ * past `SAKURA_MAX_COPY_BYTES` of body. Every `req.secret_headers` entry is sent as a header and
+ * is readable nowhere else. Cancelling the task aborts the request.
  */
 export function http_send(req, _ctx, k) {
   const Response = std("std::response::Response");
   const max = maxCopyBytes();
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
-  const response = fetchFollowing(req.url, a).then(
+  const response = fetch(req.url, a.init).then(
     async (r) => {
-      let text;
+      let bytes;
       try {
-        text = await boundedText(r, max);
+        bytes = await boundedBytes(r, max);
       } catch (e) {
         return Err(failureOf(e));
       }
-      if (text !== undefined) return Ok(new Response(r.status, list([...r.headers]), text));
+      if (bytes !== undefined) return Ok(new Response(r.status, list([...r.headers]), payloadOf(bytes)));
       a.abort.abort();
       return Err(TOO_LARGE);
     },
@@ -3779,7 +3765,7 @@ export function http_stream_open(req, _ctx, k) {
   const Incoming = std("std::http::Incoming");
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
-  const head = fetchFollowing(req.url, a).then(
+  const head = fetch(req.url, a.init).then(
     (r) => {
       const body = addBody(r.body?.getReader() ?? null, a.abort, new Uint8Array(0));
       return Ok(new Incoming(r.status, list([...r.headers]), body));
@@ -3823,8 +3809,9 @@ export function http_stream_read(body, max, _ctx, k) {
 
 // Cassettes behind `Http.recording(path)` (design §17.73, §17.122): JSON Lines in a `Dir`, a
 // `{"schema_version":"1.0","kind":"cassette"}` line first, then one
-// `{method, url, headers, body, status, response_headers, response_body}` per exchange. The key
-// is (method, url, headers, body); `secret_headers` are never read here, so they are neither
+// `{method, url, headers, body, status, response_headers, response_body}` per exchange, a body
+// that is not UTF-8 as `body_base64` or `response_body_base64`. The key is (method, url,
+// headers, body bytes); `secret_headers` are never read here, so they are neither
 // written nor matched. A credential-shaped ordinary header is refused before any lookup or
 // forward, and `set-cookie` is stored as `<redacted>`. `SAKURA_RECORD=1` (set only by
 // `sakura test --record`) allows appends.
@@ -3842,22 +3829,29 @@ function credentialHeader(req) {
   return undefined;
 }
 
-function exchangeKey(method, url, headers, body) {
-  return JSON.stringify([method, url, headers, body]);
+/** A body as a cassette stores it: `{ body: text }` when UTF-8, else `{ body_base64 }` (`prefix` names the field). */
+function storedBody(bytes, prefix) {
+  const text = exactUtf8(bytes);
+  return text === null ? { [`${prefix}body_base64`]: base64(bytes) } : { [`${prefix}body`]: text };
+}
+function exchangeKey(method, url, headers, x) {
+  return JSON.stringify([method, url, headers, x.body ?? ["base64", x.body_base64]]);
 }
 function requestKey(req) {
   const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
-  return exchangeKey(method, req.url, items(req.headers).map(([n, v]) => [n, v]), req.body);
+  return exchangeKey(method, req.url, items(req.headers).map(([n, v]) => [n, v]), storedBody(payloadBytes(req.body), ""));
 }
 
 /** The first field a cassette exchange line `x` lacks or has of the wrong type, or `undefined`. */
 function missingExchangeField(x) {
   const is = (f, ok) => x !== null && typeof x === "object" && ok(x[f]);
   const str = (v) => typeof v === "string";
-  for (const f of ["method", "url", "body"]) if (!is(f, str)) return f;
+  const b64 = (v) => typeof v === "string" && unbase64(v) !== null;
+  for (const f of ["method", "url"]) if (!is(f, str)) return f;
+  if (!is("body", str) && !is("body_base64", b64)) return "body";
   for (const f of ["headers", "response_headers"]) if (!is(f, Array.isArray)) return f;
   if (!is("status", Number.isInteger)) return "status";
-  if (!is("response_body", str) && !is("response_body_base64", str)) return "response_body";
+  if (!is("response_body", str) && !is("response_body_base64", b64)) return "response_body";
   return undefined;
 }
 
@@ -3898,7 +3892,7 @@ export function http_recording_open(dir, path) {
     }
     const missing = missingExchangeField(x);
     if (missing !== undefined) return Err(`${path}:${i + 1}: not a cassette exchange (missing ${missing})`);
-    const key = exchangeKey(x.method, x.url, x.headers, x.body);
+    const key = exchangeKey(x.method, x.url, x.headers, x);
     if (!byKey.has(key)) byKey.set(key, { next: 0, exchanges: [] });
     byKey.get(key).exchanges.push(x);
   }
@@ -3931,8 +3925,7 @@ export function http_recording_lookup(id, req) {
   const r = replayed(id, req);
   if (r.miss !== undefined) return r.miss;
   const Response = std("std::response::Response");
-  const body = new TextDecoder().decode(recordedBytes(r.x));
-  return Ok(Some(new Response(r.x.status, recordedHeaders(r.x), body)));
+  return Ok(Some(new Response(r.x.status, recordedHeaders(r.x), payloadOf(recordedBytes(r.x)))));
 }
 
 /** Like `http_recording_lookup`, for `Http.stream`: the recorded body as one buffered chunk. */
@@ -3945,32 +3938,28 @@ export function http_recording_lookup_stream(id, req) {
 
 /** Appends one exchange to the file and to the open cassette; only under `SAKURA_RECORD=1`. */
 export function http_recording_append(id, req, resp) {
-  return appendExchange(id, req, resp.status, resp.headers, { response_body: resp.body });
+  return appendExchange(id, req, resp.status, resp.headers, payloadBytes(resp.body));
 }
 
-/** Appends a streamed exchange whose whole body is `bytes` (base64 when not UTF-8). */
+/** Appends a streamed exchange whose whole body is `bytes`. */
 export function http_recording_append_stream(id, req, status, headers, bytes) {
-  let text = null;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {}
-  return appendExchange(id, req, status, headers, text === null ? { response_body_base64: base64(bytes) } : { response_body: text });
+  return appendExchange(id, req, status, headers, bytes);
 }
 
-function appendExchange(id, req, status, headers, body) {
+function appendExchange(id, req, status, headers, bytes) {
   const c = cassettes.get(id);
   if (!recording()) return Err(`${c.path}: recording needs sakura test --record`);
   const refused = credentialHeader(req);
   if (refused !== undefined) return Err(refused);
-  const [method, url, reqHeaders, reqBody] = JSON.parse(requestKey(req));
+  const [method, url, reqHeaders] = JSON.parse(requestKey(req));
   const x = {
     method,
     url,
     headers: reqHeaders,
-    body: reqBody,
+    ...storedBody(payloadBytes(req.body), ""),
     status,
     response_headers: items(headers).map(([n, v]) => [n, n.toLowerCase() === "set-cookie" ? "<redacted>" : v]),
-    ...body,
+    ...storedBody(bytes, "response_"),
   };
   const line = `${c.headed ? "" : `${CASSETTE_HEADER}\n`}${JSON.stringify(x)}\n`;
   const r = fsResult(c.dir, c.path, true, (p) => withResolved(p, "a", (fd) => nodeFs().writeFileSync(fd, line)));
@@ -4413,7 +4402,9 @@ export function llm_anthropic(key, handlerModel) {
       ["anthropic-beta", "server-side-fallback-2026-07-01"],
     ]);
     const secrets = list([["x-api-key", key]]);
-    const request = new Request(post, `${base}/v1/messages`, headers, text, secrets, list([]));
+    const follow = variant("std::request::Redirect", 0, []);
+    const payload = variant("std::request::Payload", 1, [text]);
+    const request = new Request(post, `${base}/v1/messages`, headers, payload, follow, secrets, list([]));
     // A transport failure (`HttpError`, including a cassette miss) keeps its reason.
     const toLlm = catcher(ctx, (e) =>
       fail(
@@ -4446,7 +4437,7 @@ export function llm_anthropic(key, handlerModel) {
       perform(toLlm, HTTP, 0, [request], (resp) => {
         let msg = null;
         try {
-          msg = resp.status === 200 ? JSON.parse(resp.body) : null;
+          msg = resp.status === 200 ? JSON.parse(new TextDecoder().decode(payloadBytes(resp.body))) : null;
         } catch {}
         return finish(resv, resp.status, resp.headers, msg);
       });
@@ -4615,8 +4606,9 @@ export function serveHttp(addr, run) {
         }
         const headers = [];
         for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
-        const body = Buffer.concat(chunks).toString("utf8");
-        const value = new Request(new Method(tag, []), req.url, list(headers), body, list([]), list([]));
+        const body = payloadOf(new Uint8Array(Buffer.concat(chunks)));
+        const follow = variant("std::request::Redirect", 0, []);
+        const value = new Request(new Method(tag, []), req.url, list(headers), body, follow, list([]), list([]));
         run(value, (o) => {
           if (o.kind === "too large") {
             report(o);
@@ -4625,7 +4617,8 @@ export function serveHttp(addr, run) {
           }
           if (o.kind === "ok") {
             const r = o.value;
-            const hs = { ...Object.fromEntries(items(r.headers)), "content-length": Buffer.byteLength(r.body) };
+            const body = payloadBytes(r.body);
+            const hs = { ...Object.fromEntries(items(r.headers)), "content-length": body.length };
             try {
               res.writeHead(r.status, hs);
             } catch (e) {
@@ -4634,7 +4627,7 @@ export function serveHttp(addr, run) {
               for (const name of res.getHeaderNames()) res.removeHeader(name);
             }
             if (o.kind === "ok") {
-              res.end(r.body);
+              res.end(body);
               return;
             }
           }

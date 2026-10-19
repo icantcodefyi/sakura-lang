@@ -5,7 +5,7 @@
 import std/bytes.{Alphabet}
 import std/crypto
 import std/crypto.{Algorithm, CryptoKey, Digest, KeyError, KeyFormat, Usage}
-import std/request.{Request}
+import std/request.{Bytes, Empty, Request, Text}
 import std/response.{Response, Status}
 import std/router.{Router}
 
@@ -16,10 +16,16 @@ fn webhook_key(secret: Secret<String>) -> Result<CryptoKey, KeyError> {
 }
 
 /// Whether `x-signature` is the Base64 HMAC-SHA-256 of the body under `key`, compared in
-/// constant time. A missing or malformed header is not authentic.
+/// constant time. A missing or malformed header is not authentic. The tag covers the body's
+/// bytes as they arrived (`Serve.host()` delivers them as `Bytes`).
 fn authentic(key: CryptoKey, req: Request) -> Bool {
+  let body = match req.body {
+    Bytes(b) => b,
+    Text(s) => String.to_bytes(s),
+    Empty => Bytes.from_list([]),
+  }
   match Request.header(req, "x-signature").map(fn(s) { Bytes.from_base64(s, Alphabet.Standard) }) {
-    Some(Ok(tag)) => key.verify(tag, String.to_bytes(req.body)),
+    Some(Ok(tag)) => key.verify(tag, body),
     _ => false,
   }
 }
@@ -65,7 +71,7 @@ test "a delivery signed with the shared secret is accepted" {
 
 test "a changed body or another secret is rejected" {
   let signed = delivery("whsec_test", "\{\"event\":\"paid\"\}")
-  expect_eq(status_of(Request { ..signed, body: "\{\"event\":\"refund\"\}" }), Status.from(401))
+  expect_eq(status_of(signed.with_payload(Text("\{\"event\":\"refund\"\}"))), Status.from(401))
   expect_eq(status_of(delivery("whsec_other", "\{\"event\":\"paid\"\}")), Status.from(401))
 }
 

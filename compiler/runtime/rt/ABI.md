@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.6.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.7.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -15,8 +15,9 @@ served request (design §17.223), 1.2.4 bound performs and `with` regions in dir
 (§5, §6.3; design §17.211 (1)), 1.2.5 closure twins (§5; design §17.211 (2)), 1.3.0 the reuse
 and borrow counters (§10; design §17.176 (1)), 1.4.0 the native profile (§1b; design
 §17.169), 1.5.0 the `clock_monotonic_us` import and `Task.cancel`'s fiber rule (§7, §8.2;
-design §17.262, RFC 0002 §2.8) and 1.6.0 `std/crypto`'s `hosted` imports (§8.1, §8.2; design
-§17.266 (1), RFC 0002 §2.7). Owned by
+design §17.262, RFC 0002 §2.8), 1.6.0 `std/crypto`'s `hosted` imports (§8.1, §8.2; design
+§17.266 (1), RFC 0002 §2.7) and 1.7.0 the HTTP 0.2.0 shape, `Payload` bodies and redirects
+followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -180,6 +181,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   has no JS host, reaches them as unsupported builtins (`D090`). Nothing shipped changes, but a module that imports
   them needs a host that has them, so a 1.5 host refuses a 1.6 module by the MINOR rule.
   `sakura_abi_version` is `0x010600`.
+- 1.7.0 (MINOR, design §17.263 (4), §17.270 (3), RFC 0002 §2.4, plan `web-apis.md` phase 4a)
+  changes what `http_send` and `http_stream_open` carry (§8.2): the request's `body` is a
+  `Payload` (`Empty`, `Text`, `Bytes`), sent as its bytes, and the record gains `redirect`,
+  which the host does not read; the host sends every request with Fetch's `redirect:
+  "manual"` and answers a 3xx as it is, since `std/http`'s `follow` sends each hop as its own
+  `http_send` or `http_stream_open` (so the `net` check of §8.3 runs on every hop); the
+  answer's `Response.body` is a `Payload`, `Bytes` or `Empty` when there are none.
+  `serve_listen` delivers a request body as `Bytes` (`Empty` when there are none) and sends a
+  response's `Payload` as its bytes. The import names and shapes are unchanged, but a 1.6 host
+  would decode the new layouts and follow redirects itself, so a 1.6 host refuses a 1.7
+  module by the MINOR rule. `sakura_abi_version` is `0x010700`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -818,7 +830,9 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
 - HTTP and serving (W2): `async` `http_send(request, ptr, len)` and `http_stream_open(request,
   ptr, len)` (both kind `secret`), `async` `http_stream_read(request, ptr, len)`,
   `http_body_close(ptr, len)`, `serve_listen(request, listener, ptr, len)` (`async` and
-  `callback`), `serve_respond(task: i64, ptr, len)`.
+  `callback`), `serve_respond(task: i64, ptr, len)`. Since 1.7.0 a request's and a response's
+  `body` is a `Payload`; `http_send` and `http_stream_open` send with `redirect: "manual"` and
+  answer a 3xx as it is, one hop per call, `net` checked on each (§0, 1.7.0).
 - `hosted` (W1, W2): `cli_args`, `cli_parse`, `env_get`, `file_open`, `file_read`,
   `file_write`, `fs_exists`, `fs_list`, `fs_memory_root`, `fs_read`, `fs_root`, `fs_subdir`,
   `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,

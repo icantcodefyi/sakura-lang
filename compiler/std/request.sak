@@ -3,18 +3,31 @@
 // `Request.post_json` and `Http.post_json`) would otherwise be one name (§4.9).
 // needs M3: `Schema` codecs in runtime/js for `post_json` and `json`.
 
+import std/encoding.{Encoding, Errors}
+import std/headers.{Headers}
 import std/url.{Url}
 
-pub type Method = Get | Head | Post | Put | Patch | Delete
+/// `Connect` is a proxy verb and is not one.
+pub type Method = Get | Head | Post | Put | Patch | Delete | Options | Trace
+
+/// A request or response body (RFC 0002 §2.4). A host response arrives as `Bytes`;
+/// `Response.text`, `json` and `bytes` read any of the three.
+pub type Payload = Empty | Text(String) | Bytes(Bytes)
+
+/// What a 3xx response does (Fetch's `redirect`): `Follow` sends the next hop, at most 20;
+/// `Manual` returns the 3xx response; `Error` fails `HttpError` with its status.
+pub type Redirect = Follow | Manual | Error
 
 /// `secret_headers` (`Http.bearer` adds `authorization`) are sent by host handlers as headers
 /// and are never shown, matched by `Http.scripted` or recorded (design §17.57). `params` are
-/// the path parameters a `Router` matched (`:id` in `/users/:id`).
+/// the path parameters a `Router` matched (`:id` in `/users/:id`). `redirect` is `Follow` from
+/// every builder.
 pub type Request = {
   method: Method,
   url: Url,
   headers: List<(String, String)>,
-  body: String,
+  body: Payload,
+  redirect: Redirect,
   secret_headers: List<(String, Secret<String>)>,
   params: List<(String, String)>,
 }
@@ -24,26 +37,64 @@ pub error BadRequest(detail: String)
 
 /// A request with no headers or body.
 pub fn of(method: Method, url: Url) -> Request {
-  Request { method, url, headers: [], body: "", secret_headers: [], params: [] }
+  Request {
+    method,
+    url,
+    headers: [],
+    body: Empty,
+    redirect: Follow,
+    secret_headers: [],
+    params: [],
+  }
 }
 
 /// A `POST` of `body` to `path`, for route handlers and their tests.
-pub fn post(path: String, body: String) -> Request { Request { ..of(Post, Url.from(path)), body } }
+pub fn post(path: String, body: String) -> Request {
+  Request { ..of(Post, Url.from(path)), body: Text(body) }
+}
 
 /// A `POST` of `body` encoded as JSON.
 pub fn post_json<T: Schema>(url: Url, body: T) -> Request {
   Request {
     ..of(Post, url),
     headers: [("content-type", "application/json")],
-    body: Json.encode(body),
+    body: Text(Json.encode(body)),
   }
 }
 
+/// `req` with `body` (`fetch`'s `body` option).
+pub fn with_payload(req: Request, body: Payload) -> Request { Request { ..req, body } }
+
+/// `req` with the header `name` set to `value`: earlier pairs of that name (any case) are
+/// removed and the pair is added at the end. Not validated here; `with_headers(try
+/// Headers.of(…))` validates, and the host refuses an invalid pair at send.
+pub fn with_header(req: Request, name: String, value: String) -> Request {
+  let wanted = String.to_lower(name)
+  let kept = List.filter(req.headers, fn(h) { String.to_lower(h.0) != wanted })
+  Request { ..req, headers: List.push(kept, (name, value)) }
+}
+
+/// `req` with its headers replaced by `h`'s pairs, in order.
+pub fn with_headers(req: Request, h: Headers) -> Request {
+  Request { ..req, headers: Headers.to_list(h) }
+}
+
 /// The body decoded as `T` (named by the binding's annotation), refinements included.
-/// A body over `limit` bytes or one that does not decode is `BadRequest`.
+/// A body over `limit` bytes, one that is not UTF-8 or one that does not decode is `BadRequest`.
 pub fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>} {
-  if String.len(req.body) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
-  match Json.decode(req.body) {
+  let text = match req.body {
+    Empty => "",
+    Text(s) => s,
+    Bytes(b) => {
+      if Bytes.len(b) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
+      match Encoding.decode(b, Encoding.Utf8, Errors.Fatal) {
+        Ok(s) => s,
+        Err(_) => fail BadRequest { detail: "body is not UTF-8" },
+      }
+    },
+  }
+  if String.len(text) > limit { fail BadRequest { detail: "body exceeds {limit} bytes" } }
+  match Json.decode(text) {
     Ok(value) => value,
     Err(e) => fail BadRequest { detail: "{e.path}: {e.message}" },
   }
@@ -73,4 +124,19 @@ test "post and param" {
     header(Request { ..req, headers: [("Content-Type", "text/plain")] }, "content-type"),
     Some("text/plain"),
   )
+}
+
+test "payload builders" {
+  let req = of(Put, Url.from("https://a.example/f"))
+    .with_header("Content-Type", "text/plain")
+    .with_header("content-type", "application/octet-stream")
+    .with_payload(Bytes(Bytes.from_list([0, 255])))
+  expect_eq(req.headers, [("content-type", "application/octet-stream")])
+  expect_eq(req.body, Bytes(Bytes.from_list([0, 255])))
+  expect_eq(req.redirect, Follow)
+  expect_eq(of(Options, Url.from("/")).body, Empty)
+  let bad: Result<Int, BadRequest> = try { json(req, 10) }
+  expect_eq(bad, Err(BadRequest { detail: "body is not UTF-8" }))
+  let n: Result<Int, BadRequest> = try { json(post("/n", "42"), 10) }
+  expect_eq(n, Ok(42))
 }

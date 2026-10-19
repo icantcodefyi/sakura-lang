@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+  send https://a.example/start
+https://a.example/start: Err(HttpError { status: None, reason: "c.example:443 is outside Http.scoped" })
+https://c.example/x: Err(HttpError { status: None, reason: "c.example:443 is outside Http.scoped" })

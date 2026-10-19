@@ -1,0 +1,53 @@
+// milestone: M3
+// spec: RFC 0002 §2.4, §6; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#http-redirect-fetch
+
+// At most 20 hops are followed: a chain of 20 redirects ends at its 21st request, and a 21st
+// redirect fails `HttpError("too many redirects")` without a 22nd request. A redirect loop is
+// the same failure.
+import std/http.{Any, Http, Matcher, Path}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn chain(n: Int) -> List<(Matcher, Response)> {
+  let hops = List.map(List.range(0, n), fn(i) {
+    (Path("/{i}"), Response { ..Response.status(302, ""), headers: [("location", "/{i + 1}")] })
+  })
+  List.push(hops, (Path("/{n}"), Response.status(200, "end")))
+}
+
+/// Prints the 20th request and every one after it.
+fn counting() -> Handler<Http, {Console, Http}> {
+  handler Http {
+    var sent = 0
+    fn send(req) {
+      sent = sent + 1
+      if sent >= 20 { Console.print("  request {sent}: {req.url}") }
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+fn counted(n: Int) -> Unit ! {Console} {
+  with Http.scripted(chain(n)), counting(), Http.scoped(["a.example:443"]) {
+    let got: Result<Response, HttpError> = try {
+      Http.send(Request.of(Get, Url.from("https://a.example/0")))
+    }
+    Console.print("{n} redirects: {got.map(fn(r) { r.status })}")
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  counted(20)
+  counted(21)
+  let loop = Response { ..Response.status(307, ""), headers: [("location", "/again")] }
+  with Http.scripted([(Any, loop)]) {
+    let got: Result<Response, HttpError> = try {
+      Http.send(Request.of(Get, Url.from("https://a.example/again")))
+    }
+    Console.print("loop: {got.map(fn(r) { r.status })}")
+  }
+}

@@ -11,7 +11,8 @@ bytes every time. The request's `content-type` names the boundary. The receiving
 part are bounded, and a body over a bound, or one with the wrong content type, is a typed
 `FormError` the handler turns into `400`. A file's name is data, never a path that is opened.
 
-The tests send the upload through `Http.scripted`, route an upload request through the
-receiving endpoint with `Router.handle`, and check the limit and content-type refusals.
-Request bodies are text in this version, so the file here is CSV; binary file bytes need the
-byte bodies planned for HTTP requests. No permissions are needed.
+The request body is a `Payload`, here `Bytes`, so a file may hold any bytes. The tests send
+a CSV upload through `Http.scripted`, replay a binary PNG upload and its binary answer from a
+cassette (`Http.recording` stores a body that is not UTF-8 as Base64), route an upload request
+through the receiving endpoint with `Router.handle`, and check the limit and content-type
+refusals. No permissions are needed.

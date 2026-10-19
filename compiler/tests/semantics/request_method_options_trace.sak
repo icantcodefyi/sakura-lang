@@ -1,0 +1,30 @@
+// milestone: M3
+// spec: RFC 0002 §2.4
+// Spec: https://www.rfc-editor.org/rfc/rfc9110#section-9.3.7
+
+// `Method` gains `Options` and `Trace` (RFC 9110 §9.3.7, §9.3.8; `CONNECT` is a proxy verb and
+// is not one). They match `Http.scripted`'s `Method` matcher and a `Router` route like the
+// other six, and a route for another method answers them 405.
+import std/http.{Http, Method}
+import std/request.{Get, Options, Request, Trace}
+import std/response.{HttpError, Response}
+import std/router.{Router}
+import std/url.{Url}
+
+pub fn main() -> Unit ! {Console} {
+  let allow = Response { ..Response.status(204, ""), headers: [("allow", "GET, OPTIONS")] }
+  with Http.scripted([(Method(Options), allow), (Method(Trace), Response.status(405, ""))]) {
+    for m in [Options, Trace, Get] {
+      let got: Result<Response, HttpError> = try {
+        Http.send(Request.of(m, Url.from("https://a.example/")))
+      }
+      Console.print("{m}: {got.map(fn(r) { (r.status, r.headers) })}")
+    }
+  }
+  let router = Router.new()
+    .route(Options, "/items", fn(_) { allow })
+    .get("/items", fn(_) { Response.status(200, "items") })
+  for m in [Options, Get, Trace] {
+    Console.print("route {m}: {Router.handle(router, Request.of(m, Url.from("/items"))).status}")
+  }
+}

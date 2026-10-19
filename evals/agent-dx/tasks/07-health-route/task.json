@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "07-health-route",
-  "revision": 2,
+  "revision": 3,
   "category": "application-change",
   "skills": [
     "router",
@@ -13,10 +13,10 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "247bd7ed2aebd410031907cd2a9565c9c6c5d1a0138b2cf09f5fd29766a9a54e",
+  "starter_sha256": "ac57b5cce3d7cc42c2725bfaa662491892f02503f1068db43f9e7aef351ba04e",
   "starter_files": {
     "sakura.toml": "a9af8096b5d0e135579f5a3f7488a81277fa21252b5fa4ee569c0a842b80510b",
-    "src/main.sak": "047907b6986c2bd17653e3c0f78a6da4f89c60ca16419e3f0f8e8ffe1899754b"
+    "src/main.sak": "7f366699196e3282615275061effb1195fdc044f5a2537167bc358150379cbe4"
   },
   "editable_files": [
     "src/main.sak"

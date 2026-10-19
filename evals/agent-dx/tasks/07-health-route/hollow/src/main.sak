@@ -1,4 +1,4 @@
-import std/request.{Get, Request}
+import std/request.{Get, Request, Text}
 import std/response.{Response, Status}
 import std/router.{Router}
 import std/url.{Url}
@@ -9,5 +9,5 @@ pub fn app() -> Router<{}> {
 }
 
 test "visible example" {
-  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/version"))).body, "v1")
+  expect_eq(Router.handle(app(), Request.of(Get, Url.from("/version"))).body, Text("v1"))
 }

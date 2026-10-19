@@ -103,6 +103,15 @@ checked skill reference; they are not additional APIs.
   §17.209). Replaying an existing larger cassette is not checked. A `Llm.replay` miss is
   `ProviderError` with guidance naming `Llm.recording` and `sakura test --record`; it does
   not call a provider.
+- HTTP bodies are a `Payload` (`Empty | Text(String) | Bytes(Bytes)`, RFC 0002 §2.4):
+  `Request.of`, `post`, `post_json`, `Response.status`, `ok_json` and `html` build `Text` or
+  `Empty`, `Request.with_payload` any of the three, and `Http.host()`, `Serve.host()` and a
+  cassette replay deliver `Bytes` (`Empty` with no bytes). `Response.text`, `json` and `bytes`
+  read any of them; a `Request` body is a `match`. Every handler in `std/http` follows
+  redirects with one Sakura loop under `Request.redirect` (`Follow` by default, `Manual`,
+  `Error`): at most 20 hops, each its own send, so `Http.host()` checks `net` and
+  `Http.scoped` its list on every hop; a hop to another origin drops `authorization` and
+  every `secret_headers` entry (design §17.263 (4)). `Http.scripted` can answer a 3xx.
 - `Http.host()`'s `send` reads at most `SAKURA_MAX_COPY_BYTES` (default 256 MiB) of a
   response body; past that, or with a declared `content-length` over it, the fetch is
   aborted and `send` fails with `HttpError` `"response too large"` (§17.205). On
@@ -146,9 +155,9 @@ graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int                 cli
 url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
 fs → path, untrusted, map
-request → url, json                            response → html, json, untrusted
+request → url, json, encoding, headers         response → request, encoding, html, json, untrusted
 html → core             router → request, response, url
-serve → request, response, router, url
+serve → request, response, router, url, encoding
 http → request, response, url, duration, fs, path       budget           prompt
 llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
 tool → llm              agent → budget, core, llm, prompt, tool
@@ -667,12 +676,17 @@ fn seeded(seed: Int) -> Handler<Random>
 ### `std/request`
 
 ```sakura fragment
-type Method = Get | Head | Post | Put | Patch | Delete
-type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, secret_headers: List<(String, Secret<String>)>, params: List<(String, String)> }
+type Method = Get | Head | Post | Put | Patch | Delete | Options | Trace
+type Payload = Empty | Text(String) | Bytes(Bytes)
+type Redirect = Follow | Manual | Error
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: Payload, redirect: Redirect, secret_headers: List<(String, Secret<String>)>, params: List<(String, String)> }
 error BadRequest(detail: String)
 fn of(method: Method, url: Url) -> Request
 fn post(path: String, body: String) -> Request
 fn post_json<T: Schema>(url: Url, body: T) -> Request
+fn with_payload(req: Request, body: Payload) -> Request
+fn with_header(req: Request, name: String, value: String) -> Request
+fn with_headers(req: Request, h: Headers) -> Request
 fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
 fn param(req: Request, name: String) -> Option<String>
 fn header(req: Request, name: String) -> Option<String>
@@ -682,13 +696,14 @@ fn header(req: Request, name: String) -> Option<String>
 
 ```sakura fragment
 type Status = Int where it >= 100 && it <= 599
-type Response = { status: Status, headers: List<(String, String)>, body: String }
+type Response = { status: Status, headers: List<(String, String)>, body: Payload }
 error HttpError(status: Option<Status>, reason: String)
 fn status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
 fn ok_json<T: Schema>(value: T) -> Response
 fn html(h: Html) -> Response
 fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<DecodeError | HttpError>}
 fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
+fn bytes(r: Response, limit: Int) -> Bytes ! {Fail<HttpError>}
 ```
 
 ### `std/result`
