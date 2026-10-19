@@ -43,10 +43,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-json_refined project=json_refined
-// milestone: M3
-// mode: run
-// spec: design §17.145
-
 import std/json.{DecodeError}
 
 type Quantity = Int where it >= 1 && it <= 100

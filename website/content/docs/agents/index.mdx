@@ -47,17 +47,17 @@ The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-
 
 | Tool | Purpose | Design |
 | --- | --- | --- |
-| `sakura check --json` | Diagnostics, holes, and a summary as JSON Lines. | design §12.2, M0 |
-| `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4, M2 |
-| `sakura prompt` | Emits the embedded language guide; `--budget` truncates whole sections using a byte-based estimate. Retrieve signatures with `sakura doc`. | design §12.1, M2 |
-| `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3, M3 |
-| [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc) | Trust inventory and offline signature search. | design §17.78, M3 |
-| [`sakura build --manifest`](/docs/agents/build-manifest) | Trusted components and runtime contract obligations. | design §17.76, M3 |
-| [`sakura verify`](/docs/agents/verify) | Contract and arithmetic proofs, counterexamples and authenticated check removal. | design §17.84–§17.86, M4 |
-| [`sakura test --record`](/docs/agents/cassettes) | Opt-in cassette recording; ordinary tests replay offline. | design §17.73, M3 |
-| `sakura mcp serve` | The compiler as Model Context Protocol tools. | design §12.6, M3 |
+| `sakura check --json` | Diagnostics, holes, and a summary as JSON Lines. | design §12.2 |
+| `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4 |
+| `sakura prompt` | Emits the embedded language guide; `--budget` truncates whole sections using a byte-based estimate. Retrieve signatures with `sakura doc`. | design §12.1 |
+| `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3 |
+| [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc) | Trust inventory and offline signature search. | design §17.78 |
+| [`sakura build --manifest`](/docs/agents/build-manifest) | Trusted components and runtime contract obligations. | design §17.76 |
+| [`sakura verify`](/docs/agents/verify) | Contract and arithmetic proofs, counterexamples and authenticated check removal. | design §17.84–§17.86 |
+| [`sakura test --record`](/docs/agents/cassettes) | Opt-in cassette recording; ordinary tests replay offline. | design §17.73 |
+| `sakura mcp serve` | The compiler as Model Context Protocol tools. | design §12.6 |
 
-Milestones are defined in [design §14.3](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md). See also the [roadmap](/docs/roadmap).
+The [roadmap](/docs/roadmap) says what is complete, experimental and planned.
 
 ## The working loop
 

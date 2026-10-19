@@ -315,7 +315,8 @@ fn positive(
             .join(example);
         let canonical =
             std::fs::read_to_string(original.join("src/main.sak")).map_err(|e| e.to_string())?;
-        if source != canonical {
+        // The page shows the program without the harness directive header (design §17.256 (4)).
+        if source != agent_docs::without_directives(&canonical) {
             return Err(format!(
                 "{example}: recipe source differs from the example; regenerate agent_docs"
             ));

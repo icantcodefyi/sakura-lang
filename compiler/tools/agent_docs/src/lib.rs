@@ -157,6 +157,33 @@ fn stored_zip(files: &Files) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
+/// The program without its leading harness directive header (`// name: value` lines in the
+/// fixture format of `compiler/REQUESTS.md`) and the blank line after it. The source keeps the
+/// header for the example runner; the page and the skill show the program (design §17.256 (4)).
+pub fn without_directives(source: &str) -> &str {
+    let directive = |line: &str| {
+        line.strip_prefix("// ")
+            .and_then(|l| l.split_once(": "))
+            .is_some_and(|(name, _)| {
+                name.starts_with(|c: char| c.is_ascii_lowercase())
+                    && name.chars().all(|c| {
+                        c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '_'
+                    })
+            })
+    };
+    let mut rest = source;
+    while let Some((line, tail)) = rest.split_once('\n') {
+        if !directive(line) {
+            break;
+        }
+        rest = tail;
+    }
+    if rest.len() < source.len() {
+        rest = rest.strip_prefix('\n').unwrap_or(rest);
+    }
+    rest
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -228,5 +255,24 @@ mod tests {
     #[test]
     fn standard_crc_vector() {
         assert_eq!(super::crc32(b"123456789"), 0xcbf43926);
+    }
+
+    #[test]
+    fn strips_only_the_leading_directive_header() {
+        let source = "// milestone: M3\n// mode: run\n// spec: design §17.145\n// args: --input note.txt\n\n// mode: kept below code\nfn main() {}\n";
+        assert_eq!(
+            super::without_directives(source),
+            "// mode: kept below code\nfn main() {}\n"
+        );
+        assert_eq!(
+            super::without_directives("fn main() {}\n"),
+            "fn main() {}\n"
+        );
+        let prose = "// Note: prose\n\nfn f() {}\n";
+        assert_eq!(super::without_directives(prose), prose);
+        assert_eq!(
+            super::without_directives("// mode: test\nfn f() {}\n"),
+            "fn f() {}\n"
+        );
     }
 }

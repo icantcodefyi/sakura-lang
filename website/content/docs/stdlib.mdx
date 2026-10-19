@@ -18,11 +18,11 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 ## Current scope and limitations
 
 - `Http.recording`, `Llm.replay`, `Llm.recording`, `Test.fixtures`, `Untrusted.validate` and `Html.from` are implemented, as is streaming HTTP (`Http.stream`, `Http.read_chunk`, `Body`, `Incoming`, design §17.88).
-- `Sql.postgres` is not implemented. The source index records it as deferred past M4; SQLite and memory SQL cover the current examples.
+- `Sql.postgres` is not implemented and has no release assigned. SQLite and memory SQL cover the current examples.
 - `Untrusted<String>` interpolated into `sql"…"` is a bound parameter and into `html"…"` escaped text (design §17.101); in `url"…"` it is percent-encoded through `UrlPart.from`.
 - `Task.par_map` lives in `std/task`, not `List`. `Env.host()` takes no scope argument; use `Env.only` for attenuation.
 - JS `Int` arithmetic has a safe-integer range of ±(2^53−1); WASM uses signed i64. Both are CLI targets; native is experimental.
-- M3 is complete; static verification is implemented for a restricted fragment. See the [roadmap](/docs/roadmap) for remaining gates.
+- Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer `List` for dense integer IDs, as in DeltaBlue; use `Map` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 
 ## Prelude
@@ -36,10 +36,10 @@ In scope in every module without an import (design §9, with the additions marke
 | Constructors | `Some None Ok Err` (other variants are used qualified: `Level.Warn`, `Json.String(s)`) |
 | Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task` · + `Test` |
 | Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
-| Tags (M3) | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
+| Tags | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
 
 Not in the prelude, import them: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`,
-`import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and the M3 modules.
+`import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and every other std module.
 
 Home modules (design §4.9): `T.f(…)` and `x.f(…)` with `x: T` call `f` in the module that
 declares `T`; for compiler-known types it is `std/<lowercase name>` (`List` → `std/list`). An

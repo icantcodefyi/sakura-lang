@@ -139,11 +139,11 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 
 ## Backends
 
-| Backend | Milestone | Status | Memory management |
-| --- | --- | --- | --- |
-| JavaScript (ES modules, trampolined CPS with a direct-style fast path) | M0 onward | the default; in every release | host GC |
-| WebAssembly (`wasm-encoder`, runtime in linear memory) | M4 | complete; in every release | non-atomic RC, no WASM GC required |
-| Native (Cranelift) | M5 | experimental; source builds with the `native` feature only | non-atomic RC; Perceus reuse after 1.0 |
+| Backend | Status | Memory management |
+| --- | --- | --- |
+| JavaScript (ES modules, trampolined CPS with a direct-style fast path) | the default; in every release | host GC |
+| WebAssembly (`wasm-encoder`, runtime in linear memory) | complete; in every release | non-atomic RC, no WASM GC required |
+| Native (Cranelift) | experimental; source builds with the `native` feature only | non-atomic RC; Perceus reuse after 1.0 |
 
 Every backend starts from the same Core:
 

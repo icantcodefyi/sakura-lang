@@ -114,7 +114,7 @@ Here the report expects `Instant`, and `allowed_effects` is `{Console, Clock}`. 
 
 ## Holes in the MCP server
 
-The [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool. It returns the same record for one hole, which is cheaper than re-checking the project. The M3 acceptance tests in design §14.3 require the language server, after replaying the same edits, to match `hole_context` byte for byte.
+The [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool. It returns the same record for one hole, which is cheaper than re-checking the project. The compiler's acceptance tests require the language server, after replaying the same edits, to match `hole_context` byte for byte.
 
 ## Recommended agent workflow
 

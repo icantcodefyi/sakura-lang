@@ -50,6 +50,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
                 "{name} must be an unskipped M3 run/test project with tests"
             ));
         }
+        let shown = agent_docs::without_directives(&source);
         let manifest = read(&dir.join("sakura.toml"))?;
         let run = header.contains(&"// mode: run");
         let args = header.iter().find_map(|l| l.strip_prefix("// args: "));
@@ -64,7 +65,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
              ```sh\ncd compiler/examples/{name}\nsakura check --json\n{command}sakura test --json\n```\n\n\
              ### Manifest and permissions\n\n```toml\n{manifest}```\n\n\
              ### Source and tests\n\n`src/main.sak` includes all required imports and tests.\n\n\
-             ```sakura test id=cookbook-{name} project={name}\n{source}```\n",
+             ```sakura test id=cookbook-{name} project={name}\n{shown}```\n",
             prose.trim(),
             if run { "run + test" } else { "test" },
         );

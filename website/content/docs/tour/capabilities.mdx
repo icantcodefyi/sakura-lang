@@ -221,7 +221,7 @@ Compiler fixes never widen authority silently. A fix that would change authority
 - A function performs only the effects in its row. Every performed operation has an installed handler.
 - `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; a denied permission stops the program at startup (exit `75`).
 - Prelude `Trust` is compiler-known. `@trust("reason")` is accepted only directly in a trusted sink argument; other uses report `V6001`.
-- Scoped capability/resource escape checks (`V6002`/`V6003`) and foreign-capability FFI checks (`V6001`) are implemented. The broader M3 gates and maintainer security review remain separate requirements.
+- Scoped capability/resource escape checks (`V6002`/`V6003`) and foreign-capability FFI checks (`V6001`) are implemented. The escape rules, the cassette format and the template rule passed a maintainer security review; see the [roadmap](/docs/roadmap).
 - `Secret<T>` is never shown, logged, snapshotted, or serialized (`V2031`).
 - Tagged templates receive interpolations as values, never raw text.
 

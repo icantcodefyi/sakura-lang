@@ -7,7 +7,7 @@ the `sakura` skill's `references/stdlib.md`. The design reference is `docs/desig
 `design-question` entries in `compiler/REQUESTS.md`.
 
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
-Modules marked [M3] are the design §14.3 M3 surface; they run on the JS backend.
+Every module runs on the JavaScript and WebAssembly backends.
 
 ## Prelude
 
@@ -20,10 +20,10 @@ In scope in every module without an import (design §9, with the additions marke
 | Constructors | `Some None Ok Err` (other variants are used qualified: `Level.Warn`, `Json.String(s)`) |
 | Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task` · + `Test` |
 | Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
-| Tags (M3) | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
+| Tags | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
 
 Not in the prelude, import them: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`,
-`import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and the M3 modules.
+`import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and every other std module.
 
 Home modules (design §4.9): `T.f(…)` and `x.f(…)` with `x: T` call `f` in the module that
 declares `T`; for compiler-known types it is `std/<lowercase name>` (`List` → `std/list`). An
@@ -132,20 +132,20 @@ json → map              uuid → string, list   instant → duration, string, 
 test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
-retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)   [M3]
+retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int
-url → string, list, urlpart   urlpart → string, list, bytes [M3]   cli [M3]
-fs → path, untrusted, map [M3]
-request → url, json [M3]                       response → html, json, untrusted [M3]
-html → core [M3]        router → request, response, url [M3]
-serve → request, response, router, url [M3]
-http → request, response, url, duration, fs, path [M3]  budget [M3]      prompt [M3]
-llm → budget, core, fs, http, path, prompt, task, untrusted [M3]          sql → fs, path [M3]
-tool → llm [M3]         agent → budget, core, llm, prompt, tool [M3]
+url → string, list, urlpart   urlpart → string, list, bytes        cli
+fs → path, untrusted, map
+request → url, json                            response → html, json, untrusted
+html → core             router → request, response, url
+serve → request, response, router, url
+http → request, response, url, duration, fs, path       budget           prompt
+llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
+tool → llm              agent → budget, core, llm, prompt, tool
 ```
 
-The M3 modules' test handlers are written in Sakura Lang (`Http.scripted`, `Budget.limits`,
+The std modules' test handlers are written in Sakura Lang (`Http.scripted`, `Budget.limits`,
 `Cli.of`, `Fs.memory`, `Llm.scripted`); their host handlers and `Schema` codecs are runtime
 externals.
 
@@ -866,5 +866,5 @@ fn is_canonical(text: String) -> Bool    // @total
     guarantee is the same: no leading `/`, no `..` segment. `Path.of` drops `.` and empty
     segments; a decoded `Path` keeps them.
 22. **No `Sql.postgres`**: design §10.2 names it the second provider; it needs a native driver
-    or a runtime dependency and is deferred past M4 (owner decision); `Sql.sqlite` and
+    or a runtime dependency and has no release assigned (owner decision); `Sql.sqlite` and
     `Sql.memory` cover the corpus.

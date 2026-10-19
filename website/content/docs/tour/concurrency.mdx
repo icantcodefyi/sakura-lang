@@ -172,7 +172,7 @@ Under `Task.deterministic(seed)` scheduling is reproducible. `Clock.virtual()` a
 
 ## Runtime model
 
-The first backend compiles to JavaScript with a CPS trampoline and is single-threaded. A live host handler, such as `Clock.sleep` or `Http.send`, suspends by returning a step the driver awaits (design §13.3). Experimental native work (M5) currently targets single-thread execution; worker threads and cross-thread atomic reference counting are not a current guarantee.
+The first backend compiles to JavaScript with a CPS trampoline and is single-threaded. A live host handler, such as `Clock.sleep` or `Http.send`, suspends by returning a step the driver awaits (design §13.3). The experimental native backend targets single-thread execution; worker threads and cross-thread atomic reference counting are not a current guarantee.
 
 ## Not in v0
 

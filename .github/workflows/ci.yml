@@ -764,6 +764,8 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         working-directory: compiler
         run: cargo run -p agent_docs --locked -- --check
+      - name: Test the milestone guard (design §17.256 (5))
+        run: python3 -m unittest discover -s website/scripts -p 'test_check_doc_sweep.py' -v
       - name: Check authored documentation examples
         run: python3 website/scripts/check-doc-sweep.py
 

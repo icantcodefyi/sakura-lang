@@ -7,11 +7,11 @@ const STAGES: { id: Version; name: string; body: string }[] = [
   {
     id: "0.1.0-alpha.1",
     name: "The preview",
-    body: "M0 to M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh.",
+    body: "The language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh.",
   },
   {
     id: "0.1.0",
-    name: "M4 exit",
+    name: "WASM and verification",
     body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64, Windows x64 and Intel Mac.",
   },
   {

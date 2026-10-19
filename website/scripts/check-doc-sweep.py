@@ -3,6 +3,7 @@
 Expected diagnostics, holes and shared context are explicit fence metadata.
 API declarations and pseudocode must be labelled `fragment`; generated std/error
 references and skill fixtures are covered by agent_docs and std tests instead.
+It also fails when user-facing text names a milestone (design §17.256 (5)).
 """
 import json
 import os
@@ -16,6 +17,28 @@ ROOT = Path(__file__).resolve().parents[2]
 TARGET = os.environ.get("SAKURA_DOC_TARGET", "js")
 BINARY = Path(os.environ.get("SAKURA_BIN", ROOT / "compiler/target/debug/sakura"))
 FENCE = re.compile(r"```sakura([^\n]*)\n(.*?)\n```", re.S)
+# A milestone is named only on the roadmap page; the CHANGELOG is history (design §17.256 (2)).
+# The landing `.tsx` files are read by hand: SVG path data and "M4 Pro" would need an allow-list.
+MILESTONE = re.compile(r"\bM[0-5]\b|(?i:milestone)")
+
+
+def milestone_names(root=ROOT):
+    """Every `path:line: text` of user-facing text that names a milestone (design §17.256 (5))."""
+    pages = [p for p in sorted((root / "website/content/docs").rglob("*.mdx")) if p.name != "roadmap.mdx"]
+    pages += sorted((root / "skills/sakura").rglob("*.md"))
+    pages.append(root / "docs/llms.txt")
+    texts = [(page, page.read_text(encoding="utf-8")) for page in pages]
+    # Only the llms.txt template of lib/source.ts, padded so line numbers stay the file's.
+    source = (root / "website/lib/source.ts").read_text(encoding="utf-8")
+    start = source.index("return `# Sakura Lang", source.index("export function llmsTxt("))
+    template = source[start : source.index("\n`;", start)]
+    texts.append((root / "website/lib/source.ts", "\n" * source[:start].count("\n") + template))
+    return [
+        f"{page.relative_to(root).as_posix()}:{number}: {line.strip()}"
+        for page, text in texts
+        for number, line in enumerate(text.splitlines(), 1)
+        if MILESTONE.search(line)
+    ]
 
 
 def snippet(page, needle):
@@ -48,6 +71,9 @@ def main():
     pages += sorted((ROOT / "website/content/docs").rglob("*.mdx"))
     checked = executed = fragments = 0
     failures = []
+    for hit in milestone_names():
+        failures.append(hit)
+        print(f"FAIL milestone named in user-facing text (design §17.256): {hit}")
     with tempfile.TemporaryDirectory(prefix="sakura-doc-sweep-") as tmp:
         for page, label, info, code in samples(pages):
             if "fragment" in info.split():

@@ -82,7 +82,7 @@ export function llmsTxt() {
 
 > ${site.description}
 
-Sakura Lang is in preview: the latest release is v${RELEASE}, with no stable language or API contract before 1.0. The docs track main; changes since that release: ${site.url}/docs/changes. The v0 language design is written (docs/design.md in the repository). The source-built compiler runs the core language and M3 standard library on JavaScript, including HTTP, SQLite, filesystem, CLI, AI and tasks. WASM build/run/test with a Node host and solver-backed verification are available as previews; backend parity and optimization work remain. Install it: ${site.url}/docs/install
+Sakura Lang is in preview: the latest release is v${RELEASE}, with no stable language or API contract before 1.0. The docs track main; changes since that release: ${site.url}/docs/changes. The v0 language design is written (docs/design.md in the repository). The compiler runs the whole language and the standard library on JavaScript and WebAssembly, \`sakura verify\` proves contracts with Z3, and native code generation is experimental and in no release. Install it: ${site.url}/docs/install
 
 - Portable Sakura skill: ${site.url}/skills/sakura/SKILL.md
 - Skill ZIP: ${site.url}/skills/sakura-skill.zip (checksum: ${site.url}/skills/sakura-skill.sha256; provenance and file hashes: ${site.url}/skills/manifest.json). Extract the sakura/ folder into \`.claude/skills/\`, \`.agents/skills/\`, or \`.cursor/skills/\` in your project.

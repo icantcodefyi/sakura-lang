@@ -72,10 +72,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-json_refined project=json_refined
-// milestone: M3
-// mode: run
-// spec: design §17.145
-
 import std/json.{DecodeError}
 
 type Quantity = Int where it >= 1 && it <= 100
@@ -155,11 +151,6 @@ fs.read = ["./data"]
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-cli_files project=cli_files
-// milestone: M3
-// mode: run
-// spec: design §17.145
-// args: --input note.txt
-
 import std/cli.{Cli, CliError}
 import std/fs.{Dir, Fs, FsError}
 import std/path.{Path}
@@ -261,10 +252,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-http_retry project=http_retry
-// milestone: M3
-// mode: test
-// spec: design §17.145
-
 import std/duration.{Duration}
 import std/fs.{Fs}
 import std/http.{Any, Http, RateLimited}
@@ -387,10 +374,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-sqlite_query project=sqlite_query
-// milestone: M3
-// mode: test
-// spec: design §17.145
-
 import std/sql.{Sql, SqlError}
 
 type Note = { id: Int, title: String }
@@ -480,10 +463,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-router_endpoint project=router_endpoint
-// milestone: M3
-// mode: test
-// spec: design §17.145
-
 import std/request.{BadRequest, Get, Request}
 import std/response.{Response, Status}
 import std/router.{Router}
@@ -566,10 +545,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-scripted_tool project=scripted_tool
-// milestone: M3
-// mode: test
-// spec: design §17.145
-
 import std/agent.{Agent}
 import std/budget.{Budget}
 import std/fs.{Fs}
@@ -695,10 +670,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-budgeted_agent project=budgeted_agent
-// milestone: M3
-// mode: test
-// spec: design §17.145
-
 import std/agent.{Agent}
 import std/budget.{Budget, BudgetExceeded, Calls, Limits, Tokens}
 import std/fs.{Fs}
@@ -832,10 +803,6 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-indexed_update project=indexed_update
-// milestone: M3
-// mode: run
-// spec: design §17.145
-
 fn replace_negatives(values: List<Int>) -> List<Int> {
   var updated = values
   let n = List.len(updated)

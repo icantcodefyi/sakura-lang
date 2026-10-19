@@ -26,11 +26,11 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 ## Current scope and limitations
 
 - \`Http.recording\`, \`Llm.replay\`, \`Llm.recording\`, \`Test.fixtures\`, \`Untrusted.validate\` and \`Html.from\` are implemented, as is streaming HTTP (\`Http.stream\`, \`Http.read_chunk\`, \`Body\`, \`Incoming\`, design §17.88).
-- \`Sql.postgres\` is not implemented. The source index records it as deferred past M4; SQLite and memory SQL cover the current examples.
+- \`Sql.postgres\` is not implemented and has no release assigned. SQLite and memory SQL cover the current examples.
 - \`Untrusted<String>\` interpolated into \`sql"…"\` is a bound parameter and into \`html"…"\` escaped text (design §17.101); in \`url"…"\` it is percent-encoded through \`UrlPart.from\`.
 - \`Task.par_map\` lives in \`std/task\`, not \`List\`. \`Env.host()\` takes no scope argument; use \`Env.only\` for attenuation.
 - JS \`Int\` arithmetic has a safe-integer range of ±(2^53−1); WASM uses signed i64. Both are CLI targets; native is experimental.
-- M3 is complete; static verification is implemented for a restricted fragment. See the [roadmap](/docs/roadmap) for remaining gates.
+- Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer \`List\` for dense integer IDs, as in DeltaBlue; use \`Map\` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 
 `;
