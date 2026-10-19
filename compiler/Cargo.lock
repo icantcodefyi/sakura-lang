@@ -2281,7 +2281,9 @@ dependencies = [
  "reqwest",
  "rusqlite",
  "rustls",
+ "sakura_lir",
  "sakura_rt",
+ "serde_json",
  "tokio",
 ]
 

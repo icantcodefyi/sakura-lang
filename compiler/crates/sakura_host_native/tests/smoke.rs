@@ -1,4 +1,6 @@
-//! N0a wrapper-only deviation (plan §2): link a staticlib into a Rust test.
+//! The native runtime as the library a native program links (ABI §1b): `sakura_rt` built as a
+//! staticlib with `panic = "abort"`, linked into a separate program that calls
+//! `sakura_abi_version(ctx)` through the C ABI on a context prefix laid out as §1b states.
 use std::path::Path;
 use std::process::Command;
 
@@ -13,57 +15,57 @@ fn run(command: &mut Command) {
 }
 
 #[test]
-fn wrapper_staticlib_exports_current_runtime_abi() {
+fn runtime_staticlib_links_with_abort_and_reads_the_context_prefix() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let dir = std::env::temp_dir().join(format!("sakura-native-staticlib-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let runtime = dir.join("libsakura_rt.rlib");
-    let wrapper = dir.join("libsakura_n0a_wrapper.a");
-    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
-    run(Command::new(&rustc)
+    // Its own target directory: the running `cargo test` may hold the workspace's.
+    let target = dir.join("target");
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    run(Command::new(&cargo)
+        .current_dir(manifest.join("../.."))
         .args([
-            "--edition=2024",
-            "--crate-name=sakura_rt",
-            "--crate-type=rlib",
+            "rustc",
+            "-p",
+            "sakura_rt",
+            "--features",
+            "native",
+            "--lib",
+            "--locked",
         ])
-        .arg(manifest.join("../../runtime/rt/src/lib.rs"))
-        .arg("-o")
-        .arg(&runtime));
-    run(Command::new(&rustc)
-        .args([
-            "--edition=2024",
-            "--crate-name=sakura_n0a_wrapper",
-            "--crate-type=staticlib",
-            "-Cpanic=abort",
-        ])
-        .arg(manifest.join("tests/fixtures/runtime_wrapper.rs"))
-        .arg("--extern")
-        .arg(format!("sakura_rt={}", runtime.display()))
-        .arg("-o")
-        .arg(&wrapper));
+        .args(["--crate-type", "staticlib", "--target-dir"])
+        .arg(&target)
+        .args(["--", "-Cpanic=abort"]));
+    let lib = target.join("debug");
+    assert!(lib.join("libsakura_rt.a").is_file());
     let source = dir.join("abi_test.rs");
     std::fs::write(
         &source,
         format!(
             r#"
-#[link(name = "sakura_n0a_wrapper", kind = "static")]
-unsafe extern "C" {{ fn sakura_abi_version(ctx: *mut std::ffi::c_void) -> u32; }}
+/// The fixed prefix of `SakuraInstance` (ABI §1b).
+#[repr(C)]
+struct Prefix {{ base: *mut u8, statics: u32, abi: u32 }}
+#[link(name = "sakura_rt", kind = "static")]
+unsafe extern "C" {{ fn sakura_abi_version(ctx: *mut Prefix) -> u32; }}
 #[test]
-fn reads_runtime_version_through_staticlib() {{
-    // SAFETY: N0a's wrapper ignores ctx and returns the actual runtime's constant.
-    assert_eq!(unsafe {{ sakura_abi_version(std::ptr::null_mut()) }}, {});
+fn reads_the_version_at_offset_12() {{
+    let mut p = Prefix {{ base: std::ptr::null_mut(), statics: 0, abi: {abi} }};
+    // SAFETY: `sakura_abi_version` reads only the prefix (ABI §1b).
+    assert_eq!(unsafe {{ sakura_abi_version(&mut p) }}, {abi});
 }}
 "#,
-            sakura_rt::ABI_VERSION
+            abi = sakura_rt::ABI_VERSION
         ),
     )
     .unwrap();
     let test = dir.join("abi_test");
+    let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     run(Command::new(&rustc)
         .args(["--edition=2024", "--test"])
         .arg(&source)
         .arg("-L")
-        .arg(&dir)
+        .arg(&lib)
         .arg("-o")
         .arg(&test));
     run(&mut Command::new(&test));
