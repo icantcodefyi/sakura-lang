@@ -301,6 +301,8 @@ Compare the release tag with main when identifying changes not in that preview.
 - Type arguments on the first alternative of a variant list (`type T = Some<Int> | Nada`) are
   `V0001`, as on a later alternative. They were accepted, and `sakura fmt` printed the
   declaration as `Some | Nada`. A lone `Name<Args>` is still an alias.
+- The WASM test runner (`sakura test --target wasm`) reports a module of another ABI as
+  `error[V8003]` and exits 2, as `runMain` does, instead of throwing.
 
 - A runtime trap while `Serve.host()` serves on `--target wasm` no longer ends the process
   with an unhandled exception: the request is answered `500`, the server stops (later

@@ -12,14 +12,12 @@ Every active identity in the [generated table](diagnostic-codes.md) now has an i
 emission fixture.
 `V8003` (ABI version mismatch) is emitted by the Node WASM host, not by the Rust driver:
 `sakura_diagnostics` registers the code, and nothing in the compiler crates renders it.
-[runMain reports V8003](../../compiler/runtime/js/test/wasm_host.test.js) asserts the
-rendered `error[V8003]` line and exit 2 for a module of another ABI MAJOR.
-Two host paths still miss the code, recorded here rather than fixed in a test-only change:
-
-- `runTests` (`sakura test --target wasm`) does not catch `AbiMismatch`, so the same module
-  ends with an uncaught exception and exit 1 instead of `error[V8003]`.
-- A module that imports a function this host lacks fails with a `LinkError` before the
-  version is read ([REQUESTS](../../compiler/REQUESTS.md), M4-OPT question 4).
+[runMain and runTests report V8003](../../compiler/runtime/js/test/wasm_host.test.js) asserts
+the rendered `error[V8003]` line and exit 2 for a module of another ABI MAJOR, from both
+`runMain` and `runTests` (`sakura test --target wasm`).
+One host path still misses the code: a module that imports a function this host lacks fails
+with a `LinkError` before the version is read
+([REQUESTS](../../compiler/REQUESTS.md), M4-OPT question 4).
 
 The native profile does not read the version yet (ABI §0, N2).
 The formatter's injected dropped-comment fixture covers `V9001` emission in

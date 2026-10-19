@@ -95,7 +95,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V6010` | error | `non_std_effect_in_main` | [V6010_non_std_effect_in_main.sak](../../compiler/tests/ui/V6010_non_std_effect_in_main.sak) | active |
 | `V8001` | error | `missing_entry_point` | [V8001_missing_entry_point.sak](../../compiler/tests/ui/V8001_missing_entry_point.sak) | active |
 | `V8002` | error | `reserved_package_name` | [reserved_package_names_are_v8002](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
-| `V8003` | error | `abi_version_mismatch` | [runMain reports V8003 for another ABI and exits 2](../../compiler/runtime/js/test/wasm_host.test.js) | active |
+| `V8003` | error | `abi_version_mismatch` | [runMain and runTests report V8003 for another ABI and exit 2](../../compiler/runtime/js/test/wasm_host.test.js) | active |
 | `V8004` | error | `target_unsupported_external` | [a_user_js_external_is_refused_on_wasm](../../compiler/crates/sakura_cli/tests/wasm.rs) | active |
 | `V8005` | error | `dependencies_not_supported` | [main.sak](../../compiler/tests/ui/V8005_dependencies_table/main.sak) | active |
 | `V8020` | error | `spec_frozen` | [frozen_specs_compare_with_git_head](../../compiler/crates/sakura_cli/tests/cli.rs) | active |

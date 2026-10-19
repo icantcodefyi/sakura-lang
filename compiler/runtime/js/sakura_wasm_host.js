@@ -1507,7 +1507,13 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
   };
   rt.regressions.save = (name, text) => emit({ kind: "regression", name, text });
   await loadTypes();
-  await host.instantiate(bytes);
+  try {
+    await host.instantiate(bytes);
+  } catch (e) {
+    if (!(e instanceof AbiMismatch)) throw e;
+    writeErr(`error[V8003]: ${e.message}`);
+    return 2;
+  }
   const tests = host.tests();
   let [passed, failed, skipped] = [0, 0, 0];
   for (const t of tests) {
