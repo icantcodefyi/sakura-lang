@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+Ok(["a", "", "😀b", ""])
+Ok(["", "", "c", ""])
+Err(EncodingError { reason: Malformed(1) })
+Ok(["a", "", "�"])
+Ok(["", "", "😀!", ""])
+Ok(["", "", "😀!", ""])

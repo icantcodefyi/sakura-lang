@@ -1,0 +1,23 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://encoding.spec.whatwg.org/#concept-encoding-get
+
+// `Encoding.parse` follows "get an encoding": ASCII whitespace and case are ignored, and a
+// label outside the four supported encodings is `Unsupported(label)`, never a fallback to
+// UTF-8 (the standard's `replacement` and legacy CJK labels included).
+import std/encoding.{Encoding}
+
+pub fn main() -> Unit ! {Console} {
+  for label in [
+    "  UTF-8\n",
+    "utf-16",
+    "UnicodeFFFE",
+    "ISO-8859-1",
+    "us-ascii",
+    "shift_jis",
+    "iso-2022-kr",
+    "utf-32",
+    "",
+    "utf\u{A0}8",
+  ] { Console.print("{Encoding.parse(label)}") }
+}

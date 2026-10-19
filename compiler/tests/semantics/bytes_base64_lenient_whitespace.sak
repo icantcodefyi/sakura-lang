@@ -1,0 +1,25 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://infra.spec.whatwg.org/#forgiving-base64-decode
+
+// `from_base64_lenient` is `atob`: ASCII whitespace anywhere is removed, padding is optional,
+// the last character's unused bits are ignored; a bad length, misplaced `=` or a character
+// outside the standard alphabet is still a typed error.
+pub fn main() -> Unit ! {Console} {
+  for text in [
+    " Zm9v\tYmFy\n",
+    "Zm9vYg",
+    "Zm9vYg = =",
+    "Zh",
+    "\u{C}YQ==\r",
+    "Zm9vY",
+    "Zm9vYg=",
+    "-_8",
+    "YQ==YQ==",
+  ] {
+    match Bytes.from_base64_lenient(text) {
+      Ok(b) => Console.print("ok {String.from_bytes(b)}"),
+      Err(e) => Console.print("{e.reason} at {e.offset}"),
+    }
+  }
+}

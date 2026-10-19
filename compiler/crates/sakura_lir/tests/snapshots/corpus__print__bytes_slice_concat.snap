@@ -1,0 +1,150 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %34 word*, %48 bool, %108 bool, %109 word*, %110 word*, %111 i64, %112 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = $string_to_bytes(%0)
+    %2 lit: i64 = const 1
+    %3 lit: i64 = const 3
+    %4 tup: ptr = alloc tuple#5(i64, i64)(%2, %3)
+    %5 lit: i64 = const 2
+    %6 t: i64 = intneg %5
+    %7 lit: i64 = const 2
+    %8 tup: ptr = alloc tuple#5(i64, i64)(%6, %7)
+    %9 lit: i64 = const 4
+    %10 lit: i64 = const 99
+    %11 tup: ptr = alloc tuple#5(i64, i64)(%9, %10)
+    %12 lit: i64 = const 5
+    %13 lit: i64 = const 2
+    %14 tup: ptr = alloc tuple#5(i64, i64)(%12, %13)
+    %15 lit: i64 = const 0
+    %16 lit: i64 = const 6
+    %17 tup: ptr = alloc tuple#5(i64, i64)(%15, %16)
+    %18 xs: ptr = alloc list(%4, %8, %11, %14, %17)
+    dup.candidate %18
+    %19 n: i64 = $list_len(%18)
+    %114 lit: i64 = const 0
+    jump b9(%114, %1, %18, %19)
+  b1(%20 r: ptr):
+    %21 xs: ptr = alloc list()
+    %73 lit: i64 = const 0
+    jump b5(%73, %21, %20)
+  b2(%22 parts: ptr, %23 r: ptr):
+    %24 r: ptr = $bytes_concat(%22)
+    dup %24
+    %25 r: i64 = $bytes_len(%24)
+    %26 s: ptr = show %25
+    %27 lit: ptr = const str 1
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    %29 lit: i64 = const 999
+    %30 r: ptr = $bytes_get(%24, %29)
+    %31 s: ptr = show %30
+    drop %30
+    %32 s: ptr = concat %28, %31
+    drop %28
+    drop %31
+    perform std::console::Console.print(%32) -> b3(%23)
+  b3(%33 r: unit, %34 r: ptr):
+    %35 box: word = box %33
+    drop %35
+    %36 lit: i64 = const 3
+    %37 lit: i64 = const 6
+    dup %34
+    %38 r: ptr = $bytes_slice(%34, %36, %37)
+    %39 xs: ptr = alloc list()
+    %40 r: ptr = $bytes_from_list(%39)
+    %41 lit: i64 = const 0
+    %42 lit: i64 = const 3
+    %43 r: ptr = $bytes_slice(%34, %41, %42)
+    %44 xs: ptr = alloc list(%38, %40, %43)
+    %45 r: ptr = $bytes_concat(%44)
+    %46 r: ptr = $string_from_bytes(%45)
+    %47 s: ptr = show %46
+    drop %46
+    perform std::console::Console.print(%47) -> b4()
+  b4(%48 r: unit):
+    %49 box: word = box %48
+    %50 unbox: unit = unbox %49
+    drop %49
+    ret %50
+  b5(%51 i: i64, %52 parts: ptr, %53 r: ptr):
+    %54 lit: i64 = const 1000
+    %55 more: bool = lt.int %51, %54
+    if %55 then b6(%53, %51, %52) else b7(%53, %51, %52)
+  b6(%56 r: ptr, %57 i: i64, %58 parts: ptr):
+    %67 lit: i64 = const 256
+    %68 t: i64 = intrem %57, %67
+    %69 box: word = box %68
+    %70 xs: ptr = alloc list(%69)
+    %71 r: ptr = $bytes_from_list(%70)
+    %72 r: ptr = $list_push(%58, %71)
+    jump b8(%72, %56, %57)
+  b7(%59 r: ptr, %60 i: i64, %61 parts: ptr):
+    jump b2(%61, %59)
+  b8(%62 parts: ptr, %63 r: ptr, %64 i: i64):
+    %65 lit: i64 = const 1
+    %66 i: i64 = intadd %64, %65
+    jump b5(%66, %62, %63)
+  b9(%74 i: i64, %75 r: ptr, %76 xs: ptr, %77 n: i64):
+    %78 more: bool = lt.int %74, %77
+    if %78 then b10(%75, %76, %77, %74) else b11(%75, %76, %77, %74)
+  b10(%79 r: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64):
+    dup.candidate %80
+    %87 x: word = $list_at(%80, %82)
+    %94 t: i64 = tuple_get %87.0
+    %95 s: ptr = show %94
+    %96 lit: ptr = const str 2
+    %97 s: ptr = concat %95, %96
+    drop %95
+    drop %96
+    %98 t: i64 = tuple_get %87.1
+    %99 s: ptr = show %98
+    %100 s: ptr = concat %97, %99
+    drop %97
+    drop %99
+    %101 lit: ptr = const str 3
+    %102 s: ptr = concat %100, %101
+    drop %100
+    drop %101
+    %103 t: i64 = tuple_get %87.0
+    %104 t: i64 = tuple_get %87.1
+    drop %87
+    dup %79
+    %105 r: ptr = $bytes_slice(%79, %103, %104)
+    %106 s: ptr = show %105
+    drop %105
+    %107 s: ptr = concat %102, %106
+    drop %102
+    drop %106
+    perform std::console::Console.print(%107) -> b13(%79, %80, %81, %82)
+  b11(%83 r: ptr, %84 xs: ptr, %85 n: i64, %86 i: i64):
+    drop %84
+    jump b1(%83)
+  b12(%88 r: ptr, %89 xs: ptr, %90 n: i64, %91 i: i64):
+    %92 lit: i64 = const 1
+    %93 i: i64 = intadd %91, %92
+    jump b9(%93, %88, %89, %90)
+  b13(%108 r: unit, %109 r: ptr, %110 xs: ptr, %111 n: i64, %112 i: i64):
+    %113 box: word = box %108
+    drop %113
+    jump b12(%109, %110, %111, %112)
+
+fn $entry#1 top -> unit ; main::bytes_slice_concat, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

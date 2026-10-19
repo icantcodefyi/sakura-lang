@@ -2247,6 +2247,142 @@ export function set_len(s) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Bytes, Base64 and text encodings (RFC 0002 §2.1); `runtime/rt/src/codec.rs` is the twin.
+
+/** `Bytes.slice`, clamped like `List.slice`. */
+export function bytes_slice(b, start, end) {
+  const s = Math.max(0, Math.min(start, b.length));
+  const e = Math.max(s, Math.min(end, b.length));
+  return s === 0 && e === b.length ? b : b.slice(s, e);
+}
+/** `Bytes.concat`: one allocation, linear in the total. */
+export function bytes_concat(parts) {
+  const xs = items(parts);
+  const out = new Uint8Array(xs.reduce((n, x) => n + x.length, 0));
+  let o = 0;
+  for (const x of xs) {
+    out.set(x, o);
+    o += x.length;
+  }
+  return out;
+}
+export function bytes_to_base64(b, url, padded) {
+  let t = Buffer.from(b.buffer, b.byteOffset, b.length).toString(url === 1 ? "base64url" : "base64");
+  if (padded === 1) t = t.padEnd(Math.ceil(t.length / 4) * 4, "=");
+  else if (url !== 1) t = t.replace(/=+$/, "");
+  return t;
+}
+/** Strict Base64: `Ok(bytes)` or `Err(offset * 4 + reason)` (`base64Check`). */
+export function bytes_from_base64(text, url) {
+  return base64Decode(text, url === 1, false);
+}
+/** Forgiving-base64 (`atob`). */
+export function bytes_from_base64_lenient(text) {
+  return base64Decode(text, false, true);
+}
+function base64Decode(text, url, lenient) {
+  const code = base64Check(text, url, lenient);
+  // Checked, so Node's decoder (whitespace skipped, both alphabets, stops at `=`) agrees.
+  return code === null ? Ok(new Uint8Array(Buffer.from(text, "base64"))) : Err(code);
+}
+const B64_CHARACTER = 0;
+const B64_PADDING = 1;
+const B64_LENGTH = 2;
+const B64_TRAILING = 3;
+function sextet(c, url) {
+  if (c >= 65 && c <= 90) return c - 65;
+  if (c >= 97 && c <= 122) return c - 71;
+  if (c >= 48 && c <= 57) return c + 4;
+  if (c === (url ? 45 : 43)) return 62;
+  if (c === (url ? 95 : 47)) return 63;
+  return -1;
+}
+/** `null` when `text` is valid Base64, else `offset * 4 + reason` (`codec.rs`'s `base64_check`). */
+function base64Check(text, url, lenient) {
+  let n = 0;
+  let pads = 0;
+  let padAt = -1;
+  let last = 0;
+  let lastV = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (lenient && (c === 9 || c === 10 || c === 12 || c === 13 || c === 32)) continue;
+    if (c === 61) {
+      if (padAt < 0) padAt = i;
+      pads++;
+      continue;
+    }
+    if (padAt >= 0) return padAt * 4 + B64_PADDING;
+    const v = sextet(c, url);
+    if (v < 0) return i * 4 + B64_CHARACTER;
+    n++;
+    last = i;
+    lastV = v;
+  }
+  const rem = n % 4;
+  // Every character up to an error is ASCII, so string indices are the byte offsets.
+  const end = text.length;
+  if (rem === 1) return end * 4 + B64_LENGTH;
+  if (padAt >= 0 && (rem === 0 || pads !== 4 - rem)) return padAt * 4 + B64_PADDING;
+  if (padAt < 0 && !lenient && !url && rem !== 0) return end * 4 + B64_PADDING;
+  if (!lenient && (lastV & [0, 0, 0x0f, 0x03][rem]) !== 0) return last * 4 + B64_TRAILING;
+  return null;
+}
+
+const W1252_HIGH = [
+  0x20ac, 0x81, 0x201a, 0x192, 0x201e, 0x2026, 0x2020, 0x2021, 0x2c6, 0x2030, 0x160, 0x2039, 0x152, 0x8d,
+  0x17d, 0x8f, 0x90, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x2dc, 0x2122, 0x161, 0x203a,
+  0x153, 0x9d, 0x17e, 0x178,
+];
+let w1252;
+const textDecoders = new Map();
+/**
+ * `b` in `std/encoding`'s `code(enc)` (0 UTF-8, 1 UTF-16LE, 2 UTF-16BE, 3 Windows-1252) as
+ * `Ok(text)`, malformed sequences replaced by U+FFFD unless `fatal` is 1, when the result is
+ * `Err(offset)` of the first one. A byte order mark is text here; `std/encoding` strips it.
+ */
+export function encoding_decode(b, enc, fatal) {
+  if (enc === 3) {
+    w1252 ??= Array.from({ length: 256 }, (_, i) => String.fromCharCode(i >= 0x80 && i < 0xa0 ? W1252_HIGH[i - 0x80] : i));
+    let s = "";
+    for (const x of b) s += w1252[x];
+    return Ok(s);
+  }
+  // UTF-16BE is UTF-16LE over swapped pairs (Node's `utf-16be` needs full ICU).
+  const units = enc === 2 ? swap16(b) : b;
+  const label = enc === 0 ? "utf-8" : "utf-16le";
+  const key = `${label}/${fatal}`;
+  let d = textDecoders.get(key);
+  if (!d) textDecoders.set(key, (d = new TextDecoder(label, { fatal: fatal === 1, ignoreBOM: true })));
+  try {
+    return Ok(d.decode(units));
+  } catch {
+    return Err(enc === 0 ? validUtf8Prefix(b) : utf16Malformed(units));
+  }
+}
+function swap16(b) {
+  const out = new Uint8Array(b);
+  for (let i = 0; i + 1 < out.length; i += 2) [out[i], out[i + 1]] = [out[i + 1], out[i]];
+  return out;
+}
+/** The byte offset of the first unpaired surrogate in UTF-16LE `b`, else of an odd last byte. */
+function utf16Malformed(b) {
+  const units = b.length >> 1;
+  const unit = (k) => b[2 * k] | (b[2 * k + 1] << 8);
+  for (let k = 0; k < units; k++) {
+    const u = unit(k);
+    if (u >= 0xd800 && u < 0xdc00 && k + 1 < units && unit(k + 1) >= 0xdc00 && unit(k + 1) < 0xe000) k++;
+    else if (u >= 0xd800 && u < 0xe000) return 2 * k;
+  }
+  return b.length - 1;
+}
+/** `Encoding.encode` for UTF-16LE (`enc` 1) and UTF-16BE (2). */
+export function encoding_encode(s, enc) {
+  const b = new Uint8Array(Buffer.from(s, "utf16le"));
+  return enc === 2 ? swap16(b) : b;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Option
 
 /** A `match` the exhaustiveness checker proved total fell through: a compiler bug. */

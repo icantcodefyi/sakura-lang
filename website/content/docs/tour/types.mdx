@@ -18,7 +18,7 @@ Sakura Lang is statically typed with Hindley-Milner inference inside bodies. Top
 | `Int` | 64-bit signed | Checked: overflow is defect `D001`, division by zero is `D002`. `/` and `%` truncate toward zero. On the JS backend, values beyond ±(2^53−1) are defect `D003`, never silently wrong. |
 | `Float` | IEEE-754 binary64 | `NaN != NaN`. Not `Hash`, so not a `Map` key. |
 | `String` | immutable UTF-8 text | No integer indexing. `String.len` is the byte length; `String.chars` and `String.graphemes` give lists. |
-| `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`. |
+| `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`; `Bytes.slice` and `Bytes.concat` copy, never alias. |
 | `Never` | none | Type of `fail e`, `return e`, `break`, `continue`. |
 
 Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. Parsing never defects: `String.parse_int` returns `None` for text that is not a number and for a number the backend cannot represent, which on JavaScript means beyond ±(2^53−1). `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators in v0.
@@ -80,6 +80,30 @@ fn display_name(users: List<User>, email: String) -> String {
 ```
 
 The `Option` module has `map`, `unwrap_or`, `is_some`, `or_fail` (turns `None` into a typed failure), and `expect`. `Option.expect` on `None` is defect `D030`; use it only where absence is a bug.
+
+### Bytes and text
+
+`String.to_bytes` and `String.from_bytes` are the strict UTF-8 path (the web's `TextEncoder` and a fatal `TextDecoder`). `std/bytes` adds Base64 and `std/encoding` adds the other encodings, each failure a typed error rather than an exception:
+
+```sakura
+import std/bytes.{Alphabet, Base64Error}
+import std/encoding.{Encoding, EncodingError, Errors}
+
+test "Base64 and decoding are values with typed errors" {
+  let b = String.to_bytes("héllo")
+  let text = Bytes.to_base64(b, Alphabet.Standard, true)          // btoa
+  expect_eq(text, "aMOpbGxv")
+  expect_eq(Bytes.from_base64(text, Alphabet.Standard), Ok(b))    // strict
+  expect_eq(Bytes.from_base64_lenient(" aMOp\nbGxv "), Ok(b))     // atob
+  expect_eq(Bytes.from_base64("aMOpbGx", Alphabet.Standard), Err(Base64Error { offset: 7, reason: "invalid padding" }))
+  let latin1 = Encoding.parse("iso-8859-1").unwrap_or(Encoding.Utf8)
+  expect_eq(Encoding.decode(Bytes.from_list([0x63, 0x61, 0x66, 0xE9]), latin1, Errors.Fatal), Ok("café"))
+  expect_eq(Encoding.decode(Bytes.from_list([0x61, 0xFF]), Encoding.Utf8, Errors.Replace), Ok("a\u{FFFD}"))
+  expect_eq(Encoding.parse("shift_jis").is_err(), true)
+}
+```
+
+`Errors.Fatal` reports the byte offset of the first malformed sequence; `Errors.Replace` substitutes U+FFFD as browsers do. For a stream, thread a `Decoder` through `Encoding.push` and `Encoding.finish`: a character split across chunks comes out whole.
 
 ## Errors and Result
 

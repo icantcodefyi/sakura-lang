@@ -1,0 +1,213 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 8 shape |  32b (word*, word*)
+layout 9 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82 bool, %104 word*, %105 word*, %106 i64, %107 i64, %108 word*, %110 word*, %111 word*, %112 i64, %113 i64, %114 word*, %117 word*, %118 word*, %119 i64, %120 i64, %121 word*, %127 bool, %128 word*, %129 i64, %130 i64, %152 word*, %153 word*, %154 i64, %155 i64, %156 word*, %158 word*, %159 word*, %160 i64, %161 i64, %162 word*, %165 word*, %166 word*, %167 i64, %168 i64, %169 word*, %175 bool, %176 word*, %177 i64, %178 i64]
+  b0():
+    %0 lit: i64 = const 97
+    %1 box: word = box %0
+    %2 lit: i64 = const 195
+    %3 box: word = box %2
+    %4 lit: i64 = const 40
+    %5 box: word = box %4
+    %6 xs: ptr = alloc list(%1, %3, %5)
+    %7 lit: i64 = const 224
+    %8 box: word = box %7
+    %9 lit: i64 = const 128
+    %10 box: word = box %9
+    %11 lit: i64 = const 65
+    %12 box: word = box %11
+    %13 xs: ptr = alloc list(%8, %10, %12)
+    %14 lit: i64 = const 240
+    %15 box: word = box %14
+    %16 lit: i64 = const 159
+    %17 box: word = box %16
+    %18 lit: i64 = const 152
+    %19 box: word = box %18
+    %20 xs: ptr = alloc list(%15, %17, %19)
+    %21 lit: i64 = const 237
+    %22 box: word = box %21
+    %23 lit: i64 = const 160
+    %24 box: word = box %23
+    %25 lit: i64 = const 128
+    %26 box: word = box %25
+    %27 xs: ptr = alloc list(%22, %24, %26)
+    %28 lit: i64 = const 97
+    %29 box: word = box %28
+    %30 lit: i64 = const 255
+    %31 box: word = box %30
+    %32 lit: i64 = const 244
+    %33 box: word = box %32
+    %34 lit: i64 = const 144
+    %35 box: word = box %34
+    %36 lit: i64 = const 128
+    %37 box: word = box %36
+    %38 lit: i64 = const 128
+    %39 box: word = box %38
+    %40 lit: i64 = const 98
+    %41 box: word = box %40
+    %42 xs: ptr = alloc list(%29, %31, %33, %35, %37, %39, %41)
+    %43 xs: ptr = alloc list(%6, %13, %20, %27, %42)
+    dup.candidate %43
+    %44 n: i64 = $list_len(%43)
+    %180 lit: i64 = const 0
+    jump b12(%180, %43, %44)
+  b1():
+    %45 lit: i64 = const 97
+    %46 box: word = box %45
+    %47 lit: i64 = const 0
+    %48 box: word = box %47
+    %49 lit: i64 = const 0
+    %50 box: word = box %49
+    %51 lit: i64 = const 220
+    %52 box: word = box %51
+    %53 xs: ptr = alloc list(%46, %48, %50, %52)
+    %54 lit: i64 = const 0
+    %55 box: word = box %54
+    %56 lit: i64 = const 216
+    %57 box: word = box %56
+    %58 lit: i64 = const 97
+    %59 box: word = box %58
+    %60 lit: i64 = const 0
+    %61 box: word = box %60
+    %62 xs: ptr = alloc list(%55, %57, %59, %61)
+    %63 lit: i64 = const 97
+    %64 box: word = box %63
+    %65 lit: i64 = const 0
+    %66 box: word = box %65
+    %67 lit: i64 = const 98
+    %68 box: word = box %67
+    %69 xs: ptr = alloc list(%64, %66, %68)
+    %70 xs: ptr = alloc list(%53, %62, %69)
+    dup.candidate %70
+    %71 n: i64 = $list_len(%70)
+    %132 lit: i64 = const 0
+    jump b4(%132, %70, %71)
+  b2():
+    %72 lit: i64 = const 97
+    %73 box: word = box %72
+    %74 lit: i64 = const 195
+    %75 box: word = box %74
+    %76 lit: i64 = const 40
+    %77 box: word = box %76
+    %78 xs: ptr = alloc list(%73, %75, %77)
+    %79 r: ptr = $bytes_from_list(%78)
+    %80 r: ptr = $string_from_bytes(%79)
+    %81 s: ptr = show %80
+    drop %80
+    perform std::console::Console.print(%81) -> b3()
+  b3(%82 r: unit):
+    %83 box: word = box %82
+    %84 unbox: unit = unbox %83
+    drop %83
+    ret %84
+  b4(%85 i: i64, %86 xs: ptr, %87 n: i64):
+    %88 more: bool = lt.int %85, %87
+    if %88 then b5(%86, %87, %85) else b6(%86, %87, %85)
+  b5(%89 xs: ptr, %90 n: i64, %91 i: i64):
+    dup.candidate %89
+    %95 x: word = $list_at(%89, %91)
+    %101 r: ptr = $bytes_from_list(%95)
+    %102 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %103 v: ptr = const static std::encoding::Errors.Replace
+    dup %101
+    call decode#2(%101, %102, %103) -> b8(%89, %90, %91, %101)
+  b6(%92 xs: ptr, %93 n: i64, %94 i: i64):
+    drop %92
+    jump b2()
+  b7(%96 xs: ptr, %97 n: i64, %98 i: i64):
+    %99 lit: i64 = const 1
+    %100 i: i64 = intadd %98, %99
+    jump b4(%100, %96, %97)
+  b8(%104 r: ptr, %105 xs: ptr, %106 n: i64, %107 i: i64, %108 r: ptr):
+    %109 fn: ptr = const static closure $string_chars$value#9
+    call map#3(%104, %109) -> b9(%105, %106, %107, %108)
+  b9(%110 r: ptr, %111 xs: ptr, %112 n: i64, %113 i: i64, %114 r: ptr):
+    %115 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %116 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%114, %115, %116) -> b10(%111, %112, %113, %110)
+  b10(%117 r: ptr, %118 xs: ptr, %119 n: i64, %120 i: i64, %121 r: ptr):
+    %122 s: ptr = show %117
+    drop %117
+    %123 lit: ptr = const str 0
+    %124 s: ptr = concat %122, %123
+    drop %122
+    drop %123
+    %125 s: ptr = show %121
+    drop %121
+    %126 s: ptr = concat %124, %125
+    drop %124
+    drop %125
+    perform std::console::Console.print(%126) -> b11(%118, %119, %120)
+  b11(%127 r: unit, %128 xs: ptr, %129 n: i64, %130 i: i64):
+    %131 box: word = box %127
+    drop %131
+    jump b7(%128, %129, %130)
+  b12(%133 i: i64, %134 xs: ptr, %135 n: i64):
+    %136 more: bool = lt.int %133, %135
+    if %136 then b13(%134, %135, %133) else b14(%134, %135, %133)
+  b13(%137 xs: ptr, %138 n: i64, %139 i: i64):
+    dup.candidate %137
+    %143 x: word = $list_at(%137, %139)
+    %149 r: ptr = $bytes_from_list(%143)
+    %150 v: ptr = const static std::encoding::Encoding.Utf8
+    %151 v: ptr = const static std::encoding::Errors.Replace
+    dup %149
+    call decode#2(%149, %150, %151) -> b16(%137, %138, %139, %149)
+  b14(%140 xs: ptr, %141 n: i64, %142 i: i64):
+    drop %140
+    jump b1()
+  b15(%144 xs: ptr, %145 n: i64, %146 i: i64):
+    %147 lit: i64 = const 1
+    %148 i: i64 = intadd %146, %147
+    jump b12(%148, %144, %145)
+  b16(%152 r: ptr, %153 xs: ptr, %154 n: i64, %155 i: i64, %156 r: ptr):
+    %157 fn: ptr = const static closure $string_chars$value#9
+    call map#3(%152, %157) -> b17(%153, %154, %155, %156)
+  b17(%158 r: ptr, %159 xs: ptr, %160 n: i64, %161 i: i64, %162 r: ptr):
+    %163 v: ptr = const static std::encoding::Encoding.Utf8
+    %164 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%162, %163, %164) -> b18(%159, %160, %161, %158)
+  b18(%165 r: ptr, %166 xs: ptr, %167 n: i64, %168 i: i64, %169 r: ptr):
+    %170 s: ptr = show %165
+    drop %165
+    %171 lit: ptr = const str 0
+    %172 s: ptr = concat %170, %171
+    drop %170
+    drop %171
+    %173 s: ptr = show %169
+    drop %169
+    %174 s: ptr = concat %172, %173
+    drop %172
+    drop %173
+    perform std::console::Console.print(%174) -> b19(%166, %167, %168)
+  b19(%175 r: unit, %176 xs: ptr, %177 n: i64, %178 i: i64):
+    %179 box: word = box %175
+    drop %179
+    jump b15(%176, %177, %178)
+
+fn $entry#1 top -> unit ; main::encoding_fatal_vs_replace, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn $string_chars$value#9 adapter of $string_chars -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: ptr = $string_chars(%1)
+    ret %2

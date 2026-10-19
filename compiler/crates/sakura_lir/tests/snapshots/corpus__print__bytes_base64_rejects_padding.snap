@@ -1,0 +1,139 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::bytes_base64_rejects_padding, frame 13 slots [%57 word*, %58 word*, %59 i64, %60 i64, %61 word*, %84 bool, %85 word*, %86 i64, %87 i64, %102 bool, %103 word*, %104 i64, %105 i64]
+  b0():
+    %0 v: ptr = const static std::bytes::Alphabet.Standard
+    %1 lit: ptr = const str 0
+    %2 tup: ptr = alloc tuple#4(word, word)(%1, %0)
+    %3 v: ptr = const static std::bytes::Alphabet.Standard
+    %4 lit: ptr = const str 1
+    %5 tup: ptr = alloc tuple#4(word, word)(%4, %3)
+    %6 v: ptr = const static std::bytes::Alphabet.Standard
+    %7 lit: ptr = const str 2
+    %8 tup: ptr = alloc tuple#4(word, word)(%7, %6)
+    %9 v: ptr = const static std::bytes::Alphabet.Standard
+    %10 lit: ptr = const str 3
+    %11 tup: ptr = alloc tuple#4(word, word)(%10, %9)
+    %12 v: ptr = const static std::bytes::Alphabet.Url
+    %13 lit: ptr = const str 1
+    %14 tup: ptr = alloc tuple#4(word, word)(%13, %12)
+    %15 v: ptr = const static std::bytes::Alphabet.Url
+    %16 lit: ptr = const str 4
+    %17 tup: ptr = alloc tuple#4(word, word)(%16, %15)
+    %18 v: ptr = const static std::bytes::Alphabet.Standard
+    %19 lit: ptr = const str 5
+    %20 tup: ptr = alloc tuple#4(word, word)(%19, %18)
+    %21 v: ptr = const static std::bytes::Alphabet.Standard
+    %22 lit: ptr = const str 6
+    %23 tup: ptr = alloc tuple#4(word, word)(%22, %21)
+    %24 v: ptr = const static std::bytes::Alphabet.Standard
+    %25 lit: ptr = const str 7
+    %26 tup: ptr = alloc tuple#4(word, word)(%25, %24)
+    %27 v: ptr = const static std::bytes::Alphabet.Standard
+    %28 lit: ptr = const str 8
+    %29 tup: ptr = alloc tuple#4(word, word)(%28, %27)
+    %30 v: ptr = const static std::bytes::Alphabet.Url
+    %31 lit: ptr = const str 9
+    %32 tup: ptr = alloc tuple#4(word, word)(%31, %30)
+    %33 v: ptr = const static std::bytes::Alphabet.Standard
+    %34 lit: ptr = const str 10
+    %35 tup: ptr = alloc tuple#4(word, word)(%34, %33)
+    %36 xs: ptr = alloc list(%2, %5, %8, %11, %14, %17, %20, %23, %26, %29, %32, %35)
+    dup.candidate %36
+    %37 n: i64 = $list_len(%36)
+    %107 lit: i64 = const 0
+    jump b2(%107, %36, %37)
+  b1():
+    %38 lit: unit = const ()
+    ret %38
+  b2(%39 i: i64, %40 xs: ptr, %41 n: i64):
+    %42 more: bool = lt.int %39, %41
+    if %42 then b3(%40, %41, %39) else b4(%40, %41, %39)
+  b3(%43 xs: ptr, %44 n: i64, %45 i: i64):
+    dup.candidate %43
+    %49 x: word = $list_at(%43, %45)
+    %55 t: ptr = tuple_get %49.0
+    %56 t: ptr = tuple_get %49.1
+    call from_base64#2(%55, %56) -> b6(%43, %44, %45, %49)
+  b4(%46 xs: ptr, %47 n: i64, %48 i: i64):
+    drop %46
+    jump b1()
+  b5(%50 xs: ptr, %51 n: i64, %52 i: i64):
+    %53 lit: i64 = const 1
+    %54 i: i64 = intadd %52, %53
+    jump b2(%54, %50, %51)
+  b6(%57 r: ptr, %58 xs: ptr, %59 n: i64, %60 i: i64, %61 x: ptr):
+    %66 tag: i64 = tag %57 ctor std::result::Result
+    switch %66 0 => b8(%58, %59, %60, %61, %57) 1 => b9(%58, %59, %60, %61, %57)
+  b7(%62 v: word, %63 xs: ptr, %64 n: i64, %65 i: i64):
+    drop %62
+    jump b5(%63, %64, %65)
+  b8(%67 xs: ptr, %68 n: i64, %69 i: i64, %70 x: ptr, %71 r: ptr):
+    %77 p: word = proj %71.0 std::result::Result.Ok
+    drop %71
+    %78 t: ptr = tuple_get %70.0
+    drop %70
+    %79 s: ptr = show %78
+    drop %78
+    %80 lit: ptr = const str 11
+    %81 s: ptr = concat %79, %80
+    drop %79
+    drop %80
+    %82 s: ptr = show %77
+    drop %77
+    %83 s: ptr = concat %81, %82
+    drop %81
+    drop %82
+    perform std::console::Console.print(%83) -> b10(%67, %68, %69)
+  b9(%72 xs: ptr, %73 n: i64, %74 i: i64, %75 x: ptr, %76 r: ptr):
+    %89 p: word = proj %76.0 std::result::Result.Err
+    drop %76
+    %90 t: ptr = tuple_get %75.0
+    drop %75
+    %91 s: ptr = show %90
+    drop %90
+    %92 lit: ptr = const str 11
+    %93 s: ptr = concat %91, %92
+    drop %91
+    drop %92
+    %94 reason: word = proj %89.1 std::bytes::Base64Error
+    %95 s: ptr = show %94
+    drop %94
+    %96 s: ptr = concat %93, %95
+    drop %93
+    drop %95
+    %97 lit: ptr = const str 12
+    %98 s: ptr = concat %96, %97
+    drop %96
+    drop %97
+    %99 offset: i64 = proj %89.0 std::bytes::Base64Error
+    drop %89
+    %100 s: ptr = show %99
+    %101 s: ptr = concat %98, %100
+    drop %98
+    drop %100
+    perform std::console::Console.print(%101) -> b11(%72, %73, %74)
+  b10(%84 r: unit, %85 xs: ptr, %86 n: i64, %87 i: i64):
+    %88 box: word = box %84
+    jump b7(%88, %85, %86, %87)
+  b11(%102 r: unit, %103 xs: ptr, %104 n: i64, %105 i: i64):
+    %106 box: word = box %102
+    jump b7(%106, %103, %104, %105)
+
+fn $entry#1 top -> unit ; main::bytes_base64_rejects_padding, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

@@ -1690,4 +1690,15 @@ builtins! {
     rt_b_bytes_len(b: u32) -> i64 = plain |rt| rt.bytes_len(b);
     rt_b_bytes_get(b: u32, i: i64) -> u32 = ptr |rt| rt.bytes_get(b, i);
     rt_b_bytes_from_list(xs: u32) -> u32 = ptr |rt| rt.bytes_from_list(xs);
+    rt_b_bytes_slice(b: u32, s: i64, e: i64) -> u32 = ptr |rt| rt.bytes_slice(b, s, e);
+    rt_b_bytes_concat(parts: u32) -> u32 = ptr |rt| rt.bytes_concat(parts);
+    rt_b_bytes_to_base64(b: u32, url: i64, padded: i64) -> u32 = ptr |rt| {
+        rt.bytes_to_base64(b, url, padded)
+    };
+    rt_b_bytes_from_base64(t: u32, url: i64) -> u32 = ptr |rt| rt.bytes_from_base64(t, url);
+    rt_b_bytes_from_base64_lenient(t: u32) -> u32 = ptr |rt| rt.bytes_from_base64_lenient(t);
+    rt_b_encoding_decode(b: u32, enc: i64, fatal: i64) -> u32 = ptr |rt| {
+        rt.encoding_decode(b, enc, fatal)
+    };
+    rt_b_encoding_encode(s: u32, enc: i64) -> u32 = ptr |rt| rt.encoding_encode(s, enc);
 }

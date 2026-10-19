@@ -1,0 +1,11 @@
+""   true
+"f" Zg== Zg true
+"fo" Zm8= Zm8 true
+"foo" Zm9v Zm9v true
+"foob" Zm9vYg== Zm9vYg true
+"fooba" Zm9vYmE= Zm9vYmE true
+"foobar" Zm9vYmFy Zm9vYmFy true
++++++/8=
+-----_8=
+Ok(Bytes.of([251, 239, 190, 251, 255]))
+Ok(Bytes.of([251, 239, 190, 251, 255]))

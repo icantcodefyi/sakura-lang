@@ -1,0 +1,19 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://tc39.es/ecma262/#sec-%typedarray%.prototype.slice
+
+// `Bytes.slice` clamps like `List.slice` (no negative indexing from the end, unlike
+// `Uint8Array.slice`); `Bytes.concat` joins in order and is linear in the total length.
+pub fn main() -> Unit ! {Console} {
+  let b = String.to_bytes("abcdef")
+  for r in [(1, 3), (-2, 2), (4, 99), (5, 2), (0, 6)] {
+    Console.print("{r.0}..{r.1}: {Bytes.slice(b, r.0, r.1)}")
+  }
+  var parts = []
+  for i in 0..1000 { parts = parts.push(Bytes.from_list([i % 256])) }
+  let all = Bytes.concat(parts)
+  Console.print("{Bytes.len(all)} {Bytes.get(all, 999)}")
+  Console.print(
+    "{String.from_bytes(Bytes.concat([Bytes.slice(b, 3, 6), Bytes.from_list([]), Bytes.slice(b, 0, 3)]))}",
+  )
+}

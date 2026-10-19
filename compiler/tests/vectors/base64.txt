@@ -1,0 +1,9 @@
+# RFC 4648 §10 test vectors, https://www.rfc-editor.org/rfc/rfc4648#section-10, fetched 2026-10-20.
+# Columns: input text, TAB, its Base64 in the standard alphabet, padded.
+	
+f	Zg==
+fo	Zm8=
+foo	Zm9v
+foob	Zm9vYg==
+fooba	Zm9vYmE=
+foobar	Zm9vYmFy

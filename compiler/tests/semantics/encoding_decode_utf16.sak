@@ -1,0 +1,26 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://encoding.spec.whatwg.org/#utf-16le-decoder
+
+// UTF-16 in both byte orders, with a surrogate pair; `decode` strips the byte order mark that
+// matches the encoding, `decode_with(.., Keep)` keeps it, and a mark of the other byte order
+// is text (U+FFFE), as `TextDecoder` does. `encode` writes no mark.
+import std/encoding.{Bom, Encoding, Errors}
+
+pub fn main() -> Unit ! {Console} {
+  let le = Bytes.from_list([0xFF, 0xFE, 0x68, 0x00, 0x69, 0x00, 0x3D, 0xD8, 0x00, 0xDE])
+  let be = Bytes.from_list([0xFE, 0xFF, 0x00, 0x68, 0x00, 0x69, 0xD8, 0x3D, 0xDE, 0x00])
+  Console.print("{Encoding.decode(le, Encoding.Utf16Le, Errors.Fatal)}")
+  Console.print("{Encoding.decode(be, Encoding.Utf16Be, Errors.Fatal)}")
+  Console.print(
+    "{Encoding.decode_with(le, Encoding.Utf16Le, Errors.Fatal, Bom.Keep).map(String.len)}",
+  )
+  Console.print(
+    "{Encoding.decode(be, Encoding.Utf16Le, Errors.Replace).map(String.chars).map(List.len)}",
+  )
+  Console.print("{Encoding.encode("hi😀", Encoding.Utf16Le)}")
+  Console.print("{Encoding.encode("hi😀", Encoding.Utf16Be)}")
+  Console.print(
+    "{Encoding.decode(Encoding.encode("é€😀", Encoding.Utf16Be), Encoding.Utf16Be, Errors.Fatal)}",
+  )
+}

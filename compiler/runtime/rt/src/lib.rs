@@ -11,6 +11,7 @@ extern crate alloc;
 pub mod arena;
 pub mod builtins;
 pub mod cmp;
+pub mod codec;
 #[cfg(any(target_arch = "wasm32", feature = "native"))]
 mod cx;
 pub mod exec;

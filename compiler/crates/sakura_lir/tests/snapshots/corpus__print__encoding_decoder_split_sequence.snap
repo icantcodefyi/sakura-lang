@@ -1,0 +1,263 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::encoding::Decoder | Decoder 56b (encoding: word*, errors: word*, pending: word*, offset: i64, started: bool)
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::encoding_decoder_split_sequence, frame 28 slots [%2 word*, %6 bool, %7 word*, %12 bool, %13 word*, %17 bool, %21 bool, %25 bool, %29 bool, %32 word*, %36 word*, %57 word*, %59 word*, %63 word*, %80 word*, %82 word*, %86 word*, %96 word*, %98 word*, %109 word*, %111 word*, %112 word*, %126 word*, %127 word*, %129 word*, %130 word*, %148 word*, %149 word*]
+  b0():
+    %0 v: ptr = const static std::encoding::Encoding.Utf8
+    %1 v: ptr = const static std::encoding::Errors.Fatal
+    call new#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    dup %2
+    try_push -> b27(err, %2)
+    %132 lit: i64 = const 97
+    %133 box: word = box %132
+    %134 lit: i64 = const 240
+    %135 box: word = box %134
+    %136 xs: ptr = alloc list(%133, %135)
+    %137 lit: i64 = const 159
+    %138 box: word = box %137
+    %139 lit: i64 = const 152
+    %140 box: word = box %139
+    %141 xs: ptr = alloc list(%138, %140)
+    %142 lit: i64 = const 128
+    %143 box: word = box %142
+    %144 lit: i64 = const 98
+    %145 box: word = box %144
+    %146 xs: ptr = alloc list(%143, %145)
+    %147 xs: ptr = alloc list(%136, %141, %146)
+    dup %2
+    call run#3(%2, %147) -> b28(%2)
+  b2(%3 v: ptr, %4 r: ptr):
+    %5 s: ptr = show %3
+    drop %3
+    perform std::console::Console.print(%5) -> b3(%4)
+  b3(%6 r: unit, %7 r: ptr):
+    %8 box: word = box %6
+    drop %8
+    dup %7
+    try_push -> b25(err, %7)
+    %114 lit: i64 = const 239
+    %115 box: word = box %114
+    %116 xs: ptr = alloc list(%115)
+    %117 lit: i64 = const 187
+    %118 box: word = box %117
+    %119 xs: ptr = alloc list(%118)
+    %120 lit: i64 = const 191
+    %121 box: word = box %120
+    %122 lit: i64 = const 99
+    %123 box: word = box %122
+    %124 xs: ptr = alloc list(%121, %123)
+    %125 xs: ptr = alloc list(%116, %119, %124)
+    dup %7
+    call run#3(%7, %125) -> b26(%7)
+  b4(%9 v: ptr, %10 r: ptr):
+    %11 s: ptr = show %9
+    drop %9
+    perform std::console::Console.print(%11) -> b5(%10)
+  b5(%12 r: unit, %13 r: ptr):
+    %14 box: word = box %12
+    drop %14
+    try_push -> b23(err, )
+    %100 lit: i64 = const 97
+    %101 box: word = box %100
+    %102 xs: ptr = alloc list(%101)
+    %103 lit: i64 = const 226
+    %104 box: word = box %103
+    %105 lit: i64 = const 130
+    %106 box: word = box %105
+    %107 xs: ptr = alloc list(%104, %106)
+    %108 xs: ptr = alloc list(%102, %107)
+    call run#3(%13, %108) -> b24()
+  b6(%15 v: ptr):
+    %16 s: ptr = show %15
+    drop %15
+    perform std::console::Console.print(%16) -> b7()
+  b7(%17 r: unit):
+    %18 box: word = box %17
+    drop %18
+    try_push -> b20(err, )
+    %84 v: ptr = const static std::encoding::Encoding.Utf8
+    %85 v: ptr = const static std::encoding::Errors.Replace
+    call new#2(%84, %85) -> b21()
+  b8(%19 v: ptr):
+    %20 s: ptr = show %19
+    drop %19
+    perform std::console::Console.print(%20) -> b9()
+  b9(%21 r: unit):
+    %22 box: word = box %21
+    drop %22
+    try_push -> b17(err, )
+    %61 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %62 v: ptr = const static std::encoding::Errors.Fatal
+    call new#2(%61, %62) -> b18()
+  b10(%23 v: ptr):
+    %24 s: ptr = show %23
+    drop %23
+    perform std::console::Console.print(%24) -> b11()
+  b11(%25 r: unit):
+    %26 box: word = box %25
+    drop %26
+    try_push -> b14(err, )
+    %34 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %35 v: ptr = const static std::encoding::Errors.Fatal
+    call new#2(%34, %35) -> b15()
+  b12(%27 v: ptr):
+    %28 s: ptr = show %27
+    drop %27
+    perform std::console::Console.print(%28) -> b13()
+  b13(%29 r: unit):
+    %30 box: word = box %29
+    %31 unbox: unit = unbox %30
+    drop %30
+    ret %31
+  b14(%32 e: word):
+    %33 err: ptr = alloc std::result::Result.Err(%32)
+    jump b12(%33)
+  b15(%36 r: ptr) [try]:
+    %37 lit: i64 = const 254
+    %38 box: word = box %37
+    %39 lit: i64 = const 255
+    %40 box: word = box %39
+    %41 lit: i64 = const 216
+    %42 box: word = box %41
+    %43 xs: ptr = alloc list(%38, %40, %42)
+    %44 lit: i64 = const 61
+    %45 box: word = box %44
+    %46 xs: ptr = alloc list(%45)
+    %47 lit: i64 = const 222
+    %48 box: word = box %47
+    %49 lit: i64 = const 0
+    %50 box: word = box %49
+    %51 lit: i64 = const 0
+    %52 box: word = box %51
+    %53 lit: i64 = const 33
+    %54 box: word = box %53
+    %55 xs: ptr = alloc list(%48, %50, %52, %54)
+    %56 xs: ptr = alloc list(%43, %46, %55)
+    call run#3(%36, %56) -> b16()
+  b16(%57 r: ptr) [try]:
+    %58 ok: ptr = alloc std::result::Result.Ok(%57)
+    try_pop
+    jump b12(%58)
+  b17(%59 e: word):
+    %60 err: ptr = alloc std::result::Result.Err(%59)
+    jump b10(%60)
+  b18(%63 r: ptr) [try]:
+    %64 lit: i64 = const 61
+    %65 box: word = box %64
+    %66 xs: ptr = alloc list(%65)
+    %67 lit: i64 = const 216
+    %68 box: word = box %67
+    %69 lit: i64 = const 0
+    %70 box: word = box %69
+    %71 xs: ptr = alloc list(%68, %70)
+    %72 lit: i64 = const 222
+    %73 box: word = box %72
+    %74 lit: i64 = const 33
+    %75 box: word = box %74
+    %76 lit: i64 = const 0
+    %77 box: word = box %76
+    %78 xs: ptr = alloc list(%73, %75, %77)
+    %79 xs: ptr = alloc list(%66, %71, %78)
+    call run#3(%63, %79) -> b19()
+  b19(%80 r: ptr) [try]:
+    %81 ok: ptr = alloc std::result::Result.Ok(%80)
+    try_pop
+    jump b10(%81)
+  b20(%82 e: word):
+    %83 err: ptr = alloc std::result::Result.Err(%82)
+    jump b8(%83)
+  b21(%86 r: ptr) [try]:
+    %87 lit: i64 = const 97
+    %88 box: word = box %87
+    %89 xs: ptr = alloc list(%88)
+    %90 lit: i64 = const 226
+    %91 box: word = box %90
+    %92 lit: i64 = const 130
+    %93 box: word = box %92
+    %94 xs: ptr = alloc list(%91, %93)
+    %95 xs: ptr = alloc list(%89, %94)
+    call run#3(%86, %95) -> b22()
+  b22(%96 r: ptr) [try]:
+    %97 ok: ptr = alloc std::result::Result.Ok(%96)
+    try_pop
+    jump b8(%97)
+  b23(%98 e: word):
+    %99 err: ptr = alloc std::result::Result.Err(%98)
+    jump b6(%99)
+  b24(%109 r: ptr) [try]:
+    %110 ok: ptr = alloc std::result::Result.Ok(%109)
+    try_pop
+    jump b6(%110)
+  b25(%111 e: word, %112 r: ptr):
+    %113 err: ptr = alloc std::result::Result.Err(%111)
+    jump b4(%113, %112)
+  b26(%126 r: ptr, %127 r: ptr) [try]:
+    %128 ok: ptr = alloc std::result::Result.Ok(%126)
+    try_pop
+    jump b4(%128, %127)
+  b27(%129 e: word, %130 r: ptr):
+    %131 err: ptr = alloc std::result::Result.Err(%129)
+    jump b2(%131, %130)
+  b28(%148 r: ptr, %149 r: ptr) [try]:
+    %150 ok: ptr = alloc std::result::Result.Ok(%148)
+    try_pop
+    jump b2(%150, %149)
+
+fn $entry#1 top -> unit ; main::encoding_decoder_split_sequence, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn run#3 top -> ptr ; main::encoding_decoder_split_sequence, frame 16 slots [%0 word*, %1 word*, %6 word*, %7 word*, %8 word*, %9 word*, %36 word*, %37 word*, %38 i64, %39 i64, %40 word*, %41 word*, %42 word*, %43 i64, %44 i64, %45 word*]
+  b0(%0 d: ptr, %1 chunks: ptr):
+    %2 xs: ptr = alloc list()
+    dup.candidate %1
+    %3 n: i64 = $list_len(%1)
+    %49 lit: i64 = const 0
+    jump b4(%49, %0, %2, %1, %3)
+  b1(%4 dec: ptr, %5 out: ptr):
+    call finish#6(%4) -> b2(%5)
+  b2(%6 r: ptr, %7 out: ptr):
+    call raise#5(%6) -> b3(%7)
+  b3(%8 r: word, %9 out: ptr):
+    %10 r: ptr = $list_push(%9, %8)
+    ret %10
+  b4(%11 i: i64, %12 dec: ptr, %13 out: ptr, %14 chunks: ptr, %15 n: i64):
+    %16 more: bool = lt.int %11, %15
+    if %16 then b5(%14, %15, %11, %12, %13) else b6(%14, %15, %11, %12, %13)
+  b5(%17 chunks: ptr, %18 n: i64, %19 i: i64, %20 dec: ptr, %21 out: ptr):
+    dup.candidate %17
+    %27 x: word = $list_at(%17, %19)
+    %35 r: ptr = $bytes_from_list(%27)
+    call push#4(%20, %35) -> b8(%17, %18, %19, %21)
+  b6(%22 chunks: ptr, %23 n: i64, %24 i: i64, %25 dec: ptr, %26 out: ptr):
+    drop %22
+    jump b1(%25, %26)
+  b7(%28 dec: ptr, %29 out: ptr, %30 chunks: ptr, %31 n: i64, %32 i: i64):
+    %33 lit: i64 = const 1
+    %34 i: i64 = intadd %32, %33
+    jump b4(%34, %28, %29, %30, %31)
+  b8(%36 r: ptr, %37 chunks: ptr, %38 n: i64, %39 i: i64, %40 out: ptr):
+    call raise#5(%36) -> b9(%37, %38, %39, %40)
+  b9(%41 r: word, %42 chunks: ptr, %43 n: i64, %44 i: i64, %45 out: ptr):
+    %46 t: ptr = tuple_get %41.0
+    %47 t: ptr = tuple_get %41.1
+    drop %41
+    %48 r: ptr = $list_push(%45, %47)
+    jump b7(%46, %48, %42, %43, %44)

@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+Ok(Utf8)
+Ok(Utf16Le)
+Ok(Utf16Be)
+Ok(Windows1252)
+Ok(Windows1252)
+Err(EncodingError { reason: Unsupported("shift_jis") })
+Err(EncodingError { reason: Unsupported("iso-2022-kr") })
+Err(EncodingError { reason: Unsupported("utf-32") })
+Err(EncodingError { reason: Unsupported("") })
+Err(EncodingError { reason: Unsupported("utf 8") })

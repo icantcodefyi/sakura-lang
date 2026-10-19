@@ -1,0 +1,23 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://www.rfc-editor.org/rfc/rfc4648#section-10
+
+// RFC 4648 §10's vectors (the table in `tests/vectors/base64.txt`), encoded in both alphabets,
+// padded and not, and decoded back strictly; bytes that differ between the alphabets last.
+import std/bytes.{Alphabet}
+
+pub fn main() -> Unit ! {Console} {
+  for text in ["", "f", "fo", "foo", "foob", "fooba", "foobar"] {
+    let b = String.to_bytes(text)
+    let padded = Bytes.to_base64(b, Alphabet.Standard, true)
+    let bare = Bytes.to_base64(b, Alphabet.Url, false)
+    let back = Bytes.from_base64(padded, Alphabet.Standard) == Ok(b)
+      && Bytes.from_base64(bare, Alphabet.Url) == Ok(b)
+    Console.print("\"{text}\" {padded} {bare} {back}")
+  }
+  let b = Bytes.from_list([0xFB, 0xEF, 0xBE, 0xFB, 0xFF])
+  Console.print(Bytes.to_base64(b, Alphabet.Standard, true))
+  Console.print(Bytes.to_base64(b, Alphabet.Url, true))
+  Console.print("{Bytes.from_base64("+++++/8=", Alphabet.Standard)}")
+  Console.print("{Bytes.from_base64("-----_8", Alphabet.Url)}")
+}

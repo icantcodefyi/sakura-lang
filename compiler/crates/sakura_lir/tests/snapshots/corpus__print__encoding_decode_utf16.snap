@@ -1,0 +1,180 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::encoding_decode_utf16, frame 29 slots [%46 word*, %47 word*, %48 word*, %50 bool, %51 word*, %52 word*, %56 word*, %57 word*, %58 word*, %60 bool, %61 word*, %62 word*, %67 word*, %68 word*, %70 word*, %71 word*, %73 bool, %74 word*, %78 word*, %80 word*, %82 word*, %84 bool, %89 word*, %91 bool, %96 word*, %98 bool, %103 word*, %106 word*, %108 bool]
+  b0():
+    %0 lit: i64 = const 255
+    %1 box: word = box %0
+    %2 lit: i64 = const 254
+    %3 box: word = box %2
+    %4 lit: i64 = const 104
+    %5 box: word = box %4
+    %6 lit: i64 = const 0
+    %7 box: word = box %6
+    %8 lit: i64 = const 105
+    %9 box: word = box %8
+    %10 lit: i64 = const 0
+    %11 box: word = box %10
+    %12 lit: i64 = const 61
+    %13 box: word = box %12
+    %14 lit: i64 = const 216
+    %15 box: word = box %14
+    %16 lit: i64 = const 0
+    %17 box: word = box %16
+    %18 lit: i64 = const 222
+    %19 box: word = box %18
+    %20 xs: ptr = alloc list(%1, %3, %5, %7, %9, %11, %13, %15, %17, %19)
+    %21 r: ptr = $bytes_from_list(%20)
+    %22 lit: i64 = const 254
+    %23 box: word = box %22
+    %24 lit: i64 = const 255
+    %25 box: word = box %24
+    %26 lit: i64 = const 0
+    %27 box: word = box %26
+    %28 lit: i64 = const 104
+    %29 box: word = box %28
+    %30 lit: i64 = const 0
+    %31 box: word = box %30
+    %32 lit: i64 = const 105
+    %33 box: word = box %32
+    %34 lit: i64 = const 216
+    %35 box: word = box %34
+    %36 lit: i64 = const 61
+    %37 box: word = box %36
+    %38 lit: i64 = const 222
+    %39 box: word = box %38
+    %40 lit: i64 = const 0
+    %41 box: word = box %40
+    %42 xs: ptr = alloc list(%23, %25, %27, %29, %31, %33, %35, %37, %39, %41)
+    %43 r: ptr = $bytes_from_list(%42)
+    %44 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %45 v: ptr = const static std::encoding::Errors.Fatal
+    dup %21
+    call decode#2(%21, %44, %45) -> b1(%21, %43)
+  b1(%46 r: ptr, %47 r: ptr, %48 r: ptr):
+    %49 s: ptr = show %46
+    drop %46
+    perform std::console::Console.print(%49) -> b2(%47, %48)
+  b2(%50 r: unit, %51 r: ptr, %52 r: ptr):
+    %53 box: word = box %50
+    drop %53
+    %54 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %55 v: ptr = const static std::encoding::Errors.Fatal
+    dup %52
+    call decode#2(%52, %54, %55) -> b3(%51, %52)
+  b3(%56 r: ptr, %57 r: ptr, %58 r: ptr):
+    %59 s: ptr = show %56
+    drop %56
+    perform std::console::Console.print(%59) -> b4(%57, %58)
+  b4(%60 r: unit, %61 r: ptr, %62 r: ptr):
+    %63 box: word = box %60
+    drop %63
+    %64 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %65 v: ptr = const static std::encoding::Errors.Fatal
+    %66 v: ptr = const static std::encoding::Bom.Keep
+    call decode_with#3(%61, %64, %65, %66) -> b5(%62)
+  b5(%67 r: ptr, %68 r: ptr):
+    %69 fn: ptr = const static closure $string_len$value#11
+    call map#4(%67, %69) -> b6(%68)
+  b6(%70 r: ptr, %71 r: ptr):
+    %72 s: ptr = show %70
+    drop %70
+    perform std::console::Console.print(%72) -> b7(%71)
+  b7(%73 r: unit, %74 r: ptr):
+    %75 box: word = box %73
+    drop %75
+    %76 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %77 v: ptr = const static std::encoding::Errors.Replace
+    call decode#2(%74, %76, %77) -> b8()
+  b8(%78 r: ptr):
+    %79 fn: ptr = const static closure $string_chars$value#12
+    call map#4(%78, %79) -> b9()
+  b9(%80 r: ptr):
+    %81 fn: ptr = const static closure $list_len$value#13
+    call map#4(%80, %81) -> b10()
+  b10(%82 r: ptr):
+    %83 s: ptr = show %82
+    drop %82
+    perform std::console::Console.print(%83) -> b11()
+  b11(%84 r: unit):
+    %85 box: word = box %84
+    drop %85
+    %86 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %87 lit: ptr = const str 0
+    %88 $site: i64 = const 2
+    call encode#5(%87, %86, %88) -> b12()
+  b12(%89 r: ptr):
+    %90 s: ptr = show %89
+    drop %89
+    perform std::console::Console.print(%90) -> b13()
+  b13(%91 r: unit):
+    %92 box: word = box %91
+    drop %92
+    %93 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %94 lit: ptr = const str 0
+    %95 $site: i64 = const 3
+    call encode#5(%94, %93, %95) -> b14()
+  b14(%96 r: ptr):
+    %97 s: ptr = show %96
+    drop %96
+    perform std::console::Console.print(%97) -> b15()
+  b15(%98 r: unit):
+    %99 box: word = box %98
+    drop %99
+    %100 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %101 lit: ptr = const str 1
+    %102 $site: i64 = const 4
+    call encode#5(%101, %100, %102) -> b16()
+  b16(%103 r: ptr):
+    %104 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %105 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%103, %104, %105) -> b17()
+  b17(%106 r: ptr):
+    %107 s: ptr = show %106
+    drop %106
+    perform std::console::Console.print(%107) -> b18()
+  b18(%108 r: unit):
+    %109 box: word = box %108
+    %110 unbox: unit = unbox %109
+    drop %109
+    ret %110
+
+fn $entry#1 top -> unit ; main::encoding_decode_utf16, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn $string_len$value#11 adapter of $string_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: i64 = $string_len(%1)
+    %3 box: word = box %2
+    ret %3
+
+fn $string_chars$value#12 adapter of $string_chars -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: ptr = $string_chars(%1)
+    ret %2
+
+fn $list_len$value#13 adapter of $list_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: i64 = $list_len(%1)
+    %3 box: word = box %2
+    ret %3

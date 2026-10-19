@@ -1,0 +1,35 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://encoding.spec.whatwg.org/#dom-textdecoder-decode
+
+// `TextDecoder` with `stream: true`: a 4-byte UTF-8 scalar split across three pushes is held
+// until it is complete, a byte order mark split across pushes is still stripped, and `finish`
+// reports a sequence left unfinished at the end at its stream offset.
+import std/encoding.{Decoder, Encoding, EncodingError, Errors}
+
+fn run(d: Decoder, chunks: List<List<Int>>) -> List<String> ! {Fail<EncodingError>} {
+  var dec = d
+  var out = []
+  for c in chunks {
+    let r = dec.push(Bytes.from_list(c)).raise()
+    dec = r.0
+    out = out.push(r.1)
+  }
+  out.push(dec.finish().raise())
+}
+
+pub fn main() -> Unit ! {Console} {
+  let utf8 = Encoding.new(Encoding.Utf8, Errors.Fatal)
+  Console.print("{try { run(utf8, [[0x61, 0xF0], [0x9F, 0x98], [0x80, 0x62]]) }}")
+  Console.print("{try { run(utf8, [[0xEF], [0xBB], [0xBF, 0x63]]) }}")
+  Console.print("{try { run(utf8, [[0x61], [0xE2, 0x82]]) }}")
+  Console.print(
+    "{try { run(Encoding.new(Encoding.Utf8, Errors.Replace), [[0x61], [0xE2, 0x82]]) }}",
+  )
+  Console.print(
+    "{try { run(Encoding.new(Encoding.Utf16Le, Errors.Fatal), [[0x3D], [0xD8, 0x00], [0xDE, 0x21, 0x00]]) }}",
+  )
+  Console.print(
+    "{try { run(Encoding.new(Encoding.Utf16Be, Errors.Fatal), [[0xFE, 0xFF, 0xD8], [0x3D], [0xDE, 0x00, 0x00, 0x21]]) }}",
+  )
+}

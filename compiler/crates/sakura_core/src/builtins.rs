@@ -121,6 +121,10 @@ table! {
     // Bytes
     Direct bytes_len/1, Direct bytes_get/2, Direct bytes_from_list/1, Direct string_from_bytes/1,
     Direct set_len/1,
+    // Bytes, Base64 and text encodings (RFC 0002 §2.1)
+    Direct bytes_slice/3, Direct bytes_concat/1, Direct bytes_to_base64/3,
+    Direct bytes_from_base64/2, Direct bytes_from_base64_lenient/1, Direct encoding_decode/3,
+    Direct encoding_encode/2,
     // Tasks and tests
     Cps defect_catch/1, Cps test_expect_defect/1, Cps property_run/8, Direct test_env/2,
     // Secret, Json

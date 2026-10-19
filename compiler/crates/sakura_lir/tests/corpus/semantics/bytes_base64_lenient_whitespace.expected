@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+ok Ok("foobar")
+ok Ok("foob")
+ok Ok("foob")
+ok Ok("f")
+ok Ok("a")
+invalid length at 5
+invalid padding at 6
+invalid character at 0
+invalid padding at 2

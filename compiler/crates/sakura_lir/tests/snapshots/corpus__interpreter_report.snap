@@ -8,6 +8,10 @@ semantics/arith_ranges_proved: ok, 30 allocated, 0 dup, 30 drop, peak 4, live 0/
 semantics/arith_ranges_requires_seeded: ok, 23 allocated, 0 dup, 23 drop, peak 4, live 0/0
 semantics/arith_ranges_requires_violated: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
+semantics/bytes_base64_lenient_whitespace: unsupported (builtin bytes_from_base64_lenient)
+semantics/bytes_base64_rejects_padding: unsupported (builtin bytes_from_base64)
+semantics/bytes_base64_vectors: unsupported (builtin string_to_bytes)
+semantics/bytes_slice_concat: unsupported (builtin string_to_bytes)
 semantics/catch_around_row_polymorphic_call: ok, 17 allocated, 9 dup, 26 drop, peak 9, live 0/0
 semantics/cli_parse_messages: unsupported (builtin cli_parse)
 semantics/closures: ok, 24 allocated, 12 dup, 36 drop, peak 9, live 0/0
@@ -45,6 +49,11 @@ semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, 
 semantics/direct_region_restart: ok, 1154 allocated, 99 dup, 1253 drop, peak 16, live 0/0
 semantics/early_return: ok, 16 allocated, 6 dup, 22 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 39 dup, 69 drop, peak 13, live 0/0
+semantics/encoding_decode_utf16: unsupported (builtin bytes_from_list)
+semantics/encoding_decode_windows1252: unsupported (builtin bytes_from_list)
+semantics/encoding_decoder_split_sequence: unsupported (builtin bytes_from_list)
+semantics/encoding_fatal_vs_replace: unsupported (builtin bytes_from_list)
+semantics/encoding_rejects_unsupported_label: ok, 562 allocated, 2015 dup, 2577 drop, peak 27, live 0/0
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
 semantics/function_values: ok, 20 allocated, 7 dup, 27 drop, peak 9, live 0/0
 semantics/fused_get_expect: ok, 331 allocated, 5373 dup, 5704 drop, peak 108, live 0/0

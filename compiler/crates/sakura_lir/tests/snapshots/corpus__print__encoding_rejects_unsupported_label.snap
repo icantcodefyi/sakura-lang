@@ -1,0 +1,64 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 1 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 2 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 3 variant std::list::Builder
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::encoding_rejects_unsupported_label, frame 8 slots [%29 word*, %30 word*, %31 i64, %32 i64, %34 bool, %35 word*, %36 i64, %37 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: ptr = const str 2
+    %3 lit: ptr = const str 3
+    %4 lit: ptr = const str 4
+    %5 lit: ptr = const str 5
+    %6 lit: ptr = const str 6
+    %7 lit: ptr = const str 7
+    %8 lit: ptr = const str 8
+    %9 lit: ptr = const str 9
+    %10 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6, %7, %8, %9)
+    dup.candidate %10
+    %11 n: i64 = $list_len(%10)
+    %39 lit: i64 = const 0
+    jump b2(%39, %10, %11)
+  b1():
+    %12 lit: unit = const ()
+    ret %12
+  b2(%13 i: i64, %14 xs: ptr, %15 n: i64):
+    %16 more: bool = lt.int %13, %15
+    if %16 then b3(%14, %15, %13) else b4(%14, %15, %13)
+  b3(%17 xs: ptr, %18 n: i64, %19 i: i64):
+    dup.candidate %17
+    %23 x: word = $list_at(%17, %19)
+    call parse#2(%23) -> b6(%17, %18, %19)
+  b4(%20 xs: ptr, %21 n: i64, %22 i: i64):
+    drop %20
+    jump b1()
+  b5(%24 xs: ptr, %25 n: i64, %26 i: i64):
+    %27 lit: i64 = const 1
+    %28 i: i64 = intadd %26, %27
+    jump b2(%28, %24, %25)
+  b6(%29 r: ptr, %30 xs: ptr, %31 n: i64, %32 i: i64):
+    %33 s: ptr = show %29
+    drop %29
+    perform std::console::Console.print(%33) -> b7(%30, %31, %32)
+  b7(%34 r: unit, %35 xs: ptr, %36 n: i64, %37 i: i64):
+    %38 box: word = box %34
+    drop %38
+    jump b5(%35, %36, %37)
+
+fn $entry#1 top -> unit ; main::encoding_rejects_unsupported_label, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

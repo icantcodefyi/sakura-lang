@@ -1,0 +1,30 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://tc39.es/ecma262/#sec-frombase64
+
+// Strict decoding (`lastChunkHandling: "strict"`): each malformed input is a typed
+// `Base64Error` with the byte offset and the reason, never a partial result.
+import std/bytes.{Alphabet}
+
+pub fn main() -> Unit ! {Console} {
+  let cases = [
+    ("Zm9vYg", Alphabet.Standard),
+    ("Zm9vYg=", Alphabet.Standard),
+    ("Zm9vYg===", Alphabet.Standard),
+    ("Zm=9", Alphabet.Standard),
+    ("Zm9vYg=", Alphabet.Url),
+    ("Zm9vY", Alphabet.Url),
+    ("Zh==", Alphabet.Standard),
+    ("Zm9=", Alphabet.Standard),
+    ("Zm9v Yg==", Alphabet.Standard),
+    ("-_8=", Alphabet.Standard),
+    ("+/8=", Alphabet.Url),
+    ("Zm9vé", Alphabet.Standard),
+  ]
+  for c in cases {
+    match Bytes.from_base64(c.0, c.1) {
+      Ok(b) => Console.print("{c.0}: {b}"),
+      Err(e) => Console.print("{c.0}: {e.reason} at {e.offset}"),
+    }
+  }
+}

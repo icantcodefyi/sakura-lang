@@ -1,0 +1,19 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://encoding.spec.whatwg.org/#windows-1252
+
+// Windows-1252 (`latin1`, `iso-8859-1` and `ascii` name it too): bytes 0x80..0x9F through the
+// standard's index (the table in `tests/vectors/encoding.txt`), every other byte its own code
+// point; the decoder never fails and a UTF-8 byte order mark is three characters.
+import std/encoding.{Encoding, Errors}
+
+pub fn main() -> Unit ! {Console} {
+  var high = []
+  for i in 0x80..0xA0 { high = high.push(i) }
+  let enc = Encoding.parse("latin1").unwrap_or(Encoding.Utf8)
+  Console.print("{Encoding.decode(Bytes.from_list(high), enc, Errors.Fatal)}")
+  Console.print(
+    "{Encoding.decode(Bytes.from_list([0x41, 0xA0, 0xE9, 0xFF]), enc, Errors.Fatal).map(String.chars)}",
+  )
+  Console.print("{Encoding.decode(Bytes.from_list([0xEF, 0xBB, 0xBF, 0x41]), enc, Errors.Fatal)}")
+}

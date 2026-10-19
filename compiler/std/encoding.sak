@@ -1,0 +1,283 @@
+// Text encodings (the WHATWG Encoding Standard; RFC 0002 §2.1): `TextDecoder` and
+// `TextEncoder` as values. `String.from_bytes` and `String.to_bytes` stay the strict UTF-8
+// path; this module adds UTF-16, Windows-1252, U+FFFD replacement and incremental decoding.
+
+/// The encodings Sakura decodes. `Encoding.parse` maps the standard's labels to them.
+pub type Encoding = Utf8 | Utf16Le | Utf16Be | Windows1252
+
+/// What decoding does with a malformed sequence: fail with its offset (`fatal: true`), or
+/// substitute one U+FFFD per the standard's rule.
+pub type Errors = Fatal | Replace
+
+/// Whether a leading byte order mark (U+FEFF) is removed (`ignoreBOM: false`) or kept.
+pub type Bom = Strip | Keep
+
+pub type EncodingReason = Unsupported(String) | Malformed(Int)
+
+/// `Unsupported(label)` from `parse`; `Malformed(offset)`, the byte offset of the first
+/// malformed sequence, from a `Fatal` decode.
+pub error EncodingError(reason: EncodingReason)
+
+/// Incremental decoding state (`TextDecoder.decode(chunk, { stream: true })`): an immutable
+/// value threaded through `push` and `finish`.
+pub opaque type Decoder = {
+  encoding: Encoding,
+  errors: Errors,
+  pending: Bytes,
+  offset: Int,
+  started: Bool,
+}
+
+/// The encoding a WHATWG label names, ASCII case and surrounding whitespace ignored: `utf-8`,
+/// `utf-16le` (also `utf-16`), `utf-16be`, and `windows-1252` (also `latin1`, `iso-8859-1`,
+/// `ascii`, as the standard maps them). Any other label is `Unsupported(label)`, never a
+/// fallback.
+pub fn parse(label: String) -> Result<Encoding, EncodingError> {
+  let l = String.to_lower(trim_ascii(label))
+  if List.contains(
+    ["unicode-1-1-utf-8", "unicode11utf8", "unicode20utf8", "utf-8", "utf8", "x-unicode20utf8"],
+    l,
+  ) {
+    Ok(Utf8)
+  } else if List.contains(
+    ["csunicode", "iso-10646-ucs-2", "ucs-2", "unicode", "unicodefeff", "utf-16", "utf-16le"],
+    l,
+  ) {
+    Ok(Utf16Le)
+  } else if List.contains(["unicodefffe", "utf-16be"], l) {
+    Ok(Utf16Be)
+  } else if List.contains(
+    [
+      "ansi_x3.4-1968",
+      "ascii",
+      "cp1252",
+      "cp819",
+      "csisolatin1",
+      "ibm819",
+      "iso-8859-1",
+      "iso-ir-100",
+      "iso8859-1",
+      "iso88591",
+      "iso_8859-1",
+      "iso_8859-1:1987",
+      "l1",
+      "latin1",
+      "us-ascii",
+      "windows-1252",
+      "x-cp1252",
+    ],
+    l,
+  ) {
+    Ok(Windows1252)
+  } else {
+    Err(EncodingError { reason: Unsupported(label) })
+  }
+}
+
+/// `new TextDecoder(enc, { fatal }).decode(b)`: the text of `b`, a leading byte order mark
+/// removed.
+pub fn decode(b: Bytes, enc: Encoding, errors: Errors) -> Result<String, EncodingError> {
+  decode_with(b, enc, errors, Strip)
+}
+
+/// `decode` with the byte order mark choice (`Keep` is `ignoreBOM: true`).
+pub fn decode_with(
+  b: Bytes,
+  enc: Encoding,
+  errors: Errors,
+  bom: Bom,
+) -> Result<String, EncodingError>
+{
+  try_decode(b, enc, errors, 0).map(fn(s) {
+    match bom {
+      Strip => strip_bom(s, enc),
+      Keep => s,
+    }
+  })
+}
+
+/// A decoder at the start of a stream; a byte order mark there is removed.
+pub fn new(enc: Encoding, errors: Errors) -> Decoder {
+  Decoder { encoding: enc, errors: errors, pending: Bytes.from_list([]), offset: 0, started: false }
+}
+
+/// Decodes `chunk` after what came before: the text of every complete character, and a
+/// decoder holding an unfinished sequence for the next chunk. `Malformed` offsets count from
+/// the start of the stream.
+pub fn push(d: Decoder, chunk: Bytes) -> Result<(Decoder, String), EncodingError> {
+  let all = Bytes.concat([d.pending, chunk])
+  let keep = Bytes.len(all) - unfinished(all, d.encoding)
+  try_decode(Bytes.slice(all, 0, keep), d.encoding, d.errors, d.offset).map(fn(s) {
+    let next = Decoder {
+      ..d,
+      pending: Bytes.slice(all, keep, Bytes.len(all)),
+      offset: d.offset + keep,
+      started: d.started || String.len(s) > 0,
+    }
+    (next, if d.started { s } else { strip_bom(s, d.encoding) })
+  })
+}
+
+/// The end of the stream: an unfinished sequence is malformed (`U+FFFD` or `Malformed`).
+pub fn finish(d: Decoder) -> Result<String, EncodingError> {
+  try_decode(d.pending, d.encoding, d.errors, d.offset).map(fn(s) {
+    if d.started { s } else { strip_bom(s, d.encoding) }
+  })
+}
+
+/// `s` as UTF-16LE or UTF-16BE bytes, no byte order mark (`Utf8` is `String.to_bytes`).
+/// Windows-1252 cannot encode every string, so it is not an encoder here.
+pub fn encode(s: String, enc: Encoding) -> Bytes
+  requires encodable(enc)
+{
+  match enc {
+    Utf8 => String.to_bytes(s),
+    _ => encoding_encode(s, code(enc)),
+  }
+}
+
+/// Every encoding except `Windows1252`.
+@total
+pub fn encodable(enc: Encoding) -> Bool {
+  match enc {
+    Windows1252 => false,
+    _ => true,
+  }
+}
+
+fn try_decode(b: Bytes, enc: Encoding, errors: Errors, base: Int) -> Result<String, EncodingError> {
+  let fatal = match errors {
+    Fatal => 1,
+    Replace => 0,
+  }
+  match encoding_decode(b, code(enc), fatal) {
+    Ok(s) => Ok(s),
+    Err(offset) => Err(EncodingError { reason: Malformed(base + offset) }),
+  }
+}
+
+fn code(enc: Encoding) -> Int {
+  match enc {
+    Utf8 => 0,
+    Utf16Le => 1,
+    Utf16Be => 2,
+    Windows1252 => 3,
+  }
+}
+
+// U+FEFF is a byte order mark only in the Unicode encodings; Windows-1252 has none.
+fn strip_bom(s: String, enc: Encoding) -> String {
+  let unicode = match enc {
+    Windows1252 => false,
+    _ => true,
+  }
+  if unicode && String.starts_with(s, "\u{FEFF}") { String.slice(s, 3, String.len(s)) } else { s }
+}
+
+// The trailing bytes of `b` that start a character the next chunk may finish: a UTF-8 lead
+// byte short of its continuation bytes, or an odd UTF-16 byte and a high surrogate before it.
+// Every split this makes falls where the decoder holds no state, so chunked and whole-buffer
+// decoding agree.
+fn unfinished(b: Bytes, enc: Encoding) -> Int {
+  let n = Bytes.len(b)
+  let at = fn(i: Int) -> Int { Bytes.get(b, i).unwrap_or(0) }
+  match enc {
+    Utf8 => {
+      var i = 1
+      var tail = 0
+      while i <= 3 && i <= n {
+        let x = at(n - i)
+        if x < 0x80 || x >= 0xC0 {
+          let need = if x >= 0xF0 && x <= 0xF4 {
+            4
+          } else if x >= 0xE0 && x < 0xF0 {
+            3
+          } else if x >= 0xC2 && x < 0xE0 {
+            2
+          } else {
+            0
+          }
+          if need > i { tail = i }
+          i = 4
+        } else {
+          i = i + 1
+        }
+      }
+      tail
+    },
+    Utf16Le | Utf16Be => {
+      let odd = n % 2
+      let m = n - odd
+      let high = match enc {
+        Utf16Be => at(m - 2),
+        _ => at(m - 1),
+      }
+      if m >= 2 && high >= 0xD8 && high <= 0xDB { odd + 2 } else { odd }
+    },
+    Windows1252 => 0,
+  }
+}
+
+// The standard strips ASCII whitespace only (`String.trim` strips Unicode's).
+fn trim_ascii(s: String) -> String {
+  let cs = String.chars(s)
+  let space = fn(c: String) -> Bool { List.contains(["\t", "\n", "\u{C}", "\r", " "], c) }
+  var a = 0
+  var b = List.len(cs)
+  while a < b && space(cs[a].unwrap_or("")) { a = a + 1 }
+  while b > a && space(cs[b - 1].unwrap_or("")) { b = b - 1 }
+  List.join(List.slice(cs, a, b), "")
+}
+
+@external(js, "sakura_runtime", "encoding_decode")
+fn encoding_decode(b: Bytes, enc: Int, fatal: Int) -> Result<String, Int>
+
+@external(js, "sakura_runtime", "encoding_encode")
+fn encoding_encode(s: String, enc: Int) -> Bytes
+
+test "parse maps the standard's labels" {
+  expect_eq(parse(" UTF-8\n"), Ok(Utf8))
+  expect_eq(parse("utf-16"), Ok(Utf16Le))
+  expect_eq(parse("UTF-16BE"), Ok(Utf16Be))
+  expect_eq(parse("latin1"), Ok(Windows1252))
+  expect_eq(parse("ascii"), Ok(Windows1252))
+  expect_eq(parse("shift_jis"), Err(EncodingError { reason: Unsupported("shift_jis") }))
+}
+
+test "decode strips a byte order mark unless kept" {
+  let b = Bytes.from_list([0xEF, 0xBB, 0xBF, 0x61])
+  expect_eq(decode(b, Utf8, Fatal), Ok("a"))
+  expect_eq(decode_with(b, Utf8, Fatal, Keep), Ok("\u{FEFF}a"))
+  expect_eq(decode(Bytes.from_list([0xFF, 0xFE, 0x61, 0]), Utf16Le, Fatal), Ok("a"))
+  expect_eq(decode(Bytes.from_list([0xFE, 0xFF, 0, 0x61]), Utf16Be, Fatal), Ok("a"))
+  expect_eq(decode(Bytes.from_list([0xEF, 0xBB, 0xBF]), Windows1252, Fatal), Ok("ï»¿"))
+}
+
+test "fatal names the offset, replace substitutes" {
+  let bad = Bytes.from_list([0x61, 0xC3, 0x28])
+  expect_eq(decode(bad, Utf8, Fatal), Err(EncodingError { reason: Malformed(1) }))
+  expect_eq(decode(bad, Utf8, Replace), Ok("a\u{FFFD}("))
+  expect_eq(
+    decode(Bytes.from_list([0x61, 0, 0x00, 0xD8]), Utf16Le, Fatal),
+    Err(EncodingError { reason: Malformed(2) }),
+  )
+  expect_eq(decode(Bytes.from_list([0x80, 0x9F]), Windows1252, Fatal), Ok("€Ÿ"))
+}
+
+test "a decoder joins a sequence split across chunks" {
+  let r = try {
+    let p = new(Utf8, Fatal).push(Bytes.from_list([0xF0, 0x9F])).raise()
+    let q = p.0.push(Bytes.from_list([0x98, 0x80, 0x21])).raise()
+    p.1 + q.1 + q.0.finish().raise()
+  }
+  expect_eq(r, Ok("😀!"))
+  let cut = try { new(Utf8, Fatal).push(Bytes.from_list([0xF0])).raise().0.finish().raise() }
+  expect_eq(cut, Err(EncodingError { reason: Malformed(0) }))
+}
+
+test "encode writes UTF-16 without a byte order mark" {
+  expect_eq(encode("a😀", Utf16Le), Bytes.from_list([0x61, 0, 0x3D, 0xD8, 0x00, 0xDE]))
+  expect_eq(encode("a", Utf16Be), Bytes.from_list([0, 0x61]))
+  expect_eq(encode("é", Utf8), String.to_bytes("é"))
+  expect_defect(fn() { encode("a", Windows1252) })
+}

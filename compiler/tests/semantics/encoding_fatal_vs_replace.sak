@@ -1,0 +1,28 @@
+// milestone: M3
+// spec: RFC 0002 §2.1
+// Spec: https://encoding.spec.whatwg.org/#utf-8-decoder
+
+// The same malformed input under `Fatal` (the byte offset of the first malformed sequence)
+// and `Replace` (one U+FFFD per maximal subpart, the standard's rule), in UTF-8 and UTF-16LE.
+import std/encoding.{Encoding, Errors}
+
+pub fn main() -> Unit ! {Console} {
+  let utf8 = [
+    [0x61, 0xC3, 0x28],
+    [0xE0, 0x80, 0x41],
+    [0xF0, 0x9F, 0x98],
+    [0xED, 0xA0, 0x80],
+    [0x61, 0xFF, 0xF4, 0x90, 0x80, 0x80, 0x62],
+  ]
+  for b in utf8 {
+    let bytes = Bytes.from_list(b)
+    let replaced = Encoding.decode(bytes, Encoding.Utf8, Errors.Replace).map(String.chars)
+    Console.print("{Encoding.decode(bytes, Encoding.Utf8, Errors.Fatal)} {replaced}")
+  }
+  for b in [[0x61, 0x00, 0x00, 0xDC], [0x00, 0xD8, 0x61, 0x00], [0x61, 0x00, 0x62]] {
+    let bytes = Bytes.from_list(b)
+    let replaced = Encoding.decode(bytes, Encoding.Utf16Le, Errors.Replace).map(String.chars)
+    Console.print("{Encoding.decode(bytes, Encoding.Utf16Le, Errors.Fatal)} {replaced}")
+  }
+  Console.print("{String.from_bytes(Bytes.from_list([0x61, 0xC3, 0x28]))}")
+}

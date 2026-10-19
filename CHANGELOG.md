@@ -37,6 +37,20 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
 
 ### Added
 
+- `std/bytes` and the new `std/encoding` (RFC 0002 §2.1, web-APIs plan phase 1): the web's
+  `Uint8Array.toBase64`/`fromBase64`, `atob`/`btoa`, `TextDecoder` (streaming too) and
+  `TextEncoder` for UTF-16, as values with typed errors. `Bytes.slice` (clamped like
+  `List.slice`) and `Bytes.concat` (one copy, linear); `Bytes.to_base64(b, alphabet, padded)`,
+  strict `Bytes.from_base64(text, alphabet)` and `Bytes.from_base64_lenient(text)` (HTML's
+  forgiving Base64), each failure `Base64Error { offset, reason }`; `Encoding` (`Utf8`,
+  `Utf16Le`, `Utf16Be`, `Windows1252`) with `Encoding.parse(label)` over the WHATWG labels
+  (anything else is `Unsupported(label)`), `decode`/`decode_with` with `Errors.Fatal`
+  (`Malformed(offset)`) or `Errors.Replace` (U+FFFD) and the byte order mark stripped or kept,
+  an immutable `Decoder` (`Encoding.new`, `push`, `finish`) that joins a character split
+  across chunks, and `Encoding.encode` for UTF-16. The codecs are runtime externals in the JS
+  runtime and in `runtime/rt` (WASM and native); RFC 4648 and Encoding Standard vectors in
+  `compiler/tests/vectors` hold the two equal. Additive; no ABI change.
+
 - `compiler/fuzz`: an `exec` differential target. It mutates `tests/semantics` programs with
   typed edits (literals, operators, match-arm and handler order, `List` and `Map` operations)
   and runs each well-typed result on the reference evaluator, the JS backend, the LIR

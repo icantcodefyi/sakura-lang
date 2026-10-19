@@ -2,6 +2,7 @@
 // The CPS functions below are written the way the emitter writes them (see ABI.md).
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import * as rt from "../sakura_runtime.js";
 
@@ -1289,4 +1290,56 @@ test("a link planted at a write's final component after the check is refused thr
     fs.realpathSync = realpathSync;
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+// RFC 0002 §2.1: the codecs on `compiler/tests/vectors` (runtime/rt/tests/codec.rs reads the same files).
+const vectorRows = (name) =>
+  readFileSync(new URL(`../../../tests/vectors/${name}`, import.meta.url), "utf8")
+    .split("\n")
+    .filter((l) => l !== "" && !l.startsWith("#"))
+    .map((l) => l.split("\t"));
+
+test("Base64 matches RFC 4648 §10 in both alphabets", () => {
+  for (const [plain, want] of vectorRows("base64.txt")) {
+    const b = new TextEncoder().encode(plain);
+    assert.equal(rt.bytes_to_base64(b, 0, 1), want);
+    assert.equal(rt.bytes_to_base64(b, 1, 0), want.replace(/=+$/, ""));
+    assert.deepEqual(rt.bytes_from_base64(want, 0), rt.Ok(new Uint8Array(b)));
+    assert.deepEqual(rt.bytes_from_base64(want.replace(/=+$/, ""), 1), rt.Ok(new Uint8Array(b)));
+  }
+  // `offset * 4 + reason`: 0 character, 1 padding, 2 length, 3 trailing bits (codec.rs).
+  assert.deepEqual(rt.bytes_from_base64("Zm9vYg", 0), rt.Err(6 * 4 + 1));
+  assert.deepEqual(rt.bytes_from_base64("Zm9vY", 1), rt.Err(5 * 4 + 2));
+  assert.deepEqual(rt.bytes_from_base64("Zh==", 0), rt.Err(4 + 3));
+  assert.deepEqual(rt.bytes_from_base64("-_8=", 0), rt.Err(0));
+  assert.deepEqual(rt.bytes_from_base64_lenient(" Zm9v\tYg = ="), rt.Ok(new Uint8Array([102, 111, 111, 98])));
+  assert.deepEqual(rt.bytes_from_base64_lenient("YQ==YQ=="), rt.Err(2 * 4 + 1));
+});
+
+test("decoders follow the Encoding Standard", () => {
+  for (const [kind, byte, cp] of vectorRows("encoding.txt")) {
+    if (kind !== "byte") continue;
+    assert.deepEqual(rt.encoding_decode(new Uint8Array([Number(byte)]), 3, 1), rt.Ok(String.fromCodePoint(Number(cp))));
+  }
+  const cases = [
+    [[0x61, 0xc3, 0x28], 0, "a�(", 1],
+    [[0x61, 0xff, 0xf4, 0x90, 0x80, 0x80, 0x62], 0, "a�����b", 1],
+    [[0x61, 0, 0, 0xdc], 1, "a�", 2],
+    [[0, 0xd8, 0x61, 0], 1, "�a", 0],
+    [[0x61, 0, 0x62], 1, "a�", 2],
+    [[0xd8, 0x3d, 0, 0x61], 2, "�a", 0],
+  ];
+  for (const [b, enc, replaced, offset] of cases) {
+    assert.deepEqual(rt.encoding_decode(new Uint8Array(b), enc, 0), rt.Ok(replaced));
+    assert.deepEqual(rt.encoding_decode(new Uint8Array(b), enc, 1), rt.Err(offset));
+  }
+  assert.deepEqual(rt.encoding_decode(new Uint8Array([0xef, 0xbb, 0xbf, 0x61]), 0, 1), rt.Ok("﻿a"));
+  assert.deepEqual([...rt.encoding_encode("a😀", 2)], [0, 0x61, 0xd8, 0x3d, 0xde, 0]);
+});
+
+test("Bytes.slice clamps; Bytes.concat joins", () => {
+  const b = new Uint8Array([1, 2, 3, 4]);
+  assert.deepEqual([...rt.bytes_slice(b, -2, 2)], [1, 2]);
+  assert.equal(rt.bytes_slice(b, 0, 99), b);
+  assert.deepEqual([...rt.bytes_concat(rt.list([b, new Uint8Array(0), new Uint8Array([5])]))], [1, 2, 3, 4, 5]);
 });

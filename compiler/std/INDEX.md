@@ -128,6 +128,7 @@ Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` an
 ```text
 core  unit  option  result  set  int  float  duration       (no std dependencies)
 list → set              map → list            string → list       bytes → list
+encoding → bytes, string, list
 json → map              uuid → string, list   instant → duration, string, list, int
 test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
@@ -183,6 +184,13 @@ fn zero() -> Cost
 fn len(b: Bytes) -> Int    // @external, @total
 fn get(b: Bytes, i: Int) -> Option<Int>    // @external, @total
 fn from_list(xs: List<Int>) -> Bytes requires List.all(xs, fn(x) { x >= 0 && x <= 255 })    // @external
+fn slice(b: Bytes, start: Int, end: Int) -> Bytes    // @external
+fn concat(parts: List<Bytes>) -> Bytes    // @external
+type Alphabet = Standard | Url
+error Base64Error(offset: Int, reason: String)
+fn to_base64(b: Bytes, alphabet: Alphabet, padded: Bool) -> String
+fn from_base64(text: String, alphabet: Alphabet) -> Result<Bytes, Base64Error>
+fn from_base64_lenient(text: String) -> Result<Bytes, Base64Error>
 ```
 
 ### `std/cli`
@@ -257,6 +265,25 @@ fn millis(n: Int) -> Duration
 fn seconds(n: Int) -> Duration
 fn minutes(n: Int) -> Duration
 fn to_millis(d: Duration) -> Int
+```
+
+### `std/encoding`
+
+```sakura fragment
+type Encoding = Utf8 | Utf16Le | Utf16Be | Windows1252
+type Errors = Fatal | Replace
+type Bom = Strip | Keep
+type EncodingReason = Unsupported(String) | Malformed(Int)
+error EncodingError(reason: EncodingReason)
+opaque type Decoder = { encoding: Encoding, errors: Errors, pending: Bytes, offset: Int, started: Bool }
+fn parse(label: String) -> Result<Encoding, EncodingError>
+fn decode(b: Bytes, enc: Encoding, errors: Errors) -> Result<String, EncodingError>
+fn decode_with(b: Bytes, enc: Encoding, errors: Errors, bom: Bom) -> Result<String, EncodingError>
+fn new(enc: Encoding, errors: Errors) -> Decoder
+fn push(d: Decoder, chunk: Bytes) -> Result<(Decoder, String), EncodingError>
+fn finish(d: Decoder) -> Result<String, EncodingError>
+fn encode(s: String, enc: Encoding) -> Bytes requires encodable(enc)
+fn encodable(enc: Encoding) -> Bool    // @total
 ```
 
 ### `std/env`

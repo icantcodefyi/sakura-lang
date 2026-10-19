@@ -22,3 +22,108 @@ test "from_list, len, get" {
 }
 
 test "bytes outside 0..=255 blame the caller" { expect_defect(fn() { from_list([256]) }) }
+
+/// Bytes `[start, end)`. Out-of-range or reversed bounds are clamped like `List.slice`.
+@external(js, "sakura_runtime", "bytes_slice")
+pub fn slice(b: Bytes, start: Int, end: Int) -> Bytes
+
+/// The parts in order, in one copy: linear in the total length.
+@external(js, "sakura_runtime", "bytes_concat")
+pub fn concat(parts: List<Bytes>) -> Bytes
+
+/// A Base64 alphabet: RFC 4648 §4 (`+/`) or §5 (`-_`, URL- and filename-safe).
+pub type Alphabet = Standard | Url
+
+/// Base64 text that does not decode: the byte `offset` in the text and why.
+pub error Base64Error(offset: Int, reason: String)
+
+/// RFC 4648 Base64 (`Uint8Array.prototype.toBase64`); `padded` adds `=` to a multiple of four.
+/// `btoa(s)` is `to_base64(String.to_bytes(s), Standard, true)`.
+pub fn to_base64(b: Bytes, alphabet: Alphabet, padded: Bool) -> String {
+  bytes_to_base64(b, url_flag(alphabet), if padded { 1 } else { 0 })
+}
+
+/// Strict Base64 (`Uint8Array.fromBase64` with `lastChunkHandling: "strict"`): no whitespace,
+/// padding required for `Standard` and optional for `Url` but canonical when present, and
+/// the unused bits of the last character zero.
+pub fn from_base64(text: String, alphabet: Alphabet) -> Result<Bytes, Base64Error> {
+  base64_result(bytes_from_base64(text, url_flag(alphabet)))
+}
+
+/// HTML's forgiving Base64 (`atob`): ASCII whitespace ignored, padding optional, the unused
+/// bits of the last character ignored; `Standard` alphabet only.
+pub fn from_base64_lenient(text: String) -> Result<Bytes, Base64Error> {
+  base64_result(bytes_from_base64_lenient(text))
+}
+
+fn url_flag(a: Alphabet) -> Int {
+  match a {
+    Standard => 0,
+    Url => 1,
+  }
+}
+
+// The runtime answers `Err(offset * 4 + reason)`, reasons in this order.
+fn base64_result(r: Result<Bytes, Int>) -> Result<Bytes, Base64Error> {
+  match r {
+    Ok(b) => Ok(b),
+    Err(code) => {
+      let reasons = [
+        "invalid character",
+        "invalid padding",
+        "invalid length",
+        "non-zero trailing bits",
+      ]
+      Err(Base64Error { offset: code / 4, reason: reasons[code % 4].unwrap_or("") })
+    },
+  }
+}
+
+@external(js, "sakura_runtime", "bytes_to_base64")
+fn bytes_to_base64(b: Bytes, url: Int, padded: Int) -> String
+
+@external(js, "sakura_runtime", "bytes_from_base64")
+fn bytes_from_base64(text: String, url: Int) -> Result<Bytes, Int>
+
+@external(js, "sakura_runtime", "bytes_from_base64_lenient")
+fn bytes_from_base64_lenient(text: String) -> Result<Bytes, Int>
+
+test "slice clamps and concat joins" {
+  let b = from_list([1, 2, 3, 4])
+  expect_eq(slice(b, 1, 3), from_list([2, 3]))
+  expect_eq(slice(b, -5, 99), b)
+  expect_eq(len(slice(b, 3, 1)), 0)
+  expect_eq(concat([b, from_list([]), from_list([5])]), from_list([1, 2, 3, 4, 5]))
+  expect_eq(len(concat([])), 0)
+}
+
+test "base64 round trips in both alphabets" {
+  let b = from_list([251, 255, 0])
+  expect_eq(to_base64(b, Standard, true), "+/8A")
+  expect_eq(to_base64(from_list([251, 255]), Url, false), "-_8")
+  expect_eq(from_base64("-_8", Url), Ok(from_list([251, 255])))
+  expect_eq(from_base64("-_8=", Url), Ok(from_list([251, 255])))
+  expect_eq(from_base64(to_base64(b, Standard, true), Standard), Ok(b))
+}
+
+test "strict base64 names the offset and the reason" {
+  expect_eq(
+    from_base64("Zm9vYg", Standard),
+    Err(Base64Error { offset: 6, reason: "invalid padding" }),
+  )
+  expect_eq(
+    from_base64("Zm 9v", Standard),
+    Err(Base64Error { offset: 2, reason: "invalid character" }),
+  )
+  expect_eq(from_base64("Zm9vY", Url), Err(Base64Error { offset: 5, reason: "invalid length" }))
+  expect_eq(
+    from_base64("YR==", Standard),
+    Err(Base64Error { offset: 1, reason: "non-zero trailing bits" }),
+  )
+}
+
+test "lenient base64 is atob" {
+  expect_eq(from_base64_lenient(" Zm9v\nYg "), Ok(String.to_bytes("foob")))
+  expect_eq(from_base64_lenient("YR"), Ok(String.to_bytes("a")))
+  expect_eq(from_base64_lenient("YQ="), Err(Base64Error { offset: 2, reason: "invalid padding" }))
+}

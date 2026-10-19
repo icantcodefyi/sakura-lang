@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+Err(EncodingError { reason: Malformed(1) }) Ok(["a", "�", "("])
+Err(EncodingError { reason: Malformed(0) }) Ok(["�", "�", "A"])
+Err(EncodingError { reason: Malformed(0) }) Ok(["�"])
+Err(EncodingError { reason: Malformed(0) }) Ok(["�", "�", "�"])
+Err(EncodingError { reason: Malformed(1) }) Ok(["a", "�", "�", "�", "�", "�", "b"])
+Err(EncodingError { reason: Malformed(2) }) Ok(["a", "�"])
+Err(EncodingError { reason: Malformed(0) }) Ok(["�", "a"])
+Err(EncodingError { reason: Malformed(2) }) Ok(["a", "�"])
+Err(Utf8Error { offset: 1 })
