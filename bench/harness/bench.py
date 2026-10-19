@@ -122,26 +122,26 @@ WASI_BUILT = {}
 FOREVER = 10 ** 15
 
 
-def wasmtime(p, entry, inputs, forever=False):
+def wasmtime(p, entry, inputs, repeat=None):
     """`wasmtime run` of programs/<p> built as a WASI command whose `main` prints `entry(n)` for
-    each input, or for the one input until killed. The WASI embedding has no `Cli.args`, so each
-    input list is its own build: the program with `main` (its last item) replaced, built once
-    per run of the harness."""
-    key = (p, entry, tuple(inputs), forever)
+    each input, or `repeat` times for the one input (FOREVER: until killed). The WASI embedding
+    has no `Cli.args`, so each input list is its own build: the program with `main` (its last
+    item) replaced, built once per run of the harness."""
+    key = (p, entry, tuple(inputs), repeat)
     if key not in WASI_BUILT:
         source = (PROGRAMS / p / "sakura" / "main.sak").read_text()
         # ponytail: `main` is every program's last item, so an item after it would be dropped;
         # parse the items if a program ever puts one there.
         at = source.index("\npub fn main(") + 1
         head, signature = source[:at], source[at:source.index("\n", at)]  # keeps main's effect row
-        if forever:
+        if repeat:
             body = (f'  let n = Option.expect(String.parse_int("{inputs[0]}"), "size")\n'
-                    f'  for _ in 0..{FOREVER} {{ Console.print("{{{entry}(n)}}") }}')
+                    f'  for _ in 0..{repeat} {{ Console.print("{{{entry}(n)}}") }}')
         else:
             args = ", ".join(f'"{n}"' for n in inputs)
             body = (f'  for arg in [{args}] '
                     f'{{ Console.print("{{{entry}(Option.expect(String.parse_int(arg), "size"))}}") }}')
-        d = TARGET / "wasi" / p / "-".join([entry, *map(str, inputs), *(["loop"] if forever else [])])
+        d = TARGET / "wasi" / p / "-".join([entry, *map(str, inputs), *([f"x{repeat}"] if repeat else [])])
         d.mkdir(parents=True, exist_ok=True)
         (d / "main.sak").write_text(f"{head}{signature}\n{body}\n}}\n")
         sh([str(SAKURA), "build", "--target", "wasm", "--wasi", "--out-dir", str(d / "out"), str(d / "main.sak")])
@@ -331,7 +331,7 @@ def label(p, case):
 def measure(variant, engine, artefact, n, stable, case=None):
     """One fresh process: nine samples (ms per call), the checksum, peak RSS."""
     if engine == "wasmtime":
-        return measure_lines(wasmtime(artefact, f"run_{case}" if case else "run", [n], forever=True), stable)
+        return measure_lines(wasmtime(artefact, f"run_{case}" if case else "run", [n], repeat=FOREVER), stable)
     out, rss = spawn(command(variant, engine, artefact, "measure", n, *(["--stable"] if stable else []),
                              *(["--fn", f"run_{case}"] if case else [])))
     lines = json_lines(out)
@@ -401,6 +401,89 @@ def wasm_stats(module, args):
             attempts = stats["reuse_attempts"]
             stats["reuse_rate"] = stats["reuses"] / attempts if attempts else None
         return stats
+
+
+# ---------------------------------------------------------------------------------------------
+# Counting instructions (design §17.262): the primary metric on the reference Mac
+
+TIME_L = re.compile(r"^\s*(\d+)\s+(instructions retired|cycles elapsed|maximum resident set size)\s*$", re.M)
+INSTRUCTION_BUDGET = 1 << 32  # instructions of work a measured process does beyond its one-call twin
+# ponytail: argv carries one size per call (≤ 7 digits: 512 KiB, under macOS's 1 MiB ARG_MAX), so
+# the count is capped; a `repeat` mode in every runner would lift it for the few tiny cells at it.
+MAX_CALLS = 1 << 16
+
+
+def counted(cmd):
+    """One fresh process under macOS's `/usr/bin/time -l`: its stdout and the counters of that
+    process alone (all its threads): instructions retired, cycles, peak RSS, and the wall time."""
+    t = time.perf_counter()
+    r = run(["/usr/bin/time", "-l", *map(str, cmd)])
+    wall = time.perf_counter() - t
+    if r.returncode != 0:
+        raise Fail(f"`{' '.join(map(str, cmd))}` exited {r.returncode}: {r.stderr[-2000:]}")
+    got = {k: int(v) for v, k in TIME_L.findall(r.stderr)}
+    if "instructions retired" not in got:
+        raise Fail("`/usr/bin/time -l` printed no instruction count: --instructions needs macOS")
+    return r.stdout, {"instructions": got["instructions retired"], "cycles": got.get("cycles elapsed"),
+                      "wall_s": wall, "rss_bytes": got.get("maximum resident set size", 0)}
+
+
+def calls_command(variant, engine, artefact, n, calls, case=None):
+    """A fresh process that loads the artefact and calls entry(n) `calls` times, then exits."""
+    entry = f"run_{case}" if case else "run"
+    if engine == "wasmtime":
+        return wasmtime(artefact, entry, [n], repeat=calls)
+    return command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
+
+
+def count_calls(variant, engine, artefact, n, calls, case=None):
+    """One pair of processes, entry(n) once and 1 + `calls` times: both counters and the
+    checksum. Their difference is `calls` warm calls, without start-up, loading or the first
+    call's compilation."""
+    one = counted(calls_command(variant, engine, artefact, n, 1, case))[1]
+    out, many = counted(calls_command(variant, engine, artefact, n, 1 + calls, case))
+    checksum = out.splitlines()[-1] if engine == "wasmtime" else json_lines(out)[-1]["values"][str(n)]
+    return one, many, str(checksum)
+
+
+def calls_for(variant, engine, artefact, n, case=None):
+    """The power-of-two call count whose instructions beyond one call reach INSTRUCTION_BUDGET:
+    the ≥ 30 ms batch of `measure`, calibrated on the counter instead of a clock."""
+    one = counted(calls_command(variant, engine, artefact, n, 1, case))[1]["instructions"]
+    calls = 1
+    while calls < MAX_CALLS:
+        extra = counted(calls_command(variant, engine, artefact, n, 1 + calls, case))[1]["instructions"] - one
+        if extra >= INSTRUCTION_BUDGET:
+            break
+        grow = INSTRUCTION_BUDGET / max(extra, 1)
+        if extra < INSTRUCTION_BUDGET / 64:  # within start-up noise: probe further, do not leap
+            grow = min(grow, 16)
+        calls = min(MAX_CALLS, calls * max(2, 1 << math.ceil(math.log2(grow))))
+    return calls
+
+
+def counted_row(runs, calls):
+    """The row fields of one cell from its process pairs: instructions per call (the median over
+    the pairs, each pair's many-call process less the median one-call process), the spread of
+    those per-pair values, and the wall time per call the same way (informational)."""
+    ok = [(one, many) for one, many, _c in runs if one]
+    if not ok:
+        return {"calls": calls, "instructions": None, "process_instructions": [], "instruction_spread": None,
+                "samples_ms": [], "median_ms": None, "process_medians_ms": [], "rss_bytes": 0, "process_rss_bytes": []}
+    per_call = lambda k: [(many[k] - statistics.median(one[k] for one, _m in ok)) / calls for _o, many in ok]
+    instructions, ms = per_call("instructions"), [x * 1000 for x in per_call("wall_s")]
+    median = statistics.median(instructions)
+    return {"calls": calls, "instructions": median, "process_instructions": instructions,
+            "instruction_spread": (max(instructions) - min(instructions)) / median if median > 0 else None,
+            "cycles": statistics.median(per_call("cycles")) if all(m["cycles"] for _o, m in ok) else None,
+            "process_counters": [{"one": one, "many": many} for one, many in ok],
+            "samples_ms": ms, "median_ms": statistics.median(ms), "process_medians_ms": ms,
+            "rss_bytes": max(m["rss_bytes"] for _o, m in ok), "process_rss_bytes": [m["rss_bytes"] for _o, m in ok]}
+
+
+def metric(doc):
+    """The result field a document's cells are read by: instructions per call, or median ms."""
+    return "instructions" if doc["meta"].get("flags", {}).get("metric") == "instructions" else "median_ms"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -498,7 +581,11 @@ def cmd_run(a):
     engines = [a.engine] if a.engine else list(WASM_ENGINES if a.suite == "wasm" else JS_ENGINES)
     sizes_flag = a.sizes
     flags = {"suite": a.suite, "engines": engines, "lane": a.lane, "sizes": sizes_flag, "stable": a.stable,
-             "filter": a.filter, "processes": a.processes, "seed": a.seed}
+             "filter": a.filter, "processes": a.processes, "seed": a.seed,
+             "metric": "instructions" if a.instructions else "time"}
+    if a.instructions and sys.platform != "darwin":
+        log("--instructions reads macOS's `/usr/bin/time -l`")
+        return EXIT_TOOLCHAIN
     res = new_result(flags)
     missing = res["meta"]["missing"]
     if a.suite in ("js", "all", "wasm"):
@@ -535,7 +622,7 @@ def cmd_run(a):
                 if engine == "wasmtime":  # build every timed driver now, not between timed processes
                     for c in [None, *cases(m, engine)]:
                         for n in sizes:
-                            wasmtime(p, f"run_{c}" if c else "run", [n], forever=True)
+                            wasmtime(p, f"run_{c}" if c else "run", [n], repeat=FOREVER)
                 if backend == "wasm" and (p, None, sizes[0]) not in stats:
                     if ("sakura", "wasm") not in built:
                         built[("sakura", "wasm")] = build_wasm(p)
@@ -557,6 +644,15 @@ def cmd_run(a):
             continue
         jobs += [(p, c, v, b, e, art, n) for v, b, e, art in verified for c in [None, *cases(m, e)] for n in sizes]
 
+    calls = {}
+    if a.instructions:  # calibrated before the shuffled processes, as each `measure` does inside its own
+        for p, case, variant, backend, engine, art, n in jobs:
+            log(f"[calls] {label(p, case)} {variant}/{backend}/{engine} n={n}")
+            try:
+                calls[(p, case, variant, backend, engine, art, n)] = calls_for(variant, engine, art, n, case)
+            except Fail as e:  # the measured pairs fail the same way and record it
+                log(f"[FAIL] {e}")
+                calls[(p, case, variant, backend, engine, art, n)] = 1
     order = [(j, i) for j in jobs for i in range(a.processes)]
     random.Random(a.seed).shuffle(order)
     collected = {}
@@ -567,31 +663,38 @@ def cmd_run(a):
         p, case, variant, backend, engine, art, n = job
         log(f"[{k}/{len(order)}] {label(p, case)} {variant}/{backend}/{engine} n={n}")
         try:
-            samples, checksum, rss = measure(variant, engine, art, n, a.stable, case)
+            got = (count_calls(variant, engine, art, n, calls[job], case) if a.instructions
+                   else measure(variant, engine, art, n, a.stable, case))
         except Fail as e:
-            samples, checksum, rss = [], f"error: {e}", 0
-        collected.setdefault(job, []).append((samples, checksum, rss))
+            got = (None, None, f"error: {e}") if a.instructions else ([], f"error: {e}", 0)
+        collected.setdefault(job, []).append(got)
     stop.set()
     sampler.join()
     snapshots.append(load_snapshot())
     load = quiet_verdict(snapshots, os.cpu_count() or 1, os.environ.get("GITHUB_ACTIONS") == "true")
     res["meta"].setdefault("host", {}).update(quiet=load["quiet"], load=load)
-    log(f"[load] {'quiet' if load['quiet'] else 'not quiet: ' + '; '.join(load['reasons'])}")
+    log(f"[load] {'quiet' if load['quiet'] else 'not quiet: ' + '; '.join(load['reasons'])}"
+        + (" (informational: instruction counts need no quiet host, §17.262)" if a.instructions else ""))
 
-    for (p, case, variant, backend, engine, _art, n), runs in collected.items():
+    for job, runs in collected.items():
+        p, case, variant, backend, engine, _art, n = job
         m = meta(p)
         expected = str((m["checksums"][case] if case else m["checksums"])[str(n)])
-        medians = [statistics.median(s) for s, _c, _r in runs if s]
+        checksums = [r[2] if a.instructions else r[1] for r in runs]
+        if a.instructions:
+            measured = counted_row(runs, calls[job])
+        else:
+            medians = [statistics.median(s) for s, _c, _r in runs if s]
+            measured = {"samples_ms": [x for s, _c, _r in runs for x in s],
+                        "median_ms": statistics.median(medians) if medians else None,
+                        "process_medians_ms": medians,
+                        "rss_bytes": max(r for _s, _c, r in runs),
+                        "process_rss_bytes": [r for _s, _c, r in runs]}
         res["results"].append({
             "program": label(p, case), "variant": variant, "backend": backend, "engine": engine,
-            "lane": a.lane, "ints": m["ints"], "size": n,
-            "samples_ms": [x for s, _c, _r in runs for x in s],
-            "median_ms": statistics.median(medians) if medians else None,
-            "process_medians_ms": medians,
-            "rss_bytes": max(r for _s, _c, r in runs),
-            "process_rss_bytes": [r for _s, _c, r in runs],
-            "checksum_ok": all(c == expected for _s, c, _r in runs),
-            "checksum": next((c for _s, c, _r in runs if c != expected), expected),
+            "lane": a.lane, "ints": m["ints"], "size": n, **measured,
+            "checksum_ok": all(c == expected for c in checksums),
+            "checksum": next((c for c in checksums if c != expected), expected),
             **({"stats": stats.get((p, case, n))} if backend == "wasm" else {})})
         if not res["results"][-1]["checksum_ok"]:
             status = EXIT_ORACLE
@@ -599,6 +702,9 @@ def cmd_run(a):
     Path(a.json).parent.mkdir(parents=True, exist_ok=True)
     Path(a.json).write_text(json.dumps(res, indent=1) + "\n")
     print(summary(res))
+    if a.instructions:
+        print("\nWall time per call, informational (the host was not required to be quiet):\n")
+        print(summary(res, "median_ms"))
     log(f"wrote {a.json}")
     return status
 
@@ -608,19 +714,22 @@ def control(backend, engine):
     return engine if backend == "js" else "node"
 
 
-def ratios(res):
-    """{(program, backend, engine, size): (sakura_ms, js_ms)} for every pair present."""
+def ratios(res, key="median_ms"):
+    """{(program, backend, engine, size): (sakura, js)} of `key` for every positive pair present."""
     by = {cell(r): r for r in res["results"]}
     out = {}
     for (p, v, b, e, n), r in by.items():
         js = by.get((p, "js", "js", control(b, e), n))
-        if v == "sakura" and js and r["median_ms"] and js["median_ms"]:
-            out[(p, b, e, n)] = (r["median_ms"], js["median_ms"])
+        if v == "sakura" and js and (r.get(key) or 0) > 0 and (js.get(key) or 0) > 0:
+            out[(p, b, e, n)] = (r[key], js[key])
     return out
 
 
-def summary(res):
-    """Markdown table of medians and Sakura/hand-JS ratios (and native medians if present)."""
+def summary(res, key=None):
+    """Markdown table of medians and Sakura/hand-JS ratios (and native medians if present), of
+    instructions per call for an `--instructions` run (with each row's widest spread)."""
+    key = key or metric(res)
+    unit = "instr" if key == "instructions" else "ms"
     rows = {}
     for r in res["results"]:
         rows.setdefault((r["program"], r["size"]), {})[cell(r)[1:4]] = r
@@ -628,8 +737,8 @@ def summary(res):
                   key=lambda k: (k[2] == "native", k[1] != "js", k[2], k[0] != "sakura", k[0]))
     pairs = sorted({(b, e) for v, b, e in cols if v == "sakura"}, key=lambda k: (k[0] != "js", k))
     name = lambda b, e: e if b == "js" else f"{b}/{e}"
-    head = (["Program", "n"] + [f"{v}/{name(b, e)} ms" for v, b, e in cols]
-            + [f"ratio {name(b, e)}" for b, e in pairs])
+    head = (["Program", "n"] + [f"{v}/{name(b, e)} {unit}" for v, b, e in cols]
+            + [f"ratio {name(b, e)}" for b, e in pairs] + (["spread"] if key == "instructions" else []))
     lines = ["| " + " | ".join(head) + " |", "|---|---:|" + "---:|" * (len(head) - 2)]
     for (p, n), cells in sorted(rows.items()):
         def ms(c):
@@ -638,11 +747,14 @@ def summary(res):
                 return "—"
             if not r["checksum_ok"]:
                 return "✗ checksum"
-            return f"{r['median_ms']:.4g}"
+            return "—" if r.get(key) is None else f"{r[key]:.4g}"
         rat = []
         for b, e in pairs:
             s, j = cells.get(("sakura", b, e)), cells.get(("js", "js", control(b, e)))
-            rat.append(f"{s['median_ms'] / j['median_ms']:.2f}×" if s and j and s["median_ms"] and j["median_ms"] else "—")
+            rat.append(f"{s[key] / j[key]:.2f}×" if s and j and (s.get(key) or 0) > 0 and (j.get(key) or 0) > 0 else "—")
+        if key == "instructions":
+            spreads = [r["instruction_spread"] for r in cells.values() if r.get("instruction_spread") is not None]
+            rat.append(f"{max(spreads):.2%}" if spreads else "—")
         lines.append("| " + " | ".join([p, str(n)] + [ms(c) for c in cols] + rat) + " |")
     return "\n".join(lines)
 
@@ -692,9 +804,14 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
     """Timing policy per §17.110 and maximum-RSS policy per §17.136.
     Node RSS needs the first two heads to cross; Bun RSS is advisory. When the base or a head
     was measured on a loaded host (§17.153) the verdict is `advisory`: only a correctness
-    failure (checksum, oracle, malformed samples) still blocks."""
-    b_rat = ratios(base)
-    h_rats = [ratios(h) for h in heads]
+    failure (checksum, oracle, malformed samples) still blocks. When every file is an
+    `--instructions` run the ratios are of instructions per call and the host's load is not read
+    (§17.262); the absolute floor is a time and does not apply."""
+    field = "instructions" if all(metric(d) == "instructions" for d in (base, *heads)) else "median_ms"
+    if field == "instructions":
+        abs_ms = 0
+    b_rat = ratios(base, field)
+    h_rats = [ratios(h, field) for h in heads]
     head = heads[0]
     rows, verdict = [], "ok"
 
@@ -783,17 +900,17 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
                 correctness.append(f"{f['program']} {f['variant']}/{f['backend']}/{f['engine']}: "
                                    f"absent, {f['reason']}")
     for series in sorted({cell(r)[:4] for r in head["results"]}):
-        pts = lambda res: [(r["size"], r["median_ms"]) for r in res["results"] if cell(r)[:4] == series]
+        pts = lambda res: [(r["size"], r.get(field)) for r in res["results"] if cell(r)[:4] == series]
         sb, sh_ = slope(pts(base)), slope(pts(head))
         if sb is not None and sh_ is not None and sh_ - sb > slope_jump:
             immediate.append(f"{series}: complexity changed, log-log slope {sb:.2f} → {sh_:.2f}")
-    loads = [x for x in map(host_load, (base, *heads)) if x is not None]
+    loads = [x for x in map(host_load, (base, *heads)) if x is not None] if field == "median_ms" else []
     load = max(loads) if loads else None
     if load is not None and not correctness:  # §17.153 item 3: direction only, never ok or blocked
         verdict, confirmation_programs = "advisory", set()
     elif immediate or correctness:
         worse("blocked")
-    return {"verdict": verdict, "host_load": load, "rows": rows, "immediate": correctness + immediate,
+    return {"verdict": verdict, "metric": field, "host_load": load, "rows": rows, "immediate": correctness + immediate,
             "rss": rss_rows, "confirmation_programs": sorted(confirmation_programs)}
 
 
@@ -826,7 +943,8 @@ def cmd_compare(a):
               f"{confirmation}; {r['status']} {r['note']}")
     for i in out["immediate"]:
         print(f"\nIMMEDIATE FAILURE: {i}")
-    advisory = f" (host load {out['host_load']:.2f}; direction only, §17.153)" if out["verdict"] == "advisory" else ""
+    advisory = (f" (host load {out['host_load']:.2f}; direction only, §17.153)" if out["verdict"] == "advisory"
+                else " (instructions per call, §17.262)" if out["metric"] == "instructions" else "")
     print(f"\nverdict: {out['verdict']}{advisory}")
     if a.json:
         Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
@@ -868,8 +986,10 @@ def envelope(wasm, native):
     """One row per program × size × engine × comparison with its ceiling and status, and the
     reading: `met`, `miss` (a gating cell over its ceiling) or `incomplete` (a gating cell
     unmeasured); `advisory (…)` instead when either run is not quiet, with the reading it would
-    have been as `direction` (§17.153). A Wasmtime cell recorded in `meta.absent` is read as its
+    have been as `direction` (§17.153). Two `--instructions` runs are read on instructions per
+    call and never advisory (§17.262). A Wasmtime cell recorded in `meta.absent` is read as its
     Node cell (§17.213 (1))."""
+    key = "instructions" if metric(wasm) == metric(native) == "instructions" else "median_ms"
     by = {cell(r): r for d in (wasm, native) for r in d["results"]}
     absent = {(f["program"], f["engine"]) for f in wasm["meta"].get("absent", [])}
     rows = []
@@ -883,45 +1003,52 @@ def envelope(wasm, native):
                         ratio = None
                         if (p, engine) in absent:
                             status = "absent"
-                        elif not (s and c and s["median_ms"] and c["median_ms"]):
+                        elif not (s and c and (s.get(key) or 0) > 0 and (c.get(key) or 0) > 0):
                             status = "missing"
                         elif not (s["checksum_ok"] and c["checksum_ok"]):
                             status = "checksum"
                         else:
-                            ratio = s["median_ms"] / c["median_ms"]
+                            ratio = s[key] / c[key]
                             status = "met" if ratio <= ceiling else "miss"
                         rows.append({"program": p, "size": n, "engine": engine, "against": against,
                                      "sakura_ms": s and s["median_ms"], "native_ms": c and c["median_ms"],
+                                     **({"sakura_instructions": s and s.get("instructions"),
+                                         "native_instructions": c and c.get("instructions")}
+                                        if key == "instructions" else {}),
                                      "ratio": ratio, "ceiling": ceiling, "status": status,
                                      "gating": p not in NOT_GATING})
     gating = {r["status"] for r in rows if r["gating"]}
     reading = "miss" if "miss" in gating else "incomplete" if gating & {"missing", "checksum"} else "met"
-    loud = [d["meta"].get("host", {}) for d in (wasm, native) if d["meta"].get("host", {}).get("quiet") is not True]
+    loud = [d["meta"].get("host", {}) for d in (wasm, native)
+            if d["meta"].get("host", {}).get("quiet") is not True and key == "median_ms"]
     loads = [h["load"]["max_load_1m"] for h in loud if h.get("load") and not h["load"].get("ci")]
     advisory = (None if not loud else f"advisory (host load {max(loads):.2f})" if loads
                 else "advisory (CI runner)" if any((h.get("load") or {}).get("ci") for h in loud)
                 else "advisory (no quiet verdict)")
     return {"commit": wasm["meta"].get("commit"), "host_id": wasm["meta"].get("host", {}).get("id"),
-            "reading": advisory or reading, "direction": reading,
+            "metric": key, "reading": advisory or reading, "direction": reading,
             "reasons": [x for h in loud for x in (h.get("load") or {}).get("reasons", [])], "rows": rows}
 
 
 def envelope_markdown(out):
     num = lambda x, f: "—" if x is None else format(x, f)
-    lines = ["| Program | n | Engine | Against | Sakura ms | Native ms | Ratio | Ceiling | Status |",
+    unit, field = ("instr", "instructions") if out.get("metric") == "instructions" else ("ms", "ms")
+    lines = [f"| Program | n | Engine | Against | Sakura {unit} | Native {unit} | Ratio | Ceiling | Status |",
              "|---|---:|---|---|---:|---:|---:|---:|---|"]
     for r in out["rows"]:
         status = r["status"] + ("" if r["gating"] else " (not gating)")
         ratio = "—" if r["ratio"] is None else f"{r['ratio']:.2f}×"
         lines.append(f"| {r['program']} | {num(r['size'], '')} | {r['engine']} | {r['against']} "
-                     f"| {num(r['sakura_ms'], '.4g')} | {num(r['native_ms'], '.4g')} | {ratio} | {r['ceiling']} | {status} |")
+                     f"| {num(r.get(f'sakura_{field}'), '.4g')} | {num(r.get(f'native_{field}'), '.4g')} "
+                     f"| {ratio} | {r['ceiling']} | {status} |")
     counts = {}
     for r in out["rows"]:
         if r["gating"]:
             counts[r["status"]] = counts.get(r["status"], 0) + 1
     tally = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
     direction = f", direction only: {out['direction']}" if out["reading"] != out["direction"] else ""
-    lines += ["", f"M4 envelope: {out['reading']}{direction} (gating cells: {tally}; "
+    on = " on instructions per call" if out.get("metric") == "instructions" else ""
+    lines += ["", f"M4 envelope{on}: {out['reading']}{direction} (gating cells: {tally}; "
                   f"commit {out['commit']}, host {out['host_id']})"]
     return "\n".join(lines)
 
@@ -954,7 +1081,7 @@ def cmd_bless(a):
         log("refusing to bless: " + ("oracle failures" if bad else "the run was made from a dirty tree"))
         return EXIT_ORACLE
     h = doc["meta"].get("host", {})
-    if h.get("quiet") is not True:  # §17.153 item 1
+    if h.get("quiet") is not True and metric(doc) != "instructions":  # §17.153 item 1; §17.262
         reasons = (h.get("load") or {}).get("reasons") or ["no quiet verdict recorded (made before §17.153)"]
         log("refusing to bless: the run was not made in a quiet window: " + "; ".join(reasons))
         return EXIT_ORACLE
@@ -1032,13 +1159,18 @@ def p95(xs):
     return xs[min(len(xs) - 1, math.ceil(0.95 * len(xs)) - 1)]
 
 
-def timed(cmd, runs=15):
+def timed(cmd, runs=15, instructions=False):
+    """[(ms, instructions or None)] of `runs` processes after a warm-up one."""
     sh(cmd)  # warm-up: the OS file cache and std's analysis cache (design §17.195 (3))
     out = []
     for _ in range(runs):
+        if instructions:
+            counters = counted(cmd)[1]
+            out.append((counters["wall_s"] * 1000, counters["instructions"]))
+            continue
         t = time.perf_counter()
         sh(cmd)
-        out.append((time.perf_counter() - t) * 1000)
+        out.append(((time.perf_counter() - t) * 1000, None))
     return out
 
 
@@ -1091,7 +1223,7 @@ def lsp_edit_ms(root, runs=15):
                 raise Fail(f"sakura lsp: unexpected diagnostics after edit {v}: {diags[:1]}")
         send({"id": 2, "method": "shutdown"})
         send({"method": "exit"})
-        return out
+        return [(ms, None) for ms in out]  # one long-lived server: no per-edit instruction count
     finally:
         proc.kill()
         proc.wait()
@@ -1101,27 +1233,30 @@ def cmd_compile(a):
     build_cli()
     # The bench's own cache of std's analysis, so a run does not depend on the user's.
     os.environ.setdefault("SAKURA_CACHE_DIR", str(TARGET / "cache"))
-    res = new_result({"command": "compile", "seed": SEED,
+    res = new_result({"command": "compile", "seed": SEED, "metric": "instructions" if a.instructions else "time",
                       "std_cache": "off" if os.environ.get("SAKURA_NO_CACHE", "0") not in ("", "0") else "on"})
     TARGET.mkdir(parents=True, exist_ok=True)
     small, large, hi, wide = corpus(10_000), corpus(100_000), hello(), wide_match()
     lines = lambda d: sum(len(f.read_text().splitlines()) for f in d.rglob("*.sak"))
     # `test_hello` has no budget or target: it shows the Node spawn's share (§17.195 (1)).
-    cases = {"check_hello": (hi, lambda: timed([str(SAKURA), "check", str(hi)])),
-             "test_hello": (hi, lambda: timed([str(SAKURA), "test", str(hi)])),
-             "check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)])),
-             "build_10k": (small, lambda: timed([str(SAKURA), "build", "--out-dir", str(TARGET / "corpus-out"), str(small)])),
-             "check_cold_100k": (large, lambda: timed([str(SAKURA), "check", str(large)])),
+    i = a.instructions
+    cases = {"check_hello": (hi, lambda: timed([str(SAKURA), "check", str(hi)], instructions=i)),
+             "test_hello": (hi, lambda: timed([str(SAKURA), "test", str(hi)], instructions=i)),
+             "check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)], instructions=i)),
+             "build_10k": (small, lambda: timed([str(SAKURA), "build", "--out-dir", str(TARGET / "corpus-out"), str(small)],
+                                                instructions=i)),
+             "check_cold_100k": (large, lambda: timed([str(SAKURA), "check", str(large)], instructions=i)),
              "lsp_edit_10k": (small, lambda: lsp_edit_ms(small)),
-             "check_wide_match": (wide, lambda: timed([str(SAKURA), "check", str(wide)]))}
+             "check_wide_match": (wide, lambda: timed([str(SAKURA), "check", str(wide)], instructions=i))}
     status = EXIT_OK
-    print("| Case | Lines | p95 ms | Median ms | Budget ms | Target ms | |\n|---|---:|---:|---:|---:|---:|---|",
-          flush=True)
+    print("| Case | Lines | p95 ms | Median ms | Budget ms | Target ms | |" + (" Median instr | Spread |" if i else "")
+          + "\n|---|---:|---:|---:|---:|---:|---|" + ("---:|---:|" if i else ""), flush=True)
     for name, (d, run) in cases.items():
         budget, target = BUDGETS_MS.get(name), TARGETS_MS.get(name)
         cols = f"{budget or ''} | {target or ''}"
         try:
-            ms = run()
+            ms, counts = map(list, zip(*run()))
+            counts = [x for x in counts if x is not None]
         except Fail as e:
             res["meta"]["failures"].append({"program": name, "variant": "sakura", "engine": "cli", "error": str(e)})
             print(f"| {name} | {lines(d)} | ✗ | | {cols} | {str(e).splitlines()[0]} |")
@@ -1133,9 +1268,14 @@ def cmd_compile(a):
         res["results"].append({"program": name, "variant": "sakura", "engine": "cli", "lane": "compile", "ints": None,
                                "size": lines(d), "samples_ms": ms, "median_ms": statistics.median(ms),
                                "p95_ms": p95(ms), "budget_ms": budget, "target_ms": target,
-                               "process_medians_ms": ms, "rss_bytes": None, "checksum_ok": True, "checksum": None})
+                               "process_medians_ms": ms, "rss_bytes": None, "checksum_ok": True, "checksum": None,
+                               **({"instructions": statistics.median(counts), "process_instructions": counts,
+                                   "instruction_spread": (max(counts) - min(counts)) / statistics.median(counts)}
+                                  if counts else {})})
         verdict = "over budget" if over else "target missed" if missed else "ok"
-        print(f"| {name} | {lines(d)} | {p95(ms):.1f} | {statistics.median(ms):.1f} | {cols} | {verdict} |")
+        counted_cols = ((f" {statistics.median(counts):.4g} | {res['results'][-1]['instruction_spread']:.2%} |"
+                         if counts else " — | — |") if i else "")
+        print(f"| {name} | {lines(d)} | {p95(ms):.1f} | {statistics.median(ms):.1f} | {cols} | {verdict} |{counted_cols}")
     Path(a.json).parent.mkdir(parents=True, exist_ok=True)
     Path(a.json).write_text(json.dumps(res, indent=1) + "\n")
     return status
@@ -1262,6 +1402,8 @@ def main(argv=None):
     r.add_argument("--filter", default="*", help="glob over program names")
     r.add_argument("--sizes", choices=["all", "quick"], default="all")
     r.add_argument("--stable", action="store_true", help="2 s in-process warmup instead of 250 ms")
+    r.add_argument("--instructions", action="store_true",
+                   help="count instructions retired per call (macOS; §17.262) instead of timing samples")
     r.add_argument("--processes", type=int, default=5, help="fresh processes per combination")
     r.add_argument("--seed", type=int, default=SEED)
     r.add_argument("--json", required=True)
@@ -1281,6 +1423,7 @@ def main(argv=None):
     b.add_argument("result")
     k = sub.add_parser("compile", help="check/build/LSP latency against the research/10 §6 budgets")
     k.add_argument("--json", required=True)
+    k.add_argument("--instructions", action="store_true", help="also count each process's instructions (macOS)")
     n = sub.add_parser("compile-native", help="per-phase p95 of `sakura build --target native` (plan M5 N2)")
     n.add_argument("--json", required=True)
     o = sub.add_parser("oracle", help="check Sakura and hand JS against meta.toml [checksums]")

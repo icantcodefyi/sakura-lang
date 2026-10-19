@@ -658,6 +658,13 @@ class WasmLane(unittest.TestCase):
             with self.subTest(engine=engine):
                 self.assertEqual([bench.defect("sakura", engine, art, k) for k in (0, 1)], ["D020", "D021"])
 
+    @unittest.skipUnless(bench.sys.platform == "darwin", "instruction counts read macOS's /usr/bin/time -l")
+    def test_wasmtime_counts_the_instructions_of_its_calls(self):
+        one, many, checksum = bench.count_calls("sakura", "wasmtime", "fib", 20, 8)
+        self.assertEqual(checksum, "6765")
+        self.assertGreater(many["instructions"], one["instructions"])
+        self.assertEqual(bench.run(bench.calls_command("sakura", "wasmtime", "fib", 20, 3)).stdout, "6765\n" * 3)
+
     def test_wasmtime_measures_calls_from_its_output_lines(self):
         samples, checksum, rss = bench.measure("sakura", "wasmtime", "fib", 20, False)
         self.assertEqual((len(samples), checksum), (9, "6765"))
@@ -690,6 +697,63 @@ class WasmCompare(unittest.TestCase):
         self.assertEqual(bench.ratios(both), {("p", "wasm", "node", 100): (40.0, 10.0), ("p", "js", "node", 100): (20.0, 10.0)})
         self.assertEqual(bench.compare(js, [wasm])["rows"], [])  # a legacy JS base has no WASM cells
         self.assertIn("ratio wasm/node", bench.summary(both))
+
+
+def counted_doc(sakura, js, quiet=False, suite="js"):
+    """An `--instructions` run (§17.262) from instructions per call, measured on a loaded host."""
+    d = loaded(doc(pair(50.0, 10.0)), load=10.4 if not quiet else 1.0)
+    d["meta"]["flags"] = {"suite": suite, "metric": "instructions"}
+    for r, v in zip(d["results"], (sakura, js)):
+        r["instructions"] = v
+    return d
+
+
+class Instructions(unittest.TestCase):
+    """§17.262: instructions retired per call are the primary metric; no quiet host is needed."""
+
+    def test_a_cell_is_the_median_of_its_pairs_over_the_median_one_call_process(self):
+        c = lambda i, s=1.0: {"instructions": i, "cycles": i // 2, "wall_s": s, "rss_bytes": 7}
+        runs = [(c(100), c(1100), "1"), (c(102), c(1102), "1"), (c(98), c(1120), "1")]
+        row = bench.counted_row(runs, 10)
+        self.assertEqual(row["process_instructions"], [100.0, 100.2, 102.0])
+        self.assertEqual((row["instructions"], row["calls"]), (100.2, 10))
+        self.assertAlmostEqual(row["instruction_spread"], 2.0 / 100.2)
+        self.assertEqual(row["cycles"], 50.1)
+        self.assertEqual(bench.counted_row([(None, None, "error: x")], 4)["instructions"], None)
+
+    def test_calibration_doubles_to_the_budget_without_leaping_on_noise(self):
+        startup, per_call = 1_300_000_000, 1_000_000
+        seen = []
+
+        def counted(cmd):
+            calls = len(cmd) - 4  # node runner.mjs values <module> n…
+            seen.append(calls)
+            noise = 5_000_000 if calls == 1 else 0  # one call is inside start-up noise
+            return "", {"instructions": startup + calls * per_call - noise}
+
+        with patch.object(bench, "counted", counted):
+            calls = bench.calls_for("js", "node", "m.mjs", 20)
+        self.assertEqual(calls, 8192)  # 2^13 calls of 1 M ≥ 2^32 beyond one call
+        self.assertEqual(seen[:3], [1, 2, 17])  # the probe after the noisy one grows 16×, not to the cap
+
+    def test_bless_takes_a_loaded_instruction_run(self):
+        code, written, _ = Bless.bless(self, counted_doc(5e6, 1e6))
+        self.assertEqual((code, written), (bench.EXIT_OK, True))
+        timed = loaded(doc(pair(20.0, 10.0)), load=10.4)
+        self.assertEqual(Bless.bless(self, timed)[:2], (bench.EXIT_ORACLE, False))
+
+    def test_compare_reads_instructions_and_not_the_load(self):
+        out = bench.compare(counted_doc(5e6, 1e6), [counted_doc(5.6e6, 1e6)])  # +12% instructions
+        self.assertEqual((out["verdict"], out["metric"], out["host_load"]), ("blocked", "instructions", None))
+        self.assertEqual(bench.compare(counted_doc(5e6, 1e6), [counted_doc(5e6, 1e6)])["verdict"], "ok")
+        # A timed head against a counted base (the CI job) stays on milliseconds, advisory under load.
+        self.assertEqual(bench.compare(counted_doc(5e6, 1e6), [doc(pair(50.0, 10.0))])["metric"], "median_ms")
+
+    def test_summary_prints_instructions_and_the_spread(self):
+        d = counted_doc(5e6, 1e6)
+        d["results"][0]["instruction_spread"] = 0.004
+        self.assertIn("| p | 100 | 5e+06 | 1e+06 | 5.00× | 0.40% |", bench.summary(d))
+        self.assertIn("| p | 100 | 50 | 10 | 5.00× |", bench.summary(d, "median_ms"))
 
 
 ENVELOPE_PROGRAMS = ["fib", "tail_clique", "map_set", "handled_d1", "json_validate"]
@@ -732,6 +796,17 @@ class Envelope(unittest.TestCase):
                                  ("map_set", "ocaml", 2.5), ("map_set", "koka", 2.5), ("map_set", "koka-noreuse", 2.5),
                                  ("handled_d1", "koka", 3.0), ("json_validate", "rust", 3.0)})
         self.assertEqual(len(out["rows"]), 2 * len(lanes))  # Node host and Wasmtime
+
+    def test_instruction_runs_read_instructions_and_are_never_advisory(self):
+        wasm, native = envelope_docs(ratio=2.0, quiet=False)  # 2.0× in time, loaded host
+        for d, value in ((wasm, 2.6e6), (native, 1e6)):
+            d["meta"]["flags"]["metric"] = "instructions"
+            for r in d["results"]:
+                r["instructions"] = value
+        out = bench.envelope(wasm, native)
+        self.assertEqual((out["metric"], out["reading"]), ("instructions", "miss"))  # 2.6× over Go's 2.0
+        self.assertIn("| fib | 100 | node | go | 2.6e+06 | 1e+06 | 2.60× | 2.0 | miss |", bench.envelope_markdown(out))
+        self.assertIn("M4 envelope on instructions per call: miss", bench.envelope_markdown(out))
 
     def test_a_cell_over_its_ceiling_misses_and_the_report_still_exits_zero(self):
         out = bench.envelope(*envelope_docs(ratio=2.2))  # over Go's 2.0, inside the others
