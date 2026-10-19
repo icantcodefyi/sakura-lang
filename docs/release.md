@@ -4,10 +4,10 @@
 [`.github/workflows/release.yml`](../.github/workflows/release.yml), the installer
 [`tools/install/install.sh`](../tools/install/install.sh), the packaging script
 [`tools/release/release.py`](../tools/release/release.py) and the reviewed channel files in
-[`packaging/`](../packaging/) (§3). No channel has been published. A publishing command here is
+[`packaging/`](../packaging/) (§4). No channel has been published. A publishing command here is
 not authorization to run it.
 See [release research](../research/13-release.md), [agent-DX plan](plans/agent-dx.md)
-DX6 and owner answers in §3, [design](design.md) §§17.147, 17.157 and
+DX6 and owner answers in §4, [design](design.md) §§17.147, 17.157 and
 [STABILITY](../STABILITY.md).
 
 Owner: **@icantcodefyi**. First tag: `v0.1.0-alpha.1`. Public repository:
@@ -170,7 +170,94 @@ Start with Linux; retain GitHub-hosted publication. Current
 Apple Silicon macOS, but no Intel macOS offering. No billing or paid add-ons are
 authorized by the owner's proposal.
 
-## 2. Prepare the candidate
+## 2. Quiet window and bless
+
+Every baseline release has one quiet window (design §17.153, §17.228 (2), §17.238 (4)): the
+M4 exit for `v0.1.0`, then `v0.2.0` and `v1.0.0-rc.1` (§17.225 (5)). It measures **the commit
+the gate signs**, never `main`'s head, in a worktree of its own, so the blessed baseline's
+`meta.commit` is that commit and later docs commits move nothing. For M4 the commit is
+`dee11301`. The owner runs every command below in one terminal on the reference machine
+(host id `d88970189598`, 12 CPUs, Apple M4 Pro); nothing else runs on the machine meanwhile.
+Astra reads the files afterwards and writes the report; agents never bless.
+
+**Before the window**
+
+1. Pause every agent (Claude Code, Codex, T3 threads) and close builds and browsers.
+   `uptime` must show a one-minute load under 3.0 before each run starts.
+2. A clean worktree at the commit (replace `dee11301` for a later window):
+   ```sh
+   cd <your sakuralang checkout>
+   git fetch origin
+   git worktree add ../sakura-window dee11301 --detach
+   cd ../sakura-window
+   mkdir -p bench/target
+   ```
+3. Toolchains at the pins in [`bench/toolchains.toml`](../bench/toolchains.toml); each line must
+   print the pinned version, or its cells come out `missing` and the envelope `incomplete`:
+   ```sh
+   node --version; bun --version; rustc --version; go version
+   ocamlopt -version; koka --version; wasmtime --version; hyperfine --version
+   ```
+4. Build once, then let the load settle under 3.0 (`uptime`); the harness samples only the
+   timing phase:
+   ```sh
+   (cd compiler && cargo build --release --locked -p sakura_cli)
+   uptime
+   ```
+
+**The runs** (in this order; each ends with `[load] quiet` or `[load] not quiet: <reasons>`;
+on `not quiet` keep the file, stop, and start the window again later, never rerun a cell
+inside the window)
+
+```sh
+python3 research/10-evidence/record_load.py --log bench/target/quiet-load-js.jsonl -- \
+  bench/bench run --suite js --stable --json bench/target/quiet-js.json
+python3 research/10-evidence/record_load.py --log bench/target/quiet-load-wasm.jsonl -- \
+  bench/bench run --suite wasm --stable --json bench/target/quiet-wasm.json
+python3 research/10-evidence/record_load.py --log bench/target/quiet-load-native.jsonl -- \
+  bench/bench run --suite native --lane matched --stable --json bench/target/quiet-native.json
+bench/bench compile --json bench/target/quiet-compile.json
+bench/bench envelope bench/target/quiet-wasm.json bench/target/quiet-native.json \
+  --json bench/target/envelope.json --md bench/target/envelope.md
+```
+
+`run` prints a table of medians and Sakura/hand-JS ratios as it goes. `envelope` exits 0
+whatever it reads; its reading line (`met`, `miss`, `incomplete`, or `advisory` when a run
+was not quiet) is the gate report's envelope section, read against design §17.109's ceilings.
+`compile` reports p95 against the research/10 §6 budgets and §17.195 (1)'s targets.
+
+**Bless** (the owner only; `bless` refuses a run with a failed oracle, from a dirty
+`compiler/` or `bench/` tree, or whose `meta.host.quiet` is not `true`):
+
+```sh
+bench/bench bless bench/target/quiet-js.json      # -> bench/baselines/<host-id>.json
+bench/bench bless bench/target/quiet-wasm.json    # -> bench/baselines/wasm/<host-id>.json
+```
+
+The native and compile runs are evidence, not baselines, and are not blessed.
+
+**Evidence files**, committed on `main` by hand (copy them from the worktree into your main
+checkout; `D` is the date, `C` the short commit, `H` the host id):
+
+- `bench/baselines/H.json` and `bench/baselines/wasm/H.json`: the two blessed runs.
+- `bench/results/D-C-js.json`, `D-C-wasm.json`, `D-C-native.json`, `D-C-compile.json`,
+  `D-C-envelope.json`, `D-C-envelope.md`, and the three `D-C-load-*.jsonl` recordings.
+- `bench/deltas.md`: the envelope's Markdown and each program's reading against its
+  §17.109 ceiling, every miss with its named decision (Astra writes it; you read it).
+- The checklist line for the window with your name, the date and `meta.commit`.
+
+```sh
+cd <your sakuralang checkout>
+git add bench/baselines bench/results bench/deltas.md docs/plans/m4-exit-checklist.md
+git commit -m "bench: quiet window at dee11301, blessed JS and WASM baselines"
+git push origin HEAD:main
+git worktree remove ../sakura-window
+```
+
+A code change on a benchmarked path after the window reopens the question for the owner;
+anything else does not (§17.228 (2)).
+
+## 3. Prepare the candidate
 
 1. Resolve [designer requests](../compiler/REQUESTS.md): tooling/packaging
    architecture, channel scope, signing and companion npm names. Record explicit
@@ -205,7 +292,7 @@ run from `website/`: `bun install --frozen-lockfile`, `bun run fmt:check`,
 `bun run lint`, `bun run typecheck`, `bun run build`. Record exact outcomes and
 limitations. Source tests alone do not qualify released binaries.
 
-## 3. Dry run — no tag or publication
+## 4. Dry run — no tag or publication
 
 Run **Actions → Release → Run workflow** on the candidate ref, or
 `gh workflow run release.yml --repo icantcodefyi/sakuralang --ref main`. Leave `sign_test` false for the ordinary secret-free dry run. It builds every target in
@@ -281,7 +368,7 @@ and npm. Acceptance includes a fresh project's `fmt --check` after a Git checkou
 `core.autocrlf=true`, a stdio LSP initialize round trip, and the shared MCP/setup checks.
 Proof-key storage remains unavailable on Windows; its Unix-only tests stay gated.
 
-## 4. Owner approval and tag
+## 5. Owner approval and tag
 
 Present candidate SHA, version, run ID, final digest inventory, platforms/floors,
 checks, channel artifacts, signing and limitations. Record explicit approval for
@@ -301,7 +388,7 @@ the approved SHA, not a newer master commit. Tag-triggered preparation must stil
 pause at channel gates. If it rebuilds, compare/qualify final hashes again before
 publication; same-source builds are not assumed byte-identical.
 
-## 5. Publish each approved channel
+## 6. Publish each approved channel
 
 The tag run of `release.yml` rebuilds and re-smoke-tests, then pauses at three jobs:
 approving `release-github` attests every file and creates the prerelease
@@ -344,7 +431,7 @@ partial rollout and seek approval for remaining publication. Resume identical
 reviewed artifacts only where the channel allows; changed published bytes need a
 new version, with owner-approved deprecation/yank guidance if necessary.
 
-## 6. Close-out
+## 7. Close-out
 
 Record tag/SHA, run IDs, hashes, URLs, tap commit, package versions, verification
 and credential expiry/rotation reminders without secrets. Retain qualification
