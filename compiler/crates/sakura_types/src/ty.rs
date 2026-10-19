@@ -3,7 +3,7 @@
 //! Types and rows are immutable and interned: equal structure means equal id. Inference
 //! variables (`Type::Var`, `Tail::Var`) are bound in [`crate::infer::Infer`], never here.
 
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::DefId;
 use serde::{Deserialize, Serialize};
@@ -159,9 +159,11 @@ pub struct ParamInfo {
 #[derive(Clone, Debug, Default)]
 pub struct Interner {
     types: Vec<Type>,
-    type_ids: HashMap<Type, TypeId>,
+    // FxHash: deterministic, and the keys are the program's own types, so not a trust boundary
+    // (design §17.207 (3)).
+    type_ids: FxHashMap<Type, TypeId>,
     rows: Vec<Row>,
-    row_ids: HashMap<Row, RowId>,
+    row_ids: FxHashMap<Row, RowId>,
     params: Vec<ParamInfo>,
     row_params: Vec<RowParamInfo>,
 }

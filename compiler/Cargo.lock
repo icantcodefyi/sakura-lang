@@ -2348,6 +2348,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "insta",
  "proptest",
+ "rustc-hash 2.1.3",
  "sakura_diagnostics",
  "sakura_hir",
  "sakura_syntax",

@@ -13,6 +13,7 @@ sakura_diagnostics.workspace = true
 sakura_hir.workspace = true
 text-size.workspace = true
 serde.workspace = true
+rustc-hash.workspace = true
 
 [dev-dependencies]
 sakura_syntax.workspace = true
