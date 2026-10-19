@@ -11,8 +11,8 @@ countdown n=1000
   direct: frames 4, boxes 0, dups 2, drops 6, restarts 0
   all-frame: frames 7, boxes 0, dups 2, drops 6, restarts 0
 deltablue n=100
-  direct: frames 7921, boxes 85182, dups 277706, drops 269773, restarts 0
-  all-frame: frames 156941, boxes 85182, dups 277706, drops 269773, restarts 0
+  direct: frames 7921, boxes 3663, dups 295881, drops 269773, restarts 0
+  all-frame: frames 174507, boxes 3663, dups 295881, drops 269773, restarts 0
 fib n=20
   direct: frames 4, boxes 0, dups 2, drops 6, restarts 0
   all-frame: frames 21896, boxes 0, dups 2, drops 6, restarts 0

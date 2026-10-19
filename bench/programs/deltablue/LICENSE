@@ -29,8 +29,8 @@ Changes from the Are We Fast Yet version
 ----------------------------------------
 
 js/main.mjs keeps AWFY's classes and methods. sakura/main.sak reimplements the same
-algorithm over persistent maps of variable and constraint records, because Sakura Lang has no
-mutable objects; every traversal and queue keeps AWFY's order. Both:
+algorithm over persistent lists of variable and constraint records indexed by dense id,
+because Sakura Lang has no mutable objects; every traversal and queue keeps AWFY's order. Both:
 
 - replace SOM's Vector with lists/arrays; queues advance a head index (SOM's removeFirst is
   O(1)); removing a constraint from a variable drops every occurrence, as SOM's remove does;

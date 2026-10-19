@@ -72,6 +72,8 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 These authored notes complement the generated signatures and are copied into the
 checked skill reference; they are not additional APIs.
 
+- An `Int` key you allocate as `len(xs)` and never remove indexes a `List`;
+  `Map<Int, V>` is for sparse, removable or externally chosen keys (§17.217).
 - `List.set` makes an **O(log32 n) path copy**, sharing untouched branches (§17.126).
   Use it for indexed updates instead of rebuilding the list with `map` or slices.
   Its index must satisfy the generated `requires` clause; `List.get` returns `Option`.

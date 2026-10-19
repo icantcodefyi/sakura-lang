@@ -1,8 +1,8 @@
 // DeltaBlue, ported from Are We Fast Yet's JavaScript version (see ../LICENSE). Sakura Lang has
-// no mutable objects, so variables and constraints are records in persistent maps keyed by id,
+// no mutable objects, so variables and constraints are records in persistent lists indexed by dense id,
 // and every planner operation takes and returns the planner state. The algorithm, the order of
 // every traversal and queue, and the two AWFY tests are kept; differences from AWFY are listed
-// in ../LICENSE. run(n) = chain_test(n) + projection_test(n), each returning the values the AWFY
+// in the notice. run(n) = chain_test(n) + projection_test(n), each returning the values the AWFY
 // test checks (a failed AWFY check is a defect here).
 import std/cli.{Cli}
 
@@ -25,24 +25,24 @@ type Var = {
   mark: Int,
 }
 
-type Planner = { vars: Map<Int, Var>, cons: Map<Int, Con>, mark: Int }
+type Planner = { vars: List<Var>, cons: List<Con>, mark: Int }
 
-fn planner() -> Planner { Planner { vars: Map.empty(), cons: Map.empty(), mark: 1 } }
+fn planner() -> Planner { Planner { vars: [], cons: [], mark: 1 } }
 
-fn var_of(p: Planner, id: Int) -> Var { Option.expect(Map.get(p.vars, id), "variable") }
+fn var_of(p: Planner, id: Int) -> Var { Option.expect(List.get(p.vars, id), "variable") }
 
-fn con_of(p: Planner, id: Int) -> Con { Option.expect(Map.get(p.cons, id), "constraint") }
+fn con_of(p: Planner, id: Int) -> Con { Option.expect(List.get(p.cons, id), "constraint") }
 
 fn put_var(p: Planner, id: Int, v: Var) -> Planner {
-  Planner { ..p, vars: Map.insert(p.vars, id, v) }
+  Planner { ..p, vars: List.set(p.vars, id, v) }
 }
 
 fn put_con(p: Planner, id: Int, c: Con) -> Planner {
-  Planner { ..p, cons: Map.insert(p.cons, id, c) }
+  Planner { ..p, cons: List.set(p.cons, id, c) }
 }
 
 fn new_var(p: Planner, value: Int) -> (Planner, Int) {
-  let id = Map.len(p.vars)
+  let id = List.len(p.vars)
   let v = Var {
     value,
     constraints: [],
@@ -51,7 +51,7 @@ fn new_var(p: Planner, value: Int) -> (Planner, Int) {
     stay: true,
     mark: 0,
   }
-  (put_var(p, id, v), id)
+  (Planner { ..p, vars: List.push(p.vars, v) }, id)
 }
 
 fn value_of(p: Planner, id: Int) -> Int { var_of(p, id).value }
@@ -214,8 +214,8 @@ fn satisfy(start: Planner, cid: Int, mark: Int) -> (Planner, Int) {
 // ---- planner
 
 fn add_constraint(start: Planner, c: Con) -> (Planner, Int) {
-  let cid = Map.len(start.cons)
-  let p = add_to_graph(put_con(start, cid, c), cid)
+  let cid = List.len(start.cons)
+  let p = add_to_graph(Planner { ..start, cons: List.push(start.cons, c) }, cid)
   (incremental_add(p, cid), cid)
 }
 

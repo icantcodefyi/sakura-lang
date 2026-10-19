@@ -7,6 +7,12 @@ published yet.
 
 ## [Unreleased]
 
+### Performance
+
+- The DeltaBlue benchmark stores dense variable and constraint ids in `List` instead
+  of `Map`, following design §17.217 and WS-P13c. The std index and Sakura skill
+  reference document this collection choice. Oracle checksums are unchanged.
+
 ### Security
 
 - **Breaking:** `SAKURA_MAX_COPY_BYTES` must be decimal digits with a value from 1 to
