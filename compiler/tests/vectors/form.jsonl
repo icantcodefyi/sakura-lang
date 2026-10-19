@@ -1,0 +1,69 @@
+# HTML form-submission vectors: web-platform-tests html/semantics/forms/form-submission-0/
+# multipart-formdata.window.js and urlencoded2.window.js at commit 4ad507b28db0a636f528def9161d109fe11b93a3,
+# https://github.com/web-platform-tests/wpt/blob/4ad507b28db0a636f528def9161d109fe11b93a3/html/semantics/forms/form-submission-0/multipart-formdata.window.js
+# and https://github.com/web-platform-tests/wpt/blob/4ad507b28db0a636f528def9161d109fe11b93a3/html/semantics/forms/form-submission-0/urlencoded2.window.js,
+# fetched 2026-10-20. Extracted by script, not edited: each file is run with a stub
+# formTest that records its argument, and each line below is one recorded object in file
+# order, with "enctype" added and a File value written {"file": name, "type": type}.
+# Selection: the 6 objects with a formEncoding (windows-1252) are dropped, because std/form
+# encodes UTF-8 only; the 56 left are kept. A multipart "expected" names the part's name,
+# filename and value as byte strings (one character per byte) inside upstream's template:
+# boundary line, Content-Disposition (with filename and Content-Type: text/plain for a file),
+# blank line, value, closing boundary, CRLF. tests/semantics/form_encode_wpt.sak and .stdout
+# are generated from this file: SAKURA_BLESS=1 cargo test -p sakura_cli --test semantics form_vectors
+{"enctype":"multipart","name":"basic","value":"test","expected":{"name":"basic","value":"test"},"description":"Basic test"}
+{"enctype":"multipart","name":"basic","value":{"file":"file-test.txt","type":"text/plain"},"expected":{"name":"basic","filename":"file-test.txt","value":""},"description":"Basic File test"}
+{"enctype":"multipart","name":"a\u0000b","value":"c","expected":{"name":"a\u0000b","value":"c"},"description":"0x00 in name"}
+{"enctype":"multipart","name":"a","value":"b\u0000c","expected":{"name":"a","value":"b\u0000c"},"description":"0x00 in value"}
+{"enctype":"multipart","name":"a","value":{"file":"b\u0000c","type":"text/plain"},"expected":{"name":"a","filename":"b\u0000c","value":""},"description":"0x00 in filename"}
+{"enctype":"multipart","name":"a\nb","value":"c","expected":{"name":"a%0D%0Ab","value":"c"},"description":"\\n in name"}
+{"enctype":"multipart","name":"a\rb","value":"c","expected":{"name":"a%0D%0Ab","value":"c"},"description":"\\r in name"}
+{"enctype":"multipart","name":"a\r\nb","value":"c","expected":{"name":"a%0D%0Ab","value":"c"},"description":"\\r\\n in name"}
+{"enctype":"multipart","name":"a\n\rb","value":"c","expected":{"name":"a%0D%0A%0D%0Ab","value":"c"},"description":"\\n\\r in name"}
+{"enctype":"multipart","name":"a","value":"b\nc","expected":{"name":"a","value":"b\r\nc"},"description":"\\n in value"}
+{"enctype":"multipart","name":"a","value":"b\rc","expected":{"name":"a","value":"b\r\nc"},"description":"\\r in value"}
+{"enctype":"multipart","name":"a","value":"b\r\nc","expected":{"name":"a","value":"b\r\nc"},"description":"\\r\\n in value"}
+{"enctype":"multipart","name":"a","value":"b\n\rc","expected":{"name":"a","value":"b\r\n\r\nc"},"description":"\\n\\r in value"}
+{"enctype":"multipart","name":"a","value":{"file":"b\nc","type":"text/plain"},"expected":{"name":"a","filename":"b%0Ac","value":""},"description":"\\n in filename"}
+{"enctype":"multipart","name":"a","value":{"file":"b\rc","type":"text/plain"},"expected":{"name":"a","filename":"b%0Dc","value":""},"description":"\\r in filename"}
+{"enctype":"multipart","name":"a","value":{"file":"b\r\nc","type":"text/plain"},"expected":{"name":"a","filename":"b%0D%0Ac","value":""},"description":"\\r\\n in filename"}
+{"enctype":"multipart","name":"a","value":{"file":"b\n\rc","type":"text/plain"},"expected":{"name":"a","filename":"b%0A%0Dc","value":""},"description":"\\n\\r in filename"}
+{"enctype":"multipart","name":"a\"b","value":"c","expected":{"name":"a%22b","value":"c"},"description":"double quote in name"}
+{"enctype":"multipart","name":"a","value":"b\"c","expected":{"name":"a","value":"b\"c"},"description":"double quote in value"}
+{"enctype":"multipart","name":"a","value":{"file":"b\"c","type":"text/plain"},"expected":{"name":"a","filename":"b%22c","value":""},"description":"double quote in filename"}
+{"enctype":"multipart","name":"a'b","value":"c","expected":{"name":"a'b","value":"c"},"description":"single quote in name"}
+{"enctype":"multipart","name":"a","value":"b'c","expected":{"name":"a","value":"b'c"},"description":"single quote in value"}
+{"enctype":"multipart","name":"a","value":{"file":"b'c","type":"text/plain"},"expected":{"name":"a","filename":"b'c","value":""},"description":"single quote in filename"}
+{"enctype":"multipart","name":"a\\b","value":"c","expected":{"name":"a\\b","value":"c"},"description":"backslash in name"}
+{"enctype":"multipart","name":"a","value":"b\\c","expected":{"name":"a","value":"b\\c"},"description":"backslash in value"}
+{"enctype":"multipart","name":"a","value":{"file":"b\\c","type":"text/plain"},"expected":{"name":"a","filename":"b\\c","value":""},"description":"backslash in filename"}
+{"enctype":"multipart","name":"áb","value":"ç","expected":{"name":"Ã¡b","value":"Ã§"},"description":"non-ASCII in name and value"}
+{"enctype":"multipart","name":"a","value":{"file":"ə.txt","type":"text/plain"},"expected":{"name":"a","filename":"É.txt","value":""},"description":"non-ASCII in filename"}
+{"enctype":"urlencoded","name":"basic","value":"test","expected":"basic=test","description":"Basic test"}
+{"enctype":"urlencoded","name":"basic","value":{"file":"file-test.txt","type":""},"expected":"basic=file-test.txt","description":"Basic File test"}
+{"enctype":"urlencoded","name":"a\u0000b","value":"c","expected":"a%00b=c","description":"0x00 in name"}
+{"enctype":"urlencoded","name":"a","value":"b\u0000c","expected":"a=b%00c","description":"0x00 in value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\u0000c","type":""},"expected":"a=b%00c","description":"0x00 in filename"}
+{"enctype":"urlencoded","name":"a\nb","value":"c","expected":"a%0D%0Ab=c","description":"\\n in name"}
+{"enctype":"urlencoded","name":"a\rb","value":"c","expected":"a%0D%0Ab=c","description":"\\r in name"}
+{"enctype":"urlencoded","name":"a\r\nb","value":"c","expected":"a%0D%0Ab=c","description":"\\r\\n in name"}
+{"enctype":"urlencoded","name":"a\n\rb","value":"c","expected":"a%0D%0A%0D%0Ab=c","description":"\\n\\r in name"}
+{"enctype":"urlencoded","name":"a","value":"b\nc","expected":"a=b%0D%0Ac","description":"\\n in value"}
+{"enctype":"urlencoded","name":"a","value":"b\rc","expected":"a=b%0D%0Ac","description":"\\r in value"}
+{"enctype":"urlencoded","name":"a","value":"b\r\nc","expected":"a=b%0D%0Ac","description":"\\r\\n in value"}
+{"enctype":"urlencoded","name":"a","value":"b\n\rc","expected":"a=b%0D%0A%0D%0Ac","description":"\\n\\r in value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\nc","type":""},"expected":"a=b%0D%0Ac","description":"\\n in filename"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\rc","type":""},"expected":"a=b%0D%0Ac","description":"\\r in filename"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\r\nc","type":""},"expected":"a=b%0D%0Ac","description":"\\r\\n in filename"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\n\rc","type":""},"expected":"a=b%0D%0A%0D%0Ac","description":"\\n\\r in filename"}
+{"enctype":"urlencoded","name":"a\"b","value":"c","expected":"a%22b=c","description":"double quote in name"}
+{"enctype":"urlencoded","name":"a","value":"b\"c","expected":"a=b%22c","description":"double quote in value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\"c","type":""},"expected":"a=b%22c","description":"double quote in filename"}
+{"enctype":"urlencoded","name":"a'b","value":"c","expected":"a%27b=c","description":"single quote in name"}
+{"enctype":"urlencoded","name":"a","value":"b'c","expected":"a=b%27c","description":"single quote in value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b'c","type":""},"expected":"a=b%27c","description":"single quote in filename"}
+{"enctype":"urlencoded","name":"a\\b","value":"c","expected":"a%5Cb=c","description":"backslash in name"}
+{"enctype":"urlencoded","name":"a","value":"b\\c","expected":"a=b%5Cc","description":"backslash in value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"b\\c","type":""},"expected":"a=b%5Cc","description":"backslash in filename"}
+{"enctype":"urlencoded","name":"áb","value":"ç","expected":"%C3%A1b=%C3%A7","description":"non-ASCII in name and value"}
+{"enctype":"urlencoded","name":"a","value":{"file":"ə.txt","type":""},"expected":"a=%C9%99.txt","description":"non-ASCII in filename"}
