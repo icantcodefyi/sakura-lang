@@ -387,6 +387,9 @@ def accept_installed(sakura, ver, commit, tmp):
     if os.name == "nt":
         env.update({k: os.environ[k] for k in ("SystemRoot", "PATHEXT", "COMSPEC", "WINDIR") if k in os.environ})
         env["USERPROFILE"] = str(home)
+        temporary = tmp / "temp"
+        temporary.mkdir()
+        env.update(TMP=str(temporary), TEMP=str(temporary))
     out = run([sakura, "--version"], tmp, env)
     if out != f"sakura {ver} ({commit})\n":
         fail(f"--version printed {out!r}")
