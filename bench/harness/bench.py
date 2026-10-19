@@ -966,6 +966,17 @@ def cmd_bless(a):
 # bench compile (research/10 §6 budgets, p95 over 15 processes)
 
 BUDGETS_MS = {"check_cold_10k": 1000, "build_10k": 500, "check_cold_100k": 3000, "lsp_edit_10k": 100}
+# Design §17.195 (1): reported beside the budgets, never an exit, until the owner promotes one.
+TARGETS_MS = {"check_hello": 10, "check_cold_10k": 45}
+
+
+def hello():
+    """The `sakura new cli` project, made by the CLI under test."""
+    d = TARGET / "hello"
+    if not (d / "src" / "main.sak").exists():
+        shutil.rmtree(d, ignore_errors=True)
+        sh([str(SAKURA), "new", "cli", d.name], cwd=d.parent)
+    return d
 
 
 def corpus(lines):
@@ -1003,6 +1014,7 @@ def p95(xs):
 
 
 def timed(cmd, runs=15):
+    sh(cmd)  # warm-up: the OS file cache and std's analysis cache (design §17.195 (3))
     out = []
     for _ in range(runs):
         t = time.perf_counter()
@@ -1068,31 +1080,42 @@ def lsp_edit_ms(root, runs=15):
 
 def cmd_compile(a):
     build_cli()
-    res = new_result({"command": "compile", "seed": SEED})
-    small, large = corpus(10_000), corpus(100_000)
+    # The bench's own cache of std's analysis, so a run does not depend on the user's.
+    os.environ.setdefault("SAKURA_CACHE_DIR", str(TARGET / "cache"))
+    res = new_result({"command": "compile", "seed": SEED,
+                      "std_cache": "off" if os.environ.get("SAKURA_NO_CACHE", "0") not in ("", "0") else "on"})
+    TARGET.mkdir(parents=True, exist_ok=True)
+    small, large, hi = corpus(10_000), corpus(100_000), hello()
     lines = lambda d: sum(len(f.read_text().splitlines()) for f in d.rglob("*.sak"))
-    cases = {"check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)])),
+    # `test_hello` has no budget or target: it shows the Node spawn's share (§17.195 (1)).
+    cases = {"check_hello": (hi, lambda: timed([str(SAKURA), "check", str(hi)])),
+             "test_hello": (hi, lambda: timed([str(SAKURA), "test", str(hi)])),
+             "check_cold_10k": (small, lambda: timed([str(SAKURA), "check", str(small)])),
              "build_10k": (small, lambda: timed([str(SAKURA), "build", "--out-dir", str(TARGET / "corpus-out"), str(small)])),
              "check_cold_100k": (large, lambda: timed([str(SAKURA), "check", str(large)])),
              "lsp_edit_10k": (small, lambda: lsp_edit_ms(small))}
     status = EXIT_OK
-    print("| Case | Lines | p95 ms | Median ms | Budget ms | |\n|---|---:|---:|---:|---:|---|", flush=True)
+    print("| Case | Lines | p95 ms | Median ms | Budget ms | Target ms | |\n|---|---:|---:|---:|---:|---:|---|",
+          flush=True)
     for name, (d, run) in cases.items():
+        budget, target = BUDGETS_MS.get(name), TARGETS_MS.get(name)
+        cols = f"{budget or ''} | {target or ''}"
         try:
             ms = run()
         except Fail as e:
             res["meta"]["failures"].append({"program": name, "variant": "sakura", "engine": "cli", "error": str(e)})
-            print(f"| {name} | {lines(d)} | ✗ | | {BUDGETS_MS[name]} | {str(e).splitlines()[0]} |")
+            print(f"| {name} | {lines(d)} | ✗ | | {cols} | {str(e).splitlines()[0]} |")
             status = EXIT_BLOCKED
             continue
-        over = p95(ms) > BUDGETS_MS[name]
+        over = budget is not None and p95(ms) > budget
+        missed = target is not None and p95(ms) > target
         status = EXIT_BLOCKED if over else status
         res["results"].append({"program": name, "variant": "sakura", "engine": "cli", "lane": "compile", "ints": None,
                                "size": lines(d), "samples_ms": ms, "median_ms": statistics.median(ms),
-                               "p95_ms": p95(ms), "budget_ms": BUDGETS_MS[name], "process_medians_ms": ms,
-                               "rss_bytes": None, "checksum_ok": True, "checksum": None})
-        print(f"| {name} | {lines(d)} | {p95(ms):.1f} | {statistics.median(ms):.1f} | {BUDGETS_MS[name]} "
-              f"| {'over budget' if over else 'ok'} |")
+                               "p95_ms": p95(ms), "budget_ms": budget, "target_ms": target,
+                               "process_medians_ms": ms, "rss_bytes": None, "checksum_ok": True, "checksum": None})
+        verdict = "over budget" if over else "target missed" if missed else "ok"
+        print(f"| {name} | {lines(d)} | {p95(ms):.1f} | {statistics.median(ms):.1f} | {cols} | {verdict} |")
     Path(a.json).parent.mkdir(parents=True, exist_ok=True)
     Path(a.json).write_text(json.dumps(res, indent=1) + "\n")
     return status
