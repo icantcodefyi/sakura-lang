@@ -13,6 +13,10 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   (design §2.2, §17.243 (2)). `1_`, `1__000`, `0x_ff`, `0xff_`, `1_.5`, `1.5_` and `1.5_e3`,
   which the lexer used to accept, are now `V0006 malformed_number` at the misplaced `_`;
   `1_000`, `0xff_ff` and `1_000.000_5` are unchanged.
+- `sakura test` relays its test runner's exit codes `0`, `2`, `3` and `70` unchanged (design
+  §17.243 (5)). A module of another ABI under `sakura test --target wasm` now exits `2` after
+  the runner's `V8003` line instead of `70` with "the test runner crashed"; only another
+  status, a signal or the time limit is reported by the CLI itself.
 
 ## [0.1.0] - Unreleased
 

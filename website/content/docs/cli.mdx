@@ -108,6 +108,9 @@ absent.
 | `75` | Refused at startup: `main` declares an effect that `[permissions]` grants no authority for. |
 
 `sakura run` exits with the program's own status, so a program can return other values.
+`sakura test` exits with its test runner's `0`, `2`, `3` or `70` unchanged, after the runner's
+own message on stderr (a WebAssembly module built for another ABI is `V8003` and `2`); any
+other runner status is `70`, reported as a crash of the runner.
 
 ## Environment
 

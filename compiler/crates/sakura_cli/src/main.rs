@@ -1073,15 +1073,25 @@ fn test(
             );
             ExitCode::from(EXIT_TEST_FAILURES)
         }
-        Some(s) if s.code() == Some(0) => ExitCode::SUCCESS,
-        Some(s) if s.code() == Some(EXIT_TEST_FAILURES as i32) => {
-            ExitCode::from(EXIT_TEST_FAILURES)
-        }
-        Some(s) => {
-            eprintln!("error: the test runner crashed ({s})");
-            ExitCode::from(EXIT_DEFECT)
-        }
+        // The runner's exit codes are §12.1's and pass through unchanged; it has already said
+        // why on stderr (`V8003` is 2, a defect 70; design §17.243 (5)).
+        Some(s) => match relayed_test_exit(s.code()) {
+            Some(code) => ExitCode::from(code),
+            None => {
+                eprintln!("error: the test runner crashed ({s})");
+                ExitCode::from(EXIT_DEFECT)
+            }
+        },
     }
+}
+
+/// A test runner's exit code that `sakura test` relays as its own: 0, 2, 3 or 70. Any other
+/// status, or a signal, is a crash.
+fn relayed_test_exit(code: Option<i32>) -> Option<u8> {
+    let code = u8::try_from(code?).ok()?;
+    [0, EXIT_USAGE, EXIT_TEST_FAILURES, EXIT_DEFECT]
+        .contains(&code)
+        .then_some(code)
 }
 
 /// Terminal rendering of the runner's JSON records; `skips` go before the summary line.
@@ -1273,6 +1283,25 @@ mod tests {
             super::child_exit(Some(0xC000013A_u32 as i32)),
             super::EXIT_DEFECT
         );
+    }
+
+    /// Design §17.243 (5): the runner's 0, 2, 3 and 70 are relayed; anything else is a crash.
+    #[test]
+    fn sakura_test_relays_the_runners_contract_exits() {
+        for code in [0, 2, 3, 70] {
+            assert_eq!(super::relayed_test_exit(Some(code)), Some(code as u8));
+        }
+        for code in [
+            Some(1),
+            Some(4),
+            Some(75),
+            Some(255),
+            Some(-1),
+            Some(256),
+            None,
+        ] {
+            assert_eq!(super::relayed_test_exit(code), None, "{code:?}");
+        }
     }
 
     #[test]
