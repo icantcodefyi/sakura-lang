@@ -296,14 +296,15 @@ fn take_fn(r: Repr) -> &'static str {
     }
 }
 
-/// Each variable's local, from `first`, and the locals to declare for them. A variable lives
-/// only in the block that defines it (the LIR passes every value on edges and through frame
-/// slots), so past [`CHUNK`] blocks the blocks share locals: the `k`-th variable of a type a
-/// block defines takes that type's `k`-th local. V8's optimizing tier is quadratic in locals
-/// times branches back to the dispatch loop, and ran out of memory on a function of 6,000
-/// blocks with a local per variable. Smaller functions keep a local per variable.
+/// Each variable's local, from `first`, and the locals to declare for them. A function of at
+/// most [`LOCALS`] variables has a local per variable. Past it locals are assigned by
+/// liveness (design §17.219 (3)): a variable lives only in the block that defines it (the LIR
+/// passes every value on edges and through frame slots), so each block assigns its own from
+/// the start, a local free again after the instruction that last uses its variable. V8's
+/// optimizing tier is quadratic in locals times branches back to the dispatch loop, and took
+/// 570 MB on one block of 3,000 `let`s with a local per variable.
 fn locals(f: &Func, first: u32) -> (Vec<u32>, Vec<(u32, ValType)>) {
-    if f.blocks.len() <= CHUNK {
+    if f.vars.len() <= LOCALS {
         let slots = (0..f.vars.len() as u32).map(|v| first + v).collect();
         return (
             slots,
@@ -319,18 +320,51 @@ fn locals(f: &Func, first: u32) -> (Vec<u32>, Vec<(u32, ValType)>) {
     };
     let mut nth = vec![0u32; f.vars.len()];
     let mut most = [1u32; 3];
+    // The position of each variable's last use in its block: the parameters are defined at 0,
+    // instruction `i` at `i + 1`, and the terminator uses at `insts.len() + 1`.
+    let mut last = vec![0usize; f.vars.len()];
     for b in &f.blocks {
-        let mut next = [0u32; 3];
-        for v in b
-            .params
+        let end = b.insts.len() + 1;
+        for (i, inst) in b.insts.iter().enumerate() {
+            inst.uses()
+                .iter()
+                .for_each(|&(v, _)| last[v.index()] = i + 1);
+        }
+        let edges = b.term.edges();
+        let args = edges.iter().flat_map(|(e, _)| &e.args).copied();
+        b.term
+            .uses()
             .iter()
-            .copied()
-            .chain(b.insts.iter().filter_map(Inst::dst))
-        {
+            .map(|&(v, _)| v)
+            .chain(args)
+            .for_each(|v| last[v.index()] = end);
+        let mut free: [Vec<u32>; 3] = Default::default();
+        let mut next = [0u32; 3];
+        let mut dying = vec![Vec::new(); end];
+        let defs = b.params.iter().map(|&p| (0, p));
+        let defs = defs.chain(
+            b.insts
+                .iter()
+                .enumerate()
+                .filter_map(|(i, x)| Some((i + 1, x.dst()?))),
+        );
+        let mut at = 0;
+        for (pos, v) in defs {
+            // A local is free once the instruction after its variable's last use is reached,
+            // so an instruction's result never shares one with its operands.
+            for d in dying[at..pos].iter_mut().flat_map(std::mem::take) {
+                free[kind(d)].push(nth[d.index()]);
+            }
+            at = at.max(pos);
             let k = kind(v);
-            nth[v.index()] = next[k];
-            next[k] += 1;
+            nth[v.index()] = free[k].pop().unwrap_or_else(|| {
+                next[k] += 1;
+                next[k] - 1
+            });
             most[k] = most[k].max(next[k]);
+            if last[v.index()] < end {
+                dying[last[v.index()].max(pos)].push(v);
+            }
         }
     }
     let base = [first, first + most[0], first + most[0] + most[1]];
@@ -480,7 +514,7 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         stacks: &stacks,
         tables: &tables,
         slots: &slots,
-        shared: f.blocks.len() > CHUNK,
+        shared: f.vars.len() > LOCALS,
         lb: scratch,
         lf2: scratch + 1,
         lu: scratch + 2,
@@ -542,7 +576,7 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         stacks: &stacks,
         tables: &tables,
         slots: &slots,
-        shared: f.blocks.len() > CHUNK,
+        shared: f.vars.len() > LOCALS,
         lb: scratch,
         lf2: scratch + 1,
         lu: scratch + 2,
@@ -598,6 +632,9 @@ enum Case {
 
 /// The cases one dispatch level holds, past it the dispatch is two-level (design §17.200 (3)).
 const CHUNK: usize = 256;
+
+/// A function of at most this many variables has a local per variable ([`locals`]).
+const LOCALS: usize = 256;
 
 /// A `Switch` of at most this many arms tests them one after another, as small ones always did.
 const LINEAR: usize = 8;
