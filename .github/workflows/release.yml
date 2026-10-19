@@ -219,6 +219,11 @@ jobs:
           if [ -f "$keychain" ]; then security delete-keychain "$keychain" >/dev/null 2>&1 || status=1; fi
           rm -rf "$RUNNER_TEMP/sakura-signing"
           exit "$status"
+      - name: Enable Intel execution for signed archive smoke
+        run: |
+          if ! arch -x86_64 /usr/bin/true; then
+            softwareupdate --install-rosetta --agree-to-license
+          fi
       - name: Archive and smoke the signed binaries
         env:
           VERSION: ${{ steps.context.outputs.version }}
@@ -331,6 +336,26 @@ jobs:
             --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
             "./dist/sakuralang-$VERSION.tgz" "./dist/$NPM_PACKAGE-$VERSION.tgz"
           test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+
+      - name: Smoke the Intel Homebrew formula against the assembled archive
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: |
+          # Mirror only the URLs for this local smoke; hashes and production asset stay intact.
+          brew tap-new --no-git sakuralang/release-smoke
+          FORMULA="$(brew --repository sakuralang/release-smoke)/Formula/sakuralang.rb"
+          export FORMULA
+          python3 -I - <<'PYTHON'
+          import os, re
+          from pathlib import Path
+          source = Path('dist/sakuralang.rb').read_text()
+          source = re.sub(r'https://github.com/icantcodefyi/sakuralang/releases/download/v[^/]+/([^"\n]+)',
+                          lambda match: (Path('dist') / match[1]).resolve().as_uri(), source)
+          Path(os.environ['FORMULA']).write_text(source)
+          PYTHON
+          brew trust --formula sakuralang/release-smoke/sakuralang
+          brew install --formula sakuralang/release-smoke/sakuralang
+          test "$(sakura --version)" = "sakura $VERSION ($COMMIT)"
+          brew test sakuralang/release-smoke/sakuralang
 
       - name: Windows installer and npm offline install
         if: runner.os == 'Windows'

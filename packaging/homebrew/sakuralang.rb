@@ -12,11 +12,13 @@ class Sakuralang < Formula
   depends_on "node"
 
   on_macos do
-    depends_on arch: :arm64
-
     on_arm do
       url "https://github.com/icantcodefyi/sakuralang/releases/download/v@VERSION@/sakuralang-@VERSION@-aarch64-apple-darwin.tar.gz"
       sha256 "@SHA256_aarch64-apple-darwin@"
+    end
+    on_intel do
+      url "https://github.com/icantcodefyi/sakuralang/releases/download/v@VERSION@/sakuralang-@VERSION@-x86_64-apple-darwin.tar.gz"
+      sha256 "@SHA256_x86_64-apple-darwin@"
     end
   end
 

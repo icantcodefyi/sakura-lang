@@ -362,3 +362,19 @@ Homebrew 6 requires explicit trust for third-party formulae. Before the publishe
 smoke uses the documented tap/install command, it runs `brew tap icantcodefyi/sakuralang`
 and `brew trust --formula icantcodefyi/sakuralang/sakuralang` on the fresh runner.
 See [Homebrew tap trust](https://docs.brew.sh/Tap-Trust).
+
+### Intel Mac packaging and runner retirement
+
+Intel macOS builds, suites, JS/WASM parity and installer/npm/Homebrew smoke run on
+GitHub's public `macos-15-intel` runner. The Darwin signing job signs and notarizes
+both inventory binaries before assembly computes hashes and stages npm and Homebrew.
+Dry runs skip signing. The Intel formula smoke mirrors the assembled archive through a
+local `file://` URL with the production checksum, then runs `brew test`.
+
+When GitHub retires `macos-15-intel`, move the Intel packaging and acceptance row to
+`macos-15` under Rosetta. Check `arch -x86_64 /usr/bin/true`; if it fails, run
+`softwareupdate --install-rosetta --agree-to-license`. Smoke the archive only, using
+`install.sh --target x86_64-apple-darwin` to override native CPU selection deliberately.
+Record the last green Intel-runner date and mark Intel npm and Homebrew as
+"untested since <date>" in the install docs; Rosetta alone does not qualify an x64
+Node or Homebrew installation (design §17.227 (2)). No paid runner is required.

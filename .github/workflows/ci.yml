@@ -75,6 +75,14 @@ jobs:
             label: "windows-2025, 2/2"
             partition: --partition hash:2/2
             checks: false
+          - os: macos-15-intel
+            label: "macos-15-intel, 1/2"
+            partition: --partition hash:1/2
+            checks: true
+          - os: macos-15-intel
+            label: "macos-15-intel, 2/2"
+            partition: --partition hash:2/2
+            checks: false
           - os: macos-latest
             label: "macos-latest, 1/2"
             partition: --partition hash:1/2
@@ -133,6 +141,12 @@ jobs:
               z3_sha256=014e2705e53609bcf46718d7c29426e7d0b98512ed00b8f794e3304869a5fd8b
               cvc5_platform=Win64-x86_64
               cvc5_sha256=9055de9b724724890ba5a19cfdc98f68a8c0653284afa843096dec432a0f88c3
+              ;;
+            macOS-X64)
+              z3_platform=x64-osx-13.3
+              z3_sha256=221a03688d6b08814a90c78b42d16d38aa6355dacd0a5253665d42c4d4361230
+              cvc5_platform=macOS-x86_64
+              cvc5_sha256=f2bbbfe089c77c4a676dd05f262eee86b9718c32374c424138c416024ff42477
               ;;
             macOS-ARM64)
               z3_platform=arm64-osx-13.3
@@ -404,7 +418,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-2025]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-2025]
         backend: [js, wasm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

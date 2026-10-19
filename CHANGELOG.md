@@ -26,6 +26,10 @@ Compare the release tag with main when identifying changes not in that preview.
 - Draft grammar and diagnostic specification in `docs/spec/`, indexed by fixtures,
   with a generated diagnostic identity table and a Python drift check.
 
+- Intel macOS archives, npm and Homebrew packaging with public Intel-hosted suites,
+  parity and release smoke; both Darwin architectures enter the existing signing job.
+  Release-specific support still requires published-channel acceptance.
+
 - Published-channel acceptance workflow with exact version/commit checks, a deliberate
   installer target override, and a platform-report issue form for community confirmations.
 - Windows x64 MSVC ZIP and npm packaging, a checksum-verifying PowerShell installer,

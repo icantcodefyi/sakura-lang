@@ -24,6 +24,7 @@
     "sakuralang-darwin-arm64": "0.1.0-alpha.1",
     "sakuralang-linux-x64-gnu": "0.1.0-alpha.1",
     "sakuralang-linux-arm64-gnu": "0.1.0-alpha.1",
-    "sakuralang-win32-x64-msvc": "0.1.0-alpha.1"
+    "sakuralang-win32-x64-msvc": "0.1.0-alpha.1",
+    "sakuralang-darwin-x64": "0.1.0-alpha.1"
   }
 }
