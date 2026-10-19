@@ -40,7 +40,7 @@ absent is denied. Each key is a list of strings:
 | --- | --- |
 | `fs.read` | Directories `Fs` may read, relative to the project. |
 | `fs.write` | Directories `Fs` may write. A write through a symbolic link that leaves the grant is refused. |
-| `net` | `host:port` pairs `Http` and `Serve` may reach. |
+| `net` | `host:port` pairs `Http` and `Serve` may reach, checked on every redirect hop. |
 | `env` | Environment variables `Env` may read. Other names read as absent. |
 | `process` | Reserved. `process = []` is accepted and grants nothing, the same as leaving the key out: no std effect starts processes. Any other list is [`V8006`](/docs/errors/V8006): "`process` grants nothing in this version: no std effect starts processes; the key is reserved". |
 
