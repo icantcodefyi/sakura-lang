@@ -172,8 +172,7 @@ pub fn replaying(c: Cassette) -> Handler<Http, {Fs, Http}> {
   }
 }
 
-// A cassette is a checked-in file (§17.205 (2), §17.209 (4)); for a streamed body the limit
-// also keeps one boxed `Int` per byte far under the test runner's heap.
+// A cassette is a checked-in file (§17.205 (2), §17.209 (4)).
 let max_recorded_body = 16_777_216
 
 fn too_large_to_record() -> HttpError {
@@ -184,19 +183,16 @@ fn too_large_to_record() -> HttpError {
 }
 
 fn read_body(b: Body) -> Bytes ! {Http, Fail<HttpError>} {
-  var out: List<Int> = []
+  var parts: List<Bytes> = []
   var n = 0
   var chunk = Http.read_chunk(b, 65_536)
   while Bytes.len(chunk) > 0 {
     n = n + Bytes.len(chunk)
     if n > max_recorded_body { fail too_large_to_record() }
-    out = List.concat(
-      out,
-      List.filter_map(List.range(0, Bytes.len(chunk)), fn(i) { Bytes.get(chunk, i) }),
-    )
+    parts = List.push(parts, chunk)
     chunk = Http.read_chunk(b, 65_536)
   }
-  Bytes.from_list(out)
+  Bytes.concat(parts)
 }
 
 fn ok_or_fail<T>(r: Result<T, String>) -> T ! {Fail<HttpError>} {

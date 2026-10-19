@@ -71,11 +71,18 @@ pub fn from_bytes(b: Bytes) -> Result<String, Utf8Error>
 @external(js, "sakura_runtime", "string_slice")
 pub fn slice(s: String, start: Int, end: Int) -> String
 
+/// `s` `n` times, by doubling: O(log n) concatenations.
 pub fn repeat(s: String, n: Int) -> String
   requires n >= 0
 {
   var out = ""
-  for _ in 0..n { out = out + s }
+  var part = s
+  var k = n
+  while k > 0 {
+    if k % 2 == 1 { out = out + part }
+    k = k / 2
+    if k > 0 { part = part + part }
+  }
   out
 }
 
@@ -134,6 +141,8 @@ test "slice by bytes, defect inside a character" {
 test "repeat and pad_left" {
   expect_eq(repeat("ab", 3), "ababab")
   expect_eq(repeat("ab", 0), "")
+  expect_eq(repeat("ab", 6), "abababababab")
+  expect_eq(len(repeat("é", 1_000_001)), 2_000_002)
   expect_eq(pad_left("7", 3, "0"), "007")
   expect_eq(pad_left("1234", 3, "0"), "1234")
 }

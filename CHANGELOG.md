@@ -120,6 +120,11 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   scope's own outcome, so the failure never reached a surrounding `try` and `main` ended with
   a defect record without a code. The first unjoined failure or defect propagates, as the
   runtime ABI says, on the JS, WASM and native backends alike.
+- `String.repeat(s, n)` makes O(log n) concatenations by doubling instead of `n`: a 16 MiB
+  `repeat("a", 16_777_216)` took about a second of garbage collection on JS. The result is
+  unchanged.
+- `sakura test --record` holds a recorded streamed body as its chunks, joined once with
+  `Bytes.concat` (design §17.205 (4)), not as one boxed `Int` per byte.
 
 ### Security
 
