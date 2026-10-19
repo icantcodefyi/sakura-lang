@@ -222,6 +222,12 @@ it and parity/docs only restore it. Native and MSRV have separate cache namespac
 Pinned nextest binaries and checksum-verified solver installs are cached by version,
 OS and architecture. Tool version bumps invalidate their caches.
 
+When evaluating CI changes, watch each probe with `gh run watch <run-id>
+--exit-status`. Record run wall time from creation to the final job's completion,
+including runner queueing. Measure setup from the first `Set up job` step to the
+first check/build/test step, separately from queue time. Compare matching runner
+labels and report cold cache misses, failures and sample counts alongside timings.
+
 `ci-required` aggregates
 website, Rust, MSRV, native, parity, Tree-sitter, and VS Code checks. The Rust jobs run in `compiler/`
 using its pinned toolchain: fmt, clippy, workspace tests with cargo-nextest,
