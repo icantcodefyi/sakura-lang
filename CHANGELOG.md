@@ -15,6 +15,9 @@ published yet.
 
 ### Added
 
+- Draft RFC 0001 proposes stability guarantees and identifies enforcement gaps for
+  owner acceptance at `v0.2.0`; current compatibility policy is unchanged.
+
 - Per-OS website install instructions with release-specific platform claims, Node 26
   setup for Raspberry Pi users, and explicit Windows/Intel Mac v0.2.0 availability.
 

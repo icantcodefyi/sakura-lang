@@ -39,6 +39,9 @@ foreign file only costs the analysis it would have saved.
 
 ## Contracts to define at 1.0
 
+[RFC 0001](docs/rfcs/0001-stability-guarantees.md) drafts these guarantees for
+owner acceptance at `v0.2.0`. It remains Draft and does not change this policy.
+
 Before 1.0, enumerate guarantees for source semantics, standard-library APIs,
 CLI flags and exit codes, configuration formats, structured diagnostic schemas,
 and LSP extensions. Version machine protocols independently when necessary.
