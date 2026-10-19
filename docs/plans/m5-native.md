@@ -116,7 +116,12 @@ the evaluator). Acceptance as built: `sakura_host_native/tests/corpus.rs` compil
 the 169 corpus programs. 165 agree with JS byte for byte. The four misses are the N1b programs
 already in `KNOWN_NATIVE`. Each passing program ends with the evaluator's live objects, frames,
 boxes, `Dup`s and `Drop`s (`SAKURA_NATIVE_STATS`, the WASM host's `SAKURA_WASM_STATS` format).
-Two compilations give the same bytes. **Next:** N2b direct twins and the gauge with `restarts`;
+Two compilations give the same bytes. N2b adds the direct twins. They use Cranelift's `tail`
+convention (x86-64 and AArch64; elsewhere every call runs on frames) with `(ctx, budget, params…)
+-> (result, state)`. The gauge, the entry and abort rules and the closure twin table
+(`sakura$twins`, §17.211 (2)) come from `sakura_lir::direct`, which the WASM backend now shares.
+The corpus runs both with twins and with `--no-direct`: 165 of 169 agree each way, and the twin
+runs end with the evaluator's live objects. **Next:**
 N2c `sakura build --target native`, the `parity.rs` native backend and the `sakura.native`
 record; N2d symbols, `.eh_frame` and the DWARF line table with the debugger smoke; N2e
 `--native-checks` and the §17.173 lanes; N2f the compile report and the CI parity matrix.
