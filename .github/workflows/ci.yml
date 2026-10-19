@@ -338,11 +338,62 @@ jobs:
           path: editors/vscode/*.vsix
           if-no-files-found: error
 
+  tree-sitter:
+    name: Tree-sitter grammar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: editors/tree-sitter-sakura
+    env:
+      # The `tree-sitter-cli` version in editors/tree-sitter-sakura/package.json.
+      TREE_SITTER_VERSION: "0.27.1"
+      TREE_SITTER_SHA256: d01042f94ba3d6827ddc9788e235f75d8366431be42bdf90ade534d960c98b7d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # `tree-sitter generate` evaluates grammar.js with Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Install tree-sitter CLI
+        run: |
+          grep -q "\"tree-sitter-cli\": \"$TREE_SITTER_VERSION\"" package.json
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/tree-sitter.gz" \
+            "https://github.com/tree-sitter/tree-sitter/releases/download/v$TREE_SITTER_VERSION/tree-sitter-linux-x64.gz"
+          echo "$TREE_SITTER_SHA256  $RUNNER_TEMP/tree-sitter.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          gunzip -c "$RUNNER_TEMP/tree-sitter.gz" > "$RUNNER_TEMP/bin/tree-sitter"
+          chmod +x "$RUNNER_TEMP/bin/tree-sitter"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # 0.27 has no `generate --check`: regenerate and require no change.
+      - name: Generated sources are current
+        run: |
+          tree-sitter generate
+          git diff --exit-code -- src
+          test -z "$(git status --porcelain -- src)"
+      - name: Corpus and highlight tests
+        run: tree-sitter test
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: editors/tree-sitter-sakura
+          key: tree-sitter
+      # Not `--locked`: `sakura_syntax`'s dependency requirements come from the compiler
+      # workspace's Cargo.toml, so a compiler dependency bump would make this lockfile stale.
+      - name: Every .sak file against the compiler's parser
+        run: |
+          toolchain=$(sed -n 's/^channel = "\(.*\)"/\1/p' ../../compiler/rust-toolchain.toml)
+          cargo "+$toolchain" test
+
   ci-required:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [website, rust, native, parity, vscode]
+    needs: [website, rust, native, parity, vscode, tree-sitter]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -353,9 +404,11 @@ jobs:
           NATIVE_RESULT: ${{ needs.native.result }}
           PARITY_RESULT: ${{ needs.parity.result }}
           VSCODE_RESULT: ${{ needs.vscode.result }}
+          TREE_SITTER_RESULT: ${{ needs.tree-sitter.result }}
         run: |
           test "$WEBSITE_RESULT" = success
           test "$RUST_RESULT" = success
           test "$NATIVE_RESULT" = success
           test "$PARITY_RESULT" = success
           test "$VSCODE_RESULT" = success
+          test "$TREE_SITTER_RESULT" = success
