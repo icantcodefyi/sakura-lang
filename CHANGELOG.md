@@ -264,12 +264,15 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - `--target wasm` runs a `perform` bound to a handler literal in the same function (design
   §17.113 (a)) as a direct call of its clause, and gives such functions and their clauses
   direct twins, so a loop performing a local handler's operation allocates no continuation
-  frames (design §17.211 (1)). Output, traces and defects are unchanged.
+  frames: `handled_d1`, `_d4` and `_d16` run 4 frames per `run(1000)` where they ran 1,005
+  (design §17.211 (1)). Output, traces and defects are unchanged.
 
 - `--target wasm` calls a closure inside a direct function through the closure's own direct
   twin when it has one, so `List.map`, `fold`, `filter` and the other std functions taking a
-  callback run their loop without continuation frames (design §17.211 (2)). A callback that
-  performs still runs through frames. Output, traces and defects are unchanged.
+  callback run their loop without continuation frames: `contracts_plain`, `pipeline`,
+  `shapes`, `map_set` and `nbody` run 4 frames at their smallest size where they ran 1,121,
+  2,508, 5,010, 2,005 and 7,005 (design §17.211 (2)). A callback that performs still runs
+  through frames. Output, traces and defects are unchanged.
 
 - On `--target wasm`, a fused `xs[i].expect(…)` or `map[k].expect(…)` (design §17.151) reads
   the element in place instead of building and dropping an `Option`; output and defects are
