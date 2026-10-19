@@ -272,6 +272,7 @@ pub fn compile(
         stacks: &stacks,
         blocks: vec![],
         vals: vec![None; f.vars.len()],
+        set: vec![],
         refs: HashMap::new(),
         ptr,
         ctx: Value::from_u32(0),
@@ -305,6 +306,9 @@ struct Gen<'e, 'm, 'f> {
     blocks: Vec<ir::Block>,
     /// Each variable's value in the block being emitted.
     vals: Vec<Option<Value>>,
+    /// The variables given a value in the block being emitted: what the next block clears,
+    /// so a block costs its own size, not the function's.
+    set: Vec<Var>,
     refs: HashMap<String, ir::FuncRef>,
     ptr: Type,
     ctx: Value,
@@ -329,7 +333,9 @@ impl Gen<'_, '_, '_> {
     }
 
     fn set(&mut self, v: Var, x: Value) {
-        self.vals[v.index()] = Some(x);
+        if self.vals[v.index()].replace(x).is_none() {
+            self.set.push(v);
+        }
     }
 
     fn iconst32(&mut self, x: i64) -> Value {
@@ -723,7 +729,9 @@ impl Gen<'_, '_, '_> {
     }
 
     fn resume_block(&mut self, b: BlockId) -> Result<(), String> {
-        self.vals.iter_mut().for_each(|v| *v = None);
+        for v in std::mem::take(&mut self.set) {
+            self.vals[v.index()] = None;
+        }
         let block = self.f.block(b);
         match &self.resume[b.index()] {
             Resume::Entry => {
@@ -772,7 +780,9 @@ impl Gen<'_, '_, '_> {
     }
 
     fn block(&mut self, b: BlockId) -> Result<(), String> {
-        self.vals.iter_mut().for_each(|v| *v = None);
+        for v in std::mem::take(&mut self.set) {
+            self.vals[v.index()] = None;
+        }
         let block = self.f.block(b);
         let cb = self.blocks[b.index()];
         self.b.switch_to_block(cb);
