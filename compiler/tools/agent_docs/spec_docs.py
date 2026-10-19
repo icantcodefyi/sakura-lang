@@ -55,7 +55,7 @@ def render(root):
         fixtures = []
         for path in candidates:
             sources = sorted(path.glob("*.sak")) if path.is_dir() else [path]
-            text = "\n".join(p.read_text() for p in sources)
+            text = "\n".join(p.read_text(errors="replace") for p in sources)  # V0015 fixtures are not UTF-8 by design
             if re.search(r"//\s*skip:", text):
                 continue
             milestone = re.search(r"//\s*milestone:\s*M(\d+)", text)
