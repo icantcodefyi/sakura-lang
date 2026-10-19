@@ -5,6 +5,8 @@ Sakura Lang is an agent-first language in **pre-alpha / design phase**. Read
 [STABILITY.md](STABILITY.md). Research is evidence; design is provisional. A future
 `docs/spec/` will be normative. [CODEOWNERS](.github/CODEOWNERS) names reviewers;
 [ADR 0002](docs/adr/0002-monorepo-layout.md) maps the monorepo.
+The latest status and next steps are in
+[the 2026-10-19 handoff brief](docs/plans/handoff-2026-10-19.md).
 
 - Read directory guidance, especially [website/AGENTS.md](website/AGENTS.md).
   Inspect helpers before adding code; preserve others' work and stay in scope.
