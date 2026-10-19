@@ -181,8 +181,9 @@ agents and builds keep working. Wall time is recorded beside it as information o
 Agents may make the runs; only the owner blesses.
 
 A counted baseline measures the commit it runs at, which must contain the counting harness
-(`320c9980` or later). Use one clean worktree at that commit, so the files' `meta.commit` is
-that commit and later docs commits change nothing:
+(`320c9980` or later). **The M4 baseline commit is `320c9980`** (design §17.265 (4)); the exit
+gate's signature still names `dee11301`. Use one clean worktree at that commit, so the files'
+`meta.commit` is that commit and later docs commits change nothing:
 
 ```sh
 cd <your sakuralang checkout>
@@ -219,10 +220,18 @@ each row's widest spread, then the same table of wall time per call (information
 spread above about 1% is reported with its cause before the bless. At `320c9980` Node,
 Wasmtime and native cells spread a median 0.09–0.30%, and every Node or Wasmtime cell over 1%
 was one outlier pair of five; Bun spread a median 1.35%, over 1% on 116 of 198 cells, so a Bun
-count is read with its spread ([bench/README.md](../bench/README.md#instruction-counts-17264)). `envelope` exits 0 whatever it reads; reading two counted files, its line says
-`M4 envelope on instructions per call: met`, `miss` or `incomplete`, read against §17.109's
-ceilings (set on time; §17.264 (4)). `compile` reports p95 against the research/10 §6 budgets
-and §17.195 (1)'s targets in time, with each case's median instruction count beside them.
+count is read with its spread ([bench/README.md](../bench/README.md#instruction-counts-17264)),
+and in a counted `compare` a Bun row is advisory: flagged above 10%, never blocking (§17.265 (5)).
+`envelope` exits 0 whatever it reads and gates no release (§17.265 (1)); reading two counted
+files, its line says `M4 envelope on instructions per call: met`, `miss` or `incomplete`.
+§17.109's cross-engine ceilings are time quantities, so the lane read against them is the
+wall-time lane from the same files' `median_ms` (direction only, the host being loaded), with
+the count lane beside it as a ratio of counts (§17.265 (2); Opus adds the wall-time lane to
+`envelope` after the bless, and until then the count table is read with that caveat). At
+`320c9980` the envelope misses on 241 of 264 gating cells, carried under §17.265. The
+same-engine ratios, Sakura against hand JS on one engine, are read on counts against §17.109's
+JS targets. `compile` reports p95 against the research/10 §6 budgets and §17.195 (1)'s targets
+in time, with each case's median instruction count beside them.
 
 **Bless** (the owner only; `bless` refuses a run with a failed oracle or one made from a dirty
 `compiler/` or `bench/` tree; a counted run needs no quiet host):
@@ -254,7 +263,18 @@ git worktree remove ../sakura-counted
 ```
 
 A code change on a benchmarked path after the bless reopens the question for the owner;
-anything else does not (§17.228 (2)). The timed `--stable` runs and their quiet verdict
+anything else does not (§17.228 (2)). Before the owner tags, Opus counts `fib` and `shapes` of
+the `js` suite at the preparation commit and compares them with the blessed file; Node must
+read `ok`, and the two files are committed beside the results as evidence (§17.265 (4)):
+
+```sh
+bench/bench run --suite js --instructions --filter fib --json bench/target/prep-fib.json
+bench/bench run --suite js --instructions --filter shapes --json bench/target/prep-shapes.json
+bench/bench compare bench/baselines/<host-id>.json bench/target/prep-fib.json
+bench/bench compare bench/baselines/<host-id>.json bench/target/prep-shapes.json
+```
+
+The timed `--stable` runs and their quiet verdict
 (§17.153) remain in the harness for direction; they no longer gate a release.
 
 ## 3. Prepare the candidate

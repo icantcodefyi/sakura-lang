@@ -11,8 +11,10 @@ Where things stand: **the M4 exit commit is `dee11301`** (row 29, `perf(wasm): s
 by liveness past 256 variables`). Rows 26–30, WS-W1, WS-W2, WS-C2 and WS-P9b-lit are on
 `main`; the parity matrix was green on every cell of `dee11301`'s CI run. Items 1 and 2 are
 closed; item 3 waits for the Windows test fixes to turn `main` green. Items 4–12 are yours.
-WS-P13b (DeltaBlue twice as fast on Node) is built and waits behind your window on purpose
-(§17.234 (2), §17.235 (4)); it is item 13.
+WS-P13b (DeltaBlue twice as fast on Node) is on `main` and inside the counted baseline; its
+review is item 13. **Round 36 (§17.265, 2026-10-20):** the envelope's miss is information, not a
+gate; the baseline commit is `320c9980`; the two inputs left before the tag are your bless
+(item 11) and your signature (item 12).
 
 ## Before the window (agents)
 
@@ -38,16 +40,19 @@ WS-P13b (DeltaBlue twice as fast on Node) is built and waits behind your window 
 
 | # | Item | Link | Closed by (name, date) |
 |---|---|---|---|
-| 11 | **A blessed instruction-count baseline from the reference Mac** (your decision of 2026-10-19, §17.264; it replaces the quiet window, so no idle machine and no paused agents). Counted runs of all four suites at `320c9980` (the counting harness, Node under `--predictable`; `dee11301` predates it, so this baseline also carries WS-P13b, row 31 and the other post-exit commits: §17.264 (3), your call) are in `bench/results/2026-10-19-320c9980-*`, **pending your bless** (the envelope on counts reads `miss` on 241 of 264 gating cells, §17.264 (4)): `bench/bench bless` the counted `js` and `wasm` files as in the release procedure; Astra writes the report from the files; a miss is carried only under a named decision (§17.152 (2), §17.228 (2)). | [docs/release.md §2](../release.md#2-instruction-count-baseline-and-bless), [bench/README.md](../../bench/README.md#instruction-counts-17264) | |
+| 11 | **A blessed instruction-count baseline from the reference Mac** (your decision of 2026-10-19, §17.264; it replaces the quiet window, so no idle machine and no paused agents). Counted runs of all four suites at `320c9980` (the counting harness, Node under `--predictable`; `dee11301` predates it, so this baseline also carries WS-P13b and row 31, and `320c9980` is ratified as the baseline commit in §17.265 (4)) are in `bench/results/2026-10-19-320c9980-*`, **pending your bless**. The envelope reads `miss` on 241 of 264 gating cells; it is information, not a gate, carried under §17.265 (1)–(2). From a clean `main` checkout: `bench/bench bless bench/results/2026-10-19-320c9980-js.json`, then the same for `-wasm.json`; commit `bench/baselines/` with your name and the date on this line and push to `main`. Astra writes the report from the files. | [docs/release.md §2](../release.md#2-instruction-count-baseline-and-bless), [bench/README.md](../../bench/README.md#instruction-counts-17264) | |
 | 12 | The M4 exit gate signature, or a written delegation. The gate's text is the paragraph after row 31 of plan §3.8; the commit it signs is `dee11301`. Sign here: | [plan §3.8 exit gate](m3-completion-and-m4.md#38-m4-close-out-order-round-12-17166) | |
 
-## After the window
+## After the bless
 
 | # | Item | Link | Closed by (name, date) |
 |---|---|---|---|
-| 13 | WS-P13b's CODEOWNERS review (ownership through records, tuples and parameters; §17.149 names it semantics-adjacent). Opus pushes it after item 11 with §17.235 (3)'s conditions; you review the landed series. | [§17.235](../design.md#17-decision-log-rounds-2-to-26), [performance-r1.md §9](performance-r1.md#9-round-10-1714917154-ownership-fusion-benchmark-definitions-measurement) | |
+| 13 | WS-P13b's CODEOWNERS review (ownership through records, tuples and parameters; §17.149 names it semantics-adjacent). Landed on `main` as `2d808283`..`0530f328` (§17.246) and inside the `320c9980` baseline (§17.265 (4)); you review the landed series. | [§17.235](../design.md#17-decision-log-rounds-2-to-26), [performance-r1.md §9](performance-r1.md#9-round-10-1714917154-ownership-fusion-benchmark-definitions-measurement) | |
 
-After 12: `release.py prepare` on `main`, then a freeze (nothing lands until the tag is pushed), one
-fully green `ci.yml` run on that head, the `v0.1.0` tag on that candidate SHA (never on `dee11301`;
-§17.250) and the three environment approvals ([road-to-1.0.md](road-to-1.0.md) stage 2), then
-`verify-published.yml` on the published channels ([docs/release.md §7](../release.md#7-close-out)).
+After 12: Opus runs `release.py prepare` on `main`, then a freeze (nothing lands until the tag is
+pushed), one fully green `ci.yml` run on that head, Opus's counted check of `fib` and `shapes` at
+that head against the blessed file (Node `ok`; §17.265 (4), [docs/release.md §2](../release.md#2-instruction-count-baseline-and-bless)),
+the `v0.1.0` tag on that candidate SHA (never on `dee11301`; §17.250) and the three environment
+approvals ([road-to-1.0.md](road-to-1.0.md) stage 2), then `verify-published.yml` on the
+published channels ([docs/release.md §7](../release.md#7-close-out)). After the tag: 4b, PR #4
+and 4a merge in queue order (§17.263 (2)), and the performance push of §17.265 (6) starts.

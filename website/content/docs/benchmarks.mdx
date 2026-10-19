@@ -7,7 +7,8 @@ description: Instructions retired per call for every benchmark program on the re
   These are instruction counts from one run of the benchmark suite on the reference Mac (an
   Apple silicon MacBook, host `d88970189598`) at commit `320c9980`, 2026-10-19. The owner has
   not blessed them as a baseline yet. They are counts, not times: no speed claim follows from
-  them.
+  them. The cross-language envelope in design §17.109 is not met by these counts, and Sakura
+  Lang makes no cross-language speed claim at 0.1.0 (design §17.265).
 </Callout>
 
 The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs the
@@ -151,6 +152,55 @@ of a new project. `test_hello` counts the CLI's own process, not the Node proces
 | `build_10k` | 10,084 | 682 M | 0.19% |
 | `check_cold_100k` | 100,804 | 5.78 G | 0.41% |
 | `check_wide_match` | 9,012 | 701 M | 0.24% |
+
+## Against the targets
+
+Design §17.109 set a ceiling per program on the ratio of Sakura to hand-written JavaScript on
+the same engine, and asked for a median of at most 1.5 over the fifteen programs. Those are
+same-engine ratios, so a ratio of counts can be read against them
+([design §17.265](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). At
+the largest size, six of the fifteen meet their ceiling on Node and five on Bun; the median is
+2.24 on Node and 2.47 on Bun.
+
+| Program | Ceiling | Node | | Bun | |
+|---|---:|---:|---|---:|---|
+| `fib` | 1.5 | 1.39× | met | 2.31× | miss |
+| `countdown` | 1.3 | 1.57× | miss | 1.05× | met |
+| `sieve` | 1.5 | 4.62× | miss | 6.98× | miss |
+| `nbody` | 1.3 | 11.90× | miss | 8.89× | miss |
+| `spectral_norm` | 1.3 | 4.49× | miss | 2.39× | miss |
+| `binary_trees` | 1.5 | 1.41× | met | 2.54× | miss |
+| `pipeline` | 2.0 | 0.29× | met | 2.65× | miss |
+| `rbtree` | 1.5 | 2.52× | miss | 2.47× | miss |
+| `map_set` | 3.0 (Bun 5.0) | 3.28× | miss | 3.85× | met |
+| `shapes` | 1.5 | 2.24× | miss | 2.29× | miss |
+| `tokenizer` | 1.5 | 0.30× | met | 1.17× | met |
+| `json_validate` | 2.0 | 1.39× | met | 3.01× | miss |
+| `deltablue` | 2.0 | 6.06× | miss | 6.23× | miss |
+| `handled` (depth 1) | 2.0 | 0.88× | met | 1.14× | met |
+| `contracts` | 2.0 | 2.69× | miss | 1.81× | met |
+
+Read plainly: on the JavaScript backend, most of the suite runs within 1.5–3× of hand-written
+JavaScript, and five programs are 4.5–12× behind: `nbody`, `deltablue`, `map_set:int`,
+`handled_fwd` and `sieve`. Where Sakura is ahead (`pipeline`, `tokenizer`, `handled` on Node)
+the cause is a specific mechanism, fusion of the pipeline, ownership of the consumed string, or
+a handler compiled to a direct call, and it says nothing about other programs. The WebAssembly
+backend is first-release code: 2–124× behind hand JavaScript by count on this suite, far from
+native, with its worst cells on contracts, handlers and scalar loops. There is no native
+backend yet.
+
+Design §17.109 also set an M4 envelope against Rust, Go, OCaml and Koka. Those ceilings were
+set on wall time, and a count across different engines is not a time, so the envelope is
+reported as information and not as a release gate (design §17.265). On these counts it is not
+met: Sakura WebAssembly on Node is a geometric mean of about 27× Rust and 25× Go on the numeric
+kernels, 11× OCaml and 12× Koka on the allocation kernels, with `tokenizer` the one kernel
+inside its ceiling. The native backend planned for M5 is where that comparison is made again.
+
+What comes next, in order, each landing with a counted before and after against the blessed
+baseline: flat `Float`, `Bool` and `Int` lists and in-place `Float` records (`nbody`,
+`spectral_norm`, `sieve`); the `Int`-key path of `Map` (`map_set:int`); what remains in
+`deltablue`; forwarding handlers (`handled_fwd`); then the WebAssembly cliffs, starting with
+contracts and the superlinear `tokenizer` cost (design §17.265 (6)).
 
 ## Spread
 
