@@ -478,6 +478,7 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
 }
 
 /// `GET path` (with `x-name: ann`) on `port`: the status code and the body.
+#[cfg(unix)]
 fn http_get(port: u16, path: &str) -> String {
     use std::io::{Read, Write};
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
@@ -587,6 +588,7 @@ fn serve_host_answers_on_wasm_as_on_js() {
 }
 
 /// `method path` with `body` on `port`: the status code, the `connection` header and the body.
+#[cfg(unix)]
 fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
     use std::io::{Read, Write};
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
