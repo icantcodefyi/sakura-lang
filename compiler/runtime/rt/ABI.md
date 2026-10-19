@@ -101,6 +101,16 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   sides (a host calls it only when the module has it, and a host without it runs a module that
   has it as before), so it is a PATCH as §17.212 decided and `sakura_abi_version` stays
   `0x010200`.
+- **Exports are feature-tested by presence** (design §17.222). The version a module records
+  states what the module *requires* of its host: imports, layouts, outcome codes, the counters
+  it writes. An export is read by probing the instance, never by version. Adding an export that
+  a host calls only when present, whose absence costs resources and never semantics, is a
+  PATCH; §9 lists it as optional with the version that introduced it and what a host without
+  it loses (`task_free`: optional since 1.2.2; a host without it keeps every finished root
+  task). Making an export required, so that a host refuses a module without it, is MINOR,
+  since a new host would then refuse an old module; changing or removing an export's signature
+  is MAJOR. The refusal rule above protects a host from a module's needs; an export is the
+  other direction.
   §8.5 also states how the copy budget applies to a served request and its reply (design
   §17.216 (4)): until then a request over it ended the process.
 - A change to this document lands with the decision that caused it in design §17 and, after
