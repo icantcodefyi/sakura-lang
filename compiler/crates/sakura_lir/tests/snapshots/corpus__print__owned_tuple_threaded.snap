@@ -1,0 +1,290 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_tuple_threaded::Planner | Planner 32b (vars: word*, mark: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*, %8 word*, %24 bool, %25 word*, %27 word*, %36 word*, %37 word*, %38 word*, %54 bool, %55 word*, %57 word*, %61 word*, %62 word*, %71 word*, %72 word*, %73 word*, %84 bool, %85 word*, %88 word*, %97 word*, %98 word*, %99 word*, %112 bool, %141 word*, %142 word*, %143 i64]
+  b0():
+    %0 xs: ptr = alloc list()
+    %1 lit: i64 = const 0
+    %2 rec: ptr = alloc main::owned_tuple_threaded::Planner(%0, %1)
+    %3 xs: ptr = alloc list()
+    %156 lit: i64 = const 0
+    jump b19(%2, %3, %156)
+  b1(%4 p: ptr, %5 ids: ptr, %6 i: i64):
+    call new_mark#3(%4) -> b2(%5)
+  b2(%7 r: ptr, %8 ids: ptr):
+    %123 p: ptr = tuple_get %7.0
+    %124 p: i64 = tuple_get %7.1
+    drop %7
+    jump b3(%123, %124, %8)
+  b3(%9 p1: ptr, %10 m: i64, %11 ids: ptr):
+    %12 vars: word = proj %9.0 main::owned_tuple_threaded::Planner
+    %13 s: ptr = show %12
+    drop %12
+    %14 lit: ptr = const str 0
+    %15 s: ptr = concat %14, %13
+    drop %13
+    drop %14
+    %16 lit: ptr = const str 1
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 s: ptr = show %11
+    drop %11
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    %20 lit: ptr = const str 1
+    %21 s: ptr = concat %19, %20
+    drop %19
+    drop %20
+    %22 s: ptr = show %10
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    perform std::console::Console.print(%23) -> b4(%9)
+  b4(%24 r: unit, %25 p1: ptr):
+    %26 box: word = box %24
+    drop %26
+    call sorted#4(%25) -> b5()
+  b5(%27 r: ptr):
+    %121 p: ptr = tuple_get %27.0
+    %122 p: ptr = tuple_get %27.1
+    drop %27
+    jump b6(%121, %122)
+  b6(%28 p2: ptr, %29 s: ptr):
+    %30 vars: word = proj %28.0 main::owned_tuple_threaded::Planner
+    %31 lit: i64 = const 1
+    %32 t: i64 = intneg %31
+    %33 lit: i64 = const 1
+    %34 box: word = box %32
+    %35 $site: i64 = const 2
+    call set#5(%30, %33, %34, %35) -> b7(%28, %29)
+  b7(%36 r: ptr, %37 p2: ptr, %38 s: ptr):
+    %39 mark: i64 = proj %37.1 main::owned_tuple_threaded::Planner
+    %40 rec: ptr = alloc main::owned_tuple_threaded::Planner(%36, %39)
+    %41 s: ptr = show %38
+    drop %38
+    %42 lit: ptr = const str 2
+    %43 s: ptr = concat %42, %41
+    drop %41
+    drop %42
+    %44 lit: ptr = const str 1
+    %45 s: ptr = concat %43, %44
+    drop %43
+    drop %44
+    %46 vars: word = proj %37.0 main::owned_tuple_threaded::Planner
+    drop %37
+    %47 s: ptr = show %46
+    drop %46
+    %48 s: ptr = concat %45, %47
+    drop %45
+    drop %47
+    %49 lit: ptr = const str 1
+    %50 s: ptr = concat %48, %49
+    drop %48
+    drop %49
+    %51 vars: word = proj %40.0 main::owned_tuple_threaded::Planner
+    %52 s: ptr = show %51
+    drop %51
+    %53 s: ptr = concat %50, %52
+    drop %50
+    drop %52
+    perform std::console::Console.print(%53) -> b8(%40)
+  b8(%54 r: unit, %55 rec: ptr):
+    %56 box: word = box %54
+    drop %56
+    call with_field#6(%55) -> b9()
+  b9(%57 r: ptr):
+    %119 p: ptr = tuple_get %57.0
+    %120 p: ptr = tuple_get %57.1
+    drop %57
+    jump b10(%119, %120)
+  b10(%58 p4: ptr, %59 field: ptr):
+    %60 lit: i64 = const 1000
+    call new_var#2(%58, %60) -> b11(%59)
+  b11(%61 r: ptr, %62 field: ptr):
+    %117 p: ptr = tuple_get %61.0
+    %118 p: i64 = tuple_get %61.1
+    drop %61
+    jump b12(%117, %62)
+  b12(%63 p5: ptr, %64 field: ptr):
+    %65 vars: word = proj %63.0 main::owned_tuple_threaded::Planner
+    %66 lit: i64 = const 2
+    %67 t: i64 = intneg %66
+    %68 lit: i64 = const 2
+    %69 box: word = box %67
+    %70 $site: i64 = const 3
+    call set#5(%65, %68, %69, %70) -> b13(%64, %63)
+  b13(%71 r: ptr, %72 field: ptr, %73 p5: ptr):
+    %74 mark: i64 = proj %73.1 main::owned_tuple_threaded::Planner
+    drop %73
+    %75 rec: ptr = alloc main::owned_tuple_threaded::Planner(%71, %74)
+    %76 s: ptr = show %72
+    drop %72
+    %77 lit: ptr = const str 3
+    %78 s: ptr = concat %77, %76
+    drop %76
+    drop %77
+    %79 lit: ptr = const str 1
+    %80 s: ptr = concat %78, %79
+    drop %78
+    drop %79
+    %81 vars: word = proj %75.0 main::owned_tuple_threaded::Planner
+    %82 s: ptr = show %81
+    drop %81
+    %83 s: ptr = concat %80, %82
+    drop %80
+    drop %82
+    perform std::console::Console.print(%83) -> b14(%75)
+  b14(%84 r: unit, %85 rec: ptr):
+    %86 box: word = box %84
+    drop %86
+    %87 lit: i64 = const 7
+    call new_var#2(%85, %87) -> b15()
+  b15(%88 r: ptr):
+    %115 p: ptr = tuple_get %88.0
+    %116 p: i64 = tuple_get %88.1
+    jump b16(%115, %88)
+  b16(%89 p7: ptr, %90 r: ptr):
+    %91 vars: word = proj %89.0 main::owned_tuple_threaded::Planner
+    %92 lit: i64 = const 3
+    %93 t: i64 = intneg %92
+    %94 lit: i64 = const 3
+    %95 box: word = box %93
+    %96 $site: i64 = const 4
+    call set#5(%91, %94, %95, %96) -> b17(%90, %89)
+  b17(%97 r: ptr, %98 r: ptr, %99 p7: ptr):
+    %100 mark: i64 = proj %99.1 main::owned_tuple_threaded::Planner
+    drop %99
+    %101 rec: ptr = alloc main::owned_tuple_threaded::Planner(%97, %100)
+    %102 t: ptr = tuple_get %98.0
+    drop %98
+    %103 vars: word = proj %102.0 main::owned_tuple_threaded::Planner
+    drop %102
+    %104 s: ptr = show %103
+    drop %103
+    %105 lit: ptr = const str 4
+    %106 s: ptr = concat %105, %104
+    drop %104
+    drop %105
+    %107 lit: ptr = const str 1
+    %108 s: ptr = concat %106, %107
+    drop %106
+    drop %107
+    %109 vars: word = proj %101.0 main::owned_tuple_threaded::Planner
+    drop %101
+    %110 s: ptr = show %109
+    drop %109
+    %111 s: ptr = concat %108, %110
+    drop %108
+    drop %110
+    perform std::console::Console.print(%111) -> b18()
+  b18(%112 r: unit):
+    %113 box: word = box %112
+    %114 unbox: unit = unbox %113
+    drop %113
+    ret %114
+  b19(%125 p: ptr, %126 ids: ptr, %127 i: i64):
+    %128 lit: i64 = const 8
+    %129 t: bool = lt.int %127, %128
+    if %129 then b21(%125, %126, %127) else b22(%125, %126, %127)
+  b20(%130 v: word, %131 p: ptr, %132 ids: ptr, %133 i: i64):
+    drop %130
+    jump b19(%131, %132, %133)
+  b21(%134 p: ptr, %135 ids: ptr, %136 i: i64):
+    %140 t: i64 = intmul %136, %136
+    call new_var#2(%134, %140) -> b23(%135, %136)
+  b22(%137 p: ptr, %138 ids: ptr, %139 i: i64):
+    jump b1(%137, %138, %139)
+  b23(%141 r: ptr, %142 ids: ptr, %143 i: i64):
+    %154 p: ptr = tuple_get %141.0
+    %155 p: i64 = tuple_get %141.1
+    drop %141
+    jump b24(%154, %155, %142, %143)
+  b24(%144 q: ptr, %145 id: i64, %146 ids: ptr, %147 i: i64):
+    %148 box: word = box %145
+    %149 r: ptr = $list_push(%146, %148)
+    %150 lit: i64 = const 1
+    %151 t: i64 = intadd %147, %150
+    %152 lit: unit = const ()
+    %153 box: word = box %152
+    jump b20(%153, %144, %149, %151)
+
+fn $entry#1 top -> unit ; main::owned_tuple_threaded, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn new_var#2 top -> ptr ; main::owned_tuple_threaded, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 p: ptr, %1 v: i64):
+    %2 vars: word = proj %0.0 main::owned_tuple_threaded::Planner
+    %3 r: i64 = $list_len(%2)
+    %4 vars: word = proj %0.0 main::owned_tuple_threaded::Planner
+    %5 box: word = box %1
+    %6 r: ptr = $list_push(%4, %5)
+    %7 mark: i64 = proj %0.1 main::owned_tuple_threaded::Planner
+    drop %0
+    %8 rec: ptr = alloc main::owned_tuple_threaded::Planner(%6, %7)
+    %9 tup: ptr = alloc tuple#5(word, i64)(%8, %3)
+    ret %9
+
+fn new_mark#3 top -> ptr ; main::owned_tuple_threaded, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 mark: i64 = proj %0.1 main::owned_tuple_threaded::Planner
+    %2 lit: i64 = const 1
+    %3 t: i64 = intadd %1, %2
+    %4 vars: word = proj %0.0 main::owned_tuple_threaded::Planner
+    %5 rec: ptr = alloc main::owned_tuple_threaded::Planner(%4, %3)
+    %6 mark: i64 = proj %0.1 main::owned_tuple_threaded::Planner
+    drop %0
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %6, %7
+    %9 tup: ptr = alloc tuple#5(word, i64)(%5, %8)
+    ret %9
+
+fn sorted#4 top -> ptr ; main::owned_tuple_threaded, frame 5 slots [%0 word*, %6 word*, %7 word*, %12 word*, %13 word*]
+  b0(%0 p: ptr):
+    %1 vars: word = proj %0.0 main::owned_tuple_threaded::Planner
+    %2 lit: i64 = const 0
+    %3 lit: i64 = const 99
+    %4 box: word = box %3
+    %5 $site: i64 = const 5
+    call set#5(%1, %2, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ptr):
+    %8 mark: i64 = proj %7.1 main::owned_tuple_threaded::Planner
+    drop %7
+    %9 rec: ptr = alloc main::owned_tuple_threaded::Planner(%6, %8)
+    %10 vars: word = proj %9.0 main::owned_tuple_threaded::Planner
+    %11 f: ptr = closure sorted$1#7[]
+    call sort_by#8(%10, %11) -> b2(%9)
+  b2(%12 r: ptr, %13 rec: ptr):
+    %14 tup: ptr = alloc tuple#3(word, word)(%13, %12)
+    ret %14
+
+fn with_field#6 top -> ptr ; main::owned_tuple_threaded, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 vars: word = proj %0.0 main::owned_tuple_threaded::Planner
+    %2 tup: ptr = alloc tuple#3(word, word)(%0, %1)
+    ret %2
+
+fn sorted$1#7 lambda -> word ; main::owned_tuple_threaded, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 0
+    %4 t: i64 = intsub %3, %2
+    %5 box: word = box %4
+    ret %5

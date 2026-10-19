@@ -1,0 +1,78 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.201 (3) (a record captured by a closure, aliases through joins and projections)
+
+type Planner = { vars: List<Int>, mark: Int }
+
+fn planner(n: Int) -> Planner { Planner { vars: List.range(0, n), mark: 0 } }
+
+fn put_var(p: Planner, i: Int, v: Int) -> Planner { Planner { ..p, vars: List.set(p.vars, i, v) } }
+
+fn var_of(p: Planner, i: Int) -> Int { Option.unwrap_or(List.get(p.vars, i), -1) }
+
+// The closure borrows `p`: the updates after it is called may be in place.
+fn total(p: Planner, ids: List<Int>) -> Int { List.fold(ids, 0, fn(acc, i) { acc + var_of(p, i) }) }
+
+// `start` is read after the loop updated `p`, which began as `start`.
+fn keep_start(start: Planner) -> (Planner, String) {
+  var p = start
+  var i = 0
+  while i < 3 {
+    p = put_var(p, i, 100 + i)
+    i = i + 1
+  }
+  (p, "{var_of(start, 0)} {var_of(p, 0)}")
+}
+
+// Two projections of one field: the first is read after the second was updated.
+fn two_views(p: Planner) -> (Planner, Int) {
+  let a = p.vars
+  let q = Planner { ..p, vars: List.set(p.vars, 0, 555) }
+  (q, List.sum(a))
+}
+
+error Oops(code: Int)
+
+// `start` is read only by the handler, after the loop updated `p` and failed.
+fn keep_for_handler(start: Planner) -> Planner {
+  try {
+    var p = start
+    var i = 0
+    while i < 3 {
+      p = put_var(p, i, 200 + i)
+      i = i + 1
+    }
+    if var_of(p, 0) == 200 { fail Oops { code: 1 } }
+    p
+  } catch {
+    Oops { code } => put_var(start, 4, code),
+  }
+}
+
+// A closure kept beside the planner it captured.
+fn with_view(p: Planner) -> (Planner, fn() -> Int) { (p, fn() { var_of(p, 1) }) }
+
+pub fn main() -> Unit ! {Console} {
+  // Captured, then called after the update: it sees the version it captured.
+  var p = planner(5)
+  let peek = fn() { List.sum(p.vars) }
+  p = put_var(p, 0, 50)
+  Console.print("captured {peek()} {List.sum(p.vars)}")
+
+  // Borrowed by a closure that is done before the update.
+  let t = total(p, [0, 1, 2])
+  p = put_var(p, 1, t)
+  Console.print("borrowed {t} {p.vars}")
+
+  let (kept, seen) = keep_start(planner(5))
+  Console.print("keep {seen} {kept.vars}")
+
+  let (q, s) = two_views(p)
+  Console.print("views {s} {q.vars} {p.vars}")
+
+  let (r, view) = with_view(q)
+  let r2 = put_var(r, 1, -9)
+  Console.print("view {view()} {r2.vars[1]} {q.vars[1]}")
+
+  let h = keep_for_handler(planner(5))
+  Console.print("handler {h.vars}")
+}

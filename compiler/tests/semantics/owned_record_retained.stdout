@@ -1,0 +1,8 @@
+built 10 55 Some(1) Some(10)
+old 10 55 Some(1) Some(10)
+new 10 54 Some(-1) Some(11)
+field Some(2) Some(-2)
+history Some(4) Some(7)
+try Some(-1) Some(1) Some(-1) Some(11)
+fields 10 51 Some(-1) Some(11) [5] 1
+nested 0 [777, 1, 2]

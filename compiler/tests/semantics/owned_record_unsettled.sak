@@ -1,0 +1,24 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.235 (3a) (a recursive component that does not settle)
+
+// `f` consumes its first list exactly when `g` consumes its second, and `g` consumes the
+// parameter `f` does: every round flips both, so after sixteen rounds the component gets no
+// summaries and every update copies.
+fn f(x: List<Int>, y: List<Int>, n: Int) -> List<Int> {
+  if n <= 0 { return [n] }
+  let r = g(List.push(y, n), x, n - 1)
+  if List.len(r) > 100 { [0] } else { r }
+}
+
+// The test after each call keeps both calls out of tail position, so Core keeps the recursion.
+fn g(x: List<Int>, y: List<Int>, n: Int) -> List<Int> {
+  let r = f(List.push(x, n), y, n)
+  if List.len(r) > 100 { [1] } else { r }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let a = [1, 2]
+  let b = [3]
+  let r = f(a, b, 4)
+  Console.print("{r} {a} {b}")
+}

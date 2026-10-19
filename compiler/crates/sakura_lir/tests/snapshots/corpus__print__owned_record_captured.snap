@@ -1,0 +1,428 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::owned_record_captured::Oops | Oops 24b (code: i64)
+layout 1 record main::owned_record_captured::Planner | Planner 32b (vars: word*, mark: i64)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+layout 7 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word*, %5 word*, %6 word*, %7 word*, %8 word*, %16 i64, %17 word*, %18 word*, %21 bool, %22 word*, %31 i64, %32 word*, %34 word*, %35 i64, %44 bool, %45 word*, %48 word*, %49 word*, %50 word*, %51 word*, %63 bool, %64 word*, %66 word*, %67 word*, %84 bool, %85 word*, %87 word*, %88 word*, %95 word*, %96 word*, %97 word*, %98 word*, %99 word*, %100 word*, %119 bool, %122 word*, %123 word*, %128 bool]
+  b0():
+    %0 lit: i64 = const 5
+    call planner#2(%0) -> b1()
+  b1(%1 r: ptr):
+    dup %1
+    %2 f: ptr = closure main$1#3[%1]
+    %3 lit: i64 = const 0
+    %4 lit: i64 = const 50
+    call put_var#5(%1, %3, %4) -> b2(%2)
+  b2(%5 r: ptr, %6 f: ptr):
+    call %6() -> b3(%5)
+  b3(%7 r: word, %8 r: ptr):
+    %9 unbox: i64 = unbox %7
+    drop %7
+    %10 s: ptr = show %9
+    %11 lit: ptr = const str 0
+    %12 s: ptr = concat %11, %10
+    drop %10
+    drop %11
+    %13 lit: ptr = const str 1
+    %14 s: ptr = concat %12, %13
+    drop %12
+    drop %13
+    %15 vars: word = proj %8.0 main::owned_record_captured::Planner
+    call sum#4(%15) -> b4(%8, %14)
+  b4(%16 r: i64, %17 r: ptr, %18 s: ptr):
+    %19 s: ptr = show %16
+    %20 s: ptr = concat %18, %19
+    drop %18
+    drop %19
+    perform std::console::Console.print(%20) -> b5(%17)
+  b5(%21 r: unit, %22 r: ptr):
+    %23 box: word = box %21
+    drop %23
+    %24 lit: i64 = const 0
+    %25 box: word = box %24
+    %26 lit: i64 = const 1
+    %27 box: word = box %26
+    %28 lit: i64 = const 2
+    %29 box: word = box %28
+    %30 xs: ptr = alloc list(%25, %27, %29)
+    dup %22
+    call total#6(%22, %30) -> b6(%22)
+  b6(%31 r: i64, %32 r: ptr):
+    %33 lit: i64 = const 1
+    call put_var#5(%32, %33, %31) -> b7(%31)
+  b7(%34 r: ptr, %35 r: i64):
+    %36 s: ptr = show %35
+    %37 lit: ptr = const str 2
+    %38 s: ptr = concat %37, %36
+    drop %36
+    drop %37
+    %39 lit: ptr = const str 1
+    %40 s: ptr = concat %38, %39
+    drop %38
+    drop %39
+    %41 vars: word = proj %34.0 main::owned_record_captured::Planner
+    %42 s: ptr = show %41
+    drop %41
+    %43 s: ptr = concat %40, %42
+    drop %40
+    drop %42
+    perform std::console::Console.print(%43) -> b8(%34)
+  b8(%44 r: unit, %45 r: ptr):
+    %46 box: word = box %44
+    drop %46
+    %47 lit: i64 = const 5
+    call planner#2(%47) -> b9(%45)
+  b9(%48 r: ptr, %49 r: ptr):
+    call keep_start#7(%48) -> b10(%49)
+  b10(%50 r: ptr, %51 r: ptr):
+    %135 p: ptr = tuple_get %50.0
+    %136 p: ptr = tuple_get %50.1
+    drop %50
+    jump b11(%135, %136, %51)
+  b11(%52 kept: ptr, %53 seen: ptr, %54 r: ptr):
+    %55 s: ptr = show %53
+    drop %53
+    %56 lit: ptr = const str 3
+    %57 s: ptr = concat %56, %55
+    drop %55
+    drop %56
+    %58 lit: ptr = const str 1
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    %60 vars: word = proj %52.0 main::owned_record_captured::Planner
+    drop %52
+    %61 s: ptr = show %60
+    drop %60
+    %62 s: ptr = concat %59, %61
+    drop %59
+    drop %61
+    perform std::console::Console.print(%62) -> b12(%54)
+  b12(%63 r: unit, %64 r: ptr):
+    %65 box: word = box %63
+    drop %65
+    dup %64
+    call two_views#8(%64) -> b13(%64)
+  b13(%66 r: ptr, %67 r: ptr):
+    %133 p: ptr = tuple_get %66.0
+    %134 p: i64 = tuple_get %66.1
+    drop %66
+    jump b14(%133, %134, %67)
+  b14(%68 q: ptr, %69 s: i64, %70 r: ptr):
+    %71 s: ptr = show %69
+    %72 lit: ptr = const str 4
+    %73 s: ptr = concat %72, %71
+    drop %71
+    drop %72
+    %74 lit: ptr = const str 1
+    %75 s: ptr = concat %73, %74
+    drop %73
+    drop %74
+    %76 vars: word = proj %68.0 main::owned_record_captured::Planner
+    %77 s: ptr = show %76
+    drop %76
+    %78 s: ptr = concat %75, %77
+    drop %75
+    drop %77
+    %79 lit: ptr = const str 1
+    %80 s: ptr = concat %78, %79
+    drop %78
+    drop %79
+    %81 vars: word = proj %70.0 main::owned_record_captured::Planner
+    drop %70
+    %82 s: ptr = show %81
+    drop %81
+    %83 s: ptr = concat %80, %82
+    drop %80
+    drop %82
+    perform std::console::Console.print(%83) -> b15(%68)
+  b15(%84 r: unit, %85 q: ptr):
+    %86 box: word = box %84
+    drop %86
+    dup %85
+    call with_view#9(%85) -> b16(%85)
+  b16(%87 r: ptr, %88 q: ptr):
+    %131 p: ptr = tuple_get %87.0
+    %132 p: ptr = tuple_get %87.1
+    drop %87
+    jump b17(%131, %132, %88)
+  b17(%89 r: ptr, %90 view: ptr, %91 q: ptr):
+    %92 lit: i64 = const 9
+    %93 t: i64 = intneg %92
+    %94 lit: i64 = const 1
+    call put_var#5(%89, %94, %93) -> b18(%91, %90)
+  b18(%95 r: ptr, %96 q: ptr, %97 view: ptr):
+    call %97() -> b19(%96, %95)
+  b19(%98 r: word, %99 q: ptr, %100 r: ptr):
+    %101 unbox: i64 = unbox %98
+    drop %98
+    %102 s: ptr = show %101
+    %103 lit: ptr = const str 5
+    %104 s: ptr = concat %103, %102
+    drop %102
+    drop %103
+    %105 lit: ptr = const str 1
+    %106 s: ptr = concat %104, %105
+    drop %104
+    drop %105
+    %107 vars: word = proj %100.0 main::owned_record_captured::Planner
+    drop %100
+    %108 lit: i64 = const 1
+    %109 item: ptr = $list_get(%107, %108)
+    %110 s: ptr = show %109
+    drop %109
+    %111 s: ptr = concat %106, %110
+    drop %106
+    drop %110
+    %112 lit: ptr = const str 1
+    %113 s: ptr = concat %111, %112
+    drop %111
+    drop %112
+    %114 vars: word = proj %99.0 main::owned_record_captured::Planner
+    drop %99
+    %115 lit: i64 = const 1
+    %116 item: ptr = $list_get(%114, %115)
+    %117 s: ptr = show %116
+    drop %116
+    %118 s: ptr = concat %113, %117
+    drop %113
+    drop %117
+    perform std::console::Console.print(%118) -> b20()
+  b20(%119 r: unit):
+    %120 box: word = box %119
+    drop %120
+    %121 lit: i64 = const 5
+    call planner#2(%121) -> b21()
+  b21(%122 r: ptr):
+    call keep_for_handler#10(%122) -> b22()
+  b22(%123 r: ptr):
+    %124 vars: word = proj %123.0 main::owned_record_captured::Planner
+    drop %123
+    %125 s: ptr = show %124
+    drop %124
+    %126 lit: ptr = const str 6
+    %127 s: ptr = concat %126, %125
+    drop %125
+    drop %126
+    perform std::console::Console.print(%127) -> b23()
+  b23(%128 r: unit):
+    %129 box: word = box %128
+    %130 unbox: unit = unbox %129
+    drop %129
+    ret %130
+
+fn $entry#1 top -> unit ; main::owned_record_captured, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn planner#2 top -> ptr ; main::owned_record_captured, frame 2 slots [%0 i64, %2 word*]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    call range#18(%1, %0) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: i64 = const 0
+    %4 rec: ptr = alloc main::owned_record_captured::Planner(%2, %3)
+    ret %4
+
+fn main$1#3 lambda -> word ; main::owned_record_captured, captures [word*], frame 2 slots [%0 word*, %3 i64]
+  b0(%0 env: ptr):
+    %1 p: ptr = capture %0.0
+    drop %0
+    %2 vars: word = proj %1.0 main::owned_record_captured::Planner
+    drop %1
+    call sum#4(%2) -> b1()
+  b1(%3 r: i64):
+    %4 box: word = box %3
+    ret %4
+
+fn put_var#5 top -> ptr ; main::owned_record_captured, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
+  b0(%0 p: ptr, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#14(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ptr):
+    %8 mark: i64 = proj %7.1 main::owned_record_captured::Planner
+    drop %7
+    %9 rec: ptr = alloc main::owned_record_captured::Planner(%6, %8)
+    ret %9
+
+fn total#6 top -> i64 ; main::owned_record_captured, frame 3 slots [%0 word*, %1 word*, %5 word*]
+  b0(%0 p: ptr, %1 ids: ptr):
+    %2 f: ptr = closure total$1#15[%0]
+    %3 lit: i64 = const 0
+    %4 box: word = box %3
+    call fold#16(%1, %4, %2) -> b1()
+  b1(%5 r: word):
+    %6 unbox: i64 = unbox %5
+    drop %5
+    ret %6
+
+fn keep_start#7 top -> ptr ; main::owned_record_captured, frame 9 slots [%0 word*, %5 i64, %6 word*, %11 i64, %12 word*, %13 word*, %34 word*, %35 word*, %36 i64]
+  b0(%0 start: ptr):
+    %41 lit: i64 = const 0
+    dup %0
+    jump b4(%0, %41, %0)
+  b1(%1 p: ptr, %2 i: i64, %3 start: ptr):
+    %4 lit: i64 = const 0
+    call var_of#11(%3, %4) -> b2(%1)
+  b2(%5 r: i64, %6 p: ptr):
+    %7 s: ptr = show %5
+    %8 lit: ptr = const str 1
+    %9 s: ptr = concat %7, %8
+    drop %7
+    drop %8
+    %10 lit: i64 = const 0
+    dup %6
+    call var_of#11(%6, %10) -> b3(%6, %9)
+  b3(%11 r: i64, %12 p: ptr, %13 s: ptr):
+    %14 s: ptr = show %11
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    %16 tup: ptr = alloc tuple#5(word, word)(%12, %15)
+    ret %16
+  b4(%17 p: ptr, %18 i: i64, %19 start: ptr):
+    %20 lit: i64 = const 3
+    %21 t: bool = lt.int %18, %20
+    if %21 then b6(%19, %17, %18) else b7(%19, %17, %18)
+  b5(%22 v: word, %23 p: ptr, %24 i: i64, %25 start: ptr):
+    drop %22
+    jump b4(%23, %24, %25)
+  b6(%26 start: ptr, %27 p: ptr, %28 i: i64):
+    %32 lit: i64 = const 100
+    %33 t: i64 = intadd %32, %28
+    call put_var#5(%27, %28, %33) -> b8(%26, %28)
+  b7(%29 start: ptr, %30 p: ptr, %31 i: i64):
+    jump b1(%30, %31, %29)
+  b8(%34 r: ptr, %35 start: ptr, %36 i: i64):
+    %37 lit: i64 = const 1
+    %38 t: i64 = intadd %36, %37
+    %39 lit: unit = const ()
+    %40 box: word = box %39
+    jump b5(%40, %34, %38, %35)
+
+fn two_views#8 top -> ptr ; main::owned_record_captured, frame 6 slots [%0 word*, %7 word*, %8 word*, %9 word*, %12 i64, %13 word*]
+  b0(%0 p: ptr):
+    %1 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %2 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %3 lit: i64 = const 0
+    %4 lit: i64 = const 555
+    %5 box: word = box %4
+    %6 $site: i64 = const 3
+    call set#14(%2, %3, %5, %6) -> b1(%0, %1)
+  b1(%7 r: ptr, %8 p: ptr, %9 vars: ptr):
+    %10 mark: i64 = proj %8.1 main::owned_record_captured::Planner
+    drop %8
+    %11 rec: ptr = alloc main::owned_record_captured::Planner(%7, %10)
+    call sum#4(%9) -> b2(%11)
+  b2(%12 r: i64, %13 rec: ptr):
+    %14 tup: ptr = alloc tuple#7(word, i64)(%13, %12)
+    ret %14
+
+fn with_view#9 top -> ptr ; main::owned_record_captured, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    dup %0
+    %1 f: ptr = closure with_view$1#13[%0]
+    %2 tup: ptr = alloc tuple#5(word, word)(%0, %1)
+    ret %2
+
+fn keep_for_handler#10 top -> ptr ; main::owned_record_captured, frame 8 slots [%0 word*, %1 word*, %2 word*, %5 word*, %9 i64, %10 word*, %30 word*, %31 i64]
+  b0(%0 start: ptr):
+    dup %0
+    try_push -> b1(err, %0)
+    %36 lit: i64 = const 0
+    jump b7(%0, %36)
+  b1(%1 e: word, %2 start: ptr):
+    %3 p: i64 = proj %1.0 main::owned_record_captured::Oops
+    drop %1
+    %4 lit: i64 = const 4
+    call put_var#5(%2, %4, %3) -> b2()
+  b2(%5 r: ptr):
+    ret %5
+  b3(%6 p: ptr, %7 i: i64) [try]:
+    %8 lit: i64 = const 0
+    dup %6
+    call var_of#11(%6, %8) -> b4(%6)
+  b4(%9 r: i64, %10 p: ptr) [try]:
+    %11 lit: i64 = const 200
+    %12 t: bool = eq.int %9, %11
+    if %12 then b5(%10) else b6(%10)
+  b5(%13 p: ptr) [try]:
+    drop %13
+    %15 lit: i64 = const 1
+    %16 rec: ptr = alloc main::owned_record_captured::Oops(%15)
+    fail %16
+  b6(%14 p: ptr) [try]:
+    try_pop
+    ret %14
+  b7(%17 p: ptr, %18 i: i64) [try]:
+    %19 lit: i64 = const 3
+    %20 t: bool = lt.int %18, %19
+    if %20 then b9(%17, %18) else b10(%17, %18)
+  b8(%21 v: word, %22 p: ptr, %23 i: i64) [try]:
+    drop %21
+    jump b7(%22, %23)
+  b9(%24 p: ptr, %25 i: i64) [try]:
+    %28 lit: i64 = const 200
+    %29 t: i64 = intadd %28, %25
+    call put_var#5(%24, %25, %29) -> b11(%25)
+  b10(%26 p: ptr, %27 i: i64) [try]:
+    jump b3(%26, %27)
+  b11(%30 r: ptr, %31 i: i64) [try]:
+    %32 lit: i64 = const 1
+    %33 t: i64 = intadd %31, %32
+    %34 lit: unit = const ()
+    %35 box: word = box %34
+    jump b8(%35, %30, %33)
+
+fn var_of#11 top -> i64 ; main::owned_record_captured, frame 3 slots [%0 word*, %1 i64, %7 word*]
+  b0(%0 p: ptr, %1 i: i64):
+    %2 vars: word = proj %0.0 main::owned_record_captured::Planner
+    drop %0
+    %3 r: ptr = $list_get(%2, %1)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intneg %4
+    %6 box: word = box %5
+    call unwrap_or#12(%3, %6) -> b1()
+  b1(%7 r: word):
+    %8 unbox: i64 = unbox %7
+    drop %7
+    ret %8
+
+fn with_view$1#13 lambda -> word ; main::owned_record_captured, captures [word*], frame 2 slots [%0 word*, %3 i64]
+  b0(%0 env: ptr):
+    %1 p: ptr = capture %0.0
+    drop %0
+    %2 lit: i64 = const 1
+    call var_of#11(%1, %2) -> b1()
+  b1(%3 r: i64):
+    %4 box: word = box %3
+    ret %4
+
+fn total$1#15 lambda -> word ; main::owned_record_captured, captures [word*], frame 5 slots [%0 word*, %1 word*, %2 word*, %6 i64, %7 i64]
+  b0(%0 env: ptr, %1 acc: word, %2 i: word):
+    %3 p: ptr = capture %0.0
+    drop %0
+    %4 unbox: i64 = unbox %1
+    drop %1
+    %5 unbox: i64 = unbox %2
+    drop %2
+    call var_of#11(%3, %5) -> b1(%4)
+  b1(%6 r: i64, %7 acc: i64):
+    %8 t: i64 = intadd %7, %6
+    %9 box: word = box %8
+    ret %9

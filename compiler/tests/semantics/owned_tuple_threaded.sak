@@ -1,0 +1,49 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.201 (3) (an owner threaded through tuple results)
+
+type Planner = { vars: List<Int>, mark: Int }
+
+fn new_var(p: Planner, v: Int) -> (Planner, Int) {
+  let id = List.len(p.vars)
+  (Planner { ..p, vars: List.push(p.vars, v) }, id)
+}
+
+fn new_mark(p: Planner) -> (Planner, Int) { (Planner { ..p, mark: p.mark + 1 }, p.mark + 1) }
+
+// The sorted list is a shared component: only the planner comes back owned.
+fn sorted(p: Planner) -> (Planner, List<Int>) {
+  let q = Planner { ..p, vars: List.set(p.vars, 0, 99) }
+  (q, List.sort_by(q.vars, fn(x) { 0 - x }))
+}
+
+// The planner and one of its own fields in one tuple.
+fn with_field(p: Planner) -> (Planner, List<Int>) { (p, p.vars) }
+
+pub fn main() -> Unit ! {Console} {
+  var p = Planner { vars: [], mark: 0 }
+  var ids: List<Int> = []
+  var i = 0
+  while i < 8 {
+    let (q, id) = new_var(p, i * i)
+    p = q
+    ids = List.push(ids, id)
+    i = i + 1
+  }
+  let (p1, m) = new_mark(p)
+  Console.print("threaded {p1.vars} {ids} {m}")
+
+  let (p2, s) = sorted(p1)
+  let p3 = Planner { ..p2, vars: List.set(p2.vars, 1, -1) }
+  Console.print("sorted {s} {p2.vars} {p3.vars}")
+
+  let (p4, field) = with_field(p3)
+  let (p5, _) = new_var(p4, 1000)
+  let p6 = Planner { ..p5, vars: List.set(p5.vars, 2, -2) }
+  Console.print("field {field} {p6.vars}")
+
+  // The first component of a tuple kept whole, the planner updated after.
+  let pair = new_var(p6, 7)
+  let (p7, _) = pair
+  let p8 = Planner { ..p7, vars: List.set(p7.vars, 3, -3) }
+  Console.print("pair {pair.0.vars} {p8.vars}")
+}

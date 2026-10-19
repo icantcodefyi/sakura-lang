@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+captured 10 60
+borrowed 53 [50, 53, 2, 3, 4]
+keep 0 100 [100, 101, 102, 3, 4]
+views 112 [555, 53, 2, 3, 4] [50, 53, 2, 3, 4]
+view 53 Some(-9) Some(53)
+handler [0, 1, 2, 3, 1]

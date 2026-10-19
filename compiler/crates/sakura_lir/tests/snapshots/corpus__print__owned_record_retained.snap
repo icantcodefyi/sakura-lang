@@ -1,0 +1,485 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_record_retained::Outer | Outer 32b (inner: word*, tag: i64)
+layout 1 record main::owned_record_retained::Planner | Planner 40b (vars: word*, cons: word*, mark: i64)
+layout 2 error main::owned_record_retained::Stop | Stop 24b (at: i64)
+layout 3 variant std::list::Builder
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+layout 8 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word*, %9 word*, %10 i64, %14 bool, %15 word*, %16 i64, %21 word*, %22 word*, %23 i64, %25 word*, %26 word*, %27 i64, %28 word*, %29 i64, %30 word*, %34 bool, %35 i64, %36 word*, %38 word*, %39 i64, %40 word*, %44 bool, %45 i64, %46 word*, %52 word*, %53 i64, %54 word*, %67 bool, %68 i64, %69 word*, %74 word*, %75 i64, %76 word*, %93 bool, %94 i64, %95 word*, %127 bool, %128 word*, %140 word*, %141 word*, %148 word*, %149 word*, %163 bool, %167 word*, %173 word*, %185 bool, %190 word*, %191 i64, %192 word*, %195 word*, %196 i64, %197 word*, %198 word*, %199 i64, %200 word*, %212 word*, %213 i64]
+  b0():
+    %0 xs: ptr = alloc list()
+    %1 xs: ptr = alloc list()
+    %2 lit: i64 = const 0
+    %3 rec: ptr = alloc main::owned_record_retained::Planner(%0, %1, %2)
+    %240 lit: i64 = const 0
+    jump b32(%3, %240)
+  b1(%4 p: ptr, %5 i: i64):
+    %218 lit: i64 = const 0
+    jump b27(%4, %218)
+  b2(%6 p: ptr, %7 i: i64):
+    dup %6
+    call show#3(%6) -> b3(%6, %7)
+  b3(%8 r: ptr, %9 p: ptr, %10 i: i64):
+    %11 s: ptr = show %8
+    drop %8
+    %12 lit: ptr = const str 0
+    %13 s: ptr = concat %12, %11
+    drop %11
+    drop %12
+    perform std::console::Console.print(%13) -> b4(%9, %10)
+  b4(%14 r: unit, %15 p: ptr, %16 i: i64):
+    %17 box: word = box %14
+    drop %17
+    %18 lit: i64 = const 1
+    %19 t: i64 = intneg %18
+    %20 lit: i64 = const 0
+    dup %15
+    call put_var#4(%15, %20, %19) -> b5(%15, %16)
+  b5(%21 r: ptr, %22 p: ptr, %23 i: i64):
+    %24 lit: i64 = const 9
+    call bump#2(%21, %24) -> b6(%22, %23)
+  b6(%25 r: ptr, %26 p: ptr, %27 i: i64):
+    call show#3(%26) -> b7(%27, %25)
+  b7(%28 r: ptr, %29 i: i64, %30 r: ptr):
+    %31 s: ptr = show %28
+    drop %28
+    %32 lit: ptr = const str 1
+    %33 s: ptr = concat %32, %31
+    drop %31
+    drop %32
+    perform std::console::Console.print(%33) -> b8(%29, %30)
+  b8(%34 r: unit, %35 i: i64, %36 r: ptr):
+    %37 box: word = box %34
+    drop %37
+    dup %36
+    call show#3(%36) -> b9(%35, %36)
+  b9(%38 r: ptr, %39 i: i64, %40 r: ptr):
+    %41 s: ptr = show %38
+    drop %38
+    %42 lit: ptr = const str 2
+    %43 s: ptr = concat %42, %41
+    drop %41
+    drop %42
+    perform std::console::Console.print(%43) -> b10(%39, %40)
+  b10(%44 r: unit, %45 i: i64, %46 r: ptr):
+    %47 box: word = box %44
+    drop %47
+    %48 vars: word = proj %46.0 main::owned_record_retained::Planner
+    %49 lit: i64 = const 2
+    %50 t: i64 = intneg %49
+    %51 lit: i64 = const 1
+    call put_var#4(%46, %51, %50) -> b11(%45, %48)
+  b11(%52 r: ptr, %53 i: i64, %54 vars: ptr):
+    %55 lit: i64 = const 1
+    %56 item: ptr = $list_get(%54, %55)
+    %57 s: ptr = show %56
+    drop %56
+    %58 lit: ptr = const str 3
+    %59 s: ptr = concat %58, %57
+    drop %57
+    drop %58
+    %60 lit: ptr = const str 4
+    %61 s: ptr = concat %59, %60
+    drop %59
+    drop %60
+    %62 vars: word = proj %52.0 main::owned_record_retained::Planner
+    %63 lit: i64 = const 1
+    %64 item: ptr = $list_get(%62, %63)
+    %65 s: ptr = show %64
+    drop %64
+    %66 s: ptr = concat %61, %65
+    drop %61
+    drop %65
+    perform std::console::Console.print(%66) -> b12(%53, %52)
+  b12(%67 r: unit, %68 i: i64, %69 r: ptr):
+    %70 box: word = box %67
+    drop %70
+    dup %69
+    %71 xs: ptr = alloc list(%69)
+    %72 lit: i64 = const 3
+    %73 lit: i64 = const 7
+    call put_var#4(%69, %72, %73) -> b13(%68, %71)
+  b13(%74 r: ptr, %75 i: i64, %76 xs: ptr):
+    %77 lit: i64 = const 0
+    %78 lit: ptr = const str 5
+    %79 r: word = $list_get_expect(%76, %77, %78)
+    %80 vars: word = proj %79.0 main::owned_record_retained::Planner
+    drop %79
+    %81 lit: i64 = const 3
+    %82 item: ptr = $list_get(%80, %81)
+    %83 s: ptr = show %82
+    drop %82
+    %84 lit: ptr = const str 6
+    %85 s: ptr = concat %84, %83
+    drop %83
+    drop %84
+    %86 lit: ptr = const str 4
+    %87 s: ptr = concat %85, %86
+    drop %85
+    drop %86
+    %88 vars: word = proj %74.0 main::owned_record_retained::Planner
+    %89 lit: i64 = const 3
+    %90 item: ptr = $list_get(%88, %89)
+    %91 s: ptr = show %90
+    drop %90
+    %92 s: ptr = concat %87, %91
+    drop %87
+    drop %91
+    perform std::console::Console.print(%92) -> b14(%75, %74)
+  b14(%93 r: unit, %94 i: i64, %95 r: ptr):
+    %96 box: word = box %93
+    drop %96
+    dup %95
+    try_push -> b24(err, %94, %95)
+    dup %95
+    call put_then_fail#5(%95) -> b26(%94, %95)
+  b15(%97 v: ptr, %98 p: ptr, %99 i: i64):
+    %100 vars: word = proj %97.0 main::owned_record_retained::Planner
+    %101 lit: i64 = const 0
+    %102 item: ptr = $list_get(%100, %101)
+    %103 s: ptr = show %102
+    drop %102
+    %104 lit: ptr = const str 7
+    %105 s: ptr = concat %104, %103
+    drop %103
+    drop %104
+    %106 lit: ptr = const str 4
+    %107 s: ptr = concat %105, %106
+    drop %105
+    drop %106
+    %108 vars: word = proj %97.0 main::owned_record_retained::Planner
+    drop %97
+    %109 lit: i64 = const 9
+    %110 item: ptr = $list_get(%108, %109)
+    %111 s: ptr = show %110
+    drop %110
+    %112 s: ptr = concat %107, %111
+    drop %107
+    drop %111
+    %113 lit: ptr = const str 4
+    %114 s: ptr = concat %112, %113
+    drop %112
+    drop %113
+    %115 vars: word = proj %98.0 main::owned_record_retained::Planner
+    %116 lit: i64 = const 0
+    %117 item: ptr = $list_get(%115, %116)
+    %118 s: ptr = show %117
+    drop %117
+    %119 s: ptr = concat %114, %118
+    drop %114
+    drop %118
+    %120 lit: ptr = const str 4
+    %121 s: ptr = concat %119, %120
+    drop %119
+    drop %120
+    %122 vars: word = proj %98.0 main::owned_record_retained::Planner
+    %123 lit: i64 = const 9
+    %124 item: ptr = $list_get(%122, %123)
+    %125 s: ptr = show %124
+    drop %124
+    %126 s: ptr = concat %121, %125
+    drop %121
+    drop %125
+    perform std::console::Console.print(%126) -> b16(%98)
+  b16(%127 r: unit, %128 p: ptr):
+    %129 box: word = box %127
+    drop %129
+    %130 cons: word = proj %128.1 main::owned_record_retained::Planner
+    %131 lit: i64 = const 5
+    %132 box: word = box %131
+    %133 r: ptr = $list_push(%130, %132)
+    %134 vars: word = proj %128.0 main::owned_record_retained::Planner
+    %135 mark: i64 = proj %128.2 main::owned_record_retained::Planner
+    drop %128
+    %136 rec: ptr = alloc main::owned_record_retained::Planner(%134, %133, %135)
+    %137 cons: word = proj %136.1 main::owned_record_retained::Planner
+    %138 r: i64 = $list_len(%137)
+    %139 lit: i64 = const 2
+    dup %136
+    call put_var#4(%136, %139, %138) -> b17(%136)
+  b17(%140 r: ptr, %141 rec: ptr):
+    %142 mark: i64 = proj %141.2 main::owned_record_retained::Planner
+    drop %141
+    %143 lit: i64 = const 1
+    %144 t: i64 = intadd %142, %143
+    %145 vars: word = proj %140.0 main::owned_record_retained::Planner
+    %146 cons: word = proj %140.1 main::owned_record_retained::Planner
+    drop %140
+    %147 rec: ptr = alloc main::owned_record_retained::Planner(%145, %146, %144)
+    dup %147
+    call show#3(%147) -> b18(%147)
+  b18(%148 r: ptr, %149 rec: ptr):
+    %150 s: ptr = show %148
+    drop %148
+    %151 lit: ptr = const str 8
+    %152 s: ptr = concat %151, %150
+    drop %150
+    drop %151
+    %153 lit: ptr = const str 4
+    %154 s: ptr = concat %152, %153
+    drop %152
+    drop %153
+    %155 cons: word = proj %149.1 main::owned_record_retained::Planner
+    %156 s: ptr = show %155
+    drop %155
+    %157 s: ptr = concat %154, %156
+    drop %154
+    drop %156
+    %158 lit: ptr = const str 4
+    %159 s: ptr = concat %157, %158
+    drop %157
+    drop %158
+    %160 mark: i64 = proj %149.2 main::owned_record_retained::Planner
+    drop %149
+    %161 s: ptr = show %160
+    %162 s: ptr = concat %159, %161
+    drop %159
+    drop %161
+    perform std::console::Console.print(%162) -> b19()
+  b19(%163 r: unit):
+    %164 box: word = box %163
+    drop %164
+    %165 lit: i64 = const 0
+    %166 lit: i64 = const 3
+    call range#6(%165, %166) -> b20()
+  b20(%167 r: ptr):
+    %168 xs: ptr = alloc list()
+    %169 lit: i64 = const 0
+    %170 rec: ptr = alloc main::owned_record_retained::Planner(%167, %168, %169)
+    %171 lit: i64 = const 1
+    %172 rec: ptr = alloc main::owned_record_retained::Outer(%170, %171)
+    call nested#7(%172) -> b21()
+  b21(%173 r: ptr):
+    %188 p: ptr = tuple_get %173.0
+    %189 p: i64 = tuple_get %173.1
+    drop %173
+    jump b22(%188, %189)
+  b22(%174 o: ptr, %175 seen: i64):
+    %176 s: ptr = show %175
+    %177 lit: ptr = const str 9
+    %178 s: ptr = concat %177, %176
+    drop %176
+    drop %177
+    %179 lit: ptr = const str 4
+    %180 s: ptr = concat %178, %179
+    drop %178
+    drop %179
+    %181 inner: word = proj %174.0 main::owned_record_retained::Outer
+    drop %174
+    %182 vars: word = proj %181.0 main::owned_record_retained::Planner
+    drop %181
+    %183 s: ptr = show %182
+    drop %182
+    %184 s: ptr = concat %180, %183
+    drop %180
+    drop %183
+    perform std::console::Console.print(%184) -> b23()
+  b23(%185 r: unit):
+    %186 box: word = box %185
+    %187 unbox: unit = unbox %186
+    drop %186
+    ret %187
+  b24(%190 e: word, %191 i: i64, %192 r: ptr):
+    %193 p: i64 = proj %190.0 main::owned_record_retained::Stop
+    drop %190
+    %194 lit: i64 = const 9
+    dup %192
+    call put_var#4(%192, %194, %193) -> b25(%191, %192)
+  b25(%195 r: ptr, %196 i: i64, %197 r: ptr):
+    jump b15(%195, %197, %196)
+  b26(%198 r: ptr, %199 i: i64, %200 r: ptr) [try]:
+    try_pop
+    jump b15(%198, %200, %199)
+  b27(%201 p: ptr, %202 i: i64):
+    %203 lit: i64 = const 10
+    %204 t: bool = lt.int %202, %203
+    if %204 then b29(%201, %202) else b30(%201, %202)
+  b28(%205 v: word, %206 p: ptr, %207 i: i64):
+    drop %205
+    jump b27(%206, %207)
+  b29(%208 p: ptr, %209 i: i64):
+    call bump#2(%208, %209) -> b31(%209)
+  b30(%210 p: ptr, %211 i: i64):
+    jump b2(%210, %211)
+  b31(%212 r: ptr, %213 i: i64):
+    %214 lit: i64 = const 1
+    %215 t: i64 = intadd %213, %214
+    %216 lit: unit = const ()
+    %217 box: word = box %216
+    jump b28(%217, %212, %215)
+  b32(%219 p: ptr, %220 i: i64):
+    %221 lit: i64 = const 10
+    %222 t: bool = lt.int %220, %221
+    if %222 then b34(%219, %220) else b35(%219, %220)
+  b33(%223 v: word, %224 p: ptr, %225 i: i64):
+    drop %223
+    jump b32(%224, %225)
+  b34(%226 p: ptr, %227 i: i64):
+    %230 vars: word = proj %226.0 main::owned_record_retained::Planner
+    %231 box: word = box %227
+    %232 r: ptr = $list_push(%230, %231)
+    %233 cons: word = proj %226.1 main::owned_record_retained::Planner
+    %234 mark: i64 = proj %226.2 main::owned_record_retained::Planner
+    drop %226
+    %235 rec: ptr = alloc main::owned_record_retained::Planner(%232, %233, %234)
+    %236 lit: i64 = const 1
+    %237 t: i64 = intadd %227, %236
+    %238 lit: unit = const ()
+    %239 box: word = box %238
+    jump b33(%239, %235, %237)
+  b35(%228 p: ptr, %229 i: i64):
+    jump b1(%228, %229)
+
+fn $entry#1 top -> unit ; main::owned_record_retained, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn bump#2 top -> ptr ; main::owned_record_retained, frame 6 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64, %7 word*]
+  b0(%0 p: ptr, %1 i: i64):
+    dup %0
+    call var_of#10(%0, %1) -> b1(%0, %1)
+  b1(%2 r: i64, %3 p: ptr, %4 i: i64):
+    %5 lit: i64 = const 1
+    %6 t: i64 = intadd %2, %5
+    call put_var#4(%3, %4, %6) -> b2()
+  b2(%7 r: ptr):
+    ret %7
+
+fn show#3 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 word*, %7 i64, %8 word*, %9 word*]
+  b0(%0 p: ptr):
+    %1 vars: word = proj %0.0 main::owned_record_retained::Planner
+    %2 r: i64 = $list_len(%1)
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %3, %4
+    drop %3
+    drop %4
+    %6 vars: word = proj %0.0 main::owned_record_retained::Planner
+    call sum#11(%6) -> b1(%0, %5)
+  b1(%7 r: i64, %8 p: ptr, %9 s: ptr):
+    %10 s: ptr = show %7
+    %11 s: ptr = concat %9, %10
+    drop %9
+    drop %10
+    %12 lit: ptr = const str 4
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 vars: word = proj %8.0 main::owned_record_retained::Planner
+    %15 lit: i64 = const 0
+    %16 item: ptr = $list_get(%14, %15)
+    %17 s: ptr = show %16
+    drop %16
+    %18 s: ptr = concat %13, %17
+    drop %13
+    drop %17
+    %19 lit: ptr = const str 4
+    %20 s: ptr = concat %18, %19
+    drop %18
+    drop %19
+    %21 vars: word = proj %8.0 main::owned_record_retained::Planner
+    drop %8
+    %22 lit: i64 = const 9
+    %23 item: ptr = $list_get(%21, %22)
+    %24 s: ptr = show %23
+    drop %23
+    %25 s: ptr = concat %20, %24
+    drop %20
+    drop %24
+    ret %25
+
+fn put_var#4 top -> ptr ; main::owned_record_retained, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
+  b0(%0 p: ptr, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_retained::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#8(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ptr):
+    %8 cons: word = proj %7.1 main::owned_record_retained::Planner
+    %9 mark: i64 = proj %7.2 main::owned_record_retained::Planner
+    drop %7
+    %10 rec: ptr = alloc main::owned_record_retained::Planner(%6, %8, %9)
+    ret %10
+
+fn put_then_fail#5 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 word*, %3 word*, %5 i64, %6 word*]
+  b0(%0 p: ptr):
+    %1 lit: i64 = const 0
+    %2 lit: i64 = const 42
+    call put_var#4(%0, %1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 lit: i64 = const 0
+    dup %3
+    call var_of#10(%3, %4) -> b2(%3)
+  b2(%5 r: i64, %6 r: ptr):
+    %7 lit: i64 = const 42
+    %8 t: bool = eq.int %5, %7
+    if %8 then b4(%6) else b5(%6)
+  b3(%9 v: word, %10 r: ptr):
+    drop %9
+    ret %10
+  b4(%11 r: ptr):
+    drop %11
+    %13 lit: i64 = const 1
+    %14 rec: ptr = alloc main::owned_record_retained::Stop(%13)
+    fail %14
+  b5(%12 r: ptr):
+    %15 lit: unit = const ()
+    %16 box: word = box %15
+    jump b3(%16, %12)
+
+fn nested#7 top -> ptr ; main::owned_record_retained, frame 6 slots [%0 word*, %7 word*, %8 word*, %9 word*, %21 word*, %22 word*]
+  b0(%0 o: ptr):
+    %1 inner: word = proj %0.0 main::owned_record_retained::Outer
+    %2 vars: word = proj %1.0 main::owned_record_retained::Planner
+    %3 lit: i64 = const 0
+    %4 lit: i64 = const 777
+    %5 box: word = box %4
+    %6 $site: i64 = const 3
+    call set#8(%2, %3, %5, %6) -> b1(%0, %1)
+  b1(%7 r: ptr, %8 o: ptr, %9 inner: ptr):
+    %10 inner: word = proj %8.0 main::owned_record_retained::Outer
+    %11 vars: word = proj %10.0 main::owned_record_retained::Planner
+    drop %10
+    %12 cons: word = proj %9.1 main::owned_record_retained::Planner
+    %13 mark: i64 = proj %9.2 main::owned_record_retained::Planner
+    drop %9
+    %14 rec: ptr = alloc main::owned_record_retained::Planner(%7, %12, %13)
+    %15 tag: i64 = proj %8.1 main::owned_record_retained::Outer
+    drop %8
+    %16 rec: ptr = alloc main::owned_record_retained::Outer(%14, %15)
+    %17 lit: i64 = const 0
+    %18 item: ptr = $list_get(%11, %17)
+    %19 lit: i64 = const 0
+    %20 box: word = box %19
+    call unwrap_or#9(%18, %20) -> b2(%16)
+  b2(%21 r: word, %22 rec: ptr):
+    %23 unbox: i64 = unbox %21
+    drop %21
+    %24 tup: ptr = alloc tuple#8(word, i64)(%22, %23)
+    ret %24
+
+fn var_of#10 top -> i64 ; main::owned_record_retained, frame 3 slots [%0 word*, %1 i64, %7 word*]
+  b0(%0 p: ptr, %1 i: i64):
+    %2 vars: word = proj %0.0 main::owned_record_retained::Planner
+    drop %0
+    %3 r: ptr = $list_get(%2, %1)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intneg %4
+    %6 box: word = box %5
+    call unwrap_or#9(%3, %6) -> b1()
+  b1(%7 r: word):
+    %8 unbox: i64 = unbox %7
+    drop %7
+    ret %8

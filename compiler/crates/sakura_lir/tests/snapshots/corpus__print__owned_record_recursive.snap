@@ -1,0 +1,273 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_record_recursive::Planner | Planner 32b (vars: word*, mark: i64)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_record_recursive, frame 17 slots [%2 word*, %7 word*, %8 word*, %11 word*, %12 word*, %13 word*, %28 bool, %29 word*, %33 word*, %34 word*, %36 word*, %37 word*, %47 bool, %48 word*, %51 word*, %52 word*, %67 bool]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 10
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: i64 = const 0
+    %4 rec: ptr = alloc main::owned_record_recursive::Planner(%2, %3)
+    %5 lit: i64 = const 0
+    %6 lit: i64 = const 10
+    dup %4
+    call fill#3(%4, %5, %6) -> b2(%4)
+  b2(%7 r: ptr, %8 rec: ptr):
+    %9 lit: i64 = const 0
+    %10 lit: i64 = const 5
+    dup %8
+    call fill#3(%8, %9, %10) -> b3(%8, %7)
+  b3(%11 r: ptr, %12 rec: ptr, %13 r: ptr):
+    %14 vars: word = proj %13.0 main::owned_record_recursive::Planner
+    drop %13
+    %15 s: ptr = show %14
+    drop %14
+    %16 lit: ptr = const str 0
+    %17 s: ptr = concat %16, %15
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 1
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    %20 vars: word = proj %11.0 main::owned_record_recursive::Planner
+    drop %11
+    %21 s: ptr = show %20
+    drop %20
+    %22 s: ptr = concat %19, %21
+    drop %19
+    drop %21
+    %23 lit: ptr = const str 1
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    %25 vars: word = proj %12.0 main::owned_record_recursive::Planner
+    %26 s: ptr = show %25
+    drop %25
+    %27 s: ptr = concat %24, %26
+    drop %24
+    drop %26
+    perform std::console::Console.print(%27) -> b4(%12)
+  b4(%28 r: unit, %29 rec: ptr):
+    %30 box: word = box %28
+    drop %30
+    %31 lit: i64 = const 0
+    %32 lit: i64 = const 10
+    dup %29
+    call fill#3(%29, %31, %32) -> b5(%29)
+  b5(%33 r: ptr, %34 rec: ptr):
+    %35 lit: i64 = const 9
+    call even#4(%33, %35) -> b6(%34)
+  b6(%36 r: ptr, %37 rec: ptr):
+    %38 vars: word = proj %36.0 main::owned_record_recursive::Planner
+    drop %36
+    %39 s: ptr = show %38
+    drop %38
+    %40 lit: ptr = const str 2
+    %41 s: ptr = concat %40, %39
+    drop %39
+    drop %40
+    %42 lit: ptr = const str 1
+    %43 s: ptr = concat %41, %42
+    drop %41
+    drop %42
+    %44 vars: word = proj %37.0 main::owned_record_recursive::Planner
+    %45 s: ptr = show %44
+    drop %44
+    %46 s: ptr = concat %43, %45
+    drop %43
+    drop %45
+    perform std::console::Console.print(%46) -> b7(%37)
+  b7(%47 r: unit, %48 rec: ptr):
+    %49 box: word = box %47
+    drop %49
+    %50 lit: i64 = const 3
+    dup %48
+    call split#5(%48, %50) -> b8(%48)
+  b8(%51 r: ptr, %52 rec: ptr):
+    %53 vars: word = proj %51.0 main::owned_record_recursive::Planner
+    %54 s: ptr = show %53
+    drop %53
+    %55 lit: ptr = const str 3
+    %56 s: ptr = concat %55, %54
+    drop %54
+    drop %55
+    %57 lit: ptr = const str 1
+    %58 s: ptr = concat %56, %57
+    drop %56
+    drop %57
+    %59 mark: i64 = proj %51.1 main::owned_record_recursive::Planner
+    drop %51
+    %60 s: ptr = show %59
+    %61 s: ptr = concat %58, %60
+    drop %58
+    drop %60
+    %62 lit: ptr = const str 1
+    %63 s: ptr = concat %61, %62
+    drop %61
+    drop %62
+    %64 vars: word = proj %52.0 main::owned_record_recursive::Planner
+    drop %52
+    %65 s: ptr = show %64
+    drop %64
+    %66 s: ptr = concat %63, %65
+    drop %63
+    drop %65
+    perform std::console::Console.print(%66) -> b9()
+  b9(%67 r: unit):
+    %68 box: word = box %67
+    %69 unbox: unit = unbox %68
+    drop %68
+    ret %69
+
+fn $entry#1 top -> unit ; main::owned_record_recursive, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn fill#3 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1 i64, %2 i64, %13 word*, %14 i64, %15 i64]
+  b0(%0 p: ptr, %1 i: i64, %2 n: i64):
+    jump b1(%0, %1, %2)
+  b1(%3 p: ptr, %4 i: i64, %5 n: i64):
+    %6 t: bool = ge.int %4, %5
+    if %6 then b4(%3, %4, %5) else b5(%3, %4, %5)
+  b2(%7 v: word, %8 p: ptr, %9 i: i64, %10 n: i64):
+    drop %7
+    %11 lit: i64 = const 3
+    %12 t: i64 = intmul %9, %11
+    call put_var#6(%8, %9, %12) -> b3(%9, %10)
+  b3(%13 r: ptr, %14 i: i64, %15 n: i64):
+    %16 lit: i64 = const 1
+    %17 t: i64 = intadd %14, %16
+    jump b1(%13, %17, %15)
+  b4(%18 p: ptr, %19 i: i64, %20 n: i64):
+    ret %18
+  b5(%21 p: ptr, %22 i: i64, %23 n: i64):
+    %24 lit: unit = const ()
+    %25 box: word = box %24
+    jump b2(%25, %21, %22, %23)
+
+fn even#4 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1 i64, %13 word*, %14 i64, %24 word*, %25 i64]
+  b0(%0 p: ptr, %1 i: i64):
+    jump b1(%0, %1)
+  b1(%2 p: ptr, %3 i: i64):
+    %17 lit: i64 = const 0
+    %18 t: bool = eq.int %3, %17
+    if %18 then b6(%2, %3) else b7(%2, %3)
+  b2(%4 p: ptr, %5 i: i64):
+    %6 lit: i64 = const 0
+    %7 t: bool = eq.int %5, %6
+    if %7 then b3(%4, %5) else b4(%4, %5)
+  b3(%8 p: ptr, %9 i: i64):
+    ret %8
+  b4(%10 p: ptr, %11 i: i64):
+    %12 lit: i64 = const 1
+    call put_var#6(%10, %11, %12) -> b5(%11)
+  b5(%13 r: ptr, %14 i: i64):
+    %15 lit: i64 = const 1
+    %16 t: i64 = intsub %14, %15
+    jump b1(%13, %16)
+  b6(%19 p: ptr, %20 i: i64):
+    ret %19
+  b7(%21 p: ptr, %22 i: i64):
+    %23 lit: i64 = const 0
+    call put_var#6(%21, %22, %23) -> b8(%22)
+  b8(%24 r: ptr, %25 i: i64):
+    %26 lit: i64 = const 1
+    %27 t: i64 = intsub %25, %26
+    jump b2(%24, %27)
+
+fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, %1 i64, %7 word*, %8 word*, %9 i64, %12 word*, %13 word*, %14 i64, %16 word*, %17 i64, %18 word*, %21 word*, %22 word*, %27 i64, %28 word*, %29 i64]
+  b0(%0 p: ptr, %1 i: i64):
+    %2 lit: i64 = const 0
+    %3 t: bool = eq.int %1, %2
+    if %3 then b7(%0, %1) else b8(%0, %1)
+  b1(%4 v: word, %5 p: ptr, %6 i: i64):
+    drop %4
+    dup %5
+    call put_var#6(%5, %6, %6) -> b2(%5, %6)
+  b2(%7 r: ptr, %8 p: ptr, %9 i: i64):
+    %10 lit: i64 = const 1
+    %11 t: i64 = intsub %9, %10
+    call split#5(%7, %11) -> b3(%8, %9)
+  b3(%12 r: ptr, %13 p: ptr, %14 i: i64):
+    %15 t: i64 = intneg %14
+    call put_var#6(%13, %14, %15) -> b4(%14, %12)
+  b4(%16 r: ptr, %17 i: i64, %18 r: ptr):
+    %19 lit: i64 = const 1
+    %20 t: i64 = intsub %17, %19
+    call split#5(%16, %20) -> b5(%18)
+  b5(%21 r: ptr, %22 r: ptr):
+    %23 mark: i64 = proj %22.1 main::owned_record_recursive::Planner
+    %24 mark: i64 = proj %21.1 main::owned_record_recursive::Planner
+    %25 t: i64 = intadd %23, %24
+    %26 vars: word = proj %21.0 main::owned_record_recursive::Planner
+    drop %21
+    call sum#7(%26) -> b6(%22, %25)
+  b6(%27 r: i64, %28 r: ptr, %29 t: i64):
+    %30 t: i64 = intadd %29, %27
+    %31 vars: word = proj %28.0 main::owned_record_recursive::Planner
+    drop %28
+    %32 rec: ptr = alloc main::owned_record_recursive::Planner(%31, %30)
+    ret %32
+  b7(%33 p: ptr, %34 i: i64):
+    ret %33
+  b8(%35 p: ptr, %36 i: i64):
+    %37 lit: unit = const ()
+    %38 box: word = box %37
+    jump b1(%38, %35, %36)
+
+fn put_var#6 top -> ptr ; main::owned_record_recursive, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
+  b0(%0 p: ptr, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_recursive::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#10(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ptr):
+    %8 mark: i64 = proj %7.1 main::owned_record_recursive::Planner
+    drop %7
+    %9 rec: ptr = alloc main::owned_record_recursive::Planner(%6, %8)
+    ret %9
+
+fn odd#11 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1 i64, %13 word*, %14 i64, %24 word*, %25 i64]
+  b0(%0 p: ptr, %1 i: i64):
+    jump b1(%0, %1)
+  b1(%2 p: ptr, %3 i: i64):
+    %17 lit: i64 = const 0
+    %18 t: bool = eq.int %3, %17
+    if %18 then b6(%2, %3) else b7(%2, %3)
+  b2(%4 p: ptr, %5 i: i64):
+    %6 lit: i64 = const 0
+    %7 t: bool = eq.int %5, %6
+    if %7 then b3(%4, %5) else b4(%4, %5)
+  b3(%8 p: ptr, %9 i: i64):
+    ret %8
+  b4(%10 p: ptr, %11 i: i64):
+    %12 lit: i64 = const 0
+    call put_var#6(%10, %11, %12) -> b5(%11)
+  b5(%13 r: ptr, %14 i: i64):
+    %15 lit: i64 = const 1
+    %16 t: i64 = intsub %14, %15
+    jump b1(%13, %16)
+  b6(%19 p: ptr, %20 i: i64):
+    ret %19
+  b7(%21 p: ptr, %22 i: i64):
+    %23 lit: i64 = const 1
+    call put_var#6(%21, %22, %23) -> b8(%22)
+  b8(%24 r: ptr, %25 i: i64):
+    %26 lit: i64 = const 1
+    %27 t: i64 = intsub %25, %26
+    jump b2(%24, %27)

@@ -1,0 +1,116 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_record_unsettled, frame 4 slots [%9 word*, %10 word*, %11 word*, %21 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 xs: ptr = alloc list(%1, %3)
+    %5 lit: i64 = const 3
+    %6 box: word = box %5
+    %7 xs: ptr = alloc list(%6)
+    %8 lit: i64 = const 4
+    dup %4
+    dup %7
+    call f#2(%4, %7, %8) -> b1(%4, %7)
+  b1(%9 r: ptr, %10 xs: ptr, %11 xs: ptr):
+    %12 s: ptr = show %9
+    drop %9
+    %13 lit: ptr = const str 0
+    %14 s: ptr = concat %12, %13
+    drop %12
+    drop %13
+    %15 s: ptr = show %10
+    drop %10
+    %16 s: ptr = concat %14, %15
+    drop %14
+    drop %15
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    %19 s: ptr = show %11
+    drop %11
+    %20 s: ptr = concat %18, %19
+    drop %18
+    drop %19
+    perform std::console::Console.print(%20) -> b2()
+  b2(%21 r: unit):
+    %22 box: word = box %21
+    %23 unbox: unit = unbox %22
+    drop %22
+    ret %23
+
+fn $entry#1 top -> unit ; main::owned_record_unsettled, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn f#2 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 word*, %2 i64, %13 word*]
+  b0(%0 x: ptr, %1 y: ptr, %2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = le.int %2, %3
+    if %4 then b5(%0, %1, %2) else b6(%0, %1, %2)
+  b1(%5 v: word, %6 x: ptr, %7 y: ptr, %8 n: i64):
+    drop %5
+    %9 box: word = box %8
+    %10 r: ptr = $list_push(%7, %9)
+    %11 lit: i64 = const 1
+    %12 t: i64 = intsub %8, %11
+    call g#3(%10, %6, %12) -> b2()
+  b2(%13 r: ptr):
+    dup %13
+    %14 r: i64 = $list_len(%13)
+    %15 lit: i64 = const 100
+    %16 t: bool = gt.int %14, %15
+    if %16 then b3(%13) else b4(%13)
+  b3(%17 r: ptr):
+    drop %17
+    %19 lit: i64 = const 0
+    %20 box: word = box %19
+    %21 xs: ptr = alloc list(%20)
+    ret %21
+  b4(%18 r: ptr):
+    ret %18
+  b5(%22 x: ptr, %23 y: ptr, %24 n: i64):
+    drop %22
+    drop %23
+    %28 box: word = box %24
+    %29 xs: ptr = alloc list(%28)
+    ret %29
+  b6(%25 x: ptr, %26 y: ptr, %27 n: i64):
+    %30 lit: unit = const ()
+    %31 box: word = box %30
+    jump b1(%31, %25, %26, %27)
+
+fn g#3 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 word*, %2 i64, %5 word*]
+  b0(%0 x: ptr, %1 y: ptr, %2 n: i64):
+    %3 box: word = box %2
+    %4 r: ptr = $list_push(%0, %3)
+    call f#2(%4, %1, %2) -> b1()
+  b1(%5 r: ptr):
+    dup %5
+    %6 r: i64 = $list_len(%5)
+    %7 lit: i64 = const 100
+    %8 t: bool = gt.int %6, %7
+    if %8 then b2(%5) else b3(%5)
+  b2(%9 r: ptr):
+    drop %9
+    %11 lit: i64 = const 1
+    %12 box: word = box %11
+    %13 xs: ptr = alloc list(%12)
+    ret %13
+  b3(%10 r: ptr):
+    ret %10

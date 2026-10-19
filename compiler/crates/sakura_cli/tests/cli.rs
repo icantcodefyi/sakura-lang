@@ -2038,12 +2038,15 @@ fn build_dump_core_marks_proved_operations() {
 }
 
 /// `--dump owned` lists each consuming site of an owned-capable update as `owned` or
-/// `shared(<reason>)` with the fixed reason set, and each consuming def (design §17.149).
+/// `shared(<reason>)` with the fixed reason set, and each consuming def with its owned entry's
+/// verdicts (design §17.149, §17.201 (3)): `keep` borrows `d`, `hold` keeps `g`.
 #[test]
 fn build_dump_owned_gives_each_site_and_reason() {
     let dir = tmp(
         "dump-owned",
         "fn keep(xs: List<Int>) -> Int { List.len(xs) }\n\
+         \n\
+         fn hold(xs: List<Int>) -> List<List<Int>> { [xs] }\n\
          \n\
          fn grow(xs: List<Int>) -> List<Int> { List.push(xs, 1) }\n\
          \n\
@@ -2066,7 +2069,10 @@ fn build_dump_owned_gives_each_site_and_reason() {
            let d2 = List.push(d, 1)\n\
            let e = List.range(0, 3)\n\
            let e2 = List.push(e, 1)\n\
-           Console.print(\"{a} {f()} {b2} {box} {c2} {n} {d2} {e} {e2} {grow([0])} {pick([], true)}\")\n\
+           let g = List.range(0, 3)\n\
+           let held = hold(g)\n\
+           let g2 = List.push(g, 1)\n\
+           Console.print(\"{a} {f()} {b2} {box} {c2} {n} {d2} {e} {e2} {held} {g2} {grow([0])} {pick([], true)}\")\n\
          }\n",
     );
     let out = sakura(&["build", "--dump", "owned", "main.sak"], &dir);
@@ -2077,14 +2083,15 @@ fn build_dump_owned_gives_each_site_and_reason() {
   r%1 = list_push(xs%0) owned
   r%4 = list_push(r%2) shared(captured)
   r%7 = list_push(r%5) shared(stored)
-  r%10 = list_push(r%8) shared(escapes-call keep)
+  r%10 = list_push(r%8) owned
   r%12 = list_push(r%11) shared(borrowed-after)
-  r%41 = grow(xs%40) owned
-  r%46 = pick(xs%45) owned
+  r%15 = list_push(r%13) shared(escapes-call hold)
+  r%50 = grow(xs%49) owned
+  r%55 = pick(xs%54) owned
 fn grow consumes xs
-  r%1 = list_push(xs%0) shared(origin)
+  r%1 = list_push(xs%0) shared(param), owned entry owned
 fn pick consumes xs
-  r%4 = list_push(v%2) shared(join)
+  r%4 = list_push(v%2) shared(join), owned entry owned
 "
     );
     // `--dump core` marks the same owned sites.
@@ -2095,6 +2102,154 @@ fn pick consumes xs
         "{}",
         core.stdout
     );
+}
+
+/// Design §17.235 (3b): the WS-P13b fixtures' `--dump owned`, pinned. `owned_record_recursive`
+/// keeps `fill`, `even` and `odd` in place and `split` shared; `owned_record_unsettled`'s
+/// component does not settle in sixteen rounds, so it has no summaries and every site is
+/// `shared(param)`.
+#[test]
+fn build_dump_owned_pins_the_record_fixtures() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    for (name, expected) in [
+        (
+            "owned_record_retained",
+            "fn main
+  r%32 = put_var(p%17) shared(borrowed-after)
+  r%33 = bump(r%32) shared(origin)
+  r%44 = put_var(r%33) shared(origin)
+  r%55 = put_var(r%44) shared(stored)
+  r%97 = list_push(cons%96) shared(join)
+  r%103 = put_var(rec%100) shared(borrowed-after)
+  r%73 = put_var(r%55) shared(borrowed-after)
+  r%75 = put_then_fail(r%55) shared(borrowed-after)
+  r%25 = bump(p%19) owned
+  r%12 = list_push(vars%11) owned
+fn bump consumes p
+  r%4 = put_var(p%0) shared(param), owned entry owned
+fn put_var consumes p
+  r%4 = set(vars%3) shared(param), owned entry owned
+fn put_then_fail consumes p
+  r%1 = put_var(p%0) shared(param), owned entry owned
+fn nested
+  r%3 = set(vars%2) shared(param)
+",
+        ),
+        (
+            "owned_record_captured",
+            "fn main
+  r%2 = put_var(r%0) shared(captured)
+  r%14 = put_var(r%2) shared(origin)
+  r%57 = put_var(r%52) shared(join)
+fn put_var consumes p
+  r%4 = set(vars%3) shared(param), owned entry owned
+fn keep_start
+  r%10 = put_var(p%3) shared(join)
+fn two_views
+  r%3 = set(vars%2) shared(param)
+fn keep_for_handler
+  r%4 = put_var(start%0) shared(param)
+  r%15 = put_var(p%8) shared(join)
+",
+        ),
+        (
+            "owned_tuple_threaded",
+            "fn main
+  r%22 = new_mark(p%3) owned
+  r%37 = sorted(p1%23) owned
+  r%44 = set(vars%42) shared(field)
+  r%63 = new_var(p4%59) shared(join)
+  r%69 = set(vars%67) shared(join)
+  r%79 = new_var(rec%71) shared(origin)
+  r%85 = set(vars%83) shared(join)
+  r%15 = new_var(p%6) owned
+  r%20 = list_push(ids%7) owned
+fn new_var consumes p
+  r%5 = list_push(vars%4) shared(param), owned entry owned
+fn new_mark consumes p
+fn sorted consumes p
+  r%2 = set(vars%1) shared(param), owned entry owned
+",
+        ),
+        (
+            "owned_record_recursive",
+            "fn main
+  r%2 = fill(rec%1) shared(borrowed-after)
+  r%3 = fill(rec%1) shared(borrowed-after)
+  r%16 = fill(rec%1) shared(borrowed-after)
+  r%17 = even(r%16) shared(origin)
+fn fill consumes p
+  r%6 = put_var(p%0) shared(join), owned entry owned
+fn even consumes p
+  r%13 = put_var(p%9) shared(join), owned entry owned
+  r%4 = put_var(p%0) shared(join), owned entry owned
+fn split
+  r%4 = put_var(p%0) shared(param)
+  r%8 = put_var(p%0) shared(param)
+fn put_var consumes p
+  r%4 = set(vars%3) shared(param), owned entry owned
+fn odd consumes p
+  r%13 = put_var(p%9) shared(join), owned entry owned
+  r%4 = put_var(p%0) shared(join), owned entry owned
+",
+        ),
+        (
+            "owned_record_loop_twice",
+            "fn main
+  r%1 = grow(r%0) owned
+  r%3 = grow(r%2) owned
+  r%29 = grow(r%28) owned
+  r%30 = grow(r%29) shared(borrowed-after)
+  r%31 = grow(r%29) shared(borrowed-after)
+  r%48 = grow(r%1) shared(borrowed-after)
+  r%49 = grow(r%48) shared(origin)
+fn grow consumes start
+  r%32 = put_var(p%20) shared(join), owned entry owned
+  r%11 = list_push(vars%10) shared(join), owned entry owned
+  r%14 = list_push(cons%12) shared(join), owned entry owned
+fn put_var consumes p
+  r%4 = set(vars%3) shared(param), owned entry owned
+",
+        ),
+        (
+            "owned_record_unsettled",
+            "fn f
+  r%6 = list_push(y%1) shared(param)
+fn g
+  r%3 = list_push(x%0) shared(param)
+",
+        ),
+    ] {
+        let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
+        assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
+        assert_eq!(out.stdout, expected, "{name}");
+    }
+}
+
+/// Design §17.201 (3): on the `deltablue` benchmark every Planner update is owned in its def's
+/// owned entry, the parameter threaded through records, tuple results and recursion.
+#[test]
+fn build_dump_owned_proves_the_deltablue_planner() {
+    let dir =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bench/programs/deltablue/sakura");
+    let out = sakura(&["build", "--dump", "owned", "main.sak"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    for line in [
+        "fn put_var consumes p\n  r%4 = set(vars%3) shared(param), owned entry owned\n",
+        "fn put_con consumes p\n  r%4 = set(cons%3) shared(param), owned entry owned\n",
+        "fn set_value consumes p\n  r%10 = put_var(p%0) shared(param), owned entry owned\n",
+        "fn set_mark consumes p\n  r%10 = put_var(p%0) shared(param), owned entry owned\n",
+        "fn new_var consumes p\n  r%8 = list_push(vars%7) shared(param), owned entry owned\n",
+        "fn add_constraint consumes start\n  r%5 = list_push(cons%4) shared(param), owned entry owned\n",
+        "  r%49 = extract_plan(q2%44) owned\n",
+        "  r%66 = execute_plan(r%65) owned\n",
+    ] {
+        assert!(
+            out.stdout.contains(line),
+            "missing {line:?} in\n{}",
+            out.stdout
+        );
+    }
 }
 
 /// `--dump core` shows a `requires` seeding the interval pass (design §17.154): `countdown`'s

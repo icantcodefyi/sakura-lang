@@ -98,7 +98,13 @@ semantics/owned_empty_set_defect: D020, 3 allocated, 1 dup, 4 drop, peak 3, live
 semantics/owned_empty_singleton: unsupported (builtin map_remove)
 semantics/owned_generic: ok, 301 allocated, 4292 dup, 4593 drop, peak 12, live 0/0
 semantics/owned_loop_twice: ok, 854 allocated, 8908 dup, 9762 drop, peak 86, live 0/0
+semantics/owned_record_captured: ok, 161 allocated, 235 dup, 396 drop, peak 21, live 0/0
+semantics/owned_record_loop_twice: ok, 301 allocated, 550 dup, 851 drop, peak 43, live 0/0
+semantics/owned_record_recursive: ok, 279 allocated, 881 dup, 1160 drop, peak 33, live 0/0
+semantics/owned_record_retained: ok, 277 allocated, 547 dup, 824 drop, peak 21, live 0/0
+semantics/owned_record_unsettled: ok, 31 allocated, 42 dup, 73 drop, peak 17, live 0/0
 semantics/owned_retained_version: unsupported (builtin map_remove)
+semantics/owned_tuple_threaded: ok, 232 allocated, 574 dup, 806 drop, peak 22, live 0/0
 semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0

@@ -1,0 +1,39 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.201 (3) (the same owned record loop run twice)
+
+type Planner = { vars: List<Int>, cons: List<Int>, mark: Int }
+
+fn empty() -> Planner { Planner { vars: [], cons: [], mark: 0 } }
+
+fn put_var(p: Planner, i: Int, v: Int) -> Planner { Planner { ..p, vars: List.set(p.vars, i, v) } }
+
+// Grows and rewrites the planner it is given: in place when the caller's planner is owned.
+fn grow(start: Planner, n: Int) -> Planner {
+  var p = start
+  var i = 0
+  while i < n {
+    p = Planner { ..p, vars: List.push(p.vars, i), cons: List.push(p.cons, n - i) }
+    i = i + 1
+  }
+  i = 0
+  while i < List.len(p.vars) {
+    p = put_var(p, i, Option.unwrap_or(p.vars[i], 0) * 2)
+    i = i + 1
+  }
+  Planner { ..p, mark: p.mark + 1 }
+}
+
+pub fn main() -> Unit ! {Console} {
+  // Fresh each time: both runs may update in place, neither sees the other's updates.
+  let a = grow(empty(), 4)
+  let b = grow(empty(), 4)
+  Console.print("fresh {a.vars} {a.cons} {b.vars} {b.cons} {a.mark} {b.mark}")
+  // The same input twice: the first run must not update it.
+  let base = grow(empty(), 2)
+  let c = grow(base, 3)
+  let d = grow(base, 3)
+  Console.print("shared {base.vars} {c.vars} {d.vars} {c.mark}")
+  // A run's result fed back in.
+  let e = grow(grow(a, 1), 1)
+  Console.print("again {e.vars} {e.cons} {e.mark} {a.vars}")
+}

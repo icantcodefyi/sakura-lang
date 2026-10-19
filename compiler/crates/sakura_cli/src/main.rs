@@ -126,8 +126,9 @@ enum Command {
         /// the user modules' Core, each `Int` operation the JS interval pass proves marked
         /// `proved` (design §17.114) and each in-place update `owned`. `owned`: each consuming
         /// site of an owned-capable update as `owned` or `shared(<reason>)`, reasons `origin`,
-        /// `borrowed-after`, `captured`, `stored`, `escapes-call <name>`, `join` (design
-        /// §17.149).
+        /// `param`, `borrowed-after`, `captured`, `stored`, `escapes-call <name>`, `join`,
+        /// `field`, `tuple`, and in a consuming def `, owned entry <verdict>` for the same site
+        /// called with its parameter owned (design §17.149, §17.201 (3)).
         #[arg(long, value_enum)]
         dump: Option<Dump>,
         /// Force the CPS ABI for the whole program (design §17.111; the semantics suite runs

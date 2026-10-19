@@ -1,0 +1,288 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_record_loop_twice::Planner | Planner 40b (vars: word*, cons: word*, mark: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_record_loop_twice, frame 26 slots [%0 word*, %2 word*, %3 word*, %4 word*, %6 word*, %7 word*, %37 bool, %38 word*, %40 word*, %41 word*, %43 word*, %44 word*, %46 word*, %47 word*, %48 word*, %50 word*, %51 word*, %52 word*, %53 word*, %73 bool, %74 word*, %77 word*, %78 word*, %80 word*, %81 word*, %101 bool]
+  b0():
+    call empty#2() -> b1()
+  b1(%0 r: ptr):
+    %1 lit: i64 = const 4
+    call grow#3(%0, %1) -> b2()
+  b2(%2 r: ptr):
+    call empty#2() -> b3(%2)
+  b3(%3 r: ptr, %4 r: ptr):
+    %5 lit: i64 = const 4
+    call grow#3(%3, %5) -> b4(%4)
+  b4(%6 r: ptr, %7 r: ptr):
+    %8 vars: word = proj %7.0 main::owned_record_loop_twice::Planner
+    %9 s: ptr = show %8
+    drop %8
+    %10 lit: ptr = const str 0
+    %11 s: ptr = concat %10, %9
+    drop %9
+    drop %10
+    %12 lit: ptr = const str 1
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 cons: word = proj %7.1 main::owned_record_loop_twice::Planner
+    %15 s: ptr = show %14
+    drop %14
+    %16 s: ptr = concat %13, %15
+    drop %13
+    drop %15
+    %17 lit: ptr = const str 1
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    %19 vars: word = proj %6.0 main::owned_record_loop_twice::Planner
+    %20 s: ptr = show %19
+    drop %19
+    %21 s: ptr = concat %18, %20
+    drop %18
+    drop %20
+    %22 lit: ptr = const str 1
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    %24 cons: word = proj %6.1 main::owned_record_loop_twice::Planner
+    %25 s: ptr = show %24
+    drop %24
+    %26 s: ptr = concat %23, %25
+    drop %23
+    drop %25
+    %27 lit: ptr = const str 1
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    %29 mark: i64 = proj %7.2 main::owned_record_loop_twice::Planner
+    %30 s: ptr = show %29
+    %31 s: ptr = concat %28, %30
+    drop %28
+    drop %30
+    %32 lit: ptr = const str 1
+    %33 s: ptr = concat %31, %32
+    drop %31
+    drop %32
+    %34 mark: i64 = proj %6.2 main::owned_record_loop_twice::Planner
+    drop %6
+    %35 s: ptr = show %34
+    %36 s: ptr = concat %33, %35
+    drop %33
+    drop %35
+    perform std::console::Console.print(%36) -> b5(%7)
+  b5(%37 r: unit, %38 r: ptr):
+    %39 box: word = box %37
+    drop %39
+    call empty#2() -> b6(%38)
+  b6(%40 r: ptr, %41 r: ptr):
+    %42 lit: i64 = const 2
+    call grow#3(%40, %42) -> b7(%41)
+  b7(%43 r: ptr, %44 r: ptr):
+    %45 lit: i64 = const 3
+    dup %43
+    call grow#3(%43, %45) -> b8(%44, %43)
+  b8(%46 r: ptr, %47 r: ptr, %48 r: ptr):
+    %49 lit: i64 = const 3
+    dup %48
+    call grow#3(%48, %49) -> b9(%47, %48, %46)
+  b9(%50 r: ptr, %51 r: ptr, %52 r: ptr, %53 r: ptr):
+    %54 vars: word = proj %52.0 main::owned_record_loop_twice::Planner
+    drop %52
+    %55 s: ptr = show %54
+    drop %54
+    %56 lit: ptr = const str 2
+    %57 s: ptr = concat %56, %55
+    drop %55
+    drop %56
+    %58 lit: ptr = const str 1
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    %60 vars: word = proj %53.0 main::owned_record_loop_twice::Planner
+    %61 s: ptr = show %60
+    drop %60
+    %62 s: ptr = concat %59, %61
+    drop %59
+    drop %61
+    %63 lit: ptr = const str 1
+    %64 s: ptr = concat %62, %63
+    drop %62
+    drop %63
+    %65 vars: word = proj %50.0 main::owned_record_loop_twice::Planner
+    drop %50
+    %66 s: ptr = show %65
+    drop %65
+    %67 s: ptr = concat %64, %66
+    drop %64
+    drop %66
+    %68 lit: ptr = const str 1
+    %69 s: ptr = concat %67, %68
+    drop %67
+    drop %68
+    %70 mark: i64 = proj %53.2 main::owned_record_loop_twice::Planner
+    drop %53
+    %71 s: ptr = show %70
+    %72 s: ptr = concat %69, %71
+    drop %69
+    drop %71
+    perform std::console::Console.print(%72) -> b10(%51)
+  b10(%73 r: unit, %74 r: ptr):
+    %75 box: word = box %73
+    drop %75
+    %76 lit: i64 = const 1
+    dup %74
+    call grow#3(%74, %76) -> b11(%74)
+  b11(%77 r: ptr, %78 r: ptr):
+    %79 lit: i64 = const 1
+    call grow#3(%77, %79) -> b12(%78)
+  b12(%80 r: ptr, %81 r: ptr):
+    %82 vars: word = proj %80.0 main::owned_record_loop_twice::Planner
+    %83 s: ptr = show %82
+    drop %82
+    %84 lit: ptr = const str 3
+    %85 s: ptr = concat %84, %83
+    drop %83
+    drop %84
+    %86 lit: ptr = const str 1
+    %87 s: ptr = concat %85, %86
+    drop %85
+    drop %86
+    %88 cons: word = proj %80.1 main::owned_record_loop_twice::Planner
+    %89 s: ptr = show %88
+    drop %88
+    %90 s: ptr = concat %87, %89
+    drop %87
+    drop %89
+    %91 lit: ptr = const str 1
+    %92 s: ptr = concat %90, %91
+    drop %90
+    drop %91
+    %93 mark: i64 = proj %80.2 main::owned_record_loop_twice::Planner
+    drop %80
+    %94 s: ptr = show %93
+    %95 s: ptr = concat %92, %94
+    drop %92
+    drop %94
+    %96 lit: ptr = const str 1
+    %97 s: ptr = concat %95, %96
+    drop %95
+    drop %96
+    %98 vars: word = proj %81.0 main::owned_record_loop_twice::Planner
+    drop %81
+    %99 s: ptr = show %98
+    drop %98
+    %100 s: ptr = concat %97, %99
+    drop %97
+    drop %99
+    perform std::console::Console.print(%100) -> b13()
+  b13(%101 r: unit):
+    %102 box: word = box %101
+    %103 unbox: unit = unbox %102
+    drop %102
+    ret %103
+
+fn $entry#1 top -> unit ; main::owned_record_loop_twice, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn empty#2 top -> ptr ; main::owned_record_loop_twice, frame 0 slots []
+  b0():
+    %0 xs: ptr = alloc list()
+    %1 xs: ptr = alloc list()
+    %2 lit: i64 = const 0
+    %3 rec: ptr = alloc main::owned_record_loop_twice::Planner(%0, %1, %2)
+    ret %3
+
+fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %1 i64, %28 word*, %29 word*, %30 i64, %34 word*, %35 i64]
+  b0(%0 start: ptr, %1 n: i64):
+    %68 lit: i64 = const 0
+    jump b9(%0, %68, %1)
+  b1(%2 p: ptr, %3 i: i64):
+    %40 lit: i64 = const 0
+    jump b3(%2, %40)
+  b2(%4 p: ptr, %5 i: i64):
+    %6 mark: i64 = proj %4.2 main::owned_record_loop_twice::Planner
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %6, %7
+    %9 vars: word = proj %4.0 main::owned_record_loop_twice::Planner
+    %10 cons: word = proj %4.1 main::owned_record_loop_twice::Planner
+    drop %4
+    %11 rec: ptr = alloc main::owned_record_loop_twice::Planner(%9, %10, %8)
+    ret %11
+  b3(%12 p: ptr, %13 i: i64):
+    %14 vars: word = proj %12.0 main::owned_record_loop_twice::Planner
+    %15 r: i64 = $list_len(%14)
+    %16 t: bool = lt.int %13, %15
+    if %16 then b5(%12, %13) else b6(%12, %13)
+  b4(%17 v: word, %18 p: ptr, %19 i: i64):
+    drop %17
+    jump b3(%18, %19)
+  b5(%20 p: ptr, %21 i: i64):
+    %24 vars: word = proj %20.0 main::owned_record_loop_twice::Planner
+    %25 item: ptr = $list_get(%24, %21)
+    %26 lit: i64 = const 0
+    %27 box: word = box %26
+    call unwrap_or#4(%25, %27) -> b7(%20, %21)
+  b6(%22 p: ptr, %23 i: i64):
+    jump b2(%22, %23)
+  b7(%28 r: word, %29 p: ptr, %30 i: i64):
+    %31 unbox: i64 = unbox %28
+    drop %28
+    %32 lit: i64 = const 2
+    %33 t: i64 = intmul %31, %32
+    call put_var#5(%29, %30, %33) -> b8(%30)
+  b8(%34 r: ptr, %35 i: i64):
+    %36 lit: i64 = const 1
+    %37 t: i64 = intadd %35, %36
+    %38 lit: unit = const ()
+    %39 box: word = box %38
+    jump b4(%39, %34, %37)
+  b9(%41 p: ptr, %42 i: i64, %43 n: i64):
+    %44 t: bool = lt.int %42, %43
+    if %44 then b11(%43, %41, %42) else b12(%43, %41, %42)
+  b10(%45 v: word, %46 p: ptr, %47 i: i64, %48 n: i64):
+    drop %45
+    jump b9(%46, %47, %48)
+  b11(%49 n: i64, %50 p: ptr, %51 i: i64):
+    %55 vars: word = proj %50.0 main::owned_record_loop_twice::Planner
+    %56 box: word = box %51
+    %57 r: ptr = $list_push(%55, %56)
+    %58 cons: word = proj %50.1 main::owned_record_loop_twice::Planner
+    %59 t: i64 = intsub %49, %51
+    %60 box: word = box %59
+    %61 r: ptr = $list_push(%58, %60)
+    %62 mark: i64 = proj %50.2 main::owned_record_loop_twice::Planner
+    drop %50
+    %63 rec: ptr = alloc main::owned_record_loop_twice::Planner(%57, %61, %62)
+    %64 lit: i64 = const 1
+    %65 t: i64 = intadd %51, %64
+    %66 lit: unit = const ()
+    %67 box: word = box %66
+    jump b10(%67, %63, %65, %49)
+  b12(%52 n: i64, %53 p: ptr, %54 i: i64):
+    jump b1(%53, %54)
+
+fn put_var#5 top -> ptr ; main::owned_record_loop_twice, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
+  b0(%0 p: ptr, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_loop_twice::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#6(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ptr):
+    %8 cons: word = proj %7.1 main::owned_record_loop_twice::Planner
+    %9 mark: i64 = proj %7.2 main::owned_record_loop_twice::Planner
+    drop %7
+    %10 rec: ptr = alloc main::owned_record_loop_twice::Planner(%6, %8, %9)
+    ret %10

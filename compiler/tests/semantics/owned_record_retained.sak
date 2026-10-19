@@ -1,0 +1,81 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.201 (3) (a retained record version is intact after an in-place update)
+
+// A planner threaded through consuming defs: with an owned planner each update is in place.
+type Planner = { vars: List<Int>, cons: List<Int>, mark: Int }
+
+type Outer = { inner: Planner, tag: Int }
+
+error Stop(at: Int)
+
+fn put_var(p: Planner, i: Int, v: Int) -> Planner { Planner { ..p, vars: List.set(p.vars, i, v) } }
+
+fn var_of(p: Planner, i: Int) -> Int { Option.unwrap_or(List.get(p.vars, i), -1) }
+
+fn bump(p: Planner, i: Int) -> Planner { put_var(p, i, var_of(p, i) + 1) }
+
+fn put_then_fail(p: Planner) -> Planner ! {Fail<Stop>} {
+  let q = put_var(p, 0, 42)
+  if var_of(q, 0) == 42 { fail Stop { at: 1 } }
+  q
+}
+
+// The inner planner's field is read again through the outer record after an update.
+fn nested(o: Outer) -> (Outer, Int) {
+  let q = o.inner
+  let v = List.set(q.vars, 0, 777)
+  let again = o.inner.vars
+  (Outer { ..o, inner: Planner { ..q, vars: v } }, Option.unwrap_or(again[0], 0))
+}
+
+fn show(p: Planner) -> String { "{List.len(p.vars)} {List.sum(p.vars)} {p.vars[0]} {p.vars[9]}" }
+
+pub fn main() -> Unit ! {Console} {
+  var p = Planner { vars: [], cons: [], mark: 0 }
+  var i = 0
+  while i < 10 {
+    p = Planner { ..p, vars: List.push(p.vars, i) }
+    i = i + 1
+  }
+  i = 0
+  while i < 10 {
+    p = bump(p, i)
+    i = i + 1
+  }
+  Console.print("built {show(p)}")
+
+  // An older version kept, the newer one updated twice.
+  let old = p
+  p = put_var(p, 0, -1)
+  p = bump(p, 9)
+  Console.print("old {show(old)}")
+  Console.print("new {show(p)}")
+
+  // A field kept, then the record updated.
+  let vars = p.vars
+  p = put_var(p, 1, -2)
+  Console.print("field {vars[1]} {p.vars[1]}")
+
+  // Stored in a list, then updated.
+  let history = [p]
+  p = put_var(p, 3, 7)
+  Console.print("history {Option.expect(history[0], "kept").vars[3]} {p.vars[3]}")
+
+  // The handler reads the version from before the update that failed.
+  let r = try { put_then_fail(p) } catch {
+    Stop { at } => put_var(p, 9, at),
+  }
+  Console.print("try {r.vars[0]} {r.vars[9]} {p.vars[0]} {p.vars[9]}")
+
+  // Another field read after one was updated is no alias.
+  p = Planner { ..p, cons: List.push(p.cons, 5) }
+  p = Planner { ..put_var(p, 2, List.len(p.cons)), mark: p.mark + 1 }
+  Console.print("fields {show(p)} {p.cons} {p.mark}")
+
+  // Nested records: the outer record still holds the inner field that was updated.
+  let (o, seen) = nested(Outer {
+    inner: Planner { vars: List.range(0, 3), cons: [], mark: 0 },
+    tag: 1,
+  })
+  Console.print("nested {seen} {o.inner.vars}")
+}

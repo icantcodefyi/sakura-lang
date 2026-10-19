@@ -98,7 +98,13 @@ semantics/owned_empty_set_defect: 3 funcs, 9 blocks, 1 dup, 2 drop, valid
 semantics/owned_empty_singleton: 3 funcs, 24 blocks, 1 dup, 70 drop, valid
 semantics/owned_generic: 10 funcs, 49 blocks, 15 dup, 46 drop, valid
 semantics/owned_loop_twice: 11 funcs, 65 blocks, 13 dup, 48 drop, valid
+semantics/owned_record_captured: 19 funcs, 87 blocks, 13 dup, 93 drop, valid
+semantics/owned_record_loop_twice: 7 funcs, 39 blocks, 4 dup, 78 drop, valid
+semantics/owned_record_recursive: 12 funcs, 66 blocks, 9 dup, 53 drop, valid
+semantics/owned_record_retained: 14 funcs, 78 blocks, 15 dup, 117 drop, valid
+semantics/owned_record_unsettled: 4 funcs, 16 blocks, 4 dup, 17 drop, valid
 semantics/owned_retained_version: 6 funcs, 53 blocks, 27 dup, 116 drop, valid
+semantics/owned_tuple_threaded: 11 funcs, 71 blocks, 18 dup, 77 drop, valid
 semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 17 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid

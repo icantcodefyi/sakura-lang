@@ -1,0 +1,36 @@
+// milestone: M4
+// covers: performance-r1 WS-P13b; design §17.201 (3) (an owner threaded through recursion)
+
+type Planner = { vars: List<Int>, mark: Int }
+
+fn put_var(p: Planner, i: Int, v: Int) -> Planner { Planner { ..p, vars: List.set(p.vars, i, v) } }
+
+// Linear: each call passes its planner on once.
+fn fill(p: Planner, i: Int, n: Int) -> Planner {
+  if i >= n { return p }
+  fill(put_var(p, i, i * 3), i + 1, n)
+}
+
+// Mutual: `even` and `odd` pass the planner back and forth.
+fn even(p: Planner, i: Int) -> Planner { if i == 0 { p } else { odd(put_var(p, i, 0), i - 1) } }
+
+fn odd(p: Planner, i: Int) -> Planner { if i == 0 { p } else { even(put_var(p, i, 1), i - 1) } }
+
+// Not linear: both calls start from the same planner, so neither may update it in place.
+fn split(p: Planner, i: Int) -> Planner {
+  if i == 0 { return p }
+  let a = split(put_var(p, i, i), i - 1)
+  let b = split(put_var(p, i, -i), i - 1)
+  Planner { ..a, mark: a.mark + b.mark + List.sum(b.vars) }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let base = Planner { vars: List.range(0, 10), mark: 0 }
+  let a = fill(base, 0, 10)
+  let b = fill(base, 0, 5)
+  Console.print("fill {a.vars} {b.vars} {base.vars}")
+  let c = even(fill(base, 0, 10), 9)
+  Console.print("even {c.vars} {base.vars}")
+  let d = split(base, 3)
+  Console.print("split {d.vars} {d.mark} {base.vars}")
+}
