@@ -24,9 +24,10 @@ pub type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
 
 pub error KeyError(reason: KeyReason)
 
-/// From `derive_bits`: `Length(bits)`, not a positive multiple of 8 or over HKDF's 255 hash
-/// lengths; `Iterations(n)`, outside `1..=2_147_483_647`; `Info(bytes)`, HKDF `info` over 1,024
-/// bytes (Node's bound, kept on every backend).
+/// From `derive_bits`: `Length(bits)`, not a positive multiple of 8, over HKDF's 255 hash
+/// lengths or over PBKDF2's 1 MiB (8,388,608 bits); `Iterations(n)`, outside
+/// `1..=2_147_483_647`; `Info(bytes)`, HKDF `info` over 1,024 bytes. Each is the lowest host's
+/// bound, checked before the primitive, so it is the same error on every backend.
 pub type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
 
 pub error CryptoError(reason: CryptoReason)
@@ -79,7 +80,8 @@ pub fn digest(alg: Digest, data: Bytes) -> Bytes { crypto_digest(code(alg), data
 
 /// A key of `alg` from `material` (`importKey`). Fails with `NoUsages`, `NotAllowed(u)` for a
 /// usage `alg` does not allow, or `Empty` for empty HMAC material; HKDF and PBKDF2 accept any
-/// bytes.
+/// bytes. `extractable` is the caller's choice for every algorithm: Web Crypto imports HKDF and
+/// PBKDF2 keys non-extractable, here they are extractable when imported so.
 pub fn import_key(
   format: KeyFormat,
   alg: Algorithm,
@@ -127,19 +129,24 @@ pub fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> C
   CryptoKey { algorithm: alg, usages, extractable, material: Secret.of(Random.bytes(n)) }
 }
 
-/// The HMAC of `data` (RFC 2104; `sign` with an HMAC key).
+/// The HMAC of `data` (RFC 2104; `sign` with an HMAC key). Another algorithm's key, or one
+/// without `Sign`, is `D020`: a caller with a runtime-chosen key tests `permits(key, Sign)`
+/// first.
 pub fn hmac(key: CryptoKey, data: Bytes) -> Bytes
   requires is_hmac(key.algorithm) && permits(key, Sign)
 { crypto_hmac(code(hash_of(key.algorithm)), reveal(key.material), data) }
 
-/// Whether `signature` is the HMAC of `data`, compared in constant time.
+/// Whether `signature` is the HMAC of `data`, compared in constant time. Another
+/// algorithm's key, or one without `Verify`, is `D020`: a caller with a runtime-chosen key
+/// tests `permits(key, Verify)` first.
 pub fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool
   requires is_hmac(key.algorithm) && permits(key, Verify)
 { crypto_hmac_verify(code(hash_of(key.algorithm)), reveal(key.material), signature, data) }
 
 /// `bits` bits derived from `key` (`deriveBits`): HKDF (RFC 5869) with `HkdfWith`, PBKDF2
 /// (RFC 8018 §5.2) with `Pbkdf2With`. Every bound is an argument: `bits`, and PBKDF2's
-/// `iterations`, whose cost grows with it.
+/// `iterations`, whose cost grows with it. A key without `DeriveBits`, or params of another
+/// algorithm, is `D020`: test `permits(key, DeriveBits)` first.
 pub fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError>
   requires permits(key, DeriveBits) && fits(key.algorithm, params)
 {
@@ -156,7 +163,9 @@ pub fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<By
       } else {
         Ok(crypto_hkdf(code(alg), reveal(key.material), p.salt, p.info, len))
       },
-      Pbkdf2With(p) => if p.iterations < 1 || p.iterations > 2_147_483_647 {
+      Pbkdf2With(p) => if len > 1_048_576 {
+        Err(CryptoError { reason: Length(bits) })
+      } else if p.iterations < 1 || p.iterations > 2_147_483_647 {
         Err(CryptoError { reason: Iterations(p.iterations) })
       } else {
         Ok(crypto_pbkdf2(code(alg), reveal(key.material), p.salt, p.iterations, len))
@@ -299,6 +308,8 @@ test "derive_bits bounds its arguments" {
   let pw = key(Pbkdf2(Sha256), [DeriveBits], String.to_bytes("passwd"))
   let q = Pbkdf2With(Pbkdf2Params { salt: String.to_bytes("salt"), iterations: 0 })
   expect_eq(derive_bits(pw, q, 256), Err(CryptoError { reason: Iterations(0) }))
+  let one = Pbkdf2With(Pbkdf2Params { salt: String.to_bytes("salt"), iterations: 1 })
+  expect_eq(derive_bits(pw, one, 8_388_616), Err(CryptoError { reason: Length(8_388_616) }))
 }
 
 test "generate_key draws from Random" {

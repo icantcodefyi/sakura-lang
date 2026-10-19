@@ -3,9 +3,10 @@
 // Spec: https://w3c.github.io/webcrypto/#hkdf-operations-derive-bits
 
 // Every bound of `derive_bits` is an argument and each refusal is a typed `CryptoError`: a bit
-// count that is not a positive multiple of 8, HKDF output over 255 hash lengths, HKDF `info`
-// over 1,024 bytes, PBKDF2 iterations outside `1..=2_147_483_647`. The largest accepted values
-// are shown by their length.
+// count that is not a positive multiple of 8, HKDF output over 255 hash lengths, PBKDF2 output
+// over 1 MiB, HKDF `info` over 1,024 bytes, PBKDF2 iterations outside `1..=2_147_483_647`, the
+// same on every backend (design §17.266 (7)). The largest accepted values are shown by their
+// length.
 import std/crypto
 import std/crypto.{Algorithm, DeriveParams, Digest, HkdfParams, KeyFormat, Pbkdf2Params, Usage}
 
@@ -30,8 +31,9 @@ pub fn main() -> Unit ! {Console} {
         (pbkdf2, p(0), 256),
         (pbkdf2, p(2_147_483_648), 256),
         (pbkdf2, p(1), 7),
+        (pbkdf2, p(1), 8_388_616),
         (hkdf, h(zeros(1024)), 255 * 256),
-        (pbkdf2, p(1), 8),
+        (pbkdf2, p(1), 8_388_608),
       ] { Console.print("{crypto.derive_bits(key, params, bits).map(Bytes.len)}") }
     },
     _ => Console.print("import failed"),

@@ -23,13 +23,13 @@ semantics/contract_site_blame_ensures: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contract_site_blame_value: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contract_site_blame_value_ensures: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contracts_hold: 5 funcs, 16 blocks, 0 dup, 1 drop, valid
-semantics/crypto_derive_rejects_bounds: 26 funcs, 164 blocks, 37 dup, 106 drop, valid
+semantics/crypto_derive_rejects_bounds: 26 funcs, 167 blocks, 39 dup, 109 drop, valid
 semantics/crypto_export_rejects_not_extractable: 11 funcs, 66 blocks, 16 dup, 64 drop, valid
 semantics/crypto_generate_under_seeded_random_is_deterministic: 40 funcs, 211 blocks, 26 dup, 97 drop, valid
-semantics/crypto_hkdf_rfc5869: 24 funcs, 153 blocks, 21 dup, 118 drop, valid
+semantics/crypto_hkdf_rfc5869: 24 funcs, 155 blocks, 21 dup, 121 drop, valid
 semantics/crypto_hmac_rfc4231: 22 funcs, 133 blocks, 23 dup, 102 drop, valid
 semantics/crypto_import_rejects_usage: 11 funcs, 57 blocks, 19 dup, 52 drop, valid
-semantics/crypto_pbkdf2_rfc7914: 22 funcs, 134 blocks, 19 dup, 117 drop, valid
+semantics/crypto_pbkdf2_rfc7914: 22 funcs, 136 blocks, 19 dup, 120 drop, valid
 semantics/crypto_sha2_cavp: 8 funcs, 49 blocks, 7 dup, 25 drop, valid
 semantics/crypto_usage_rejected: 17 funcs, 86 blocks, 14 dup, 65 drop, valid
 semantics/crypto_verify_rejects_tampered: 19 funcs, 115 blocks, 35 dup, 78 drop, valid
