@@ -1,15 +1,30 @@
 ---
 title: Quickstart
-description: Build the Sakura Lang compiler from source, then check, test and run a first program.
+description: Install the Sakura Lang compiler, then check, test and run a first program.
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The compiler runs the core language and substantial M3 functionality on JavaScript, including contracts, std handlers, permissions, scaffolding, LSP and MCP. The alpha.1 preview is published for Apple silicon macOS and Linux x64; see [Install](/docs/install) for commands and platform evidence. See the [roadmap](/docs/roadmap) for M4 gates and experimental M5 work.
+  The published preview is `0.1.0-alpha.1`, for Apple silicon macOS and Linux x64, with no compatibility promise. These docs track main; [changes since alpha.1](/docs/changes) need a source build until the next release. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what becomes stable at v0.2.0.
 </Callout>
+
+## Install
+
+With [Node 26](https://nodejs.org) installed (`sakura run` and `sakura test` execute the generated JavaScript with `node`):
+
+```bash
+npm install --global sakuralang
+sakura --version
+```
+
+```text
+sakura 0.1.0-alpha.1
+```
+
+Homebrew (`brew tap icantcodefyi/sakuralang && brew install sakuralang`) and a checksum-verifying installer are also available; see [Install](/docs/install). The standard library is embedded in the binary, so `sakura` works from any directory.
 
 ## Install from source
 
-You need [rustup](https://rustup.rs) and [Node.js](https://nodejs.org) (`sakura run` and `sakura test` execute the generated JavaScript with `node`; CI uses Node 26). The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+To use the features listed in [changes since alpha.1](/docs/changes), build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
 
 ```bash
 git clone https://github.com/icantcodefyi/sakuralang
@@ -18,19 +33,14 @@ cargo install --locked --path crates/sakura_cli
 sakura --version
 ```
 
-```text
-sakura 0.0.0
-```
-
-The standard library is embedded in the binary, so `sakura` works from any directory. To try it without installing, run `cargo run -p sakura_cli -- <command>` inside `compiler/`.
+To try it without installing, run `cargo run -p sakura_cli -- <command>` inside `compiler/`.
 
 ## Run an example
 
-`compiler/examples/` holds the design's example programs as projects. All twelve pass the configured run/test/check modes listed on the [roadmap](/docs/roadmap):
+`compiler/examples/` holds the design's twelve example programs and eight [cookbook](/docs/cookbook) recipes as projects. Every one runs or tests in CI; none is check-only. From a checkout:
 
 ```bash
 sakura run compiler/examples/counter
-sakura test compiler/examples/typed_errors
 ```
 
 ```text
@@ -39,7 +49,7 @@ sakura test compiler/examples/typed_errors
 1. bread
 ```
 
-`counter` is a user-defined effect whose handler keeps state; `typed_errors` recovers from typed failures with `try`/`catch`. The examples README records each mode; `agent_loop` and `secrets` currently have check-only coverage.
+`counter` is a user-defined effect whose handler keeps state. `sakura test compiler/examples/typed_errors` runs a program that recovers from typed failures with `try`/`catch`. The [examples README](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/examples/README.md) records each project's mode.
 
 ## Create a project
 
@@ -58,7 +68,7 @@ edition = "2026"
 
 `[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. `sakura run` enforces startup grants and passes the table as `SAKURA_PERMISSIONS` for host-handler enforcement. Missing required root authority exits with 75.
 
-A program is one package over std. `[dependencies]` is reserved for packages, which arrive in a later minor release; a manifest that declares it, even empty, is refused with [`V8005`](/docs/errors/V8005) before anything runs. Any other table or key the manifest does not define, a value of the wrong type or malformed TOML is [`V8006`](/docs/errors/V8006), reported by `sakura check` at the place in `sakura.toml`.
+A program is one package over std. `[dependencies]` is reserved for packages, which arrive in a later minor release; a manifest that declares it, even empty, is refused with [`V8005`](/docs/errors/V8005) before anything runs. Any other table or key the manifest does not define, a value of the wrong type or malformed TOML is [`V8006`](/docs/errors/V8006), reported by `sakura check` at the place in `sakura.toml`. See [sakura.toml](/docs/manifest) for every key.
 
 ```sakura title="hello/src/main.sak"
 /// Build a greeting for a person.
@@ -210,8 +220,9 @@ hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(
 | `sakura fmt [--check] [paths]` | Canonical format. There are no options |
 | `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
 | `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt)) |
+| `sakura verify [--json] [paths]` | Prove contracts and arithmetic with Z3 ([Verify contracts](/docs/agents/verify)) |
 
-Also available: `sakura new`, `sakura init`, `sakura fix`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. `sakura doc`, trust-site `sakura audit`, `sakura verify`, and WASM build/run/test are implemented. Package commands remain planned; native is experimental M5 work. See [changes on main](/docs/changes) for differences from the published preview.
+`build`, `run` and `test` take `--target wasm` to use the WebAssembly backend. Also available: `sakura new`, `sakura init`, `sakura setup`, `sakura fix`, `sakura audit`, `sakura doc`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. The [CLI reference](/docs/cli) lists every command, flag and exit code, and [sakura.toml](/docs/manifest) the manifest. There are no package commands: packages arrive after 1.0. See [changes on main](/docs/changes) for differences from the published preview.
 
 ## Next
 

@@ -1,0 +1,104 @@
+---
+title: sakura.toml
+description: The project manifest, its three tables, the reserved dependencies key and the diagnostics for an invalid manifest.
+---
+
+A project is a `sakura.toml` manifest and a `src/` directory; one file is one module. The
+manifest has three tables. Anything else is refused before the program is checked.
+
+```toml title="sakura.toml"
+[package]
+name = "billing"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]
+fs.read  = ["./data"]
+fs.write = ["./data/out"]
+net      = ["api.example.com:443"]
+env      = ["BILLING_TOKEN"]
+process  = []
+
+[verify]
+rlimit = 20000000
+```
+
+## [package]
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `name` | string, required | The package name. `sakura new` takes lowercase letters, digits and `_`. `std` and `main` are reserved ([`V8002`](/docs/errors/V8002)). |
+| `version` | string | The package's version. Defaults to empty. |
+| `edition` | string | The language edition. `sakura new` writes `"2026"`, the only edition. |
+
+## [permissions]
+
+`[permissions]` is the ceiling on the root authority `main` receives (design §6.2). Everything
+absent is denied. Each key is a list of strings:
+
+| Key | Grants |
+| --- | --- |
+| `fs.read` | Directories `Fs` may read, relative to the project. |
+| `fs.write` | Directories `Fs` may write. A write through a symbolic link that leaves the grant is refused. |
+| `net` | `host:port` pairs `Http` and `Serve` may reach. |
+| `env` | Environment variables `Env` may read. Other names read as absent. |
+| `process` | Programs a `Process` effect may start. The standard library has no `Process` effect yet, so leave it empty. |
+
+The host supplies root handlers only for the std effects `main` declares. When `main`
+declares `Fs` with an empty `fs.read`, or `Http` or `Serve` with an empty `net`,
+`sakura run` refuses to start it and exits with `75`, before any code runs. `sakura run`
+passes the table to the host handlers, which enforce it on every operation. This is a
+language-level boundary, not an operating-system sandbox; trusted `@external` code is
+outside it. See [Capabilities and security](/docs/tour/capabilities).
+
+`sakura test` runs with no host permissions; tests use deterministic and scripted handlers.
+`sakura test --record` uses the `net` and `env` grants to record [cassettes](/docs/agents/cassettes).
+
+## [verify]
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `rlimit` | integer, at least 1 | Z3's resource limit per query for `sakura verify` and for the proofs `sakura build` reuses. `--rlimit` overrides it for one run. Default 10,000,000. |
+
+See [Verify contracts](/docs/agents/verify#solver-and-limits).
+
+## [dependencies] is reserved
+
+A program is one package over the standard library. Packages arrive in a later minor
+release, after 1.0, and the key is reserved until then. A manifest that declares
+`[dependencies]` in any form (an empty table, entries, an inline table or a dotted key) is
+refused with [`V8005 dependencies_not_supported`](/docs/errors/V8005) before anything runs.
+Nothing is fetched. Use the standard library instead, and do not copy another package's
+sources into `src/` to stand in for one.
+
+## Invalid manifests
+
+Any other table or key, a value of the wrong type, a missing `[package] name` or malformed
+TOML is [`V8006 manifest_invalid`](/docs/errors/V8006). `check`, `build`, `run`, `test`,
+`verify` and the language server report it like any other error, pointing at the place in
+`sakura.toml`, and `--json` carries it as a `diagnostic` record with exit status `1`:
+
+```text
+error[V8006]: unknown field `targets`, expected one of `package`, `permissions`, `verify`
+  ┌─ sakura.toml:3:2
+  │
+3 │ [targets]
+  │  ^^^^^^^
+  │
+  = see `sakura explain V8006`
+```
+
+The message is the TOML parser's text and may change; the code and the span are the contract.
+
+## sakura.lock
+
+`sakura new` and `sakura init` write `sakura.lock` beside the manifest. With no
+dependencies it records only its format version. Commit it; do not edit it by hand.
+
+## Stability
+
+`[package]` with `name`, `version` and `edition`, `[permissions]` with its five keys,
+`[verify] rlimit`, the `V8005` refusal and the `V8006` rule are proposed as **stable from
+v0.2.0** under [draft RFC 0001](/docs/stability). Until then the preview carries no
+compatibility promise. Packages will be added without changing the meaning of an existing
+manifest.

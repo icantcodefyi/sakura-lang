@@ -1,0 +1,62 @@
+---
+title: Stability
+description: What the preview promises today, what draft RFC 0001 proposes to make stable from v0.2.0, and what stays experimental.
+---
+
+**Today there is no compatibility promise.** The published preview is `0.1.0-alpha.1`, and
+behaviour may change between previews. [Draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md)
+proposes the guarantees below for acceptance at `v0.2.0`. Until the owner accepts it, the
+policy in [STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md)
+applies, and that file's inventory is the authoritative list.
+
+## Levels
+
+- **Stable**: covered by the RFC's compatibility rules from the version named. From `0.2.0`,
+  machine contracts (diagnostic codes, `--json` records, exit codes, the WASM ABI) change
+  only additively within a 0.x minor line. From `1.0.0`, source and standard-library
+  compatibility hold within a major version.
+- **Experimental**: may change or disappear in any release. Opt-in and labelled.
+- **Internal**: an implementation detail with no promise, even when you can see it.
+
+## By area
+
+| Area | Proposed level | From |
+| --- | --- | --- |
+| [CLI](/docs/cli) commands, documented flags, exit codes and environment variables | stable | 0.2.0 |
+| `build --emit`, `--layout`, `--dump`; hidden switches | experimental or internal | — |
+| [`sakura.toml`](/docs/manifest): `[package]`, `[permissions]`, `[verify]`; the `V8005` and `V8006` refusals | stable | 0.2.0 |
+| [Diagnostic codes](/docs/errors): a code is never reused or renumbered | stable | 0.2.0 |
+| [`--json` records](/docs/agents/diagnostics#record-kinds): fields are only added within a major | stable | 0.2.0 |
+| [Standard library](/docs/stdlib) public signatures | stable | 0.2.0 within a minor; 1.0.0 within a major |
+| WASM runtime ABI | stable | 0.2.0 |
+| JS backend ABI, generated code, LIR and Core, the compiler's Rust crates, cache files | internal | — |
+| [Language server](/docs/editors) standard protocol features | stable | 0.2.0 |
+| The `sakura/holeContext` LSP extension | experimental | — |
+| [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 0.2.0 |
+| `--target native` and the native runtime | experimental | — |
+
+Human-readable output, help text, diagnostic wording and generated code bytes are never
+contracts. A diagnostic's code, fields and fixes are.
+
+## Changes planned before v0.2.0
+
+These decisions are made (design §17.239–§17.243) but not yet built. They land before the
+first version that honours the guarantees, so they are not breaking changes under the RFC:
+
+- **One `kind` per summary shape.** Today `check`, `fix`, `build`, `test` and `audit` all end
+  with a `summary` record of different shapes, and `verify` ends with `summary` 1.1. They
+  become `summary` (check, fix, build), `test_summary`, `audit_summary` and
+  `verify_summary`. The runtime `defect` record and the test runner's regression files join
+  the contract.
+- **Lexical rules.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
+  A digit separator `_` goes only between two digits.
+- **A source file that is not UTF-8** becomes a diagnostic instead of a usage error.
+
+## After 1.0
+
+Packages arrive additively in 1.x; until then `[dependencies]` is refused. Native code
+generation stays experimental. The current plan, pending the owner's confirmation, is that it
+gates no release and ships as an experimental flag once its test matrix is green.
+
+Deprecations after 1.0 get warnings and a migration for at least two minor releases and six
+months before removal.

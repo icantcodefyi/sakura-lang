@@ -1,0 +1,133 @@
+---
+title: CLI reference
+description: Every sakura command, its flags, exit codes and environment variables, with each surface's stability level.
+---
+
+One `sakura` binary is the whole toolchain. This page lists what the current compiler
+accepts; `sakura <command> --help` prints the same flags for the binary you have. Commands
+that take `[PATHS]` accept files or directories and, with none, use `src/` when it exists,
+otherwise the current directory.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `sakura check [PATHS]` | Parse, resolve names, check types, effects and exhaustiveness. Generates no code and accepts [typed holes](/docs/agents/typed-holes). |
+| `sakura fix [PATHS]` | Apply compiler fixes: the `machine_applicable` ones, or exactly the ids given. Never applies `contract_change` or `authority_change` fixes. |
+| `sakura build [PATHS]` | Check, then generate code. Holes are rejected with `V2050`. |
+| `sakura run [PATH] [-- ARGS]` | Build and run `main`. Arguments after `--` go to the program. |
+| `sakura test [PATHS]` | Run `test` and `property` blocks under deterministic handlers with the network denied. |
+| `sakura verify [PATHS]` | Prove contract, overflow and division obligations with Z3. See [Verify contracts](/docs/agents/verify). |
+| `sakura fmt [PATHS]` | Rewrite files in the one canonical format. There are no style options. |
+| `sakura audit [PATHS]` | List trust, totality, refinement and external sites. See [Trust audit](/docs/agents/audit). |
+| `sakura doc [SYMBOL]` | Offline symbol documentation and type-pattern search. See [Offline API search](/docs/agents/doc). |
+| `sakura explain CODE` | The rationale, causes and repairs for a diagnostic code, offline. |
+| `sakura prompt` | Print the language guide for agents that matches this compiler. |
+| `sakura new KIND NAME` | Create a project in a new directory. |
+| `sakura init` | Make the current directory a project, keeping existing files. |
+| `sakura setup` | Print, and with `--apply` write, this project's agent files. |
+| `sakura lsp` | The language server on stdin/stdout. See [Editor setup](/docs/editors). |
+| `sakura mcp serve` | The compiler as an MCP server on stdin/stdout. See [MCP server](/docs/agents/mcp). |
+
+There is no package command: packages are not part of 1.0, and a manifest that declares
+`[dependencies]` is refused with [`V8005`](/docs/errors/V8005). There is no `--release` flag;
+contract checks are removed only where `sakura verify` proved them.
+
+## Flags
+
+### check and fix
+
+| Flag | Meaning |
+| --- | --- |
+| `--json` | Emit [JSON Lines](/docs/agents/diagnostics) on stdout. For `fix`, the diagnostics after fixing. |
+| `--frozen-specs SYMBOLS\|all` | Refuse changes to the named symbols' signatures, effect rows, contracts and tests, or to `permissions`, compared with Git. Each change is `V8020`. |
+| `--since REV` | The Git revision `--frozen-specs` compares with. Default `HEAD`. |
+| `fix --preview` | List every fix with its id, impact and whether it would apply. Writes nothing. |
+| `fix --apply IDS` | Apply exactly these comma-separated fix ids (`f:…`). |
+
+### build, run and test
+
+| Flag | Commands | Meaning |
+| --- | --- | --- |
+| `--target js\|wasm` | build, run, test | The backend. Default `js`. `wasm` writes `main.wasm` with its Node host. |
+| `--out-dir DIR` | build, run, test | Where the build goes. Default `target/sakura/<target>`. |
+| `--json` | build, test | JSON Lines. `test` writes one `test` record per test, then a summary. |
+| `--manifest` | build | Also write `target/sakura/manifest.json`. See [Build manifest](/docs/agents/build-manifest). |
+| `--emit js\|lir` | build | Write the JS modules, or the WASM backend's LIR as text. |
+| `--layout tagged\|niche` | build | How `Option` is laid out in LIR. `niche` is not implemented and is refused. |
+| `--dump direct\|core\|owned` | build | Print a compiler fact instead of writing code. |
+| `--seed N` | test | Seed for `Random.seeded` and property generators. Default `0`. |
+| `--filter TEXT` | test | Run only tests whose name contains the text. |
+| `--update-snapshots` | test | Write snapshot files instead of comparing them. |
+| `--record` | test | Let cassettes forward misses to the network and append them. See [Cassettes](/docs/agents/cassettes). |
+| `--contracts` | test | Also run a generated property for every contracted `pub fn`. |
+| `--std` | test | Run the embedded standard library's own tests. |
+
+`--target native` exists only in a compiler built from source with the Cargo `native`
+feature. Release binaries are built without it. See [Backends](/docs/tour/memory#backends).
+
+### verify
+
+| Flag | Meaning |
+| --- | --- |
+| `--json` | `obligation` records, then a summary. |
+| `--target js\|wasm` | The integer profile obligations are checked on: `js` (±(2^53−1)) or `wasm` (`i64`). |
+| `--rlimit N` | Z3's resource limit per query. Default: `[verify] rlimit` in `sakura.toml`, else 10,000,000. |
+| `--solver PATH` | The Z3 binary. Default `z3` on `PATH`; it must be the pinned version, 5.3.1. |
+
+### Other commands
+
+| Command and flag | Meaning |
+| --- | --- |
+| `fmt --check` | Change nothing; list unformatted files and exit 1 if there are any. |
+| `audit --json` | `audit` records, then a summary. |
+| `doc --search PATTERN` | Search by type pattern, for example `"fn(List<A>) -> Int"`. |
+| `doc --json` | One `symbol_query` record. |
+| `prompt --budget N` | Drop whole sections from the end to fit about `N` tokens (4 bytes per token). |
+| `new KIND NAME --setup CLIENT` | Kinds `cli`, `lib`, `agent`, `api`. Then run `setup --apply` for the client. |
+| `init --kind KIND` | The same kinds. Default `cli`. |
+| `setup --client CLIENT` | `claude`, `codex`, `cursor` or `all` (the default). |
+| `setup --apply` | Write the files instead of printing them. Nothing outside the project is touched. |
+| `mcp serve --root DIR` | The workspace. Default: the nearest directory upward that holds `sakura.toml`. |
+
+`sakura new` writes `sakura.toml` with an empty `[permissions]` table, `sakura.lock`,
+`src/main.sak` with one test, `.gitignore`, `.gitattributes`, and `AGENTS.md` and `CLAUDE.md`
+for coding agents. `sakura setup` writes the `sakura` skill, the client's MCP entry (merged
+into an existing configuration), Cursor's rule, and `AGENTS.md` and `CLAUDE.md` when they are
+absent.
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success. |
+| `1` | Diagnostics with errors, a disproved obligation, formatting differences under `fmt --check`, or `main` ended with an uncaught typed failure. |
+| `2` | A usage, setup or I/O failure: a wrong flag, a missing file, Node or the solver not found. The message is text on stderr, even with `--json`. |
+| `3` | Test failures. |
+| `70` | A runtime defect. One JSON `defect` record goes to stderr. |
+| `75` | Refused at startup: `main` declares an effect that `[permissions]` grants no authority for. |
+
+`sakura run` exits with the program's own status, so a program can return other values.
+
+## Environment
+
+| Variable | Meaning |
+| --- | --- |
+| `SAKURA_CACHE_DIR` | Where std's analysis is cached, one file per compiler build, under `<dir>/sakuralang/std`. Default `$XDG_CACHE_HOME` or `~/.cache` on Unix, `%LOCALAPPDATA%` on Windows. |
+| `SAKURA_NO_CACHE` | Any nonempty value other than `0` turns that cache off. |
+| `SAKURA_NODE` | The Node executable `run` and `test` use. Default `node` on `PATH`. |
+| `SAKURA_MAX_COPY_BYTES` | The JS and WASM hosts' copy budget, decimal digits from 1 to 2^53−1. Default 256 MiB. |
+| `SAKURA_TRACE` | Where the effect trace is written. |
+
+The cache files have no format promise: delete them at any time, and a missing or damaged
+file only costs the analysis it would have saved. `run` and `test` need Node 26; `check`,
+`build`, `fmt`, `doc` and `explain` do not. `verify` needs Z3 5.3.1, installed separately.
+
+## Stability
+
+The commands, flags, exit codes and environment variables on this page are proposed as
+**stable from v0.2.0** under [draft RFC 0001](/docs/stability), with these exceptions:
+`build --emit`, `--layout` and `--dump` are **experimental** or **internal**, and
+`--target native` is **experimental**. Until RFC 0001 is accepted, the preview carries no
+compatibility promise. Help text and human-readable output are never a contract; the
+`--json` records are.
