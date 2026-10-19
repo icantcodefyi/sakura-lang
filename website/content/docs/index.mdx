@@ -7,13 +7,13 @@ description: Sakura Lang is an agent-first, general-purpose programming language
   The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
-Sakura Lang is the language agents write: code that keeps its promises.
+Sakura Lang is the programming language built for agents.
 
 Most new code is now written by AI agents. Reviewing every line of that code does not scale, and the parts that matter most (what a function touches, how it can fail, what it guarantees) are usually invisible in mainstream languages. Sakura Lang is designed so that those parts are always written down, in one place, and checked by the compiler.
 
 ## The core idea
 
-**The signature is the contract.** Humans review signatures. The compiler checks that the code keeps its promises.
+**The signature is the contract.** Humans review signatures. The compiler checks that the code does what its signature says.
 
 A Sakura Lang signature states the inputs (with refinements), the output, every effect the function may perform, every way it can fail, and its `requires`/`ensures` clauses. The body cannot do anything the signature does not allow.
 

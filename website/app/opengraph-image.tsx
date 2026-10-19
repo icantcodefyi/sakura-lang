@@ -13,10 +13,10 @@ export default function OpengraphImage() {
       <div
         style={{
           fontFamily: "Display",
-          fontSize: 104,
+          fontSize: 84,
           lineHeight: 0.98,
           letterSpacing: "-0.04em",
-          maxWidth: 900,
+          maxWidth: 1040,
         }}
       >
         {site.tagline}
@@ -29,6 +29,9 @@ export default function OpengraphImage() {
         <span style={{ color: sakuraInk }}>{code[2]}</span>
       </div>
     </div>,
-    { footer: "The language agents write.", text: { Display: site.tagline, Mono: code.join("") } },
+    {
+      footer: "Agent-first. Effects, errors and contracts, checked.",
+      text: { Display: site.tagline, Mono: code.join("") },
+    },
   );
 }

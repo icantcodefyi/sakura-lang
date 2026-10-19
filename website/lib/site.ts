@@ -1,7 +1,7 @@
 export const site = {
   name: "Sakura Lang",
-  title: "Sakura Lang: the language agents write",
-  tagline: "Code that keeps its promises.",
+  title: "Sakura Lang: the programming language built for agents",
+  tagline: "The programming language built for agents.",
   description:
     "Sakura Lang is an agent-first programming language. Every signature declares its effects, errors and contracts, and the compiler seals them on every build.",
   // The canonical origin for metadata, OG images, the sitemap and llms.txt links. Vercel production

@@ -4,7 +4,7 @@ import { PETAL_ANGLES, SAKURA_CUTS } from "@/components/brand";
 import { site } from "@/lib/site";
 
 export const ogSize = { width: 1200, height: 630 };
-export const homeImageAlt = `${site.name}: code that keeps its promises. The language agents write.`;
+export const homeImageAlt = `${site.name}: the programming language built for agents. Effects, errors and contracts, checked by the compiler.`;
 export const ogHost = new URL(site.url).host;
 export const ink = "#1e1e1e";
 export const quiet = "#5f5f5f";

@@ -29,12 +29,18 @@ export async function Hero() {
           <ArrowRight className="size-3.5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
         </Link>
 
-        <h1
-          className="rise-text mt-7 font-display text-[clamp(3rem,8.4vw,6.4rem)] leading-[0.9] font-semibold tracking-[-0.055em] md:mt-9"
+        <p
+          className="rise-text mt-7 font-mono text-[12px] tracking-[0.14em] text-sakura-text uppercase sm:text-[12.5px] md:mt-9"
           style={{ "--i": 1 } as CSSProperties}
         >
-          Code that keeps <br className="hidden sm:block" />
-          its promises.
+          Agent-first
+        </p>
+        <h1
+          className="rise-text mt-3 font-display text-[clamp(2.5rem,7.4vw,5.6rem)] leading-[0.9] text-balance font-semibold tracking-[-0.055em]"
+          style={{ "--i": 1 } as CSSProperties}
+        >
+          The programming <br className="hidden sm:block" />
+          language built for agents.
         </h1>
 
         <div className="mt-10 grid grid-cols-1 items-start gap-12 md:mt-14 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] lg:gap-14">
@@ -43,8 +49,9 @@ export async function Hero() {
               className="rise-text max-w-[30rem] text-[clamp(1.05rem,1.35vw,1.2rem)] leading-relaxed text-pretty text-foreground"
               style={{ "--i": 2 } as CSSProperties}
             >
-              Sakura Lang is the language agents write. Every signature declares its effects, errors
-              and contracts, and the compiler holds the code to them.
+              Every signature declares its effects, errors and contracts, and the compiler holds the
+              code to them. Agents get structured diagnostics, typed holes and fixes that state
+              their impact.
             </p>
             <div
               className="rise mt-8 flex flex-wrap items-center gap-3"
@@ -86,9 +93,7 @@ export async function Hero() {
             >
               <dt className="text-foreground">install</dt>
               <dd>
-                <code className="text-foreground select-all">
-                  npm i -g --ignore-scripts sakuralang
-                </code>
+                <code className="text-foreground select-all">npm i -g sakuralang</code>
               </dd>
               <dt className="text-foreground">agents</dt>
               <dd>
