@@ -70,13 +70,18 @@ impl Rt {
     /// The text of string `s` (borrowed).
     fn text(&self, s: u32) -> &str {
         let (len, at) = self.data(s);
+        let bytes = self.heap.mem.bytes(at, len);
+        #[cfg(target_arch = "wasm32")]
         // SAFETY: a `String` object's bytes are UTF-8: every constructor writes UTF-8 (literals
         // from the compiler, `new_string`'s callers, `string_from_bytes` after validation).
-        unsafe { core::str::from_utf8_unchecked(self.heap.mem.bytes(at, len)) }
+        // Native code may write heap bytes (ABI §1b), so other targets check instead.
+        return unsafe { core::str::from_utf8_unchecked(bytes) };
+        #[cfg(not(target_arch = "wasm32"))]
+        core::str::from_utf8(bytes).unwrap_or("")
     }
 
     /// A new string of `len` bytes copied from `at` (inside a live string).
-    fn substring(&mut self, at: u32, len: u32) -> Res<u32> {
+    pub(crate) fn substring(&mut self, at: u32, len: u32) -> Res<u32> {
         let size = len.checked_add(16).ok_or(Defect::HEAP_EXHAUSTED)?;
         let p = self.new_object(tag::STRING, size)?;
         self.heap.mem.set_u32(p + 8, len);

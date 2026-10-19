@@ -1,30 +1,34 @@
-//! Linear memory. On wasm32 this is the module's one memory (ABI §1); everywhere else it is a
-//! `Vec<u8>` with the same address space, so the allocator, objects and collections above it are
+//! Linear memory. On wasm32 this is the module's one memory (ABI §1); in a `native` build it is
+//! the `offset32-v1` heap (ABI §1b): one 8-aligned mapping reserved up to `SAKURA_MAX_HEAP` and
+//! committed in 64 KiB steps, so its base never moves; in a plain host build it is a `Vec<u8>`
+//! with the same address space, so the allocator, objects and collections above it are
 //! target-independent safe code and the host tests exercise exactly the bytes WASM would see.
 //! Addresses are `u32` offsets; 0 is never allocated (ABI §3.1).
 
 /// One WASM page.
 pub const PAGE: u32 = 65_536;
 
+/// Below this address the host heaps keep nothing; it stands in for rustc's data and stack.
+#[cfg(not(target_arch = "wasm32"))]
+const HOST_BASE: u32 = 4_096;
+
+#[cfg(not(any(target_arch = "wasm32", feature = "native")))]
 pub struct Mem {
-    #[cfg(not(target_arch = "wasm32"))]
     bytes: alloc::vec::Vec<u8>,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", feature = "native")))]
 impl Mem {
-    /// Below this address the host model keeps nothing; it stands in for rustc's data and stack.
-    const BASE: u32 = 4_096;
-
-    pub fn new() -> Mem {
-        Mem {
+    /// `limit` is the heap's; the vector grows on demand.
+    pub fn new(_limit: u64) -> Option<Mem> {
+        Some(Mem {
             bytes: alloc::vec![0; PAGE as usize],
-        }
+        })
     }
 
     /// First address the heap may use.
     pub fn base(&self) -> u32 {
-        Self::BASE
+        HOST_BASE
     }
 
     /// Current memory size in bytes.
@@ -53,6 +57,172 @@ impl Mem {
     }
 }
 
+#[cfg(all(feature = "native", not(target_arch = "wasm32")))]
+pub use native::Mem;
+
+#[cfg(all(feature = "native", not(target_arch = "wasm32")))]
+mod native {
+    use core::ptr::NonNull;
+
+    use super::{HOST_BASE, PAGE};
+
+    /// The `offset32-v1` heap (ABI §1b, design §17.169 (1)): `reserved` bytes of address space
+    /// mapped inaccessible at `base`, of which the first `size` are committed read-write. The
+    /// base never moves, so generated code may cache it between allocating calls; an access past
+    /// `size` faults in hardware as well as failing the checks below.
+    pub struct Mem {
+        base: NonNull<u8>,
+        reserved: usize,
+        size: usize,
+    }
+
+    // SAFETY: the mapping is owned by this value alone (no other pointer into it escapes except
+    // the base a native instance publishes to code running on the thread that owns it), so moving
+    // the owner to another thread moves every access with it.
+    unsafe impl Send for Mem {}
+
+    impl Mem {
+        /// Reserves `limit` bytes (rounded up to 64 KiB) and commits the first 64 KiB; `None`
+        /// when the system refuses the reservation.
+        pub fn new(limit: u64) -> Option<Mem> {
+            let reserved = usize::try_from(
+                limit
+                    .max(PAGE as u64)
+                    .checked_next_multiple_of(PAGE as u64)?,
+            )
+            .ok()?;
+            let base = reserve(reserved)?;
+            let mut mem = Mem {
+                base,
+                reserved,
+                size: 0,
+            };
+            mem.grow(1).then_some(mem)
+        }
+
+        pub fn base(&self) -> u32 {
+            HOST_BASE
+        }
+
+        pub fn size(&self) -> u64 {
+            self.size as u64
+        }
+
+        /// The address of offset 0 (ABI §1b: the context's heap base): fixed for the mapping's life.
+        pub fn host_base(&self) -> *mut u8 {
+            self.base.as_ptr()
+        }
+
+        /// Commit `pages` more 64 KiB pages; false past the reservation or when the system
+        /// refuses.
+        pub fn grow(&mut self, pages: u32) -> bool {
+            let Some(len) = (pages as usize).checked_mul(PAGE as usize) else {
+                return false;
+            };
+            let Some(end) = self.size.checked_add(len).filter(|&e| e <= self.reserved) else {
+                return false;
+            };
+            // SAFETY: `size..end` lies inside the reservation (checked above).
+            if !commit(unsafe { self.base.add(self.size) }, len) {
+                return false;
+            }
+            self.size = end;
+            true
+        }
+
+        fn check(&self, addr: u32, len: u32) -> usize {
+            assert!(
+                addr as u64 + len as u64 <= self.size as u64,
+                "heap access out of bounds"
+            );
+            addr as usize
+        }
+
+        pub fn bytes(&self, addr: u32, len: u32) -> &[u8] {
+            let at = self.check(addr, len);
+            // SAFETY: the range is committed (checked above); the mapping lives as long as
+            // `self`, and `&self` excludes every `&mut` view the methods below hand out.
+            unsafe { core::slice::from_raw_parts(self.base.as_ptr().add(at), len as usize) }
+        }
+
+        pub fn bytes_mut(&mut self, addr: u32, len: u32) -> &mut [u8] {
+            let at = self.check(addr, len);
+            // SAFETY: as in `bytes`; `&mut self` makes this the only live view.
+            unsafe { core::slice::from_raw_parts_mut(self.base.as_ptr().add(at), len as usize) }
+        }
+
+        pub fn copy(&mut self, dst: u32, src: u32, len: u32) {
+            self.check(dst, len);
+            self.check(src, len);
+            // SAFETY: both ranges are committed (checked above); `copy` allows overlap.
+            unsafe {
+                core::ptr::copy(
+                    self.base.as_ptr().add(src as usize),
+                    self.base.as_ptr().add(dst as usize),
+                    len as usize,
+                )
+            }
+        }
+    }
+
+    impl Drop for Mem {
+        fn drop(&mut self) {
+            release(self.base, self.reserved);
+        }
+    }
+
+    #[cfg(not(miri))]
+    fn reserve(len: usize) -> Option<NonNull<u8>> {
+        #[cfg(target_os = "linux")]
+        const FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_NORESERVE;
+        #[cfg(not(target_os = "linux"))]
+        const FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
+        // SAFETY: an anonymous mapping at an address of the system's choosing touches no
+        // existing memory; the result is checked before use.
+        let p = unsafe { libc::mmap(core::ptr::null_mut(), len, libc::PROT_NONE, FLAGS, -1, 0) };
+        if p == libc::MAP_FAILED {
+            return None;
+        }
+        NonNull::new(p.cast())
+    }
+
+    #[cfg(not(miri))]
+    fn commit(at: NonNull<u8>, len: usize) -> bool {
+        // SAFETY: `at..at + len` is page-aligned and inside a reservation `reserve` made.
+        unsafe { libc::mprotect(at.as_ptr().cast(), len, libc::PROT_READ | libc::PROT_WRITE) == 0 }
+    }
+
+    #[cfg(not(miri))]
+    fn release(base: NonNull<u8>, len: usize) {
+        // SAFETY: exactly the mapping `reserve` made; nothing refers into it after `drop`.
+        unsafe { libc::munmap(base.as_ptr().cast(), len) };
+    }
+
+    // Miri interprets no `mprotect`: the reservation is one zeroed allocation and committing is
+    // bookkeeping only, so the checks above are what Miri exercises.
+    #[cfg(miri)]
+    fn layout(len: usize) -> std::alloc::Layout {
+        std::alloc::Layout::from_size_align(len, PAGE as usize).expect("a page-aligned size")
+    }
+
+    #[cfg(miri)]
+    fn reserve(len: usize) -> Option<NonNull<u8>> {
+        // SAFETY: `layout` has a non-zero size (at least one page).
+        NonNull::new(unsafe { std::alloc::alloc_zeroed(layout(len)) })
+    }
+
+    #[cfg(miri)]
+    fn commit(_: NonNull<u8>, _: usize) -> bool {
+        true
+    }
+
+    #[cfg(miri)]
+    fn release(base: NonNull<u8>, len: usize) {
+        // SAFETY: allocated by `reserve` with the same layout.
+        unsafe { std::alloc::dealloc(base.as_ptr(), layout(len)) }
+    }
+}
+
 #[cfg(target_arch = "wasm32")]
 unsafe extern "C" {
     /// End of rustc's static data and stack: the heap starts here.
@@ -60,9 +230,13 @@ unsafe extern "C" {
 }
 
 #[cfg(target_arch = "wasm32")]
+pub struct Mem {}
+
+#[cfg(target_arch = "wasm32")]
 impl Mem {
-    pub fn new() -> Mem {
-        Mem {}
+    /// The module's memory; its declared maximum is the limit (ABI §10).
+    pub fn new(_limit: u64) -> Option<Mem> {
+        Some(Mem {})
     }
 
     pub fn base(&self) -> u32 {
@@ -104,12 +278,6 @@ impl Mem {
                 len as usize,
             )
         }
-    }
-}
-
-impl Default for Mem {
-    fn default() -> Mem {
-        Mem::new()
     }
 }
 

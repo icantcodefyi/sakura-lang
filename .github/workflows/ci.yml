@@ -214,7 +214,7 @@ jobs:
       run:
         working-directory: compiler
     env:
-      # Preparation only: full sanitizer lanes and detection controls land with N1/N2.
+      # Miri covers the native runtime (N1a); Valgrind lanes and detection controls land with N2.
       NATIVE_NIGHTLY: nightly-2026-10-17
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
@@ -237,13 +237,16 @@ jobs:
           esac
       - name: Build opt-in native toolchain
         run: cargo build --features native --locked
-      - name: Clippy native skeletons
-        run: cargo clippy -p sakura_codegen_native -p sakura_host_native --all-targets --features native --locked -- -D warnings
-      - name: Link and execute object and wrapper staticlib smoke tests
-        run: cargo test -p sakura_codegen_native -p sakura_host_native --features native --locked -- --nocapture
-      - name: Install pinned sanitizer toolchain (preparation, not sanitizer coverage)
+      - name: Clippy native runtime, host and backend
+        run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native --all-targets --features native --locked -- -D warnings
+      - name: Native runtime, host, corpus and staticlib tests
+        run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native --features native --locked -- --nocapture
+      - name: Install pinned sanitizer toolchain
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: rustup toolchain install "$NATIVE_NIGHTLY" --profile minimal --component miri,rust-src
+      - name: Scheduled Miri over the native runtime (heap reservation, instances, hosted glue)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: cargo +"$NATIVE_NIGHTLY" miri test -p sakura_rt --features native --locked --test native --test heap
       - name: Install Valgrind
         if: runner.os == 'Linux' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |

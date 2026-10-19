@@ -115,8 +115,10 @@ const T_FINS: u32 = 100;
 const T_ACTS: u32 = 112;
 const T_KIDS: u32 = 124;
 const T_WAITERS: u32 = 136;
-// The defect's message (address and length of a `'static` string; ABI §6.5 "static string
-// offset", the same thing on wasm32) and site id (§12; 0 when the runtime raised it).
+// The defect's message and site id (§12; 0 when the runtime raised it). On wasm32 the message
+// is the address and length of a `'static` string (ABI §6.5 "static string offset"); elsewhere
+// it is an index into `Sched::messages`, so no host address is ever read back from the heap,
+// whose bytes compiled code may write (ABI §1b).
 const T_DEFECT_SITE: u32 = 148;
 const T_DEFECT_LEN: u32 = 152;
 const T_DEFECT_MSG: u32 = 156;
@@ -209,6 +211,9 @@ pub struct Sched {
     trace_seq: u64,
     next_task_no: u32,
     pub ops: u32,
+    /// The distinct static defect messages recorded so far (`T_DEFECT_MSG` indexes it).
+    #[cfg(not(target_arch = "wasm32"))]
+    messages: alloc::vec::Vec<&'static str>,
 }
 
 impl Rt {
@@ -390,9 +395,22 @@ impl Rt {
             self.set(t, T_DEFECT, d.code as u32);
             self.set(t, T_DEFECT_SITE, site);
             self.set(t, T_DEFECT_LEN, d.message.len() as u32);
+            #[cfg(target_arch = "wasm32")]
             self.heap
                 .mem
                 .set_u64(t + T_DEFECT_MSG, d.message.as_ptr() as usize as u64);
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                let m = &mut self.sched.messages;
+                let i = match m.iter().position(|x| core::ptr::eq(*x, d.message)) {
+                    Some(i) => i,
+                    None => {
+                        m.push(d.message);
+                        m.len() - 1
+                    }
+                };
+                self.heap.mem.set_u64(t + T_DEFECT_MSG, i as u64);
+            }
             self.set(t, T_DEFECT_TEXT, text);
         } else {
             self.drop(text);
@@ -862,12 +880,21 @@ impl Rt {
         if self.u(t, T_STATE) != DONE || self.u(t, T_OUTCOME) != outcome::DEFECT {
             return Ok(None);
         }
-        let ptr = self.heap.mem.u64(t + T_DEFECT_MSG) as usize as *const u8;
-        let len = self.u(t, T_DEFECT_LEN) as usize;
-        // SAFETY: only `record_defect_at` writes these two fields, from a `&'static str`, and
-        // they are read only once the task has a defect outcome, so they were written.
-        let message =
-            unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len)) };
+        #[cfg(target_arch = "wasm32")]
+        let message = {
+            let ptr = self.heap.mem.u64(t + T_DEFECT_MSG) as usize as *const u8;
+            let len = self.u(t, T_DEFECT_LEN) as usize;
+            // SAFETY: only `record_defect_at` writes these two fields, from a `&'static str`,
+            // and they are read only once the task has a defect outcome, so they were written.
+            unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(ptr, len)) }
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        let message = self
+            .sched
+            .messages
+            .get(self.heap.mem.u64(t + T_DEFECT_MSG) as usize)
+            .copied()
+            .unwrap_or(Defect::INTERNAL.message);
         let code = self.u(t, T_DEFECT) as u16;
         Ok(Some((Defect { code, message }, self.u(t, T_DEFECT_SITE))))
     }

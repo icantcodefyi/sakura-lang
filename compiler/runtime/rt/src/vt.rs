@@ -38,6 +38,16 @@ pub fn secret_import(import: &str) -> bool {
     SECRET_IMPORTS.contains(&import)
 }
 
+/// A host-delegated builtin call in progress (`rt_vt_*`): the arguments being encoded and their
+/// count, then the answer held for `rt_vt_take_*`.
+#[cfg(any(target_arch = "wasm32", feature = "native"))]
+#[derive(Default)]
+pub struct Transport {
+    pub(crate) args: Option<StrBuf>,
+    pub(crate) n: u32,
+    pub(crate) result: u64,
+}
+
 pub const MAX_DEPTH: u32 = 64;
 pub const MAX_NODES: u32 = 1 << 20;
 

@@ -88,6 +88,8 @@ gimli = "=0.34.0"
 object = "=0.40.0"
 cap-std = "=4.0.3"
 crabgrind = "=0.4.0"
+# The native heap's reservation (`runtime/rt/src/mem.rs`, design §17.169 (1)).
+libc = "0.2.191"
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider", "stream"] }
 rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite = { version = "=0.40.2", features = ["bundled"] }

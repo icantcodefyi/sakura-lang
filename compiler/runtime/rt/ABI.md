@@ -120,6 +120,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   regions, and a twin's fourth state, cancelled. The runtime functions it adds are internal to
   the linked module; no byte, import, export or counter changes, so `sakura_abi_version`
   stays `0x010200`.
+- 1.4.0 (MINOR, design §17.169 (3), plan M5 N1a) adds §1b, the native profile
+  `offset32-v1` (heap, context, C prototypes, dispatch table, `sakura.native`), with native
+  paragraphs in §8.4 and §8.5. No wasm32 byte, import or export changes. The text lands before
+  N0b's 1.3.0 counters, and versions never reorder (§17.169 (3)), so the constant
+  `sakura_abi_version` stays `0x010200` on both targets until 1.3.0 is in and becomes
+  `0x010400` then; no native module is emitted before N2.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -151,6 +157,83 @@ Trampoline instead of tail calls: research/09 §1 measured 3.9 ms vs 2.0 ms per 
 on Node and 1.0 ms vs 1.9 ms on Wasmtime for a pure dispatch loop. The profile keeps the
 trampoline (§6); tail calls stay out until a measurement on the real differential corpus says
 otherwise.
+
+## 1b. Native target profile `offset32-v1` (1.4.0, design §17.169–§17.171)
+
+The native target (M5, behind the `native` feature) runs the same bytes as wasm32: headers,
+slots, the 32-bit `Word`, the §3.4 layout table, arena ids, frames, handler activations and the
+§8.1 transport are byte-identical to this document, so the profile is named **`offset32-v1`**.
+A `Word` and a native `Ptr` are `u32` offsets from the instance's heap base, never host
+addresses; no address is ever stored in the heap.
+
+**Heap.** One reservation of `SAKURA_MAX_HEAP` bytes (rounded up to 64 KiB) mapped
+inaccessible, committed read-write in 64 KiB steps from offset 0 as §10's allocator grows
+(`mmap`/`mprotect` on Unix; `VirtualAlloc` on platform B). The base is page-aligned and never
+moves for the instance's life, so generated code loads it from the context at function entry
+and again after any call that may allocate (N2's validator rule). Offsets below 4,096 are
+committed but never hold an object, as on the runtime's test heap, so 0 stays "no object".
+Every runtime access is bounds-checked against the committed size. Hardware faults only inside
+the reservation, which is `SAKURA_MAX_HEAP` bytes, not 4 GiB: N2's code must bounds-check an
+offset it did not get from the runtime, or reserve 4 GiB plus a guard region, before it may
+rely on the fault.
+
+**Instance context.** Every native runtime function takes `SakuraInstance *ctx` first and uses
+the target's C ABI (System V AArch64/x86-64 on Linux, Apple AArch64 on macOS). One OS thread
+owns an instance and everything reachable from it (§8.5); a process may hold any number. The
+context's prefix is fixed; compiled code may read it and must not write it:
+
+| Offset | Type | Field |
+|---|---|---|
+| +0 | `uint8_t *` | heap base (offset 0) |
+| +8 | `uint32_t` | the static block's offset (the module's literals and tables, §9's `rt_alloc_static`) |
+| +12 | `uint32_t` | `sakura_abi_version`'s value |
+| +16 | — | private to the runtime |
+
+**C prototypes.** Written here, never inferred from Rust layout (`stdint.h` types):
+
+```text
+typedef struct SakuraInstance SakuraInstance;
+uint32_t sakura_abi_version(SakuraInstance *ctx);
+/* Compiled code and the runtime's native codes (§5; the dispatch table below). */
+typedef uint32_t (*SakuraCode)(SakuraInstance *ctx, uint32_t env, uint32_t frame);
+void     sakura_drop(SakuraInstance *ctx, uint32_t word);
+uint32_t rt_hosted(SakuraInstance *ctx, uint32_t id, uint32_t ptr, uint32_t len);
+```
+
+Every other `rt_*` function compiled code calls (§5–§8, the list `sakura_codegen_wasm` resolves
+against the runtime object) has its wasm32 signature with `ctx` prepended: `i32` is `uint32_t`
+(a word, offset, code, count or status), `i64` is `int64_t`, `f64` is `double`, no result is
+`void`; names are unchanged (`rt_set_ret`, `rt_call`, `rt_vt_result`, …). Two differ in
+meaning, not type: `rt_raise(ctx, code, ptr, len, site)` takes its message as a heap slice
+that must be UTF-8 (invalid text is `D090` instead of the defect); and `drop`, a wasm32 export,
+is `sakura_drop`. A host-delegated builtin (§8.2 shape `hosted`) is `rt_hosted` with the
+builtin's index in the compiler's `HOSTED` list (sorted by name) instead of a `sakura_host`
+import; arguments and answers are §8.1 bytes exactly as on wasm32, so `rt_vt_result` checks
+both targets' answers the same way (W2). The host-side calls (`run`, `start`, `complete`,
+`outcome`, `stats`) are methods of the runtime's Rust `Instance`; the profile has no C
+embedding API and no C import table (the host is the Rust `Host` interface the runtime calls
+on the owning thread, which never receives `ctx`, so no import can re-enter the runtime).
+
+**Dispatch table.** `code` stays a `u32` index into a per-module table of `SakuraCode`
+pointers: the module's functions first, then the runtime's native codes in the order the
+wasm32 linker appends them (`rt_code_callback_stub`, then every `rt_code_*` sorted, then every
+`rt_k_*` sorted, all over the runtime's full list). A native code whose service the native
+host does not provide yet is `rt_code_unsupported` in its slot (`D090` when performed), so
+indices never shift between targets or milestones.
+
+**Failures.** Overflow and zero divisors are branches to the defect path; a CPU trap is `D090`.
+The runtime staticlib that native programs link is built with `panic = "abort"`, so nothing
+unwinds across generated code and a runtime bug aborts the process (the Rust library the host
+crate links unwinds, and a panic reaching an `extern "C"` export aborts there). Host
+adapters return their own failures as status `3 host_failure` (`D091`) or, for a forged or
+foreign handle, `D090`.
+
+**`sakura.native` record.** Every native artifact carries a record named `sakura.native`, a
+§8.1 tuple of `(target: String, isa: String, cranelift: String, profile: String, abi: Int,
+module_hash: Bytes)`: the target triple, the baseline ISA, the Cranelift version, `offset32-v1`,
+`sakura_abi_version` and the 32-byte hash the compiler derives from the module's inputs. The
+driver checks it before linking or running and refuses a profile, ABI MAJOR or newer MINOR it
+does not implement as `V8003`, as for WASM. N2 emits it; nothing reads it before.
 
 ## 2. Scalar representation
 
@@ -693,6 +776,13 @@ it and retired when that closure dies, no later than its clause's handler. A `Di
 argument whose handle is of another kind is a host fault (`D090`), never an object of the
 wrong class.
 
+Native (1.4.0, §1b, design §17.169 (3), §17.170 (3)): the host keeps one table per kind; a
+freed slot is reused with its generation incremented, and a slot whose generation would wrap
+is retired for the instance's life instead (as §7.2), so a stale handle never names a live
+object. Kinds 5 (`callback`) and 6 (`jsvalue`) belong to the JS bridge and do not exist
+natively; the native host never reinterprets a handle as a pointer. Its N1a services issue
+kind 0 (`dir`); a `File`'s `id` is a plain `Int` into the host's own file table, as on JS.
+
 ### 8.5 Asynchronous requests, cancellation and late completions
 
 - The guest allocates a **request** (tag 0x8005: `generation`, `task` id, `task_epoch`,
@@ -749,6 +839,20 @@ wrong class.
 - Payloads (1.1.2): `complete` and `invoke` take ownership only of a `Bytes` inside memory
   with `rc = 1` and no static flag; anything else is refused untouched (`complete` returns 0
   and the request stays pending).
+- Native (1.4.0, design §17.171): one OS thread owns an instance; the host's executor is a
+  current-thread Tokio runtime on that thread, so timers and network futures complete only
+  between trampoline returns (`complete` copies the payload in itself). Blocking I/O that
+  answers through a request runs on a bounded pool (`SAKURA_BLOCKING_THREADS`, default 4)
+  that receives copied inputs and returns copied bytes; a cancelled job is detached, runs to
+  completion and its answer is discarded by the stale check above. A `hosted` operation (Fs,
+  `file_*`) answers synchronously on the owning thread, as on JS; Fs's own refusals (`not
+  found`, `is a directory`, the grant messages) are JS's texts, while other host errors carry
+  the operating system's text, not Node's. An answer past `SAKURA_MAX_COPY_BYTES` is the WASM
+  host's `D091` `response too large: N bytes over SAKURA_MAX_COPY_BYTES`, N the answer's
+  bytes; a host file read stops one byte past the budget, so the host never holds more.
+  `Instance::close` frees the heap and returns the host, whose `close()` then aborts every
+  pending request, drops queued completions and retires every handle and open file (the §8.6
+  ledger).
 
 ### 8.6 Traps and teardown
 

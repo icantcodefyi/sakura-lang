@@ -3,7 +3,7 @@
 //! silent. `no_std`: on wasm32 the linear memory is the module's own (`mem`), on the host a
 //! `Vec<u8>` with the same addresses, which is how `cargo test` and Miri exercise the runtime.
 
-#![no_std]
+#![cfg_attr(not(feature = "native"), no_std)]
 
 #[cfg(not(target_arch = "wasm32"))]
 extern crate alloc;
@@ -11,13 +11,19 @@ extern crate alloc;
 pub mod arena;
 pub mod builtins;
 pub mod cmp;
+#[cfg(any(target_arch = "wasm32", feature = "native"))]
+mod cx;
 pub mod exec;
+#[cfg(any(target_arch = "wasm32", feature = "native"))]
+pub mod exports;
 pub mod generate;
 pub mod heap;
 pub mod layout;
 pub mod list;
 pub mod map;
 pub mod mem;
+#[cfg(all(feature = "native", not(target_arch = "wasm32")))]
+pub mod native;
 pub mod object;
 pub mod scratch;
 pub mod show;
@@ -140,6 +146,9 @@ pub struct Rt {
     /// The activation arena and the scheduler (ABI §7).
     pub arena: arena::Arena,
     pub sched: exec::Sched,
+    /// The host-delegated builtin call in progress (`rt_vt_*`).
+    #[cfg(any(target_arch = "wasm32", feature = "native"))]
+    pub(crate) vt: vt::Transport,
     /// Host imports the runtime called, for tests (on wasm32 they go to `sakura_host`).
     #[cfg(not(target_arch = "wasm32"))]
     pub host_log: alloc::vec::Vec<HostCall>,
@@ -178,6 +187,8 @@ impl Rt {
             hole: 0,
             arena: arena::Arena::default(),
             sched: exec::Sched::default(),
+            #[cfg(any(target_arch = "wasm32", feature = "native"))]
+            vt: vt::Transport::default(),
             #[cfg(not(target_arch = "wasm32"))]
             host_log: alloc::vec::Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -215,8 +226,6 @@ pub(crate) mod host {
         pub fn abort(request: u32);
         /// One effect-trace line (design §17.80), without its newline.
         pub fn trace_write(ptr: u32, len: u32);
-        /// Whether the host records effect traces (`SAKURA_TRACE`).
-        pub fn trace_enabled() -> u32;
     }
 }
 

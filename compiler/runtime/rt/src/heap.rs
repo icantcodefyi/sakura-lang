@@ -86,12 +86,13 @@ pub fn class_of(size: u32) -> Option<usize> {
 
 impl Heap {
     pub fn new(limit: u64) -> Res<Heap> {
-        let mem = Mem::new();
+        // A 32-bit address space: the break must stay representable.
+        let limit = limit.min(u32::MAX as u64 + 1 - PAGE as u64);
+        let mem = Mem::new(limit).ok_or(Defect::HEAP_EXHAUSTED)?;
         let base = mem.base().next_multiple_of(RUN_PAGE);
         let mut h = Heap {
             mem,
-            // A 32-bit address space: the break must stay representable.
-            limit: limit.min(u32::MAX as u64 + 1 - PAGE as u64),
+            limit,
             brk: base,
             main: Pool::default(),
             em: Pool::default(),
