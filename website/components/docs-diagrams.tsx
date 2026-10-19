@@ -929,15 +929,19 @@ export const CassetteFlow = () => <Figure name="CassetteFlow" />;
 
 /**
  * The diagram in words: each box in order, then where its arrows go when that is not simply the
- * next box. `code` formats a code label (backticks for Markdown, nothing for the SVG's desc).
+ * next box, or that its path ends. `code` formats a code label (backticks for Markdown, nothing
+ * for the SVG's desc).
  */
 function steps(d: Diagram, code = (s: string) => s) {
   return d.nodes.map((n, i) => {
     const to = d.edges.filter(([a]) => a === n.id).map(([, b]) => b);
-    const then =
-      to.length && !(to.length === 1 && to[0] === d.nodes[i + 1]?.id)
-        ? ` Then ${to.map((b) => code(find(d, b).code)).join(" or ")}.`
-        : "";
+    const then = !to.length
+      ? i < d.nodes.length - 1
+        ? " This path ends here."
+        : ""
+      : to.length === 1 && to[0] === d.nodes[i + 1]?.id
+        ? ""
+        : ` Then ${to.map((b) => code(find(d, b).code)).join(" or ")}.`;
     return { section: n.section, text: `${code(n.code)}: ${n.note}.${then}` };
   });
 }
