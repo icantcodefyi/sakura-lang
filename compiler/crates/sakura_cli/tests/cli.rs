@@ -22,6 +22,18 @@ fn usage_errors_exit_2() {
     assert!(missing.stderr.contains("error:"));
 }
 
+/// Source text is UTF-8: a file that is not is a usage error naming it, before any lexing,
+/// so no diagnostic code is involved (docs/spec/gaps.md).
+#[test]
+fn invalid_utf8_source_is_a_usage_error() {
+    let dir = tmp("invalid-utf8", "");
+    std::fs::write(dir.join("main.sak"), b"fn main() -> Unit { \"\xff\" }\n").unwrap();
+    let out = sakura(&["check", "main.sak"], &dir);
+    assert_eq!(out.code, Some(2), "{}", out.stderr);
+    assert!(out.stderr.starts_with("error: main.sak:"), "{}", out.stderr);
+    assert!(!out.stderr.contains("error["), "{}", out.stderr);
+}
+
 /// Design §17.179 (rename:keep): `.sakura` is no source extension, and says so.
 #[test]
 fn legacy_sakura_extension_names_the_rename() {

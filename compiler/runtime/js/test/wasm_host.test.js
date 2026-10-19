@@ -652,3 +652,18 @@ test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as 
     await new Host().instantiate(versioned(v));
   }
 });
+
+test("runMain reports V8003 for another ABI and exits 2", async () => {
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  let exit;
+  try {
+    exit = await runMain(versioned(0x020000));
+  } finally {
+    process.stderr.write = write;
+  }
+  const host = `${ABI_VERSION >> 16}.${(ABI_VERSION >> 8) & 0xff}.${ABI_VERSION & 0xff}`;
+  assert.equal(exit, 2);
+  assert.deepEqual(lines, [`error[V8003]: the module needs ABI 2.0.0; this host implements ${host}\n`]);
+});
