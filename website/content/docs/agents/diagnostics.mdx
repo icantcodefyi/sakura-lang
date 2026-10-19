@@ -3,7 +3,7 @@ title: Diagnostics
 description: Reference for the JSON Lines diagnostics produced by sakura check --json, including record kinds, error codes, and fix impact classes.
 ---
 
-<Callout type="warn" title="Pre-alpha">
+<Callout type="warn" title="Alpha preview">
   The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
@@ -24,7 +24,23 @@ sakura test --json
 | `hole` | A [typed hole](/docs/agents/typed-holes) with its context. |
 | `obligation` | Emitted by `sakura verify --json`: `proved`, `disproved`, `unknown` or `unsupported`. See [verify](/docs/agents/verify). |
 | `test` | A test result from `sakura test --json`. |
-| `summary` | End of run. `summary.truncated` is `true` if output hit the cap. |
+| `audit` | A trust, totality, refinement or external site from `sakura audit --json`. See [Trust audit](/docs/agents/audit). |
+| `symbol_query` | The single record `sakura doc --json` writes. See [Offline API search](/docs/agents/doc). |
+| `summary` | End of run. `summary.truncated` is `true` if output hit the cap. Its fields differ by command; see below. |
+
+Two more records are not on stdout: `target/sakura/manifest.json` (`kind: "manifest"`, from
+`sakura build --manifest` and `sakura verify`) and the runtime `defect` record on stderr
+(below). Every record carries `kind` and `schema_version`; the fields of each kind and
+version are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt),
+which a test checks every command's output against. A usage error (a wrong flag, a missing
+file) is text on stderr with exit `2`, even with `--json`.
+
+Today one `summary` kind has different shapes: `check`, `fix` and `build` report `errors`,
+`warnings`, `notes`, `holes`, `total`, `emitted` and `truncated`; `test` reports `passed`,
+`failed`, `skipped`, `total` and `seed`; `audit` reports `sites` and `by_site`; and `verify`
+writes `summary` 1.1 with its obligation counts. **Planned before v0.2.0:** these become four
+kinds, `summary`, `test_summary`, `audit_summary` and `verify_summary` (design §17.242). Match
+on the command you ran, not only on `kind`, until then.
 
 ## The diagnostic record
 
@@ -73,8 +89,8 @@ fn greet(name: String) -> Unit {
 
 For `V3001`, the compiler offers two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). The local handler edit is `incomplete`: the agent must supply a suitable handler.
 
-For current `V1002`/`V2002` repairs, syntax-error suppression by source location,
-`V4004` limits, CRLF and Windows URI behavior, see [changes on main](/docs/changes#sources-diagnostics-and-portability).
+For the `V1002`, `V2002` and `V4004` changes since alpha.1 and syntax-error suppression by
+source location, see [changes since alpha.1](/docs/changes#diagnostics-and-json).
 
 ## Fields
 
@@ -150,7 +166,7 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 | `5` | Contracts and refinements | `V5001` predicate outside the contract subset |
 | `6` | Capabilities, resources, escape | `V6002` capability escapes its scope, `V6003` resource escapes, `V6010` non-std effect in `main` |
 | `7` | Tests and verification | `W7001` property discard budget, `W7002` vacuous obligation |
-| `8` | Packages, build, frozen specs | `V8020` spec frozen |
+| `8` | Packages, manifest, ABI, frozen specs | `V8001` no entry point, `V8002` reserved package name, `V8003` ABI version mismatch, `V8004` external unsupported on the target, `V8005` `[dependencies]` refused, `V8006` invalid manifest, `V8020` spec frozen |
 | `9` | Internal | Compiler bugs |
 
 Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), `W7002` (a proof over impossible assumptions), and `W8001` (a collection update copies in a loop).
@@ -173,17 +189,23 @@ Runtime defects are not diagnostics from `sakura check`. They terminate the task
 | `D030` | `Option.expect` on `None` |
 | `D031` | `String.slice` off a character boundary |
 | `D090`, `D091` | runtime-internal error, host operation failed |
+| `D092`–`D095` | WASM runtime limits: a reference count overflow, a failed finalizer, a callback after its handler ended, a join on a retired fiber |
+| `D096` | the WASM heap limit was reached or memory could not grow |
 
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | OK. |
-| `1` | Diagnostics with errors, or `main` ended with an uncaught `Fail` (stderr: `error: main failed with <Show of the error>`). |
+| `1` | Diagnostics with errors, a disproved obligation, formatting differences under `fmt --check`, or `main` ended with an uncaught `Fail` (stderr: `error: main failed with <Show of the error>`). |
 | `2` | Usage error. |
 | `3` | Test failures. |
 | `70` | Defect at runtime. |
 | `75` | Permission denied at startup. |
+
+## Stability
+
+Diagnostic codes are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability): a code is never reused or renumbered, and a retired code stays reserved. The `--json` records, their fields and the exit codes are proposed as stable from the same version, with fields only added within a major; the summary split above lands before then. Messages, labels and the terminal rendering are not a contract and keep improving.
 
 ## Next
 

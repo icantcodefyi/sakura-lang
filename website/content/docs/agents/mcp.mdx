@@ -3,7 +3,7 @@ title: MCP server
 description: The sakura mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and the planned export of your own functions.
 ---
 
-<Callout type="warn" title="Pre-alpha">
+<Callout type="warn" title="Alpha preview">
   The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
@@ -79,6 +79,10 @@ pub fn main() -> Unit {
 `Tool.of(greet)` builds a `Tool` value. Its JSON Schema comes from the parameter types, refinements included. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run`, which takes them in the `tools` field of its `Agent` configuration record (see the [standard library](/docs/stdlib)).
 
 In the planned MCP export, the model never supplies authority. The handlers installed by the serving program decide what `Http` can reach, and the manifest's `[permissions]` table is the ceiling.
+
+## Stability
+
+The stdio server, the ten tools above, their parameters, and the snapshot, content-hash and patch-id protocol are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability). **Planned before v0.2.0:** a tool that returns a CLI record, such as `symbol_query` or `hole_context`, returns exactly the `--json` record of the same name, `kind` included (design §17.242). Function export, HTTP transport and the `verify`, `refactor` and `impact` tools are not implemented and carry no promise.
 
 ## Next
 

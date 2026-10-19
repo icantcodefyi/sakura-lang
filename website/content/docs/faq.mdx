@@ -5,11 +5,12 @@ description: Honest answers to common questions about Sakura Lang's status, desi
 
 ## Is Sakura Lang usable today?
 
-Sakura Lang is pre-alpha: useful for experiments, without stable compatibility or
-production-readiness guarantees. The alpha.1 preview is published on npm; current
-main includes JS and WASM execution, contract verification, LSP and MCP. All twelve
-repository examples execute in their configured modes (seven run plus test, five
-test); none is check-only. Native execution remains experimental. See
+Sakura Lang is an alpha preview: useful for experiments, without stable compatibility or
+production-readiness guarantees. `0.1.0-alpha.1` is published on npm, Homebrew and GitHub,
+and `v0.1.0` is next. Current main includes JS and WASM execution, contract verification, LSP and MCP. All twenty
+repository examples (the design's twelve and eight cookbook recipes) run or test in CI;
+none is check-only. Native execution remains experimental. [Stability](/docs/stability)
+describes what is proposed to become stable at v0.2.0. See
 [Install](/docs/install), [changes on main](/docs/changes) and the [roadmap](/docs/roadmap).
 
 ## Why not just use TypeScript with Effect-TS?
@@ -24,7 +25,7 @@ A lot, and it says so. The [prior art](/docs/prior-art) page goes through Koka, 
 
 ## Why reference counting? What about cycles?
 
-On the native backend (milestone M5), reference counting inserted at compile time gives predictable memory use and no collector pauses, without asking the programmer to reason about lifetimes. With Perceus-style reuse, an update to a uniquely owned value becomes an in-place write. The JavaScript backend, which comes first, uses the host GC with identical semantics.
+On the WebAssembly backend, and the experimental native one, reference counting inserted at compile time gives predictable memory use and no collector pauses, without asking the programmer to reason about lifetimes. Perceus-style reuse, planned after 1.0, will turn an update to a uniquely owned value into an in-place write. The JavaScript backend uses the host GC with identical semantics.
 
 Cycles cannot be built, because values have value semantics: a value can only refer to values that existed before it. Cyclic data such as graphs uses `Graph<N>` with `NodeId` keys. The only stateful constructs are handler `var` state and `Graph`, and both are confined. See [Memory model](/docs/tour/memory).
 
@@ -46,7 +47,7 @@ No. The interfaces are open formats: Markdown docs and `llms.txt`, JSON Lines di
 
 ## Are there performance numbers?
 
-No. JavaScript and WASM execution are implemented. Native code via Cranelift and Perceus reuse is experimental M5 work. The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) contains reproducible workloads and reports; its results are specific to workloads and hosts, not a language ranking.
+No. JavaScript and WASM execution are implemented, and native code through Cranelift is experimental; Perceus reuse comes after 1.0. No benchmark result has been blessed yet, so these docs quote none. The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) contains reproducible workloads and reports; its results are specific to workloads and hosts, not a language ranking.
 
 ## Why no `mut`?
 

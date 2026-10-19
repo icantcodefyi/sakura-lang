@@ -77,7 +77,7 @@ The compiler never prints "verified" for a program that merely compiled. Every c
 
 | Status | Meaning | Established by |
 | --- | --- | --- |
-| `proved` | Holds on all executions under the stated assumptions. | The type and effect checker; later, SMT-discharged contracts. |
+| `proved` | Holds on all executions under the stated assumptions. | The type and effect checker, and contracts `sakura verify` discharged with Z3. |
 | `runtime_checked` | Violations are detected at the boundary and become a defect. | Contract lowering, checked arithmetic, checked refinements. |
 | `tested` | Held on the executed inputs. | `sakura test`. |
 | `trusted` | Assumed. | FFI, host handlers, `@trust` sites, the toolchain itself. |

@@ -3,7 +3,7 @@ title: Contracts and refinements
 description: Refinement types, requires and ensures clauses, and the honest guarantee model behind them.
 ---
 
-<Callout type="warn" title="Pre-alpha">
+<Callout type="warn" title="Alpha preview">
   The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
@@ -220,7 +220,7 @@ Compiler fixes that touch a contract carry `impact: contract_change` and are nev
 
 ## Not in v0
 
-- **Termination proofs.** The M4 `sakura verify` preview proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
+- **Termination proofs.** `sakura verify` proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
 - **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
 - **`old(expr)`** in postconditions. There is no mutation to snapshot.
 - **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.

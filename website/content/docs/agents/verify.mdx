@@ -3,7 +3,7 @@ title: Verify contracts
 description: Prove contract and arithmetic obligations with sakura verify, inspect counterexamples, and understand proof-backed check removal.
 ---
 
-`sakura verify` is available in the source-built CLI as an M4 preview. It generates obligations for user functions, including functions unreachable from `main`, and asks Z3 whether their contracts and arithmetic are safe under the stated assumptions. This CLI command exists independently of the planned MCP `verify` tool. MCP `compiler_info` reports verification support and solver status; inspect the latter before assuming a solver is installed. See [contracts and refinements](/docs/tour/contracts) for the language rules.
+`sakura verify` is part of every release of the CLI (milestone M4). It generates obligations for user functions, including functions unreachable from `main`, and asks Z3 whether their contracts and arithmetic are safe under the stated assumptions. This CLI command exists independently of the planned MCP `verify` tool. MCP `compiler_info` reports verification support and solver status; inspect the latter before assuming a solver is installed. See [contracts and refinements](/docs/tour/contracts) for the language rules.
 
 ```sh
 sakura verify src
@@ -109,8 +109,12 @@ The build recomputes cache keys without running Z3. Missing, stale or unauthenti
 
 See the [build manifest](/docs/agents/build-manifest) for the trusted base and clause records. `verify` writes `target/sakura/manifest.json` with verification statuses; a clause takes its worst obligation's status (`disproved`, then `unknown`, then `unsupported`, then `proved`). `build --manifest` describes the actual build: `proved` only for clauses whose checks it all removed, and `runtime_checked` for the rest. Building therefore replaces prior `unknown` or `disproved` manifest statuses with `runtime_checked` where checks remain.
 
-## Limits of the preview
+## Limits
 
 The verifier handles a restricted scalar fragment, including booleans, bounded integers, comparisons, arithmetic, branches and supported calls. Proofs depend on the recorded assumptions and call summaries. They do not establish the behavior of trusted host code or certify a whole program.
 
-Loop invariants, recursion and termination proofs, `Float` and `String` theories, quantified collection predicates, effectful subterms and circular summaries are unsupported. Proof certificates and the reserved `verify fn` / `proof` / `ghost` syntax are not implemented. See the [M4 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md#3-m4--wasm-backend-and-sakura-verify) for the remaining work.
+Loop invariants, recursion and termination proofs, `Float` and `String` theories, quantified collection predicates, effectful subterms and circular summaries are unsupported. Proof certificates and the reserved `verify fn` / `proof` / `ghost` syntax are not implemented. These remain design goals with no milestone before 1.0; see the [M4 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md#3-m4--wasm-backend-and-sakura-verify).
+
+## Stability
+
+The `verify` command, its flags, its exit codes, the `obligation` record and `[verify] rlimit` are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability). Its closing record becomes `verify_summary` before then. Which obligations are `proved` rather than `unknown` or `unsupported` may improve in any release; the proof cache's files have no format promise and are solved again when the format changes.
