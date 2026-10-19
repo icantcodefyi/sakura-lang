@@ -1,0 +1,126 @@
+{
+  "node": [
+    {
+      "arm": "base",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "base",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "base",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "base",
+      "name": "con_of",
+      "code": "D030"
+    },
+    {
+      "arm": "owned",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "owned",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "owned",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "owned",
+      "name": "con_of",
+      "code": "D030"
+    },
+    {
+      "arm": "flat",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "flat",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "flat",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "flat",
+      "name": "con_of",
+      "code": "D030"
+    }
+  ],
+  "bun": [
+    {
+      "arm": "base",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "base",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "base",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "base",
+      "name": "con_of",
+      "code": "D030"
+    },
+    {
+      "arm": "owned",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "owned",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "owned",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "owned",
+      "name": "con_of",
+      "code": "D030"
+    },
+    {
+      "arm": "flat",
+      "name": "put_var",
+      "code": "D020"
+    },
+    {
+      "arm": "flat",
+      "name": "put_con",
+      "code": "D020"
+    },
+    {
+      "arm": "flat",
+      "name": "var_of",
+      "code": "D030"
+    },
+    {
+      "arm": "flat",
+      "name": "con_of",
+      "code": "D030"
+    }
+  ]
+}

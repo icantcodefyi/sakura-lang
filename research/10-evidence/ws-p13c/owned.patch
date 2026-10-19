@@ -1,0 +1,14 @@
+--- a/main/main.js
++++ b/main/main.js
+@@ -562 +562 @@
+-  const r_1 = $rt.list_push(vars_1, rec);
++  const r_1 = $rt.list_push_owned(vars_1, rec);
+@@ -591 +591 @@
+-  const r_1 = $rt.list_push(cons_1, c);
++  const r_1 = $rt.list_push_owned(cons_1, c);
+@@ -985 +985 @@
+-  const r = $std_list.set$d(vars, id, v, 0);
++  const r = $std_list.set$o(vars, id, v, 0);
+@@ -1014 +1014 @@
+-  const r = $std_list.set$d(cons, id, c, 1);
++  const r = $std_list.set$o(cons, id, c, 1);

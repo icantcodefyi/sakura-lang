@@ -1,0 +1,20 @@
+fn projection_test
+  r%42 = list_push(dests%21) owned
+fn new_var
+  r%8 = list_push(vars%7) shared(origin)
+fn add_constraint
+  r%5 = list_push(cons%4) shared(origin)
+fn put_var
+  r%4 = set(vars%3) shared(origin)
+fn put_con
+  r%4 = set(cons%3) shared(origin)
+fn remove_propagate_from
+  r%78 = list_push(todo%66) owned
+  r%56 = list_push(unsat%38) owned
+fn add_propagate
+  r%34 = concat(todo%26) owned
+fn make_plan
+  r%42 = list_push(plan%33) owned
+  r%45 = concat(todo%34) shared(join)
+fn add_to_graph
+  r%14 = list_push(constraints%13) shared(origin)

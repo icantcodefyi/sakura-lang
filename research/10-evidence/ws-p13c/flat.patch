@@ -1,0 +1,60 @@
+--- a/main/main.js
++++ b/main/main.js
+@@ -544,2 +544,2 @@
+-  const xs = $rt.list([]);
+-  const xs_1 = $rt.list([]);
++  const xs = [];
++  const xs_1 = [];
+@@ -557 +557 @@
+-  const r = $rt.list_len(vars);
++  const r = vars.length;
+@@ -562 +562 @@
+-  const r_1 = $rt.list_push_owned(vars_1, rec);
++  const r_1 = $densePush(vars_1, rec);
+@@ -589 +589 @@
+-  const r = $rt.list_len(cons);
++  const r = cons.length;
+@@ -591 +591 @@
+-  const r_1 = $rt.list_push_owned(cons_1, c);
++  const r_1 = $densePush(cons_1, c);
+@@ -718 +718 @@
+-  const r_1 = $rt.list_get_expect(vars, id, "variable");
++  const r_1 = $denseGet(vars, id, "variable");
+@@ -814 +814 @@
+-  const r_1 = $rt.list_get_expect(cons, id, "constraint");
++  const r_1 = $denseGet(cons, id, "constraint");
+@@ -985 +985 @@
+-  const r = $std_list.set$o(vars, id, v, 0);
++  const r = $denseSet(vars, id, v, 0);
+@@ -1014 +1014 @@
+-  const r = $std_list.set$o(cons, id, c, 1);
++  const r = $denseSet(cons, id, c, 1);
+@@ -2158,0 +2159,28 @@
++
++function $denseSet(xs, i, x, $site) {
++  const t = (0 <= i);
++  let v;
++  j0: {
++    if (t) {
++      const r = xs.length;
++      const t_1 = (i < r);
++      v = t_1;
++      break j0;
++    }
++    v = false;
++    break j0;
++  }
++  if (!v) $rt.violated("D020", "precondition `set` of set violated", $site, { uri: "sakura:///std/list.sak", start_byte: 961, end_byte: 982 });
++  const pre = undefined;
++  const r_1 = (xs[i] = x, xs);
++  return r_1;
++}
++
++function $densePush(xs, x) {
++  xs.push(x);
++  return xs;
++}
++function $denseGet(xs, i, message) {
++  return i >= 0 && i < xs.length
++    ? xs[i] : $rt.option_expect($rt.None, message);
++}
