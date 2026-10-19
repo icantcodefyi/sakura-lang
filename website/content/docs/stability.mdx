@@ -34,13 +34,14 @@ applies, and that file's inventory is the authoritative list.
 | The `sakura/holeContext` LSP extension | experimental | — |
 | [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 0.2.0 |
 | `--target native` and the native runtime | experimental | — |
+| Runtime limits: the JS and WASM hosts read none from the environment; the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` | experimental | — |
 
 Human-readable output, help text, diagnostic wording and generated code bytes are never
 contracts. A diagnostic's code, fields and fixes are.
 
 ## Changes planned before v0.2.0
 
-These decisions are made (design §17.239–§17.243) but not yet built. They land before the
+These decisions are made (design §17.239–§17.243, §17.253) but not yet built. They land before the
 first version that honours the guarantees, so they are not breaking changes under the RFC:
 
 - **One `kind` per summary shape.** Today `check`, `fix`, `build`, `test` and `audit` all end
@@ -52,6 +53,9 @@ first version that honours the guarantees, so they are not breaking changes unde
   A digit separator `_` goes only between two digits.
 - **A source file that is not UTF-8** becomes a diagnostic (`V0015 source_not_utf8`,
   planned) instead of a usage error.
+- **`[permissions] process` is reserved.** `process = []` is accepted and grants nothing,
+  the same as leaving the key out. Today a non-empty list is accepted and also grants
+  nothing; it becomes [`V8006`](/docs/errors/V8006).
 
 ## After 1.0
 

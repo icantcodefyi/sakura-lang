@@ -42,7 +42,7 @@ absent is denied. Each key is a list of strings:
 | `fs.write` | Directories `Fs` may write. A write through a symbolic link that leaves the grant is refused. |
 | `net` | `host:port` pairs `Http` and `Serve` may reach. |
 | `env` | Environment variables `Env` may read. Other names read as absent. |
-| `process` | Programs a `Process` effect may start. The standard library has no `Process` effect yet, so leave it empty. |
+| `process` | Reserved. `process = []` is accepted and grants nothing, the same as leaving the key out: no std effect starts processes. Any other value is planned to be [`V8006`](/docs/errors/V8006) before v0.2.0. |
 
 The host supplies root handlers only for the std effects `main` declares. When `main`
 declares `Fs` with an empty `fs.read`, or `Http` or `Serve` with an empty `net`,
@@ -97,7 +97,8 @@ dependencies it records only its format version. Commit it; do not edit it by ha
 
 ## Stability
 
-`[package]` with `name`, `version` and `edition`, `[permissions]` with its five keys,
+`[package]` with `name`, `version` and `edition`, `[permissions]` with its four keys and the
+reserved `process = []`,
 `[verify] rlimit`, the `V8005` refusal and the `V8006` rule are proposed as **stable from
 v0.2.0** under [draft RFC 0001](/docs/stability). Until then the preview carries no
 compatibility promise. Packages will be added without changing the meaning of an existing
