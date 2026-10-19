@@ -16,12 +16,15 @@ import { getPageMarkdownUrl } from "@/lib/shared";
 import { site } from "@/lib/site";
 import { docsImageUrl, docsSection, source } from "@/lib/source";
 
+// UTC, so the date is the same on every build host.
+const updated = new Intl.DateTimeFormat("en", { dateStyle: "long", timeZone: "UTC" });
+
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
 
-  const MDX = page.data.body;
+  const { body: MDX, lastModified } = page.data;
   const markdownUrl = getPageMarkdownUrl(page);
   const githubUrl = `${site.github}/blob/main/website/content/docs/${page.path}`;
   const url = absolute(page.url);
@@ -53,7 +56,15 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
       <DocsBody>
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
-      <EditOnGitHub href={githubUrl} className="mt-6 self-start" />
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <EditOnGitHub href={githubUrl} />
+        {lastModified ? (
+          <p className="text-sm text-fd-muted-foreground">
+            Last updated{" "}
+            <time dateTime={lastModified.toISOString()}>{updated.format(lastModified)}</time>
+          </p>
+        ) : null}
+      </div>
       <JsonLd
         data={{
           "@graph": [
@@ -67,7 +78,7 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
               image: absolute(docsImageUrl(page)),
               inLanguage: "en",
               articleSection: docsSection(page.url),
-              dateModified: page.data.lastModified?.toISOString(),
+              dateModified: lastModified?.toISOString(),
               author,
               publisher: { "@id": ids.author },
               isPartOf: { "@id": ids.website },
