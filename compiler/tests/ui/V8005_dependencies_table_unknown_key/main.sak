@@ -1,0 +1,3 @@
+// expect: V8005
+// An unknown key beside `[dependencies]` does not hide `V8005` (design §17.232).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

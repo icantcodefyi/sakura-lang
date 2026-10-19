@@ -763,6 +763,80 @@ fn build_manifest_lists_trusted_base_and_obligations() {
     assert!(!broken.join("target/sakura/manifest.json").exists());
 }
 
+/// Design §17.232: `[dependencies]` in any form is `V8005` at the key, before anything runs; the
+/// lock file is untouched. Malformed TOML keeps its parse error alone, and no table is no error.
+#[test]
+fn dependencies_are_v8005_before_anything_runs() {
+    let cases = [
+        ("table", "[package]\nname = \"app\"\n[dependencies]\n", true),
+        (
+            "inline",
+            "dependencies = {}\n[package]\nname = \"app\"\n",
+            true,
+        ),
+        (
+            "dotted",
+            "dependencies.http = \"1\"\n[package]\nname = \"app\"\n",
+            true,
+        ),
+        (
+            "malformed",
+            "[package]\nname = \"app\n[dependencies]\n",
+            false,
+        ),
+        ("absent", "[package]\nname = \"app\"\n", false),
+    ];
+    for (case, manifest, refused) in cases {
+        let dir =
+            std::env::temp_dir().join(format!("sakura-cli-{}-deps-{case}", std::process::id()));
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
+        std::fs::write(dir.join("sakura.lock"), "# lock\n").unwrap();
+        std::fs::write(
+            dir.join("src/main.sak"),
+            "pub fn main() -> Unit ! {Console} { Console.print(\"ran\") }\n",
+        )
+        .unwrap();
+        let out = sakura(&["check", "--json"], &dir);
+        let recs = common::json_lines(&out.stdout).unwrap();
+        let v8005 = recs.iter().find(|r| r["code"] == "V8005");
+        let run = sakura(&["run", dir.to_str().unwrap()], &dir);
+        if refused {
+            assert_eq!(out.code, Some(1), "{case}: {}", out.stdout);
+            let span = &v8005.expect(&out.stdout)["spans"][0];
+            let (start, end) = (
+                span["start_byte"].as_u64().unwrap(),
+                span["end_byte"].as_u64().unwrap(),
+            );
+            assert_eq!(
+                &manifest[start as usize..end as usize],
+                "dependencies",
+                "{case}"
+            );
+            assert!(
+                run.stderr.contains("error[V8005]"),
+                "{case}: {}",
+                run.stderr
+            );
+            assert!(!run.stdout.contains("ran"), "{case}: {}", run.stdout);
+        } else {
+            assert!(v8005.is_none(), "{case}: {}", out.stdout);
+        }
+        match case {
+            "malformed" => {
+                assert_eq!(run.code, Some(2), "{}", run.stderr);
+                assert!(run.stderr.contains("TOML parse error"), "{}", run.stderr);
+                assert!(!run.stderr.contains("V8005"), "{}", run.stderr);
+            }
+            "absent" => assert_eq!(run.stdout, "ran\n", "{}", run.stderr),
+            _ => {}
+        }
+        let lock = std::fs::read_to_string(dir.join("sakura.lock")).unwrap();
+        assert_eq!(lock, "# lock\n", "{case}");
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}
+
 /// Design §17.73 (gate 6): `sakura test --record` needs `net` hosts in the manifest, and only
 /// then makes `Test.fixtures()` writable for the cassettes.
 #[test]

@@ -725,6 +725,21 @@ backend, runtime and host share one ABI revision.";
 to call (design §17.81): the WASM backend runs std's host operations through the runtime's own
 imports only. Build with `--target js`, or write the function in Sakura Lang.";
 
+    V8005 "dependencies_not_supported" PACKAGE,
+"Packages are not supported yet: `sakura.toml` declares `[dependencies]` (design §17.232, RFC
+0001). This release compiles one package over std; packages arrive in a later minor release, and
+the key is reserved until then. Any form is refused before anything runs: an empty table, entries,
+an inline `dependencies = {}` or a dotted key. Nothing is fetched and `sakura.lock` is untouched.
+Remove the table and use std; do not vendor another package's sources into `src/` to stand in for it.
+
+Wrong:
+    [package]
+    name = \"billing\"
+    [dependencies]
+Fixed:
+    [package]
+    name = \"billing\"";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";

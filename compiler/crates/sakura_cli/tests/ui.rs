@@ -4,7 +4,8 @@
 //! A `<name>.fixed.sak` companion is the repaired program shown on the code's error page
 //! (design §17.144): it must come out of the same command with exit 0 and no error or warning.
 //! A directory `<name>/` is one multi-module fixture, checked as a whole: its first `.sak` file
-//! (sorted) holds the directives, and `<name>.jsonl` sits beside the directory.
+//! (sorted) holds the directives, and `<name>.jsonl` sits beside the directory; it may carry a
+//! `sakura.toml`, which makes it a project.
 
 mod common;
 
@@ -155,7 +156,21 @@ fn run(path: &Path) -> Result<(), String> {
         .to_owned();
     let normalized = stdout
         .replace(&file_uri(&dir), "file://$DIR")
-        .replace(&snapshot, "sha256:$SNAPSHOT");
+        .replace(&snapshot, "sha256:$SNAPSHOT")
+        // `V8005` names the compiler's version (§17.232), which a release bump must not churn.
+        .replace(
+            &format!("Sakura {} ", env!("CARGO_PKG_VERSION")),
+            "Sakura $VERSION ",
+        );
+    // The message is in the occurrence id's hash, so that id is normalized with it.
+    let normalized: String = (normalized.split_inclusive('\n'))
+        .map(|line| match line.find("\"id\":\"d:") {
+            Some(i) if line.contains("Sakura $VERSION ") => {
+                format!("{}\"id\":\"d:$ID\"{}", &line[..i], &line[i + 25..])
+            }
+            _ => line.to_owned(),
+        })
+        .collect();
     compare_file(&path.with_extension("jsonl"), &normalized)
 }
 

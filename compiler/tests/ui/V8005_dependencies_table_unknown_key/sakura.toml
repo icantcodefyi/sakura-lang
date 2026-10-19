@@ -1,0 +1,7 @@
+[package]
+name = "billing"
+
+[dependencies]
+http = "1.2"
+
+[bogus]

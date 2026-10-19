@@ -1,0 +1,3 @@
+// expect: V8005
+// An inline `dependencies = {}` is refused as the table is (design §17.232).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

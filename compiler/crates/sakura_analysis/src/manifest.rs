@@ -1,5 +1,5 @@
-//! `sakura.toml` (design §6.2, §9): package identity, dependencies and the `[permissions]` table
-//! that caps the root handlers `sakura run` installs.
+//! `sakura.toml` (design §6.2, §9): package identity and the `[permissions]` table that caps the
+//! root handlers `sakura run` installs. `[dependencies]` is reserved and refused (`V8005`, §17.232).
 
 use std::collections::BTreeMap;
 
@@ -11,9 +11,6 @@ use crate::Analyzed;
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
     pub package: Package,
-    /// Dependency name → version requirement (lower bound, MVS; §9). Not resolved in v0.
-    #[serde(default)]
-    pub dependencies: BTreeMap<String, String>,
     #[serde(default)]
     pub permissions: Permissions,
     #[serde(default)]
@@ -69,8 +66,29 @@ pub struct FsPermissions {
 
 impl Manifest {
     pub fn parse(text: &str) -> Result<Manifest, String> {
+        if dependencies_key(text).is_some() {
+            return Err(dependencies_message());
+        }
         toml::from_str(text).map_err(|e| e.to_string().trim_end().to_owned())
     }
+}
+
+/// The byte range of the `dependencies` key, in any form (`[dependencies]`, empty or not, an
+/// inline table, a dotted key), or `None` without one or when `text` is not TOML, whose parse
+/// error then stands alone (`V8005`, design §17.232).
+pub fn dependencies_key(text: &str) -> Option<std::ops::Range<usize>> {
+    let table = toml::de::DeTable::parse(text).ok()?;
+    let (key, _) = (table.get_ref().iter()).find(|(k, _)| k.get_ref() == "dependencies")?;
+    Some(key.span())
+}
+
+/// `V8005`'s message (design §17.232).
+pub fn dependencies_message() -> String {
+    format!(
+        "this project declares [dependencies]; Sakura {} compiles one package over std, and \
+         packages arrive in a later minor release",
+        env!("CARGO_PKG_VERSION")
+    )
 }
 
 impl Permissions {
@@ -157,5 +175,24 @@ mod tests {
             .startup_denial(&["Console".into(), "Process".into()]);
         assert!(deny.unwrap().contains("`process`"));
         assert!(Manifest::parse("[package]\nname = \"x\"\n[permisions]\n").is_err());
+    }
+
+    #[test]
+    fn dependencies_are_refused_in_every_form() {
+        for text in [
+            "[package]\nname = \"x\"\n[dependencies]\n",
+            "[package]\nname = \"x\"\n[dependencies]\nhttp = \"1.0\"\n",
+            "dependencies = {}\n[package]\nname = \"x\"\n",
+            "dependencies.http = \"1.0\"\n[package]\nname = \"x\"\n",
+            "[package]\nname = \"x\"\n[dependencies.http]\nversion = \"1.0\"\n",
+        ] {
+            let span = dependencies_key(text).expect(text);
+            assert_eq!(&text[span], "dependencies", "{text}");
+            assert_eq!(Manifest::parse(text), Err(dependencies_message()), "{text}");
+        }
+        assert_eq!(dependencies_key("[package]\nname = \"x\"\n"), None);
+        assert_eq!(dependencies_key("[dependencies\n"), None);
+        let malformed = Manifest::parse("[package]\nname = \"x\n[dependencies]\n").unwrap_err();
+        assert!(malformed.starts_with("TOML parse error"), "{malformed}");
     }
 }

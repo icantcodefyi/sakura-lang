@@ -88,7 +88,7 @@ fn fixture(ui: &Path, names: &[String], code: &str) -> Result<Option<Fixture>, S
         let mut files: Vec<String> = std::fs::read_dir(ui.join(dir))
             .map_err(|e| format!("cannot read {UI}/{dir}: {e}"))?
             .filter_map(|e| e.ok()?.file_name().into_string().ok())
-            .filter(|n| n.ends_with(".sak"))
+            .filter(|n| n.ends_with(".sak") || n == "sakura.toml")
             .collect();
         files.sort();
         let files = files
@@ -261,7 +261,12 @@ fn page(info: &CodeInfo, fixture: Option<&Fixture>) -> String {
                 body.len()
             ));
         } else {
-            out.push_str(&format!("\n```sakura\n{body}\n```\n"));
+            let lang = if name.ends_with(".toml") {
+                "toml"
+            } else {
+                "sakura"
+            };
+            out.push_str(&format!("\n```{lang}\n{body}\n```\n"));
         }
     }
     if f.skipped.is_none() {

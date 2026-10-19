@@ -619,6 +619,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     diagnostics.extend(program.diagnostics.iter().cloned());
     diagnostics.extend(type_diags.iter().cloned());
     diagnostics.extend(reserved_package_name(snapshot));
+    diagnostics.extend(dependencies_not_supported(snapshot));
     let roots: Vec<Option<sakura_syntax::SyntaxNode>> = (0..parses.len())
         .map(|i| match reused_file[i] {
             true => None,
@@ -899,6 +900,22 @@ fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
             span.0 as u32,
             span.1 as u32,
         )),
+    )
+}
+
+/// `V8005` when `sakura.toml` declares `dependencies` in any form (§17.232), at the key.
+fn dependencies_not_supported(snapshot: &Snapshot) -> Option<Diagnostic> {
+    let file = snapshot
+        .file_ids()
+        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
+    let key = manifest::dependencies_key(&snapshot.file(file).text)?;
+    Some(
+        Diagnostic::error(
+            codes::V8005,
+            Phase::Package,
+            manifest::dependencies_message(),
+        )
+        .with_span(Span::primary(file, key.start as u32, key.end as u32)),
     )
 }
 
