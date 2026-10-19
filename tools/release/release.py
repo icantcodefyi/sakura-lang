@@ -112,7 +112,12 @@ def notices(target):
     return "\n".join(out) + "\n"
 
 
-def readme(ver, target):
+def readme(ver, target, macos_signed=False):
+    signing = (
+        "This macOS binary is Developer ID signed and notarized. The bare Mach-O cannot\n"
+        "carry a stapled ticket; Gatekeeper may need network access to check notarization."
+        if macos_signed else "This binary has no Developer ID signature or notarization."
+    )
     return f"""# Sakura Lang {ver} ({target})
 
 Pre-alpha. `sakura` is self-contained: the standard library, the JS and WASM runtimes,
@@ -125,7 +130,7 @@ the version and the source commit.
 Node {NODE_MAJOR} is required to run programs and tests (`sakura run`, `sakura test`, and MCP
 tools that execute code); set `SAKURA_NODE` to choose the executable. `check`, `build`, `doc`,
 `fmt`, `explain` and `mcp serve` need no Node. `sakura verify` needs the pinned Z3, which is
-not bundled. The binary is not signed or notarized.
+not bundled. {signing}
 
 Start with `sakura new cli demo`, then `sakura check`, `sakura test`, `sakura build`;
 `sakura setup --apply` installs the agent skill and MCP entries in a project.
@@ -133,8 +138,16 @@ Source: {REPO_URL}
 """
 
 
-def release_notes(ver, commit):
+def release_notes(ver, commit, macos_signed=False):
     platforms = "\n".join(f"- `{t['target']}` (npm `{t['npm']}`)" for t in TARGETS)
+    signing = (
+        "macOS binaries are signed with Developer ID Application: Aniruddh Dubge\n"
+        "(P62B65A837) and notarized by Apple. Bare Mach-O executables cannot carry a\n"
+        "stapled ticket; Gatekeeper may need network access. Linux binaries are unsigned."
+        if macos_signed else
+        "Dry run: macOS signing and notarization were skipped; these artifacts have no\n"
+        "Developer ID signature or notarization."
+    )
     return f"""Sakura Lang {ver}, a pre-alpha release from commit {commit}. Nothing beyond the
 versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
 
@@ -142,7 +155,7 @@ Platforms:
 
 {platforms}
 
-Binaries are not signed or notarized; verify them with `SHA256SUMS` and
+{signing} Verify artifacts with `SHA256SUMS` and
 `gh attestation verify <file> --repo icantcodefyi/sakuralang`.
 
 Node {NODE_MAJOR} is required for `sakura run`, `sakura test` and MCP tools that execute
@@ -173,11 +186,13 @@ def write_tar(out, top, members, mtime):
 def archive(args):
     ver = version()
     target_info(args.target)
+    if args.macos_signed and not args.target.endswith("-apple-darwin"):
+        fail("--macos-signed requires a Darwin target")
     top = f"sakuralang-{ver}-{args.target}"
     members = [("sakura", Path(args.binary).read_bytes(), 0o755)]
     members += [(name, (ROOT / name).read_bytes(), 0o644) for name in LICENSES]
     members.append((NOTICES, notices(args.target).encode(), 0o644))
-    members.append(("README.md", readme(ver, args.target).encode(), 0o644))
+    members.append(("README.md", readme(ver, args.target, args.macos_signed).encode(), 0o644))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     path = out / f"{top}.tar.gz"
@@ -384,7 +399,7 @@ def assemble(args):
             (stage / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
             npm_files.append(npm_pack(stage, out))
 
-    (out / "release-notes.md").write_text(release_notes(ver, commit))
+    (out / "release-notes.md").write_text(release_notes(ver, commit, args.macos_signed))
 
     files = sorted(p.name for p in out.iterdir() if p.name not in ("SHA256SUMS", "release.json"))
     record = {
@@ -396,6 +411,7 @@ def assemble(args):
         "run": os.environ.get("GITHUB_RUN_ID"),
         "targets": [t["target"] for t in TARGETS],
         "node": NODE_MAJOR,
+        "macos_signing": "developer-id-notarized" if args.macos_signed else "skipped-dry-run",
         "skill_sha256": manifest["sha256"],
         "npm": npm_files,
         "files": [{"name": n, "sha256": sha256(out / n), "size": (out / n).stat().st_size} for n in files],
@@ -414,6 +430,7 @@ def main():
     a.add_argument("--target", required=True)
     a.add_argument("--binary", required=True)
     a.add_argument("--out", required=True)
+    a.add_argument("--macos-signed", action="store_true")
     s = sub.add_parser("smoke")
     s.add_argument("--archive", required=True)
     s.add_argument("--commit", required=True)
@@ -421,6 +438,7 @@ def main():
     m.add_argument("--commit", required=True)
     m.add_argument("--archives", required=True)
     m.add_argument("--out", required=True)
+    m.add_argument("--macos-signed", action="store_true")
     args = ap.parse_args()
     if getattr(args, "commit", None) is not None and not re.fullmatch(r"[0-9a-f]{40}", args.commit):
         fail(f"--commit must be a full 40-character SHA, not {args.commit!r}")

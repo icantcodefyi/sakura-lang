@@ -65,3 +65,11 @@ and documented targets. Never overwrite an existing version's binaries: issue a
 corrected version. Programs do not acquire the compiler's license merely by being
 compiled. Any embedded runtime code will need explicit licensing and compatibility
 documentation before distribution.
+
+New tagged releases require Developer ID signing and Apple notarization for macOS
+binaries, pinned to team `P62B65A837`. The Homebrew archive and npm Darwin companion
+contain the same signed binary. A bare Mach-O cannot carry a stapled ticket;
+Gatekeeper may need network access to verify notarization. Ordinary workflow dry
+runs skip signing and say so; Linux binaries remain unsigned. This policy does not
+retroactively change existing immutable releases or establish language stability.
+See [the release procedure](docs/release.md#macos-signing-and-notarization).

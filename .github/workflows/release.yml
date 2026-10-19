@@ -1,6 +1,6 @@
 # Release (design §17.147, research/13, docs/release.md).
 #
-# - Run workflow (workflow_dispatch) is always a DRY RUN: it builds and smoke-tests every target
+# - Ordinary workflow_dispatch is a secret-free DRY RUN: it builds and smoke-tests every target
 #   in packaging/targets.json and uploads the archives, SHA256SUMS, release.json, the skill ZIP,
 #   install.sh, the Homebrew formula and the npm tarballs as workflow artifacts. It creates no
 #   release, tag, attestation, tap commit or package: the publish jobs cannot run on dispatch.
@@ -9,6 +9,8 @@
 #   The tag must equal the workspace version, and the repository variable
 #   RELEASE_ENVIRONMENTS_PROTECTED must be "true" (set only after the environments have
 #   required reviewers: GitHub creates a missing environment unprotected).
+# - workflow_dispatch with sign_test=true runs only the protected signing job on a fresh
+#   Darwin build. It notarizes with Apple but never runs any publication job.
 # - crates.io is deferred for the alpha (design §17.157; research/13 §2).
 name: Release
 
@@ -16,12 +18,17 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      sign_test:
+        description: Sign and notarize a fresh Darwin build on main; publish nothing
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.ref }}-${{ inputs.sign_test && 'sign-test' || 'artifacts' }}
   cancel-in-progress: false
 
 defaults:
@@ -30,6 +37,7 @@ defaults:
 
 jobs:
   plan:
+    if: github.event_name != 'workflow_dispatch' || !inputs.sign_test
     name: Plan
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -71,6 +79,10 @@ jobs:
             echo "matrix=$matrix"
           } >> "$GITHUB_OUTPUT"
           echo "Sakura Lang $version at $commit; publish: $publish" >> "$GITHUB_STEP_SUMMARY"
+      - name: Release tooling tests
+        run: |
+          shellcheck tools/release/sign-macos.sh tools/release/verify-macos.sh
+          python3 -I -m unittest discover -s tools/release -p 'test_*.py'
       - name: Installer tests
         run: |
           shellcheck tools/install/install.sh tools/install/test.sh
@@ -107,6 +119,10 @@ jobs:
         env:
           SAKURA_GIT_COMMIT: ${{ needs.plan.outputs.commit }}
         run: cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET"
+      - name: Explain unsigned dry-run artifacts
+        if: runner.os == 'macOS' && needs.plan.outputs.publish != 'true'
+        run: |
+          echo 'Dry run: macOS signing and notarization skipped; no Apple secrets or environment approval needed.' >> "$GITHUB_STEP_SUMMARY"
       - name: Archive
         run: python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura" --out dist
       - name: Smoke test the extracted archive
@@ -126,9 +142,98 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  sign-darwin:
+    name: Sign and notarize Darwin
+    needs: [plan, build]
+    if: >-
+      !cancelled() &&
+      ((github.event_name == 'push' && needs.plan.outputs.publish == 'true' && needs.build.result == 'success') ||
+       (github.event_name == 'workflow_dispatch' && inputs.sign_test && github.ref == 'refs/heads/main'))
+    environment: release-github
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Resolve Darwin inventory
+        id: context
+        run: |
+          echo "version=$(python3 -I tools/release/release.py version)" >> "$GITHUB_OUTPUT"
+          python3 -I -c 'import json; print("\n".join(t["target"] for t in json.load(open("packaging/targets.json")) if t["os"] == "darwin"))' > "$RUNNER_TEMP/darwin-targets"
+          test -s "$RUNNER_TEMP/darwin-targets"
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Fresh Darwin build for signing test
+        if: github.event_name == 'workflow_dispatch' && inputs.sign_test
+        working-directory: compiler
+        env:
+          SAKURA_GIT_COMMIT: ${{ github.sha }}
+        run: |
+          rustup target add wasm32-unknown-unknown
+          while IFS= read -r target; do
+            rustup target add "$target"
+            cargo build --locked --release -p sakura_cli --bin sakura --target "$target"
+            python3 -I ../tools/release/release.py archive --target "$target" --binary "target/$target/release/sakura" --out ../unsigned
+          done < "$RUNNER_TEMP/darwin-targets"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: github.event_name == 'push'
+        with:
+          pattern: archive-*-apple-darwin
+          merge-multiple: true
+          path: unsigned
+      - name: Extract Darwin archives
+        env:
+          VERSION: ${{ steps.context.outputs.version }}
+        run: |
+          mkdir stage
+          while IFS= read -r target; do
+            tar -xzf "unsigned/sakuralang-$VERSION-$target.tar.gz" -C stage
+          done < "$RUNNER_TEMP/darwin-targets"
+      - name: Sign and notarize with the pinned Developer ID
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: bash tools/release/sign-macos.sh stage/sakuralang-*-apple-darwin/sakura
+      - name: Remove signing credentials even after cancellation
+        if: always()
+        run: |
+          keychain="$RUNNER_TEMP/sakura-signing/signing.keychain-db"
+          status=0
+          if [ -f "$keychain" ]; then security delete-keychain "$keychain" >/dev/null 2>&1 || status=1; fi
+          rm -rf "$RUNNER_TEMP/sakura-signing"
+          exit "$status"
+      - name: Archive and smoke the signed binaries
+        env:
+          VERSION: ${{ steps.context.outputs.version }}
+        run: |
+          while IFS= read -r target; do
+            python3 -I tools/release/release.py archive --target "$target" --binary "stage/sakuralang-$VERSION-$target/sakura" --macos-signed --out signed
+            python3 -I tools/release/release.py smoke --archive "signed/sakuralang-$VERSION-$target.tar.gz" --commit "$COMMIT"
+          done < "$RUNNER_TEMP/darwin-targets"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.sign_test && 'sign-test-darwin' || 'signed-darwin' }}
+          path: signed/*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
   assemble:
     name: Assemble
-    needs: [plan, build]
+    needs: [plan, build, sign-darwin]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' && needs.build.result == 'success' &&
+      ((needs.plan.outputs.publish == 'true' && needs.sign-darwin.result == 'success') ||
+       (needs.plan.outputs.publish == 'false' && needs.sign-darwin.result == 'skipped'))
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     env:
@@ -146,8 +251,22 @@ jobs:
           pattern: archive-*
           merge-multiple: true
           path: archives
+      - name: Remove unsigned Darwin archives before replacement
+        if: needs.plan.outputs.publish == 'true'
+        run: |
+          python3 -I -c 'import json, os; from pathlib import Path; [Path("archives", "sakuralang-" + os.environ["VERSION"] + "-" + t["target"] + ".tar.gz").unlink() for t in json.load(open("packaging/targets.json")) if t["os"] == "darwin"]'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: needs.plan.outputs.publish == 'true'
+        with:
+          name: signed-darwin
+          path: archives
       - name: Assemble the release set
-        run: python3 -I tools/release/release.py assemble --commit "$COMMIT" --archives archives --out dist
+        env:
+          PUBLISH: ${{ needs.plan.outputs.publish }}
+        run: |
+          signing=()
+          if [ "$PUBLISH" = true ]; then signing+=(--macos-signed); fi
+          python3 -I tools/release/release.py assemble --commit "$COMMIT" --archives archives --out dist "${signing[@]}"
       - name: Check sums
         run: (cd dist && sha256sum --check --strict SHA256SUMS)
       - name: Summary
@@ -167,6 +286,8 @@ jobs:
   smoke-install:
     name: Install smoke (${{ matrix.target }})
     needs: [plan, assemble]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' && needs.assemble.result == 'success'
     strategy:
       fail-fast: false
       matrix:
@@ -202,6 +323,16 @@ jobs:
             --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
             "./dist/sakuralang-$VERSION.tgz" "./dist/$NPM_PACKAGE-$VERSION.tgz"
           test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: runner.os == 'macOS' && needs.plan.outputs.publish == 'true'
+        with:
+          persist-credentials: false
+      - name: Verify signed installer and npm binaries
+        if: runner.os == 'macOS' && needs.plan.outputs.publish == 'true'
+        run: |
+          bash tools/release/verify-macos.sh "$RUNNER_TEMP/install prefix/bin/sakura"
+          bash tools/release/verify-macos.sh "$RUNNER_TEMP/npm prefix/lib/node_modules/$NPM_PACKAGE/bin/sakura"
 
   # Everything below runs only for an owner-pushed tag, each job behind its environment.
   publish-github:

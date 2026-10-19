@@ -28,6 +28,12 @@ published yet.
 
 ### Security
 
+- New macOS tag releases require Developer ID signing with team `P62B65A837` and
+  Apple notarization before checksums, Homebrew archives and npm packages are
+  assembled. Ordinary dry runs skip signing. A separate protected `sign_test`
+  dispatch exercises fresh signed binaries without publishing; bare Mach-O
+  executables cannot carry a stapled notarization ticket.
+
 - **Breaking:** `SAKURA_MAX_COPY_BYTES` must be decimal digits with a value from 1 to
   2^53 - 1: any other value (empty, `0`, a sign, a fraction, an exponent such as `1e3`, hex,
   spaces such as `" 42"`, words) is the defect `D091` naming the variable and the value, at

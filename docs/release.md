@@ -112,15 +112,54 @@ on both. CI builds, tests and uploads a `.vsix` artifact; it never publishes.
 
 Keep both tokens out of the repository; no workflow holds them.
 
-### Signing and Blacksmith
+### macOS signing and notarization
 
-Owner signing choice remains open. Recommended first policy: SHA-256 and GitHub
-artifact attestations, with explicit unsigned/not-notarized platform status.
-Attestations need permissions, not a purchased certificate or persistent signing
-key. Optional minisign requires owner key generation/backup and public-key
-distribution; cosign keyless uses OIDC/public transparency records. See
-[research §4](../research/13-release.md). Neither implies Apple notarization or
-Windows Authenticode.
+New tag releases require Developer ID signing and Apple notarization before assembly
+computes `SHA256SUMS`, generates the Homebrew formula or packs npm companions. The
+protected `sign-darwin` job runs on public GitHub-hosted `macos-14` in `release-github`.
+It signs only with **Developer ID Application: Aniruddh Dubge (P62B65A837)**, scoped to
+its temporary keychain. It never selects another identity from the runner.
+
+The environment already holds `MACOS_CERT_P12_BASE64`, `MACOS_CERT_PASSWORD`,
+`APPLE_API_KEY_P8`, `APPLE_API_KEY_ID` and `APPLE_API_ISSUER_ID`. Only the signing step
+receives them. It writes the certificate and API key under `$RUNNER_TEMP`, masks
+credential values and the generated keychain password, and removes the temporary
+keychain and files on success or failure. An `always()` job step repeats cleanup
+after cancellation. Credential-bearing tool diagnostics are never uploaded or printed.
+
+Each Darwin `sakura` is signed with `codesign --force --options runtime --timestamp`,
+submitted in a temporary ZIP with `xcrun notarytool submit --wait`, and required to
+receive `Accepted`. Strict signature verification checks team `P62B65A837`; online
+verification uses `codesign -R notarized --check-notarization`. Per
+[Apple's product verification guidance](https://developer.apple.com/forums/thread/130560),
+`spctl -a -t install` applies to installer packages. Sakura ships a bare Mach-O,
+so that installer assessment is not applicable. A bare executable cannot carry a
+stapled ticket; Gatekeeper may need network access to check Apple's ticket.
+
+The signed binary replaces the unsigned Darwin archive before assembly. Homebrew
+references that archive's checksum; npm receives its exact binary bytes. Native
+install smokes verify both installed copies again. Existing immutable releases are
+not retroactively signed. Linux binaries remain unsigned; GitHub attestations and
+SHA-256 verification remain separate checks.
+
+To test credentials without a release or tag, dispatch on `main`:
+
+```sh
+gh workflow run release.yml --repo icantcodefyi/sakuralang --ref main -f sign_test=true
+```
+
+This runs only `sign-darwin`, builds fresh Darwin binaries from that commit, signs,
+notarizes, verifies, archives and smokes them, then uploads `sign-test-darwin`.
+It uses the same protected environment and may wait for the owner's approval.
+Agents must report pending approval, never approve their own signing test.
+No publication job can run on any dispatch. An ordinary dispatch leaves `sign_test`
+false, needs no Apple secrets or protected-environment approval, and explicitly
+records that signing and notarization were skipped.
+
+See [Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)
+and [GitHub's temporary-keychain guidance](https://docs.github.com/en/actions/how-tos/deploy/deploy-to-third-party-platforms/sign-xcode-applications).
+
+### Runner providers
 
 Blacksmith is optional. Owner installs its [GitHub App](https://docs.blacksmith.sh/blacksmith-administration/github-app)
 for the repo and confirms allowance/OSS acceptance and spend limits before a
@@ -169,8 +208,7 @@ limitations. Source tests alone do not qualify released binaries.
 ## 3. Dry run — no tag or publication
 
 Run **Actions → Release → Run workflow** on the candidate ref, or
-`gh workflow run release.yml --repo icantcodefyi/sakuralang --ref master`. The dispatch
-has no inputs: it is always a dry run. It builds every target in
+`gh workflow run release.yml --repo icantcodefyi/sakuralang --ref main`. Leave `sign_test` false for the ordinary secret-free dry run. It builds every target in
 [`packaging/targets.json`](../packaging/targets.json) with `SAKURA_GIT_COMMIT` set to
 the commit, smoke-tests each extracted archive on its native runner (`release.py smoke`:
 version and commit, `new`/`check`/`test`/`build`, generated JS on Node 26, a WASM run,
