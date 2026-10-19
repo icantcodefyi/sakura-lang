@@ -1,0 +1,24 @@
+// milestone: M3
+// covers: design §8.6 (a scope propagates its first failure, not a sibling cancelled because of it)
+// regression: a sibling spawned before the failing child was cancelled by the failure, and the
+// scope's end took its `cancelled` outcome for the scope's own, cancelling `main`
+
+error Stop
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Clock.virtual() {
+    let r = try {
+      Task.scope(fn(s) {
+        let _ = Task.spawn(s, fn() { Clock.sleep(Duration.seconds(5)) })
+        let _ = Task.spawn(s, fn() {
+          Clock.sleep(Duration.millis(10))
+          fail Stop
+        })
+        "finished"
+      })
+    } catch {
+      Stop => "stopped at {Clock.monotonic().to_millis()}",
+    }
+    Console.print(r)
+  }
+}

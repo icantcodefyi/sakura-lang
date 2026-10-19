@@ -131,6 +131,7 @@ semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 11 allocated, 4 dup, 15 drop, peak 7, live 0/0
+semantics/scope_failure_after_cancelled_sibling: unsupported (builtin task_host)
 semantics/searchparams_order_and_repeats: unsupported (builtin string_to_bytes)
 semantics/searchparams_plus_and_percent: unsupported (builtin string_to_bytes)
 semantics/searchparams_sort_stable: unsupported (builtin string_to_bytes)

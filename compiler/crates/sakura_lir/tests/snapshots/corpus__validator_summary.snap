@@ -131,6 +131,7 @@ semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 15 funcs, 29 blocks, 1 dup, 10 drop, valid
+semantics/scope_failure_after_cancelled_sibling: 13 funcs, 31 blocks, 1 dup, 14 drop, valid
 semantics/searchparams_order_and_repeats: 97 funcs, 1324 blocks, 215 dup, 899 drop, valid
 semantics/searchparams_plus_and_percent: 22 funcs, 172 blocks, 32 dup, 80 drop, valid
 semantics/searchparams_sort_stable: 33 funcs, 226 blocks, 50 dup, 101 drop, valid

@@ -3555,7 +3555,8 @@ function taskHandler(rng, yieldNow) {
     const run = (c, kk) =>
       body(s, c, (v) =>
         joinAll(s.fibers, () => {
-          const f = s.fibers.find((x) => !x.joined && x.outcome.kind !== "ok");
+          // A sibling cancelled because another child failed is not the scope's failure.
+          const f = s.fibers.find((x) => !x.joined && x.outcome.kind !== "ok" && x.outcome.kind !== "cancelled");
           return f === undefined ? ret(kk, v) : propagate(f.outcome, c, kk);
         }),
       );

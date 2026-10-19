@@ -172,13 +172,14 @@ pub fn scope(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
                 Err(d) => return rt.raise(d),
             }
             let members = rt.group_members(gid);
+            // A member cancelled because another failed is not the scope's failure (JS `scope`).
             let failed = (0..members.len)
                 .map(|i| rt.stack_at(&members, i))
                 .find(|&m| {
                     !rt.joined(m)
-                        && rt
-                            .outcome(m)
-                            .is_ok_and(|(k, _)| k != crate::exec::outcome::OK)
+                        && rt.outcome(m).is_ok_and(|(k, _)| {
+                            k != crate::exec::outcome::OK && k != crate::exec::outcome::CANCELLED
+                        })
                 });
             if let Some(f) = failed {
                 let v = rt.take_fslot(frame, 3) as u32;

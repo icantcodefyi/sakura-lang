@@ -108,6 +108,11 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
 - `String.from_bytes` on the JS backend reported the wrong `Utf8Error` offset for a truncated
   or ill-formed sequence before other bytes (`[0x61, 0xC3, 0x28]` gave offset `2`, WASM and
   native `1`); it now reports the start of the first ill-formed sequence on every backend.
+- `Task.scope` no longer ends its task as cancelled when a child failed after an earlier
+  sibling: at the scope's end a sibling cancelled because of the failure was taken for the
+  scope's own outcome, so the failure never reached a surrounding `try` and `main` ended with
+  a defect record without a code. The first unjoined failure or defect propagates, as the
+  runtime ABI says, on the JS, WASM and native backends alike.
 
 ### Security
 
