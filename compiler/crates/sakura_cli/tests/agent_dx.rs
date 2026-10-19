@@ -21,8 +21,6 @@ fn offline_task_oracles() {
 
 /// The DX5 runner offline: scripted episodes, canned-transcript replay, caps, approval refusals
 /// and live mode against a local mock of the Messages API. No provider is contacted.
-/// The runner's spend ledger uses Unix `fcntl` locks.
-#[cfg(unix)]
 #[test]
 fn runner_offline() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");

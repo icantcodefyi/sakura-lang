@@ -7,7 +7,11 @@ Scripted and replay modes make no network calls and run in CI without secrets.
 """
 import argparse
 import datetime
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
+    import msvcrt
 import hashlib
 import ipaddress
 import json
@@ -131,8 +135,15 @@ class Ledger:
         if not self.path.is_file():
             raise Refused(f'ledger {self.path} is missing; it is committed and never recreated')
         self.run_id = run_id
-        self.lock = os.open(self.path.parent, os.O_RDONLY)
-        fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # One writer per ledger. POSIX locks the directory (the ledger itself is replaced on
+        # write); Windows cannot open a directory, so it locks a sibling `.lock` file.
+        if fcntl:
+            self.lock = os.open(self.path.parent, os.O_RDONLY)
+            fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        else:
+            self.lock = os.open(self.path.with_name(self.path.name + '.lock'),
+                                os.O_RDWR | os.O_CREAT)
+            msvcrt.locking(self.lock, msvcrt.LK_NBLCK, 1)
         self.data = json.loads(self.path.read_text())
         offline.require(self.data.get('schema_version') == 1, 'unknown ledger schema')
 

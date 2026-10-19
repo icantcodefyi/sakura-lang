@@ -13,3 +13,6 @@ coverage/
 playwright-report/
 test-results/
 .vercel
+
+# Windows spend-ledger lock (evals/agent-dx/harness/runner.py)
+evals/agent-dx/reports/ledger.json.lock
