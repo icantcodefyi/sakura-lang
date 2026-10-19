@@ -4,6 +4,7 @@
     release.py version                       print the workspace version (rejects 0.0.0)
     release.py archive  --target T --binary B --out DIR
     release.py smoke    --archive A --commit C
+    release.py accept   --sakura INSTALLED --commit C
     release.py assemble --commit C --archives DIR --out DIR
 
 `packaging/targets.json` is the one target inventory: the workflow matrix, the archives,
@@ -278,39 +279,52 @@ def smoke(args):
                 fail(f"archive layout {names}, wanted {want}")
             tar.extractall(tmp / "unpacked", filter="data")
         sakura = str(tmp / "unpacked" / top / "sakura")
-        home = tmp / "home"
-        home.mkdir()
-        # A clean environment: no checkout, an empty HOME, Node from PATH.
-        env = {"PATH": os.environ["PATH"], "HOME": str(home), "LANG": "C.UTF-8",
-               "SAKURA_CACHE_DIR": str(tmp / "cache")}
-        out = run([sakura, "--version"], tmp, env)
-        if out != f"sakura {ver} ({commit})\n":
-            fail(f"--version printed {out!r}")
-        run([sakura, "new", "cli", "demo"], tmp, env)
-        demo = tmp / "demo"
-        run([sakura, "check"], demo, env)
-        run([sakura, "test"], demo, env)
-        run([sakura, "build"], demo, env)
-        if run(["node", "target/sakura/js/__main__.js", "Ann"], demo, env) != "hello, Ann\n":
-            fail("the built JS printed the wrong greeting")
-        if run([sakura, "run", "--target", "wasm", "--", "Bob"], demo, env) != "hello, Bob\n":
-            fail("the WASM build printed the wrong greeting")
-        mcp_smoke(sakura, demo, env, ver, commit)
-        run([sakura, "setup", "--client", "all", "--apply"], demo, env)
-        again = run([sakura, "setup", "--client", "all", "--apply"], demo, env)
-        if any(line.split()[0] not in ("same", "keep") for line in again.splitlines()[1:]):
-            fail(f"a second setup --apply was not idempotent:\n{again}")
-        for client in (".claude", ".agents", ".cursor"):
-            skill_matches_source(demo / client / "skills/sakura", ver, commit)
-        if any(home.iterdir()):
-            fail(f"the smoke wrote into HOME: {sorted(p.name for p in home.iterdir())}")
-        # Without Node: checking works, running tests fails with an actionable error.
-        no_node = dict(env, SAKURA_NODE=str(tmp / "no-such-node"))
-        run([sakura, "check"], demo, no_node)
-        p = subprocess.run([sakura, "test"], cwd=demo, env=no_node, capture_output=True, text=True, timeout=60)
-        if p.returncode == 0 or "cannot start node" not in p.stderr:
-            fail(f"a missing Node gave exit {p.returncode}: {p.stderr}")
+        accept_installed(sakura, ver, commit, tmp)
     print(f"smoke ok: {archive_path.name}")
+
+
+def accept(args):
+    sakura = os.path.abspath(args.sakura)
+    with tempfile.TemporaryDirectory(prefix="sakura accept ") as tmp:
+        accept_installed(sakura, version(), args.commit, Path(tmp))
+    print(f"accept ok: {sakura}")
+
+
+def accept_installed(sakura, ver, commit, tmp):
+    home = tmp / "home"
+    home.mkdir()
+    # A clean environment: no checkout, an empty HOME, Node from PATH.
+    env = {"PATH": os.environ["PATH"], "HOME": str(home), "LANG": "C.UTF-8",
+           "SAKURA_CACHE_DIR": str(tmp / "cache")}
+    out = run([sakura, "--version"], tmp, env)
+    if out != f"sakura {ver} ({commit})\n":
+        fail(f"--version printed {out!r}")
+    run([sakura, "new", "cli", "demo"], tmp, env)
+    demo = tmp / "demo"
+    run([sakura, "check"], demo, env)
+    run([sakura, "test"], demo, env)
+    run([sakura, "build"], demo, env)
+    if run(["node", "target/sakura/js/__main__.js", "Ann"], demo, env) != "hello, Ann\n":
+        fail("the built JS printed the wrong greeting")
+    if run([sakura, "run", "--target", "wasm", "--", "Bob"], demo, env) != "hello, Bob\n":
+        fail("the WASM build printed the wrong greeting")
+    if run([sakura, "run", "--", "Ann"], demo, env) != "hello, Ann\n":
+        fail("the default run printed the wrong greeting")
+    mcp_smoke(sakura, demo, env, ver, commit)
+    run([sakura, "setup", "--client", "all", "--apply"], demo, env)
+    again = run([sakura, "setup", "--client", "all", "--apply"], demo, env)
+    if any(line.split()[0] not in ("same", "keep") for line in again.splitlines()[1:]):
+        fail(f"a second setup --apply was not idempotent:\n{again}")
+    for client in (".claude", ".agents", ".cursor"):
+        skill_matches_source(demo / client / "skills/sakura", ver, commit)
+    if any(home.iterdir()):
+        fail(f"the smoke wrote into HOME: {sorted(p.name for p in home.iterdir())}")
+    # Without Node: checking works, running tests fails with an actionable error.
+    no_node = dict(env, SAKURA_NODE=str(tmp / "no-such-node"))
+    run([sakura, "check"], demo, no_node)
+    p = subprocess.run([sakura, "test"], cwd=demo, env=no_node, capture_output=True, text=True, timeout=60)
+    if p.returncode == 0 or "cannot start node" not in p.stderr:
+        fail(f"a missing Node gave exit {p.returncode}: {p.stderr}")
 
 
 # --- assemble -----------------------------------------------------------------------------
@@ -434,6 +448,9 @@ def main():
     s = sub.add_parser("smoke")
     s.add_argument("--archive", required=True)
     s.add_argument("--commit", required=True)
+    a = sub.add_parser("accept")
+    a.add_argument("--sakura", required=True)
+    a.add_argument("--commit", required=True)
     m = sub.add_parser("assemble")
     m.add_argument("--commit", required=True)
     m.add_argument("--archives", required=True)
@@ -445,7 +462,7 @@ def main():
     if args.cmd == "version":
         print(version())
     else:
-        {"archive": archive, "smoke": smoke, "assemble": assemble}[args.cmd](args)
+        {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble}[args.cmd](args)
 
 
 if __name__ == "__main__":

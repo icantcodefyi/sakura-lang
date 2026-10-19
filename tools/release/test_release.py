@@ -6,11 +6,19 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import release
 
 
 class ReleasePackaging(unittest.TestCase):
+    def test_accept_rejects_wrong_published_version_or_commit(self):
+        for output in ("sakura 9.9.9 (" + "0" * 40 + ")\n",
+                       "sakura " + release.version() + " (" + "1" * 40 + ")\n"):
+            with self.subTest(output=output), patch.object(release, "run", return_value=output):
+                with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                    release.accept(argparse.Namespace(sakura="/installed path/sakura", commit="0" * 40))
+
     def test_notes_distinguish_unsigned_dry_run_and_notarized_release(self):
         unsigned = release.release_notes("1.2.3", "0" * 40)
         signed = release.release_notes("1.2.3", "0" * 40, True)
