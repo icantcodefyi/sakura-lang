@@ -227,91 +227,85 @@ fn $entry#1 top -> unit ; main::match_literal_switch, frame 1 slots [%1 bool]
 
 fn pick#2 top -> ptr ; main::match_literal_switch, frame 1 slots [%0 i64]
   b0(%0 x: i64):
-    switch %0 1 => b13(%0) _ => b14(%0)
+    switch %0 1 => b11(%0) _ => b12(%0)
   b1(%1 x: i64):
-    %15 lit: i64 = const 100
-    %16 t: bool = gt.int %1, %15
-    if %16 then b11(%1) else b12(%1)
+    %10 lit: i64 = const 100
+    %11 t: bool = gt.int %1, %10
+    if %11 then b7(%1) else b8(%1)
   b2(%2 x: i64):
-    %6 lit: i64 = const 3
-    %7 t: bool = eq.int %2, %6
-    if %7 then b6(%2) else b7(%2)
-  b3(%3 x: i64):
-    switch %3 3 => b4() _ => b5()
-  b4():
-    %4 lit: ptr = const str 9
-    ret %4
+    %3 lit: i64 = const 3
+    %4 t: bool = eq.int %2, %3
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 x: i64):
+    %7 lit: ptr = const str 9
+    ret %7
+  b4(%6 x: i64):
+    switch %6 3 => b5() _ => b6()
   b5():
-    %5 lit: ptr = const str 10
-    ret %5
-  b6(%8 x: i64):
-    %10 lit: ptr = const str 11
-    ret %10
-  b7(%9 x: i64):
-    jump b3(%9)
-  b8(%11 x: i64):
-    switch %11 2 => b9(%11) _ => b10(%11)
-  b9(%12 x: i64):
+    %8 lit: ptr = const str 10
+    ret %8
+  b6():
+    %9 lit: ptr = const str 11
+    ret %9
+  b7(%12 x: i64):
     %14 lit: ptr = const str 12
     ret %14
-  b10(%13 x: i64):
-    jump b2(%13)
-  b11(%17 x: i64):
-    %19 lit: ptr = const str 13
-    ret %19
-  b12(%18 x: i64):
-    jump b8(%18)
-  b13(%20 x: i64):
-    %22 lit: ptr = const str 14
-    ret %22
-  b14(%21 x: i64):
-    jump b1(%21)
+  b8(%13 x: i64):
+    switch %13 2 => b9(%13) _ => b10(%13)
+  b9(%15 x: i64):
+    %17 lit: ptr = const str 13
+    ret %17
+  b10(%16 x: i64):
+    jump b2(%16)
+  b11(%18 x: i64):
+    %20 lit: ptr = const str 14
+    ret %20
+  b12(%19 x: i64):
+    jump b1(%19)
 
 fn kind#3 top -> i64 ; main::match_literal_switch, frame 1 slots [%0 word*]
   b0(%0 s: ptr):
-    %13 lit: ptr = const str 1
-    %14 is: bool = eq.string %0, %13
-    drop %13
-    if %14 then b8(%0) else b9(%0)
+    %12 lit: ptr = const str 1
+    %13 is: bool = eq.string %0, %12
+    drop %12
+    if %13 then b7(%0) else b8(%0)
   b1():
     %1 lit: i64 = const 1
     ret %1
   b2(%2 s: ptr):
-    %8 lit: ptr = const str 3
-    %9 t: bool = eq.string %2, %8
-    drop %8
-    if %9 then b6(%2) else b7(%2)
-  b3(%3 s: ptr):
-    %4 lit: ptr = const str 4
-    %5 is: bool = eq.string %3, %4
+    %3 lit: ptr = const str 3
+    %4 t: bool = eq.string %2, %3
     drop %3
-    drop %4
-    if %5 then b4() else b5()
-  b4():
-    %6 lit: i64 = const 3
-    ret %6
-  b5():
-    %7 lit: i64 = const 0
+    if %4 then b3(%2) else b4(%2)
+  b3(%5 s: ptr):
+    drop %5
+    %7 lit: i64 = const 2
     ret %7
-  b6(%10 s: ptr):
-    drop %10
-    %12 lit: i64 = const 2
-    ret %12
-  b7(%11 s: ptr):
-    jump b3(%11)
+  b4(%6 s: ptr):
+    %8 lit: ptr = const str 4
+    %9 is: bool = eq.string %6, %8
+    drop %6
+    drop %8
+    if %9 then b5() else b6()
+  b5():
+    %10 lit: i64 = const 3
+    ret %10
+  b6():
+    %11 lit: i64 = const 0
+    ret %11
+  b7(%14 s: ptr):
+    drop %14
+    jump b1()
   b8(%15 s: ptr):
-    drop %15
+    %16 lit: ptr = const str 2
+    %17 is: bool = eq.string %15, %16
+    drop %16
+    if %17 then b9(%15) else b10(%15)
+  b9(%18 s: ptr):
+    drop %18
     jump b1()
-  b9(%16 s: ptr):
-    %17 lit: ptr = const str 2
-    %18 is: bool = eq.string %16, %17
-    drop %17
-    if %18 then b10(%16) else b11(%16)
   b10(%19 s: ptr):
-    drop %19
-    jump b1()
-  b11(%20 s: ptr):
-    jump b2(%20)
+    jump b2(%19)
 
 fn grid#4 top -> i64 ; main::match_literal_switch, frame 1 slots [%0 word*]
   b0(%0 p: ptr):

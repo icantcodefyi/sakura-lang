@@ -310,9 +310,15 @@ published yet.
   through two levels of `br_table` and its blocks share locals, and an `Int` switch of more
   than eight arms is a jump by index arithmetic when its keys are dense or a binary search:
   the module no longer traps at compile, and V8 no longer runs out of memory optimizing a
-  function of thousands of blocks. The snapshot writer grows its stack like its reader. A
-  run of guarded rows is still a chain of joins on JS: inside a loop about 1,500 of them
-  overflow node's parser, and outside one about 10,000 exhaust its stack.
+  function of thousands of blocks. The snapshot writer grows its stack like its reader.
+
+- A long run of guarded `match` rows now runs on node with both backends (design §17.220):
+  the rows after a failed guard follow in its `else` rather than in a join, so the JS is a
+  flat sequence of `if`s and WASM has one block fewer per guard. 3,000 guarded rows in a loop
+  overflowed node's parser and about 10,000 outside one exhausted its stack; `deep_ir.rs` now
+  runs 3,000 in a direct-style and a performing loop and 20,000 outside one. Past 256 nested
+  blocks the rest of the run starts a new chunk, and the chunks are joined as a balanced tree,
+  so Core stays within the snapshot's depth bound and JS nests only log₂ of the chunks.
 
 - `agent_docs` normalizes Windows path separators so the skill mirror, manifest,
   hashes, and ZIP are byte-identical to Unix output (design §17.180 (5)).

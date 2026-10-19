@@ -11,10 +11,16 @@ use sakura_analysis::{Analysis, BuildOptions, Snapshot};
 use sakura_lir::snapshot;
 
 const N: usize = 3000;
+/// Guarded rows outside a loop (design §17.220).
+const G: usize = 20_000;
+/// Iterations of the guarded loops; iteration `i` matches `i * STEP`.
+const L: usize = 10;
+const STEP: usize = 300;
 
 /// A 3,000-constructor enumeration matched exhaustively, a 3,000-`let` body, 3,000-arm `Int`
-/// and `String` literal `match`es, a sparse one (keys 1,000 apart), 3,000 guarded rows, and a
-/// 3,000-arm `match` in a direct-style loop and in one that performs (a resumable loop).
+/// and `String` literal `match`es, a sparse one (keys 1,000 apart), 20,000 guarded rows, 3,000
+/// rows guarded by an `&&` (a join per guard), and a 3,000-arm `match` and 3,000 guarded rows
+/// each in a direct-style loop and in one that performs (a resumable loop).
 fn program() -> String {
     let mut s = format!(
         "type Big = {}\n\n",
@@ -35,20 +41,41 @@ fn program() -> String {
     s += "    _ => -1,\n  }\n}\n\nfn sparse_arm(x: Int) -> Int {\n  match x {\n";
     (0..N).for_each(|i| s += &format!("    {} => {i},\n", 1000 * i));
     s += "    _ => -1,\n  }\n}\n\nfn guard_arm(x: Int) -> Int {\n  match x {\n";
-    (0..N).for_each(|i| s += &format!("    n if n < {} => {i},\n", i + 1));
+    (0..G).for_each(|i| s += &format!("    n if n < {} => {i},\n", i + 1));
+    s += "    _ => -1,\n  }\n}\n\nfn and_arm(x: Int) -> Int {\n  match x {\n";
+    (0..N).for_each(|i| s += &format!("    n if n < {} && n > -{N} => {i},\n", i + 1));
     s += "    _ => -1,\n  }\n}\n\n";
-    for (f, row, tick) in [
-        ("loop_arm", "", ""),
+    for (f, row, tick, guard) in [
+        ("loop_arm", "", "", false),
+        ("loop_guard", "", "", true),
         (
             "tick_arm",
             " ! {Console}",
             "    if i == n - 1 { Console.print(\"last {i}\") }\n",
+            false,
+        ),
+        (
+            "tick_guard",
+            " ! {Console}",
+            "    if i == n - 1 { Console.print(\"last {i}\") }\n",
+            true,
         ),
     ] {
+        let scrut = if guard {
+            format!("i * {STEP}")
+        } else {
+            "i".to_owned()
+        };
         s += &format!(
-            "fn {f}(n: Int) -> Int{row} {{\n  var i = 0\n  var t = 0\n  while i < n {{\n{tick}    let v = match i {{\n"
+            "fn {f}(n: Int) -> Int{row} {{\n  var i = 0\n  var t = 0\n  while i < n {{\n{tick}    let v = match {scrut} {{\n"
         );
-        (0..N).for_each(|i| s += &format!("      {i} => {},\n", i % 7));
+        (0..N).for_each(|i| {
+            s += &if guard {
+                format!("      m if m < {} => {},\n", i + 1, i % 7)
+            } else {
+                format!("      {i} => {},\n", i % 7)
+            }
+        });
         s += "      _ => 0,\n    }\n    t = t + v\n    i = i + 1\n  }\n  t\n}\n\n";
     }
     let main = [
@@ -61,11 +88,14 @@ fn program() -> String {
             1000 * (N - 1)
         ),
         format!(
-            "{{guard_arm({})}} {{guard_arm(-5)}} {{guard_arm({N})}}",
-            N - 1
+            "{{guard_arm({})}} {{guard_arm(-5)}} {{guard_arm({G})}}",
+            G - 1
         ),
+        format!("{{and_arm({})}} {{and_arm(-5)}} {{and_arm({N})}}", N - 1),
         format!("{{loop_arm({N})}}"),
+        format!("{{loop_guard({L})}}"),
         format!("{{tick_arm({N})}}"),
+        format!("{{tick_guard({L})}}"),
     ];
     s += "pub fn main() -> Unit ! {Console} {\n";
     main.iter()
@@ -75,9 +105,11 @@ fn program() -> String {
 
 fn expected() -> String {
     let n = N - 1;
+    let (g, l) = (G - 1, L - 1);
     let sum: usize = (0..N).map(|i| i % 7).sum();
+    let guards: usize = (0..L).map(|i| i * STEP % 7).sum();
     format!(
-        "{n} 0\n{N}\n{} 4500 -1\n{n} -1\n{n} 1500 -1\n{n} 0 -1\n{sum}\nlast {n}\n{sum}\n",
+        "{n} 0\n{N}\n{} 4500 -1\n{n} -1\n{n} 1500 -1\n{g} 0 -1\n{n} 0 -1\n{sum}\n{guards}\nlast {n}\n{sum}\nlast {l}\n{guards}\n",
         3 * n
     )
 }
@@ -175,8 +207,8 @@ fn wide_shapes_go_through_every_phase_and_run_on_node() {
     let run = sakura_eval::lir::run_main(&lir, Default::default());
     assert_eq!(run.stdout, expected(), "{}", run.ending.summary());
 
-    // A literal `match` is one node deep and guarded rows a sequence of joins, so the snapshot's
-    // depth bound (§17.129) holds for every shape.
+    // A literal `match` is one node deep and a guarded run nests at most `RUN_IFS` tests per
+    // join, so the snapshot's depth bound (§17.129) holds for every shape.
     let written = snapshot::Snapshot {
         format: snapshot::FORMAT.to_owned(),
         files: snap.file_ids().map(|f| snap.file(f).uri.clone()).collect(),

@@ -18,6 +18,10 @@ use super::{subst, walk};
 use crate::build::*;
 use crate::ir::*;
 
+/// The block depth a guarded run nests to before the rest is bound as a join: a quarter of the
+/// snapshot's bound (`sakura_core_snapshot::MAX_BLOCK_DEPTH`), the rest for the source's nesting.
+const RUN_DEPTH: usize = 256;
+
 #[derive(Clone, Debug)]
 enum P {
     Any,
@@ -360,9 +364,11 @@ impl FnLower<'_, '_> {
 
     fn leaf(&mut self, occ: Occ, rows: Vec<Row>, arms: &[ArmInfo], fb: &Fallback) -> Expr {
         // A guarded row that fails continues with the rows after it, and when the next is a leaf
-        // row too the run is taken here in one pass: each test falls to a join holding the next
-        // one, and those joins, with the ones the rows after the run bind, are a sequence beside
-        // the first test rather than an `If` nested once per row (design §17.200 (5)).
+        // row too the run is taken here in one pass. The rows after a test are its fall-through's
+        // code in place, so JS emits the run as a flat sequence of `if`s (design §17.220), unless
+        // the jump is inside a `Handle` or `Try` or the run would nest past `RUN_DEPTH` blocks
+        // (the snapshot's bound, §17.200 (5)); then they start a chunk bound as a join (`chain`).
+        // The joins the rows after the run bind are a sequence beside the first test.
         let mut rows = rows.into_iter();
         let mut run = Vec::new();
         while let Some(row) = rows.next() {
@@ -378,7 +384,8 @@ impl FnLower<'_, '_> {
             }
         }
         let mut hoisted = Vec::new();
-        let mut next = None;
+        let mut chunks = Vec::new();
+        let (mut next, mut deep) = (None, 0);
         if run.last().is_some_and(|r| arms[r.arm].guard.is_some()) {
             let mut rest = self.compile(occ, rows.collect(), arms, fb);
             while let Expr::LetJoin {
@@ -393,6 +400,7 @@ impl FnLower<'_, '_> {
                 hoisted.push((*label, std::mem::take(params), join));
                 rest = body;
             }
+            deep = depth(&rest);
             next = Some(rest);
         }
         for row in run.into_iter().rev() {
@@ -405,18 +413,17 @@ impl FnLower<'_, '_> {
                 .collect();
             let jump = Expr::Jump(info.label, args);
             let Some(guard) = info.guard else {
-                next = Some(jump);
+                (next, deep) = (Some(jump), 0);
                 continue;
             };
-            let fall = match next.take().expect("a guarded row has rows after it") {
-                e @ (Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_)) => e,
+            let (fall, rest) = match next.take().expect("a guarded row has rows after it") {
+                e @ (Expr::Jump(..) | Expr::Ret(_) | Expr::Fail(_)) => (e, None),
                 e => {
                     let l = self.b.label();
-                    hoisted.push((l, vec![], Box::new(e)));
-                    Expr::Jump(l, vec![])
+                    (Expr::Jump(l, vec![]), Some((l, e)))
                 }
             };
-            next = Some(self.scoped(|s| {
+            let mut test = self.scoped(|s| {
                 for (l, a) in &row.binds {
                     s.env.insert(*l, a.clone());
                 }
@@ -428,9 +435,28 @@ impl FnLower<'_, '_> {
                     then: Box::new(jump),
                     els: Box::new(fall),
                 }
-            }));
+            });
+            let d = depth(&test);
+            let mut inlined = false;
+            if let Some((l, rest)) = rest {
+                let mut rest = Some(rest);
+                if d + deep <= RUN_DEPTH {
+                    each_jump(&mut test, false, |j| {
+                        if matches!(j, Expr::Jump(k, _) if *k == l) {
+                            *j = rest.take().expect("one jump");
+                        }
+                    });
+                }
+                match rest {
+                    Some(rest) => chunks.push((l, rest)),
+                    None => inlined = true,
+                }
+            }
+            deep = if inlined { d + deep } else { d };
+            next = Some(test);
         }
-        let mut e = next.expect("a leaf has a row");
+        let head = next.expect("a leaf has a row");
+        let mut e = chain(head, chunks.into_iter().rev().collect());
         for (label, params, join) in hoisted.into_iter().rev() {
             e = Expr::LetJoin {
                 label,
@@ -926,5 +952,44 @@ fn each_jump(e: &mut Expr, regions: bool, mut f: impl FnMut(&mut Expr)) {
             }
             Expr::Handle { .. } | Expr::Try { .. } | Expr::Ret(_) | Expr::Fail(_) => {}
         }
+    }
+}
+
+/// The block nesting of `e` as the snapshot counts it: a join's code and each branch of an `If`,
+/// a `Switch`, a `Handle` or a `Try` is one block deeper.
+fn depth(e: &Expr) -> usize {
+    let (mut todo, mut max) = (vec![(e, 0)], 0);
+    while let Some((e, d)) = todo.pop() {
+        max = max.max(d);
+        match e {
+            Expr::Let { body, .. } => todo.push((body, d)),
+            Expr::LetJoin { join, body, .. } => todo.extend([(&**join, d + 1), (body, d)]),
+            Expr::If { then, els, .. } => todo.extend([(&**then, d + 1), (els, d + 1)]),
+            Expr::Switch { arms, default, .. } => {
+                todo.extend(arms.iter().map(|(_, a)| (a, d + 1)));
+                todo.extend(default.as_deref().map(|e| (e, d + 1)));
+            }
+            Expr::Handle { body, .. } | Expr::Try { body, .. } => todo.push((body, d + 1)),
+            Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+        }
+    }
+    max
+}
+
+/// `head` followed by `chunks` in order, each starting at its label, which the code before it
+/// jumps to. They are halved into a join whose code is the second half and whose body is the
+/// first: JS nests a join's body one block deeper and the snapshot its code, so each nests
+/// log₂ of the chunks rather than one level per chunk.
+fn chain(head: Expr, mut chunks: Vec<(Label, Expr)>) -> Expr {
+    if chunks.is_empty() {
+        return head;
+    }
+    let mut rest = chunks.split_off(chunks.len() / 2);
+    let (label, first) = rest.remove(0);
+    Expr::LetJoin {
+        label,
+        params: vec![],
+        join: Box::new(chain(first, rest)),
+        body: Box::new(chain(head, chunks)),
     }
 }

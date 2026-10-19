@@ -1,0 +1,69 @@
+// milestone: M4
+// covers: design §17.220 (a run of guarded rows is a sequence: each failed guard's rows follow in place inside a `try` and a handler clause, and a guard that opens a `try` or a `with` keeps its region); MatchExpr MatchArm TryExpr HandlerClause WithExpr
+
+error Neg
+
+effect Pick {
+  fn pick(x: Int) -> Int
+}
+
+fn classify(x: Int) -> Int ! {Fail<Neg>} {
+  if x < 0 { fail Neg }
+  match x {
+    n if n < 10 => 1,
+    n if n < 100 => 2,
+    _ => 3,
+  }
+}
+
+fn in_try(x: Int) -> Int {
+  let r = try {
+    match x {
+      n if n > -10 && n < 0 => 0,
+      n if n < -1000 => classify(n),
+      n if n < 10 => 1,
+      n if n < 100 => 2,
+      _ => 3,
+    }
+  }
+  match r {
+    Ok(v) => v,
+    Err(_) => -1,
+  }
+}
+
+fn picker() -> Handler<Pick> {
+  handler Pick {
+    fn pick(x) {
+      match x {
+        n if n < 0 => 10,
+        n if n < 10 => 11,
+        n if n < 100 => 12,
+        _ => 13,
+      }
+    }
+  }
+}
+
+fn doubler() -> Handler<Pick> {
+  handler Pick {
+    fn pick(x) { 2 * x }
+  }
+}
+
+fn picks(x: Int) -> Int ! {Pick} { Pick.pick(x) }
+
+fn regions(x: Int) -> Int {
+  match x {
+    n if (try { classify(n) }) == Ok(1) => 100,
+    n if (with doubler() { picks(n) }) > 100 => 200,
+    n if n < 0 => 300,
+    _ => 400,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{in_try(-5)} {in_try(5)} {in_try(50)} {in_try(500)} {in_try(-5000)} {in_try(-50)}")
+  with picker() { Console.print("{picks(-5)} {picks(5)} {picks(50)} {picks(500)}") }
+  Console.print("{regions(5)} {regions(60)} {regions(-5)} {regions(20)}")
+}

@@ -1,0 +1,382 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::match_guard_run_regions::Neg | Neg 16b ()
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i64, %7 i64, %8 word*, %14 i64, %15 word*, %21 i64, %22 word*, %29 i64, %30 word*, %37 i64, %38 word*, %41 bool, %47 i64, %52 i64, %53 word*, %60 i64, %61 word*, %67 i64, %68 word*, %71 bool, %76 i64, %81 i64, %82 word*, %88 i64, %89 word*, %95 i64, %96 word*, %99 bool]
+  b0():
+    %0 lit: i64 = const 5
+    %1 t: i64 = intneg %0
+    call in_try#2(%1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 0
+    %5 s: ptr = concat %3, %4
+    drop %3
+    drop %4
+    %6 lit: i64 = const 5
+    call in_try#2(%6) -> b2(%5)
+  b2(%7 r: i64, %8 s: ptr):
+    %9 s: ptr = show %7
+    %10 s: ptr = concat %8, %9
+    drop %8
+    drop %9
+    %11 lit: ptr = const str 0
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    %13 lit: i64 = const 50
+    call in_try#2(%13) -> b3(%12)
+  b3(%14 r: i64, %15 s: ptr):
+    %16 s: ptr = show %14
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 0
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    %20 lit: i64 = const 500
+    call in_try#2(%20) -> b4(%19)
+  b4(%21 r: i64, %22 s: ptr):
+    %23 s: ptr = show %21
+    %24 s: ptr = concat %22, %23
+    drop %22
+    drop %23
+    %25 lit: ptr = const str 0
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    %27 lit: i64 = const 5000
+    %28 t: i64 = intneg %27
+    call in_try#2(%28) -> b5(%26)
+  b5(%29 r: i64, %30 s: ptr):
+    %31 s: ptr = show %29
+    %32 s: ptr = concat %30, %31
+    drop %30
+    drop %31
+    %33 lit: ptr = const str 0
+    %34 s: ptr = concat %32, %33
+    drop %32
+    drop %33
+    %35 lit: i64 = const 50
+    %36 t: i64 = intneg %35
+    call in_try#2(%36) -> b6(%34)
+  b6(%37 r: i64, %38 s: ptr):
+    %39 s: ptr = show %37
+    %40 s: ptr = concat %38, %39
+    drop %38
+    drop %39
+    perform std::console::Console.print(%40) -> b7()
+  b7(%41 r: unit):
+    %42 box: word = box %41
+    drop %42
+    %43 pick: ptr = closure picker$Pick_pick#9[]
+    %44 r: ptr = handler main::match_guard_run_regions::Pick row 5 state() clauses(%43)
+    handle_push %44
+    %74 lit: i64 = const 5
+    %75 t: i64 = intneg %74
+    call picks#4(%75) -> b14()
+  b8(%45 v: word):
+    drop %45
+    %46 lit: i64 = const 5
+    call regions#5(%46) -> b9()
+  b9(%47 r: i64):
+    %48 s: ptr = show %47
+    %49 lit: ptr = const str 0
+    %50 s: ptr = concat %48, %49
+    drop %48
+    drop %49
+    %51 lit: i64 = const 60
+    call regions#5(%51) -> b10(%50)
+  b10(%52 r: i64, %53 s: ptr):
+    %54 s: ptr = show %52
+    %55 s: ptr = concat %53, %54
+    drop %53
+    drop %54
+    %56 lit: ptr = const str 0
+    %57 s: ptr = concat %55, %56
+    drop %55
+    drop %56
+    %58 lit: i64 = const 5
+    %59 t: i64 = intneg %58
+    call regions#5(%59) -> b11(%57)
+  b11(%60 r: i64, %61 s: ptr):
+    %62 s: ptr = show %60
+    %63 s: ptr = concat %61, %62
+    drop %61
+    drop %62
+    %64 lit: ptr = const str 0
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    %66 lit: i64 = const 20
+    call regions#5(%66) -> b12(%65)
+  b12(%67 r: i64, %68 s: ptr):
+    %69 s: ptr = show %67
+    %70 s: ptr = concat %68, %69
+    drop %68
+    drop %69
+    perform std::console::Console.print(%70) -> b13()
+  b13(%71 r: unit):
+    %72 box: word = box %71
+    %73 unbox: unit = unbox %72
+    drop %72
+    ret %73
+  b14(%76 r: i64) [handle]:
+    %77 s: ptr = show %76
+    %78 lit: ptr = const str 0
+    %79 s: ptr = concat %77, %78
+    drop %77
+    drop %78
+    %80 lit: i64 = const 5
+    call picks#4(%80) -> b15(%79)
+  b15(%81 r: i64, %82 s: ptr) [handle]:
+    %83 s: ptr = show %81
+    %84 s: ptr = concat %82, %83
+    drop %82
+    drop %83
+    %85 lit: ptr = const str 0
+    %86 s: ptr = concat %84, %85
+    drop %84
+    drop %85
+    %87 lit: i64 = const 50
+    call picks#4(%87) -> b16(%86)
+  b16(%88 r: i64, %89 s: ptr) [handle]:
+    %90 s: ptr = show %88
+    %91 s: ptr = concat %89, %90
+    drop %89
+    drop %90
+    %92 lit: ptr = const str 0
+    %93 s: ptr = concat %91, %92
+    drop %91
+    drop %92
+    %94 lit: i64 = const 500
+    call picks#4(%94) -> b17(%93)
+  b17(%95 r: i64, %96 s: ptr) [handle]:
+    %97 s: ptr = show %95
+    %98 s: ptr = concat %96, %97
+    drop %96
+    drop %97
+    perform std::console::Console.print(%98) -> b18()
+  b18(%99 r: unit) [handle]:
+    %100 box: word = box %99
+    handle_pop
+    jump b8(%100)
+
+fn $entry#1 top -> unit ; main::match_guard_run_regions, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn in_try#2 top -> i64 ; main::match_guard_run_regions, frame 3 slots [%0 i64, %10 word*, %28 i64]
+  b0(%0 x: i64):
+    try_push -> b4(err, )
+    %15 lit: i64 = const 10
+    %16 t: i64 = intneg %15
+    %17 t: bool = gt.int %0, %16
+    if %17 then b16(%0) else b17(%0)
+  b1(%1 v: ptr):
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 v: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    %6 unbox: i64 = unbox %5
+    drop %5
+    ret %6
+  b3(%4 v: ptr):
+    %7 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    drop %7
+    %8 lit: i64 = const 1
+    %9 t: i64 = intneg %8
+    ret %9
+  b4(%10 e: word):
+    %11 err: ptr = alloc std::result::Result.Err(%10)
+    jump b1(%11)
+  b5(%12 v: i64) [try]:
+    %13 box: word = box %12
+    %14 ok: ptr = alloc std::result::Result.Ok(%13)
+    try_pop
+    jump b1(%14)
+  b6(%18 v: bool, %19 x: i64) [try]:
+    if %18 then b7(%19) else b8(%19)
+  b7(%20 x: i64) [try]:
+    %22 lit: i64 = const 0
+    jump b5(%22)
+  b8(%21 x: i64) [try]:
+    %23 lit: i64 = const 1000
+    %24 t: i64 = intneg %23
+    %25 t: bool = lt.int %21, %24
+    if %25 then b9(%21) else b10(%21)
+  b9(%26 x: i64) [try]:
+    call classify#7(%26) -> b11()
+  b10(%27 x: i64) [try]:
+    %29 lit: i64 = const 10
+    %30 t: bool = lt.int %27, %29
+    if %30 then b12(%27) else b13(%27)
+  b11(%28 r: i64) [try]:
+    jump b5(%28)
+  b12(%31 x: i64) [try]:
+    %33 lit: i64 = const 1
+    jump b5(%33)
+  b13(%32 x: i64) [try]:
+    %34 lit: i64 = const 100
+    %35 t: bool = lt.int %32, %34
+    if %35 then b14(%32) else b15(%32)
+  b14(%36 x: i64) [try]:
+    %38 lit: i64 = const 2
+    jump b5(%38)
+  b15(%37 x: i64) [try]:
+    %39 lit: i64 = const 3
+    jump b5(%39)
+  b16(%40 x: i64) [try]:
+    %42 lit: i64 = const 0
+    %43 t: bool = lt.int %40, %42
+    jump b6(%43, %40)
+  b17(%41 x: i64) [try]:
+    %44 lit: bool = const false
+    jump b6(%44, %41)
+
+fn picker#3 top -> ptr ; main::match_guard_run_regions, frame 0 slots []
+  b0():
+    %0 pick: ptr = closure picker$Pick_pick#9[]
+    %1 handler: ptr = handler main::match_guard_run_regions::Pick row 5 state() clauses(%0)
+    ret %1
+
+fn picks#4 top -> i64 ; main::match_guard_run_regions, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 x: i64):
+    perform main::match_guard_run_regions::Pick.pick(%0) -> b1()
+  b1(%1 r: i64):
+    ret %1
+
+fn regions#5 top -> i64 ; main::match_guard_run_regions, frame 7 slots [%0 i64, %25 i64, %26 i64, %27 word*, %28 i64, %30 i64, %31 i64]
+  b0(%0 x: i64):
+    try_push -> b10(err, %0)
+    call classify#7(%0) -> b11(%0)
+  b1(%1 v: ptr, %2 x: i64):
+    %3 lit: i64 = const 1
+    %4 box: word = box %3
+    %5 r: ptr = alloc std::result::Result.Ok(%4)
+    %6 t: bool = eq.any %1, %5
+    drop %1
+    drop %5
+    if %6 then b2(%2) else b3(%2)
+  b2(%7 x: i64):
+    %9 lit: i64 = const 100
+    ret %9
+  b3(%8 x: i64):
+    %10 pick: ptr = closure doubler$Pick_pick#8[]
+    %11 r: ptr = handler main::match_guard_run_regions::Pick row 5 state() clauses(%10)
+    handle_push %11
+    call picks#4(%8) -> b9(%8)
+  b4(%12 v: i64, %13 x: i64):
+    %14 lit: i64 = const 100
+    %15 t: bool = gt.int %12, %14
+    if %15 then b5(%13) else b6(%13)
+  b5(%16 x: i64):
+    %18 lit: i64 = const 200
+    ret %18
+  b6(%17 x: i64):
+    %19 lit: i64 = const 0
+    %20 t: bool = lt.int %17, %19
+    if %20 then b7(%17) else b8(%17)
+  b7(%21 x: i64):
+    %23 lit: i64 = const 300
+    ret %23
+  b8(%22 x: i64):
+    %24 lit: i64 = const 400
+    ret %24
+  b9(%25 r: i64, %26 x: i64) [handle]:
+    handle_pop
+    jump b4(%25, %26)
+  b10(%27 e: word, %28 x: i64):
+    %29 err: ptr = alloc std::result::Result.Err(%27)
+    jump b1(%29, %28)
+  b11(%30 r: i64, %31 x: i64) [try]:
+    %32 box: word = box %30
+    %33 ok: ptr = alloc std::result::Result.Ok(%32)
+    try_pop
+    jump b1(%33, %31)
+
+fn doubler#6 top -> ptr ; main::match_guard_run_regions, frame 0 slots []
+  b0():
+    %0 pick: ptr = closure doubler$Pick_pick#8[]
+    %1 handler: ptr = handler main::match_guard_run_regions::Pick row 5 state() clauses(%0)
+    ret %1
+
+fn classify#7 top -> i64 ; main::match_guard_run_regions, frame 1 slots [%0 i64]
+  b0(%0 x: i64):
+    %1 lit: i64 = const 0
+    %2 t: bool = lt.int %0, %1
+    if %2 then b6(%0) else b7(%0)
+  b1(%3 v: word, %4 x: i64):
+    drop %3
+    %5 lit: i64 = const 10
+    %6 t: bool = lt.int %4, %5
+    if %6 then b2(%4) else b3(%4)
+  b2(%7 x: i64):
+    %9 lit: i64 = const 1
+    ret %9
+  b3(%8 x: i64):
+    %10 lit: i64 = const 100
+    %11 t: bool = lt.int %8, %10
+    if %11 then b4(%8) else b5(%8)
+  b4(%12 x: i64):
+    %14 lit: i64 = const 2
+    ret %14
+  b5(%13 x: i64):
+    %15 lit: i64 = const 3
+    ret %15
+  b6(%16 x: i64):
+    %18 err: ptr = alloc main::match_guard_run_regions::Neg()
+    fail %18
+  b7(%17 x: i64):
+    %19 lit: unit = const ()
+    %20 box: word = box %19
+    jump b1(%20, %17)
+
+fn doubler$Pick_pick#8 clause main::match_guard_run_regions::Pick.pick -> i64 ; main::match_guard_run_regions, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 x: i64):
+    drop %0
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %3, %2
+    ret %4
+
+fn picker$Pick_pick#9 clause main::match_guard_run_regions::Pick.pick -> i64 ; main::match_guard_run_regions, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 x: i64):
+    drop %0
+    %3 lit: i64 = const 0
+    %4 t: bool = lt.int %2, %3
+    if %4 then b1(%2) else b2(%2)
+  b1(%5 x: i64):
+    %7 lit: i64 = const 10
+    ret %7
+  b2(%6 x: i64):
+    %8 lit: i64 = const 10
+    %9 t: bool = lt.int %6, %8
+    if %9 then b3(%6) else b4(%6)
+  b3(%10 x: i64):
+    %12 lit: i64 = const 11
+    ret %12
+  b4(%11 x: i64):
+    %13 lit: i64 = const 100
+    %14 t: bool = lt.int %11, %13
+    if %14 then b5(%11) else b6(%11)
+  b5(%15 x: i64):
+    %17 lit: i64 = const 12
+    ret %17
+  b6(%16 x: i64):
+    %18 lit: i64 = const 13
+    ret %18
