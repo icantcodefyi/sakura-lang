@@ -1,0 +1,28 @@
+--AaB03x
+Content-Disposition: form-data; name="field1"
+
+Joe owes €100.
+Thanks
+--AaB03x
+Content-Disposition: form-data; name="files"; filename="file1.txt"
+Content-Type: text/plain
+
+...contents of file1.txt...
+--AaB03x
+Content-Disposition: form-data; name="files"; filename="file2.gif"
+Content-Type: image/gif
+
+GIF89a
+--AaB03x
+Content-Disposition: form-data; name="blob"; filename="data.bin"
+Content-Type: application/octet-stream
+
+raw
+--AaB03x--
+
+field1 = Text(["Joe owes €100.\r\nThanks"])
+files = File(["file1.txt"], ["text/plain"], Ok("...contents of file1.txt..."))
+files = File(["file2.gif"], ["image/gif"], Ok("GIF89a"))
+blob = File(["data.bin"], ["application/octet-stream"], Ok("raw"))
+as printed: Malformed(176)
+closed: field1 = Text(["Joe owes =E2=82=AC100."])

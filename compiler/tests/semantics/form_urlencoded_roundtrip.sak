@@ -1,0 +1,32 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#converting-an-entry-list-to-a-list-of-name-value-pairs
+
+// `Form.encode_urlencoded` is HTML's form submission with the urlencoded enctype: each lone
+// CR or LF becomes CRLF, a file contributes its name, and the pairs are written by the URL
+// Standard's `application/x-www-form-urlencoded` serializer (`SearchParams.to_string`).
+// `parse_urlencoded` reads every value back as `Text`; repeated names and order survive.
+import std/blob.{Blob, FileData}
+import std/form.{Form, Part}
+
+pub fn main() -> Unit ! {Console} {
+  let photo = FileData {
+    blob: Blob.of(Bytes.from_list([0xFF, 0xD8]), "image/jpeg"),
+    name: "me.jpg",
+    last_modified: Instant.from_unix_millis(0),
+  }
+  let form = Form {
+    entries: [
+      ("q", Part.Text("sakura lang & web")),
+      ("tag", Part.Text("a")),
+      ("tag", Part.Text("b/c")),
+      ("note", Part.Text("line one\nline two")),
+      ("photo", Part.File(photo)),
+      ("\u{3053}\u{3093}", Part.Text("\u{1F338}")),
+    ],
+  }
+  let text = Form.encode_urlencoded(form)
+  Console.print(text)
+  for e in Form.parse_urlencoded(text).entries { Console.print("{e}") }
+  Console.print("{Form.parse_urlencoded("a=1&&b&=2&c=%zz+%41").entries}")
+}

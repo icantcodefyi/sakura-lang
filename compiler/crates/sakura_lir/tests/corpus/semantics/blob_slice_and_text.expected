@@ -1,0 +1,22 @@
+ending: ok
+--- stdout
+size 10, media type ["text/plain"]
+slice(0, 10): Ok("abcdefghij") (10 bytes)
+slice(2, 5): Ok("cde") (3 bytes)
+slice(-3, 10): Ok("hij") (3 bytes)
+slice(3, -3): Ok("defg") (4 bytes)
+slice(-100, 2): Ok("ab") (2 bytes)
+slice(7, 3): Ok("") (0 bytes)
+slice(8, 100): Ok("ij") (2 bytes)
+["te(xt/plain"] -> ["te(xt/plain"]
+["te\"xt/plain"] -> ["te\"xt/plain"]
+["te xt/plain"] -> ["te xt/plain"]
+["TEXT/PLAIN"] -> ["text/plain"]
+["text/plain;charset = UTF-8"] -> ["text/plain;charset = utf-8"]
+["ÿ"] -> [""]
+["te\txt/plain"] -> [""]
+["te\0xt/plain"] -> [""]
+["te\u{1f}xt/plain"] -> [""]
+["te\u{7f}xt/plain"] -> [""]
+with BOM: Ok("€1"), size 7
+notes.txt: 10 bytes, text/plain, 2023-11-14T22:13:20Z

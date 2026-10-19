@@ -1,0 +1,27 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://fetch.spec.whatwg.org/#header-name
+
+// A header name is an RFC 9110 token and a value, once trimmed, has no NUL, CR or LF and no
+// character above U+00FF (Fetch's byte sequence; WPT `headers-errors.any.js` uses `invalidĀ`).
+// `of`, `append` and `set` answer `HeaderError` naming the header and the reason, never its
+// value. Lookups and `remove` with a name that is not a token match nothing.
+import std/headers.{Headers}
+
+pub fn main() -> Unit ! {Console} {
+  for name in ["", "bad name", "colon:", "invalid\u{100}", "caf\u{E9}", "quote\"", "tab\t"] {
+    Console.print("{[name]}: {Headers.of([(name, "v")]).map(Headers.to_list)}")
+  }
+  for value in ["a\u{0}b", "a\nb", "a\rb", "invalid\u{100}", "ok\u{FF}", "\r\n"] {
+    Console.print("{[value]}: {Headers.of([("x-name", value)]).map(Headers.to_list)}")
+  }
+  match Headers.of([("x-a", "1")]) {
+    Ok(h) => {
+      Console.print("append: {Headers.append(h, "x b", "2").map(Headers.to_list)}")
+      Console.print("set: {Headers.set(h, "x-a", "line\nbreak").map(Headers.to_list)}")
+      Console.print("get: {Headers.get(h, "x a")}, has: {Headers.has(h, "")}")
+      Console.print("remove: {Headers.to_list(Headers.remove(h, "x a"))}")
+    },
+    Err(e) => Console.print("{e}"),
+  }
+}

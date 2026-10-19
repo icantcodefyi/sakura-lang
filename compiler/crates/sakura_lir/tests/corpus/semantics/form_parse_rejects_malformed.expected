@@ -1,0 +1,19 @@
+ending: ok
+--- stdout
+["multipart/form-data; boundary=x"]: 1 parts
+["multipart/form-data;boundary=\"x\""]: 1 parts
+["multipart/mixed; boundary=x"]: ContentType
+["multipart/form-data"]: ContentType
+["multipart/form-data; boundary="]: ContentType
+["multipart/form-data; boundary=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]: ContentType
+["multipart/form-data; boundary=a;b"]: Malformed(0)
+[""]: Malformed(0)
+["no delimiter"]: Malformed(0)
+["--x"]: Malformed(3)
+["--xjunk\r\n"]: Malformed(3)
+["--x\r\nContent-Disposition: form-data; name=a\r\n\r\n1"]: Malformed(47)
+["--x\r\nContent-Disposition: form-data; name=a\r\n1\r\n--x--"]: Malformed(3)
+["--x\r\nContent-Type: text/plain\r\n\r\n1\r\n--x--"]: Malformed(5)
+["--x\r\nContent-Disposition: attachment; name=a\r\n\r\n1\r\n--x--"]: Malformed(5)
+["--x\r\nContent-Disposition: form-data; filename=f\r\n\r\n1\r\n--x--"]: Malformed(5)
+["--x  \r\nContent-Disposition: form-data; name=a\r\n\r\n1\r\n--x--"]: 1 parts

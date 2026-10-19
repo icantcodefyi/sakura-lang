@@ -1,0 +1,228 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error std::headers::HeaderError | HeaderError 32b (name: word*, reason: word*)
+layout 1 variant std::headers::HeaderReason | InvalidName 16b () | InvalidValue 16b ()
+layout 2 variant std::headers::Headers | Headers 24b (word*)
+layout 3 variant std::list::Builder
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [%21 word*, %28 word*, %29 word*, %31 word*, %32 word*, %36 bool, %37 word*, %41 word*, %42 word*, %44 word*, %45 word*, %49 bool, %50 word*, %53 word*, %54 word*, %61 bool, %62 word*, %63 word*, %66 bool, %67 word*, %70 word*, %71 word*, %75 bool, %80 bool, %106 word*, %107 word*, %108 i64, %109 i64, %110 word*, %112 word*, %113 word*, %114 i64, %115 i64, %116 word*, %119 bool, %120 word*, %121 i64, %122 i64, %148 word*, %149 word*, %150 i64, %151 i64, %152 word*, %154 word*, %155 word*, %156 i64, %157 i64, %158 word*, %161 bool, %162 word*, %163 i64, %164 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: ptr = const str 2
+    %3 lit: ptr = const str 3
+    %4 lit: ptr = const str 4
+    %5 lit: ptr = const str 5
+    %6 lit: ptr = const str 6
+    %7 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6)
+    dup.candidate %7
+    %8 n: i64 = $list_len(%7)
+    %166 lit: i64 = const 0
+    jump b26(%166, %7, %8)
+  b1():
+    %9 lit: ptr = const str 7
+    %10 lit: ptr = const str 8
+    %11 lit: ptr = const str 9
+    %12 lit: ptr = const str 3
+    %13 lit: ptr = const str 10
+    %14 lit: ptr = const str 11
+    %15 xs: ptr = alloc list(%9, %10, %11, %12, %13, %14)
+    dup.candidate %15
+    %16 n: i64 = $list_len(%15)
+    %124 lit: i64 = const 0
+    jump b19(%124, %15, %16)
+  b2():
+    %17 lit: ptr = const str 12
+    %18 lit: ptr = const str 13
+    %19 tup: ptr = alloc tuple#6(word, word)(%17, %18)
+    %20 xs: ptr = alloc list(%19)
+    call of#2(%20) -> b3()
+  b3(%21 r: ptr):
+    %22 tag: i64 = tag %21 ctor std::result::Result
+    switch %22 0 => b4(%21) 1 => b5(%21)
+  b4(%23 r: ptr):
+    %25 p: word = proj %23.0 std::result::Result.Ok
+    drop %23
+    %26 lit: ptr = const str 14
+    %27 lit: ptr = const str 15
+    dup %25
+    call append#5(%25, %26, %27) -> b6(%25)
+  b5(%24 r: ptr):
+    %78 p: word = proj %24.0 std::result::Result.Err
+    drop %24
+    %79 s: ptr = show %78
+    drop %78
+    perform std::console::Console.print(%79) -> b18()
+  b6(%28 r: ptr, %29 h: ptr):
+    %30 fn: ptr = const static closure to_list$value#32
+    call map#4(%28, %30) -> b7(%29)
+  b7(%31 r: ptr, %32 h: ptr):
+    %33 s: ptr = show %31
+    drop %31
+    %34 lit: ptr = const str 16
+    %35 s: ptr = concat %34, %33
+    drop %33
+    drop %34
+    perform std::console::Console.print(%35) -> b8(%32)
+  b8(%36 r: unit, %37 h: ptr):
+    %38 box: word = box %36
+    drop %38
+    %39 lit: ptr = const str 12
+    %40 lit: ptr = const str 17
+    dup %37
+    call set#6(%37, %39, %40) -> b9(%37)
+  b9(%41 r: ptr, %42 h: ptr):
+    %43 fn: ptr = const static closure to_list$value#32
+    call map#4(%41, %43) -> b10(%42)
+  b10(%44 r: ptr, %45 h: ptr):
+    %46 s: ptr = show %44
+    drop %44
+    %47 lit: ptr = const str 18
+    %48 s: ptr = concat %47, %46
+    drop %46
+    drop %47
+    perform std::console::Console.print(%48) -> b11(%45)
+  b11(%49 r: unit, %50 h: ptr):
+    %51 box: word = box %49
+    drop %51
+    %52 lit: ptr = const str 19
+    dup %50
+    call get#7(%50, %52) -> b12(%50)
+  b12(%53 r: ptr, %54 h: ptr):
+    %55 s: ptr = show %53
+    drop %53
+    %56 lit: ptr = const str 20
+    %57 s: ptr = concat %56, %55
+    drop %55
+    drop %56
+    %58 lit: ptr = const str 21
+    %59 s: ptr = concat %57, %58
+    drop %57
+    drop %58
+    %60 lit: ptr = const str 0
+    dup %54
+    call has#8(%54, %60) -> b13(%54, %59)
+  b13(%61 r: bool, %62 h: ptr, %63 s: ptr):
+    %64 s: ptr = show %61
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    perform std::console::Console.print(%65) -> b14(%62)
+  b14(%66 r: unit, %67 h: ptr):
+    %68 box: word = box %66
+    drop %68
+    %69 lit: ptr = const str 19
+    call remove#9(%67, %69) -> b15()
+  b15(%70 r: ptr):
+    call to_list#3(%70) -> b16()
+  b16(%71 r: ptr):
+    %72 s: ptr = show %71
+    drop %71
+    %73 lit: ptr = const str 22
+    %74 s: ptr = concat %73, %72
+    drop %72
+    drop %73
+    perform std::console::Console.print(%74) -> b17()
+  b17(%75 r: unit):
+    %76 box: word = box %75
+    %77 unbox: unit = unbox %76
+    drop %76
+    ret %77
+  b18(%80 r: unit):
+    %81 box: word = box %80
+    %82 unbox: unit = unbox %81
+    drop %81
+    ret %82
+  b19(%83 i: i64, %84 xs: ptr, %85 n: i64):
+    %86 more: bool = lt.int %83, %85
+    if %86 then b20(%84, %85, %83) else b21(%84, %85, %83)
+  b20(%87 xs: ptr, %88 n: i64, %89 i: i64):
+    dup.candidate %87
+    %93 x: word = $list_at(%87, %89)
+    dup %93
+    %99 xs: ptr = alloc list(%93)
+    %100 s: ptr = show %99
+    drop %99
+    %101 lit: ptr = const str 23
+    %102 s: ptr = concat %100, %101
+    drop %100
+    drop %101
+    %103 lit: ptr = const str 24
+    %104 tup: ptr = alloc tuple#6(word, word)(%103, %93)
+    %105 xs: ptr = alloc list(%104)
+    call of#2(%105) -> b23(%87, %88, %89, %102)
+  b21(%90 xs: ptr, %91 n: i64, %92 i: i64):
+    drop %90
+    jump b2()
+  b22(%94 xs: ptr, %95 n: i64, %96 i: i64):
+    %97 lit: i64 = const 1
+    %98 i: i64 = intadd %96, %97
+    jump b19(%98, %94, %95)
+  b23(%106 r: ptr, %107 xs: ptr, %108 n: i64, %109 i: i64, %110 s: ptr):
+    %111 fn: ptr = const static closure to_list$value#32
+    call map#4(%106, %111) -> b24(%107, %108, %109, %110)
+  b24(%112 r: ptr, %113 xs: ptr, %114 n: i64, %115 i: i64, %116 s: ptr):
+    %117 s: ptr = show %112
+    drop %112
+    %118 s: ptr = concat %116, %117
+    drop %116
+    drop %117
+    perform std::console::Console.print(%118) -> b25(%113, %114, %115)
+  b25(%119 r: unit, %120 xs: ptr, %121 n: i64, %122 i: i64):
+    %123 box: word = box %119
+    drop %123
+    jump b22(%120, %121, %122)
+  b26(%125 i: i64, %126 xs: ptr, %127 n: i64):
+    %128 more: bool = lt.int %125, %127
+    if %128 then b27(%126, %127, %125) else b28(%126, %127, %125)
+  b27(%129 xs: ptr, %130 n: i64, %131 i: i64):
+    dup.candidate %129
+    %135 x: word = $list_at(%129, %131)
+    dup %135
+    %141 xs: ptr = alloc list(%135)
+    %142 s: ptr = show %141
+    drop %141
+    %143 lit: ptr = const str 23
+    %144 s: ptr = concat %142, %143
+    drop %142
+    drop %143
+    %145 lit: ptr = const str 25
+    %146 tup: ptr = alloc tuple#6(word, word)(%135, %145)
+    %147 xs: ptr = alloc list(%146)
+    call of#2(%147) -> b30(%129, %130, %131, %144)
+  b28(%132 xs: ptr, %133 n: i64, %134 i: i64):
+    drop %132
+    jump b1()
+  b29(%136 xs: ptr, %137 n: i64, %138 i: i64):
+    %139 lit: i64 = const 1
+    %140 i: i64 = intadd %138, %139
+    jump b26(%140, %136, %137)
+  b30(%148 r: ptr, %149 xs: ptr, %150 n: i64, %151 i: i64, %152 s: ptr):
+    %153 fn: ptr = const static closure to_list$value#32
+    call map#4(%148, %153) -> b31(%149, %150, %151, %152)
+  b31(%154 r: ptr, %155 xs: ptr, %156 n: i64, %157 i: i64, %158 s: ptr):
+    %159 s: ptr = show %154
+    drop %154
+    %160 s: ptr = concat %158, %159
+    drop %158
+    drop %159
+    perform std::console::Console.print(%160) -> b32(%155, %156, %157)
+  b32(%161 r: unit, %162 xs: ptr, %163 n: i64, %164 i: i64):
+    %165 box: word = box %161
+    drop %165
+    jump b29(%162, %163, %164)
+
+fn $entry#1 top -> unit ; main::headers_rejects_invalid_name, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

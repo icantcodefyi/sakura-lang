@@ -91,6 +91,25 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   `--target wasm` a primitive is the defect `D090` until its host imports, an ABI MINOR
   revision, follow the `v0.1.0` tag. Additive; no ABI change.
 
+- `std/headers`, `std/blob` and `std/form` (RFC 0002 §2.3, web-APIs plan phase 3): the web's
+  `Headers`, `Blob`, `File` and `FormData` as values. `Headers.of(list)` validates names (HTTP
+  tokens) and trims values per Fetch, failing with `HeaderError { name, reason }`
+  (`InvalidName`, `InvalidValue`; the value is never repeated); `get` joins a name's values with
+  `", "` except `set-cookie`, which only `get_set_cookie` returns; `get_all`, `has`, `append`,
+  `set`, `remove`, `entries` (Fetch's sort and combine) and `to_list` complete it. It never holds
+  a `Secret`: credentials stay in `Request.secret_headers`. `Blob { bytes, media_type }` with
+  `of`, `size`, `slice` (File API offsets) and `text`, strict UTF-8 (`Utf8Error`) with a byte
+  order mark removed; `FileData { blob, name, last_modified }` names no file on disk. `Form {
+  entries }` of `Text` and `File` parts: `encode_urlencoded` and `encode_multipart(f, boundary)`
+  follow HTML's form-submission algorithms (CRLF newlines, `%22`/`%0D`/`%0A` in names),
+  `boundary()` draws one from `Random`, `is_boundary` is RFC 2046's rule, `parse_urlencoded`
+  reads `SearchParams`, and `parse_multipart(body, content_type, limits)` reads RFC 7578 with a
+  required `FormLimits { max_parts, max_bytes, max_field_bytes }` and `FormError`
+  (`Limit(MaxParts | MaxBytes | MaxFieldBytes)`, `ContentType`, `Malformed(offset)`). Pure
+  Sakura on every backend: 56 WPT form-submission cases in `compiler/tests/vectors/form.jsonl`
+  generate a semantics fixture; a cookbook recipe (`form_upload`) sends a multipart upload and
+  parses it back. `Request` and `Response` are unchanged. Additive; no ABI change.
+
 - `compiler/fuzz`: an `exec` differential target. It mutates `tests/semantics` programs with
   typed edits (literals, operators, match-arm and handler order, `List` and `Map` operations)
   and runs each well-typed result on the reference evaluator, the JS backend, the LIR

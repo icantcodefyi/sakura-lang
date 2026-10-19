@@ -1,0 +1,322 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::blob::Blob | Blob 32b (bytes: word*, media_type: word*)
+layout 1 record std::blob::FileData | FileData 40b (blob: word*, name: word*, last_modified: word*)
+layout 2 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 3 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 4 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 5 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 6 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 7 record std::form::Form | Form 24b (entries: word*)
+layout 8 error std::form::FormError | FormError 24b (reason: word*)
+layout 9 variant std::form::FormLimit | MaxParts 16b () | MaxBytes 16b () | MaxFieldBytes 16b ()
+layout 10 record std::form::FormLimits | FormLimits 40b (max_parts: i64, max_bytes: i64, max_field_bytes: i64)
+layout 11 variant std::form::FormReason | Limit 24b (word*) | ContentType 16b () | Malformed 24b (i64)
+layout 12 variant std::form::Part | Text 24b (word*) | File 24b (word*)
+layout 13 variant std::instant::Instant | Instant 24b (i64)
+layout 14 variant std::list::Builder
+layout 15 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 16 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 17 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 word*, %8 word*, %14 word*, %15 word*, %16 word*, %22 word*, %23 word*, %24 word*, %25 word*, %32 word*, %35 word*, %36 word*, %46 word*, %47 word*, %48 word*, %49 word*, %55 word*, %56 word*, %57 word*, %58 word*, %66 word*, %67 word*, %89 bool, %90 word*, %91 i64, %92 i64, %118 bool, %119 word*, %120 word*, %121 i64, %122 i64, %145 bool, %146 word*, %147 word*, %148 i64, %149 i64, %172 bool, %173 word*, %174 word*, %175 i64, %176 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::form::Part.Text(%0)
+    %2 lit: ptr = const str 1
+    %3 tup: ptr = alloc tuple#18(word, word)(%2, %1)
+    %4 lit: ptr = const str 2
+    %5 lit: ptr = const str 3
+    %6 lit: ptr = const str 4
+    call file#2(%4, %5, %6) -> b1(%3)
+  b1(%7 r: ptr, %8 tup: ptr):
+    %9 lit: ptr = const str 5
+    %10 tup: ptr = alloc tuple#18(word, word)(%9, %7)
+    %11 lit: ptr = const str 6
+    %12 lit: ptr = const str 7
+    %13 lit: ptr = const str 8
+    call file#2(%11, %12, %13) -> b2(%8, %10)
+  b2(%14 r: ptr, %15 tup: ptr, %16 tup: ptr):
+    %17 lit: ptr = const str 5
+    %18 tup: ptr = alloc tuple#18(word, word)(%17, %14)
+    %19 lit: ptr = const str 9
+    %20 lit: ptr = const str 10
+    %21 lit: ptr = const str 11
+    call file#2(%19, %20, %21) -> b3(%15, %16, %18)
+  b3(%22 r: ptr, %23 tup: ptr, %24 tup: ptr, %25 tup: ptr):
+    %26 lit: ptr = const str 12
+    %27 tup: ptr = alloc tuple#18(word, word)(%26, %22)
+    %28 xs: ptr = alloc list(%23, %24, %25, %27)
+    %29 rec: ptr = alloc std::form::Form(%28)
+    %30 lit: ptr = const str 13
+    %31 $site: i64 = const 2
+    call encode_multipart#3(%29, %30, %31) -> b4()
+  b4(%32 r: ptr):
+    dup %32
+    %33 r: ptr = $string_from_bytes(%32)
+    %34 lit: ptr = const str 11
+    call unwrap_or#4(%33, %34) -> b5(%32)
+  b5(%35 r: word, %36 r: ptr):
+    %37 lit: ptr = const str 14
+    %38 r: ptr = $string_split(%35, %37)
+    dup.candidate %38
+    %39 n: i64 = $list_len(%38)
+    %178 lit: i64 = const 0
+    jump b31(%178, %36, %38, %39)
+  b6(%40 r: ptr):
+    %41 lit: i64 = const 10
+    %42 lit: i64 = const 4096
+    %43 lit: i64 = const 1024
+    %44 rec: ptr = alloc std::form::FormLimits(%41, %42, %43)
+    %45 lit: ptr = const str 15
+    dup %44
+    call parse_multipart#5(%40, %45, %44) -> b7(%44)
+  b7(%46 r: ptr, %47 rec: ptr):
+    call describe#6(%46) -> b8(%47)
+  b8(%48 r: ptr, %49 rec: ptr):
+    dup.candidate %48
+    %50 n: i64 = $list_len(%48)
+    %151 lit: i64 = const 0
+    jump b26(%151, %49, %48, %50)
+  b9(%51 rec: ptr):
+    %52 lit: ptr = const str 16
+    %53 r: ptr = $string_to_bytes(%52)
+    %54 lit: ptr = const str 15
+    dup %51
+    call parse_multipart#5(%53, %54, %51) -> b10(%51)
+  b10(%55 r: ptr, %56 rec: ptr):
+    call describe#6(%55) -> b11(%56)
+  b11(%57 r: ptr, %58 rec: ptr):
+    dup.candidate %57
+    %59 n: i64 = $list_len(%57)
+    %124 lit: i64 = const 0
+    jump b21(%124, %58, %57, %59)
+  b12(%60 rec: ptr):
+    %61 lit: ptr = const str 16
+    %62 lit: ptr = const str 17
+    %63 t: ptr = concat %61, %62
+    drop %61
+    drop %62
+    %64 r: ptr = $string_to_bytes(%63)
+    %65 lit: ptr = const str 15
+    call parse_multipart#5(%64, %65, %60) -> b13()
+  b13(%66 r: ptr):
+    call describe#6(%66) -> b14()
+  b14(%67 r: ptr):
+    dup.candidate %67
+    %68 n: i64 = $list_len(%67)
+    %94 lit: i64 = const 0
+    jump b16(%94, %67, %68)
+  b15():
+    %69 lit: unit = const ()
+    ret %69
+  b16(%70 i: i64, %71 r: ptr, %72 n: i64):
+    %73 more: bool = lt.int %70, %72
+    if %73 then b17(%71, %72, %70) else b18(%71, %72, %70)
+  b17(%74 r: ptr, %75 n: i64, %76 i: i64):
+    dup.candidate %74
+    %80 x: word = $list_at(%74, %76)
+    %86 s: ptr = show %80
+    drop %80
+    %87 lit: ptr = const str 18
+    %88 s: ptr = concat %87, %86
+    drop %86
+    drop %87
+    perform std::console::Console.print(%88) -> b20(%74, %75, %76)
+  b18(%77 r: ptr, %78 n: i64, %79 i: i64):
+    drop %77
+    jump b15()
+  b19(%81 r: ptr, %82 n: i64, %83 i: i64):
+    %84 lit: i64 = const 1
+    %85 i: i64 = intadd %83, %84
+    jump b16(%85, %81, %82)
+  b20(%89 r: unit, %90 r: ptr, %91 n: i64, %92 i: i64):
+    %93 box: word = box %89
+    drop %93
+    jump b19(%90, %91, %92)
+  b21(%95 i: i64, %96 rec: ptr, %97 r: ptr, %98 n: i64):
+    %99 more: bool = lt.int %95, %98
+    if %99 then b22(%96, %97, %98, %95) else b23(%96, %97, %98, %95)
+  b22(%100 rec: ptr, %101 r: ptr, %102 n: i64, %103 i: i64):
+    dup.candidate %101
+    %108 x: word = $list_at(%101, %103)
+    %115 s: ptr = show %108
+    drop %108
+    %116 lit: ptr = const str 19
+    %117 s: ptr = concat %116, %115
+    drop %115
+    drop %116
+    perform std::console::Console.print(%117) -> b25(%100, %101, %102, %103)
+  b23(%104 rec: ptr, %105 r: ptr, %106 n: i64, %107 i: i64):
+    drop %105
+    jump b12(%104)
+  b24(%109 rec: ptr, %110 r: ptr, %111 n: i64, %112 i: i64):
+    %113 lit: i64 = const 1
+    %114 i: i64 = intadd %112, %113
+    jump b21(%114, %109, %110, %111)
+  b25(%118 r: unit, %119 rec: ptr, %120 r: ptr, %121 n: i64, %122 i: i64):
+    %123 box: word = box %118
+    drop %123
+    jump b24(%119, %120, %121, %122)
+  b26(%125 i: i64, %126 rec: ptr, %127 r: ptr, %128 n: i64):
+    %129 more: bool = lt.int %125, %128
+    if %129 then b27(%126, %127, %128, %125) else b28(%126, %127, %128, %125)
+  b27(%130 rec: ptr, %131 r: ptr, %132 n: i64, %133 i: i64):
+    dup.candidate %131
+    %138 x: word = $list_at(%131, %133)
+    perform std::console::Console.print(%138) -> b30(%130, %131, %132, %133)
+  b28(%134 rec: ptr, %135 r: ptr, %136 n: i64, %137 i: i64):
+    drop %135
+    jump b9(%134)
+  b29(%139 rec: ptr, %140 r: ptr, %141 n: i64, %142 i: i64):
+    %143 lit: i64 = const 1
+    %144 i: i64 = intadd %142, %143
+    jump b26(%144, %139, %140, %141)
+  b30(%145 r: unit, %146 rec: ptr, %147 r: ptr, %148 n: i64, %149 i: i64):
+    %150 box: word = box %145
+    drop %150
+    jump b29(%146, %147, %148, %149)
+  b31(%152 i: i64, %153 r: ptr, %154 r: ptr, %155 n: i64):
+    %156 more: bool = lt.int %152, %155
+    if %156 then b32(%153, %154, %155, %152) else b33(%153, %154, %155, %152)
+  b32(%157 r: ptr, %158 r: ptr, %159 n: i64, %160 i: i64):
+    dup.candidate %158
+    %165 x: word = $list_at(%158, %160)
+    perform std::console::Console.print(%165) -> b35(%157, %158, %159, %160)
+  b33(%161 r: ptr, %162 r: ptr, %163 n: i64, %164 i: i64):
+    drop %162
+    jump b6(%161)
+  b34(%166 r: ptr, %167 r: ptr, %168 n: i64, %169 i: i64):
+    %170 lit: i64 = const 1
+    %171 i: i64 = intadd %169, %170
+    jump b31(%171, %166, %167, %168)
+  b35(%172 r: unit, %173 r: ptr, %174 r: ptr, %175 n: i64, %176 i: i64):
+    %177 box: word = box %172
+    drop %177
+    jump b34(%173, %174, %175, %176)
+
+fn $entry#1 top -> unit ; main::form_multipart_roundtrip, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn file#2 top -> ptr ; main::form_multipart_roundtrip, frame 8 slots [%0 word*, %1 word*, %2 word*, %4 word*, %5 word*, %7 word*, %8 word*, %9 word*]
+  b0(%0 name: ptr, %1 text: ptr, %2 media_type: ptr):
+    %3 r: ptr = $string_to_bytes(%1)
+    call of#24(%3, %2) -> b1(%0)
+  b1(%4 r: ptr, %5 name: ptr):
+    %6 lit: i64 = const 0
+    call from_unix_millis#25(%6) -> b2(%5, %4)
+  b2(%7 r: ptr, %8 name: ptr, %9 r: ptr):
+    %10 rec: ptr = alloc std::blob::FileData(%9, %8, %7)
+    %11 r: ptr = alloc std::form::Part.File(%10)
+    ret %11
+
+fn describe#6 top -> ptr ; main::form_multipart_roundtrip, frame 2 slots [%0 word*, %7 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 entries: word = proj %4.0 std::form::Form
+    drop %4
+    %6 f: ptr = closure describe$1#7[]
+    call map#9(%5, %6) -> b3()
+  b2(%3 r: ptr):
+    %8 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %9 reason: word = proj %8.0 std::form::FormError
+    drop %8
+    %10 s: ptr = show %9
+    drop %9
+    %11 xs: ptr = alloc list(%10)
+    ret %11
+  b3(%7 r: ptr):
+    ret %7
+
+fn describe$1#7 lambda -> word ; main::form_multipart_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %37 word*, %38 word*]
+  b0(%0 env: ptr, %1 e: word):
+    drop %0
+    %2 t: ptr = tuple_get %1.1
+    %3 tag: i64 = tag %2 ctor std::form::Part
+    switch %3 0 => b1(%1, %2) 1 => b2(%1, %2)
+  b1(%4 e: ptr, %5 t: ptr):
+    %8 p: word = proj %5.0 std::form::Part.Text
+    drop %5
+    %9 t: ptr = tuple_get %4.0
+    drop %4
+    %10 s: ptr = show %9
+    drop %9
+    %11 lit: ptr = const str 28
+    %12 s: ptr = concat %10, %11
+    drop %10
+    drop %11
+    %13 xs: ptr = alloc list(%8)
+    %14 s: ptr = show %13
+    drop %13
+    %15 s: ptr = concat %12, %14
+    drop %12
+    drop %14
+    %16 lit: ptr = const str 29
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    ret %17
+  b2(%6 e: ptr, %7 t: ptr):
+    %18 p: word = proj %7.0 std::form::Part.File
+    drop %7
+    %19 t: ptr = tuple_get %6.0
+    drop %6
+    %20 s: ptr = show %19
+    drop %19
+    %21 lit: ptr = const str 30
+    %22 s: ptr = concat %20, %21
+    drop %20
+    drop %21
+    %23 name: word = proj %18.1 std::blob::FileData
+    %24 xs: ptr = alloc list(%23)
+    %25 s: ptr = show %24
+    drop %24
+    %26 s: ptr = concat %22, %25
+    drop %22
+    drop %25
+    %27 lit: ptr = const str 31
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    %29 blob: word = proj %18.0 std::blob::FileData
+    %30 media_type: word = proj %29.1 std::blob::Blob
+    drop %29
+    %31 xs: ptr = alloc list(%30)
+    %32 s: ptr = show %31
+    drop %31
+    %33 s: ptr = concat %28, %32
+    drop %28
+    drop %32
+    %34 lit: ptr = const str 31
+    %35 s: ptr = concat %33, %34
+    drop %33
+    drop %34
+    %36 blob: word = proj %18.0 std::blob::FileData
+    drop %18
+    call text#8(%36) -> b3(%35)
+  b3(%37 r: ptr, %38 s: ptr):
+    %39 s: ptr = show %37
+    drop %37
+    %40 s: ptr = concat %38, %39
+    drop %38
+    drop %39
+    %41 lit: ptr = const str 29
+    %42 s: ptr = concat %40, %41
+    drop %40
+    drop %41
+    ret %42

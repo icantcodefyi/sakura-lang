@@ -1,0 +1,53 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://fetch.spec.whatwg.org/#concept-header-list-sort-and-combine
+
+// `Headers` follows Fetch: a value is trimmed of leading and trailing tabs, spaces, CRs and LFs
+// (WPT `headers-normalize.any.js`), `get` joins a name's values with ", " in order
+// (`headers-combine.any.js`), `entries` lowercases and sorts names and keeps each `set-cookie`
+// value apart (`header-setcookie.any.js`), and `get_set_cookie` reads them. `get` on
+// `set-cookie` is `None`: cookies are never joined. `to_list` keeps names as written.
+import std/headers.{Headers}
+
+pub fn main() -> Unit ! {Console} {
+  let raw = [
+    ("name1", " space "),
+    ("name2", "\ttab\t"),
+    ("name3", " spaceAndTab\t"),
+    ("name4", "\r\n newLine"),
+    ("name5", "newLine\r\n "),
+    ("name6", "\r\n\tnewLine"),
+    ("name7", "\t\u{C}\tnewLine\n"),
+    ("name8", "newLine\u{A0}"),
+  ]
+  match Headers.of(raw) {
+    Ok(h) => { for (name, _) in raw { Console.print("{name}: {Headers.get(h, name)}") } },
+    Err(e) => Console.print("{e}"),
+  }
+  match Headers.of([
+    ("xylophone-header", "1"),
+    ("best-header", "2"),
+    ("set-cookie", "3"),
+    ("A-Cool-Header", "4"),
+    ("Set-Cookie", "5"),
+    ("a-cool-header", "6"),
+    ("best-header", "7"),
+  ]) {
+    Ok(h) => {
+      Console.print("entries: {Headers.entries(h)}")
+      Console.print("get a-cool-header: {Headers.get(h, "A-COOL-HEADER")}")
+      Console.print("get set-cookie: {Headers.get(h, "set-cookie")}")
+      Console.print("get_set_cookie: {Headers.get_set_cookie(h)}")
+      Console.print("get_all best-header: {Headers.get_all(h, "best-header")}")
+      Console.print("to_list: {Headers.to_list(h)}")
+    },
+    Err(e) => Console.print("{e}"),
+  }
+  match Headers.of([
+    ("set-cookie2", "foo2=bar2"),
+    ("Set-Cookie2", "fizz2=buzz2; domain=example2.com"),
+  ]) {
+    Ok(h) => Console.print("set-cookie2: {Headers.entries(h)}"),
+    Err(e) => Console.print("{e}"),
+  }
+}

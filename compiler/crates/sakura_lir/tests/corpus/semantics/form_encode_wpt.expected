@@ -1,0 +1,58 @@
+ending: ok
+--- stdout
+0: ["--B", "Content-Disposition: form-data; name=\"basic\"", "", "test", "--B--", ""]
+1: ["--B", "Content-Disposition: form-data; name=\"basic\"; filename=\"file-test.txt\"", "Content-Type: text/plain", "", "", "--B--", ""]
+2: ["--B", "Content-Disposition: form-data; name=\"a\0b\"", "", "c", "--B--", ""]
+3: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b\0c", "--B--", ""]
+4: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b\0c\"", "Content-Type: text/plain", "", "", "--B--", ""]
+5: ["--B", "Content-Disposition: form-data; name=\"a%0D%0Ab\"", "", "c", "--B--", ""]
+6: ["--B", "Content-Disposition: form-data; name=\"a%0D%0Ab\"", "", "c", "--B--", ""]
+7: ["--B", "Content-Disposition: form-data; name=\"a%0D%0Ab\"", "", "c", "--B--", ""]
+8: ["--B", "Content-Disposition: form-data; name=\"a%0D%0A%0D%0Ab\"", "", "c", "--B--", ""]
+9: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b", "c", "--B--", ""]
+10: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b", "c", "--B--", ""]
+11: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b", "c", "--B--", ""]
+12: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b", "", "c", "--B--", ""]
+13: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b%0Ac\"", "Content-Type: text/plain", "", "", "--B--", ""]
+14: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b%0Dc\"", "Content-Type: text/plain", "", "", "--B--", ""]
+15: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b%0D%0Ac\"", "Content-Type: text/plain", "", "", "--B--", ""]
+16: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b%0A%0Dc\"", "Content-Type: text/plain", "", "", "--B--", ""]
+17: ["--B", "Content-Disposition: form-data; name=\"a%22b\"", "", "c", "--B--", ""]
+18: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b\"c", "--B--", ""]
+19: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b%22c\"", "Content-Type: text/plain", "", "", "--B--", ""]
+20: ["--B", "Content-Disposition: form-data; name=\"a'b\"", "", "c", "--B--", ""]
+21: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b'c", "--B--", ""]
+22: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b'c\"", "Content-Type: text/plain", "", "", "--B--", ""]
+23: ["--B", "Content-Disposition: form-data; name=\"a\\b\"", "", "c", "--B--", ""]
+24: ["--B", "Content-Disposition: form-data; name=\"a\"", "", "b\\c", "--B--", ""]
+25: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"b\\c\"", "Content-Type: text/plain", "", "", "--B--", ""]
+26: ["--B", "Content-Disposition: form-data; name=\"áb\"", "", "ç", "--B--", ""]
+27: ["--B", "Content-Disposition: form-data; name=\"a\"; filename=\"ə.txt\"", "Content-Type: text/plain", "", "", "--B--", ""]
+28: basic=test
+29: basic=file-test.txt
+30: a%00b=c
+31: a=b%00c
+32: a=b%00c
+33: a%0D%0Ab=c
+34: a%0D%0Ab=c
+35: a%0D%0Ab=c
+36: a%0D%0A%0D%0Ab=c
+37: a=b%0D%0Ac
+38: a=b%0D%0Ac
+39: a=b%0D%0Ac
+40: a=b%0D%0A%0D%0Ac
+41: a=b%0D%0Ac
+42: a=b%0D%0Ac
+43: a=b%0D%0Ac
+44: a=b%0D%0A%0D%0Ac
+45: a%22b=c
+46: a=b%22c
+47: a=b%22c
+48: a%27b=c
+49: a=b%27c
+50: a=b%27c
+51: a%5Cb=c
+52: a=b%5Cc
+53: a=b%5Cc
+54: %C3%A1b=%C3%A7
+55: a=%C9%99.txt

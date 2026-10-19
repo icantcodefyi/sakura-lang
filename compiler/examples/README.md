@@ -32,7 +32,7 @@ recorded from a provider. Each directory's `tests/fixtures/README.md` says how t
 
 ## Cookbook (design §17.145)
 
-The nine additional projects below are discovered by the same harness, all at M3
+The ten additional projects below are discovered by the same harness, all at M3
 without skips. Their `recipe.md` prose and project files generate the website
 cookbook and `skills/sakura/references/recipes.md` through `agent_docs`.
 
@@ -47,5 +47,6 @@ cookbook and `skills/sakura/references/recipes.md` through `agent_docs`.
 | `budgeted_agent` | test (finite budget and cassette) |
 | `indexed_update` | run + test |
 | `url_build` | run + test |
+| `form_upload` | test (script and router) |
 
 See [cookbook.md](cookbook.md) for the compiler baseline and regeneration command.

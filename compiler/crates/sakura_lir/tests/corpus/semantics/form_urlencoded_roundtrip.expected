@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+q=sakura+lang+%26+web&tag=a&tag=b%2Fc&note=line+one%0D%0Aline+two&photo=me.jpg&%E3%81%93%E3%82%93=%F0%9F%8C%B8
+("q", Text("sakura lang & web"))
+("tag", Text("a"))
+("tag", Text("b/c"))
+("note", Text("line one\r\nline two"))
+("photo", Text("me.jpg"))
+("こん", Text("🌸"))
+[("a", Text("1")), ("b", Text("")), ("", Text("2")), ("c", Text("%zz A"))]

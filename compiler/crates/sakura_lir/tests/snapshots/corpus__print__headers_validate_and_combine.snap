@@ -1,0 +1,274 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error std::headers::HeaderError | HeaderError 32b (name: word*, reason: word*)
+layout 1 variant std::headers::HeaderReason | InvalidName 16b () | InvalidValue 16b ()
+layout 2 variant std::headers::Headers | Headers 24b (word*)
+layout 3 variant std::list::Builder
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [%25 word*, %26 word*, %50 word*, %59 word*, %64 word*, %68 bool, %73 bool, %80 word*, %81 word*, %85 bool, %86 word*, %89 word*, %90 word*, %94 bool, %95 word*, %98 word*, %99 word*, %103 bool, %104 word*, %106 word*, %107 word*, %111 bool, %112 word*, %115 word*, %116 word*, %120 bool, %121 word*, %123 word*, %127 bool, %131 bool, %170 word*, %171 word*, %172 word*, %173 i64, %174 i64, %175 word*, %178 bool, %179 word*, %180 word*, %181 i64, %182 i64, %189 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 tup: ptr = alloc tuple#6(word, word)(%0, %1)
+    %3 lit: ptr = const str 2
+    %4 lit: ptr = const str 3
+    %5 tup: ptr = alloc tuple#6(word, word)(%3, %4)
+    %6 lit: ptr = const str 4
+    %7 lit: ptr = const str 5
+    %8 tup: ptr = alloc tuple#6(word, word)(%6, %7)
+    %9 lit: ptr = const str 6
+    %10 lit: ptr = const str 7
+    %11 tup: ptr = alloc tuple#6(word, word)(%9, %10)
+    %12 lit: ptr = const str 8
+    %13 lit: ptr = const str 9
+    %14 tup: ptr = alloc tuple#6(word, word)(%12, %13)
+    %15 lit: ptr = const str 10
+    %16 lit: ptr = const str 11
+    %17 tup: ptr = alloc tuple#6(word, word)(%15, %16)
+    %18 lit: ptr = const str 12
+    %19 lit: ptr = const str 13
+    %20 tup: ptr = alloc tuple#6(word, word)(%18, %19)
+    %21 lit: ptr = const str 14
+    %22 lit: ptr = const str 15
+    %23 tup: ptr = alloc tuple#6(word, word)(%21, %22)
+    %24 xs: ptr = alloc list(%2, %5, %8, %11, %14, %17, %20, %23)
+    dup.candidate %24
+    call of#2(%24) -> b1(%24)
+  b1(%25 r: ptr, %26 xs: ptr):
+    %133 tag: i64 = tag %25 ctor std::result::Result
+    switch %133 0 => b26(%26, %25) 1 => b27(%26, %25)
+  b2(%27 v: word):
+    drop %27
+    %28 lit: ptr = const str 16
+    %29 lit: ptr = const str 17
+    %30 tup: ptr = alloc tuple#6(word, word)(%28, %29)
+    %31 lit: ptr = const str 18
+    %32 lit: ptr = const str 19
+    %33 tup: ptr = alloc tuple#6(word, word)(%31, %32)
+    %34 lit: ptr = const str 20
+    %35 lit: ptr = const str 21
+    %36 tup: ptr = alloc tuple#6(word, word)(%34, %35)
+    %37 lit: ptr = const str 22
+    %38 lit: ptr = const str 23
+    %39 tup: ptr = alloc tuple#6(word, word)(%37, %38)
+    %40 lit: ptr = const str 24
+    %41 lit: ptr = const str 25
+    %42 tup: ptr = alloc tuple#6(word, word)(%40, %41)
+    %43 lit: ptr = const str 26
+    %44 lit: ptr = const str 27
+    %45 tup: ptr = alloc tuple#6(word, word)(%43, %44)
+    %46 lit: ptr = const str 18
+    %47 lit: ptr = const str 28
+    %48 tup: ptr = alloc tuple#6(word, word)(%46, %47)
+    %49 xs: ptr = alloc list(%30, %33, %36, %39, %42, %45, %48)
+    call of#2(%49) -> b3()
+  b3(%50 r: ptr):
+    %76 tag: i64 = tag %50 ctor std::result::Result
+    switch %76 0 => b11(%50) 1 => b12(%50)
+  b4(%51 v: word):
+    drop %51
+    %52 lit: ptr = const str 29
+    %53 lit: ptr = const str 30
+    %54 tup: ptr = alloc tuple#6(word, word)(%52, %53)
+    %55 lit: ptr = const str 31
+    %56 lit: ptr = const str 32
+    %57 tup: ptr = alloc tuple#6(word, word)(%55, %56)
+    %58 xs: ptr = alloc list(%54, %57)
+    call of#2(%58) -> b5()
+  b5(%59 r: ptr):
+    %60 tag: i64 = tag %59 ctor std::result::Result
+    switch %60 0 => b6(%59) 1 => b7(%59)
+  b6(%61 r: ptr):
+    %63 p: word = proj %61.0 std::result::Result.Ok
+    drop %61
+    call entries#4(%63) -> b8()
+  b7(%62 r: ptr):
+    %71 p: word = proj %62.0 std::result::Result.Err
+    drop %62
+    %72 s: ptr = show %71
+    drop %71
+    perform std::console::Console.print(%72) -> b10()
+  b8(%64 r: ptr):
+    %65 s: ptr = show %64
+    drop %64
+    %66 lit: ptr = const str 33
+    %67 s: ptr = concat %66, %65
+    drop %65
+    drop %66
+    perform std::console::Console.print(%67) -> b9()
+  b9(%68 r: unit):
+    %69 box: word = box %68
+    %70 unbox: unit = unbox %69
+    drop %69
+    ret %70
+  b10(%73 r: unit):
+    %74 box: word = box %73
+    %75 unbox: unit = unbox %74
+    drop %74
+    ret %75
+  b11(%77 r: ptr):
+    %79 p: word = proj %77.0 std::result::Result.Ok
+    drop %77
+    dup %79
+    call entries#4(%79) -> b13(%79)
+  b12(%78 r: ptr):
+    %129 p: word = proj %78.0 std::result::Result.Err
+    drop %78
+    %130 s: ptr = show %129
+    drop %129
+    perform std::console::Console.print(%130) -> b25()
+  b13(%80 r: ptr, %81 h: ptr):
+    %82 s: ptr = show %80
+    drop %80
+    %83 lit: ptr = const str 34
+    %84 s: ptr = concat %83, %82
+    drop %82
+    drop %83
+    perform std::console::Console.print(%84) -> b14(%81)
+  b14(%85 r: unit, %86 h: ptr):
+    %87 box: word = box %85
+    drop %87
+    %88 lit: ptr = const str 35
+    dup %86
+    call get#3(%86, %88) -> b15(%86)
+  b15(%89 r: ptr, %90 h: ptr):
+    %91 s: ptr = show %89
+    drop %89
+    %92 lit: ptr = const str 36
+    %93 s: ptr = concat %92, %91
+    drop %91
+    drop %92
+    perform std::console::Console.print(%93) -> b16(%90)
+  b16(%94 r: unit, %95 h: ptr):
+    %96 box: word = box %94
+    drop %96
+    %97 lit: ptr = const str 20
+    dup %95
+    call get#3(%95, %97) -> b17(%95)
+  b17(%98 r: ptr, %99 h: ptr):
+    %100 s: ptr = show %98
+    drop %98
+    %101 lit: ptr = const str 37
+    %102 s: ptr = concat %101, %100
+    drop %100
+    drop %101
+    perform std::console::Console.print(%102) -> b18(%99)
+  b18(%103 r: unit, %104 h: ptr):
+    %105 box: word = box %103
+    drop %105
+    dup %104
+    call get_set_cookie#5(%104) -> b19(%104)
+  b19(%106 r: ptr, %107 h: ptr):
+    %108 s: ptr = show %106
+    drop %106
+    %109 lit: ptr = const str 38
+    %110 s: ptr = concat %109, %108
+    drop %108
+    drop %109
+    perform std::console::Console.print(%110) -> b20(%107)
+  b20(%111 r: unit, %112 h: ptr):
+    %113 box: word = box %111
+    drop %113
+    %114 lit: ptr = const str 18
+    dup %112
+    call get_all#6(%112, %114) -> b21(%112)
+  b21(%115 r: ptr, %116 h: ptr):
+    %117 s: ptr = show %115
+    drop %115
+    %118 lit: ptr = const str 39
+    %119 s: ptr = concat %118, %117
+    drop %117
+    drop %118
+    perform std::console::Console.print(%119) -> b22(%116)
+  b22(%120 r: unit, %121 h: ptr):
+    %122 box: word = box %120
+    drop %122
+    call to_list#7(%121) -> b23()
+  b23(%123 r: ptr):
+    %124 s: ptr = show %123
+    drop %123
+    %125 lit: ptr = const str 40
+    %126 s: ptr = concat %125, %124
+    drop %124
+    drop %125
+    perform std::console::Console.print(%126) -> b24()
+  b24(%127 r: unit):
+    %128 box: word = box %127
+    jump b4(%128)
+  b25(%131 r: unit):
+    %132 box: word = box %131
+    jump b4(%132)
+  b26(%134 xs: ptr, %135 r: ptr):
+    %138 p: word = proj %135.0 std::result::Result.Ok
+    drop %135
+    dup.candidate %134
+    %139 n: i64 = $list_len(%134)
+    %186 lit: i64 = const 0
+    jump b29(%186, %134, %138, %139)
+  b27(%136 xs: ptr, %137 r: ptr):
+    drop %136
+    %187 p: word = proj %137.0 std::result::Result.Err
+    drop %137
+    %188 s: ptr = show %187
+    drop %187
+    perform std::console::Console.print(%188) -> b36()
+  b28():
+    %140 lit: unit = const ()
+    %141 box: word = box %140
+    jump b2(%141)
+  b29(%142 i: i64, %143 xs: ptr, %144 h: ptr, %145 n: i64):
+    %146 more: bool = lt.int %142, %145
+    if %146 then b30(%143, %144, %145, %142) else b31(%143, %144, %145, %142)
+  b30(%147 xs: ptr, %148 h: ptr, %149 n: i64, %150 i: i64):
+    dup.candidate %147
+    %155 x: word = $list_at(%147, %150)
+    %184 p: ptr = tuple_get %155.0
+    %185 p: ptr = tuple_get %155.1
+    drop %155
+    drop %185
+    jump b33(%184, %147, %148, %149, %150)
+  b31(%151 xs: ptr, %152 h: ptr, %153 n: i64, %154 i: i64):
+    drop %151
+    drop %152
+    jump b28()
+  b32(%156 xs: ptr, %157 h: ptr, %158 n: i64, %159 i: i64):
+    %160 lit: i64 = const 1
+    %161 i: i64 = intadd %159, %160
+    jump b29(%161, %156, %157, %158)
+  b33(%162 name: ptr, %163 xs: ptr, %164 h: ptr, %165 n: i64, %166 i: i64):
+    %167 s: ptr = show %162
+    %168 lit: ptr = const str 41
+    %169 s: ptr = concat %167, %168
+    drop %167
+    drop %168
+    dup %164
+    call get#3(%164, %162) -> b34(%163, %164, %165, %166, %169)
+  b34(%170 r: ptr, %171 xs: ptr, %172 h: ptr, %173 n: i64, %174 i: i64, %175 s: ptr):
+    %176 s: ptr = show %170
+    drop %170
+    %177 s: ptr = concat %175, %176
+    drop %175
+    drop %176
+    perform std::console::Console.print(%177) -> b35(%171, %172, %173, %174)
+  b35(%178 r: unit, %179 xs: ptr, %180 h: ptr, %181 n: i64, %182 i: i64):
+    %183 box: word = box %178
+    drop %183
+    jump b32(%179, %180, %181, %182)
+  b36(%189 r: unit):
+    %190 box: word = box %189
+    jump b2(%190)
+
+fn $entry#1 top -> unit ; main::headers_validate_and_combine, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

@@ -7,6 +7,8 @@ semantics/arith_range_edges_remainder_zero: 2 funcs, 4 blocks, 0 dup, 1 drop, va
 semantics/arith_ranges_proved: 6 funcs, 31 blocks, 0 dup, 39 drop, valid
 semantics/arith_ranges_requires_seeded: 6 funcs, 33 blocks, 0 dup, 28 drop, valid
 semantics/arith_ranges_requires_violated: 3 funcs, 12 blocks, 0 dup, 3 drop, valid
+semantics/blob_slice_and_text: 20 funcs, 127 blocks, 16 dup, 132 drop, valid
+semantics/blob_text_rejects_invalid_utf8: 17 funcs, 87 blocks, 8 dup, 41 drop, valid
 semantics/blocks_and_let: 2 funcs, 5 blocks, 0 dup, 6 drop, valid
 semantics/bytes_base64_lenient_whitespace: 5 funcs, 23 blocks, 2 dup, 19 drop, valid
 semantics/bytes_base64_rejects_padding: 6 funcs, 27 blocks, 2 dup, 30 drop, valid
@@ -65,6 +67,13 @@ semantics/encoding_decoder_split_sequence: 16 funcs, 148 blocks, 15 dup, 47 drop
 semantics/encoding_fatal_vs_replace: 10 funcs, 57 blocks, 9 dup, 31 drop, valid
 semantics/encoding_rejects_unsupported_label: 11 funcs, 80 blocks, 18 dup, 36 drop, valid
 semantics/error_unions: 5 funcs, 28 blocks, 0 dup, 5 drop, valid
+semantics/form_encode_rejects_boundary: 13 funcs, 105 blocks, 14 dup, 81 drop, valid
+semantics/form_encode_wpt: 37 funcs, 304 blocks, 47 dup, 158 drop, valid
+semantics/form_filename_is_data: 37 funcs, 434 blocks, 85 dup, 262 drop, valid
+semantics/form_multipart_roundtrip: 44 funcs, 499 blocks, 102 dup, 326 drop, valid
+semantics/form_parse_rejects_limits: 37 funcs, 441 blocks, 96 dup, 283 drop, valid
+semantics/form_parse_rejects_malformed: 35 funcs, 429 blocks, 92 dup, 242 drop, valid
+semantics/form_urlencoded_roundtrip: 31 funcs, 212 blocks, 39 dup, 89 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 15 drop, valid
 semantics/fused_get_expect: 7 funcs, 35 blocks, 7 dup, 32 drop, valid
 semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
@@ -80,6 +89,8 @@ semantics/handler_clause_fail: 6 funcs, 17 blocks, 0 dup, 6 drop, valid
 semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 9 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid
 semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 9 drop, valid
+semantics/headers_rejects_invalid_name: 33 funcs, 276 blocks, 53 dup, 149 drop, valid
+semantics/headers_validate_and_combine: 39 funcs, 315 blocks, 73 dup, 163 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 4 drop, valid
 semantics/host_fs_env: 48 funcs, 242 blocks, 46 dup, 138 drop, valid
 semantics/host_root_handlers: 15 funcs, 75 blocks, 6 dup, 44 drop, valid

@@ -1,0 +1,5 @@
+Err(Utf8Error { offset: 1 }) / Ok(["a", "�", "("])
+Err(Utf8Error { offset: 4 }) / Ok(["a", "�"])
+Err(Utf8Error { offset: 0 }) / Ok(["�", "�", "�"])
+Err(Utf8Error { offset: 0 }) / Ok(["�"])
+Err(Utf8Error { offset: 0 }) / Ok(["�"])

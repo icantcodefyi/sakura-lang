@@ -1,0 +1,222 @@
+// HTTP header lists (RFC 0002 §2.3): the Fetch Standard's `Headers` as a validated, immutable,
+// ordered multimap. A value, not a view: `Request.headers` and `Response.headers` stay
+// `List<(String, String)>`, and `Headers.of(resp.headers)` reads one, `to_list` writes one back.
+// `Headers` never holds a `Secret`: credentials go in `Request.secret_headers` (`Http.bearer`),
+// and `Http.recording` refuses `authorization`, `cookie` and the other credential names in
+// ordinary headers. Fetch's forbidden-header names are browser policy and do not apply.
+
+/// `InvalidName`: the name is not an HTTP token. `InvalidValue`: after trimming, the value has
+/// NUL, CR or LF, or a character above U+00FF (a header value is bytes).
+pub type HeaderReason = InvalidName | InvalidValue
+
+/// The header that failed, by name; the value is never repeated, since it may be a credential.
+pub error HeaderError(name: String, reason: HeaderReason)
+
+/// Name/value pairs in order, names as given and values trimmed; a name may repeat.
+pub opaque type Headers = Headers(List<(String, String)>)
+
+/// `list` validated and normalized pair by pair, in order (`new Headers(init)`).
+pub fn of(list: List<(String, String)>) -> Result<Headers, HeaderError> {
+  var h = Headers([])
+  for (name, value) in list {
+    match append(h, name, value) {
+      Ok(next) => { h = next },
+      Err(e) => { return Err(e) },
+    }
+  }
+  Ok(h)
+}
+
+/// Every value of `name` (compared ASCII case-insensitively) joined with `", "`, as Fetch's
+/// `get` does, or `None`. `set-cookie` is `None` here: joining cookies is lossy, because an
+/// `Expires` attribute holds a comma, so its values come only from `get_set_cookie`.
+pub fn get(h: Headers, name: String) -> Option<String> {
+  let values = get_all(h, name)
+  if List.len(values) == 0 || lower(name) == "set-cookie" {
+    None
+  } else {
+    Some(List.join(values, ", "))
+  }
+}
+
+/// The `set-cookie` values in order, each whole (`getSetCookie`).
+pub fn get_set_cookie(h: Headers) -> List<String> { get_all(h, "set-cookie") }
+
+/// Every value of `name`, in order. A name that is not a token matches nothing.
+pub fn get_all(h: Headers, name: String) -> List<String> {
+  if !is_token(name) { return [] }
+  let wanted = lower(name)
+  List.filter_map(pairs(h), fn(p) { if lower(p.0) == wanted { Some(p.1) } else { None } })
+}
+
+pub fn has(h: Headers, name: String) -> Bool { List.len(get_all(h, name)) > 0 }
+
+/// Adds a pair at the end, its value trimmed of leading and trailing tabs, spaces, CRs and LFs.
+/// When `name` is already present, the new pair takes the first one's spelling, as Fetch does.
+pub fn append(h: Headers, name: String, value: String) -> Result<Headers, HeaderError> {
+  match checked(name, value) {
+    Err(e) => Err(e),
+    Ok(v) => {
+      let wanted = lower(name)
+      let spelled = List.find(pairs(h), fn(p) { lower(p.0) == wanted }).map(fn(p) { p.0 })
+      Ok(Headers(List.push(pairs(h), (spelled.unwrap_or(name), v))))
+    },
+  }
+}
+
+/// The first pair named `name` takes `value` and every later one is removed; with none, the
+/// pair is appended.
+pub fn set(h: Headers, name: String, value: String) -> Result<Headers, HeaderError> {
+  match checked(name, value) {
+    Err(e) => Err(e),
+    Ok(v) => {
+      let wanted = lower(name)
+      var out: List<(String, String)> = []
+      var found = false
+      for p in pairs(h) {
+        if lower(p.0) != wanted {
+          out = List.push(out, p)
+        } else if !found {
+          out = List.push(out, (p.0, v))
+          found = true
+        }
+      }
+      Ok(Headers(if found { out } else { List.push(out, (name, v)) }))
+    },
+  }
+}
+
+/// Removes every pair named `name` (`delete`).
+pub fn remove(h: Headers, name: String) -> Headers {
+  let wanted = lower(name)
+  Headers(List.filter(pairs(h), fn(p) { lower(p.0) != wanted }))
+}
+
+/// Fetch's "sort and combine", what iterating a `Headers` yields: names lowercased and sorted
+/// by byte, each name's values joined with `", "`, except `set-cookie`, one pair per value.
+pub fn entries(h: Headers) -> List<(String, String)> {
+  let names = List.sort(List.unique(List.map(pairs(h), fn(p) { lower(p.0) })))
+  List.flat_map(names, fn(n) {
+    let values = get_all(h, n)
+    if n == "set-cookie" {
+      List.map(values, fn(v) { (n, v) })
+    } else {
+      [(n, List.join(values, ", "))]
+    }
+  })
+}
+
+/// The pairs in order, as stored, for `Request.headers`.
+pub fn to_list(h: Headers) -> List<(String, String)> { pairs(h) }
+
+fn pairs(h: Headers) -> List<(String, String)> {
+  match h {
+    Headers(ps) => ps,
+  }
+}
+
+// Names are tokens, so ASCII lowercasing is the whole case fold.
+fn lower(s: String) -> String { String.to_lower(s) }
+
+// The normalized value, or the error.
+fn checked(name: String, value: String) -> Result<String, HeaderError> {
+  if !is_token(name) { return Err(HeaderError { name, reason: InvalidName }) }
+  let v = trim_http(value)
+  if is_value(v) { Ok(v) } else { Err(HeaderError { name, reason: InvalidValue }) }
+}
+
+// RFC 9110 `token`: one or more of ALPHA, DIGIT and ``!#$%&'*+-.^_`|~``.
+fn is_token(s: String) -> Bool {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  if n == 0 { return false }
+  for i in 0..n {
+    let c = Bytes.get(b, i).unwrap_or(0)
+    let alnum = c >= 0x30 && c <= 0x39 || c >= 0x41 && c <= 0x5A || c >= 0x61 && c <= 0x7A
+    if !alnum
+      && !List.contains(
+        [0x21, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2A, 0x2B, 0x2D, 0x2E, 0x5E, 0x5F, 0x60, 0x7C, 0x7E],
+        c,
+      ) { return false }
+  }
+  true
+}
+
+// No NUL, CR or LF, and every character at most U+00FF: UTF-8 lead bytes 0xC2 and 0xC3 are
+// the only multi-byte ones allowed.
+fn is_value(s: String) -> Bool {
+  let b = String.to_bytes(s)
+  for i in 0..Bytes.len(b) {
+    let c = Bytes.get(b, i).unwrap_or(0)
+    if c == 0x00 || c == 0x0A || c == 0x0D || c >= 0xC4 { return false }
+  }
+  true
+}
+
+// Fetch's normalize: strip leading and trailing HTTP whitespace (tab, LF, CR, space).
+fn trim_http(s: String) -> String {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  var start = 0
+  while start < n && is_http_space(Bytes.get(b, start).unwrap_or(0)) { start = start + 1 }
+  var end = n
+  while end > start && is_http_space(Bytes.get(b, end - 1).unwrap_or(0)) { end = end - 1 }
+  String.slice(s, start, end)
+}
+
+fn is_http_space(c: Int) -> Bool { c == 0x09 || c == 0x0A || c == 0x0D || c == 0x20 }
+
+test "of validates names and trims values" {
+  let h = of([("Content-Type", " text/plain\t"), ("x-a", "1")]).unwrap_or(Headers([]))
+  expect_eq(to_list(h), [("Content-Type", "text/plain"), ("x-a", "1")])
+  expect_eq(
+    of([("bad name", "v")]).map(to_list),
+    Err(HeaderError { name: "bad name", reason: InvalidName }),
+  )
+  expect_eq(of([("", "v")]).is_err(), true)
+  expect_eq(
+    of([("x", "a\r\nb")]).map(to_list),
+    Err(HeaderError { name: "x", reason: InvalidValue }),
+  )
+  expect_eq(of([("x", "a\u{0}b")]).is_err(), true)
+  expect_eq(of([("x", "caf\u{E9}")]).map(to_list), Ok([("x", "caf\u{E9}")]))
+  expect_eq(of([("x", "\u{100}")]).is_err(), true)
+}
+
+test "get combines, set-cookie stays apart" {
+  let h = of([
+    ("A", "1"),
+    ("set-cookie", "s=1; Expires=Wed, 21 Oct 2026"),
+    ("a", "2"),
+    ("Set-Cookie", "t=2"),
+  ]).unwrap_or(Headers([]))
+  expect_eq(get(h, "a"), Some("1, 2"))
+  expect_eq(get(h, "set-cookie"), None)
+  expect_eq(get_set_cookie(h), ["s=1; Expires=Wed, 21 Oct 2026", "t=2"])
+  expect_eq(get(h, "missing"), None)
+  expect_eq(get(h, "a b"), None)
+  expect(has(h, "SET-COOKIE") && !has(h, "b"))
+  expect_eq(
+    entries(h),
+    [("a", "1, 2"), ("set-cookie", "s=1; Expires=Wed, 21 Oct 2026"), ("set-cookie", "t=2")],
+  )
+}
+
+test "append, set and remove" {
+  // `of` appends, so the second `x-tag` takes the first one's spelling.
+  let h = of([("X-Tag", "a"), ("y", "1"), ("x-tag", "b")]).unwrap_or(Headers([]))
+  expect_eq(
+    append(h, "X-TAG", "c").map(to_list),
+    Ok([("X-Tag", "a"), ("y", "1"), ("X-Tag", "b"), ("X-Tag", "c")]),
+  )
+  expect_eq(set(h, "x-TAG", " z ").map(to_list), Ok([("X-Tag", "z"), ("y", "1")]))
+  expect_eq(
+    set(h, "new", "v").map(to_list),
+    Ok([("X-Tag", "a"), ("y", "1"), ("X-Tag", "b"), ("new", "v")]),
+  )
+  expect_eq(to_list(remove(h, "X-tag")), [("y", "1")])
+  expect_eq(
+    set(h, "x", "\n").map(to_list),
+    Ok([("X-Tag", "a"), ("y", "1"), ("X-Tag", "b"), ("x", "")]),
+  )
+}

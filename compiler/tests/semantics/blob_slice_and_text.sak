@@ -1,0 +1,40 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://w3c.github.io/FileAPI/#dfn-slice
+
+// `Blob.slice` takes the File API's relative offsets (a negative one counts from the end, both
+// clamp to the size) and a media type that is lowercased, or `""` when it has a character
+// outside U+0020..U+007E (WPT `Blob-slice.any.js`'s valid and invalid types). `text` reads
+// UTF-8 and drops a byte order mark. A `FileData` is a `Blob` with a name and a time.
+import std/blob.{Blob, FileData}
+
+pub fn main() -> Unit ! {Console} {
+  let b = Blob.of(String.to_bytes("abcdefghij"), "Text/Plain")
+  Console.print("size {Blob.size(b)}, media type {[b.media_type]}")
+  for (start, end) in [(0, 10), (2, 5), (-3, 10), (3, -3), (-100, 2), (7, 3), (8, 100)] {
+    let s = Blob.slice(b, start, end, "")
+    Console.print("slice({start}, {end}): {Blob.text(s)} ({Blob.size(s)} bytes)")
+  }
+  for t in [
+    "te(xt/plain",
+    "te\"xt/plain",
+    "te\u{20}xt/plain",
+    "TEXT/PLAIN",
+    "text/plain;charset = UTF-8",
+    "\u{FF}",
+    "te\u{9}xt/plain",
+    "te\u{0}xt/plain",
+    "te\u{1F}xt/plain",
+    "te\u{7F}xt/plain",
+  ] { Console.print("{[t]} -> {[Blob.slice(b, 0, 4, t).media_type]}") }
+  let bom = Blob.of(Bytes.from_list([0xEF, 0xBB, 0xBF, 0xE2, 0x82, 0xAC, 0x31]), "")
+  Console.print("with BOM: {Blob.text(bom)}, size {Blob.size(bom)}")
+  let f = FileData {
+    blob: b,
+    name: "notes.txt",
+    last_modified: Instant.from_unix_millis(1_700_000_000_000),
+  }
+  Console.print(
+    "{f.name}: {Blob.size(f.blob)} bytes, {f.blob.media_type}, {f.last_modified.format_iso()}",
+  )
+}

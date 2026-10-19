@@ -7,6 +7,8 @@ semantics/arith_range_edges_remainder_zero: D002, 1 allocated, 0 dup, 1 drop, pe
 semantics/arith_ranges_proved: ok, 30 allocated, 0 dup, 30 drop, peak 4, live 0/0
 semantics/arith_ranges_requires_seeded: ok, 23 allocated, 0 dup, 23 drop, peak 4, live 0/0
 semantics/arith_ranges_requires_violated: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/blob_slice_and_text: unsupported (builtin string_to_bytes)
+semantics/blob_text_rejects_invalid_utf8: unsupported (builtin bytes_from_list)
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/bytes_base64_lenient_whitespace: unsupported (builtin bytes_from_base64_lenient)
 semantics/bytes_base64_rejects_padding: unsupported (builtin bytes_from_base64)
@@ -65,6 +67,13 @@ semantics/encoding_decoder_split_sequence: unsupported (builtin bytes_from_list)
 semantics/encoding_fatal_vs_replace: unsupported (builtin bytes_from_list)
 semantics/encoding_rejects_unsupported_label: ok, 562 allocated, 2015 dup, 2577 drop, peak 27, live 0/0
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
+semantics/form_encode_rejects_boundary: unsupported (builtin string_to_bytes)
+semantics/form_encode_wpt: unsupported (builtin bytes_from_list)
+semantics/form_filename_is_data: unsupported (builtin string_to_bytes)
+semantics/form_multipart_roundtrip: unsupported (builtin string_to_bytes)
+semantics/form_parse_rejects_limits: unsupported (builtin string_to_bytes)
+semantics/form_parse_rejects_malformed: unsupported (builtin string_to_bytes)
+semantics/form_urlencoded_roundtrip: unsupported (builtin bytes_from_list)
 semantics/function_values: ok, 20 allocated, 7 dup, 27 drop, peak 9, live 0/0
 semantics/fused_get_expect: ok, 331 allocated, 5373 dup, 5704 drop, peak 108, live 0/0
 semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, live 0/0
@@ -80,6 +89,8 @@ semantics/handler_clause_fail: ok, 11 allocated, 2 dup, 13 drop, peak 4, live 0/
 semantics/handler_forwarding: ok, 13 allocated, 3 dup, 16 drop, peak 7, live 0/0
 semantics/handler_lexical_bind: ok, 20 allocated, 7 dup, 27 drop, peak 7, live 0/0
 semantics/handler_state: ok, 14 allocated, 5 dup, 19 drop, peak 6, live 0/0
+semantics/headers_rejects_invalid_name: unsupported (builtin string_to_bytes)
+semantics/headers_validate_and_combine: unsupported (builtin string_to_bytes)
 semantics/hello: ok, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/host_fs_env: unsupported (builtin string_to_bytes)
 semantics/host_root_handlers: unsupported (builtin clock_host)

@@ -1,0 +1,448 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::blob::Blob | Blob 32b (bytes: word*, media_type: word*)
+layout 1 record std::blob::FileData | FileData 40b (blob: word*, name: word*, last_modified: word*)
+layout 2 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 3 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 4 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 5 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 6 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 7 record std::form::Form | Form 24b (entries: word*)
+layout 8 variant std::form::Part | Text 24b (word*) | File 24b (word*)
+layout 9 variant std::instant::Instant | Instant 24b (i64)
+layout 10 variant std::list::Builder
+layout 11 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 variant std::searchparams::SearchParams | SearchParams 24b (word*)
+layout 14 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 15 shape |  32b (word*, word*)
+layout 16 shape |  32b (i64, word*)
+layout 17 shape |  40b (bool, word*, word*)
+
+fn main#0 pub top -> unit ; main::form_encode_wpt, frame 636 slots [%7 word*, %8 word*, %24 word*, %25 word*, %26 word*, %27 word*, %28 word*, %74 word*, %75 word*, %76 word*, %77 word*, %78 word*, %79 word*, %80 word*, %81 word*, %82 word*, %83 word*, %84 word*, %85 word*, %86 word*, %87 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %99 word*, %100 word*, %101 word*, %102 word*, %103 word*, %104 word*, %105 word*, %106 word*, %107 word*, %113 word*, %114 word*, %115 word*, %116 word*, %117 word*, %118 word*, %119 word*, %120 word*, %121 word*, %122 word*, %123 word*, %124 word*, %125 word*, %126 word*, %127 word*, %128 word*, %134 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %140 word*, %141 word*, %142 word*, %143 word*, %144 word*, %145 word*, %146 word*, %147 word*, %148 word*, %149 word*, %150 word*, %166 word*, %167 word*, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %173 word*, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %201 word*, %202 word*, %203 word*, %204 word*, %205 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 word*, %215 word*, %216 word*, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %239 word*, %240 word*, %241 word*, %242 word*, %243 word*, %244 word*, %245 word*, %246 word*, %247 word*, %248 word*, %249 word*, %250 word*, %251 word*, %252 word*, %253 word*, %254 word*, %255 word*, %256 word*, %257 word*, %258 word*, %259 word*, %260 word*, %261 word*, %262 word*, %263 word*, %264 word*, %275 word*, %276 word*, %277 word*, %278 word*, %279 word*, %280 word*, %281 word*, %282 word*, %283 word*, %284 word*, %285 word*, %286 word*, %287 word*, %288 word*, %289 word*, %290 word*, %291 word*, %292 word*, %293 word*, %294 word*, %295 word*, %296 word*, %297 word*, %298 word*, %299 word*, %300 word*, %301 word*, %302 word*, %313 word*, %314 word*, %315 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 word*, %321 word*, %322 word*, %323 word*, %324 word*, %325 word*, %326 word*, %327 word*, %328 word*, %329 word*, %330 word*, %331 word*, %332 word*, %333 word*, %334 word*, %335 word*, %336 word*, %337 word*, %338 word*, %339 word*, %340 word*, %341 word*, %342 word*, %358 word*, %359 word*, %360 word*, %361 word*, %362 word*, %363 word*, %364 word*, %365 word*, %366 word*, %367 word*, %368 word*, %369 word*, %370 word*, %371 word*, %372 word*, %373 word*, %374 word*, %375 word*, %376 word*, %377 word*, %378 word*, %379 word*, %380 word*, %381 word*, %382 word*, %383 word*, %384 word*, %385 word*, %386 word*, %387 word*, %388 word*, %389 word*, %390 word*, %436 word*, %437 word*, %438 word*, %439 word*, %440 word*, %441 word*, %442 word*, %443 word*, %444 word*, %445 word*, %446 word*, %447 word*, %448 word*, %449 word*, %450 word*, %451 word*, %452 word*, %453 word*, %454 word*, %455 word*, %456 word*, %457 word*, %458 word*, %459 word*, %460 word*, %461 word*, %462 word*, %463 word*, %464 word*, %465 word*, %466 word*, %467 word*, %468 word*, %469 word*, %470 word*, %471 word*, %472 word*, %473 word*, %474 word*, %475 word*, %476 word*, %477 word*, %483 word*, %484 word*, %485 word*, %486 word*, %487 word*, %488 word*, %489 word*, %490 word*, %491 word*, %492 word*, %493 word*, %494 word*, %495 word*, %496 word*, %497 word*, %498 word*, %499 word*, %500 word*, %501 word*, %502 word*, %503 word*, %504 word*, %505 word*, %506 word*, %507 word*, %508 word*, %509 word*, %510 word*, %511 word*, %512 word*, %513 word*, %514 word*, %515 word*, %516 word*, %517 word*, %518 word*, %519 word*, %520 word*, %521 word*, %522 word*, %523 word*, %524 word*, %525 word*, %531 word*, %532 word*, %533 word*, %534 word*, %535 word*, %536 word*, %537 word*, %538 word*, %539 word*, %540 word*, %541 word*, %542 word*, %543 word*, %544 word*, %545 word*, %546 word*, %547 word*, %548 word*, %549 word*, %550 word*, %551 word*, %552 word*, %553 word*, %554 word*, %555 word*, %556 word*, %557 word*, %558 word*, %559 word*, %560 word*, %561 word*, %562 word*, %563 word*, %564 word*, %565 word*, %566 word*, %567 word*, %568 word*, %569 word*, %570 word*, %571 word*, %572 word*, %573 word*, %574 word*, %580 word*, %581 word*, %582 word*, %583 word*, %584 word*, %585 word*, %586 word*, %587 word*, %588 word*, %589 word*, %590 word*, %591 word*, %592 word*, %593 word*, %594 word*, %595 word*, %596 word*, %597 word*, %598 word*, %599 word*, %600 word*, %601 word*, %602 word*, %603 word*, %604 word*, %605 word*, %606 word*, %607 word*, %608 word*, %609 word*, %610 word*, %611 word*, %612 word*, %613 word*, %614 word*, %615 word*, %616 word*, %617 word*, %618 word*, %619 word*, %620 word*, %621 word*, %622 word*, %623 word*, %624 word*, %640 word*, %641 word*, %642 word*, %643 word*, %644 word*, %645 word*, %646 word*, %647 word*, %648 word*, %649 word*, %650 word*, %651 word*, %652 word*, %653 word*, %654 word*, %655 word*, %656 word*, %657 word*, %658 word*, %659 word*, %660 word*, %661 word*, %662 word*, %663 word*, %664 word*, %665 word*, %666 word*, %667 word*, %668 word*, %669 word*, %670 word*, %671 word*, %672 word*, %673 word*, %674 word*, %675 word*, %676 word*, %677 word*, %678 word*, %679 word*, %680 word*, %681 word*, %682 word*, %683 word*, %684 word*, %685 word*, %686 word*, %687 word*, %703 word*, %704 word*, %705 word*, %706 word*, %707 word*, %708 word*, %709 word*, %710 word*, %711 word*, %712 word*, %713 word*, %714 word*, %715 word*, %716 word*, %717 word*, %718 word*, %719 word*, %720 word*, %721 word*, %722 word*, %723 word*, %724 word*, %725 word*, %726 word*, %727 word*, %728 word*, %729 word*, %730 word*, %731 word*, %732 word*, %733 word*, %734 word*, %735 word*, %736 word*, %737 word*, %738 word*, %739 word*, %740 word*, %741 word*, %742 word*, %743 word*, %744 word*, %745 word*, %746 word*, %747 word*, %748 word*, %749 word*, %750 word*, %751 word*, %752 word*, %753 word*, %769 word*, %770 word*, %771 word*, %772 word*, %773 word*, %774 word*, %775 word*, %776 word*, %777 word*, %778 word*, %779 word*, %780 word*, %781 word*, %782 word*, %783 word*, %784 word*, %785 word*, %786 word*, %787 word*, %788 word*, %789 word*, %790 word*, %791 word*, %792 word*, %793 word*, %794 word*, %795 word*, %796 word*, %797 word*, %798 word*, %799 word*, %800 word*, %801 word*, %802 word*, %803 word*, %804 word*, %805 word*, %806 word*, %807 word*, %808 word*, %809 word*, %810 word*, %811 word*, %812 word*, %813 word*, %814 word*, %815 word*, %816 word*, %817 word*, %818 word*, %819 word*, %820 word*, %821 word*, %822 word*, %833 word*, %834 word*, %835 word*, %836 word*, %837 word*, %838 word*, %839 word*, %840 word*, %841 word*, %842 word*, %843 word*, %844 word*, %845 word*, %846 word*, %847 word*, %848 word*, %849 word*, %850 word*, %851 word*, %852 word*, %853 word*, %854 word*, %855 word*, %856 word*, %857 word*, %858 word*, %859 word*, %860 word*, %861 word*, %862 word*, %863 word*, %864 word*, %865 word*, %866 word*, %867 word*, %868 word*, %869 word*, %870 word*, %871 word*, %872 word*, %873 word*, %874 word*, %875 word*, %876 word*, %877 word*, %878 word*, %879 word*, %880 word*, %881 word*, %882 word*, %883 word*, %884 word*, %885 word*, %886 word*, %887 word*, %888 word*, %893 word*, %939 word*, %940 word*, %941 i64, %942 i64, %943 i64, %946 word*, %947 word*, %948 i64, %949 i64, %950 i64, %958 bool, %959 word*, %960 i64, %961 i64, %966 word*, %967 word*, %968 i64, %969 i64, %970 word*, %973 bool, %974 word*, %975 i64, %976 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::form::Part.Text(%0)
+    %2 lit: bool = const true
+    %3 lit: ptr = const str 1
+    %4 tup: ptr = alloc tuple#17(bool, word, word)(%2, %3, %1)
+    %5 lit: ptr = const str 2
+    %6 lit: ptr = const str 3
+    call file#2(%5, %6) -> b1(%4)
+  b1(%7 r: ptr, %8 tup: ptr):
+    %9 lit: bool = const true
+    %10 lit: ptr = const str 1
+    %11 tup: ptr = alloc tuple#17(bool, word, word)(%9, %10, %7)
+    %12 lit: ptr = const str 4
+    %13 r: ptr = alloc std::form::Part.Text(%12)
+    %14 lit: bool = const true
+    %15 lit: ptr = const str 5
+    %16 tup: ptr = alloc tuple#17(bool, word, word)(%14, %15, %13)
+    %17 lit: ptr = const str 6
+    %18 r: ptr = alloc std::form::Part.Text(%17)
+    %19 lit: bool = const true
+    %20 lit: ptr = const str 7
+    %21 tup: ptr = alloc tuple#17(bool, word, word)(%19, %20, %18)
+    %22 lit: ptr = const str 6
+    %23 lit: ptr = const str 3
+    call file#2(%22, %23) -> b2(%8, %11, %16, %21)
+  b2(%24 r: ptr, %25 tup: ptr, %26 tup: ptr, %27 tup: ptr, %28 tup: ptr):
+    %29 lit: bool = const true
+    %30 lit: ptr = const str 7
+    %31 tup: ptr = alloc tuple#17(bool, word, word)(%29, %30, %24)
+    %32 lit: ptr = const str 4
+    %33 r: ptr = alloc std::form::Part.Text(%32)
+    %34 lit: bool = const true
+    %35 lit: ptr = const str 8
+    %36 tup: ptr = alloc tuple#17(bool, word, word)(%34, %35, %33)
+    %37 lit: ptr = const str 4
+    %38 r: ptr = alloc std::form::Part.Text(%37)
+    %39 lit: bool = const true
+    %40 lit: ptr = const str 9
+    %41 tup: ptr = alloc tuple#17(bool, word, word)(%39, %40, %38)
+    %42 lit: ptr = const str 4
+    %43 r: ptr = alloc std::form::Part.Text(%42)
+    %44 lit: bool = const true
+    %45 lit: ptr = const str 10
+    %46 tup: ptr = alloc tuple#17(bool, word, word)(%44, %45, %43)
+    %47 lit: ptr = const str 4
+    %48 r: ptr = alloc std::form::Part.Text(%47)
+    %49 lit: bool = const true
+    %50 lit: ptr = const str 11
+    %51 tup: ptr = alloc tuple#17(bool, word, word)(%49, %50, %48)
+    %52 lit: ptr = const str 12
+    %53 r: ptr = alloc std::form::Part.Text(%52)
+    %54 lit: bool = const true
+    %55 lit: ptr = const str 7
+    %56 tup: ptr = alloc tuple#17(bool, word, word)(%54, %55, %53)
+    %57 lit: ptr = const str 13
+    %58 r: ptr = alloc std::form::Part.Text(%57)
+    %59 lit: bool = const true
+    %60 lit: ptr = const str 7
+    %61 tup: ptr = alloc tuple#17(bool, word, word)(%59, %60, %58)
+    %62 lit: ptr = const str 14
+    %63 r: ptr = alloc std::form::Part.Text(%62)
+    %64 lit: bool = const true
+    %65 lit: ptr = const str 7
+    %66 tup: ptr = alloc tuple#17(bool, word, word)(%64, %65, %63)
+    %67 lit: ptr = const str 15
+    %68 r: ptr = alloc std::form::Part.Text(%67)
+    %69 lit: bool = const true
+    %70 lit: ptr = const str 7
+    %71 tup: ptr = alloc tuple#17(bool, word, word)(%69, %70, %68)
+    %72 lit: ptr = const str 12
+    %73 lit: ptr = const str 3
+    call file#2(%72, %73) -> b3(%25, %26, %27, %28, %31, %36, %41, %46, %51, %56, %61, %66, %71)
+  b3(%74 r: ptr, %75 tup: ptr, %76 tup: ptr, %77 tup: ptr, %78 tup: ptr, %79 tup: ptr, %80 tup: ptr, %81 tup: ptr, %82 tup: ptr, %83 tup: ptr, %84 tup: ptr, %85 tup: ptr, %86 tup: ptr, %87 tup: ptr):
+    %88 lit: bool = const true
+    %89 lit: ptr = const str 7
+    %90 tup: ptr = alloc tuple#17(bool, word, word)(%88, %89, %74)
+    %91 lit: ptr = const str 13
+    %92 lit: ptr = const str 3
+    call file#2(%91, %92) -> b4(%75, %76, %77, %78, %79, %80, %81, %82, %83, %84, %85, %86, %87, %90)
+  b4(%93 r: ptr, %94 tup: ptr, %95 tup: ptr, %96 tup: ptr, %97 tup: ptr, %98 tup: ptr, %99 tup: ptr, %100 tup: ptr, %101 tup: ptr, %102 tup: ptr, %103 tup: ptr, %104 tup: ptr, %105 tup: ptr, %106 tup: ptr, %107 tup: ptr):
+    %108 lit: bool = const true
+    %109 lit: ptr = const str 7
+    %110 tup: ptr = alloc tuple#17(bool, word, word)(%108, %109, %93)
+    %111 lit: ptr = const str 14
+    %112 lit: ptr = const str 3
+    call file#2(%111, %112) -> b5(%94, %95, %96, %97, %98, %99, %100, %101, %102, %103, %104, %105, %106, %107, %110)
+  b5(%113 r: ptr, %114 tup: ptr, %115 tup: ptr, %116 tup: ptr, %117 tup: ptr, %118 tup: ptr, %119 tup: ptr, %120 tup: ptr, %121 tup: ptr, %122 tup: ptr, %123 tup: ptr, %124 tup: ptr, %125 tup: ptr, %126 tup: ptr, %127 tup: ptr, %128 tup: ptr):
+    %129 lit: bool = const true
+    %130 lit: ptr = const str 7
+    %131 tup: ptr = alloc tuple#17(bool, word, word)(%129, %130, %113)
+    %132 lit: ptr = const str 15
+    %133 lit: ptr = const str 3
+    call file#2(%132, %133) -> b6(%114, %115, %116, %117, %118, %119, %120, %121, %122, %123, %124, %125, %126, %127, %128, %131)
+  b6(%134 r: ptr, %135 tup: ptr, %136 tup: ptr, %137 tup: ptr, %138 tup: ptr, %139 tup: ptr, %140 tup: ptr, %141 tup: ptr, %142 tup: ptr, %143 tup: ptr, %144 tup: ptr, %145 tup: ptr, %146 tup: ptr, %147 tup: ptr, %148 tup: ptr, %149 tup: ptr, %150 tup: ptr):
+    %151 lit: bool = const true
+    %152 lit: ptr = const str 7
+    %153 tup: ptr = alloc tuple#17(bool, word, word)(%151, %152, %134)
+    %154 lit: ptr = const str 4
+    %155 r: ptr = alloc std::form::Part.Text(%154)
+    %156 lit: bool = const true
+    %157 lit: ptr = const str 16
+    %158 tup: ptr = alloc tuple#17(bool, word, word)(%156, %157, %155)
+    %159 lit: ptr = const str 17
+    %160 r: ptr = alloc std::form::Part.Text(%159)
+    %161 lit: bool = const true
+    %162 lit: ptr = const str 7
+    %163 tup: ptr = alloc tuple#17(bool, word, word)(%161, %162, %160)
+    %164 lit: ptr = const str 17
+    %165 lit: ptr = const str 3
+    call file#2(%164, %165) -> b7(%135, %136, %137, %138, %139, %140, %141, %142, %143, %144, %145, %146, %147, %148, %149, %150, %153, %158, %163)
+  b7(%166 r: ptr, %167 tup: ptr, %168 tup: ptr, %169 tup: ptr, %170 tup: ptr, %171 tup: ptr, %172 tup: ptr, %173 tup: ptr, %174 tup: ptr, %175 tup: ptr, %176 tup: ptr, %177 tup: ptr, %178 tup: ptr, %179 tup: ptr, %180 tup: ptr, %181 tup: ptr, %182 tup: ptr, %183 tup: ptr, %184 tup: ptr, %185 tup: ptr):
+    %186 lit: bool = const true
+    %187 lit: ptr = const str 7
+    %188 tup: ptr = alloc tuple#17(bool, word, word)(%186, %187, %166)
+    %189 lit: ptr = const str 4
+    %190 r: ptr = alloc std::form::Part.Text(%189)
+    %191 lit: bool = const true
+    %192 lit: ptr = const str 18
+    %193 tup: ptr = alloc tuple#17(bool, word, word)(%191, %192, %190)
+    %194 lit: ptr = const str 19
+    %195 r: ptr = alloc std::form::Part.Text(%194)
+    %196 lit: bool = const true
+    %197 lit: ptr = const str 7
+    %198 tup: ptr = alloc tuple#17(bool, word, word)(%196, %197, %195)
+    %199 lit: ptr = const str 19
+    %200 lit: ptr = const str 3
+    call file#2(%199, %200) -> b8(%167, %168, %169, %170, %171, %172, %173, %174, %175, %176, %177, %178, %179, %180, %181, %182, %183, %184, %185, %188, %193, %198)
+  b8(%201 r: ptr, %202 tup: ptr, %203 tup: ptr, %204 tup: ptr, %205 tup: ptr, %206 tup: ptr, %207 tup: ptr, %208 tup: ptr, %209 tup: ptr, %210 tup: ptr, %211 tup: ptr, %212 tup: ptr, %213 tup: ptr, %214 tup: ptr, %215 tup: ptr, %216 tup: ptr, %217 tup: ptr, %218 tup: ptr, %219 tup: ptr, %220 tup: ptr, %221 tup: ptr, %222 tup: ptr, %223 tup: ptr):
+    %224 lit: bool = const true
+    %225 lit: ptr = const str 7
+    %226 tup: ptr = alloc tuple#17(bool, word, word)(%224, %225, %201)
+    %227 lit: ptr = const str 4
+    %228 r: ptr = alloc std::form::Part.Text(%227)
+    %229 lit: bool = const true
+    %230 lit: ptr = const str 20
+    %231 tup: ptr = alloc tuple#17(bool, word, word)(%229, %230, %228)
+    %232 lit: ptr = const str 21
+    %233 r: ptr = alloc std::form::Part.Text(%232)
+    %234 lit: bool = const true
+    %235 lit: ptr = const str 7
+    %236 tup: ptr = alloc tuple#17(bool, word, word)(%234, %235, %233)
+    %237 lit: ptr = const str 21
+    %238 lit: ptr = const str 3
+    call file#2(%237, %238) -> b9(%202, %203, %204, %205, %206, %207, %208, %209, %210, %211, %212, %213, %214, %215, %216, %217, %218, %219, %220, %221, %222, %223, %226, %231, %236)
+  b9(%239 r: ptr, %240 tup: ptr, %241 tup: ptr, %242 tup: ptr, %243 tup: ptr, %244 tup: ptr, %245 tup: ptr, %246 tup: ptr, %247 tup: ptr, %248 tup: ptr, %249 tup: ptr, %250 tup: ptr, %251 tup: ptr, %252 tup: ptr, %253 tup: ptr, %254 tup: ptr, %255 tup: ptr, %256 tup: ptr, %257 tup: ptr, %258 tup: ptr, %259 tup: ptr, %260 tup: ptr, %261 tup: ptr, %262 tup: ptr, %263 tup: ptr, %264 tup: ptr):
+    %265 lit: bool = const true
+    %266 lit: ptr = const str 7
+    %267 tup: ptr = alloc tuple#17(bool, word, word)(%265, %266, %239)
+    %268 lit: ptr = const str 22
+    %269 r: ptr = alloc std::form::Part.Text(%268)
+    %270 lit: bool = const true
+    %271 lit: ptr = const str 23
+    %272 tup: ptr = alloc tuple#17(bool, word, word)(%270, %271, %269)
+    %273 lit: ptr = const str 24
+    %274 lit: ptr = const str 3
+    call file#2(%273, %274) -> b10(%240, %241, %242, %243, %244, %245, %246, %247, %248, %249, %250, %251, %252, %253, %254, %255, %256, %257, %258, %259, %260, %261, %262, %263, %264, %267, %272)
+  b10(%275 r: ptr, %276 tup: ptr, %277 tup: ptr, %278 tup: ptr, %279 tup: ptr, %280 tup: ptr, %281 tup: ptr, %282 tup: ptr, %283 tup: ptr, %284 tup: ptr, %285 tup: ptr, %286 tup: ptr, %287 tup: ptr, %288 tup: ptr, %289 tup: ptr, %290 tup: ptr, %291 tup: ptr, %292 tup: ptr, %293 tup: ptr, %294 tup: ptr, %295 tup: ptr, %296 tup: ptr, %297 tup: ptr, %298 tup: ptr, %299 tup: ptr, %300 tup: ptr, %301 tup: ptr, %302 tup: ptr):
+    %303 lit: bool = const true
+    %304 lit: ptr = const str 7
+    %305 tup: ptr = alloc tuple#17(bool, word, word)(%303, %304, %275)
+    %306 lit: ptr = const str 0
+    %307 r: ptr = alloc std::form::Part.Text(%306)
+    %308 lit: bool = const false
+    %309 lit: ptr = const str 1
+    %310 tup: ptr = alloc tuple#17(bool, word, word)(%308, %309, %307)
+    %311 lit: ptr = const str 2
+    %312 lit: ptr = const str 25
+    call file#2(%311, %312) -> b11(%276, %277, %278, %279, %280, %281, %282, %283, %284, %285, %286, %287, %288, %289, %290, %291, %292, %293, %294, %295, %296, %297, %298, %299, %300, %301, %302, %305, %310)
+  b11(%313 r: ptr, %314 tup: ptr, %315 tup: ptr, %316 tup: ptr, %317 tup: ptr, %318 tup: ptr, %319 tup: ptr, %320 tup: ptr, %321 tup: ptr, %322 tup: ptr, %323 tup: ptr, %324 tup: ptr, %325 tup: ptr, %326 tup: ptr, %327 tup: ptr, %328 tup: ptr, %329 tup: ptr, %330 tup: ptr, %331 tup: ptr, %332 tup: ptr, %333 tup: ptr, %334 tup: ptr, %335 tup: ptr, %336 tup: ptr, %337 tup: ptr, %338 tup: ptr, %339 tup: ptr, %340 tup: ptr, %341 tup: ptr, %342 tup: ptr):
+    %343 lit: bool = const false
+    %344 lit: ptr = const str 1
+    %345 tup: ptr = alloc tuple#17(bool, word, word)(%343, %344, %313)
+    %346 lit: ptr = const str 4
+    %347 r: ptr = alloc std::form::Part.Text(%346)
+    %348 lit: bool = const false
+    %349 lit: ptr = const str 5
+    %350 tup: ptr = alloc tuple#17(bool, word, word)(%348, %349, %347)
+    %351 lit: ptr = const str 6
+    %352 r: ptr = alloc std::form::Part.Text(%351)
+    %353 lit: bool = const false
+    %354 lit: ptr = const str 7
+    %355 tup: ptr = alloc tuple#17(bool, word, word)(%353, %354, %352)
+    %356 lit: ptr = const str 6
+    %357 lit: ptr = const str 25
+    call file#2(%356, %357) -> b12(%314, %315, %316, %317, %318, %319, %320, %321, %322, %323, %324, %325, %326, %327, %328, %329, %330, %331, %332, %333, %334, %335, %336, %337, %338, %339, %340, %341, %342, %345, %350, %355)
+  b12(%358 r: ptr, %359 tup: ptr, %360 tup: ptr, %361 tup: ptr, %362 tup: ptr, %363 tup: ptr, %364 tup: ptr, %365 tup: ptr, %366 tup: ptr, %367 tup: ptr, %368 tup: ptr, %369 tup: ptr, %370 tup: ptr, %371 tup: ptr, %372 tup: ptr, %373 tup: ptr, %374 tup: ptr, %375 tup: ptr, %376 tup: ptr, %377 tup: ptr, %378 tup: ptr, %379 tup: ptr, %380 tup: ptr, %381 tup: ptr, %382 tup: ptr, %383 tup: ptr, %384 tup: ptr, %385 tup: ptr, %386 tup: ptr, %387 tup: ptr, %388 tup: ptr, %389 tup: ptr, %390 tup: ptr):
+    %391 lit: bool = const false
+    %392 lit: ptr = const str 7
+    %393 tup: ptr = alloc tuple#17(bool, word, word)(%391, %392, %358)
+    %394 lit: ptr = const str 4
+    %395 r: ptr = alloc std::form::Part.Text(%394)
+    %396 lit: bool = const false
+    %397 lit: ptr = const str 8
+    %398 tup: ptr = alloc tuple#17(bool, word, word)(%396, %397, %395)
+    %399 lit: ptr = const str 4
+    %400 r: ptr = alloc std::form::Part.Text(%399)
+    %401 lit: bool = const false
+    %402 lit: ptr = const str 9
+    %403 tup: ptr = alloc tuple#17(bool, word, word)(%401, %402, %400)
+    %404 lit: ptr = const str 4
+    %405 r: ptr = alloc std::form::Part.Text(%404)
+    %406 lit: bool = const false
+    %407 lit: ptr = const str 10
+    %408 tup: ptr = alloc tuple#17(bool, word, word)(%406, %407, %405)
+    %409 lit: ptr = const str 4
+    %410 r: ptr = alloc std::form::Part.Text(%409)
+    %411 lit: bool = const false
+    %412 lit: ptr = const str 11
+    %413 tup: ptr = alloc tuple#17(bool, word, word)(%411, %412, %410)
+    %414 lit: ptr = const str 12
+    %415 r: ptr = alloc std::form::Part.Text(%414)
+    %416 lit: bool = const false
+    %417 lit: ptr = const str 7
+    %418 tup: ptr = alloc tuple#17(bool, word, word)(%416, %417, %415)
+    %419 lit: ptr = const str 13
+    %420 r: ptr = alloc std::form::Part.Text(%419)
+    %421 lit: bool = const false
+    %422 lit: ptr = const str 7
+    %423 tup: ptr = alloc tuple#17(bool, word, word)(%421, %422, %420)
+    %424 lit: ptr = const str 14
+    %425 r: ptr = alloc std::form::Part.Text(%424)
+    %426 lit: bool = const false
+    %427 lit: ptr = const str 7
+    %428 tup: ptr = alloc tuple#17(bool, word, word)(%426, %427, %425)
+    %429 lit: ptr = const str 15
+    %430 r: ptr = alloc std::form::Part.Text(%429)
+    %431 lit: bool = const false
+    %432 lit: ptr = const str 7
+    %433 tup: ptr = alloc tuple#17(bool, word, word)(%431, %432, %430)
+    %434 lit: ptr = const str 12
+    %435 lit: ptr = const str 25
+    call file#2(%434, %435) -> b13(%359, %360, %361, %362, %363, %364, %365, %366, %367, %368, %369, %370, %371, %372, %373, %374, %375, %376, %377, %378, %379, %380, %381, %382, %383, %384, %385, %386, %387, %388, %389, %390, %393, %398, %403, %408, %413, %418, %423, %428, %433)
+  b13(%436 r: ptr, %437 tup: ptr, %438 tup: ptr, %439 tup: ptr, %440 tup: ptr, %441 tup: ptr, %442 tup: ptr, %443 tup: ptr, %444 tup: ptr, %445 tup: ptr, %446 tup: ptr, %447 tup: ptr, %448 tup: ptr, %449 tup: ptr, %450 tup: ptr, %451 tup: ptr, %452 tup: ptr, %453 tup: ptr, %454 tup: ptr, %455 tup: ptr, %456 tup: ptr, %457 tup: ptr, %458 tup: ptr, %459 tup: ptr, %460 tup: ptr, %461 tup: ptr, %462 tup: ptr, %463 tup: ptr, %464 tup: ptr, %465 tup: ptr, %466 tup: ptr, %467 tup: ptr, %468 tup: ptr, %469 tup: ptr, %470 tup: ptr, %471 tup: ptr, %472 tup: ptr, %473 tup: ptr, %474 tup: ptr, %475 tup: ptr, %476 tup: ptr, %477 tup: ptr):
+    %478 lit: bool = const false
+    %479 lit: ptr = const str 7
+    %480 tup: ptr = alloc tuple#17(bool, word, word)(%478, %479, %436)
+    %481 lit: ptr = const str 13
+    %482 lit: ptr = const str 25
+    call file#2(%481, %482) -> b14(%437, %438, %439, %440, %441, %442, %443, %444, %445, %446, %447, %448, %449, %450, %451, %452, %453, %454, %455, %456, %457, %458, %459, %460, %461, %462, %463, %464, %465, %466, %467, %468, %469, %470, %471, %472, %473, %474, %475, %476, %477, %480)
+  b14(%483 r: ptr, %484 tup: ptr, %485 tup: ptr, %486 tup: ptr, %487 tup: ptr, %488 tup: ptr, %489 tup: ptr, %490 tup: ptr, %491 tup: ptr, %492 tup: ptr, %493 tup: ptr, %494 tup: ptr, %495 tup: ptr, %496 tup: ptr, %497 tup: ptr, %498 tup: ptr, %499 tup: ptr, %500 tup: ptr, %501 tup: ptr, %502 tup: ptr, %503 tup: ptr, %504 tup: ptr, %505 tup: ptr, %506 tup: ptr, %507 tup: ptr, %508 tup: ptr, %509 tup: ptr, %510 tup: ptr, %511 tup: ptr, %512 tup: ptr, %513 tup: ptr, %514 tup: ptr, %515 tup: ptr, %516 tup: ptr, %517 tup: ptr, %518 tup: ptr, %519 tup: ptr, %520 tup: ptr, %521 tup: ptr, %522 tup: ptr, %523 tup: ptr, %524 tup: ptr, %525 tup: ptr):
+    %526 lit: bool = const false
+    %527 lit: ptr = const str 7
+    %528 tup: ptr = alloc tuple#17(bool, word, word)(%526, %527, %483)
+    %529 lit: ptr = const str 14
+    %530 lit: ptr = const str 25
+    call file#2(%529, %530) -> b15(%484, %485, %486, %487, %488, %489, %490, %491, %492, %493, %494, %495, %496, %497, %498, %499, %500, %501, %502, %503, %504, %505, %506, %507, %508, %509, %510, %511, %512, %513, %514, %515, %516, %517, %518, %519, %520, %521, %522, %523, %524, %525, %528)
+  b15(%531 r: ptr, %532 tup: ptr, %533 tup: ptr, %534 tup: ptr, %535 tup: ptr, %536 tup: ptr, %537 tup: ptr, %538 tup: ptr, %539 tup: ptr, %540 tup: ptr, %541 tup: ptr, %542 tup: ptr, %543 tup: ptr, %544 tup: ptr, %545 tup: ptr, %546 tup: ptr, %547 tup: ptr, %548 tup: ptr, %549 tup: ptr, %550 tup: ptr, %551 tup: ptr, %552 tup: ptr, %553 tup: ptr, %554 tup: ptr, %555 tup: ptr, %556 tup: ptr, %557 tup: ptr, %558 tup: ptr, %559 tup: ptr, %560 tup: ptr, %561 tup: ptr, %562 tup: ptr, %563 tup: ptr, %564 tup: ptr, %565 tup: ptr, %566 tup: ptr, %567 tup: ptr, %568 tup: ptr, %569 tup: ptr, %570 tup: ptr, %571 tup: ptr, %572 tup: ptr, %573 tup: ptr, %574 tup: ptr):
+    %575 lit: bool = const false
+    %576 lit: ptr = const str 7
+    %577 tup: ptr = alloc tuple#17(bool, word, word)(%575, %576, %531)
+    %578 lit: ptr = const str 15
+    %579 lit: ptr = const str 25
+    call file#2(%578, %579) -> b16(%532, %533, %534, %535, %536, %537, %538, %539, %540, %541, %542, %543, %544, %545, %546, %547, %548, %549, %550, %551, %552, %553, %554, %555, %556, %557, %558, %559, %560, %561, %562, %563, %564, %565, %566, %567, %568, %569, %570, %571, %572, %573, %574, %577)
+  b16(%580 r: ptr, %581 tup: ptr, %582 tup: ptr, %583 tup: ptr, %584 tup: ptr, %585 tup: ptr, %586 tup: ptr, %587 tup: ptr, %588 tup: ptr, %589 tup: ptr, %590 tup: ptr, %591 tup: ptr, %592 tup: ptr, %593 tup: ptr, %594 tup: ptr, %595 tup: ptr, %596 tup: ptr, %597 tup: ptr, %598 tup: ptr, %599 tup: ptr, %600 tup: ptr, %601 tup: ptr, %602 tup: ptr, %603 tup: ptr, %604 tup: ptr, %605 tup: ptr, %606 tup: ptr, %607 tup: ptr, %608 tup: ptr, %609 tup: ptr, %610 tup: ptr, %611 tup: ptr, %612 tup: ptr, %613 tup: ptr, %614 tup: ptr, %615 tup: ptr, %616 tup: ptr, %617 tup: ptr, %618 tup: ptr, %619 tup: ptr, %620 tup: ptr, %621 tup: ptr, %622 tup: ptr, %623 tup: ptr, %624 tup: ptr):
+    %625 lit: bool = const false
+    %626 lit: ptr = const str 7
+    %627 tup: ptr = alloc tuple#17(bool, word, word)(%625, %626, %580)
+    %628 lit: ptr = const str 4
+    %629 r: ptr = alloc std::form::Part.Text(%628)
+    %630 lit: bool = const false
+    %631 lit: ptr = const str 16
+    %632 tup: ptr = alloc tuple#17(bool, word, word)(%630, %631, %629)
+    %633 lit: ptr = const str 17
+    %634 r: ptr = alloc std::form::Part.Text(%633)
+    %635 lit: bool = const false
+    %636 lit: ptr = const str 7
+    %637 tup: ptr = alloc tuple#17(bool, word, word)(%635, %636, %634)
+    %638 lit: ptr = const str 17
+    %639 lit: ptr = const str 25
+    call file#2(%638, %639) -> b17(%581, %582, %583, %584, %585, %586, %587, %588, %589, %590, %591, %592, %593, %594, %595, %596, %597, %598, %599, %600, %601, %602, %603, %604, %605, %606, %607, %608, %609, %610, %611, %612, %613, %614, %615, %616, %617, %618, %619, %620, %621, %622, %623, %624, %627, %632, %637)
+  b17(%640 r: ptr, %641 tup: ptr, %642 tup: ptr, %643 tup: ptr, %644 tup: ptr, %645 tup: ptr, %646 tup: ptr, %647 tup: ptr, %648 tup: ptr, %649 tup: ptr, %650 tup: ptr, %651 tup: ptr, %652 tup: ptr, %653 tup: ptr, %654 tup: ptr, %655 tup: ptr, %656 tup: ptr, %657 tup: ptr, %658 tup: ptr, %659 tup: ptr, %660 tup: ptr, %661 tup: ptr, %662 tup: ptr, %663 tup: ptr, %664 tup: ptr, %665 tup: ptr, %666 tup: ptr, %667 tup: ptr, %668 tup: ptr, %669 tup: ptr, %670 tup: ptr, %671 tup: ptr, %672 tup: ptr, %673 tup: ptr, %674 tup: ptr, %675 tup: ptr, %676 tup: ptr, %677 tup: ptr, %678 tup: ptr, %679 tup: ptr, %680 tup: ptr, %681 tup: ptr, %682 tup: ptr, %683 tup: ptr, %684 tup: ptr, %685 tup: ptr, %686 tup: ptr, %687 tup: ptr):
+    %688 lit: bool = const false
+    %689 lit: ptr = const str 7
+    %690 tup: ptr = alloc tuple#17(bool, word, word)(%688, %689, %640)
+    %691 lit: ptr = const str 4
+    %692 r: ptr = alloc std::form::Part.Text(%691)
+    %693 lit: bool = const false
+    %694 lit: ptr = const str 18
+    %695 tup: ptr = alloc tuple#17(bool, word, word)(%693, %694, %692)
+    %696 lit: ptr = const str 19
+    %697 r: ptr = alloc std::form::Part.Text(%696)
+    %698 lit: bool = const false
+    %699 lit: ptr = const str 7
+    %700 tup: ptr = alloc tuple#17(bool, word, word)(%698, %699, %697)
+    %701 lit: ptr = const str 19
+    %702 lit: ptr = const str 25
+    call file#2(%701, %702) -> b18(%641, %642, %643, %644, %645, %646, %647, %648, %649, %650, %651, %652, %653, %654, %655, %656, %657, %658, %659, %660, %661, %662, %663, %664, %665, %666, %667, %668, %669, %670, %671, %672, %673, %674, %675, %676, %677, %678, %679, %680, %681, %682, %683, %684, %685, %686, %687, %690, %695, %700)
+  b18(%703 r: ptr, %704 tup: ptr, %705 tup: ptr, %706 tup: ptr, %707 tup: ptr, %708 tup: ptr, %709 tup: ptr, %710 tup: ptr, %711 tup: ptr, %712 tup: ptr, %713 tup: ptr, %714 tup: ptr, %715 tup: ptr, %716 tup: ptr, %717 tup: ptr, %718 tup: ptr, %719 tup: ptr, %720 tup: ptr, %721 tup: ptr, %722 tup: ptr, %723 tup: ptr, %724 tup: ptr, %725 tup: ptr, %726 tup: ptr, %727 tup: ptr, %728 tup: ptr, %729 tup: ptr, %730 tup: ptr, %731 tup: ptr, %732 tup: ptr, %733 tup: ptr, %734 tup: ptr, %735 tup: ptr, %736 tup: ptr, %737 tup: ptr, %738 tup: ptr, %739 tup: ptr, %740 tup: ptr, %741 tup: ptr, %742 tup: ptr, %743 tup: ptr, %744 tup: ptr, %745 tup: ptr, %746 tup: ptr, %747 tup: ptr, %748 tup: ptr, %749 tup: ptr, %750 tup: ptr, %751 tup: ptr, %752 tup: ptr, %753 tup: ptr):
+    %754 lit: bool = const false
+    %755 lit: ptr = const str 7
+    %756 tup: ptr = alloc tuple#17(bool, word, word)(%754, %755, %703)
+    %757 lit: ptr = const str 4
+    %758 r: ptr = alloc std::form::Part.Text(%757)
+    %759 lit: bool = const false
+    %760 lit: ptr = const str 20
+    %761 tup: ptr = alloc tuple#17(bool, word, word)(%759, %760, %758)
+    %762 lit: ptr = const str 21
+    %763 r: ptr = alloc std::form::Part.Text(%762)
+    %764 lit: bool = const false
+    %765 lit: ptr = const str 7
+    %766 tup: ptr = alloc tuple#17(bool, word, word)(%764, %765, %763)
+    %767 lit: ptr = const str 21
+    %768 lit: ptr = const str 25
+    call file#2(%767, %768) -> b19(%704, %705, %706, %707, %708, %709, %710, %711, %712, %713, %714, %715, %716, %717, %718, %719, %720, %721, %722, %723, %724, %725, %726, %727, %728, %729, %730, %731, %732, %733, %734, %735, %736, %737, %738, %739, %740, %741, %742, %743, %744, %745, %746, %747, %748, %749, %750, %751, %752, %753, %756, %761, %766)
+  b19(%769 r: ptr, %770 tup: ptr, %771 tup: ptr, %772 tup: ptr, %773 tup: ptr, %774 tup: ptr, %775 tup: ptr, %776 tup: ptr, %777 tup: ptr, %778 tup: ptr, %779 tup: ptr, %780 tup: ptr, %781 tup: ptr, %782 tup: ptr, %783 tup: ptr, %784 tup: ptr, %785 tup: ptr, %786 tup: ptr, %787 tup: ptr, %788 tup: ptr, %789 tup: ptr, %790 tup: ptr, %791 tup: ptr, %792 tup: ptr, %793 tup: ptr, %794 tup: ptr, %795 tup: ptr, %796 tup: ptr, %797 tup: ptr, %798 tup: ptr, %799 tup: ptr, %800 tup: ptr, %801 tup: ptr, %802 tup: ptr, %803 tup: ptr, %804 tup: ptr, %805 tup: ptr, %806 tup: ptr, %807 tup: ptr, %808 tup: ptr, %809 tup: ptr, %810 tup: ptr, %811 tup: ptr, %812 tup: ptr, %813 tup: ptr, %814 tup: ptr, %815 tup: ptr, %816 tup: ptr, %817 tup: ptr, %818 tup: ptr, %819 tup: ptr, %820 tup: ptr, %821 tup: ptr, %822 tup: ptr):
+    %823 lit: bool = const false
+    %824 lit: ptr = const str 7
+    %825 tup: ptr = alloc tuple#17(bool, word, word)(%823, %824, %769)
+    %826 lit: ptr = const str 22
+    %827 r: ptr = alloc std::form::Part.Text(%826)
+    %828 lit: bool = const false
+    %829 lit: ptr = const str 23
+    %830 tup: ptr = alloc tuple#17(bool, word, word)(%828, %829, %827)
+    %831 lit: ptr = const str 24
+    %832 lit: ptr = const str 25
+    call file#2(%831, %832) -> b20(%770, %771, %772, %773, %774, %775, %776, %777, %778, %779, %780, %781, %782, %783, %784, %785, %786, %787, %788, %789, %790, %791, %792, %793, %794, %795, %796, %797, %798, %799, %800, %801, %802, %803, %804, %805, %806, %807, %808, %809, %810, %811, %812, %813, %814, %815, %816, %817, %818, %819, %820, %821, %822, %825, %830)
+  b20(%833 r: ptr, %834 tup: ptr, %835 tup: ptr, %836 tup: ptr, %837 tup: ptr, %838 tup: ptr, %839 tup: ptr, %840 tup: ptr, %841 tup: ptr, %842 tup: ptr, %843 tup: ptr, %844 tup: ptr, %845 tup: ptr, %846 tup: ptr, %847 tup: ptr, %848 tup: ptr, %849 tup: ptr, %850 tup: ptr, %851 tup: ptr, %852 tup: ptr, %853 tup: ptr, %854 tup: ptr, %855 tup: ptr, %856 tup: ptr, %857 tup: ptr, %858 tup: ptr, %859 tup: ptr, %860 tup: ptr, %861 tup: ptr, %862 tup: ptr, %863 tup: ptr, %864 tup: ptr, %865 tup: ptr, %866 tup: ptr, %867 tup: ptr, %868 tup: ptr, %869 tup: ptr, %870 tup: ptr, %871 tup: ptr, %872 tup: ptr, %873 tup: ptr, %874 tup: ptr, %875 tup: ptr, %876 tup: ptr, %877 tup: ptr, %878 tup: ptr, %879 tup: ptr, %880 tup: ptr, %881 tup: ptr, %882 tup: ptr, %883 tup: ptr, %884 tup: ptr, %885 tup: ptr, %886 tup: ptr, %887 tup: ptr, %888 tup: ptr):
+    %889 lit: bool = const false
+    %890 lit: ptr = const str 7
+    %891 tup: ptr = alloc tuple#17(bool, word, word)(%889, %890, %833)
+    %892 xs: ptr = alloc list(%834, %835, %836, %837, %838, %839, %840, %841, %842, %843, %844, %845, %846, %847, %848, %849, %850, %851, %852, %853, %854, %855, %856, %857, %858, %859, %860, %861, %862, %863, %864, %865, %866, %867, %868, %869, %870, %871, %872, %873, %874, %875, %876, %877, %878, %879, %880, %881, %882, %883, %884, %885, %886, %887, %888, %891)
+    call enumerate#3(%892) -> b21()
+  b21(%893 r: ptr):
+    dup.candidate %893
+    %894 n: i64 = $list_len(%893)
+    %980 lit: i64 = const 0
+    jump b23(%980, %893, %894)
+  b22():
+    %895 lit: unit = const ()
+    ret %895
+  b23(%896 i: i64, %897 r: ptr, %898 n: i64):
+    %899 more: bool = lt.int %896, %898
+    if %899 then b24(%897, %898, %896) else b25(%897, %898, %896)
+  b24(%900 r: ptr, %901 n: i64, %902 i: i64):
+    dup.candidate %900
+    %906 x: word = $list_at(%900, %902)
+    %978 p: i64 = tuple_get %906.0
+    %979 p: ptr = tuple_get %906.1
+    drop %906
+    jump b27(%978, %979, %900, %901, %902)
+  b25(%903 r: ptr, %904 n: i64, %905 i: i64):
+    drop %903
+    jump b22()
+  b26(%907 r: ptr, %908 n: i64, %909 i: i64):
+    %910 lit: i64 = const 1
+    %911 i: i64 = intadd %909, %910
+    jump b23(%911, %907, %908)
+  b27(%912 i: i64, %913 c: ptr, %914 r: ptr, %915 n: i64, %916 i: i64):
+    %917 t: ptr = tuple_get %913.1
+    %918 t: ptr = tuple_get %913.2
+    %919 tup: ptr = alloc tuple#15(word, word)(%917, %918)
+    %920 xs: ptr = alloc list(%919)
+    %921 rec: ptr = alloc std::form::Form(%920)
+    %922 t: bool = tuple_get %913.0
+    drop %913
+    if %922 then b29(%914, %915, %916, %912, %921) else b30(%914, %915, %916, %912, %921)
+  b28(%923 v: word, %924 r: ptr, %925 n: i64, %926 i: i64):
+    drop %923
+    jump b26(%924, %925, %926)
+  b29(%927 r: ptr, %928 n: i64, %929 i: i64, %930 i: i64, %931 rec: ptr):
+    %937 lit: ptr = const str 26
+    %938 $site: i64 = const 2
+    call encode_multipart#4(%931, %937, %938) -> b31(%927, %928, %929, %930)
+  b30(%932 r: ptr, %933 n: i64, %934 i: i64, %935 i: i64, %936 rec: ptr):
+    %963 s: ptr = show %935
+    %964 lit: ptr = const str 28
+    %965 s: ptr = concat %963, %964
+    drop %963
+    drop %964
+    call encode_urlencoded#6(%936) -> b34(%932, %933, %934, %965)
+  b31(%939 r: ptr, %940 r: ptr, %941 n: i64, %942 i: i64, %943 i: i64):
+    %944 r: ptr = $string_from_bytes(%939)
+    %945 lit: ptr = const str 27
+    call unwrap_or#5(%944, %945) -> b32(%940, %941, %942, %943)
+  b32(%946 r: word, %947 r: ptr, %948 n: i64, %949 i: i64, %950 i: i64):
+    %951 s: ptr = show %950
+    %952 lit: ptr = const str 28
+    %953 s: ptr = concat %951, %952
+    drop %951
+    drop %952
+    %954 lit: ptr = const str 29
+    %955 r: ptr = $string_split(%946, %954)
+    %956 s: ptr = show %955
+    drop %955
+    %957 s: ptr = concat %953, %956
+    drop %953
+    drop %956
+    perform std::console::Console.print(%957) -> b33(%947, %948, %949)
+  b33(%958 r: unit, %959 r: ptr, %960 n: i64, %961 i: i64):
+    %962 box: word = box %958
+    jump b28(%962, %959, %960, %961)
+  b34(%966 r: ptr, %967 r: ptr, %968 n: i64, %969 i: i64, %970 s: ptr):
+    %971 s: ptr = show %966
+    drop %966
+    %972 s: ptr = concat %970, %971
+    drop %970
+    drop %971
+    perform std::console::Console.print(%972) -> b35(%967, %968, %969)
+  b35(%973 r: unit, %974 r: ptr, %975 n: i64, %976 i: i64):
+    %977 box: word = box %973
+    jump b28(%977, %974, %975, %976)
+
+fn $entry#1 top -> unit ; main::form_encode_wpt, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn file#2 top -> ptr ; main::form_encode_wpt, frame 7 slots [%0 word*, %1 word*, %4 word*, %5 word*, %7 word*, %8 word*, %9 word*]
+  b0(%0 name: ptr, %1 media_type: ptr):
+    %2 xs: ptr = alloc list()
+    %3 r: ptr = $bytes_from_list(%2)
+    call of#30(%3, %1) -> b1(%0)
+  b1(%4 r: ptr, %5 name: ptr):
+    %6 lit: i64 = const 0
+    call from_unix_millis#36(%6) -> b2(%5, %4)
+  b2(%7 r: ptr, %8 name: ptr, %9 r: ptr):
+    %10 rec: ptr = alloc std::blob::FileData(%9, %8, %7)
+    %11 r: ptr = alloc std::form::Part.File(%10)
+    ret %11

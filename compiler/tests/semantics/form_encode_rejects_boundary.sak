@@ -1,0 +1,17 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://www.rfc-editor.org/rfc/rfc2046#section-5.1.1
+// expect-exit: 70
+// expect-defect: D020
+
+// `Form.encode_multipart` requires an RFC 2046 boundary (`Form.is_boundary`): which boundary a
+// program passes is a fact about the program, so a bad one is the caller defect `D020`, not a
+// failure. `Form.boundary()` always gives a valid one.
+import std/form.{Form, Part}
+
+pub fn main() -> Unit ! {Console} {
+  let form = Form { entries: [("a", Part.Text("1"))] }
+  Console.print("{Form.is_boundary("ok-boundary")} {Form.is_boundary("has;semicolon")}")
+  let _ = Form.encode_multipart(form, "has;semicolon")
+  Console.print("unreachable")
+}

@@ -1,0 +1,93 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://html.spec.whatwg.org/multipage/form-control-infrastructure.html#multipart/form-data-encoding-algorithm
+
+// 56 cases of WPT's form-submission tests (`tests/vectors/form.jsonl`): a one-field form is
+// encoded as `multipart/form-data` (printed as its CRLF-separated lines, boundary `B`) or as
+// `application/x-www-form-urlencoded`, so `.stdout` is the upstream expectation: lone CR and
+// LF become CRLF in names and text values, `"`, CR and LF are `%22`, `%0D` and `%0A` in names
+// and file names, and a file contributes its name to a urlencoded body. The cases and `.stdout`
+// are generated from the table; edit neither by hand
+// (`SAKURA_BLESS=1 cargo test -p sakura_cli --test semantics form_vectors`).
+import std/blob.{Blob, FileData}
+import std/form.{Form, Part}
+
+fn file(name: String, media_type: String) -> Part {
+  Part.File(FileData {
+    blob: Blob.of(Bytes.from_list([]), media_type),
+    name,
+    last_modified: Instant.from_unix_millis(0),
+  })
+}
+
+pub fn main() -> Unit ! {Console} {
+  // BEGIN generated from tests/vectors/form.jsonl: (multipart, name, value)
+  let cases = [
+    (true, "basic", Part.Text("test")),
+    (true, "basic", file("file-test.txt", "text/plain")),
+    (true, "a\u{0}b", Part.Text("c")),
+    (true, "a", Part.Text("b\u{0}c")),
+    (true, "a", file("b\u{0}c", "text/plain")),
+    (true, "a\u{A}b", Part.Text("c")),
+    (true, "a\u{D}b", Part.Text("c")),
+    (true, "a\u{D}\u{A}b", Part.Text("c")),
+    (true, "a\u{A}\u{D}b", Part.Text("c")),
+    (true, "a", Part.Text("b\u{A}c")),
+    (true, "a", Part.Text("b\u{D}c")),
+    (true, "a", Part.Text("b\u{D}\u{A}c")),
+    (true, "a", Part.Text("b\u{A}\u{D}c")),
+    (true, "a", file("b\u{A}c", "text/plain")),
+    (true, "a", file("b\u{D}c", "text/plain")),
+    (true, "a", file("b\u{D}\u{A}c", "text/plain")),
+    (true, "a", file("b\u{A}\u{D}c", "text/plain")),
+    (true, "a\"b", Part.Text("c")),
+    (true, "a", Part.Text("b\"c")),
+    (true, "a", file("b\"c", "text/plain")),
+    (true, "a'b", Part.Text("c")),
+    (true, "a", Part.Text("b'c")),
+    (true, "a", file("b'c", "text/plain")),
+    (true, "a\\b", Part.Text("c")),
+    (true, "a", Part.Text("b\\c")),
+    (true, "a", file("b\\c", "text/plain")),
+    (true, "\u{E1}b", Part.Text("\u{E7}")),
+    (true, "a", file("\u{259}.txt", "text/plain")),
+    (false, "basic", Part.Text("test")),
+    (false, "basic", file("file-test.txt", "")),
+    (false, "a\u{0}b", Part.Text("c")),
+    (false, "a", Part.Text("b\u{0}c")),
+    (false, "a", file("b\u{0}c", "")),
+    (false, "a\u{A}b", Part.Text("c")),
+    (false, "a\u{D}b", Part.Text("c")),
+    (false, "a\u{D}\u{A}b", Part.Text("c")),
+    (false, "a\u{A}\u{D}b", Part.Text("c")),
+    (false, "a", Part.Text("b\u{A}c")),
+    (false, "a", Part.Text("b\u{D}c")),
+    (false, "a", Part.Text("b\u{D}\u{A}c")),
+    (false, "a", Part.Text("b\u{A}\u{D}c")),
+    (false, "a", file("b\u{A}c", "")),
+    (false, "a", file("b\u{D}c", "")),
+    (false, "a", file("b\u{D}\u{A}c", "")),
+    (false, "a", file("b\u{A}\u{D}c", "")),
+    (false, "a\"b", Part.Text("c")),
+    (false, "a", Part.Text("b\"c")),
+    (false, "a", file("b\"c", "")),
+    (false, "a'b", Part.Text("c")),
+    (false, "a", Part.Text("b'c")),
+    (false, "a", file("b'c", "")),
+    (false, "a\\b", Part.Text("c")),
+    (false, "a", Part.Text("b\\c")),
+    (false, "a", file("b\\c", "")),
+    (false, "\u{E1}b", Part.Text("\u{E7}")),
+    (false, "a", file("\u{259}.txt", "")),
+  ]
+  // END generated
+  for (i, c) in List.enumerate(cases) {
+    let f = Form { entries: [(c.1, c.2)] }
+    if c.0 {
+      let text = String.from_bytes(Form.encode_multipart(f, "B")).unwrap_or("not UTF-8")
+      Console.print("{i}: {String.split(text, "\r\n")}")
+    } else {
+      Console.print("{i}: {Form.encode_urlencoded(f)}")
+    }
+  }
+}

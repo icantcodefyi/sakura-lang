@@ -7,7 +7,7 @@ builds, and contracts/tests/permissions have not been weakened. Repeat the froze
 baseline check after the final edits. Report missing prerequisites and failing
 checks explicitly; do not claim a skipped test passed.
 
-These nine projects teach supported Sakura APIs on the JavaScript backend. Each
+These ten projects teach supported Sakura APIs on the JavaScript backend. Each
 project is exercised offline by `cargo test -p sakura_cli --test examples`;
 HTTP and LLM exchanges are synthetic committed cassettes, with no network or API keys.
 Use Node 26 for execution, including its built-in SQLite implementation.
@@ -953,4 +953,121 @@ test "a base without a scheme or with a non-ASCII host is a typed error" {
 https://api.example.test/v1/search?key=k1&q=rust+%26+sakura&page=2
 https://api.example.test/v1/search?q=next&page=3
 https://api.example.test/v2/items
+```
+
+## Upload a file as multipart form data
+
+Build a `multipart/form-data` body with `Form`, send it, and parse it back within limits.
+
+`Form` is the web's `FormData` as a value: an ordered list of fields, each `Text` or a
+`File` holding a `FileData` (the web's `File`: a `Blob` of bytes and a media type, a name and
+a time). `Form.encode_multipart` writes HTML's form-submission layout, and `Form.boundary()`
+draws a fresh boundary from `Random`, so tests run under `Random.seeded` and get the same
+bytes every time. The request's `content-type` names the boundary. The receiving side calls
+`Form.parse_multipart` with a required `FormLimits`: the part count, the whole body and each
+part are bounded, and a body over a bound, or one with the wrong content type, is a typed
+`FormError` the handler turns into `400`. A file's name is data, never a path that is opened.
+
+The tests send the upload through `Http.scripted`, route an upload request through the
+receiving endpoint with `Router.handle`, and check the limit and content-type refusals.
+Request bodies are text in this version, so the file here is CSV; binary file bytes need the
+byte bodies planned for HTTP requests. No permissions are needed.
+
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/form_upload) · harness mode: `test`.
+
+From the repository root, with this checkout's `sakura` on `PATH`:
+
+```sh
+cd compiler/examples/form_upload
+sakura check --json
+sakura test --json
+```
+
+### Manifest and permissions
+
+```toml
+[package]
+name = "form_upload"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]
+```
+
+### Source and tests
+
+`src/main.sak` includes all required imports and tests.
+
+```sakura test id=cookbook-form_upload project=form_upload
+import std/blob.{Blob, FileData}
+import std/form.{Form, FormError, FormLimits, Part}
+import std/http.{Http, Path}
+import std/request.{Post, Request}
+import std/response.{HttpError, Response, Status}
+import std/router.{Router}
+import std/url.{Url}
+
+/// The upload as a `POST` of a `multipart/form-data` body with a fresh boundary.
+fn upload_request(target: Url, title: String, csv: String) -> Request ! {Random} {
+  let report = FileData {
+    blob: Blob.of(String.to_bytes(csv), "text/csv"),
+    name: "report.csv",
+    last_modified: Instant.from_unix_millis(0),
+  }
+  let form = Form { entries: [("title", Part.Text(title)), ("report", Part.File(report))] }
+  let boundary = Form.boundary()
+  // The body is text here because both parts are; binary file bytes wait for byte bodies.
+  let body = String.from_bytes(Form.encode_multipart(form, boundary)).unwrap_or("")
+  Request {
+    ..Request.of(Post, target),
+    headers: [("content-type", "multipart/form-data; boundary={boundary}")],
+    body,
+  }
+}
+
+fn upload(target: Url, title: String, csv: String) -> Status ! {Http, Random, Fail<HttpError>} {
+  Http.send(upload_request(target, title, csv)).status
+}
+
+/// The receiving side: at most 4 parts, 64 KiB in all and 32 KiB per part.
+fn receive(req: Request) -> Response {
+  let limits = FormLimits { max_parts: 4, max_bytes: 65_536, max_field_bytes: 32_768 }
+  let content_type = Request.header(req, "content-type").unwrap_or("")
+  match Form.parse_multipart(String.to_bytes(req.body), content_type, limits) {
+    Ok(form) => {
+      let names = List.map(form.entries, fn(e) {
+        match e.1 {
+          Part.Text(v) => "{e.0}={v}",
+          Part.File(f) => "{e.0}={f.name} ({f.blob.media_type}, {Blob.size(f.blob)} bytes)",
+        }
+      })
+      Response.status(201, List.join(names, "; "))
+    },
+    Err(FormError { reason }) => Response.status(400, "bad form: {reason}"),
+  }
+}
+
+test "the upload is sent once, as multipart" {
+  with Http.scripted([(Path("/v1/reports"), Response.status(201, "stored"))]) {
+    expect_eq(
+      upload(url"https://files.example.test/v1/reports", "Q3", "a,b\n1,2\n"),
+      Status.from(201),
+    )
+  }
+}
+
+test "the receiving side reads both parts back" {
+  let req = upload_request(url"/v1/reports", "Q3 \u{1F338}", "a,b\n1,2\n")
+  let response = Router.handle(Router.new().post("/v1/reports", receive), req)
+  expect_eq(response.status, Status.from(201))
+  expect_eq(response.body, "title=Q3 \u{1F338}; report=report.csv (text/csv, 8 bytes)")
+}
+
+test "a body over the limits or with the wrong content type is refused" {
+  let big = upload_request(url"/v1/reports", "big", String.repeat("x", 40_000))
+  let app = Router.new().post("/v1/reports", receive)
+  expect_eq(Router.handle(app, big).body, "bad form: Limit(MaxFieldBytes)")
+  let plain = Request { ..big, headers: [("content-type", "text/plain")] }
+  expect_eq(Router.handle(app, plain).body, "bad form: ContentType")
+}
 ```

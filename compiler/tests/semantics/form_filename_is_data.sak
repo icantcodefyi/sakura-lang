@@ -1,0 +1,33 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://www.rfc-editor.org/rfc/rfc7578#section-4.2
+
+// A received file's name is data (RFC 7578 §4.2: "do not use the file name blindly"):
+// `parse_multipart` returns it as written, path separators and all, and `main` declares only
+// `Console`, so nothing here can open, read or write a file. Saving one is `Fs` work under the
+// manifest's grant, with a name the program chose (`Path.validate` checks a path's form).
+import std/blob.{Blob}
+import std/form.{Form, FormLimits, Part}
+
+pub fn main() -> Unit ! {Console} {
+  let body = String.to_bytes(
+    "--b\r\nContent-Disposition: form-data; name=\"up\"; filename=\"../../etc/passwd\"\r\n\r\nroot\r\n--b\r\nContent-Disposition: form-data; name=\"up\"; filename=\"C:\\Windows\\win.ini\"\r\nContent-Type: Text/INI\r\n\r\n[x]\r\n--b\r\nContent-Disposition: form-data; name=\"up\"; filename=\"\"\r\n\r\n\r\n--b--\r\n",
+  )
+  let limits = FormLimits { max_parts: 4, max_bytes: 1_024, max_field_bytes: 64 }
+  match Form.parse_multipart(body, "multipart/form-data; boundary=b", limits) {
+    Ok(f) => {
+      for e in f.entries {
+        match e.1 {
+          Part.File(fd) => {
+            let text = Blob.text(fd.blob)
+            Console.print(
+              "{e.0}: name {[fd.name]}, type {[fd.blob.media_type]}, {text}, {fd.last_modified}",
+            )
+          },
+          Part.Text(v) => Console.print("{e.0}: text {[v]}"),
+        }
+      }
+    },
+    Err(e) => Console.print("{e.reason}"),
+  }
+}

@@ -1,0 +1,17 @@
+[""]: Err(HeaderError { name: "", reason: InvalidName })
+["bad name"]: Err(HeaderError { name: "bad name", reason: InvalidName })
+["colon:"]: Err(HeaderError { name: "colon:", reason: InvalidName })
+["invalidĀ"]: Err(HeaderError { name: "invalidĀ", reason: InvalidName })
+["café"]: Err(HeaderError { name: "café", reason: InvalidName })
+["quote\""]: Err(HeaderError { name: "quote\"", reason: InvalidName })
+["tab\t"]: Err(HeaderError { name: "tab\t", reason: InvalidName })
+["a\0b"]: Err(HeaderError { name: "x-name", reason: InvalidValue })
+["a\nb"]: Err(HeaderError { name: "x-name", reason: InvalidValue })
+["a\rb"]: Err(HeaderError { name: "x-name", reason: InvalidValue })
+["invalidĀ"]: Err(HeaderError { name: "x-name", reason: InvalidValue })
+["okÿ"]: Ok([("x-name", "okÿ")])
+["\r\n"]: Ok([("x-name", "")])
+append: Err(HeaderError { name: "x b", reason: InvalidName })
+set: Err(HeaderError { name: "x-a", reason: InvalidValue })
+get: None, has: false
+remove: [("x-a", "1")]

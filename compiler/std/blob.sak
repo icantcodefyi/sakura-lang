@@ -1,0 +1,80 @@
+// Binary data with a media type (RFC 0002 §2.3): the File API's `Blob` and `File` as values.
+// A `FileData` names no file on disk: reading one in is `Fs` work under the manifest's grant,
+// and a received file's `name` is data, never a path to open.
+
+import std/string.{Utf8Error}
+
+/// Bytes and their media type, `""` when unknown (`Blob`).
+pub type Blob = { bytes: Bytes, media_type: String }
+
+/// A `Blob` with a file name and modification time (`File`).
+pub type FileData = { blob: Blob, name: String, last_modified: Instant }
+
+/// `bytes` labelled `media_type` (`new Blob([bytes], { type })`): lowercased ASCII, or `""` when
+/// it has a character outside U+0020..U+007E, as the File API says.
+pub fn of(bytes: Bytes, media_type: String) -> Blob {
+  Blob { bytes, media_type: normalize(media_type) }
+}
+
+/// The length in bytes.
+pub fn size(b: Blob) -> Int { Bytes.len(b.bytes) }
+
+/// Bytes `[start, end)` labelled `media_type` (`slice`): a negative offset counts from the
+/// end, and both are clamped to the size.
+pub fn slice(b: Blob, start: Int, end: Int, media_type: String) -> Blob {
+  let n = size(b)
+  let from = relative(start, n)
+  let to = relative(end, n)
+  of(Bytes.slice(b.bytes, from, if to < from { from } else { to }), media_type)
+}
+
+/// The bytes as UTF-8 text (`text()`), a leading byte order mark removed. Strict where the
+/// File API substitutes U+FFFD: a malformed sequence is `Utf8Error` with its offset in `b`.
+pub fn text(b: Blob) -> Result<String, Utf8Error> {
+  let bom = Bytes.len(b.bytes) >= 3
+    && Bytes.get(b.bytes, 0) == Some(0xEF)
+    && Bytes.get(b.bytes, 1) == Some(0xBB)
+    && Bytes.get(b.bytes, 2) == Some(0xBF)
+  let skip = if bom { 3 } else { 0 }
+  String.from_bytes(Bytes.slice(b.bytes, skip, size(b)))
+    .map_err(fn(e) { Utf8Error { offset: e.offset + skip } })
+}
+
+fn relative(i: Int, n: Int) -> Int { if i < 0 { Int.max(n + i, 0) } else { Int.min(i, n) } }
+
+fn normalize(t: String) -> String {
+  let b = String.to_bytes(t)
+  for i in 0..Bytes.len(b) {
+    let c = Bytes.get(b, i).unwrap_or(0)
+    if c < 0x20 || c > 0x7E { return "" }
+  }
+  String.to_lower(t)
+}
+
+test "of normalizes the media type" {
+  expect_eq(
+    of(Bytes.from_list([]), "Text/Plain;charset=UTF-8").media_type,
+    "text/plain;charset=utf-8",
+  )
+  expect_eq(of(Bytes.from_list([]), "te\u{9}xt/plain").media_type, "")
+  expect_eq(of(Bytes.from_list([]), "\u{FF}").media_type, "")
+  expect_eq(of(Bytes.from_list([]), "te\"xt/plain").media_type, "te\"xt/plain")
+}
+
+test "slice counts negatives from the end and clamps" {
+  let b = of(String.to_bytes("abcdef"), "")
+  let cut = fn(s: Int, e: Int) { String.from_bytes(slice(b, s, e, "").bytes).unwrap_or("?") }
+  expect_eq(cut(1, 3), "bc")
+  expect_eq(cut(-2, 6), "ef")
+  expect_eq(cut(-100, 2), "ab")
+  expect_eq(cut(4, 2), "")
+  expect_eq(cut(0, 100), "abcdef")
+  expect_eq(size(slice(b, 2, -1, "X/Y")), 3)
+  expect_eq(slice(b, 0, 1, "X/Y").media_type, "x/y")
+}
+
+test "text strips a BOM and rejects malformed UTF-8" {
+  expect_eq(text(of(Bytes.from_list([0xEF, 0xBB, 0xBF, 0x68, 0x69]), "")), Ok("hi"))
+  expect_eq(text(of(Bytes.from_list([0x61, 0xC3, 0x28]), "")), Err(Utf8Error { offset: 1 }))
+  expect_eq(text(of(Bytes.from_list([0xEF, 0xBB, 0xBF, 0xFF]), "")), Err(Utf8Error { offset: 3 }))
+}

@@ -1,0 +1,15 @@
+name1: Some("space")
+name2: Some("tab")
+name3: Some("spaceAndTab")
+name4: Some("newLine")
+name5: Some("newLine")
+name6: Some("newLine")
+name7: Some("\u{c}\tnewLine")
+name8: Some("newLine ")
+entries: [("a-cool-header", "4, 6"), ("best-header", "2, 7"), ("set-cookie", "3"), ("set-cookie", "5"), ("xylophone-header", "1")]
+get a-cool-header: Some("4, 6")
+get set-cookie: None
+get_set_cookie: ["3", "5"]
+get_all best-header: ["2", "7"]
+to_list: [("xylophone-header", "1"), ("best-header", "2"), ("set-cookie", "3"), ("A-Cool-Header", "4"), ("set-cookie", "5"), ("A-Cool-Header", "6"), ("best-header", "7")]
+set-cookie2: [("set-cookie2", "foo2=bar2, fizz2=buzz2; domain=example2.com")]

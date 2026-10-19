@@ -1,0 +1,45 @@
+// milestone: M3
+// spec: RFC 0002 §2.3
+// Spec: https://www.rfc-editor.org/rfc/rfc7578#section-4.2
+
+// A content type that is not `multipart/form-data` with an RFC 2046 boundary (1 to 70
+// characters) is `ContentType`; a body that breaks the grammar is `Malformed` at the byte
+// offset where it does: no opening or closing delimiter, a delimiter line not ended by CRLF,
+// a part without a `Content-Disposition` of type `form-data` or without its `name` (§4.2).
+import std/form.{Form, FormError, FormLimits}
+
+fn outcome(r: Result<Form, FormError>) -> String {
+  match r {
+    Ok(f) => "{List.len(f.entries)} parts",
+    Err(e) => "{e.reason}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let limits = FormLimits { max_parts: 10, max_bytes: 1_024, max_field_bytes: 1_024 }
+  let ok = String.to_bytes("--x\r\nContent-Disposition: form-data; name=a\r\n\r\n1\r\n--x--\r\n")
+  for ct in [
+    "multipart/form-data; boundary=x",
+    "multipart/form-data;boundary=\"x\"",
+    "multipart/mixed; boundary=x",
+    "multipart/form-data",
+    "multipart/form-data; boundary=",
+    "multipart/form-data; boundary={String.repeat("b", 71)}",
+    "multipart/form-data; boundary=a;b",
+  ] { Console.print("{[ct]}: {outcome(Form.parse_multipart(ok, ct, limits))}") }
+  let ct = "multipart/form-data; boundary=x"
+  for body in [
+    "",
+    "no delimiter",
+    "--x",
+    "--xjunk\r\n",
+    "--x\r\nContent-Disposition: form-data; name=a\r\n\r\n1",
+    "--x\r\nContent-Disposition: form-data; name=a\r\n1\r\n--x--",
+    "--x\r\nContent-Type: text/plain\r\n\r\n1\r\n--x--",
+    "--x\r\nContent-Disposition: attachment; name=a\r\n\r\n1\r\n--x--",
+    "--x\r\nContent-Disposition: form-data; filename=f\r\n\r\n1\r\n--x--",
+    "--x  \r\nContent-Disposition: form-data; name=a\r\n\r\n1\r\n--x--",
+  ] {
+    Console.print("{[body]}: {outcome(Form.parse_multipart(String.to_bytes(body), ct, limits))}")
+  }
+}

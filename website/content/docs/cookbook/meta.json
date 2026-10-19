@@ -10,6 +10,7 @@
     "scripted_tool",
     "budgeted_agent",
     "indexed_update",
-    "url_build"
+    "url_build",
+    "form_upload"
   ]
 }

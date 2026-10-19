@@ -64,6 +64,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Parse text and validate data | `String.parse_int`, `Json.decode`, `Untrusted.validate`, `Result` |
 | Read CLI arguments and files | `Cli.parse`, `Path`, `Dir`, `Fs.rooted`; test with `Cli.of`, `Fs.memory` |
 | Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests |
+| Read headers, build or parse a form | `Headers.of`, `get`, `entries`; `Form.encode_multipart`, `parse_multipart` with `FormLimits`; `Blob`, `FileData` |
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
 | Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map` |
@@ -132,6 +133,8 @@ core  unit  option  result  set  int  float  duration       (no std dependencies
 list → set              map → list            string → list       bytes → list
 encoding → bytes, string, list                searchparams → encoding, string, list, bytes
 crypto → bytes, list, secret   (+ Random for `generate_key`)
+headers → string, list, bytes                 blob → bytes, string, int
+form → blob, bytes, encoding, searchparams, string, list, instant   (+ Random for `boundary`)
 json → map              uuid → string, list   instant → duration, string, list, int
 test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
@@ -162,6 +165,17 @@ externals.
 ```sakura fragment
 type Agent<T, e> = { request: Request<T>, tools: List<Tool<e>>, max_steps: Int, stop: fn(Partial<T>) -> Bool }
 fn run<T: Schema, e>(a: Agent<T, e>) -> T ! {Budget, Llm, Fail<LlmError | ToolError> | e} requires a.max_steps > 0
+```
+
+### `std/blob`
+
+```sakura fragment
+type Blob = { bytes: Bytes, media_type: String }
+type FileData = { blob: Blob, name: String, last_modified: Instant }
+fn of(bytes: Bytes, media_type: String) -> Blob
+fn size(b: Blob) -> Int
+fn slice(b: Blob, start: Int, end: Int, media_type: String) -> Blob
+fn text(b: Blob) -> Result<String, Utf8Error>
 ```
 
 ### `std/budget`
@@ -340,6 +354,23 @@ fn format(f: Float, decimals: Int) -> String requires decimals >= 0    // @exter
 fn is_nan(f: Float) -> Bool
 ```
 
+### `std/form`
+
+```sakura fragment
+type Part = Text(String) | File(FileData)
+type Form = { entries: List<(String, Part)> }
+type FormLimits = { max_parts: Int, max_bytes: Int, max_field_bytes: Int }
+type FormLimit = MaxParts | MaxBytes | MaxFieldBytes
+type FormReason = Limit(FormLimit) | ContentType | Malformed(Int)
+error FormError(reason: FormReason)
+fn encode_urlencoded(f: Form) -> String
+fn parse_urlencoded(text: String) -> Form
+fn encode_multipart(f: Form, boundary: String) -> Bytes requires is_boundary(boundary)
+fn boundary() -> String ! {Random}
+fn is_boundary(s: String) -> Bool    // @total
+fn parse_multipart(body: Bytes, content_type: String, limits: FormLimits) -> Result<Form, FormError>
+```
+
 ### `std/fs`
 
 ```sakura fragment
@@ -391,6 +422,24 @@ fn get<N>(g: Graph<N>, id: NodeId) -> Option<N>    // @total
 fn connect<N>(g: Graph<N>, a: NodeId, b: NodeId) -> Graph<N> requires get(g, a).is_some() && get(g, b).is_some()
 fn neighbors<N>(g: Graph<N>, id: NodeId) -> List<NodeId>
 fn len<N>(g: Graph<N>) -> Int
+```
+
+### `std/headers`
+
+```sakura fragment
+type HeaderReason = InvalidName | InvalidValue
+error HeaderError(name: String, reason: HeaderReason)
+opaque type Headers = Headers(List<(String, String)>)
+fn of(list: List<(String, String)>) -> Result<Headers, HeaderError>
+fn get(h: Headers, name: String) -> Option<String>
+fn get_set_cookie(h: Headers) -> List<String>
+fn get_all(h: Headers, name: String) -> List<String>
+fn has(h: Headers, name: String) -> Bool
+fn append(h: Headers, name: String, value: String) -> Result<Headers, HeaderError>
+fn set(h: Headers, name: String, value: String) -> Result<Headers, HeaderError>
+fn remove(h: Headers, name: String) -> Headers
+fn entries(h: Headers) -> List<(String, String)>
+fn to_list(h: Headers) -> List<(String, String)>
 ```
 
 ### `std/html`

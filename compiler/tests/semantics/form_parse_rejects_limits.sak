@@ -1,0 +1,36 @@
+// milestone: M3
+// spec: RFC 0002 §2.3, §6
+// Spec: https://www.rfc-editor.org/rfc/rfc7578#section-8
+
+// `Form.parse_multipart` takes its bounds as a required `FormLimits` (RFC 7578 §8: a receiver
+// must guard against a large body or many parts). The body's length is checked before any
+// part is read; the part count and each part's content size as the parts are read. A body
+// exactly at every bound parses; one byte or one part over is `FormError(Limit(…))`.
+import std/form.{Form, FormError, FormLimits, Part}
+
+fn outcome(r: Result<Form, FormError>) -> String {
+  match r {
+    Ok(f) => "{List.len(f.entries)} parts",
+    Err(e) => "{e.reason}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let form = Form {
+    entries: [("a", Part.Text("12345678")), ("b", Part.Text("x")), ("c", Part.Text(""))],
+  }
+  let body = Form.encode_multipart(form, "limit")
+  let ct = "multipart/form-data; boundary=limit"
+  let exact = FormLimits { max_parts: 3, max_bytes: Bytes.len(body), max_field_bytes: 8 }
+  Console.print("body is {Bytes.len(body)} bytes")
+  Console.print("at the bounds: {outcome(Form.parse_multipart(body, ct, exact))}")
+  let tight = [
+    FormLimits { ..exact, max_parts: 2 },
+    FormLimits { ..exact, max_bytes: Bytes.len(body) - 1 },
+    FormLimits { ..exact, max_field_bytes: 7 },
+    FormLimits { max_parts: 0, max_bytes: 0, max_field_bytes: 0 },
+  ]
+  for limits in tight {
+    Console.print("{limits}: {outcome(Form.parse_multipart(body, ct, limits))}")
+  }
+}

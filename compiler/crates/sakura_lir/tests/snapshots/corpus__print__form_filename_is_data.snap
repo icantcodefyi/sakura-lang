@@ -1,0 +1,169 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::blob::Blob | Blob 32b (bytes: word*, media_type: word*)
+layout 1 record std::blob::FileData | FileData 40b (blob: word*, name: word*, last_modified: word*)
+layout 2 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 3 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 4 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 5 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 6 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 7 record std::form::Form | Form 24b (entries: word*)
+layout 8 error std::form::FormError | FormError 24b (reason: word*)
+layout 9 variant std::form::FormLimit | MaxParts 16b () | MaxBytes 16b () | MaxFieldBytes 16b ()
+layout 10 record std::form::FormLimits | FormLimits 40b (max_parts: i64, max_bytes: i64, max_field_bytes: i64)
+layout 11 variant std::form::FormReason | Limit 24b (word*) | ContentType 16b () | Malformed 24b (i64)
+layout 12 variant std::form::Part | Text 24b (word*) | File 24b (word*)
+layout 13 variant std::instant::Instant | Instant 24b (i64)
+layout 14 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 15 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 16 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 17 shape |  32b (word*, word*)
+layout 18 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word*, %55 bool, %56 word*, %57 i64, %58 i64, %62 word*, %63 word*, %64 i64, %65 i64, %66 word*, %67 word*, %92 bool, %93 word*, %94 i64, %95 i64, %101 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = $string_to_bytes(%0)
+    %2 lit: i64 = const 4
+    %3 lit: i64 = const 1024
+    %4 lit: i64 = const 64
+    %5 rec: ptr = alloc std::form::FormLimits(%2, %3, %4)
+    %6 lit: ptr = const str 1
+    call parse_multipart#2(%1, %6, %5) -> b1()
+  b1(%7 r: ptr):
+    %8 tag: i64 = tag %7 ctor std::result::Result
+    switch %8 0 => b2(%7) 1 => b3(%7)
+  b2(%9 r: ptr):
+    %11 p: word = proj %9.0 std::result::Result.Ok
+    drop %9
+    %12 entries: word = proj %11.0 std::form::Form
+    drop %11
+    dup.candidate %12
+    %13 n: i64 = $list_len(%12)
+    %97 lit: i64 = const 0
+    jump b5(%97, %12, %13)
+  b3(%10 r: ptr):
+    %98 p: word = proj %10.0 std::result::Result.Err
+    drop %10
+    %99 reason: word = proj %98.0 std::form::FormError
+    drop %98
+    %100 s: ptr = show %99
+    drop %99
+    perform std::console::Console.print(%100) -> b15()
+  b4():
+    %14 lit: unit = const ()
+    ret %14
+  b5(%15 i: i64, %16 entries: ptr, %17 n: i64):
+    %18 more: bool = lt.int %15, %17
+    if %18 then b6(%16, %17, %15) else b7(%16, %17, %15)
+  b6(%19 entries: ptr, %20 n: i64, %21 i: i64):
+    dup.candidate %19
+    %25 x: word = $list_at(%19, %21)
+    %31 t: ptr = tuple_get %25.1
+    %36 tag: i64 = tag %31 ctor std::form::Part
+    switch %36 0 => b10(%19, %20, %21, %25, %31) 1 => b11(%19, %20, %21, %25, %31)
+  b7(%22 entries: ptr, %23 n: i64, %24 i: i64):
+    drop %22
+    jump b4()
+  b8(%26 entries: ptr, %27 n: i64, %28 i: i64):
+    %29 lit: i64 = const 1
+    %30 i: i64 = intadd %28, %29
+    jump b5(%30, %26, %27)
+  b9(%32 v: word, %33 entries: ptr, %34 n: i64, %35 i: i64):
+    drop %32
+    jump b8(%33, %34, %35)
+  b10(%37 entries: ptr, %38 n: i64, %39 i: i64, %40 x: ptr, %41 t: ptr):
+    %47 p: word = proj %41.0 std::form::Part.Text
+    drop %41
+    %48 t: ptr = tuple_get %40.0
+    drop %40
+    %49 s: ptr = show %48
+    drop %48
+    %50 lit: ptr = const str 2
+    %51 s: ptr = concat %49, %50
+    drop %49
+    drop %50
+    %52 xs: ptr = alloc list(%47)
+    %53 s: ptr = show %52
+    drop %52
+    %54 s: ptr = concat %51, %53
+    drop %51
+    drop %53
+    perform std::console::Console.print(%54) -> b12(%37, %38, %39)
+  b11(%42 entries: ptr, %43 n: i64, %44 i: i64, %45 x: ptr, %46 t: ptr):
+    %60 p: word = proj %46.0 std::form::Part.File
+    drop %46
+    %61 blob: word = proj %60.0 std::blob::FileData
+    call text#3(%61) -> b13(%42, %43, %44, %45, %60)
+  b12(%55 r: unit, %56 entries: ptr, %57 n: i64, %58 i: i64):
+    %59 box: word = box %55
+    jump b9(%59, %56, %57, %58)
+  b13(%62 r: ptr, %63 entries: ptr, %64 n: i64, %65 i: i64, %66 x: ptr, %67 fd: ptr):
+    %68 t: ptr = tuple_get %66.0
+    drop %66
+    %69 s: ptr = show %68
+    drop %68
+    %70 lit: ptr = const str 3
+    %71 s: ptr = concat %69, %70
+    drop %69
+    drop %70
+    %72 name: word = proj %67.1 std::blob::FileData
+    %73 xs: ptr = alloc list(%72)
+    %74 s: ptr = show %73
+    drop %73
+    %75 s: ptr = concat %71, %74
+    drop %71
+    drop %74
+    %76 lit: ptr = const str 4
+    %77 s: ptr = concat %75, %76
+    drop %75
+    drop %76
+    %78 blob: word = proj %67.0 std::blob::FileData
+    %79 media_type: word = proj %78.1 std::blob::Blob
+    drop %78
+    %80 xs: ptr = alloc list(%79)
+    %81 s: ptr = show %80
+    drop %80
+    %82 s: ptr = concat %77, %81
+    drop %77
+    drop %81
+    %83 lit: ptr = const str 5
+    %84 s: ptr = concat %82, %83
+    drop %82
+    drop %83
+    %85 s: ptr = show %62
+    drop %62
+    %86 s: ptr = concat %84, %85
+    drop %84
+    drop %85
+    %87 lit: ptr = const str 5
+    %88 s: ptr = concat %86, %87
+    drop %86
+    drop %87
+    %89 last_modified: word = proj %67.2 std::blob::FileData
+    drop %67
+    %90 s: ptr = show %89
+    drop %89
+    %91 s: ptr = concat %88, %90
+    drop %88
+    drop %90
+    perform std::console::Console.print(%91) -> b14(%63, %64, %65)
+  b14(%92 r: unit, %93 entries: ptr, %94 n: i64, %95 i: i64):
+    %96 box: word = box %92
+    jump b9(%96, %93, %94, %95)
+  b15(%101 r: unit):
+    %102 box: word = box %101
+    %103 unbox: unit = unbox %102
+    drop %102
+    ret %103
+
+fn $entry#1 top -> unit ; main::form_filename_is_data, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

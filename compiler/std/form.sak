@@ -1,0 +1,429 @@
+// Form data (RFC 0002 §2.3): the web's `FormData` as a value, with HTML's
+// `application/x-www-form-urlencoded` and `multipart/form-data` (RFC 7578) codecs. Encoding
+// follows HTML's form-submission algorithms, UTF-8 only; parsing a multipart body takes
+// required limits. A file part's `name` is data: nothing here reads or writes a disk.
+
+import std/blob.{Blob, FileData}
+import std/bytes.{Alphabet}
+import std/encoding.{Bom, Encoding, Errors}
+import std/searchparams.{SearchParams}
+
+/// A field's value: text, or a file with its bytes and media type.
+pub type Part = Text(String) | File(FileData)
+
+/// Fields in order; a name may repeat.
+pub type Form = { entries: List<(String, Part)> }
+
+/// The bounds `parse_multipart` enforces: at most `max_parts` parts, a body of at most
+/// `max_bytes` bytes, and at most `max_field_bytes` bytes in any one part's content.
+pub type FormLimits = { max_parts: Int, max_bytes: Int, max_field_bytes: Int }
+
+/// Which bound of `FormLimits` a body exceeded.
+pub type FormLimit = MaxParts | MaxBytes | MaxFieldBytes
+
+/// `Limit(l)`: the body exceeds a bound. `ContentType`: the content type is not
+/// `multipart/form-data` with a valid `boundary`. `Malformed(offset)`: the body breaks
+/// RFC 7578's grammar at that byte offset (a missing delimiter, a part without a
+/// `form-data` `Content-Disposition` naming it).
+pub type FormReason = Limit(FormLimit) | ContentType | Malformed(Int)
+
+pub error FormError(reason: FormReason)
+
+/// The form as `application/x-www-form-urlencoded` (a form submitted with that enctype): HTML's
+/// "convert to a list of name-value pairs", where a file contributes its name and every lone CR
+/// or LF becomes CRLF, then `SearchParams.to_string`.
+pub fn encode_urlencoded(f: Form) -> String {
+  let sp = List.fold(f.entries, SearchParams.parse(""), fn(sp, e) {
+    let value = match e.1 {
+      Text(v) => v,
+      File(fd) => fd.name,
+    }
+    SearchParams.append(sp, crlf(e.0), crlf(value))
+  })
+  SearchParams.to_string(sp)
+}
+
+/// The fields of `application/x-www-form-urlencoded` text, each a `Text` (`SearchParams.parse`).
+pub fn parse_urlencoded(text: String) -> Form {
+  Form {
+    entries: List.map(SearchParams.entries(SearchParams.parse(text)), fn(p) { (p.0, Text(p.1)) }),
+  }
+}
+
+/// The form as `multipart/form-data` delimited by `boundary` (HTML's multipart/form-data
+/// encoding algorithm): one part per field in order, names and text values with every lone CR
+/// or LF made CRLF, names and file names with `"`, CR and LF written `%22`, `%0D` and `%0A`, and
+/// a file part's `Content-Type` its media type or `application/octet-stream`. Send it with the
+/// content type `multipart/form-data; boundary=<boundary>`. The boundary must not occur in any
+/// value: a fixed one is for tests, and `boundary()` draws a fresh one.
+pub fn encode_multipart(f: Form, boundary: String) -> Bytes
+  requires is_boundary(boundary)
+{
+  var out: List<Bytes> = []
+  for (name, part) in f.entries {
+    let field = "--{boundary}\r\nContent-Disposition: form-data; name=\"{escape(crlf(name))}\""
+    match part {
+      Text(v) => { out = List.push(out, String.to_bytes("{field}\r\n\r\n{crlf(v)}\r\n")) },
+      File(fd) => {
+        let given = Blob.of(fd.blob.bytes, fd.blob.media_type).media_type
+        let media = if given == "" { "application/octet-stream" } else { given }
+        let head = "{field}; filename=\"{escape(fd.name)}\"\r\nContent-Type: {media}\r\n\r\n"
+        out = List.push(out, String.to_bytes(head))
+        out = List.push(out, fd.blob.bytes)
+        out = List.push(out, String.to_bytes("\r\n"))
+      },
+    }
+  }
+  Bytes.concat(List.push(out, String.to_bytes("--{boundary}--\r\n")))
+}
+
+/// A fresh boundary, `----SakuraFormBoundary` and 16 characters from 96 random bits.
+pub fn boundary() -> String ! {Random} {
+  "----SakuraFormBoundary" + Bytes.to_base64(Random.bytes(12), Alphabet.Url, false)
+}
+
+/// Whether `s` is an RFC 2046 boundary: 1 to 70 of the characters `0-9 A-Z a-z '()+_,-./:=?`
+/// and space, not ending in a space.
+@total
+pub fn is_boundary(s: String) -> Bool {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  if n == 0 || n > 70 || Bytes.get(b, n - 1) == Some(0x20) { return false }
+  for i in 0..n { if !is_bchar(Bytes.get(b, i).unwrap_or(0)) { return false } }
+  true
+}
+
+/// The fields of a `multipart/form-data` body (RFC 7578), `content_type` being the request's
+/// `Content-Type`. `limits` bounds the work: the body's length is checked before anything is
+/// read, then each part's count and size. A part with a `filename` parameter is a `File` whose
+/// media type is its `Content-Type` (`text/plain` when absent, RFC 7578 §4.4) and whose
+/// `last_modified` is the epoch; any other part is `Text`, its bytes read as UTF-8 with U+FFFD
+/// for a malformed sequence. `%22`, `%0D` and `%0A` in a name or file name are read back as
+/// `"`, CR and LF. A preamble before the first delimiter and an epilogue after the last are
+/// ignored.
+pub fn parse_multipart(
+  body: Bytes,
+  content_type: String,
+  limits: FormLimits,
+) -> Result<Form, FormError>
+{
+  if Bytes.len(body) > limits.max_bytes { return Err(FormError { reason: Limit(MaxBytes) }) }
+  let boundary = match boundary_of(content_type) {
+    Some(b) => b,
+    None => { return Err(FormError { reason: ContentType }) },
+  }
+  let first = String.to_bytes("--" + boundary)
+  let delimiter = String.to_bytes("\r\n--" + boundary)
+  let blank = String.to_bytes("\r\n\r\n")
+  let opening = if Bytes.slice(body, 0, Bytes.len(first)) == first {
+    0
+  } else {
+    let after_preamble = find(body, delimiter, 0)
+    if after_preamble < 0 { return malformed(0) }
+    after_preamble + 2
+  }
+  var pos = opening + Bytes.len(first)
+  var entries: List<(String, Part)> = []
+  while true {
+    // After a delimiter: `--` closes the body; otherwise optional padding, then CRLF.
+    if byte(body, pos) == 0x2D && byte(body, pos + 1) == 0x2D { break }
+    while byte(body, pos) == 0x20 || byte(body, pos) == 0x09 { pos = pos + 1 }
+    if byte(body, pos) != 0x0D || byte(body, pos + 1) != 0x0A { return malformed(pos) }
+    if List.len(entries) >= limits.max_parts { return Err(FormError { reason: Limit(MaxParts) }) }
+    let head_end = find(body, blank, pos)
+    if head_end < 0 { return malformed(pos) }
+    let start = head_end + 4
+    let end = find(body, delimiter, start)
+    if end < 0 { return malformed(start) }
+    if end - start > limits.max_field_bytes {
+      return Err(FormError { reason: Limit(MaxFieldBytes) })
+    }
+    match field(Bytes.slice(body, pos + 2, head_end), Bytes.slice(body, start, end)) {
+      Some(e) => { entries = List.push(entries, e) },
+      None => { return malformed(pos + 2) },
+    }
+    pos = end + Bytes.len(delimiter)
+  }
+  Ok(Form { entries })
+}
+
+fn malformed(offset: Int) -> Result<Form, FormError> {
+  Err(FormError { reason: Malformed(offset) })
+}
+
+// One part from its header block and content, or `None` without a `form-data` disposition
+// that names the field.
+fn field(headers: Bytes, content: Bytes) -> Option<(String, Part)> {
+  var disposition: Option<List<(String, String)>> = None
+  var media: Option<String> = None
+  for line in String.split(utf8(headers), "\r\n") {
+    let key = String.split(line, ":")[0].unwrap_or("")
+    let value = trim(String.slice(line, String.len(key) + 1, String.len(line)))
+    let k = String.to_lower(trim(key))
+    if k == "content-disposition" && disposition == None {
+      disposition = Some(params(value))
+    } else if k == "content-type" && media == None {
+      media = Some(value)
+    }
+  }
+  let ps = disposition.unwrap_or([])
+  let name = lookup(ps, "name")
+  if lookup(ps, "") != Some("form-data") || name == None { return None }
+  let n = unescape(name.unwrap_or(""))
+  match lookup(ps, "filename") {
+    Some(file) => {
+      let blob = Blob.of(content, media.unwrap_or("text/plain"))
+      Some(
+        (
+          n,
+          File(FileData { blob, name: unescape(file), last_modified: Instant.from_unix_millis(0) }),
+        ),
+      )
+    },
+    None => Some((n, Text(utf8(content)))),
+  }
+}
+
+// A `Content-Disposition` value as `("", type)` then `(key, value)` pairs, keys and the type
+// lowercased; a quoted value runs to the next `"` (HTML escapes a quote as `%22`).
+fn params(v: String) -> List<(String, String)> {
+  let cs = String.chars(v)
+  let n = List.len(cs)
+  var i = 0
+  var kind = ""
+  while i < n && cs[i] != Some(";") {
+    kind = kind + cs[i].unwrap_or("")
+    i = i + 1
+  }
+  var out = [("", String.to_lower(trim(kind)))]
+  while i < n {
+    i = i + 1
+    var key = ""
+    while i < n && cs[i] != Some("=") && cs[i] != Some(";") {
+      key = key + cs[i].unwrap_or("")
+      i = i + 1
+    }
+    var value = ""
+    if cs[i] == Some("=") {
+      i = i + 1
+      while i < n && (cs[i] == Some(" ") || cs[i] == Some("\t")) { i = i + 1 }
+      if cs[i] == Some("\"") {
+        i = i + 1
+        while i < n && cs[i] != Some("\"") {
+          value = value + cs[i].unwrap_or("")
+          i = i + 1
+        }
+        while i < n && cs[i] != Some(";") { i = i + 1 }
+      } else {
+        while i < n && cs[i] != Some(";") {
+          value = value + cs[i].unwrap_or("")
+          i = i + 1
+        }
+        value = trim(value)
+      }
+    }
+    out = List.push(out, (String.to_lower(trim(key)), value))
+  }
+  out
+}
+
+fn lookup(ps: List<(String, String)>, key: String) -> Option<String> {
+  List.find(ps, fn(p) { p.0 == key }).map(fn(p) { p.1 })
+}
+
+// The `boundary` parameter of a `multipart/form-data` content type, quotes removed.
+fn boundary_of(content_type: String) -> Option<String> {
+  let pieces = String.split(content_type, ";")
+  if String.to_lower(trim(pieces[0].unwrap_or(""))) != "multipart/form-data" { return None }
+  for piece in List.slice(pieces, 1, List.len(pieces)) {
+    let key = String.split(piece, "=")[0].unwrap_or("")
+    if String.to_lower(trim(key)) == "boundary" {
+      let raw = trim(String.slice(piece, String.len(key) + 1, String.len(piece)))
+      let quoted = String.len(raw) >= 2
+        && String.starts_with(raw, "\"")
+        && String.ends_with(raw, "\"")
+      let b = if quoted { String.slice(raw, 1, String.len(raw) - 1) } else { raw }
+      return if is_boundary(b) { Some(b) } else { None }
+    }
+  }
+  None
+}
+
+// RFC 2046 `bchars`.
+fn is_bchar(c: Int) -> Bool {
+  c >= 0x30 && c <= 0x39
+    || c >= 0x41 && c <= 0x5A
+    || c >= 0x61 && c <= 0x7A
+    || List.contains(
+      [0x20, 0x27, 0x28, 0x29, 0x2B, 0x5F, 0x2C, 0x2D, 0x2E, 0x2F, 0x3A, 0x3D, 0x3F],
+      c,
+    )
+}
+
+// Every CR not followed by LF and every LF not preceded by CR made CRLF.
+fn crlf(s: String) -> String {
+  if !String.contains(s, "\r") && !String.contains(s, "\n") { return s }
+  String.replace(String.replace(String.replace(s, "\r\n", "\n"), "\r", "\n"), "\n", "\r\n")
+}
+
+fn escape(s: String) -> String {
+  String.replace(String.replace(String.replace(s, "\"", "%22"), "\r", "%0D"), "\n", "%0A")
+}
+
+fn unescape(s: String) -> String {
+  String.replace(String.replace(String.replace(s, "%22", "\""), "%0D", "\r"), "%0A", "\n")
+}
+
+fn utf8(b: Bytes) -> String {
+  Encoding.decode_with(b, Encoding.Utf8, Errors.Replace, Bom.Keep).unwrap_or("")
+}
+
+// Strips tabs and spaces.
+fn trim(s: String) -> String {
+  let b = String.to_bytes(s)
+  var start = 0
+  var end = Bytes.len(b)
+  while start < end && (byte(b, start) == 0x20 || byte(b, start) == 0x09) { start = start + 1 }
+  while end > start && (byte(b, end - 1) == 0x20 || byte(b, end - 1) == 0x09) { end = end - 1 }
+  String.slice(s, start, end)
+}
+
+fn byte(b: Bytes, i: Int) -> Int { Bytes.get(b, i).unwrap_or(-1) }
+
+// The first index at or after `from` where `needle` (not empty) starts in `hay`, or -1.
+fn find(hay: Bytes, needle: Bytes, from: Int) -> Int {
+  let n = Bytes.len(hay)
+  let m = Bytes.len(needle)
+  let lead = byte(needle, 0)
+  var i = from
+  while i + m <= n {
+    if byte(hay, i) == lead {
+      var j = 1
+      while j < m && byte(hay, i + j) == byte(needle, j) { j = j + 1 }
+      if j == m { return i }
+    }
+    i = i + 1
+  }
+  -1
+}
+
+let roomy = FormLimits { max_parts: 100, max_bytes: 2_000_000, max_field_bytes: 1_100_000 }
+
+fn note(name: String) -> FileData {
+  FileData {
+    blob: Blob.of(String.to_bytes("hi\n"), "text/plain"),
+    name,
+    last_modified: Instant.from_unix_millis(0),
+  }
+}
+
+test "urlencoded normalizes newlines and names files" {
+  let f = Form { entries: [("a b", Text("x\ny&z")), ("f", File(note("n\r.txt")))] }
+  expect_eq(encode_urlencoded(f), "a+b=x%0D%0Ay%26z&f=n%0D%0A.txt")
+  expect_eq(parse_urlencoded("a+b=1&c").entries, [("a b", Text("1")), ("c", Text(""))])
+}
+
+test "multipart writes the HTML layout and reads it back" {
+  let f = Form { entries: [("q\"1", Text("a\nb")), ("up", File(note("r\u{E9}sum\u{E9}.txt")))] }
+  let body = encode_multipart(f, "XyZ")
+  expect_eq(
+    String.from_bytes(body),
+    Ok(
+      "--XyZ\r\nContent-Disposition: form-data; name=\"q%221\"\r\n\r\na\r\nb\r\n"
+        + "--XyZ\r\nContent-Disposition: form-data; name=\"up\"; filename=\"r\u{E9}sum\u{E9}.txt\"\r\n"
+        + "Content-Type: text/plain\r\n\r\nhi\n\r\n--XyZ--\r\n",
+    ),
+  )
+  let back = parse_multipart(body, "Multipart/Form-Data; boundary=\"XyZ\"", roomy)
+  expect_eq(
+    back.map(fn(g) { g.entries }),
+    Ok([("q\"1", Text("a\r\nb")), ("up", File(note("r\u{E9}sum\u{E9}.txt")))]),
+  )
+  expect_eq(encode_multipart(Form { entries: [] }, "b"), String.to_bytes("--b--\r\n"))
+}
+
+test "multipart limits and malformed bodies" {
+  let body = encode_multipart(Form { entries: [("a", Text("12345")), ("b", Text("x"))] }, "B")
+  let ct = "multipart/form-data; boundary=B"
+  let reason = fn(r: Result<Form, FormError>) {
+    r.map(fn(g) { List.len(g.entries) }).map_err(fn(e) { e.reason })
+  }
+  expect_eq(reason(parse_multipart(body, ct, roomy)), Ok(2))
+  expect_eq(
+    reason(parse_multipart(body, ct, FormLimits { ..roomy, max_parts: 1 })),
+    Err(Limit(MaxParts)),
+  )
+  expect_eq(
+    reason(parse_multipart(body, ct, FormLimits { ..roomy, max_bytes: 10 })),
+    Err(Limit(MaxBytes)),
+  )
+  expect_eq(
+    reason(parse_multipart(body, ct, FormLimits { ..roomy, max_field_bytes: 4 })),
+    Err(Limit(MaxFieldBytes)),
+  )
+  expect_eq(reason(parse_multipart(body, "text/plain; boundary=B", roomy)), Err(ContentType))
+  expect_eq(reason(parse_multipart(body, "multipart/form-data", roomy)), Err(ContentType))
+  expect_eq(
+    reason(parse_multipart(String.to_bytes("--B\r\n\r\nx\r\n--B--"), ct, roomy)),
+    Err(Malformed(5)),
+  )
+  expect_eq(
+    reason(
+      parse_multipart(
+        String.to_bytes("--B\r\nContent-Disposition: form-data; name=a\r\n\r\nx"),
+        ct,
+        roomy,
+      ),
+    ),
+    Err(Malformed(47)),
+  )
+  expect_eq(reason(parse_multipart(String.to_bytes("junk"), ct, roomy)), Err(Malformed(0)))
+  expect_eq(
+    reason(parse_multipart(String.to_bytes("preamble\r\n--B--\r\nepilogue"), ct, roomy)),
+    Ok(0),
+  )
+  expect(
+    is_boundary(String.repeat("a", 70))
+      && !is_boundary(String.repeat("a", 71))
+      && !is_boundary("a ")
+      && !is_boundary("a;b"),
+  )
+}
+
+test "boundary is fresh and valid" {
+  let b = boundary()
+  expect(is_boundary(b) && String.starts_with(b, "----SakuraFormBoundary") && String.len(b) == 38)
+  expect(b != boundary())
+}
+
+test "parse_multipart reads a 1 MiB file within its limits" {
+  let big = Bytes.from_list(List.map(List.range(0, 1_048_576), fn(i) { 0x61 + i % 26 }))
+  let f = Form {
+    entries: [
+      (
+        "doc",
+        File(FileData {
+          blob: Blob.of(big, ""),
+          name: "big.bin",
+          last_modified: Instant.from_unix_millis(0),
+        }),
+      ),
+    ],
+  }
+  let body = encode_multipart(f, "----SakuraFormBoundaryAAAAAAAAAAAAAAAA")
+  match parse_multipart(
+    body,
+    "multipart/form-data; boundary=----SakuraFormBoundaryAAAAAAAAAAAAAAAA",
+    roomy,
+  ) {
+    Ok(g) => match g.entries {
+      [(_, File(fd))] =>
+        expect_eq(
+          (fd.blob.media_type, Blob.size(fd.blob), fd.blob.bytes == big),
+          ("application/octet-stream", 1_048_576, true),
+        ),
+      other => expect_eq(List.len(other), 1),
+    },
+    Err(e) => expect_eq("{e.reason}", "parsed"),
+  }
+}

@@ -177,16 +177,87 @@ fn url_vectors() {
         stdout.push_str(&format!("{i}: {}\n", fields.join(" | ")));
     }
     cases.push_str("  ]\n");
-    let path = root.join("semantics/url_parse_whatwg.sak");
+    generated(&root, "url_parse_whatwg", &cases, &stdout);
+}
+
+/// `form_encode_wpt.sak`'s cases and `.stdout` are generated from `tests/vectors/form.jsonl`
+/// (RFC 0002 §2.3, plan web-apis phase 3): each WPT object becomes a one-field form, and the
+/// stdout is upstream's expected body, multipart as its CRLF-separated lines.
+#[test]
+fn form_vectors() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests");
+    let table = std::fs::read_to_string(root.join("vectors/form.jsonl")).unwrap();
+    let (mut cases, mut stdout) = (String::from("  let cases = [\n"), String::new());
+    let rows = table.lines().filter(|l| !l.starts_with('#'));
+    for (i, line) in rows.enumerate() {
+        let v: serde_json::Value = serde_json::from_str(line).unwrap();
+        let multipart = v["enctype"] == "multipart";
+        let name = sakura_literal(v["name"].as_str().unwrap());
+        let value = match v["value"].as_str() {
+            Some(text) => format!("Part.Text({})", sakura_literal(text)),
+            None => format!(
+                "file({}, {})",
+                sakura_literal(v["value"]["file"].as_str().unwrap()),
+                sakura_literal(v["value"]["type"].as_str().unwrap())
+            ),
+        };
+        let line = format!("    ({multipart}, {name}, {value}),\n");
+        if line.chars().count() <= 101 {
+            cases.push_str(&line);
+        } else {
+            cases.push_str(&format!(
+                "    (\n      {multipart},\n      {name},\n      {value},\n    ),\n"
+            ));
+        }
+        if !multipart {
+            stdout.push_str(&format!("{i}: {}\n", v["expected"].as_str().unwrap()));
+            continue;
+        }
+        // Upstream's expectations are byte strings, one character per byte.
+        let bytes = |k: &str| {
+            let raw = v["expected"][k]
+                .as_str()
+                .map(|s| s.chars().map(|c| c as u8).collect());
+            raw.map(|b: Vec<u8>| String::from_utf8(b).unwrap())
+        };
+        let mut disposition = format!(
+            "Content-Disposition: form-data; name=\"{}\"",
+            bytes("name").unwrap()
+        );
+        let mut lines = vec!["--B".to_owned()];
+        match bytes("filename") {
+            Some(f) => {
+                disposition.push_str(&format!("; filename=\"{f}\""));
+                lines.extend([disposition, "Content-Type: text/plain".to_owned()]);
+            }
+            None => lines.push(disposition),
+        }
+        lines.extend([
+            String::new(),
+            bytes("value").unwrap(),
+            "--B--".to_owned(),
+            String::new(),
+        ]);
+        let shown: Vec<String> = lines.join("\r\n").split("\r\n").map(show_string).collect();
+        stdout.push_str(&format!("{i}: [{}]\n", shown.join(", ")));
+    }
+    cases.push_str("  ]\n");
+    generated(&root, "form_encode_wpt", &cases, &stdout);
+}
+
+/// Splices `cases` between the `// BEGIN generated` and `// END generated` lines of
+/// `semantics/<name>.sak` and compares it and `<name>.stdout`; `SAKURA_BLESS=1` writes both.
+fn generated(root: &Path, name: &str, cases: &str, stdout: &str) {
+    let path = root.join(format!("semantics/{name}.sak"));
     let source = std::fs::read_to_string(&path).unwrap();
     let begin = source.find("  // BEGIN generated").unwrap();
     let begin = begin + source[begin..].find('\n').unwrap() + 1;
     let end = source.find("  // END generated").unwrap();
     let want = format!("{}{cases}{}", &source[..begin], &source[end..]);
-    let out = root.join("semantics/url_parse_whatwg.stdout");
+    let out = root.join(format!("semantics/{name}.stdout"));
     if std::env::var_os("SAKURA_BLESS").is_some() {
         std::fs::write(&path, &want).unwrap();
-        std::fs::write(&out, &stdout).unwrap();
+        std::fs::write(&out, stdout).unwrap();
         return;
     }
     assert!(
@@ -196,6 +267,29 @@ fn url_vectors() {
     );
     let got = std::fs::read_to_string(&out).unwrap_or_default();
     assert!(got == stdout, "{} is stale: SAKURA_BLESS=1", out.display());
+}
+
+/// `s` as `show` prints it inside a container (`quote` in `sakura_runtime.js`).
+fn show_string(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' | '\\' | '{' | '}' => {
+                out.push('\\');
+                out.push(c);
+            }
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\0' => out.push_str("\\0"),
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => {
+                out.push_str(&format!("\\u{{{:x}}}", c as u32))
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// `s` as a Sakura string literal: `\`, `"`, `{` and `}` escaped, anything outside printable
