@@ -16,3 +16,10 @@ badge (`components/landing/hero.tsx`), the install rows (`install.tsx`), the age
 Its Sakura samples live in `components/landing/samples/*.sak` and are checked by
 `scripts/check-doc-sweep.py`; the outputs shown beside them are recorded from the compiler and
 must be re-recorded when they change.
+
+## CI coverage
+
+Website changes select the website build, documentation examples and Tree-sitter
+corpus checks. The documentation job builds the current CLI and checks guide fences
+and landing samples. Keep sample changes alongside the copy that displays them;
+see [the CI policy](../CONTRIBUTING.md#ci-policy) for focused manual verification.
