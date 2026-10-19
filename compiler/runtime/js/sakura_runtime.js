@@ -4242,8 +4242,12 @@ export const MAX_REQUEST_BODY = 1 << 20;
  * is the outcome `too large`, the WASM host's request past its copy budget, whose defect is
  * reported on stderr); a
  * `Response` whose status or headers Node refuses is reported as a `D091` defect and answered
- * 500, and the server keeps running. Returns `{ err }`, or `{ stopped, close }` (`stopped`
- * resolves to why the server stopped).
+ * 500, and the server keeps running. A `D096` defect (the WASM guest's heap could not take the
+ * request) is reported and answered 503, the connection kept; the outcome `ended` (the instance
+ * ended, its record already written) is a 500 with nothing more on stderr. Once the server
+ * stops (`close`, or `stopped` settling) a request still arriving is 503 with the connection
+ * closed and never reaches `run` (design §17.223 (3)). Returns `{ err }`, or
+ * `{ stopped, close }` (`stopped` resolves to why the server stopped).
  */
 export function serveHttp(addr, run) {
   const where = `${addr.host}:${addr.port}`;
@@ -4255,6 +4259,11 @@ export function serveHttp(addr, run) {
   const report = (o) =>
     writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));
   let server;
+  let open = true;
+  const close = () => {
+    if (open) server.close();
+    open = false;
+  };
   const stopped = new Promise((resolve) => {
     server = proc.getBuiltinModule("node:http").createServer((req, res) => {
       const plain = (status, text, extra = {}) =>
@@ -4278,6 +4287,10 @@ export function serveHttp(addr, run) {
       });
       req.on("end", () => {
         if (refused) return;
+        if (!open) {
+          plain(503, "server stopped", { connection: "close" });
+          return;
+        }
         const tag = methods.indexOf(req.method);
         if (tag < 0) {
           plain(405, "method not allowed");
@@ -4308,6 +4321,11 @@ export function serveHttp(addr, run) {
               return;
             }
           }
+          if (o.kind === "defect" && o.code === "D096") {
+            report(o);
+            plain(503, "server out of memory", { "retry-after": "1" });
+            return;
+          }
           if (o.kind === "defect") {
             report(o);
           } else if (o.kind === "fail") {
@@ -4317,8 +4335,11 @@ export function serveHttp(addr, run) {
         });
       });
     });
-    server.on("error", (e) => resolve(String(e.message ?? e)));
+    server.on("error", (e) => {
+      open = false;
+      resolve(String(e.message ?? e));
+    });
     server.listen(addr.port, addr.host);
   });
-  return { stopped, close: () => server.close() };
+  return { stopped, close };
 }

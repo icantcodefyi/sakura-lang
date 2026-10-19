@@ -10,8 +10,9 @@ item 8 (§8.1, §8.4–§8.6), 1.1.3 the defect sites of plan L5 (§5, §6.5, §
 counter, the import and handle-kind lists as built and §5's fallback wording (design §17.160,
 §17.161; plan M4-OPT), and 1.2.1 the fail-closed copy budget of §8.5, its reading as a
 per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the root task's release and
-the copy budget of a served request (design §17.212, §17.216 (4)), and 1.2.4 bound performs
-and `with` regions in direct twins (§5, §6.3; design §17.211 (1)). Owned by the designer;
+the copy budget of a served request (design §17.212, §17.216 (4)), 1.2.3 the failure modes of a
+served request (design §17.223), and 1.2.4 bound performs and `with` regions in direct twins
+(§5, §6.3; design §17.211 (1)). Owned by the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
@@ -101,7 +102,8 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   already called internally. §0 has no rule for an added export; this one is optional to both
   sides (a host calls it only when the module has it, and a host without it runs a module that
   has it as before), so it is a PATCH as §17.212 decided and `sakura_abi_version` stays
-  `0x010200`.
+  `0x010200`. §8.5 also states how the copy budget applies to a served request and its reply
+  (design §17.216 (4)): until then a request over it ended the process.
 - **Exports are feature-tested by presence** (design §17.222). The version a module records
   states what the module *requires* of its host: imports, layouts, outcome codes, the counters
   it writes. An export is read by probing the instance, never by version. Adding an export that
@@ -112,8 +114,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   since a new host would then refuse an old module; changing or removing an export's signature
   is MAJOR. The refusal rule above protects a host from a module's needs; an export is the
   other direction.
-  §8.5 also states how the copy budget applies to a served request and its reply (design
-  §17.216 (4)): until then a request over it ended the process.
+- 1.2.3 is an erratum (design §17.223): §8.5 states when the host calls `invoke` and what it
+  answers a served request the guest cannot take (heap exhaustion: `503` and `D096`), one left
+  waiting when the instance ends (`500`) and one arriving after the server stops (`503`, never
+  invoked); §9 reads a 0 from `invoke` as heap exhaustion. Until then the Node host answered
+  heap exhaustion `500` with no record and requests waiting at the end got no answer. Failure
+  modes are specified; no byte, import or export changes, so `sakura_abi_version` stays
+  `0x010200`.
 - 1.2.4 is an erratum (design §17.211 (1), WS-W1; 1.2.3 is plan §3.8 row 27's, design
   §17.224): §5 and §6.3 state how a perform bound to a handler literal (design §17.113 (a))
   compiles: a direct call of its clause, twins for clauses and for functions holding `with`
@@ -825,6 +832,16 @@ kind 0 (`dir`); a `File`'s `id` is a plain `Int` into the host's own file table,
   (`invoke`) over it is refused with `413` before the guest sees it, and a reply
   (`serve_respond`) over it is not copied in but answered `500`, each with the defect `D091` on
   stderr; the server keeps serving (1.2.2, design §17.216 (4)).
+- Served requests (1.2.3, design §17.223): `invoke` is called only for a listener the host
+  knows to be live, while the guest is not running, and every served request is answered
+  exactly once. A request the guest heap cannot take (`invoke` returns 0) is `503` with
+  `retry-after: 1` and the connection kept, with the defect `D096` on stderr, and the server
+  keeps serving. Once the server stops (the guest stopped it, it failed, or the instance ended)
+  a request still arriving is `503` with the connection closed and never reaches `invoke`; a
+  request still waiting when the instance ends is `500`, and the record of what ended it is on
+  stderr once (the trap's or defect's, or `D090` "server stopped" for any other end). A
+  request pipelined behind one refused with `413` may be served before the connection closes:
+  each is held to the same caps, so the work is bounded.
 - Limit variables (1.2.1, design §17.209 (1)): unset is the default; decimal digits with a value
   from 1 to 2^53 - 1 are that value; anything else (empty, a sign, a fraction, an exponent,
   spaces, words) is the defect `D091` naming the variable, the value seen and the accepted
@@ -866,8 +883,10 @@ reports the test as a defect and runs the rest on a fresh instance of the module
 ## 9. Exports
 
 `memory`, `sakura_abi_version` (global), `run(task) -> i32` (an outcome number, §6.5), `start(entry_fn) -> task`,
-`task_free(task)` (a finished root task, after its `outcome`; 1.2.2),
-`complete(req, status, ptr, len) -> i32`, `invoke(cb, ptr, len) -> i32`, `alloc_bytes(len) ->
+`task_free(task)` (a finished root task, after its `outcome`; optional since 1.2.2; a host
+without it keeps every finished root task), `complete(req, status, ptr, len) -> i32`,
+`invoke(cb, ptr, len) -> i32` (the served request's task; 0 is heap exhaustion, and a stopped
+listener is the host's to prevent, §8.5), `alloc_bytes(len) ->
 ptr`, `drop(ptr)`, `layout_table() -> (ptr, len)`, `effect_table() -> (ptr, len)`, `outcome(task)
 -> (kind, ptr, len)` (the outcome encoded as §8.1 transport; a defect's carries its code,
 message and site, §6.5), `tests() -> (ptr, len)` (the

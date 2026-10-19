@@ -229,6 +229,14 @@ published yet.
 
 ### Fixed
 
+- `Serve.host()` on `--target wasm` answers a request the guest heap cannot take with `503`
+  and `retry-after: 1`, writing the defect `D096` to stderr, where it was a `500` with nothing
+  on stderr; the server keeps serving. A request still waiting when the program ends is now
+  answered `500` (it got no answer), with one `D090` "server stopped" record unless a defect
+  ended the program. On both backends, once the server stops, a request still arriving on an
+  open connection is `503` with the connection closed and its handler never runs (design
+  §17.223, ABI 1.2.3).
+
 - `Serve.host()` on `--target wasm` no longer ends the process when a request is larger than
   `SAKURA_MAX_COPY_BYTES`: the request is answered `413` with the connection closed and the
   handler not run, as a body over 1 MiB already is, and a handler's response over the budget is

@@ -5,7 +5,18 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { ABI_VERSION, AbiMismatch, Host, HostFault, Reader, defectSpans, readDebug, runTests } from "../sakura_wasm_host.js";
+import {
+  ABI_VERSION,
+  AbiMismatch,
+  Host,
+  HostFault,
+  OUTCOME,
+  Reader,
+  defectSpans,
+  readDebug,
+  runMain,
+  runTests,
+} from "../sakura_wasm_host.js";
 import * as rt from "../sakura_runtime.js";
 
 /** A host over one page of memory with a bump `alloc_bytes` (a `Bytes`' data at +12). */
@@ -348,6 +359,179 @@ test("after a host fault the remaining tests run on a fresh instance", async () 
     ],
   );
   assert.deepEqual(seen, [2, 2], "b and c ran on the second instance, not the faulted one");
+});
+
+/** A port nothing listens on. */
+async function freePort() {
+  const net = await import("node:net");
+  return new Promise((resolve) => {
+    const probe = net.createServer().listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+/** A raw HTTP/1.1 connection to `port`: `send(text)` writes, `next()` reads one response. */
+async function wire(port) {
+  const net = await import("node:net");
+  let s;
+  for (let tries = 0; ; tries++) {
+    s = net.connect(port, "127.0.0.1");
+    const up = await new Promise((resolve) => s.once("connect", () => resolve(true)).once("error", () => resolve(false)));
+    if (up) break;
+    assert.ok(tries < 100, `nothing listens on ${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  s.setEncoding("utf8");
+  let buf = "";
+  let want = () => {};
+  s.on("data", (c) => {
+    buf += c;
+    want();
+  });
+  const next = () =>
+    new Promise((resolve) => {
+      want = () => {
+        const at = buf.indexOf("\r\n\r\n");
+        if (at < 0) return;
+        const [line, ...rest] = buf.slice(0, at).split("\r\n");
+        const headers = Object.fromEntries(rest.map((l) => [l.slice(0, l.indexOf(":")).toLowerCase(), l.slice(l.indexOf(":") + 1).trim()]));
+        const end = at + 4 + Number(headers["content-length"] ?? 0);
+        if (buf.length < end) return;
+        const body = buf.slice(at + 4, end);
+        buf = buf.slice(end);
+        want = () => {};
+        resolve({ status: Number(line.split(" ")[1]), headers, body });
+      };
+      want();
+    });
+  return { send: (text) => s.write(text), next, close: () => s.destroy() };
+}
+
+const GET = (path) => `GET ${path} HTTP/1.1\r\nhost: x\r\n\r\n`;
+/** A request head whose two-byte body the client has not sent: the server answers `100`. */
+const ARRIVING = "POST /late HTTP/1.1\r\nhost: x\r\ncontent-length: 2\r\nexpect: 100-continue\r\n\r\n";
+
+/**
+ * A host over a stand-in module whose `main` serves on `port` (`serve_listen`) until `stop()`:
+ * `invoke` answers `invoke(task)` (a task id, or 0), and each served task the guest runs
+ * responds `200 ok` unless `hold(task)`, or traps when `trap(task)` (by calling `trap`).
+ */
+function serving(port, { invoke = (t) => t, hold = () => false, trap = () => null } = {}) {
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  rt.def("std::request::Method", Method);
+  rt.def("std::request::Request", class {});
+  const h = new Host();
+  let value = null;
+  let listening = false;
+  let done = false;
+  let tasks = 1;
+  const finished = new Set();
+  const invoked = [];
+  h.instantiate = async () => h;
+  h.decode = () => [value];
+  h.encode = () => {};
+  const guest = (f, v) => {
+    value = v;
+    f();
+  };
+  h.exports = {
+    memory: new WebAssembly.Memory({ initial: 1 }),
+    alloc_bytes: () => 64,
+    drop: () => {},
+    start: () => 1,
+    invoke: () => {
+      invoked.push(++tasks);
+      return invoke(tasks);
+    },
+    run: () => {
+      const host = h.imports().sakura_host;
+      if (!listening) {
+        listening = true;
+        guest(() => host.serve_listen(1, 1, 0, 0), { host: "127.0.0.1", port });
+      }
+      for (const t of h.served.keys()) {
+        if (finished.has(t) || hold(t)) continue;
+        trap(t)?.();
+        guest(() => host.serve_respond(t, 0, 0), { status: 200, headers: rt.list([]), body: "ok" });
+        finished.add(t);
+      }
+      return done ? OUTCOME.ok : OUTCOME.pending;
+    },
+    outcome: (t) => [(t === 1 ? done : finished.has(t)) ? OUTCOME.ok : OUTCOME.pending, 0, 0],
+  };
+  const stop = () => {
+    done = true;
+    h.wake?.();
+  };
+  return { h, invoked, stop };
+}
+
+/** Run `f` with stderr captured; returns its result and the defect records written. */
+async function recording(f) {
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  try {
+    const r = await f();
+    return [r, lines.filter((l) => l.includes('"kind":"defect"')).map((l) => JSON.parse(l))];
+  } finally {
+    process.stderr.write = write;
+  }
+}
+
+test("a served request the guest heap cannot take is 503 with one D096, and the server keeps serving", { timeout: 10_000 }, async () => {
+  const port = await freePort();
+  const g = serving(port, { invoke: (t) => (t === 2 ? 0 : t) });
+  const [statuses, records] = await recording(async () => {
+    const exit = runMain(new Uint8Array(), [], g.h);
+    const c = await wire(port);
+    c.send(GET("/full"));
+    const full = await c.next();
+    c.send(GET("/hi"));
+    const hi = await c.next();
+    g.stop();
+    assert.equal(await exit, 0);
+    c.close();
+    return [full.status, full.headers["retry-after"], full.headers.connection, hi.status, hi.body];
+  });
+  assert.deepEqual(statuses, [503, "1", "keep-alive", 200, "ok"]);
+  assert.deepEqual(
+    records.map((r) => `${r.code} ${r.message}`),
+    ["D096 heap exhausted: request not started"],
+  );
+});
+
+test("after the server stops a request still arriving is 503 and invoke is not called; one left unanswered is 500", { timeout: 10_000 }, async () => {
+  const port = await freePort();
+  const g = serving(port, { hold: (t) => t === 3 });
+  const [statuses, records] = await recording(async () => {
+    const exit = runMain(new Uint8Array(), [], g.h);
+    const c = await wire(port);
+    c.send(GET("/hi"));
+    const hi = await c.next();
+    c.send(ARRIVING);
+    assert.equal((await c.next()).status, 100);
+    const held = await wire(port);
+    held.send(GET("/held"));
+    while (g.invoked.length < 2) await new Promise((resolve) => setTimeout(resolve, 5));
+    g.stop();
+    assert.equal(await exit, 0);
+    const unanswered = await held.next();
+    c.send("ab");
+    const late = await c.next();
+    c.close();
+    held.close();
+    return [hi.status, unanswered.status, late.status, late.headers.connection];
+  });
+  assert.deepEqual(statuses, [200, 500, 503, "close"]);
+  assert.deepEqual(g.invoked, [2, 3], "the request arriving after the stop never reached invoke");
+  assert.deepEqual(
+    records.map((r) => `${r.code} ${r.message}`),
+    ["D090 server stopped"],
+  );
 });
 
 /** A module of nothing but a `sakura.debug` custom section holding `payload` (ABI §12). */

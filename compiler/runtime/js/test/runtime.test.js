@@ -1070,3 +1070,99 @@ test("http_send past SAKURA_MAX_COPY_BYTES is Err(response too large) and aborts
     server.close();
   }
 });
+
+/** A port nothing listens on. */
+async function freePort() {
+  const net = await import("node:net");
+  return new Promise((resolve) => {
+    const probe = net.createServer().listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+/** A raw HTTP/1.1 connection to `port`: `send(text)` writes, `next()` reads one response. */
+async function wire(port) {
+  const net = await import("node:net");
+  let s;
+  for (let tries = 0; ; tries++) {
+    s = net.connect(port, "127.0.0.1");
+    const up = await new Promise((resolve) => s.once("connect", () => resolve(true)).once("error", () => resolve(false)));
+    if (up) break;
+    assert.ok(tries < 100, `nothing listens on ${port}`);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  s.setEncoding("utf8");
+  let buf = "";
+  let want = () => {};
+  s.on("data", (c) => {
+    buf += c;
+    want();
+  });
+  const next = () =>
+    new Promise((resolve) => {
+      want = () => {
+        const at = buf.indexOf("\r\n\r\n");
+        if (at < 0) return;
+        const [line, ...rest] = buf.slice(0, at).split("\r\n");
+        const headers = Object.fromEntries(rest.map((l) => [l.slice(0, l.indexOf(":")).toLowerCase(), l.slice(l.indexOf(":") + 1).trim()]));
+        const end = at + 4 + Number(headers["content-length"] ?? 0);
+        if (buf.length < end) return;
+        const body = buf.slice(at + 4, end);
+        buf = buf.slice(end);
+        want = () => {};
+        resolve({ status: Number(line.split(" ")[1]), headers, body });
+      };
+      want();
+    });
+  return { send: (text) => s.write(text), next, close: () => s.destroy() };
+}
+
+test("serveHttp answers heap exhaustion 503 with one record; after close a request still arriving is 503 and never run", async () => {
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  rt.def("std::request::Method", Method);
+  rt.def(
+    "std::request::Request",
+    class {
+      constructor(method, url, headers, body) {
+        Object.assign(this, { method, url, headers, body });
+      }
+    },
+  );
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  const seen = [];
+  const port = await freePort();
+  const s = rt.serveHttp({ host: "127.0.0.1", port }, (req, reply) => {
+    seen.push(req.url);
+    if (req.url === "/full") return reply({ kind: "defect", code: "D096", message: "heap exhausted: request not started" });
+    reply({ kind: "ok", value: { status: 200, headers: rt.list([]), body: "ok" } });
+  });
+  try {
+    const c = await wire(port);
+    c.send("GET /full HTTP/1.1\r\nhost: x\r\n\r\n");
+    const full = await c.next();
+    assert.deepEqual([full.status, full.headers["retry-after"]], [503, "1"]);
+    assert.notEqual(full.headers.connection, "close", "the connection is sound");
+    c.send("GET /ok HTTP/1.1\r\nhost: x\r\n\r\n");
+    assert.deepEqual((await c.next()).body, "ok", "served on the same connection");
+    c.send("POST /late HTTP/1.1\r\nhost: x\r\ncontent-length: 2\r\nexpect: 100-continue\r\n\r\n");
+    assert.equal((await c.next()).status, 100, "the server has the request's head");
+    s.close();
+    c.send("ab");
+    const late = await c.next();
+    assert.deepEqual([late.status, late.headers.connection], [503, "close"]);
+    c.close();
+  } finally {
+    process.stderr.write = write;
+    s.close();
+  }
+  assert.deepEqual(seen, ["/full", "/ok"], "a request finishing after close never reaches the runner");
+  assert.deepEqual(
+    lines.filter((l) => l.includes('"kind":"defect"')).map((l) => JSON.parse(l).code),
+    ["D096"],
+  );
+});

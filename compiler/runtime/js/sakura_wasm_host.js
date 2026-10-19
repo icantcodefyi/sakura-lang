@@ -684,7 +684,9 @@ export class Host {
               return reply({ kind: "too large", code: "D091", message });
             }
             const task = this.exports.invoke(listener, this.copyOut(bytes), bytes.length);
-            if (task === 0) return reply({ kind: "gone" });
+            // `serveHttp` calls this only while the server runs, so the listener is live and 0 is
+            // the guest heap (design §17.223 (1)).
+            if (task === 0) return reply({ kind: "defect", code: "D096", message: "heap exhausted: request not started" });
             this.served.set(task, { reply, answer: null });
             this.wake?.();
           });
@@ -1164,9 +1166,14 @@ export class Host {
    * The resource ledger (ABI §8.6), run when the instance ends (an outcome, a trap or exit):
    * abort every request in flight, drop queued completions and retire every handle, because
    * guest finalizers cannot run after a trap; JS continuations and callbacks waiting on the
-   * guest are dropped too. A completion arriving later is discarded.
+   * guest are dropped too. A completion arriving later is discarded. Every served request still
+   * waiting is answered 500 once: a defect `o` that ended the instance is its record, written by
+   * the caller; any other end writes one `D090` "server stopped" (design §17.223 (3)).
    */
-  close() {
+  close(o) {
+    if (this.served.size > 0 && o?.kind !== "defect") writeDefect({ code: "D090", message: "server stopped" });
+    for (const s of this.served.values()) s.reply({ kind: "ended" });
+    this.served.clear();
     for (const abort of this.inflight.values()) abort();
     this.inflight.clear();
     this.completed.length = 0;
@@ -1178,7 +1185,6 @@ export class Host {
     this.sql = [];
     this.props = [];
     this.jsHandlers = [];
-    this.served.clear();
     this.escaping = null;
   }
 
@@ -1381,9 +1387,15 @@ function writeErr(line) {
   proc.stderr.write(`${line}\n`);
 }
 
+/** The defect record of `o` on stderr (design §12.2). */
+function writeDefect(o) {
+  const record = { schema_version: "1.0", kind: "defect", code: o.code, message: o.message };
+  if (o.spans?.length) record.spans = o.spans;
+  writeErr(JSON.stringify(record));
+}
+
 /** Run `main` of the module in `bytes` as `__main__.js` does; returns the exit code. */
-export async function runMain(bytes, argv = []) {
-  const host = new Host({ argv });
+export async function runMain(bytes, argv = [], host = new Host({ argv })) {
   let o;
   try {
     await loadTypes();
@@ -1396,7 +1408,7 @@ export async function runMain(bytes, argv = []) {
     }
     o = aborted(e);
   }
-  host.close();
+  host.close(o);
   rt.flushOut();
   switch (o.kind) {
     case "ok":
@@ -1408,12 +1420,9 @@ export async function runMain(bytes, argv = []) {
       return o.code;
     case "cancelled":
       return 70;
-    default: {
-      const record = { schema_version: "1.0", kind: "defect", code: o.code, message: o.message };
-      if (o.spans?.length) record.spans = o.spans;
-      writeErr(JSON.stringify(record));
+    default:
+      writeDefect(o);
       return 70;
-    }
   }
 }
 
@@ -1495,7 +1504,7 @@ export async function runTests(bytes, seed, filter, snapshotDir, update, host = 
     } catch (e) {
       o = aborted(e);
       // The next test runs on a fresh instance, never on the one the fault left (W9).
-      host.close();
+      host.close(o);
       await host.fresh();
     }
     rt.flushOut();

@@ -112,6 +112,11 @@ checked skill reference; they are not additional APIs.
   with `500` and the record on stderr; the server keeps serving (§17.159 (6)). On
   `--target wasm` a request over `SAKURA_MAX_COPY_BYTES` (headers included) is that `413`
   and a response over it is that `500`, each with the defect `D091` on stderr (§17.216 (4)).
+  A request the guest heap cannot take is `503` with `retry-after: 1` and the defect `D096`
+  on stderr, and the server keeps serving. On both backends, once the server stops a request
+  still arriving is `503` with the connection closed and the handler not run, and on
+  `--target wasm` a request still waiting when the program ends is `500` (§17.223). A request
+  pipelined behind one refused with `413` may be served before the connection closes.
 
 ## Module dependencies (non-test code)
 

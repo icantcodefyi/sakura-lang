@@ -523,7 +523,8 @@ event stream as chunks arrive, calling `on_partial` once per `text_delta` before
 **Serve.** `serve_listen(addr, handle, $ctx, $k)` serves HTTP on `addr` (within `net`) until
 the process stops; each request is a child task running `handle(req)` under the caller's
 handlers; a failure or defect is a 500 `internal error` (a defect record or `error:` line on
-stderr) and the server continues. `std/serve`'s `host()` is
+stderr) and the server continues; once the server stops, a request still arriving is a 503
+with the connection closed and never runs. `std/serve`'s `host()` is
 `handler Serve { fn serve(handle, addr) { serve_listen(addr, handle) } }`; `handle` arrives
 as a callback (section 3), so each request runs under the handlers around `Serve.listen`.
 
