@@ -1786,17 +1786,27 @@ export function string_from_bytes(b) {
     return Err(new E(offset));
   }
 }
+/** Rust's `Utf8Error::valid_up_to`: the start of the first ill-formed or truncated sequence. */
 function validUtf8Prefix(b) {
-  const loose = new TextDecoder("utf-8");
-  let lo = 0;
-  let hi = b.length;
-  // The longest prefix that decodes without U+FFFD replacements ends at the first bad byte.
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >> 1;
-    if (!loose.decode(b.subarray(0, mid), { stream: true }).includes("\ufffd")) lo = mid;
-    else hi = mid - 1;
+  let i = 0;
+  while (i < b.length) {
+    const x = b[i];
+    const [n, lo, hi] =
+      x < 0x80 ? [1, 0, 0]
+      : x >= 0xc2 && x <= 0xdf ? [2, 0x80, 0xbf]
+      : x === 0xe0 ? [3, 0xa0, 0xbf]
+      : x === 0xed ? [3, 0x80, 0x9f]
+      : x >= 0xe1 && x <= 0xef ? [3, 0x80, 0xbf]
+      : x === 0xf0 ? [4, 0x90, 0xbf]
+      : x === 0xf4 ? [4, 0x80, 0x8f]
+      : x >= 0xf1 && x <= 0xf3 ? [4, 0x80, 0xbf]
+      : [0, 0, 0];
+    if (n === 0 || i + n > b.length) return i;
+    if (n > 1 && (b[i + 1] < lo || b[i + 1] > hi)) return i;
+    for (let k = 2; k < n; k++) if (b[i + k] < 0x80 || b[i + k] > 0xbf) return i;
+    i += n;
   }
-  return lo;
+  return i;
 }
 
 // ---------------------------------------------------------------------------------------------

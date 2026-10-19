@@ -45,6 +45,12 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   target's corpus between runs as an artifact, and a manual run takes `max_total_time`, the
   seconds per target.
 
+### Fixed
+
+- `String.from_bytes` on the JS backend reported the wrong `Utf8Error` offset for a truncated
+  or ill-formed sequence before other bytes (`[0x61, 0xC3, 0x28]` gave offset `2`, WASM and
+  native `1`); it now reports the start of the first ill-formed sequence on every backend.
+
 ### Security
 
 - `Http.host()` checks the manifest's `net` list on every redirect hop (design §17.262 (4),
