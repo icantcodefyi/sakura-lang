@@ -606,3 +606,24 @@ fn f(o: Outer, v: Int) -> Outer { var x = o
         "x.pos = Pos.from(PosRepr { ..x.pos, inner: Inner { ..x.pos.inner, k: v } })"
     );
 }
+
+/// Coverage costs each arm the rows sharing its head constructor, not the whole matrix (design
+/// §17.200 (8)): alternating guarded and literal rows took 30 s at 4,000 pairs when every query
+/// re-read every row. The bound is loose for a debug build and far under the quadratic's time.
+#[test]
+fn wide_match_coverage_is_linear() {
+    const PAIRS: i64 = 10_000;
+    let mut src = String::from("fn f(x: Int) -> Int {\n  match x {\n");
+    for i in 0..PAIRS {
+        src += &format!("    n if n < {} => {i},\n    {i} => {i},\n", -i);
+    }
+    src += "    0 => 0,\n  }\n}\n";
+    let started = std::time::Instant::now();
+    let c = check(&src);
+    let elapsed = started.elapsed();
+    assert_eq!(c.codes(), ["V4002", "V4001"]);
+    assert!(
+        elapsed.as_secs() < 10,
+        "checking {PAIRS} pairs took {elapsed:?}"
+    );
+}

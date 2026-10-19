@@ -5,7 +5,7 @@ use sakura_diagnostics::{Diagnostic, Phase};
 use sakura_hir::{DefKind, Literal, LocalId, Pat, PatId, Res, TypeRes};
 
 use super::{Checker, CoverageKind, LocalTy};
-use crate::exhaust::{self, Ctor, Space, Usefulness, Witness};
+use crate::exhaust::{self, Ctor, Rows, Space, Usefulness, Witness};
 use crate::ty::{TyCon, Type, TypeId};
 
 impl Checker<'_> {
@@ -300,26 +300,22 @@ impl Checker<'_> {
             };
             let mut space = CheckSpace { cx: self };
             let mut u = Usefulness::new(&mut space);
-            let mut rows: Vec<Vec<exhaust::Pat>> = Vec::new();
+            let mut rows = Rows::default();
             let mut unreachable = Vec::new();
-            for (pat, guarded, id) in &pats {
+            for (pat, guarded, id) in pats {
                 let catch_all = hidden && matches!(pat, exhaust::Pat::Wild);
-                if u.useful(&rows, std::slice::from_ref(pat), &[ty]).is_none()
-                    && !u.exhausted
-                    && !catch_all
-                {
-                    unreachable.push(*id);
+                if u.useful_row(&rows, &pat, ty).is_none() && !u.exhausted && !catch_all {
+                    unreachable.push(id);
                 }
                 if !guarded {
                     hidden &= !catch_all;
-                    rows.push(vec![pat.clone()]);
+                    rows.push(pat);
                 }
             }
             let missing = if matches!(c.kind, CoverageKind::Catch { .. }) {
                 Vec::new()
             } else {
-                let flat: Vec<exhaust::Pat> = rows.into_iter().map(|mut r| r.remove(0)).collect();
-                u.missing(&flat, ty, 3)
+                u.missing(rows, ty, 3)
             };
             let exhausted = u.exhausted;
             if exhausted {
@@ -383,7 +379,7 @@ impl Checker<'_> {
         };
         let mut space = CheckSpace { cx: self };
         let mut u = Usefulness::new(&mut space);
-        let missing = u.missing(&[], ty, 3);
+        let missing = u.missing(Rows::default(), ty, 3);
         if !missing.is_empty() {
             let shown: Vec<String> = missing
                 .iter()

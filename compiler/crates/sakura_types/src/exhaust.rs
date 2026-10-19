@@ -3,6 +3,8 @@
 //! Type knowledge comes from a [`Space`]: which constructors a type has (or `None` when the
 //! set is infinite or unknown, like `Int` literals) and the field types of each constructor.
 
+use std::collections::HashMap;
+
 use crate::DefId;
 use crate::ty::TypeId;
 
@@ -41,6 +43,51 @@ pub trait Space {
     fn fields(&mut self, ty: TypeId, ctor: &Ctor) -> Vec<TypeId>;
 }
 
+/// A one-column matrix of a `match`'s arms, indexed by head constructor, so that a query reads
+/// the rows that can match it instead of re-specialising every row (design §17.200 (8)). Row order
+/// and repeats do not change usefulness, its witnesses or its step count, so neither is kept.
+#[derive(Default)]
+pub struct Rows {
+    wild: bool,
+    by_ctor: HashMap<Ctor, Vec<Vec<Pat>>>,
+}
+
+impl Rows {
+    pub fn push(&mut self, p: Pat) {
+        match p {
+            Pat::Wild => self.wild = true,
+            Pat::Ctor(c, args) => self.by_ctor.entry(c).or_default().push(args),
+            Pat::Or(alts) => alts.into_iter().for_each(|a| self.push(a)),
+        }
+    }
+
+    /// The rows of the matrix specialised to `c`, as `specialize` makes them.
+    // ponytail: only the first column is indexed; many arms under one constructor (`Some(1)`,
+    // `Some(2)`, … or tuples) still re-specialise those rows per arm. Index the next column if a
+    // program needs it.
+    fn specialize(&self, c: &Ctor, arity: usize) -> Vec<Vec<Pat>> {
+        let mut out: Vec<Vec<Pat>> = self
+            .by_ctor
+            .get(c)
+            .into_iter()
+            .flatten()
+            .map(|args| pad(args, arity))
+            .collect();
+        if self.wild {
+            out.push(vec![Pat::Wild; arity]);
+        }
+        out
+    }
+}
+
+impl FromIterator<Pat> for Rows {
+    fn from_iter<I: IntoIterator<Item = Pat>>(iter: I) -> Self {
+        let mut rows = Rows::default();
+        iter.into_iter().for_each(|p| rows.push(p));
+        rows
+    }
+}
+
 /// Exponential pattern sets are cut off after this many steps (reported as "unknown").
 const BUDGET: u32 = 200_000;
 
@@ -59,8 +106,57 @@ impl<'a, S: Space> Usefulness<'a, S> {
         }
     }
 
+    /// Is `q` useful with respect to the one-column `rows`? Returns a witness if so. The first
+    /// step of [`Self::useful`], reading `rows`' index; the steps are counted as there.
+    pub fn useful_row(&mut self, rows: &Rows, q: &Pat, ty: TypeId) -> Option<Witness> {
+        self.steps += 1;
+        if self.steps > BUDGET {
+            self.exhausted = true;
+            return None;
+        }
+        match q {
+            Pat::Or(alts) => alts.iter().find_map(|alt| self.useful_row(rows, alt, ty)),
+            Pat::Ctor(c, args) => {
+                let sub = self.space.fields(ty, c);
+                let arity = sub.len();
+                let srows = rows.specialize(c, arity);
+                let w = self.useful(&srows, &pad(args, arity), &sub)?;
+                Some(Witness::Ctor(c.clone(), w))
+            }
+            Pat::Wild => match self.space.ctors(ty) {
+                Some(all) if all.iter().all(|c| rows.by_ctor.contains_key(c)) => {
+                    for c in all {
+                        let sub = self.space.fields(ty, &c);
+                        let srows = rows.specialize(&c, sub.len());
+                        if let Some(w) = self.useful(&srows, &vec![Pat::Wild; sub.len()], &sub) {
+                            return Some(Witness::Ctor(c, w));
+                        }
+                    }
+                    None
+                }
+                all => {
+                    let drows = if rows.wild {
+                        vec![Vec::new()]
+                    } else {
+                        Vec::new()
+                    };
+                    self.useful(&drows, &[], &[])?;
+                    let missing =
+                        all.and_then(|all| all.into_iter().find(|c| !rows.by_ctor.contains_key(c)));
+                    Some(match missing {
+                        Some(c) => {
+                            let arity = self.space.fields(ty, &c).len();
+                            Witness::Ctor(c, vec![Witness::Wild; arity])
+                        }
+                        None => Witness::Wild,
+                    })
+                }
+            },
+        }
+    }
+
     /// Is `q` useful with respect to `rows`? Returns a witness vector if so.
-    pub fn useful(&mut self, rows: &[Vec<Pat>], q: &[Pat], tys: &[TypeId]) -> Option<Vec<Witness>> {
+    fn useful(&mut self, rows: &[Vec<Pat>], q: &[Pat], tys: &[TypeId]) -> Option<Vec<Witness>> {
         self.steps += 1;
         if self.steps > BUDGET {
             self.exhausted = true;
@@ -130,15 +226,13 @@ impl<'a, S: Space> Usefulness<'a, S> {
         }
     }
 
-    /// Up to `max` distinct witnesses of values not matched by `rows` (single column).
-    pub fn missing(&mut self, rows: &[Pat], ty: TypeId, max: usize) -> Vec<Witness> {
-        let mut matrix: Vec<Vec<Pat>> = rows.iter().map(|p| vec![p.clone()]).collect();
+    /// Up to `max` distinct witnesses of values not matched by `rows`.
+    pub fn missing(&mut self, mut rows: Rows, ty: TypeId, max: usize) -> Vec<Witness> {
         let mut out = Vec::new();
         while out.len() < max {
-            match self.useful(&matrix, &[Pat::Wild], &[ty]) {
-                Some(mut w) => {
-                    let w = w.remove(0);
-                    matrix.push(vec![witness_pat(&w)]);
+            match self.useful_row(&rows, &Pat::Wild, ty) {
+                Some(w) => {
+                    rows.push(witness_pat(&w));
                     out.push(w);
                 }
                 None => break,
@@ -259,6 +353,10 @@ mod tests {
         }
     }
 
+    fn m(pats: &[Pat]) -> Rows {
+        pats.iter().cloned().collect()
+    }
+
     fn none() -> Pat {
         Pat::Ctor(Ctor::Variant(test_def(0)), vec![])
     }
@@ -272,7 +370,7 @@ mod tests {
         let mut s = space();
         let ty = s.opt;
         let mut u = Usefulness::new(&mut s);
-        let w = u.missing(&[some(Pat::Wild)], ty, 3);
+        let w = u.missing(m(&[some(Pat::Wild)]), ty, 3);
         assert_eq!(w, vec![Witness::Ctor(Ctor::Variant(test_def(0)), vec![])]);
     }
 
@@ -281,7 +379,7 @@ mod tests {
         let mut s = space();
         let ty = s.opt;
         let mut u = Usefulness::new(&mut s);
-        let w = u.missing(&[], ty, 3);
+        let w = u.missing(m(&[]), ty, 3);
         assert_eq!(w.len(), 2);
         assert_eq!(w[0], Witness::Ctor(Ctor::Variant(test_def(0)), vec![]));
     }
@@ -291,7 +389,7 @@ mod tests {
         let mut s = space();
         let ty = s.opt;
         let mut u = Usefulness::new(&mut s);
-        let w = u.missing(&[none(), some(Pat::Ctor(Ctor::Int(1), vec![]))], ty, 3);
+        let w = u.missing(m(&[none(), some(Pat::Ctor(Ctor::Int(1), vec![]))]), ty, 3);
         assert_eq!(
             w,
             vec![Witness::Ctor(
@@ -299,7 +397,7 @@ mod tests {
                 vec![Witness::Wild]
             )]
         );
-        assert!(u.missing(&[none(), some(Pat::Wild)], ty, 3).is_empty());
+        assert!(u.missing(m(&[none(), some(Pat::Wild)]), ty, 3).is_empty());
     }
 
     #[test]
@@ -340,7 +438,7 @@ mod tests {
             Pat::Ctor(Ctor::Tuple(2), vec![b(true), Pat::Wild]),
             Pat::Ctor(Ctor::Tuple(2), vec![b(false), b(true)]),
         ];
-        let w = u.missing(&rows, tt, 3);
+        let w = u.missing(m(&rows), tt, 3);
         assert_eq!(
             w,
             vec![Witness::Ctor(
@@ -353,7 +451,7 @@ mod tests {
         );
         let or = Pat::Or(vec![b(true), b(false)]);
         assert!(
-            u.missing(&[Pat::Ctor(Ctor::Tuple(2), vec![or.clone(), or])], tt, 3)
+            u.missing(m(&[Pat::Ctor(Ctor::Tuple(2), vec![or.clone(), or])]), tt, 3)
                 .is_empty()
         );
     }
