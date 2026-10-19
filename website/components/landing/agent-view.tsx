@@ -329,10 +329,12 @@ function AgentLoop() {
 function Station({ cmd, who, what }: { cmd: string; who: string; what: ReactNode }) {
   return (
     <>
-      <code className="block font-mono text-[12.5px] font-medium whitespace-nowrap text-foreground">
-        {cmd}
-        <span className="ml-2 font-sans text-[11px] font-normal text-faint">{who}</span>
-      </code>
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <code className="font-mono text-[12.5px] font-medium whitespace-nowrap text-foreground">
+          {cmd}
+        </code>
+        <span className="text-[11px] text-faint">{who}</span>
+      </p>
       <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">{what}</p>
     </>
   );
