@@ -608,7 +608,9 @@ pub fn main() -> Unit ! {Console, Cli} {
 }
 
 /// Design §8.6: fibers run concurrently on the event loop; `race`, `timeout` and a failing
-/// child cancel the others (their sleeps stop, so the program does not wait 5 s).
+/// child cancel the others (their sleeps stop, so the program does not wait 5 s). `Task.all`'s
+/// three 60 ms sleeps are timed on the virtual clock: 60 concurrently, 180 in turn, whatever the
+/// host's load.
 #[test]
 fn tasks_run_concurrently_and_cancel_losers() {
     let src = r#"import std/task.{Timeout, timeout}
@@ -619,10 +621,12 @@ fn slow(ms: Int, v: Int) -> Int ! {Clock} {
   v
 }
 pub fn main() -> Unit ! {Console, Clock, Task} {
-  let t0 = Clock.monotonic()
-  let xs = Task.all([fn() { slow(60, 1) }, fn() { slow(60, 2) }, fn() { slow(60, 3) }])
-  let took = Duration.to_millis(Clock.monotonic()) - Duration.to_millis(t0)
-  Console.print("{xs} {took < 150}")
+  let (xs, took) = with Clock.virtual() {
+    let t0 = Clock.monotonic()
+    let xs = Task.all([fn() { slow(60, 1) }, fn() { slow(60, 2) }, fn() { slow(60, 3) }])
+    (xs, Duration.to_millis(Clock.monotonic()) - Duration.to_millis(t0))
+  }
+  Console.print("{xs} {took}")
   Console.print("{Task.race([fn() { slow(300, 1) }, fn() { slow(10, 2) }])}")
   let t = try { timeout(Duration.millis(30), fn() { slow(5000, 9) }) }
   Console.print("{t.is_err()}")
@@ -640,7 +644,7 @@ pub fn main() -> Unit ! {Console, Clock, Task} {
     let r = common::run("tasks", src).unwrap();
     assert_eq!(
         (r.stdout.as_str(), r.code),
-        ("[1, 2, 3] true\n2\ntrue\nErr(Boom)\n30\n", 0),
+        ("[1, 2, 3] 60\n2\ntrue\nErr(Boom)\n30\n", 0),
         "{}",
         r.stderr
     );
