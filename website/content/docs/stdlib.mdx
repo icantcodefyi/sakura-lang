@@ -24,6 +24,7 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 - JS `Int` arithmetic has a safe-integer range of ±(2^53−1); WASM uses signed i64. Both are CLI targets; native is experimental.
 - Web byte and text APIs (RFC 0002): `Uint8Array` is `Bytes`, immutable, so an in-place write is `Bytes.from_list(List.set(...))`; `TextEncoder.encodeInto` has no counterpart because there is no caller-owned buffer; `btoa` takes bytes, so text goes through `String.to_bytes` first; `Encoding.encode` writes UTF-8 and UTF-16 only, since Windows-1252 cannot encode every string.
 - Web URL APIs (RFC 0002): `URL` is `Url.parse` and `Url.resolve` giving a `UrlParts` value, and `URLSearchParams` is `SearchParams`; the setters are `with_*` functions returning a new value, so there is no live `url.searchParams` (read `Url.search`, write `Url.with_search`); a host that needs IDNA (non-ASCII, or an `xn--` label) is `UrlError(Idna)` until punycode lands; the password is a `Secret` that `to_string` leaves out. `Url` stays the prefix check `url"…"` and `Request.url` use.
+- Web Crypto (RFC 0002): `crypto.subtle` is `std/crypto`, synchronous and pure; `importKey` takes the material as `Secret<Bytes>` and a `CryptoKey` is never `Show`. `verify` is reserved as a bare name, so call it `crypto.verify(key, tag, data)` or `key.verify(tag, data)`. A key without the operation's usage is `D020`, not an error value. On `--target wasm` the primitives are `D090` until the host imports that follow the `v0.1.0` tag.
 - Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer `List` for dense integer IDs, as in DeltaBlue; use `Map` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 
@@ -132,6 +133,35 @@ fn captured() -> Handler<Console, {Test}>
 fn show<A: Show>(a: A) -> String    // @external
 type Violation = { type_name: String, clause: String, value_summary: String }
 type Trust
+```
+
+### `std/crypto`
+
+```sakura fragment
+type Digest = Sha256 | Sha384 | Sha512
+type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest)
+type Usage = Sign | Verify | DeriveBits
+type KeyFormat = Raw
+type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
+error KeyError(reason: KeyReason)
+type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
+error CryptoError(reason: CryptoReason)
+opaque type CryptoKey = { algorithm: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes> }
+type HkdfParams = { salt: Bytes, info: Bytes }
+type Pbkdf2Params = { salt: Bytes, iterations: Int }
+type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params)
+fn algorithm(key: CryptoKey) -> Algorithm
+fn usages(key: CryptoKey) -> List<Usage>
+fn extractable(key: CryptoKey) -> Bool
+fn allows(alg: Algorithm, usage: Usage) -> Bool    // @total
+fn permits(key: CryptoKey, usage: Usage) -> Bool    // @total
+fn digest(alg: Digest, data: Bytes) -> Bytes
+fn import_key(format: KeyFormat, alg: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes>) -> Result<CryptoKey, KeyError>
+fn export_key(key: CryptoKey, format: KeyFormat) -> Result<Bytes, KeyError>
+fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey ! {Random} requires is_hmac(alg) && usages_error(alg, usages) == None
+fn hmac(key: CryptoKey, data: Bytes) -> Bytes requires is_hmac(key.algorithm) && permits(key, Sign)
+fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool requires is_hmac(key.algorithm) && permits(key, Verify)
+fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError> requires permits(key, DeriveBits) && fits(key.algorithm, params)
 ```
 
 ### `std/decimal`

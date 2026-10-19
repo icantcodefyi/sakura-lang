@@ -16,6 +16,11 @@ clock_virtual_sleep: (i64, i64) -> i64 cps
 console_host: () -> ptr
 contract_enter: () -> unit
 contract_exit: () -> unit
+crypto_digest: (i64, ptr) -> ptr
+crypto_hkdf: (i64, ptr, ptr, ptr, i64) -> ptr
+crypto_hmac: (i64, ptr, ptr) -> ptr
+crypto_hmac_verify: (i64, ptr, ptr, ptr) -> bool
+crypto_pbkdf2: (i64, ptr, ptr, i64, i64) -> ptr
 encoding_decode: (ptr, i64, i64) -> ptr
 encoding_encode: (ptr, i64) -> ptr
 env_get: (ptr) -> ptr

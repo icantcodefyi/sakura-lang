@@ -1,0 +1,41 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#hmac-operations-verify
+
+// `verify` is true only for the whole tag of the same data under the same key: a flipped bit, a
+// truncated or extended tag, other data and another key are all false. The tag is compared in
+// constant time; none is printed.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let alg = Algorithm.Hmac(Digest.Sha384)
+  let usages = [Usage.Sign, Usage.Verify]
+  let raw = crypto.import_key(KeyFormat.Raw, alg, usages, false, Secret.of(String.to_bytes("one")))
+  let other = crypto.import_key(
+    KeyFormat.Raw,
+    alg,
+    usages,
+    false,
+    Secret.of(String.to_bytes("two")),
+  )
+  match (raw, other) {
+    (Ok(k), Ok(k2)) => {
+      let data = String.to_bytes("payload")
+      let tag = crypto.hmac(k, data)
+      let first = Bytes.get(tag, 0).unwrap_or(0)
+      let flipped = Bytes.concat([
+        Bytes.from_list([if first % 2 == 0 { first + 1 } else { first - 1 }]),
+        Bytes.slice(tag, 1, Bytes.len(tag)),
+      ])
+      Console.print("{Bytes.len(tag)} {k.verify(tag, data)}")
+      Console.print("{k.verify(flipped, data)}")
+      Console.print("{k.verify(Bytes.slice(tag, 0, 47), data)}")
+      Console.print("{k.verify(Bytes.concat([tag, Bytes.from_list([0])]), data)}")
+      Console.print("{k.verify(Bytes.from_list([]), data)}")
+      Console.print("{k.verify(tag, String.to_bytes("payloaD"))}")
+      Console.print("{k2.verify(tag, data)}")
+    },
+    _ => Console.print("import failed"),
+  }
+}

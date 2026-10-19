@@ -1,0 +1,29 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#hmac-operations-generate-key
+
+// `generate_key` draws its material from `Random`, so under `Random.seeded` the same seed makes
+// the same key on every backend, and another seed another key. That is why `Random.seeded` is
+// for tests only: such a key is not secret. The HMAC key is the hash's block size.
+import std/bytes.{Alphabet}
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+fn tag(seed: Int, alg: Algorithm) -> Bytes {
+  let key = with Random.seeded(seed) { crypto.generate_key(alg, [Usage.Sign], true) }
+  crypto.hmac(key, String.to_bytes("message"))
+}
+
+fn material_len(alg: Algorithm) -> Result<Int, crypto.KeyError> {
+  let key = with Random.seeded(1) { crypto.generate_key(alg, [Usage.Sign], true) }
+  crypto.export_key(key, KeyFormat.Raw).map(Bytes.len)
+}
+
+pub fn main() -> Unit ! {Console} {
+  let sha256 = Algorithm.Hmac(Digest.Sha256)
+  Console.print("{tag(42, sha256) == tag(42, sha256)} {tag(42, sha256) == tag(43, sha256)}")
+  Console.print(Bytes.to_base64(tag(42, sha256), Alphabet.Standard, true))
+  for d in [Digest.Sha256, Digest.Sha384, Digest.Sha512] {
+    Console.print("{d} {material_len(Algorithm.Hmac(d))}")
+  }
+}

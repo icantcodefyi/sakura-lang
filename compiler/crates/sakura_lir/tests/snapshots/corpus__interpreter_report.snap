@@ -23,6 +23,16 @@ semantics/contract_site_blame_ensures: D021, 1 allocated, 0 dup, 1 drop, peak 1,
 semantics/contract_site_blame_value: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/contract_site_blame_value_ensures: D021, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/contracts_hold: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/crypto_derive_rejects_bounds: unsupported (builtin string_to_bytes)
+semantics/crypto_export_rejects_not_extractable: unsupported (builtin bytes_from_list)
+semantics/crypto_generate_under_seeded_random_is_deterministic: unsupported (builtin bytes_from_list)
+semantics/crypto_hkdf_rfc5869: unsupported (builtin bytes_from_list)
+semantics/crypto_hmac_rfc4231: unsupported (builtin bytes_from_list)
+semantics/crypto_import_rejects_usage: unsupported (builtin string_to_bytes)
+semantics/crypto_pbkdf2_rfc7914: unsupported (builtin string_to_bytes)
+semantics/crypto_sha2_cavp: unsupported (builtin bytes_from_list)
+semantics/crypto_usage_rejected: unsupported (builtin string_to_bytes)
+semantics/crypto_verify_rejects_tampered: unsupported (builtin string_to_bytes)
 semantics/deep_countdown: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deep_recursion_defect: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0

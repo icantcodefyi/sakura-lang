@@ -12,6 +12,8 @@ pub mod arena;
 pub mod builtins;
 pub mod cmp;
 pub mod codec;
+#[cfg(all(feature = "native", not(target_arch = "wasm32")))]
+pub mod crypto;
 #[cfg(any(target_arch = "wasm32", feature = "native"))]
 mod cx;
 pub mod exec;

@@ -1,0 +1,294 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
+layout 2 error std::crypto::CryptoError | CryptoError 24b (reason: word*)
+layout 3 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
+layout 4 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64)
+layout 5 variant std::crypto::DeriveParams | HkdfWith 24b (word*) | Pbkdf2With 24b (word*)
+layout 6 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 7 record std::crypto::HkdfParams | HkdfParams 32b (salt: word*, info: word*)
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b ()
+layout 10 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
+layout 11 record std::crypto::Pbkdf2Params | Pbkdf2Params 32b (salt: word*, iterations: i64)
+layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
+layout 13 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 14 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 15 shape |  32b (word*, word*)
+layout 16 shape |  32b (i64, word*)
+layout 17 shape |  56b (word*, word*, word*, word*, i64)
+
+fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*, %51 word*, %52 i64, %53 i64, %54 word*, %55 word*, %56 word*, %57 i64, %58 word*, %59 word*, %60 word*, %63 word*, %64 word*, %65 i64, %66 i64, %67 word*, %68 word*, %69 word*, %70 i64, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %98 word*, %99 i64, %100 word*, %101 word*, %102 word*, %103 i64, %104 i64, %105 word*, %106 i64, %107 word*, %108 word*, %117 word*, %118 word*, %119 i64, %120 i64, %121 word*, %123 word*, %124 word*, %125 i64, %126 i64, %127 word*, %130 bool, %131 word*, %132 i64, %133 i64, %141 bool, %142 word*, %143 i64, %144 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: ptr = const str 2
+    %3 lit: ptr = const str 3
+    %4 lit: i64 = const 42
+    %5 tup: ptr = alloc tuple#17(word, word, word, word, i64)(%0, %1, %2, %3, %4)
+    %6 lit: ptr = const str 4
+    %7 lit: ptr = const str 5
+    %8 lit: ptr = const str 6
+    %9 lit: ptr = const str 7
+    %10 lit: i64 = const 82
+    %11 tup: ptr = alloc tuple#17(word, word, word, word, i64)(%6, %7, %8, %9, %10)
+    %12 lit: ptr = const str 8
+    %13 lit: ptr = const str 1
+    %14 lit: ptr = const str 9
+    %15 lit: ptr = const str 9
+    %16 lit: i64 = const 42
+    %17 tup: ptr = alloc tuple#17(word, word, word, word, i64)(%12, %13, %14, %15, %16)
+    %18 xs: ptr = alloc list(%5, %11, %17)
+    dup.candidate %18
+    %19 n: i64 = $list_len(%18)
+    %151 lit: i64 = const 0
+    jump b2(%151, %18, %19)
+  b1():
+    %20 lit: unit = const ()
+    ret %20
+  b2(%21 i: i64, %22 xs: ptr, %23 n: i64):
+    %24 more: bool = lt.int %21, %23
+    if %24 then b3(%22, %23, %21) else b4(%22, %23, %21)
+  b3(%25 xs: ptr, %26 n: i64, %27 i: i64):
+    dup.candidate %25
+    %31 x: word = $list_at(%25, %27)
+    %146 p: ptr = tuple_get %31.0
+    %147 p: ptr = tuple_get %31.1
+    %148 p: ptr = tuple_get %31.2
+    %149 p: ptr = tuple_get %31.3
+    %150 p: i64 = tuple_get %31.4
+    drop %31
+    jump b6(%146, %147, %148, %149, %150, %25, %26, %27)
+  b4(%28 xs: ptr, %29 n: i64, %30 i: i64):
+    drop %28
+    jump b1()
+  b5(%32 xs: ptr, %33 n: i64, %34 i: i64):
+    %35 lit: i64 = const 1
+    %36 i: i64 = intadd %34, %35
+    jump b2(%36, %32, %33)
+  b6(%37 case: ptr, %38 ikm: ptr, %39 salt: ptr, %40 info: ptr, %41 len: i64, %42 xs: ptr, %43 n: i64, %44 i: i64):
+    %45 v: ptr = const static std::crypto::Digest.Sha256
+    %46 r: ptr = alloc std::crypto::Algorithm.Hkdf(%45)
+    %47 v: ptr = const static std::crypto::KeyFormat.Raw
+    %48 v: ptr = const static std::crypto::Usage.DeriveBits
+    %49 xs: ptr = alloc list(%48)
+    call unhex#2(%38) -> b7(%42, %43, %44, %37, %39, %40, %41, %46, %47, %49)
+  b7(%50 r: ptr, %51 xs: ptr, %52 n: i64, %53 i: i64, %54 case: ptr, %55 salt: ptr, %56 info: ptr, %57 len: i64, %58 r: ptr, %59 v: ptr, %60 xs: ptr):
+    %61 r: ptr = $secret_wrap(%50)
+    %62 lit: bool = const false
+    call import_key#3(%59, %58, %60, %62, %61) -> b8(%51, %52, %53, %54, %55, %56, %57)
+  b8(%63 r: ptr, %64 xs: ptr, %65 n: i64, %66 i: i64, %67 case: ptr, %68 salt: ptr, %69 info: ptr, %70 len: i64):
+    %75 tag: i64 = tag %63 ctor std::result::Result
+    switch %75 0 => b10(%64, %65, %66, %67, %68, %69, %70, %63) 1 => b11(%64, %65, %66, %67, %68, %69, %70, %63)
+  b9(%71 v: word, %72 xs: ptr, %73 n: i64, %74 i: i64):
+    drop %71
+    jump b5(%72, %73, %74)
+  b10(%76 xs: ptr, %77 n: i64, %78 i: i64, %79 case: ptr, %80 salt: ptr, %81 info: ptr, %82 len: i64, %83 r: ptr):
+    %92 p: word = proj %83.0 std::result::Result.Ok
+    drop %83
+    call unhex#2(%80) -> b12(%76, %77, %78, %79, %81, %82, %92)
+  b11(%84 xs: ptr, %85 n: i64, %86 i: i64, %87 case: ptr, %88 salt: ptr, %89 info: ptr, %90 len: i64, %91 r: ptr):
+    drop %88
+    drop %89
+    %135 p: word = proj %91.0 std::result::Result.Err
+    drop %91
+    %136 s: ptr = show %87
+    drop %87
+    %137 lit: ptr = const str 10
+    %138 s: ptr = concat %136, %137
+    drop %136
+    drop %137
+    %139 s: ptr = show %135
+    drop %135
+    %140 s: ptr = concat %138, %139
+    drop %138
+    drop %139
+    perform std::console::Console.print(%140) -> b17(%84, %85, %86)
+  b12(%93 r: ptr, %94 xs: ptr, %95 n: i64, %96 i: i64, %97 case: ptr, %98 info: ptr, %99 len: i64, %100 k: ptr):
+    call unhex#2(%98) -> b13(%94, %95, %96, %97, %99, %100, %93)
+  b13(%101 r: ptr, %102 xs: ptr, %103 n: i64, %104 i: i64, %105 case: ptr, %106 len: i64, %107 k: ptr, %108 r: ptr):
+    %109 rec: ptr = alloc std::crypto::HkdfParams(%108, %101)
+    %110 r: ptr = alloc std::crypto::DeriveParams.HkdfWith(%109)
+    %111 s: ptr = show %105
+    drop %105
+    %112 lit: ptr = const str 10
+    %113 s: ptr = concat %111, %112
+    drop %111
+    drop %112
+    %114 lit: i64 = const 8
+    %115 t: i64 = intmul %114, %106
+    %116 $site: i64 = const 2
+    call derive_bits#4(%107, %110, %115, %116) -> b14(%102, %103, %104, %113)
+  b14(%117 r: ptr, %118 xs: ptr, %119 n: i64, %120 i: i64, %121 s: ptr):
+    %122 fn: ptr = const static closure hex$value#23
+    call map#6(%117, %122) -> b15(%118, %119, %120, %121)
+  b15(%123 r: ptr, %124 xs: ptr, %125 n: i64, %126 i: i64, %127 s: ptr):
+    %128 s: ptr = show %123
+    drop %123
+    %129 s: ptr = concat %127, %128
+    drop %127
+    drop %128
+    perform std::console::Console.print(%129) -> b16(%124, %125, %126)
+  b16(%130 r: unit, %131 xs: ptr, %132 n: i64, %133 i: i64):
+    %134 box: word = box %130
+    jump b9(%134, %131, %132, %133)
+  b17(%141 r: unit, %142 xs: ptr, %143 n: i64, %144 i: i64):
+    %145 box: word = box %141
+    jump b9(%145, %142, %143, %144)
+
+fn $entry#1 top -> unit ; main::crypto_hkdf_rfc5869, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn unhex#2 top -> ptr ; main::crypto_hkdf_rfc5869, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
+  b0(%0 s: ptr):
+    %1 xs: ptr = alloc list()
+    dup %0
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 2
+    %4 t: i64 = intdiv %2, %3
+    %58 lit: i64 = const 0
+    jump b2(%58, %1, %0, %4)
+  b1(%5 out: ptr):
+    %6 r: ptr = $bytes_from_list(%5)
+    ret %6
+  b2(%7 i: i64, %8 out: ptr, %9 s: ptr, %10 t: i64):
+    %11 more: bool = lt.int %7, %10
+    if %11 then b3(%9, %10, %7, %8) else b4(%9, %10, %7, %8)
+  b3(%12 s: ptr, %13 t: i64, %14 i: i64, %15 out: ptr):
+    %26 lit: i64 = const 2
+    %27 t: i64 = intmul %26, %14
+    %28 lit: i64 = const 2
+    %29 t: i64 = intmul %28, %14
+    %30 lit: i64 = const 1
+    %31 t: i64 = intadd %29, %30
+    dup %12
+    %32 r: ptr = $string_slice(%12, %27, %31)
+    call nibble#22(%32) -> b6(%12, %13, %14, %15)
+  b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
+    drop %16
+    jump b1(%19)
+  b5(%20 out: ptr, %21 s: ptr, %22 t: i64, %23 i: i64):
+    %24 lit: i64 = const 1
+    %25 i: i64 = intadd %23, %24
+    jump b2(%25, %20, %21, %22)
+  b6(%33 r: i64, %34 s: ptr, %35 t: i64, %36 i: i64, %37 out: ptr):
+    %38 lit: i64 = const 16
+    %39 t: i64 = intmul %33, %38
+    %40 lit: i64 = const 2
+    %41 t: i64 = intmul %40, %36
+    %42 lit: i64 = const 1
+    %43 t: i64 = intadd %41, %42
+    %44 lit: i64 = const 2
+    %45 t: i64 = intmul %44, %36
+    %46 lit: i64 = const 2
+    %47 t: i64 = intadd %45, %46
+    dup %34
+    %48 r: ptr = $string_slice(%34, %43, %47)
+    call nibble#22(%48) -> b7(%34, %35, %36, %37, %39)
+  b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
+    %55 t: i64 = intadd %54, %49
+    %56 box: word = box %55
+    %57 r: ptr = $list_push(%53, %56)
+    jump b5(%57, %50, %51, %52)
+
+fn hex#5 top -> ptr ; main::crypto_hkdf_rfc5869, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
+  b0(%0 b: ptr):
+    dup %0
+    %1 r: i64 = $bytes_len(%0)
+    %48 lit: i64 = const 0
+    %49 lit: ptr = const str 9
+    jump b1(%48, %49, %0, %1)
+  b1(%2 i: i64, %3 out: ptr, %4 b: ptr, %5 r: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
+    dup %7
+    %21 r: ptr = $bytes_get(%7, %9)
+    %22 lit: i64 = const 0
+    %23 box: word = box %22
+    call unwrap_or#7(%21, %23) -> b5(%7, %8, %9, %10)
+  b3(%11 b: ptr, %12 r: i64, %13 i: i64, %14 out: ptr):
+    drop %11
+    ret %14
+  b4(%15 out: ptr, %16 b: ptr, %17 r: i64, %18 i: i64):
+    %19 lit: i64 = const 1
+    %20 i: i64 = intadd %18, %19
+    jump b1(%20, %15, %16, %17)
+  b5(%24 r: word, %25 b: ptr, %26 r: i64, %27 i: i64, %28 out: ptr):
+    %29 unbox: i64 = unbox %24
+    drop %24
+    %30 lit: i64 = const 16
+    %31 t: i64 = intdiv %29, %30
+    %32 lit: i64 = const 16
+    %33 t: i64 = intdiv %29, %32
+    %34 lit: i64 = const 1
+    %35 t: i64 = intadd %33, %34
+    %36 lit: ptr = const str 11
+    %37 r: ptr = $string_slice(%36, %31, %35)
+    %38 t: ptr = concat %28, %37
+    drop %28
+    drop %37
+    %39 lit: i64 = const 16
+    %40 t: i64 = intrem %29, %39
+    %41 lit: i64 = const 16
+    %42 t: i64 = intrem %29, %41
+    %43 lit: i64 = const 1
+    %44 t: i64 = intadd %42, %43
+    %45 lit: ptr = const str 11
+    %46 r: ptr = $string_slice(%45, %40, %44)
+    %47 t: ptr = concat %38, %46
+    drop %38
+    drop %46
+    jump b4(%47, %25, %26, %27)
+
+fn nibble#22 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
+  b0(%0 c: ptr):
+    %36 lit: i64 = const 0
+    %37 lit: i64 = const 0
+    jump b1(%36, %37, %0)
+  b1(%1 i: i64, %2 v: i64, %3 c: ptr):
+    %4 lit: i64 = const 16
+    %5 more: bool = lt.int %1, %4
+    if %5 then b2(%3, %1, %2) else b3(%3, %1, %2)
+  b2(%6 c: ptr, %7 i: i64, %8 v: i64):
+    %17 lit: i64 = const 1
+    %18 t: i64 = intadd %7, %17
+    %19 lit: ptr = const str 11
+    %20 r: ptr = $string_slice(%19, %7, %18)
+    %21 t: bool = eq.string %20, %6
+    drop %20
+    if %21 then b6(%6, %7, %8) else b7(%6, %7, %8)
+  b3(%9 c: ptr, %10 i: i64, %11 v: i64):
+    drop %9
+    ret %11
+  b4(%12 v: i64, %13 c: ptr, %14 i: i64):
+    %15 lit: i64 = const 1
+    %16 i: i64 = intadd %14, %15
+    jump b1(%16, %12, %13)
+  b5(%22 v: word, %23 v: i64, %24 c: ptr, %25 i: i64):
+    drop %22
+    jump b4(%23, %24, %25)
+  b6(%26 c: ptr, %27 i: i64, %28 v: i64):
+    %32 lit: unit = const ()
+    %33 box: word = box %32
+    jump b5(%33, %27, %26, %27)
+  b7(%29 c: ptr, %30 i: i64, %31 v: i64):
+    %34 lit: unit = const ()
+    %35 box: word = box %34
+    jump b5(%35, %31, %29, %30)
+
+fn hex$value#23 adapter of hex#5 -> word ; main::crypto_hkdf_rfc5869, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    call hex#5(%1) -> b1()
+  b1(%2 r: ptr):
+    ret %2

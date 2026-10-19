@@ -187,7 +187,7 @@ test "HTML composition keeps text escaped" {
 
 This holds because the template's result types are `pub opaque type`s. `Query<R>` and `Html` are exported by name only: other modules can pass them around, but constructing one outside its declaring module is `V1006`, so callers must use the module APIs. `Html.raw` makes bypassing escaping an explicit trust decision.
 
-## Secrets
+## Secrets and keys
 
 `Secret<T>` wraps credentials. `Env.secret("KEY")` returns `Option<Secret<String>>`. A secret is not `Show`, `Eq`, `Ord`, or `Schema`, so it cannot be interpolated, logged, snapshotted, or serialized. Interpolating one is `V2031`. Only std sinks accept it, such as `Http.bearer`:
 
@@ -210,6 +210,57 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 
 Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`, and a derived credential uses `Secret.map(s, f, @trust("reason"))`: the result stays secret, but a defect in `f` can print the clear value, so it is audited too. [`sakura audit`](/docs/agents/audit) lists every user `@trust` site with its reason. This prevents accidental disclosure, not deliberate leakage.
 
+### Keys
+
+[`std/crypto`](/docs/stdlib#stdcrypto) gives the Web Crypto API's SHA-2 digests, HMAC, HKDF and PBKDF2 as pure functions. It has no effect and no manifest key, because nothing in it touches the network or the disk. A `CryptoKey` holds its material as a `Secret<Bytes>`, so a key is not `Show` either (`V2031`) and is never logged or recorded. Each key carries its algorithm, the usages it permits and whether `export_key` may write it. "Not extractable" is a rule the module enforces, not a hardware boundary. The usual source of a key is a secret from `Env`, imported with only the usages the code needs:
+
+```sakura
+import std/bytes.{Alphabet}
+import std/crypto
+import std/crypto.{Algorithm, CryptoKey, Digest, KeyError, KeyFormat, Usage}
+
+/// A webhook provider's signing secret as an HMAC-SHA-256 key that can only verify.
+fn webhook_key(secret: Secret<String>) -> Result<CryptoKey, KeyError> {
+  let material = Secret.map(secret, fn(s) { String.to_bytes(s) }, @trust("webhook signing key"))
+  crypto.import_key(KeyFormat.Raw, Algorithm.Hmac(Digest.Sha256), [Usage.Verify], false, material)
+}
+
+/// Whether `body` arrived with a valid Base64 `signature`; the tag is compared in constant time.
+fn authentic(key: CryptoKey, signature: String, body: Bytes) -> Bool {
+  match Bytes.from_base64(signature, Alphabet.Standard) {
+    Ok(tag) => key.verify(tag, body),
+    Err(_) => false,
+  }
+}
+
+test "only the signed body is authentic" {
+  let secret = Secret.of("whsec_test")
+  let body = String.to_bytes("event=paid")
+  let signer = crypto.import_key(
+    KeyFormat.Raw,
+    Algorithm.Hmac(Digest.Sha256),
+    [Usage.Sign],
+    false,
+    Secret.map(secret, fn(s) { String.to_bytes(s) }, @trust("test signer")),
+  )
+  match (webhook_key(secret), signer) {
+    (Ok(key), Ok(s)) => {
+      let signature = Bytes.to_base64(crypto.hmac(s, body), Alphabet.Standard, true)
+      expect(authentic(key, signature, body))
+      expect(!authentic(key, signature, String.to_bytes("event=refund")))
+      expect(!authentic(key, "not base64", body))
+    },
+    _ => expect(false),
+  }
+}
+```
+
+`verify` compares tags in constant time. Passing a key that lacks the operation's usage is a broken `requires` (`D020`): which key a call passes is a fact about the program, not about its input. `derive_bits` takes every bound as an argument, including the output length in bits and PBKDF2's iteration count, and refuses an out-of-range value with a typed `CryptoError`.
+
+`generate_key` draws its material from `Random`, the one source of entropy. `Random.host()` is the operating system's generator. Under `Random.seeded`, the test default, the same seed makes the same key on every backend, which is why seeded randomness is for tests only: a key made under it is not secret.
+
+On `--target wasm` the crypto primitives are not available yet. They reach the host through new ABI imports, which arrive after the `v0.1.0` tag, and until then a call is the defect `D090`. JS and native compute them now, and the official NIST and RFC vectors hold the two equal.
+
 ## The trusted computing base
 
 Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). [`sakura build --manifest`](/docs/agents/build-manifest) inventories trusted compiler/runtime/std bindings and user trust sites, including a hash of the emitted runtime. It does not hash every trusted component. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
@@ -222,7 +273,7 @@ Compiler fixes never widen authority silently. A fix that would change authority
 - `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; a denied permission stops the program at startup (exit `75`).
 - Prelude `Trust` is compiler-known. `@trust("reason")` is accepted only directly in a trusted sink argument; other uses report `V6001`.
 - Scoped capability/resource escape checks (`V6002`/`V6003`) and foreign-capability FFI checks (`V6001`) are implemented. The escape rules, the cassette format and the template rule passed a maintainer security review; see the [roadmap](/docs/roadmap).
-- `Secret<T>` is never shown, logged, snapshotted, or serialized (`V2031`).
+- `Secret<T>`, and a `CryptoKey` that holds one, is never shown, logged, snapshotted, or serialized (`V2031`).
 - Tagged templates receive interpolations as values, never raw text.
 
 ## Not in v0

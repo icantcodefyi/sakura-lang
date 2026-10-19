@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+true false
+1b4DvOiC6oF7pPSgjy5Nke1ffk6ZR80fjT7H/CiAR5U=
+Sha256 Ok(64)
+Sha384 Ok(128)
+Sha512 Ok(128)

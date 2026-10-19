@@ -69,6 +69,21 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   `Url.is_valid` are unchanged; a cookbook recipe (`url_build`) shows parse, `with_search`,
   `to_url` and `resolve`. Additive; no ABI change.
 
+- `std/crypto` (RFC 0002 §2.7, web-APIs plan phase 7a): the Web Crypto API's SHA-2 digests,
+  HMAC, HKDF and PBKDF2 as pure functions. It has no effect and no manifest key; key generation
+  performs `Random`. `crypto.digest(alg, data)` for SHA-256/384/512 (no SHA-1 or MD5); an
+  opaque `CryptoKey` whose material is a `Secret<Bytes>`, so a key is never shown, logged or
+  serialized (`V2031`); `import_key`/`export_key` in `Raw` format with `KeyError` (`NoUsages`,
+  `NotAllowed(usage)`, `Empty`, `NotExtractable`); `generate_key` for HMAC from `Random`;
+  `hmac`, and `verify`, which compares in constant time; `derive_bits` for HKDF and PBKDF2,
+  with every bound an argument (`bits`, `iterations`) and `CryptoError` (`Length`,
+  `Iterations`, `Info`) for an out-of-range one. A key without the operation's usage is `D020`.
+  The primitives are `node:crypto` on JS and the RustCrypto crates (`sha2` 0.11.1, `hmac`,
+  `hkdf` and `pbkdf2` 0.13.0, exact pins) in `runtime/rt` on native. NIST CAVP SHA-2, RFC 4231,
+  RFC 5869 and RFC 7914 §11 vectors in `compiler/tests/vectors` hold the two equal. On
+  `--target wasm` a primitive is the defect `D090` until its host imports, an ABI MINOR
+  revision, follow the `v0.1.0` tag. Additive; no ABI change.
+
 - `compiler/fuzz`: an `exec` differential target. It mutates `tests/semantics` programs with
   typed edits (literals, operators, match-arm and handler order, `List` and `Map` operations)
   and runs each well-typed result on the reference evaluator, the JS backend, the LIR

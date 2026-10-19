@@ -12,9 +12,31 @@ use std::process::Command;
 use sakura_codegen_wasm::{Host, Options};
 use sakura_lir::snapshot;
 
+/// `std/crypto`'s primitives on WASM wait for their hosted imports (design §17.263 (2)).
+const CRYPTO_ON_WASM: &str = "std/crypto's hosted imports wait for the v0.1.0 tag (ABI MINOR)";
+
 /// Programs that cannot run as a bare corpus module, on one runner (`Some`) or both, with
 /// the reason. `sakura_cli/tests/parity.rs` runs them all through `sakura build --target wasm`.
 const KNOWN: &[(&str, Option<Host>, &str)] = &[
+    (
+        "semantics/crypto_derive_rejects_bounds",
+        None,
+        CRYPTO_ON_WASM,
+    ),
+    (
+        "semantics/crypto_generate_under_seeded_random_is_deterministic",
+        None,
+        CRYPTO_ON_WASM,
+    ),
+    ("semantics/crypto_hkdf_rfc5869", None, CRYPTO_ON_WASM),
+    ("semantics/crypto_hmac_rfc4231", None, CRYPTO_ON_WASM),
+    ("semantics/crypto_pbkdf2_rfc7914", None, CRYPTO_ON_WASM),
+    ("semantics/crypto_sha2_cavp", None, CRYPTO_ON_WASM),
+    (
+        "semantics/crypto_verify_rejects_tampered",
+        None,
+        CRYPTO_ON_WASM,
+    ),
     (
         "semantics/sql_untrusted_param",
         None,

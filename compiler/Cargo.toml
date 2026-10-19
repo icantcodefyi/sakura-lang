@@ -94,6 +94,11 @@ reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-n
 rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rusqlite = { version = "=0.40.2", features = ["bundled", "hooks"] }
 hyper = { version = "=1.12.0", default-features = false, features = ["server", "http1", "http2"] }
+# `std/crypto` tier 1 on native (RFC 0002 §2.7, plan web-apis phase 7a): audited RustCrypto
+# crates, `no_std`, exact pins; `sha2` is the workspace entry above.
+hmac = { version = "=0.13.0", default-features = false }
+hkdf = { version = "=0.13.0", default-features = false }
+pbkdf2 = { version = "=0.13.0", default-features = false, features = ["hmac"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

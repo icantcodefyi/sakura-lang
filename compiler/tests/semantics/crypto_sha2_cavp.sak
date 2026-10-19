@@ -1,0 +1,92 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf#page=18
+
+// NIST CAVP SHA-2 ShortMsg vectors (the table in `tests/vectors/sha2.txt`): per algorithm the
+// first three messages and the three around the padding boundary. Generated from the table.
+import std/crypto
+import std/crypto.{Digest}
+
+pub fn main() -> Unit ! {Console} {
+  for (alg, msg) in [
+    ("SHA-256", ""),
+    ("SHA-256", "d3"),
+    ("SHA-256", "11af"),
+    (
+      "SHA-256",
+      "3ebfb06db8c38d5ba037f1363e118550aad94606e26835a01af05078533cc25f2f39573c04b632f62f68c294ab31f2a3e2a1a0d8c2be51",
+    ),
+    (
+      "SHA-256",
+      "2d52447d1244d2ebc28650e7b05654bad35b3a68eedc7f8515306b496d75f3e73385dd1b002625024b81a02f2fd6dffb6e6d561cb7d0bd7a",
+    ),
+    (
+      "SHA-256",
+      "5a86b737eaea8ee976a0a24da63e7ed7eefad18a101c1211e2b3650c5187c2a8a650547208251f6d4237e661c7bf4c77f335390394c37fa1a9f9be836ac28509",
+    ),
+    ("SHA-384", ""),
+    ("SHA-384", "c5"),
+    ("SHA-384", "6ece"),
+    (
+      "SHA-384",
+      "a04f390a9cc2effad05db80d9076a8d4b6cc8bba97b27b423670b290b8e69c2b187230011c1481ac88d090f39154659494db5e410851c6e8b2b8a93717cae76037e0881978124fe7e1a0929d8891491f4e99646cc94062dc82411fa66130eda46560e75b98048236439465125e737b",
+    ),
+    (
+      "SHA-384",
+      "f419494c3c6d0727b3395a483a2167182a7252f4fd099c2d4b71b053f94bb8b3adf3b51e8460cfec084ce9415c95798fbae4975c208c544645b54c44d2b97f2ecfce5c805be61f5ba1d35dcc07afdd51a87baa990506668cf710e18be9b0ebf943f366fa29c69f7a6616de72a3353b66",
+    ),
+    (
+      "SHA-384",
+      "3bf52cc5ee86b9a0190f390a5c0366a560b557000dbe5115fd9ee11630a62769011575f15881198f227876e8fe685a6939bc8b89fd48a34ec5e71e131462b2886794dffa68ccc6d564733e67ffef25e627c6f4b5460796e3bce67bf58ca6e8e555bc916a8531697ac948b90dc8616f25101db90b50c3d3dbc9e21e42ff387187",
+    ),
+    ("SHA-512", ""),
+    ("SHA-512", "21"),
+    ("SHA-512", "9083"),
+    (
+      "SHA-512",
+      "324533e685f1852e358eea8ea8b81c288b3f3beb1f2bc2b8d3fdbac318382e3d7120de30c9c237aa0a34831deb1e5e060a7969cd3a9742ec1e64b354f7eb290cba1c681c66cc7ea994fdf5614f604d1a2718aab581c1c94931b1387e4b7dc73635bf3a7301174075fa70a9227d85d3",
+    ),
+    (
+      "SHA-512",
+      "518985977ee21d2bf622a20567124fcbf11c72df805365835ab3c041f4a9cd8a0ad63c9dee1018aa21a9fa3720f47dc48006f1aa3dba544950f87e627f369bc2793ede21223274492cceb77be7eea50e5a509059929a16d33a9f54796cde5770c74bd3ecc25318503f1a41976407aff2",
+    ),
+    (
+      "SHA-512",
+      "fd2203e467574e834ab07c9097ae164532f24be1eb5d88f1af7748ceff0d2c67a21f4e4097f9d3bb4e9fbf97186e0db6db0100230a52b453d421f8ab9c9a6043aa3295ea20d2f06a2f37470d8a99075f1b8a8336f6228cf08b5942fc1fb4299c7d2480e8e82bce175540bdfad7752bc95b577f229515394f3ae5cec870a4b2f8",
+    ),
+  ] {
+    let d = match alg {
+      "SHA-384" => Digest.Sha384,
+      "SHA-512" => Digest.Sha512,
+      _ => Digest.Sha256,
+    }
+    Console.print("{alg} {hex(crypto.digest(d, unhex(msg)))}")
+  }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

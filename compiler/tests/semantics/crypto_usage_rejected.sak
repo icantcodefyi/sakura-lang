@@ -1,0 +1,24 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#SubtleCrypto-method-sign
+// expect-exit: 70
+// expect-defect: D020
+
+// Which key a call passes is a fact about the program, so a key without the operation's usage
+// is a broken `requires` (`D020`, blaming the call), as Web Crypto's `InvalidAccessError` is an
+// exception and not a result. `permits` tests a usage first.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let alg = Algorithm.Hmac(Digest.Sha256)
+  let m = Secret.of(String.to_bytes("k"))
+  match crypto.import_key(KeyFormat.Raw, alg, [Usage.Verify], false, m) {
+    Ok(k) => {
+      Console.print("{crypto.permits(k, Usage.Verify)} {crypto.permits(k, Usage.Sign)}")
+      Console.print("{Bytes.len(crypto.hmac(k, String.to_bytes("data")))}")
+      Console.print("never printed")
+    },
+    Err(e) => Console.print("{e}"),
+  }
+}

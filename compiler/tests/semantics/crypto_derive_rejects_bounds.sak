@@ -1,0 +1,39 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#hkdf-operations-derive-bits
+
+// Every bound of `derive_bits` is an argument and each refusal is a typed `CryptoError`: a bit
+// count that is not a positive multiple of 8, HKDF output over 255 hash lengths, HKDF `info`
+// over 1,024 bytes, PBKDF2 iterations outside `1..=2_147_483_647`. The largest accepted values
+// are shown by their length.
+import std/crypto
+import std/crypto.{Algorithm, DeriveParams, Digest, HkdfParams, KeyFormat, Pbkdf2Params, Usage}
+
+fn zeros(n: Int) -> Bytes { Bytes.from_list(List.range(0, n).map(fn(_) { 0 })) }
+
+pub fn main() -> Unit ! {Console} {
+  let m = Secret.of(String.to_bytes("input keying material"))
+  let usages = [Usage.DeriveBits]
+  match (
+    crypto.import_key(KeyFormat.Raw, Algorithm.Hkdf(Digest.Sha256), usages, false, m),
+    crypto.import_key(KeyFormat.Raw, Algorithm.Pbkdf2(Digest.Sha256), usages, false, m),
+  ) {
+    (Ok(hkdf), Ok(pbkdf2)) => {
+      let h = fn(info) { DeriveParams.HkdfWith(HkdfParams { salt: zeros(0), info }) }
+      let p = fn(n) { DeriveParams.Pbkdf2With(Pbkdf2Params { salt: zeros(8), iterations: n }) }
+      for (key, params, bits) in [
+        (hkdf, h(zeros(0)), 0),
+        (hkdf, h(zeros(0)), -8),
+        (hkdf, h(zeros(0)), 12),
+        (hkdf, h(zeros(0)), 255 * 256 + 8),
+        (hkdf, h(zeros(1025)), 256),
+        (pbkdf2, p(0), 256),
+        (pbkdf2, p(2_147_483_648), 256),
+        (pbkdf2, p(1), 7),
+        (hkdf, h(zeros(1024)), 255 * 256),
+        (pbkdf2, p(1), 8),
+      ] { Console.print("{crypto.derive_bits(key, params, bits).map(Bytes.len)}") }
+    },
+    _ => Console.print("import failed"),
+  }
+}

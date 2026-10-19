@@ -1,0 +1,6 @@
+Hmac(Sha256) true Ok(Bytes.of([1, 2, 3, 4]))
+Hmac(Sha256) false Err(KeyError { reason: NotExtractable })
+Hkdf(Sha384) true Ok(Bytes.of([1, 2, 3, 4]))
+Hkdf(Sha384) false Err(KeyError { reason: NotExtractable })
+Pbkdf2(Sha512) true Ok(Bytes.of([1, 2, 3, 4]))
+Pbkdf2(Sha512) false Err(KeyError { reason: NotExtractable })

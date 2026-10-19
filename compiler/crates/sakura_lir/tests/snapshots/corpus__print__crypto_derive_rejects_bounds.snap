@@ -1,0 +1,264 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
+layout 2 error std::crypto::CryptoError | CryptoError 24b (reason: word*)
+layout 3 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
+layout 4 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64)
+layout 5 variant std::crypto::DeriveParams | HkdfWith 24b (word*) | Pbkdf2With 24b (word*)
+layout 6 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 7 record std::crypto::HkdfParams | HkdfParams 32b (salt: word*, info: word*)
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b ()
+layout 10 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
+layout 11 record std::crypto::Pbkdf2Params | Pbkdf2Params 32b (salt: word*, iterations: i64)
+layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
+layout 13 variant std::list::Builder
+layout 14 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 15 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 16 shape |  32b (word*, word*)
+layout 17 shape |  32b (i64, word*)
+layout 18 shape |  40b (word*, word*, i64)
+
+fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 157 slots [%9 word*, %10 word*, %11 word*, %16 word*, %17 word*, %20 bool, %40 word*, %41 word*, %42 word*, %43 word*, %44 word*, %45 word*, %46 word*, %47 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 word*, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %61 word*, %62 word*, %63 word*, %64 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %78 word*, %79 word*, %80 word*, %81 word*, %82 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %91 word*, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %99 word*, %100 word*, %101 word*, %109 word*, %110 word*, %111 word*, %112 word*, %113 word*, %114 word*, %115 word*, %116 word*, %117 word*, %118 word*, %119 word*, %120 word*, %121 word*, %122 word*, %123 word*, %124 word*, %125 word*, %126 word*, %131 word*, %132 word*, %133 word*, %134 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %140 word*, %145 word*, %146 word*, %147 word*, %148 word*, %149 word*, %150 word*, %151 word*, %152 word*, %153 word*, %154 word*, %155 word*, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 word*, %167 word*, %168 word*, %169 word*, %170 word*, %171 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 word*, %215 word*, %216 word*, %245 word*, %246 word*, %247 i64, %248 i64, %250 word*, %251 word*, %252 i64, %253 i64, %255 bool, %256 word*, %257 i64, %258 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = $string_to_bytes(%0)
+    %2 r: ptr = $secret_wrap(%1)
+    %3 v: ptr = const static std::crypto::Usage.DeriveBits
+    %4 xs: ptr = alloc list(%3)
+    %5 v: ptr = const static std::crypto::KeyFormat.Raw
+    %6 v: ptr = const static std::crypto::Digest.Sha256
+    %7 r: ptr = alloc std::crypto::Algorithm.Hkdf(%6)
+    %8 lit: bool = const false
+    dup %2
+    dup %4
+    call import_key#2(%5, %7, %4, %8, %2) -> b1(%2, %4)
+  b1(%9 r: ptr, %10 r: ptr, %11 xs: ptr):
+    %12 v: ptr = const static std::crypto::KeyFormat.Raw
+    %13 v: ptr = const static std::crypto::Digest.Sha256
+    %14 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%13)
+    %15 lit: bool = const false
+    call import_key#2(%12, %14, %11, %15, %10) -> b2(%9)
+  b2(%16 r: ptr, %17 r: ptr):
+    %18 tup: ptr = alloc tuple#16(word, word)(%17, %16)
+    %23 p: ptr = tuple_get %18.0
+    %24 p: ptr = tuple_get %18.1
+    drop %18
+    %25 tag: i64 = tag %23 ctor std::result::Result
+    switch %25 0 => b5(%23, %24) _ => b6(%23, %24)
+  b3():
+    %19 lit: ptr = const str 1
+    perform std::console::Console.print(%19) -> b4()
+  b4(%20 r: unit):
+    %21 box: word = box %20
+    %22 unbox: unit = unbox %21
+    drop %21
+    ret %22
+  b5(%26 p: ptr, %27 p: ptr):
+    %30 p: word = proj %26.0 std::result::Result.Ok
+    drop %26
+    %31 tag: i64 = tag %27 ctor std::result::Result
+    switch %31 0 => b7(%27, %30) _ => b8(%27, %30)
+  b6(%28 p: ptr, %29 p: ptr):
+    drop %28
+    drop %29
+    jump b3()
+  b7(%32 p: ptr, %33 p: ptr):
+    %36 p: word = proj %32.0 std::result::Result.Ok
+    drop %32
+    %37 f: ptr = closure main$1#3[]
+    %38 f: ptr = closure main$2#5[]
+    %39 lit: i64 = const 0
+    call zeros#4(%39) -> b9(%33, %36, %37, %38)
+  b8(%34 p: ptr, %35 p: ptr):
+    drop %34
+    drop %35
+    jump b3()
+  b9(%40 r: ptr, %41 hkdf: ptr, %42 pbkdf2: ptr, %43 f: ptr, %44 f: ptr):
+    dup %43
+    call %43(%40) -> b10(%41, %42, %43, %44)
+  b10(%45 r: word, %46 hkdf: ptr, %47 pbkdf2: ptr, %48 f: ptr, %49 f: ptr):
+    %50 lit: i64 = const 0
+    dup %46
+    %51 tup: ptr = alloc tuple#18(word, word, i64)(%46, %45, %50)
+    %52 lit: i64 = const 0
+    call zeros#4(%52) -> b11(%46, %47, %48, %49, %51)
+  b11(%53 r: ptr, %54 hkdf: ptr, %55 pbkdf2: ptr, %56 f: ptr, %57 f: ptr, %58 tup: ptr):
+    dup %56
+    call %56(%53) -> b12(%54, %55, %56, %57, %58)
+  b12(%59 r: word, %60 hkdf: ptr, %61 pbkdf2: ptr, %62 f: ptr, %63 f: ptr, %64 tup: ptr):
+    %65 lit: i64 = const 8
+    %66 t: i64 = intneg %65
+    dup %60
+    %67 tup: ptr = alloc tuple#18(word, word, i64)(%60, %59, %66)
+    %68 lit: i64 = const 0
+    call zeros#4(%68) -> b13(%60, %61, %62, %63, %64, %67)
+  b13(%69 r: ptr, %70 hkdf: ptr, %71 pbkdf2: ptr, %72 f: ptr, %73 f: ptr, %74 tup: ptr, %75 tup: ptr):
+    dup %72
+    call %72(%69) -> b14(%70, %71, %72, %73, %74, %75)
+  b14(%76 r: word, %77 hkdf: ptr, %78 pbkdf2: ptr, %79 f: ptr, %80 f: ptr, %81 tup: ptr, %82 tup: ptr):
+    %83 lit: i64 = const 12
+    dup %77
+    %84 tup: ptr = alloc tuple#18(word, word, i64)(%77, %76, %83)
+    %85 lit: i64 = const 0
+    call zeros#4(%85) -> b15(%77, %78, %79, %80, %81, %82, %84)
+  b15(%86 r: ptr, %87 hkdf: ptr, %88 pbkdf2: ptr, %89 f: ptr, %90 f: ptr, %91 tup: ptr, %92 tup: ptr, %93 tup: ptr):
+    dup %89
+    call %89(%86) -> b16(%87, %88, %89, %90, %91, %92, %93)
+  b16(%94 r: word, %95 hkdf: ptr, %96 pbkdf2: ptr, %97 f: ptr, %98 f: ptr, %99 tup: ptr, %100 tup: ptr, %101 tup: ptr):
+    %102 lit: i64 = const 255
+    %103 lit: i64 = const 256
+    %104 t: i64 = intmul %102, %103
+    %105 lit: i64 = const 8
+    %106 t: i64 = intadd %104, %105
+    dup %95
+    %107 tup: ptr = alloc tuple#18(word, word, i64)(%95, %94, %106)
+    %108 lit: i64 = const 1025
+    call zeros#4(%108) -> b17(%95, %96, %97, %98, %99, %100, %101, %107)
+  b17(%109 r: ptr, %110 hkdf: ptr, %111 pbkdf2: ptr, %112 f: ptr, %113 f: ptr, %114 tup: ptr, %115 tup: ptr, %116 tup: ptr, %117 tup: ptr):
+    dup %112
+    call %112(%109) -> b18(%110, %111, %112, %113, %114, %115, %116, %117)
+  b18(%118 r: word, %119 hkdf: ptr, %120 pbkdf2: ptr, %121 f: ptr, %122 f: ptr, %123 tup: ptr, %124 tup: ptr, %125 tup: ptr, %126 tup: ptr):
+    %127 lit: i64 = const 256
+    dup %119
+    %128 tup: ptr = alloc tuple#18(word, word, i64)(%119, %118, %127)
+    %129 lit: i64 = const 0
+    %130 box: word = box %129
+    dup %122
+    call %122(%130) -> b19(%119, %120, %121, %122, %123, %124, %125, %126, %128)
+  b19(%131 r: word, %132 hkdf: ptr, %133 pbkdf2: ptr, %134 f: ptr, %135 f: ptr, %136 tup: ptr, %137 tup: ptr, %138 tup: ptr, %139 tup: ptr, %140 tup: ptr):
+    %141 lit: i64 = const 256
+    dup %133
+    %142 tup: ptr = alloc tuple#18(word, word, i64)(%133, %131, %141)
+    %143 lit: i64 = const 2147483648
+    %144 box: word = box %143
+    dup %135
+    call %135(%144) -> b20(%132, %133, %134, %135, %136, %137, %138, %139, %140, %142)
+  b20(%145 r: word, %146 hkdf: ptr, %147 pbkdf2: ptr, %148 f: ptr, %149 f: ptr, %150 tup: ptr, %151 tup: ptr, %152 tup: ptr, %153 tup: ptr, %154 tup: ptr, %155 tup: ptr):
+    %156 lit: i64 = const 256
+    dup %147
+    %157 tup: ptr = alloc tuple#18(word, word, i64)(%147, %145, %156)
+    %158 lit: i64 = const 1
+    %159 box: word = box %158
+    dup %149
+    call %149(%159) -> b21(%146, %147, %148, %149, %150, %151, %152, %153, %154, %155, %157)
+  b21(%160 r: word, %161 hkdf: ptr, %162 pbkdf2: ptr, %163 f: ptr, %164 f: ptr, %165 tup: ptr, %166 tup: ptr, %167 tup: ptr, %168 tup: ptr, %169 tup: ptr, %170 tup: ptr, %171 tup: ptr):
+    %172 lit: i64 = const 7
+    dup %162
+    %173 tup: ptr = alloc tuple#18(word, word, i64)(%162, %160, %172)
+    %174 lit: i64 = const 1024
+    call zeros#4(%174) -> b22(%161, %162, %163, %164, %165, %166, %167, %168, %169, %170, %171, %173)
+  b22(%175 r: ptr, %176 hkdf: ptr, %177 pbkdf2: ptr, %178 f: ptr, %179 f: ptr, %180 tup: ptr, %181 tup: ptr, %182 tup: ptr, %183 tup: ptr, %184 tup: ptr, %185 tup: ptr, %186 tup: ptr, %187 tup: ptr):
+    call %178(%175) -> b23(%176, %177, %179, %180, %181, %182, %183, %184, %185, %186, %187)
+  b23(%188 r: word, %189 hkdf: ptr, %190 pbkdf2: ptr, %191 f: ptr, %192 tup: ptr, %193 tup: ptr, %194 tup: ptr, %195 tup: ptr, %196 tup: ptr, %197 tup: ptr, %198 tup: ptr, %199 tup: ptr):
+    %200 lit: i64 = const 255
+    %201 lit: i64 = const 256
+    %202 t: i64 = intmul %200, %201
+    %203 tup: ptr = alloc tuple#18(word, word, i64)(%189, %188, %202)
+    %204 lit: i64 = const 1
+    %205 box: word = box %204
+    call %191(%205) -> b24(%190, %192, %193, %194, %195, %196, %197, %198, %199, %203)
+  b24(%206 r: word, %207 pbkdf2: ptr, %208 tup: ptr, %209 tup: ptr, %210 tup: ptr, %211 tup: ptr, %212 tup: ptr, %213 tup: ptr, %214 tup: ptr, %215 tup: ptr, %216 tup: ptr):
+    %217 lit: i64 = const 8
+    %218 tup: ptr = alloc tuple#18(word, word, i64)(%207, %206, %217)
+    %219 xs: ptr = alloc list(%208, %209, %210, %211, %212, %213, %214, %215, %216, %218)
+    dup.candidate %219
+    %220 n: i64 = $list_len(%219)
+    %263 lit: i64 = const 0
+    jump b26(%263, %219, %220)
+  b25():
+    %221 lit: unit = const ()
+    ret %221
+  b26(%222 i: i64, %223 xs: ptr, %224 n: i64):
+    %225 more: bool = lt.int %222, %224
+    if %225 then b27(%223, %224, %222) else b28(%223, %224, %222)
+  b27(%226 xs: ptr, %227 n: i64, %228 i: i64):
+    dup.candidate %226
+    %232 x: word = $list_at(%226, %228)
+    %260 p: ptr = tuple_get %232.0
+    %261 p: ptr = tuple_get %232.1
+    %262 p: i64 = tuple_get %232.2
+    drop %232
+    jump b30(%260, %261, %262, %226, %227, %228)
+  b28(%229 xs: ptr, %230 n: i64, %231 i: i64):
+    drop %229
+    jump b25()
+  b29(%233 xs: ptr, %234 n: i64, %235 i: i64):
+    %236 lit: i64 = const 1
+    %237 i: i64 = intadd %235, %236
+    jump b26(%237, %233, %234)
+  b30(%238 key: ptr, %239 params: ptr, %240 bits: i64, %241 xs: ptr, %242 n: i64, %243 i: i64):
+    %244 $site: i64 = const 2
+    call derive_bits#6(%238, %239, %240, %244) -> b31(%241, %242, %243)
+  b31(%245 r: ptr, %246 xs: ptr, %247 n: i64, %248 i: i64):
+    %249 fn: ptr = const static closure $bytes_len$value#25
+    call map#7(%245, %249) -> b32(%246, %247, %248)
+  b32(%250 r: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64):
+    %254 s: ptr = show %250
+    drop %250
+    perform std::console::Console.print(%254) -> b33(%251, %252, %253)
+  b33(%255 r: unit, %256 xs: ptr, %257 n: i64, %258 i: i64):
+    %259 box: word = box %255
+    drop %259
+    jump b29(%256, %257, %258)
+
+fn $entry#1 top -> unit ; main::crypto_derive_rejects_bounds, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::crypto_derive_rejects_bounds, captures [], frame 4 slots [%0 word*, %1 word*, %3 word*, %4 word*]
+  b0(%0 env: ptr, %1 info: word):
+    drop %0
+    %2 lit: i64 = const 0
+    call zeros#4(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 info: ptr):
+    %5 rec: ptr = alloc std::crypto::HkdfParams(%3, %4)
+    %6 r: ptr = alloc std::crypto::DeriveParams.HkdfWith(%5)
+    ret %6
+
+fn zeros#4 top -> ptr ; main::crypto_derive_rejects_bounds, frame 3 slots [%0 i64, %2 word*, %4 word*]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    call range#18(%1, %0) -> b1()
+  b1(%2 r: ptr):
+    %3 f: ptr = closure zeros$1#19[]
+    call map#20(%2, %3) -> b2()
+  b2(%4 r: ptr):
+    %5 r: ptr = $bytes_from_list(%4)
+    ret %5
+
+fn main$2#5 lambda -> word ; main::crypto_derive_rejects_bounds, captures [], frame 4 slots [%0 word*, %1 word*, %4 word*, %5 i64]
+  b0(%0 env: ptr, %1 n: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 8
+    call zeros#4(%3) -> b1(%2)
+  b1(%4 r: ptr, %5 n: i64):
+    %6 rec: ptr = alloc std::crypto::Pbkdf2Params(%4, %5)
+    %7 r: ptr = alloc std::crypto::DeriveParams.Pbkdf2With(%6)
+    ret %7
+
+fn zeros$1#19 lambda -> word ; main::crypto_derive_rejects_bounds, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 _: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 0
+    %4 box: word = box %3
+    ret %4
+
+fn $bytes_len$value#25 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: i64 = $bytes_len(%1)
+    %3 box: word = box %2
+    ret %3

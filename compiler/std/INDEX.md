@@ -7,7 +7,9 @@ the `sakura` skill's `references/stdlib.md`. The design reference is `docs/desig
 `design-question` entries in `compiler/REQUESTS.md`.
 
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
-Every module runs on the JavaScript and WebAssembly backends.
+Every module runs on the JavaScript and WebAssembly backends, except `std/crypto`: its primitives
+run on JavaScript and native, and on WebAssembly they wait for the host imports that follow the
+`v0.1.0` tag (a call is `D090` until then).
 
 ## Prelude
 
@@ -129,6 +131,7 @@ Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` an
 core  unit  option  result  set  int  float  duration       (no std dependencies)
 list → set              map → list            string → list       bytes → list
 encoding → bytes, string, list                searchparams → encoding, string, list, bytes
+crypto → bytes, list, secret   (+ Random for `generate_key`)
 json → map              uuid → string, list   instant → duration, string, list, int
 test → core, fs         console → test        clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
@@ -236,6 +239,35 @@ fn captured() -> Handler<Console, {Test}>
 fn show<A: Show>(a: A) -> String    // @external
 type Violation = { type_name: String, clause: String, value_summary: String }
 type Trust
+```
+
+### `std/crypto`
+
+```sakura fragment
+type Digest = Sha256 | Sha384 | Sha512
+type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest)
+type Usage = Sign | Verify | DeriveBits
+type KeyFormat = Raw
+type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
+error KeyError(reason: KeyReason)
+type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
+error CryptoError(reason: CryptoReason)
+opaque type CryptoKey = { algorithm: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes> }
+type HkdfParams = { salt: Bytes, info: Bytes }
+type Pbkdf2Params = { salt: Bytes, iterations: Int }
+type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params)
+fn algorithm(key: CryptoKey) -> Algorithm
+fn usages(key: CryptoKey) -> List<Usage>
+fn extractable(key: CryptoKey) -> Bool
+fn allows(alg: Algorithm, usage: Usage) -> Bool    // @total
+fn permits(key: CryptoKey, usage: Usage) -> Bool    // @total
+fn digest(alg: Digest, data: Bytes) -> Bytes
+fn import_key(format: KeyFormat, alg: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes>) -> Result<CryptoKey, KeyError>
+fn export_key(key: CryptoKey, format: KeyFormat) -> Result<Bytes, KeyError>
+fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey ! {Random} requires is_hmac(alg) && usages_error(alg, usages) == None
+fn hmac(key: CryptoKey, data: Bytes) -> Bytes requires is_hmac(key.algorithm) && permits(key, Sign)
+fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool requires is_hmac(key.algorithm) && permits(key, Verify)
+fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError> requires permits(key, DeriveBits) && fits(key.algorithm, params)
 ```
 
 ### `std/decimal`

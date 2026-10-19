@@ -1,0 +1,173 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc4231#section-4
+
+// RFC 4231 test cases 1-7 for HMAC-SHA-256/384/512 (the table in `tests/vectors/hmac.txt`),
+// each tag printed to the bits the RFC lists (case 5 is truncated to 128) and verified whole.
+// Generated from the table.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  for (case, alg, key, data, bits) in [
+    ("1", "SHA-256", "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b", "4869205468657265", 256),
+    ("1", "SHA-384", "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b", "4869205468657265", 384),
+    ("1", "SHA-512", "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b", "4869205468657265", 512),
+    ("2", "SHA-256", "4a656665", "7768617420646f2079612077616e7420666f72206e6f7468696e673f", 256),
+    ("2", "SHA-384", "4a656665", "7768617420646f2079612077616e7420666f72206e6f7468696e673f", 384),
+    ("2", "SHA-512", "4a656665", "7768617420646f2079612077616e7420666f72206e6f7468696e673f", 512),
+    (
+      "3",
+      "SHA-256",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      256,
+    ),
+    (
+      "3",
+      "SHA-384",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      384,
+    ),
+    (
+      "3",
+      "SHA-512",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      512,
+    ),
+    (
+      "4",
+      "SHA-256",
+      "0102030405060708090a0b0c0d0e0f10111213141516171819",
+      "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      256,
+    ),
+    (
+      "4",
+      "SHA-384",
+      "0102030405060708090a0b0c0d0e0f10111213141516171819",
+      "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      384,
+    ),
+    (
+      "4",
+      "SHA-512",
+      "0102030405060708090a0b0c0d0e0f10111213141516171819",
+      "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+      512,
+    ),
+    (
+      "5",
+      "SHA-256",
+      "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+      "546573742057697468205472756e636174696f6e",
+      128,
+    ),
+    (
+      "5",
+      "SHA-384",
+      "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+      "546573742057697468205472756e636174696f6e",
+      128,
+    ),
+    (
+      "5",
+      "SHA-512",
+      "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c",
+      "546573742057697468205472756e636174696f6e",
+      128,
+    ),
+    (
+      "6",
+      "SHA-256",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374",
+      256,
+    ),
+    (
+      "6",
+      "SHA-384",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374",
+      384,
+    ),
+    (
+      "6",
+      "SHA-512",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "54657374205573696e67204c6172676572205468616e20426c6f636b2d53697a65204b6579202d2048617368204b6579204669727374",
+      512,
+    ),
+    (
+      "7",
+      "SHA-256",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "5468697320697320612074657374207573696e672061206c6172676572207468616e20626c6f636b2d73697a65206b657920616e642061206c6172676572207468616e20626c6f636b2d73697a6520646174612e20546865206b6579206e6565647320746f20626520686173686564206265666f7265206265696e6720757365642062792074686520484d414320616c676f726974686d2e",
+      256,
+    ),
+    (
+      "7",
+      "SHA-384",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "5468697320697320612074657374207573696e672061206c6172676572207468616e20626c6f636b2d73697a65206b657920616e642061206c6172676572207468616e20626c6f636b2d73697a6520646174612e20546865206b6579206e6565647320746f20626520686173686564206265666f7265206265696e6720757365642062792074686520484d414320616c676f726974686d2e",
+      384,
+    ),
+    (
+      "7",
+      "SHA-512",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "5468697320697320612074657374207573696e672061206c6172676572207468616e20626c6f636b2d73697a65206b657920616e642061206c6172676572207468616e20626c6f636b2d73697a6520646174612e20546865206b6579206e6565647320746f20626520686173686564206265666f7265206265696e6720757365642062792074686520484d414320616c676f726974686d2e",
+      512,
+    ),
+  ] {
+    let d = match alg {
+      "SHA-384" => Digest.Sha384,
+      "SHA-512" => Digest.Sha512,
+      _ => Digest.Sha256,
+    }
+    let usages = [Usage.Sign, Usage.Verify]
+    match crypto.import_key(
+      KeyFormat.Raw,
+      Algorithm.Hmac(d),
+      usages,
+      false,
+      Secret.of(unhex(key)),
+    ) {
+      Ok(k) => {
+        let tag = crypto.hmac(k, unhex(data))
+        let shown = String.slice(hex(tag), 0, bits / 4)
+        Console.print("{case} {alg} {shown} {k.verify(tag, unhex(data))}")
+      },
+      Err(e) => Console.print("{case} {alg} {e}"),
+    }
+  }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

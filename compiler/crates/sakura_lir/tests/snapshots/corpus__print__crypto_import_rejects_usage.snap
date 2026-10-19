@@ -1,0 +1,146 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
+layout 2 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
+layout 3 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 4 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 5 variant std::crypto::KeyFormat | Raw 16b ()
+layout 6 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
+layout 7 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
+layout 8 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 9 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+layout 12 shape |  40b (word*, word*, word*)
+
+fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%64 word*, %65 word*, %66 i64, %67 i64, %82 word*, %83 word*, %84 i64, %85 i64, %86 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 word*, %99 bool, %100 word*, %101 i64, %102 i64, %106 bool, %107 word*, %108 i64, %109 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = $string_to_bytes(%0)
+    %2 r: ptr = $secret_wrap(%1)
+    %3 xs: ptr = alloc list()
+    %4 r: ptr = $bytes_from_list(%3)
+    %5 r: ptr = $secret_wrap(%4)
+    %6 v: ptr = const static std::crypto::Digest.Sha256
+    %7 r: ptr = alloc std::crypto::Algorithm.Hmac(%6)
+    %8 v: ptr = const static std::crypto::Digest.Sha256
+    %9 r: ptr = alloc std::crypto::Algorithm.Hkdf(%8)
+    %10 xs: ptr = alloc list()
+    dup %2
+    dup %7
+    %11 tup: ptr = alloc tuple#12(word, word, word)(%7, %10, %2)
+    %12 v: ptr = const static std::crypto::Usage.Sign
+    %13 v: ptr = const static std::crypto::Usage.DeriveBits
+    %14 xs: ptr = alloc list(%12, %13)
+    dup %2
+    dup %7
+    %15 tup: ptr = alloc tuple#12(word, word, word)(%7, %14, %2)
+    %16 v: ptr = const static std::crypto::Usage.DeriveBits
+    %17 v: ptr = const static std::crypto::Usage.Verify
+    %18 xs: ptr = alloc list(%16, %17)
+    dup %2
+    dup %9
+    %19 tup: ptr = alloc tuple#12(word, word, word)(%9, %18, %2)
+    %20 v: ptr = const static std::crypto::Digest.Sha256
+    %21 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%20)
+    %22 v: ptr = const static std::crypto::Usage.Sign
+    %23 xs: ptr = alloc list(%22)
+    dup %2
+    %24 tup: ptr = alloc tuple#12(word, word, word)(%21, %23, %2)
+    %25 v: ptr = const static std::crypto::Digest.Sha512
+    %26 r: ptr = alloc std::crypto::Algorithm.Hmac(%25)
+    %27 v: ptr = const static std::crypto::Usage.Verify
+    %28 xs: ptr = alloc list(%27)
+    dup %5
+    %29 tup: ptr = alloc tuple#12(word, word, word)(%26, %28, %5)
+    %30 v: ptr = const static std::crypto::Usage.DeriveBits
+    %31 xs: ptr = alloc list(%30)
+    %32 tup: ptr = alloc tuple#12(word, word, word)(%9, %31, %5)
+    %33 v: ptr = const static std::crypto::Usage.Verify
+    %34 v: ptr = const static std::crypto::Usage.Sign
+    %35 xs: ptr = alloc list(%33, %34)
+    %36 tup: ptr = alloc tuple#12(word, word, word)(%7, %35, %2)
+    %37 xs: ptr = alloc list(%11, %15, %19, %24, %29, %32, %36)
+    dup.candidate %37
+    %38 n: i64 = $list_len(%37)
+    %114 lit: i64 = const 0
+    jump b2(%114, %37, %38)
+  b1():
+    %39 lit: unit = const ()
+    ret %39
+  b2(%40 i: i64, %41 xs: ptr, %42 n: i64):
+    %43 more: bool = lt.int %40, %42
+    if %43 then b3(%41, %42, %40) else b4(%41, %42, %40)
+  b3(%44 xs: ptr, %45 n: i64, %46 i: i64):
+    dup.candidate %44
+    %50 x: word = $list_at(%44, %46)
+    %111 p: ptr = tuple_get %50.0
+    %112 p: ptr = tuple_get %50.1
+    %113 p: ptr = tuple_get %50.2
+    drop %50
+    jump b6(%111, %112, %113, %44, %45, %46)
+  b4(%47 xs: ptr, %48 n: i64, %49 i: i64):
+    drop %47
+    jump b1()
+  b5(%51 xs: ptr, %52 n: i64, %53 i: i64):
+    %54 lit: i64 = const 1
+    %55 i: i64 = intadd %53, %54
+    jump b2(%55, %51, %52)
+  b6(%56 alg: ptr, %57 usages: ptr, %58 material: ptr, %59 xs: ptr, %60 n: i64, %61 i: i64):
+    %62 v: ptr = const static std::crypto::KeyFormat.Raw
+    %63 lit: bool = const false
+    call import_key#2(%62, %56, %57, %63, %58) -> b7(%59, %60, %61)
+  b7(%64 r: ptr, %65 xs: ptr, %66 n: i64, %67 i: i64):
+    %72 tag: i64 = tag %64 ctor std::result::Result
+    switch %72 0 => b9(%65, %66, %67, %64) 1 => b10(%65, %66, %67, %64)
+  b8(%68 v: word, %69 xs: ptr, %70 n: i64, %71 i: i64):
+    drop %68
+    jump b5(%69, %70, %71)
+  b9(%73 xs: ptr, %74 n: i64, %75 i: i64, %76 r: ptr):
+    %81 p: word = proj %76.0 std::result::Result.Ok
+    drop %76
+    dup.candidate %81
+    call algorithm#3(%81) -> b11(%73, %74, %75, %81)
+  b10(%77 xs: ptr, %78 n: i64, %79 i: i64, %80 r: ptr):
+    %104 p: word = proj %80.0 std::result::Result.Err
+    drop %80
+    %105 s: ptr = show %104
+    drop %104
+    perform std::console::Console.print(%105) -> b14(%77, %78, %79)
+  b11(%82 r: ptr, %83 xs: ptr, %84 n: i64, %85 i: i64, %86 key: ptr):
+    %87 s: ptr = show %82
+    drop %82
+    %88 lit: ptr = const str 1
+    %89 s: ptr = concat %88, %87
+    drop %87
+    drop %88
+    %90 lit: ptr = const str 2
+    %91 s: ptr = concat %89, %90
+    drop %89
+    drop %90
+    call usages#4(%86) -> b12(%83, %84, %85, %91)
+  b12(%92 r: ptr, %93 xs: ptr, %94 n: i64, %95 i: i64, %96 s: ptr):
+    %97 s: ptr = show %92
+    drop %92
+    %98 s: ptr = concat %96, %97
+    drop %96
+    drop %97
+    perform std::console::Console.print(%98) -> b13(%93, %94, %95)
+  b13(%99 r: unit, %100 xs: ptr, %101 n: i64, %102 i: i64):
+    %103 box: word = box %99
+    jump b8(%103, %100, %101, %102)
+  b14(%106 r: unit, %107 xs: ptr, %108 n: i64, %109 i: i64):
+    %110 box: word = box %106
+    jump b8(%110, %107, %108, %109)
+
+fn $entry#1 top -> unit ; main::crypto_import_rejects_usage, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

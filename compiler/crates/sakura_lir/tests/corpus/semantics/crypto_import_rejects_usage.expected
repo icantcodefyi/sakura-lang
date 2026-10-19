@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+KeyError { reason: NoUsages }
+KeyError { reason: NotAllowed(DeriveBits) }
+KeyError { reason: NotAllowed(Verify) }
+KeyError { reason: NotAllowed(Sign) }
+KeyError { reason: Empty }
+Ok Hkdf(Sha256) [DeriveBits]
+Ok Hmac(Sha256) [Verify, Sign]

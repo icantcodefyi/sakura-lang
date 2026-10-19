@@ -1,0 +1,55 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc7914#section-11
+
+// RFC 7914 §11's PBKDF2-HMAC-SHA-256 vectors (the table in `tests/vectors/pbkdf2.txt`; RFC
+// 6070's are SHA-1, which `std/crypto` does not offer). Generated from the table.
+import std/crypto
+import std/crypto.{Algorithm, DeriveParams, Digest, KeyFormat, Pbkdf2Params, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  for (password, salt, iterations, len) in [
+    ("passwd", "salt", 1, 64),
+    ("Password", "NaCl", 80000, 64),
+  ] {
+    let alg = Algorithm.Pbkdf2(Digest.Sha256)
+    let material = Secret.of(String.to_bytes(password))
+    match crypto.import_key(KeyFormat.Raw, alg, [Usage.DeriveBits], false, material) {
+      Ok(k) => {
+        let params = DeriveParams.Pbkdf2With(Pbkdf2Params {
+          salt: String.to_bytes(salt),
+          iterations,
+        })
+        Console.print("{password} {iterations} {crypto.derive_bits(k, params, 8 * len).map(hex)}")
+      },
+      Err(e) => Console.print("{password} {e}"),
+    }
+  }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

@@ -1,0 +1,25 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#SubtleCrypto-method-exportKey
+
+// `export_key` writes an extractable key's material and refuses a non-extractable one with
+// `NotExtractable`, whatever the algorithm; the key itself is never printed.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let material = Bytes.from_list([1, 2, 3, 4])
+  for (alg, usage) in [
+    (Algorithm.Hmac(Digest.Sha256), Usage.Sign),
+    (Algorithm.Hkdf(Digest.Sha384), Usage.DeriveBits),
+    (Algorithm.Pbkdf2(Digest.Sha512), Usage.DeriveBits),
+  ] {
+    for extractable in [true, false] {
+      match crypto.import_key(KeyFormat.Raw, alg, [usage], extractable, Secret.of(material)) {
+        Ok(k) =>
+          Console.print("{alg} {crypto.extractable(k)} {crypto.export_key(k, KeyFormat.Raw)}"),
+        Err(e) => Console.print("{alg} {e}"),
+      }
+    }
+  }
+}

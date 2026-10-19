@@ -1,0 +1,30 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#hmac-operations-import-key
+
+// `import_key` refuses no usages, a usage the algorithm does not have and empty HMAC material
+// with a typed `KeyError`; HKDF and PBKDF2 take any material, the empty one included.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let k = Secret.of(String.to_bytes("k"))
+  let none = Secret.of(Bytes.from_list([]))
+  let hmac = Algorithm.Hmac(Digest.Sha256)
+  let hkdf = Algorithm.Hkdf(Digest.Sha256)
+  let cases = [
+    (hmac, [], k),
+    (hmac, [Usage.Sign, Usage.DeriveBits], k),
+    (hkdf, [Usage.DeriveBits, Usage.Verify], k),
+    (Algorithm.Pbkdf2(Digest.Sha256), [Usage.Sign], k),
+    (Algorithm.Hmac(Digest.Sha512), [Usage.Verify], none),
+    (hkdf, [Usage.DeriveBits], none),
+    (hmac, [Usage.Verify, Usage.Sign], k),
+  ]
+  for (alg, usages, material) in cases {
+    match crypto.import_key(KeyFormat.Raw, alg, usages, false, material) {
+      Ok(key) => Console.print("Ok {crypto.algorithm(key)} {crypto.usages(key)}"),
+      Err(e) => Console.print("{e}"),
+    }
+  }
+}

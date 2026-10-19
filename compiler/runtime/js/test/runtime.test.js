@@ -1343,3 +1343,37 @@ test("Bytes.slice clamps; Bytes.concat joins", () => {
   assert.equal(rt.bytes_slice(b, 0, 99), b);
   assert.deepEqual([...rt.bytes_concat(rt.list([b, new Uint8Array(0), new Uint8Array([5])]))], [1, 2, 3, 4, 5]);
 });
+
+// RFC 0002 §2.7: the crypto externals on the official vectors (runtime/rt/tests/crypto.rs reads the same files).
+const HASH_CODE = { "SHA-256": 0, "SHA-384": 1, "SHA-512": 2 };
+const unhex = (s) => new Uint8Array(Buffer.from(s, "hex"));
+const hex = (b) => Buffer.from(b).toString("hex");
+
+test("crypto_digest matches NIST CAVP SHA-2 ShortMsg", () => {
+  const rows = vectorRows("sha2.txt");
+  assert.equal(rows.length, 65 + 129 + 129);
+  for (const [alg, msg, md] of rows) assert.equal(hex(rt.crypto_digest(HASH_CODE[alg], unhex(msg))), md);
+});
+
+test("crypto_hmac matches RFC 4231 and crypto_hmac_verify checks the whole tag", () => {
+  for (const [, alg, key, data, mac, bits] of vectorRows("hmac.txt")) {
+    const a = HASH_CODE[alg];
+    const tag = rt.crypto_hmac(a, unhex(key), unhex(data));
+    assert.equal(hex(tag).slice(0, Number(bits) / 4), mac);
+    assert.equal(rt.crypto_hmac_verify(a, unhex(key), tag, unhex(data)), true);
+    assert.equal(rt.crypto_hmac_verify(a, unhex(key), tag.slice(0, Number(bits) / 8), unhex(data)), Number(bits) === tag.length * 8);
+    const flipped = tag.slice();
+    flipped[0] ^= 1;
+    assert.equal(rt.crypto_hmac_verify(a, unhex(key), flipped, unhex(data)), false);
+  }
+});
+
+test("crypto_hkdf matches RFC 5869 and crypto_pbkdf2 matches RFC 7914 §11", () => {
+  for (const [, alg, ikm, salt, info, len, okm] of vectorRows("hkdf.txt")) {
+    assert.equal(hex(rt.crypto_hkdf(HASH_CODE[alg], unhex(ikm), unhex(salt), unhex(info), Number(len))), okm);
+  }
+  for (const [alg, password, salt, iterations, len, dk] of vectorRows("pbkdf2.txt")) {
+    const enc = (s) => new TextEncoder().encode(s);
+    assert.equal(hex(rt.crypto_pbkdf2(HASH_CODE[alg], enc(password), enc(salt), Number(iterations), Number(len))), dk);
+  }
+});

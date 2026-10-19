@@ -1,0 +1,10 @@
+// milestone: M3
+// expect: V2031
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#cryptokey-interface
+
+// A `CryptoKey`'s material is a `Secret`, so the key is not `Show`: it cannot be interpolated,
+// printed or logged. `crypto.algorithm(key)` and `crypto.usages(key)` can be.
+import std/crypto.{CryptoKey}
+
+fn describe(key: CryptoKey) -> Unit ! {Console} { Console.print("signing with {key}") }

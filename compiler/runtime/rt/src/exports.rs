@@ -1537,8 +1537,9 @@ pub extern "C" fn rt_code_unsupported(
 // inline by the compiler.
 
 macro_rules! builtins {
-    ($($name:ident($($a:ident: $t:ty),*) -> $ret:ty = $how:ident |$rt:ident| $body:expr;)*) => {
+    ($($(#[$m:meta])* $name:ident($($a:ident: $t:ty),*) -> $ret:ty = $how:ident |$rt:ident| $body:expr;)*) => {
         $(
+            $(#[$m])*
             #[unsafe(no_mangle)]
             pub extern "C" fn $name(
                 #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
@@ -1554,7 +1555,7 @@ macro_rules! builtins {
         /// result as 64-bit slots, ABI §3.3): the native evaluator calls builtins by name.
         #[cfg(not(target_arch = "wasm32"))]
         pub static BUILTINS: &[(&str, BuiltinFn)] = &[
-            $((
+            $($(#[$m])* (
                 stringify!($name),
                 {
                     #[allow(unused_variables, unused_mut, unused_assignments)]
@@ -1701,4 +1702,21 @@ builtins! {
         rt.encoding_decode(b, enc, fatal)
     };
     rt_b_encoding_encode(s: u32, enc: i64) -> u32 = ptr |rt| rt.encoding_encode(s, enc);
+    // `std/crypto` (RFC 0002 §2.7), native only (`crypto.rs`).
+    #[cfg(feature = "native")]
+    rt_b_crypto_digest(alg: i64, data: u32) -> u32 = ptr |rt| rt.crypto_digest(alg, data);
+    #[cfg(feature = "native")]
+    rt_b_crypto_hmac(alg: i64, key: u32, data: u32) -> u32 = ptr |rt| rt.crypto_hmac(alg, key, data);
+    #[cfg(feature = "native")]
+    rt_b_crypto_hmac_verify(alg: i64, key: u32, sig: u32, data: u32) -> u32 = plain |rt| {
+        u32::from(rt.crypto_hmac_verify(alg, key, sig, data))
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_hkdf(alg: i64, ikm: u32, salt: u32, info: u32, len: i64) -> u32 = ptr |rt| {
+        rt.crypto_hkdf(alg, ikm, salt, info, len)
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_pbkdf2(alg: i64, pw: u32, salt: u32, rounds: i64, len: i64) -> u32 = ptr |rt| {
+        rt.crypto_pbkdf2(alg, pw, salt, rounds, len)
+    };
 }

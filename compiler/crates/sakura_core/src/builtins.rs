@@ -125,6 +125,9 @@ table! {
     Direct bytes_slice/3, Direct bytes_concat/1, Direct bytes_to_base64/3,
     Direct bytes_from_base64/2, Direct bytes_from_base64_lenient/1, Direct encoding_decode/3,
     Direct encoding_encode/2,
+    // Cryptography (RFC 0002 §2.7)
+    Direct crypto_digest/2, Direct crypto_hmac/3, Direct crypto_hmac_verify/4,
+    Direct crypto_hkdf/5, Direct crypto_pbkdf2/5,
     // Tasks and tests
     Cps defect_catch/1, Cps test_expect_defect/1, Cps property_run/8, Direct test_env/2,
     // Secret, Json

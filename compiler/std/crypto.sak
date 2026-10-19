@@ -1,0 +1,307 @@
+// Cryptography (RFC 0002 §2.7): the Web Crypto API's digests, HMAC, HKDF and PBKDF2 as pure
+// functions over an opaque `CryptoKey`. There is no `Crypto` effect and no manifest key: nothing
+// here touches the network or disk. Generating a key performs `Random`, the one entropy
+// authority: `Random.host()` is the OS generator, and a key made under `Random.seeded` is
+// predictable, which is why `seeded` is for tests only. The primitives are externals:
+// `node:crypto` on JS and the RustCrypto crates in `runtime/rt` on native.
+
+/// SHA-2 (FIPS 180-4). SHA-1 and MD5 are not offered.
+pub type Digest = Sha256 | Sha384 | Sha512
+
+/// The algorithm a key belongs to, with the hash it uses.
+pub type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest)
+
+/// What a key may be used for (Web Crypto's `KeyUsage`): HMAC keys `Sign` and `Verify`, HKDF
+/// and PBKDF2 keys `DeriveBits`.
+pub type Usage = Sign | Verify | DeriveBits
+
+/// How key material is written: `Raw` bytes.
+pub type KeyFormat = Raw
+
+/// `NotExtractable` from `export_key`; from `import_key`, `NoUsages`, `NotAllowed(u)` for a
+/// usage the algorithm does not have, and `Empty` for empty HMAC material.
+pub type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
+
+pub error KeyError(reason: KeyReason)
+
+/// From `derive_bits`: `Length(bits)`, not a positive multiple of 8 or over HKDF's 255 hash
+/// lengths; `Iterations(n)`, outside `1..=2_147_483_647`; `Info(bytes)`, HKDF `info` over 1,024
+/// bytes (Node's bound, kept on every backend).
+pub type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
+
+pub error CryptoError(reason: CryptoReason)
+
+/// A key (Web Crypto's `CryptoKey`). Its material is a `Secret`, so a key has no `Show` or
+/// `Schema` and cannot reach text, a log or a cassette. Non-extractable means `export_key`
+/// fails: a policy this module enforces, not a hardware boundary.
+pub opaque type CryptoKey = {
+  algorithm: Algorithm,
+  usages: List<Usage>,
+  extractable: Bool,
+  material: Secret<Bytes>,
+}
+
+/// HKDF's inputs besides the key (RFC 5869 §2): an empty `salt` is HashLen zero bytes.
+pub type HkdfParams = { salt: Bytes, info: Bytes }
+
+/// PBKDF2's inputs besides the password (RFC 8018 §5.2): `iterations` is the cost, chosen by
+/// the caller.
+pub type Pbkdf2Params = { salt: Bytes, iterations: Int }
+
+/// The parameters of `derive_bits`, matching the key's algorithm.
+pub type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params)
+
+/// The algorithm of `key` (`CryptoKey.algorithm`).
+pub fn algorithm(key: CryptoKey) -> Algorithm { key.algorithm }
+
+/// The usages of `key` (`CryptoKey.usages`).
+pub fn usages(key: CryptoKey) -> List<Usage> { key.usages }
+
+/// Whether `export_key` may write `key` (`CryptoKey.extractable`).
+pub fn extractable(key: CryptoKey) -> Bool { key.extractable }
+
+/// Whether keys of `alg` can have `usage`.
+@total
+pub fn allows(alg: Algorithm, usage: Usage) -> Bool {
+  match alg {
+    Hmac(_) => usage == Sign || usage == Verify,
+    Hkdf(_) => usage == DeriveBits,
+    Pbkdf2(_) => usage == DeriveBits,
+  }
+}
+
+/// Whether `key` permits `usage`: one of its usages.
+@total
+pub fn permits(key: CryptoKey, usage: Usage) -> Bool { List.contains(key.usages, usage) }
+
+/// The hash of `data` (`crypto.subtle.digest`).
+pub fn digest(alg: Digest, data: Bytes) -> Bytes { crypto_digest(code(alg), data) }
+
+/// A key of `alg` from `material` (`importKey`). Fails with `NoUsages`, `NotAllowed(u)` for a
+/// usage `alg` does not allow, or `Empty` for empty HMAC material; HKDF and PBKDF2 accept any
+/// bytes.
+pub fn import_key(
+  format: KeyFormat,
+  alg: Algorithm,
+  usages: List<Usage>,
+  extractable: Bool,
+  material: Secret<Bytes>,
+) -> Result<CryptoKey, KeyError>
+{
+  match format {
+    Raw => {
+      let empty = match alg {
+        Hmac(_) => Bytes.len(reveal(material)) == 0,
+        _ => false,
+      }
+      match usages_error(alg, usages) {
+        Some(reason) => Err(KeyError { reason }),
+        None if empty => Err(KeyError { reason: Empty }),
+        None => Ok(CryptoKey { algorithm: alg, usages, extractable, material }),
+      }
+    },
+  }
+}
+
+/// The material of `key` (`exportKey`), or `NotExtractable`.
+pub fn export_key(key: CryptoKey, format: KeyFormat) -> Result<Bytes, KeyError> {
+  match format {
+    Raw => if key.extractable {
+      Ok(reveal(key.material))
+    } else {
+      Err(KeyError { reason: NotExtractable })
+    },
+  }
+}
+
+/// A fresh HMAC key (`generateKey`) of the hash's block size, 64 bytes for SHA-256 and 128 for
+/// SHA-384 and SHA-512, drawn from `Random`.
+pub fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey
+  ! {Random}
+  requires is_hmac(alg) && usages_error(alg, usages) == None
+{
+  let n = match alg {
+    Hmac(Sha256) => 64,
+    _ => 128,
+  }
+  CryptoKey { algorithm: alg, usages, extractable, material: Secret.of(Random.bytes(n)) }
+}
+
+/// The HMAC of `data` (RFC 2104; `sign` with an HMAC key).
+pub fn hmac(key: CryptoKey, data: Bytes) -> Bytes
+  requires is_hmac(key.algorithm) && permits(key, Sign)
+{ crypto_hmac(code(hash_of(key.algorithm)), reveal(key.material), data) }
+
+/// Whether `signature` is the HMAC of `data`, compared in constant time.
+pub fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool
+  requires is_hmac(key.algorithm) && permits(key, Verify)
+{ crypto_hmac_verify(code(hash_of(key.algorithm)), reveal(key.material), signature, data) }
+
+/// `bits` bits derived from `key` (`deriveBits`): HKDF (RFC 5869) with `HkdfWith`, PBKDF2
+/// (RFC 8018 §5.2) with `Pbkdf2With`. Every bound is an argument: `bits`, and PBKDF2's
+/// `iterations`, whose cost grows with it.
+pub fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError>
+  requires permits(key, DeriveBits) && fits(key.algorithm, params)
+{
+  let alg = hash_of(key.algorithm)
+  let len = bits / 8
+  if bits <= 0 || bits % 8 != 0 {
+    Err(CryptoError { reason: Length(bits) })
+  } else {
+    match params {
+      HkdfWith(p) => if len > 255 * hash_len(alg) {
+        Err(CryptoError { reason: Length(bits) })
+      } else if Bytes.len(p.info) > 1024 {
+        Err(CryptoError { reason: Info(Bytes.len(p.info)) })
+      } else {
+        Ok(crypto_hkdf(code(alg), reveal(key.material), p.salt, p.info, len))
+      },
+      Pbkdf2With(p) => if p.iterations < 1 || p.iterations > 2_147_483_647 {
+        Err(CryptoError { reason: Iterations(p.iterations) })
+      } else {
+        Ok(crypto_pbkdf2(code(alg), reveal(key.material), p.salt, p.iterations, len))
+      },
+    }
+  }
+}
+
+@total
+fn is_hmac(alg: Algorithm) -> Bool {
+  match alg {
+    Hmac(_) => true,
+    _ => false,
+  }
+}
+
+@total
+fn fits(alg: Algorithm, params: DeriveParams) -> Bool {
+  match (alg, params) {
+    (Hkdf(_), HkdfWith(_)) => true,
+    (Pbkdf2(_), Pbkdf2With(_)) => true,
+    _ => false,
+  }
+}
+
+fn usages_error(alg: Algorithm, usages: List<Usage>) -> Option<KeyReason> {
+  match List.find(usages, fn(u) { !allows(alg, u) }) {
+    Some(u) => Some(NotAllowed(u)),
+    None if List.len(usages) == 0 => Some(NoUsages),
+    None => None,
+  }
+}
+
+fn hash_of(alg: Algorithm) -> Digest {
+  match alg {
+    Hmac(d) => d,
+    Hkdf(d) => d,
+    Pbkdf2(d) => d,
+  }
+}
+
+fn hash_len(d: Digest) -> Int {
+  match d {
+    Sha256 => 32,
+    Sha384 => 48,
+    Sha512 => 64,
+  }
+}
+
+fn code(d: Digest) -> Int {
+  match d {
+    Sha256 => 0,
+    Sha384 => 1,
+    Sha512 => 2,
+  }
+}
+
+// The one place key material leaves its `Secret`: into a primitive, or out of `export_key`.
+fn reveal(material: Secret<Bytes>) -> Bytes { Secret.expose(material, @trust("std/crypto")) }
+
+@external(js, "sakura_runtime", "crypto_digest")
+fn crypto_digest(alg: Int, data: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_hmac")
+fn crypto_hmac(alg: Int, key: Bytes, data: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_hmac_verify")
+fn crypto_hmac_verify(alg: Int, key: Bytes, signature: Bytes, data: Bytes) -> Bool
+
+@external(js, "sakura_runtime", "crypto_hkdf")
+fn crypto_hkdf(alg: Int, ikm: Bytes, salt: Bytes, info: Bytes, len: Int) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_pbkdf2")
+fn crypto_pbkdf2(alg: Int, password: Bytes, salt: Bytes, iterations: Int, len: Int) -> Bytes
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn key(alg: Algorithm, usages: List<Usage>, material: Bytes) -> CryptoKey {
+  CryptoKey { algorithm: alg, usages, extractable: true, material: Secret.of(material) }
+}
+
+test "digest is SHA-2" {
+  expect_eq(
+    hex(digest(Sha256, String.to_bytes("abc"))),
+    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  )
+}
+
+test "hmac signs and verify checks in both directions" {
+  let k = key(Hmac(Sha256), [Sign, Verify], String.to_bytes("Jefe"))
+  let msg = String.to_bytes("what do ya want for nothing?")
+  let tag = hmac(k, msg)
+  expect_eq(hex(tag), "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843")
+  expect(k.verify(tag, msg))
+  expect(!k.verify(Bytes.slice(tag, 0, 31), msg))
+  expect(!k.verify(tag, String.to_bytes("what do ya want for nothing!")))
+}
+
+test "import_key checks usages and material" {
+  let m = Secret.of(String.to_bytes("k"))
+  expect_eq(
+    import_key(Raw, Hmac(Sha256), [DeriveBits], true, m).map(fn(_) { () }),
+    Err(KeyError { reason: NotAllowed(DeriveBits) }),
+  )
+  expect_eq(
+    import_key(Raw, Hkdf(Sha256), [], false, m).map(fn(_) { () }),
+    Err(KeyError { reason: NoUsages }),
+  )
+  expect_eq(
+    import_key(Raw, Hmac(Sha512), [Sign], false, Secret.of(Bytes.from_list([]))).map(fn(_) { () }),
+    Err(KeyError { reason: Empty }),
+  )
+}
+
+test "export_key honours extractable" {
+  let k = key(Hmac(Sha384), [Verify], Bytes.from_list([1, 2, 3]))
+  expect_eq(export_key(k, Raw), Ok(Bytes.from_list([1, 2, 3])))
+  let sealed = import_key(Raw, Hmac(Sha384), [Verify], false, Secret.of(Bytes.from_list([1])))
+  expect_eq(
+    Result.map(sealed, fn(k) { export_key(k, Raw) }),
+    Ok(Err(KeyError { reason: NotExtractable })),
+  )
+}
+
+test "derive_bits bounds its arguments" {
+  let ikm = key(Hkdf(Sha256), [DeriveBits], Bytes.from_list([11, 11, 11]))
+  let p = HkdfWith(HkdfParams { salt: Bytes.from_list([]), info: Bytes.from_list([]) })
+  expect_eq(Result.map(derive_bits(ikm, p, 256), Bytes.len), Ok(32))
+  expect_eq(derive_bits(ikm, p, 12), Err(CryptoError { reason: Length(12) }))
+  expect_eq(derive_bits(ikm, p, 0), Err(CryptoError { reason: Length(0) }))
+  expect_eq(derive_bits(ikm, p, 255 * 256 + 8), Err(CryptoError { reason: Length(65_288) }))
+  let pw = key(Pbkdf2(Sha256), [DeriveBits], String.to_bytes("passwd"))
+  let q = Pbkdf2With(Pbkdf2Params { salt: String.to_bytes("salt"), iterations: 0 })
+  expect_eq(derive_bits(pw, q, 256), Err(CryptoError { reason: Iterations(0) }))
+}
+
+test "generate_key draws from Random" {
+  let k = with Random.seeded(7) { generate_key(Hmac(Sha512), [Sign], true) }
+  expect_eq(Result.map(export_key(k, Raw), Bytes.len), Ok(128))
+}

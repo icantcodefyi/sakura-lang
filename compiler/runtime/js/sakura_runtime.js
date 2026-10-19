@@ -2383,6 +2383,33 @@ export function encoding_encode(s, enc) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Cryptography (RFC 0002 §2.7) over `node:crypto`'s synchronous functions, since builtins are
+// direct calls and `crypto.subtle` is asynchronous; `runtime/rt/src/crypto.rs` is the twin.
+// `std/crypto` checks lengths and iterations first, so Node's own range errors never fire.
+
+const nodeCrypto = () => proc.getBuiltinModule("node:crypto");
+/** `std/crypto`'s `code(digest)`. */
+const HASHES = ["sha256", "sha384", "sha512"];
+
+export function crypto_digest(alg, data) {
+  return new Uint8Array(nodeCrypto().createHash(HASHES[alg]).update(data).digest());
+}
+export function crypto_hmac(alg, key, data) {
+  return new Uint8Array(nodeCrypto().createHmac(HASHES[alg], key).update(data).digest());
+}
+/** Constant-time comparison; a tag of another length is refused before comparing. */
+export function crypto_hmac_verify(alg, key, sig, data) {
+  const mac = nodeCrypto().createHmac(HASHES[alg], key).update(data).digest();
+  return sig.length === mac.length && nodeCrypto().timingSafeEqual(mac, sig);
+}
+export function crypto_hkdf(alg, ikm, salt, info, len) {
+  return new Uint8Array(nodeCrypto().hkdfSync(HASHES[alg], ikm, salt, info, len));
+}
+export function crypto_pbkdf2(alg, password, salt, iterations, len) {
+  return new Uint8Array(nodeCrypto().pbkdf2Sync(password, salt, iterations, len, HASHES[alg]));
+}
+
+// ---------------------------------------------------------------------------------------------
 // Option
 
 /** A `match` the exhaustiveness checker proved total fell through: a compiler bug. */

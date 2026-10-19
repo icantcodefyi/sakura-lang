@@ -1,0 +1,201 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
+layout 2 error std::crypto::CryptoError | CryptoError 24b (reason: word*)
+layout 3 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
+layout 4 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64)
+layout 5 variant std::crypto::DeriveParams | HkdfWith 24b (word*) | Pbkdf2With 24b (word*)
+layout 6 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 7 record std::crypto::HkdfParams | HkdfParams 32b (salt: word*, info: word*)
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b ()
+layout 10 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
+layout 11 record std::crypto::Pbkdf2Params | Pbkdf2Params 32b (salt: word*, iterations: i64)
+layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
+layout 13 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 14 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 15 shape |  32b (word*, word*)
+layout 16 shape |  32b (i64, word*)
+layout 17 shape |  48b (word*, word*, i64, i64)
+
+fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 word*, %45 word*, %46 i64, %47 i64, %48 word*, %49 word*, %50 i64, %51 i64, %87 word*, %88 word*, %89 i64, %90 i64, %91 word*, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %100 bool, %101 word*, %102 i64, %103 i64, %111 bool, %112 word*, %113 i64, %114 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 lit: i64 = const 1
+    %3 lit: i64 = const 64
+    %4 tup: ptr = alloc tuple#17(word, word, i64, i64)(%0, %1, %2, %3)
+    %5 lit: ptr = const str 2
+    %6 lit: ptr = const str 3
+    %7 lit: i64 = const 80000
+    %8 lit: i64 = const 64
+    %9 tup: ptr = alloc tuple#17(word, word, i64, i64)(%5, %6, %7, %8)
+    %10 xs: ptr = alloc list(%4, %9)
+    dup.candidate %10
+    %11 n: i64 = $list_len(%10)
+    %120 lit: i64 = const 0
+    jump b2(%120, %10, %11)
+  b1():
+    %12 lit: unit = const ()
+    ret %12
+  b2(%13 i: i64, %14 xs: ptr, %15 n: i64):
+    %16 more: bool = lt.int %13, %15
+    if %16 then b3(%14, %15, %13) else b4(%14, %15, %13)
+  b3(%17 xs: ptr, %18 n: i64, %19 i: i64):
+    dup.candidate %17
+    %23 x: word = $list_at(%17, %19)
+    %116 p: ptr = tuple_get %23.0
+    %117 p: ptr = tuple_get %23.1
+    %118 p: i64 = tuple_get %23.2
+    %119 p: i64 = tuple_get %23.3
+    drop %23
+    jump b6(%116, %117, %118, %119, %17, %18, %19)
+  b4(%20 xs: ptr, %21 n: i64, %22 i: i64):
+    drop %20
+    jump b1()
+  b5(%24 xs: ptr, %25 n: i64, %26 i: i64):
+    %27 lit: i64 = const 1
+    %28 i: i64 = intadd %26, %27
+    jump b2(%28, %24, %25)
+  b6(%29 password: ptr, %30 salt: ptr, %31 iterations: i64, %32 len: i64, %33 xs: ptr, %34 n: i64, %35 i: i64):
+    %36 v: ptr = const static std::crypto::Digest.Sha256
+    %37 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%36)
+    dup %29
+    %38 r: ptr = $string_to_bytes(%29)
+    %39 r: ptr = $secret_wrap(%38)
+    %40 v: ptr = const static std::crypto::KeyFormat.Raw
+    %41 v: ptr = const static std::crypto::Usage.DeriveBits
+    %42 xs: ptr = alloc list(%41)
+    %43 lit: bool = const false
+    call import_key#2(%40, %37, %42, %43, %39) -> b7(%33, %34, %35, %29, %30, %31, %32)
+  b7(%44 r: ptr, %45 xs: ptr, %46 n: i64, %47 i: i64, %48 password: ptr, %49 salt: ptr, %50 iterations: i64, %51 len: i64):
+    %56 tag: i64 = tag %44 ctor std::result::Result
+    switch %56 0 => b9(%45, %46, %47, %48, %49, %50, %51, %44) 1 => b10(%45, %46, %47, %48, %49, %50, %51, %44)
+  b8(%52 v: word, %53 xs: ptr, %54 n: i64, %55 i: i64):
+    drop %52
+    jump b5(%53, %54, %55)
+  b9(%57 xs: ptr, %58 n: i64, %59 i: i64, %60 password: ptr, %61 salt: ptr, %62 iterations: i64, %63 len: i64, %64 r: ptr):
+    %73 p: word = proj %64.0 std::result::Result.Ok
+    drop %64
+    %74 r: ptr = $string_to_bytes(%61)
+    %75 rec: ptr = alloc std::crypto::Pbkdf2Params(%74, %62)
+    %76 r: ptr = alloc std::crypto::DeriveParams.Pbkdf2With(%75)
+    %77 s: ptr = show %60
+    drop %60
+    %78 lit: ptr = const str 4
+    %79 s: ptr = concat %77, %78
+    drop %77
+    drop %78
+    %80 s: ptr = show %62
+    %81 s: ptr = concat %79, %80
+    drop %79
+    drop %80
+    %82 lit: ptr = const str 4
+    %83 s: ptr = concat %81, %82
+    drop %81
+    drop %82
+    %84 lit: i64 = const 8
+    %85 t: i64 = intmul %84, %63
+    %86 $site: i64 = const 2
+    call derive_bits#3(%73, %76, %85, %86) -> b11(%57, %58, %59, %83)
+  b10(%65 xs: ptr, %66 n: i64, %67 i: i64, %68 password: ptr, %69 salt: ptr, %70 iterations: i64, %71 len: i64, %72 r: ptr):
+    drop %69
+    %105 p: word = proj %72.0 std::result::Result.Err
+    drop %72
+    %106 s: ptr = show %68
+    drop %68
+    %107 lit: ptr = const str 4
+    %108 s: ptr = concat %106, %107
+    drop %106
+    drop %107
+    %109 s: ptr = show %105
+    drop %105
+    %110 s: ptr = concat %108, %109
+    drop %108
+    drop %109
+    perform std::console::Console.print(%110) -> b14(%65, %66, %67)
+  b11(%87 r: ptr, %88 xs: ptr, %89 n: i64, %90 i: i64, %91 s: ptr):
+    %92 fn: ptr = const static closure hex$value#21
+    call map#5(%87, %92) -> b12(%88, %89, %90, %91)
+  b12(%93 r: ptr, %94 xs: ptr, %95 n: i64, %96 i: i64, %97 s: ptr):
+    %98 s: ptr = show %93
+    drop %93
+    %99 s: ptr = concat %97, %98
+    drop %97
+    drop %98
+    perform std::console::Console.print(%99) -> b13(%94, %95, %96)
+  b13(%100 r: unit, %101 xs: ptr, %102 n: i64, %103 i: i64):
+    %104 box: word = box %100
+    jump b8(%104, %101, %102, %103)
+  b14(%111 r: unit, %112 xs: ptr, %113 n: i64, %114 i: i64):
+    %115 box: word = box %111
+    jump b8(%115, %112, %113, %114)
+
+fn $entry#1 top -> unit ; main::crypto_pbkdf2_rfc7914, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
+  b0(%0 b: ptr):
+    dup %0
+    %1 r: i64 = $bytes_len(%0)
+    %48 lit: i64 = const 0
+    %49 lit: ptr = const str 6
+    jump b1(%48, %49, %0, %1)
+  b1(%2 i: i64, %3 out: ptr, %4 b: ptr, %5 r: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
+    dup %7
+    %21 r: ptr = $bytes_get(%7, %9)
+    %22 lit: i64 = const 0
+    %23 box: word = box %22
+    call unwrap_or#6(%21, %23) -> b5(%7, %8, %9, %10)
+  b3(%11 b: ptr, %12 r: i64, %13 i: i64, %14 out: ptr):
+    drop %11
+    ret %14
+  b4(%15 out: ptr, %16 b: ptr, %17 r: i64, %18 i: i64):
+    %19 lit: i64 = const 1
+    %20 i: i64 = intadd %18, %19
+    jump b1(%20, %15, %16, %17)
+  b5(%24 r: word, %25 b: ptr, %26 r: i64, %27 i: i64, %28 out: ptr):
+    %29 unbox: i64 = unbox %24
+    drop %24
+    %30 lit: i64 = const 16
+    %31 t: i64 = intdiv %29, %30
+    %32 lit: i64 = const 16
+    %33 t: i64 = intdiv %29, %32
+    %34 lit: i64 = const 1
+    %35 t: i64 = intadd %33, %34
+    %36 lit: ptr = const str 5
+    %37 r: ptr = $string_slice(%36, %31, %35)
+    %38 t: ptr = concat %28, %37
+    drop %28
+    drop %37
+    %39 lit: i64 = const 16
+    %40 t: i64 = intrem %29, %39
+    %41 lit: i64 = const 16
+    %42 t: i64 = intrem %29, %41
+    %43 lit: i64 = const 1
+    %44 t: i64 = intadd %42, %43
+    %45 lit: ptr = const str 5
+    %46 r: ptr = $string_slice(%45, %40, %44)
+    %47 t: ptr = concat %38, %46
+    drop %38
+    drop %46
+    jump b4(%47, %25, %26, %27)
+
+fn hex$value#21 adapter of hex#4 -> word ; main::crypto_pbkdf2_rfc7914, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    call hex#4(%1) -> b1()
+  b1(%2 r: ptr):
+    ret %2

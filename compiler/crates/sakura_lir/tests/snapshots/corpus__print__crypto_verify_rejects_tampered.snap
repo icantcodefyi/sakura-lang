@@ -1,0 +1,214 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
+layout 2 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
+layout 3 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 4 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 5 variant std::crypto::KeyFormat | Raw 16b ()
+layout 6 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
+layout 7 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
+layout 8 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 9 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots [%10 word*, %11 word*, %12 word*, %18 word*, %19 word*, %22 bool, %42 word*, %43 word*, %44 word*, %45 word*, %50 word*, %51 word*, %52 word*, %53 word*, %54 word*, %78 bool, %79 word*, %80 word*, %81 word*, %82 word*, %83 word*, %84 word*, %87 bool, %88 word*, %89 word*, %90 word*, %91 word*, %92 word*, %95 bool, %96 word*, %97 word*, %98 word*, %99 word*, %101 bool, %102 word*, %103 word*, %104 word*, %105 word*, %111 bool, %112 word*, %113 word*, %114 word*, %115 word*, %117 bool, %118 word*, %119 word*, %120 word*, %121 word*, %130 bool, %131 word*, %132 word*, %133 word*, %134 word*, %136 bool, %137 word*, %138 word*, %139 word*, %140 word*, %145 bool, %146 word*, %147 word*, %148 word*, %149 word*, %151 bool, %152 word*, %153 word*, %154 word*, %155 word*, %160 bool, %161 word*, %162 word*, %163 word*, %165 bool, %166 word*, %167 word*, %168 word*, %171 bool, %173 bool]
+  b0():
+    %0 v: ptr = const static std::crypto::Digest.Sha384
+    %1 r: ptr = alloc std::crypto::Algorithm.Hmac(%0)
+    %2 v: ptr = const static std::crypto::Usage.Sign
+    %3 v: ptr = const static std::crypto::Usage.Verify
+    %4 xs: ptr = alloc list(%2, %3)
+    %5 v: ptr = const static std::crypto::KeyFormat.Raw
+    %6 lit: ptr = const str 0
+    %7 r: ptr = $string_to_bytes(%6)
+    %8 r: ptr = $secret_wrap(%7)
+    %9 lit: bool = const false
+    dup %1
+    dup %4
+    call import_key#2(%5, %1, %4, %9, %8) -> b1(%1, %4)
+  b1(%10 r: ptr, %11 r: ptr, %12 xs: ptr):
+    %13 v: ptr = const static std::crypto::KeyFormat.Raw
+    %14 lit: ptr = const str 1
+    %15 r: ptr = $string_to_bytes(%14)
+    %16 r: ptr = $secret_wrap(%15)
+    %17 lit: bool = const false
+    call import_key#2(%13, %11, %12, %17, %16) -> b2(%10)
+  b2(%18 r: ptr, %19 r: ptr):
+    %20 tup: ptr = alloc tuple#10(word, word)(%19, %18)
+    %25 p: ptr = tuple_get %20.0
+    %26 p: ptr = tuple_get %20.1
+    drop %20
+    %27 tag: i64 = tag %25 ctor std::result::Result
+    switch %27 0 => b5(%25, %26) _ => b6(%25, %26)
+  b3():
+    %21 lit: ptr = const str 2
+    perform std::console::Console.print(%21) -> b4()
+  b4(%22 r: unit):
+    %23 box: word = box %22
+    %24 unbox: unit = unbox %23
+    drop %23
+    ret %24
+  b5(%28 p: ptr, %29 p: ptr):
+    %32 p: word = proj %28.0 std::result::Result.Ok
+    drop %28
+    %33 tag: i64 = tag %29 ctor std::result::Result
+    switch %33 0 => b7(%29, %32) _ => b8(%29, %32)
+  b6(%30 p: ptr, %31 p: ptr):
+    drop %30
+    drop %31
+    jump b3()
+  b7(%34 p: ptr, %35 p: ptr):
+    %38 p: word = proj %34.0 std::result::Result.Ok
+    drop %34
+    %39 lit: ptr = const str 3
+    %40 r: ptr = $string_to_bytes(%39)
+    %41 $site: i64 = const 3
+    dup.candidate %35
+    dup %40
+    call hmac#3(%35, %40, %41) -> b9(%35, %38, %40)
+  b8(%36 p: ptr, %37 p: ptr):
+    drop %36
+    drop %37
+    jump b3()
+  b9(%42 r: ptr, %43 k: ptr, %44 k2: ptr, %45 r: ptr):
+    %46 lit: i64 = const 0
+    dup %42
+    %47 r: ptr = $bytes_get(%42, %46)
+    %48 lit: i64 = const 0
+    %49 box: word = box %48
+    call unwrap_or#4(%47, %49) -> b10(%43, %44, %45, %42)
+  b10(%50 r: word, %51 k: ptr, %52 k2: ptr, %53 r: ptr, %54 r: ptr):
+    %55 unbox: i64 = unbox %50
+    drop %50
+    %56 lit: i64 = const 2
+    %57 t: i64 = intrem %55, %56
+    %58 lit: i64 = const 0
+    %59 t: bool = eq.int %57, %58
+    if %59 then b26(%51, %52, %53, %54, %55) else b27(%51, %52, %53, %54, %55)
+  b11(%60 v: i64, %61 k: ptr, %62 k2: ptr, %63 r: ptr, %64 r: ptr):
+    %65 box: word = box %60
+    %66 xs: ptr = alloc list(%65)
+    %67 r: ptr = $bytes_from_list(%66)
+    dup %64
+    %68 r: i64 = $bytes_len(%64)
+    %69 lit: i64 = const 1
+    dup %64
+    %70 r: ptr = $bytes_slice(%64, %69, %68)
+    %71 xs: ptr = alloc list(%67, %70)
+    %72 r: ptr = $bytes_concat(%71)
+    dup %64
+    %73 r: i64 = $bytes_len(%64)
+    %74 s: ptr = show %73
+    %75 lit: ptr = const str 4
+    %76 s: ptr = concat %74, %75
+    drop %74
+    drop %75
+    %77 $site: i64 = const 4
+    dup.candidate %61
+    dup %63
+    dup %64
+    call verify#5(%61, %64, %63, %77) -> b12(%61, %62, %63, %64, %72, %76)
+  b12(%78 r: bool, %79 k: ptr, %80 k2: ptr, %81 r: ptr, %82 r: ptr, %83 r: ptr, %84 s: ptr):
+    %85 s: ptr = show %78
+    %86 s: ptr = concat %84, %85
+    drop %84
+    drop %85
+    perform std::console::Console.print(%86) -> b13(%79, %80, %81, %82, %83)
+  b13(%87 r: unit, %88 k: ptr, %89 k2: ptr, %90 r: ptr, %91 r: ptr, %92 r: ptr):
+    %93 box: word = box %87
+    drop %93
+    %94 $site: i64 = const 5
+    dup.candidate %88
+    dup %90
+    call verify#5(%88, %92, %90, %94) -> b14(%88, %89, %90, %91)
+  b14(%95 r: bool, %96 k: ptr, %97 k2: ptr, %98 r: ptr, %99 r: ptr):
+    %100 s: ptr = show %95
+    perform std::console::Console.print(%100) -> b15(%96, %97, %98, %99)
+  b15(%101 r: unit, %102 k: ptr, %103 k2: ptr, %104 r: ptr, %105 r: ptr):
+    %106 box: word = box %101
+    drop %106
+    %107 lit: i64 = const 0
+    %108 lit: i64 = const 47
+    dup %105
+    %109 r: ptr = $bytes_slice(%105, %107, %108)
+    %110 $site: i64 = const 6
+    dup.candidate %102
+    dup %104
+    call verify#5(%102, %109, %104, %110) -> b16(%102, %103, %104, %105)
+  b16(%111 r: bool, %112 k: ptr, %113 k2: ptr, %114 r: ptr, %115 r: ptr):
+    %116 s: ptr = show %111
+    perform std::console::Console.print(%116) -> b17(%112, %113, %114, %115)
+  b17(%117 r: unit, %118 k: ptr, %119 k2: ptr, %120 r: ptr, %121 r: ptr):
+    %122 box: word = box %117
+    drop %122
+    %123 lit: i64 = const 0
+    %124 box: word = box %123
+    %125 xs: ptr = alloc list(%124)
+    %126 r: ptr = $bytes_from_list(%125)
+    dup %121
+    %127 xs: ptr = alloc list(%121, %126)
+    %128 r: ptr = $bytes_concat(%127)
+    %129 $site: i64 = const 7
+    dup.candidate %118
+    dup %120
+    call verify#5(%118, %128, %120, %129) -> b18(%118, %119, %120, %121)
+  b18(%130 r: bool, %131 k: ptr, %132 k2: ptr, %133 r: ptr, %134 r: ptr):
+    %135 s: ptr = show %130
+    perform std::console::Console.print(%135) -> b19(%131, %132, %133, %134)
+  b19(%136 r: unit, %137 k: ptr, %138 k2: ptr, %139 r: ptr, %140 r: ptr):
+    %141 box: word = box %136
+    drop %141
+    %142 xs: ptr = alloc list()
+    %143 r: ptr = $bytes_from_list(%142)
+    %144 $site: i64 = const 8
+    dup.candidate %137
+    dup %139
+    call verify#5(%137, %143, %139, %144) -> b20(%137, %138, %139, %140)
+  b20(%145 r: bool, %146 k: ptr, %147 k2: ptr, %148 r: ptr, %149 r: ptr):
+    %150 s: ptr = show %145
+    perform std::console::Console.print(%150) -> b21(%146, %147, %148, %149)
+  b21(%151 r: unit, %152 k: ptr, %153 k2: ptr, %154 r: ptr, %155 r: ptr):
+    %156 box: word = box %151
+    drop %156
+    %157 lit: ptr = const str 5
+    %158 r: ptr = $string_to_bytes(%157)
+    %159 $site: i64 = const 9
+    dup %155
+    call verify#5(%152, %155, %158, %159) -> b22(%153, %154, %155)
+  b22(%160 r: bool, %161 k2: ptr, %162 r: ptr, %163 r: ptr):
+    %164 s: ptr = show %160
+    perform std::console::Console.print(%164) -> b23(%161, %162, %163)
+  b23(%165 r: unit, %166 k2: ptr, %167 r: ptr, %168 r: ptr):
+    %169 box: word = box %165
+    drop %169
+    %170 $site: i64 = const 10
+    call verify#5(%166, %168, %167, %170) -> b24()
+  b24(%171 r: bool):
+    %172 s: ptr = show %171
+    perform std::console::Console.print(%172) -> b25()
+  b25(%173 r: unit):
+    %174 box: word = box %173
+    %175 unbox: unit = unbox %174
+    drop %174
+    ret %175
+  b26(%176 k: ptr, %177 k2: ptr, %178 r: ptr, %179 r: ptr, %180 r: i64):
+    %186 lit: i64 = const 1
+    %187 t: i64 = intadd %180, %186
+    jump b11(%187, %176, %177, %178, %179)
+  b27(%181 k: ptr, %182 k2: ptr, %183 r: ptr, %184 r: ptr, %185 r: i64):
+    %188 lit: i64 = const 1
+    %189 t: i64 = intsub %185, %188
+    jump b11(%189, %181, %182, %183, %184)
+
+fn $entry#1 top -> unit ; main::crypto_verify_rejects_tampered, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
