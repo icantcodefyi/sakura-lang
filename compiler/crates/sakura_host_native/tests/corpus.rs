@@ -180,6 +180,28 @@ fn exe_ending(status: std::process::ExitStatus, stderr: &str) -> String {
 }
 
 /// Compile, link and run `core`: `(ending, stdout, stderr, the stats line)`.
+/// Lower, compile and link corpus program `name` into an executable in `dir`.
+fn build(
+    name: &str,
+    opts: sakura_codegen_native::Options,
+    core: &snapshot::Module,
+    dir: &Path,
+) -> Result<PathBuf, String> {
+    let m = sakura_lir::lower::lower(core, &sakura_lir::builtin_sigs())
+        .map_err(|e| format!("lowering failed: {e}"))?;
+    let object =
+        sakura_codegen_native::emit(&m, &opts).map_err(|e| format!("codegen failed: {e}"))?;
+    let stem = format!(
+        "{}{}",
+        name.replace('/', "-"),
+        if opts.direct { "" } else { "-frames" }
+    );
+    let (o, exe) = (dir.join(format!("{stem}.o")), dir.join(&stem));
+    std::fs::write(&o, object).unwrap();
+    sakura_codegen_native::link(&o, driver(), &exe)?;
+    Ok(exe)
+}
+
 fn run_compiled(
     name: &str,
     opts: sakura_codegen_native::Options,
@@ -187,29 +209,12 @@ fn run_compiled(
     dir: &Path,
 ) -> (String, String, String, String) {
     let fail = |e: String| (e, String::new(), String::new(), String::new());
-    let m = match sakura_lir::lower::lower(core, &sakura_lir::builtin_sigs()) {
-        Ok(m) => m,
-        Err(e) => return fail(format!("lowering failed: {e}")),
+    let exe = match build(name, opts, core, dir) {
+        Ok(exe) => exe,
+        Err(e) => return fail(e),
     };
-    let object = match sakura_codegen_native::emit(&m, &opts) {
-        Ok(o) => o,
-        Err(e) => return fail(format!("codegen failed: {e}")),
-    };
-    let stem = format!(
-        "{}{}",
-        name.replace('/', "-"),
-        if opts.direct { "" } else { "-frames" }
-    );
-    let (o, exe, stats) = (
-        dir.join(format!("{stem}.o")),
-        dir.join(&stem),
-        dir.join(format!("{stem}.stats")),
-    );
-    std::fs::write(&o, object).unwrap();
+    let stats = exe.with_extension("stats");
     let _ = std::fs::remove_file(&stats);
-    if let Err(e) = sakura_codegen_native::link(&o, driver(), &exe) {
-        return fail(e);
-    }
     let out = Command::new(&exe)
         .current_dir(std::env::temp_dir())
         .env_remove("SAKURA_PERMISSIONS")
@@ -474,4 +479,103 @@ fn native_codes_follow_the_shared_order() {
 fn hosted_builtins_follow_the_compiler_table() {
     let compiler: Vec<&str> = sakura_lir::image::HOSTED.iter().map(|(n, _)| *n).collect();
     assert_eq!(sakura_rt::native::HOSTED, compiler.as_slice());
+}
+
+/// Plan M5 N2d: a debugger stopped in the runtime backtraces through compiled Sakura frames by
+/// name, a direct twin (Cranelift's `tail` convention) and its frame-protocol caller included,
+/// from the `.eh_frame` the object carries: `lldb` on macOS, `gdb` elsewhere. Skipped where
+/// neither is installed, except in CI.
+#[test]
+fn a_debugger_backtraces_through_native_frames() {
+    let (debugger, args): (&str, &[&str]) = if cfg!(target_os = "macos") {
+        (
+            "lldb",
+            &["--batch", "-o", "b rt_raise", "-o", "run", "-o", "bt", "--"],
+        )
+    } else {
+        (
+            "gdb",
+            &[
+                "-q",
+                "-batch",
+                "-ex",
+                "break rt_raise",
+                "-ex",
+                "run",
+                "-ex",
+                "bt",
+                "--args",
+            ],
+        )
+    };
+    if Command::new(debugger).arg("--version").output().is_err() {
+        assert!(std::env::var_os("CI").is_none(), "{debugger} is missing");
+        eprintln!("skipped: {debugger} is missing");
+        return;
+    }
+    let p = programs()
+        .into_iter()
+        .find(|p| p.name == "semantics/contract_site_blame")
+        .expect("the corpus has contract_site_blame");
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-debugger");
+    std::fs::create_dir_all(&dir).unwrap();
+    let exe = build(&p.name, Default::default(), &p.core, &dir).unwrap();
+    let out = Command::new(debugger)
+        .args(args)
+        .arg(&exe)
+        .current_dir(std::env::temp_dir())
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    // Innermost first: the runtime's raise, the twin that failed the contract, its caller.
+    let at = |needle: &str| {
+        text.find(needle)
+            .unwrap_or_else(|| panic!("no `{needle}` in the backtrace:\n{text}"))
+    };
+    let (raise, twin, caller) = (
+        at("rt_raise"),
+        at("contract_site_blame::positive$direct"),
+        at("contract_site_blame::main"),
+    );
+    assert!(
+        raise < twin && twin < caller,
+        "frames out of order:\n{text}"
+    );
+}
+
+/// Plan M5 N2d: the object's `.eh_frame` has an entry for every function it defines, each
+/// relocated against that function (so unwinding never falls back to frame-pointer guesses).
+#[test]
+fn every_compiled_function_has_unwind_information() {
+    use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget, SymbolKind};
+    let p = programs()
+        .into_iter()
+        .find(|p| p.name == "semantics/direct_region_restart")
+        .expect("the corpus has direct_region_restart");
+    let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
+    let bytes = sakura_codegen_native::emit(&m, &Default::default()).unwrap();
+    let file = object::File::parse(bytes.as_slice()).unwrap();
+    let eh = file
+        .sections()
+        .find(|s| matches!(s.name(), Ok(".eh_frame" | "__eh_frame")))
+        .expect("an .eh_frame section");
+    let covered: std::collections::BTreeSet<_> = eh
+        .relocations()
+        .filter_map(|(_, r)| match r.target() {
+            RelocationTarget::Symbol(i) => Some(i.0),
+            _ => None,
+        })
+        .collect();
+    let functions: Vec<_> = file
+        .symbols()
+        .filter(|s| s.kind() == SymbolKind::Text && s.is_definition())
+        .collect();
+    assert!(functions.len() > 10, "{} functions", functions.len());
+    for f in functions {
+        assert!(
+            covered.contains(&f.index().0),
+            "{} has no unwind entry",
+            f.name().unwrap_or("?")
+        );
+    }
 }

@@ -2280,6 +2280,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "cap-std",
  "hyper",
+ "object 0.40.0",
  "reqwest",
  "rusqlite",
  "rustls",

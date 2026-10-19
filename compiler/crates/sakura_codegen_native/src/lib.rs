@@ -9,6 +9,7 @@
 
 mod func;
 pub mod image;
+mod unwind;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -65,6 +66,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     if obj.target_config().pointer_type() != types::I64 {
         return Err("the native backend needs a 64-bit target".into());
     }
+    let mut unwind = unwind::Unwind::new(obj.isa());
     let mut tables = image::Tables::new(m);
     let sig = func::code_signature(&obj);
     let mut ids = vec![];
@@ -180,6 +182,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         }
         obj.define_function(id, &mut ctx)
             .map_err(|e| format!("{}: {e:?}", f.name))?;
+        unwind.add(obj.isa(), &ctx, id)?;
         obj.clear_context(&mut ctx);
     }
 
@@ -270,7 +273,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     }
     obj.define_function(main, &mut ctx)
         .map_err(|e| format!("main: {e:?}"))?;
-    obj.finish().emit().map_err(|e| e.to_string())
+    unwind.add(obj.isa(), &ctx, main)?;
+    let mut product = obj.finish();
+    unwind.write(&mut product)?;
+    product.emit().map_err(|e| e.to_string())
 }
 
 /// The driver staticlib's file name in a driver directory (`SAKURA_NATIVE_LIB_DIR`).

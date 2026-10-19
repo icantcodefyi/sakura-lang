@@ -416,8 +416,36 @@ jobs:
         run: cargo build --features native --locked
       - name: Clippy native runtime, host, backend, driver and CLI
         run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver -p sakura_cli --all-targets --features native --locked -- -D warnings
-      - name: Native runtime, host, compiled corpus and staticlib tests
+      - name: Install gdb and perf (debugger and profiler smoke, N2d)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gdb linux-tools-common "linux-tools-$(uname -r)"
+          gdb --version | head -n 1
+          perf --version
+      - name: Native runtime, host, compiled corpus, staticlib and debugger tests
         run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --features native --locked -- --nocapture
+      - name: Profiler symbolises compiled Sakura frames (perf on Linux, sample on macOS)
+        env:
+          SAKURA_NATIVE_LIB_DIR: ${{ github.workspace }}/compiler/target/tmp/native-driver/debug
+        run: |
+          dir="$RUNNER_TEMP/profile"
+          mkdir -p "$dir"
+          printf '%s\n' \
+            'fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }' \
+            'pub fn main() -> Unit ! {Console} { Console.print("{fib(33)}") }' > "$dir/fib.sak"
+          target/debug/sakura build --target native --out-dir "$dir/out" "$dir/fib.sak"
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo perf record -F 999 -g -o "$dir/perf.data" "$dir/out/main"
+            sudo perf report --stdio -i "$dir/perf.data" | tee "$dir/report.txt" > /dev/null
+          else
+            "$dir/out/main" & pid=$!
+            sleep 0.5
+            sample "$pid" 1 -file "$dir/report.txt"
+            wait "$pid"
+          fi
+          # The compiled function's symbol is `sakura$<index>$main::fib::fib`.
+          grep -m 1 -F 'main::fib::fib' "$dir/report.txt"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
