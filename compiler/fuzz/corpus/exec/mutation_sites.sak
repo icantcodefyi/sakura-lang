@@ -1,0 +1,58 @@
+// A hand seed with a site for every typed mutation of the `exec` target: literals, operators,
+// match arms, handler clauses, `with` lists and nested `with`s, and `List` and `Map` operations.
+
+type Shape = Dot | Num(Int) | Pair(Int, String)
+
+effect Tally {
+  fn bump(by: Int) -> Int
+  fn total() -> Int
+}
+
+effect Label { fn name(x: Int) -> String }
+
+fn tally(start: Int) -> Handler<Tally> {
+  handler Tally {
+    var n = start
+    fn bump(by) { n = n + by; n }
+    fn total() { n * 2 }
+  }
+}
+
+fn label(prefix: String) -> Handler<Label> {
+  handler Label { fn name(x) { "{prefix}{x}" } }
+}
+
+fn shape(x: Int) -> Shape {
+  match x % 3 {
+    0 => Dot,
+    1 => Num(x),
+    _ => Pair(x, "p"),
+  }
+}
+
+fn size(s: Shape) -> Int {
+  match s {
+    Pair(n, t) => n + String.len(t),
+    Num(n) => n * 2,
+    Dot => 0,
+  }
+}
+
+fn work(xs: List<Int>) -> Int ! {Tally, Label, Console} {
+  var acc = 0
+  for x in xs {
+    acc = acc + Tally.bump(x)
+    Console.print(Label.name(acc))
+  }
+  acc - Tally.total()
+}
+
+pub fn main() -> Unit ! {Console} {
+  let xs = List.reverse([3, 1, 2, 10])
+  let m = Map.insert(Map.insert(Map.empty(), "a", 1), "b", 2)
+  Console.print("{List.first(xs)} {List.len(xs)} {List.all(xs, fn(x) { x > 0 })}")
+  Console.print("{Map.keys(m)} {Map.get(m, "a")} {Map.len(Map.remove(m, "b"))}")
+  let r = with tally(1), label("t") { work(xs) }
+  let s = with tally(5) { with label("u") { work(List.map(xs, fn(x) { size(shape(x)) })) } }
+  Console.print("{r} {s} {r < s && true || false} {r / 2 == s % 7}")
+}

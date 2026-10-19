@@ -35,6 +35,16 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   value: "`process` grants nothing in this version: no std effect starts processes; the key
   is reserved".
 
+### Added
+
+- `compiler/fuzz`: an `exec` differential target. It mutates `tests/semantics` programs with
+  typed edits (literals, operators, match-arm and handler order, `List` and `Map` operations)
+  and runs each well-typed result on the reference evaluator, the JS backend, the LIR
+  evaluator and the WASM backend on Node. Any disagreement on stdout, the ending, the defect
+  record or the effect trace fails the run. The nightly fuzz workflow now carries each
+  target's corpus between runs as an artifact, and a manual run takes `max_total_time`, the
+  seconds per target.
+
 ## [0.1.0] - Unreleased
 
 The first non-alpha preview and the close of milestone M4, the WebAssembly backend (exit

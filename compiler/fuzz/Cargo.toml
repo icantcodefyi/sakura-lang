@@ -21,6 +21,9 @@ sakura_hir = { path = "../crates/sakura_hir" }
 sakura_lir = { path = "../crates/sakura_lir" }
 sakura_codegen_wasm = { path = "../crates/sakura_codegen_wasm" }
 sakura_verify = { path = "../crates/sakura_verify" }
+sakura_core = { path = "../crates/sakura_core" }
+sakura_eval = { path = "../tools/sakura_eval" }
+serde_json = "1.0.154"
 
 [[bin]]
 name = "parse"
@@ -60,6 +63,13 @@ bench = false
 [[bin]]
 name = "vc"
 path = "fuzz_targets/vc.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "exec"
+path = "fuzz_targets/exec.rs"
 test = false
 doc = false
 bench = false
