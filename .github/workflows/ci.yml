@@ -67,6 +67,14 @@ jobs:
             label: "ubuntu-24.04-arm, 2/2"
             partition: --partition hash:2/2
             checks: false
+          - os: windows-2025
+            label: "windows-2025, 1/2"
+            partition: --partition hash:1/2
+            checks: true
+          - os: windows-2025
+            label: "windows-2025, 2/2"
+            partition: --partition hash:2/2
+            checks: false
           - os: macos-latest
             label: "macos-latest, 1/2"
             partition: --partition hash:1/2
@@ -82,6 +90,7 @@ jobs:
       CVC5_VERSION: "1.4.2"
     defaults:
       run:
+        shell: bash
         working-directory: compiler
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,6 +127,12 @@ jobs:
               z3_sha256=73195cee08f4a1a53a605b65845268e0ac999666cb8f4e604d2260e0c9c60b5a
               cvc5_platform=Linux-arm64
               cvc5_sha256=765ebee59d9e5efccb60a445fa66fbddfb07a8de9fe7a5b6d128e5c2aafec974
+              ;;
+            Windows-X64)
+              z3_platform=x64-win
+              z3_sha256=014e2705e53609bcf46718d7c29426e7d0b98512ed00b8f794e3304869a5fd8b
+              cvc5_platform=Win64-x86_64
+              cvc5_sha256=9055de9b724724890ba5a19cfdc98f68a8c0653284afa843096dec432a0f88c3
               ;;
             macOS-ARM64)
               z3_platform=arm64-osx-13.3
@@ -156,7 +171,11 @@ jobs:
           curl --fail --location --silent --show-error --retry 3 \
             "https://github.com/Z3Prover/z3/releases/download/z3-${Z3_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
-          echo "$SHA256  $archive" | shasum -a 256 --check
+          if command -v sha256sum >/dev/null; then
+            echo "$SHA256  $archive" | sha256sum --check
+          else
+            echo "$SHA256  $archive" | shasum -a 256 --check
+          fi
           unzip -q "$archive" -d "$RUNNER_TEMP/z3-unpack"
           mkdir -p "$RUNNER_TEMP/solvers"
           mv "$RUNNER_TEMP/z3-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/z3"
@@ -171,7 +190,11 @@ jobs:
           curl --fail --location --silent --show-error --retry 3 \
             "https://github.com/cvc5/cvc5/releases/download/cvc5-${CVC5_VERSION}/${ARCHIVE}.zip" \
             --output "$archive"
-          echo "$SHA256  $archive" | shasum -a 256 --check
+          if command -v sha256sum >/dev/null; then
+            echo "$SHA256  $archive" | sha256sum --check
+          else
+            echo "$SHA256  $archive" | shasum -a 256 --check
+          fi
           unzip -q "$archive" -d "$RUNNER_TEMP/cvc5-unpack"
           mkdir -p "$RUNNER_TEMP/solvers"
           mv "$RUNNER_TEMP/cvc5-unpack/$ARCHIVE" "$RUNNER_TEMP/solvers/cvc5"
@@ -201,6 +224,14 @@ jobs:
       - name: Agent docs are fresh (design §17.142)
         if: matrix.checks
         run: cargo run -p agent_docs --locked -- --check
+      - name: Windows installer fixture tests
+        if: runner.os == 'Windows' && matrix.checks
+        shell: pwsh
+        run: ../tools/install/test.ps1 -Binary target/debug/sakura.exe
+      - name: Windows PowerShell 5.1 installer fixture tests
+        if: runner.os == 'Windows' && matrix.checks
+        shell: powershell
+        run: ../tools/install/test.ps1 -Binary target/debug/sakura.exe
 
   msrv:
     name: Rust MSRV
@@ -318,6 +349,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
+        shell: bash
         working-directory: compiler
     env:
       # Miri covers the native runtime (N1a); Valgrind lanes and detection controls land with N2.
@@ -372,12 +404,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-2025]
         backend: [js, wasm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     defaults:
       run:
+        shell: bash
         working-directory: compiler
     env:
       SAKURA_REQUIRE_WASM: "1"

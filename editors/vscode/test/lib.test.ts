@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { findExecutable, projectRoot, titleWithImpact } from "../src/lib";
 
 const tmp = mkdtempSync(join(tmpdir(), "sakura-vscode-"));
@@ -51,8 +51,35 @@ describe("findExecutable", () => {
   });
 
   test("PATH is searched in order, skipping non-executables and relative entries", () => {
-    const PATH = ["bin", join(tmp, "plain"), join(tmp, "missing"), bin].join(":");
-    expect(findExecutable("", { PATH }, tmp, "darwin")).toEqual({ path: sakura });
+    const executable = process.platform === "win32" ? file(join(bin, "sakura.exe")) : sakura;
+    const PATH = ["bin", join(tmp, "plain"), join(tmp, "missing"), bin].join(delimiter);
+    expect(findExecutable("", { PATH }, tmp)).toEqual({ path: executable });
+  });
+
+  test("Windows skips wrapper directories and uses its semicolon PATH delimiter", () => {
+    const wrappers = join(tmp, "windows-wrappers");
+    file(join(wrappers, "sakura.cmd"));
+    file(join(wrappers, "sakura.bat"));
+    file(join(wrappers, "sakura"));
+    const native = join(tmp, "windows-native");
+    const exe = file(join(native, "sakura.exe"));
+    file(join(native, "sakura.cmd"));
+    const PATH = [wrappers, native].join(";");
+    expect(findExecutable("", { PATH }, tmp, "win32")).toEqual({ path: exe });
+    expect(findExecutable("", { Path: PATH }, tmp, "win32")).toEqual({ path: exe });
+    expect(findExecutable("", { PATH: wrappers }, tmp, "win32")).toHaveProperty("error");
+  });
+
+  test("Windows refuses configured command wrappers without falling back to PATH", () => {
+    const native = join(tmp, "windows-configured");
+    const exe = file(join(native, "sakura.exe"));
+    expect(findExecutable(exe, { PATH: "" }, tmp, "win32")).toEqual({ path: exe });
+    for (const name of ["sakura.cmd", "sakura.CMD", "sakura.bat", "sakura.BAT"]) {
+      const wrapper = file(join(tmp, "configured-wrappers", name));
+      const result = findExecutable(wrapper, { PATH: native }, tmp, "win32");
+      expect(result).toHaveProperty("error");
+      if ("error" in result) expect(result.error).toContain("sakura.exe");
+    }
   });
 
   test("missing everywhere is an error naming the setting", () => {

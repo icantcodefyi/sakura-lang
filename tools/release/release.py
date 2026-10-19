@@ -24,6 +24,9 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import threading
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +57,23 @@ def target_info(target):
         if t["target"] == target:
             return t
     fail(f"{target} is not in packaging/targets.json")
+
+
+def binary_name(target):
+    return "sakura.exe" if target_info(target)["os"] == "win32" else "sakura"
+
+
+def archive_name(ver, target):
+    suffix = ".zip" if target_info(target)["os"] == "win32" else ".tar.gz"
+    return f"sakuralang-{ver}-{target}{suffix}"
+
+
+def read_archive(path):
+    if Path(path).suffix == ".zip":
+        with zipfile.ZipFile(path) as archive:
+            return {n.rstrip("/"): archive.read(n) for n in archive.namelist()}
+    with tarfile.open(path) as archive:
+        return {m.name: archive.extractfile(m).read() if m.isfile() else b"" for m in archive.getmembers()}
 
 
 def sha256(path):
@@ -119,14 +139,21 @@ def readme(ver, target, macos_signed=False):
         "carry a stapled ticket; Gatekeeper may need network access to check notarization."
         if macos_signed else "This binary has no Developer ID signature or notarization."
     )
+    installation = (
+        "Install: put `sakura.exe` in a directory on PATH, or download `install.ps1` from\n"
+        "the release and run `powershell -ExecutionPolicy Bypass -File .\\install.ps1 -Version " + ver + "`. The installer verifies\n"
+        "`SHA256SUMS` before extracting and uses `%LOCALAPPDATA%\\Programs\\sakuralang\\bin`.\n"
+        "Add that directory to PATH yourself."
+        if target_info(target)["os"] == "win32" else
+        "Install: put `sakura` on your PATH (for example `install -m 755 sakura ~/.local/bin/`),\n"
+        "or use `install.sh` from the release, which verifies `SHA256SUMS` first."
+    )
     return f"""# Sakura Lang {ver} ({target})
 
 Pre-alpha. `sakura` is self-contained: the standard library, the JS and WASM runtimes,
 `docs/llms.txt` and the agent skill are embedded, so it needs no checkout.
 
-Install: put `sakura` on your PATH (for example `install -m 755 sakura ~/.local/bin/`), or use
-`install.sh` from the release, which verifies `SHA256SUMS` first. `sakura --version` prints
-the version and the source commit.
+{installation} `sakura --version` prints the version and the source commit.
 
 Node {NODE_MAJOR} is required to run programs and tests (`sakura run`, `sakura test`, and MCP
 tools that execute code); set `SAKURA_NODE` to choose the executable. `check`, `build`, `doc`,
@@ -144,7 +171,7 @@ def release_notes(ver, commit, macos_signed=False):
     signing = (
         "macOS binaries are signed with Developer ID Application: Aniruddh Dubge\n"
         "(P62B65A837) and notarized by Apple. Bare Mach-O executables cannot carry a\n"
-        "stapled ticket; Gatekeeper may need network access. Linux binaries are unsigned."
+        "stapled ticket; Gatekeeper may need network access. Linux and Windows binaries are unsigned."
         if macos_signed else
         "Dry run: macOS signing and notarization were skipped; these artifacts have no\n"
         "Developer ID signature or notarization."
@@ -152,7 +179,8 @@ def release_notes(ver, commit, macos_signed=False):
     return f"""Sakura Lang {ver}, a pre-alpha release from commit {commit}. Nothing beyond the
 versioned diagnostic schema and the fixture formats is stable (STABILITY.md).
 
-Platforms:
+Packaging targets (called supported for this version only after the published-install
+smoke passes on every applicable channel):
 
 {platforms}
 
@@ -184,20 +212,31 @@ def write_tar(out, top, members, mtime):
         gz.write(raw.getvalue())
 
 
+def write_zip(out, top, members, mtime):
+    date = time.gmtime(max(mtime, 315532800))[:6]
+    with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, data, mode in sorted(members):
+            info = zipfile.ZipInfo(f"{top}/{name}", date_time=date)
+            info.create_system = 3
+            info.external_attr = (0o100000 | mode) << 16
+            archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED)
+
+
 def archive(args):
     ver = version()
     target_info(args.target)
     if args.macos_signed and not args.target.endswith("-apple-darwin"):
         fail("--macos-signed requires a Darwin target")
     top = f"sakuralang-{ver}-{args.target}"
-    members = [("sakura", Path(args.binary).read_bytes(), 0o755)]
+    members = [(binary_name(args.target), Path(args.binary).read_bytes(), 0o755)]
     members += [(name, (ROOT / name).read_bytes(), 0o644) for name in LICENSES]
     members.append((NOTICES, notices(args.target).encode(), 0o644))
     members.append(("README.md", readme(ver, args.target, args.macos_signed).encode(), 0o644))
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f"{top}.tar.gz"
-    write_tar(path, top, members, source_epoch())
+    path = out / archive_name(ver, args.target)
+    writer = write_zip if path.suffix == ".zip" else write_tar
+    writer(path, top, members, source_epoch())
     print(path)
 
 
@@ -250,6 +289,47 @@ def mcp_smoke(sakura, cwd, env, ver, commit):
         fail(f"the WASM backend is missing: {info['features']}")
 
 
+def lsp_smoke(sakura, cwd, env):
+    process = subprocess.Popen([sakura, "lsp"], cwd=cwd, env=env,
+                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = threading.Timer(30, process.kill)
+    timer.start()
+    try:
+        def request(message):
+            data = json.dumps(message).encode()
+            process.stdin.write(f"Content-Length: {len(data)}\r\n\r\n".encode() + data)
+            process.stdin.flush()
+            while True:
+                length = None
+                while True:
+                    line = process.stdout.readline()
+                    if not line:
+                        fail("LSP closed stdout before replying")
+                    if line in (b"\r\n", b"\n"):
+                        break
+                    if line.lower().startswith(b"content-length:"):
+                        length = int(line.split(b":", 1)[1])
+                if length is None or length > 4 * 1024 * 1024:
+                    fail("invalid LSP Content-Length")
+                reply = json.loads(process.stdout.read(length))
+                if reply.get("id") == message["id"]:
+                    return reply
+        reply = request({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                         "params": {"capabilities": {}, "rootUri": cwd.as_uri()}})
+        if reply.get("result", {}).get("serverInfo", {}).get("name") != "sakura":
+            fail(f"unexpected LSP initialize reply: {reply}")
+        request({"jsonrpc": "2.0", "id": 2, "method": "shutdown", "params": None})
+        data = json.dumps({"jsonrpc": "2.0", "method": "exit"}).encode()
+        process.stdin.write(f"Content-Length: {len(data)}\r\n\r\n".encode() + data)
+        process.stdin.flush()
+        process.stdin.close()
+        if process.wait(timeout=30) != 0:
+            fail("LSP did not exit cleanly")
+    finally:
+        timer.cancel()
+        process.kill()
+
+
 def skill_matches_source(installed, ver, commit):
     """`setup --apply`'s skill is the canonical skill after the two frontmatter fills."""
     source = ROOT / "skills/sakura"
@@ -271,14 +351,19 @@ def smoke(args):
     archive_path = Path(args.archive).resolve()
     with tempfile.TemporaryDirectory(prefix="sakura smoke ") as tmp:
         tmp = Path(tmp)
-        with tarfile.open(archive_path) as tar:
-            names = sorted(tar.getnames())
-            top = archive_path.name.removesuffix(".tar.gz")
-            want = sorted([top] + [f"{top}/{n}" for n in ["sakura", "README.md", NOTICES] + LICENSES])
-            if names != want:
-                fail(f"archive layout {names}, wanted {want}")
-            tar.extractall(tmp / "unpacked", filter="data")
-        sakura = str(tmp / "unpacked" / top / "sakura")
+        windows = archive_path.suffix == ".zip"
+        top = archive_path.name.removesuffix(".zip" if windows else ".tar.gz")
+        binary = "sakura.exe" if windows else "sakura"
+        entries = read_archive(archive_path)
+        want = {f"{top}/{n}" for n in [binary, "README.md", NOTICES] + LICENSES}
+        if set(entries) - {top} != want:
+            fail(f"archive layout {sorted(entries)}, wanted {sorted(want)}")
+        unpacked = tmp / "unpacked" / top
+        unpacked.mkdir(parents=True)
+        for name in want:
+            (unpacked / Path(name).name).write_bytes(entries[name])
+        sakura = str(unpacked / binary)
+        Path(sakura).chmod(0o755)
         accept_installed(sakura, ver, commit, tmp)
     print(f"smoke ok: {archive_path.name}")
 
@@ -296,6 +381,9 @@ def accept_installed(sakura, ver, commit, tmp):
     # A clean environment: no checkout, an empty HOME, Node from PATH.
     env = {"PATH": os.environ["PATH"], "HOME": str(home), "LANG": "C.UTF-8",
            "SAKURA_CACHE_DIR": str(tmp / "cache")}
+    if os.name == "nt":
+        env.update({k: os.environ[k] for k in ("SystemRoot", "PATHEXT", "COMSPEC", "WINDIR") if k in os.environ})
+        env["USERPROFILE"] = str(home)
     out = run([sakura, "--version"], tmp, env)
     if out != f"sakura {ver} ({commit})\n":
         fail(f"--version printed {out!r}")
@@ -311,6 +399,17 @@ def accept_installed(sakura, ver, commit, tmp):
     if run([sakura, "run", "--", "Ann"], demo, env) != "hello, Ann\n":
         fail("the default run printed the wrong greeting")
     mcp_smoke(sakura, demo, env, ver, commit)
+    if os.name == "nt":
+        run(["git", "init"], demo, env)
+        run(["git", "config", "core.autocrlf", "true"], demo, env)
+        run(["git", "add", "."], demo, env)
+        run(["git", "-c", "user.name=Release smoke", "-c", "user.email=smoke@example.invalid",
+             "commit", "-m", "Fresh project"], demo, env)
+        for source in demo.rglob("*.sak"):
+            source.unlink()
+        run(["git", "checkout", "HEAD", "--", "."], demo, env)
+        run([sakura, "fmt", "--check"], demo, env)
+        lsp_smoke(sakura, demo, env)
     run([sakura, "setup", "--client", "all", "--apply"], demo, env)
     again = run([sakura, "setup", "--client", "all", "--apply"], demo, env)
     if any(line.split()[0] not in ("same", "keep") for line in again.splitlines()[1:]):
@@ -333,7 +432,7 @@ def accept_installed(sakura, ver, commit, tmp):
 def render(text, ver, sums):
     text = text.replace("@VERSION@", ver)
     for t in TARGETS:
-        text = text.replace(f"@SHA256_{t['target']}@", sums[f"sakuralang-{ver}-{t['target']}.tar.gz"])
+        text = text.replace(f"@SHA256_{t['target']}@", sums[archive_name(ver, t["target"])])
     left = re.search(r"@(VERSION|SHA256_[\w-]+)@", text)
     if left:
         fail(f"unfilled placeholder {left.group(0)}: a target lacks an archive")
@@ -352,7 +451,7 @@ def assemble(args):
     out.mkdir(parents=True, exist_ok=True)
     sums = {}
     for t in TARGETS:
-        name = f"sakuralang-{ver}-{t['target']}.tar.gz"
+        name = archive_name(ver, t["target"])
         if not (src / name).is_file():
             fail(f"missing {name}: every target in packaging/targets.json must build")
         shutil.copy(src / name, out / name)
@@ -371,6 +470,9 @@ def assemble(args):
     if 'default_version=""' not in installer:
         fail("install.sh lost its default_version line")
     (out / "install.sh").write_text(installer.replace('default_version=""', f'default_version="{ver}"', 1))
+
+    windows_installer = (ROOT / "tools/install/install.ps1").read_text()
+    (out / "install.ps1").write_text(windows_installer.replace('$DefaultVersion = ""', f'$DefaultVersion = "{ver}"', 1))
 
     formula = render((ROOT / "packaging/homebrew/sakuralang.rb").read_text(), ver, sums)
     (out / "sakuralang.rb").write_text(formula)
@@ -391,12 +493,12 @@ def assemble(args):
             stage = Path(tmp) / t["npm"]
             (stage / "bin").mkdir(parents=True)
             top = f"sakuralang-{ver}-{t['target']}"
-            with tarfile.open(out / f"{top}.tar.gz") as tar:
-                for name in ["sakura", NOTICES] + LICENSES:
-                    data = tar.extractfile(f"{top}/{name}").read()
-                    dest = stage / ("bin/sakura" if name == "sakura" else name)
-                    dest.write_bytes(data)
-            (stage / "bin/sakura").chmod(0o755)
+            binary = binary_name(t["target"])
+            entries = read_archive(out / archive_name(ver, t["target"]))
+            for name in [binary, NOTICES] + LICENSES:
+                dest = stage / (f"bin/{binary}" if name == binary else name)
+                dest.write_bytes(entries[f"{top}/{name}"])
+            (stage / f"bin/{binary}").chmod(0o755)
             pkg = {
                 "name": t["npm"],
                 "version": ver,
@@ -407,7 +509,7 @@ def assemble(args):
                 "os": [t["os"]],
                 "cpu": [t["cpu"]],
                 **({"libc": [t["libc"]]} if "libc" in t else {}),
-                "files": ["bin/sakura", NOTICES] + LICENSES,
+                "files": [f"bin/{binary}", NOTICES] + LICENSES,
                 "preferUnplugged": True,
             }
             (stage / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")

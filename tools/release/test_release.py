@@ -19,6 +19,12 @@ class ReleasePackaging(unittest.TestCase):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                     release.accept(argparse.Namespace(sakura="/installed path/sakura", commit="0" * 40))
 
+    def test_windows_readme_uses_the_powershell_installer(self):
+        readme = release.readme("1.2.3", "x86_64-pc-windows-msvc")
+        self.assertIn("sakura.exe", readme)
+        self.assertIn("powershell -ExecutionPolicy Bypass -File .\\install.ps1 -Version 1.2.3", readme)
+        self.assertNotIn("install -m", readme)
+
     def test_notes_distinguish_unsigned_dry_run_and_notarized_release(self):
         unsigned = release.release_notes("1.2.3", "0" * 40)
         signed = release.release_notes("1.2.3", "0" * 40, True)
@@ -41,21 +47,21 @@ class ReleasePackaging(unittest.TestCase):
                 binary = b"signed-binary-" + target["target"].encode()
                 binaries[target["target"]] = binary
                 top = f"sakuralang-{version}-{target['target']}"
-                members = [("sakura", binary, 0o755), (release.NOTICES, b"notices", 0o644)]
+                members = [(release.binary_name(target["target"]), binary, 0o755), (release.NOTICES, b"notices", 0o644)]
                 members += [(name, (release.ROOT / name).read_bytes(), 0o644) for name in release.LICENSES]
-                release.write_tar(archives / f"{top}.tar.gz", top, members, 0)
+                writer = release.write_zip if target["os"] == "win32" else release.write_tar
+                writer(archives / release.archive_name(version, target["target"]), top, members, 0)
             args = argparse.Namespace(commit="0" * 40, archives=archives, out=tmp / "out", macos_signed=True)
             with contextlib.redirect_stdout(io.StringIO()):
                 release.assemble(args)
             output = tmp / "out"
             for target in release.TARGETS:
-                if target["os"] != "darwin":
-                    continue
-                archive_name = f"sakuralang-{version}-{target['target']}.tar.gz"
+                archive_name = release.archive_name(version, target["target"])
                 self.assertEqual((output / archive_name).read_bytes(), (archives / archive_name).read_bytes())
-                self.assertIn(release.sha256(output / archive_name), (output / "sakuralang.rb").read_text())
+                if target["os"] == "darwin" or target["target"] == "x86_64-unknown-linux-gnu":
+                    self.assertIn(release.sha256(output / archive_name), (output / "sakuralang.rb").read_text())
                 with tarfile.open(output / f"{target['npm']}-{version}.tgz") as package:
-                    self.assertEqual(package.extractfile("package/bin/sakura").read(), binaries[target["target"]])
+                    self.assertEqual(package.extractfile("package/bin/" + release.binary_name(target["target"])).read(), binaries[target["target"]])
             record = json.loads((output / "release.json").read_text())
             self.assertEqual(record["macos_signing"], "developer-id-notarized")
             self.assertIn("notarized by Apple", (output / "release-notes.md").read_text())

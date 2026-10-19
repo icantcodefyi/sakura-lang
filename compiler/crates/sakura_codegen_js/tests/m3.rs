@@ -519,6 +519,7 @@ pub fn main() -> Unit ! {Console} {
     );
 }
 
+#[cfg(unix)]
 #[test]
 fn host_fs_is_confined_to_its_directory() {
     let src = r#"import std/fs.{Fs, FsError}
@@ -545,7 +546,6 @@ pub fn main() -> Unit ! {Console, Fs} {
     std::fs::create_dir_all(work.join("out")).unwrap();
     std::fs::create_dir_all(&outside).unwrap();
     std::fs::write(outside.join("secret.txt"), "s").unwrap();
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&outside, work.join("link")).unwrap();
     let out = std::process::Command::new("node")
         .arg(dir.join("__main__.js"))

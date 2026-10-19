@@ -12,11 +12,11 @@ const FIXED: &str = "fn double(x: Int) -> Int { x * 2 }\n\n\
 
 #[test]
 fn diagnostics_navigation_and_formatting_over_stdio() {
-    let dir = std::env::temp_dir().join(format!("sakura-lsp-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("sakura lsp é-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("main.sak"), BROKEN).unwrap();
-    let root = format!("file://{}", dir.display());
+    let root = common::file_uri(&dir);
     let uri = format!("{root}/main.sak");
 
     let (mut c, init) = Lsp::start(&root);
@@ -112,7 +112,7 @@ fn quick_fixes_name_the_document_version() {
     let dir = std::env::temp_dir().join(format!("sakura-lsp-versioned-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let root = format!("file://{}", dir.display());
+    let root = common::file_uri(&dir);
     let uri = format!("{root}/main.sak");
     let caps = json!({"workspace": {"workspaceEdit": {"documentChanges": true}}});
     let (mut c, _) = Lsp::start_with(&root, caps);
@@ -150,7 +150,7 @@ fn lsp_hole_context_matches_mcp_after_unicode_edits() {
     ];
     let last = steps[2];
     std::fs::write(dir.join("main.sak"), steps[0]).unwrap();
-    let root = format!("file://{}", dir.display());
+    let root = common::file_uri(&dir);
     let uri = format!("{root}/main.sak");
 
     let (mut c, _) = Lsp::start(&root);
@@ -197,7 +197,7 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
     let main = "pub fn main() -> Unit ! {Console} { Console.print(\"hi\") }\n";
     std::fs::write(dir.join("main.sak"), main).unwrap();
     std::fs::write(dir.join("other.sak"), "fn ok() -> Int { 1 }\n").unwrap();
-    let root = format!("file://{}", dir.display());
+    let root = common::file_uri(&dir);
     let uri = format!("{root}/main.sak");
 
     let (mut c, _) = Lsp::start(&root);
@@ -212,14 +212,14 @@ fn std_definitions_open_and_disk_edits_show_without_save() {
         target.starts_with("file://") && target.ends_with("/std/console.sak"),
         "{def}"
     );
-    let path = target.strip_prefix("file://").unwrap();
-    let text = std::fs::read_to_string(path).unwrap();
+    let path = sakura_analysis::disk::uri_path(target).unwrap();
+    let text = std::fs::read_to_string(&path).unwrap();
     let line = def["range"]["start"]["line"].as_u64().unwrap() as usize;
     assert!(
         text.lines().nth(line).unwrap().contains("fn print"),
         "{def}"
     );
-    assert!(std::fs::metadata(path).unwrap().permissions().readonly());
+    assert!(std::fs::metadata(&path).unwrap().permissions().readonly());
 
     std::fs::write(dir.join("other.sak"), "fn bad() -> Int { \"no\" }\n").unwrap();
     let change =

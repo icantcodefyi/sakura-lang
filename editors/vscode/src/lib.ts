@@ -2,7 +2,7 @@
 
 import { accessSync, constants, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, isAbsolute, join, resolve } from "node:path";
+import { dirname, extname, isAbsolute, join, resolve } from "node:path";
 
 export const INSTALL_URL = "https://www.sakuralang.com/docs/quickstart#install-from-source";
 
@@ -34,13 +34,18 @@ export function findExecutable(
     const path = configured.startsWith("~/")
       ? join(homedir(), configured.slice(2))
       : resolve(base, configured);
+    if (platform === "win32" && [".cmd", ".bat"].includes(extname(path).toLowerCase())) {
+      return {
+        error: "The `sakura.path` setting must point to sakura.exe, not a .cmd or .bat wrapper.",
+      };
+    }
     if (isExecutable(path, platform)) return { path };
     return {
       error: `The \`sakura.path\` setting points at ${path}, which is not an executable file.`,
     };
   }
-  const names = platform === "win32" ? ["sakura.exe", "sakura.cmd", "sakura"] : ["sakura"];
-  const dirs = (env.PATH ?? env.Path ?? "").split(delimiter);
+  const names = platform === "win32" ? ["sakura.exe"] : ["sakura"];
+  const dirs = (env.PATH ?? env.Path ?? "").split(platform === "win32" ? ";" : ":");
   for (const dir of dirs) {
     if (dir === "" || !isAbsolute(dir)) continue;
     for (const name of names) {

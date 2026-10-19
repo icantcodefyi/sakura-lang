@@ -31,7 +31,7 @@ requested_target=""
 while [ $# -gt 0 ]; do
 	case $1 in
 	--version) [ $# -ge 2 ] || die "--version needs a value"; version=$2; shift 2 ;;
-	--target) [ $# -ge 2 ] || die "--target needs a value"; requested_target=$2; shift 2 ;;
+	--target) [ $# -ge 2 ] && [ -n "$2" ] || die "--target needs a value"; requested_target=$2; shift 2 ;;
 	--prefix) [ $# -ge 2 ] || die "--prefix needs a value"; prefix=$2; shift 2 ;;
 	--base-url) [ $# -ge 2 ] || die "--base-url needs a value"; base=$2; shift 2 ;;
 	-h | --help) usage 0 ;;

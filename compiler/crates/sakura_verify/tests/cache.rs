@@ -6,12 +6,17 @@ mod common;
 
 use std::collections::BTreeMap;
 
-use sakura_verify::cache::{self, Cache, Entry, ProofKey};
-use sakura_verify::record::{
-    Answer, Model, Reason, ReasonKind, Record, SolverInfo, Status, decide,
-};
+use sakura_verify::cache;
+#[cfg(unix)]
+use sakura_verify::cache::{Cache, Entry, ProofKey};
+use sakura_verify::record::SolverInfo;
+#[cfg(unix)]
+use sakura_verify::record::{Answer, Model, Reason, ReasonKind, Record, Status, decide};
+#[cfg(unix)]
 use sakura_verify::smt::Query;
-use sakura_verify::vc::{DefVc, Kind, Obligation, Profile};
+use sakura_verify::vc::Profile;
+#[cfg(unix)]
+use sakura_verify::vc::{DefVc, Kind, Obligation};
 
 fn keys(name: &str, p: Profile) -> BTreeMap<(String, String), String> {
     keys_with(name, p, 10_000_000)
@@ -68,6 +73,7 @@ fn a_body_only_edit_invalidates_exactly_its_own_proofs() {
 
 /// A stand-in solver: every path is feasible, every overflow has a counterexample, everything
 /// else holds. Returns the record and the answers `decide` was given, as `solver::solve` does.
+#[cfg(unix)]
 fn fake_solve(vc: &DefVc, o: &Obligation) -> (Record, Vec<Answer>) {
     let model: Model = [("total".to_owned(), "1".to_owned())].into();
     let mut answers = vec![];

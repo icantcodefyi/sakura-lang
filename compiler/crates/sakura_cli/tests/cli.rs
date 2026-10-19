@@ -90,6 +90,42 @@ fn check_json_goes_to_stdout_and_ends_with_summary() {
 }
 
 #[test]
+fn check_json_file_uri_has_the_same_relative_posix_path_on_every_platform() {
+    let dir = tmp("json-path", "").canonicalize().unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("src/diagnostic.sak"),
+        "fn broken() -> Int { \"wrong\" }\n",
+    )
+    .unwrap();
+    let out = sakura(&["check", "--json", "src/diagnostic.sak"], &dir);
+    assert_eq!(out.code, Some(1), "{}", out.stderr);
+    assert!(out.stderr.is_empty(), "{}", out.stderr);
+    let records = common::json_lines(&out.stdout).unwrap();
+    let diagnostics: Vec<_> = records
+        .iter()
+        .filter(|r| r["kind"] == "diagnostic")
+        .collect();
+    assert_eq!(diagnostics.len(), 1, "{}", out.stdout);
+    let diagnostic = diagnostics[0];
+    assert_eq!(diagnostic["code"], "V2001");
+    assert_eq!(diagnostic["severity"], "error");
+    assert_eq!(diagnostic["phase"], "type");
+    let prefix = format!("{}/", common::file_uri(&dir));
+    let spans = diagnostic["spans"].as_array().unwrap();
+    assert_eq!(spans.len(), 1);
+    for span in spans {
+        let uri = span["uri"].as_str().unwrap();
+        assert_eq!(
+            uri.strip_prefix(&prefix),
+            Some("src/diagnostic.sak"),
+            "{uri}"
+        );
+    }
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn check_human_goes_to_stderr_with_relative_paths() {
     let dir = tmp("human", "fn main( -> Unit {}\n");
     let out = sakura(&["check", "main.sak"], &dir);
@@ -1396,6 +1432,7 @@ fn verify_reports_the_scale_acceptance() {
 
 /// Design §7.5, §17.86, §17.98: `sakura build` drops a check only for an authenticated `proved`
 /// record whose key still matches; a body edit or another installation's key keeps it.
+#[cfg(unix)]
 #[test]
 fn build_drops_only_checks_with_authenticated_proofs() {
     if !has_z3() {
@@ -1438,6 +1475,7 @@ fn build_drops_only_checks_with_authenticated_proofs() {
     assert!(build(&dir, &state, &[]).contains(ensures_check));
 }
 
+#[cfg(unix)]
 const PREDICATES: &str = "fn same(x: Int) -> Int
   ensures result == x
 { x }
@@ -1459,6 +1497,7 @@ pub fn main() -> Unit {
 /// Design §17.98, §17.118: a dropped check's predicate goes with it when the proof covers every
 /// binding in it (a compound `&&` included); a predicate that calls a function keeps its
 /// computation, so a defect inside the callee would still surface as `D011`.
+#[cfg(unix)]
 #[test]
 fn build_deletes_a_proved_checks_predicate_unless_it_calls_a_function() {
     if !has_z3() {
@@ -1504,16 +1543,39 @@ fn proof_key_is_never_created_by_build_or_inside_the_project() {
     let out = sakura_in_state(&["build", "main.sak"], &dir, &state);
     assert_eq!(out.status.code(), Some(0), "{out:?}");
     assert!(!state.exists(), "a build never creates the proof key");
+    #[cfg(unix)]
+    {
+        if !has_z3() {
+            return;
+        }
+        let sub = dir.join("sub");
+        std::fs::create_dir_all(&sub).unwrap();
+        let inside = dir.join("state");
+        let out = sakura_in_state(&["verify", "../main.sak"], &sub, &inside);
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(stderr.contains("must live outside"), "{out:?}");
+        assert!(!inside.exists(), "no key inside the project");
+    }
+}
+
+#[cfg(not(unix))]
+#[test]
+fn verify_without_protected_key_storage_never_authenticates_proofs() {
     if !has_z3() {
         return;
     }
-    let sub = dir.join("sub");
-    std::fs::create_dir_all(&sub).unwrap();
-    let inside = dir.join("state");
-    let out = sakura_in_state(&["verify", "../main.sak"], &sub, &inside);
-    let stderr = String::from_utf8_lossy(&out.stderr);
-    assert!(stderr.contains("must live outside"), "{out:?}");
-    assert!(!inside.exists(), "no key inside the project");
+    let dir = tmp("verify-no-protected-key", SCALE);
+    let state = outside(&dir, "state");
+    let out = sakura_in_state(&["verify", "main.sak"], &dir, &state);
+    assert!(
+        String::from_utf8_lossy(&out.stderr)
+            .contains("no protected key storage on this platform; proofs are rerun"),
+        "{out:?}"
+    );
+    assert!(!state.exists(), "verify creates no unprotected key");
+    let out = sakura_in_state(&["build", "main.sak"], &dir, &state);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(emitted_js(&dir).contains("postcondition `scale` of scale violated"));
 }
 
 /// Plan §3.7 item 9 (C1/V3 deviation 7), design §17.86, §17.164 (2): a second `sakura verify` on
@@ -1801,28 +1863,31 @@ fn build_wasm_manifest_names_its_target() {
         String::from_utf8_lossy(&bytes).into_owned()
     };
     assert!(module().contains(check), "no proofs yet");
-    if !has_z3() {
-        return;
+    #[cfg(unix)]
+    {
+        if !has_z3() {
+            return;
+        }
+        sakura_in_state(&["verify", "--target", "wasm", "main.sak"], &dir, &state);
+        assert_eq!(
+            read()["target"],
+            "wasm",
+            "verify records the profile it used"
+        );
+        let out = sakura_in_state(
+            &["build", "--target", "wasm", "--manifest", "main.sak"],
+            &dir,
+            &state,
+        );
+        assert_eq!(out.status.code(), Some(0), "{out:?}");
+        assert!(!module().contains(check), "the proved check is dropped");
+        assert!(
+            module().contains("precondition `scale` of scale violated"),
+            "entry checks stay"
+        );
+        let proved = statuses(&read()).iter().filter(|s| *s == "proved").count();
+        assert_eq!(proved, 1);
     }
-    sakura_in_state(&["verify", "--target", "wasm", "main.sak"], &dir, &state);
-    assert_eq!(
-        read()["target"],
-        "wasm",
-        "verify records the profile it used"
-    );
-    let out = sakura_in_state(
-        &["build", "--target", "wasm", "--manifest", "main.sak"],
-        &dir,
-        &state,
-    );
-    assert_eq!(out.status.code(), Some(0), "{out:?}");
-    assert!(!module().contains(check), "the proved check is dropped");
-    assert!(
-        module().contains("precondition `scale` of scale violated"),
-        "entry checks stay"
-    );
-    let proved = statuses(&read()).iter().filter(|s| *s == "proved").count();
-    assert_eq!(proved, 1);
 }
 
 /// Design §17.98, §17.105: a proof over an impossible path is `proved` with

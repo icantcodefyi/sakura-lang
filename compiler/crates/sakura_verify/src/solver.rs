@@ -431,7 +431,9 @@ pub fn solve(
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
     use std::process::Command;
+    #[cfg(unix)]
     use std::time::Duration;
 
     #[test]

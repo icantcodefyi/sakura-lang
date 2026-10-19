@@ -17,7 +17,8 @@ env:
     [{"target":"x86_64-unknown-linux-gnu","runner":"ubuntu-22.04","brew":true,"container":null},
      {"target":"aarch64-unknown-linux-gnu","runner":"ubuntu-22.04-arm","brew":false,"container":null},
      {"target":"aarch64-unknown-linux-gnu","runner":"ubuntu-24.04-arm","brew":false,"container":{"image":"debian:bookworm","options":"--memory 1800m"}},
-     {"target":"aarch64-apple-darwin","runner":"macos-15","brew":true,"container":null}]
+     {"target":"aarch64-apple-darwin","runner":"macos-15","brew":true,"container":null},
+     {"target":"x86_64-pc-windows-msvc","runner":"windows-2025","brew":false,"container":null}]
 
 defaults:
   run:
@@ -118,15 +119,39 @@ jobs:
           npm --version
           dirname "$(command -v node)" >> "$GITHUB_PATH"
       - name: Install from the release URL and accept
+        if: runner.os != 'Windows'
         run: |
           curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${VERSION}/install.sh" -o install.sh
           if [ -z '${{ matrix.container.image }}' ]; then command -v gh; fi
           sh install.sh --version "$VERSION"
           python3 -I published/tools/release/release.py accept --sakura "$HOME/.local/bin/sakura" --commit "$COMMIT"
       - name: Install from npm and accept
+        if: runner.os != 'Windows'
         run: |
           npm install --global --ignore-scripts "sakuralang@$VERSION"
           python3 -I published/tools/release/release.py accept --sakura "$(npm prefix --global)/bin/sakura" --commit "$COMMIT"
+      - name: Install Windows from the release URL and accept
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v$env:VERSION/install.ps1" -OutFile install.ps1
+          ./install.ps1 -Version $env:VERSION
+          python3 -I published/tools/release/release.py accept --sakura "$env:LOCALAPPDATA/Programs/sakuralang/bin/sakura.exe" --commit $env:COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer acceptance failed' }
+      - name: Install Windows from npm and accept
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          npm install --global --ignore-scripts "sakuralang@$env:VERSION"
+          if ($LASTEXITCODE -ne 0) { throw 'npm installation failed' }
+          $Prefix = npm prefix --global
+          $Version = node "$Prefix/node_modules/sakuralang/bin/sakura.js" --version
+          if ($LASTEXITCODE -ne 0 -or $Version -ne "sakura $env:VERSION ($env:COMMIT)") { throw 'npm wrapper failed' }
+          $Binary = node -p 'require.resolve("sakuralang-win32-x64-msvc/bin/sakura.exe", {paths: [process.argv[1]]})' "$Prefix/node_modules/sakuralang"
+          if ($LASTEXITCODE -ne 0) { throw 'npm companion resolution failed' }
+          python3 -I published/tools/release/release.py accept --sakura $Binary --commit $env:COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Windows npm acceptance failed' }
       - name: Install from Homebrew and accept
         if: matrix.brew
         run: |

@@ -71,6 +71,6 @@ New tagged releases require Developer ID signing and Apple notarization for macO
 binaries, pinned to team `P62B65A837`. The Homebrew archive and npm Darwin companion
 contain the same signed binary. A bare Mach-O cannot carry a stapled ticket;
 Gatekeeper may need network access to verify notarization. Ordinary workflow dry
-runs skip signing and say so; Linux binaries remain unsigned. This policy does not
+runs skip signing and say so; Linux and Windows binaries remain unsigned. This policy does not
 retroactively change existing immutable releases or establish language stability.
 See [the release procedure](docs/release.md#macos-signing-and-notarization).

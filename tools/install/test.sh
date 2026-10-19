@@ -11,7 +11,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 python=$(python3 -c 'import sys; print(sys.executable)')
 targets_file="$here/../../packaging/targets.json"
-targets=$("$python" -I -c 'import json, sys; print("\n".join(t["target"] for t in json.load(open(sys.argv[1]))))' "$targets_file")
+targets=$("$python" -I -c 'import json, sys; print("\n".join(t["target"] for t in json.load(open(sys.argv[1])) if t["os"] != "win32"))' "$targets_file")
 version=9.9.9-test.1
 failures=0
 
@@ -165,6 +165,8 @@ out, version = sys.argv[1], sys.argv[2]
 os.makedirs(out)
 with open(os.path.join(out, "SHA256SUMS"), "w") as sums:
     for entry in json.load(open(sys.argv[3])):
+        if entry["os"] == "win32":
+            continue
         target = entry["target"]
         top = f"sakuralang-{version}-{target}"
         path = os.path.join(out, f"{top}.tar.gz")
@@ -192,6 +194,7 @@ else
 	echo "ok   no version given"
 fi
 
+expect "empty explicit target" fail "$work/empty target" --base-url "$good" --target ""
 expect "unknown explicit target" fail "$work/unknown target" --base-url "$good" --target unknown-triple
 expect "cross-OS explicit target" fail "$work/cross os" --base-url "$good" --target x86_64-pc-windows-msvc
 fake_host="$work/fake host"

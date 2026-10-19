@@ -101,6 +101,8 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
       COMMIT: ${{ needs.plan.outputs.commit }}
       TARGET: ${{ matrix.target }}
+      EXE_SUFFIX: ${{ matrix.os == 'win32' && '.exe' || '' }}
+      ARCHIVE_SUFFIX: ${{ matrix.os == 'win32' && '.zip' || '.tar.gz' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -118,27 +120,32 @@ jobs:
         working-directory: compiler
         env:
           SAKURA_GIT_COMMIT: ${{ needs.plan.outputs.commit }}
-        run: cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET"
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then export RUSTFLAGS='-C target-feature=+crt-static'; fi
+          cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET"
       - name: Explain unsigned dry-run artifacts
         if: runner.os == 'macOS' && needs.plan.outputs.publish != 'true'
         run: |
           echo 'Dry run: macOS signing and notarization skipped; no Apple secrets or environment approval needed.' >> "$GITHUB_STEP_SUMMARY"
       - name: Archive
-        run: python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura" --out dist
+        run: python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura$EXE_SUFFIX" --out dist
       - name: Smoke test the extracted archive
-        run: python3 -I tools/release/release.py smoke --archive "dist/sakuralang-$VERSION-$TARGET.tar.gz" --commit "$COMMIT"
+        run: python3 -I tools/release/release.py smoke --archive "dist/sakuralang-$VERSION-$TARGET$ARCHIVE_SUFFIX" --commit "$COMMIT"
       - name: Record the host floor
         run: |
-          bin="compiler/target/$TARGET/release/sakura"
+          bin="compiler/target/$TARGET/release/sakura$EXE_SUFFIX"
           case "$RUNNER_OS" in
             Linux) floor=$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) ;;
+            Windows) floor="Windows 10 x64+, statically linked MSVC CRT" ;;
             macOS) floor="macOS $(otool -l "$bin" | awk '/minos/ { print $2; exit }')" ;;
           esac
           echo "$TARGET: built on $ImageOS $ImageVersion, needs $floor" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: archive-${{ matrix.target }}
-          path: dist/*.tar.gz
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
           if-no-files-found: error
           retention-days: 14
 
@@ -307,6 +314,7 @@ jobs:
           name: release-${{ needs.plan.outputs.version }}
           path: dist
       - name: Check sums, installer and npm offline install
+        if: runner.os != 'Windows'
         run: |
           (cd dist && shasum -a 256 --check SHA256SUMS)
           # These local artifacts are not attested until publication. Exercise the
@@ -323,6 +331,23 @@ jobs:
             --no-audit --no-fund --cache "$RUNNER_TEMP/empty-npm-cache" \
             "./dist/sakuralang-$VERSION.tgz" "./dist/$NPM_PACKAGE-$VERSION.tgz"
           test "$("$RUNNER_TEMP/npm prefix/bin/sakura" --version)" = "sakura $VERSION ($COMMIT)"
+
+      - name: Windows installer and npm offline install
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($Line in Get-Content dist/SHA256SUMS) {
+            $Hash, $Name = $Line -split '  ', 2
+            if ((Get-FileHash -Algorithm SHA256 -LiteralPath "dist/$Name").Hash.ToLowerInvariant() -ne $Hash) { throw "Checksum mismatch: $Name" }
+          }
+          ./dist/install.ps1 -Prefix "$env:RUNNER_TEMP/install prefix" -BaseUrl "$pwd/dist"
+          & "$env:RUNNER_TEMP/install prefix/bin/sakura.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw 'Installer smoke failed' }
+          npm install --global --prefix "$env:RUNNER_TEMP/npm prefix" --offline --ignore-scripts --no-audit --no-fund --cache "$env:RUNNER_TEMP/empty-npm-cache" "./dist/sakuralang-$env:VERSION.tgz" "./dist/$env:NPM_PACKAGE-$env:VERSION.tgz"
+          if ($LASTEXITCODE -ne 0) { throw 'npm offline install failed' }
+          $Version = node "$env:RUNNER_TEMP/npm prefix/node_modules/sakuralang/bin/sakura.js" --version
+          if ($LASTEXITCODE -ne 0 -or $Version -ne "sakura $env:VERSION ($env:COMMIT)") { throw 'npm wrapper smoke failed' }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: runner.os == 'macOS' && needs.plan.outputs.publish == 'true'

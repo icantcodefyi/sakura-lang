@@ -266,6 +266,21 @@ disabled/network denied using a preseeded cache or local wrapper/platform
 tarballs. An empty cache cannot prove offline install. Confirm no hidden binary
 download. Test the Homebrew formula against staged artifacts before a tap push.
 
+### Windows packaging checks
+
+The Windows lane builds `x86_64-pc-windows-msvc` with `+crt-static` and archives
+`sakura.exe` in a ZIP. The dry run checks the ZIP, installs it with `install.ps1`,
+and installs the npm wrapper and companion from local tarballs. CI runs the installer
+fixture suite with both PowerShell 5.1 and PowerShell 7. The installer verifies the
+matching `SHA256SUMS` entry before extraction. Run the downloaded script with
+`powershell -ExecutionPolicy Bypass -File .\install.ps1 -Version <version>`. It uses
+`%LOCALAPPDATA%\Programs\sakuralang\bin` by default, and does not edit PATH.
+
+After publication, the Windows `verify-published.yml` row installs from the release URL
+and npm. Acceptance includes a fresh project's `fmt --check` after a Git checkout with
+`core.autocrlf=true`, a stdio LSP initialize round trip, and the shared MCP/setup checks.
+Proof-key storage remains unavailable on Windows; its Unix-only tests stay gated.
+
 ## 4. Owner approval and tag
 
 Present candidate SHA, version, run ID, final digest inventory, platforms/floors,

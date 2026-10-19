@@ -15,6 +15,12 @@ published yet.
 
 ### Added
 
+- Published-channel acceptance workflow with exact version/commit checks, a deliberate
+  installer target override, and a platform-report issue form for community confirmations.
+- Windows x64 MSVC ZIP and npm packaging, a checksum-verifying PowerShell installer,
+  hosted Windows suites/parity, and native `sakura.exe` selection in VS Code. Windows
+  publication and release-specific supported status still require the published smoke.
+
 - Draft RFC 0001 proposes stability guarantees and identifies enforcement gaps for
   owner acceptance at `v0.2.0`; current compatibility policy is unchanged.
 

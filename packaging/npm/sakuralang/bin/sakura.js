@@ -18,6 +18,7 @@ if (platform === "linux") {
   }
   suffix = "-gnu";
 }
+if (platform === "win32") suffix = "-msvc";
 const name = `sakuralang-${platform}-${arch}${suffix}`;
 if (!Object.hasOwn(optionalDependencies, name)) {
   const supported = Object.keys(optionalDependencies).join(", ");
@@ -26,7 +27,7 @@ if (!Object.hasOwn(optionalDependencies, name)) {
 
 let binary;
 try {
-  binary = require.resolve(`${name}/bin/sakura`);
+  binary = require.resolve(`${name}/bin/sakura${platform === "win32" ? ".exe" : ""}`);
 } catch {
   fail(
     `the platform package ${name} is not installed. Optional dependencies were probably ` +
@@ -36,5 +37,5 @@ try {
 
 const result = spawnSync(binary, process.argv.slice(2), { stdio: "inherit" });
 if (result.error) fail(`could not run ${binary}: ${result.error.message}`);
-if (result.signal) process.kill(process.pid, result.signal);
+if (result.signal && platform !== "win32") process.kill(process.pid, result.signal);
 process.exit(result.status ?? 1);

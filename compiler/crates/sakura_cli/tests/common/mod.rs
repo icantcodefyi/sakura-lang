@@ -315,15 +315,7 @@ pub fn compare_file(path: &Path, actual: &str) -> Result<(), String> {
 }
 
 pub fn file_uri(path: &Path) -> String {
-    let mut uri = String::from("file://");
-    for b in path.to_string_lossy().bytes() {
-        if b.is_ascii_alphanumeric() || b"/-._~:".contains(&b) {
-            uri.push(b as char);
-        } else {
-            uri.push_str(&format!("%{b:02X}"));
-        }
-    }
-    uri
+    sakura_analysis::disk::file_uri(path)
 }
 
 /// Runs `sakura check --json` on any fixture and enforces what holds at every milestone: no crash,
