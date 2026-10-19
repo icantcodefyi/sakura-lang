@@ -250,6 +250,12 @@ impl Dir {
         }
     }
 
+    /// The real path of the SQLite file `rel` inside this directory (`Sql.sqlite`, JS
+    /// `sqliteFile`): as a write, so a missing file is allowed.
+    pub fn sqlite_path(&self, rel: &str) -> Res<PathBuf> {
+        self.inside(rel, true).map(|(p, _)| p)
+    }
+
     /// The real path of `rel` inside this host directory and the same path relative to its
     /// capability, or the message JS's `inside` gives. `for_write` allows a missing file.
     fn inside(&self, rel: &str, for_write: bool) -> Res<(PathBuf, PathBuf)> {

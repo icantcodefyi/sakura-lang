@@ -1,0 +1,17 @@
+2
+[Person { name: "ada", age: 36, nick: None, admin: true }, Person { name: "bob", age: 7, nick: Some("b"), admin: false }]
+[("bob", 7), ("ada", 36)]
+[7.0, 36.0]
+[3]
+[(2, 1, 4)]
+[Tagged { id: 1, tags: ["a", "b"] }]
+column id: does not satisfy the where clause of Small
+column age: no such column
+column age: expected text, found number
+column age: expected 0 or 1, found number
+column tags/0: expected an integer, found a string
+column null: expected a blob, found NULL
+near "selec": syntax error
+no such table: nope
+abandoned ["ada", "bob"]
+4 ["ada", "bob", "dee"]

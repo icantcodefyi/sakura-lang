@@ -569,3 +569,21 @@ fn json(cx: &mut Cx<'_>, name: &str, args: &[u8]) -> Hosted<Result<Vec<u8>, crat
     };
     Ok(done.map(|()| out))
 }
+
+/// `json::sql_rows` on a native `Sql.query`'s completion: the answer.
+pub(crate) fn sql_rows(cx: &mut Cx<'_>, rows: &[u8], schema: &[u8]) -> crate::Res<Vec<u8>> {
+    let index = cx.type_index();
+    let mut out = Vec::new();
+    let mut types = Native { cx, index: &index };
+    json::sql_rows(rows, schema, &index.descs, &mut types, &mut out)?;
+    Ok(out)
+}
+
+/// The answer `Err(SqlError(message))`.
+pub(crate) fn sql_error(cx: &mut Cx<'_>, message: &str) -> crate::Res<Vec<u8>> {
+    let index = cx.type_index();
+    let mut out = Vec::new();
+    let mut types = Native { cx, index: &index };
+    json::sql_error(message.as_bytes(), &mut types, &mut out)?;
+    Ok(out)
+}

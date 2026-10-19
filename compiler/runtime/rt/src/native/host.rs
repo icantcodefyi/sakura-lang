@@ -37,6 +37,16 @@ pub enum FileMode {
     Append,
 }
 
+/// A `std::sql::SqlValue` bound as a parameter.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SqlValue<'a> {
+    Null,
+    Int(i64),
+    Float(f64),
+    Text(&'a str),
+    Blob(&'a [u8]),
+}
+
 /// One instance's host. Methods without a default are the root handlers' imports, which every
 /// host provides; the `hosted` builtins default to a host failure (`D091`), so a host
 /// implements only the services it offers.
@@ -106,6 +116,44 @@ pub trait Host {
     }
     /// Closes file `id`; a second close does nothing.
     fn file_close(&mut self, _id: i64) {}
+
+    /// `Sql.memory()` (`path` `None`) or `Sql.sqlite(path)`: a new database's id. Its handle
+    /// (kind `vt::SQL`, slot the id) retires with the handler. A file opens at `sql_root`.
+    fn sql_open(&mut self, _path: Option<&str>) -> Hosted<u32> {
+        Err(unsupported())
+    }
+    /// Whether database `db` waits for `sql_root` before its first operation.
+    fn sql_needs_root(&mut self, _db: u32) -> bool {
+        false
+    }
+    /// Open `db`'s file inside `dir` (the guest's `Fs.root()`); `Err(reason)` fails the
+    /// operation, and the next one asks again.
+    fn sql_root(&mut self, _db: u32, _dir: HandleId) -> Hosted<()> {
+        Err(unsupported())
+    }
+    /// `async`: run one statement on `db` and complete `request` (`Instance::complete`). With
+    /// `rows`, status 0's payload is the `sakura-vt1` tuple of the column names (`List<String>`)
+    /// and the rows (a `List` of tuples of `Unit` for NULL, `Int`, `Float`, `String` or `Bytes`
+    /// cells); without, the `Int` of rows changed. Status 1 carries SQLite's message (the
+    /// `SqlError`), 3 a host failure's text (`D091`). `abort(request)` interrupts it.
+    fn sql_run(
+        &mut self,
+        _request: u32,
+        _db: u32,
+        _text: &str,
+        _params: &[SqlValue<'_>],
+        _rows: bool,
+    ) {
+    }
+    /// A savepoint on `db`: its token, or `Err(reason)`.
+    fn sql_begin(&mut self, _db: u32) -> Hosted<i64> {
+        Err(unsupported())
+    }
+    /// End savepoint `token`, released (`commit`) or rolled back; a second end does nothing.
+    /// A failed release is a host failure (`D091`); a failed rollback has nowhere to go.
+    fn sql_end(&mut self, _db: u32, _token: i64, _commit: bool) -> Hosted<()> {
+        Ok(())
+    }
 }
 
 fn unsupported() -> HostError {

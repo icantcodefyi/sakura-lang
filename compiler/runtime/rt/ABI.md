@@ -923,10 +923,15 @@ kind 0 (`dir`); a `File`'s `id` is a plain `Int` into the host's own file table,
   and the request stays pending).
 - Native (1.4.0, design §17.171): one OS thread owns an instance; the host's executor is a
   current-thread Tokio runtime on that thread, so timers and network futures complete only
-  between trampoline returns (`complete` copies the payload in itself). Blocking I/O that
-  answers through a request runs on a bounded pool (`SAKURA_BLOCKING_THREADS`, default 4)
-  that receives copied inputs and returns copied bytes; a cancelled job is detached, runs to
-  completion and its answer is discarded by the stale check above. A `hosted` operation (Fs,
+  between trampoline returns (`complete` copies the payload in itself). Each `Sql` database
+  is a connection owned by its own worker thread, which runs the database's operations in
+  order on copied inputs: `query` and `execute` are requests the worker completes with copied
+  bytes (`Host::sql_run`; rows decode in the runtime by the row type's schema), and `begin`,
+  `release` and `rollback` wait for it. Aborting a request skips it if it is still queued and
+  interrupts its statement (`sqlite3_interrupt`) if it is running outside a transaction
+  (inside one it runs to its end, as on JS: SQLite would roll the transaction back); a write that
+  committed stays committed, and a late answer is discarded by the stale check above. The
+  host waits for the workers before the §8.6 ledger. A `hosted` operation (Fs,
   `file_*`) answers synchronously on the owning thread, as on JS; Fs's own refusals (`not
   found`, `is a directory`, the grant messages) are JS's texts, while other host errors carry
   the operating system's text, not Node's. An answer past `SAKURA_MAX_COPY_BYTES` is the WASM

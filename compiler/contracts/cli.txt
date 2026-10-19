@@ -116,7 +116,6 @@ command sakura setup hidden=false
 command sakura test hidden=false
 command sakura verify hidden=false
 env SAKURA_BLESS
-env SAKURA_BLOCKING_THREADS
 env SAKURA_BUILD_ID
 env SAKURA_CACHE_DIR
 env SAKURA_GIT_COMMIT

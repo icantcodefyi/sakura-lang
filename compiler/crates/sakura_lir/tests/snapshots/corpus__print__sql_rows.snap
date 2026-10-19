@@ -1,0 +1,677 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::sql_rows::Person | Person 48b (name: word*, age: i64, nick: word*, admin: bool)
+layout 1 record main::sql_rows::Tagged | Tagged 32b (id: i64, tags: word*)
+layout 2 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 3 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 record std::sql::Query | Query 32b (text: word*, params: word*)
+layout 8 error std::sql::SqlError | SqlError 24b (message: word*)
+layout 9 variant std::sql::SqlValue | Null 16b () | Int 24b (i64) | Float 24b (f64) | Text 24b (word*) | Blob 24b (word*)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+layout 12 shape |  32b (word*, i64)
+layout 13 shape |  40b (i64, i64, i64)
+
+fn main#0 pub top -> unit ; main::sql_rows, frame 111 slots [%4 word*, %5 i64, %7 word*, %9 word*, %10 word*, %12 word*, %13 word*, %14 word*, %16 word*, %17 word*, %18 word*, %19 word*, %21 word*, %22 word*, %23 word*, %24 word*, %25 word*, %27 word*, %28 word*, %29 word*, %30 word*, %31 word*, %32 word*, %34 word*, %35 word*, %36 word*, %37 word*, %38 word*, %39 word*, %40 word*, %51 word*, %52 i64, %54 bool, %59 word*, %61 word*, %63 bool, %68 word*, %70 word*, %72 bool, %77 word*, %79 word*, %81 bool, %84 word*, %89 word*, %91 word*, %93 bool, %98 word*, %100 word*, %102 bool, %107 word*, %108 i64, %114 word*, %119 word*, %120 word*, %126 word*, %127 i64, %129 word*, %130 bool, %133 word*, %134 bool, %137 word*, %138 bool, %141 word*, %142 bool, %145 word*, %146 bool, %149 word*, %150 bool, %153 word*, %154 bool, %157 word*, %158 bool, %161 word*, %162 bool, %165 word*, %169 word*, %170 word*, %173 bool, %177 word*, %182 word*, %183 word*, %186 bool, %189 word*, %193 word*, %197 word*, %202 word*, %203 i64, %206 word*, %211 word*, %213 word*, %215 word*, %220 word*, %222 word*, %224 word*, %229 word*, %231 word*, %233 word*, %238 word*, %240 word*, %242 word*, %247 word*, %249 word*, %251 word*, %256 word*, %258 word*, %260 word*, %265 word*, %267 word*, %269 word*, %274 word*, %276 word*]
+  b0():
+    %0 r: ptr = $sql_memory()
+    handle_push %0
+    %1 lit: ptr = const str 0
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%4) -> b2()
+  b2(%5 r: i64) [handle]:
+    %6 lit: ptr = const str 1
+    call from#4(%6) -> b3()
+  b3(%7 conv: ptr) [handle]:
+    %8 lit: i64 = const 36
+    call from#5(%8) -> b4(%7)
+  b4(%9 conv: ptr, %10 conv: ptr) [handle]:
+    %11 lit: bool = const true
+    call from#6(%11) -> b5(%10, %9)
+  b5(%12 conv: ptr, %13 conv: ptr, %14 conv: ptr) [handle]:
+    %15 lit: ptr = const str 2
+    call from#4(%15) -> b6(%13, %14, %12)
+  b6(%16 conv: ptr, %17 conv: ptr, %18 conv: ptr, %19 conv: ptr) [handle]:
+    %20 lit: i64 = const 7
+    call from#5(%20) -> b7(%17, %18, %19, %16)
+  b7(%21 conv: ptr, %22 conv: ptr, %23 conv: ptr, %24 conv: ptr, %25 conv: ptr) [handle]:
+    %26 lit: ptr = const str 3
+    call from#4(%26) -> b8(%22, %23, %24, %25, %21)
+  b8(%27 conv: ptr, %28 conv: ptr, %29 conv: ptr, %30 conv: ptr, %31 conv: ptr, %32 conv: ptr) [handle]:
+    %33 lit: bool = const false
+    call from#6(%33) -> b9(%28, %29, %30, %31, %32, %27)
+  b9(%34 conv: ptr, %35 conv: ptr, %36 conv: ptr, %37 conv: ptr, %38 conv: ptr, %39 conv: ptr, %40 conv: ptr) [handle]:
+    %41 lit: ptr = const str 4
+    %42 lit: ptr = const str 5
+    %43 lit: ptr = const str 6
+    %44 lit: ptr = const str 7
+    %45 lit: ptr = const str 5
+    %46 lit: ptr = const str 5
+    %47 lit: ptr = const str 5
+    %48 lit: ptr = const str 8
+    %49 parts: ptr = alloc list(%41, %42, %43, %44, %45, %46, %47, %48)
+    %50 args: ptr = alloc list(%35, %36, %37, %38, %39, %40, %34)
+    call template#2(%49, %50) -> b10()
+  b10(%51 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%51) -> b11()
+  b11(%52 r: i64) [handle]:
+    %53 s: ptr = show %52
+    perform std::console::Console.print(%53) -> b12()
+  b12(%54 r: unit) [handle]:
+    %55 box: word = box %54
+    drop %55
+    %56 lit: ptr = const str 9
+    %57 parts: ptr = alloc list(%56)
+    %58 args: ptr = alloc list()
+    call template#2(%57, %58) -> b13()
+  b13(%59 tmpl: ptr) [handle]:
+    %60 schema: ptr = const str 10
+    perform std::sql::Sql.query(%59, %60) -> b14()
+  b14(%61 r: ptr) [handle]:
+    %62 s: ptr = show %61
+    drop %61
+    perform std::console::Console.print(%62) -> b15()
+  b15(%63 r: unit) [handle]:
+    %64 box: word = box %63
+    drop %64
+    %65 lit: ptr = const str 11
+    %66 parts: ptr = alloc list(%65)
+    %67 args: ptr = alloc list()
+    call template#2(%66, %67) -> b16()
+  b16(%68 tmpl: ptr) [handle]:
+    %69 schema: ptr = const str 12
+    perform std::sql::Sql.query(%68, %69) -> b17()
+  b17(%70 r: ptr) [handle]:
+    %71 s: ptr = show %70
+    drop %70
+    perform std::console::Console.print(%71) -> b18()
+  b18(%72 r: unit) [handle]:
+    %73 box: word = box %72
+    drop %73
+    %74 lit: ptr = const str 13
+    %75 parts: ptr = alloc list(%74)
+    %76 args: ptr = alloc list()
+    call template#2(%75, %76) -> b19()
+  b19(%77 tmpl: ptr) [handle]:
+    %78 schema: ptr = const str 14
+    perform std::sql::Sql.query(%77, %78) -> b20()
+  b20(%79 r: ptr) [handle]:
+    %80 s: ptr = show %79
+    drop %79
+    perform std::console::Console.print(%80) -> b21()
+  b21(%81 r: unit) [handle]:
+    %82 box: word = box %81
+    drop %82
+    %83 lit: i64 = const 7
+    call from#5(%83) -> b22()
+  b22(%84 conv: ptr) [handle]:
+    %85 lit: ptr = const str 15
+    %86 lit: ptr = const str 16
+    %87 parts: ptr = alloc list(%85, %86)
+    %88 args: ptr = alloc list(%84)
+    call template#2(%87, %88) -> b23()
+  b23(%89 tmpl: ptr) [handle]:
+    %90 schema: ptr = const str 17
+    perform std::sql::Sql.query(%89, %90) -> b24()
+  b24(%91 r: ptr) [handle]:
+    %92 s: ptr = show %91
+    drop %91
+    perform std::console::Console.print(%92) -> b25()
+  b25(%93 r: unit) [handle]:
+    %94 box: word = box %93
+    drop %94
+    %95 lit: ptr = const str 18
+    %96 parts: ptr = alloc list(%95)
+    %97 args: ptr = alloc list()
+    call template#2(%96, %97) -> b26()
+  b26(%98 tmpl: ptr) [handle]:
+    %99 schema: ptr = const str 19
+    perform std::sql::Sql.query(%98, %99) -> b27()
+  b27(%100 r: ptr) [handle]:
+    %101 s: ptr = show %100
+    drop %100
+    perform std::console::Console.print(%101) -> b28()
+  b28(%102 r: unit) [handle]:
+    %103 box: word = box %102
+    drop %103
+    %104 lit: ptr = const str 20
+    %105 parts: ptr = alloc list(%104)
+    %106 args: ptr = alloc list()
+    call template#2(%105, %106) -> b29()
+  b29(%107 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%107) -> b30()
+  b30(%108 r: i64) [handle]:
+    %109 lit: ptr = const str 21
+    %110 lit: ptr = const str 3
+    %111 xs: ptr = alloc list(%109, %110)
+    %112 schema: ptr = const str 22
+    %113 r: ptr = $json_encode(%111, %112)
+    call from#4(%113) -> b31()
+  b31(%114 conv: ptr) [handle]:
+    %115 lit: ptr = const str 23
+    %116 xs: ptr = alloc list(%115)
+    %117 schema: ptr = const str 22
+    %118 r: ptr = $json_encode(%116, %117)
+    call from#4(%118) -> b32(%114)
+  b32(%119 conv: ptr, %120 conv: ptr) [handle]:
+    %121 lit: ptr = const str 24
+    %122 lit: ptr = const str 25
+    %123 lit: ptr = const str 8
+    %124 parts: ptr = alloc list(%121, %122, %123)
+    %125 args: ptr = alloc list(%120, %119)
+    call template#2(%124, %125) -> b33()
+  b33(%126 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%126) -> b34()
+  b34(%127 r: i64) [handle]:
+    try_push -> b95(err, )
+    %271 lit: ptr = const str 39
+    %272 parts: ptr = alloc list(%271)
+    %273 args: ptr = alloc list()
+    call template#2(%272, %273) -> b96()
+  b35(%128 v: ptr) [handle]:
+    call shown#9(%128) -> b36()
+  b36(%129 r: ptr) [handle]:
+    perform std::console::Console.print(%129) -> b37()
+  b37(%130 r: unit) [handle]:
+    %131 box: word = box %130
+    drop %131
+    try_push -> b92(err, )
+    %262 lit: ptr = const str 37
+    %263 parts: ptr = alloc list(%262)
+    %264 args: ptr = alloc list()
+    call template#2(%263, %264) -> b93()
+  b38(%132 v: ptr) [handle]:
+    call shown#9(%132) -> b39()
+  b39(%133 r: ptr) [handle]:
+    perform std::console::Console.print(%133) -> b40()
+  b40(%134 r: unit) [handle]:
+    %135 box: word = box %134
+    drop %135
+    try_push -> b89(err, )
+    %253 lit: ptr = const str 36
+    %254 parts: ptr = alloc list(%253)
+    %255 args: ptr = alloc list()
+    call template#2(%254, %255) -> b90()
+  b41(%136 v: ptr) [handle]:
+    call shown#10(%136) -> b42()
+  b42(%137 r: ptr) [handle]:
+    perform std::console::Console.print(%137) -> b43()
+  b43(%138 r: unit) [handle]:
+    %139 box: word = box %138
+    drop %139
+    try_push -> b86(err, )
+    %244 lit: ptr = const str 33
+    %245 parts: ptr = alloc list(%244)
+    %246 args: ptr = alloc list()
+    call template#2(%245, %246) -> b87()
+  b44(%140 v: ptr) [handle]:
+    call shown#11(%140) -> b45()
+  b45(%141 r: ptr) [handle]:
+    perform std::console::Console.print(%141) -> b46()
+  b46(%142 r: unit) [handle]:
+    %143 box: word = box %142
+    drop %143
+    try_push -> b83(err, )
+    %235 lit: ptr = const str 33
+    %236 parts: ptr = alloc list(%235)
+    %237 args: ptr = alloc list()
+    call template#2(%236, %237) -> b84()
+  b47(%144 v: ptr) [handle]:
+    call shown#12(%144) -> b48()
+  b48(%145 r: ptr) [handle]:
+    perform std::console::Console.print(%145) -> b49()
+  b49(%146 r: unit) [handle]:
+    %147 box: word = box %146
+    drop %147
+    try_push -> b80(err, )
+    %226 lit: ptr = const str 31
+    %227 parts: ptr = alloc list(%226)
+    %228 args: ptr = alloc list()
+    call template#2(%227, %228) -> b81()
+  b50(%148 v: ptr) [handle]:
+    call shown#13(%148) -> b51()
+  b51(%149 r: ptr) [handle]:
+    perform std::console::Console.print(%149) -> b52()
+  b52(%150 r: unit) [handle]:
+    %151 box: word = box %150
+    drop %151
+    try_push -> b77(err, )
+    %217 lit: ptr = const str 29
+    %218 parts: ptr = alloc list(%217)
+    %219 args: ptr = alloc list()
+    call template#2(%218, %219) -> b78()
+  b53(%152 v: ptr) [handle]:
+    call shown#14(%152) -> b54()
+  b54(%153 r: ptr) [handle]:
+    perform std::console::Console.print(%153) -> b55()
+  b55(%154 r: unit) [handle]:
+    %155 box: word = box %154
+    drop %155
+    try_push -> b74(err, )
+    %208 lit: ptr = const str 28
+    %209 parts: ptr = alloc list(%208)
+    %210 args: ptr = alloc list()
+    call template#2(%209, %210) -> b75()
+  b56(%156 v: ptr) [handle]:
+    call shown#15(%156) -> b57()
+  b57(%157 r: ptr) [handle]:
+    perform std::console::Console.print(%157) -> b58()
+  b58(%158 r: unit) [handle]:
+    %159 box: word = box %158
+    drop %159
+    try_push -> b71(err, )
+    %199 lit: ptr = const str 27
+    %200 parts: ptr = alloc list(%199)
+    %201 args: ptr = alloc list()
+    call template#2(%200, %201) -> b72()
+  b59(%160 v: ptr) [handle]:
+    call shown#16(%160) -> b60()
+  b60(%161 r: ptr) [handle]:
+    perform std::console::Console.print(%161) -> b61()
+  b61(%162 r: unit) [handle]:
+    %163 box: word = box %162
+    drop %163
+    try_push -> b69(err, )
+    %191 f: ptr = closure main$1#17[]
+    %192 callback: ptr = callback %191
+    perform std::sql::Sql.transaction(%192) -> b70()
+  b62(%164 v: ptr) [handle]:
+    call shown#16(%164) -> b63()
+  b63(%165 r: ptr) [handle]:
+    %166 s: ptr = show %165
+    drop %165
+    %167 lit: ptr = const str 26
+    %168 s: ptr = concat %166, %167
+    drop %166
+    drop %167
+    call names#18() -> b64(%168)
+  b64(%169 r: ptr, %170 s: ptr) [handle]:
+    %171 s: ptr = show %169
+    drop %169
+    %172 s: ptr = concat %170, %171
+    drop %170
+    drop %171
+    perform std::console::Console.print(%172) -> b65()
+  b65(%173 r: unit) [handle]:
+    %174 box: word = box %173
+    drop %174
+    %175 f: ptr = closure main$2#19[]
+    %176 callback: ptr = callback %175
+    perform std::sql::Sql.transaction(%176) -> b66()
+  b66(%177 r: word) [handle]:
+    %178 unbox: i64 = unbox %177
+    drop %177
+    %179 s: ptr = show %178
+    %180 lit: ptr = const str 26
+    %181 s: ptr = concat %179, %180
+    drop %179
+    drop %180
+    call names#18() -> b67(%181)
+  b67(%182 r: ptr, %183 s: ptr) [handle]:
+    %184 s: ptr = show %182
+    drop %182
+    %185 s: ptr = concat %183, %184
+    drop %183
+    drop %184
+    perform std::console::Console.print(%185) -> b68()
+  b68(%186 r: unit) [handle]:
+    %187 box: word = box %186
+    %188 unbox: unit = unbox %187
+    drop %187
+    handle_pop
+    ret %188
+  b69(%189 e: word) [handle]:
+    %190 err: ptr = alloc std::result::Result.Err(%189)
+    jump b62(%190)
+  b70(%193 r: word) [handle, try]:
+    %194 unbox: i64 = unbox %193
+    drop %193
+    %195 box: word = box %194
+    %196 ok: ptr = alloc std::result::Result.Ok(%195)
+    try_pop
+    jump b62(%196)
+  b71(%197 e: word) [handle]:
+    %198 err: ptr = alloc std::result::Result.Err(%197)
+    jump b59(%198)
+  b72(%202 tmpl: ptr) [handle, try]:
+    perform std::sql::Sql.execute(%202) -> b73()
+  b73(%203 r: i64) [handle, try]:
+    %204 box: word = box %203
+    %205 ok: ptr = alloc std::result::Result.Ok(%204)
+    try_pop
+    jump b59(%205)
+  b74(%206 e: word) [handle]:
+    %207 err: ptr = alloc std::result::Result.Err(%206)
+    jump b56(%207)
+  b75(%211 tmpl: ptr) [handle, try]:
+    %212 schema: ptr = const str 17
+    perform std::sql::Sql.query(%211, %212) -> b76()
+  b76(%213 r: ptr) [handle, try]:
+    %214 ok: ptr = alloc std::result::Result.Ok(%213)
+    try_pop
+    jump b56(%214)
+  b77(%215 e: word) [handle]:
+    %216 err: ptr = alloc std::result::Result.Err(%215)
+    jump b53(%216)
+  b78(%220 tmpl: ptr) [handle, try]:
+    %221 schema: ptr = const str 30
+    perform std::sql::Sql.query(%220, %221) -> b79()
+  b79(%222 r: ptr) [handle, try]:
+    %223 ok: ptr = alloc std::result::Result.Ok(%222)
+    try_pop
+    jump b53(%223)
+  b80(%224 e: word) [handle]:
+    %225 err: ptr = alloc std::result::Result.Err(%224)
+    jump b50(%225)
+  b81(%229 tmpl: ptr) [handle, try]:
+    %230 schema: ptr = const str 32
+    perform std::sql::Sql.query(%229, %230) -> b82()
+  b82(%231 r: ptr) [handle, try]:
+    %232 ok: ptr = alloc std::result::Result.Ok(%231)
+    try_pop
+    jump b50(%232)
+  b83(%233 e: word) [handle]:
+    %234 err: ptr = alloc std::result::Result.Err(%233)
+    jump b47(%234)
+  b84(%238 tmpl: ptr) [handle, try]:
+    %239 schema: ptr = const str 34
+    perform std::sql::Sql.query(%238, %239) -> b85()
+  b85(%240 r: ptr) [handle, try]:
+    %241 ok: ptr = alloc std::result::Result.Ok(%240)
+    try_pop
+    jump b47(%241)
+  b86(%242 e: word) [handle]:
+    %243 err: ptr = alloc std::result::Result.Err(%242)
+    jump b44(%243)
+  b87(%247 tmpl: ptr) [handle, try]:
+    %248 schema: ptr = const str 35
+    perform std::sql::Sql.query(%247, %248) -> b88()
+  b88(%249 r: ptr) [handle, try]:
+    %250 ok: ptr = alloc std::result::Result.Ok(%249)
+    try_pop
+    jump b44(%250)
+  b89(%251 e: word) [handle]:
+    %252 err: ptr = alloc std::result::Result.Err(%251)
+    jump b41(%252)
+  b90(%256 tmpl: ptr) [handle, try]:
+    %257 schema: ptr = const str 10
+    perform std::sql::Sql.query(%256, %257) -> b91()
+  b91(%258 r: ptr) [handle, try]:
+    %259 ok: ptr = alloc std::result::Result.Ok(%258)
+    try_pop
+    jump b41(%259)
+  b92(%260 e: word) [handle]:
+    %261 err: ptr = alloc std::result::Result.Err(%260)
+    jump b38(%261)
+  b93(%265 tmpl: ptr) [handle, try]:
+    %266 schema: ptr = const str 38
+    perform std::sql::Sql.query(%265, %266) -> b94()
+  b94(%267 r: ptr) [handle, try]:
+    %268 ok: ptr = alloc std::result::Result.Ok(%267)
+    try_pop
+    jump b38(%268)
+  b95(%269 e: word) [handle]:
+    %270 err: ptr = alloc std::result::Result.Err(%269)
+    jump b35(%270)
+  b96(%274 tmpl: ptr) [handle, try]:
+    %275 schema: ptr = const str 38
+    perform std::sql::Sql.query(%274, %275) -> b97()
+  b97(%276 r: ptr) [handle, try]:
+    %277 ok: ptr = alloc std::result::Result.Ok(%276)
+    try_pop
+    jump b35(%277)
+
+fn $entry#1 top -> unit ; main::sql_rows, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn Small$check#7 top -> bool ; main::sql_rows, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 10
+    %3 t: bool = lt.int %0, %2
+    %4 exit: unit = $contract_exit()
+    ret %3
+
+fn shown#8 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#9 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#10 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#11 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#12 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#13 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#14 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#15 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 s: ptr = show %4
+    drop %4
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 message: word = proj %6.0 std::sql::SqlError
+    drop %6
+    ret %7
+
+fn shown#16 top -> ptr ; main::sql_rows, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 s: ptr = show %5
+    ret %6
+  b2(%3 r: ptr):
+    %7 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %8 message: word = proj %7.0 std::sql::SqlError
+    drop %7
+    ret %8
+
+fn main$1#17 lambda -> word ; main::sql_rows, captures [], frame 3 slots [%0 word*, %4 word*, %5 i64]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 42
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr):
+    perform std::sql::Sql.execute(%4) -> b2()
+  b2(%5 r: i64):
+    %6 lit: ptr = const str 43
+    %7 rec: ptr = alloc std::sql::SqlError(%6)
+    fail %7
+
+fn names#18 top -> ptr ; main::sql_rows, frame 2 slots [%3 word*, %5 word*]
+  b0():
+    %0 lit: ptr = const str 44
+    %1 parts: ptr = alloc list(%0)
+    %2 args: ptr = alloc list()
+    call template#2(%1, %2) -> b1()
+  b1(%3 tmpl: ptr):
+    %4 schema: ptr = const str 35
+    perform std::sql::Sql.query(%3, %4) -> b2()
+  b2(%5 r: ptr):
+    ret %5
+
+fn main$2#19 lambda -> word ; main::sql_rows, captures [], frame 9 slots [%0 word*, %4 word*, %5 i64, %7 word*, %8 word*, %10 word*, %11 i64, %16 word*, %20 word*]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 45
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr):
+    perform std::sql::Sql.execute(%4) -> b2()
+  b2(%5 r: i64):
+    try_push -> b6(err, )
+    %18 f: ptr = closure main$2$1#20[]
+    %19 callback: ptr = callback %18
+    perform std::sql::Sql.transaction(%19) -> b7()
+  b3(%6 v: ptr):
+    call names#18() -> b4(%6)
+  b4(%7 r: ptr, %8 v: ptr):
+    %9 r: i64 = $list_len(%7)
+    call shown#16(%8) -> b5(%9)
+  b5(%10 r: ptr, %11 r: i64):
+    %12 xs: ptr = alloc list(%10)
+    %13 r: i64 = $list_len(%12)
+    %14 t: i64 = intadd %11, %13
+    %15 box: word = box %14
+    ret %15
+  b6(%16 e: word):
+    %17 err: ptr = alloc std::result::Result.Err(%16)
+    jump b3(%17)
+  b7(%20 r: word) [try]:
+    %21 unbox: i64 = unbox %20
+    drop %20
+    %22 box: word = box %21
+    %23 ok: ptr = alloc std::result::Result.Ok(%22)
+    try_pop
+    jump b3(%23)
+
+fn main$2$1#20 lambda -> word ; main::sql_rows, captures [], frame 3 slots [%0 word*, %4 word*, %5 i64]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 46
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr):
+    perform std::sql::Sql.execute(%4) -> b2()
+  b2(%5 r: i64):
+    %6 lit: ptr = const str 47
+    %7 rec: ptr = alloc std::sql::SqlError(%6)
+    fail %7

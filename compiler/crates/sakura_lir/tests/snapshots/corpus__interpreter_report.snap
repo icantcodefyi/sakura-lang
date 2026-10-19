@@ -114,6 +114,8 @@ semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 11 allocated, 4 dup, 15 drop, peak 7, live 0/0
 semantics/secret_map_defect: unsupported (builtin secret_wrap)
 semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
+semantics/sql_cancel_committed: unsupported (builtin clock_host)
+semantics/sql_rows: unsupported (builtin sql_memory)
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 191 allocated, 350 dup, 541 drop, peak 17, live 0/0
 semantics/strings_and_interpolation: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0

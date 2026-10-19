@@ -13,8 +13,12 @@ Compare the release tag with main when identifying changes not in that preview.
 - `sakura run --target native` (a compiler built with the `native` feature) runs `Json.encode`,
   `Json.decode`, `Json.parse`, `Json.schema`, `Cli.args` and `Cli.parse` (plan row N1b). The JSON
   codec is written once in the Rust runtime and matches the JS runtime's text and decode
-  messages, `where` clauses included. Programs that use `Sql`, `Http`, `serve` or `Llm` still
-  stop with a `D090` or `D091` defect natively.
+  messages, `where` clauses included. Programs that use `Http`, `serve` or `Llm` still stop
+  with a `D090` or `D091` defect natively.
+- `Sql.memory()` and `Sql.sqlite(path)` run natively on bundled SQLite, each database on its
+  own worker thread, with rows, decode errors and SQLite's messages matching the JS runtime.
+  Cancelling a running statement (a lost `Task.race`, a `timeout`) interrupts it, and a write
+  that committed before stays committed.
 
 ### Changed
 
@@ -29,6 +33,12 @@ Compare the release tag with main when identifying changes not in that preview.
   permission denied, open '…'`; likewise `already exists`, `is a directory` and `not a
   directory`. On Node a sleep longer than 2^31 − 1 ms (about 24.8 days) now waits its full
   duration instead of firing after 1 ms.
+- An `Int` interpolated into `sql"…"` is bound as an SQLite INTEGER on the JS and WASM hosts,
+  as natively. It was bound as REAL, so `sql"select {7} / 2"` gave `3.5` (and an `Int` row
+  failed to decode) where SQLite's integer division gives `3`, and `typeof(?)` said `real`.
+- `Json.decode`, `Cli.parse` and `Sql.query` into a tuple type the program never builds (say
+  `(Int, Float, Bool)`) work on `--target wasm`; they stopped with `D090 a malformed value
+  crossed the host boundary`.
 - `sakura.toml` refuses `[dependencies]` with `V8005 dependencies_not_supported` (RFC 0001,
   design §17.232). Packages arrive in a later minor release and the key is reserved: an empty
   table, entries, an inline `dependencies = {}` or a dotted key is an error at the key from
@@ -42,6 +52,9 @@ Compare the release tag with main when identifying changes not in that preview.
   `[dependencies]` both `V8005` and `V8006` are reported.
 
 ### Removed
+
+- The native host's `SAKURA_BLOCKING_THREADS`: nothing used its blocking pool (design §17.229
+  (4)), and `Sql` runs on per-database workers instead.
 
 - The unused `[targets]` manifest table. It was parsed and never read; it is now an unknown key
   and so `V8006`.

@@ -92,7 +92,7 @@ crabgrind = "=0.4.0"
 libc = "0.2.191"
 reqwest = { version = "=0.13.5", default-features = false, features = ["rustls-no-provider", "stream"] }
 rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
-rusqlite = { version = "=0.40.2", features = ["bundled"] }
+rusqlite = { version = "=0.40.2", features = ["bundled", "hooks"] }
 hyper = { version = "=1.12.0", default-features = false, features = ["server", "http1", "http2"] }
 
 [workspace.lints.rust]

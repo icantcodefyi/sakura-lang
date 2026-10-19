@@ -658,6 +658,12 @@ enum P<'a> {
     Token(&'a P<'a>, &'a [u8], usize),
     Name(&'a P<'a>, &'a [u8]),
     Index(&'a P<'a>, u32),
+    /// A SQL column's name, spelled as is (`column <name>/…`; `sql_rows`, native only).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    Col(&'a [u8]),
+    /// A SQL failure with no column (`SqlError(message)`).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    Bare,
 }
 
 impl P<'_> {
@@ -677,7 +683,8 @@ impl P<'_> {
             out.put(&b[run..])
         };
         match *self {
-            P::Root => Ok(()),
+            P::Root | P::Bare => Ok(()),
+            P::Col(name) => out.put(name),
             P::Token(up, s, i) => {
                 up.write(out)?;
                 out.put(b"/")?;
@@ -719,6 +726,9 @@ struct Dec<'o> {
     mark: usize,
     result: u32,
     decode_error: u32,
+    /// Rows of `Sql.query` (`sql_rows`): a failure is status 1 and `SqlError(column <path>:
+    /// <message>)` at `mark` instead, this its type id.
+    sql: Option<u32>,
 }
 
 impl Dec<'_> {
@@ -727,6 +737,19 @@ impl Dec<'_> {
     fn fail(&mut self, path: &P<'_>, message: impl FnOnce(&mut dyn Out) -> Res<()>) -> Stop {
         let r = (|| {
             self.out.truncate(self.mark);
+            if let Some(id) = self.sql {
+                self.out.put(&[1, t::RECORD])?;
+                u32le(self.out, id)?;
+                u32le(self.out, 1)?;
+                return sized(self.out, t::STRING, |o| {
+                    if !matches!(path, P::Bare) {
+                        o.put(b"column ")?;
+                        path.write(o)?;
+                        o.put(b": ")?;
+                    }
+                    message(o)
+                });
+            }
             variant(self.out, self.result, 1, 1)?;
             self.out.put(&[t::RECORD])?;
             u32le(self.out, self.decode_error)?;
@@ -1899,6 +1922,7 @@ fn answer(
         mark,
         result,
         decode_error,
+        sql: None,
     };
     if let Err((i, why)) = validate(text) {
         return match dec.fail(&P::Root, |o| syntax(o, text, i, why)) {
@@ -2534,6 +2558,7 @@ fn cli_value(
         mark: 0,
         result: 0,
         decode_error: 0,
+        sql: None,
     };
     match dec.value(&j, 0, s, &P::Root, 0) {
         Ok(()) => {
@@ -2552,5 +2577,286 @@ fn cli_value(
                 alloc::string::String::from_utf8_lossy(msg).into_owned(),
             ))
         }
+    }
+}
+
+// ---- SQL rows (`Sql.query` natively) -----------------------------------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
+const SQL_ERROR: &[u8] = b"std::sql::SqlError";
+
+/// `Err(SqlError(message))` as an answer (status 1).
+#[cfg(not(target_arch = "wasm32"))]
+pub fn sql_error(message: &[u8], types: &mut dyn Types, out: &mut dyn Out) -> Res<()> {
+    let id = types.type_id(SQL_ERROR).ok_or(NO_TYPE)?;
+    out.put(&[1, t::RECORD])?;
+    u32le(out, id)?;
+    u32le(out, 1)?;
+    sized(out, t::STRING, |o| o.put(message))
+}
+
+/// The answer of `Sql.query` on the rows a native host read: `rows` is the `sakura-vt1` tuple
+/// of the column names and the rows' cell tuples (`Unit` for NULL, `Int`, `Float`, `String`,
+/// `Bytes`). Status 0 and the `List<R>` of `schema`, or status 1 and the `SqlError`, as JS
+/// `rowOf` and `fromSql` decode `node:sqlite`'s row objects: columns in JS key order (index
+/// names first, a repeated name's last value), a record by column name, a tuple by position,
+/// anything else from the first column.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn sql_rows(
+    rows: &[u8],
+    schema: &[u8],
+    descs: &[u8],
+    types: &mut dyn Types,
+    out: &mut dyn Out,
+) -> Res<()> {
+    use alloc::collections::BTreeMap;
+    use alloc::vec::Vec;
+    let bad = crate::vt::MALFORMED;
+    let head = |at: usize, tag: u8| -> Res<u32> {
+        if rows.get(at) != Some(&tag) {
+            return Err(bad);
+        }
+        rd_u32(rows, at + 1)
+    };
+    if head(0, t::TUPLE)? != 2 {
+        return Err(bad);
+    }
+    let n_cols = head(5, t::LIST)? as usize;
+    let mut at = 10;
+    let mut names: Vec<&[u8]> = Vec::with_capacity(n_cols);
+    for _ in 0..n_cols {
+        let end = vt_skip(rows, at, 0)?;
+        if rows[at] != t::STRING {
+            return Err(bad);
+        }
+        names.push(&rows[at + 5..end]);
+        at = end;
+    }
+    // JS key order: index names ascending, then the rest by first place; each its last column.
+    let mut index: BTreeMap<u32, (usize, usize)> = BTreeMap::new();
+    let mut other: BTreeMap<&[u8], usize> = BTreeMap::new();
+    let mut order: Vec<(&[u8], usize)> = Vec::new();
+    for (i, &n) in names.iter().enumerate() {
+        if let Some(k) = array_index(n) {
+            let first = index.get(&k).map_or(i, |&(f, _)| f);
+            index.insert(k, (first, i));
+        } else if let Some(&slot) = other.get(n) {
+            order[slot].1 = i;
+        } else {
+            other.insert(n, order.len());
+            order.push((n, i));
+        }
+    }
+    let mut cols: Vec<(&[u8], usize)> = index.values().map(|&(f, last)| (names[f], last)).collect();
+    cols.extend(order);
+    let n_rows = head(at, t::LIST)?;
+    at += 5;
+    let sql_error = types.type_id(SQL_ERROR).ok_or(NO_TYPE)?;
+    out.put(&[0])?;
+    let n_at = counted(out, t::LIST)?;
+    let mut dec = Dec {
+        descs,
+        types,
+        out,
+        mark: 0,
+        result: 0,
+        decode_error: 0,
+        sql: Some(sql_error),
+    };
+    let s = S {
+        text: schema,
+        at: 0,
+        env: None,
+    };
+    let mut cells: Vec<usize> = Vec::with_capacity(n_cols);
+    for _ in 0..n_rows {
+        if head(at, t::TUPLE)? as usize != n_cols {
+            return Err(bad);
+        }
+        at += 5;
+        cells.clear();
+        for _ in 0..n_cols {
+            cells.push(at);
+            at = vt_skip(rows, at, 0)?;
+        }
+        let row: Vec<(&[u8], usize)> = cols.iter().map(|&(n, i)| (n, cells[i])).collect();
+        match dec.row(rows, &row, s) {
+            Ok(()) => {}
+            Err(Stop::Failed) => return Ok(()),
+            Err(Stop::Defect(d)) => return Err(d),
+        }
+    }
+    if at != rows.len() {
+        return Err(bad);
+    }
+    dec.out.set_u32(n_at, n_rows);
+    Ok(())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Dec<'_> {
+    /// One row (`cols`: each column's name and its cell in `v`) by schema `s`, JS `rowOf`.
+    fn row(&mut self, v: &[u8], cols: &[(&[u8], usize)], s: S<'_>) -> Dr<()> {
+        let cell = |i: usize| {
+            cols.get(i)
+                .map_or((&b"undefined"[..], None), |&(n, c)| (n, Some(c)))
+        };
+        match s.kind()? {
+            K::A(name, args) if name != OPTION => {
+                let bind = Bind { args };
+                let d = match self.types.find(name) {
+                    Some(at) => Some(desc(self.descs, at, Some(&bind))?),
+                    None => None,
+                };
+                if let Some(d) = d.filter(|d| d.kind == b'r') {
+                    let id = self.id(name)?;
+                    let mut fields = Seq::new(d.body.text, d.body.at);
+                    let mut count = 0;
+                    while fields.next()?.is_some() {
+                        count += 1;
+                    }
+                    self.out.put(&[t::RECORD])?;
+                    u32le(self.out, id)?;
+                    u32le(self.out, count)?;
+                    let mut fields = Seq::new(d.body.text, d.body.at);
+                    while let Some(f) = fields.next()? {
+                        let f = d.body.at(f);
+                        let field = f.name(f.elem(0)?.at)?;
+                        let Some(&(_, c)) = cols.iter().find(|(n, _)| *n == field) else {
+                            return Err(self.fail(&P::Col(field), |o| o.put(b"no such column")));
+                        };
+                        self.cell(v, Some(c), f.elem(1)?, field, 0)?;
+                    }
+                    return Ok(());
+                }
+            }
+            K::T(arr, n) => {
+                let n_at = counted(self.out, t::TUPLE)?;
+                for i in 0..n {
+                    let (name, c) = cell(i);
+                    self.cell(v, c, arr.elem(i + 1)?, name, 0)?;
+                }
+                self.out.set_u32(n_at, n as u32);
+                return Ok(());
+            }
+            _ => {}
+        }
+        let (name, c) = cell(0);
+        self.cell(v, c, s, name, 0)
+    }
+
+    /// One column's value (`c`: its cell in `v`, `None` when the row has no such column) by
+    /// schema `s`, JS `fromSql`.
+    fn cell(&mut self, v: &[u8], c: Option<usize>, s: S<'_>, col: &[u8], depth: u32) -> Dr<()> {
+        if depth > MAX_DEPTH {
+            return Err(TOO_DEEP.into());
+        }
+        let tag = c.map(|c| v[c]);
+        let scalar =
+            |c: Option<usize>| -> Res<u64> { rd_u64(v, c.ok_or(crate::vt::MALFORMED)? + 1) };
+        let data = |c: Option<usize>| -> Res<&[u8]> {
+            let c = c.ok_or(crate::vt::MALFORMED)?;
+            Ok(&v[c + 5..vt_skip(v, c, 0)?])
+        };
+        let bad = |me: &mut Self, what: &[u8]| {
+            let found: &[u8] = match tag {
+                None => b"undefined",
+                Some(t::UNIT) => b"NULL",
+                Some(t::INT | t::FLOAT) => b"number",
+                Some(t::STRING) => b"string",
+                _ => b"object",
+            };
+            me.fail(&P::Col(col), |o| {
+                o.put(b"expected ")?;
+                o.put(what)?;
+                o.put(b", found ")?;
+                o.put(found)
+            })
+        };
+        // A cell's number, as JS sees an `INTEGER` or a `REAL`.
+        let number = |c: Option<usize>| -> Res<Option<f64>> {
+            Ok(match tag {
+                Some(t::INT) => Some(scalar(c)? as i64 as f64),
+                Some(t::FLOAT) => Some(f64::from_bits(scalar(c)?)),
+                _ => None,
+            })
+        };
+        match s.kind()? {
+            K::Prim(b'U') => self.out.put(&[t::UNIT])?,
+            K::Prim(b'B') => match number(c)? {
+                Some(f) if f == 0.0 || f == 1.0 => self.out.put(&[t::BOOL, u8::from(f == 1.0)])?,
+                _ => return Err(bad(self, b"0 or 1")),
+            },
+            K::Prim(b'I') => {
+                let i = match (tag, number(c)?) {
+                    (Some(t::INT), _) => scalar(c)? as i64,
+                    (_, Some(f)) if integral(f) && f.abs() <= 9007199254740991.0 => f as i64,
+                    _ => return Err(bad(self, b"an integer")),
+                };
+                self.out.put(&[t::INT])?;
+                self.out.put(&i.to_le_bytes())?;
+            }
+            K::Prim(b'F') => match number(c)? {
+                Some(f) => {
+                    self.out.put(&[t::FLOAT])?;
+                    self.out.put(&f.to_bits().to_le_bytes())?;
+                }
+                None => return Err(bad(self, b"a number")),
+            },
+            K::Prim(b'S') if tag == Some(t::STRING) => {
+                let b = data(c)?;
+                sized(self.out, t::STRING, |o| o.put(b))?;
+            }
+            K::Prim(b'S') => return Err(bad(self, b"text")),
+            K::Prim(b'Y') if tag == Some(t::BYTES) => {
+                let b = data(c)?;
+                sized(self.out, t::BYTES, |o| o.put(b))?;
+            }
+            K::Prim(b'Y') => return Err(bad(self, b"a blob")),
+            K::A(name, args) if name == OPTION => {
+                let opt = self.id(OPTION)?;
+                if tag == Some(t::UNIT) {
+                    variant(self.out, opt, 0, 0)?;
+                } else {
+                    variant(self.out, opt, 1, 1)?;
+                    self.cell(v, c, args.elem(0)?, col, depth + 1)?;
+                }
+            }
+            kind => {
+                if let K::A(name, args) = kind {
+                    let bind = Bind { args };
+                    let d = match self.types.find(name) {
+                        Some(at) => Some(desc(self.descs, at, Some(&bind))?),
+                        None => None,
+                    };
+                    if let Some(d) = d.filter(|d| d.kind == b'w') {
+                        let start = self.out.written();
+                        self.cell(v, c, d.body, col, depth + 1)?;
+                        let kind = kind_of(d.body, self.types, self.descs, 0)?;
+                        if !self
+                            .types
+                            .satisfies(d.check, kind, self.out.bytes_from(start))?
+                        {
+                            let name = d.name;
+                            return Err(self.fail(&P::Col(col), |o| {
+                                o.put(b"does not satisfy the where clause of ")?;
+                                o.put(name)
+                            }));
+                        }
+                        return Ok(());
+                    }
+                }
+                // Anything else is stored as JSON text.
+                if tag != Some(t::STRING) {
+                    return Err(bad(self, b"JSON text"));
+                }
+                let j = data(c)?;
+                if let Err((i, why)) = validate(j) {
+                    return Err(self.fail(&P::Bare, |o| syntax(o, j, i, why)));
+                }
+                self.value(j, 0, s, &P::Col(col), depth + 1)?;
+            }
+        }
+        Ok(())
     }
 }

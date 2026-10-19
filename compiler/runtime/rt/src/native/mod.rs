@@ -11,6 +11,7 @@
 
 pub mod host;
 pub(crate) mod hosted;
+pub mod sql;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -19,7 +20,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
-pub use host::{FileMode, HandleId, Host, HostError, Hosted};
+pub use host::{FileMode, HandleId, Host, HostError, Hosted, SqlValue};
 pub use hosted::{HOSTED, rt_hosted};
 
 use crate::cx::Cx;
@@ -353,9 +354,9 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
-/// `sakura_codegen_wasm`), with the function each resolves to. The standard services past N1a
-/// (Sql, Http, serve, JS handlers, the test runner) resolve to `rt_code_unsupported`, a `D090`
-/// when performed, until N1b.
+/// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
+/// not reached yet (Http, serve, JS handlers, the test runner) resolve to `rt_code_unsupported`,
+/// a `D090` when performed.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
@@ -378,10 +379,10 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_random_int", e::rt_code_random_int),
         ("rt_code_random_uuid", e::rt_code_random_uuid),
         ("rt_code_serve_request", e::rt_code_unsupported),
-        ("rt_code_sql_execute", e::rt_code_unsupported),
-        ("rt_code_sql_query", e::rt_code_unsupported),
-        ("rt_code_sql_rollback", e::rt_code_unsupported),
-        ("rt_code_sql_transaction", e::rt_code_unsupported),
+        ("rt_code_sql_execute", sql::rt_code_sql_execute),
+        ("rt_code_sql_query", sql::rt_code_sql_query),
+        ("rt_code_sql_rollback", sql::rt_code_sql_rollback),
+        ("rt_code_sql_transaction", sql::rt_code_sql_transaction),
         ("rt_code_task_all", e::rt_code_task_all),
         ("rt_code_task_cancel_all", e::rt_code_task_cancel_all),
         ("rt_code_task_join", e::rt_code_task_join),

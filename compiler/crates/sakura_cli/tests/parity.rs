@@ -654,10 +654,7 @@ fn wasm_twins_agree_with_wasm_frames() {
 /// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
 /// the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
-const KNOWN_NATIVE: &[(&str, &str)] = &[
-    ("sql_untrusted_param.sak", "Sql.memory is N1b's"),
-    ("example secrets", "a hosted builtin N1b ports (D091)"),
-];
+const KNOWN_NATIVE: &[(&str, &str)] = &[("example secrets", "a hosted builtin N1b ports (D091)")];
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and

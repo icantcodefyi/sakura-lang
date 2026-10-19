@@ -1,10 +1,10 @@
 //! The native host (design §17.170 (1), §17.171; ABI §1b, §8.4–§8.6): one instance's embedder
 //! for the runtime's [`sakura_rt::native::Instance`]. It supplies the root handlers' imports
-//! (Console, Clock, Random, `log_write`, traces) and the `hosted` services of N1a (Env, Fs and
-//! `file_*`) with the JS host's semantics, keeps the instance's handle and file tables, and
-//! drives `async` requests on a current-thread Tokio runtime owned by the instance's thread.
-//! The standard services of N1b (Http, Sql, serve, Llm, `cli_*`) answer `D091` through the
-//! `Host` defaults until then.
+//! (Console, Clock, Random, `log_write`, traces), the `hosted` services (Env, Fs, `file_*`,
+//! `Cli.args`) and Sql with the JS host's semantics, keeps the instance's handle and file
+//! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
+//! instance's thread; each database runs on its own worker thread (`sql`). Http, serve and Llm
+//! answer `D091` through the `Host` defaults until N1b reaches them.
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.
@@ -12,6 +12,7 @@
 #![cfg(feature = "native")]
 
 pub mod fs;
+mod sql;
 
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, Read, Write};
@@ -19,8 +20,8 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sakura_rt::exec::outcome;
-use sakura_rt::native::{FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome};
-use sakura_rt::vt::DIR;
+use sakura_rt::native::{FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome, SqlValue};
+use sakura_rt::vt::{DIR, SQL};
 use tokio::sync::mpsc;
 
 /// `[permissions]` of the manifest (`SAKURA_PERMISSIONS`): `None` lists are no limit.
@@ -77,10 +78,6 @@ pub struct Config {
     pub stdin: Option<Vec<String>>,
     /// `SAKURA_TRACE`: the file effect-trace lines are appended to.
     pub trace: Option<PathBuf>,
-    /// `SAKURA_BLOCKING_THREADS` (design §17.171 (2)): the bounded pool for blocking I/O that
-    /// answers through a request. N1a's Fs answers synchronously (`hosted`), so N1b's
-    /// `Sql.sqlite` is its first user.
-    pub blocking_threads: usize,
     /// `SAKURA_MAX_COPY_BYTES`, the instance's `Limits::max_copy_bytes`: a read stops one byte
     /// past it, so the runtime refuses the answer (`D091`) without the host holding the rest.
     pub max_copy_bytes: u64,
@@ -94,14 +91,6 @@ impl Config {
             Ok(json) => Some(Permissions::parse(&json)?),
             Err(_) => None,
         };
-        let blocking_threads = match std::env::var("SAKURA_BLOCKING_THREADS") {
-            Ok(n) => n
-                .parse::<usize>()
-                .ok()
-                .filter(|&n| n > 0)
-                .ok_or("SAKURA_BLOCKING_THREADS must be a positive integer")?,
-            Err(_) => 4,
-        };
         let max_copy_bytes = match std::env::var("SAKURA_MAX_COPY_BYTES") {
             Ok(n) => n
                 .parse::<u64>()
@@ -114,7 +103,6 @@ impl Config {
             capture: false,
             stdin: None,
             trace: std::env::var_os("SAKURA_TRACE").map(PathBuf::from),
-            blocking_threads,
             args: std::env::args().skip(1).collect(),
             max_copy_bytes,
         })
@@ -128,7 +116,6 @@ impl Config {
             capture: true,
             stdin: Some(vec![]),
             trace: None,
-            blocking_threads: 1,
             max_copy_bytes: MAX_COPY_BYTES,
             args: vec![],
         }
@@ -224,6 +211,13 @@ pub struct Ledger {
 /// A completion waiting for the guest: request, status, payload.
 type Completion = (u32, u32, Vec<u8>);
 
+/// A request in flight, as its cancellation reaches it.
+enum Inflight {
+    Timer(tokio::task::AbortHandle),
+    /// A statement on database `.0`'s worker.
+    Sql(u32),
+}
+
 pub struct NativeHost {
     config: Config,
     out: Vec<String>,
@@ -238,14 +232,17 @@ pub struct NativeHost {
     executor: tokio::runtime::Runtime,
     tx: mpsc::UnboundedSender<Completion>,
     rx: mpsc::UnboundedReceiver<Completion>,
-    inflight: HashMap<u32, tokio::task::AbortHandle>,
+    inflight: HashMap<u32, Inflight>,
+    /// Databases by id (`Sql.memory`, `Sql.sqlite`); `None` once the handler's handle retired.
+    dbs: Vec<Option<sql::Db>>,
+    /// Every database worker, joined at `close`.
+    workers: Vec<std::thread::JoinHandle<()>>,
 }
 
 impl NativeHost {
     pub fn new(config: Config) -> Result<NativeHost, String> {
         let executor = tokio::runtime::Builder::new_current_thread()
             .enable_time()
-            .max_blocking_threads(config.blocking_threads)
             .build()
             .map_err(|e| e.to_string())?;
         let trace = match &config.trace {
@@ -274,6 +271,8 @@ impl NativeHost {
             tx,
             rx,
             inflight: HashMap::new(),
+            dbs: vec![],
+            workers: vec![],
         })
     }
 
@@ -337,18 +336,23 @@ impl NativeHost {
         }
     }
 
-    /// The resource ledger (ABI §8.6, design §17.171 (4)): abort every request in flight, drop
-    /// queued completions, retire every handle and close every file. The instance is gone or
-    /// never entered again.
+    /// The resource ledger (ABI §8.6, design §17.171 (4)): abort every request in flight, wait
+    /// for the database workers to finish (an aborted statement is interrupted), drop queued
+    /// completions, retire every handle and close every file. The instance is gone or never
+    /// entered again.
     pub fn close(&mut self) -> Ledger {
         let mut ledger = Ledger {
             aborted_requests: self.inflight.len(),
-            closed_handles: self.dirs.live(),
+            closed_handles: self.dirs.live() + self.dbs.iter().flatten().count(),
             closed_files: self.files.len(),
             ..Ledger::default()
         };
-        for (_, h) in self.inflight.drain() {
-            h.abort();
+        for request in self.inflight.keys().copied().collect::<Vec<_>>() {
+            self.abort(request);
+        }
+        self.dbs.clear();
+        for w in self.workers.drain(..) {
+            let _ = w.join();
         }
         while self.rx.try_recv().is_ok() {
             ledger.dropped_completions += 1;
@@ -375,6 +379,13 @@ impl NativeHost {
 
     fn dir(&self, h: HandleId) -> Hosted<fs::Dir> {
         self.dirs.get(h).cloned()
+    }
+
+    fn db(&mut self, id: u32) -> Hosted<&mut sql::Db> {
+        self.dbs
+            .get_mut(id as usize)
+            .and_then(Option::as_mut)
+            .ok_or_else(|| HostError::Fault("a released or unknown database".into()))
     }
 }
 
@@ -427,12 +438,19 @@ impl Host for NativeHost {
             tokio::time::sleep(Duration::from_millis(ms.max(0) as u64)).await;
             let _ = tx.send((request, outcome::OK, vec![]));
         });
-        self.inflight.insert(request, task.abort_handle());
+        self.inflight
+            .insert(request, Inflight::Timer(task.abort_handle()));
     }
 
     fn abort(&mut self, request: u32) {
-        if let Some(h) = self.inflight.remove(&request) {
-            h.abort();
+        match self.inflight.remove(&request) {
+            Some(Inflight::Timer(h)) => h.abort(),
+            Some(Inflight::Sql(db)) => {
+                if let Ok(db) = self.db(db) {
+                    db.abort(request);
+                }
+            }
+            None => {}
         }
     }
 
@@ -493,8 +511,15 @@ impl Host for NativeHost {
     }
 
     fn retire_handle(&mut self, handle: HandleId) {
-        if handle.kind == DIR {
-            self.dirs.retire(handle);
+        match handle.kind {
+            DIR => self.dirs.retire(handle),
+            // The worker finishes what it was given and closes the connection.
+            SQL => {
+                if let Some(db) = self.dbs.get_mut(handle.slot as usize) {
+                    *db = None;
+                }
+            }
+            _ => {}
         }
     }
 
@@ -563,6 +588,48 @@ impl Host for NativeHost {
 
     fn file_close(&mut self, id: i64) {
         self.files.close(id);
+    }
+
+    fn sql_open(&mut self, path: Option<&str>) -> Hosted<u32> {
+        let db = sql::Db::new(path, &mut self.workers).map_err(HostError::Failure)?;
+        self.dbs.push(Some(db));
+        Ok(self.dbs.len() as u32 - 1)
+    }
+
+    fn sql_needs_root(&mut self, db: u32) -> bool {
+        self.db(db).is_ok_and(|d| d.needs_root())
+    }
+
+    fn sql_root(&mut self, db: u32, dir: HandleId) -> Hosted<()> {
+        let d = self.dir(dir)?;
+        let db = self.db(db)?;
+        let rel = db.file().unwrap_or_default().to_string();
+        let path = d
+            .sqlite_path(&rel)
+            .map_err(|e| HostError::Err(format!("{rel}: {e}")))?;
+        db.open(Some(path)).map_err(HostError::Err)?;
+        db.opened();
+        Ok(())
+    }
+
+    fn sql_run(&mut self, request: u32, db: u32, text: &str, params: &[SqlValue<'_>], rows: bool) {
+        let (max, tx) = (self.config.max_copy_bytes, self.tx.clone());
+        self.inflight.insert(request, Inflight::Sql(db));
+        match self.db(db) {
+            Ok(d) => d.run(request, text, params, rows, max, tx),
+            Err(_) => {
+                let m = b"a released or unknown database".to_vec();
+                let _ = tx.send((request, sakura_rt::exec::status::HOST_FAILURE, m));
+            }
+        }
+    }
+
+    fn sql_begin(&mut self, db: u32) -> Hosted<i64> {
+        self.db(db)?.begin().map_err(HostError::Err)
+    }
+
+    fn sql_end(&mut self, db: u32, token: i64, commit: bool) -> Hosted<()> {
+        self.db(db)?.end(token, commit).map_err(HostError::Failure)
     }
 }
 
@@ -721,6 +788,88 @@ mod tests {
         h.log_write("err");
         h.console_print("two");
         assert_eq!(h.captured(), ("one\ntwo\n", "err\n"));
+    }
+
+    #[test]
+    fn a_cancelled_statement_is_interrupted_or_skipped_and_committed_writes_stay() {
+        let dir = std::env::temp_dir().join(format!("sakura-sql-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut h = NativeHost::new(Config::test(dir.clone())).unwrap();
+        let root = h.fs_root().unwrap();
+        let db = h.sql_open(Some("t.db")).unwrap();
+        assert!(h.sql_needs_root(db));
+        assert!(matches!(
+            h.sql_root(
+                db,
+                HandleId {
+                    generation: 9,
+                    ..root
+                }
+            ),
+            Err(HostError::Fault(_))
+        ));
+        h.sql_root(db, root).unwrap();
+        assert!(!h.sql_needs_root(db));
+        let int = |n: i64| [&[sakura_rt::vt::t::INT][..], &n.to_le_bytes()].concat();
+        h.sql_run(1, db, "create table t (x integer)", &[], false);
+        assert_eq!(h.next_completion(), Some((1, 0, int(0))));
+        h.sql_run(
+            2,
+            db,
+            "insert into t values (?)",
+            &[SqlValue::Int(7)],
+            false,
+        );
+        assert_eq!(h.next_completion(), Some((2, 0, int(1))));
+        // A statement that would run for minutes, and a write queued behind it.
+        let forever = "with recursive c(i) as (select 1 union all select i + 1 from c \
+                       where i < 1000000000) select count(*) from c";
+        let started = Instant::now();
+        h.sql_run(3, db, forever, &[], true);
+        h.sql_run(4, db, "insert into t values (8)", &[], false);
+        std::thread::sleep(Duration::from_millis(50));
+        h.abort(4);
+        h.abort(3);
+        h.sql_run(5, db, "select count(*) from t", &[], true);
+        let (req, status, rows) = h.next_completion().unwrap();
+        assert_eq!((req, status), (5, 0), "the aborted requests never complete");
+        assert!(
+            rows.ends_with(&int(1)),
+            "the queued write was skipped, the committed one kept"
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(30),
+            "the statement was interrupted"
+        );
+        h.close();
+        assert!(dir.join("t.db").is_file());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_statement_inside_a_transaction_is_never_interrupted() {
+        let mut h = host();
+        let db = h.sql_open(None).unwrap();
+        let int = |n: i64| [&[sakura_rt::vt::t::INT][..], &n.to_le_bytes()].concat();
+        h.sql_run(1, db, "create table t (x integer)", &[], false);
+        assert_eq!(h.next_completion().map(|c| c.0), Some(1));
+        let token = h.sql_begin(db).unwrap();
+        h.sql_run(2, db, "insert into t values (0)", &[], false);
+        assert_eq!(h.next_completion(), Some((2, 0, int(1))));
+        // Interrupting this write would roll the whole transaction back (row 0 with it).
+        let many = "insert into t with recursive c(i) as (select 1 union all select i + 1 \
+                    from c where i < 200000) select i from c";
+        h.sql_run(3, db, many, &[], false);
+        std::thread::sleep(Duration::from_millis(5));
+        h.abort(3);
+        h.sql_end(db, token, true).unwrap();
+        h.sql_run(4, db, "select count(*) from t", &[], true);
+        let (req, _, rows) = h.next_completion().unwrap();
+        assert_eq!(req, 4);
+        assert!(
+            rows.ends_with(&int(200_001)),
+            "the write ran to its end inside the transaction"
+        );
     }
 
     #[test]

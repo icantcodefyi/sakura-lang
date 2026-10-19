@@ -3752,8 +3752,12 @@ function appendExchange(id, req, status, headers, body) {
 
 const SQL = "std::sql::Sql";
 
-/** A `SqlValue` (Null | Int | Float | Text | Blob) as a bound parameter. */
+/**
+ * A `SqlValue` (Null | Int | Float | Text | Blob) as a bound parameter. `node:sqlite` binds every
+ * JS number as REAL, so an `Int` goes as a `BigInt` to bind as INTEGER (as the native host does).
+ */
 function sqlValue(v) {
+  if (v.tag === 1) return BigInt(v.fields[0]);
   return v.tag === 0 ? null : v.fields[0];
 }
 

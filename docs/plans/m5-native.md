@@ -151,12 +151,21 @@ emits them and the native image carries them at +68. `Json.encode`, `decode`, `p
 and `Cli.parse` run on it natively and hold to the JS runtime's text: number text, escapes,
 base64, index-key order, decode paths and messages. A refinement's `where` runs as a nested
 call on the decoding task (`Rt::nested_enter`), and a `fail` caught inside it unwinds there.
-`Cli.args` is hosted. New fixtures: `json_codec` and `cli_parse_messages`. The native corpus
-agrees on 176 of 177 programs (the miss is `sql_untrusted_param`), and native CLI parity on 127
-of 129 (`sql_untrusted_param` and the `secrets` example's `Http.recording`). **Left of N1b:**
-Sql, Http and cassettes, serve, Llm, `secret_*`, `log_json`, the test runner's codes, `V8004`
-and the exclusion table. The WASI command does not call the codec yet (no Wasmtime
-`json_validate` cell).
+`Cli.args` is hosted. Sql came next. Each `Sql.memory()` or `Sql.sqlite(path)` database is a
+`rusqlite` (bundled) connection owned by its own worker thread. `query` and `execute` are
+requests the worker completes, and their rows decode in the runtime by the row type's schema
+(`json::sql_rows`, JS `rowOf`). `begin`, `release` and `rollback` wait for the worker. Aborting
+a request interrupts its statement (`sqlite3_interrupt`) if it is running and skips it if it is
+still queued. Nothing used the blocking pool, so it and `SAKURA_BLOCKING_THREADS` are gone
+(§17.229 (4)). Two fixes reached every host: the JS hosts bind an `Int` parameter as INTEGER (it
+was REAL), and a tuple type that is only decoded, never built, now gets its layout row (it was a
+`D090` on WASM too). New fixtures: `json_codec`, `cli_parse_messages`, `sql_rows` and
+`sql_cancel_committed` (Sql.memory). The `Sql.sqlite` cancellation case is a host test, because
+the corpus has no scratch directory for a database file. The native corpus agrees on all 179
+programs, from the evaluator, with twins and under `--no-direct`. `KNOWN_NATIVE` there is empty.
+**Left of N1b:** Http and cassettes (`KNOWN_NATIVE` in `parity.rs` keeps the `secrets`
+example), serve, Llm, `secret_*`, `log_json`, the test runner's codes, `V8004` and the exclusion
+table. The WASI command does not call the codec yet (no Wasmtime `json_validate` cell).
 
 ### Start conditions in one view
 

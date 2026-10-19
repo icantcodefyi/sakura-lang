@@ -21,6 +21,16 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/sql_rows",
+        None,
+        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/sql_cancel_committed",
+        None,
+        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/uuid_decode",
         None,
         "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",

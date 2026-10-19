@@ -1,0 +1,30 @@
+// milestone: M5
+// covers: design §17.171 (3) (a cancelled Sql operation is cancelled, never undone)
+// spec: §10.2, §8.6
+
+// A long statement that loses a race is cancelled (natively it is interrupted on its worker,
+// on JS it runs to its end first): the write committed before it stays, and the database
+// answers the next query.
+import std/sql.{Sql, SqlError}
+
+pub fn main() -> Unit ! {Clock, Console, Task, Fail<SqlError>} {
+  with Sql.memory() {
+    let _ = Sql.execute(sql"create table t (x integer)")
+    let _ = Sql.execute(sql"insert into t values (1)")
+    let bodies: List<fn() -> Int ! {Clock, Sql, Fail<SqlError>}> = [
+      fn() {
+        let n: List<Int> = Sql.query(
+          sql"with recursive c(i) as (select 1 union all select i + 1 from c where i < 1000000) select count(*) from c",
+        )
+        List.len(n)
+      },
+      fn() {
+        Clock.sleep(Duration.millis(1))
+        0
+      },
+    ]
+    let _ = Task.race(bodies)
+    let rows: List<Int> = Sql.query(sql"select count(*) from t")
+    Console.print("{rows}")
+  }
+}

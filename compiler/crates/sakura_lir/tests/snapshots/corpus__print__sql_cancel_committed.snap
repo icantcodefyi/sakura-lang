@@ -1,0 +1,103 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 record std::sql::Query | Query 32b (text: word*, params: word*)
+layout 6 error std::sql::SqlError | SqlError 24b (message: word*)
+layout 7 variant std::sql::SqlValue | Null 16b () | Int 24b (i64) | Float 24b (f64) | Text 24b (word*) | Blob 24b (word*)
+layout 8 variant std::task::Fiber
+layout 9 variant std::task::Scope
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::sql_cancel_committed, frame 8 slots [%4 word*, %5 i64, %9 word*, %10 i64, %14 word*, %19 word*, %21 word*, %23 bool]
+  b0():
+    %0 r: ptr = $sql_memory()
+    handle_push %0
+    %1 lit: ptr = const str 0
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%4) -> b2()
+  b2(%5 r: i64) [handle]:
+    %6 lit: ptr = const str 1
+    %7 parts: ptr = alloc list(%6)
+    %8 args: ptr = alloc list()
+    call template#2(%7, %8) -> b3()
+  b3(%9 tmpl: ptr) [handle]:
+    perform std::sql::Sql.execute(%9) -> b4()
+  b4(%10 r: i64) [handle]:
+    %11 f: ptr = closure main$1#3[]
+    %12 f: ptr = closure main$2#4[]
+    %13 xs: ptr = alloc list(%11, %12)
+    perform std::task::Task.race(%13) -> b5()
+  b5(%14 r: word) [handle]:
+    %15 unbox: i64 = unbox %14
+    drop %14
+    %16 lit: ptr = const str 2
+    %17 parts: ptr = alloc list(%16)
+    %18 args: ptr = alloc list()
+    call template#2(%17, %18) -> b6()
+  b6(%19 tmpl: ptr) [handle]:
+    %20 schema: ptr = const str 3
+    perform std::sql::Sql.query(%19, %20) -> b7()
+  b7(%21 r: ptr) [handle]:
+    %22 s: ptr = show %21
+    drop %21
+    perform std::console::Console.print(%22) -> b8()
+  b8(%23 r: unit) [handle]:
+    %24 box: word = box %23
+    %25 unbox: unit = unbox %24
+    drop %24
+    handle_pop
+    ret %25
+
+fn $entry#1 top -> unit ; main::sql_cancel_committed, frame 1 slots [%3 bool]
+  b0():
+    %0 clock: ptr = $clock_host()
+    handle_push %0
+    %1 console: ptr = $console_host()
+    handle_push %1
+    %2 task: ptr = $task_host()
+    handle_push %2
+    call main#0() -> b1()
+  b1(%3 r: unit) [handle, handle, handle]:
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %3
+
+fn main$1#3 lambda -> word ; main::sql_cancel_committed, captures [], frame 3 slots [%0 word*, %4 word*, %6 word*]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 5
+    %2 parts: ptr = alloc list(%1)
+    %3 args: ptr = alloc list()
+    call template#2(%2, %3) -> b1()
+  b1(%4 tmpl: ptr):
+    %5 schema: ptr = const str 3
+    perform std::sql::Sql.query(%4, %5) -> b2()
+  b2(%6 r: ptr):
+    %7 r: i64 = $list_len(%6)
+    %8 box: word = box %7
+    ret %8
+
+fn main$2#4 lambda -> word ; main::sql_cancel_committed, captures [], frame 3 slots [%0 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: i64 = const 1
+    call millis#5(%1) -> b1()
+  b1(%2 r: ptr):
+    perform std::clock::Clock.sleep(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 lit: i64 = const 0
+    %6 box: word = box %5
+    ret %6

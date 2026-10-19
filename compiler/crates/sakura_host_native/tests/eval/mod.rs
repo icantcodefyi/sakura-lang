@@ -980,7 +980,11 @@ impl<'p, 'c> Run<'p, 'c> {
                 "task_deterministic" => {
                     rt::rt_b_task_deterministic(ctx, effect, codes, n, bits[0] as i64)
                 }
-                "sql_memory" | "sql_sqlite" | "log_json" | "llm_anthropic" => {
+                "sql_memory" => sakura_rt::native::sql::rt_b_sql_memory(ctx, effect, codes, n),
+                "sql_sqlite" => {
+                    sakura_rt::native::sql::rt_b_sql_sqlite(ctx, effect, codes, n, bits[0] as u32)
+                }
+                "log_json" | "llm_anthropic" => {
                     // Their builders are N1b's: the arguments were consumed by the call that
                     // cannot be made.
                     for &a in args {
