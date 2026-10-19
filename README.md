@@ -55,8 +55,8 @@ sh install.sh --version 0.1.0-alpha.1
 | macOS, Apple silicon | `aarch64-apple-darwin` | in alpha.1 |
 | Linux x64 (glibc 2.35+) | `x86_64-unknown-linux-gnu` | in alpha.1 |
 | Linux ARM64 | `aarch64-unknown-linux-gnu` | coming in v0.1.0 |
-| Windows x64 | `x86_64-pc-windows-msvc` | coming in v0.2.0 |
-| macOS, Intel | `x86_64-apple-darwin` | coming in v0.2.0 |
+| Windows x64 | `x86_64-pc-windows-msvc` | coming in v0.1.0 |
+| macOS, Intel | `x86_64-apple-darwin` | coming in v0.1.0 |
 
 No platform is called **Supported** until a release's published-install smoke
 passes on a hosted runner of that OS and CPU. See the
@@ -135,8 +135,8 @@ signature. The compiler rejects anything else.
 | Release | What it means | State |
 | --- | --- | --- |
 | `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh | **shipped** |
-| `v0.1.0` | M4 exit (WASM complete, exit commit `dee11301`): the first non-alpha preview, after one quiet benchmark window; adds Linux ARM64 | awaiting sign-off |
-| `v0.2.0` | The stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md), Windows x64 and Intel Mac, one `--json` summary kind per record shape | planned |
+| `v0.1.0` | M4 exit (WASM complete, exit commit `dee11301`): the first non-alpha preview, after one quiet benchmark window; adds Linux ARM64, Windows x64 and Intel Mac | awaiting sign-off |
+| `v0.2.0` | The stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md), one `--json` summary kind per record shape | planned |
 | `v1.0.0` | A release candidate, a seven-day soak with no P1 defect, then 1.0; packages follow in 1.x | planned |
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is

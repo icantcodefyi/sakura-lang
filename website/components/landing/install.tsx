@@ -40,8 +40,8 @@ const PLATFORMS: { name: string; target: string; since: Version; note?: string }
     since: "0.1.0",
     note: "Raspberry Pi 4 and 5 expected to work",
   },
-  { name: "Windows x64", target: "x86_64-pc-windows-msvc", since: "0.2.0" },
-  { name: "macOS, Intel", target: "x86_64-apple-darwin", since: "0.2.0" },
+  { name: "Windows x64", target: "x86_64-pc-windows-msvc", since: "0.1.0" },
+  { name: "macOS, Intel", target: "x86_64-apple-darwin", since: "0.1.0" },
 ];
 
 // Published rows, then the next release in sakura, then later ones dashed.

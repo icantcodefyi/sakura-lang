@@ -12,12 +12,12 @@ const STAGES: { id: Version; name: string; body: string }[] = [
   {
     id: "0.1.0",
     name: "M4 exit",
-    body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64.",
+    body: "The first non-alpha preview, after one quiet benchmark window. Adds Linux ARM64, Windows x64 and Intel Mac.",
   },
   {
     id: "0.2.0",
     name: "Native and stability",
-    body: "Native backend behind an experimental flag, Windows x64 and Intel Mac, and the stability guarantees of RFC 0001.",
+    body: "Native backend behind an experimental flag and the stability guarantees of RFC 0001.",
   },
   {
     id: "1.0.0",

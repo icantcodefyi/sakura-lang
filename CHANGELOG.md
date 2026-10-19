@@ -158,14 +158,15 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   formula directs Linux ARM64 users to the release installer or npm.
 
 - Windows x64 MSVC ZIP and npm packaging, a checksum-verifying PowerShell installer,
-  hosted Windows suites/parity, and native `sakura.exe` selection in VS Code. Windows
-  publication and release-specific supported status still require the published smoke.
+  hosted Windows suites/parity, and native `sakura.exe` selection in VS Code.
+  Release-specific supported status still requires the published smoke.
 
 - Published-channel acceptance workflow with exact version/commit checks, a deliberate
   installer target override, and a platform-report issue form for community confirmations.
 
 - Per-OS website install instructions with release-specific platform claims, Node 26
-  setup for Raspberry Pi users, and explicit Windows/Intel Mac v0.2.0 availability.
+  setup for Raspberry Pi users; Windows x64 and Intel macOS are published for 0.1.0,
+  supported once their published-install check is green.
 
 ### Changed
 
