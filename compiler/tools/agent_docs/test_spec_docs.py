@@ -58,6 +58,21 @@ class SpecDocsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "missing indexed test"):
                 spec_docs.render(root)
 
+    def test_removed_named_js_fixture_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            baseline = root / "compiler/diagnostics/codes.txt"
+            baseline.parent.mkdir(parents=True)
+            baseline.write_text("V8003 active abi_version_mismatch\n")
+            relative, name = spec_docs.TEST_FIXTURES["V8003"]
+            fixture = root / relative
+            fixture.parent.mkdir(parents=True)
+            fixture.write_text(f'test("{name}", async () => {{}});\n')
+            self.assertIn(name, spec_docs.render(root))
+            fixture.write_text(f'// test("{name}"\n')
+            with self.assertRaisesRegex(ValueError, "missing indexed test"):
+                spec_docs.render(root)
+
     def test_broken_link_and_uncited_rule_fail(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -15,10 +15,12 @@ checking, derived from [items](../../compiler/crates/sakura_syntax/src/grammar.r
 
 **G02** The keywords are `fn let var type error effect handler with try catch fail if else match for in while return break continue import pub opaque as test property requires ensures where true false`. [Items](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [expressions](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [opaque types](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak).
 
-**G03** Reserved future words produce `V0007`, except in member positions after `.` and function-name positions after `fn`. [Rejection](../../compiler/tests/ui/V0007_reserved_keyword.sak), [accepted spawn](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak).
+**G03** Reserved future words produce `V0007`, except in member positions after `.` and function-name positions after `fn`. [Rejection](../../compiler/tests/ui/V0007_reserved_keyword.sak), [accepted spawn](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak), [every word by position](../../compiler/crates/sakura_syntax/tests/data/err/reserved_positions.sak).
 
 Informative inventory of future words from the lexer: `verify proof ghost control resume
-region spawn actor interface impl`; exhaustive position testing is listed in [gaps](gaps.md).
+region spawn actor interface impl`.
+The position fixture gives each word as a function, effect operation, and member name
+(accepted) and as an import module segment, parameter, `let` binding, and use (`V0007`).
 
 **G04** Line comments begin with `//`, documentation comments with exactly three slashes, and block comments nest between `/*` and `*/`. [Lexical fixture](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [slash classification](../../compiler/crates/sakura_syntax/src/lexer.rs).
 
@@ -30,30 +32,41 @@ region spawn actor interface impl`; exhaustive position testing is listed in [ga
 
 **G08** A tagged string has a value name immediately adjacent to its opening quote. [Tagged strings](../../compiler/crates/sakura_syntax/tests/data/ok/holes_and_templates.sak).
 
-**G09** Integer tokens support decimal digits, lowercase `0x` hexadecimal and `0b` binary prefixes, and digit separators `_`, while float tokens require digits on both sides of `.` and permit a decimal exponent after the fraction. [Numeric tokens](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [numbers](../../compiler/crates/sakura_syntax/src/lexer.rs).
+**G09** Integer tokens support decimal digits, lowercase `0x` hexadecimal and `0b` binary prefixes, and digit separators `_`, while float tokens require digits on both sides of `.` and permit a decimal exponent after the fraction. [Numeric tokens](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [numbers](../../compiler/crates/sakura_syntax/src/lexer.rs), [numeric_boundaries](../../compiler/crates/sakura_syntax/src/lexer.rs).
 
-**G10** A minus sign is a separate prefix operator, and an integer token greater than `9223372036854775807` produces `V0003`. [Negative pattern](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [overflow](../../compiler/tests/ui/V0003_int_literal_out_of_range.sak).
+**G10** A minus sign is a separate prefix operator, and an integer token greater than `9223372036854775807` produces `V0003`. [Negative pattern](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [overflow](../../compiler/tests/ui/V0003_int_literal_out_of_range.sak), [numeric_boundaries](../../compiler/crates/sakura_syntax/src/lexer.rs).
 
-Informative: separator placement, the minimum signed literal, and incomplete fractions need
-boundary fixtures before stronger lexical claims; see [gaps](gaps.md).
+Informative, as pinned by `numeric_boundaries`: the lexer accepts a separator anywhere after
+the first digit or radix prefix, so `1_`, `1__000`, `0x_1`, `1_.5`, `1.5_`, and `1.5_e3`
+are tokens, while `_1` is a name and `0x_` is `V0006`.
+`.5` and `1.` are a dot and an integer, and `1.e5` is an integer, a dot, and a name.
+An exponent without a fraction (`1e5`), an exponent without digits (`1.5e`), a separator
+inside an exponent, and uppercase or unknown radix prefixes (`0X1`, `0o7`) are `V0006`;
+an uppercase `E` exponent is accepted.
+Because the minus sign is separate, `-9223372036854775808` is `V0003` although design §2.2
+gives `Int` that minimum; whether that spelling should be accepted is open in [gaps](gaps.md).
 The lexer treats digits after a field-access dot as tuple indices rather than a float,
 as exercised by `t.0.1` in the [lexical corpus](../../editors/tree-sitter-sakura/test/corpus/lexical.txt).
 
 ## Newlines and termination
 
-**G11** A physical newline becomes `NEWLINE` only in a newline-sensitive context, after a statement-ending token and before a token that does not continue the statement, with parentheses, brackets, and interpolation suppressing termination until a nested brace block restores it. [newline_rule](../../compiler/crates/sakura_syntax/src/lexer.rs), [layout](../../compiler/crates/sakura_syntax/tests/data/ok/newlines.sak).
+**G11** A physical newline becomes `NEWLINE` only in a newline-sensitive context, after a statement-ending token and before a token that does not continue the statement, with parentheses, brackets, and interpolation suppressing termination until a nested brace block restores it. [newline_rule](../../compiler/crates/sakura_syntax/src/lexer.rs), [newline_matrix](../../compiler/crates/sakura_syntax/src/lexer.rs), [layout](../../compiler/crates/sakura_syntax/tests/data/ok/newlines.sak).
 
 Informative token sets transcribed from `ends_statement` and `continues_statement`:
 
 ```text
-ending: Ident TypeName Hole Int Float StringEnd ) ] } > ? true false break continue return
+ending: Ident TypeName Hole _ Int Float StringEnd ) ] } > ? true false break continue return
 continuing: . else catch ) ] } , => = -> | .. + * / % == != < <= > >= && ||
 ```
 
 The lexer also treats a keyword following `/` as a module name that can end a statement.
 Nested brace blocks restore newline significance even inside parentheses; the
 `newline_rule` unit fixture includes `(fn() {a\nb})`.
-The sets are informative because not every token boundary has an individual fixture.
+`newline_matrix` checks every listed token, before or after the break, against samples
+of the other side, under LF and CRLF and with line or block comments at the break, plus
+`foo` followed by `[0]` on the next line and brace blocks inside interpolation.
+The sets stay informative because the matrix uses one sample per token, not every pair
+of grammatical contexts.
 
 **G12** `foo` followed on the next line by `(bar)` or `-1` forms separate statements, whereas a leading `.` or `+` continues the preceding expression. [newline_rule](../../compiler/crates/sakura_syntax/src/lexer.rs), [layout](../../compiler/crates/sakura_syntax/tests/data/ok/newlines.sak).
 
@@ -84,7 +97,7 @@ These notation conventions are not additional language rules.
 
 ## Items and signatures
 
-**G16** Items and signatures have the following forms, with required parameter types on declarations and optional types on lambda and handler parameters. [Items](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [parameters](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [attributes](../../compiler/crates/sakura_syntax/tests/data/ok/attributes.sak).
+**G16** Items and signatures have the following forms, with required parameter types on declarations and optional types on lambda and handler parameters. [Items](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [parameters](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [attributes](../../compiler/crates/sakura_syntax/tests/data/ok/attributes.sak), [alternatives](../../compiler/crates/sakura_syntax/tests/data/ok/grammar_alternatives.sak), [rejected alternatives](../../compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak).
 
 ```ebnf
 Source       = { Sep | Item } ;
@@ -110,7 +123,7 @@ Property     = "property" String "(" Comma(TypedParam) ")" { Contract } NL Block
 
 ## Types
 
-**G17** Types, rows, and type declarations have the following forms, with a lone named alternative without a payload parsed as an alias. [Types](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak), [declarations](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [row arguments](../../compiler/crates/sakura_syntax/tests/data/ok/row_arguments.sak).
+**G17** Types, rows, and type declarations have the following forms, with a lone named alternative without a payload parsed as an alias. [Types](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak), [declarations](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [row arguments](../../compiler/crates/sakura_syntax/tests/data/ok/row_arguments.sak), [alternatives](../../compiler/crates/sakura_syntax/tests/data/ok/grammar_alternatives.sak), [rejected alternatives](../../compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak).
 
 ```ebnf
 TypeDecl     = "type" TypeName [ TypeParams ] [ "=" TypeBody [ "where" Expression ] ] ;
@@ -130,7 +143,7 @@ Row          = Ident | "{" Comma(NamedType) [ "|" Ident ] "}" ;
 
 ## Expressions and statements
 
-**G18** Operand precedence, from weakest to strongest, is disjunction, conjunction, comparison, range, addition, multiplication, prefix, and postfix, with the following forms. [Precedence and forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [comparison rejection](../../compiler/tests/ui/V0010_chained_comparison.sak).
+**G18** Operand precedence, from weakest to strongest, is disjunction, conjunction, comparison, range, addition, multiplication, prefix, and postfix, with the following forms. [Precedence and forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [comparison rejection](../../compiler/tests/ui/V0010_chained_comparison.sak), [alternatives](../../compiler/crates/sakura_syntax/tests/data/ok/grammar_alternatives.sak), [rejected alternatives](../../compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak).
 
 ```ebnf
 Expression   = If | Match | With | Try | Lambda | Handler | "fail" Expression | Or ;
@@ -170,11 +183,11 @@ AssignTarget = (Ident | TypeName) { "." TypeName } | Postfix "." (Name | Int) ;
 
 **G19** A keyword expression used as an operand requires parentheses, call-site type arguments are rejected with `V0011`, and named call arguments are rejected with `V0014`. [Operand rejection](../../compiler/tests/ui/V0012_keyword_expression_operand.sak), [type arguments](../../compiler/tests/ui/V0011_type_arguments_at_call.sak), [named arguments](../../compiler/tests/ui/V0014_named_argument.sak).
 
-**G20** A record spread precedes the named fields, and a record literal in a control-flow header requires parentheses. [Record forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [header rejection](../../compiler/crates/sakura_syntax/tests/data/err/record_in_header.sak).
+**G20** A record spread precedes the named fields, and a record literal in a control-flow header requires parentheses. [Record forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [header rejection](../../compiler/crates/sakura_syntax/tests/data/err/record_in_header.sak), [nested headers and spreads](../../compiler/crates/sakura_syntax/tests/data/ok/grammar_alternatives.sak), [rejected forms](../../compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak).
 
 ## Patterns
 
-**G21** Patterns have the following forms, with `..` optionally binding a tail only in list patterns. [Pattern forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak).
+**G21** Patterns have the following forms, with `..` optionally binding a tail only in list patterns. [Pattern forms](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [cardinalities and rests](../../compiler/crates/sakura_syntax/tests/data/ok/grammar_alternatives.sak), [rejected rests](../../compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak).
 
 ```ebnf
 Pattern      = SimplePattern { "|" SimplePattern } ;
@@ -203,8 +216,9 @@ Known differences, from its [README](../../editors/tree-sitter-sakura/README.md)
 - Tree-sitter accepts reserved names, chained comparisons, out-of-range integers, invalid
   escapes, some call-site type argument shapes, invalid assignment targets, and named calls
   that the compiler diagnoses.
-- It accepts unterminated block comments, two items on one line, and some newlines before
-  a header body; its newline scanner uses parse state, so `a >` followed by `b` on a new
+- It accepts unterminated block comments, two non-block items on one line (the compiler
+  accepts a block-bodied function followed by another item), and newlines before an `if`
+  or `match` body; its newline scanner uses parse state, so `a >` followed by `b` on a new
   line can remain one expression.
 - Its shared parameter rule allows omitted annotations in function declarations; the
   compiler requires annotations there.
@@ -215,8 +229,11 @@ Known differences, from its [README](../../editors/tree-sitter-sakura/README.md)
 - The compiler uses a separate no-record expression mode for headers; tree-sitter resolves
   the body-versus-record ambiguity with GLR preference.
 
-The final four comparisons above come from reading both grammars; dedicated divergence
-fixtures are requested in [gaps](gaps.md).
+The [divergence fixture](../../compiler/crates/sakura_syntax/tests/data/err/tree_sitter_divergences.sak) holds two non-block items on
+one line, line breaks before `if` and `match` bodies and after `>`, an unannotated
+declaration parameter, type arguments on a later alternative, a spread after fields, and a
+named record rest; the repository test asserts that tree-sitter parses it with no error node.
+The other listed acceptances have compiler-only UI fixtures.
 
 ## Line-ending consumers and malformed input
 

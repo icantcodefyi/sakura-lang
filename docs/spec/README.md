@@ -10,7 +10,7 @@ Static and dynamic semantics remain due at `v1.0.0-rc.1`.
 - [Grammar](grammar.md) covers lexing, statement termination, and syntax.
 - [Diagnostics](diagnostics.md) covers diagnostic records and code identities.
 - [Generated code table](diagnostic-codes.md) indexes the identity baseline by fixture.
-- [Coverage gaps](gaps.md) records missing evidence and unresolved differences for Opus.
+- [Coverage gaps](gaps.md) records missing evidence and unresolved differences.
 
 ## Reading the draft
 

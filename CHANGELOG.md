@@ -35,7 +35,9 @@ Compare the release tag with main when identifying changes not in that preview.
 ### Added
 
 - Draft grammar and diagnostic specification in `docs/spec/`, indexed by fixtures,
-  with a generated diagnostic identity table and a Python drift check.
+  with a generated diagnostic identity table and a Python drift check; lexical boundary,
+  grammar-alternative and tree-sitter divergence fixtures back its rules, and `V8003` has an
+  emission test.
 
 - Intel macOS archives, npm and Homebrew packaging with public Intel-hosted suites,
   parity and release smoke; both Darwin architectures enter the existing signing job.

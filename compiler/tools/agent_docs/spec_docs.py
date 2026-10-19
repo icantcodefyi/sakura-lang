@@ -19,6 +19,7 @@ TEST_FIXTURES = {
     "D095": ("compiler/runtime/rt/tests/exec.rs", "fiber_self_reference"),
     "D096": ("compiler/runtime/rt/tests/heap.rs", "oom_is_one_defect_path_d096"),
     "V8002": ("compiler/crates/sakura_cli/tests/cli.rs", "reserved_package_names_are_v8002"),
+    "V8003": ("compiler/runtime/js/test/wasm_host.test.js", "runMain reports V8003 for another ABI and exits 2"),
     "V8004": ("compiler/crates/sakura_cli/tests/wasm.rs", "a_user_js_external_is_refused_on_wasm"),
     "V8020": ("compiler/crates/sakura_cli/tests/cli.rs", "frozen_specs_compare_with_git_head"),
     "V9001": ("compiler/crates/sakura_fmt/src/lib.rs", "guard_reports_a_dropped_comment_or_broken_output"),
@@ -68,7 +69,8 @@ def render(root):
         if not fixtures and code in TEST_FIXTURES:
             relative, test_name = TEST_FIXTURES[code]
             path = root / relative
-            if not path.is_file() or not re.search(rf"^\s*fn {test_name}\(", path.read_text(), re.MULTILINE):
+            declared = rf"^\s*fn {test_name}\(" if path.suffix == ".rs" else rf'^test\("{re.escape(test_name)}"'
+            if not path.is_file() or not re.search(declared, path.read_text(), re.MULTILINE):
                 raise ValueError(f"missing indexed test: {relative}::{test_name}")
             fixtures = [path]
         evidence = ", ".join(f"[{test_name or p.name}](../../{p.relative_to(root).as_posix()})" for p in fixtures)
