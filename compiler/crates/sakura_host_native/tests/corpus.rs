@@ -243,3 +243,11 @@ fn big_stack_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> V
     });
     out.into_iter().map(Option::unwrap).collect()
 }
+
+/// The native dispatch table numbers its codes as the WASM linker does (design §17.229 (2)):
+/// `sakura_rt::native::CODES` is in `sakura_lir::image::code_order`.
+#[test]
+fn native_codes_follow_the_shared_order() {
+    let names: Vec<&str> = sakura_rt::native::CODES.iter().map(|(n, _)| *n).collect();
+    assert_eq!(sakura_lir::image::code_order(names.iter().copied()), names);
+}

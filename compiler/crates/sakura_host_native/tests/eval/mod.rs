@@ -5,15 +5,14 @@
 //! exports of `sakura_rt::native`, and lays out the static block as that crate's `emit` does.
 //! It has no direct twins: every call goes through frames (`--no-direct`).
 //!
-//! ponytail: the image builder copies `sakura_codegen_wasm`'s (`data.rs`, `ops_table`, the
-//! native-code tables) because that crate's internals are private; N2 shares one through
-//! `sakura_lir` (REQUESTS.md).
+//! The static block comes from `sakura_lir::image`, as both backends' does (design §17.229 (2)).
 
 #![allow(dead_code)]
 
 use std::collections::HashMap;
 
-use sakura_lir::layout::{FrameDesc, Slot, SlotKind};
+use sakura_lir::image::{self, Statics, check_message};
+use sakura_lir::layout::{FrameDesc, SlotKind};
 use sakura_lir::lir::*;
 use sakura_rt::exec::step::{CALL, DEFECT, RETURN, YIELD};
 use sakura_rt::exports as rt;
@@ -37,206 +36,8 @@ const NOT_RESUMABLE: &str = "a frame resumed at a block that is not resumable";
 const NO_ARM: &str = "no switch arm applied";
 const HOST_FAILED: &str = "a host builtin failed";
 
-/// `sakura_codegen_wasm::HOST_HANDLERS`.
-const HOST_HANDLERS: &[(&str, &str, &str)] = &[
-    ("console_host", "std::console::Console", "console"),
-    ("clock_host", "std::clock::Clock", "clock"),
-    ("random_host", "std::random::Random", "random"),
-    ("log_stderr", "std::log::Log", "log_stderr"),
-    ("log_json", "std::log::Log", "js"),
-    ("sql_memory", "std::sql::Sql", "sql"),
-    ("sql_sqlite", "std::sql::Sql", "sql"),
-    ("task_host", "std::task::Task", "task"),
-    ("task_deterministic", "std::task::Task", "task"),
-    ("llm_anthropic", "std::llm::Llm", "js"),
-];
-
-/// `sakura_codegen_wasm::NATIVE_CODES`.
-const NATIVE_CODES: &[&str] = &[
-    "rt_code_callback_stub",
-    "rt_code_file_close",
-    "rt_code_sql_rollback",
-    "rt_code_task_cancel_all",
-    "rt_code_prop_record",
-    "rt_code_prop_failures",
-    "rt_code_prop_forward",
-    "rt_code_http_body_close",
-    "rt_code_js_callback",
-    "rt_code_serve_request",
-];
-
-/// `sakura_codegen_wasm::HOSTED`'s result tops (`sakura_rt::vt::top`), by builtin.
-fn hosted_top(name: &str) -> u32 {
-    use sakura_rt::vt::top::*;
-    match name {
-        "cli_args" => LIST,
-        "cli_parse" => ANY | CLI_ERROR << 8,
-        "env_get" => OPTION,
-        "fs_exists" => BOOL,
-        "fs_memory_root" | "fs_root" => DIR,
-        "http_body_of" => BODY,
-        "json_encode" => STRING,
-        "json_schema" => JSON,
-        _ => RESULT,
-    }
-}
-
-/// `sakura_codegen_wasm::native_slots`.
-fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
-    let (w, i) = (
-        Slot::WORD,
-        Slot {
-            kind: SlotKind::I64,
-            owns: false,
-        },
-    );
-    match name {
-        "rt_code_callback_stub" => (vec![], vec![w, i]),
-        "rt_code_http_body_close" => (vec![], vec![w]),
-        "rt_k_serve_listen" | "rt_code_serve_request" => (vec![w, w], vec![]),
-        "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
-        "rt_code_sql_query" => (vec![i, i, w, w], vec![w]),
-        "rt_code_sql_execute" | "rt_code_sql_transaction" => (vec![i, i, w], vec![w]),
-        "rt_code_sql_rollback"
-        | "rt_code_prop_record"
-        | "rt_code_prop_failures"
-        | "rt_code_prop_forward" => (vec![], vec![i, i]),
-        "rt_k_property_run" => (vec![i, w, w, w, i, i, i, w, i, i], vec![]),
-        "rt_code_task_scope" => (vec![w, i, w, w, i], vec![w]),
-        "rt_code_task_spawn" => (vec![w, i, w, w, w], vec![w]),
-        "rt_code_task_join" => (vec![w, i, w], vec![w]),
-        "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
-        "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
-        "rt_code_task_yield_now" => (vec![w, i], vec![w]),
-        "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![w, i, i]),
-        "rt_code_js_callback" => (vec![w, w, w, w, w, w, i, i], vec![w, i, w, w, w, w]),
-        _ => (vec![], vec![]),
-    }
-}
-
-/// `sakura_codegen_wasm::func::check_message`.
-fn check_message(c: &Contract, func: &str) -> String {
-    match c.code.as_str() {
-        "D010" => format!("refinement `{}` violated", c.name),
-        "D021" => format!("postcondition `{}` of {func} violated", c.name),
-        _ => format!("precondition `{}` of {func} violated", c.name),
-    }
-}
-
 fn unsupported_builtin(name: &str) -> String {
     format!("builtin {name} is not supported by the native host yet")
-}
-
-// ---- the static block (`sakura_codegen_wasm::data`) --------------------------------------------
-
-const STATIC: u8 = 1;
-
-#[derive(Default)]
-struct Statics {
-    bytes: Vec<u8>,
-    strings: HashMap<String, u32>,
-    nullary: HashMap<(u32, u32), u32>,
-    closures: HashMap<u32, u32>,
-    raw: HashMap<Vec<u8>, u32>,
-}
-
-impl Statics {
-    fn align(&mut self, to: usize) -> u32 {
-        while !self.bytes.len().is_multiple_of(to) {
-            self.bytes.push(0);
-        }
-        self.bytes.len() as u32
-    }
-
-    fn header(&mut self, tag: u16) -> u32 {
-        let at = self.align(8);
-        self.bytes.extend_from_slice(&tag.to_le_bytes());
-        self.bytes.extend_from_slice(&[0, STATIC]);
-        self.bytes.extend_from_slice(&1u32.to_le_bytes());
-        at
-    }
-
-    fn u32(&mut self, v: u32) {
-        self.bytes.extend_from_slice(&v.to_le_bytes());
-    }
-
-    fn string(&mut self, s: &str) -> u32 {
-        if let Some(&o) = self.strings.get(s) {
-            return o;
-        }
-        let at = self.header(3);
-        self.u32(s.len() as u32);
-        self.u32(0);
-        self.bytes.extend_from_slice(s.as_bytes());
-        self.strings.insert(s.into(), at);
-        at
-    }
-
-    fn nullary(&mut self, type_id: u32, ctor: u32) -> u32 {
-        if let Some(&o) = self.nullary.get(&(type_id, ctor)) {
-            return o;
-        }
-        let at = self.header(7);
-        self.u32(type_id);
-        self.u32(ctor);
-        self.nullary.insert((type_id, ctor), at);
-        at
-    }
-
-    fn closure(&mut self, code: u32) -> u32 {
-        if let Some(&o) = self.closures.get(&code) {
-            return o;
-        }
-        let at = self.header(8);
-        self.u32(code);
-        self.u32(0);
-        self.closures.insert(code, at);
-        at
-    }
-
-    fn raw(&mut self, b: &[u8]) -> u32 {
-        if let Some(&o) = self.raw.get(b) {
-            return o;
-        }
-        let at = self.align(8);
-        self.bytes.extend_from_slice(b);
-        self.raw.insert(b.to_vec(), at);
-        at
-    }
-}
-
-/// `sakura_codegen_wasm::ops_table`.
-fn ops_table(m: &Module) -> Vec<u8> {
-    let n = m.effects.len();
-    let mut dir = vec![0u32; 1 + n];
-    dir[0] = n as u32;
-    let mut body: Vec<u32> = vec![];
-    let mut names: Vec<u8> = vec![];
-    let mut fix: Vec<(usize, usize)> = vec![];
-    for (i, e) in m.effects.iter().enumerate() {
-        dir[1 + i] = ((1 + n + body.len()) * 4) as u32;
-        body.push(e.ops.len() as u32);
-        for op in &e.ops {
-            fix.push((body.len(), names.len()));
-            body.push(0);
-            names.extend_from_slice(&(op.name.len() as u32).to_le_bytes());
-            names.extend_from_slice(op.name.as_bytes());
-            while !names.len().is_multiple_of(4) {
-                names.push(0);
-            }
-        }
-    }
-    let base = (1 + n + body.len()) * 4;
-    for (at, off) in fix {
-        body[at] = (base + off) as u32;
-    }
-    let mut out: Vec<u8> = dir
-        .iter()
-        .chain(&body)
-        .flat_map(|w| w.to_le_bytes())
-        .collect();
-    out.extend(names);
-    out
 }
 
 // ---- per-function facts (`func::compile`) -----------------------------------------------------
@@ -360,67 +161,15 @@ impl Program {
     pub fn new(m: Module) -> Program {
         let n = m.funcs.len() as u32;
         let names: Vec<&str> = CODES.iter().map(|(name, _)| *name).collect();
-        let code_of = |name: &str| {
-            n + names
-                .iter()
-                .position(|x| *x == name)
-                .expect("a native code") as u32
-        };
         let mut s = Statics::default();
-        let layout = s.raw(&m.layouts.to_bytes());
-        let slots: Vec<(Vec<Slot>, Vec<Slot>)> = names.iter().map(|x| native_slots(x)).collect();
-        let native_codes: Vec<sakura_lir::layout::NativeCode<'_>> = names
-            .iter()
-            .zip(&slots)
-            .map(|(x, (f, c))| (*x, f.as_slice(), c.as_slice()))
-            .collect();
-        let codes = s.raw(&sakura_lir::layout::code_table_with(&m, &native_codes));
-        let effects = s.raw(&sakura_lir::layout::effect_table(&m));
-        let ops = s.raw(&ops_table(&m));
-        let table: Vec<u8> = NATIVE_CODES
-            .iter()
-            .map(|x| code_of(x))
-            .flat_map(u32::to_le_bytes)
-            .collect();
-        let natives = s.raw(&table);
-        let mut host_handlers = HashMap::new();
-        for (builtin, effect, prefix) in HOST_HANDLERS {
-            let Some(e) = m.effects.iter().position(|x| x.name == *effect) else {
-                continue;
-            };
-            let eops = &m.effects[e].ops;
-            let mut cs: Vec<u32> = eops
-                .iter()
-                .map(|op| {
-                    let native = if *prefix == "js" {
-                        let owned = |r: &Repr| matches!(r, Repr::Ptr | Repr::Word);
-                        let fits = op.sig.params.len() <= 4
-                            && op.sig.params.iter().all(owned)
-                            && (owned(&op.sig.ret) || op.sig.ret == Repr::Unit);
-                        if fits { "rt_code_js_clause" } else { "" }.to_string()
-                    } else {
-                        format!("rt_code_{prefix}_{}", op.name)
-                    };
-                    if names.contains(&native.as_str()) {
-                        code_of(&native)
-                    } else {
-                        code_of("rt_code_unsupported")
-                    }
-                })
-                .collect();
-            if *prefix == "js" {
-                cs.extend(eops.iter().map(|op| op.sig.params.len() as u32));
-            }
-            let bytes: Vec<u8> = cs.into_iter().flat_map(u32::to_le_bytes).collect();
-            let off = s.raw(&bytes);
-            host_handlers.insert(builtin.to_string(), (e as u32, off, eops.len() as u32));
-        }
+        let t = image::tables(&m, &mut s, &names);
+        let handlers = image::handlers(&m, &mut s, n, &names);
         // Every literal and every defect message the evaluator may raise, interned up front.
-        s.raw(NOT_RESUMABLE.as_bytes());
-        s.raw(NO_ARM.as_bytes());
-        s.raw(HOST_FAILED.as_bytes());
-        s.raw(OVERFLOW.1.as_bytes());
-        s.raw(ZERO.1.as_bytes());
+        s.bytes(NOT_RESUMABLE.as_bytes());
+        s.bytes(NO_ARM.as_bytes());
+        s.bytes(HOST_FAILED.as_bytes());
+        s.bytes(OVERFLOW.1.as_bytes());
+        s.bytes(ZERO.1.as_bytes());
         for f in &m.funcs {
             for b in &f.blocks {
                 for i in &b.insts {
@@ -444,20 +193,20 @@ impl Program {
                             s.closure(g.0);
                         }
                         Inst::Check { contract, .. } => {
-                            s.raw(
+                            s.bytes(
                                 check_message(&m.contracts[*contract as usize], &f.name).as_bytes(),
                             );
                         }
                         Inst::Hole { id } => {
-                            s.raw(format!("typed hole ?{id} was evaluated").as_bytes());
+                            s.bytes(format!("typed hole ?{id} was evaluated").as_bytes());
                         }
                         Inst::Unsupported { what } => {
-                            s.raw(
+                            s.bytes(
                                 format!("not supported by the WASM backend yet: {what}").as_bytes(),
                             );
                         }
                         Inst::Builtin { name, .. } => {
-                            s.raw(unsupported_builtin(name).as_bytes());
+                            s.bytes(unsupported_builtin(name).as_bytes());
                         }
                         _ => {}
                     }
@@ -467,24 +216,20 @@ impl Program {
                     ..
                 } = &b.term
                 {
-                    s.raw(unsupported_builtin(name).as_bytes());
+                    s.bytes(unsupported_builtin(name).as_bytes());
                 }
             }
         }
-        let len = s.align(8);
-        let _ = len;
+        s.finish();
         let image = Image {
             bytes: s.bytes.clone(),
-            layout,
-            codes,
-            effects,
-            ops,
-            natives,
+            layout: t.layout,
+            codes: t.codes,
+            effects: t.effects,
+            ops: t.ops,
+            natives: handlers.natives,
         };
-        let cps = names
-            .iter()
-            .filter_map(|x| Some((x.strip_prefix("rt_k_")?.to_string(), code_of(x))))
-            .collect();
+        let cps = image::cps(n, &names);
         let info = m.funcs.iter().map(func_info).collect();
         let entry = m.entry.map(|e| e.0);
         Program {
@@ -493,7 +238,7 @@ impl Program {
             statics: s,
             info,
             n,
-            host_handlers,
+            host_handlers: handlers.host,
             cps,
             builtins: BUILTINS.iter().copied().collect(),
             entry,
@@ -520,15 +265,13 @@ impl sakura_rt::native::Module for Program {
 
 impl Program {
     fn msg(&self, text: &str) -> u32 {
-        *self
-            .statics
-            .raw
-            .get(text.as_bytes())
+        self.statics
+            .bytes_at(text.as_bytes())
             .expect("an interned message")
     }
 
     fn raise_at(&self, ctx: Ctx<'_>, code: u16, text: &str, site: u32) -> u32 {
-        let off = self.statics.raw.get(text.as_bytes()).copied();
+        let off = self.statics.bytes_at(text.as_bytes());
         match off {
             Some(off) => rt::rt_raise(
                 ctx,
@@ -815,11 +558,17 @@ impl<'p, 'c> Run<'p, 'c> {
                     Const::F64(x) => x.to_bits(),
                     Const::Bool(b) => u64::from(*b),
                     Const::Unit => 0,
-                    Const::Str(i) => {
-                        u64::from(st + self.p.statics.strings[&self.p.m.strings[*i as usize]])
+                    Const::Str(i) => u64::from(
+                        st + self
+                            .p
+                            .statics
+                            .string_at(&self.p.m.strings[*i as usize])
+                            .unwrap(),
+                    ),
+                    Const::Nullary(t, c) => {
+                        u64::from(st + self.p.statics.nullary_at(t.0, *c).unwrap())
                     }
-                    Const::Nullary(t, c) => u64::from(st + self.p.statics.nullary[&(t.0, *c)]),
-                    Const::Func(g) => u64::from(st + self.p.statics.closures[&g.0]),
+                    Const::Func(g) => u64::from(st + self.p.statics.closure_at(g.0).unwrap()),
                 };
                 self.vals[dst.index()] = v;
             }
@@ -1313,7 +1062,14 @@ impl<'p, 'c> Run<'p, 'c> {
         let (len, at) = (ctx.load_u32(t + 8), t + 12);
         let answer = sakura_rt::native::rt_hosted(ctx, id, at, len);
         rt::drop(ctx, t);
-        let s = rt::rt_vt_result(ctx, answer, hosted_top(name));
+        let s = rt::rt_vt_result(
+            ctx,
+            answer,
+            image::HOSTED
+                .iter()
+                .find(|(h, _)| *h == name)
+                .map_or(image::top::RESULT, |(_, t)| *t),
+        );
         if s == 2 {
             return Err(self.pad(before, None));
         }

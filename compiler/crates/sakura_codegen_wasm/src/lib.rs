@@ -4,21 +4,18 @@
 //!
 //! The module is the runtime object (`build.rs`) with the program merged in ([`link`]): the
 //! compiled functions ([`func`]) in the one `funcref` table after the runtime's own entries,
-//! the static block ([`data`]) as a passive data segment, a dispatcher the runtime's `run`
+//! the static block (`sakura_lir::image`) as a passive data segment, a dispatcher the runtime's `run`
 //! calls through its `sakura_link.dispatch` import, and the ABI §9 exports synthesised over
 //! the runtime's single-value functions.
 
-mod data;
 mod debug;
 mod func;
 pub mod link;
 pub mod validate;
 pub mod wasi;
 
-use std::collections::HashMap;
-
-use sakura_lir::layout::{Slot, SlotKind};
-use sakura_lir::lir::{Callee, Module, Repr, Term};
+use sakura_lir::image::{self, HOSTED, Statics};
+use sakura_lir::lir::{Callee, Module, Term};
 use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
 
 /// The `sakura_rt` wasm object, empty when `build.rs` could not build it.
@@ -88,152 +85,11 @@ pub fn available() -> bool {
     !RUNTIME.is_empty()
 }
 
-/// Native codes: runtime functions with the compiled-code signature (`rt_code_*`, then the
-/// `cps` builtins `rt_k_*`, each sorted), in the funcref table after the program's functions
-/// (codes `n..`; their code-table entries are in `emit`). The callback stub is code `n`.
+/// The native codes, in [`image::code_order`]: the runtime functions with the compiled-code
+/// signature, in the funcref table after the program's functions (codes `n..`; their code-table
+/// entries are in `emit`).
 fn natives(layout: &link::Layout) -> Vec<String> {
-    let mut code: Vec<String> = layout
-        .rt
-        .keys()
-        .filter(|k| k.starts_with("rt_code_") && *k != "rt_code_callback_stub")
-        .cloned()
-        .collect();
-    let mut cps: Vec<String> = layout
-        .rt
-        .keys()
-        .filter(|k| k.starts_with("rt_k_"))
-        .cloned()
-        .collect();
-    code.sort();
-    cps.sort();
-    let mut out = vec!["rt_code_callback_stub".to_string()];
-    out.extend(code);
-    out.extend(cps);
-    out
-}
-
-/// Host-built root handlers: the builtin that builds one, its effect, and the prefix of the
-/// native codes of its clauses (`rt_code_<prefix>_<op>`; a missing one is
-/// `rt_code_unsupported`, a `D090` when performed). Prefix `js` is a handler the JS runtime
-/// builds on the host: every clause is `rt_code_js_clause`, and the operations' arities follow
-/// the codes.
-const HOST_HANDLERS: &[(&str, &str, &str)] = &[
-    ("console_host", "std::console::Console", "console"),
-    ("clock_host", "std::clock::Clock", "clock"),
-    ("random_host", "std::random::Random", "random"),
-    ("log_stderr", "std::log::Log", "log_stderr"),
-    ("log_json", "std::log::Log", "js"),
-    ("sql_memory", "std::sql::Sql", "sql"),
-    ("sql_sqlite", "std::sql::Sql", "sql"),
-    ("task_host", "std::task::Task", "task"),
-    ("task_deterministic", "std::task::Task", "task"),
-    ("llm_anthropic", "std::llm::Llm", "js"),
-];
-
-/// The native codes `rt_init` receives (the callback stub, then the finalizers and clauses the
-/// runtime makes closures of), in its order.
-const NATIVE_CODES: &[&str] = &[
-    "rt_code_callback_stub",
-    "rt_code_file_close",
-    "rt_code_sql_rollback",
-    "rt_code_task_cancel_all",
-    "rt_code_prop_record",
-    "rt_code_prop_failures",
-    "rt_code_prop_forward",
-    "rt_code_http_body_close",
-    "rt_code_js_callback",
-    "rt_code_serve_request",
-];
-
-/// The frame and capture slot kinds of a native code's code-table entry: the words a code
-/// keeps across a suspension are released by the trampoline if the task unwinds meanwhile.
-fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
-    let (w, i) = (
-        Slot::WORD,
-        Slot {
-            kind: SlotKind::I64,
-            owns: false,
-        },
-    );
-    match name {
-        "rt_code_callback_stub" => (vec![], vec![w, i]),
-        "rt_code_http_body_close" => (vec![], vec![w]),
-        // `serve_listen`'s address and the handler it keeps; a served request's handler and
-        // request.
-        "rt_k_serve_listen" | "rt_code_serve_request" => (vec![w, w], vec![]),
-        "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
-        // Slot 0 the instance, 1 the activation, then the arguments, kept while a
-        // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`); the
-        // capture is the instance's handle, retired with the handler.
-        "rt_code_sql_query" => (vec![i, i, w, w], vec![w]),
-        "rt_code_sql_execute" | "rt_code_sql_transaction" => (vec![i, i, w], vec![w]),
-        "rt_code_sql_rollback"
-        | "rt_code_prop_record"
-        | "rt_code_prop_failures"
-        | "rt_code_prop_forward" => (vec![], vec![i, i]),
-        // `property_run`: its arguments, the host's session and the running case.
-        "rt_k_property_run" => (vec![i, w, w, w, i, i, i, w, i, i], vec![]),
-        // `std::task::Task`'s clauses (`sakura_rt::task`): slot 0 the clause, 1 the activation,
-        // the arguments, then the clause's own state.
-        "rt_code_task_scope" => (vec![w, i, w, w, i], vec![w]),
-        "rt_code_task_spawn" => (vec![w, i, w, w, w], vec![w]),
-        "rt_code_task_join" => (vec![w, i, w], vec![w]),
-        "rt_code_task_all" => (vec![w, i, w, w, i, i, w], vec![w]),
-        "rt_code_task_race" => (vec![w, i, w, w, i, i], vec![w]),
-        "rt_code_task_yield_now" => (vec![w, i], vec![w]),
-        // The clause, the activation, up to four arguments, the host's session, a flag;
-        // captures the instance's handle, the operation and its arity.
-        "rt_code_js_clause" => (vec![w, i, w, w, w, w, i, i], vec![w, i, i]),
-        // The closure, its argument, the kept closures, the host's session, a flag; captures
-        // the function's `callback` handle, its id and the kept closures.
-        "rt_code_js_callback" => (vec![w, w, w, w, w, w, i, i], vec![w, i, w, w, w, w]),
-        _ => (vec![], vec![]),
-    }
-}
-
-/// Builtins the Node host implements by delegating to the JS runtime (`sakura_wasm_host.js`
-/// `HOSTED`): their arguments and results cross in `sakura-vt1`. Schemas cross as their JS
-/// text (ABI §8.1). `cli_parse` is `cps` but answers at once. Each comes with the top of its
-/// declared result (`sakura_rt::vt::top`, `ok | err << 8`), which `rt_vt_result` checks a
-/// host answer against (security review W2); `cli_parse`'s `T` is any `Schema` type.
-pub const HOSTED: &[(&str, u32)] = &[
-    ("cli_args", top::LIST),
-    ("cli_parse", top::ANY | top::CLI_ERROR << 8),
-    ("env_get", top::OPTION),
-    ("file_open", top::RESULT),
-    ("file_read", top::RESULT),
-    ("file_write", top::RESULT),
-    ("fs_exists", top::BOOL),
-    ("fs_list", top::RESULT),
-    ("fs_memory_root", top::DIR),
-    ("fs_read", top::RESULT),
-    ("fs_root", top::DIR),
-    ("fs_subdir", top::RESULT),
-    ("fs_write", top::RESULT),
-    ("http_body_of", top::BODY),
-    ("http_recording_append", top::RESULT),
-    ("http_recording_append_stream", top::RESULT),
-    ("http_recording_lookup", top::RESULT),
-    ("http_recording_lookup_stream", top::RESULT),
-    ("http_recording_open", top::RESULT),
-    ("json_decode", top::RESULT),
-    ("json_encode", top::STRING),
-    ("json_parse", top::RESULT),
-    ("json_schema", top::JSON),
-];
-
-/// `sakura_rt::vt::top`, the result tops `HOSTED` names (the runtime crate is not a dependency).
-mod top {
-    pub const ANY: u32 = 0;
-    pub const BOOL: u32 = 1;
-    pub const STRING: u32 = 2;
-    pub const LIST: u32 = 3;
-    pub const OPTION: u32 = 4;
-    pub const RESULT: u32 = 5;
-    pub const JSON: u32 = 6;
-    pub const CLI_ERROR: u32 = 7;
-    pub const DIR: u32 = 8;
-    pub const BODY: u32 = 9;
+    image::code_order(layout.rt.keys().map(String::as_str))
 }
 
 /// The functions the linker synthesises, in order, before the program's.
@@ -332,76 +188,28 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let first_user = layout.first_added + names.len() as u32;
     let n = m.funcs.len() as u32;
 
-    let mut statics = data::Statics::default();
-    let layout_bytes = m.layouts.to_bytes();
-    let layout_off = statics.bytes(&layout_bytes);
+    let mut statics = Statics::default();
     let natives = natives(&layout);
-    let slots: Vec<(Vec<Slot>, Vec<Slot>)> = natives.iter().map(|n| native_slots(n)).collect();
-    let native_codes: Vec<sakura_lir::layout::NativeCode<'_>> = natives
-        .iter()
-        .zip(&slots)
-        .map(|(n, (frame, caps))| (n.as_str(), frame.as_slice(), caps.as_slice()))
-        .collect();
-    let codes_off = statics.bytes(&sakura_lir::layout::code_table_with(m, &native_codes));
-    let effects_bytes = sakura_lir::layout::effect_table(m);
-    let effects_off = statics.bytes(&effects_bytes);
-    let ops_off = statics.bytes(&ops_table(m));
+    let native_names: Vec<&str> = natives.iter().map(String::as_str).collect();
+    let image::Tables {
+        layout: layout_off,
+        layout_len,
+        codes: codes_off,
+        effects: effects_off,
+        effects_len,
+        ops: ops_off,
+    } = image::tables(m, &mut statics, &native_names);
     let tests_bytes = tests_table(m);
     let tests_off = statics.bytes(&tests_bytes);
     let texts = wasi.then(|| wasi::Texts::new(&mut statics));
 
     let g = layout.first_global;
     let (static_base, inited, abi) = (g, g + 1, g + 2);
-    let code_of = |name: &str| n + natives.iter().position(|x| x == name).unwrap() as u32;
-    // The native codes the runtime itself builds closures of, in `rt_init`'s order.
-    let native_table: Vec<u8> = NATIVE_CODES
-        .iter()
-        .map(|name| code_of(name))
-        .flat_map(u32::to_le_bytes)
-        .collect();
-    let native_table_off = statics.bytes(&native_table);
-    // The native code of each operation of `effect` (`rt_code_<prefix>_<op>`, or
-    // `rt_code_unsupported`), as `u32`s in the static block: (effect id, offset, count).
-    let clause_codes = |statics: &mut data::Statics, effect: &str, prefix: &str| {
-        let e = m.effects.iter().position(|x| x.name == effect)?;
-        let ops = &m.effects[e].ops;
-        let mut codes: Vec<u32> = ops
-            .iter()
-            .map(|op| {
-                let native = if prefix == "js" {
-                    // The bridge passes at most four owned arguments and one owned result
-                    // (or none).
-                    let owned = |r: &Repr| matches!(r, Repr::Ptr | Repr::Word);
-                    let fits = op.sig.params.len() <= 4
-                        && op.sig.params.iter().all(owned)
-                        && (owned(&op.sig.ret) || op.sig.ret == Repr::Unit);
-                    if fits { "rt_code_js_clause" } else { "" }.to_string()
-                } else {
-                    format!("rt_code_{prefix}_{}", op.name)
-                };
-                match natives.iter().position(|x| *x == native) {
-                    Some(_) => code_of(&native),
-                    None => code_of("rt_code_unsupported"),
-                }
-            })
-            .collect();
-        if prefix == "js" {
-            codes.extend(ops.iter().map(|op| op.sig.params.len() as u32));
-        }
-        let codes: Vec<u8> = codes.into_iter().flat_map(u32::to_le_bytes).collect();
-        Some((
-            e as u32,
-            statics.bytes(&codes),
-            m.effects[e].ops.len() as u32,
-        ))
-    };
-    let mut host_handlers = HashMap::new();
-    for (builtin, effect, prefix) in HOST_HANDLERS {
-        if let Some(h) = clause_codes(&mut statics, effect, prefix) {
-            host_handlers.insert(builtin.to_string(), h);
-        }
-    }
-    let test_handler = clause_codes(&mut statics, "std::test::Test", "test");
+    let image::Handlers {
+        natives: native_table_off,
+        host: host_handlers,
+        test: test_handler,
+    } = image::handlers(m, &mut statics, n, &native_names);
     // Direct regions (design §17.118): each such function also gets a native twin, after the
     // program's functions.
     let regions = if opts.direct {
@@ -466,10 +274,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         rt: &layout.rt,
         static_base,
         host_handlers,
-        cps: natives
-            .iter()
-            .filter_map(|x| Some((x.strip_prefix("rt_k_")?.to_string(), code_of(x))))
-            .collect(),
+        cps: image::cps(n, &native_names),
         hosted: hosted_names
             .iter()
             .enumerate()
@@ -510,7 +315,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             .copied()
             .ok_or_else(|| format!("the runtime has no export {name}"))
     };
-    let static_len = statics.len();
+    let static_len = statics.finish();
     let mut funcs = vec![];
     let i32s = |k: usize| vec![ValType::I32; k];
 
@@ -604,12 +409,9 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     funcs.push(added(FIXED[2], i32s(1), i32s(1), f));
 
     // layout_table(), effect_table() -> (ptr, len)
-    for (k, (off, len)) in [
-        (layout_off, layout_bytes.len() as u32),
-        (effects_off, effects_bytes.len() as u32),
-    ]
-    .into_iter()
-    .enumerate()
+    for (k, (off, len)) in [(layout_off, layout_len), (effects_off, effects_len)]
+        .into_iter()
+        .enumerate()
     {
         let mut f = Function::new([]);
         let mut s = f.instructions();
@@ -740,42 +542,6 @@ fn added(name: &str, params: Vec<ValType>, results: Vec<ValType>, body: Function
 fn rt_step_type(rt: &link::Runtime<'_>) -> Result<u32, String> {
     rt.find_type(&[ValType::I32, ValType::I32], &[ValType::I32])
         .ok_or_else(|| "the runtime has no (i32, i32) -> i32 type".into())
-}
-
-/// The operation names of every effect, for effect traces (`Rt::trace`): `u32 n`, then per
-/// effect an offset to `u32 n_ops` and `n_ops` name offsets; names `u32 len` + UTF-8, padded
-/// to 4; offsets relative to the table.
-fn ops_table(m: &Module) -> Vec<u8> {
-    let n = m.effects.len();
-    let mut dir = vec![0u32; 1 + n];
-    dir[0] = n as u32;
-    let mut body: Vec<u32> = vec![];
-    let mut names: Vec<u8> = vec![];
-    let mut fix: Vec<(usize, usize)> = vec![];
-    for (i, e) in m.effects.iter().enumerate() {
-        dir[1 + i] = ((1 + n + body.len()) * 4) as u32;
-        body.push(e.ops.len() as u32);
-        for op in &e.ops {
-            fix.push((body.len(), names.len()));
-            body.push(0);
-            names.extend_from_slice(&(op.name.len() as u32).to_le_bytes());
-            names.extend_from_slice(op.name.as_bytes());
-            while !names.len().is_multiple_of(4) {
-                names.push(0);
-            }
-        }
-    }
-    let base = (1 + n + body.len()) * 4;
-    for (at, off) in fix {
-        body[at] = (base + off) as u32;
-    }
-    let mut out: Vec<u8> = dir
-        .iter()
-        .chain(&body)
-        .flat_map(|w| w.to_le_bytes())
-        .collect();
-    out.extend(names);
-    out
 }
 
 /// `tests()` (ABI §9): `u32 n`, then per test `u32 code` and the name and module (each

@@ -8,8 +8,8 @@
 
 use wasm_encoder::{BlockType, Function, InstructionSink, MemArg, ValType};
 
-use crate::data::Statics;
 use crate::link::Added;
+use sakura_lir::image::Statics;
 
 /// The program's WASI imports: `(name, params, results)` in `wasi_snapshot_preview1`.
 pub fn imports() -> Vec<(String, String, Vec<ValType>, Vec<ValType>)> {

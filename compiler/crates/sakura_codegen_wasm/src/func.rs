@@ -27,21 +27,11 @@ use sakura_lir::layout::{FrameDesc, SlotKind};
 use sakura_lir::lir::*;
 use wasm_encoder::{BlockType, Function, Ieee64, InstructionSink, MemArg, ValType};
 
-use crate::data::Statics;
+use sakura_lir::image::{Statics, check_message};
 
 /// The site a raised defect carries: a contract check's blame (`Inst::Check`) and its clause's
 /// own site id, or none.
 type Site = Option<(Option<(Var, u32)>, u32)>;
-
-/// A contract check's defect message, as the JS backend renders it (design §17.162): a
-/// refinement is named by its type, a clause by its function.
-pub fn check_message(c: &Contract, func: &str) -> String {
-    match c.code.as_str() {
-        "D010" => format!("refinement `{}` violated", c.name),
-        "D021" => format!("postcondition `{}` of {func} violated", c.name),
-        _ => format!("precondition `{}` of {func} violated", c.name),
-    }
-}
 
 /// Step codes (ABI §6.2).
 const RETURN: i32 = 0;
@@ -1818,7 +1808,7 @@ impl Gen<'_, '_> {
         live: &Live,
     ) -> Result<u32, String> {
         let import = self.env.hosted[name];
-        let expect = crate::HOSTED
+        let expect = sakura_lir::image::HOSTED
             .iter()
             .find(|(h, _)| *h == name)
             .map_or(0, |&(_, t)| t);

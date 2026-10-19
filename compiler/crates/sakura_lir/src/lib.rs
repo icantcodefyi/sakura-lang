@@ -6,6 +6,7 @@
 //! `sakura_eval::lir`.
 
 pub mod direct;
+pub mod image;
 pub mod layout;
 pub mod lir;
 pub mod lower;
