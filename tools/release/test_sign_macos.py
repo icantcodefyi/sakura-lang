@@ -43,6 +43,10 @@ elif name == "codesign":
         sys.exit(1)
     if os.environ.get("FAIL_VERIFY") and "--verify" in args:
         sys.exit(1)
+    if "--check-notarization" in args:
+        seen = pathlib.Path(os.environ["CALLS"]).read_text().count("--check-notarization")
+        if seen <= int(os.environ.get("FAIL_NOTARY_CHECKS", "0")):
+            sys.exit(1)
     if "--sign" in args:
         binary = pathlib.Path(args[-1])
         binary.write_bytes(binary.read_bytes() + b"SIGNED")
@@ -149,7 +153,15 @@ class Signing(unittest.TestCase):
         self.assertNotEqual(self.run_signing(NOTARY_STATUS="Invalid").returncode, 0)
 
     def test_verification_failure_is_fatal(self):
-        self.assertNotEqual(self.run_signing(FAIL_VERIFY="1").returncode, 0)
+        result = self.run_signing(FAIL_VERIFY="1", SAKURA_NOTARY_RETRY_SECONDS="0")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("::error::Reason: verify-macos: identity or signature requirement failed", result.stdout)
+
+    def test_notarization_lookup_is_retried(self):
+        result = self.run_signing(FAIL_NOTARY_CHECKS="2", SAKURA_NOTARY_RETRY_SECONDS="0")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        checks = [args for name, args in self.calls() if name == "codesign" and "--check-notarization" in args]
+        self.assertEqual(len(checks), 3)
 
     def test_missing_secret_fails_before_import(self):
         self.assertNotEqual(self.run_signing(APPLE_API_KEY_P8="").returncode, 0)

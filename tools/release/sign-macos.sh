@@ -30,7 +30,10 @@ reasons() {
     'errSecItemNotFound' 'errSecNotAvailable' 'errSecDecode' \
     'unable to build chain' 'no identity found' 'ambiguous' \
     'timestamp service is not available' 'User interaction is not allowed' \
-    'The specified item could not be found in the keychain' 'CSSMERR_TP_CERT_EXPIRED'; do
+    'The specified item could not be found in the keychain' 'CSSMERR_TP_CERT_EXPIRED' \
+    'verify-macos: identity or signature requirement failed' \
+    'verify-macos: online notarization check failed' \
+    'code failed to satisfy specified code requirement'; do
     if grep -Fq "$reason" "$1"; then
       echo "::error::Reason: $reason"
     fi
@@ -125,6 +128,7 @@ PY
   fi
   if ! bash "$(dirname "$0")/verify-macos.sh" "$binary" > "$work/verify.log" 2>&1; then
     echo '::error::The signed binary failed identity, signature, or online notarization verification'
+    reasons "$work/verify.log"
     exit 1
   fi
   echo "Signed and notarized $(basename "$binary") with the pinned P62B65A837 identity."
