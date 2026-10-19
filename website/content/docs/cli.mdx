@@ -51,7 +51,7 @@ contract checks are removed only where `sakura verify` proved them.
 | --- | --- | --- |
 | `--target js\|wasm` | build, run, test | The backend. Default `js`. `wasm` writes `main.wasm` with its Node host. |
 | `--out-dir DIR` | build, run, test | Where the build goes. Default `target/sakura/<target>`. |
-| `--json` | build, test | JSON Lines. `test` writes one `test` record per test, then a summary. |
+| `--json` | build, test | JSON Lines. `build` ends with a `summary`; `test` writes one `test` record per test, then a `test_summary`. |
 | `--manifest` | build | Also write `target/sakura/manifest.json`. See [Build manifest](/docs/agents/build-manifest). |
 | `--emit js\|lir` | build | Write the JS modules, or the WASM backend's LIR as text. |
 | `--layout tagged\|niche` | build | How `Option` is laid out in LIR. `niche` is not implemented and is refused. |
@@ -70,7 +70,7 @@ feature. Release binaries are built without it. See [Backends](/docs/tour/memory
 
 | Flag | Meaning |
 | --- | --- |
-| `--json` | `obligation` records, then a summary. |
+| `--json` | `obligation` records, then a `verify_summary`. |
 | `--target js\|wasm` | The integer profile obligations are checked on: `js` (±(2^53−1)) or `wasm` (`i64`). |
 | `--rlimit N` | Z3's resource limit per query. Default: `[verify] rlimit` in `sakura.toml`, else 10,000,000. |
 | `--solver PATH` | The Z3 binary. Default `z3` on `PATH`; it must be the pinned version, 5.3.1. |
@@ -80,7 +80,7 @@ feature. Release binaries are built without it. See [Backends](/docs/tour/memory
 | Command and flag | Meaning |
 | --- | --- |
 | `fmt --check` | Change nothing; list unformatted files and exit 1 if there are any. |
-| `audit --json` | `audit` records, then a summary. |
+| `audit --json` | `audit` records, then an `audit_summary`. |
 | `doc --search PATTERN` | Search by type pattern, for example `"fn(List<A>) -> Int"`. |
 | `doc --json` | One `symbol_query` record. |
 | `prompt --budget N` | Drop whole sections from the end to fit about `N` tokens (4 bytes per token). |

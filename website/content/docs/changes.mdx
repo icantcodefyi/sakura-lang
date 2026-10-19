@@ -75,7 +75,8 @@ The 1 MiB request-body limit and its `413` answer are unchanged from alpha.1.
   `symbol_query` record and `manifest.json` has `kind: "manifest"`. `sakura verify --json`
   writes schema 1.1 on every record, including a program that does not compile. The fields of
   every kind are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt).
-  The summary records split by command before v0.2.0; see [Stability](/docs/stability#changes-planned-before-v020).
+  After 0.1.0, the closing summary records split into one kind per command (`summary`,
+  `test_summary`, `audit_summary`, `verify_summary`); see [Diagnostics](/docs/agents/diagnostics#record-kinds).
 - [`V4004`](/docs/errors/V4004) limits a `match`, `catch` or `let` pattern decision tree to
   1,048,576 nodes. Or-patterns and copied wildcard rows can expand the tree. It is reported
   while lowering (`build`, `run`, `test`), not by `check`. Thousands of flat literal or guarded

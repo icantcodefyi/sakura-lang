@@ -91,8 +91,13 @@ CLI verification support; the separate `features.solver` object reports `name`,
 `features.test_execution` reports whether the server has a test runner. A missing solver
 does not mean verification is unimplemented; `verify` is not an MCP tool.
 
-MCP results are JSON objects containing records and summaries, not the CLI
-`--json` JSON Lines stream. Read `tools/list` for the running server's schemas.
+MCP results are JSON objects, not the CLI `--json` JSON Lines stream, but the
+records in them are the `--json` records of the same name, built by the same code
+(design §17.242 (5c)): `check` holds `diagnostic` and `hole` records and a `summary`,
+`symbol_query` is the `symbol_query` record `sakura doc --json` prints, `hole_context`
+holds the `hole` record, and `test` holds `test` records and the `test_summary` (or
+the build's `diagnostic` records and `summary`). Read `tools/list` for the running
+server's schemas.
 
 ## Workflow
 

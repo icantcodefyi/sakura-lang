@@ -36,14 +36,14 @@ Analysis works on an immutable **workspace snapshot**. `check` without a `snapsh
 | --- | --- | --- |
 | `compiler_info` | none | `compiler`, `version`, `schema_version`, `edition`, `tools`, `features`, `workspace_root`, `manifest`, `lock_digest`. |
 | `check` | `snapshot`, `paths`, `budget_ms` | Diagnostic and hole records, a summary and `over_budget` ([Diagnostics](/docs/agents/diagnostics)). |
-| `symbol_query` | `name`, `id`, or `type_pattern` | Matching symbols with full signatures, including effect rows, error unions, and contracts. |
+| `symbol_query` | `name`, `id`, or `type_pattern` | The `symbol_query` record that `sakura doc --json` writes: matching symbols with full signatures, including effect rows, error unions, and contracts. |
 | `hole_context` | `snapshot`, `hole_id` | One [typed hole](/docs/agents/typed-holes) record. |
 | `docs_query` | `topic` or `symbol`, `budget_tokens` | Documentation text within a token budget. |
 | `explain_diagnostic` | `code` or `id` | The explanation for a code such as `V3001`, the same as `sakura explain`. |
 | `format` | `snapshot`, `paths` | A patch with the canonical formatting. |
 | `check_patch` | `snapshot`, `edits`, optional `frozen_specs` | Diagnostics for the patched code, plus the interface delta: which signatures the patch changes. |
 | `apply_patch` | `snapshot`, `patch_id`, optional `frozen_specs`, `write` | A new snapshot, or a conflict. |
-| `test` | `snapshot`, `selectors`, `seed`, `budget_ms` | Test results under deterministic handlers. |
+| `test` | `snapshot`, `selectors`, `seed`, `budget_ms` | Test results under deterministic handlers: `test` records and the `test_summary`, as `sakura test --json` writes them. |
 
 `features.backends` lists the compiled backends (including `wasm` when present). `features.verify` reports CLI verification support together with solver status; a missing solver does not remove that capability. `features.test_execution` reports whether a test runner is configured. `sakura verify` is implemented in the CLI; MCP `verify`, `refactor` and `impact` tools remain planned.
 
