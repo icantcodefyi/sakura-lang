@@ -2,7 +2,7 @@
 
 **The signature is the contract.**
 
-Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is complete (gate 10 signed on 2026-10-18 under the owner's delegation; see the [gate report](docs/plans/m3-gate-report.md) and the [security review](docs/reviews/m3-security-review.md)); no release or stable language/API contract exists.
+Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is complete (gate 10 signed on 2026-10-18 under the owner's delegation; see the [gate report](docs/plans/m3-gate-report.md) and the [security review](docs/reviews/m3-security-review.md)); the `0.1.0-alpha.1` preview is published, without a stable language/API contract.
 
 ![Status: pre-alpha / design phase](https://img.shields.io/badge/status-pre--alpha%20%2F%20design%20phase-orange)
 
@@ -24,11 +24,25 @@ The design brings together:
   workflow, and standard-library direction rather than assembly from unrelated tools.
 
 The JS backend implements typed effects/errors, runtime contracts, std handlers,
-permissions, tests, LSP and MCP. WASM/static verification (M4), native Perceus reuse
-(M5), and package management remain planned. See the [roadmap](website/content/docs/roadmap.mdx)
+permissions, tests, LSP and MCP. Source builds also run WASM through Node and verify
+contracts with pinned Z3. Native code is experimental, unreleased M5 work; package management
+remains planned. See the [roadmap](website/content/docs/roadmap.mdx)
 and [completion plan](docs/plans/m3-completion-and-m4.md); the [design](docs/design.md) remains provisional.
 
-Build with the pinned Rust toolchain and run with Node 26:
+Install the published preview with Node 26 and npm:
+
+```sh
+npm install --global --ignore-scripts sakuralang@0.1.0-alpha.1
+sakura --version
+```
+
+`latest` currently points to `0.1.0-alpha.1` for Apple silicon macOS and Linux x64.
+See [Install](website/content/docs/install.mdx) for platforms, release verification
+and other channels. The docs track main: [Unreleased](CHANGELOG.md#unreleased)
+changes require a source build until the next release. Sources use `.sak`; rename
+older `.sakura` files (there is no fallback). <!-- rename:keep -->
+
+Build current main with the pinned Rust toolchain and run with Node 26:
 
 ```sh
 cd compiler
@@ -56,8 +70,10 @@ refined-target `Untrusted.validate` (`V5003`), bounded literal evaluation (`V500
 Direct `Untrusted` interpolation binds values in SQL, escapes text in HTML and
 percent-encodes URL parts. See the
 [verified examples](docs/plans/m3-docs-verification.md) and their remaining limits.
-Isolated M4 runtime (R1–R3), LIR (L1–L2) and verifier (V1–V2) work ran before the M3
-gates; with M3 complete, the integration milestones (R4, L3, V3, W1, C1) are under way.
+See [current-main changes](website/content/docs/changes.mdx) for analysis caching,
+runtime limits, diagnostic repairs and portability, and the roadmap for M4 gates.
+Benchmark reports are workload-specific; `bench/bench envelope` compares WASM with
+matched native-language ports and does not itself establish a passing M4 envelope.
 
 ## A small promise
 

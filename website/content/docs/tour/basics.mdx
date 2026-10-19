@@ -4,7 +4,7 @@ description: Lexical rules, bindings, functions, control flow, operators, string
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
@@ -223,7 +223,7 @@ fn countdown(n: Int) -> Unit ! {Console} {
 
 `?name` is a typed hole: an unfinished expression. `sakura check` accepts holes and reports each one's expected type, the locals in scope, and ranked candidates. `sakura build` and `sakura run` reject them (`V2050`). See [Typed holes](/docs/agents/typed-holes).
 
-```sakura
+```sakura holes
 fn unfinished(x: Int) -> Int { ?result }
 ```
 
@@ -231,8 +231,12 @@ fn unfinished(x: Int) -> Int { ?result }
 
 One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.sak` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `sakura.toml`).
 
-```sakura
-import std/http.{Http, Request, Response}    // bind names directly
+This is a declaration or context-dependent excerpt, not a standalone program.
+
+```sakura fragment
+import std/http.{Http}                      // bind names directly
+import std/request.{Request}
+import std/response.{Response}
 import std/sql                               // bind only the module name `sql`
 import acme/billing/invoices as inv          // rename
 ```

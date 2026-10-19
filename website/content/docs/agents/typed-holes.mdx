@@ -4,7 +4,7 @@ description: How ?name holes let agents write a Sakura Lang program incrementall
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 A typed hole is a placeholder for code you have not written yet. In Sakura Lang it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
@@ -13,7 +13,7 @@ Holes turn "write the whole function and hope it compiles" into small steps, eac
 
 ## Writing a hole
 
-```sakura
+```sakura holes
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi
@@ -97,13 +97,13 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-The `ensures` clause is checked at runtime on every normal return, in every build mode, including `--release`. A wrong fill is a `D021` defect blamed on `clamp`, not a silent wrong answer.
+The `ensures` clause is checked on normal return unless an eligible build removes it using a matching authenticated proof. `run` and `test` retain it; there is no `build --release` flag. A wrong fill triggers `D021` blamed on `clamp`. See [verification](/docs/agents/verify).
 
 ## Narrower holes
 
 A hole takes its expected type from context. An annotation gives a hole a type when the context does not:
 
-```sakura
+```sakura holes
 fn greet(name: String) -> Unit ! {Console, Clock} {
   let now: Instant = ?now
   Console.print("hello, {name}; it is {Instant.format_iso(now)}")
@@ -124,7 +124,7 @@ The [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool.
 4. Fill holes one at a time, using `candidates`, `locals`, and `contracts_in_scope`. Re-check after each.
 5. When no `hole` records remain, run `sakura test --json`, then summarize any signature changes for review.
 
-The design does not yet say whether `sakura test` runs a program that still contains holes. Assume it does not.
+`sakura test`, like `build` and `run`, rejects remaining holes with `V2050`, even in a function the tests do not call.
 
 ## Next
 

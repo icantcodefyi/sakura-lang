@@ -4,7 +4,7 @@ description: Value semantics, var rebinding, compiler-inserted reference countin
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
@@ -74,9 +74,9 @@ The state is private to the instance, initialized once per `with`, and released 
 
 ## Reference counting and reuse
 
-With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The WASM backend implements conservative reference counting. The broader reuse and worker-thread design below remains planned for native ([design §8.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
+With no aliasable mutation and strict evaluation, the heap is an acyclic graph: a value can only reference values that existed before it. That makes reference counting complete without a cycle collector. The WASM backend implements conservative reference counting. The broader reuse design below remains experimental for native; worker threads are deferred ([design §8.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
 
-- **Non-atomic counts per task.** The compiler inserts `dup`/`drop` after Core lowering (Perceus). Values sent across worker threads are promoted to atomic counts on send.
+- **Non-atomic counts per task.** The native design inserts `dup`/`drop` after Core lowering (Perceus). Current native work is single-threaded; cross-thread atomic counts are deferred.
 - **Same-constructor reuse.** When a value is uniquely referenced, an update or a `match` that rebuilds a value of the same shape reuses its memory.
 - **Copy-on-write buffers** for `List`, `Map`, and `String`. A `var xs` whose last use is `List.push(xs, v)` appends in place when the count is one, which gives amortized O(1) appends without exposing uniqueness in the language.
 
@@ -119,7 +119,9 @@ fn befriend(g: Graph<Person>, a: Person, b: Person) -> (Graph<Person>, NodeId, N
 
 Files, sockets, database connections, HTTP bodies, and fibers are **resource types**: external types, declared without a body, whose representation belongs to the host. They are affine (used at most once as a whole), are not `Eq`, `Show`, or `Schema`, and are bound to a scope provided by their effect:
 
-```sakura
+Declaration excerpt; the omitted types come from std. This is not a standalone program.
+
+```sakura fragment
 effect Fs {
   fn with_file<T, e>(path: Path, mode: Mode, body: fn(File) -> T ! e) -> T ! {Fail<FsError> | e}
 }
@@ -158,7 +160,7 @@ WASM builds write `main.wasm` and the Node host files to `target/sakura/wasm`; `
 
 HTTP sends and streams, `Sql.sqlite`, `Llm.stream`, `Serve.host()` and `Log.json()` are implemented on WASM, including requests carrying `Secret` HTTP headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`): the header's value reaches the host's `fetch` and nothing else, and cassettes record it redacted, as on JS. Offline scripted/replayed streams are available. `test --record` requires `--target js` (both backends read the cassette it writes); ordinary tests and `test --contracts` run on both backends. User `@external(js, …)` bindings are rejected for WASM with `V8004`.
 
-WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM source spans (`sakura.debug`) and dynamic defect messages remain planned; defect codes are compared today.
+WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM defect codes, dynamic messages and source spans now match JS. Spans come from `sakura.debug`; `--strip` removes them. See [server limits and failures](/docs/changes#server-limits-and-failures) for host fault handling.
 
 ## Costs and limits
 

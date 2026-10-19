@@ -4,7 +4,7 @@ description: Primitive types, records, variants, refinements, generics with deri
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
@@ -68,6 +68,8 @@ Adding a variant makes every `match` on `Shape` that does not handle it a compil
 A value that may be absent has type `Option<T> = None | Some(T)`.
 
 ```sakura
+type User = { id: Int, email: String, name: String }
+
 fn find_user(users: List<User>, email: String) -> Option<User> {
   List.find(users, fn(u) { u.email == email })
 }
@@ -124,7 +126,7 @@ type NonEmpty<T> = List<T> where List.len(it) > 0
 The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
 
 - `Percent.validate(n) -> Result<Percent, Violation>`, generated for every refined type. Use it for external input.
-- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; the planned `sakura audit` will list each use.
+- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; `sakura audit` lists each use.
 - Schema decoding (`Json.decode`, `Request.json`, `Llm.generate`), which checks nested refinements and reports a typed `DecodeError`, never a defect.
 - Literals: `let p: Percent = 50` is checked at compile time where possible, otherwise at program start (warning `V5002`).
 
@@ -189,6 +191,7 @@ So `"{name}"` with `name = "Ada"` prints `Ada`, while `"{[name]}"` prints `["Ada
 
 ```sakura
 import std/json.{DecodeError}
+type User = { id: Int, email: String, name: String }
 
 fn start() -> List<Int> {
   let xs: List<Int> = List.empty()   // not List<Int>.empty()
@@ -206,7 +209,8 @@ fn load(text: String) -> User ! {Fail<DecodeError>} {
 `type Meters = Float` is a transparent alias: `Meters` and `Float` are the same type. For a distinct type, use a refinement or a single-variant type:
 
 ```sakura
-import std/http.{Request, Response}
+import std/request.{Request}
+import std/response.{Response}
 import std/sql.{Sql}
 
 type Meters = Float                              // alias
@@ -256,7 +260,7 @@ pub fn area(s: Shape) -> Float {
 }
 ```
 
-```sakura
+```sakura context=shapes
 // src/report.sak, in package `app`
 import app/shapes.{Shape}
 
@@ -272,6 +276,8 @@ On a generic `A` with no constraint, `x.len()` is an error with a fix suggesting
 `match` must be exhaustive. A missing case is `V4001` with a witness value; a redundant arm is `V4002`. Guards never count toward coverage.
 
 ```sakura
+type User = { id: Int, email: String, name: String }
+
 fn summary(xs: List<Int>) -> String {
   match xs {
     [] => "empty"
@@ -310,6 +316,8 @@ A tagged string `tag"…"` desugars to `tag.template(parts, values)`, where `tag
 
 ```sakura
 import std/sql.{Sql, SqlError}
+type Email = String where String.contains(it, "@")
+type User = { id: Int, email: Email, name: String }
 
 fn find_by_email(email: Email) -> List<User> ! {Sql, Fail<SqlError>} {
   Sql.query(sql"select id, email, name from users where email = {email}")

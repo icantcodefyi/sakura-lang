@@ -4,7 +4,7 @@ description: Sakura Lang is an agent-first, general-purpose programming language
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang is the language agents write: code that keeps its promises.
@@ -85,7 +85,7 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 
 - **Design:** [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
 - **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It parses, resolves, type- and effect-checks and executes the core language and implemented M3 features on JavaScript.
-- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records the remaining M3 gates.
+- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records remaining gates. These docs track main; [changes since alpha.1](/docs/changes) need a source build until the next release.
 
 The [roadmap](/docs/roadmap) lists every milestone, M0 to M5.
 

@@ -4,7 +4,7 @@ description: Build the Sakura Lang compiler from source, then check, test and ru
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The compiler runs the core language and substantial M3 functionality on JavaScript, including contracts, std handlers, permissions, scaffolding, LSP and MCP. The alpha.1 preview is published for Apple silicon macOS and Linux x64; see [Install](/docs/install) for commands and platform evidence. See the [roadmap](/docs/roadmap) for remaining M3 gates and planned M4/M5 work.
+  The compiler runs the core language and substantial M3 functionality on JavaScript, including contracts, std handlers, permissions, scaffolding, LSP and MCP. The alpha.1 preview is published for Apple silicon macOS and Linux x64; see [Install](/docs/install) for commands and platform evidence. See the [roadmap](/docs/roadmap) for M4 gates and experimental M5 work.
 </Callout>
 
 ## Install from source
@@ -116,7 +116,7 @@ Hello, world
 
 Suppose `greet` starts printing without declaring it:
 
-```sakura title="hello/src/main.sak"
+```sakura expect=V3001 title="hello/src/main.sak"
 /// Build a greeting for a person.
 fn greet(name: String) -> String {
   Console.print("greeting {name}")
@@ -187,7 +187,7 @@ Spans are zero-based, half-open UTF-8 byte offsets, and an edit applies only whi
 
 A typed hole is how an agent asks the compiler what fits:
 
-```sakura
+```sakura holes
 fn unfinished(x: Int) -> Int { ?result }
 ```
 
@@ -209,7 +209,7 @@ hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(
 | `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
 | `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt)) |
 
-Also available: `sakura new`, `sakura init`, `sakura fix`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. `sakura doc` and trust-site `sakura audit` are M3 completion work. Package commands remain planned; verification/WASM are M4 and native is M5.
+Also available: `sakura new`, `sakura init`, `sakura fix`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. `sakura doc`, trust-site `sakura audit`, `sakura verify`, and WASM build/run/test are implemented. Package commands remain planned; native is experimental M5 work. See [changes on main](/docs/changes) for differences from the published preview.
 
 ## Next
 

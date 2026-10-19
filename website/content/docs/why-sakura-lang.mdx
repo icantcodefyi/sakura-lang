@@ -24,7 +24,9 @@ Make the signature the contract, and make the compiler enforce it.
 
 In Sakura Lang, a function signature states what the function takes, what it returns, every effect it may perform, every error it may fail with, and the guarantees it makes about its result:
 
-```sakura
+This is a declaration or context-dependent excerpt, not a standalone program.
+
+```sakura fragment
 fn signup(email: Email) -> User ! {Users, Clock, Random, Fail<SignupError>}
   ensures result.email == email
 ```

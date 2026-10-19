@@ -4,7 +4,7 @@ description: Source-built JS and WASM execution, contract verification, and the 
 ---
 
 <Callout type="info" title="Where things stand">
-  Sakura Lang is pre-alpha and builds from source. The core language and M3 functionality run on JavaScript. **M3 is complete:** gates 1–9 and 11 pass at `a843e60` and gate 10, the security review, was signed on 2026-10-18 under the owner's delegation (see the gate report below). `sakura build`, `run` and `test` support `--target wasm`, and `sakura verify` checks contracts with a separately installed solver. There are no milestone dates or published releases.
+  Sakura Lang is pre-alpha and builds from source. The core language and M3 functionality run on JavaScript. **M3 is complete:** gates 1–9 and 11 pass at `a843e60` and gate 10, the security review, was signed on 2026-10-18 under the owner's delegation (see the gate report below). `sakura build`, `run` and `test` support `--target wasm`, and `sakura verify` checks contracts with a separately installed solver. The alpha.1 preview is published; subsequent changes on main are not in that package. There are no milestone dates.
 </Callout>
 
 The sequence is **M3 → M4 → M5**. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
@@ -29,7 +29,7 @@ All twelve repository examples pass their current harness modes: seven run plus 
 
 ### M3 exit gates
 
-The original M3 acceptance bar has eleven gates on `origin/master` on Ubuntu and macOS. Design §17.128 permits the M4 integration that has since landed while the owner’s security review remains pending. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
+The original M3 acceptance bar had eleven gates on the default branch on Ubuntu and macOS. The delegated security review has since closed M3. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
 
 1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` pass with both `UI_MILESTONE` and `SEMANTICS_MILESTONE` at 3.
 2. Two-way: every registered diagnostic except `V9999` and retired codes such as `V5002` is constructed by a crate or runtime, and every code constructed in `crates`, `runtime/js` or `runtime/rt` is registered. Every code a program can provoke from source has a passing UI fixture; `W8001` has one skipped by milestone, and `V9001`, `V8020` and the runtime-limit defects are covered by their own tests. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates runtime/js runtime/rt --exclude-dir=sakura_diagnostics | sort -u` against the registry in both directions.
@@ -52,10 +52,18 @@ Working today (source builds; no stable release):
 - **WASM (W1/W2):** [`build`, `run` and `test --target wasm`](/docs/tour/memory#backends), with Node as the host. The [runtime ABI](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/runtime/rt/ABI.md) defines bounded linear memory, conservative reference counting, persistent collections, frames, the trampoline and scheduler. LIR lowering makes continuations, closure environments, boxing and balanced `Dup`/`Drop` explicit; `sakura build --emit lir` writes it as text. The [ABI research](https://github.com/icantcodefyi/sakuralang/blob/main/research/09-m4-abi-and-encoding.md) records the design rationale.
 - **Host operations:** HTTP sends and streams, SQLite, `Llm.stream`, `Serve.host()` and `Log.json()` run on WASM, including requests carrying `Secret` headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`), as approved by the security review (W0). Cassettes still never see a secret header's value. This is not live-provider validation.
 - **Parity:** CI requires the JS/WASM matrix on Ubuntu and macOS through `ci-required`. The harness compares the run/test semantics corpus and example runs for output, exits, defects and effect traces, including task numbers. Backend-specific expectations preserve the intentional JS safe-integer / WASM i64 differences. It also reports host-import coverage; local-server tests exercise network and serving operations outside the offline corpus.
-- **Verification:** [`sakura verify`](/docs/agents/verify) runs pinned Z3 workers over Core obligations and reports `proved`, `disproved`, `unknown` or `unsupported`. cvc5 cross-checks `unsat` when installed. JS builds remove only eligible checks covered by matching authenticated proofs; other checks remain. Body edits invalidate the function's own proofs. See the [verification tour](/docs/tour/verification).
+- **Verification:** [`sakura verify`](/docs/agents/verify) runs pinned Z3 workers over Core obligations and reports `proved`, `disproved`, `unknown` or `unsupported`. cvc5 cross-checks `unsat` when installed. JS and WASM builds remove only eligible checks covered by matching authenticated proofs; other checks remain. Body edits invalidate the function's own proofs. See the [verification tour](/docs/tour/verification).
 - **JS performance:** direct calls, bound handler dispatch, interval-proved arithmetic, owned updates and total-predicate `D011` bracket elision have landed in the WS-P work. `sakura build --dump direct`, `--dump core` and `--dump owned` expose compiler facts; the internal `--no-direct` switch exercises the CPS path. These optimizations do not establish the full performance acceptance bar or a WASM speedup.
 
-Still planned: resumable JS loops, LIR direct-region optimization, niche layout (`--emit lir --layout niche` is refused; WASM emission always uses tagged layout), removal of proved predicates' computation, the full WASM performance envelope, cached-verdict reuse in `verify`, and i64 counterexample replay. Tagged layout is the implemented baseline. Wasmtime remains an additional gate for pure and fake-handler programs; the CLI runs WASM through Node. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md#37-after-the-in-flight-work-round-9-17139) tracks these separately from W1/W2 parity.
+Resumable JS loops, direct WASM calls for eligible local handlers and callbacks,
+removal of total proved predicates, cached-verdict reuse and i64 counterexample
+replay have landed. Tagged layout remains the baseline: `--emit lir --layout niche`
+is refused. Native execution and Perceus reuse are experimental M5 work, not a
+supported backend. The full performance acceptance bar is a separate gate:
+[`bench/bench envelope`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/README.md#m4-envelope-17213-2)
+compares same-commit, same-host WASM runs with the matched native-language ports.
+An advisory or incomplete report is not a pass. See [changes on main](/docs/changes)
+and the [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md).
 
 ### Agent development tools (DX0–DX7)
 
@@ -68,6 +76,8 @@ M4 excludes WasmGC, JSPI, typed continuations, WASI components, browser std supp
 ## M5: native code and Perceus
 
 Planned: a Cranelift backend adds native execution, borrow inference and reference-counted in-place reuse, `W8001` copy diagnostics, and internal region optimizations. Acceptance requires that live aliases preserve values, dead aliases allow reuse, cancellation and handler state pass sanitizer checks, and JS, WASM and native agree on the applicable corpus. No native performance claim is established yet.
+
+Native work is **experimental and unreleased**. N0a (toolchain skeleton) and N1a (the native runtime, root handlers, `Env` and `Fs` from the LIR evaluator's harness) are on main behind the opt-in `native` Cargo feature. No release archive or npm package contains it, and `--target native` does not exist yet; the Cranelift backend is plan row N2 in the [M5 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m5-native.md).
 
 ## Decisions still open
 

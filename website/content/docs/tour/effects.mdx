@@ -4,12 +4,14 @@ description: How Sakura Lang records every side effect and every expected failur
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Sakura Lang, every effect a function may perform is listed in its signature, after `!`.
 
-```sakura
+This is a declaration or context-dependent excerpt, not a standalone program.
+
+```sakura fragment
 fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
 ```
 
@@ -49,6 +51,7 @@ pub fn main() -> Unit ! {Console, Clock} { greet("Sakura Lang") }
 An `effect` declares operations as function signatures, with no bodies:
 
 ```sakura
+type Table = String
 error DbUnavailable(reason: String)
 
 effect Db {
@@ -67,7 +70,9 @@ A row is a set of unique labels plus an optional open tail: `{Db, Clock | e}`. A
 
 A higher-order function should not fix the effects of the function it receives. A lowercase type parameter is an **effect-row variable**:
 
-```sakura
+This is a declaration or context-dependent excerpt, not a standalone program.
+
+```sakura fragment
 fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
 ```
 
@@ -89,6 +94,7 @@ A top-level function must declare its row variables (`<e>`). A function value wi
 There are no exceptions. Expected failure is `Fail<E>`, the one compiler-known effect. `E` is an **error union**: a set of nominal `error` tags.
 
 ```sakura
+type Email = String where String.contains(it, "@")
 error EmailTaken(email: Email)
 error Banned
 type SignupError = EmailTaken | Banned           // union alias: tags only
@@ -205,7 +211,7 @@ Top-level rows are never inferred. Every top-level `fn` states its row, so a cha
 
 If a body performs an effect its signature does not allow, `sakura check` reports `V3001`:
 
-```sakura title="src/users/repo.sak"
+```sakura expect=V3001 title="src/users/repo.sak"
 type User = { id: String, name: String, seen: Instant }
 
 effect Db {

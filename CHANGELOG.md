@@ -2,10 +2,18 @@
 
 All notable changes to Sakura Lang are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Future releases follow the [stability policy](STABILITY.md). No release has been
-published yet.
+Releases follow the [stability policy](STABILITY.md). The published preview is
+`v0.1.0-alpha.1`; this development log also retains earlier implementation history.
+Compare the release tag with main when identifying changes not in that preview.
 
 ## [Unreleased]
+
+### Documentation
+
+- Rechecked M4 guides against the compiler, repaired runnable tour examples, and
+  documented current-main migration notes, runtime limits, caching and release status.
+  Added a broad sample gate and rendered-route/link checks; refreshed generated agent
+  references and kept the skill entry point below 7,000 bytes.
 
 ### Performance
 

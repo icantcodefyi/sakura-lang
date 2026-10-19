@@ -4,7 +4,7 @@ description: How an AI agent is expected to work with Sakura Lang, from reading 
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. No release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and M3 standard library on JavaScript, with LSP and stdio MCP tools. WASM and verification are available as previews; backend parity and optimization work remain. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Sakura Lang is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
@@ -77,7 +77,7 @@ Read `docs/llms.txt` once per session (or run `sakura prompt`). It is the entire
 
 ### Write signatures first, bodies as holes
 
-```sakura
+```sakura holes
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
   requires ordered: lo <= hi
   ensures bounded: lo <= result && result <= hi

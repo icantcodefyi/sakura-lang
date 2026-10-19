@@ -4,7 +4,9 @@ description: Install the Sakura Lang preview on macOS or Linux, with release-spe
 ---
 
 Sakura Lang is pre-alpha. `sakuralang@0.1.0-alpha.1` is published on npm for
-Apple silicon macOS and Linux x64. It has no stable language or API compatibility
+Apple silicon macOS and Linux x64. The npm `latest` tag points to this preview.
+These docs also describe [changes on main](/docs/changes), which require a source
+build until the next release. It has no stable language or API compatibility
 promise. Install Node 26 before using npm, `sakura run`, or `sakura test`.
 The standalone compiler can check and build without Node; the installer does not
 install Node for you.
@@ -140,12 +142,19 @@ attestation verification must also pass. Without `gh`, it reports
 `integrity verified, not attested`. To keep the command available in new shells,
 add the PATH line to your shell profile yourself.
 
+New macOS tag releases require Developer ID signing (team `P62B65A837`) and Apple
+notarization before packaging. This requirement does not retroactively sign alpha.1.
+Bare Mach-O executables cannot carry stapled tickets. Installer prefixes must be
+absolute; use `--prefix /absolute/path` to override the default.
+
 ## Windows x64: coming in v0.2.0
 
 Windows is coming in v0.2.0. It is not **Supported** by alpha.1, and no Windows
-install command or OS floor is advertised yet. The planned target is
-`x86_64-pc-windows-msvc`, with npm and `install.ps1`; it must enter the inventory
-and pass its smoke tests before those instructions become available. A future
+install command or OS floor is advertised yet. The target is
+`x86_64-pc-windows-msvc`. Its ZIP, npm package and checksum-verifying `install.ps1`
+are built and dry-run tested on main, with the compiler suites and JS/WASM parity
+on hosted Windows runners; install instructions appear once v0.2.0 publishes and
+passes its published smoke. A future
 Windows Server runner result will not imply a Windows 11 device run. Windows
 ARM64 is not an inventory target. Proof caching on Windows is not implemented.
 

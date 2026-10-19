@@ -2,15 +2,19 @@
 
 ## Today: pre-alpha / design phase
 
-Sakura Lang has a source-buildable compiler, but no released compiler, supported versions, or stable language/API contract.
+Sakura Lang has a published `0.1.0-alpha.1` preview and a source-buildable compiler,
+but no stable language/API contract. Release-specific platform evidence is listed
+on the [install page](website/content/docs/install.mdx).
 [The design](docs/design.md) is provisional; examples are illustrative unless
 explicitly backed by a runnable test. Research and performance goals do not imply
 verified soundness, production readiness, or measured efficiency.
 
 ## Before 1.0
 
-The intended first preview is `0.1.0-alpha.1`, followed by a deliberately scoped
-`0.1.0`; neither exists today. Preview behavior may change between prereleases.
+The first preview is `0.1.0-alpha.1`; `0.1.0` is not yet published.
+Preview behavior may change between prereleases.
+[Draft RFC 0001](docs/rfcs/0001-stability-guarantees.md) proposes stronger guarantees
+for owner acceptance at v0.2.0; it does not change this policy until accepted.
 Once numbered non-prerelease versions exist, reserve **minor releases** for
 deliberate breaking language/API changes and **patch releases** for compatible
 fixes. Describe affected programs, rationale, and migration steps in release notes.

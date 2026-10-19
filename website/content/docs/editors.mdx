@@ -40,6 +40,15 @@ The same `.vsix` installs in editors built on VS Code that accept local extensio
 - **Show Hole Context** (command palette, or right-click in a `.sak` file): the [typed hole](/docs/agents/typed-holes) at the cursor as JSON, the same record the MCP `hole_context` tool returns: expected type, effects, locals and candidates.
 - **Highlighting** from the grammar this site uses, plus comment toggling, bracket matching and auto-closing pairs.
 
+## Tree-sitter
+
+[`editors/tree-sitter-sakura`](https://github.com/icantcodefyi/sakuralang/tree/main/editors/tree-sitter-sakura)
+provides the grammar, Rust and Node bindings, highlighting, locals, indentation,
+and SQL/HTML injection queries. Neither binding is published. The repository
+README lists build steps and parser differences; the compiler parser remains
+authoritative. The corpus checks LF and CRLF token spans. VS Code still uses
+its TextMate grammar; installing this tree-sitter grammar does not add LSP features.
+
 ## Other editors
 
 Any editor with an LSP client can run `sakura lsp` with no arguments in the project directory. The server takes its project from the first workspace folder, prefers UTF-8 positions and falls back to UTF-16, and answers `sakura/holeContext` (a `textDocument` and `position`) with the hole record. Diagnostics carry a `codeDescription` link; quick fixes carry their impact class in `data.impact` and, when the client supports `documentChanges`, the document version they were computed for.

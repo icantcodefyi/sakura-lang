@@ -113,3 +113,18 @@ MCP results are JSON objects containing records and summaries, not the CLI
 A diagnostic fix id (`f:…`) can be passed to `apply_patch` directly. Fixes whose impact is
 `contract_change` or `authority_change` are refused there; make those changes with
 `check_patch` so they are reviewed.
+
+## Current-main cache and diagnostics
+
+The server reuses std analysis in memory and from the per-build disk cache at
+`<cache>/sakuralang/std`. Set `SAKURA_CACHE_DIR` to isolate concurrent jobs, or
+`SAKURA_NO_CACHE=1` to disable disk caching. This is not the verifier proof cache.
+Missing, damaged or foreign entries are recomputed without changing diagnostics.
+
+File URIs use RFC 8089 on Windows as well as Unix; `paths` accepts equivalent
+spellings such as an encoded drive colon. Terminal output uses OS paths. Syntax
+errors suppress diagnostics by their location in a broken body, not all diagnostics
+raised while checking that body; an error at a signature in another module remains
+visible. Rechecks include refinement dependencies reached through contracts.
+See the [current-main guide](../website/content/docs/changes.mdx) for migration
+notes and the distinction from the published alpha.1 package.

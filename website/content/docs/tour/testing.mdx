@@ -4,7 +4,7 @@ description: Unit tests, property tests, contract-generated tests, snapshots, an
 ---
 
 <Callout type="warn" title="Pre-alpha">
-  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is still in progress; no release or stable compatibility contract exists. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
+  The source-built compiler runs the core language and much of M3 on JavaScript: contracts, typed effects and failures, std handlers, permissions, LSP and MCP. M3 is complete. The alpha.1 preview is published without a stable compatibility contract; these docs track current main. See the [roadmap](/docs/roadmap) for implemented features and remaining gates.
 </Callout>
 
 Tests are part of the language. `test` and `property` are top-level items, so they live next to the code they test, use the same handlers as production code, and run with `sakura test`. Assertions come from `std/test`, whose names are in the prelude ([design §10.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
@@ -69,6 +69,10 @@ Because a test's row includes `Fail<E>`, a test can call failing functions direc
 [Contract](/docs/tour/contracts) violations are defects, not failures, so `try` cannot catch them. Use `expect_defect`:
 
 ```sakura
+fn clamp(x: Int, lo: Int, hi: Int) -> Int
+  requires lo <= hi
+{ Int.clamp(x, lo, hi) }
+
 test "precondition is a caller defect" {
   expect_defect(fn() { clamp(1, 5, 0) })
 }
@@ -169,9 +173,9 @@ See [Handlers](/docs/tour/handlers) for how `with` and handler state work.
 
 Every source of nondeterminism in Sakura Lang is an effect: time, randomness, scheduling, network. Installing deterministic handlers for all of them makes a concurrent test reproducible from its seeds. There is no separate simulator; `with` is the mechanism ([design §8.7](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
 
-```sakura
+```sakura context=fetch-both
 test "deterministic under virtual time" {
-  with Http.scripted([(Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+  with Http.scripted([(Matcher.Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
     expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
   }
 }
@@ -197,13 +201,15 @@ property "normalize preserves membership"(xs: List<Int>, x: Int)
 
 A `requires` clause on a property restricts the generated inputs. Like every contract, it must be in the [contract subset](/docs/tour/contracts#the-contract-subset). `property` parameters always use generators derived from their types. When that is not enough, write a `test` that drives explicit generators from `std/gen`:
 
-```sakura
+```sakura context=normalize
 import std/gen
 
 test "normalize output is strictly ascending" {
   gen.for_all(gen.list(gen.int(-5, 5), 20), 200, fn(xs) {
     let ys = normalize(xs)
-    expect(List.zip(ys, List.slice(ys, 1, List.len(ys))).all(fn(p) { p.0 < p.1 }))
+    if List.len(ys) > 1 {
+      expect(List.zip(ys, List.slice(ys, 1, List.len(ys))).all(fn(p) { p.0 < p.1 }))
+    }
   })
 }
 ```
@@ -259,7 +265,7 @@ If more than 90% of candidates are discarded, the property fails with exit `3` a
 
 `expect_snapshot` compares a value's [`Show` output](/docs/tour/types#show-output) with a stored file at `tests/__snapshots__/<module>/<name>.snap`. Here the stored snapshot is `[1, 2, 3]`:
 
-```sakura
+```sakura context=normalize
 test "rendering is stable" {
   expect_snapshot("normalize_doc", normalize([3, 1, 3, 2]))
 }
