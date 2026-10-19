@@ -55,7 +55,9 @@ pub fn bearer(req: Request, token: Secret<String>) -> Request {
 }
 
 /// The root handler the host installs for a `main` that declares `Http`: `fetch`, limited
-/// to the manifest's `net` list.
+/// to the manifest's `net` list. Redirects are followed for at most 20 hops, each hop's
+/// `host:port` checked against `net` before it is fetched; a hop to another origin drops
+/// `authorization` and every `secret_headers` entry.
 pub fn host() -> Handler<Http> {
   handler Http {
     fn send(req) { ok_or_fail(http_send(req)) }
@@ -69,6 +71,8 @@ pub fn host() -> Handler<Http> {
 
 /// Forwards to the enclosing `Http` only for requests to the listed `host:port` entries (a
 /// URL without a port means 443 for `https` and 80 otherwise); others fail with `HttpError`.
+/// The list is checked against the request's URL; redirect hops are checked by `host()`
+/// against `net`, not against this list.
 pub fn scoped(hosts: List<String>) -> Handler<Http, {Http}> {
   handler Http {
     fn send(req) {

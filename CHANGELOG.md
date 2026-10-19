@@ -45,6 +45,19 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   target's corpus between runs as an artifact, and a manual run takes `max_total_time`, the
   seconds per target.
 
+### Security
+
+- `Http.host()` checks the manifest's `net` list on every redirect hop (design §17.262 (4),
+  RFC 0002 §2.4). The JS host, and the WASM host that shares its code, checked only the first
+  URL and let `fetch` follow redirects, so a granted host could send the program to any host.
+  Redirects are now followed for at most 20 hops, each hop's `host:port` checked before it
+  is fetched; a refused hop fails `HttpError` with the first request's message
+  (`<host:port> is not in the manifest's net list`), the 21st hop fails with
+  `too many redirects`, and a redirect to a scheme other than `http` or `https` fails with
+  `redirect to <scheme>: refused`. A hop to another origin drops `authorization` and every
+  `secret_headers` entry for the rest of the chain. No signature changes. `Http.scoped`'s
+  list is still checked against the request's URL only. The native backend has no `Http`.
+
 ## [0.1.0] - Unreleased
 
 The first non-alpha preview and the close of milestone M4, the WebAssembly backend (exit

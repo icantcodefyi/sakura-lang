@@ -3426,26 +3426,73 @@ export function task_deterministic(seed) {
 // Http client (design §10.4) over `fetch`, limited to the manifest's `net` hosts when the
 // driver passes `[permissions]`.
 
+/** Why the manifest's `net` refuses the URL `u`, or `undefined` when it does not. */
+function netRefusal(u) {
+  const net = granted()?.net;
+  const host = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
+  return net === undefined || net.includes(host) ? undefined : `${host} is not in the manifest's net list`;
+}
+
 /** `fetch` arguments for `req`, or `{ err }` when its host is outside the manifest's `net`. */
 function fetchArgs(req) {
   const method = req.method.$t.ctors[req.method.tag].name.toUpperCase();
   const headers = new Headers();
   for (const [name, value] of items(req.headers)) headers.append(name, value);
-  for (const [name, value] of items(req.secret_headers)) headers.set(name, Secret.expose(value));
-  const net = granted()?.net;
-  if (net !== undefined) {
-    let host;
+  const secret = [];
+  for (const [name, value] of items(req.secret_headers)) {
+    headers.set(name, Secret.expose(value));
+    secret.push(name);
+  }
+  if (granted()?.net !== undefined) {
+    let u;
     try {
-      const u = new URL(req.url);
-      host = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
+      u = new URL(req.url);
     } catch {
       return { err: `invalid URL ${req.url}` };
     }
-    if (!net.includes(host)) return { err: `${host} is not in the manifest's net list` };
+    const err = netRefusal(u);
+    if (err !== undefined) return { err };
   }
   const abort = new AbortController();
   const body = method === "GET" || method === "HEAD" ? undefined : req.body;
-  return { abort, init: { method, headers, body, signal: abort.signal } };
+  return { abort, secret, init: { method, headers, body, signal: abort.signal, redirect: "manual" } };
+}
+
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const MAX_REDIRECTS = 20;
+const BODY_HEADERS = ["content-encoding", "content-language", "content-location", "content-type"];
+
+/**
+ * `fetch(url, a.init)` following redirects as Fetch does, but checking each hop's `host:port`
+ * against the manifest's `net` before it is fetched (design §17.262 (4)): at most 20 hops, the
+ * 21st `too many redirects`; a hop to another origin drops `authorization` and every
+ * `secret_headers` name for the rest of the chain. Rejects with the refusal as its message.
+ */
+async function fetchFollowing(url, a) {
+  const init = a.init;
+  for (let hops = 0; ; hops++) {
+    const r = await fetch(url, init);
+    const location = REDIRECT_STATUSES.has(r.status) ? r.headers.get("location") : null;
+    if (location === null) return r;
+    r.body?.cancel().catch(() => {});
+    if (hops === MAX_REDIRECTS) throw new Error("too many redirects");
+    let next;
+    try {
+      next = new URL(location, url);
+    } catch {
+      throw new Error(`invalid redirect location ${location}`);
+    }
+    if (next.protocol !== "http:" && next.protocol !== "https:") throw new Error(`redirect to ${next.protocol} refused`);
+    const refused = netRefusal(next);
+    if (refused !== undefined) throw new Error(refused);
+    if (next.origin !== new URL(url).origin) for (const name of ["authorization", ...a.secret]) init.headers.delete(name);
+    if (r.status === 303 ? init.method !== "HEAD" : r.status <= 302 && init.method === "POST") {
+      init.method = "GET";
+      init.body = undefined;
+      for (const name of BODY_HEADERS) init.headers.delete(name);
+    }
+    url = next.href;
+  }
 }
 
 const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
@@ -3488,14 +3535,15 @@ async function boundedText(r, max) {
  * `http_send(req)`: suspends until the response arrives; `Ok(Response)` for any status,
  * `Err(reason)` when no response arrives or its body is cut short (design §17.209 (2)), and
  * `Err("response too large")`, the fetch aborted, past `SAKURA_MAX_COPY_BYTES` of body. Every
- * `req.secret_headers` entry is sent as a header and is readable nowhere else. Cancelling the task aborts the request.
+ * `req.secret_headers` entry is sent as a header and is readable nowhere else. Redirects follow
+ * `fetchFollowing`, `net` checked on every hop. Cancelling the task aborts the request.
  */
 export function http_send(req, _ctx, k) {
   const Response = std("std::response::Response");
   const max = maxCopyBytes();
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
-  const response = fetch(req.url, a.init).then(
+  const response = fetchFollowing(req.url, a).then(
     async (r) => {
       let text;
       try {
@@ -3540,7 +3588,7 @@ export function http_stream_open(req, _ctx, k) {
   const Incoming = std("std::http::Incoming");
   const a = fetchArgs(req);
   if (a.err !== undefined) return ret(k, Err(a.err));
-  const head = fetch(req.url, a.init).then(
+  const head = fetchFollowing(req.url, a).then(
     (r) => {
       const body = addBody(r.body?.getReader() ?? null, a.abort, new Uint8Array(0));
       return Ok(new Incoming(r.status, list([...r.headers]), body));
