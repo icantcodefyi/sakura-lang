@@ -5,10 +5,6 @@ fn space_after_at() -> Int { 1 }
 
 type EmptyComma = (,)
 
-// Accepted without a diagnostic, unlike type arguments on a later alternative
-// (tree_sitter_divergences.sak); sakura fmt drops the `<Int>` (docs/spec/gaps.md).
-type FirstGeneric = Some<Int> | Nada
-
 fn empty_comma_pattern() -> Int { let (,) = t; 1 }
 
 fn rest_before_field(p: P) -> Int { let P { .., x } = p; 1 }

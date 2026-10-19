@@ -80,6 +80,20 @@ fn refuses_parse_errors() {
 }
 
 // Design §12.5: formatting preserves comments and reparses idempotently.
+/// Variants take no type arguments, so fmt refuses these instead of printing `Some | Nada`.
+#[test]
+fn never_drops_variant_type_arguments() {
+    for text in [
+        "type T = Some<Int> | Nada\n",
+        "type T = Some<Int>(Int)\n",
+        "type T = Nada | Some<Int>\n",
+    ] {
+        if let Ok(out) = sakura_fmt::format(text) {
+            assert_eq!(tokens(text), tokens(&out), "{text} formatted to {out}");
+        }
+    }
+}
+
 #[test]
 fn noncharacter_comment_regression() {
     let text = include_str!("../../../fuzz/corpus/fmt_idempotent/noncharacter_comment.sak");

@@ -66,12 +66,11 @@ syntax error per file, not per case.
 The [divergence fixture](../../compiler/crates/sakura_syntax/tests/data/err/tree_sitter_divergences.sak)
 is on the [compiler-only inventory](../../editors/tree-sitter-sakura/test/compiler-only.txt),
 so tree-sitter must parse every case in it cleanly.
-The fixtures found one asymmetry, recorded for the parser and formatter owners rather than
-fixed here: `type T = Some<Int> | Nada` declares variants `Some` and `Nada` with no
-diagnostic, although type arguments on any later alternative are `V0001`, and `sakura fmt`
-rewrites it to `Some | Nada`, dropping tokens.
-The rejected-alternatives file pins the acceptance; the case stays out of `data/ok`,
-whose files the formatter corpus test requires to keep their tokens.
+The fixtures found one asymmetry, since fixed: `type T = Some<Int> | Nada` was accepted
+while type arguments on a later alternative were `V0001`, and `sakura fmt` printed it as
+`Some | Nada`. Type arguments on any alternative of a variant list are now `V0001`, so fmt
+refuses the file; the divergence fixture holds both positions and
+[a formatter test](../../compiler/crates/sakura_fmt/tests/fmt.rs) pins the refusal.
 
 Still not established:
 

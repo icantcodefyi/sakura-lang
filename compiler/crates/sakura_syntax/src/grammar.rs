@@ -268,13 +268,16 @@ fn type_decl(p: &mut Parser<'_>) -> bool {
     true
 }
 
+const VARIANT_TYPE_ARGUMENTS: &str =
+    "a variant cannot take type arguments; declare them on the type";
+
 /// `A | B(T)` → `VARIANT_LIST`; a single `Name<Args>` without payload → `NAMED_TYPE` alias.
 fn alternatives(p: &mut Parser<'_>) {
     let list = p.start();
     let m = p.start();
     types::path_type(p);
-    let generic = p.at(LT);
-    if generic {
+    let generic = p.at(LT).then(|| p.range(0));
+    if generic.is_some() {
         types::generic_arg_list(p);
     }
     let payload = p.at(L_PAREN);
@@ -285,6 +288,9 @@ fn alternatives(p: &mut Parser<'_>) {
         m.complete(p, NAMED_TYPE);
         list.abandon(p);
         return;
+    }
+    if let Some((start, end)) = generic {
+        p.error_at(codes::EXPECTED, VARIANT_TYPE_ARGUMENTS, start, end);
     }
     m.complete(p, VARIANT);
     while p.eat(PIPE) {
@@ -302,10 +308,7 @@ fn variant(p: &mut Parser<'_>) {
     }
     types::path_type(p);
     if p.at(LT) {
-        p.error(
-            codes::EXPECTED,
-            "a variant cannot take type arguments; declare them on the type",
-        );
+        p.error(codes::EXPECTED, VARIANT_TYPE_ARGUMENTS);
         types::generic_arg_list(p);
     }
     if p.at(L_PAREN) {

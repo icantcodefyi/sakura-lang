@@ -25,7 +25,8 @@ fn split_comparison(a: Int) -> Bool {
   2
 }
 
-// Type arguments on a later alternative.
+// Type arguments on the first or a later alternative.
+type First = Some<Int> | Nada
 type Later = Nada | Some<Int>
 
 // A record spread after the fields.

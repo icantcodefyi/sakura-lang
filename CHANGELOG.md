@@ -298,6 +298,10 @@ Compare the release tag with main when identifying changes not in that preview.
 
 ### Fixed
 
+- Type arguments on the first alternative of a variant list (`type T = Some<Int> | Nada`) are
+  `V0001`, as on a later alternative. They were accepted, and `sakura fmt` printed the
+  declaration as `Some | Nada`. A lone `Name<Args>` is still an alias.
+
 - A runtime trap while `Serve.host()` serves on `--target wasm` no longer ends the process
   with an unhandled exception: the request is answered `500`, the server stops (later
   requests are `503`), and the program exits 70 with one `D090` record that names the

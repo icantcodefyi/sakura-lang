@@ -43,3 +43,26 @@ fn err() {
         assert!(errors > 0, "{} parsed without errors", path.display());
     });
 }
+
+/// Design §3 `Variant = TypeName [ "(" TypeList ")" ]`: no alternative of a variant list takes
+/// type arguments, the first included; a lone `Name<Args>` stays an alias.
+#[test]
+fn variant_type_arguments_are_rejected_in_every_position() {
+    for text in [
+        "type T = Some<Int> | Nada\n",
+        "type T = Some<Int>(Int)\n",
+        "type T = Nada | Some<Int>\n",
+    ] {
+        let messages: Vec<_> = parse(text)
+            .errors
+            .iter()
+            .map(|d| d.message.clone())
+            .collect();
+        assert_eq!(
+            messages,
+            ["a variant cannot take type arguments; declare them on the type"],
+            "{text}"
+        );
+    }
+    assert!(parse("type T = Option<Int>\n").errors.is_empty());
+}

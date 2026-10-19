@@ -128,7 +128,7 @@ Property     = "property" String "(" Comma(TypedParam) ")" { Contract } NL Block
 ```ebnf
 TypeDecl     = "type" TypeName [ TypeParams ] [ "=" TypeBody [ "where" Expression ] ] ;
 TypeBody     = "{" Comma(FieldDecl) "}" | FunctionType | ParenType | Alternatives ;
-Alternatives = NamedType [ TypeList ] { "|" TypePath [ TypeList ] } ;
+Alternatives = NamedType | TypePath [ TypeList ] { "|" TypePath [ TypeList ] } ;
 FieldDecl    = Ident ":" Type [ "where" Expression ] ;
 TypeParams   = "<" Comma(TypeParam) ">" ;
 TypeParam    = TypeName [ ":" TypeName { "+" TypeName } ] | Ident ;
@@ -222,8 +222,8 @@ Known differences, from its [README](../../editors/tree-sitter-sakura/README.md)
   line can remain one expression.
 - Its shared parameter rule allows omitted annotations in function declarations; the
   compiler requires annotations there.
-- Its variant rule permits type arguments after later `|` alternatives; the compiler
-  diagnoses those arguments.
+- Its variant rule permits type arguments on any alternative of a variant list; the
+  compiler diagnoses those arguments.
 - Its record rule permits spreads after fields, and its record rest pattern permits a
   name after `..`; the compiler rejects these forms.
 - The compiler uses a separate no-record expression mode for headers; tree-sitter resolves
@@ -231,7 +231,7 @@ Known differences, from its [README](../../editors/tree-sitter-sakura/README.md)
 
 The [divergence fixture](../../compiler/crates/sakura_syntax/tests/data/err/tree_sitter_divergences.sak) holds two non-block items on
 one line, line breaks before `if` and `match` bodies and after `>`, an unannotated
-declaration parameter, type arguments on a later alternative, a spread after fields, and a
+declaration parameter, type arguments on a first and a later alternative, a spread after fields, and a
 named record rest; the repository test asserts that tree-sitter parses it with no error node.
 The other listed acceptances have compiler-only UI fixtures.
 
