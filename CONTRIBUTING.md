@@ -6,20 +6,29 @@ The `0.1.0-alpha.1` preview is published; there is no stable compatibility guara
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Git hooks
+**Contents:** [dev setup](#dev-setup-in-5-commands) ·
+[website](#website) · [repository map](#repository-map) ·
+[propose a change](#propose-a-change) · [tests and snapshots](#tests-and-snapshots) ·
+[commits](#commits-and-pull-request-titles) · [AI assistance](#ai-assisted-contributions) ·
+[automation](#automation-and-bootstrap-policy) · [license](#license-for-contributions)
 
-Run `git config core.hooksPath .githooks` once after cloning. The pre-push hook checks that
-`compiler/Cargo.lock` matches the committed manifests, the same check CI runs with `--locked`.
+## Dev setup in 5 commands
 
-## Set up the checkout
+With rustup, Node 26 and Bun 1.4.3 installed:
 
 ```sh
-git clone https://github.com/icantcodefyi/sakuralang.git
-cd sakuralang
-cd website
-bun install --frozen-lockfile
-bun run dev
+git clone https://github.com/icantcodefyi/sakuralang.git && cd sakuralang
+git config core.hooksPath .githooks
+(cd compiler && cargo build -p sakura_cli && cargo test --workspace --locked)
+python3 website/scripts/check-doc-sweep.py
+(cd website && bun install --frozen-lockfile && bun run dev)
 ```
+
+The pre-push hook checks that `compiler/Cargo.lock` matches the committed manifests,
+the same check CI runs with `--locked`. The doc sweep uses `compiler/target/debug/sakura`
+unless `SAKURA_BIN` names another build.
+
+## Website
 
 Use **Bun 1.4.3**, as pinned by `website/package.json`. The website uses Next.js
 and Fumadocs; read [website/AGENTS.md](website/AGENTS.md) and the installed Next.js
@@ -35,6 +44,7 @@ bun run lint        # oxlint, warnings denied
 bun run typecheck
 bun run build
 ```
+
 For browser behavior, also exercise the affected route, navigation, and responsive
 states and describe what you actually checked.
 
@@ -71,10 +81,14 @@ Internal architecture/build decisions use an [ADR](docs/adr/README.md).
 
 ## Tests and snapshots
 
+### What to check
+
 Match checks to the behavior changed. Documentation changes need accurate links,
 examples, and explicit pseudocode labels; website changes need lint/build plus
 relevant manual checks. Workflow changes need YAML validation and `actionlint`.
 Use the existing compiler test targets; do not claim a milestone is complete from one suite.
+
+### Compiler
 
 Install rustup and Node 26, then use the pinned development toolchain:
 
@@ -103,6 +117,8 @@ newly built `target/debug/sakura` and `cargo test -p sakura_cli --test examples`
 All twelve original examples execute in their configured modes (seven run plus
 test and five test); passing that corpus does not close every milestone gate. See the [completion plan](docs/plans/m3-completion-and-m4.md).
 
+### Docs
+
 For the docs sweep, set `SAKURA_BIN` to the built binary and run
 `python3 website/scripts/check-doc-samples.py` and
 `python3 website/scripts/check-doc-sweep.py` from the repository root. The latter
@@ -114,16 +130,22 @@ build and `bun run start`, run `python3 website/scripts/check-doc-links.py
 http://localhost:3000` from the root to check local file links and rendered docs
 routes/anchors. External websites are not fetched by that check.
 
+### Compiler test cases
+
 Compiler changes should cover positive, rejection, boundary, and cross-feature
 cases tied to the relevant spec section. Add deterministic regression cases for
 bugs; malformed input must report an error without crashing or hanging. Check
 structured diagnostic codes, spans, and fixes separately from terminal rendering.
+
+### Snapshots
 
 Review **every snapshot diff** before accepting it. Explain intentional output
 changes in the PR. Normalize only irrelevant nondeterminism such as temporary
 paths, never semantic content or diagnostic codes. New snapshots must fail CI
 until reviewed and committed. Use the repository's snapshot harness when it exists;
 the compiler uses checked-in fixtures and snapshots.
+
+### Diagnostic codes
 
 Diagnostic identities are recorded in [the append-only baseline](compiler/diagnostics/codes.txt)
 and `sakura_diagnostics::codes::REGISTRY`. Add the same code and snake_case title

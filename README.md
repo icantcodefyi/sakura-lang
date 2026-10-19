@@ -1,48 +1,151 @@
-# Sakura Lang
+<p align="center">
+  <a href="https://www.sakuralang.com">
+    <img src="website/public/brand/sakura-mark.svg" alt="The Sakura Seal" width="96" height="96">
+  </a>
+</p>
 
-**The signature is the contract.**
+<h1 align="center">Sakura Lang</h1>
 
-Pre-alpha, source-buildable Rust compiler with a JavaScript backend. M3 is complete (gate 10 signed on 2026-10-18 under the owner's delegation; see the [gate report](docs/plans/m3-gate-report.md) and the [security review](docs/reviews/m3-security-review.md)); the `0.1.0-alpha.1` preview is published, without a stable language/API contract.
+<p align="center"><sub>AGENT-FIRST</sub><br><strong>The programming language built for agents.</strong></p>
 
-![Status: pre-alpha / design phase](https://img.shields.io/badge/status-pre--alpha%20%2F%20design%20phase-orange)
+<p align="center">
+  <a href="https://github.com/icantcodefyi/sakuralang/actions/workflows/ci.yml"><img src="https://github.com/icantcodefyi/sakuralang/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/sakuralang"><img src="https://img.shields.io/npm/v/sakuralang?color=F386A1&label=npm" alt="npm version"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-F386A1" alt="License: MIT OR Apache-2.0"></a>
+  <a href="https://www.sakuralang.com/docs"><img src="https://img.shields.io/badge/docs-sakuralang.com-F386A1" alt="Docs"></a>
+</p>
 
 Sakura Lang is an **agent-first programming language** built around explicit,
-reviewable promises. Humans review signatures; the compiler checks types and effects,
-and checks contracts at runtime.
+reviewable promises. A function's signature states what it can do (its effects),
+how it can fail (its errors) and what it guarantees (its contracts). The compiler
+checks types and effects, checks contracts at runtime and can prove them with an
+SMT solver. Humans review signatures; agents get precise, structured feedback for
+small changes. The compiler is written in Rust and targets JavaScript and
+WebAssembly.
 
-The design brings together:
+> [!NOTE]
+> `0.1.0-alpha.1` is a published **preview** with no stable language or API
+> contract yet. See [Status and roadmap](#status-and-roadmap) and [STABILITY.md](STABILITY.md).
 
-- **Typed effects and errors:** a function states what it can do and how it can fail.
-- **Efficient automatic memory management:** Perceus-style reference counting and
-  reuse aim for Rust-like memory efficiency without a user-facing borrow checker.
-- **Contracts and refinements:** express useful invariants and distinguish static
-  proof, runtime checks, and assumptions.
-- **Capabilities:** make access to files, networks, and other authority explicit.
-- **Tools built for agents:** precise structured diagnostics, discoverable signatures,
-  and compiler feedback for small, independently validated changes.
-- **Batteries included:** one coherent compiler, formatter, test runner, package
-  workflow, and standard-library direction rather than assembly from unrelated tools.
+## Install
 
-The JS backend implements typed effects/errors, runtime contracts, std handlers,
-permissions, tests, LSP and MCP. Source builds also run WASM through Node and verify
-contracts with pinned Z3. Native code is experimental, unreleased M5 work; package management
-remains planned. See the [roadmap](website/content/docs/roadmap.mdx)
-and [completion plan](docs/plans/m3-completion-and-m4.md); the [design](docs/design.md) remains provisional.
+`check` and `build` need nothing else; `run` and `test` need Node 26.
 
-Install the published preview with Node 26 and npm:
+**npm**
 
 ```sh
-npm install --global --ignore-scripts sakuralang@0.1.0-alpha.1
-sakura --version
+npm install --global sakuralang@0.1.0-alpha.1
 ```
 
-`latest` currently points to `0.1.0-alpha.1` for Apple silicon macOS and Linux x64.
-See [Install](website/content/docs/install.mdx) for platforms, release verification
-and other channels. The docs track main: [Unreleased](CHANGELOG.md#unreleased)
-changes require a source build until the next release. Sources use `.sak`; rename
-older `.sakura` files (there is no fallback). <!-- rename:keep -->
+**Homebrew** (installs Node with it)
 
-Build current main with the pinned Rust toolchain and run with Node 26:
+```sh
+brew tap icantcodefyi/sakuralang && brew install sakuralang
+```
+
+**install.sh** (checks `SHA256SUMS`; verifies attestations when `gh` is installed)
+
+```sh
+curl -fsSLO https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0-alpha.1/install.sh
+sh install.sh --version 0.1.0-alpha.1
+```
+
+| Platform | Target | Release |
+| --- | --- | --- |
+| macOS, Apple silicon | `aarch64-apple-darwin` | in alpha.1 |
+| Linux x64 (glibc 2.35+) | `x86_64-unknown-linux-gnu` | in alpha.1 |
+| Linux ARM64 | `aarch64-unknown-linux-gnu` | coming in v0.1.0 |
+| Windows x64 | `x86_64-pc-windows-msvc` | coming in v0.2.0 |
+| macOS, Intel | `x86_64-apple-darwin` | coming in v0.2.0 |
+
+No platform is called **Supported** until a release's published-install smoke
+passes on a hosted runner of that OS and CPU. See the
+[claim levels](website/content/docs/install.mdx#platform-claims) and the
+[install guide](website/content/docs/install.mdx) for details and verification.
+
+## Quickstart
+
+```sh
+sakura new cli hello && cd hello
+sakura check            # no problems
+sakura run -- Sakura    # hello, Sakura
+sakura test             # 1 passed, 0 failed
+```
+
+`sakura new` writes `sakura.toml` (with an empty `[permissions]` table), a lockfile,
+`src/main.sak` with one test, and `AGENTS.md`/`CLAUDE.md` for coding agents. Add
+`--setup claude` (or `codex`, `cursor`, `all`) to install the Sakura skill and MCP
+entry for your agent. Continue with the [quickstart guide](website/content/docs/quickstart.mdx).
+
+## A taste
+
+Effects in `! {…}`, typed errors with `fail`, and contracts with `requires` and
+`ensures`. This program checks with the current compiler:
+
+```sakura
+fn withdraw(acct: Account, amount: Cents)
+  -> Account
+  ! {Ledger, Fail<Overdrawn | Frozen>}
+  requires positive: amount > 0
+  ensures result.balance == acct.balance - amount
+{
+  if Ledger.frozen(acct.id) { fail Frozen }
+  if amount > acct.balance { fail Overdrawn { balance: acct.balance } }
+  let next = Account { id: acct.id, balance: Cents.from(acct.balance - amount) }
+  Ledger.record(next)
+  next
+}
+
+type Cents = Int where it >= 0
+type Account = { id: String, balance: Cents }
+error Overdrawn(balance: Cents)
+error Frozen
+effect Ledger {
+  fn frozen(id: String) -> Bool
+  fn record(acct: Account) -> Unit
+}
+```
+
+A caller must handle `Ledger` and both errors, or declare them in its own
+signature. The compiler rejects anything else.
+
+## Why Sakura
+
+- **Built for agents.** `sakura setup` installs a skill and MCP entry; `sakura mcp serve`
+  exposes `check`, `apply_patch`, `hole_context`, `test` and more; `sakura lsp` serves
+  editors. `--json` emits versioned diagnostics whose fixes state their impact, and
+  typed holes (`?receipt`) report the expected type, effects, locals and candidates.
+- **Authority is explicit.** Files, network, clock and randomness are effects. `main`
+  gets only what `[permissions]` in `sakura.toml` grants; a denied permission stops
+  the program at startup.
+- **Contracts you can prove.** Every contract is checked at runtime, even in
+  `--release`. `sakura verify` asks Z3, cross-checked by cvc5 when it is installed,
+  to prove each one; proved checks drop out of the next build, and failures come back
+  as counterexamples.
+- **Deterministic by construction.** Every source of nondeterminism is an effect, so
+  tests run with a fixed clock, seeded randomness and the network denied. `Map`/`Set`
+  iteration order is the same on every backend.
+- **Fast feedback.** `sakura check` on a new project takes about 7 ms (release build,
+  Apple M4 Pro, median of the `bench/bench compile` workload). Other machines will
+  differ.
+
+## Status and roadmap
+
+| Release | What it means | State |
+| --- | --- | --- |
+| `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh | **shipped** |
+| `v0.1.0` | M4 exit: the first non-alpha preview, after one quiet benchmark window; adds Linux ARM64 | in progress |
+| `v0.2.0` | Native backend behind an experimental flag, Windows x64 and Intel Mac, the stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md) | planned |
+| `v1.0.0` | A release candidate, a seven-day soak with no P1 defect, then 1.0; packages follow in 1.x | planned |
+
+The JavaScript and WebAssembly backends ship. The Cranelift native backend is
+**experimental** and in no release. Package management is planned. Releases are not
+dated; see the [roadmap](website/content/docs/roadmap.mdx) and the
+[road to 1.0](docs/plans/road-to-1.0.md). The [design](docs/design.md) is provisional.
+
+## Build from source
+
+Use the pinned Rust toolchain, and Node 26 to run programs:
 
 ```sh
 cd compiler
@@ -51,71 +154,26 @@ target/debug/sakura run examples/contracts
 cargo test -p sakura_cli --test examples
 ```
 
-All twelve examples pass their configured modes: seven run plus test and five test;
-none is check-only. `llm_extract`, `agent_loop` and `secrets` replay committed synthetic
-cassettes with the test network denied. These are not live-provider recordings, and
-passing the example corpus does not close every M3 gate.
-
-Recent additions include [trust audits](website/content/docs/agents/audit.mdx),
-[offline API search](website/content/docs/agents/doc.mdx),
-[build manifests](website/content/docs/agents/build-manifest.mdx), and
-[HTTP/LLM cassettes with `--record`](website/content/docs/agents/cassettes.mdx).
-Scoped escape checks (`V6002`/`V6003`), foreign-capability FFI rejection (`V6001`),
-refined-target `Untrusted.validate` (`V5003`), bounded literal evaluation (`V5004`,
-`V5002` retired), collection-only `W5005`, and `Html.from`/nested HTML templates have landed.
-
-[Contract-generated properties](website/content/docs/tour/testing.mdx#property-tests-from-contracts)
-(`--contracts`), streaming HTTP (`Http.stream`/`Http.read_chunk`), `Llm.recording`,
-`Fs.memory` composed with `Dir.subdir`/`Fs.rooted`, and generic refined types have landed.
-Direct `Untrusted` interpolation binds values in SQL, escapes text in HTML and
-percent-encodes URL parts. See the
-[verified examples](docs/plans/m3-docs-verification.md) and their remaining limits.
-See [current-main changes](website/content/docs/changes.mdx) for analysis caching,
-runtime limits, diagnostic repairs and portability, and the roadmap for M4 gates.
-Benchmark reports are workload-specific; `bench/bench envelope` compares WASM with
-matched native-language ports and does not itself establish a passing M4 envelope.
-
-## A small promise
-
-This pure function checks with the current compiler:
-
-```sakura
-fn add(a: Int, b: Int) -> Int {
-  a + b
-}
-```
-
-Signatures can also declare errors/effects, contracts, and capability requirements. The exact syntax and guarantees belong
-in the evolving design, not in assumptions made from this small example.
-
-## Explore the project
-
-Start with [the language design](docs/design.md), [the research](research/), and
-[the website and documentation app](website/). Questions about prior art and
-unresolved tradeoffs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to help,
-[the RFC process](docs/rfcs/README.md) to propose language changes, and
-[STABILITY.md](STABILITY.md) for compatibility expectations.
+The docs track `main`: [Unreleased](CHANGELOG.md#unreleased) changes need a source
+build until the next release. Sources use `.sak`; rename older `.sakura` files
+(there is no fallback). <!-- rename:keep -->
 
 | Path | Purpose |
 | --- | --- |
-| `research/` | Evidence, prior art, and engineering recommendations |
-| `docs/` | Evolving language design, RFCs, and architecture decisions |
-| `website/` | Bun / Next.js / Fumadocs website and documentation |
-| `.github/` | CI, dependency updates, issue forms, and review ownership |
 | `compiler/` | Rust compiler workspace, CLI, JS runtime, std and examples |
+| `website/` | Bun / Next.js / Fumadocs website and documentation |
+| `docs/` | Evolving language design, RFCs, plans and architecture decisions |
+| `research/` | Evidence, prior art and engineering recommendations |
+| `.github/` | CI, dependency updates, issue forms and review ownership |
 
-Run the website with Bun **1.4.3**:
+## Links
 
-```sh
-cd website
-bun install --frozen-lockfile
-bun run dev
-```
+- [Documentation](https://www.sakuralang.com/docs) and [what changed on main](https://www.sakuralang.com/docs/changes)
+- [Contributing](CONTRIBUTING.md), [governance](GOVERNANCE.md) and the [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Stability policy](STABILITY.md) and the [RFC process](docs/rfcs/README.md)
+- [Security policy](SECURITY.md) and [changelog](CHANGELOG.md)
 
-The [contribution guide](CONTRIBUTING.md) covers checks and the compiler
-layout. The initial maintainer is [@icantcodefyi](https://github.com/icantcodefyi);
-see [governance](GOVERNANCE.md), [conduct](CODE_OF_CONDUCT.md), and
-[security reporting](SECURITY.md).
+The maintainer is [@icantcodefyi](https://github.com/icantcodefyi).
 
 ## License
 
@@ -124,3 +182,7 @@ at your choice. See [LICENSE-MIT](LICENSE-MIT) and [LICENSE-APACHE](LICENSE-APAC
 Third-party material retains its own notices and terms. Compiling a program does
 not by itself place that program under the compiler's license; any future embedded
 runtime code will have its licensing documented separately.
+
+AI assistance: Sakura Lang is designed and built with AI agents (Claude and Codex)
+under the maintainer's review, who owns the result. Contributions disclose AI
+involvement; see [AI-assisted contributions](CONTRIBUTING.md#ai-assisted-contributions).

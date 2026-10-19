@@ -103,6 +103,20 @@ def main():
                     failures.append(label)
                     print(f"FAIL test {label}: {result.stdout}{result.stderr}")
             print(f"PASS {label}")
+        # The README quickstart runs as written; each `# comment` is output it must print.
+        script = re.search(r"## Quickstart\n\n```sh\n(.*?)\n```", (ROOT / "README.md").read_text(), re.S)[1]
+        (Path(tmp) / "bin").mkdir()
+        (Path(tmp) / "bin/sakura").symlink_to(BINARY.resolve())
+        env = dict(os.environ, PATH=f"{tmp}/bin{os.pathsep}{os.environ['PATH']}")
+        quick = Path(tmp) / "quickstart"
+        quick.mkdir()
+        result = subprocess.run(["sh", "-ec", script], cwd=quick, env=env, capture_output=True, text=True, timeout=120)
+        missing = [want for want in re.findall(r"# (.+)$", script, re.M) if want not in result.stdout + result.stderr]
+        if result.returncode or missing:
+            failures.append("README.md quickstart")
+            print(f"FAIL README.md quickstart: missing {missing}: {result.stdout}{result.stderr}")
+        else:
+            print("PASS README.md quickstart")
     print(f"{checked} checked; {executed} test invocations; {fragments} explicitly labelled fragments; {len(failures)} failures")
     return bool(failures)
 
