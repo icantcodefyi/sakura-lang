@@ -181,6 +181,40 @@ class Prepare(unittest.TestCase):
         entry = release.deprecations(metadata(date="2025-08-31", earliest_date="2026-02-28"))
         self.assertEqual(entry["old_feature"]["earliest_removal"]["date"], datetime.date(2026, 2, 28))
 
+    def test_history_cannot_change_code_earliest_removal_or_a_shipped_removal(self):
+        self.tag("1.3.0", metadata())
+        self.write("1.4.0", deprecations=metadata().replace('code = "W9001"', 'code = "W9002"'))
+        with self.refusal("historical code"):
+            self.check()
+        self.write("1.4.0", deprecations=metadata(earliest="2.1.0"))
+        with self.refusal("historical earliest_removal"):
+            self.check()
+        self.tag("1.4.0", metadata())
+        self.tag("2.0.0", metadata("2.0.0"))
+        self.write("3.0.0", deprecations=metadata("3.0.0"))
+        with self.refusal("historical removal"):
+            self.check()
+
+    def test_a_new_removal_must_name_this_candidate(self):
+        self.window()
+        self.write("2.0.0", deprecations=metadata("3.0.0"))
+        with self.refusal("must name this candidate"):
+            self.check()
+
+    def test_tags_off_the_ancestry_are_not_the_previous_release(self):
+        self.tag("1.3.0")
+        self.git("checkout", "--quiet", "-b", "side")
+        self.tag("1.3.1", msrv="1.98")
+        self.git("checkout", "--quiet", "-")
+        self.write("1.3.2")
+        self.check("v1.3.0")
+        with self.refusal("latest preceding ancestor"):
+            self.check("v1.3.1")
+
+    def test_the_checked_in_metadata_is_valid(self):
+        text = (Path(release.__file__).resolve().parents[2] / "compiler/deprecations.toml").read_text()
+        self.assertIsInstance(release.deprecations(text), dict)
+
     def test_missing_old_metadata_is_allowed_before_registry_existed(self):
         (self.compiler / "deprecations.toml").unlink()
         self.git("add", ".")
