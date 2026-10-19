@@ -1,6 +1,7 @@
 """Check the runnable documentation against the source-built CLI (Python 3, no dependencies)."""
 
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -8,7 +9,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-BINARY = ROOT / "compiler/target/debug/sakura"
+BINARY = Path(os.environ.get("SAKURA_BIN", ROOT / "compiler/target/debug/sakura"))
 PAGES = [
     "README.md",
     "website/content/docs/agents/index.mdx",

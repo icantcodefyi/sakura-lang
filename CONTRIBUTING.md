@@ -2,7 +2,7 @@
 
 Sakura Lang is in **pre-alpha / design phase**. Research, design discussion, documentation,
 and the website are useful contributions today. The Rust compiler workspace in `compiler/` builds from source and executes on JavaScript.
-There is no supported release or stable compatibility guarantee yet.
+The `0.1.0-alpha.1` preview is published; there is no stable compatibility guarantee yet.
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -86,10 +86,33 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked
 ```
 
+The dev profile defaults to `opt-level = 1` (with an explicit `insta` override), retaining
+debug assertions and overflow checks. This matters for running the integration
+suites, which invoke the dev compiler many times. For parallel local tests, install
+cargo-nextest and use `cargo nextest run --workspace --locked`, followed by
+`cargo test --workspace --doc --locked` (nextest does not run doctests).
+
+Isolate std analysis caches between concurrent jobs: set `SAKURA_CACHE_DIR` to a
+job-specific temporary directory. The compiler appends `sakuralang/std`; remove the
+directory after the run. `SAKURA_NO_CACHE=1` disables this disk cache for comparison.
+This cache is separate from the verifier proof cache. Use a separate
+`CARGO_TARGET_DIR` for concurrent worktrees too.
+
 The lockfile is `compiler/Cargo.lock`. For documentation claims, also exercise the
 newly built `target/debug/sakura` and `cargo test -p sakura_cli --test examples`.
-The twelve examples have distinct run/test/check modes; passing the corpus does
-not imply every example executes. See the [completion plan](docs/plans/m3-completion-and-m4.md).
+All twelve original examples execute in their configured modes (seven run plus
+test and five test); passing that corpus does not close every milestone gate. See the [completion plan](docs/plans/m3-completion-and-m4.md).
+
+For the docs sweep, set `SAKURA_BIN` to the built binary and run
+`python3 website/scripts/check-doc-samples.py` and
+`python3 website/scripts/check-doc-sweep.py` from the repository root. The latter
+checks the guide fences and shared contexts; `SAKURA_DOC_TARGET=wasm` also exercises
+their tests on WASM. Declaration/pseudocode fragments are explicitly labelled and
+reported separately. Regenerate with `cargo run -p agent_docs --locked` in
+`compiler/`, then `bun scripts/generate-stdlib.mjs` in `website/`. After a production
+build and `bun run start`, run `python3 website/scripts/check-doc-links.py
+http://localhost:3000` from the root to check local file links and rendered docs
+routes/anchors. External websites are not fetched by that check.
 
 Compiler changes should cover positive, rejection, boundary, and cross-feature
 cases tied to the relevant spec section. Add deterministic regression cases for
