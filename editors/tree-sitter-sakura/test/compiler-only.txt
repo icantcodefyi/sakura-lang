@@ -2,6 +2,8 @@
 # `V0010` chained comparisons, out-of-range integers, invalid escapes, …) or this grammar is
 # more lenient (an unterminated block comment). tests/repo.rs asserts each parses cleanly here.
 compiler/crates/sakura_syntax/tests/data/err/record_in_header.sak
+compiler/crates/sakura_syntax/tests/data/err/reserved_positions.sak
+compiler/crates/sakura_syntax/tests/data/err/tree_sitter_divergences.sak
 compiler/crates/sakura_syntax/tests/data/err/unterminated_comment.sak
 compiler/fuzz/corpus/check/depth.sak
 compiler/fuzz/corpus/parse/depth.sak

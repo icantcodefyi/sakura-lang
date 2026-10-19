@@ -1,0 +1,38 @@
+// Source the compiler rejects and tree-sitter parses cleanly (editors/tree-sitter-sakura
+// README "Limits", docs/spec/grammar.md); listed in test/compiler-only.txt, where tests/repo.rs
+// asserts the tree has no ERROR or MISSING node.
+
+// Declarations require parameter annotations.
+fn unannotated(x) -> Int { 1 }
+
+// Two non-block items on one line.
+type A = Int type B = Int
+
+// A line break before an `if`, `while` or `match` body.
+fn newline_before_body(a: Bool) -> Int {
+  if a
+  { 1 } else { 2 }
+}
+
+fn newline_before_match(a: Bool) -> Int {
+  match a
+  { _ => 1 }
+}
+
+// A newline after `>` ends the statement.
+fn split_comparison(a: Int) -> Bool {
+  a >
+  2
+}
+
+// Type arguments on a later alternative.
+type Later = Nada | Some<Int>
+
+// A record spread after the fields.
+fn spread_after(p: P) -> P { P { x: 1, ..p } }
+
+// A name after `..` in a record pattern.
+fn named_record_rest(p: P) -> Int {
+  let P { x, ..others } = p
+  1
+}

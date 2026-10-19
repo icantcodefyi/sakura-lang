@@ -1,0 +1,66 @@
+// Optional branches of the spec's EBNF (docs/spec/grammar.md G16–G21) that the broad fixtures
+// leave implicit; tree-sitter's repository test compares this file with the CST.
+
+// Named attribute arguments, with and without spaces around `:`.
+@deprecated(since: "1.0", note: "use b")
+@tool(name : "a", "positional")
+fn a() -> Int { 1 }
+
+// Empty generic parameter and argument lists.
+fn empty_params<>() -> Int { 1 }
+type EmptyParams<> = Int
+type EmptyArgs = List<>
+
+// Qualified alternatives, and payloads on any alternative.
+type Qualified = Std.Some(Int) | Std.Nada | Plain
+type LaterPayload<A> = Nada | Has(A)
+
+// Every parenthesized type cardinality, with and without a trailing comma.
+type Unit0 = ()
+type Grouped = (Int)
+type Single = (Int,)
+type Pair = (Int, Int)
+type PairTrailing = (Int, Int,)
+type Callback = fn(Int,) -> Int
+
+fn patterns(p: P, l: List<Int>) -> Int {
+  let () = ()
+  let (a) = 1
+  let (b,) = t
+  let (c, d) = t
+  let (e, f,) = t
+  let P { x, .. } = p
+  let P { .. } = p
+  let P { x: g, y } = p
+  let [h, ..rest] = l
+  let [..tail,] = l
+  let [..] = l
+  let [i, ..] = l
+  1
+}
+
+fn records(p: P) -> P {
+  let q = P { ..p, x: 1 }
+  let r = P { ..p }
+  let s = P { x: 1, y, }
+  s
+}
+
+// Header records nested in calls, lists and parentheses, including a parenthesized `if`;
+// a bare block may begin a later `with` operand or a contract, but not a header.
+fn headers(h: Handler<E>) -> Int
+  requires { 1 } > 0
+{
+  if g(P { x: 1 }) { 1 }
+  if [P { x: 1 }].len() > 0 { 1 }
+  if (P { x: 1 }).x > 0 { 1 }
+  if (if a { P { x: 1 } } else { q }).x > 0 { 1 }
+  with h, { h } { 1 }
+  1
+}
+
+// A function body may follow its signature on the next line, and a block-bodied function
+// may share a line with the next item.
+fn next_line(x: Int) -> Int
+{ x }
+fn one() -> Int { 1 } fn two() -> Int { 2 }

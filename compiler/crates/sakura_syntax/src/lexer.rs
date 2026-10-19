@@ -743,6 +743,124 @@ mod tests {
         ));
     }
 
+    /// Separator placement, incomplete fractions, exponents and radix prefixes, one case per
+    /// line: the significant tokens and any diagnostic codes (spec gaps, lexical boundaries).
+    #[test]
+    fn numeric_boundaries() {
+        let cases = [
+            "1_000",
+            "1__000",
+            "1_",
+            "_1",
+            "0x_1",
+            "0x1_",
+            "0b_1",
+            "0x_",
+            "0b_",
+            "0x",
+            "0xg",
+            "1_.5",
+            "1._5",
+            "1.5_",
+            "1.5_e3",
+            ".5",
+            "1.",
+            "1.e5",
+            "1e5",
+            "1.5e",
+            "1.5e+",
+            "1.5e3_0",
+            "1.5E3",
+            "0X1",
+            "0B1",
+            "0o7",
+            "9223372036854775807",
+            "-9223372036854775808",
+            "-9223372036854775807",
+            "0x8000000000000000",
+        ];
+        let mut out = String::new();
+        for src in cases {
+            let (tokens, errors) = lex(src);
+            let tokens: Vec<_> = (tokens.iter().filter(|t| !t.kind.is_trivia()))
+                .map(|t| format!("{:?} {:?}", t.kind, &src[t.start as usize..t.end as usize]))
+                .collect();
+            let codes: Vec<_> = errors.iter().map(|e| e.code.0).collect();
+            let _ = writeln!(out, "{src} => {} {codes:?}", tokens.join(", "));
+        }
+        insta::assert_snapshot!(out);
+    }
+
+    /// §2.4 over every ending token before every next-line token, under LF, CRLF and with a
+    /// comment after the ending token or on a line between them.
+    #[test]
+    fn newline_matrix() {
+        let ending = [
+            "x",
+            "T",
+            "?h",
+            "_",
+            "1",
+            "1.5",
+            "\"s\"",
+            "(x)",
+            "[x]",
+            "{x}",
+            "List<Int>",
+            "x?",
+            "true",
+            "false",
+            "break",
+            "continue",
+            "return",
+            "std/test",
+        ];
+        let not_ending = [
+            "x +", "x -", "x =", "x ,", "x (", "x [", "x {", "x .", "x =>", "x ->", "x |", "x ..",
+            "x ==", "x &&", "let", "fn", "if", "@a.",
+        ];
+        let continuing = [
+            ".y", "else", "catch", ")", "]", "}", ",", "=> y", "= y", "-> y", "| y", "..y", "+ y",
+            "* y", "/ y", "% y", "== y", "!= y", "< y", "<= y", "> y", ">= y", "&& y", "|| y",
+        ];
+        let not_continuing = [
+            "y", "Y", "(y)", "[0]", "-1", "!y", "{y}", "1", "\"s\"", "let", "if", "@a", "?h", "_",
+        ];
+        let separated = |first: &str, second: &str| -> Vec<bool> {
+            [
+                "\n",
+                "\r\n",
+                " // c\n",
+                " /* c */\n",
+                "\n// c\n",
+                "\r\n/* c */\r\n",
+            ]
+            .iter()
+            .map(|gap| kinds(&format!("{first}{gap}{second}")).contains(&NEWLINE))
+            .collect()
+        };
+        for first in ending.iter().chain(&not_ending) {
+            for second in continuing.iter().chain(&not_continuing) {
+                let want = ending.contains(first) && not_continuing.contains(second);
+                assert_eq!(
+                    separated(first, second),
+                    [want; 6],
+                    "{first:?} then {second:?}"
+                );
+            }
+        }
+        assert_eq!(
+            kinds("foo\n[0]"),
+            [IDENT, NEWLINE, L_BRACKET, INT, R_BRACKET]
+        );
+        // A brace block inside interpolation restores the rule; parentheses there suppress it.
+        let interp = |inner: &str| kinds(&format!("\"{{{inner}}}\"")).contains(&NEWLINE);
+        assert!(interp(" f({a\nb}) "));
+        assert!(interp(" {a\r\nb} "));
+        assert!(!interp(" (a\nb) "));
+        assert!(!interp(" a\nb "));
+    }
+
     #[test]
     fn strings_and_escapes() {
         insta::assert_snapshot!(dump(

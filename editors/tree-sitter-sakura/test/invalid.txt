@@ -4,6 +4,7 @@ compiler/crates/sakura_syntax/tests/data/err/bad_patterns.sak
 compiler/crates/sakura_syntax/tests/data/err/design_15_7_unescaped_brace_in_string.sak
 compiler/crates/sakura_syntax/tests/data/err/effect_rows.sak
 compiler/crates/sakura_syntax/tests/data/err/generic_args.sak
+compiler/crates/sakura_syntax/tests/data/err/grammar_alternatives.sak
 compiler/crates/sakura_syntax/tests/data/err/handler_errors.sak
 compiler/crates/sakura_syntax/tests/data/err/junk_items.sak
 compiler/crates/sakura_syntax/tests/data/err/lex_errors.sak

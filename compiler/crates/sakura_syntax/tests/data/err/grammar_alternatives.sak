@@ -1,0 +1,36 @@
+// Negative boundaries of the spec's EBNF (docs/spec/grammar.md G16–G21), one per item.
+
+@ deprecated
+fn space_after_at() -> Int { 1 }
+
+type EmptyComma = (,)
+
+// Accepted without a diagnostic, unlike type arguments on a later alternative
+// (tree_sitter_divergences.sak); sakura fmt drops the `<Int>` (docs/spec/gaps.md).
+type FirstGeneric = Some<Int> | Nada
+
+fn empty_comma_pattern() -> Int { let (,) = t; 1 }
+
+fn rest_before_field(p: P) -> Int { let P { .., x } = p; 1 }
+
+fn rest_in_middle(l: List<Int>) -> Int { let [a, .., b] = l; 1 }
+
+fn missing_comma() -> P { P { x: 1 y: 2 } }
+
+fn missing_comma_after_spread(p: P) -> P { P { ..p x: 1 } }
+
+fn list_spread(l: List<Int>) -> List<Int> { [1, ..l] }
+
+fn record_header() -> Int { if P { x: 1 }.x > 0 { 1 } else { 2 } }
+
+fn record_with_operand(h: Handler<E>) -> Int { with h, P { x: 1 } { 1 } }
+
+fn block_if_header() -> Int { if { a } { 1 } else { 2 } }
+
+fn block_while_header() -> Int { while { a } { 1 }; 1 }
+
+fn block_for_header() -> Int { for i in { l } { 1 }; 1 }
+
+fn block_match_header() -> Int { match { a } { _ => 1 } }
+
+fn block_with_header() -> Int { with { a } { 1 } }

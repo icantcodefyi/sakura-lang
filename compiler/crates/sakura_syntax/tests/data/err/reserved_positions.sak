@@ -1,0 +1,42 @@
+// Each reserved future word (lexer RESERVED, design §2.1) in a module segment and in ordinary
+// value positions (V0007), and as a function, operation and member name (accepted).
+import std/verify
+fn verify(x: Int) -> Int { x.verify }
+fn uses_verify(verify: Int) -> Int { let verify = 1; verify }
+effect OpVerify { fn verify() -> Int }
+import std/proof
+fn proof(x: Int) -> Int { x.proof }
+fn uses_proof(proof: Int) -> Int { let proof = 1; proof }
+effect OpProof { fn proof() -> Int }
+import std/ghost
+fn ghost(x: Int) -> Int { x.ghost }
+fn uses_ghost(ghost: Int) -> Int { let ghost = 1; ghost }
+effect OpGhost { fn ghost() -> Int }
+import std/control
+fn control(x: Int) -> Int { x.control }
+fn uses_control(control: Int) -> Int { let control = 1; control }
+effect OpControl { fn control() -> Int }
+import std/resume
+fn resume(x: Int) -> Int { x.resume }
+fn uses_resume(resume: Int) -> Int { let resume = 1; resume }
+effect OpResume { fn resume() -> Int }
+import std/region
+fn region(x: Int) -> Int { x.region }
+fn uses_region(region: Int) -> Int { let region = 1; region }
+effect OpRegion { fn region() -> Int }
+import std/spawn
+fn spawn(x: Int) -> Int { x.spawn }
+fn uses_spawn(spawn: Int) -> Int { let spawn = 1; spawn }
+effect OpSpawn { fn spawn() -> Int }
+import std/actor
+fn actor(x: Int) -> Int { x.actor }
+fn uses_actor(actor: Int) -> Int { let actor = 1; actor }
+effect OpActor { fn actor() -> Int }
+import std/interface
+fn interface(x: Int) -> Int { x.interface }
+fn uses_interface(interface: Int) -> Int { let interface = 1; interface }
+effect OpInterface { fn interface() -> Int }
+import std/impl
+fn impl(x: Int) -> Int { x.impl }
+fn uses_impl(impl: Int) -> Int { let impl = 1; impl }
+effect OpImpl { fn impl() -> Int }
