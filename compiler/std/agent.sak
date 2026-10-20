@@ -32,7 +32,10 @@ pub type Agent<T, e> = {
 }
 
 /// At most `max_steps` model turns; the last one offers no tools, so the model must answer.
-/// A tool failure ends the loop with its `ToolError`.
+/// A tool failure ends the loop with its `ToolError`. A tool the model names that is not in
+/// `tools` fails `ToolError { tag: "UnknownTool", payload: Null }`; arguments that fail a
+/// parameter's type or refinement fail `ToolError { tag: "DecodeError" }` with `path` and
+/// `message` in the payload.
 pub fn run<T: Schema, e>(a: Agent<T, e>) -> T
   ! {Budget, Llm, Fail<LlmError | ToolError> | e}
   requires a.max_steps > 0

@@ -43,7 +43,9 @@ pub error Timeout(limit: Duration)
 
 /// Runs `action`, cancelling it and failing with `Timeout` if it has not finished within
 /// `limit`. Cancellation is cooperative (observed at `action`'s next effect operation),
-/// and `action` is joined, with finalizers run, before `Timeout` is raised.
+/// and `action` is joined, with finalizers run, before `Timeout` is raised. Under
+/// `Clock.fixed` a `timeout` whose action suspends fails at once; install `Clock.virtual()` to
+/// test timeouts.
 pub fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T
   ! {Clock, Task, Fail<Timeout> | e}
 {
