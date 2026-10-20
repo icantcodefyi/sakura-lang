@@ -1,0 +1,67 @@
+// milestone: M4
+// covers: performance-r1 WS-P14; design §17.265 (6) (a def returning a fresh list consumes the parameter it updates; a flat Bool list keeps its elements)
+
+// `bump_all` updates its parameter, then returns `List.map`'s fresh list, so it consumes
+// `start`: an owned argument is updated in place through `bump_all$o`, a retained one is not.
+fn bump_all(start: List<Int>) -> List<Int> {
+  var xs = start
+  var i = 0
+  while i < List.len(xs) {
+    xs = List.set(xs, i, Option.unwrap_or(xs[i], 0) + 1)
+    i = i + 1
+  }
+  List.map(xs, fn(x) { x * 10 })
+}
+
+// Only reads its parameter: no owned entry, and its argument stays owned in the caller.
+fn shifted(start: List<Int>) -> List<Int> { List.map(start, fn(x) { x + 1 }) }
+
+pub fn main() -> Unit ! {Console} {
+  // 40 owned pushes, past the 32 elements of a tail.
+  var xs: List<Int> = []
+  var i = 0
+  while i < 40 {
+    xs = List.push(xs, i)
+    i = i + 1
+  }
+  let kept = xs
+  let ys = bump_all(xs)
+  Console.print("kept {List.len(kept)} {List.sum(kept)} {kept[0]} {kept[39]}")
+  Console.print("ys {List.len(ys)} {List.sum(ys)} {ys[0]} {ys[39]}")
+
+  var ws: List<Int> = []
+  i = 0
+  while i < 50 {
+    ws = List.push(ws, i)
+    i = i + 1
+  }
+  let s = shifted(ws)
+  ws = List.set(ws, 0, 100)
+  i = 0
+  while i < 3 {
+    ws = bump_all(ws)
+    i = i + 1
+  }
+  Console.print("s {List.sum(s)} {s[0]}; ws {List.len(ws)} {List.sum(ws)} {ws[0]} {ws[49]}")
+
+  let p = List.push(kept, 40)
+  let q = List.set(kept, 1, -1)
+  Console.print("{List.len(kept)} {kept[1]} {List.len(p)} {p[40]} {q[1]} {q[39]}")
+
+  // An owned `List<Bool>` is one flat array on JS; a persistent update leaves it as it was.
+  var flags: List<Bool> = []
+  i = 0
+  while i < 40 {
+    flags = List.push(flags, i % 2 == 0)
+    i = i + 1
+  }
+  flags = List.set(flags, 1, true)
+  let snap = flags
+  let more = List.set(flags, 2, false)
+  let longer = List.push(snap, false)
+  var count = 0
+  for f in snap { if f { count = count + 1 } }
+  Console.print(
+    "{List.len(snap)} {snap[1]} {snap[2]} {more[2]} {List.len(longer)} {longer[40]} {count}",
+  )
+}

@@ -278,6 +278,48 @@ conversions, `sakura_core` template lowering, `std/sql.sak` tests. Tests:
 `Sql.memory`'s stored parameter values). Delta: none in the suite; a `Sql.query` microbench in
 `research/10-evidence` by Astra.
 
+**WS-P14 — flat scalars and `Float` records (Opus; design §17.265 (6); landed in part).**
+Paths: `sakura_core/src/opt/owned.rs` (summaries), `runtime/js/sakura_runtime.js` (`List`),
+`runtime/js/ABI.md` §7, fixture `owned_fresh_result`. Protocol: WS-P13a's, every arm first a
+hand-edited emitted module counted on the reference Mac (instructions per call, Node
+`--predictable`), then the landed mechanism counted by `bench run --suite js --instructions`
+and read by `compare` against `baselines/d88970189598.json`
+([row in `bench/deltas.md`](../../bench/deltas.md)). Arms, at Node's largest size:
+
+- (i) **Landed, as an ownership rule.** `nbody`'s `advance` returns `List.map`'s fresh list,
+  and a def with a fresh result consumed nothing, so its ten `List.set`s per step copied the
+  bodies' list. A def with a fresh result now also consumes a parameter when its owned entry
+  owns more update sites than its plain entry (a def that only reads stays a borrower):
+  `advance$o`, `nbody` 1.351 G → 817 M instructions (−39.6%), 11.90× → 7.23× hand JS. The
+  records themselves are still rebuilt: updating `bs[j]` in place measured −32% more by hand,
+  but needs a proof that `bs[i]` (live as `b`) and `bs[j]` are distinct objects, which no
+  fact gives today (a list may hold one record twice); a question for the design lead.
+- (ii) **Landed for `List<Bool>` only.** An owned push loop keeps a list *flat* (no trie, one
+  JS array) when its elements are booleans; an owned `List.set` on it is a store, and the first
+  persistent `push` or `set` rebuilds it as a trie in place. `sieve` 80.5 M → 53.9 M (−33.0%),
+  4.62× → 3.08×. Flat `Float`/`Int` lists cost `spectral_norm` 5% (a flat read misses
+  `list_at`'s leaf cache) and flat lists of references cost `rbtree` 23% (V8's collector), so
+  neither landed. Typed arrays were not built: a preallocated `Uint8Array` sieve counts 7.95 M
+  against a pushed JS array's 17.6 M, but a list built by pushes has no static element type at
+  run time to choose one. `sieve`'s peak RSS rises 89 → 147 MB at n = 200,000 (a 1.6 MB array
+  grown by copying is large-object garbage until a full collection), flagged, unconfirmed.
+- (iii) **Not landed.** Scalar replacement of `advance`'s loop-carried body: −7% after (i),
+  under the 10% bar.
+- **`spectral_norm` is not moved by any arm** (754 M → 753 M). By hand: a flat `Float` list
+  −1.8%; replacing the cold `$rt.add`/`$rt.mul` overflow calls and `list_get_expect`'s
+  `defect` call by a `throw` of a preallocated value −26% (754 → 556 M); unchecked `a(i, j)`
+  and direct array reads 185 M, near hand JS's 168 M. A call on a cold path inside a hot loop
+  costs about 26 instructions an iteration in V8's optimized code, even when it never runs; a
+  `throw` does not. Removing those calls changes how a defect is raised, so it is a new row
+  for the design lead, not part of WS-P14.
+
+`compare` reads **blocked** on two Node cells with named reasons: `handled_reentry` n = 1000
++16.6% (bisected to `list_at`'s flat branch, after which V8 stops inlining `fromLeaves` into
+std's `range`; larger sizes unchanged) and `shapes` n = 50,000 +29.1% (not this change: the
+same emitted directory counts 454 M in this worktree with the old runtime and 380–392 M copied
+elsewhere with either runtime; unexplained). `map_set:int` and `map_set:string` flag 6%, the
+same count with the old runtime.
+
 ### 4.2 File ownership
 
 | Paths | Owner |

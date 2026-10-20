@@ -352,12 +352,18 @@ impl Summaries<'_> {
             // A fresh result owns every part: a container alone is no origin worth naming.
             let base = Analysis::run(self.m, def, &self.out, &[]);
             fresh = returns_owned(&base) && weak(&base).is_empty();
-            // A fresh result needs no argument: its parameters are only borrowed or escape.
+            // A fresh result needs no argument, so a def with one consumes a parameter only when
+            // owning it updates something in place that the plain entry copies (`nbody`'s
+            // `advance` sets its bodies, then returns `List.map`'s fresh list; design §17.265
+            // (6), WS-P14). One that only borrows it stays a borrower to its callers.
             consumes = def.params.iter().position(|p| {
-                if fresh || !ownable(self.m, &def.local(*p).ty) {
+                if !ownable(self.m, &def.local(*p).ty) {
                     return false;
                 }
                 let a = Analysis::run(self.m, def, &self.out, &[*p]);
+                if fresh && a.owned_sites() <= base.owned_sites() {
+                    return false;
+                }
                 parts = weak(&a);
                 a.owned[p.index()] && returns_owned(&a)
             });
@@ -658,6 +664,16 @@ impl<'a> Analysis<'a> {
 
     fn owned_atom(&self, a: &Atom) -> bool {
         matches!(a, Atom::Local(l) if self.owned[l.index()])
+    }
+
+    /// The consuming sites [`analyze`] reports owned.
+    fn owned_sites(&self) -> usize {
+        self.sites
+            .iter()
+            .filter(|(_, arg)| {
+                arg.is_some_and(|x| self.owned[x.index()] && self.weak[x.index()].is_empty())
+            })
+            .count()
     }
 
     fn use_atom(&mut self, a: &Atom, u: Use) {

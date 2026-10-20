@@ -416,6 +416,44 @@ test("builders, leaf iteration and map logs keep lists persistent (design §17.1
   assert.deepEqual(rt.toArray(rt.map_entries(rt.map_remove(m, 2))), [[1, "a"], [3, "c"]]);
 });
 
+test("a flat Bool list is one array until a persistent update spills it, unchanged (design §17.265 (6))", () => {
+  const bools = (n) => Array.from({ length: n }, (_, i) => i % 3 === 0);
+  let xs = rt.list_empty();
+  for (const b of bools(1000)) xs = rt.list_push_owned(xs, b);
+  assert.equal(xs.root, null);
+  assert.equal(xs.tl, 1000);
+  xs = rt.list_set_owned(xs, 500, true);
+  const want = bools(1000).map((b, i) => (i === 500 ? true : b));
+  assert.equal(rt.list_at(xs, 500), true);
+  assert.equal(rt.list_at(xs, 502), false);
+  assert.equal(rt.list_get_expect(xs, 999, "m"), true);
+  assert.deepEqual(rt.toArray(xs), want);
+  // A persistent `set` and `push` leave the flat list's elements as they were.
+  const set = rt.list_set(xs, 3, false);
+  assert.notEqual(xs.root, null);
+  assert.deepEqual(rt.toArray(xs), want);
+  assert.deepEqual(rt.toArray(set), want.map((b, i) => (i === 3 ? false : b)));
+  let ys = rt.list_empty();
+  for (const b of bools(100)) ys = rt.list_push_owned(ys, b);
+  const pushed = rt.list_push(ys, true);
+  assert.deepEqual(rt.toArray(ys), bools(100));
+  assert.deepEqual(rt.toArray(pushed), [...bools(100), true]);
+  // An older version sharing the tail array keeps its prefix through owned pushes and the spill.
+  let zs = rt.list_push(rt.list_push(rt.list_empty(), true), false);
+  const old = zs;
+  zs = rt.list_push(zs, false);
+  for (let i = 3; i < 70; i++) zs = rt.list_push_owned(zs, i % 3 === 0);
+  assert.equal(zs.root, null);
+  rt.list_set(zs, 0, false);
+  assert.deepEqual(rt.toArray(old), [true, false]);
+  assert.deepEqual(rt.toArray(zs), bools(70));
+  assert.deepEqual(rt.toArray(rt.list_push(old, true)), [true, false, true]);
+  // Lists of numbers or references keep the trie.
+  let ns = rt.list_empty();
+  for (let i = 0; i < 100; i++) ns = rt.list_push_owned(ns, i);
+  assert.notEqual(ns.root, null);
+});
+
 test("owned entries update in place and build what the persistent operations build (design §17.149)", () => {
   let seed = 11;
   const rand = (n) => {
@@ -424,7 +462,8 @@ test("owned entries update in place and build what the persistent operations bui
   };
   const shape = (xs) => [xs.n, xs.shift, xs.root, xs.tail.slice(0, xs.tl), xs.tl];
   // One linear chain each way: the owned entry returns its argument (except for the empty
-  // singleton), and the result has the persistent one's elements and trie shape.
+  // singleton), and the result has the persistent one's elements; while it has no trie the
+  // owned chain stays flat (design §17.265 (6)), so the shapes agree once it has one.
   let p = rt.list_empty();
   let o = rt.list_empty();
   for (let i = 0; i < 40_000; i++) {
@@ -441,7 +480,10 @@ test("owned entries update in place and build what the persistent operations bui
     // Reads between updates go through the leaf cache, which must follow the writes.
     const k = rand(o.n);
     assert.equal(rt.list_at(o, k), rt.list_at(p, k));
-    if (i % 997 === 0) assert.deepEqual(shape(o), shape(p));
+    if (i % 997 === 0) {
+      assert.deepEqual(rt.toArray(o), rt.toArray(p));
+      if (o.root !== null) assert.deepEqual(shape(o), shape(p));
+    }
   }
   assert.deepEqual(rt.toArray(o), rt.toArray(p));
   assert.deepEqual(rt.toArray(rt.list_empty()), []);

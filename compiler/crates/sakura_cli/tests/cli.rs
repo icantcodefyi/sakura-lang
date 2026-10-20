@@ -2368,6 +2368,24 @@ fn g
   r%3 = list_push(x%0) shared(param)
 ",
         ),
+        (
+            "owned_fresh_result",
+            "fn main
+  r%11 = bump_all(xs%1) shared(borrowed-after)
+  r%59 = set(ws%47) owned
+  r%97 = list_push(xs%1) shared(borrowed-after)
+  r%99 = set(xs%1) shared(borrowed-after)
+  r%142 = set(flags%127) owned
+  r%143 = set(r%142) shared(borrowed-after)
+  r%144 = list_push(r%142) shared(borrowed-after)
+  r%140 = list_push(flags%131) owned
+  r%71 = bump_all(ws%65) owned
+  r%56 = list_push(ws%50) owned
+  r%9 = list_push(xs%3) owned
+fn bump_all consumes start
+  r%13 = set(xs%3) shared(join), owned entry owned
+",
+        ),
     ] {
         let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
         assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);

@@ -138,6 +138,7 @@ semantics/owned_captured_and_stored: 8 funcs, 41 blocks, 10 dup, 54 drop, valid
 semantics/owned_effects: 11 funcs, 86 blocks, 14 dup, 68 drop, valid
 semantics/owned_empty_set_defect: 3 funcs, 9 blocks, 1 dup, 2 drop, valid
 semantics/owned_empty_singleton: 3 funcs, 24 blocks, 1 dup, 70 drop, valid
+semantics/owned_fresh_result: 12 funcs, 83 blocks, 37 dup, 140 drop, valid
 semantics/owned_generic: 10 funcs, 49 blocks, 15 dup, 46 drop, valid
 semantics/owned_loop_twice: 11 funcs, 65 blocks, 13 dup, 48 drop, valid
 semantics/owned_record_captured: 19 funcs, 87 blocks, 13 dup, 93 drop, valid

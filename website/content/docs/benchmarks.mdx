@@ -204,6 +204,25 @@ baseline: flat `Float`, `Bool` and `Int` lists and in-place `Float` records (`nb
 `deltablue`; forwarding handlers (`handled_fwd`); then the WebAssembly cliffs, starting with
 contracts and the superlinear `tokenizer` cost (design §17.265 (6)).
 
+### Since the baseline
+
+These counts come from a counted run of the JavaScript suite after the change, on the same
+Mac, and are not a blessed baseline; the tables above stay the baseline until the next one is
+blessed.
+
+- **Lists a function returns fresh.** A function that returns a fresh list may now update the
+  list it is given in place when its caller is done with it. `nbody`'s step updates its bodies'
+  list that way: 1.35 G → 817 M instructions per call on Node (11.90× → 7.23× hand-written
+  JavaScript) and 1.22 G → 584 M on Bun (8.89× → 4.18×).
+- **Flat `List<Bool>`.** A `List<Bool>` built by an owned push loop is one array, so an owned
+  `List.set` on it is one store, until a persistent update rebuilds it as a tree with the same
+  elements. `sieve`: 80.5 M → 53.9 M on Node (4.62× → 3.08×), 87.6 M → 43.0 M on Bun
+  (6.98× → 3.42×). Flat `Float` and `Int` lists were measured and made `spectral_norm` slower,
+  so they are not built.
+- `spectral_norm` is unchanged (4.49× on Node). What it pays for is the checked arithmetic and
+  bounds checks in its inner loop, whose failure paths cost time even when they never run; that
+  is the next item measured for it.
+
 ## Spread
 
 The spread is (max − min) / median over a cell's five pairs.

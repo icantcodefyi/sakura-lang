@@ -138,6 +138,7 @@ semantics/owned_captured_and_stored: ok, 514 allocated, 3258 dup, 3772 drop, pea
 semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0/0
 semantics/owned_empty_set_defect: D020, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
 semantics/owned_empty_singleton: unsupported (builtin map_remove)
+semantics/owned_fresh_result: ok, 1760 allocated, 19556 dup, 21316 drop, peak 197, live 0/0
 semantics/owned_generic: ok, 301 allocated, 4292 dup, 4593 drop, peak 12, live 0/0
 semantics/owned_loop_twice: ok, 854 allocated, 8908 dup, 9762 drop, peak 86, live 0/0
 semantics/owned_record_captured: ok, 161 allocated, 235 dup, 396 drop, peak 21, live 0/0

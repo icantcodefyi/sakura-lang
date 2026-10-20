@@ -9,6 +9,12 @@ retains earlier implementation history.
 
 ### Changed
 
+- JS backend performance (design §17.265 (6)): a function that returns a fresh list may now
+  update the list it is given in place when the caller is done with it, and a `List<Bool>`
+  built by an owned push loop is one array until a persistent update rebuilds it. By
+  instructions retired per call on the reference Mac (Node, largest size), `nbody` drops 40%
+  (11.90× → 7.23× hand-written JavaScript) and `sieve` 33% (4.62× → 3.08×); no program's
+  output changes.
 - **Breaking for user handlers (0.2.0, RFC 0002 §2.8, design §17.262 (3)).** The `Clock`
   effect gains `monotonic_micros() -> Int` and the `Task` effect gains `cancel<T>(f: Fiber<T>)
   -> Unit` and `cancelled(s: Scope) -> Bool`, so a user `handler Clock` or `handler Task` must

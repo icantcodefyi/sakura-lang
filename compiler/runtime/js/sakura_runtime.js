@@ -955,12 +955,23 @@ function ser(v) {
 // elements. `get` and `push` are O(log32 n). The tail array may be longer than this version's
 // `tl`: a push onto the newest version appends to the shared tail in place (amortized O(1) for
 // loops), any other push copies at most 32 elements. Trie nodes are never mutated.
+//
+// A *flat* list (design §17.265 (6), WS-P14) has no trie: `root` is null and the tail holds all
+// `n` elements, more than 32. Only `list_push_owned` makes one, of booleans (a `List<Bool>`: the
+// static type makes every element one), so a list built by an owned push loop is one JS array
+// and an owned `List.set` on it is one store (`sieve` −33% by count). A flat read misses
+// `list_at`'s cache, so lists that are mostly read stay tries: flat `Float` lists cost
+// `spectral_norm` 5% by count; and one long array of references, written while its elements
+// are young, costs V8's collector more than the trie saves (`rbtree`'s retained trees, +23%).
+// The first persistent `push` or `set` of a flat list rebuilds it as a trie in place (`spill`):
+// the same elements, so no program can tell, and the O(n) is paid once, by the pushes that
+// made it.
 
 export class List {
   constructor(n, shift, root, tail, tl) {
     this.n = n; // length
     this.shift = shift; // level of `root`'s children (5 per level; leaves are level 0)
-    this.root = root; // trie of the first n - tl elements, null when there are none
+    this.root = root; // trie of the first n - tl elements, null when there are none (then n = tl)
     this.tail = tail; // the last `tl` elements are tail[0..tl)
     this.tl = tl;
     // `list_at`'s leaf cache (design §17.116): the leaf (or tail) holding elements [lb, lb + 32).
@@ -1046,7 +1057,20 @@ function at(xs, i) {
   return node[i & 31];
 }
 
+/** A flat list rebuilt as a trie in place: the elements do not change (a shared tail array is
+ * copied, never written). */
+function spill(xs) {
+  const t = list(xs.tail.slice(0, xs.tl));
+  xs.shift = t.shift;
+  xs.root = t.root;
+  xs.tail = t.tail;
+  xs.tl = t.tl;
+  xs.lb = -1;
+  xs.lf = null;
+}
+
 function push(xs, x) {
+  if (xs.root === null && xs.tl > 32) spill(xs);
   const { n, tl } = xs;
   if (tl < 32) {
     if (xs.tail.length === tl) {
@@ -1085,6 +1109,7 @@ function pushLeaf(node, level, off, leaf) {
 
 /** A copy of `xs` with element `i` (in range) replaced by `x`. */
 function setAt(xs, i, x) {
+  if (xs.root === null && xs.tl > 32) spill(xs);
   const off = xs.n - xs.tl;
   if (i >= off) {
     const t = xs.tail.slice(0, xs.tl);
@@ -1113,11 +1138,13 @@ export function list_get(xs, i) {
 /** Unchecked index for compiler-generated loops; sequential indices hit the leaf cache. */
 export function list_at(xs, i) {
   if ((i & ~31) === xs.lb) return xs.lf[i & 31];
-  // The tail starts on a leaf boundary, so it is cached like a leaf.
+  // The tail starts on a leaf boundary, so it is cached like a leaf; a flat list's is not.
   let node = xs.tail;
   if (i < xs.n - xs.tl) {
     node = xs.root;
     for (let level = xs.shift; level > 0; level -= 5) node = node[(i >>> level) & 31];
+  } else if (xs.tl > 32) {
+    return node[i];
   }
   xs.lb = i & ~31;
   xs.lf = node;
@@ -1150,11 +1177,12 @@ export function list_set_owned(xs, i, x) {
   node[i & 31] = x;
   return xs;
 }
-/** `List.push` in place: the wrapper is reused and a full tail joins the trie unchanged. */
+/** `List.push` in place: the wrapper is reused and a full tail joins the trie unchanged; a
+ * `List<Bool>` with no trie stays flat. */
 export function list_push_owned(xs, x) {
   if (xs === EMPTY_LIST) return push(xs, x);
   const tl = xs.tl;
-  if (tl < 32) {
+  if (tl < 32 || (xs.root === null && (tl > 32 || typeof x === "boolean"))) {
     if (xs.tail.length !== tl) xs.tail = xs.tail.slice(0, tl);
     xs.tail.push(x);
     xs.tl = tl + 1;
