@@ -1,0 +1,43 @@
+// Design §17.294 WP-7 (dogfood/workshop-power FRICTION item 7): a projection of a field
+// whose declared type is refined assumes the refinement's `T$check`, as a refined parameter
+// does. The author's probe: `direct` and `field` are both proved; `nested` reads the refined
+// field through a nested record; `payload` through a variant's payload.
+type W = Int where it >= 0 && it <= 100_000
+
+type R = { x: W, y: Int }
+
+type Outer = { inner: R }
+
+type Reading = Present(W) | Absent
+
+fn need(w: Int) -> Int
+  requires bounded: w <= 100_000
+{ w }
+
+fn direct(w: W) -> Int { need(w) }
+
+fn field(r: R) -> Int { need(r.x) }
+
+fn nested(o: Outer) -> Int { need(o.inner.x) }
+
+fn payload(m: Reading) -> Int {
+  match m {
+    Present(w) => need(w),
+    Absent => 0,
+  }
+}
+
+// Each branch projects `r.x` on its own path; both assume the refinement.
+fn branches(r: R, b: Bool) -> Int {
+  if b { need(r.x) } else { need(r.x + 0) }
+}
+
+// No new unsound proof: `y` is a plain `Int`, so this stays disproved.
+fn plain(r: R) -> Int { need(r.y) }
+
+// The refinement bounds `x`, nothing tighter: this stays disproved.
+fn tighter(r: R) -> Int { need(r.x + 1) }
+
+pub fn main() -> Unit {
+  let _a = direct(W.from(1))
+}

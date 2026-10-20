@@ -1069,10 +1069,45 @@ impl<'m> Gen<'m> {
                 let origin = h.clone().map_or(Origin::Input, Origin::Havoc);
                 let out = self.scalar(&full, ty, origin);
                 self.memo.insert(key, out.clone());
+                self.assume_field_refinement(p, &out);
                 out
             }
             _ => self.havoc(name, ty, "a projection the encoder does not model"),
         }
+    }
+
+    /// A part of a value the encoder does not model whose declared type is refined (`r.x` with
+    /// `x: W`, a payload `Present(w)`) satisfies `W$check`, as a refined parameter does (§17.84,
+    /// §17.294 WP-7): every value of the type passed the check when it was introduced. The part
+    /// is memoised per value, so the fact is global rather than on the first projection's path.
+    fn assume_field_refinement(&mut self, p: &Proj, v: &Val) {
+        let (t, row, i) = match *p {
+            Proj::Field(t, i) => (t, 0, i),
+            Proj::Payload(t, k, i) => (t, k, i),
+            Proj::Tuple(_) => return,
+        };
+        let schema = self
+            .m
+            .field_schemas
+            .iter()
+            .find(|(id, _)| *id == t)
+            .and_then(|(_, rows)| rows.get(row as usize)?.get(i as usize));
+        let Some(Ty::Refined(r, _)) = schema else {
+            return;
+        };
+        let r = &self.m.refinements[*r as usize];
+        self.vc
+            .inlined
+            .insert(format!("refinement {}::{}", r.module, r.name));
+        let check = r.check;
+        let mut sub = Frame::new(self.m.def(check), Emit::Silent, &self.m.def(check).name);
+        let Some((path, Val::Bool(holds))) =
+            self.inline(&mut sub, check, vec![], vec![v.clone()], Path::default())
+        else {
+            return;
+        };
+        self.vc.facts.extend(path.assume);
+        self.vc.facts.push(holds);
     }
 
     fn check(

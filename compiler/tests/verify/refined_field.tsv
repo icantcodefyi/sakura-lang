@@ -1,0 +1,23 @@
+# profile	symbol	site	status	clause
+i64	main::main::branches	r%4	proved	requires bounded
+i64	main::main::branches	r%7	proved	requires bounded
+i64	main::main::branches	t%6	proved	overflow t%6 = r.x + 0
+i64	main::main::direct	r%1	proved	requires bounded
+i64	main::main::field	r%2	proved	requires bounded
+i64	main::main::main	r%0	proved	where W
+i64	main::main::nested	r%3	proved	requires bounded
+i64	main::main::payload	r%3	proved	requires bounded
+i64	main::main::plain	r%2	disproved	requires bounded
+i64	main::main::tighter	r%3	disproved	requires bounded
+i64	main::main::tighter	t%2	proved	overflow t%2 = r.x + 1
+js	main::main::branches	r%4	proved	requires bounded
+js	main::main::branches	r%7	proved	requires bounded
+js	main::main::branches	t%6	proved	overflow t%6 = r.x + 0
+js	main::main::direct	r%1	proved	requires bounded
+js	main::main::field	r%2	proved	requires bounded
+js	main::main::main	r%0	proved	where W
+js	main::main::nested	r%3	proved	requires bounded
+js	main::main::payload	r%3	proved	requires bounded
+js	main::main::plain	r%2	disproved	requires bounded
+js	main::main::tighter	r%3	disproved	requires bounded
+js	main::main::tighter	t%2	proved	overflow t%2 = r.x + 1

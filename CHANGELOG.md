@@ -380,6 +380,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `Http.stream` body no longer fires its sleeper before the read completes, so it gives the
   JS result. `sakura test --record` no longer prints Node's `ExperimentalWarning` for
   `--allow-net`.
+- `sakura verify` (preview) assumes a refined field's `where` when the field is read, as it
+  already did for a refined parameter (design §17.294 WP-7): with `x: W`, `r.x` and
+  `o.inner.x` satisfy `W`'s predicate, as does a refined constructor payload, so a true
+  obligation on them is `proved` where it was `disproved` with a counterexample outside `W`.
+  Fixture: `compiler/tests/verify/refined_field.sak`.
 
 ### Security
 
