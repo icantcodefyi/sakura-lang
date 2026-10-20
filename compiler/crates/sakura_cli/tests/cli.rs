@@ -2452,6 +2452,17 @@ fn spread consumes start with elements
   r%30 = set(bs%14) shared(join), owned entry owned
 ",
         ),
+        // Design §17.290 (2): `bs[j]`'s `Option` holds the element across its update, so the
+        // read retains: `kick` does not assume owned elements and the update allocates.
+        (
+            "owned_elements_option",
+            "fn main
+  r%3 = kick(xs%2) owned
+fn kick consumes start
+  r%8 = set(start%0) shared(param), owned entry owned
+  r%16 = list_push(bs%10) shared(join), owned entry owned
+",
+        ),
     ] {
         let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
         assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);

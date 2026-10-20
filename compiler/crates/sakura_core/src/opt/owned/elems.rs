@@ -21,7 +21,10 @@
 //!     no object ever sits in two slots;
 //! (c) every other use of a version or of an element local reads and retains nothing, or
 //!     happens when no version and no element local of the chain is live after it (nothing of
-//!     the chain is updated in place afterwards); and
+//!     the chain is updated in place afterwards); a read of a version retains nothing only when
+//!     its result holds no element or is an element local (`list_len`, `list_contains`,
+//!     `list_at`, `list_get_expect`, an element-read def), not `list_get`, whose `Option` holds
+//!     the element where no element local names it (design §17.290 (2)); and
 //! (d) an element local only flows into join parameters that are element locals of the chain.
 //!
 //! A call of a def whose owned entry assumes owned elements is proved only when its chain owns
@@ -828,8 +831,14 @@ impl<'a> Elems<'a> {
             .collect();
         let taken =
             self.consumes.get(&y) == Some(&l) && consumed(b, self.sums).is_some_and(|p| at == [p]);
+        // A read retains nothing when its result holds no element or is an element local of the
+        // chain. `list_get` borrows the list but keeps the element in an `Option` the liveness
+        // does not track, so it retains (design §17.290 (2)).
         let read = match callee {
-            Atom::Builtin(n) => BORROWS.contains(&n.as_str()),
+            Atom::Builtin(n) => matches!(
+                n.as_str(),
+                "list_len" | "list_contains" | "list_at" | "list_get_expect"
+            ),
             Atom::Global(d) => self.sums[d.index()]
                 .elem_read
                 .is_some_and(|(p, _)| at == [p]),

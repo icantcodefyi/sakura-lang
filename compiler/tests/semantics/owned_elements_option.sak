@@ -1,0 +1,27 @@
+// milestone: M4
+// covers: performance-r1 WS-P21; design §17.290 (2) (a `bs[j]` read keeps the element in an `Option` the liveness does not track: it retains, so the chain is disowned and the update allocates)
+
+type Body = { x: Int, v: Int }
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
+
+// `o` holds `bs[j]`'s record through the update of `bs[j]` and is matched after it: reusing
+// the record in place would show `o` the new `v`.
+fn kick(start: List<Body>, j: Int) -> List<Body> {
+  var bs = start
+  let o = bs[j]
+  let c = at(bs, j)
+  bs = List.set(bs, j, Body { ..c, v: c.v + 10 })
+  let old = match o {
+    Some(b) => b.v,
+    None => -1,
+  }
+  List.push(bs, Body { x: old, v: 0 })
+}
+
+pub fn main() -> Unit ! {Console} {
+  let ys = kick([Body { x: 3, v: 0 }, Body { x: 4, v: 0 }], 1)
+  var out = ""
+  for b in ys { out = "{out} {b.x}:{b.v}" }
+  Console.print("ys{out}")
+}
