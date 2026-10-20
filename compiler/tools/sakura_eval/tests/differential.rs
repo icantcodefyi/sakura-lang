@@ -28,8 +28,9 @@
 //! `SAKURA_DIFF_PROGRAMS` (default 500) and `SAKURA_DIFF_SEED` (default 1) control the run; a failure
 //! prints the seed and the program so it can be minimized into a `tests/semantics` regression.
 //! `SAKURA_DIFF_PROGRAMS=1 SAKURA_DIFF_SEED=<seed>` replays one program. Every program ends with
-//! an update of list elements the JS backend may reuse in place (design §17.273), and the
-//! evaluator audits ownership (`Limits::audit_owned`), so a reused record read again stops the
+//! updates of list elements the JS backend may reuse in place (design §17.273) and the shapes
+//! it must refuse (§17.290 (7): a held `bs[i]` `Option`, a stored moved record, a carried
+//! rebuild), and the evaluator audits ownership (`Limits::audit_owned`), so a reused record read again stops the
 //! run; `SAKURA_DIFF_ELEMENTS=0` turns the reuse off for a control run.
 
 use std::fmt::Write as _;
@@ -103,6 +104,7 @@ impl Ty {
 /// Declarations every program starts with.
 const PRELUDE: &str = "\
 type P = { a: Int, s: String }
+type Q = { p: P }
 type Shape = Dot | Num(Int) | Pair(Int, String)
 error Oops(code: Int)
 error Bad
@@ -160,6 +162,50 @@ fn drift_p(start: List<P>, k: Int) -> List<P> {
     i = i + 1
   }
   ps
+}
+fn hold_p(start: List<P>, j: Int) -> List<P> {
+  var ps = start
+  let i = j % List.len(ps)
+  let o = ps[i]
+  let c = at_p(ps, i)
+  ps = List.set(ps, i, P { ..c, a: c.a % 1000 + 10 })
+  let old = match o { Some(p) => p.a, None => -1 }
+  List.push(ps, P { a: old, s: \"o\" })
+}
+fn box_p(start: List<P>, k: Int, mode: Int) -> String {
+  var b = at_p(start, 0)
+  var boxes: List<Q> = []
+  var held: List<P> = []
+  var n = 0
+  while n < k {
+    if mode == 0 { boxes = List.push(boxes, Q { p: b }) } else { held = List.push(held, b) }
+    b = P { ..b, a: b.a % 1000 + 1 }
+    n = n + 1
+  }
+  var out = \"\"
+  for q in boxes { out = \"{out} {q.p.a}\" }
+  \"{out}{show_ps(held)} {b.a}\"
+}
+fn carry_p(start: List<P>, m: List<Int>) -> String {
+  var ps = start
+  var b = at_p(ps, 0)
+  var boxes: List<Q> = []
+  var i = 0
+  while i < List.len(m) {
+    let r = at_p(ps, 0)
+    boxes = List.push(boxes, Q { p: r })
+    if i % 2 == 1 { b = r }
+    var k = 0
+    while k < Option.expect(m[i], \"m index\") {
+      b = P { ..b, a: b.a % 1000 + 1 }
+      k = k + 1
+    }
+    ps = List.set(ps, 0, P { a: i, s: \"c\" })
+    i = i + 1
+  }
+  var out = \"\"
+  for q in boxes { out = \"{out} {q.p.a}\" }
+  \"{out} {b.a}\"
 }
 fn show_ps(ps: List<P>) -> String {
   var out = \"\"
@@ -1291,9 +1337,10 @@ fn program(seed: u64) -> String {
     src
 }
 
-/// One update of list elements that the owned entry may reuse in place (design §17.273), on
-/// fresh records, on one record at two indices, or on an element pushed again; from its own
-/// stream, so a seed's program is otherwise the one it was.
+/// Updates of list elements and records that the JS backend may reuse in place (design §17.273,
+/// §17.290 (7)), on fresh records, on one record at two indices, or on an element pushed again,
+/// with the shapes the reuse must refuse; from its own stream, so a seed's program is otherwise
+/// the one it was.
 fn elements(seed: u64) -> String {
     let mut rng = Rng(seed ^ 0x5eed_e1e5);
     let n = 1 + rng.below(4);
@@ -1315,11 +1362,28 @@ fn elements(seed: u64) -> String {
             rng.below(2)
         ),
     };
-    format!(
+    let mut out = format!(
         "  Console.print(\"elements{{show_ps(drift_p(spread_p({list}, {}), {}))}}\")\n",
         rng.below(7),
         rng.below(4)
-    )
+    );
+    // The shapes design §17.290 (7) names: a `bs[i]` `Option` held across the update of
+    // `bs[i]`, a moved record stored (a `Q` or a push) before its rebuild, and a rebuild carried
+    // round an outer loop with the read inside it.
+    let m: Vec<String> = (0..2 + rng.below(3))
+        .map(|_| rng.below(4).to_string())
+        .collect();
+    let _ = write!(
+        out,
+        "  Console.print(\"hold{{show_ps(hold_p({list}, {}))}}\")\n\
+         \x20 Console.print(\"box{{box_p({list}, {}, {})}}\")\n\
+         \x20 Console.print(\"carry{{carry_p({list}, [{}])}}\")\n",
+        rng.below(4),
+        rng.below(4),
+        rng.below(2),
+        m.join(", ")
+    );
+    out
 }
 
 /// How a run ended: stdout lines plus `ok` or the defect code.
