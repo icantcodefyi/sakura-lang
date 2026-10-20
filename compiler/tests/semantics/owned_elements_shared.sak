@@ -1,0 +1,38 @@
+// milestone: M4
+// covers: performance-r1 WS-P21; design §17.273 (3) (one record at two indices: the list does not own its elements, so the update allocates and the result is the persistent one)
+
+type Body = { x: Int, v: Int }
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
+
+// The in-place site of design §17.273 (2): in `kick$o`, which assumes the list owns its
+// elements, `bs[j]`'s record is reused.
+fn kick(start: List<Body>, j: Int) -> List<Body> {
+  var bs = start
+  let c = at(bs, j)
+  bs = List.set(bs, j, Body { ..c, v: c.v + 10 })
+  bs
+}
+
+fn show(bs: List<Body>) -> String {
+  var out = ""
+  for b in bs { out = "{out} {b.x}:{b.v}" }
+  out
+}
+
+pub fn main() -> Unit ! {Console} {
+  // One record at two indices: `kick` is called through its plain entry.
+  let r = Body { x: 1, v: 0 }
+  let two = kick([r, r], 0)
+  Console.print("two{show(two)}; r {r.x}:{r.v}")
+
+  // An element pushed again: index 0 and index 1 hold one record.
+  var xs = [Body { x: 2, v: 0 }]
+  xs = List.push(xs, at(xs, 0))
+  xs = kick(xs, 1)
+  Console.print("xs{show(xs)}")
+
+  // Fresh records: the owned entry reuses `bs[1]` in place.
+  let ys = kick([Body { x: 3, v: 0 }, Body { x: 4, v: 0 }], 1)
+  Console.print("ys{show(ys)}")
+}

@@ -2426,11 +2426,63 @@ fn bump_all consumes start
   r%13 = set(xs%3) shared(join), owned entry owned
 ",
         ),
+        // Design §17.273 (3): one record at two indices (a literal holding it twice, an element
+        // pushed again) disowns the elements, so `kick` is called through its plain entry; a
+        // literal of fresh records owns them, and `kick$o` reuses `bs[j]` in place.
+        (
+            "owned_elements_shared",
+            "fn main
+  r%2 = kick(xs%1) shared(elements)
+  r%18 = list_push(xs%16) owned
+  r%19 = kick(r%18) shared(elements)
+  r%27 = kick(xs%26) owned
+fn kick consumes start with elements
+  rec%6 = Body {..r%2} allocates, owned entry in place
+  r%7 = set(start%0) shared(param), owned entry owned
+",
+        ),
+        // Design §17.273 (2): `b` is live through the update of every `bs[j]`, so the reuse is
+        // guarded by `c !== b` and allocates when `j == i`.
+        (
+            "owned_elements_guard",
+            "fn main
+  r%4 = spread(xs%3) owned
+fn spread consumes start with elements
+  rec%29 = Body {..r%23} allocates, owned entry in place unless r%23 is r%10
+  r%30 = set(bs%14) shared(join), owned entry owned
+",
+        ),
     ] {
         let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
         assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
         assert_eq!(out.stdout, expected, "{name}");
     }
+}
+
+/// Design §17.273: on the `nbody` benchmark `advance$o` reuses `bs[j]`'s record in place with no
+/// guard (the `b` it pairs with is a fresh record by then), and `run` proves the elements at
+/// both calls.
+#[test]
+fn build_dump_owned_reuses_the_nbody_bodies() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bench/programs/nbody/sakura");
+    let out = sakura(&["build", "--dump", "owned", "main.sak"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert_eq!(
+        out.stdout,
+        "fn run
+  r%2 = offset_momentum(r%1) owned
+  r%11 = advance(bs%5) owned
+fn offset_momentum consumes bs with elements
+  rec%41 = Body {..r%27} allocates, owned entry in place
+  r%42 = set(bs%0) shared(param), owned entry owned
+fn advance consumes start with elements
+  r%87 = set(bs%13) shared(join), owned entry owned
+  rec%84 = Body {..r%27} allocates, owned entry in place
+  r%85 = set(bs%17) shared(join), owned entry owned
+fn set consumes bs
+  r%3 = set(bs%0) shared(param), owned entry owned
+"
+    );
 }
 
 /// Design §17.201 (3): on the `deltablue` benchmark every Planner update is owned in its def's

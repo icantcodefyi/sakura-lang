@@ -1,0 +1,32 @@
+// milestone: M4
+// covers: performance-r1 WS-P21; design §17.273 (2), (3) (the identity guard fails when `i == j`: the update allocates and `b` keeps its fields)
+
+type Body = { x: Int, v: Int }
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
+
+// `b = bs[i]` is live through the loop over every `j`, `i` included: the in-place update of
+// `bs[j]` is guarded by `c !== b`. Reusing `bs[i]` when `j == i` would change `b.x` under the
+// rest of the loop.
+fn spread(start: List<Body>) -> List<Body> {
+  var bs = start
+  var i = 0
+  while i < List.len(bs) {
+    let b = at(bs, i)
+    var j = 0
+    while j < List.len(bs) {
+      let c = at(bs, j)
+      bs = List.set(bs, j, Body { ..c, x: c.x + b.x, v: c.v + 1 })
+      j = j + 1
+    }
+    i = i + 1
+  }
+  bs
+}
+
+pub fn main() -> Unit ! {Console} {
+  let bs = spread([Body { x: 1, v: 0 }, Body { x: 2, v: 0 }, Body { x: 3, v: 0 }])
+  var out = ""
+  for b in bs { out = "{out} {b.x}:{b.v}" }
+  Console.print("bs{out}")
+}

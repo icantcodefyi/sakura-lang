@@ -251,11 +251,16 @@ struct Owned {
 enum Pin {
     Seq(std::rc::Weak<Vec<Value>>),
     Map(std::rc::Weak<Vec<(Value, Value)>>),
+    Rec(std::rc::Weak<[Value]>),
 }
 
-/// The identity of a `List`, `Map` or `Set` value.
+/// The identity of a `List`, `Map`, `Set` or record value.
 fn identity(v: &Value) -> Option<(usize, Pin)> {
     match v {
+        Value::Record(_, r) => Some((
+            Rc::as_ptr(r) as *const Value as usize,
+            Pin::Rec(Rc::downgrade(r)),
+        )),
         Value::List(r) | Value::Set(r) => {
             Some((Rc::as_ptr(r) as usize, Pin::Seq(Rc::downgrade(r))))
         }
@@ -334,6 +339,38 @@ impl<'m> Machine<'m> {
             Bind::Call(_, args) => args.get(p),
             _ => None,
         }
+    }
+
+    /// `Limits::audit_owned`, design §17.273 (2): a record allocation the backends make by
+    /// reusing an element in place, when its guards pass, consumes that element's record: an
+    /// in-place backend would have shown any later read of it the new fields.
+    fn reuse(&mut self, def: DefId, local: Local, env: &[Option<Value>]) -> R<()> {
+        let facts = match self.owned.frames.last() {
+            Some(true) => self
+                .owned
+                .entry_facts
+                .get(def.index())
+                .and_then(Option::as_ref),
+            _ => self.owned.facts.get(def.index()),
+        };
+        let Some((bj, guards)) = facts.and_then(|f| f.in_place(local)).cloned() else {
+            return Ok(());
+        };
+        let Some((id, pin)) = identity(&self.atom(env, &Atom::Local(bj))?) else {
+            return Err(Stop::Internal(format!(
+                "opt::owned: %{} is not a record",
+                bj.0
+            )));
+        };
+        for g in guards {
+            if identity(&self.atom_unchecked(env, &Atom::Local(g))?).map(|(i, _)| i) == Some(id) {
+                return Ok(());
+            }
+        }
+        self.owned.consumed.insert(id);
+        self.owned.pins.push(pin);
+        self.owned.updates += 1;
+        Ok(())
     }
 
     /// `Limits::audit_ranges`: a proved operation bound to `local` in `def` defected `code`.
@@ -632,6 +669,9 @@ impl<'m> Machine<'m> {
                         consumed.is_some() && matches!(bind, Bind::Call(Atom::Global(_), _));
                     let bound = self.bind(env, bind, hs);
                     self.owned.enter = false;
+                    if self.limits.audit_owned && matches!(bind, Bind::Alloc(Alloc::Record(_), _)) {
+                        self.reuse(def, *local, env)?;
+                    }
                     if let Err(Stop::Defect { code, .. }) = &bound
                         && !unsafe_int_operand(bind, code)
                     {
@@ -639,8 +679,12 @@ impl<'m> Machine<'m> {
                     }
                     match bound.map_err(|e| self.in_contract(e))? {
                         Ok(v) => {
-                            // An update that returns its argument unchanged consumed nothing.
-                            if let Some((id, pin)) = consumed.as_ref().and_then(identity)
+                            // An update that returns its argument unchanged consumed nothing. A
+                            // consumed carrier record is not tagged: its collections are.
+                            if let Some((id, pin)) = consumed
+                                .as_ref()
+                                .filter(|v| !matches!(v, Value::Record(..)))
+                                .and_then(identity)
                                 && identity(&v).map(|(i, _)| i) != Some(id)
                             {
                                 self.owned.consumed.insert(id);

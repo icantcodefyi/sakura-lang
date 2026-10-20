@@ -159,6 +159,8 @@ semantics/operation_ensures_blames_handler: 5 funcs, 10 blocks, 0 dup, 3 drop, v
 semantics/owned_argument_used_after_call: 10 funcs, 49 blocks, 21 dup, 49 drop, valid
 semantics/owned_captured_and_stored: 8 funcs, 41 blocks, 10 dup, 37 drop, valid
 semantics/owned_effects: 11 funcs, 86 blocks, 14 dup, 52 drop, valid
+semantics/owned_elements_guard: 5 funcs, 28 blocks, 7 dup, 14 drop, valid
+semantics/owned_elements_shared: 6 funcs, 26 blocks, 7 dup, 22 drop, valid
 semantics/owned_empty_set_defect: 3 funcs, 9 blocks, 1 dup, 2 drop, valid
 semantics/owned_empty_singleton: 3 funcs, 24 blocks, 1 dup, 42 drop, valid
 semantics/owned_fresh_result: 12 funcs, 83 blocks, 37 dup, 93 drop, valid

@@ -1,0 +1,145 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_elements_guard::Body | Body 32b (x: i64, v: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_elements_guard, frame 2 slots [%10 word*, %16 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: i64 = const 0
+    %2 rec: ptr = alloc main::owned_elements_guard::Body(%0, %1)
+    %3 lit: i64 = const 2
+    %4 lit: i64 = const 0
+    %5 rec: ptr = alloc main::owned_elements_guard::Body(%3, %4)
+    %6 lit: i64 = const 3
+    %7 lit: i64 = const 0
+    %8 rec: ptr = alloc main::owned_elements_guard::Body(%6, %7)
+    %9 xs: ptr = alloc list(%2, %5, %8)
+    call spread#2(%9) -> b1()
+  b1(%10 r: ptr):
+    dup.candidate %10
+    %11 n: i64 = $list_len(%10)
+    %50 lit: i64 = const 0
+    %51 lit: ptr = const str 3
+    jump b4(%50, %51, %10, %11)
+  b2(%12 out: ptr):
+    %13 s: ptr = show %12
+    drop %12
+    %14 lit: ptr = const str 0
+    %15 s: ptr = concat %14, %13
+    drop %13
+    perform std::console::Console.print(%15) -> b3()
+  b3(%16 r: unit):
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    ret %18
+  b4(%19 i: i64, %20 out: ptr, %21 r: ptr, %22 n: i64):
+    %23 more: bool = lt.int %19, %22
+    if %23 then b5(%21, %22, %19, %20) else b6(%21, %22, %19, %20)
+  b5(%24 r: ptr, %25 n: i64, %26 i: i64, %27 out: ptr):
+    dup.candidate %24
+    %32 x: word = $list_at(%24, %26)
+    %39 s: ptr = show %27
+    drop %27
+    %40 lit: ptr = const str 1
+    %41 s: ptr = concat %39, %40
+    drop %40
+    %42 x: i64 = proj %32.0 main::owned_elements_guard::Body
+    %43 s: ptr = show %42
+    %44 s: ptr = concat %41, %43
+    drop %43
+    %45 lit: ptr = const str 2
+    %46 s: ptr = concat %44, %45
+    drop %45
+    %47 v: i64 = proj %32.1 main::owned_elements_guard::Body
+    drop %32
+    %48 s: ptr = show %47
+    %49 s: ptr = concat %46, %48
+    drop %48
+    jump b7(%49, %24, %25, %26)
+  b6(%28 r: ptr, %29 n: i64, %30 i: i64, %31 out: ptr):
+    drop %28
+    jump b2(%31)
+  b7(%33 out: ptr, %34 r: ptr, %35 n: i64, %36 i: i64):
+    %37 lit: i64 = const 1
+    %38 i: i64 = intadd %36, %37
+    jump b4(%38, %33, %34, %35)
+
+fn $entry#1 top -> unit ; main::owned_elements_guard, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn spread#2 top -> ptr ; main::owned_elements_guard, frame 13 slots [%0 word*, %12 word*, %13 word*, %14 i64, %41 word*, %42 word*, %43 word*, %44 i64, %45 i64, %54 word*, %55 word*, %56 i64, %57 i64]
+  b0(%0 start: ptr):
+    %63 lit: i64 = const 0
+    jump b1(%0, %63)
+  b1(%1 bs: ptr, %2 i: i64):
+    dup.candidate %1
+    %3 r: i64 = $list_len(%1)
+    %4 t: bool = lt.int %2, %3
+    if %4 then b3(%1, %2) else b4(%1, %2)
+  b2(%5 v: word, %6 bs: ptr, %7 i: i64):
+    drop %5
+    jump b1(%6, %7)
+  b3(%8 bs: ptr, %9 i: i64):
+    dup.candidate %8
+    call at#3(%8, %9) -> b5(%8, %9)
+  b4(%10 bs: ptr, %11 i: i64):
+    ret %10
+  b5(%12 r: ptr, %13 bs: ptr, %14 i: i64):
+    %62 lit: i64 = const 0
+    jump b7(%13, %14, %62, %12)
+  b6(%15 bs: ptr, %16 i: i64, %17 j: i64):
+    %18 lit: i64 = const 1
+    %19 t: i64 = intadd %16, %18
+    %20 lit: unit = const ()
+    %21 box: word = box %20
+    jump b2(%21, %15, %19)
+  b7(%22 bs: ptr, %23 i: i64, %24 j: i64, %25 r: ptr):
+    dup.candidate %22
+    %26 r: i64 = $list_len(%22)
+    %27 t: bool = lt.int %24, %26
+    if %27 then b9(%25, %22, %23, %24) else b10(%25, %22, %23, %24)
+  b8(%28 v: word, %29 bs: ptr, %30 i: i64, %31 j: i64, %32 r: ptr):
+    drop %28
+    jump b7(%29, %30, %31, %32)
+  b9(%33 r: ptr, %34 bs: ptr, %35 i: i64, %36 j: i64):
+    dup.candidate %34
+    call at#3(%34, %36) -> b11(%33, %34, %35, %36)
+  b10(%37 r: ptr, %38 bs: ptr, %39 i: i64, %40 j: i64):
+    drop %37
+    jump b6(%38, %39, %40)
+  b11(%41 r: ptr, %42 r: ptr, %43 bs: ptr, %44 i: i64, %45 j: i64):
+    %46 x: i64 = proj %41.0 main::owned_elements_guard::Body
+    %47 x: i64 = proj %42.0 main::owned_elements_guard::Body
+    %48 t: i64 = intadd %46, %47
+    %49 v: i64 = proj %41.1 main::owned_elements_guard::Body
+    drop %41
+    %50 lit: i64 = const 1
+    %51 t: i64 = intadd %49, %50
+    %52 rec: ptr = alloc main::owned_elements_guard::Body(%48, %51)
+    %53 $site: i64 = const 2
+    call set#4(%43, %45, %52, %53) -> b12(%42, %44, %45)
+  b12(%54 r: ptr, %55 r: ptr, %56 i: i64, %57 j: i64):
+    %58 lit: i64 = const 1
+    %59 t: i64 = intadd %57, %58
+    %60 lit: unit = const ()
+    %61 box: word = box %60
+    jump b8(%61, %54, %56, %59, %55)
+
+fn at#3 top -> ptr ; main::owned_elements_guard, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 4
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3

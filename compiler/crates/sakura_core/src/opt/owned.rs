@@ -42,6 +42,9 @@ use std::fmt;
 use crate::builtins;
 use crate::ir::*;
 
+mod elems;
+use elems::{Assume, Elems, callback, elem_read, elemish, seq};
+
 /// Why a consuming site is not owned: the fixed reason set of `--dump owned`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Shared {
@@ -65,6 +68,9 @@ pub enum Shared {
     Field,
     /// A tuple component, likewise.
     Tuple,
+    /// The callee's owned entry assumes the list owns its elements, which this call cannot
+    /// prove (design §17.273 (1)): it calls the plain entry.
+    Elements,
 }
 
 impl fmt::Display for Shared {
@@ -79,6 +85,7 @@ impl fmt::Display for Shared {
             Shared::Join => f.write_str("join"),
             Shared::Field => f.write_str("field"),
             Shared::Tuple => f.write_str("tuple"),
+            Shared::Elements => f.write_str("elements"),
         }
     }
 }
@@ -88,11 +95,20 @@ impl fmt::Display for Shared {
 pub struct Facts {
     /// Keyed by the local the consuming call binds: `Ok` when its consumed argument is owned.
     pub sites: BTreeMap<Local, Result<(), Shared>>,
+    /// Design §17.273 (2): record allocations that reuse a list element in place, keyed by the
+    /// allocation's local: the element local it reuses, and the live element locals of the same
+    /// list it may be at run time (at most two), which the emitter tests first (`bj !== b`).
+    pub in_place: BTreeMap<Local, (Local, Vec<Local>)>,
 }
 
 impl Facts {
     pub fn owned(&self, at: Local) -> bool {
         matches!(self.sites.get(&at), Some(Ok(())))
+    }
+
+    /// The element `at`'s record allocation reuses, and the locals it is tested against.
+    pub fn in_place(&self, at: Local) -> Option<&(Local, Vec<Local>)> {
+        self.in_place.get(&at)
     }
 }
 
@@ -176,6 +192,23 @@ pub struct Summary {
     /// The components of an owned carrier result that are not owned (the sorted list of
     /// `(Planner, List.sort_by(…))`).
     pub weak: BTreeSet<u32>,
+    /// Design §17.273: the result is the element of list parameter `.0` at index parameter `.1`,
+    /// the def's only use of the list.
+    pub elem_read: Option<(usize, usize)>,
+    /// The result is a record no other reference reaches (a record literal, moved out).
+    pub fresh_value: bool,
+    /// The result list owns its elements, whatever the arguments.
+    pub fresh_elems: bool,
+    /// The result list owns its elements when this callback parameter returns fresh values.
+    pub fresh_elems_cb: Option<usize>,
+    /// A consuming def: with the consumed list owning its elements and the argument of each
+    /// `stores` entry fresh, or the element read at the index argument beside it, so does the
+    /// result.
+    pub keeps_elems: bool,
+    pub stores: Vec<(usize, Option<usize>)>,
+    /// The owned entry assumes the consumed list owns its elements (it has an in-place element
+    /// site that needs it): a caller proves it, or calls the plain entry (`shared(elements)`).
+    pub elems: bool,
 }
 
 impl Summary {
@@ -263,10 +296,13 @@ impl Summaries<'_> {
 
     fn callees(&self, d: DefId) -> BTreeSet<DefId> {
         let mut callees = BTreeSet::new();
-        each_bind(&self.m.def(d).body, &mut |b| {
-            if let Bind::Call(Atom::Global(c), _) = b {
+        // A closure's lambda too: its element summary is read where the closure is passed
+        // (`List.map(bs, fn(b) { … })`, design §17.273 (1)).
+        each_bind(&self.m.def(d).body, &mut |b| match b {
+            Bind::Call(Atom::Global(c), _) | Bind::Closure(c, _) => {
                 callees.insert(*c);
             }
+            _ => {}
         });
         callees
     }
@@ -302,6 +338,7 @@ impl Summaries<'_> {
         }
         if scc.len() == 1 && !callees.contains(&d) {
             self.summarize(d);
+            self.summarize_elems(d);
             return;
         }
         for x in &scc {
@@ -321,6 +358,7 @@ impl Summaries<'_> {
                 changed |= self.summarize(*x);
             }
             if !changed {
+                self.elements(&scc);
                 return;
             }
         }
@@ -330,6 +368,96 @@ impl Summaries<'_> {
             s.consumes = None;
             s.weak.clear();
         }
+    }
+
+    /// The element summaries of a recursive component: from "no member claims anything" to a
+    /// fixpoint, each claim checked against the last round's (sound by induction on the depth of
+    /// the calls that return, as the consuming summaries are); none if it does not settle.
+    fn elements(&mut self, scc: &[DefId]) {
+        for _ in 0..MAX_ROUNDS {
+            let mut changed = false;
+            for x in scc {
+                changed |= self.summarize_elems(*x);
+            }
+            if !changed {
+                return;
+            }
+        }
+        for x in scc {
+            let s = &mut self.out[x.index()];
+            *s = Summary {
+                consumes: s.consumes,
+                fresh: s.fresh,
+                borrows: std::mem::take(&mut s.borrows),
+                weak: std::mem::take(&mut s.weak),
+                ..Summary::default()
+            };
+        }
+    }
+
+    /// Recomputes the element summary of `d` (design §17.273 (1)); true when it changed.
+    fn summarize_elems(&mut self, d: DefId) -> bool {
+        let (m, def) = (self.m, self.m.def(d));
+        let old = self.out[d.index()].clone();
+        let mut s = Summary {
+            consumes: old.consumes,
+            fresh: old.fresh,
+            borrows: old.borrows.clone(),
+            weak: old.weak.clone(),
+            ..Summary::default()
+        };
+        s.elem_read = elem_read(m, def, &self.out);
+        let ret_rec = elemish(m, &def.ret);
+        let ret_seq = seq(m, &def.ret);
+        if (ret_rec && def.kind != FnKind::Const)
+            || (ret_seq && (old.fresh || old.consumes.is_some()))
+        {
+            let base = Analysis::run(m, def, &self.out, &[]);
+            let plain = Elems::run(m, def, &self.out, &base, Assume::default());
+            if ret_rec && def.kind != FnKind::Const {
+                s.fresh_value = plain.as_ref().is_some_and(|e| e.rets_fresh());
+            }
+            if ret_seq && old.fresh {
+                s.fresh_elems = plain.as_ref().is_some_and(|e| e.rets_own());
+                if !s.fresh_elems {
+                    s.fresh_elems_cb = def.params.iter().position(|f| {
+                        callback(m, &def.local(*f).ty)
+                            && Elems::run(
+                                m,
+                                def,
+                                &self.out,
+                                &base,
+                                Assume {
+                                    callback: Some(*f),
+                                    ..Assume::default()
+                                },
+                            )
+                            .is_some_and(|e| e.rets_own())
+                    });
+                }
+            }
+            if let Some(p) = old.consumes
+                && ret_seq
+                && seq(m, &def.local(def.params[p]).ty)
+            {
+                let a = Analysis::run(m, def, &self.out, &[def.params[p]]);
+                let assume = Assume {
+                    list: Some(def.params[p]),
+                    values: true,
+                    callback: None,
+                };
+                if let Some(e) = Elems::run(m, def, &self.out, &a, assume) {
+                    s.keeps_elems = e.rets_own();
+                    if s.keeps_elems {
+                        s.stores = e.requires.iter().copied().collect();
+                    }
+                    s.elems = e.count() > plain.as_ref().map_or(0, |e| e.count());
+                }
+            }
+        }
+        let changed = s != old;
+        self.out[d.index()] = s;
+        changed
     }
 
     /// Recomputes the consuming and fresh summary of `d` from the current ones; true when it
@@ -398,7 +526,34 @@ pub fn analyze(m: &Module, def: &FnDef, summaries: &[Summary], owned_params: &[L
             (*at, verdict)
         })
         .collect();
-    Facts { sites }
+    let mut facts = Facts {
+        sites,
+        in_place: BTreeMap::new(),
+    };
+    // Design §17.273: an owned entry that assumes owned elements is analysed with them.
+    let id = m.defs.iter().position(|d| std::ptr::eq(d, def));
+    let assume = match (id, owned_params) {
+        (Some(i), [p]) if summaries[i].elems => Assume {
+            list: Some(*p),
+            values: true,
+            callback: None,
+        },
+        _ => Assume::default(),
+    };
+    let e = Elems::run(m, def, summaries, &a, assume);
+    for (at, v) in facts.sites.iter_mut() {
+        let elems = match a.callees.get(at) {
+            Some(d) => summaries[d.index()].elems,
+            None => false,
+        };
+        if elems && v.is_ok() && !e.as_ref().is_some_and(|e| e.proven(*at)) {
+            *v = Err(Shared::Elements);
+        }
+    }
+    if let Some(e) = e {
+        facts.in_place = e.in_place;
+    }
+    facts
 }
 
 /// `--dump owned`: [`display_module`] of every module outside std.
@@ -428,9 +583,10 @@ pub fn display_module(m: &Module, module: &str) -> String {
         let entry = sums[i]
             .consumes
             .map(|p| analyze(m, def, &sums, &[def.params[p]]));
-        let consumes = sums[i]
-            .consumes
-            .map(|p| format!(" consumes {}", def.local(def.params[p]).name));
+        let consumes = sums[i].consumes.map(|p| {
+            let with = if sums[i].elems { " with elements" } else { "" };
+            format!(" consumes {}{with}", def.local(def.params[p]).name)
+        });
         if facts.sites.is_empty() && consumes.is_none() {
             continue;
         }
@@ -443,7 +599,35 @@ pub fn display_module(m: &Module, module: &str) -> String {
             Ok(()) => "owned".to_owned(),
             Err(r) => format!("shared({r})"),
         };
+        let in_place = |f: &Facts, x: Local| match f.in_place(x) {
+            None => "allocates".to_owned(),
+            Some((_, guards)) if guards.is_empty() => "in place".to_owned(),
+            Some((bj, guards)) => {
+                let name = |l: &Local| format!("{}%{}", def.local(*l).name, l.0);
+                let gs: Vec<String> = guards.iter().map(name).collect();
+                format!("in place unless {} is {}", name(bj), gs.join(" or "))
+            }
+        };
         each_let(&def.body, &mut |local, bind| {
+            let reused = facts
+                .in_place(local)
+                .or(entry.as_ref().and_then(|e| e.in_place(local)));
+            if let (Some((bj, _)), Bind::Alloc(Alloc::Record(t), _)) = (reused, bind) {
+                let in_entry = entry
+                    .as_ref()
+                    .map(|e| format!(", owned entry {}", in_place(e, local)))
+                    .unwrap_or_default();
+                out.push_str(&format!(
+                    "  {}%{} = {} {{..{}%{}}} {}{in_entry}\n",
+                    def.local(local).name,
+                    local.0,
+                    m.ty(*t).name,
+                    def.local(*bj).name,
+                    bj.0,
+                    in_place(&facts, local)
+                ));
+                return;
+            }
             let Some(v) = facts.sites.get(&local) else {
                 return;
             };

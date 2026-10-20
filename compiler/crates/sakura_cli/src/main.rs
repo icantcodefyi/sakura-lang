@@ -130,8 +130,11 @@ enum Command {
         /// `proved` (design §17.114) and each in-place update `owned`. `owned`: each consuming
         /// site of an owned-capable update as `owned` or `shared(<reason>)`, reasons `origin`,
         /// `param`, `borrowed-after`, `captured`, `stored`, `escapes-call <name>`, `join`,
-        /// `field`, `tuple`, and in a consuming def `, owned entry <verdict>` for the same site
-        /// called with its parameter owned (design §17.149, §17.201 (3)); with `--target wasm`
+        /// `field`, `tuple`, `elements`, and in a consuming def `, owned entry <verdict>` for the
+        /// same site called with its parameter owned (design §17.149, §17.201 (3)); a consuming
+        /// def whose owned entry assumes its list owns its elements says `with elements`, and
+        /// each record update reusing a list element is `T {..b} in place`, `in place unless b
+        /// is c` (the identity guards) or `allocates` (design §17.273); with `--target wasm`
         /// or `native`, as the LIR computes them from the Core snapshot (design §17.176 (2)).
         #[arg(long, value_enum)]
         dump: Option<Dump>,

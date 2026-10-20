@@ -8,7 +8,9 @@
 //! Two columns feed the ownership pass (design §17.149, [`crate::opt::owned`]): `fresh` marks a
 //! result that shares no node with any input or other live value (`[fresh]`), and `consumes`
 //! the argument an owned-capable builtin takes over (`[consumes 0]`). Each owned-capable
-//! builtin `f` has an in-place twin `f_owned` in the runtime.
+//! builtin `f` has an in-place twin `f_owned` in the runtime. A third, `elems`, says what a
+//! list result does with its elements (design §17.273 (1), "elements fresh when the callback is
+//! fresh").
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Abi {
@@ -29,6 +31,24 @@ pub struct Builtin {
     /// For an owned-capable builtin, the argument position it takes over: when that argument is
     /// owned, the runtime's `<name>_owned` updates it in place.
     pub consumes: Option<usize>,
+    /// How the elements of a list result came in (design §17.273 (1)).
+    pub elems: Elems,
+}
+
+/// The elements column: what makes every element of a list result fresh, so the list may own
+/// its elements (`opt::owned`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Elems {
+    /// Nothing is known.
+    No,
+    /// The value argument `value` is stored, at the index argument `index` (`None`: appended);
+    /// every other element is the consumed list's, or the builder's.
+    Stores { value: usize, index: Option<usize> },
+    /// A transient builder's list: fresh when every value pushed into a builder of the function
+    /// is fresh (design §17.116: a builder never leaves the std function that made it).
+    Built,
+    /// Fresh when the callback argument `callback` returns a fresh value.
+    Callback(usize),
 }
 
 const PLAIN: Builtin = Builtin {
@@ -37,6 +57,7 @@ const PLAIN: Builtin = Builtin {
     abi: Abi::Direct,
     fresh: false,
     consumes: None,
+    elems: Elems::No,
 };
 
 macro_rules! cols {
@@ -49,12 +70,40 @@ macro_rules! cols {
             ..PLAIN
         }
     };
+    (consumes $p:literal stores $v:literal $(at $i:literal)?) => {
+        Builtin {
+            consumes: Some($p),
+            elems: Elems::Stores { value: $v, index: cols!(@at $($i)?) },
+            ..PLAIN
+        }
+    };
     (consumes $p:literal) => {
         Builtin {
             consumes: Some($p),
             ..PLAIN
         }
     };
+    (stores $v:literal) => {
+        Builtin {
+            elems: Elems::Stores { value: $v, index: None },
+            ..PLAIN
+        }
+    };
+    (fresh built) => {
+        Builtin {
+            fresh: true,
+            elems: Elems::Built,
+            ..PLAIN
+        }
+    };
+    (callback $c:literal) => {
+        Builtin {
+            elems: Elems::Callback($c),
+            ..PLAIN
+        }
+    };
+    (@at) => { None };
+    (@at $i:literal) => { Some($i) };
 }
 
 macro_rules! table {
@@ -73,14 +122,15 @@ macro_rules! table {
 table! {
     // List (persistent, design §13.4)
     Direct list_empty/0, Direct list_len/1, Direct list_get/2, Direct list_at/2,
-    Direct list_push/2 [consumes 0], Direct list_set/3 [consumes 0], Direct list_concat/2,
+    Direct list_push/2 [consumes 0 stores 1], Direct list_set/3 [consumes 0 stores 2 at 1], Direct list_concat/2,
     Direct list_range/2 [fresh], Direct list_reverse/1,
     Direct list_join/2, Direct list_sum/1, Direct list_first/1, Direct list_last/1,
     Direct list_contains/2, Direct list_slice/3, Direct list_sort/1, Direct list_zip/2,
     Direct list_enumerate/1, Direct list_unique/1,
     // Transient builders, used only inside std/list bodies (design §17.116)
-    Direct list_builder/0, Direct list_builder_push/2, Direct list_builder_finish/1 [fresh],
-    Cps list_map/2, Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
+    Direct list_builder/0, Direct list_builder_push/2 [stores 1],
+    Direct list_builder_finish/1 [fresh built],
+    Cps list_map/2 [callback 1], Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)
     Direct map_empty/0, Direct map_of/1, Direct map_get/2, Direct map_insert/3 [consumes 0],

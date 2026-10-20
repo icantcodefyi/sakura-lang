@@ -35,6 +35,9 @@ pub struct Options {
     /// Emit direct twins of direct defs and lambdas (design §13.3, §17.111). On by default via
     /// [`Options::new`]; `--no-direct` turns it off so every fixture runs under both ABIs.
     pub direct_style: bool,
+    /// Reuse a list element's record in place where `opt::owned` proves it (design §17.273).
+    /// On by default; off is the control the differential run compares against.
+    pub owned_elements: bool,
 }
 
 impl Options {
@@ -42,6 +45,7 @@ impl Options {
         Options {
             sources,
             direct_style: true,
+            owned_elements: true,
         }
     }
 }
@@ -190,6 +194,8 @@ pub(crate) struct Cx<'a> {
     /// Per def, its ownership summary (design §17.149): a direct def that consumes a parameter
     /// also gets an owned entry `f$o`, its twin with that parameter owned.
     pub summaries: Vec<sakura_core::opt::owned::Summary>,
+    /// [`Options::owned_elements`].
+    pub owned_elements: bool,
     /// The next program-wide call-site number: modules are emitted one after another, each
     /// numbering its sites from here (ABI.md §5).
     pub sites: std::cell::Cell<u32>,
@@ -239,6 +245,7 @@ impl<'a> Cx<'a> {
             direct,
             takes_site,
             summaries: sakura_core::opt::owned::summaries(m),
+            owned_elements: opts.owned_elements,
             sites: std::cell::Cell::new(0),
             def_names,
             type_names,

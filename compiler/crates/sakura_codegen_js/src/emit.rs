@@ -1553,6 +1553,9 @@ impl<'a> FnEmit<'a> {
                     format!("{f}.bind(null, {caps})")
                 }
             }
+            Bind::Alloc(Alloc::Record(t), args) if self.in_place(x).is_some() => {
+                self.reuse(x, *t, args)
+            }
             Bind::Alloc(alloc, args) => self.alloc(alloc, args),
             Bind::Proj(a, p) => {
                 let a = self.atom(a);
@@ -1836,6 +1839,46 @@ impl<'a> FnEmit<'a> {
         ns_name(module)
     }
 
+    /// The element record `x`'s allocation reuses, with its guards (design §17.273 (2)), when
+    /// every one of them is a named local here. Direct code only: the reused local may be dead
+    /// in Core at the allocation, and a CPS continuation carries only live locals.
+    fn in_place(&self, x: Local) -> Option<&(Local, Vec<Local>)> {
+        let site = self
+            .owned
+            .in_place(x)
+            .filter(|_| self.cx.owned_elements && self.mode == Mode::Direct)?;
+        let named = |l: &Local| !self.inlined.contains_key(l);
+        (named(&site.0) && site.1.iter().all(named)).then_some(site)
+    }
+
+    /// `{..bj, f: v}` stored back where `bj` was read: `bj`'s fields written in place, each
+    /// field read from `bj` itself skipped; with guards, `bj !== b && … ? (…) : new T(…)`.
+    fn reuse(&mut self, x: Local, t: TypeId, args: &[Atom]) -> String {
+        let (bj, guards) = self.in_place(x).expect("an in-place site").clone();
+        let fields = self.cx.m.ty(t).fields();
+        let mut projs = HashMap::new();
+        project(&self.def.body, bj, &mut projs);
+        let b = self.name(bj).to_owned();
+        let mut parts: Vec<String> = Vec::new();
+        for (k, a) in args.iter().enumerate() {
+            if matches!(a, Atom::Local(l) if projs.get(l) == Some(&(k as u32))) {
+                continue;
+            }
+            parts.push(format!("{b}.{} = {}", prop(&fields[k].name), self.atom(a)));
+        }
+        parts.push(b.clone());
+        let reused = format!("({})", parts.join(", "));
+        if guards.is_empty() {
+            return reused;
+        }
+        let test: Vec<String> = guards
+            .iter()
+            .map(|g| format!("{b} !== {}", self.name(*g)))
+            .collect();
+        let fresh = self.alloc(&Alloc::Record(t), args);
+        format!("({} ? {reused} : {fresh})", test.join(" && "))
+    }
+
     fn alloc(&mut self, alloc: &Alloc, args: &[Atom]) -> String {
         let a = self.atoms(args);
         match alloc {
@@ -2048,6 +2091,39 @@ fn deep_joins(
 }
 
 /// Every join's body by label.
+/// The locals bound to a field of record `of`, with the field.
+fn project(e: &Expr, of: Local, out: &mut HashMap<Local, u32>) {
+    let mut work = vec![e];
+    while let Some(e) = work.pop() {
+        match e {
+            Expr::Let {
+                local, bind, body, ..
+            } => {
+                if let Bind::Proj(Atom::Local(o), Proj::Field(_, k)) = bind
+                    && *o == of
+                {
+                    out.insert(*local, *k);
+                }
+                work.push(body);
+            }
+            Expr::Handle { body, .. } | Expr::Try { body, .. } => work.push(body),
+            Expr::LetJoin { join, body, .. } => {
+                work.push(join);
+                work.push(body);
+            }
+            Expr::Switch { arms, default, .. } => {
+                work.extend(arms.iter().map(|(_, a)| a));
+                work.extend(default.as_deref());
+            }
+            Expr::If { then, els, .. } => {
+                work.push(then);
+                work.push(els);
+            }
+            Expr::Ret(_) | Expr::Fail(_) | Expr::Jump(..) => {}
+        }
+    }
+}
+
 fn collect_joins<'e>(e: &'e Expr, out: &mut HashMap<Label, &'e Expr>) {
     sakura_core::ensure_stack(|| match e {
         Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {

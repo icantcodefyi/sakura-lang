@@ -27,7 +27,10 @@
 //!
 //! `SAKURA_DIFF_PROGRAMS` (default 500) and `SAKURA_DIFF_SEED` (default 1) control the run; a failure
 //! prints the seed and the program so it can be minimized into a `tests/semantics` regression.
-//! `SAKURA_DIFF_PROGRAMS=1 SAKURA_DIFF_SEED=<seed>` replays one program.
+//! `SAKURA_DIFF_PROGRAMS=1 SAKURA_DIFF_SEED=<seed>` replays one program. Every program ends with
+//! an update of list elements the JS backend may reuse in place (design §17.273), and the
+//! evaluator audits ownership (`Limits::audit_owned`), so a reused record read again stops the
+//! run; `SAKURA_DIFF_ELEMENTS=0` turns the reuse off for a control run.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -127,6 +130,27 @@ fn around() -> Handler<Around, {Console}> {
   }
 }
 fn widen() -> Handler<Around, {Around}> { handler Around { fn around(x, body) { Around.around(x * 2, body) + 1 } } }
+fn at_p(ps: List<P>, i: Int) -> P { Option.expect(ps[i], \"p index\") }
+fn spread_p(start: List<P>, k: Int) -> List<P> {
+  var ps = start
+  var i = 0
+  while i < List.len(ps) {
+    let b = at_p(ps, i)
+    var j = 0
+    while j < List.len(ps) {
+      let c = at_p(ps, j)
+      ps = List.set(ps, j, P { ..c, a: c.a + b.a % 1000 + k })
+      j = j + 1
+    }
+    i = i + 1
+  }
+  ps
+}
+fn show_ps(ps: List<P>) -> String {
+  var out = \"\"
+  for p in ps { out = \"{out} {p.a}{p.s}\" }
+  out
+}
 ";
 
 /// Error tags raised by a region, as bits.
@@ -1247,8 +1271,39 @@ fn program(seed: u64) -> String {
     };
     src.push_str("pub fn main() -> Unit ! {Console} {\n");
     g.main_items(2, 1, &mut src);
+    src.push_str(&elements(seed));
     src.push_str("}\n");
     src
+}
+
+/// One update of list elements that the owned entry may reuse in place (design §17.273), on
+/// fresh records, on one record at two indices, or on an element pushed again; from its own
+/// stream, so a seed's program is otherwise the one it was.
+fn elements(seed: u64) -> String {
+    let mut rng = Rng(seed ^ 0x5eed_e1e5);
+    let n = 1 + rng.below(4);
+    let p = |rng: &mut Rng, s: &str| format!("P {{ a: {}, s: \"{s}\" }}", rng.below(50));
+    let list = match rng.below(3) {
+        0 => {
+            let ps: Vec<String> = (0..n).map(|i| p(&mut rng, &i.to_string())).collect();
+            format!("[{}]", ps.join(", "))
+        }
+        1 => format!(
+            "{{ let r = {}; [r, {}, r] }}",
+            p(&mut rng, "r"),
+            p(&mut rng, "q")
+        ),
+        _ => format!(
+            "{{ let xs = [{}, {}]; List.push(xs, at_p(xs, {})) }}",
+            p(&mut rng, "x"),
+            p(&mut rng, "y"),
+            rng.below(2)
+        ),
+    };
+    format!(
+        "  Console.print(\"elements{{show_ps(spread_p({list}, {}))}}\")\n",
+        rng.below(7)
+    )
 }
 
 /// How a run ended: stdout lines plus `ok` or the defect code.
@@ -1409,11 +1464,15 @@ fn check_one(seed: u64, dir: &Path) -> Checked {
             text: snapshot.file(f).text.clone(),
         })
         .collect();
-    let files: Vec<(String, String)> =
-        sakura_codegen_js::emit(&module, &sakura_codegen_js::Options::new(sources))
-            .into_iter()
-            .map(|f| (f.path, f.text))
-            .collect();
+    // `SAKURA_DIFF_ELEMENTS=0` emits with the owned-elements reuse off (design §17.273 (3)).
+    let options = sakura_codegen_js::Options {
+        owned_elements: std::env::var("SAKURA_DIFF_ELEMENTS").map_or(true, |v| v != "0"),
+        ..sakura_codegen_js::Options::new(sources)
+    };
+    let files: Vec<(String, String)> = sakura_codegen_js::emit(&module, &options)
+        .into_iter()
+        .map(|f| (f.path, f.text))
+        .collect();
     let lir = sakura_lir::from_core(&module, sakura_lir::Layout::Tagged)
         .map_err(|e| format!("LIR lowering: {e}\n{src}"))?;
     let errors = sakura_lir::validate::validate(&lir, Default::default());
