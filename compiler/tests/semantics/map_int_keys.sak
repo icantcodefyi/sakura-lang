@@ -1,0 +1,71 @@
+// milestone: M4
+// covers: performance-r1 WS-P15; design §17.275 (2) (every safe integer is a key of the integer index; insertion order and Show unchanged)
+// spec: §17.275
+
+// `Map<Int, _>` and `Set<Int>` index positions by a radix trie on the key's bits, negative keys
+// in a second trie: the extremes, the 32-bit edges and keys one level apart are distinct keys,
+// insertion order survives updates, removes and compaction, and Show reads the log
+// (`map_int_json` holds JSON).
+pub fn main() -> Unit ! {Console} {
+  let keys = [
+    0,
+    -1,
+    9007199254740991,
+    -9007199254740991,
+    2147483648,
+    4294967295,
+    4294967297,
+    31,
+    32,
+    -32,
+    -33,
+    1024,
+    1073741823,
+    1073741824,
+    -2147483648,
+  ]
+  var m: Map<Int, Int> = Map.empty()
+  var i = 0
+  for k in keys {
+    m = Map.insert(m, k, i)
+    i = i + 1
+  }
+  Console.print("{Map.len(m)} {Map.keys(m)}")
+  var found = 0
+  for k in keys { found = found + Option.unwrap_or(Map.get(m, k), -100) }
+  let misses = [1, -2, 9007199254740990, -9007199254740990, 2147483647, 4294967296, 33, -31, 1025]
+  var hits = 0
+  for k in misses { if Map.contains(m, k) { hits = hits + 1 } }
+  Console.print("found {found} misses-hit {hits}")
+  // Updates keep positions; a remove and re-insert moves the key to the end.
+  m = Map.insert(m, 4294967295, 100)
+  m = Map.insert(m, -1, 101)
+  m = Map.remove(m, 0)
+  m = Map.remove(m, 9007199254740991)
+  m = Map.insert(m, 0, 102)
+  Console.print("{m}")
+  Console.print("{Map.get(m, 9007199254740991)} {Map.get(m, -9007199254740991)} {Map.get(m, 0)}")
+
+  // Enough removes to compact the log: order and lookups survive the rebuilt index.
+  var big: Map<Int, Int> = Map.empty()
+  i = 0
+  while i < 2000 {
+    big = Map.insert(big, i * 7919 - 5000000, i)
+    i = i + 1
+  }
+  i = 0
+  while i < 2000 {
+    if i % 4 != 0 { big = Map.remove(big, i * 7919 - 5000000) }
+    i = i + 1
+  }
+  var sum = 0
+  for (_, v) in Map.entries(big) { sum = sum + v }
+  Console.print(
+    "big {Map.len(big)} {sum} {Map.get(big, -5000000)} {Map.get(big, 7919 - 5000000)} {List.slice(Map.values(big), 0, 4)}",
+  )
+
+  var s: Set<Int> = Set.empty()
+  for k in keys { s = Set.insert(s, k) }
+  for k in keys { s = Set.insert(s, k) }
+  Console.print("{Set.len(s)} {Set.contains(s, -2)} {Set.contains(s, -9007199254740991)} {s}")
+}

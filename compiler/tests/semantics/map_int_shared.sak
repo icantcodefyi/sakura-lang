@@ -1,0 +1,71 @@
+// milestone: M4
+// covers: performance-r1 WS-P15; design §17.275 (3) (persistence after sharing: owned paths write in place, persistent paths copy the path)
+// spec: §17.275
+
+// Int maps and sets built by owned loops are shared, then updated, extended past the root's
+// level, removed from and grown into the negative trie. Every retained version reads as it was
+// when it was taken, and the versions' later updates do not leak into each other.
+fn sum_values(m: Map<Int, Int>) -> Int {
+  var t = 0
+  for (_, v) in Map.entries(m) { t = t + v }
+  t
+}
+
+pub fn main() -> Unit ! {Console} {
+  var m: Map<Int, Int> = Map.empty()
+  var i = 0
+  while i < 1000 {
+    m = Map.insert(m, i, i)
+    i = i + 1
+  }
+  let snapshot = m
+  // Persistent from here: updates, a key past the root's level, negatives, removes.
+  i = 0
+  while i < 1000 {
+    m = Map.insert(m, i, -i)
+    i = i + 2
+  }
+  m = Map.insert(m, 40000000000, 1)
+  m = Map.insert(m, -5, 2)
+  i = 0
+  while i < 1000 {
+    m = Map.remove(m, i)
+    i = i + 3
+  }
+  let later = m
+  m = Map.insert(m, -6, 3)
+  m = Map.remove(m, 40000000000)
+  Console.print(
+    "snapshot {Map.len(snapshot)} {sum_values(snapshot)} {Map.get(snapshot, 3)} {Map.get(snapshot, 40000000000)} {Map.get(snapshot, -5)}",
+  )
+  Console.print(
+    "later {Map.len(later)} {sum_values(later)} {Map.get(later, 3)} {Map.get(later, 40000000000)} {Map.get(later, -6)}",
+  )
+  Console.print(
+    "m {Map.len(m)} {sum_values(m)} {Map.get(m, 4)} {Map.get(m, 40000000000)} {Map.get(m, -6)}",
+  )
+
+  // Two branches from one shared version.
+  let a = Map.insert(snapshot, 7, 70)
+  let b = Map.insert(Map.remove(snapshot, 7), 1000, 1)
+  Console.print(
+    "{Map.get(snapshot, 7)} {Map.get(a, 7)} {Map.get(b, 7)} {Map.get(a, 1000)} {Map.get(b, 1000)}",
+  )
+
+  // An owned loop over a map that was shared first starts persistent and stays correct.
+  var s: Set<Int> = Set.empty()
+  i = 0
+  while i < 200 {
+    s = Set.insert(s, i * 3 - 300)
+    i = i + 1
+  }
+  let s0 = s
+  i = 0
+  while i < 200 {
+    s = Set.insert(s, i * 5 - 300)
+    i = i + 1
+  }
+  Console.print(
+    "sets {Set.len(s0)} {Set.contains(s0, -295)} {Set.len(s)} {Set.contains(s, -295)} {Set.contains(s, 0)}",
+  )
+}

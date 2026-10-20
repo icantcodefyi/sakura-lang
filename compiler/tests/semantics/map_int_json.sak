@@ -1,0 +1,19 @@
+// milestone: M4
+// covers: performance-r1 WS-P15; design §17.275 (1) (JSON of an Int-keyed map and set reads the insertion log)
+// spec: §17.275
+
+// The integer index changes nothing JSON shows: entries in insertion order, a re-inserted key
+// last, negative and 2^53 − 1 keys as numbers.
+import std/json.{Json}
+
+pub fn main() -> Unit ! {Console} {
+  var m: Map<Int, Int> = Map.empty()
+  for k in [5, -1, 9007199254740991, 0, 4294967297, -9007199254740991] {
+    m = Map.insert(m, k, k % 7)
+  }
+  m = Map.remove(m, 0)
+  m = Map.insert(m, 0, 1)
+  m = Map.insert(m, -1, 2)
+  Console.print(Json.encode(m))
+  Console.print(Json.encode(Set.of([3, -3, 2147483648, 3])))
+}

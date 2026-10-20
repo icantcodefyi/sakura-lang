@@ -531,6 +531,52 @@ test("Map and Set keep insertion order", () => {
   assert.deepEqual(rt.toArray(rt.set_to_list(rt.set_of(rt.list([3, 1, 3])))), [3, 1]);
 });
 
+test("Int keys: the integer index over every safe integer, persistent and owned (§17.275)", () => {
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const edges = [0, -1, MAX, -MAX, 2 ** 31, 2 ** 32 - 1, 2 ** 32 + 1, 2 ** 30, 2 ** 30 - 1, 31, 32, -32, -33];
+  const near = [1, -2, MAX - 1, -MAX + 1, 2 ** 31 - 1, 2 ** 32, 33, -31, 2 ** 35];
+  let seed = 7;
+  const rand = (n) => {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    return seed % n;
+  };
+  const keys = [...edges, ...Array.from({ length: 3000 }, () => (rand(2) ? 1 : -1) * rand(2 ** 31) * (rand(3) ? 1 : 4096))];
+  let pm = rt.map_empty();
+  let om = rt.map_empty();
+  const model = new Map();
+  const olds = [];
+  for (let i = 0; i < 12_000; i++) {
+    const k = keys[rand(keys.length)];
+    if (rand(3) === 0) {
+      pm = rt.map_remove(pm, k);
+      om = rt.map_remove_owned(om, k);
+      model.delete(k);
+    } else {
+      pm = rt.map_insert(pm, k, i);
+      om = rt.map_insert_owned(om, k, i);
+      model.set(k, [k, i]);
+    }
+    if (i % 1500 === 0) olds.push([pm, new Map(model)]);
+  }
+  olds.push([pm, model]);
+  assert.deepEqual(om.idx, pm.idx);
+  for (const [m, mod] of olds) {
+    assert.equal(rt.map_len(m), mod.size);
+    assert.deepEqual(rt.toArray(rt.map_entries(m)), [...mod.values()]);
+    for (const k of [...edges, ...near]) {
+      assert.deepEqual(rt.map_get(m, k), mod.has(k) ? rt.Some(mod.get(k)[1]) : rt.None);
+      assert.equal(rt.map_get_or(m, k, "d"), mod.has(k) ? mod.get(k)[1] : "d");
+      assert.equal(rt.map_contains(m, k), mod.has(k));
+    }
+  }
+  let s = rt.set_empty();
+  for (const k of edges) s = rt.set_insert_owned(rt.set_insert(s, k), k);
+  assert.deepEqual(rt.toArray(rt.set_to_list(s)), edges);
+  for (const k of near) assert.equal(rt.set_contains(s, k), false);
+  assert.equal(rt.map_get_or(rt.map_insert(rt.map_empty(), "tea", 3), "milk", 0), 0);
+  assert.equal(rt.map_get_or(rt.map_insert(rt.map_empty(), [1, "a"], 3), [1, "a"], 0), 3);
+});
+
 test("CPS list functions handle callbacks and long lists", () => {
   const inc = (x, $ctx, $k) => ret($k, x + 1);
   const big = rt.list_range(0, 200_000);

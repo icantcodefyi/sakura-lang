@@ -1355,8 +1355,9 @@ export function list_sort_by(xs, key, ctx, k) {
 
 // ---------------------------------------------------------------------------------------------
 // Map and Set (design §13.4): insertion-ordered and persistent. `log` is a List of entries in
-// insertion order (`[k, v]` for maps, the element for sets; removed entries are HOLE); `idx` is a
-// hash array mapped trie from keyOf(key) to the entry's position in `log`. Updating an existing
+// insertion order (`[k, v]` for maps, the element for sets; removed entries are HOLE); `idx` maps
+// keyOf(key) to the entry's position in `log`: the integer index below (`IIdx`) when keyOf is a
+// number, otherwise a hash array mapped trie. Updating an existing
 // key keeps its position. Removals leave holes until they outnumber live entries, then the log
 // is compacted (amortized O(1)). ponytail: composite keys hash their keyOf serialization.
 
@@ -1406,16 +1407,10 @@ function same(a, b) {
   return a === b || (a !== a && b !== b);
 }
 
+/** The hash of a keyOf that is not a number (numbers take the integer index). */
 function hashOf(key) {
-  if (typeof key === "number" && Number.isSafeInteger(key)) {
-    let h = (key | 0) ^ Math.floor(key / 4294967296);
-    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
-    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
-    return (h ^ (h >>> 16)) | 0;
-  }
   if (typeof key === "string") return hashString(key);
-  if (typeof key === "boolean") return key ? 1231 : 1237;
-  return typeof key === "number" ? hashString(String(key)) : 0;
+  return typeof key === "boolean" ? (key ? 1231 : 1237) : 0;
 }
 
 /** FNV-1a over UTF-16 code units. */
@@ -1520,15 +1515,15 @@ function hdel(node, shift, h, k) {
 /** Insert or replace entry `e` under `key` (= keyOf of its key) in map or set `m` of class `C`. */
 function upsert(C, m, key, e) {
   const h = hashOf(key);
-  const s = hget(m.idx, h, key);
+  const s = slot(m, key, h);
   if (s >= 0) return new C(setAt(m.log, s, e), m.idx, m.size);
   const log = push(m.log, e);
-  return new C(log, hset(m.idx, 0, new HLeaf(h, key, log.n - 1)), m.size + 1);
+  return new C(log, idxSet(m, key, h, log.n - 1), m.size + 1);
 }
 
 function without(C, m, key) {
   const h = hashOf(key);
-  const s = hget(m.idx, h, key);
+  const s = slot(m, key, h);
   if (s < 0) return m;
   const log = setAt(m.log, s, HOLE);
   const size = m.size - 1;
@@ -1537,19 +1532,64 @@ function without(C, m, key) {
     const live = items(log).filter((e) => e !== HOLE);
     return rebuild(C, live, C === VMap ? (e) => keyOf(e[0]) : keyOf);
   }
-  return new C(log, hdel(m.idx, 0, h, key), size);
+  const idx = typeof key === "number" ? iput(m.idx, key, -1, false) : hdel(m.idx, 0, h, key);
+  return new C(log, idx, size);
 }
 
 /** `upsert` on a map or set no other reference reaches: log and trie are updated in place. */
 function upsertOwned(m, key, e) {
+  if (typeof key === "number" && m.idx !== null) return upsertOwnedInt(m, key, e, true);
   const h = hashOf(key);
-  const s = hget(m.idx, h, key);
+  const s = slot(m, key, h);
   if (s >= 0) {
     list_set_owned(m.log, s, e);
     return m;
   }
   m.log = list_push_owned(m.log, e);
-  m.idx = hsetOwned(m.idx, 0, new HLeaf(h, key, m.log.n - 1));
+  if (typeof key !== "number") m.idx = hsetOwned(m.idx, 0, new HLeaf(h, key, m.log.n - 1));
+  else if (m.idx === null) m.idx = iput(EMPTY_IIDX, key, m.log.n - 1, false);
+  else iput(m.idx, key, m.log.n - 1, true);
+  m.size += 1;
+  return m;
+}
+
+/**
+ * `upsertOwned` of integer key `k` in one walk of the integer index, which finds the slot or
+ * the branch where the key's path is missing; an existing entry is replaced only if `replace`
+ * (a map; a set keeps its element).
+ */
+function upsertOwnedInt(m, k, e, replace) {
+  const ix = m.idx;
+  const neg = k < 0;
+  const u = neg ? -k - 1 : k;
+  let node = neg ? ix.n : ix.p;
+  let level = neg ? ix.nl : ix.pl;
+  if (node === null || (u >= 32 && levelOf(u) > level)) {
+    m.log = list_push_owned(m.log, e);
+    iput(ix, k, m.log.n - 1, true);
+    m.size += 1;
+    return m;
+  }
+  const lo = u & (LOW - 1);
+  for (; level > 0; level--) {
+    const bit = 1 << digit(u, lo, level);
+    const i = popcount(node.bm & (bit - 1));
+    if ((node.bm & bit) === 0) {
+      m.log = list_push_owned(m.log, e);
+      node.a.splice(i, 0, iset(null, level - 1, u, lo, m.log.n - 1));
+      node.bm |= bit;
+      m.size += 1;
+      return m;
+    }
+    node = node.a[i];
+  }
+  const s = node[lo & 31];
+  if (s >= 0) {
+    if (replace) list_set_owned(m.log, s, e);
+    return m;
+  }
+  m.log = list_push_owned(m.log, e);
+  node[lo & 31] = m.log.n - 1;
   m.size += 1;
   return m;
 }
@@ -1571,7 +1611,7 @@ function hsetOwned(node, shift, leaf) {
 /** `without` on a map or set no other reference reaches. */
 function withoutOwned(C, m, key) {
   const h = hashOf(key);
-  const s = hget(m.idx, h, key);
+  const s = slot(m, key, h);
   if (s < 0) return m;
   list_set_owned(m.log, s, HOLE);
   m.size -= 1;
@@ -1580,7 +1620,8 @@ function withoutOwned(C, m, key) {
     const live = items(m.log).filter((e) => e !== HOLE);
     return rebuild(C, live, C === VMap ? (e) => keyOf(e[0]) : keyOf);
   }
-  m.idx = hdelOwned(m.idx, 0, h, key);
+  if (typeof key === "number") iput(m.idx, key, -1, true);
+  else m.idx = hdelOwned(m.idx, 0, h, key);
   return m;
 }
 
@@ -1602,8 +1643,160 @@ function hdelOwned(node, shift, h, k) {
   return node;
 }
 
+// The integer index (design §17.275, WS-P15). A map or set whose keys' keyOf is a number, which
+// only `Int` gives (`Float` is not `Hash`, every other type is an object, string or boolean), so
+// one map's keys are all safe integers, indexes positions by a persistent radix trie on the
+// key's own bits instead of a hash: five bits a level from the low end, branch levels as `HNode`
+// (bitmap, dense children), the bottom level one 32-slot array of log positions indexed by
+// `key & 31` (-1 absent). The root's level grows with the largest key; a negative key `k` lives
+// in a second trie under `-k - 1`. `IIdx` holds both roots and their levels. Every operation
+// dispatches on `typeof key`, so an empty map takes this index at its first insert.
+
+class IIdx {
+  constructor(p, pl, n, nl) {
+    this.p = p; // root for keys >= 0, or null
+    this.pl = pl; // its level: it holds keys below 32 ** (pl + 1)
+    this.n = n; // root for keys < 0, under -k - 1
+    this.nl = nl;
+  }
+}
+
+const NO_POSITIONS = new Array(32).fill(-1);
+const EMPTY_IIDX = new IIdx(null, 0, null, 0);
+const LOW = 0x40000000; // levels 0–5 read the low 30 bits, levels 6–10 the rest
+
+/** Five bits of `u` (>= 0) at `level`, `lo` being its low 30 bits. */
+function digit(u, lo, level) {
+  return level < 6 ? (lo >>> (5 * level)) & 31 : ((u - lo) / LOW / 2 ** (5 * level - 30)) & 31;
+}
+
+/** The level a root needs to hold `u` (>= 0). */
+function levelOf(u) {
+  let level = 0;
+  for (let cap = 32; u >= cap; cap *= 32) level++;
+  return level;
+}
+
+/** The log position of integer key `k`, or -1. */
+function iget(ix, k) {
+  if (ix === null) return -1;
+  let node, level;
+  if (k >= 0) {
+    node = ix.p;
+    level = ix.pl;
+  } else {
+    node = ix.n;
+    level = ix.nl;
+    k = -k - 1;
+  }
+  if (node === null) return -1;
+  const lo = k & (LOW - 1);
+  if (k >= LOW) {
+    if (level < levelOf(k)) return -1;
+  } else if (level < 6 && lo >>> (5 * level + 5) !== 0) {
+    return -1;
+  }
+  for (; level > 0; level--) {
+    const bit = 1 << digit(k, lo, level);
+    if ((node.bm & bit) === 0) return -1;
+    node = node.a[popcount(node.bm & (bit - 1))];
+  }
+  return node[lo & 31];
+}
+
+/** `node` (a subtrie at `level`, or null) with `u`'s slot set to `s`, its path copied. */
+function iset(node, level, u, lo, s) {
+  if (level === 0) {
+    const leaf = (node === null ? NO_POSITIONS : node).slice();
+    leaf[lo & 31] = s;
+    return leaf;
+  }
+  const bit = 1 << digit(u, lo, level);
+  if (node === null) return new HNode(bit, [iset(null, level - 1, u, lo, s)]);
+  const i = popcount(node.bm & (bit - 1));
+  if (node.bm & bit) {
+    const a = node.a.slice();
+    a[i] = iset(a[i], level - 1, u, lo, s);
+    return new HNode(node.bm, a);
+  }
+  const old = node.a;
+  const a = new Array(old.length + 1);
+  for (let j = 0; j < i; j++) a[j] = old[j];
+  a[i] = iset(null, level - 1, u, lo, s);
+  for (let j = i; j < old.length; j++) a[j + 1] = old[j];
+  return new HNode(node.bm | bit, a);
+}
+
+/** `iset` writing the path in place: no other reference reaches `node`. */
+function isetOwned(node, level, u, lo, s) {
+  if (node === null) return iset(null, level, u, lo, s);
+  if (level === 0) {
+    node[lo & 31] = s;
+    return node;
+  }
+  const bit = 1 << digit(u, lo, level);
+  const i = popcount(node.bm & (bit - 1));
+  if (node.bm & bit) {
+    node.a[i] = isetOwned(node.a[i], level - 1, u, lo, s);
+  } else {
+    node.a.splice(i, 0, iset(null, level - 1, u, lo, s));
+    node.bm |= bit;
+  }
+  return node;
+}
+
+/** A root at `level` holding `node`, a root at `from`, as its first child at each level. */
+function grow(node, from, level) {
+  for (; from < level; from++) node = new HNode(1, [node]);
+  return node;
+}
+
+/**
+ * `ix` with integer key `k` at position `s` (`s` = -1 clears it), copying the path, or in place
+ * when `owned`. A cleared slot leaves its leaf: compaction rebuilds the index anyway.
+ */
+function iput(ix, k, s, owned) {
+  const neg = k < 0;
+  const u = neg ? -k - 1 : k;
+  const lo = u & (LOW - 1);
+  let node = neg ? ix.n : ix.p;
+  let level = neg ? ix.nl : ix.pl;
+  const need = u < 32 ? 0 : levelOf(u);
+  if (node === null) level = need;
+  else if (need > level) {
+    node = grow(node, level, need);
+    level = need;
+  }
+  node = owned ? isetOwned(node, level, u, lo, s) : iset(node, level, u, lo, s);
+  if (!owned) return neg ? new IIdx(ix.p, ix.pl, node, level) : new IIdx(node, level, ix.n, ix.nl);
+  if (neg) {
+    ix.n = node;
+    ix.nl = level;
+  } else {
+    ix.p = node;
+    ix.pl = level;
+  }
+  return ix;
+}
+
+/** The log position of `key` (= keyOf of a key, `h` its hashOf) in map or set `m`, or -1. */
+function slot(m, key, h) {
+  return typeof key === "number" ? iget(m.idx, key) : hget(m.idx, h, key);
+}
+
+/** `m.idx` with `key` (hash `h`) at log position `s`, copying the path. */
+function idxSet(m, key, h, s) {
+  if (typeof key === "number") return iput(m.idx ?? EMPTY_IIDX, key, s, false);
+  return hset(m.idx, 0, new HLeaf(h, key, s));
+}
+
 /** A map or set of the distinct-keyed entries `es`, in order. */
 function rebuild(C, es, keyFn) {
+  if (es.length > 0 && typeof keyFn(es[0]) === "number") {
+    const ix = new IIdx(null, 0, null, 0);
+    for (let i = 0; i < es.length; i++) iput(ix, keyFn(es[i]), i, true);
+    return new C(list(es), ix, es.length);
+  }
   let idx = null;
   for (let i = 0; i < es.length; i++) {
     const key = keyFn(es[i]);
@@ -1640,12 +1833,17 @@ export function map_of(pairs) {
 /** The `[k, v]` entry for `k`, or undefined. */
 function mapFind(m, k) {
   const key = keyOf(k);
-  const s = hget(m.idx, hashOf(key), key);
+  const s = slot(m, key, hashOf(key));
   return s < 0 ? undefined : at(m.log, s);
 }
 export function map_get(m, k) {
   const e = mapFind(m, k);
   return e === undefined ? None : Some(e[1]);
+}
+/** `unwrap_or(map_get(m, k), d)` with no `Option` (design §17.275 (4)). */
+export function map_get_or(m, k, d) {
+  const e = mapFind(m, k);
+  return e === undefined ? d : e[1];
 }
 export function map_insert(m, k, v) {
   return upsert(VMap, m, keyOf(k), [k, v]);
@@ -1689,11 +1887,12 @@ export function set_of(xs) {
 }
 export function set_insert(s, x) {
   const key = keyOf(x);
-  return hget(s.idx, hashOf(key), key) >= 0 ? s : upsert(VSet, s, key, x);
+  return slot(s, key, hashOf(key)) >= 0 ? s : upsert(VSet, s, key, x);
 }
 export function set_insert_owned(s, x) {
   const key = keyOf(x);
-  if (hget(s.idx, hashOf(key), key) >= 0) return s;
+  if (typeof key === "number" && s.idx !== null) return upsertOwnedInt(s, key, x, false);
+  if (slot(s, key, hashOf(key)) >= 0) return s;
   return s === EMPTY_SET ? upsert(VSet, s, key, x) : upsertOwned(s, key, x);
 }
 export function set_remove(s, x) {
@@ -1701,7 +1900,7 @@ export function set_remove(s, x) {
 }
 export function set_contains(s, x) {
   const key = keyOf(x);
-  return hget(s.idx, hashOf(key), key) >= 0;
+  return slot(s, key, hashOf(key)) >= 0;
 }
 export function set_to_list(s) {
   return liveLog(s);
