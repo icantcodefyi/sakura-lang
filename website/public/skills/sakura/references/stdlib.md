@@ -8,10 +8,9 @@ the `sakura` skill's `references/stdlib.md`. The design reference is `docs/desig
 
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
 Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s primitives are
-`node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0) and
-RustCrypto on native. Tier 1b (AES-GCM, ECDSA and ECDH over P-256, Ed25519, X25519, and the
-`Pkcs8`, `Spki` and `Jwk` key formats) runs on JavaScript and native; on WebAssembly its
-primitives wait for their host imports (ABI 1.9.0), so a call is `D090` until then.
+`node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0; tier
+1b's, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519, at 1.9.0) and the RustCrypto and
+dalek crates on native.
 
 ## Prelude
 

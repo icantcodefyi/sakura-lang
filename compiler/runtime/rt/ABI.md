@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.7.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.9.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -16,8 +16,10 @@ served request (design §17.223), 1.2.4 bound performs and `with` regions in dir
 and borrow counters (§10; design §17.176 (1)), 1.4.0 the native profile (§1b; design
 §17.169), 1.5.0 the `clock_monotonic_us` import and `Task.cancel`'s fiber rule (§7, §8.2;
 design §17.262, RFC 0002 §2.8), 1.6.0 `std/crypto`'s `hosted` imports (§8.1, §8.2; design
-§17.266 (1), RFC 0002 §2.7) and 1.7.0 the HTTP 0.2.0 shape, `Payload` bodies and redirects
-followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4). Owned by
+§17.266 (1), RFC 0002 §2.7), 1.7.0 the HTTP 0.2.0 shape, `Payload` bodies and redirects
+followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4), 1.8.0
+`std/websocket`'s host operations (§8.2, §8.5; RFC 0002 §1, §6) and 1.9.0 `std/crypto` tier
+1b's `hosted` imports (§8.2; design §17.288 (10), RFC 0002 §2.7). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -215,6 +217,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   the module counts its in-place decrements in an internal `i64` global that the `stats`
   export adds to `drops`. No byte layout, import, export signature or counter changes, so
   `sakura_abi_version` stays `0x010800`.
+- 1.9.0 (MINOR, design §17.288 (10), RFC 0002 §2.7, plan `web-apis.md` phase 7b-W) adds
+  `std/crypto` tier 1b's seven primitives as `hosted` imports (§8.2): `crypto_public_of`,
+  `crypto_public_valid`, `crypto_sign`, `crypto_sign_verify`, `crypto_ecdh`,
+  `crypto_aes_gcm_seal` and `crypto_aes_gcm_open`, which the Node host runs as the JS
+  runtime's `node:crypto` functions, under 1.6.0's rule: the guest overwrites every copy of the
+  argument tuple and the answer once decoded, and the Node host zeroes its copied slice, the
+  decoded `Bytes` and its answer, `crypto_aes_gcm_open`'s `Some` plaintext included. Nothing
+  shipped changes, but a module that imports them needs a host that has them, so a 1.8 host
+  refuses a 1.9 module by the MINOR rule. The native runtime implements the seven as builtins,
+  and a WASI command reaches them as unsupported builtins (`D090`). `sakura_abi_version` is
+  `0x010900`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -840,7 +853,7 @@ an import the Node host lacks. Every import has one of four shapes:
 | `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `trace_*`, `retire_handle`, `abort` |
 | `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0); completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
-| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0), `ws_close` (1.8.0) |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0), `ws_close` (1.8.0) |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
@@ -903,6 +916,17 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   `sakura_lir::image::WASM_HOSTED`, apart from `HOSTED` because the native runtime implements
   the five as builtins; a WASI command does not have them, and an embedder without them fails
   to link the module (RFC 0002 §7).
+- `hosted`, Node host only (1.9.0, design §17.288 (10)), tier 1b, `curve` 0, 1, 2 for P-256,
+  Ed25519, X25519: `crypto_public_of(curve, private) -> Bytes` (the point, or no bytes for a
+  scalar that is not a key), `crypto_public_valid(curve, public) -> Bool`,
+  `crypto_sign(curve, private, data) -> Bytes` (ECDSA P-256 with SHA-256 as `r || s`, or
+  Ed25519), `crypto_sign_verify(curve, public, signature, data) -> Bool`,
+  `crypto_ecdh(curve, private, public) -> Bytes` (no bytes for X25519's all-zero secret),
+  `crypto_aes_gcm_seal(key, nonce, aad, plaintext) -> Bytes` (ciphertext `||` tag) and
+  `crypto_aes_gcm_open(key, nonce, aad, ciphertext) -> Option<Bytes>` (`None` when the tag
+  does not verify; result top `option`). As the five above: `std/crypto` checks lengths and
+  usages first, both sides zero their copies, nothing is printed or logged, and the native
+  runtime has the seven as builtins.
 
 **Host `Err` text** (design §17.229 (5)a; both hosts). The runtime's own messages for `fs_*` and
 `file_*` (`not found`, `escapes the directory`, `not a relative path`, `no such directory`,

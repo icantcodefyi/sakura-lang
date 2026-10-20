@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010800;
+export const ABI_VERSION = 0x010900;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -323,9 +323,21 @@ export const HOSTED = {
     result: ([, schema]) => JSON.parse(schema),
     error: () => ["A", "std::cli::CliError", []],
   },
-  // `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1)): the arguments hold key material,
-  // so `wipe` zeroes the copied tuple, the decoded `Bytes` and the answer once used (`hosted`).
+  // `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1); tier 1b's seven at 1.9.0, design
+  // §17.288 (10)): the arguments hold key material, so `wipe` zeroes the copied tuple, the
+  // decoded `Bytes` and the answer once used (`hosted`), an `Option`'s `Bytes` included.
+  crypto_aes_gcm_open: {
+    wipe: true,
+    run: (_h, key, nonce, aad, ct) => ({ ok: rt.crypto_aes_gcm_open(key, nonce, aad, ct) }),
+    result: () => OPT("Y"),
+  },
+  crypto_aes_gcm_seal: {
+    wipe: true,
+    run: (_h, key, nonce, aad, pt) => ({ ok: rt.crypto_aes_gcm_seal(key, nonce, aad, pt) }),
+    result: () => "Y",
+  },
   crypto_digest: { wipe: true, run: (_h, alg, data) => ({ ok: rt.crypto_digest(alg, data) }), result: () => "Y" },
+  crypto_ecdh: { wipe: true, run: (_h, c, d, p) => ({ ok: rt.crypto_ecdh(c, d, p) }), result: () => "Y" },
   crypto_hkdf: {
     wipe: true,
     run: (_h, alg, ikm, salt, info, len) => ({ ok: rt.crypto_hkdf(alg, ikm, salt, info, len) }),
@@ -343,6 +355,14 @@ export const HOSTED = {
       ok: rt.crypto_pbkdf2(alg, password, salt, iterations, len),
     }),
     result: () => "Y",
+  },
+  crypto_public_of: { wipe: true, run: (_h, c, d) => ({ ok: rt.crypto_public_of(c, d) }), result: () => "Y" },
+  crypto_public_valid: { wipe: true, run: (_h, c, p) => ({ ok: rt.crypto_public_valid(c, p) }), result: () => "B" },
+  crypto_sign: { wipe: true, run: (_h, c, d, data) => ({ ok: rt.crypto_sign(c, d, data) }), result: () => "Y" },
+  crypto_sign_verify: {
+    wipe: true,
+    run: (_h, c, p, sig, data) => ({ ok: rt.crypto_sign_verify(c, p, sig, data) }),
+    result: () => "B",
   },
   env_get: { run: (_h, key) => ({ ok: rt.env_get(key) }), result: () => OPT("S") },
   file_open: { args: DIR_ARG, run: (_h, d, p, mode) => ({ ok: rt.file_open(d, p, mode) }), result: () => R("I", "S") },
@@ -1241,7 +1261,8 @@ export class Host {
       } else {
         w.u8(0);
         this.encode(w, r.ok, op.result(args));
-        if (op.wipe && r.ok instanceof Uint8Array) r.ok.fill(0);
+        const out = r.ok instanceof rt.Option ? r.ok.fields[0] : r.ok;
+        if (op.wipe && out instanceof Uint8Array) out.fill(0);
       }
     } catch (e) {
       return this.copyOut(defectAnswer(e));

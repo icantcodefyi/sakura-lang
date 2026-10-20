@@ -70,6 +70,13 @@ retains earlier implementation history.
   does, so the NIST CAVP and RFC vectors agree on JS, WASM and native. Key material crosses
   as `Bytes`; the guest zeroes every copy of the argument tuple and the answer before freeing
   them, and the host zeroes its copies. A 1.5 host refuses a 1.6 module (`V8003`); a WASI command does not have the imports.
+- The WASM runtime ABI is 1.9.0 (`sakura_abi_version` `0x010900`; design §17.288 (10)):
+  `std/crypto` tier 1b (AES-GCM, ECDSA and ECDH over P-256, Ed25519, X25519, and the `Pkcs8`,
+  `Spki` and `Jwk` formats) runs on `--target wasm`, where its primitives were the defect
+  `D090`. Its seven primitives are `hosted` imports the Node host serves with `node:crypto`,
+  under 1.6.0's zeroing rule (an opened plaintext included), so the NIST and RFC vectors
+  agree on JS, WASM and native. A 1.8 host refuses a 1.9 module (`V8003`); a WASI command
+  does not have the imports.
 
 - **`--json` closing records have one `kind` per shape** (design §17.242). `check`, `fix`
   and `build` still end with `summary` 1.0, now with all eight fields always present
@@ -221,8 +228,7 @@ retains earlier implementation history.
   and `Malformed`. The primitives are `node:crypto` on JS and, on native, `aes-gcm` 0.11.1,
   `p256` 0.14.0, `ed25519-dalek` 3.0.0 and `x25519-dalek` 3.0.0 at exact pins. NIST CAVP GCM,
   RFC 8032, RFC 7748, RFC 5903 and RFC 6979 vectors in `compiler/tests/vectors` hold the two
-  equal. On `--target wasm` a tier 1b primitive is the defect `D090` until its host imports
-  (ABI 1.9.0) follow phase 8. No ABI change. The new variants of `Algorithm`, `Usage`,
+  equal; on `--target wasm` they are the Node host's (ABI 1.9.0, above). The new variants of `Algorithm`, `Usage`,
   `KeyFormat`, `KeyReason` and `CryptoReason`, which RFC 0002 §2.7 reserved for this tier,
   make an exhaustive `match` over one of them in a program written against `v0.1.0`
   non-exhaustive; std signatures are stable from 0.2.0 (STABILITY.md).

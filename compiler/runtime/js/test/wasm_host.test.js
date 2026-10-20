@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   ABI_VERSION,
   AbiMismatch,
+  HOSTED,
   Host,
   HostFault,
   OUTCOME,
@@ -229,6 +230,45 @@ test("std/crypto's hosted imports answer RFC 4231 case 2 and zero every copy of 
   assert.ok(slices.length === 4 && slices.every((s) => s.every((b) => b === 0)), "the copied tuples are zeroed");
   const keys = decoded.flatMap((v) => v).filter((v) => v instanceof Uint8Array);
   assert.ok(keys.length > 0 && keys.every((b) => b.every((x) => x === 0)), "the decoded Bytes are zeroed");
+  h.close();
+});
+
+test("tier 1b's hosted AES-GCM opens what it seals, refuses a changed tag, and zeroes the plaintext it answers", () => {
+  const { h, put } = host();
+  h.typeIds = new Map([["std::option::Option", 0]]);
+  h.typeNames = ["std::option::Option"];
+  const bytes = (b) => [5, ...u32(b.length), ...b];
+  const [key, nonce, aad, pt] = [new Array(16).fill(7), new Array(12).fill(1), [], [...Buffer.from("sakura")]];
+  const call = (name, tuple) => {
+    put(64, tuple);
+    return outBytes(h, h.imports().sakura_host[name](64, tuple.length), 128);
+  };
+  const sealed = call("crypto_aes_gcm_seal", [9, ...u32(4), ...bytes(key), ...bytes(nonce), ...bytes(aad), ...bytes(pt)]);
+  assert.deepEqual([...sealed.slice(0, 6)], [0, 5, ...u32(pt.length + 16)]);
+  const ct = [...sealed.slice(6, 6 + pt.length + 16)];
+  const answers = [];
+  const run = HOSTED.crypto_aes_gcm_open.run;
+  HOSTED.crypto_aes_gcm_open.run = (...a) => {
+    const r = run(...a);
+    answers.push(r.ok);
+    return r;
+  };
+  try {
+    const open = (c) => {
+      const a = call("crypto_aes_gcm_open", [9, ...u32(4), ...bytes(key), ...bytes(nonce), ...bytes(aad), ...bytes(c)]);
+      assert.equal(a[0], 0);
+      return decode(h, a.subarray(1));
+    };
+    const some = open(ct);
+    assert.equal(some.tag, 1);
+    assert.deepEqual([...some.fields[0]], pt);
+    const tampered = [...ct];
+    tampered[tampered.length - 1] ^= 1;
+    assert.equal(open(tampered).tag, 0, "a changed tag is None");
+  } finally {
+    HOSTED.crypto_aes_gcm_open.run = run;
+  }
+  assert.ok(answers[0].fields[0].every((b) => b === 0), "the answered plaintext is zeroed once encoded");
   h.close();
 });
 
@@ -702,11 +742,11 @@ function versioned(v) {
 }
 
 test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
-  assert.equal(ABI_VERSION, 0x010800);
-  for (const v of [0x010900, 0x020000, 0x000800]) {
+  assert.equal(ABI_VERSION, 0x010900);
+  for (const v of [0x010a00, 0x020000, 0x000900]) {
     await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
   }
-  for (const v of [0x010800, 0x010700, 0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010801]) {
+  for (const v of [0x010900, 0x010800, 0x010700, 0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010901]) {
     await new Host().instantiate(versioned(v));
   }
 });

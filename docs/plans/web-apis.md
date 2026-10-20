@@ -68,8 +68,8 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc (no ABI MINOR; `miniz_oxide` 0.9.1 in `rt`; §17.286 (12); readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
-| 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288, with two small commits to follow: `rt`'s key copies zeroed, THIRD_PARTY.md with its test) | Opus | landed |
-| 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc, **now** | Opus | 7b (landed) |
+| 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288; `rt`'s key copies zeroed `94ac097d`, THIRD_PARTY.md with its test `56aabd32`) | Opus | landed |
+| 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc (ABI 1.9.0) | Opus | landed |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the 0.2.0 preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract; one ABI MINOR: the first of 8s and 10 to be ready takes 1.10.0, the other 1.11.0 (§17.289 (11)); **now** in its own lane if an implementer is free, else after 6 in the web lane | Opus | 8 (landed); 7b-W's number |
@@ -112,7 +112,8 @@ order stands. **Phase 7b landed (`d401d073`, `2a12eee4`; ratified §17.288).** 7
 ready one, so it **starts now at ABI 1.9.0** in the web lane, after two small commits the
 entry orders first (`fix(rt)`: every key copy `rt::crypto` makes is zeroed before it is
 freed; `docs(native)`: THIRD_PARTY.md's nine crypto rows with their notice files and the
-test that keeps the table complete); phase 10 takes 1.10.0 after 7b-W lands. Phase 7c is no
+test that keeps the table complete); phase 10 takes 1.10.0 after 7b-W lands. **7b-W
+landed (ABI 1.9.0)**, after `94ac097d` and `56aabd32`. Phase 7c is no
 longer optional-before-the-rc: a variant added to a `pub` std sum after 0.2.0 breaks
 exhaustive matches, so 7c lands before the 0.2.0 preparation commit or its variants are not
 in 1.0 (§17.288 (6)). **Round 43 (design §17.289, the owner's request of 2026-10-21):** the
@@ -516,7 +517,8 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   `hosted` imports (`WASM_HOSTED`, `sakura_wasm_host.js`, `validate.rs`), ABI.md §0 and §8.2
   at 1.9.0, `sakura_abi_version` `0x010900` on both hosts and in `test_bench.py`, the guest's
   argument tuple wiped, the eight `KNOWN` rows emptied (`Host::Wasi`-only rows stay), the
-  three "waits" sentences deleted; one commit, green on its own base.
+  three "waits" sentences deleted; one commit, green on its own base. **Landed** (ABI 1.9.0;
+  the Node host also zeroes `crypto_aes_gcm_open`'s `Some` plaintext once encoded).
 
 ### Phase 7c: tier 2 on JS and WASM-on-JS (before the 0.2.0 preparation commit)
 

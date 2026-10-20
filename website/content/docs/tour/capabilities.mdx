@@ -330,7 +330,7 @@ test "an Ed25519 signature verifies under its public key" {
 
 `export_key` writes a pair's halves as `Spki`, `Pkcs8` or `Jwk`, and `import_key` reads them back, refusing material that does not decode with `KeyError(Malformed)`. Ed25519 and HMAC signatures are the same bytes on every backend. ECDSA signatures are not: native signs deterministically (RFC 6979) and JavaScript with a random nonce, so compare them with `verify`, never by value.
 
-The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto and dalek crates on `--target native`. AES-GCM, ECDSA, ECDH, Ed25519, X25519 and the `Pkcs8`, `Spki` and `Jwk` formats run on `--target js` and `--target native` only for now: on `--target wasm` their primitives are `D090` until their host imports land (ABI 1.9.0). The official NIST and RFC vectors hold the backends equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
+The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto and dalek crates on `--target native`. AES-GCM, ECDSA, ECDH, Ed25519, X25519 and the `Pkcs8`, `Spki` and `Jwk` formats run on all three (on `--target wasm` from ABI 1.9.0, on main). The official NIST and RFC vectors hold the backends equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
 
 ## The trusted computing base
 
