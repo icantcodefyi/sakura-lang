@@ -750,6 +750,24 @@ class Instructions(unittest.TestCase):
         # A timed head against a counted base (the CI job) stays on milliseconds, advisory under load.
         self.assertEqual(bench.compare(counted_doc(5e6, 1e6), [doc(pair(50.0, 10.0))])["metric"], "median_ms")
 
+    def test_a_counted_bun_row_never_blocks_and_flags_past_the_block_threshold(self):
+        """§17.265 (5): Bun is advisory in a counted compare; Node blocks as before."""
+        def bun(sakura, spread=0.01):
+            d = counted_doc(sakura, 1e6)
+            for r in d["results"]:
+                r["engine"], r["instruction_spread"] = "bun", spread
+            return d
+        for sakura, status in ((5.4e6, "ok"), (5.6e6, "flagged"), (9e6, "flagged"), (4e6, "improved >10%: explain in the PR")):
+            with self.subTest(sakura=sakura):
+                out = bench.compare(bun(5e6, 0.004), [bun(sakura, 0.021)])
+                self.assertEqual(out["rows"][0]["status"], status)
+                self.assertEqual(out["verdict"], "flagged" if status == "flagged" else "ok")
+                self.assertEqual(out["rows"][0]["note"], "Bun advisory (§17.265 (5)); spread 0.40%, 0.40% → 2.10%, 2.10%")
+        self.assertEqual(bench.compare(counted_doc(5e6, 1e6), [counted_doc(9e6, 1e6)])["verdict"], "blocked")  # Node
+        self.assertEqual(bench.compare(counted_doc(5e6, 1e6), [counted_doc(5.4e6, 1e6)])["verdict"], "flagged")
+        timed = lambda ms: {**doc({k[:2] + ("bun",) + k[3:]: v for k, v in pair(ms, 10.0).items()}), "meta": {"failures": []}}
+        self.assertEqual(bench.compare(timed(20.0), [timed(22.4)])["verdict"], "blocked")  # a timed Bun row is unchanged
+
     def test_summary_prints_instructions_and_the_spread(self):
         d = counted_doc(5e6, 1e6)
         d["results"][0]["instruction_spread"] = 0.004
@@ -798,16 +816,26 @@ class Envelope(unittest.TestCase):
                                  ("handled_d1", "koka", 3.0), ("json_validate", "rust", 3.0)})
         self.assertEqual(len(out["rows"]), 2 * len(lanes))  # Node host and Wasmtime
 
-    def test_instruction_runs_read_instructions_and_are_never_advisory(self):
-        wasm, native = envelope_docs(ratio=2.0, quiet=False)  # 2.0× in time, loaded host
+    def test_instruction_runs_read_the_ceilings_on_time_with_the_count_lane_beside(self):
+        """§17.265 (2): the ceilings keep their unit, read from `median_ms` (direction only on a
+        loaded host); the count ratio is printed beside them and judges nothing."""
+        wasm, native = envelope_docs(ratio=2.2, quiet=False)  # 2.2× in time, loaded host
         for d, value in ((wasm, 2.6e6), (native, 1e6)):
             d["meta"]["flags"]["metric"] = "instructions"
             for r in d["results"]:
                 r["instructions"] = value
         out = bench.envelope(wasm, native)
-        self.assertEqual((out["metric"], out["reading"]), ("instructions", "miss"))  # 2.6× over Go's 2.0
-        self.assertIn("| fib | 100 | node | go | 2.6e+06 | 1e+06 | 2.60× | 2.0 | miss |", bench.envelope_markdown(out))
-        self.assertIn("M4 envelope on instructions per call: miss", bench.envelope_markdown(out))
+        self.assertEqual((out["metric"], out["reading"], out["direction"]),
+                         ("instructions", "advisory (host load 10.40)", "miss"))  # 2.2× in time over Go's 2.0
+        self.assertEqual(self.statuses(out)[("fib", "node", "rust")], "met")  # 2.6× in counts would not matter
+        row = next(r for r in out["rows"] if (r["program"], r["engine"], r["against"]) == ("fib", "node", "go"))
+        self.assertEqual((row["ratio"], row["count_ratio"]), (2.2, 2.6))
+        text = bench.envelope_markdown(out)
+        self.assertIn("| Time ratio | Ceiling | Status | Sakura instr | Native instr | Count ratio |", text)
+        self.assertIn("| fib | 100 | node | go | 22 | 10 | 2.20× | 2.0 | miss | 2.6e+06 | 1e+06 | 2.60× |", text)
+        self.assertIn("M4 envelope, wall-time lane on median_ms: advisory (host load 10.40), direction only: miss", text)
+        self.assertIn("Count lane: Sakura/native instructions per call, a ratio of counts and not the ceilings' unit", text)
+        self.assertNotIn("Count lane", bench.envelope_markdown(bench.envelope(*envelope_docs())))
 
     def test_a_cell_over_its_ceiling_misses_and_the_report_still_exits_zero(self):
         out = bench.envelope(*envelope_docs(ratio=2.2))  # over Go's 2.0, inside the others
@@ -817,7 +845,7 @@ class Envelope(unittest.TestCase):
         code, stdout, _ = self.cli(*envelope_docs(ratio=2.2))
         self.assertEqual(code, bench.EXIT_OK)
         self.assertIn("| fib | 100 | wasmtime | go | 22 | 10 | 2.20× | 2.0 | miss |", stdout)
-        self.assertIn("M4 envelope: miss", stdout)
+        self.assertIn("M4 envelope, wall-time lane on median_ms: miss", stdout)
 
     def test_tail_clique_is_reported_with_countdown_but_does_not_gate(self):
         wasm, native = envelope_docs(ratio=2.0)
@@ -864,7 +892,7 @@ class Envelope(unittest.TestCase):
         out = bench.envelope(wasm, native)
         self.assertEqual((out["reading"], out["direction"]), ("advisory (host load 10.40)", "met"))
         _code, stdout, _ = self.cli(wasm, native)
-        self.assertIn("M4 envelope: advisory (host load 10.40), direction only: met", stdout)
+        self.assertIn("M4 envelope, wall-time lane on median_ms: advisory (host load 10.40), direction only: met", stdout)
         native["meta"]["host"] = loaded(window_doc("native", {}), load=1.2, ci=True)["meta"]["host"]
         self.assertEqual(bench.envelope(wasm, native)["reading"], "advisory (CI runner)")
 

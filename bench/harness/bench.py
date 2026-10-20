@@ -811,7 +811,8 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
     was measured on a loaded host (§17.153) the verdict is `advisory`: only a correctness
     failure (checksum, oracle, malformed samples) still blocks. When every file is an
     `--instructions` run the ratios are of instructions per call and the host's load is not read
-    (§17.264); the absolute floor is a time and does not apply."""
+    (§17.264); the absolute floor is a time and does not apply, and a Bun row never blocks: it is
+    flagged past the block threshold and carries its four cells' spreads (§17.265 (5))."""
     field = "instructions" if all(metric(d) == "instructions" for d in (base, *heads)) else "median_ms"
     if field == "instructions":
         abs_ms = 0
@@ -825,6 +826,7 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         order = ["ok", "flagged", "blocked"]
         verdict = max(verdict, v, key=order.index)
 
+    b_by, h_by = ({cell(r): r for r in d["results"]} for d in (base, head))
     for key in sorted(set(b_rat) & set(h_rats[0])):
         p, backend, e, n = key
         bs, bj = b_rat[key]
@@ -843,16 +845,24 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
             status = "blocked"
         if d < -block:
             status = "improved >10%: explain in the PR"
+        note = ""
+        if field == "instructions" and e == "bun":  # §17.265 (5): never blocks, flags past the block threshold
+            if status != "improved >10%: explain in the PR":
+                status = "flagged" if d > block else "ok"
+            cells = [(p, "sakura", backend, e, n), (p, "js", "js", control(backend, e), n)]
+            spread = lambda by: ", ".join("—" if by[c].get("instruction_spread") is None
+                                          else f"{by[c]['instruction_spread']:.2%}" for c in cells)
+            note = f"Bun advisory (§17.265 (5)); spread {spread(b_by)} → {spread(h_by)}"
         if status in ("flagged", "blocked"):
             worse(status)
         rows.append({"program": p, "backend": backend, "engine": e, "size": n, "base_ratio": base_ratio,
-                     "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status})
+                     "head_ratio": h_rats[0][key][0] / h_rats[0][key][1], "delta": d, "status": status,
+                     "note": note})
 
     immediate, correctness, rss_rows = [], [], []  # measured (advisory when loaded), and correctness
     confirmation_programs = {r["program"] for r in rows if r["status"] == "blocked"} if len(heads) == 1 else set()
     confirmation = heads[1] if len(heads) > 1 else None
     confirmation_by = {cell(r): r for r in confirmation["results"]} if confirmation else {}
-    b_by = {cell(r): r for r in base["results"]}
     for r in head["results"]:
         key = cell(r)
         b = b_by.get(key)
@@ -930,7 +940,7 @@ def cmd_compare(a):
     print("| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |\n|---|---|---|---:|---:|---:|---:|---|")
     for r in out["rows"]:
         print(f"| {r['program']} | {r['backend']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
-              f"| {r['delta']:+.1%} | {r['status']} |")
+              f"| {r['delta']:+.1%} | {r['status']}{' — ' + r['note'] if r['note'] else ''} |")
     memory_changes = [r for r in out["rss"] if r["status"] in ("flagged", "blocked")
                       or (r["base_median_bytes"] and r["head_median_bytes"]
                           and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)]
@@ -991,10 +1001,11 @@ def envelope(wasm, native):
     """One row per program × size × engine × comparison with its ceiling and status, and the
     reading: `met`, `miss` (a gating cell over its ceiling) or `incomplete` (a gating cell
     unmeasured); `advisory (…)` instead when either run is not quiet, with the reading it would
-    have been as `direction` (§17.153). Two `--instructions` runs are read on instructions per
-    call and never advisory (§17.264). A Wasmtime cell recorded in `meta.absent` is read as its
-    Node cell (§17.213 (1))."""
-    key = "instructions" if metric(wasm) == metric(native) == "instructions" else "median_ms"
+    have been as `direction` (§17.153). The ceilings are wall-time quantities and are always read
+    on `median_ms` (the wall-time lane); two `--instructions` runs add the count lane beside it, a
+    ratio of instructions per call that is not the ceiling's unit (§17.265 (2)). A Wasmtime cell
+    recorded in `meta.absent` is read as its Node cell (§17.213 (1))."""
+    key, counted = "median_ms", metric(wasm) == metric(native) == "instructions"
     by = {cell(r): r for d in (wasm, native) for r in d["results"]}
     absent = {(f["program"], f["engine"]) for f in wasm["meta"].get("absent", [])}
     rows = []
@@ -1005,7 +1016,9 @@ def envelope(wasm, native):
                 for engine in WASM_ENGINES:
                     for against, ceiling in lanes:
                         s, c = by.get((p, "sakura", "wasm", engine, n)), by.get((p, against, "native", "native", n))
-                        ratio = None
+                        ratio = count_ratio = None
+                        if counted and s and c and (s.get("instructions") or 0) > 0 and (c.get("instructions") or 0) > 0:
+                            count_ratio = s["instructions"] / c["instructions"]
                         if (p, engine) in absent:
                             status = "absent"
                         elif not (s and c and (s.get(key) or 0) > 0 and (c.get(key) or 0) > 0):
@@ -1018,43 +1031,48 @@ def envelope(wasm, native):
                         rows.append({"program": p, "size": n, "engine": engine, "against": against,
                                      "sakura_ms": s and s["median_ms"], "native_ms": c and c["median_ms"],
                                      **({"sakura_instructions": s and s.get("instructions"),
-                                         "native_instructions": c and c.get("instructions")}
-                                        if key == "instructions" else {}),
+                                         "native_instructions": c and c.get("instructions"),
+                                         "count_ratio": count_ratio} if counted else {}),
                                      "ratio": ratio, "ceiling": ceiling, "status": status,
                                      "gating": p not in NOT_GATING})
     gating = {r["status"] for r in rows if r["gating"]}
     reading = "miss" if "miss" in gating else "incomplete" if gating & {"missing", "checksum"} else "met"
     loud = [d["meta"].get("host", {}) for d in (wasm, native)
-            if d["meta"].get("host", {}).get("quiet") is not True and key == "median_ms"]
+            if d["meta"].get("host", {}).get("quiet") is not True]
     loads = [h["load"]["max_load_1m"] for h in loud if h.get("load") and not h["load"].get("ci")]
     advisory = (None if not loud else f"advisory (host load {max(loads):.2f})" if loads
                 else "advisory (CI runner)" if any((h.get("load") or {}).get("ci") for h in loud)
                 else "advisory (no quiet verdict)")
     return {"commit": wasm["meta"].get("commit"), "host_id": wasm["meta"].get("host", {}).get("id"),
-            "metric": key, "reading": advisory or reading, "direction": reading,
+            "metric": "instructions" if counted else key, "reading": advisory or reading, "direction": reading,
             "reasons": [x for h in loud for x in (h.get("load") or {}).get("reasons", [])], "rows": rows}
 
 
 def envelope_markdown(out):
     num = lambda x, f: "—" if x is None else format(x, f)
-    unit, field = ("instr", "instructions") if out.get("metric") == "instructions" else ("ms", "ms")
-    lines = [f"| Program | n | Engine | Against | Sakura {unit} | Native {unit} | Ratio | Ceiling | Status |",
-             "|---|---:|---|---|---:|---:|---:|---:|---|"]
+    times = lambda x: "—" if x is None else f"{x:.2f}×"
+    counted = out.get("metric") == "instructions"
+    count_head = " Sakura instr | Native instr | Count ratio |" if counted else ""
+    lines = [f"| Program | n | Engine | Against | Sakura ms | Native ms | Time ratio | Ceiling | Status |{count_head}",
+             "|---|---:|---|---|---:|---:|---:|---:|---|" + ("---:|---:|---:|" if counted else "")]
     for r in out["rows"]:
         status = r["status"] + ("" if r["gating"] else " (not gating)")
-        ratio = "—" if r["ratio"] is None else f"{r['ratio']:.2f}×"
+        count_cols = (f" {num(r['sakura_instructions'], '.4g')} | {num(r['native_instructions'], '.4g')} "
+                      f"| {times(r['count_ratio'])} |" if counted else "")
         lines.append(f"| {r['program']} | {num(r['size'], '')} | {r['engine']} | {r['against']} "
-                     f"| {num(r.get(f'sakura_{field}'), '.4g')} | {num(r.get(f'native_{field}'), '.4g')} "
-                     f"| {ratio} | {r['ceiling']} | {status} |")
+                     f"| {num(r['sakura_ms'], '.4g')} | {num(r['native_ms'], '.4g')} "
+                     f"| {times(r['ratio'])} | {r['ceiling']} | {status} |{count_cols}")
     counts = {}
     for r in out["rows"]:
         if r["gating"]:
             counts[r["status"]] = counts.get(r["status"], 0) + 1
     tally = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
     direction = f", direction only: {out['direction']}" if out["reading"] != out["direction"] else ""
-    on = " on instructions per call" if out.get("metric") == "instructions" else ""
-    lines += ["", f"M4 envelope{on}: {out['reading']}{direction} (gating cells: {tally}; "
+    lines += ["", f"M4 envelope, wall-time lane on median_ms: {out['reading']}{direction} (gating cells: {tally}; "
                   f"commit {out['commit']}, host {out['host_id']})"]
+    if counted:
+        lines.append("Count lane: Sakura/native instructions per call, a ratio of counts and not the ceilings' unit, "
+                     "printed beside the wall-time lane and read against no ceiling (§17.265 (2)).")
     return "\n".join(lines)
 
 
