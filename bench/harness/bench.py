@@ -96,10 +96,27 @@ def build_cli():
     sh(["cargo", "build", "--release", "--locked", "-p", "sakura_cli"], cwd=ROOT / "compiler", timeout=1800)
 
 
-def build_sakura(p):
-    """Compile programs/<p>/sakura/main.sak; return an entry module for runner.mjs."""
-    out = TARGET / "sakura" / p
-    sh([str(SAKURA), "build", "--out-dir", str(out), str(PROGRAMS / p / "sakura" / "main.sak")])
+def baseline_cli(sha):
+    """The release CLI of commit `sha`, built once from a detached worktree at
+    `bench/target/baseline/<sha>/tree` (design §17.272 (2)(b)); later recounts reuse it."""
+    tree = TARGET / "baseline" / sha / "tree"
+    cli = tree / "compiler" / "target" / "release" / "sakura"
+    if not cli.exists():
+        if not tree.exists():
+            sh(["git", "worktree", "add", "--detach", str(tree), sha], cwd=ROOT)
+        env = {k: v for k, v in os.environ.items() if k != "CARGO_TARGET_DIR"}
+        r = subprocess.run(["cargo", "build", "--release", "--locked", "-p", "sakura_cli"], cwd=tree / "compiler",
+                           capture_output=True, text=True, timeout=1800, env=env)
+        if r.returncode != 0:
+            raise Fail(f"building the CLI of {sha}:\n{r.stderr[-3000:]}")
+    return cli
+
+
+def build_sakura(p, cli=None, out=None, src=PROGRAMS):
+    """Compile <src>/<p>/sakura/main.sak (with `cli`, into `out`, the run's own by default);
+    return an entry module for runner.mjs."""
+    out = out or TARGET / "sakura" / p
+    sh([str(cli or SAKURA), "build", "--out-dir", str(out), str(src / p / "sakura" / "main.sak")])
     # ponytail: rewrites the emitted __main__.js (std imports + registerOps, then runMain) into
     # an importable entry; replace with a `sakura build` library mode if the CLI grows one.
     lines = (out / "__main__.js").read_text().splitlines()
@@ -574,6 +591,8 @@ def new_result(flags):
     return {"schema": SCHEMA,
             "meta": {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain", "--", "compiler", "bench")),
                      "host": host(), "engines": engines_meta(), "flags": flags, "seed": flags["seed"],
+                     # a counted cell is also a function of where its artefact is (§17.272 (2)(a))
+                     "paths": {"artefacts": os.path.realpath(TARGET), "cwd": os.path.realpath(os.getcwd())},
                      "started": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                      "missing": [], "failures": [], "absent": []},
             "results": []}
@@ -929,6 +948,52 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
             "rss": rss_rows, "confirmation_programs": sorted(confirmation_programs)}
 
 
+def recount_artefacts(base_sha, p):
+    """The baseline commit's artefact of `p` and the working tree's, built side by side under
+    `bench/target/baseline/<sha>/{base,head}/<p>`: one session, one location (§17.272 (2)(b))."""
+    root = TARGET / "baseline" / base_sha
+    built = root / "base" / p / "bench_entry.mjs"
+    if not built.exists():
+        built = build_sakura(p, baseline_cli(base_sha), root / "base" / p, root / "tree" / "bench" / "programs")
+    return built, build_sakura(p, out=root / "head" / p)
+
+
+def recount(base, head, out, flag=0.05, block=0.10, processes=5, artefacts=recount_artefacts, count=count_calls):
+    """§17.272 (2)(b): re-count every blocked Node row of a counted compare as an A/A pair, the
+    baseline commit's artefact and the head's, interleaved in this session at this location, at
+    the head file's `calls`. The row's verdict becomes the head count over the recount at the
+    usual thresholds; it keeps the blessed number beside them, and says `location` when the
+    recount itself is off the blessed number by more than `flag`. Rewrites `out` in place."""
+    b_by, h_by = ({cell(r): r for r in d["results"]} for d in (base, head))
+    built = {}
+    for row in out["rows"]:
+        if row["status"] != "blocked" or row["engine"] != "node":
+            continue
+        p, _, case = row["program"].partition(":")
+        key = (row["program"], "sakura", row["backend"], "node", row["size"])
+        blessed, calls = b_by[key]["instructions"], h_by[key]["calls"]
+        if p not in built:
+            built[p] = artefacts(base["meta"]["commit"], p)
+        arts = built[p]
+        runs = ([], [])
+        for i in range(processes):  # interleaved, the order alternating
+            for side in ((0, 1) if i % 2 == 0 else (1, 0)):
+                runs[side].append(count("sakura", "node", arts[side], row["size"], calls, case or None))
+        again, now = (counted_row(r, calls)["instructions"] for r in runs)
+        d = now / again - 1
+        status = ("blocked" if d > block else "flagged" if d > flag
+                  else "improved >10%: explain in the PR" if d < -block else "ok")
+        location = abs(again / blessed - 1) > flag
+        row.update(status=status, recount={"blessed": blessed, "recount": again, "head": now, "delta": d,
+                                           "calls": calls, "location": location},
+                   note="; ".join(x for x in (row["note"], "A/A recount (§17.272 (2)(b))",
+                                              "location" if location else "") if x))
+    statuses = [r["status"] for r in out["rows"] + out["rss"]]
+    out["verdict"] = ("blocked" if out["immediate"] or "blocked" in statuses
+                      else "flagged" if "flagged" in statuses else "ok")
+    return out
+
+
 def cmd_compare(a):
     base = json.loads(Path(a.base).read_text())
     heads = [json.loads(Path(h).read_text()) for h in a.head]
@@ -937,10 +1002,26 @@ def cmd_compare(a):
             log(f"not a {SCHEMA} file")
             return EXIT_BLOCKED
     out = compare(base, heads, a.flag, a.block, a.abs_ms)
+    blocked_node = [r for r in out["rows"] if r["status"] == "blocked" and r["engine"] == "node"]
+    if out["metric"] == "instructions" and blocked_node and not a.no_recount:
+        if sys.platform != "darwin":
+            log("[recount] skipped: counting reads macOS's `/usr/bin/time -l`")
+        else:
+            if git("rev-parse", "HEAD") != heads[0]["meta"].get("commit"):
+                log(f"[recount] the working tree is not the head file's commit {heads[0]['meta'].get('commit')}: "
+                    "the head side is built from the working tree")
+            log(f"[recount] {len(blocked_node)} blocked Node cell(s) against {base['meta']['commit']} (§17.272 (2)(b))")
+            build_cli()
+            recount(base, heads[0], out, a.flag, a.block)
     print("| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |\n|---|---|---|---:|---:|---:|---:|---|")
     for r in out["rows"]:
         print(f"| {r['program']} | {r['backend']} | {r['engine']} | {r['size']} | {r['base_ratio']:.3f} | {r['head_ratio']:.3f} "
               f"| {r['delta']:+.1%} | {r['status']}{' — ' + r['note'] if r['note'] else ''} |")
+    for r in out["rows"]:
+        if c := r.get("recount"):
+            print(f"\nRecount: {r['program']} {r['engine']} n={r['size']} at {c['calls']} calls: blessed {c['blessed']:.4g}, "
+                  f"recount {c['recount']:.4g}, head {c['head']:.4g} instructions per call; head/recount {c['delta']:+.1%}, "
+                  f"{r['status']}{', location: the recount is off the blessed number' if c['location'] else ''}")
     memory_changes = [r for r in out["rss"] if r["status"] in ("flagged", "blocked")
                       or (r["base_median_bytes"] and r["head_median_bytes"]
                           and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)]
@@ -1436,6 +1517,8 @@ def main(argv=None):
     c.add_argument("--flag", type=float, default=0.05)
     c.add_argument("--block", type=float, default=0.10)
     c.add_argument("--abs-ms", type=float, default=0.1)
+    c.add_argument("--no-recount", action="store_true",
+                   help="do not re-count blocked Node cells against the baseline commit's artefact (§17.272 (2)(b))")
     c.add_argument("--json")
     v = sub.add_parser("envelope", help="the §17.109 M4 envelope from one window's wasm and native runs")
     v.add_argument("wasm", help="a `run --suite wasm` result")

@@ -768,6 +768,34 @@ class Instructions(unittest.TestCase):
         timed = lambda ms: {**doc({k[:2] + ("bun",) + k[3:]: v for k, v in pair(ms, 10.0).items()}), "meta": {"failures": []}}
         self.assertEqual(bench.compare(timed(20.0), [timed(22.4)])["verdict"], "blocked")  # a timed Bun row is unchanged
 
+    def test_a_blocked_node_cell_is_recounted_against_the_baseline_artefact(self):
+        """§17.272 (2)(b): head over an A/A recount at one location; `location` when the recount
+        is off the blessed number."""
+        def run(blessed, head, again, now):
+            base, h = counted_doc(blessed, 1e6), counted_doc(head, 1e6)
+            base["meta"]["commit"] = "abc"
+            for r in h["results"]:
+                r["calls"] = 16
+            out = bench.compare(base, [h])
+            self.assertEqual(out["verdict"], "blocked")
+            seen = []
+
+            def count(variant, engine, artefact, n, calls, case=None):
+                seen.append((artefact, calls))
+                v = {"base.mjs": again, "head.mjs": now}[artefact]
+                c = lambda i: {"instructions": i, "cycles": i, "wall_s": 1.0, "rss_bytes": 7}
+                return c(1e6), c(1e6 + v * calls), "1"
+
+            bench.recount(base, h, out, artefacts=lambda sha, p: ("base.mjs", "head.mjs"), count=count)
+            self.assertEqual(seen[:4], [("base.mjs", 16), ("head.mjs", 16), ("head.mjs", 16), ("base.mjs", 16)])
+            return out
+        out = run(5e6, 6.5e6, 6.4e6, 6.5e6)  # the blessed cell is the outlier: the recount reads with the head
+        self.assertEqual((out["verdict"], out["rows"][0]["status"]), ("ok", "ok"))
+        self.assertEqual(out["rows"][0]["recount"]["location"], True)
+        self.assertIn("location", out["rows"][0]["note"])
+        out = run(5e6, 6.5e6, 5.1e6, 6.5e6)  # the recount agrees with the blessed cell: still blocked
+        self.assertEqual((out["verdict"], out["rows"][0]["recount"]["location"]), ("blocked", False))
+
     def test_summary_prints_instructions_and_the_spread(self):
         d = counted_doc(5e6, 1e6)
         d["results"][0]["instruction_spread"] = 0.004

@@ -183,7 +183,12 @@ Agents may make the runs; only the owner blesses.
 A counted baseline measures the commit it runs at, which must contain the counting harness
 (`320c9980` or later). **The M4 baseline commit is `320c9980`** (design §17.265 (4)); the exit
 gate's signature still names `dee11301`. Use one clean worktree at that commit, so the files'
-`meta.commit` is that commit and later docs commits change nothing:
+`meta.commit` is that commit and later docs commits change nothing. **The bless path is
+`../sakura-counted`, beside the checkout**: a counted Node cell depends on where its artefact is
+(design §17.272 (2); [bench/README.md](../bench/README.md#location-and-the-aa-recount-17272-2)),
+so a `compare` that gates a landing runs from a tree at that path, or relies on `compare`'s
+A/A recount of each blocked Node cell, which counts the baseline commit's artefact and the
+head's side by side. The worktree:
 
 ```sh
 cd <your sakuralang checkout>

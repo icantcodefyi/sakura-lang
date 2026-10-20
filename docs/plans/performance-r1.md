@@ -329,7 +329,12 @@ blessed cell is the outlier); `map_set`'s 6% is the same reading; `sieve`'s peak
 `meta.paths` (artefact realpath, cwd), the same-location A/A recount of every blocked Node
 cell against the baseline commit's artefact built once into `bench/target/baseline/<sha>/`,
 a `location` mark when the recount itself is off the blessed number, one time-boxed session
-on the cause, and the bless path named in `release.md` §2.
+on the cause, and the bless path named in `release.md` §2. **Landed** (`bench.py`,
+`bench/README.md` "Location and the A/A recount", `release.md` §2): the WS-P14 compare re-read
+with the recount is blocked only on `handled_reentry` n = 1,000 (+12.9% head over recount,
+carried); `shapes` n = 50,000 reads +7.1% and `location`; the cause is a GC-phase alias (a
+fixed 64 MB young generation reads the same pair +0.4% and the two locations within 0.2%), the
+identity-hash hypothesis is dropped, and no flag joins the Node command line.
 
 **The JS lane's order from here (design §17.276):** WS-P20, WS-P15, WS-P21, WS-P16, WS-P17,
 WS-P18 (WS-P19 inside its sweep); wave 2 after WS-P16.
