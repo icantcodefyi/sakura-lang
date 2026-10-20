@@ -5,6 +5,9 @@
 //! `std/crypto` checks every argument (lengths, iterations) before it calls these, so they do not
 //! fail. Arguments are taken owned and results returned owned (ABI.md P2). Native only: the
 //! wasm32 object has no dependencies, and WASM reaches the host's implementation instead.
+//!
+//! Design §17.288 (7): every copy the `Rt` builtins make (each argument's bytes, each result
+//! before it is copied into the heap) is a `Zeroizing<Vec<u8>>`, zeroed before it is freed.
 
 use aes_gcm::aead::{self, Aead, Payload};
 use aes_gcm::{Aes128Gcm, Aes256Gcm};
@@ -13,6 +16,7 @@ use hmac::{EagerHash, Hmac, KeyInit, Mac};
 use p256::ecdsa::signature::{Signer as _, Verifier as _};
 use p256::elliptic_curve::sec1::ToSec1Point as _;
 use sha2::{Sha256, Sha384, Sha512};
+use zeroize::Zeroizing;
 
 use crate::{Res, Rt};
 
@@ -93,8 +97,8 @@ pub fn pbkdf2_derive(alg: i64, password: &[u8], salt: &[u8], rounds: u32, out: &
     by_hash!(alg, pbkdf2(password, salt, rounds, out))
 }
 
-fn seed(b: &[u8]) -> Option<[u8; 32]> {
-    b.try_into().ok()
+fn seed(b: &[u8]) -> Option<Zeroizing<[u8; 32]>> {
+    b.try_into().ok().map(Zeroizing::new)
 }
 
 /// `SecretKey::from_slice` left-pads a short scalar, so the length is checked first.
@@ -120,7 +124,7 @@ pub fn public_of(curve: i64, private: &[u8]) -> Vec<u8> {
             k.verifying_key().to_bytes().to_vec()
         }),
         X25519 => seed(private).map(|s| {
-            let k = x25519_dalek::StaticSecret::from(s);
+            let k = x25519_dalek::StaticSecret::from(*s);
             x25519_dalek::PublicKey::from(&k).to_bytes().to_vec()
         }),
         _ => p256_secret(private).map(|k| k.public_key().to_sec1_point(false).as_bytes().to_vec()),
@@ -183,8 +187,8 @@ pub fn sign_verify(curve: i64, public: &[u8], sig: &[u8], data: &[u8]) -> bool {
 pub fn ecdh(curve: i64, private: &[u8], public: &[u8]) -> Vec<u8> {
     match curve {
         X25519 => {
-            let k = x25519_dalek::StaticSecret::from(seed(private).expect("an X25519 scalar"));
-            let p = x25519_dalek::PublicKey::from(seed(public).expect("an X25519 point"));
+            let k = x25519_dalek::StaticSecret::from(*seed(private).expect("an X25519 scalar"));
+            let p = x25519_dalek::PublicKey::from(*seed(public).expect("an X25519 point"));
             let shared = k.diffie_hellman(&p);
             if shared.was_contributory() {
                 shared.to_bytes().to_vec()
@@ -231,9 +235,10 @@ pub fn aes_gcm(key: &[u8], nonce: &[u8], aad: &[u8], msg: &[u8], seal: bool) -> 
 }
 
 impl Rt {
-    /// The bytes of each argument, copied out, and every argument dropped.
-    fn take_bytes<const N: usize>(&mut self, args: [u32; N]) -> [Vec<u8>; N] {
-        let out = args.map(|b| self.data_bytes(b).to_vec());
+    /// The bytes of each argument, copied out, and every argument dropped. The copies are zeroed
+    /// when they are freed.
+    fn take_bytes<const N: usize>(&mut self, args: [u32; N]) -> [Zeroizing<Vec<u8>>; N] {
+        let out = args.map(|b| Zeroizing::new(self.data_bytes(b).to_vec()));
         for b in args {
             self.drop(b);
         }
@@ -249,12 +254,12 @@ impl Rt {
 
     pub fn crypto_digest(&mut self, alg: i64, data: u32) -> Res<u32> {
         let [data] = self.take_bytes([data]);
-        self.bytes_from(&digest(alg, &data))
+        self.bytes_from(&Zeroizing::new(digest(alg, &data)))
     }
 
     pub fn crypto_hmac(&mut self, alg: i64, key: u32, data: u32) -> Res<u32> {
         let [key, data] = self.take_bytes([key, data]);
-        self.bytes_from(&hmac(alg, &key, &data))
+        self.bytes_from(&Zeroizing::new(hmac(alg, &key, &data)))
     }
 
     pub fn crypto_hmac_verify(&mut self, alg: i64, key: u32, sig: u32, data: u32) -> bool {
@@ -292,7 +297,7 @@ impl Rt {
 
     pub fn crypto_public_of(&mut self, curve: i64, private: u32) -> Res<u32> {
         let [private] = self.take_bytes([private]);
-        self.bytes_from(&public_of(curve, &private))
+        self.bytes_from(&Zeroizing::new(public_of(curve, &private)))
     }
 
     pub fn crypto_public_valid(&mut self, curve: i64, public: u32) -> bool {
@@ -302,7 +307,7 @@ impl Rt {
 
     pub fn crypto_sign(&mut self, curve: i64, private: u32, data: u32) -> Res<u32> {
         let [private, data] = self.take_bytes([private, data]);
-        self.bytes_from(&sign(curve, &private, &data))
+        self.bytes_from(&Zeroizing::new(sign(curve, &private, &data)))
     }
 
     pub fn crypto_sign_verify(&mut self, curve: i64, public: u32, sig: u32, data: u32) -> bool {
@@ -312,24 +317,41 @@ impl Rt {
 
     pub fn crypto_ecdh(&mut self, curve: i64, private: u32, public: u32) -> Res<u32> {
         let [private, public] = self.take_bytes([private, public]);
-        self.bytes_from(&ecdh(curve, &private, &public))
+        self.bytes_from(&Zeroizing::new(ecdh(curve, &private, &public)))
     }
 
     pub fn crypto_aes_gcm_seal(&mut self, key: u32, nonce: u32, aad: u32, pt: u32) -> Res<u32> {
         let [key, nonce, aad, pt] = self.take_bytes([key, nonce, aad, pt]);
-        let ct = aes_gcm(&key, &nonce, &aad, &pt, true);
+        let ct = aes_gcm(&key, &nonce, &aad, &pt, true).map(Zeroizing::new);
         self.bytes_from(&ct.expect("std/crypto checks the key and the nonce"))
     }
 
     /// `Some(plaintext)`, or `None` when the tag does not verify.
     pub fn crypto_aes_gcm_open(&mut self, key: u32, nonce: u32, aad: u32, ct: u32) -> Res<u32> {
         let [key, nonce, aad, ct] = self.take_bytes([key, nonce, aad, ct]);
-        match aes_gcm(&key, &nonce, &aad, &ct, false) {
+        match aes_gcm(&key, &nonce, &aad, &ct, false).map(Zeroizing::new) {
             Some(pt) => {
                 let b = self.bytes_from(&pt)?;
                 self.some(b)
             }
             None => Ok(self.none()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Design §17.288 (7): a freed copy cannot be read safely, so the type is the check: every
+    /// argument copy is a `Zeroizing` wrapper, which zeroes its bytes on drop.
+    #[test]
+    fn take_bytes_returns_zeroizing_copies() {
+        type Copies = [Zeroizing<Vec<u8>>; 1];
+        let take: fn(&mut Rt, [u32; 1]) -> Copies = Rt::take_bytes::<1>;
+        let mut rt = Rt::new(1 << 20).unwrap();
+        let b = rt.bytes_from(b"key").unwrap();
+        let [copy] = take(&mut rt, [b]);
+        assert_eq!(copy.as_slice(), b"key");
     }
 }

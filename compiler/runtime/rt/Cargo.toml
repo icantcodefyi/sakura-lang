@@ -26,6 +26,7 @@ native = [
   "dep:p256",
   "dep:ed25519-dalek",
   "dep:x25519-dalek",
+  "dep:zeroize",
 ]
 # Allocator annotations for the sanitizer lanes (design §17.173 (2), (3); `mem.rs`): `asan`
 # links only under `-Zsanitizer=address`, `valgrind` reports only under Memcheck.
@@ -45,6 +46,7 @@ aes-gcm = { workspace = true, optional = true }
 p256 = { workspace = true, optional = true }
 ed25519-dalek = { workspace = true, optional = true }
 x25519-dalek = { workspace = true, optional = true }
+zeroize = { workspace = true, optional = true }
 
 [dev-dependencies]
 wasmparser.workspace = true

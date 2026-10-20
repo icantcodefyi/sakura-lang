@@ -108,6 +108,9 @@ x25519-dalek = { version = "=3.0.0", default-features = false, features = ["stat
 # `std/compress`'s DEFLATE codec in `runtime/rt` (RFC 0002 §2.6, plan web-apis phase 6), on WASM
 # and native alike: `no_std`, its allocation-free decoder and the compressor (`with-alloc`).
 miniz_oxide = { version = "=0.9.1", default-features = false, features = ["with-alloc"] }
+# `rt::crypto` zeroes its copies of key material before freeing them (design §17.288 (7));
+# already in the lock through p256 and the dalek crates.
+zeroize = { version = "=1.9.1", default-features = false, features = ["alloc"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

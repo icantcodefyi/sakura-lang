@@ -252,6 +252,11 @@ retains earlier implementation history.
 
 ### Security
 
+- Native target (experimental): `std/crypto`'s runtime zeroes its copies of key material
+  before freeing them (design §17.288 (7)): each argument's bytes and each result the
+  primitives build (a scalar, a shared secret, a plaintext, a signature or MAC) are held as
+  `zeroize::Zeroizing` buffers, where they were freed unzeroed. A Sakura `Bytes` revealed from
+  a key is still freed unzeroed (`m5-native.md` row N-S, the 1.0 security review).
 - `Http.scoped(hosts)` checks every redirect hop against its list, not only the first URL
   (design §17.263 (4)): the hops are now followed by `std/http` (see Changed), so a listed
   host that redirects to an unlisted one fails `HttpError` (`<host:port> is outside

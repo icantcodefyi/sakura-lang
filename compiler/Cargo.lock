@@ -2680,6 +2680,7 @@ dependencies = [
  "sha2",
  "wasmparser",
  "x25519-dalek",
+ "zeroize",
 ]
 
 [[package]]
