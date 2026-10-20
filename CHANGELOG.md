@@ -136,8 +136,9 @@ retains earlier implementation history.
   directions: a larger send fails `SocketError(MessageTooLarge)`, a larger received message
   closes the connection with 1009. `WebSocket.host()` speaks RFC 6455 itself on JS and through
   the WASM host: `net` is checked before connecting (`ws` port 80, `wss` 443), the handshake
-  follows no redirect, at most 64 received messages wait before it stops reading the
-  connection, and a close the peer does not answer ends after 5 seconds as 1006.
+  follows no redirect, at most 64 received messages, and at most `max_message` bytes of them,
+  wait before it stops reading the connection, a ping is answered only while the socket's write
+  buffer needs no drain (so a ping flood cannot grow it; design §17.286 (4)), and a close the peer does not answer ends after 5 seconds as 1006.
   `WebSocket.scripted([Reply(…), Push(…), Close(…)])` is the deterministic peer for tests. A
   `main` declaring `WebSocket` exits 75 at startup with an empty `net` list, and on
   `--target native` with "`WebSocket` is not available on target `native`". WASM runtime ABI

@@ -4921,10 +4921,12 @@ export function serveHttp(addr, run) {
 // upgrade, since the global `WebSocket` can neither stop reading nor bound a frame. A socket is
 // an id in the `files` table, so `file_closing` closes it on every exit of `connect`'s callback
 // (1001 when still open). Frames are parsed as they arrive: a data frame that would take its
-// message past `max_message` fails the connection with 1009 before its payload is held; at most
-// `WS_QUEUE` messages wait for `ws_receive`, and while that many wait the TCP socket is paused,
-// so TCP holds the peer back. The close, once known, follows the messages and is returned again
-// by every later receive. A close the client starts waits `WS_CLOSE_MS` for the peer's.
+// message past `max_message` fails the connection with 1009 before its payload is held; while
+// `WS_QUEUE` messages, or more than `max_message` bytes of them, wait for `ws_receive`, the TCP
+// socket is paused, so TCP holds the peer back. A ping is answered only while the socket's write
+// buffer needs no drain (RFC 6455 §5.5.2 lets a pong answer the latest ping), so pings cannot
+// grow it. The close, once known, follows the messages and is returned again by every later
+// receive. A close the client starts waits `WS_CLOSE_MS` for the peer's.
 
 const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const WS_QUEUE = 64;
@@ -5005,7 +5007,7 @@ export function ws_connect(url, options, _ctx, k) {
 /** A table entry for the upgraded `socket` (`head`: bytes read past the handshake); its id. */
 function wsOpen(socket, head, max) {
   const id = nextFile++;
-  const s = { socket, max, buf: new Uint8Array(0), frags: [], size: 0, op: 0, queue: [], waiter: null };
+  const s = { socket, max, buf: new Uint8Array(0), frags: [], size: 0, op: 0, queue: [], sizes: [], queued: 0, waiter: null };
   Object.assign(s, { closed: null, closing: false, timer: null, paused: false, close: () => wsFree(s) });
   files.set(id, s);
   socket.setNoDelay(true);
@@ -5042,7 +5044,10 @@ function wsCloseFrame(code, reason) {
   return wsFrame(8, p);
 }
 
-/** Parses the frames in `chunk` and whatever is held, stopping while `WS_QUEUE` messages wait. */
+/** Whether the received messages waiting fill the queue: `WS_QUEUE` of them, or more than `max_message` bytes. */
+const wsFull = (s) => s.queue.length >= WS_QUEUE || s.queued > s.max;
+
+/** Parses the frames in `chunk` and whatever is held, stopping while the queue is full. */
 function wsData(s, chunk) {
   if (chunk.length > 0) {
     const b = new Uint8Array(s.buf.length + chunk.length);
@@ -5051,7 +5056,7 @@ function wsData(s, chunk) {
     s.buf = b;
   }
   while (s.closed === null) {
-    if (s.queue.length >= WS_QUEUE) {
+    if (wsFull(s)) {
       s.paused = true;
       s.socket.pause();
       return;
@@ -5084,7 +5089,7 @@ function wsData(s, chunk) {
     const payload = b.slice(at, at + len);
     s.buf = b.subarray(at + len);
     if (op === 9) {
-      if (!s.closing) s.socket.write(wsFrame(10, payload));
+      if (!s.closing && !s.socket.writableNeedDrain) s.socket.write(wsFrame(10, payload));
     } else if (op === 8) {
       wsPeerClose(s, payload);
     } else if (!control) {
@@ -5114,7 +5119,7 @@ function wsMessage(s) {
   } else {
     m = variant("std::websocket::Message", 1, [bytes]);
   }
-  wsQueue(s, variant("std::websocket::Received", 0, [m]));
+  wsQueue(s, variant("std::websocket::Received", 0, [m]), bytes.length);
 }
 
 /** The peer's close frame: answered unless the client closed first, then the clean end. */
@@ -5144,17 +5149,26 @@ function wsEnd(s, code, reason, clean) {
   s.socket.unref();
 }
 
-function wsQueue(s, r) {
+/** Queues `r`, a received value of `n` message bytes (0 for the close), and wakes a receive. */
+function wsQueue(s, r, n = 0) {
   s.queue.push(r);
+  s.sizes.push(n);
+  s.queued += n;
   const w = s.waiter;
   s.waiter = null;
   w?.();
 }
 
-/** The next received value; a paused socket resumes once fewer than `WS_QUEUE` wait. */
+/** The next received value; a paused socket resumes once the queue is no longer full. */
 function wsTake(s) {
-  const r = s.queue.length > 0 ? s.queue.shift() : variant("std::websocket::Received", 1, [s.closed]);
-  if (s.paused && s.queue.length < WS_QUEUE) {
+  let r;
+  if (s.queue.length > 0) {
+    r = s.queue.shift();
+    s.queued -= s.sizes.shift();
+  } else {
+    r = variant("std::websocket::Received", 1, [s.closed]);
+  }
+  if (s.paused && !wsFull(s)) {
     s.paused = false;
     s.socket.resume();
     wsData(s, new Uint8Array(0));

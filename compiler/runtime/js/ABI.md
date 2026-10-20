@@ -516,8 +516,11 @@ is queued; the close is returned again by every later call. `ws_close(id, code, 
 Result<Unit, String>` sends the close frame and returns; 5 s without the peer's close ends the
 connection as 1006. Frames are parsed as they arrive: a data frame that would take its
 message past `max_message` fails the connection with 1009 before its payload is held, text
-that is not UTF-8 with 1007, a protocol error with 1002; at most 64 messages wait, and while
-they do the TCP socket is paused (TCP backpressure on the peer).
+that is not UTF-8 with 1007, a protocol error with 1002. While 64 messages wait, or the waiting
+messages total more than `max_message` bytes (the message being assembled not counted), the
+TCP socket is paused (TCP backpressure on the peer), and reading resumes below both; a ping is
+answered with its pong only while the socket's write buffer needs no drain (RFC 6455 §5.5.2), so
+pings cannot grow it (1.8.0, design §17.286 (4)).
 
 **Cassettes** (design §17.73, §17.122, behind std's `Http.recording`). A cassette is a JSON
 Lines file inside a `Dir`: the line `{"schema_version":"1.0","kind":"cassette"}` first, then

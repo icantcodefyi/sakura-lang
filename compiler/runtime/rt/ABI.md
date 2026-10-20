@@ -867,8 +867,9 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   `ws_close(id, code, reason) -> Result<Unit, String>`, Node host only (`WASM_HOSTED`). None is
   of kind `secret`: `Options.headers` are plain strings. `file_close(id)` closes a socket as it
   closes a file. Limits (RFC 0002 §6) are the host's: `max_message` checked on each received
-  frame before its payload is held (1009), 64 queued messages before the host stops reading, 5
-  s for the closing handshake.
+  frame before its payload is held (1009), 64 queued messages or more than `max_message` queued
+  bytes before the host stops reading, a pong only while the socket needs no drain, 5 s for the
+  closing handshake.
 - `hosted` (W1, W2): `cli_args`, `cli_parse`, `env_get`, `file_open`, `file_read`,
   `file_write`, `fs_exists`, `fs_list`, `fs_memory_root`, `fs_read`, `fs_root`, `fs_subdir`,
   `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,

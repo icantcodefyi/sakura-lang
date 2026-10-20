@@ -1,12 +1,14 @@
 // The host's WebSocket client (RFC 0002 §1, §6; plan `web-apis.md` phase 8) against a live
 // local peer (`ws_peer.mjs`): text, binary and fragmented messages, ping/pong, close codes 1000,
-// 1001 (scope exit), 1002, 1007, 1009, the 5-second close timeout, the 64-message queue holding
-// the peer back over TCP, no redirect on the upgrade, and `net`. The scripted handler and the
+// 1001 (scope exit), 1002, 1007, 1009, the 5-second close timeout, the queue (64 messages or
+// `max_message` bytes) that stops the client reading, a pong only while the socket needs no
+// drain, no redirect on the upgrade, and `net`. The scripted handler and the
 // `std/websocket` rules are the `websocket_*` semantics fixtures; the same program against this
 // peer on JS and WASM is `tests/wasm.rs::websocket_host_on_wasm_as_on_js`. A file of its own:
 // `SAKURA_PERMISSIONS` is read once per process, so it is set before the first connect.
 
 import assert from "node:assert/strict";
+import net from "node:net";
 import { after, test } from "node:test";
 import * as rt from "../sakura_runtime.js";
 import { closeFrame, echo, frame, listen } from "./ws_peer.mjs";
@@ -49,6 +51,27 @@ async function connect(path, opts = options()) {
   assert.equal(r.tag, 0, `connect failed: ${r.fields[0]}`);
   return r.fields[0];
 }
+/**
+ * The client's TCP sockets, found by `setNoDelay`, which the host calls on each one it opens: the
+ * queue bound is read on the client's side (paused, `bytesRead`), since how much a peer can write
+ * before TCP holds it back depends on the OS's buffers (a Windows peer may write it all).
+ */
+const sockets = [];
+const setNoDelay = net.Socket.prototype.setNoDelay;
+net.Socket.prototype.setNoDelay = function (...args) {
+  sockets.push(this);
+  return setNoDelay.apply(this, args);
+};
+/** The client socket of the latest connection to the peer. */
+const clientSocket = () => sockets.findLast((s) => s.remotePort === peer.port);
+/** Waits for `cond`, failing with `what` after 10 s (a regression fails instead of hanging). */
+const until = async (cond, what) => {
+  const deadline = Date.now() + 10000;
+  while (!cond()) {
+    if (Date.now() > deadline) assert.fail(what);
+    await new Promise((r) => setTimeout(r, 5));
+  }
+};
 const receive = async (id) => (await run(rt.ws_receive, [id])).fields[0];
 const send = (id, m) => run(rt.ws_send, [id, m]);
 const text = (s) => new Message(0, [s]);
@@ -141,24 +164,71 @@ test("text that is not UTF-8 fails with 1007, a masked server frame with 1002", 
   }
 });
 
-test("at most 64 messages wait: the peer is held back over TCP until they are received", async () => {
+test("at most 64 messages wait: the client stops reading until they are received", async () => {
   const n = 300;
-  let conn;
-  const sent = new Promise((resolve) => {
-    behaviours.set("/flood", (c) => {
-      conn = c;
-      for (let i = 0; i < n; i++) c.write(frame(2, Buffer.alloc(65536, i)));
-      resolve();
-    });
+  const frameLen = 10 + 65536;
+  let sent;
+  const sending = new Promise((resolve) => (sent = resolve));
+  behaviours.set("/flood", (c) => {
+    for (let i = 0; i < n; i++) c.write(frame(2, Buffer.alloc(65536, i)));
+    sent();
   });
   const [id] = await connect("/flood");
-  await sent;
-  await new Promise((r) => setTimeout(r, 300));
-  assert.ok(conn.socket.writableLength > 0, "the client stopped reading, so the peer's buffer holds the rest");
+  const sock = clientSocket();
+  await sending;
+  await until(() => sock.isPaused(), "the client never stopped reading");
+  // 64 messages, then at most one read chunk and the stream's high-water mark more.
+  assert.ok(sock.bytesRead < 80 * frameLen, `read ${sock.bytesRead} bytes while paused`);
   for (let i = 0; i < n; i++) {
     const r = await receive(id);
     assert.equal(r.fields[0].fields[0][0], i & 255);
   }
+  rt.file_close(id);
+});
+
+test("more than max_message waiting bytes stop the client reading, under 64 messages", async () => {
+  const n = 8;
+  const size = 768 * 1024;
+  behaviours.set("/heavy", (c) => {
+    for (let i = 0; i < n; i++) c.write(frame(2, Buffer.alloc(size, i)));
+  });
+  const [id] = await connect("/heavy", options({ max: 1 << 20 }));
+  const sock = clientSocket();
+  await until(() => sock.isPaused(), "the client never stopped reading");
+  // Two messages (1.5 MiB, over the 1 MiB bound) wait; the third is not read whole.
+  assert.ok(sock.bytesRead < 3 * (10 + size), `read ${sock.bytesRead} bytes while paused`);
+  for (let i = 0; i < n; i++) {
+    const r = await receive(id);
+    assert.deepEqual([r.fields[0].fields[0].length, r.fields[0].fields[0][0]], [size, i]);
+  }
+  rt.file_close(id);
+});
+
+test("a ping is answered only while the socket's write buffer needs no drain", async () => {
+  let conn;
+  const opened = new Promise((resolve) => {
+    behaviours.set("/pings", (c) => {
+      conn = c;
+      resolve();
+    });
+  });
+  const [id] = await connect("/pings");
+  const sock = clientSocket();
+  await opened;
+  // When a real buffer needs draining is the OS's choice; the rule is read from the flag.
+  let full = true;
+  Object.defineProperty(sock, "writableNeedDrain", { get: () => full, configurable: true });
+  conn.write(Buffer.concat([frame(9, "p1"), frame(1, "one")]));
+  assert.deepEqual(await receive(id), data(text("one")));
+  full = false;
+  conn.write(Buffer.concat([frame(9, "p2"), frame(1, "two")]));
+  assert.deepEqual(await receive(id), data(text("two")));
+  assert.deepEqual(await send(id, text("end")), rt.Ok(true));
+  const frames = [await conn.next(), await conn.next()].map((f) => [f.op, f.payload.toString()]);
+  assert.deepEqual(frames, [
+    [10, "p2"],
+    [1, "end"],
+  ]);
   rt.file_close(id);
 });
 
