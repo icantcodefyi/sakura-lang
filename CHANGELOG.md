@@ -344,6 +344,20 @@ this list when they land, before the beta's preparation commit.
   `"it <= 100"`), or the whole predicate when it is not a chain (`"is_relative(it)"` for
   `Path`), in the form `sakura doc` shows; in `v0.1.0` it was always `"where"`. `Violation`
   is now in the prelude (§17.292 (12)); `import std/core.{Violation}` stays valid.
+- `sakura doc` finds a symbol by the name code uses (design §17.292 (11)): `Fs.rooted`,
+  `Dir.subdir` and `Http.scoped` find the module function (a qualifier is the module or a type
+  it declares), `std::fs::with_file` and `std::sql::transaction` find the operation, `std/http`
+  or `std::http` lists the module, and a refined type's generated `T.validate` and `T.from`
+  are documented with the type's doc and `where` clause. `sakura doc` on std works outside a
+  project, and std's own tests no longer appear in results. The MCP `symbol_query` tool shares
+  the lookup.
+- An unresolved name that is the last segment of one of the package's own modules gets the fix
+  `import <package>/<path>` (design §17.293 PQ-6), where it was offered an unrelated std export
+  of the same name (`import std/retry.{policy}` for a module `policy`), which `sakura fix` would
+  have applied. Two package modules with that name give no fix.
+- Doc comments: `Agent.run` names its failure tags (`UnknownTool`, `DecodeError`), and
+  `timeout` says that under `Clock.fixed` an action that suspends times out at once and
+  `Clock.virtual()` is the clock for testing timeouts (design §17.293 MT-6, PQ-8).
 
 ### Security
 

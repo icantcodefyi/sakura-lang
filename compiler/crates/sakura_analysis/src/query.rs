@@ -1,7 +1,10 @@
 //! Agent queries shared by MCP and LSP: symbol search by name or type shape, and the context of a
 //! typed hole. Both protocols return exactly this JSON.
 
+use std::borrow::Cow;
+
 use sakura_diagnostics::{SCHEMA_VERSION, hole_records};
+use sakura_hir::{DefId, DefKind, TypeDef, TypeDefBody};
 use serde_json::{Value, json};
 
 use crate::{Analyzed, Symbol};
@@ -9,9 +12,13 @@ use crate::{Analyzed, Symbol};
 /// What `symbol_query` looks for. Empty fields match everything.
 #[derive(Clone, Debug, Default)]
 pub struct SymbolQuery {
-    /// Exact id (`main::app::clamp`).
+    /// An id (`main::app::clamp`); the exact id ranks first, then the name forms `name`
+    /// accepts after `package::module::` (`std::fs::Fs.with_file`, `std::fs::with_file`,
+    /// `std::http::Http.scoped`). `package::module` alone lists the module.
     pub id: Option<String>,
-    /// A name or part of one, case-insensitive; exact matches rank first.
+    /// A name or part of one, case-insensitive; exact matches rank first. A qualified name
+    /// matches as code calls it: `Fs.with_file` for an operation, `Fs.rooted` or `Dir.subdir`
+    /// for a function of the module that is `fs` or declares `Dir` (design §17.292 (11)).
     pub name: Option<String>,
     /// A type shape such as `fn(List<A>) -> Int`; single capitals and lowercase names are
     /// variables, matched consistently.
@@ -30,26 +37,36 @@ impl Analyzed {
             .map(|scheme| self.renderer().ty(scheme.ty))
     }
 
-    /// Symbols matching `q`, best first.
-    pub fn search(&self, q: &SymbolQuery) -> Vec<&Symbol> {
+    /// Symbols matching `q`, best first. Std's own tests are not documentation and never match.
+    pub fn search(&self, q: &SymbolQuery) -> Vec<Cow<'_, Symbol>> {
         let name = q.name.as_deref().map(str::to_lowercase);
         let pattern = q
             .type_pattern
             .as_deref()
             .map(|p| shape(p, &|t| is_pattern_var(t)));
-        let mut hits: Vec<(u8, &Symbol)> = self
-            .symbols()
-            .iter()
+        // Types, effects and errors by (package, module, lowercase name): a qualifier `Dir`
+        // names the module that declares `Dir`.
+        let owners: Vec<(&str, &str, String)> = (self.symbols().iter())
+            .filter(|s| matches!(s.kind, "type" | "effect" | "error"))
+            .map(|s| (s.package.as_str(), s.module.as_str(), s.name.to_lowercase()))
+            .collect();
+        let candidates = (self.symbols().iter().map(Cow::Borrowed))
+            .chain(self.refinement_intros().map(Cow::Owned))
+            .filter(|s| s.package != "std" || !matches!(s.kind, "test" | "property"));
+        let mut hits: Vec<(u8, Cow<'_, Symbol>)> = candidates
             .filter(|s| q.include_std || s.package != "std")
-            .filter(|s| q.id.as_ref().is_none_or(|id| *id == s.id))
             .filter(|s| q.kind.as_ref().is_none_or(|k| k == s.kind))
             .filter_map(|s| {
+                let by_id = match &q.id {
+                    None => 0,
+                    Some(id) => id_rank(id, &s, &owners)?,
+                };
                 let rank = match &name {
                     None => 2,
                     Some(n) => {
                         let lower = s.name.to_lowercase();
                         let last = lower.rsplit('.').next().unwrap_or(&lower);
-                        if lower == *n || last == n {
+                        if lower == *n || last == n || n.contains('.') && names(n, &s, &owners) {
                             0
                         } else if lower.contains(n.as_str()) {
                             1
@@ -78,11 +95,52 @@ impl Analyzed {
                         return None;
                     }
                 }
-                Some((rank + if s.package == "std" { 1 } else { 0 }, s))
+                Some((by_id + rank + if s.package == "std" { 1 } else { 0 }, s))
             })
             .collect();
         hits.sort_by(|a, b| (a.0, &a.1.id).cmp(&(b.0, &b.1.id)));
         hits.into_iter().map(|(_, s)| s).collect()
+    }
+
+    /// `T.from` and `T.validate` of each refined type: generated, so not in the index, and
+    /// documented by the type's doc and `where` clause (design §17.292 (11)).
+    fn refinement_intros(&self) -> impl Iterator<Item = Symbol> + '_ {
+        let types = self.symbols().iter().filter(|s| s.kind == "type");
+        types.flat_map(move |t| {
+            let DefKind::Type(TypeDef {
+                body: TypeDefBody::Refined { from, validate, .. },
+                ..
+            }) = &self.program.def(t.def).kind
+            else {
+                return Vec::new();
+            };
+            [(*from, "from"), (*validate, "validate")]
+                .into_iter()
+                .map(|(index, intro)| {
+                    let def = DefId {
+                        module: t.def.module,
+                        index,
+                    };
+                    let name = format!("{}.{intro}", t.name);
+                    let ty = (self.typed.defs.get(&def))
+                        .map(|scheme| self.renderer().ty(scheme.ty))
+                        .unwrap_or_default();
+                    // `fn(String) -> …`: the one parameter is `value` (`lower_intro`).
+                    let rest = ty.strip_prefix("fn(").unwrap_or(&ty);
+                    let public = if t.is_pub { "pub " } else { "" };
+                    Symbol {
+                        id: format!("{}::{}::{name}", t.package, t.module),
+                        signature: format!("{public}fn {name}(value: {rest}"),
+                        name,
+                        kind: "fn",
+                        effects: None,
+                        def,
+                        body: None,
+                        ..t.clone()
+                    }
+                })
+                .collect()
+        })
     }
 
     /// The `symbol_query` 1.0 record of the first `limit` hits of `q`: `sakura doc --json` prints
@@ -94,7 +152,7 @@ impl Analyzed {
             .iter()
             .take(limit)
             .map(|s| {
-                let mut value = json!(s);
+                let mut value = json!(s.as_ref());
                 value["type"] = json!(self.symbol_type(s));
                 value
             })
@@ -147,6 +205,41 @@ impl Analyzed {
             "related": related,
         }))
     }
+}
+
+/// How well `id` matches `s`: 0 for the exact id, 1 for a name form of `s` after its own
+/// `package::module::`, 2 when `id` is `package::module` and `s` is a public item of it.
+fn id_rank(id: &str, s: &Symbol, owners: &[(&str, &str, String)]) -> Option<u8> {
+    if id == s.id {
+        return Some(0);
+    }
+    let mut parts = id.splitn(3, "::");
+    let (package, module) = (parts.next()?, parts.next()?);
+    if package != s.package || module != s.module {
+        return None;
+    }
+    match parts.next() {
+        None => (s.is_pub || s.package != "std").then_some(2),
+        Some(rest) => names(&rest.replace("::", ".").to_lowercase(), s, owners).then_some(1),
+    }
+}
+
+/// Whether lowercase `q` names `s` as code calls it: its name, an operation's bare name, or
+/// `Q.name` where `Q` is the module's last segment or a type it declares (design §4.9).
+fn names(q: &str, s: &Symbol, owners: &[(&str, &str, String)]) -> bool {
+    if matches!(s.kind, "test" | "property") {
+        return false;
+    }
+    let name = s.name.to_lowercase();
+    let (qualifier, q_name) = q.rsplit_once('.').unwrap_or(("", q));
+    let (own, s_name) = name.rsplit_once('.').unwrap_or(("", &name));
+    q_name == s_name
+        && (qualifier.is_empty()
+            || qualifier == own
+            || own.is_empty()
+                && (s.module.rsplit('/').next() == Some(qualifier)
+                    || (owners.iter())
+                        .any(|(p, m, t)| *p == s.package && *m == s.module && t == qualifier)))
 }
 
 fn is_pattern_var(token: &str) -> bool {

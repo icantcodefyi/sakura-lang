@@ -711,6 +711,20 @@ fn doc_searches_by_type_pattern() {
     );
 }
 
+/// Design §17.292 (11): `sakura doc` on std needs no project.
+#[test]
+fn doc_reads_std_outside_a_project() {
+    let dir = std::env::temp_dir().join(format!("sakura-cli-{}-doc-empty", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = sakura(&["doc", "Fs.rooted"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert!(
+        out.stdout.starts_with("std::fs::rooted\npub fn rooted("),
+        "{}",
+        out.stdout
+    );
+}
+
 /// Plan §3.5 L3: `sakura build --emit lir` writes the validated LIR as text; `--layout=niche` is
 /// plumbed through to the lowering, which refuses it until M4-OPT implements it.
 #[test]
