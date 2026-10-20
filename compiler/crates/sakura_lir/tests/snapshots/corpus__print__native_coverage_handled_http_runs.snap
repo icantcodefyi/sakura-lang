@@ -1,0 +1,87 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::http::Body
+layout 1 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 2 variant std::http::Matcher | Any 16b () | Path 24b (word*) | Method 24b (word*)
+layout 3 variant std::http::Step | Done 24b (word*) | Hop 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 7 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 8 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 9 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 10 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 11 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 14 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 15 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 16 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 17 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+layout 20 shape |  16b ()
+layout 21 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::native_coverage_handled_http_runs, frame 10 slots [%5 word*, %6 word*, %9 word*, %12 word*, %14 bool, %17 word*, %22 word*, %23 word*, %24 word*, %25 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::http::Matcher.Path(%0)
+    %2 lit: i64 = const 200
+    %3 lit: ptr = const str 1
+    %4 $site: i64 = const 7
+    call status#5(%2, %3, %4) -> b1(%1)
+  b1(%5 r: ptr, %6 r: ptr):
+    %7 tup: ptr = alloc tuple#18(word, word)(%6, %5)
+    %8 xs: ptr = alloc list(%7)
+    call scripted#6(%8) -> b2()
+  b2(%9 r: ptr):
+    handle_push %9
+    try_push -> b6(err, )
+    %19 v: ptr = const static std::request::Method.Get
+    %20 lit: ptr = const str 2
+    %21 $site: i64 = const 8
+    call Url$from#7(%20, %21) -> b7(%19)
+  b3(%10 v: ptr) [handle]:
+    %11 f: ptr = closure main$1#9[]
+    call map#10(%10, %11) -> b4()
+  b4(%12 r: ptr) [handle]:
+    %13 s: ptr = show %12
+    drop %12
+    perform std::console::Console.print(%13) -> b5()
+  b5(%14 r: unit) [handle]:
+    %15 box: word = box %14
+    %16 unbox: unit = unbox %15
+    drop %15
+    handle_pop
+    ret %16
+  b6(%17 e: word) [handle]:
+    %18 err: ptr = alloc std::result::Result.Err(%17)
+    jump b3(%18)
+  b7(%22 r: ptr, %23 v: ptr) [handle, try]:
+    call of#8(%23, %22) -> b8()
+  b8(%24 r: ptr) [handle, try]:
+    perform std::http::Http.send(%24) -> b9()
+  b9(%25 r: ptr) [handle, try]:
+    %26 ok: ptr = alloc std::result::Result.Ok(%25)
+    try_pop
+    jump b3(%26)
+
+fn $entry#1 top -> unit ; main::native_coverage_handled_http_runs, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#9 lambda -> word ; main::native_coverage_handled_http_runs, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 r: word):
+    drop %0
+    %2 status: i64 = proj %1.0 std::response::Response
+    drop %1
+    %3 box: word = box %2
+    ret %3

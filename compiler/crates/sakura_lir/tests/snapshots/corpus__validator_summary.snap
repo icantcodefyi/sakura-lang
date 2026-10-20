@@ -130,6 +130,7 @@ semantics/mutual_tail_blame: 4 funcs, 19 blocks, 0 dup, 6 drop, valid
 semantics/mutual_tail_dispatch: 12 funcs, 304 blocks, 3 dup, 97 drop, valid
 semantics/mutual_tail_dispatch_blame: 5 funcs, 47 blocks, 0 dup, 6 drop, valid
 semantics/mutual_tail_loop: 13 funcs, 112 blocks, 0 dup, 41 drop, valid
+semantics/native_coverage_handled_http_runs: 106 funcs, 1316 blocks, 194 dup, 922 drop, valid
 semantics/nested_options: 21 funcs, 140 blocks, 41 dup, 163 drop, valid
 semantics/nested_options_json: 2 funcs, 5 blocks, 0 dup, 19 drop, valid
 semantics/newline_rule: 9 funcs, 43 blocks, 10 dup, 37 drop, valid

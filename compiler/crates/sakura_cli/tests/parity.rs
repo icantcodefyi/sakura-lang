@@ -33,6 +33,9 @@ const KNOWN: &[(&str, &str)] = &[];
 struct Run {
     code: Option<i32>,
     stdout: String,
+    /// Read by the native comparison's declared refusals.
+    #[cfg_attr(not(feature = "native"), expect(dead_code))]
+    stderr: String,
     defect: Option<Defect>,
     trace: String,
     /// On WASM: the host imports the module declares, the host provides, and those called
@@ -169,6 +172,7 @@ fn run_env(
         imports: imports(&coverage),
         code: if out.timed_out { None } else { out.code },
         defect: defect_record(&out.stderr),
+        stderr: out.stderr.clone(),
         stdout: if mode == "test" {
             test_records(&out.stdout)
         } else {
@@ -354,6 +358,7 @@ fn a_single_trace_event_divergence_is_rejected() {
     let run = |trace: &str| Run {
         code: Some(0),
         stdout: "ok\n".into(),
+        stderr: String::new(),
         defect: None,
         trace: trace.into(),
         imports: Imports::default(),
@@ -375,6 +380,7 @@ fn a_wrong_defect_site_or_message_is_rejected() {
     let run = |stderr: &str| Run {
         code: Some(70),
         stdout: String::new(),
+        stderr: stderr.into(),
         defect: defect_record(stderr),
         trace: String::new(),
         imports: Imports::default(),
@@ -654,12 +660,15 @@ fn wasm_twins_agree_with_wasm_frames() {
 /// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
 /// the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
-const KNOWN_NATIVE: &[(&str, &str)] = &[("example secrets", "a hosted builtin N1b ports (D091)")];
+const KNOWN_NATIVE: &[(&str, &str)] = &[];
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and
 /// WASM are held to. The native profile's `Int` is WASM's exact `i64`, so a fixture's `@wasm`
-/// expectation is native's too. Test mode waits for `sakura test --target native` (after N1b).
+/// expectation is native's too. A program with `expect-exit@native` is the declared difference
+/// of RFC 0002 §7 (design §17.271 (9)): `main` leaves an effect the native host lacks to the
+/// runtime, so native exits with that code and prints exactly `expect-stderr@native` on stderr
+/// while JS runs it. Test mode waits for `sakura test --target native` (after N1b).
 #[cfg(feature = "native")]
 #[test]
 fn native_agrees_with_js_on_run_mode_programs() {
@@ -746,6 +755,26 @@ fn native_agrees_with_js_on_run_mode_programs() {
                 )
             }
         };
+        let refused = match job {
+            Job::Fixture(_, d, _) | Job::Example(_, d, _) => d
+                .get("expect-exit@native")
+                .map(|c| (c, d.get("expect-stderr@native"))),
+        };
+        if let Some((code, stderr)) = refused {
+            let want = stderr.map(|s| format!("{s}\n")).unwrap_or_default();
+            if twins.code.map(|c| c.to_string()).as_ref() != Some(code)
+                || twins.stderr != want
+                || !twins.stdout.is_empty()
+            {
+                failures.push(format!(
+                    "{label}: native exit {:?}, stderr {:?}; expected {code}, {want:?}",
+                    twins.code, twins.stderr
+                ));
+            } else {
+                agree += 1;
+            }
+            continue;
+        }
         let why = compare(expect, "run", &js, &twins)
             .map(|w| format!("twins: {w}"))
             .or_else(|| {

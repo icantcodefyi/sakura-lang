@@ -322,6 +322,15 @@ section `sakura.native` (`__TEXT,__sakura_native` on Mach-O); the ISA is Craneli
 The driver checks it at startup, before the program runs (linking does not read it); the target
 must equal the driver's own triple.
 
+**Backend coverage** (RFC 0002 §7, design §17.271 (9)). The compiler lists `main`'s root
+effects (the std effects of its row after handling) in the module descriptor it hands the
+driver's entry, `sakura_native_main_v4`. After the record's check, the driver refuses a root
+effect whose service the native host does not implement (`Http`, `Serve`, `Llm`): one stderr
+line naming it, "`Http` is not available on target `native`", and exit 75, before the
+instance exists or any user code runs. A handler for one that the program installs itself is
+`D090` or `D091` at first use. It is a startup check, not a build-time diagnostic, and no
+diagnostic code.
+
 ## 2. Scalar representation
 
 | Sakura type | Known-type representation (locals, params, results, fields) | Boxed form (§4) | Source |

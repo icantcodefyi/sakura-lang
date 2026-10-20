@@ -1,0 +1,22 @@
+// milestone: M3
+// spec: RFC 0002 §7; design §17.271 (9)
+
+// The backend coverage rule reads `main`'s effect row after handling: the native target
+// refuses at startup (exit 75) a `main` that leaves `Http`, `Serve` or `Llm` to the runtime,
+// and this `main` handles `Http` itself, so its row is `{Console}` and it runs on every
+// backend, native included. The refused case is the `secrets` example (`expect-exit@native`):
+// a fixture has no `sakura.toml`, and `sakura run` denies a declared `Http` without a `net`
+// grant on every backend before the program starts.
+import std/http.{Http, Path}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+pub fn main() -> Unit ! {Console} {
+  with Http.scripted([(Path("/ping"), Response.status(200, "pong"))]) {
+    let got: Result<Response, HttpError> = try {
+      Http.send(Request.of(Get, Url.from("https://a.example/ping")))
+    }
+    Console.print("{got.map(fn(r) { r.status })}")
+  }
+}

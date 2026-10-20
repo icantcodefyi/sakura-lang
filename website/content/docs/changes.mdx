@@ -52,6 +52,9 @@ Each of these can change what a program that works on `0.1.0` does.
 - The `defect` record and the `regression` file are part of the `--json` contract, and MCP's
   `symbol_query` and `test` results are the CLI's records.
 - The [signed webhook recipe](/docs/cookbook/sign_webhook).
+- Experimental `--target native`: a `main` that declares `Http`, `Serve` or `Llm` exits 75 at
+  startup with "`Http` is not available on target `native`" instead of the defect `D091` at
+  first use.
 
 ## 0.1.0, from alpha.1
 

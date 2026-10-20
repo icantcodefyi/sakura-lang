@@ -83,6 +83,11 @@ retains earlier implementation history.
   `http_send` and `http_stream_open` carry `Payload` bodies and the `redirect` field, send
   with `redirect: "manual"` and answer a 3xx as it is; `serve_listen` carries `Payload`
   bodies. The import names are unchanged; a 1.6 host refuses a 1.7 module (`V8003`).
+- Experimental `--target native` (RFC 0002 §7, design §17.271 (9)): a program whose `main`
+  declares `Http`, `Serve` or `Llm`, which the native host does not implement, exits 75 at
+  startup with one stderr line, "`Http` is not available on target `native`", before any of
+  its code runs, instead of the defect `D091` at first use. A `main` that handles the effect
+  itself (`Http.scripted`) still runs. The `secrets` example is refused on native this way.
 
 ### Added
 

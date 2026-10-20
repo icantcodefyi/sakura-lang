@@ -57,8 +57,9 @@ pub fn directives(text: &str) -> BTreeMap<String, String> {
             let valid = match k.split_once('@') {
                 None => plain(k),
                 Some((key, backend)) => {
-                    matches!(key, "expect-defect" | "expect-exit")
-                        && matches!(backend, "js" | "wasm")
+                    (matches!(key, "expect-defect" | "expect-exit")
+                        && matches!(backend, "js" | "wasm"))
+                        || (matches!(key, "expect-exit" | "expect-stderr") && backend == "native")
                 }
             };
             if valid {

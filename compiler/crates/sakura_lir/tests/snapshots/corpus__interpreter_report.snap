@@ -130,6 +130,7 @@ semantics/mutual_tail_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/mutual_tail_dispatch: ok, 309574 allocated, 1 dup, 309575 drop, peak 5, live 0/0
 semantics/mutual_tail_dispatch_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/mutual_tail_loop: ok, 28 allocated, 0 dup, 28 drop, peak 4, live 0/0
+semantics/native_coverage_handled_http_runs: ok, 47 allocated, 56 dup, 103 drop, peak 24, live 0/0
 semantics/nested_options: ok, 280 allocated, 474 dup, 754 drop, peak 47, live 0/0
 semantics/nested_options_json: unsupported (builtin json_encode)
 semantics/newline_rule: ok, 34 allocated, 41 dup, 75 drop, peak 11, live 0/0

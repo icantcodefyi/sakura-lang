@@ -2,7 +2,7 @@
 //! relocatable object. Each LIR function is a frame-protocol function `(ctx, env, frame) ->
 //! step` ([`func`]); the object also carries the module's static block ([`image`]), the table
 //! of its functions, the descriptor `sakura_native_driver` reads, the `sakura.native` record
-//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v3`. [`link`]
+//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v4`. [`link`]
 //! links it with the driver's staticlib into an executable with the system C linker.
 
 #![cfg(feature = "native")]
@@ -25,7 +25,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
-const DESCRIPTOR: usize = 88;
+const DESCRIPTOR: usize = 96;
 
 /// The Cranelift release the backend is built with: the workspace pin (design §17.175 (1)).
 pub const CRANELIFT: &str = "0.136.3";
@@ -47,6 +47,10 @@ pub struct Options {
     /// `--native-checks` (design §17.173 (4)): every heap load and store first asks the
     /// runtime whether it stays inside its object's live block (`rt_check`).
     pub checks: bool,
+    /// The std effects of `main`'s row after handling (`Http`, `Console`, …), whose root
+    /// handlers the driver installs; it refuses at startup one the native host lacks (RFC 0002
+    /// §7, design §17.271 (9)).
+    pub root_effects: Vec<String>,
 }
 
 impl Default for Options {
@@ -57,6 +61,7 @@ impl Default for Options {
             texts: vec![],
             module_hash: [0; 32],
             checks: false,
+            root_effects: vec![],
         }
     }
 }
@@ -261,6 +266,14 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     });
     obj.define_data(native_id, &d).map_err(|e| e.to_string())?;
 
+    // `main`'s root effects, one name per line, for the driver's coverage check.
+    let roots = opts.root_effects.join("\n").into_bytes();
+    let roots_id = data(&mut obj, "sakura$roots", false)?;
+    let mut d = DataDescription::new();
+    // At least one byte: an empty symbol may share its address with the next.
+    d.define(roots.iter().copied().chain([0]).collect());
+    obj.define_data(roots_id, &d).map_err(|e| e.to_string())?;
+
     let module_id = data(&mut obj, "sakura$module", true)?;
     let mut bytes = vec![0u8; DESCRIPTOR];
     let mut put = |at: usize, v: u32| bytes[at..at + 4].copy_from_slice(&v.to_le_bytes());
@@ -277,6 +290,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     put(64, debug.len() as u32);
     put(68, image.schemas);
     put(80, record.len() as u32);
+    put(84, roots.len() as u32);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);
@@ -288,9 +302,11 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     d.write_data_addr(56, debug_gv, 0);
     let native_gv = obj.declare_data_in_data(native_id, &mut d);
     d.write_data_addr(72, native_gv, 0);
+    let roots_gv = obj.declare_data_in_data(roots_id, &mut d);
+    d.write_data_addr(88, roots_gv, 0);
     obj.define_data(module_id, &d).map_err(|e| e.to_string())?;
 
-    // `main(argc, argv)`: `return sakura_native_main_v3(&sakura$module);`
+    // `main(argc, argv)`: `return sakura_native_main_v4(&sakura$module);`
     let ptr = obj.target_config().pointer_type();
     let mut msig = obj.make_signature();
     msig.params.push(AbiParam::new(types::I32));
@@ -303,7 +319,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     nsig.params.push(AbiParam::new(ptr));
     nsig.returns.push(AbiParam::new(types::I32));
     let native_main = obj
-        .declare_function("sakura_native_main_v3", Linkage::Import, &nsig)
+        .declare_function("sakura_native_main_v4", Linkage::Import, &nsig)
         .map_err(|e| e.to_string())?;
     ctx.func.signature = msig;
     {

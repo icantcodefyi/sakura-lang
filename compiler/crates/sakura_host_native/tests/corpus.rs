@@ -692,6 +692,48 @@ fn the_driver_refuses_a_foreign_sakura_native_record() {
     assert!(out.stdout.is_empty());
 }
 
+/// RFC 0002 §7, design §17.271 (9): a `main` whose row after handling leaves `Http`, `Serve`
+/// or `Llm` to the runtime exits 75 at startup with one stderr line naming the effect, before
+/// any user code runs; a row of effects the native host serves runs.
+#[test]
+fn the_driver_refuses_a_root_effect_native_lacks() {
+    let p = programs()
+        .into_iter()
+        .find(|p| p.name == "semantics/hello")
+        .unwrap();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-coverage");
+    std::fs::create_dir_all(&dir).unwrap();
+    for (roots, code, stderr) in [
+        (
+            &["Console", "Http"][..],
+            75,
+            "`Http` is not available on target `native`\n",
+        ),
+        (
+            &["Llm", "Serve"],
+            75,
+            "`Llm` is not available on target `native`\n",
+        ),
+        (&["Console"], 0, ""),
+    ] {
+        let opts = sakura_codegen_native::Options {
+            root_effects: roots.iter().map(|r| r.to_string()).collect(),
+            ..Default::default()
+        };
+        let exe = build(
+            &format!("coverage-{}", roots.join("-")),
+            opts,
+            &p.core,
+            &dir,
+        )
+        .unwrap();
+        let out = Command::new(&exe).output().unwrap();
+        assert_eq!(out.status.code(), Some(code), "{roots:?}");
+        assert_eq!(String::from_utf8_lossy(&out.stderr), stderr, "{roots:?}");
+        assert_eq!(out.stdout.is_empty(), code == 75, "{roots:?}");
+    }
+}
+
 /// The record's Cranelift version is the workspace pin (design §17.175 (1)).
 #[test]
 fn the_record_names_the_pinned_cranelift() {

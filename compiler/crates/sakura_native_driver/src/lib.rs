@@ -1,5 +1,5 @@
 //! The entry of a native Sakura program (plan M5 N2; ABI §1b). The object `sakura_codegen_native`
-//! emits defines `main`, which calls [`sakura_native_main_v3`] with the module's descriptor; this
+//! emits defines `main`, which calls [`sakura_native_main_v4`] with the module's descriptor; this
 //! crate, built as a staticlib with `panic = "abort"`, brings the runtime and the native host.
 //! It runs `main` as the Node host does: one instance on one thread, the outcome reported on
 //! stderr and as the exit code.
@@ -47,9 +47,29 @@ pub struct SakuraModule {
     /// The `sakura.native` record (+72) and its length (+80) (ABI §1b).
     native: *const u8,
     native_len: u32,
+    /// The length (+84) and bytes (+88) of `main`'s root effects, one std effect name per
+    /// line: the row after handling, whose root handlers the program installs.
+    roots_len: u32,
+    roots: *const u8,
 }
 
-const _: () = assert!(size_of::<SakuraModule>() == 88);
+const _: () = assert!(size_of::<SakuraModule>() == 96);
+
+/// The std effects whose host service the native host does not implement: a `main` that
+/// leaves one to the runtime is refused at startup, exit 75, before any user code runs (RFC
+/// 0002 §7, design §17.271 (9)); a use under a handler `main` installs is `D091` at first use.
+const UNAVAILABLE: &[&str] = &["Http", "Llm", "Serve"];
+
+/// The exit code of a program refused at startup (`sakura run`'s permission denial too).
+const EXIT_UNAVAILABLE: i32 = 75;
+
+/// The first of `roots` (newline-separated effect names) the native host lacks.
+fn unavailable(roots: &[u8]) -> Option<&str> {
+    std::str::from_utf8(roots)
+        .ok()?
+        .split('\n')
+        .find(|e| UNAVAILABLE.contains(e))
+}
 
 /// A bounds-checked reader of little-endian bytes.
 struct Cursor<'a> {
@@ -245,6 +265,12 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
             CODES.len()
         ));
     }
+    // SAFETY: the compiler emits `roots` as `roots_len` immutable bytes.
+    let roots = unsafe { std::slice::from_raw_parts(m.roots, m.roots_len as usize) };
+    if let Some(effect) = unavailable(roots) {
+        eprintln!("`{effect}` is not available on target `native`");
+        return Ok(EXIT_UNAVAILABLE);
+    }
     // SAFETY: the compiler emits `codes` as `n_codes` function pointers, `image` and `debug`
     // as `image_len` and `debug_len` bytes, all immutable for the program's life.
     let (codes, bytes, debug) = unsafe {
@@ -343,11 +369,11 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
 /// # Safety
 ///
 /// `m` is the descriptor `sakura_codegen_native` emits: a static that lives as long as the
-/// program, whose `codes`, `image`, `debug` and `native` point at `n_codes` functions,
-/// `image_len`, `debug_len` and `native_len` bytes. The suffix is the descriptor layout's version: a layout change renames
+/// program, whose `codes`, `image`, `debug`, `native` and `roots` point at `n_codes`
+/// functions, `image_len`, `debug_len`, `native_len` and `roots_len` bytes. The suffix is the descriptor layout's version: a layout change renames
 /// the entry, so an object from another layout fails to link instead of misreading this one.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sakura_native_main_v3(m: *const SakuraModule) -> i32 {
+pub unsafe extern "C" fn sakura_native_main_v4(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()

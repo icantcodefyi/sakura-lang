@@ -94,6 +94,10 @@ pub fn build(
             sha2::Sha256::digest(inputs).into()
         },
         checks,
+        // Cached: `lower_core` analysed this snapshot.
+        root_effects: Analysis::analyze(snapshot)
+            .main_effects()
+            .unwrap_or_default(),
     };
     let (object, [codegen, emission]) =
         sakura_codegen_native::emit_timed(&lir, &native).map_err(usage_error)?;
