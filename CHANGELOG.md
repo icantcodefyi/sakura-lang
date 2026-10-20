@@ -9,6 +9,13 @@ retains earlier implementation history.
 
 ### Changed
 
+- WASM backend performance (design §17.285 (c), WS-W6; the native backend shares the runtime,
+  unmeasured): building a string by
+  repeated `+` or interpolation (`s = "{s}{w}"`) appends to the left string in place when
+  nothing else holds it, growing its block geometrically, so the loop is linear instead of
+  quadratic: `tokenizer` at n = 100,000 runs 90.6% fewer instructions on WASM-on-Node and
+  `json_validate` at n = 30,000 75% fewer. No semantic change; the LIR's `concat` now consumes
+  its left operand (an internal runtime convention, not an ABI change).
 - Map performance (design §17.275): on the JS backend a `Map<Int, _>` or `Set<Int>` indexes
   its keys by their own bits instead of a hash, and on every backend `Map.get` consumed at once
   by `unwrap_or`, `is_some` or `expect` (and `Map.contains`) builds no `Option`. By
