@@ -152,6 +152,28 @@ pub const HOSTED: &[(&str, u32)] = &[
     ("json_schema", top::JSON),
 ];
 
+/// `hosted` imports beyond [`HOSTED`] that only the Node host serves, for an ABI module:
+/// `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1)), which the host runs as the JS
+/// runtime's `node:crypto` functions. They are not in `HOSTED`, the table the native runtime
+/// shares, because native has them as builtins (`rt_b_crypto_*`); the wasm32 runtime has no
+/// cryptography, so a WASI command still reaches them as unsupported builtins (`D090`).
+pub const WASM_HOSTED: &[(&str, u32)] = &[
+    ("crypto_digest", top::BYTES),
+    ("crypto_hkdf", top::BYTES),
+    ("crypto_hmac", top::BYTES),
+    ("crypto_hmac_verify", top::BOOL),
+    ("crypto_pbkdf2", top::BYTES),
+];
+
+/// The result top of a hosted builtin of [`HOSTED`] or [`WASM_HOSTED`], if `name` is one.
+pub fn wasm_hosted(name: &str) -> Option<u32> {
+    HOSTED
+        .iter()
+        .chain(WASM_HOSTED)
+        .find(|(h, _)| *h == name)
+        .map(|&(_, t)| t)
+}
+
 /// `sakura_rt::vt::top`, the result tops `HOSTED` names (the runtime crate is not a dependency).
 pub mod top {
     pub const ANY: u32 = 0;
@@ -164,6 +186,7 @@ pub mod top {
     pub const CLI_ERROR: u32 = 7;
     pub const DIR: u32 = 8;
     pub const BODY: u32 = 9;
+    pub const BYTES: u32 = 10;
 }
 
 /// A contract check's defect message, as the JS backend renders it (design §17.162): a

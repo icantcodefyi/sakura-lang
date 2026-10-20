@@ -179,6 +179,46 @@ test("http_send is of kind secret: secret_headers reach fetch and the copied sli
 /** The guest bytes of a `Bytes` the stand-in `alloc_bytes` returned at `p` (`len` of them). */
 const outBytes = (h, p, len) => new Uint8Array(h.exports.memory.buffer).slice(p + 12, p + 12 + len);
 
+test("std/crypto's hosted imports answer RFC 4231 case 2 and zero every copy of the key", () => {
+  const { h, put } = host();
+  const bytes = (b) => [5, ...u32(b.length), ...b];
+  const key = [...Buffer.from("Jefe")];
+  const data = [...Buffer.from("what do ya want for nothing?")];
+  const tag = Buffer.from("5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843", "hex");
+  const sha256 = [2, ...new Array(8).fill(0)];
+  const slices = [];
+  const copyIn = h.copyIn.bind(h);
+  h.copyIn = (ptr, len) => {
+    const s = copyIn(ptr, len);
+    slices.push(s);
+    return s;
+  };
+  const decoded = [];
+  const decode = h.decode.bind(h);
+  h.decode = (...a) => {
+    const v = decode(...a);
+    decoded.push(v);
+    return v;
+  };
+  const call = (name, tuple) => {
+    put(64, tuple);
+    return outBytes(h, h.imports().sakura_host[name](64, tuple.length), 64);
+  };
+  const mac = call("crypto_hmac", [9, ...u32(3), ...sha256, ...bytes(key), ...bytes(data)]);
+  assert.deepEqual([...mac.slice(0, 6)], [0, 5, ...u32(32)]);
+  assert.deepEqual(Buffer.from(mac.slice(6, 38)), tag);
+  const verify = (t) => call("crypto_hmac_verify", [9, ...u32(4), ...sha256, ...bytes(key), ...bytes(t), ...bytes(data)]);
+  assert.deepEqual([...verify([...tag]).slice(0, 3)], [0, 1, 1]);
+  const tampered = [...tag];
+  tampered[31] ^= 1;
+  assert.deepEqual([...verify(tampered).slice(0, 3)], [0, 1, 0]);
+  assert.deepEqual([...verify([...tag.subarray(0, 31)]).slice(0, 3)], [0, 1, 0], "a short tag is false");
+  assert.ok(slices.length === 4 && slices.every((s) => s.every((b) => b === 0)), "the copied tuples are zeroed");
+  const keys = decoded.flatMap((v) => v).filter((v) => v instanceof Uint8Array);
+  assert.ok(keys.length > 0 && keys.every((b) => b.every((x) => x === 0)), "the decoded Bytes are zeroed");
+  h.close();
+});
+
 test("an http answer past the copy budget is Err(response too large), queued bytes included", () => {
   const { h, put } = host();
   h.typeIds = new Map([["std::result::Result", 0]]);
@@ -648,11 +688,11 @@ function versioned(v) {
 }
 
 test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
-  assert.equal(ABI_VERSION, 0x010500);
-  for (const v of [0x010600, 0x020000, 0x000500]) {
+  assert.equal(ABI_VERSION, 0x010600);
+  for (const v of [0x010700, 0x020000, 0x000600]) {
     await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
   }
-  for (const v of [0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010501]) {
+  for (const v of [0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010601]) {
     await new Host().instantiate(versioned(v));
   }
 });

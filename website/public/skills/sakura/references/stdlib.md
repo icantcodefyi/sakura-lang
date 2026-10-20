@@ -7,9 +7,9 @@ the `sakura` skill's `references/stdlib.md`. The design reference is `docs/desig
 `design-question` entries in `compiler/REQUESTS.md`.
 
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
-Every module runs on the JavaScript and WebAssembly backends, except `std/crypto`: its primitives
-run on JavaScript and native, and on WebAssembly they wait for the host imports that follow the
-`v0.1.0` tag (a call is `D090` until then).
+Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s primitives are
+`node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0) and
+RustCrypto on native.
 
 ## Prelude
 

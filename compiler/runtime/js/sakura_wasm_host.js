@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010500;
+export const ABI_VERSION = 0x010600;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -322,6 +322,27 @@ export const HOSTED = {
     run: (_h, args, schema) => settle(rt.cli_parse(args, JSON.parse(schema), cpsContext(), (v) => ({ ok: v }))),
     result: ([, schema]) => JSON.parse(schema),
     error: () => ["A", "std::cli::CliError", []],
+  },
+  // `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1)): the arguments hold key material,
+  // so `wipe` zeroes the copied tuple, the decoded `Bytes` and the answer once used (`hosted`).
+  crypto_digest: { wipe: true, run: (_h, alg, data) => ({ ok: rt.crypto_digest(alg, data) }), result: () => "Y" },
+  crypto_hkdf: {
+    wipe: true,
+    run: (_h, alg, ikm, salt, info, len) => ({ ok: rt.crypto_hkdf(alg, ikm, salt, info, len) }),
+    result: () => "Y",
+  },
+  crypto_hmac: { wipe: true, run: (_h, alg, key, data) => ({ ok: rt.crypto_hmac(alg, key, data) }), result: () => "Y" },
+  crypto_hmac_verify: {
+    wipe: true,
+    run: (_h, alg, key, sig, data) => ({ ok: rt.crypto_hmac_verify(alg, key, sig, data) }),
+    result: () => "B",
+  },
+  crypto_pbkdf2: {
+    wipe: true,
+    run: (_h, alg, password, salt, iterations, len) => ({
+      ok: rt.crypto_pbkdf2(alg, password, salt, iterations, len),
+    }),
+    result: () => "Y",
   },
   env_get: { run: (_h, key) => ({ ok: rt.env_get(key) }), result: () => OPT("S") },
   file_open: { args: DIR_ARG, run: (_h, d, p, mode) => ({ ok: rt.file_open(d, p, mode) }), result: () => R("I", "S") },
@@ -1204,7 +1225,7 @@ export class Host {
     const w = new Writer();
     let args;
     try {
-      args = this.args(ptr, len, op.args);
+      args = op.wipe ? this.decodeSecret(ptr, len, op.args) : this.args(ptr, len, op.args);
       const r = op.run(this, ...args);
       if ("fail" in r) {
         w.u8(1);
@@ -1212,11 +1233,18 @@ export class Host {
       } else {
         w.u8(0);
         this.encode(w, r.ok, op.result(args));
+        if (op.wipe && r.ok instanceof Uint8Array) r.ok.fill(0);
       }
     } catch (e) {
       return this.copyOut(defectAnswer(e));
+    } finally {
+      if (op.wipe) for (const a of args ?? []) if (a instanceof Uint8Array) a.fill(0);
     }
-    return this.answerOut(w.done());
+    try {
+      return this.answerOut(w.done());
+    } finally {
+      if (op.wipe) w.buf.fill(0);
+    }
   }
 
   /**

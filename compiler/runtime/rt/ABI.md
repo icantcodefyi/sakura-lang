@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.5.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.6.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -14,8 +14,9 @@ the copy budget of a served request (design §17.212, §17.216 (4)), 1.2.3 the f
 served request (design §17.223), 1.2.4 bound performs and `with` regions in direct twins
 (§5, §6.3; design §17.211 (1)), 1.2.5 closure twins (§5; design §17.211 (2)), 1.3.0 the reuse
 and borrow counters (§10; design §17.176 (1)), 1.4.0 the native profile (§1b; design
-§17.169) and 1.5.0 the `clock_monotonic_us` import and `Task.cancel`'s fiber rule (§7, §8.2;
-design §17.262, RFC 0002 §2.8). Owned by
+§17.169), 1.5.0 the `clock_monotonic_us` import and `Task.cancel`'s fiber rule (§7, §8.2;
+design §17.262, RFC 0002 §2.8) and 1.6.0 `std/crypto`'s `hosted` imports (§8.1, §8.2; design
+§17.266 (1), RFC 0002 §2.7). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -166,6 +167,19 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   Nothing shipped changes, but a module that imports `clock_monotonic_us` needs a host that
   has it, so a 1.4 host refuses a 1.5 module by the MINOR rule. `sakura_abi_version` is
   `0x010500`.
+- 1.6.0 (MINOR, design §17.266 (1), RFC 0002 §2.7, plan `web-apis.md` phase 7a-W) adds five
+  `hosted` imports, `std/crypto`'s primitives (§8.2): `crypto_digest`, `crypto_hmac`,
+  `crypto_hmac_verify`, `crypto_hkdf` and `crypto_pbkdf2`, which the Node host runs as the JS
+  runtime's `node:crypto` functions, and the result top `bytes` they are checked against
+  (§8.1). Their arguments hold key material, which `std/crypto` passes revealed, so the guest
+  overwrites every copy of the argument tuple it frees (the blocks the encoder's growth
+  leaves, the `String` it copies into a `Bytes`, the tuple itself) and the answer once
+  decoded, and the Node host zeroes its copied slice, the decoded `Bytes` and its answer;
+  they are not of kind `secret`, so a `Secret` among their arguments would still cross
+  redacted. The native runtime implements the five as builtins, and a WASI command, which
+  has no JS host, reaches them as unsupported builtins (`D090`). Nothing shipped changes, but a module that imports
+  them needs a host that has them, so a 1.5 host refuses a 1.6 module by the MINOR rule.
+  `sakura_abi_version` is `0x010600`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -754,8 +768,8 @@ reads a guest object header and the guest never receives a host pointer.
   heap. The guest refuses with `D090`, before compiled code reads anything, an operation index
   past the handler's clause count in a JS-built handler's answer, and a host-delegated
   builtin's answer whose top (tag, handle kind, or record or variant type id) is not the
-  builtin's declared result's (`sakura_rt::vt::top`, passed by `sakura_codegen_wasm`); type
-  arguments inside the top stay the host's word. An import that may call back into the guest
+  builtin's declared result's (`sakura_rt::vt::top`, passed by `sakura_codegen_wasm`; 1.6.0
+  adds the top `bytes`, a `Bytes`); type arguments inside the top stay the host's word. An import that may call back into the guest
   through `alloc_bytes` is called with no `&mut Rt` live (`wasm.rs` module doc).
 
 ### 8.2 Import table
@@ -770,7 +784,7 @@ an import the Node host lacks. Every import has one of four shapes:
 | `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `trace_*`, `retire_handle`, `abort` |
 | `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`; completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
-| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*` |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0) |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
@@ -810,6 +824,17 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,
   `http_recording_lookup`, `http_recording_lookup_stream`, `http_recording_open`,
   `json_decode`, `json_encode`, `json_parse`, `json_schema`.
+- `hosted`, Node host only (1.6.0, design §17.266 (1)): `crypto_digest(alg, data) -> Bytes`,
+  `crypto_hmac(alg, key, data) -> Bytes`, `crypto_hmac_verify(alg, key, tag, data) -> Bool`
+  (constant time, as JS: a tag of another length is `false` before any comparison),
+  `crypto_hkdf(alg, ikm, salt, info, len) -> Bytes` and `crypto_pbkdf2(alg, password, salt,
+  iterations, len) -> Bytes`, `alg` 0, 1, 2 for SHA-256, -384, -512 and `len` in bytes.
+  `std/crypto` checks every bound before the call (RFC 0002 §6), so the host's own range
+  errors never fire. Key material crosses as revealed `Bytes`; both sides zero their copies
+  (§0, 1.6.0) and neither prints or logs an argument. The list is
+  `sakura_lir::image::WASM_HOSTED`, apart from `HOSTED` because the native runtime implements
+  the five as builtins; a WASI command does not have them, and an embedder without them fails
+  to link the module (RFC 0002 §7).
 
 **Host `Err` text** (design §17.229 (5)a; both hosts). The runtime's own messages for `fs_*` and
 `file_*` (`not found`, `escapes the directory`, `not a relative path`, `no such directory`,
