@@ -387,14 +387,14 @@ fn main$1#11 lambda -> word ; main::host_fs_env, captures [], frame 2 slots [%0 
 fn main$2#16 lambda -> word ; main::host_fs_env, captures [], frame 5 slots [%0 word*, %1 word*, %4 bool, %5 word*, %9 bool]
   b0(%0 env: ptr, %1 f: word):
     drop %0
-    %2 lit: ptr = const str 34
+    %2 lit: ptr = const str 36
     %3 r: ptr = $string_to_bytes(%2)
     dup %1
     perform std::fs::Fs.write_chunk(%1, %3) -> b1(%1)
   b1(%4 r: unit, %5 f: ptr):
     %6 box: word = box %4
     drop %6
-    %7 lit: ptr = const str 35
+    %7 lit: ptr = const str 37
     %8 r: ptr = $string_to_bytes(%7)
     perform std::fs::Fs.write_chunk(%5, %8) -> b2()
   b2(%9 r: unit):
@@ -404,7 +404,7 @@ fn main$2#16 lambda -> word ; main::host_fs_env, captures [], frame 5 slots [%0 
 fn main$3#17 lambda -> word ; main::host_fs_env, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
   b0(%0 env: ptr, %1 f: word):
     drop %0
-    %2 lit: ptr = const str 36
+    %2 lit: ptr = const str 38
     %3 r: ptr = $string_to_bytes(%2)
     perform std::fs::Fs.write_chunk(%1, %3) -> b1()
   b1(%4 r: unit):
@@ -433,7 +433,7 @@ fn main$4#18 lambda -> word ; main::host_fs_env, captures [], frame 8 slots [%0 
 fn main$5#21 lambda -> word ; main::host_fs_env, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
   b0(%0 env: ptr, %1 f: word):
     drop %0
-    %2 lit: ptr = const str 37
+    %2 lit: ptr = const str 39
     %3 r: ptr = $string_to_bytes(%2)
     perform std::fs::Fs.write_chunk(%1, %3) -> b1()
   b1(%4 r: unit):

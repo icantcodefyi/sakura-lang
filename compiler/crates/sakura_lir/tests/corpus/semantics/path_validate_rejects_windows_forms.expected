@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: "a\\..\\b" })
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: "C:\\x" })
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: "\\\\server\\share" })
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: "C:x" })
+Ok("a/./b")
+Ok("a//b")
+Ok("a/")
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: ".." })

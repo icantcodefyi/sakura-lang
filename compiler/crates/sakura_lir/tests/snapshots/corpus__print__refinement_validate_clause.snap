@@ -151,8 +151,8 @@ fn Name$validate#6 top -> ptr ; main::refinement_validate_clause, frame 1 slots 
   b3(%9 it: ptr):
     %10 summary: ptr = show %9
     drop %9
-    %11 lit: ptr = const str 13
-    %12 lit: ptr = const str 14
+    %11 lit: ptr = const str 15
+    %12 lit: ptr = const str 16
     %13 violation: ptr = alloc std::core::Violation(%11, %12, %10)
     %14 err: ptr = alloc std::result::Result.Err(%13)
     ret %14
@@ -180,8 +180,8 @@ fn Digit$validate#7 top -> ptr ; main::refinement_validate_clause, frame 3 slots
     jump b3(%15)
   b5(%16 it: i64):
     %17 summary: ptr = show %16
-    %18 lit: ptr = const str 15
-    %19 lit: ptr = const str 16
+    %18 lit: ptr = const str 17
+    %19 lit: ptr = const str 18
     %20 violation: ptr = alloc std::core::Violation(%18, %19, %17)
     %21 err: ptr = alloc std::result::Result.Err(%20)
     ret %21
@@ -189,7 +189,7 @@ fn Digit$validate#7 top -> ptr ; main::refinement_validate_clause, frame 3 slots
     jump b1(%22)
   b7(%23 it: i64):
     %24 summary: ptr = show %23
-    %25 lit: ptr = const str 15
+    %25 lit: ptr = const str 17
     %26 lit: ptr = const str 4
     %27 violation: ptr = alloc std::core::Violation(%25, %26, %24)
     %28 err: ptr = alloc std::result::Result.Err(%27)

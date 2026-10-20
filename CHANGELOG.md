@@ -46,12 +46,23 @@ Every breaking entry below, in the order a program meets it; the entries carry t
    or `\` in a segment, a `:` or `*` inside one, a name that is not an identifier) is the
    defect `D020` at `Router.route`/`get`/`post`/`put`/`delete`; rename such a route to literal
    segments or `:name` groups.
+8. **A `Path` with `\` or `:` is refused** (Changed, design §17.292 (5)): `Path.validate`,
+   `Path.from`, a `Path` literal (`V5004`), `Cli.parse` and `Json.decode` into a `Path` reject
+   `a\b`, `C:\x`, `\\server\share` and `C:x`; write `/`, no drive.
 
 Phase 7c's `std/crypto` tier 2 variants (design §17.288 (6)) are not on `main` yet; they join
 this list when they land, before the beta's preparation commit.
 
 ### Changed
 
+- **Breaking since 0.1.0 (design §17.292 (5)).** `Path`'s refinement `is_relative` also refuses
+  `\` and `:`, so `a\..\b`, `C:\x`, `\\server\share` and `C:x` are no longer a `Path` on any
+  OS: `/` is its only separator and it names no drive, so the promise that a handler rooted at
+  a directory cannot be escaped through a `Path` holds on Windows too (the hosts' containment
+  check already stopped the escape one layer down). `a/./b`, `a//b` and `a/` stay accepted;
+  `validate` returns the string as given and `of`/`join` normalise. Migration: write `/`, no
+  drive. `Dir.subdir`'s doc now says `name` may hold several segments and that the manifest's
+  grant is checked on the directory it opens (§17.292 (6)).
 - WASM backend performance (design §17.285 (c), WS-W6; the native backend shares the runtime,
   unmeasured): building a string by
   repeated `+` or interpolation (`s = "{s}{w}"`) appends to the left string in place when

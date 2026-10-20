@@ -1,12 +1,15 @@
-// Relative filesystem paths (design §10.3). A `Path` has no leading `/` and no `..`
-// segment, so a handler rooted at a directory cannot be escaped through one. It is a
-// refinement rather than an opaque type so that `Cli.parse` and `Json.decode` can read one
-// from a string and check it (design §15.6 parses `--input notes.txt` into a `Path`).
+// Relative filesystem paths (design §10.3). A `Path` has no leading `/`, no `..` segment,
+// no `\` and no `:`, so a handler rooted at a directory cannot be escaped through one on any
+// supported OS: `/` is its only separator and it names no drive (§17.292 (5)). `validate`
+// returns the string as given (`a/./b`, `a//b` and `a/` are accepted); `of` and `join`
+// normalise. It is a refinement rather than an opaque type so that `Cli.parse` and
+// `Json.decode` can read one from a string and check it (design §15.6 parses
+// `--input notes.txt` into a `Path`).
 
 pub type Path = String where is_relative(it)
 
-/// Non-empty, no leading `/`, and no `..` segment. Written inside the scalar fragment
-/// (design §17.87), so the checker decides every `Path` literal at compile time.
+/// Non-empty, no leading `/`, no `..` segment, no `\` and no `:`. Written inside the scalar
+/// fragment (design §17.87), so the checker decides every `Path` literal at compile time.
 @total
 pub fn is_relative(s: String) -> Bool {
   s != ""
@@ -15,6 +18,8 @@ pub fn is_relative(s: String) -> Bool {
     && !String.starts_with(s, "../")
     && !String.ends_with(s, "/..")
     && !String.contains(s, "/../")
+    && !String.contains(s, "\\")
+    && !String.contains(s, ":")
 }
 
 /// `s` without `.` and empty segments: `of("data/./notes.txt")` is `data/notes.txt`, and
@@ -51,5 +56,7 @@ test "absolute paths and parent segments are not relative" {
   expect(!is_relative("a/../b"))
   expect(is_relative("a..b"))
   expect(is_relative("a/..b/c.."))
+  expect(!is_relative("a\\..\\b"))
+  expect(!is_relative("C:x"))
   expect_defect(fn() { of("../x") })
 }

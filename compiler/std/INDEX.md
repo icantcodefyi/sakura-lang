@@ -1136,8 +1136,8 @@ fn scripted(script: List<ScriptStep>) -> Handler<WebSocket>
 21. **`Path` is `String where is_relative(it)`**, not `pub opaque type Path = Path(List<String>)`:
     `Cli.parse` and `Json.decode` read a refined type from a string and check it, while an
     opaque variant has no string form (§15.6 parses `--input notes.txt` into a `Path`). The
-    guarantee is the same: no leading `/`, no `..` segment. `Path.of` drops `.` and empty
-    segments; a decoded `Path` keeps them.
+    guarantee is the same: no leading `/`, no `..` segment, no `\` and no `:` (§17.292 (5)).
+    `Path.of` drops `.` and empty segments; a decoded or validated `Path` keeps them.
 22. **No `Sql.postgres`**: design §10.2 names it the second provider; it needs a native driver
     or a runtime dependency and has no release assigned (owner decision); `Sql.sqlite` and
     `Sql.memory` cover the corpus.

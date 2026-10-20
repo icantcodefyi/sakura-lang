@@ -96,7 +96,7 @@ semantics/form_multipart_roundtrip: 44 funcs, 499 blocks, 102 dup, 258 drop, val
 semantics/form_parse_rejects_limits: 37 funcs, 441 blocks, 96 dup, 222 drop, valid
 semantics/form_parse_rejects_malformed: 35 funcs, 429 blocks, 92 dup, 193 drop, valid
 semantics/form_urlencoded_roundtrip: 31 funcs, 212 blocks, 39 dup, 73 drop, valid
-semantics/fs_read_chunk_rejects_zero: 32 funcs, 125 blocks, 31 dup, 55 drop, valid
+semantics/fs_read_chunk_rejects_zero: 32 funcs, 131 blocks, 33 dup, 55 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 13 drop, valid
 semantics/fused_get_expect: 7 funcs, 35 blocks, 7 dup, 20 drop, valid
 semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
@@ -116,7 +116,7 @@ semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 7 drop, valid
 semantics/headers_rejects_invalid_name: 33 funcs, 276 blocks, 53 dup, 123 drop, valid
 semantics/headers_validate_and_combine: 39 funcs, 315 blocks, 73 dup, 137 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 3 drop, valid
-semantics/host_fs_env: 49 funcs, 246 blocks, 49 dup, 116 drop, valid
+semantics/host_fs_env: 49 funcs, 252 blocks, 51 dup, 116 drop, valid
 semantics/host_root_handlers: 17 funcs, 79 blocks, 6 dup, 36 drop, valid
 semantics/http_body_source_scripted: 141 funcs, 1547 blocks, 230 dup, 884 drop, valid
 semantics/http_read_chunk_rejects_zero: 108 funcs, 1325 blocks, 196 dup, 792 drop, valid
@@ -138,7 +138,7 @@ semantics/list_patterns: 4 funcs, 27 blocks, 8 dup, 23 drop, valid
 semantics/list_retained_version: 10 funcs, 48 blocks, 18 dup, 32 drop, valid
 semantics/list_set: 7 funcs, 36 blocks, 15 dup, 38 drop, valid
 semantics/literal_refinement_checked_at_startup: 6 funcs, 13 blocks, 1 dup, 4 drop, valid
-semantics/literal_refinement_decided: 5 funcs, 23 blocks, 3 dup, 10 drop, valid
+semantics/literal_refinement_decided: 5 funcs, 29 blocks, 5 dup, 10 drop, valid
 semantics/literal_refinement_passes_once: 6 funcs, 17 blocks, 1 dup, 3 drop, valid
 semantics/literals_and_operators: 2 funcs, 12 blocks, 0 dup, 27 drop, valid
 semantics/loop_jump_past_inner_var: 2 funcs, 38 blocks, 0 dup, 8 drop, valid
@@ -185,12 +185,13 @@ semantics/owned_record_retained: 14 funcs, 78 blocks, 15 dup, 83 drop, valid
 semantics/owned_record_unsettled: 4 funcs, 16 blocks, 4 dup, 12 drop, valid
 semantics/owned_retained_version: 6 funcs, 53 blocks, 27 dup, 70 drop, valid
 semantics/owned_tuple_threaded: 11 funcs, 71 blocks, 18 dup, 58 drop, valid
+semantics/path_validate_rejects_windows_forms: 4 funcs, 36 blocks, 8 dup, 7 drop, valid
 semantics/random_bytes_rejects_negative: 19 funcs, 100 blocks, 8 dup, 23 drop, valid
 semantics/random_int_rejects_reversed_range: 19 funcs, 100 blocks, 8 dup, 23 drop, valid
 semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 12 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 18 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 19 dup, 45 drop, valid
-semantics/refinement_validate_clause: 10 funcs, 67 blocks, 5 dup, 19 drop, valid
+semantics/refinement_validate_clause: 10 funcs, 73 blocks, 7 dup, 19 drop, valid
 semantics/request_bytes_limit: 9 funcs, 43 blocks, 6 dup, 25 drop, valid
 semantics/request_method_options_trace: 128 funcs, 1589 blocks, 249 dup, 954 drop, valid
 semantics/request_payload_bytes_roundtrip: 28 funcs, 117 blocks, 11 dup, 49 drop, valid
@@ -214,7 +215,7 @@ semantics/stream_chunks_bytes: 19 funcs, 101 blocks, 30 dup, 58 drop, valid
 semantics/stream_from_list_take_map_filter_fold: 24 funcs, 86 blocks, 10 dup, 58 drop, valid
 semantics/stream_lines_rejects_max_line: 21 funcs, 101 blocks, 22 dup, 65 drop, valid
 semantics/stream_lines_split_across_chunks: 18 funcs, 96 blocks, 22 dup, 57 drop, valid
-semantics/stream_pipe_to_file_sink: 48 funcs, 186 blocks, 41 dup, 88 drop, valid
+semantics/stream_pipe_to_file_sink: 48 funcs, 192 blocks, 43 dup, 88 drop, valid
 semantics/stream_pull_persistent: 13 funcs, 69 blocks, 11 dup, 56 drop, valid
 semantics/stream_to_list_rejects_max_items: 12 funcs, 55 blocks, 4 dup, 34 drop, valid
 semantics/stream_to_list_rejects_negative_bound: 10 funcs, 44 blocks, 4 dup, 30 drop, valid

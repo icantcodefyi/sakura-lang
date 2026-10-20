@@ -1,0 +1,10 @@
+// milestone: M3
+// expect: V5004
+// expect-span: V5004 10:15
+// spec: §10.3, §17.87, §17.292
+
+// A `Path` has `/` as its only separator and no drive: the checker refuses a literal with `\`
+// or `:` (design §17.292 (5)).
+import std/path.{Path}
+
+let p: Path = "C:\\x"

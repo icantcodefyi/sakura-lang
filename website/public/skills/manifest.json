@@ -3,7 +3,7 @@
   "compiler_version": "0.1.0",
   "source": "skills/sakura/",
   "archive": "sakura-skill.zip",
-  "sha256": "b63970aa4509c88ab14bf7fa2f37862d772f8440b48a3e3df5c9b8950347a20c",
+  "sha256": "cad6d0e5cd13a8f9f4aa0a3a4f7ec0bd79c4de2eea5842ac0d846a0f0eb44294",
   "files": {
     "SKILL.md": "15127b0f22f47f08f418199c91000b2a5b2db51ff015596407d19728384390da",
     "assets/AGENTS.md": "cd66267fce3300b6efc8ec59aeacc67e02345a430ef478b89d195dc3e48078a0",
@@ -16,6 +16,6 @@
     "references/language.md": "3cd237c1b4e8533bd64a9db94f7a5fa6800380be43e93dc00447b5b6a2af228b",
     "references/recipes.md": "254038b15149df0e1edb334ea2438abd92a05acc18cd84cbe61915442d28950a",
     "references/repairs.md": "37417d12f1e896434fa6d87745412eb16d996e07837d85ea18bde7a77d69d241",
-    "references/stdlib.md": "ae7dd96a112df0da5df6362ed208c0aa1d31ee1bade3a3628685e0b35146037f"
+    "references/stdlib.md": "dbf5a3d77f39ce56b985bca34cf9f2a346858d8bd7b45b0113831038540a0843"
   }
 }

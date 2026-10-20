@@ -1,0 +1,12 @@
+// milestone: M3
+// covers: CallExpr
+// spec: §10.3, §17.292
+
+// `Path` has `/` as its only separator and no drive, so `\` and `:` are refused on every OS.
+// `a/./b`, `a//b` and `a/` stay accepted and `validate` returns them as given.
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console} {
+  let inputs = ["a\\..\\b", "C:\\x", "\\\\server\\share", "C:x", "a/./b", "a//b", "a/", ".."]
+  for s in inputs { Console.print("{Path.validate(s)}") }
+}

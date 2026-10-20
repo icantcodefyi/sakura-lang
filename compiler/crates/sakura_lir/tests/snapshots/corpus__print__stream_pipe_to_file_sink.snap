@@ -115,7 +115,7 @@ fn main$1#8 lambda -> word ; main::stream_pipe_to_file_sink, captures [word*], f
 fn main$2#11 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame 7 slots [%0 word*, %1 word*, %5 word*, %6 word*, %7 word*, %8 word*, %9 bool]
   b0(%0 env: ptr, %1 f: word):
     drop %0
-    %2 lit: ptr = const str 10
+    %2 lit: ptr = const str 12
     %3 r: ptr = $string_to_bytes(%2)
     %4 xs: ptr = alloc list(%3)
     call from_list#6(%4) -> b1(%1)

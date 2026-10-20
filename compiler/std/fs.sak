@@ -76,7 +76,9 @@ pub fn rooted(dir: Dir) -> Handler<Fs> {
   }
 }
 
-/// The directory `name` inside `d`; fails if it is missing or a symlink out of `d`.
+/// The directory `name` inside `d`; fails if it is missing or a symlink out of `d`. `name` is
+/// a relative path of one or more segments (`"data/clean"`); the manifest's grant is checked on
+/// the directory this opens, so narrow in one call to the granted directory.
 pub fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>} {
   match fs_subdir(d, name) {
     Ok(sub) => sub,

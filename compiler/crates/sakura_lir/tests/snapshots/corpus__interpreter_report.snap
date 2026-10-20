@@ -185,6 +185,7 @@ semantics/owned_record_retained: ok, 277 allocated, 547 dup, 824 drop, peak 21, 
 semantics/owned_record_unsettled: ok, 31 allocated, 42 dup, 73 drop, peak 17, live 0/0
 semantics/owned_retained_version: unsupported (builtin map_remove)
 semantics/owned_tuple_threaded: ok, 232 allocated, 574 dup, 806 drop, peak 22, live 0/0
+semantics/path_validate_rejects_windows_forms: ok, 28 allocated, 9 dup, 37 drop, peak 6, live 0/0
 semantics/random_bytes_rejects_negative: unsupported (builtin bytes_from_list)
 semantics/random_int_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, peak 7, live 0/0
 semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
