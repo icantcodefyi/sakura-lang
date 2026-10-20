@@ -124,6 +124,44 @@ test("the peer's close is answered with its code and received after the messages
   rt.file_close(id);
 });
 
+/**
+ * A peer that never closes TCP: 1 MiB, then 1 KiB every 50 ms until the socket closes, so a
+ * destroyed connection is seen at the next write; resolves with the time it closed.
+ */
+const flood = (socket) =>
+  new Promise((resolve) => {
+    socket.allowHalfOpen = true;
+    socket.on("error", () => {});
+    socket.write(Buffer.alloc(1 << 20, 0x82));
+    const t = setInterval(() => socket.writable && socket.write(Buffer.alloc(1024, 0x82)), 50);
+    socket.on("close", () => {
+      clearInterval(t);
+      resolve(Date.now());
+    });
+  });
+/** `WS_CLOSE_MS`, the bounded wait for the peer's FIN after a close. */
+const CLOSE_MS = 5000;
+
+test("after the peer's close its further bytes are dropped and TCP is destroyed within 5 s (client role)", async () => {
+  let gone;
+  const opened = new Promise((resolve) => {
+    behaviours.set("/linger", (conn) => {
+      conn.write(closeFrame(1000, "done"));
+      gone = flood(conn.socket);
+      resolve();
+    });
+  });
+  const [id] = await connect("/linger");
+  const sock = clientSocket();
+  await opened;
+  assert.deepEqual(await receive(id), closed(1000, "done", true));
+  const known = Date.now();
+  await until(() => sock.bytesRead > 1 << 20, "the client never read the bytes after the close");
+  assert.equal(rt.wsHeld(id), 0);
+  assert.ok((await gone) - known <= CLOSE_MS + 1000, "the connection outlived the bounded wait");
+  rt.file_close(id);
+});
+
 test("leaving the scope closes an open socket with 1001", async () => {
   let seen;
   const got = new Promise((resolve) => {
@@ -280,6 +318,37 @@ test("accept outside the performing task's own upgrade request is refused, and w
   const bad = { ...up, headers: rt.list([["Sec-WebSocket-Extensions", "x"]]) };
   assert.deepEqual(rt.wsAcceptOn(own, hs, bad), rt.Err("header Sec-WebSocket-Extensions is set by the handshake"));
   assert.equal(own.upgraded, false);
+});
+
+test("after a 1002 its client's further bytes are dropped and TCP is destroyed within 5 s (server role)", async () => {
+  const hs = { key: "dGhlIHNhbXBsZSBub25jZQ==", subprotocols: rt.list([]), origin: rt.None };
+  const up = { subprotocol: rt.None, origins: rt.list([]), headers: rt.list([]), max_message: 1 << 20 };
+  let served;
+  let id;
+  const server = net.createServer((socket) => {
+    served = socket;
+    id = rt.wsAcceptOn({ socket, head: new Uint8Array(0), key: hs.key, upgraded: false }, hs, up).fields[0][0];
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const client = net.connect({ port: server.address().port, host: "127.0.0.1", allowHalfOpen: true });
+    let got = Buffer.alloc(0);
+    client.on("data", (c) => (got = Buffer.concat([got, c])));
+    await until(() => got.includes("\r\n\r\n"), "no 101");
+    // An unmasked client frame is a protocol error (RFC 6455 §5.1): the server's close is 1002.
+    client.write(frame(1, "x"));
+    const closeAt = () => got.indexOf("\r\n\r\n") + 4;
+    await until(() => got.length >= closeAt() + 4, "no close frame");
+    assert.deepEqual([got[closeAt()] & 0x0f, got.readUInt16BE(closeAt() + 2)], [8, 1002]);
+    const known = Date.now();
+    const gone = flood(client);
+    await until(() => served.bytesRead > 1 << 20, "the server never read the bytes after the close");
+    assert.equal(rt.wsHeld(id), 0);
+    assert.ok((await gone) - known <= CLOSE_MS + 1000, "the connection outlived the bounded wait");
+    rt.file_close(id);
+  } finally {
+    server.close();
+  }
 });
 
 test("publish skips a subscriber whose send buffer holds max_message bytes, or that is closing", () => {

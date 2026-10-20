@@ -402,6 +402,9 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `Http.host`, `Http.scoped` and `Fs.host` state their refusal texts (`"<host:port> is not in
   the manifest's net list"`, `"<host:port> is outside Http.scoped"`, `"not in the manifest's
   fs.<read|write> list"`), which a program may match.
+- A WebSocket, in either role, drops the bytes a peer sends after the close is known and
+  destroys its TCP connection `WS_CLOSE_MS` (5 s) after ending it, where a peer that kept the
+  connection open could make the host hold its bytes without bound (design §17.295 F1).
 
 ### Security
 

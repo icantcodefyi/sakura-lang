@@ -5506,8 +5506,12 @@ function wsCloseFrame(s, code, reason) {
 /** Whether the received messages waiting fill the queue: `WS_QUEUE` of them, or more than `max_message` bytes. */
 const wsFull = (s) => s.queue.length >= WS_QUEUE || s.queued > s.max;
 
-/** Parses the frames in `chunk` and whatever is held, stopping while the queue is full. */
+/**
+ * Parses the frames in `chunk` and whatever is held, stopping while the queue is full; once the
+ * close is known, a peer's further bytes are dropped (design §17.295 F1).
+ */
 function wsData(s, chunk) {
+  if (s.closed !== null) return;
   if (chunk.length > 0) {
     const b = new Uint8Array(s.buf.length + chunk.length);
     b.set(s.buf);
@@ -5602,14 +5606,29 @@ function wsFail(s, code, reason) {
   wsEnd(s, code, reason, false);
 }
 
-/** Queues the close (once) after the messages, wakes a receive and releases the TCP socket. */
+/**
+ * Queues the close (once) after the messages, wakes a receive and releases the TCP socket,
+ * dropping the bytes held past the close.
+ */
 function wsEnd(s, code, reason, clean) {
   if (s.closed !== null) return;
   s.closed = new (std("std::websocket::CloseInfo"))(code, reason, clean);
   clearTimeout(s.timer);
+  s.buf = new Uint8Array(0);
   wsQueue(s, variant("std::websocket::Received", 1, [s.closed]));
   s.socket.end();
+  wsLinger(s);
+}
+
+/**
+ * After `end()`: the peer's FIN is waited for (RFC 6455 §7.1.1), at most `WS_CLOSE_MS`, then the
+ * TCP socket is destroyed, so a peer that never closes TCP holds nothing (design §17.295 F1).
+ */
+function wsLinger(s) {
   s.socket.unref();
+  if (s.socket.destroyed) return;
+  s.timer = setTimeout(() => s.socket.destroy(), WS_CLOSE_MS);
+  s.timer.unref();
 }
 
 /** Queues `r`, a received value of `n` message bytes (0 for the close), and wakes a receive. */
@@ -5692,7 +5711,7 @@ function wsFree(s) {
   if (!s.closing && s.closed === null) s.socket.write(wsCloseFrame(s, 1001, ""));
   s.closing = true;
   s.socket.end();
-  s.socket.unref();
+  wsLinger(s);
   wsCount--;
   for (const topic of s.topics) wsLeave(s, topic);
 }
@@ -5733,6 +5752,9 @@ export function ws_unsubscribe(id, topic) {
  * is closing or closed, the message is over its `max_message`, or its write buffer already
  * holds `max_message` bytes (Bun's `backpressureLimit`, the socket kept).
  */
+/** Test-only: the bytes socket `id` holds unparsed. */
+export const wsHeld = (id) => files.get(id).buf.length;
+
 export const wsSkips = (s, n) => s.closing || s.closed !== null || n > s.max || s.socket.writableLength >= s.max;
 
 /**
