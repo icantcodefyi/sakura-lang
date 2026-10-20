@@ -13,6 +13,10 @@ fn check_patch_apply_and_test_over_stdio() {
     let dir = std::env::temp_dir().join(format!("sakura-mcp-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
+    // The server and `sakura doc` below must see one path (macOS's temp dir is a symlink);
+    // Windows' canonicalize adds a verbatim prefix the workspace check does not use.
+    #[cfg(unix)]
+    let dir = dir.canonicalize().unwrap();
     std::fs::write(dir.join("main.sak"), BROKEN).unwrap();
     let mut s = Mcp::start(&dir);
 
@@ -147,10 +151,11 @@ fn check_patch_apply_and_test_over_stdio() {
 
     // Design §17.242 (5c): the tool's result is the `symbol_query` record `sakura doc --json`
     // prints, `kind` and `schema_version` included.
-    let (by_id, err) = s.call("symbol_query", json!({"id": "main::double"}));
+    let (by_id, err) = s.call("symbol_query", json!({"id": "main::main::double"}));
     assert!(!err, "{by_id}");
+    assert_eq!(by_id["total"], 1, "{by_id}");
     let doc = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
-        .args(["doc", "--json", "main::double"])
+        .args(["doc", "--json", "main::main::double"])
         .current_dir(&dir)
         .output()
         .unwrap();
