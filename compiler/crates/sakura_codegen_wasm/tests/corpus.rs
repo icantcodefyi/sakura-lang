@@ -166,6 +166,16 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/json_parse_malformed",
+        None,
+        "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
+        "semantics/json_decode_int_range",
+        None,
+        "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/nested_options_json",
         None,
         "`Json.encode` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",

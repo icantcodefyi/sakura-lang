@@ -112,16 +112,24 @@ fn the_grammar_is_json_parses() {
         "[] x",
         "tru",
     ] {
+        // One message for every syntax error, as the JS runtime's (design §17.292 (2)).
         let e = decode(bad, "null").unwrap_err();
-        assert!(
-            e.0.is_empty() && e.1.starts_with("Unexpected"),
-            "{bad}: {e:?}"
-        );
+        assert_eq!(e, (String::new(), "malformed JSON".into()), "{bad}");
     }
-    assert_eq!(
-        decode("[", "null").unwrap_err().1,
-        "Unexpected end of JSON input"
-    );
+    assert_eq!(decode("[", "null").unwrap_err().1, "malformed JSON");
+}
+
+#[test]
+fn a_number_past_the_int_range_is_named() {
+    // Design §17.294 SS-8a: `1e300` and 2^53 + 1 are no exact `Int`; `1.5` is not integral.
+    for (text, found) in [
+        ("1e300", "a number outside the Int range"),
+        ("9007199254740993", "a number outside the Int range"),
+        ("1.5", "a number"),
+    ] {
+        let e = decode(text, "\"I\"").unwrap_err();
+        assert_eq!(e.1, format!("expected an integer, found {found}"), "{text}");
+    }
 }
 
 #[test]

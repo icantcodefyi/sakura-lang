@@ -1,0 +1,13 @@
+// milestone: M3
+// spec: design §17.294 SS-8a
+
+// A JSON number that no `Int` reads exactly is named for what it is, on every backend:
+// `1e300` and 2^53 + 1 are beyond ±(2^53 − 1), `1.5` is not integral.
+import std/json.{DecodeError}
+
+pub fn main() -> Unit ! {Console} {
+  for text in ["1e300", "1.5", "9007199254740993", "42"] {
+    let r: Result<Int, DecodeError> = Json.decode(text)
+    Console.print("{text}: {r}")
+  }
+}

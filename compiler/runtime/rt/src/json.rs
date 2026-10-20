@@ -301,16 +301,22 @@ fn describe(s: &[u8], i: usize) -> &'static str {
         Some(b'"') => "a string",
         Some(b't' | b'f') => "a boolean",
         _ => match number(s, i) {
+            // Past ±(2^53 − 1) no `Int` reads it exactly (design §17.294 SS-8a).
+            Ok(f) if f.abs() > 9007199254740991.0 => "a number outside the Int range",
             Ok(f) if integral(f) => "an integer",
             _ => "a number",
         },
     }
 }
 
-/// `JSON.parse`'s grammar (RFC 8259): `Err` with JS's kind of message, deterministic but not
-/// V8's text (parity does not compare a host's syntax message). Iterative, so nesting is
-/// bounded by `MAX_NEST`, not the stack.
-fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
+/// The `DecodeError` message of any syntax error, on every backend (design §17.292 (2)).
+const MALFORMED: &str = "malformed JSON";
+/// The `DecodeError` message past `MAX_NEST` (the JS runtime's for a `RangeError`).
+const NESTED: &str = "JSON nested too deeply";
+
+/// `JSON.parse`'s grammar (RFC 8259): `Err` with the message, which names no position and
+/// quotes nothing. Iterative, so nesting is bounded by `MAX_NEST`, not the stack.
+fn validate(s: &[u8]) -> Result<(), &'static str> {
     const MAX_NEST: usize = 4096;
     let mut stack = [0u64; MAX_NEST / 64];
     let mut depth = 0usize;
@@ -321,7 +327,7 @@ fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
         match s.get(i) {
             Some(b'{' | b'[') => {
                 if depth == MAX_NEST {
-                    return Err((i, Some("JSON nested too deeply")));
+                    return Err(NESTED);
                 }
                 let object = s[i] == b'{';
                 let (w, bit) = (depth / 64, depth % 64);
@@ -336,7 +342,7 @@ fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
                     if object {
                         match key(s, i) {
                             Some(next) => i = next,
-                            None => return Err((i, None)),
+                            None => return Err(MALFORMED),
                         }
                     }
                     continue 'value;
@@ -344,22 +350,22 @@ fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
             }
             Some(b'"') => match string(s, i) {
                 Some(e) => i = e,
-                None => return Err((i, None)),
+                None => return Err(MALFORMED),
             },
             Some(b't') if s[i..].starts_with(b"true") => i += 4,
             Some(b'f') if s[i..].starts_with(b"false") => i += 5,
             Some(b'n') if s[i..].starts_with(b"null") => i += 4,
             Some(b'-' | b'0'..=b'9') => match num(s, i) {
                 Some(e) => i = e,
-                None => return Err((i, None)),
+                None => return Err(MALFORMED),
             },
-            _ => return Err((i, None)),
+            _ => return Err(MALFORMED),
         }
         // After a value.
         loop {
             i = ws(s, i);
             if depth == 0 {
-                return if i == s.len() { Ok(()) } else { Err((i, None)) };
+                return if i == s.len() { Ok(()) } else { Err(MALFORMED) };
             }
             let object = stack[(depth - 1) / 64] >> ((depth - 1) % 64) & 1 == 1;
             match s.get(i) {
@@ -368,7 +374,7 @@ fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
                     if object {
                         match key(s, i) {
                             Some(next) => i = next,
-                            None => return Err((i, None)),
+                            None => return Err(MALFORMED),
                         }
                     }
                     continue 'value;
@@ -381,7 +387,7 @@ fn validate(s: &[u8]) -> Result<(), (usize, Option<&'static str>)> {
                     depth -= 1;
                     i += 1;
                 }
-                _ => return Err((i, None)),
+                _ => return Err(MALFORMED),
             }
         }
     }
@@ -441,27 +447,6 @@ fn num(s: &[u8], mut i: usize) -> Option<usize> {
         i = digits(s, i)?;
     }
     Some(i)
-}
-
-/// A syntax error's message.
-fn syntax(out: &mut dyn Out, s: &[u8], i: usize, why: Option<&str>) -> Res<()> {
-    if let Some(why) = why {
-        out.put(why.as_bytes())?;
-    } else if i >= s.len() {
-        out.put(b"Unexpected end of JSON input")?;
-    } else {
-        let ch = core::str::from_utf8(&s[i..])
-            .ok()
-            .or_else(|| core::str::from_utf8(&s[i..(i + 4).min(s.len())]).ok())
-            .and_then(|t| t.chars().next())
-            .unwrap_or('\u{fffd}');
-        let mut buf = [0; 4];
-        out.put(b"Unexpected token '")?;
-        out.put(ch.encode_utf8(&mut buf).as_bytes())?;
-        out.put(b"' in JSON at position ")?;
-        out.put(int_text(i as i64).bytes())?;
-    }
-    Ok(())
 }
 
 // ---- output helpers ---------------------------------------------------------------------------
@@ -1924,8 +1909,8 @@ fn answer(
         decode_error,
         sql: None,
     };
-    if let Err((i, why)) = validate(text) {
-        return match dec.fail(&P::Root, |o| syntax(o, text, i, why)) {
+    if let Err(why) = validate(text) {
+        return match dec.fail(&P::Root, |o| o.put(why.as_bytes())) {
             Stop::Defect(d) => Err(d),
             Stop::Failed => Ok(()),
         };
@@ -2851,8 +2836,8 @@ impl Dec<'_> {
                     return Err(bad(self, b"JSON text"));
                 }
                 let j = data(c)?;
-                if let Err((i, why)) = validate(j) {
-                    return Err(self.fail(&P::Bare, |o| syntax(o, j, i, why)));
+                if let Err(why) = validate(j) {
+                    return Err(self.fail(&P::Bare, |o| o.put(why.as_bytes())));
                 }
                 self.value(j, 0, s, &P::Col(col), depth + 1)?;
             }

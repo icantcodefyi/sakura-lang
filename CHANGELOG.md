@@ -454,6 +454,15 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   stopped with the defect `D090` ("builtin cli_exit is not supported by the WASM backend yet")
   (design §17.292 (1)). No ABI change: the guest's existing `exit` outcome carries the code.
   `Cli.exit`'s doc now says a typed failure escaping `main` exits 1.
+- `Json.parse` and `Json.decode` fail any syntax error with `DecodeError { path: "", message:
+  "malformed JSON" }` on every backend, and `"JSON nested too deeply"` past a backend's nesting
+  limit (design §17.292 (2)), where `v0.1.0` gave V8's text on JS and WASM, which quotes a
+  prefix of the untrusted input and changes with Node's version, and its own
+  `Unexpected token … at position N` natively. A number decoded into an `Int` beyond
+  ±(2^53 − 1), such as `1e300`, reads "expected an integer, found a number outside the Int
+  range" where it read "found an integer" (§17.294 SS-8a). `decode`'s doc names the messages
+  and says that members `T` does not declare are ignored and a repeated key keeps its last
+  value (§17.292 (13), §17.294 SS-8c).
 
 ### Security
 

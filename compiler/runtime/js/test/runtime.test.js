@@ -691,7 +691,16 @@ test("Secret never prints; Json.parse builds std values", () => {
   DecodeError.prototype.$t = rt.recordType("DecodeError", "std::json", [["path", "path", null], ["message", "message", null]], true);
   rt.def("std::json::DecodeError", DecodeError);
   assert.equal(rt.show(rt.json_parse('{"a": [1, true, null]}')), 'Ok(Object(Map.of([("a", Array([Number(1.0), Bool(true), Null]))])))');
-  assert.equal(rt.json_parse("{").tag, 1);
+  // One message per kind of syntax error, never V8's text, which quotes the input (§17.292 (2)).
+  for (const text of ["{", "not json at all", '{"a":', "[1,]"]) {
+    assert.equal(rt.show(rt.json_parse(text)), 'Err(DecodeError { path: "", message: "malformed JSON" })');
+    assert.equal(rt.json_decode(text, "I").fields[0].message, "malformed JSON");
+  }
+  // A number past ±(2^53 − 1) is named as one (design §17.294 SS-8a).
+  const intMessage = (text) => rt.json_decode(text, "I").fields[0].message;
+  assert.equal(intMessage("1e300"), "expected an integer, found a number outside the Int range");
+  assert.equal(intMessage("9007199254740993"), "expected an integer, found a number outside the Int range");
+  assert.equal(intMessage("1.5"), "expected an integer, found a number");
 });
 
 test("a race cancels the loser, whose finalizer runs before the race returns", async () => {

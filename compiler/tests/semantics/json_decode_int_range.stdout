@@ -1,0 +1,4 @@
+1e300: Err(DecodeError { path: "", message: "expected an integer, found a number outside the Int range" })
+1.5: Err(DecodeError { path: "", message: "expected an integer, found a number" })
+9007199254740993: Err(DecodeError { path: "", message: "expected an integer, found a number outside the Int range" })
+42: Ok(42)

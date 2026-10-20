@@ -1,0 +1,18 @@
+// milestone: M3
+// spec: design §17.292 (2)
+
+// Any syntax error in `Json.parse` or `Json.decode` is `DecodeError { path: "", message:
+// "malformed JSON" }` on every backend: no position, and nothing of the untrusted input quoted
+// (V8's own text quotes a prefix of it and changes with Node's version).
+import std/json.{DecodeError}
+
+fn shown() -> List<String> {
+  let decoded: Result<List<Int>, DecodeError> = Json.decode("[")
+  [show(Json.parse("not json at all")), show(Json.parse("\{\"a\":")), show(decoded)]
+}
+
+pub fn main() -> Unit ! {Console} { for line in shown() { Console.print(line) } }
+
+test "no message quotes the input" {
+  for line in shown() { expect(!String.contains(line, "not json")) }
+}

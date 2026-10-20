@@ -3241,6 +3241,12 @@ export function log_json() {
   return new Handler("std::log::Log", [event], []);
 }
 
+/**
+ * A `JSON.parse` failure's `DecodeError` message, the same on every backend (design §17.292
+ * (2)): V8's text quotes the input and changes with Node's version, so it is never shown.
+ */
+const jsonSyntax = (e) => (e instanceof RangeError ? "JSON nested too deeply" : "malformed JSON");
+
 /** `Json.parse`: `Ok(Json)` or `Err(DecodeError { path: "", message })`. */
 export function json_parse(text) {
   let raw;
@@ -3248,7 +3254,7 @@ export function json_parse(text) {
     raw = JSON.parse(text);
   } catch (e) {
     const E = std("std::json::DecodeError");
-    return Err(new E("", String(e.message)));
+    return Err(new E("", jsonSyntax(e)));
   }
   return Ok(jsToJson(raw));
 }
@@ -3458,7 +3464,11 @@ function describe(j) {
   if (Array.isArray(j)) return "an array";
   if (typeof j === "object") return "an object";
   if (typeof j === "string") return "a string";
-  if (typeof j === "number") return Number.isInteger(j) ? "an integer" : "a number";
+  // Past ±(2^53 − 1) no `Int` reads it exactly (design §17.294 SS-8a).
+  if (typeof j === "number") {
+    if (Math.abs(j) > Number.MAX_SAFE_INTEGER) return "a number outside the Int range";
+    return Number.isInteger(j) ? "an integer" : "a number";
+  }
   return `a ${typeof j}`;
 }
 
@@ -3488,7 +3498,7 @@ export function json_decode(text, schema) {
   try {
     raw = JSON.parse(text);
   } catch (e) {
-    return Err(new E("", String(e.message)));
+    return Err(new E("", jsonSyntax(e)));
   }
   try {
     return Ok(fromJs(raw, schema, ""));

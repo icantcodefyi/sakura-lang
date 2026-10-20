@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+Err(DecodeError { path: "", message: "malformed JSON" })
+Err(DecodeError { path: "", message: "malformed JSON" })
+Err(DecodeError { path: "", message: "malformed JSON" })

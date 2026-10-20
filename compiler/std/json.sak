@@ -16,10 +16,19 @@ pub error DecodeError(path: String, message: String)
 @external(js, "sakura_runtime", "json_encode")
 pub fn encode<T: Schema>(value: T) -> String
 
-/// Parses and checks `text` against `T`'s schema, including every refinement.
+/// Parses and checks `text` against `T`'s schema, including every refinement. Text that is not
+/// JSON fails as `parse` does, with path `""` and message `"malformed JSON"` (or `"JSON nested
+/// too deeply"`). A JSON number where an `Int` is expected that is not integral is found as
+/// `"a number"`, and one beyond ±(2^53 − 1) as `"a number outside the Int range"`. Members of
+/// an object that `T` does not declare are ignored; a program that must refuse them decodes to
+/// `Json` and checks the keys. A repeated key keeps its last value.
 @external(js, "sakura_runtime", "json_decode")
 pub fn decode<T: Schema>(text: String) -> Result<T, DecodeError>
 
+/// `text` as a `Json` value. Any syntax error fails with path `""` and message
+/// `"malformed JSON"`, or `"JSON nested too deeply"` past the backend's nesting limit: the
+/// message never quotes the input or names a position, and is the same on every backend. A
+/// repeated key keeps its last value at its first position.
 @external(js, "sakura_runtime", "json_parse")
 pub fn parse(text: String) -> Result<Json, DecodeError>
 

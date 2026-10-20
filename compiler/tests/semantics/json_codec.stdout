@@ -30,7 +30,7 @@ Ok(Object(Map.of([("1", Number(1.0)), ("2", Number(0.0)), ("k", Array([Number(1.
 : expected an array of 2, found an array
 /0: expected a [key, value] pair
 : expected a base64 string, found a string
-: expected an integer, found an integer
+: expected an integer, found a number outside the Int range
 : expected an object with one key, found an object
 Ok(Pair { left: Boxed { n: 1 }, right: None })
 /right/n: does not satisfy the where clause of Small
