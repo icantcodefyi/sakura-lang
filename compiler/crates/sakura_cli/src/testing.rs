@@ -151,7 +151,8 @@ pub fn run_node_tests(
     cmd.env("SAKURA_PERMISSIONS", permissions.to_string());
     if record.is_some() {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
-        cmd.arg("--allow-net").env("SAKURA_RECORD", "1");
+        cmd.args(["--allow-net", "--disable-warning=ExperimentalWarning"])
+            .env("SAKURA_RECORD", "1");
     }
     cmd.arg("--max-old-space-size=1024");
     // A `--target wasm` build runs its module's tests through the WASM host.
