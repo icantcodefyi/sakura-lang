@@ -21,7 +21,7 @@ layout 14 shape |  16b ()
 fn main#0 pub top -> unit ; main::stream_pipe_to_file_sink, frame 19 slots [%2 word*, %4 word*, %5 word*, %8 bool, %11 word*, %17 word*, %18 word*, %20 word*, %21 word*, %25 word*, %26 word*, %30 word*, %31 word*, %35 word*, %36 word*, %40 bool, %41 word*, %43 word*, %46 bool]
   b0():
     %0 lit: ptr = const str 0
-    %1 $site: i64 = const 4
+    %1 $site: i64 = const 5
     call of#2(%0, %1) -> b1()
   b1(%2 r: ptr):
     %3 xs: ptr = alloc list()
@@ -48,7 +48,7 @@ fn main#0 pub top -> unit ; main::stream_pipe_to_file_sink, frame 19 slots [%2 w
     %12 err: ptr = alloc std::result::Result.Err(%11)
     jump b3(%12)
   b6(%17 r: ptr, %18 r: ptr) [handle, try]:
-    %19 fn: ptr = const static closure $string_to_bytes$value#46
+    %19 fn: ptr = const static closure $string_to_bytes$value#47
     call map#7(%17, %19) -> b7(%18)
   b7(%20 r: ptr, %21 r: ptr) [handle, try]:
     %22 v: ptr = const static std::fs::Mode.Write
@@ -127,26 +127,31 @@ fn main$2#11 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame
     %10 box: word = box %9
     ret %10
 
-fn main$3#12 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame 8 slots [%0 word*, %1 word*, %3 word*, %4 word*, %7 word*, %8 word*, %11 word*, %12 word*]
+fn main$3#12 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame 10 slots [%0 word*, %1 word*, %4 bool, %5 word*, %7 word*, %8 word*, %11 word*, %12 word*, %15 word*, %16 word*]
   b0(%0 env: ptr, %1 f: word):
     drop %0
     %2 lit: i64 = const 3
+    %3 $site: i64 = const 7
     dup %1
-    perform std::fs::Fs.read_chunk(%1, %2) -> b1(%1)
-  b1(%3 r: ptr, %4 f: ptr):
-    %5 lit: i64 = const 4
-    %6 $site: i64 = const 6
-    call file_source#13(%4, %5, %6) -> b2(%3)
-  b2(%7 r: ptr, %8 r: ptr):
-    %9 xs: ptr = alloc list()
-    %10 f: ptr = closure main$3$1#14[]
-    call fold#15(%7, %9, %10) -> b3(%8)
-  b3(%11 r: word, %12 r: ptr):
-    %13 r: i64 = $bytes_len(%12)
-    %14 tup: ptr = alloc tuple#13(i64, word)(%13, %11)
-    ret %14
+    call Fs.read_chunk#13(%1, %2, %3) -> b1(%1)
+  b1(%4 pre: unit, %5 f: ptr):
+    %6 lit: i64 = const 3
+    dup %5
+    perform std::fs::Fs.read_chunk(%5, %6) -> b2(%5)
+  b2(%7 r: ptr, %8 f: ptr):
+    %9 lit: i64 = const 4
+    %10 $site: i64 = const 8
+    call file_source#14(%8, %9, %10) -> b3(%7)
+  b3(%11 r: ptr, %12 r: ptr):
+    %13 xs: ptr = alloc list()
+    %14 f: ptr = closure main$3$1#15[]
+    call fold#16(%11, %13, %14) -> b4(%12)
+  b4(%15 r: word, %16 r: ptr):
+    %17 r: i64 = $bytes_len(%16)
+    %18 tup: ptr = alloc tuple#13(i64, word)(%17, %15)
+    ret %18
 
-fn main$3$1#14 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$3$1#15 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 acc: word, %2 b: word):
     drop %0
     %3 r: i64 = $bytes_len(%2)
@@ -154,7 +159,7 @@ fn main$3$1#14 lambda -> word ; main::stream_pipe_to_file_sink, captures [], fra
     %5 r: ptr = $list_push(%1, %4)
     ret %5
 
-fn $string_to_bytes$value#46 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $string_to_bytes$value#47 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: ptr = $string_to_bytes(%1)

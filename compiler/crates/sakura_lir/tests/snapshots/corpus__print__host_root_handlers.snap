@@ -11,7 +11,7 @@ layout 5 shape |  32b (word*, word*)
 layout 6 shape |  32b (i64, word*)
 layout 7 shape |  16b ()
 
-fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, %4 bool, %6 word*, %8 word*, %9 word*, %10 bool, %11 word*, %13 word*, %14 word*, %15 i64, %16 word*, %17 i64, %18 i64, %23 bool, %27 i64, %31 bool, %33 f64, %40 bool, %43 word*, %48 bool, %50 word*, %51 word*, %52 bool, %56 bool, %59 word*, %63 bool]
+fn main#0 pub top -> unit ; main::host_root_handlers, frame 28 slots [%0 word*, %4 bool, %6 word*, %8 word*, %9 word*, %10 bool, %11 word*, %13 word*, %14 word*, %15 i64, %16 word*, %17 i64, %18 i64, %23 bool, %28 bool, %31 i64, %35 bool, %37 f64, %44 bool, %48 bool, %50 word*, %55 bool, %57 word*, %58 word*, %59 bool, %63 bool, %66 word*, %70 bool]
   b0():
     perform std::console::Console.read_line() -> b1()
   b1(%0 r: ptr):
@@ -50,77 +50,86 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     drop %24
     %25 lit: i64 = const 7
     %26 lit: i64 = const 7
-    perform std::random::Random.int(%25, %26) -> b10()
-  b10(%27 r: i64):
-    %28 s: ptr = show %27
-    %29 lit: ptr = const str 2
-    %30 s: ptr = concat %29, %28
-    drop %28
-    perform std::console::Console.print(%30) -> b11()
-  b11(%31 r: unit):
-    %32 box: word = box %31
+    %27 $site: i64 = const 3
+    call Random.int#9(%25, %26, %27) -> b10()
+  b10(%28 pre: unit):
+    %29 lit: i64 = const 7
+    %30 lit: i64 = const 7
+    perform std::random::Random.int(%29, %30) -> b11()
+  b11(%31 r: i64):
+    %32 s: ptr = show %31
+    %33 lit: ptr = const str 2
+    %34 s: ptr = concat %33, %32
     drop %32
-    perform std::random::Random.float() -> b12()
-  b12(%33 r: f64):
-    %34 lit: f64 = const 0.0
-    %35 t: bool = ge.float %33, %34
-    if %35 then b23(%33) else b24(%33)
-  b13(%36 v: bool):
-    %37 s: ptr = show %36
-    %38 lit: ptr = const str 3
-    %39 s: ptr = concat %38, %37
-    drop %37
-    perform std::console::Console.print(%39) -> b14()
-  b14(%40 r: unit):
-    %41 box: word = box %40
+    perform std::console::Console.print(%34) -> b12()
+  b12(%35 r: unit):
+    %36 box: word = box %35
+    drop %36
+    perform std::random::Random.float() -> b13()
+  b13(%37 r: f64):
+    %38 lit: f64 = const 0.0
+    %39 t: bool = ge.float %37, %38
+    if %39 then b25(%37) else b26(%37)
+  b14(%40 v: bool):
+    %41 s: ptr = show %40
+    %42 lit: ptr = const str 3
+    %43 s: ptr = concat %42, %41
     drop %41
-    %42 lit: i64 = const 16
-    perform std::random::Random.bytes(%42) -> b15()
-  b15(%43 r: ptr):
-    %44 r: i64 = $bytes_len(%43)
-    %45 s: ptr = show %44
-    %46 lit: ptr = const str 4
-    %47 s: ptr = concat %46, %45
+    perform std::console::Console.print(%43) -> b15()
+  b15(%44 r: unit):
+    %45 box: word = box %44
     drop %45
-    perform std::console::Console.print(%47) -> b16()
-  b16(%48 r: unit):
-    %49 box: word = box %48
-    drop %49
-    perform std::random::Random.uuid() -> b17()
+    %46 lit: i64 = const 16
+    %47 $site: i64 = const 4
+    call Random.bytes#10(%46, %47) -> b16()
+  b16(%48 pre: unit):
+    %49 lit: i64 = const 16
+    perform std::random::Random.bytes(%49) -> b17()
   b17(%50 r: ptr):
-    call to_string#9(%50) -> b18()
-  b18(%51 r: ptr):
-    call is_canonical#10(%51) -> b19()
-  b19(%52 r: bool):
-    %53 s: ptr = show %52
-    %54 lit: ptr = const str 5
-    %55 s: ptr = concat %54, %53
-    drop %53
-    perform std::console::Console.print(%55) -> b20()
-  b20(%56 r: unit):
-    %57 box: word = box %56
-    drop %57
-    %58 lit: ptr = const str 6
-    perform std::env::Env.get(%58) -> b21()
-  b21(%59 r: ptr):
+    %51 r: i64 = $bytes_len(%50)
+    %52 s: ptr = show %51
+    %53 lit: ptr = const str 4
+    %54 s: ptr = concat %53, %52
+    drop %52
+    perform std::console::Console.print(%54) -> b18()
+  b18(%55 r: unit):
+    %56 box: word = box %55
+    drop %56
+    perform std::random::Random.uuid() -> b19()
+  b19(%57 r: ptr):
+    call to_string#11(%57) -> b20()
+  b20(%58 r: ptr):
+    call is_canonical#12(%58) -> b21()
+  b21(%59 r: bool):
     %60 s: ptr = show %59
-    drop %59
-    %61 lit: ptr = const str 7
+    %61 lit: ptr = const str 5
     %62 s: ptr = concat %61, %60
     drop %60
     perform std::console::Console.print(%62) -> b22()
   b22(%63 r: unit):
     %64 box: word = box %63
-    %65 unbox: unit = unbox %64
     drop %64
-    ret %65
-  b23(%66 r: f64):
-    %68 lit: f64 = const 1.0
-    %69 t: bool = lt.float %66, %68
-    jump b13(%69)
-  b24(%67 r: f64):
-    %70 lit: bool = const false
-    jump b13(%70)
+    %65 lit: ptr = const str 6
+    perform std::env::Env.get(%65) -> b23()
+  b23(%66 r: ptr):
+    %67 s: ptr = show %66
+    drop %66
+    %68 lit: ptr = const str 7
+    %69 s: ptr = concat %68, %67
+    drop %67
+    perform std::console::Console.print(%69) -> b24()
+  b24(%70 r: unit):
+    %71 box: word = box %70
+    %72 unbox: unit = unbox %71
+    drop %71
+    ret %72
+  b25(%73 r: f64):
+    %75 lit: f64 = const 1.0
+    %76 t: bool = lt.float %73, %75
+    jump b14(%76)
+  b26(%74 r: f64):
+    %77 lit: bool = const false
+    jump b14(%77)
 
 fn $entry#2 top -> unit ; main::host_root_handlers, frame 1 slots [%6 bool]
   b0():

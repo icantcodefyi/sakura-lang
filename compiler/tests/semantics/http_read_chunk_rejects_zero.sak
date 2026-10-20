@@ -1,0 +1,26 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §7.2, §17.115, §17.286 (8)
+
+// `Http.read_chunk(body, max)` requires `max > 0`: an empty read would look like the end of
+// the body, so 0 is the performer's defect (`D020`, blaming this perform).
+import std/http.{Any, Http}
+import std/request.{Get, Request}
+import std/response.{Response}
+import std/url.{Url}
+
+pub fn main() -> Unit ! {Console} {
+  with Http.scripted([(Any, Response.status(200, "hello"))]) {
+    let r = try {
+      Http.stream(
+        Request.of(Get, Url.from("https://a.example/x")),
+        fn(i) {
+          Console.print("{Bytes.len(Http.read_chunk(i.body, 1))}")
+          Http.read_chunk(i.body, 0)
+        },
+      )
+    }
+    Console.print("{r.is_ok()}")
+  }
+}

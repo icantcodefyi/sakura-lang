@@ -1,0 +1,22 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §7.2, §17.115, §17.286 (8)
+
+// `Fs.read_chunk(file, max)` requires `max > 0`: an empty read would look like the end of the
+// file, so 0 is the performer's defect (`D020`, blaming this perform).
+import std/fs.{Fs, Read}
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console} {
+  let a = Path.of("a.txt")
+  with Fs.memory([(a, String.to_bytes("abc"))]) {
+    let r = try {
+      Fs.with_file(a, Read, fn(f) {
+        Console.print("{Bytes.len(Fs.read_chunk(f, 1))}")
+        Fs.read_chunk(f, 0)
+      })
+    }
+    Console.print("{r.is_ok()}")
+  }
+}

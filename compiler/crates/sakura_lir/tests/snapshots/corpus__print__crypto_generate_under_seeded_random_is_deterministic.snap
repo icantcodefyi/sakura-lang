@@ -124,13 +124,13 @@ fn tag#2 top -> ptr ; main::crypto_generate_under_seeded_random_is_deterministic
     %9 v: ptr = const static std::crypto::Usage.Sign
     %10 xs: ptr = alloc list(%9)
     %11 lit: bool = const true
-    %12 $site: i64 = const 6
+    %12 $site: i64 = const 7
     call generate_key#6(%3, %10, %11, %12) -> b4()
   b2(%4 v: ptr):
     %5 lit: ptr = const str 1
     %6 r: ptr = $string_to_bytes(%5)
-    %7 $site: i64 = const 5
-    call hmac#32(%4, %6, %7) -> b3()
+    %7 $site: i64 = const 6
+    call hmac#33(%4, %6, %7) -> b3()
   b3(%8 r: ptr):
     ret %8
   b4(%13 r: ptr) [handle]:
@@ -146,13 +146,13 @@ fn material_len#4 top -> ptr ; main::crypto_generate_under_seeded_random_is_dete
     %9 v: ptr = const static std::crypto::Usage.Sign
     %10 xs: ptr = alloc list(%9)
     %11 lit: bool = const true
-    %12 $site: i64 = const 7
+    %12 $site: i64 = const 8
     call generate_key#6(%3, %10, %11, %12) -> b5()
   b2(%4 v: ptr):
     %5 v: ptr = const static std::crypto::KeyFormat.Raw
     call export_key#7(%4, %5) -> b3()
   b3(%6 r: ptr):
-    %7 fn: ptr = const static closure $bytes_len$value#39
+    %7 fn: ptr = const static closure $bytes_len$value#40
     call map#8(%6, %7) -> b4()
   b4(%8 r: ptr):
     ret %8
@@ -160,7 +160,7 @@ fn material_len#4 top -> ptr ; main::crypto_generate_under_seeded_random_is_dete
     handle_pop
     jump b2(%13)
 
-fn $bytes_len$value#39 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#40 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

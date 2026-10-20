@@ -588,6 +588,44 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
     }
 
+    /// Operation `name`'s `requires` (`ret` `None`) or `ensures` (`ret` its result type, taken
+    /// as the last parameter) as a `Unit` def over its parameters; the perform site calls it
+    /// (design §17.286 (8)).
+    pub(crate) fn lower_op_contract(
+        l: &'a mut Lower<'p>,
+        module: hir::ModuleId,
+        body_id: hir::BodyId,
+        name: String,
+        id: DefId,
+        ret: Option<Ty>,
+    ) -> FnDef {
+        let mut s = FnLower::new(l, module, body_id, name, id);
+        let mut params: Vec<Local> = s.body.params.clone().iter().map(|&p| s.param(p)).collect();
+        let body = s.body;
+        let (kind, what, clauses) = match ret {
+            None => (ContractKind::Requires, "pre", &body.requires),
+            Some(t) => {
+                let r = s.b.local("result", t);
+                params.push(r);
+                if let Some(rl) = body.result {
+                    s.env.insert(rl, local(r));
+                }
+                (ContractKind::Ensures, "post", &body.ensures)
+            }
+        };
+        for c in clauses {
+            let pos = s.pos(c.expr);
+            let name = c.label.clone().unwrap_or_else(|| s.name.clone());
+            if let Some(cond) = s.predicate(c.expr) {
+                let id = s.contract(kind, name, pos);
+                s.bind(what, Ty::Unit, Bind::Check(id, cond), pos);
+            }
+        }
+        let pos = clauses.first().and_then(|c| s.pos(c.expr));
+        let fd = s.finish_body(Some(unit()));
+        s.into_def(id, params, Ty::Unit, fd, pos)
+    }
+
     /// `T$check(it) -> Bool`: refined type `ty_def`'s `where` predicate, for schemas.
     pub(crate) fn lower_refinement_check(
         l: &'a mut Lower<'p>,
@@ -1546,6 +1584,17 @@ impl<'a, 'p> FnLower<'a, 'p> {
                         }
                     },
                     hir::DefKind::Op(_) => {
+                        // The operation's `requires`, checked at this perform (design §7.2).
+                        let checks = self.l.op_contracts(d);
+                        let declared = vs.clone();
+                        if let Some(pre) = checks.requires {
+                            self.bind(
+                                "pre",
+                                Ty::Unit,
+                                Bind::Call(Atom::Global(pre), vs.clone()),
+                                pos,
+                            );
+                        }
                         // Schema-bounded type arguments travel as trailing schema arguments.
                         let n = self.l.runtime_typed_params(d).len();
                         let tys = self
@@ -1555,7 +1604,15 @@ impl<'a, 'p> FnLower<'a, 'p> {
                             let a = self.schema_atom(t, pos);
                             vs.push(a);
                         }
-                        self.l.ctor_bind(d, vs)
+                        let bind = self.l.ctor_bind(d, vs);
+                        let r = self.bind("r", ty, bind, pos);
+                        // `ensures` on the operation's normal return, as a def's.
+                        if let Some(post) = checks.ensures {
+                            let mut a = declared;
+                            a.push(r.clone());
+                            self.bind("post", Ty::Unit, Bind::Call(Atom::Global(post), a), pos);
+                        }
+                        return Some(r);
                     }
                     _ => self.l.ctor_bind(d, vs),
                 };

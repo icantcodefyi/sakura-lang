@@ -1,0 +1,85 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 4 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 5 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 6 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 7 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 8 record std::websocket::CloseInfo | CloseInfo 40b (code: i64, reason: word*, clean: bool)
+layout 9 variant std::websocket::Message | Text 24b (word*) | Binary 24b (word*)
+layout 10 record std::websocket::Options | Options 40b (subprotocols: word*, headers: word*, max_message: i64)
+layout 11 record std::websocket::Peer | Peer 48b (steps: word*, inbox: word*, closed: word*, max_message: i64)
+layout 12 variant std::websocket::Received | Data 24b (word*) | Closed 24b (word*)
+layout 13 variant std::websocket::ScriptStep | Reply 32b (word*, word*) | Push 24b (word*) | Close 32b (i64, word*)
+layout 14 record std::websocket::Socket | Socket 40b (id: i64, protocol: word*, max_message: i64)
+layout 15 error std::websocket::SocketError | SocketError 24b (reason: word*)
+layout 16 variant std::websocket::SocketReason | Connect 24b (word*) | MessageTooLarge 16b () | NotOpen 16b () | Failed 24b (word*)
+layout 17 shape |  32b (word*, word*)
+layout 18 shape |  32b (i64, word*)
+layout 19 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::websocket_connect_rejects_max_message, frame 8 slots [%1 bool, %4 word*, %7 word*, %9 word*, %17 bool, %18 word*, %19 word*, %22 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 xs: ptr = alloc list()
+    call scripted#2(%3) -> b2()
+  b2(%4 r: ptr):
+    handle_push %4
+    try_push -> b4(err, )
+    call options#3() -> b5()
+  b3(%5 v: ptr) [handle]:
+    drop %5
+    %6 lit: unit = const ()
+    handle_pop
+    ret %6
+  b4(%7 e: word) [handle]:
+    %8 err: ptr = alloc std::result::Result.Err(%7)
+    jump b3(%8)
+  b5(%9 r: ptr) [handle, try]:
+    %10 subprotocols: word = proj %9.0 std::websocket::Options
+    %11 headers: word = proj %9.1 std::websocket::Options
+    drop %9
+    %12 lit: i64 = const 0
+    %13 rec: ptr = alloc std::websocket::Options(%10, %11, %12)
+    %14 f: ptr = closure main$1#4[]
+    %15 lit: ptr = const str 1
+    %16 $site: i64 = const 4
+    dup.candidate %13
+    dup.candidate %14
+    call WebSocket.connect#5(%15, %13, %14, %16) -> b6(%13, %14)
+  b6(%17 pre: unit, %18 rec: ptr, %19 f: ptr) [handle, try]:
+    %20 lit: ptr = const str 1
+    %21 callback: ptr = callback %19
+    perform std::websocket::WebSocket.connect(%20, %18, %21) -> b7()
+  b7(%22 r: word) [handle, try]:
+    %23 ok: ptr = alloc std::result::Result.Ok(%22)
+    try_pop
+    jump b3(%23)
+
+fn $entry#1 top -> unit ; main::websocket_connect_rejects_max_message, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#4 lambda -> word ; main::websocket_connect_rejects_max_message, captures [], frame 3 slots [%0 word*, %1 word*, %3 bool]
+  b0(%0 env: ptr, %1 _sock: word):
+    drop %0
+    drop %1
+    %2 lit: ptr = const str 2
+    perform std::console::Console.print(%2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4

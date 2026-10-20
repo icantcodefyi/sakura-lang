@@ -1,0 +1,63 @@
+// milestone: M3
+// mode: test
+// spec: design §7.2, §17.115, §17.286 (8)
+
+// An operation's `requires` is checked at each perform site, so a handler only ever sees
+// arguments that satisfy it: the recording handler below never records a violating one. A
+// handler arm that performs the operation again is a perform site and is checked again; the
+// operation's `ensures` is checked when the perform returns normally.
+effect Meter {
+  fn take(n: Int) -> Int
+    requires positive: n > 0
+    ensures bounded: result <= n
+  fn seen() -> List<Int>
+}
+
+/// Records every argument `take` receives and returns it.
+fn recording() -> Handler<Meter> {
+  handler Meter {
+    var log: List<Int> = []
+    fn take(n) {
+      log = List.push(log, n)
+      n
+    }
+    fn seen() { log }
+  }
+}
+
+/// Answers above `take`'s `ensures`.
+fn overshooting() -> Handler<Meter> {
+  handler Meter {
+    fn take(n) { n + 1 }
+    fn seen() { [] }
+  }
+}
+
+test "a violating perform never reaches the handler" {
+  with recording() {
+    expect_eq(Meter.take(3), 3)
+    expect_defect(fn() { Meter.take(0) })
+    expect_defect(fn() { Meter.take(-2) })
+    expect_eq(Meter.take(1), 1)
+    expect_eq(Meter.seen(), [3, 1])
+  }
+}
+
+test "a forwarding arm's perform is checked again" {
+  with recording() {
+    // Forwards `take(n)` as `take(n - 1)` to the handler outside it.
+    let shifting = handler Meter {
+      fn take(n) { Meter.take(n - 1) }
+      fn seen() { Meter.seen() }
+    }
+    with shifting {
+      expect_eq(Meter.take(5), 4)
+      expect_defect(fn() { Meter.take(1) })
+      expect_eq(Meter.seen(), [4])
+    }
+  }
+}
+
+test "ensures is checked on the perform's normal return" {
+  with overshooting() { expect_defect(fn() { Meter.take(1) }) }
+}

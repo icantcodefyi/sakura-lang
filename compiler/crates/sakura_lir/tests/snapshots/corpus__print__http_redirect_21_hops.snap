@@ -36,7 +36,7 @@ fn main#0 pub top -> unit ; main::http_redirect_21_hops, frame 11 slots [%1 bool
   b2(%3 r: unit):
     %4 lit: i64 = const 307
     %5 lit: ptr = const str 0
-    %6 $site: i64 = const 7
+    %6 $site: i64 = const 8
     call status#4(%4, %5, %6) -> b3()
   b3(%7 r: ptr):
     %8 lit: ptr = const str 1
@@ -56,7 +56,7 @@ fn main#0 pub top -> unit ; main::http_redirect_21_hops, frame 11 slots [%1 bool
     try_push -> b8(err, )
     %30 v: ptr = const static std::request::Method.Get
     %31 lit: ptr = const str 4
-    %32 $site: i64 = const 8
+    %32 $site: i64 = const 9
     call Url$from#8(%31, %32) -> b9(%30)
   b5(%19 v: ptr) [handle]:
     %20 f: ptr = closure main$1#10[]
@@ -113,7 +113,7 @@ fn counted#2 top -> unit ; main::http_redirect_21_hops, frame 24 slots [%0 i64, 
     try_push -> b8(err, %11)
     %30 v: ptr = const static std::request::Method.Get
     %31 lit: ptr = const str 7
-    %32 $site: i64 = const 9
+    %32 $site: i64 = const 10
     call Url$from#8(%31, %32) -> b9(%11, %30)
   b5(%14 v: ptr, %15 n: i64) [handle, handle, handle]:
     %16 s: ptr = show %15
@@ -161,7 +161,7 @@ fn chain#107 top -> ptr ; main::http_redirect_21_hops, frame 8 slots [%0 i64, %2
     %1 lit: i64 = const 0
     call range#82(%1, %0) -> b1(%0)
   b1(%2 r: ptr, %3 n: i64):
-    %4 f: ptr = closure chain$1#122[]
+    %4 f: ptr = closure chain$1#123[]
     call map#33(%2, %4) -> b2(%3)
   b2(%5 r: ptr, %6 n: i64):
     %7 s: ptr = show %6
@@ -171,7 +171,7 @@ fn chain#107 top -> ptr ; main::http_redirect_21_hops, frame 8 slots [%0 i64, %2
     %10 r: ptr = alloc std::http::Matcher.Path(%9)
     %11 lit: i64 = const 200
     %12 lit: ptr = const str 72
-    %13 $site: i64 = const 19
+    %13 $site: i64 = const 20
     call status#4(%11, %12, %13) -> b3(%5, %10)
   b3(%14 r: ptr, %15 r: ptr, %16 r: ptr):
     %17 tup: ptr = alloc tuple#18(word, word)(%16, %14)
@@ -180,9 +180,9 @@ fn chain#107 top -> ptr ; main::http_redirect_21_hops, frame 8 slots [%0 i64, %2
 
 fn counting#108 top -> ptr ; main::http_redirect_21_hops, frame 0 slots []
   b0():
-    %0 send: ptr = closure counting$Http_send#119[]
-    %1 stream: ptr = closure counting$Http_stream#120[]
-    %2 read_chunk: ptr = closure counting$Http_read_chunk#121[]
+    %0 send: ptr = closure counting$Http_send#120[]
+    %1 stream: ptr = closure counting$Http_stream#121[]
+    %2 read_chunk: ptr = closure counting$Http_read_chunk#122[]
     %3 lit: i64 = const 0
     %4 handler: ptr = handler std::http::Http row 21 state(%3) clauses(%0, %1, %2)
     ret %4
@@ -195,7 +195,7 @@ fn counted$1#110 lambda -> word ; main::http_redirect_21_hops, captures [], fram
     %3 box: word = box %2
     ret %3
 
-fn counting$Http_send#119 clause std::http::Http.send -> ptr ; main::http_redirect_21_hops, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %12 word*, %26 bool, %27 word*]
+fn counting$Http_send#120 clause std::http::Http.send -> ptr ; main::http_redirect_21_hops, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %12 word*, %26 bool, %27 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr):
     drop %0
     %3 sent: i64 = state_get %1[0] row 21
@@ -235,7 +235,7 @@ fn counting$Http_send#119 clause std::http::Http.send -> ptr ; main::http_redire
     %28 box: word = box %26
     jump b1(%28, %27)
 
-fn counting$Http_stream#120 clause std::http::Http.stream -> word ; main::http_redirect_21_hops, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 word*, %5 word*]
+fn counting$Http_stream#121 clause std::http::Http.stream -> word ; main::http_redirect_21_hops, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 word*, %5 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr, %3 body: ptr):
     drop %0
     %4 callback: ptr = callback %3
@@ -243,14 +243,18 @@ fn counting$Http_stream#120 clause std::http::Http.stream -> word ; main::http_r
   b1(%5 r: word):
     ret %5
 
-fn counting$Http_read_chunk#121 clause std::http::Http.read_chunk -> ptr ; main::http_redirect_21_hops, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*]
+fn counting$Http_read_chunk#122 clause std::http::Http.read_chunk -> ptr ; main::http_redirect_21_hops, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %5 bool, %6 word*, %7 i64, %8 word*]
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
-    perform std::http::Http.read_chunk(%2, %3) -> b1()
-  b1(%4 r: ptr):
-    ret %4
+    %4 $site: i64 = const 22
+    dup %2
+    call Http.read_chunk#117(%2, %3, %4) -> b1(%2, %3)
+  b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
+    perform std::http::Http.read_chunk(%6, %7) -> b2()
+  b2(%8 r: ptr):
+    ret %8
 
-fn chain$1#122 lambda -> word ; main::http_redirect_21_hops, captures [], frame 5 slots [%0 word*, %1 word*, %10 word*, %11 i64, %12 word*]
+fn chain$1#123 lambda -> word ; main::http_redirect_21_hops, captures [], frame 5 slots [%0 word*, %1 word*, %10 word*, %11 i64, %12 word*]
   b0(%0 env: ptr, %1 i: word):
     drop %0
     %2 unbox: i64 = unbox %1
@@ -262,7 +266,7 @@ fn chain$1#122 lambda -> word ; main::http_redirect_21_hops, captures [], frame 
     %6 r: ptr = alloc std::http::Matcher.Path(%5)
     %7 lit: i64 = const 302
     %8 lit: ptr = const str 0
-    %9 $site: i64 = const 20
+    %9 $site: i64 = const 23
     call status#4(%7, %8, %9) -> b1(%2, %6)
   b1(%10 r: ptr, %11 i: i64, %12 r: ptr):
     %13 lit: i64 = const 1

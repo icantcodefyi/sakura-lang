@@ -1,0 +1,13 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §7.2, §17.115, §17.286 (8)
+
+// `Random.int(lo, hi)` requires `lo <= hi`: a reversed range is the performer's defect
+// (`D020`, blaming this perform), checked before the handler draws.
+pub fn main() -> Unit ! {Console} {
+  with Random.seeded(7) {
+    Console.print("{Random.int(1, 1)}")
+    Console.print("{Random.int(3, 2)}")
+  }
+}

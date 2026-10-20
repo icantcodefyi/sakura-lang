@@ -23,7 +23,7 @@ layout 17 shape |  32b (word*, word*)
 layout 18 shape |  32b (i64, word*)
 layout 19 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 18 slots [%6 word*, %18 bool, %24 bool, %27 word*, %29 word*, %33 word*, %35 word*, %37 word*, %41 word*, %62 word*, %63 word*, %64 i64, %65 i64, %66 word*, %69 bool, %70 word*, %71 i64, %72 i64]
+fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 24 slots [%6 word*, %18 bool, %24 bool, %27 word*, %29 word*, %33 bool, %34 word*, %35 word*, %38 word*, %40 word*, %42 word*, %46 bool, %47 word*, %48 word*, %51 word*, %72 word*, %73 word*, %74 i64, %75 i64, %76 word*, %79 bool, %80 word*, %81 i64, %82 i64]
   b0():
     %0 lit: ptr = const str 0
     %1 r: ptr = alloc std::websocket::Message.Text(%0)
@@ -42,11 +42,11 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 18 slots [%6 word
     %12 xs: ptr = alloc list(%7, %8, %9, %10, %11)
     dup.candidate %12
     %13 n: i64 = $list_len(%12)
-    %74 lit: i64 = const 0
-    jump b13(%74, %12, %13)
+    %84 lit: i64 = const 0
+    jump b15(%84, %12, %13)
   b2() [handle]:
-    try_push -> b10(err, )
-    call options#4() -> b11()
+    try_push -> b11(err, )
+    call options#4() -> b12()
   b3(%14 v: ptr) [handle]:
     %15 s: ptr = show %14
     drop %14
@@ -76,54 +76,66 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 18 slots [%6 word
     %28 err: ptr = alloc std::result::Result.Err(%27)
     jump b5(%28)
   b8(%29 r: ptr) [handle, try]:
-    %30 f: ptr = closure main$2#6[]
+    %30 f: ptr = closure main$2#7[]
     %31 lit: ptr = const str 9
-    %32 callback: ptr = callback %30
-    perform std::websocket::WebSocket.connect(%31, %29, %32) -> b9()
-  b9(%33 r: word) [handle, try]:
-    %34 ok: ptr = alloc std::result::Result.Ok(%33)
+    %32 $site: i64 = const 4
+    dup.candidate %29
+    dup.candidate %30
+    call WebSocket.connect#6(%31, %29, %30, %32) -> b9(%29, %30)
+  b9(%33 pre: unit, %34 r: ptr, %35 f: ptr) [handle, try]:
+    %36 lit: ptr = const str 9
+    %37 callback: ptr = callback %35
+    perform std::websocket::WebSocket.connect(%36, %34, %37) -> b10()
+  b10(%38 r: word) [handle, try]:
+    %39 ok: ptr = alloc std::result::Result.Ok(%38)
     try_pop
-    jump b5(%34)
-  b10(%35 e: word) [handle]:
-    %36 err: ptr = alloc std::result::Result.Err(%35)
-    jump b3(%36)
-  b11(%37 r: ptr) [handle, try]:
-    %38 f: ptr = closure main$1#5[]
-    %39 lit: ptr = const str 9
-    %40 callback: ptr = callback %38
-    perform std::websocket::WebSocket.connect(%39, %37, %40) -> b12()
-  b12(%41 r: word) [handle, try]:
-    %42 ok: ptr = alloc std::result::Result.Ok(%41)
+    jump b5(%39)
+  b11(%40 e: word) [handle]:
+    %41 err: ptr = alloc std::result::Result.Err(%40)
+    jump b3(%41)
+  b12(%42 r: ptr) [handle, try]:
+    %43 f: ptr = closure main$1#5[]
+    %44 lit: ptr = const str 9
+    %45 $site: i64 = const 5
+    dup.candidate %42
+    dup.candidate %43
+    call WebSocket.connect#6(%44, %42, %43, %45) -> b13(%42, %43)
+  b13(%46 pre: unit, %47 r: ptr, %48 f: ptr) [handle, try]:
+    %49 lit: ptr = const str 9
+    %50 callback: ptr = callback %48
+    perform std::websocket::WebSocket.connect(%49, %47, %50) -> b14()
+  b14(%51 r: word) [handle, try]:
+    %52 ok: ptr = alloc std::result::Result.Ok(%51)
     try_pop
-    jump b3(%42)
-  b13(%43 i: i64, %44 xs: ptr, %45 n: i64) [handle]:
-    %46 more: bool = lt.int %43, %45
-    if %46 then b14(%44, %45, %43) else b15(%44, %45, %43)
-  b14(%47 xs: ptr, %48 n: i64, %49 i: i64) [handle]:
-    dup.candidate %47
-    %53 x: word = $list_at(%47, %49)
-    %59 s: ptr = show %53
-    %60 lit: ptr = const str 10
-    %61 s: ptr = concat %59, %60
+    jump b3(%52)
+  b15(%53 i: i64, %54 xs: ptr, %55 n: i64) [handle]:
+    %56 more: bool = lt.int %53, %55
+    if %56 then b16(%54, %55, %53) else b17(%54, %55, %53)
+  b16(%57 xs: ptr, %58 n: i64, %59 i: i64) [handle]:
+    dup.candidate %57
+    %63 x: word = $list_at(%57, %59)
+    %69 s: ptr = show %63
+    %70 lit: ptr = const str 10
+    %71 s: ptr = concat %69, %70
+    drop %70
+    call open#3(%63) -> b19(%57, %58, %59, %71)
+  b17(%60 xs: ptr, %61 n: i64, %62 i: i64) [handle]:
     drop %60
-    call open#3(%53) -> b17(%47, %48, %49, %61)
-  b15(%50 xs: ptr, %51 n: i64, %52 i: i64) [handle]:
-    drop %50
     jump b2()
-  b16(%54 xs: ptr, %55 n: i64, %56 i: i64) [handle]:
-    %57 lit: i64 = const 1
-    %58 i: i64 = intadd %56, %57
-    jump b13(%58, %54, %55)
-  b17(%62 r: ptr, %63 xs: ptr, %64 n: i64, %65 i: i64, %66 s: ptr) [handle]:
-    %67 s: ptr = show %62
-    drop %62
-    %68 s: ptr = concat %66, %67
-    drop %67
-    perform std::console::Console.print(%68) -> b18(%63, %64, %65)
-  b18(%69 r: unit, %70 xs: ptr, %71 n: i64, %72 i: i64) [handle]:
-    %73 box: word = box %69
-    drop %73
-    jump b16(%70, %71, %72)
+  b18(%64 xs: ptr, %65 n: i64, %66 i: i64) [handle]:
+    %67 lit: i64 = const 1
+    %68 i: i64 = intadd %66, %67
+    jump b15(%68, %64, %65)
+  b19(%72 r: ptr, %73 xs: ptr, %74 n: i64, %75 i: i64, %76 s: ptr) [handle]:
+    %77 s: ptr = show %72
+    drop %72
+    %78 s: ptr = concat %76, %77
+    drop %77
+    perform std::console::Console.print(%78) -> b20(%73, %74, %75)
+  b20(%79 r: unit, %80 xs: ptr, %81 n: i64, %82 i: i64) [handle]:
+    %83 box: word = box %79
+    drop %83
+    jump b18(%80, %81, %82)
 
 fn $entry#1 top -> unit ; main::websocket_rejects_url, frame 1 slots [%1 bool]
   b0():
@@ -134,7 +146,7 @@ fn $entry#1 top -> unit ; main::websocket_rejects_url, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn open#3 top -> ptr ; main::websocket_rejects_url, frame 5 slots [%0 word*, %1 word*, %3 word*, %4 word*, %7 word*]
+fn open#3 top -> ptr ; main::websocket_rejects_url, frame 9 slots [%0 word*, %1 word*, %3 word*, %4 word*, %7 bool, %8 word*, %9 word*, %10 word*, %12 word*]
   b0(%0 url: ptr):
     try_push -> b1(err, )
     call options#4() -> b2(%0)
@@ -142,16 +154,22 @@ fn open#3 top -> ptr ; main::websocket_rejects_url, frame 5 slots [%0 word*, %1 
     %2 err: ptr = alloc std::result::Result.Err(%1)
     ret %2
   b2(%3 r: ptr, %4 url: ptr) [try]:
-    %5 f: ptr = closure open$1#7[]
-    %6 callback: ptr = callback %5
-    perform std::websocket::WebSocket.connect(%4, %3, %6) -> b3()
-  b3(%7 r: word) [try]:
-    %8 unbox: i64 = unbox %7
-    drop %7
-    %9 box: word = box %8
-    %10 ok: ptr = alloc std::result::Result.Ok(%9)
+    %5 f: ptr = closure open$1#8[]
+    %6 $site: i64 = const 6
+    dup.candidate %3
+    dup %4
+    dup.candidate %5
+    call WebSocket.connect#6(%4, %3, %5, %6) -> b3(%4, %3, %5)
+  b3(%7 pre: unit, %8 url: ptr, %9 r: ptr, %10 f: ptr) [try]:
+    %11 callback: ptr = callback %10
+    perform std::websocket::WebSocket.connect(%8, %9, %11) -> b4()
+  b4(%12 r: word) [try]:
+    %13 unbox: i64 = unbox %12
+    drop %12
+    %14 box: word = box %13
+    %15 ok: ptr = alloc std::result::Result.Ok(%14)
     try_pop
-    ret %10
+    ret %15
 
 fn main$1#5 lambda -> word ; main::websocket_rejects_url, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
   b0(%0 env: ptr, %1 sock: word):
@@ -163,14 +181,14 @@ fn main$1#5 lambda -> word ; main::websocket_rejects_url, captures [], frame 3 s
     %5 box: word = box %4
     ret %5
 
-fn main$2#6 lambda -> word ; main::websocket_rejects_url, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$2#7 lambda -> word ; main::websocket_rejects_url, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
     perform std::websocket::WebSocket.receive(%1) -> b1()
   b1(%2 r: ptr):
     ret %2
 
-fn open$1#7 lambda -> word ; main::websocket_rejects_url, captures [], frame 2 slots [%0 word*, %1 word*]
+fn open$1#8 lambda -> word ; main::websocket_rejects_url, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 _: word):
     drop %0
     drop %1

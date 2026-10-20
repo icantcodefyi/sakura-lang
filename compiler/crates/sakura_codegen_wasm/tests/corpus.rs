@@ -120,7 +120,17 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
     ),
     (
+        "semantics/fs_read_chunk_rejects_zero",
+        None,
+        "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
+    ),
+    (
         "semantics/http_body_source_scripted",
+        Some(Host::Wasi),
+        "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
+    ),
+    (
+        "semantics/http_read_chunk_rejects_zero",
         Some(Host::Wasi),
         "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
     ),

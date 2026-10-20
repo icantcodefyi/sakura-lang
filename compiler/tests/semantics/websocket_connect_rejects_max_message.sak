@@ -1,0 +1,22 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §7.2, §17.286 (8); RFC 0002 §1
+
+// `WebSocket.connect` requires `options.max_message > 0`: no message fits in zero bytes, so the
+// bound is the performer's defect (`D020`, blaming this perform), checked before the handler
+// parses the URL or opens anything.
+import std/websocket.{Options, WebSocket}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  with WebSocket.scripted([]) {
+    let _ = try {
+      WebSocket.connect(
+        "ws://example.test/",
+        Options { ..WebSocket.options(), max_message: 0 },
+        fn(_sock) { Console.print("opened") },
+      )
+    }
+  }
+}

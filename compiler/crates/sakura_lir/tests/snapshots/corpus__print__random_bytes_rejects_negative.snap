@@ -1,0 +1,55 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::random_bytes_rejects_negative, frame 8 slots [%1 word*, %4 bool, %6 word*, %9 bool, %14 bool, %15 i64, %16 word*, %19 bool]
+  b0():
+    %0 lit: i64 = const 7
+    call seeded#2(%0) -> b1()
+  b1(%1 r: ptr):
+    handle_push %1
+    %2 lit: i64 = const 0
+    %3 $site: i64 = const 4
+    call Random.bytes#3(%2, %3) -> b2()
+  b2(%4 pre: unit) [handle]:
+    %5 lit: i64 = const 0
+    perform std::random::Random.bytes(%5) -> b3()
+  b3(%6 r: ptr) [handle]:
+    %7 r: i64 = $bytes_len(%6)
+    %8 s: ptr = show %7
+    perform std::console::Console.print(%8) -> b4()
+  b4(%9 r: unit) [handle]:
+    %10 box: word = box %9
+    drop %10
+    %11 lit: i64 = const 1
+    %12 t: i64 = intneg %11
+    %13 $site: i64 = const 5
+    call Random.bytes#3(%12, %13) -> b5(%12)
+  b5(%14 pre: unit, %15 t: i64) [handle]:
+    perform std::random::Random.bytes(%15) -> b6()
+  b6(%16 r: ptr) [handle]:
+    %17 r: i64 = $bytes_len(%16)
+    %18 s: ptr = show %17
+    perform std::console::Console.print(%18) -> b7()
+  b7(%19 r: unit) [handle]:
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    handle_pop
+    ret %21
+
+fn $entry#1 top -> unit ; main::random_bytes_rejects_negative, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

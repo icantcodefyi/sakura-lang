@@ -29,7 +29,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
   b0():
     %0 lit: i64 = const 301
     %1 lit: ptr = const str 0
-    %2 $site: i64 = const 7
+    %2 $site: i64 = const 8
     call status#3(%0, %1, %2) -> b1()
   b1(%3 r: ptr):
     %4 lit: ptr = const str 1
@@ -47,7 +47,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %15 r: ptr = alloc std::http::Matcher.Path(%14)
     %16 lit: i64 = const 200
     %17 lit: ptr = const str 4
-    %18 $site: i64 = const 8
+    %18 $site: i64 = const 9
     call status#3(%16, %17, %18) -> b2(%13, %15)
   b2(%19 r: ptr, %20 tup: ptr, %21 r: ptr):
     %22 tup: ptr = alloc tuple#18(word, word)(%21, %19)
@@ -55,7 +55,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %24 r: ptr = alloc std::http::Matcher.Path(%23)
     %25 lit: i64 = const 302
     %26 lit: ptr = const str 6
-    %27 $site: i64 = const 9
+    %27 $site: i64 = const 10
     call status#3(%25, %26, %27) -> b3(%20, %22, %24)
   b3(%28 r: ptr, %29 tup: ptr, %30 tup: ptr, %31 r: ptr):
     %32 tup: ptr = alloc tuple#18(word, word)(%31, %28)
@@ -63,7 +63,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %34 r: ptr = alloc std::http::Matcher.Path(%33)
     %35 lit: i64 = const 300
     %36 lit: ptr = const str 8
-    %37 $site: i64 = const 10
+    %37 $site: i64 = const 11
     call status#3(%35, %36, %37) -> b4(%29, %30, %32, %34)
   b4(%38 r: ptr, %39 tup: ptr, %40 tup: ptr, %41 tup: ptr, %42 r: ptr):
     %43 lit: ptr = const str 9
@@ -79,7 +79,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %52 r: ptr = alloc std::http::Matcher.Path(%51)
     %53 lit: i64 = const 304
     %54 lit: ptr = const str 8
-    %55 $site: i64 = const 11
+    %55 $site: i64 = const 12
     call status#3(%53, %54, %55) -> b5(%39, %40, %41, %50, %52)
   b5(%56 r: ptr, %57 tup: ptr, %58 tup: ptr, %59 tup: ptr, %60 tup: ptr, %61 r: ptr):
     %62 lit: ptr = const str 9
@@ -105,7 +105,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     handle_push %76
     %79 v: ptr = const static std::request::Method.Get
     %80 lit: ptr = const str 12
-    %81 $site: i64 = const 12
+    %81 $site: i64 = const 13
     call Url$from#9(%80, %81) -> b9(%79)
   b9(%82 r: ptr, %83 v: ptr) [handle, handle, handle]:
     call of#10(%83, %82) -> b10()
@@ -171,7 +171,7 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %150 lit: ptr = const str 16
     %151 s: ptr = concat %150, %149
     drop %149
-    %152 $site: i64 = const 13
+    %152 $site: i64 = const 14
     call Url$from#9(%151, %152) -> b24(%109, %110, %111, %115, %148)
   b18(%112 xs: ptr, %113 n: i64, %114 i: i64) [handle, handle, handle]:
     drop %112
@@ -235,9 +235,9 @@ fn $entry#1 top -> unit ; main::http_redirect_manual_returns_3xx, frame 1 slots 
 
 fn logged#7 top -> ptr ; main::http_redirect_manual_returns_3xx, frame 0 slots []
   b0():
-    %0 send: ptr = closure logged$Http_send#100[]
-    %1 stream: ptr = closure logged$Http_stream#101[]
-    %2 read_chunk: ptr = closure logged$Http_read_chunk#102[]
+    %0 send: ptr = closure logged$Http_send#101[]
+    %1 stream: ptr = closure logged$Http_stream#102[]
+    %2 read_chunk: ptr = closure logged$Http_read_chunk#103[]
     %3 handler: ptr = handler std::http::Http row 20 state() clauses(%0, %1, %2)
     ret %3
 
@@ -249,7 +249,7 @@ fn main$1#11 lambda -> word ; main::http_redirect_manual_returns_3xx, captures [
     %3 box: word = box %2
     ret %3
 
-fn logged$Http_send#100 clause std::http::Http.send -> ptr ; main::http_redirect_manual_returns_3xx, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %7 bool, %8 word*, %10 word*]
+fn logged$Http_send#101 clause std::http::Http.send -> ptr ; main::http_redirect_manual_returns_3xx, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %7 bool, %8 word*, %10 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr):
     drop %0
     %3 url: word = proj %2.1 std::request::Request
@@ -266,7 +266,7 @@ fn logged$Http_send#100 clause std::http::Http.send -> ptr ; main::http_redirect
   b2(%10 r: ptr):
     ret %10
 
-fn logged$Http_stream#101 clause std::http::Http.stream -> word ; main::http_redirect_manual_returns_3xx, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 word*, %5 word*]
+fn logged$Http_stream#102 clause std::http::Http.stream -> word ; main::http_redirect_manual_returns_3xx, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 word*, %5 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr, %3 body: ptr):
     drop %0
     %4 callback: ptr = callback %3
@@ -274,9 +274,13 @@ fn logged$Http_stream#101 clause std::http::Http.stream -> word ; main::http_red
   b1(%5 r: word):
     ret %5
 
-fn logged$Http_read_chunk#102 clause std::http::Http.read_chunk -> ptr ; main::http_redirect_manual_returns_3xx, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*]
+fn logged$Http_read_chunk#103 clause std::http::Http.read_chunk -> ptr ; main::http_redirect_manual_returns_3xx, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %5 bool, %6 word*, %7 i64, %8 word*]
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
-    perform std::http::Http.read_chunk(%2, %3) -> b1()
-  b1(%4 r: ptr):
-    ret %4
+    %4 $site: i64 = const 25
+    dup %2
+    call Http.read_chunk#21(%2, %3, %4) -> b1(%2, %3)
+  b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
+    perform std::http::Http.read_chunk(%6, %7) -> b2()
+  b2(%8 r: ptr):
+    ret %8

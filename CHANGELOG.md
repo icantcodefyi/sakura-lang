@@ -190,6 +190,14 @@ retains earlier implementation history.
 
 ### Fixed
 
+- An effect operation's `requires` is now checked at every perform site, on every backend
+  (design §7.2, §17.286 (8)): `Cli.exit(256)`, `Random.int(3, 2)`, `Random.bytes(-1)`,
+  `Fs.read_chunk(f, 0)`, `Http.read_chunk(b, 0)`, `WebSocket.connect` with `max_message` 0
+  and `WebSocket.close` with a code outside `closable` are `D020` blaming the perform, before
+  any handler runs, where they previously reached the handler unchecked (or, for
+  `WebSocket`, defected inside `std`). An operation's `ensures` is checked when the perform
+  returns normally (`D021`). A handler never re-checks; a handler arm that performs the
+  operation again is checked again.
 - `std/stream` (design §17.284): `to_list` requires `max_items >= 0` (a negative bound is
   `D020`), and `lines` fails `MaxLine` on a final line without an LF longer than `max_line`
   (its CR counted), so no yielded line exceeds the bound.

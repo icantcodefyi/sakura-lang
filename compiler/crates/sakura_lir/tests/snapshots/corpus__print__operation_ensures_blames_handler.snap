@@ -1,0 +1,67 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::operation_ensures_blames_handler, frame 6 slots [%4 bool, %5 i64, %8 i64, %11 bool, %12 i64, %14 bool]
+  b0():
+    %0 take: ptr = closure overshooting$Meter_take#4[]
+    %1 r: ptr = handler main::operation_ensures_blames_handler::Meter row 4 state() clauses(%0)
+    %2 $act: id = handle_push %1
+    %3 lit: ptr = const str 0
+    perform std::console::Console.print(%3) -> b1(%2)
+  b1(%4 r: unit, %5 $act: id) [handle]:
+    %6 box: word = box %4
+    drop %6
+    %7 lit: i64 = const 1
+    %9 clause: ptr = bound %5 main::operation_ensures_blames_handler::Meter.take
+    call overshooting$Meter_take#4(%9, %5, %7) -> b2()
+  b2(%8 r: i64) [handle]:
+    %10 lit: i64 = const 1
+    call Meter.take#3(%10, %8) -> b3(%8)
+  b3(%11 post: unit, %12 r: i64) [handle]:
+    %13 s: ptr = show %12
+    perform std::console::Console.print(%13) -> b4()
+  b4(%14 r: unit) [handle]:
+    %15 box: word = box %14
+    %16 unbox: unit = unbox %15
+    drop %15
+    handle_pop
+    ret %16
+
+fn $entry#1 top -> unit ; main::operation_ensures_blames_handler, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn overshooting#2 top -> ptr ; main::operation_ensures_blames_handler, frame 0 slots []
+  b0():
+    %0 take: ptr = closure overshooting$Meter_take#4[]
+    %1 handler: ptr = handler main::operation_ensures_blames_handler::Meter row 4 state() clauses(%0)
+    ret %1
+
+fn Meter.take#3 top -> unit ; main::operation_ensures_blames_handler, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 n: i64, %1 result: i64):
+    %2 lit: unit = const ()
+    %3 t: bool = le.int %1, %0
+    %4 lit: unit = const ()
+    check D021 %3 ; bounded
+    %5 post: unit = const ()
+    %6 lit: unit = const ()
+    ret %6
+
+fn overshooting$Meter_take#4 clause main::operation_ensures_blames_handler::Meter.take -> i64 ; main::operation_ensures_blames_handler, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 n: i64):
+    drop %0
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    ret %4

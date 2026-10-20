@@ -89,7 +89,6 @@ pub fn messages(sock: Socket) -> Source<Message, {WebSocket, Fail<SocketError>}>
 pub fn host() -> Handler<WebSocket> {
   handler WebSocket {
     fn connect(url, options, body) {
-      positive(options.max_message)
       let target = checked_url(url)
       let opened = match ws_connect(target, options) {
         Ok(o) => o,
@@ -107,10 +106,7 @@ pub fn host() -> Handler<WebSocket> {
       }
     }
     fn receive(sock) { host_ok(ws_receive(sock.id)) }
-    fn close(sock, code, reason) {
-      close_args(code, reason)
-      host_ok(ws_close(sock.id, code, reason))
-    }
+    fn close(sock, code, reason) { host_ok(ws_close(sock.id, code, reason)) }
   }
 }
 
@@ -130,7 +126,6 @@ pub fn scripted(script: List<ScriptStep>) -> Handler<WebSocket> {
     var peers: Map<Int, Peer> = Map.empty()
     var next = 0
     fn connect(url, options, body) {
-      positive(options.max_message)
       let _ = checked_url(url)
       next = next + 1
       let id = next
@@ -175,7 +170,6 @@ pub fn scripted(script: List<ScriptStep>) -> Handler<WebSocket> {
       }
     }
     fn close(sock, code, reason) {
-      close_args(code, reason)
       let peer = peer_of(peers, sock)
       if !peer.closed.is_some() {
         let info = CloseInfo { code, reason, clean: true }
@@ -190,15 +184,6 @@ pub fn scripted(script: List<ScriptStep>) -> Handler<WebSocket> {
     }
   }
 }
-
-// The operations' preconditions, checked in each handler as they are declared (`D020`).
-fn positive(max_message: Int) -> Unit
-  requires max_message > 0
-{}
-
-fn close_args(code: Int, reason: String) -> Unit
-  requires closable(code, reason)
-{}
 
 /// A scripted peer's state: the steps left, the messages the client has not received yet, the
 /// close once it is queued, and the connection's `max_message`.

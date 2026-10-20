@@ -614,7 +614,7 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-- `requires` is checked on entry; a failure is a **caller defect** `D020` with blame on the call site (span of the call, in the diagnostic) and the clause name.
+- `requires` is checked on entry; a failure is a **caller defect** `D020` with blame on the call site (span of the call, in the diagnostic) and the clause name. An operation's `requires` is checked at the perform site, blaming the performer; its `ensures` is checked when the perform returns normally (`D021`), and a handler never re-checks (§17.286 (8)).
 - `ensures` is checked once on **normal return**, with `result` bound to the value. Never checked when the function fails or defects. Failure is a **callee defect** `D021`. `old(expr)` is not in v0 (no mutation to snapshot).
 - `where` on a refined type is checked at introduction (§4.3). Field refinements are checked at record construction, which is why `User { ..u, email: e }` with `e: Email` needs no re-check.
 - Contract checks run in **every build**; there is no `--release` mode that drops or weakens them (§17.163). The only way a check disappears is a `proved` status from `sakura verify` (M4+), recorded per obligation.

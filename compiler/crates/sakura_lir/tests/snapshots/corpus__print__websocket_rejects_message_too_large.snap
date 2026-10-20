@@ -23,7 +23,7 @@ layout 17 shape |  32b (word*, word*)
 layout 18 shape |  32b (i64, word*)
 layout 19 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 slots [%0 word*, %24 word*, %25 word*, %32 word*, %33 word*, %38 bool, %41 word*, %46 word*, %53 bool, %54 word*, %56 word*, %57 word*, %62 word*, %63 word*]
+fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 slots [%0 word*, %24 word*, %25 word*, %32 word*, %33 word*, %38 bool, %41 word*, %46 bool, %47 word*, %48 word*, %51 word*, %58 bool, %59 word*, %61 word*, %62 word*, %67 bool, %68 word*, %69 word*, %72 word*, %73 word*]
   b0():
     call options#2() -> b1()
   b1(%0 r: ptr):
@@ -55,12 +55,13 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 
   b2(%24 r: ptr, %25 rec: ptr):
     handle_push %24
     dup %25
-    try_push -> b11(err, %25)
-    %59 f: ptr = closure main$1#4[]
-    %60 lit: ptr = const str 3
-    %61 callback: ptr = callback %59
-    dup %25
-    perform std::websocket::WebSocket.connect(%60, %25, %61) -> b12(%25)
+    try_push -> b12(err, %25)
+    %64 f: ptr = closure main$1#4[]
+    %65 lit: ptr = const str 3
+    %66 $site: i64 = const 5
+    dup.candidate %25
+    dup.candidate %64
+    call WebSocket.connect#5(%65, %25, %64, %66) -> b13(%25, %64)
   b3(%26 v: word, %27 rec: ptr):
     drop %26
     %28 lit: ptr = const str 1
@@ -71,10 +72,12 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 
   b4(%32 r: ptr, %33 rec: ptr):
     handle_push %32
     try_push -> b7(err, )
-    %43 f: ptr = closure main$2#5[]
+    %43 f: ptr = closure main$2#6[]
     %44 lit: ptr = const str 3
-    %45 callback: ptr = callback %43
-    perform std::websocket::WebSocket.connect(%44, %33, %45) -> b8()
+    %45 $site: i64 = const 4
+    dup.candidate %33
+    dup.candidate %43
+    call WebSocket.connect#5(%44, %33, %43, %45) -> b8(%33, %43)
   b5(%34 v: ptr) [handle]:
     %35 s: ptr = show %34
     drop %34
@@ -91,28 +94,37 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 
   b7(%41 e: word) [handle]:
     %42 err: ptr = alloc std::result::Result.Err(%41)
     jump b5(%42)
-  b8(%46 r: word) [handle, try]:
-    %47 ok: ptr = alloc std::result::Result.Ok(%46)
+  b8(%46 pre: unit, %47 rec: ptr, %48 f: ptr) [handle, try]:
+    %49 lit: ptr = const str 3
+    %50 callback: ptr = callback %48
+    perform std::websocket::WebSocket.connect(%49, %47, %50) -> b9()
+  b9(%51 r: word) [handle, try]:
+    %52 ok: ptr = alloc std::result::Result.Ok(%51)
     try_pop
-    jump b5(%47)
-  b9(%48 v: ptr, %49 rec: ptr) [handle]:
-    %50 s: ptr = show %48
-    drop %48
-    %51 lit: ptr = const str 4
-    %52 s: ptr = concat %51, %50
-    drop %50
-    perform std::console::Console.print(%52) -> b10(%49)
-  b10(%53 r: unit, %54 rec: ptr) [handle]:
-    %55 box: word = box %53
+    jump b5(%52)
+  b10(%53 v: ptr, %54 rec: ptr) [handle]:
+    %55 s: ptr = show %53
+    drop %53
+    %56 lit: ptr = const str 4
+    %57 s: ptr = concat %56, %55
+    drop %55
+    perform std::console::Console.print(%57) -> b11(%54)
+  b11(%58 r: unit, %59 rec: ptr) [handle]:
+    %60 box: word = box %58
     handle_pop
-    jump b3(%55, %54)
-  b11(%56 e: word, %57 rec: ptr) [handle]:
-    %58 err: ptr = alloc std::result::Result.Err(%56)
-    jump b9(%58, %57)
-  b12(%62 r: word, %63 rec: ptr) [handle, try]:
-    %64 ok: ptr = alloc std::result::Result.Ok(%62)
+    jump b3(%60, %59)
+  b12(%61 e: word, %62 rec: ptr) [handle]:
+    %63 err: ptr = alloc std::result::Result.Err(%61)
+    jump b10(%63, %62)
+  b13(%67 pre: unit, %68 rec: ptr, %69 f: ptr) [handle, try]:
+    %70 lit: ptr = const str 3
+    %71 callback: ptr = callback %69
+    dup %68
+    perform std::websocket::WebSocket.connect(%70, %68, %71) -> b14(%68)
+  b14(%72 r: word, %73 rec: ptr) [handle, try]:
+    %74 ok: ptr = alloc std::result::Result.Ok(%72)
     try_pop
-    jump b9(%64, %63)
+    jump b10(%74, %73)
 
 fn $entry#1 top -> unit ; main::websocket_rejects_message_too_large, frame 1 slots [%1 bool]
   b0():
@@ -173,7 +185,7 @@ fn main$1#4 lambda -> word ; main::websocket_rejects_message_too_large, captures
     try_pop
     jump b1(%33, %31)
 
-fn main$2#5 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$2#6 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
     perform std::websocket::WebSocket.receive(%1) -> b1()

@@ -1,0 +1,108 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::http::Body
+layout 1 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 2 variant std::http::Leg | Answered 24b (word*) | Hop 24b (word*)
+layout 3 variant std::http::Matcher | Any 16b () | Path 24b (word*) | Method 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 7 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 8 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 9 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 10 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 11 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 14 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 15 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 16 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 17 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+layout 20 shape |  16b ()
+layout 21 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::http_read_chunk_rejects_zero, frame 10 slots [%4 word*, %5 word*, %8 word*, %10 bool, %12 bool, %15 word*, %20 word*, %21 word*, %22 word*, %25 word*]
+  b0():
+    %0 v: ptr = const static std::http::Matcher.Any
+    %1 lit: i64 = const 200
+    %2 lit: ptr = const str 0
+    %3 $site: i64 = const 8
+    call status#5(%1, %2, %3) -> b1(%0)
+  b1(%4 r: ptr, %5 v: ptr):
+    %6 tup: ptr = alloc tuple#18(word, word)(%5, %4)
+    %7 xs: ptr = alloc list(%6)
+    call scripted#6(%7) -> b2()
+  b2(%8 r: ptr):
+    handle_push %8
+    try_push -> b6(err, )
+    %17 v: ptr = const static std::request::Method.Get
+    %18 lit: ptr = const str 1
+    %19 $site: i64 = const 9
+    call Url$from#7(%18, %19) -> b7(%17)
+  b3(%9 v: ptr) [handle]:
+    call is_ok#11(%9) -> b4()
+  b4(%10 r: bool) [handle]:
+    %11 s: ptr = show %10
+    perform std::console::Console.print(%11) -> b5()
+  b5(%12 r: unit) [handle]:
+    %13 box: word = box %12
+    %14 unbox: unit = unbox %13
+    drop %13
+    handle_pop
+    ret %14
+  b6(%15 e: word) [handle]:
+    %16 err: ptr = alloc std::result::Result.Err(%15)
+    jump b3(%16)
+  b7(%20 r: ptr, %21 v: ptr) [handle, try]:
+    call of#8(%21, %20) -> b8()
+  b8(%22 r: ptr) [handle, try]:
+    %23 f: ptr = closure main$1#9[]
+    %24 callback: ptr = callback %23
+    perform std::http::Http.stream(%22, %24) -> b9()
+  b9(%25 r: word) [handle, try]:
+    %26 ok: ptr = alloc std::result::Result.Ok(%25)
+    try_pop
+    jump b3(%26)
+
+fn $entry#1 top -> unit ; main::http_read_chunk_rejects_zero, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#9 lambda -> word ; main::http_read_chunk_rejects_zero, captures [], frame 12 slots [%0 word*, %1 word*, %5 bool, %6 word*, %7 word*, %9 word*, %10 word*, %13 bool, %14 word*, %19 bool, %20 word*, %22 word*]
+  b0(%0 env: ptr, %1 i: word):
+    drop %0
+    %2 body: word = proj %1.2 std::http::Incoming
+    %3 lit: i64 = const 1
+    %4 $site: i64 = const 11
+    dup %2
+    call Http.read_chunk#10(%2, %3, %4) -> b1(%1, %2)
+  b1(%5 pre: unit, %6 i: ptr, %7 body: ptr):
+    %8 lit: i64 = const 1
+    perform std::http::Http.read_chunk(%7, %8) -> b2(%6)
+  b2(%9 r: ptr, %10 i: ptr):
+    %11 r: i64 = $bytes_len(%9)
+    %12 s: ptr = show %11
+    perform std::console::Console.print(%12) -> b3(%10)
+  b3(%13 r: unit, %14 i: ptr):
+    %15 box: word = box %13
+    drop %15
+    %16 body: word = proj %14.2 std::http::Incoming
+    drop %14
+    %17 lit: i64 = const 0
+    %18 $site: i64 = const 12
+    dup %16
+    call Http.read_chunk#10(%16, %17, %18) -> b4(%16)
+  b4(%19 pre: unit, %20 body: ptr):
+    %21 lit: i64 = const 0
+    perform std::http::Http.read_chunk(%20, %21) -> b5()
+  b5(%22 r: ptr):
+    ret %22

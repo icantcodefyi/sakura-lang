@@ -23,7 +23,7 @@ layout 17 shape |  32b (word*, word*)
 layout 18 shape |  32b (i64, word*)
 layout 19 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::websocket_close_rejects_code, frame 8 slots [%2 bool, %8 bool, %9 word*, %12 bool, %15 word*, %18 word*, %20 word*, %24 word*]
+fn main#0 pub top -> unit ; main::websocket_close_rejects_code, frame 11 slots [%2 bool, %8 bool, %9 word*, %12 bool, %15 word*, %18 word*, %20 word*, %24 bool, %25 word*, %26 word*, %29 word*]
   b0():
     %0 lit: i64 = const 1000
     %1 lit: ptr = const str 0
@@ -61,12 +61,18 @@ fn main#0 pub top -> unit ; main::websocket_close_rejects_code, frame 8 slots [%
   b7(%20 r: ptr) [handle, try]:
     %21 f: ptr = closure main$1#5[]
     %22 lit: ptr = const str 2
-    %23 callback: ptr = callback %21
-    perform std::websocket::WebSocket.connect(%22, %20, %23) -> b8()
-  b8(%24 r: word) [handle, try]:
-    %25 ok: ptr = alloc std::result::Result.Ok(%24)
+    %23 $site: i64 = const 5
+    dup.candidate %20
+    dup.candidate %21
+    call WebSocket.connect#7(%22, %20, %21, %23) -> b8(%20, %21)
+  b8(%24 pre: unit, %25 r: ptr, %26 f: ptr) [handle, try]:
+    %27 lit: ptr = const str 2
+    %28 callback: ptr = callback %26
+    perform std::websocket::WebSocket.connect(%27, %25, %28) -> b9()
+  b9(%29 r: word) [handle, try]:
+    %30 ok: ptr = alloc std::result::Result.Ok(%29)
     try_pop
-    jump b5(%25)
+    jump b5(%30)
 
 fn $entry#1 top -> unit ; main::websocket_close_rejects_code, frame 1 slots [%1 bool]
   b0():
@@ -77,12 +83,18 @@ fn $entry#1 top -> unit ; main::websocket_close_rejects_code, frame 1 slots [%1 
     handle_pop
     ret %1
 
-fn main$1#5 lambda -> word ; main::websocket_close_rejects_code, captures [], frame 3 slots [%0 word*, %1 word*, %4 bool]
+fn main$1#5 lambda -> word ; main::websocket_close_rejects_code, captures [], frame 5 slots [%0 word*, %1 word*, %5 bool, %6 word*, %9 bool]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
     %2 lit: i64 = const 1001
     %3 lit: ptr = const str 3
-    perform std::websocket::WebSocket.close(%1, %2, %3) -> b1()
-  b1(%4 r: unit):
-    %5 box: word = box %4
-    ret %5
+    %4 $site: i64 = const 6
+    dup %1
+    call WebSocket.close#6(%1, %2, %3, %4) -> b1(%1)
+  b1(%5 pre: unit, %6 sock: ptr):
+    %7 lit: i64 = const 1001
+    %8 lit: ptr = const str 3
+    perform std::websocket::WebSocket.close(%6, %7, %8) -> b2()
+  b2(%9 r: unit):
+    %10 box: word = box %9
+    ret %10

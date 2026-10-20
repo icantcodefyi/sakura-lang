@@ -16,6 +16,7 @@ semantics/bytes_base64_rejects_padding: unsupported (builtin bytes_from_base64)
 semantics/bytes_base64_vectors: unsupported (builtin string_to_bytes)
 semantics/bytes_slice_concat: unsupported (builtin string_to_bytes)
 semantics/catch_around_row_polymorphic_call: ok, 17 allocated, 9 dup, 26 drop, peak 9, live 0/0
+semantics/cli_exit_rejects_code: D020, 5 allocated, 0 dup, 5 drop, peak 5, live 0/0
 semantics/cli_parse_messages: unsupported (builtin cli_parse)
 semantics/clock_micros_monotonic: unsupported (builtin clock_host)
 semantics/closures: ok, 24 allocated, 12 dup, 36 drop, peak 9, live 0/0
@@ -80,6 +81,7 @@ semantics/form_multipart_roundtrip: unsupported (builtin string_to_bytes)
 semantics/form_parse_rejects_limits: unsupported (builtin string_to_bytes)
 semantics/form_parse_rejects_malformed: unsupported (builtin string_to_bytes)
 semantics/form_urlencoded_roundtrip: unsupported (builtin bytes_from_list)
+semantics/fs_read_chunk_rejects_zero: unsupported (builtin string_to_bytes)
 semantics/function_values: ok, 20 allocated, 7 dup, 27 drop, peak 9, live 0/0
 semantics/fused_get_expect: ok, 331 allocated, 5373 dup, 5704 drop, peak 108, live 0/0
 semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, live 0/0
@@ -102,6 +104,7 @@ semantics/hello: ok, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/host_fs_env: unsupported (builtin string_to_bytes)
 semantics/host_root_handlers: unsupported (builtin clock_host)
 semantics/http_body_source_scripted: unsupported (builtin string_to_bytes)
+semantics/http_read_chunk_rejects_zero: unsupported (builtin string_to_bytes)
 semantics/http_redirect_21_hops: unsupported (builtin string_to_bytes)
 semantics/http_redirect_drops_secrets_cross_origin: unsupported (builtin secret_wrap)
 semantics/http_redirect_error_fails: ok, 272 allocated, 381 dup, 653 drop, peak 48, live 0/0
@@ -144,6 +147,7 @@ semantics/native_coverage_handled_http_runs: ok, 47 allocated, 56 dup, 103 drop,
 semantics/nested_options: ok, 280 allocated, 474 dup, 754 drop, peak 47, live 0/0
 semantics/nested_options_json: unsupported (builtin json_encode)
 semantics/newline_rule: ok, 34 allocated, 41 dup, 75 drop, peak 11, live 0/0
+semantics/operation_ensures_blames_handler: D021, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
 semantics/owned_argument_used_after_call: ok, 498 allocated, 4030 dup, 4528 drop, peak 126, live 0/0
 semantics/owned_captured_and_stored: ok, 514 allocated, 3258 dup, 3772 drop, peak 48, live 0/0
 semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0/0
@@ -159,6 +163,8 @@ semantics/owned_record_retained: ok, 277 allocated, 547 dup, 824 drop, peak 21, 
 semantics/owned_record_unsettled: ok, 31 allocated, 42 dup, 73 drop, peak 17, live 0/0
 semantics/owned_retained_version: unsupported (builtin map_remove)
 semantics/owned_tuple_threaded: ok, 232 allocated, 574 dup, 806 drop, peak 22, live 0/0
+semantics/random_bytes_rejects_negative: unsupported (builtin bytes_from_list)
+semantics/random_int_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, peak 7, live 0/0
 semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
@@ -216,6 +222,7 @@ semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0
 semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)
+semantics/websocket_connect_rejects_max_message: D020, 13 allocated, 5 dup, 18 drop, peak 12, live 0/0
 semantics/websocket_rejects_message_too_large: unsupported (builtin bytes_from_list)
 semantics/websocket_rejects_url: unsupported (builtin string_to_bytes)
 semantics/websocket_scripted_close_info: unsupported (builtin string_to_bytes)

@@ -125,6 +125,8 @@ pub(crate) struct Lower<'p> {
     dicts: HashMap<hir::DefId, DefId>,
     /// Constructor/op used as a function value → wrapper lambda.
     ctor_fns: HashMap<hir::DefId, DefId>,
+    /// Operation → the defs checking its `requires` and its `ensures` at each perform site.
+    op_contracts: HashMap<hir::DefId, OpContracts>,
     /// Copies of generic functions specialized to their `Show`/`Schema` type arguments.
     specs: HashMap<(hir::DefId, Subst), DefId>,
     spec_count: HashMap<hir::DefId, u32>,
@@ -149,6 +151,14 @@ pub(crate) struct Lower<'p> {
 /// A field's `where`: its predicate body, the field name and its range.
 type FieldPred = (hir::BodyId, String, text_size::TextRange);
 
+/// An operation's `requires` def (its parameters) and `ensures` def (its parameters, then the
+/// result), each called around every perform of it (design §17.286 (8)).
+#[derive(Clone, Copy, Default)]
+pub(crate) struct OpContracts {
+    pub requires: Option<DefId>,
+    pub ensures: Option<DefId>,
+}
+
 /// Type arguments for a function's type parameters, by `ParamId` index (`Ty::Var(p)`).
 pub(crate) type Subst = Vec<(u32, Ty)>;
 
@@ -169,6 +179,7 @@ impl<'p> Lower<'p> {
             refined: HashMap::new(),
             queue: Vec::new(),
             ctor_fns: HashMap::new(),
+            op_contracts: HashMap::new(),
             specs: HashMap::new(),
             spec_count: HashMap::new(),
             dicts: HashMap::new(),
@@ -1196,9 +1207,21 @@ impl<'p> Lower<'p> {
             .collect();
         let args: Vec<Atom> = params.iter().map(|p| local(*p)).collect();
         let r = b.local("r", f.ret.clone());
-        let bind = self.ctor_bind(d, args);
+        let checks = self.op_contracts(d);
         let mut blk = Block::new();
+        if let Some(pre) = checks.requires {
+            let n = self.op_arity(d);
+            let x = b.local("pre", Ty::Unit);
+            blk.push(x, Bind::Call(Atom::Global(pre), args[..n].to_vec()));
+        }
+        let bind = self.ctor_bind(d, args.clone());
         blk.push(r, bind);
+        if let Some(post) = checks.ensures {
+            let mut a = args[..self.op_arity(d)].to_vec();
+            a.push(local(r));
+            let x = b.local("post", Ty::Unit);
+            blk.push(x, Bind::Call(Atom::Global(post), a));
+        }
         let name = format!("{}$fn", self.p.def(d).name);
         let id = self.push_placeholder(&name, self.module_name(d.module));
         self.ctor_fns.insert(d, id);
@@ -1210,6 +1233,63 @@ impl<'p> Lower<'p> {
         fd.row = f.row.clone();
         fd.body = blk.finish(Expr::Ret(local(r)));
         id
+    }
+
+    /// The defs that check operation `d`'s `requires` and `ensures` around a perform: the def
+    /// entry's checks, run at the perform site, so `D020` blames the performer's call span as a
+    /// call's does; a handler never re-checks (design §7.2, §17.286 (8)).
+    pub fn op_contracts(&mut self, d: hir::DefId) -> OpContracts {
+        if let Some(&c) = self.op_contracts.get(&d) {
+            return c;
+        }
+        let def = self.p.def(d);
+        let hir::DefKind::Op(o) = &def.kind else {
+            return OpContracts::default();
+        };
+        let Some(body_id) = o.body else {
+            self.op_contracts.insert(d, OpContracts::default());
+            return OpContracts::default();
+        };
+        let eff = hir::DefId {
+            module: d.module,
+            index: o.effect,
+        };
+        let name = format!("{}.{}", self.p.def(eff).name, def.name);
+        let ret = self.ty_ref(&o.sig.ret, &[]);
+        let body = self.p.body(d.module, body_id);
+        let (has_pre, has_post) = (!body.requires.is_empty(), !body.ensures.is_empty());
+        let module = self.module_name(d.module);
+        let mut c = OpContracts::default();
+        // Registered first, so a clause that performs the operation again finds them.
+        if has_pre {
+            c.requires = Some(self.push_placeholder(&name, module.clone()));
+        }
+        if has_post {
+            c.ensures = Some(self.push_placeholder(&name, module));
+        }
+        self.op_contracts.insert(d, c);
+        for (id, ensures) in [(c.requires, false), (c.ensures, true)] {
+            if let Some(id) = id {
+                let fd = expr::FnLower::lower_op_contract(
+                    self,
+                    d.module,
+                    body_id,
+                    name.clone(),
+                    id,
+                    ensures.then(|| ret.clone()),
+                );
+                self.m.defs[id.index()] = fd;
+            }
+        }
+        c
+    }
+
+    /// The number of declared parameters of operation `d` (its schema arguments follow them).
+    pub fn op_arity(&self, d: hir::DefId) -> usize {
+        match &self.p.def(d).kind {
+            hir::DefKind::Op(o) => o.sig.params.len(),
+            _ => 0,
+        }
     }
 
     /// Construction or operation for a variant/error/op def applied to `args`.

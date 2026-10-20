@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §7.2, §17.115, §17.286 (8)
+
+// An operation's `requires` is checked at the perform site, as a function's is at its call:
+// `Cli.exit`'s code is `0..=255`, so 256 is the performer's defect (`D020`, blaming this
+// perform), raised before any handler runs; `Cli.of`'s `exit` would otherwise defect with
+// `Option.expect`'s code.
+import std/cli.{Cli}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  with Cli.of(["--"]) { Cli.exit(256) }
+}
