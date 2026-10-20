@@ -153,6 +153,8 @@ table! {
     Direct llm_anthropic/2,
     // Serve
     Cps serve_listen/2,
+    // WebSocket (RFC 0002 §1, plan `web-apis.md` phase 8)
+    Cps ws_connect/2, Cps ws_send/2, Cps ws_receive/1, Direct ws_close/3,
     // Compiler support
     Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }

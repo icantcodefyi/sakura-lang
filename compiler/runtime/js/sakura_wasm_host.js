@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010700;
+export const ABI_VERSION = 0x010800;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -379,6 +379,8 @@ export const HOSTED = {
     run: (_h, id, req, resp) => ({ ok: rt.http_recording_append(id, req, resp) }),
     result: () => R("U", "S"),
   },
+  // `std/websocket` (ABI 1.8.0): starts the closing handshake of socket `id` at once.
+  ws_close: { run: (_h, id, code, reason) => ({ ok: rt.ws_close(id, code, reason) }), result: () => R("U", "S") },
   json_decode: {
     run: (_h, text, schema) => ({ ok: rt.json_decode(text, JSON.parse(schema)) }),
     result: ([, schema]) => R(JSON.parse(schema), DECODE_ERROR),
@@ -735,6 +737,12 @@ export class Host {
           this.async(request, ptr, len, rt.http_stream_open, R(["A", "std::http::Incoming", []], "S")),
         http_stream_read: (request, ptr, len) =>
           this.async(request, ptr, len, rt.http_stream_read, R("Y", "S"), BODY_ARG),
+        // `std/websocket` (ABI 1.8.0), as `http_*`: a socket is the JS runtime's plain `Int` id,
+        // closed by `file_close` when `connect`'s callback leaves.
+        ws_connect: (request, ptr, len) => this.async(request, ptr, len, rt.ws_connect, R(["T", "I", "S"], "S")),
+        ws_send: (request, ptr, len) => this.async(request, ptr, len, rt.ws_send, R("B", "S")),
+        ws_receive: (request, ptr, len) =>
+          this.async(request, ptr, len, rt.ws_receive, R(["A", "std::websocket::Received", []], "S")),
         http_body_close: (ptr, len) => {
           const [body] = this.args(ptr, len, BODY_ARG);
           rt.http_body_close(body);

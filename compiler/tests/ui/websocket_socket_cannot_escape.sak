@@ -1,0 +1,11 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §1; design §6.3, §8.4; plan web-apis.md phase 8
+// Spec: https://websockets.spec.whatwg.org/#the-websocket-interface
+import std/websocket.{Socket, SocketError, WebSocket}
+
+// A `Socket` is a resource: `connect` closes it when its callback leaves, so returning it from
+// the callback would hand out a closed connection.
+fn open(url: String) -> Socket ! {WebSocket, Fail<SocketError>} {
+  WebSocket.connect(url, WebSocket.options(), fn(sock) { sock })
+}

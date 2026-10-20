@@ -451,6 +451,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_property_run", e::rt_code_unsupported),
         ("rt_k_serve_listen", e::rt_code_unsupported),
         ("rt_k_test_expect_defect", e::rt_k_test_expect_defect),
+        ("rt_k_ws_connect", e::rt_code_unsupported),
+        ("rt_k_ws_receive", e::rt_code_unsupported),
+        ("rt_k_ws_send", e::rt_code_unsupported),
     ]
 };
 

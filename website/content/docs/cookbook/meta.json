@@ -13,6 +13,7 @@
     "url_build",
     "form_upload",
     "sign_webhook",
-    "stream_lines"
+    "stream_lines",
+    "websocket_client"
   ]
 }

@@ -67,11 +67,12 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Read CLI arguments and files | `Cli.parse`, `Path`, `Dir`, `Fs.rooted`; test with `Cli.of`, `Fs.memory` |
 | Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests; `UrlPattern.compile`, `exec` for route patterns |
 | Stream a body, a file or text in bounded pieces | `Source.from_list`, `map`, `lines`, `chunks`, `fold`, `to_list`; `Http.body_source`, `Fs.file_source`, `Fs.file_sink`, `Blob.source`, `Encoding.decode_source` |
+| Talk to a WebSocket server | `WebSocket.connect`, `send`, `receive`, `close`, `messages`; `WebSocket.scripted` for tests |
 | Read headers, build or parse a form | `Headers.of`, `get`, `entries`; `Form.encode_multipart`, `parse_multipart` with `FormLimits`; `Blob`, `FileData` |
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
 | Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map`, `std/task.every`, `Task.cancel` |
-| Test effects deterministically | `Test`, `Console.captured`, `Console.scripted`, `Clock.fixed`, `Http.scripted`, `Serve.scripted` |
+| Test effects deterministically | `Test`, `Console.captured`, `Console.scripted`, `Clock.fixed`, `Http.scripted`, `Serve.scripted`, `WebSocket.scripted` |
 
 ## Complexity and behaviour notes
 
@@ -166,6 +167,7 @@ request → url, json, encoding, headers         response → request, encoding,
 html → core             router → request, response, url, urlpattern
 serve → request, response, router, url, encoding
 http → request, response, url, duration, fs, path, stream          budget   prompt
+websocket → url, stream, string, bytes, list, map
 llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
 tool → llm              agent → budget, core, llm, prompt, tool
 ```
@@ -993,6 +995,31 @@ fn to_string(u: Uuid) -> String
 fn parse(text: String) -> Result<Uuid, UuidError>
 fn from_canonical(text: String) -> Uuid requires is_canonical(text)
 fn is_canonical(text: String) -> Bool    // @total
+```
+
+### `std/websocket`
+
+```sakura fragment
+type Message = Text(String) | Binary(Bytes)
+type CloseInfo = { code: Int, reason: String, clean: Bool }
+type Received = Data(Message) | Closed(CloseInfo)
+type SocketReason = Connect(String) | MessageTooLarge | NotOpen | Failed(String)
+error SocketError(reason: SocketReason)
+type Options = { subprotocols: List<String>, headers: List<(String, String)>, max_message: Int }
+fn options() -> Options
+opaque type Socket = { id: Int, protocol: String, max_message: Int }    // @resource
+fn protocol(sock: Socket) -> String
+effect WebSocket {
+  fn connect<T, e>(url: String, options: Options, body: fn(Socket) -> T ! e) -> T ! {Fail<SocketError> | e} requires options.max_message > 0
+  fn send(sock: Socket, message: Message) -> Unit ! {Fail<SocketError>}
+  fn receive(sock: Socket) -> Received ! {Fail<SocketError>}
+  fn close(sock: Socket, code: Int, reason: String) -> Unit ! {Fail<SocketError>} requires closable(code, reason)
+}
+fn closable(code: Int, reason: String) -> Bool    // @total
+fn messages(sock: Socket) -> Source<Message, {WebSocket, Fail<SocketError>}>
+fn host() -> Handler<WebSocket>
+type ScriptStep = Reply(Message, Message) | Push(Message) | Close(Int, String)
+fn scripted(script: List<ScriptStep>) -> Handler<WebSocket>
 ```
 
 <!-- agent_docs: signatures end -->

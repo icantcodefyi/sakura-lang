@@ -215,6 +215,11 @@ semantics/urlpattern_wildcards: 90 funcs, 1358 blocks, 218 dup, 899 drop, valid
 semantics/uuid_decode: 9 funcs, 52 blocks, 6 dup, 38 drop, valid
 semantics/validate_untrusted_into_refined: 9 funcs, 43 blocks, 1 dup, 28 drop, valid
 semantics/variants_and_match: 4 funcs, 38 blocks, 2 dup, 35 drop, valid
+semantics/websocket_close_rejects_code: 82 funcs, 1188 blocks, 174 dup, 856 drop, valid
+semantics/websocket_rejects_message_too_large: 83 funcs, 1201 blocks, 180 dup, 867 drop, valid
+semantics/websocket_rejects_url: 85 funcs, 1205 blocks, 176 dup, 869 drop, valid
+semantics/websocket_scripted_close_info: 83 funcs, 1206 blocks, 180 dup, 870 drop, valid
+semantics/websocket_scripted_echo: 89 funcs, 1229 blocks, 181 dup, 894 drop, valid
 diff/diff_0001: 28 funcs, 302 blocks, 53 dup, 174 drop, valid
 diff/diff_0002: 21 funcs, 239 blocks, 47 dup, 130 drop, valid
 diff/diff_0003: 12 funcs, 83 blocks, 9 dup, 60 drop, valid

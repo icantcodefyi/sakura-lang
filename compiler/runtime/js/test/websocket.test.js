@@ -1,0 +1,197 @@
+// The host's WebSocket client (RFC 0002 §1, §6; plan `web-apis.md` phase 8) against a live
+// local peer (`ws_peer.mjs`): text, binary and fragmented messages, ping/pong, close codes 1000,
+// 1001 (scope exit), 1002, 1007, 1009, the 5-second close timeout, the 64-message queue holding
+// the peer back over TCP, no redirect on the upgrade, and `net`. The scripted handler and the
+// `std/websocket` rules are the `websocket_*` semantics fixtures; the same program against this
+// peer on JS and WASM is `tests/wasm.rs::websocket_host_on_wasm_as_on_js`. A file of its own:
+// `SAKURA_PERMISSIONS` is read once per process, so it is set before the first connect.
+
+import assert from "node:assert/strict";
+import { after, test } from "node:test";
+import * as rt from "../sakura_runtime.js";
+import { closeFrame, echo, frame, listen } from "./ws_peer.mjs";
+
+class Message extends rt.Variant {}
+Message.prototype.$t = rt.variantType("Message", "std::websocket", [["Text", [["String"]]], ["Binary", [["Bytes"]]]]);
+class CloseInfo {
+  constructor(code, reason, clean) {
+    Object.assign(this, { code, reason, clean });
+  }
+}
+class Received extends rt.Variant {}
+Received.prototype.$t = rt.variantType("Received", "std::websocket", [["Data", [["Message"]]], ["Closed", [["CloseInfo"]]]]);
+rt.def("std::websocket::Message", Message);
+rt.def("std::websocket::CloseInfo", CloseInfo);
+rt.def("std::websocket::Received", Received);
+
+/** Each connection's path picks its behaviour; `/moved` is refused with a 301. */
+const behaviours = new Map();
+const peer = await listen(
+  (conn, req) => (behaviours.get(req.url) ?? echo)(conn, req),
+  (req) => (req.url === "/moved" ? 301 : 101),
+);
+after(() => peer.close());
+process.env.SAKURA_PERMISSIONS = JSON.stringify({ net: [`127.0.0.1:${peer.port}`] });
+
+const options = ({ subprotocols = [], headers = [], max = 1 << 24 } = {}) => ({
+  subprotocols: rt.list(subprotocols),
+  headers: rt.list(headers),
+  max_message: max,
+});
+const run = async (f, args) => {
+  const o = await rt.runTask(f, args);
+  if (o.kind !== "ok") assert.fail(JSON.stringify(o));
+  return o.value;
+};
+/** Connects to `path` on the peer; the socket id and chosen subprotocol. */
+async function connect(path, opts = options()) {
+  const r = await run(rt.ws_connect, [`ws://127.0.0.1:${peer.port}${path}`, opts]);
+  assert.equal(r.tag, 0, `connect failed: ${r.fields[0]}`);
+  return r.fields[0];
+}
+const receive = async (id) => (await run(rt.ws_receive, [id])).fields[0];
+const send = (id, m) => run(rt.ws_send, [id, m]);
+const text = (s) => new Message(0, [s]);
+const binary = (b) => new Message(1, [Uint8Array.from(b)]);
+const data = (m) => new Received(0, [m]);
+const closed = (code, reason, clean) => new Received(1, [new CloseInfo(code, reason, clean)]);
+
+test("text and binary echo, a fragmented message is joined, a ping is answered with its pong", async () => {
+  let ponged;
+  const pong = new Promise((resolve) => (ponged = resolve));
+  behaviours.set("/frag", async (conn) => {
+    conn.write(frame(1, "he", false));
+    conn.write(frame(9, "p1"));
+    conn.write(frame(0, "llo"));
+    ponged(await conn.next());
+    echo(conn);
+  });
+  const [id, chosen] = await connect("/frag", options({ subprotocols: ["chat"] }));
+  assert.equal(chosen, "chat");
+  assert.deepEqual(await receive(id), data(text("hello")));
+  const p = await pong;
+  assert.deepEqual([p.op, p.masked, p.payload.toString()], [10, true, "p1"]);
+  assert.deepEqual(await send(id, text("hi")), rt.Ok(true));
+  assert.deepEqual(await receive(id), data(text("hi")));
+  assert.deepEqual(await send(id, binary([0, 255, 7])), rt.Ok(true));
+  assert.deepEqual(await receive(id), data(binary([0, 255, 7])));
+  rt.file_close(id);
+});
+
+test("close(1000) completes the handshake; the close is returned again and a send is Ok(false)", async () => {
+  const [id] = await connect("/echo");
+  assert.deepEqual(rt.ws_close(id, 1000, "bye"), rt.Ok(undefined));
+  assert.deepEqual(await receive(id), closed(1000, "bye", true));
+  assert.deepEqual(await receive(id), closed(1000, "bye", true));
+  assert.deepEqual(await send(id, text("late")), rt.Ok(false));
+  rt.file_close(id);
+});
+
+test("the peer's close is answered with its code and received after the messages before it", async () => {
+  let answer;
+  behaviours.set("/bye", async (conn) => {
+    conn.write(Buffer.concat([frame(1, "last"), closeFrame(1000, "done")]));
+    answer = await conn.next();
+  });
+  const [id] = await connect("/bye");
+  assert.deepEqual(await receive(id), data(text("last")));
+  assert.deepEqual(await receive(id), closed(1000, "done", true));
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(answer.payload.readUInt16BE(), 1000);
+  rt.file_close(id);
+});
+
+test("leaving the scope closes an open socket with 1001", async () => {
+  let seen;
+  const got = new Promise((resolve) => {
+    behaviours.set("/leave", async (conn) => {
+      seen = await conn.next();
+      resolve();
+    });
+  });
+  const [id] = await connect("/leave");
+  rt.file_close(id);
+  await got;
+  assert.deepEqual([seen.op, seen.payload.readUInt16BE()], [8, 1001]);
+});
+
+test("a message over max_message fails the connection with 1009 before its payload is held", async () => {
+  let seen;
+  behaviours.set("/big", async (conn) => {
+    conn.write(frame(2, Buffer.alloc(10)));
+    seen = await conn.next();
+  });
+  const [id] = await connect("/big", options({ max: 4 }));
+  assert.deepEqual(await receive(id), closed(1009, "message too large", false));
+  await new Promise((r) => setTimeout(r, 50));
+  assert.deepEqual([seen.op, seen.payload.readUInt16BE()], [8, 1009]);
+  rt.file_close(id);
+});
+
+test("text that is not UTF-8 fails with 1007, a masked server frame with 1002", async () => {
+  behaviours.set("/bad-utf8", (conn) => conn.write(frame(1, Buffer.from([0xc3]))));
+  behaviours.set("/masked", (conn) => conn.write(Buffer.from([0x81, 0x80, 0, 0, 0, 0])));
+  for (const [path, code, reason] of [
+    ["/bad-utf8", 1007, "invalid UTF-8"],
+    ["/masked", 1002, "protocol error"],
+  ]) {
+    const [id] = await connect(path);
+    assert.deepEqual(await receive(id), closed(code, reason, false));
+    rt.file_close(id);
+  }
+});
+
+test("at most 64 messages wait: the peer is held back over TCP until they are received", async () => {
+  const n = 300;
+  let conn;
+  const sent = new Promise((resolve) => {
+    behaviours.set("/flood", (c) => {
+      conn = c;
+      for (let i = 0; i < n; i++) c.write(frame(2, Buffer.alloc(65536, i)));
+      resolve();
+    });
+  });
+  const [id] = await connect("/flood");
+  await sent;
+  await new Promise((r) => setTimeout(r, 300));
+  assert.ok(conn.socket.writableLength > 0, "the client stopped reading, so the peer's buffer holds the rest");
+  for (let i = 0; i < n; i++) {
+    const r = await receive(id);
+    assert.equal(r.fields[0].fields[0][0], i & 255);
+  }
+  rt.file_close(id);
+});
+
+test("a close the peer never answers ends after 5 seconds as 1006", async () => {
+  behaviours.set("/mute", () => {});
+  const [id] = await connect("/mute");
+  rt.ws_close(id, 3000, "");
+  const started = Date.now();
+  assert.deepEqual(await receive(id), closed(1006, "", false));
+  assert.ok(Date.now() - started >= 4900);
+  rt.file_close(id);
+});
+
+test("the upgrade follows no redirect, and a host outside net is refused before connecting", async () => {
+  const moved = await run(rt.ws_connect, [`ws://127.0.0.1:${peer.port}/moved`, options()]);
+  assert.deepEqual(moved, rt.Err("the handshake answered 301, not 101"));
+  for (const [url, host] of [
+    ["ws://c.example/", "c.example:80"],
+    ["wss://c.example/", "c.example:443"],
+  ]) {
+    assert.deepEqual(await run(rt.ws_connect, [url, options()]), rt.Err(`${host} is not in the manifest's net list`));
+  }
+  const own = await run(rt.ws_connect, [`ws://127.0.0.1:${peer.port}/`, options({ headers: [["Sec-WebSocket-Key", "x"]] })]);
+  assert.deepEqual(own, rt.Err("header Sec-WebSocket-Key is set by the handshake"));
+});
+
+test("headers reach the handshake", async () => {
+  let token;
+  behaviours.set("/auth", (conn, req) => {
+    token = req.headers["x-token"];
+    echo(conn);
+  });
+  const [id] = await connect("/auth", options({ headers: [["x-token", "t1"]] }));
+  assert.equal(token, "t1");
+  rt.file_close(id);
+});

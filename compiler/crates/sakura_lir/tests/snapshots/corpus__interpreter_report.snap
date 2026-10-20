@@ -215,6 +215,11 @@ semantics/urlpattern_wildcards: unsupported (builtin string_to_bytes)
 semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0
+semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)
+semantics/websocket_rejects_message_too_large: unsupported (builtin bytes_from_list)
+semantics/websocket_rejects_url: unsupported (builtin string_to_bytes)
+semantics/websocket_scripted_close_info: unsupported (builtin string_to_bytes)
+semantics/websocket_scripted_echo: unsupported (builtin string_to_bytes)
 diff/diff_0001: ok, 184 allocated, 221 dup, 405 drop, peak 14, live 0/0
 diff/diff_0002: ok, 325 allocated, 325 dup, 650 drop, peak 28, live 0/0
 diff/diff_0003: D002, 20 allocated, 18 dup, 38 drop, peak 7, live 0/0

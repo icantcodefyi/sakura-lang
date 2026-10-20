@@ -71,7 +71,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc, **now** | Opus | 7a (landed) |
 | 7b-W | tier 1b on WASM: the hosted imports, ABI 1.9.0, `KNOWN` emptied | pre-rc | Opus | 7b, 8 |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
-| 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
+| 8 | `std/websocket` client | pre-rc (landed, ABI 1.8.0; readings in `compiler/REQUESTS.md`) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
 | 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc | Opus | 4b, 5 |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
@@ -97,6 +97,7 @@ after phase 8 is on `main`, at ABI 1.9.0. Phase 6 follows phase 8 (the scheduler
 lock; phase 10 follows 6 at the next MINOR; 11 after 10; 7c after 7b-W, optional; 12 beside
 each. A phase that must touch a running lane's file files the change in `REQUESTS.md` for
 that lane or waits for it and rebases; a shared append-only file keeps both hunks.
+Phase 8 then landed (ABI 1.8.0, after WS-P20 `fe236029`), so 7b-W and 6 may start.
 
 ## 3. Phases
 
@@ -499,6 +500,21 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   JS and through the WASM host; native refuses at startup with the message; the exit-75
   rule for `Http`/`Serve`/`Llm` on native replaces today's `D091` at first use and the
   native CLI parity count notes it.
+- **Landed (ABI 1.8.0; readings filed as a `design-question` in `compiler/REQUESTS.md`).**
+  `std/websocket` with `connect`/`send`/`receive`/`close`, `messages` (a view), `scripted` and
+  `host()`; `Received = Data(Message) | Closed(CloseInfo)` (one module cannot declare `Text`
+  twice); `connect` takes a `String` (the `Url` refinement admits only `http(s)`); `Options`
+  has no `max_frame` (the host bounds every frame by `max_message` before holding it) and no
+  secret headers yet. The runtime speaks RFC 6455 over `node:http`'s upgrade rather than the
+  global `WebSocket`, which can neither pause reading nor bound a frame; a socket is an `Int`
+  in the file table, closed by `file_closing`, so no handle kind or finalizer code was added.
+  Evidence: five semantics fixtures and one UI fixture (`V6003`) on three backends,
+  `runtime/js/test/websocket.test.js` (text, binary, fragmented, ping/pong, 1000, 1001 on
+  scope exit, 1002, 1007, 1009, the 5 s close timeout, the 64-message queue holding the peer
+  back over TCP, no redirect, `net`), `tests/wasm.rs::websocket_host_on_wasm_as_on_js` (one
+  program against a live peer, same output and trace on JS and WASM), `cli.rs`'s exit 75 with
+  `net = []` (`websocket_denied_host`) and the native driver's refusal. `websocket_redirect_not_followed`
+  is a runtime test, since a semantics fixture has no live server to redirect.
 
 ### Phase 9: `std/urlpattern`
 

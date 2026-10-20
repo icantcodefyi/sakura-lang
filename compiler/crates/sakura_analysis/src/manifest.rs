@@ -140,7 +140,7 @@ impl Permissions {
         for effect in effects {
             let missing = match effect.as_str() {
                 "Fs" if self.fs.read.is_empty() => "fs.read",
-                "Http" | "Serve" | "Sql" if self.net.is_empty() => "net",
+                "Http" | "Serve" | "Sql" | "WebSocket" if self.net.is_empty() => "net",
                 "Process" if self.process.is_empty() => "process",
                 _ => continue,
             };

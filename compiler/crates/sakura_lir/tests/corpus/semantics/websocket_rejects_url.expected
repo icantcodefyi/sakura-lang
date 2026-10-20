@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+wss://example.test/a -> Ok(1)
+https://example.test/a -> Err(SocketError { reason: Connect("https: is not ws or wss") })
+wss://example.test/a#top -> Err(SocketError { reason: Connect("a WebSocket URL has no fragment") })
+wss://exa mple.test/ -> Err(SocketError { reason: Connect("invalid URL wss://exa mple.test/: InvalidHost") })
+not a url -> Err(SocketError { reason: Connect("invalid URL not a url: Relative") })
+unexpected send: Err(SocketError { reason: Failed("the scripted peer expected Reply(Text(\"ping\"), Text(\"pong\")), not a send of Text(\"pong\")") })
+nothing to receive: Err(SocketError { reason: Failed("the scripted peer has nothing to send before Reply(Text(\"ping\"), Text(\"pong\"))") })

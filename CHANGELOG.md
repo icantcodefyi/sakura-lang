@@ -118,6 +118,24 @@ retains earlier implementation history.
 
 ### Added
 
+- `std/websocket` (RFC 0002 §1, §3, §6, §7; plan `web-apis.md` phase 8): a WebSocket client as
+  the effect `WebSocket`. `WebSocket.connect(url, options, body)` opens a `ws` or `wss` URL and
+  runs `body` with a `Socket` that cannot leave it (`V6003`), closing it with 1001 on every exit;
+  `send(sock, Text(s) | Binary(b))`, `receive(sock)` (`Data(message)` or
+  `Closed(CloseInfo { code, reason, clean })`, the close returned again by later receives),
+  `close(sock, code, reason)` (1000 or 3000–4999, a reason of at most 123 bytes; anything else
+  is `D020`) and `messages(sock)`, the messages as a `std/stream` source. `Options` carries
+  subprotocols, extra headers and `max_message` (16 MiB by default), which bounds both
+  directions: a larger send fails `SocketError(MessageTooLarge)`, a larger received message
+  closes the connection with 1009. `WebSocket.host()` speaks RFC 6455 itself on JS and through
+  the WASM host: `net` is checked before connecting (`ws` port 80, `wss` 443), the handshake
+  follows no redirect, at most 64 received messages wait before it stops reading the
+  connection, and a close the peer does not answer ends after 5 seconds as 1006.
+  `WebSocket.scripted([Reply(…), Push(…), Close(…)])` is the deterministic peer for tests. A
+  `main` declaring `WebSocket` exits 75 at startup with an empty `net` list, and on
+  `--target native` with "`WebSocket` is not available on target `native`". WASM runtime ABI
+  1.8.0 adds the `ws_*` imports, so a host built for ABI 1.7 refuses a module from this
+  version (`V8003`). A cookbook recipe, `websocket_client`.
 - Web timer and dialog idioms (RFC 0002 §1, §2.8; plan `web-apis.md` phase 4b):
   `std/task.every(period, body)` (`setInterval`: serialized ticks, a tick due while `body` runs
   is skipped and the next call receives the count, the loop ends when `body` returns `false`

@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+send 6 bytes: Err(SocketError { reason: MessageTooLarge })
+Closed(CloseInfo { code: 1009, reason: "message too large", clean: false })
+after 1009: Err(SocketError { reason: NotOpen })
+5 bytes: Ok(Data(Text("exact")))

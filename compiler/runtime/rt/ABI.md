@@ -192,6 +192,16 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   response's `Payload` as its bytes. The import names and shapes are unchanged, but a 1.6 host
   would decode the new layouts and follow redirects itself, so a 1.6 host refuses a 1.7 module
   by the MINOR rule. `sakura_abi_version` is `0x010700`.
+- 1.8.0 (MINOR, RFC 0002 §1, §6, plan `web-apis.md` phase 8) adds `std/websocket`'s host
+  operations (§8.2): the `async` imports `ws_connect`, `ws_send` and `ws_receive` (request kind
+  4, §8.5) and the `hosted` import `ws_close`, which the Node host runs as the JS runtime's
+  functions. A socket is a plain `Int` id into the host's file table, as a `File`'s is (§8.4):
+  handle kind 3 stays unused, and `connect`'s callback closes the socket through
+  `file_closing`/`file_close`, so no finalizer code is added. Nothing shipped changes, but a
+  module that imports them needs a host that has them, so a 1.7 host refuses a 1.8 module by
+  the MINOR rule. The native runtime answers them `D090` (`rt_code_unsupported`), and the
+  native driver refuses a `main` that leaves `WebSocket` to the runtime at startup (RFC 0002
+  §7). `sakura_abi_version` is `0x010800`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -805,9 +815,9 @@ an import the Node host lacks. Every import has one of four shapes:
 | Shape | Signature | Used for |
 |---|---|---|
 | `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `trace_*`, `retire_handle`, `abort` |
-| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`; completion comes back through the export `complete` (§8.5) |
+| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0); completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
-| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0) |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0), `ws_close` (1.8.0) |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
@@ -844,6 +854,15 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   `callback`), `serve_respond(task: i64, ptr, len)`. Since 1.7.0 a request's and a response's
   `body` is a `Payload`; `http_send` and `http_stream_open` send with `redirect: "manual"` and
   answer a 3xx as it is, one hop per call, `net` checked on each (§0, 1.7.0).
+- WebSocket (1.8.0, plan `web-apis.md` phase 8): `async` `ws_connect(request, ptr, len)`
+  (the tuple `(url, Options)`; answers `Result<(Int, String), String>`), `ws_send(request, ptr,
+  len)` (`(id, Message)`; `Result<Bool, String>`, waiting while the socket's buffer is full)
+  and `ws_receive(request, ptr, len)` (`(id)`; `Result<Received, String>`), and `hosted`
+  `ws_close(id, code, reason) -> Result<Unit, String>`, Node host only (`WASM_HOSTED`). None is
+  of kind `secret`: `Options.headers` are plain strings. `file_close(id)` closes a socket as it
+  closes a file. Limits (RFC 0002 §6) are the host's: `max_message` checked on each received
+  frame before its payload is held (1009), 64 queued messages before the host stops reading, 5
+  s for the closing handshake.
 - `hosted` (W1, W2): `cli_args`, `cli_parse`, `env_get`, `file_open`, `file_read`,
   `file_write`, `fs_exists`, `fs_list`, `fs_memory_root`, `fs_read`, `fs_root`, `fs_subdir`,
   `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,
@@ -921,7 +940,8 @@ JS, not a packed handle; `dir` and `body` are handles.
 
 Handle kinds (1.2.0, design §17.161): `0 dir`, `1 file`, `2 body`, `3 socket`, `4 sql`, `5
 callback`, `6 jsvalue`, `7 js_handler`. `file` is reserved (a `File`'s `id` is a plain `Int`,
-above) and `socket` unused (a served request is a task, `invoke`); `jsvalue` is an opaque host
+above) and `socket` unused (a served request is a task, `invoke`; a WebSocket, 1.8.0, is a
+plain `Int` id in the file table, closed by `file_close`); `jsvalue` is an opaque host
 value a JS callback returned, which the guest only passes back to the host and never decodes.
 From a guest and host that keep these rules, `retire_handle` receives kinds 0, 2 and 4–7: a
 `dir`, `body` or `jsvalue` handle when its `Handle` object dies (§3.5), and kinds 4, 5 and 7

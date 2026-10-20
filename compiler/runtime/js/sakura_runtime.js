@@ -3541,12 +3541,16 @@ export function file_closing(id, body, ctx, k) {
   return finalize(ctx, () => file_close(id), body, k);
 }
 
-/** Closes file `id` (a second close does nothing); the WASM host calls it from its finalizer. */
+/**
+ * Closes file `id` (a second close does nothing), or the WebSocket of that id (its `close`); the
+ * WASM host calls it from its finalizer.
+ */
 export function file_close(id) {
   const f = files.get(id);
   if (f === undefined) return;
   files.delete(id);
   if (f.fd !== undefined) nodeFs().closeSync(f.fd);
+  f.close?.();
 }
 
 function openFile(id) {
@@ -3871,10 +3875,14 @@ export function task_deterministic(seed) {
 // Http client (design §10.4) over `fetch`, limited to the manifest's `net` hosts when the
 // driver passes `[permissions]`.
 
-/** Why the manifest's `net` refuses the URL `u`, or `undefined` when it does not. */
+/**
+ * Why the manifest's `net` refuses the URL `u`, or `undefined` when it does not; the default port
+ * is 443 for `https` and `wss`, 80 otherwise (`ws_connect` shares it, RFC 0002 §3).
+ */
 function netRefusal(u) {
   const net = granted()?.net;
-  const host = `${u.hostname}:${u.port || (u.protocol === "https:" ? "443" : "80")}`;
+  const secure = u.protocol === "https:" || u.protocol === "wss:";
+  const host = `${u.hostname}:${u.port || (secure ? "443" : "80")}`;
   return net === undefined || net.includes(host) ? undefined : `${host} is not in the manifest's net list`;
 }
 
@@ -4906,4 +4914,303 @@ export function serveHttp(addr, run) {
     server.listen(addr.port, addr.host);
   });
   return { stopped, close };
+}
+
+// ---------------------------------------------------------------------------------------------
+// WebSocket client (RFC 0002 §1, §6; plan `web-apis.md` phase 8): RFC 6455 over `node:http`'s
+// upgrade, since the global `WebSocket` can neither stop reading nor bound a frame. A socket is
+// an id in the `files` table, so `file_closing` closes it on every exit of `connect`'s callback
+// (1001 when still open). Frames are parsed as they arrive: a data frame that would take its
+// message past `max_message` fails the connection with 1009 before its payload is held; at most
+// `WS_QUEUE` messages wait for `ws_receive`, and while that many wait the TCP socket is paused,
+// so TCP holds the peer back. The close, once known, follows the messages and is returned again
+// by every later receive. A close the client starts waits `WS_CLOSE_MS` for the peer's.
+
+const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+const WS_QUEUE = 64;
+const WS_CLOSE_MS = 5000;
+/** Headers the opening handshake sets itself (RFC 6455 §4.1); `Options.headers` may not. */
+const WS_OWN = new Set(["host", "upgrade", "connection", "content-length", "transfer-encoding"]);
+const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/**
+ * `ws_connect(url, options)`: suspends until the handshake ends. `Ok((id, subprotocol))` after a
+ * 101 whose `sec-websocket-accept` matches and whose subprotocol, if any, was offered;
+ * `Err(reason)` for a host outside `net`, invalid options, any other status (no redirect is
+ * followed) or a network failure. Cancelling the task aborts it.
+ */
+export function ws_connect(url, options, _ctx, k) {
+  const u = new URL(url);
+  const refused = netRefusal(u);
+  if (refused !== undefined) return ret(k, Err(refused));
+  const protocols = toArray(options.subprotocols);
+  const bad = protocols.find((p, i) => !TOKEN.test(p) || protocols.indexOf(p) !== i);
+  if (bad !== undefined) return ret(k, Err(`invalid or repeated subprotocol ${JSON.stringify(bad)}`));
+  const key = nodeCrypto().randomBytes(16).toString("base64");
+  const headers = {};
+  for (const [name, value] of items(options.headers)) {
+    const n = name.toLowerCase();
+    if (WS_OWN.has(n) || n.startsWith("sec-websocket-")) return ret(k, Err(`header ${name} is set by the handshake`));
+    headers[name] = value;
+  }
+  Object.assign(headers, { connection: "Upgrade", upgrade: "websocket", "sec-websocket-key": key, "sec-websocket-version": "13" });
+  if (protocols.length > 0) headers["sec-websocket-protocol"] = protocols.join(", ");
+  const secure = u.protocol === "wss:";
+  let req;
+  try {
+    req = proc.getBuiltinModule(secure ? "node:https" : "node:http").request({
+      host: u.hostname.replace(/^\[(.*)\]$/, "$1"),
+      port: u.port || (secure ? 443 : 80),
+      path: u.pathname + u.search,
+      headers,
+    });
+  } catch (e) {
+    return ret(k, Err(failureOf(e)));
+  }
+  let opened = null;
+  const handshake = new Promise((resolve) => {
+    req.on("upgrade", (res, socket, head) => {
+      const accept = nodeCrypto().createHash("sha1").update(key + WS_GUID).digest("base64");
+      const chosen = res.headers["sec-websocket-protocol"] ?? "";
+      const why =
+        res.headers["sec-websocket-accept"] !== accept
+          ? "the handshake answered a wrong sec-websocket-accept"
+          : chosen !== "" && !protocols.includes(chosen)
+            ? `the handshake chose subprotocol ${JSON.stringify(chosen)}, which was not offered`
+            : res.headers["sec-websocket-extensions"] !== undefined
+              ? "the handshake answered an extension that was not offered"
+              : undefined;
+      if (why !== undefined) {
+        socket.destroy();
+        resolve(Err(why));
+        return;
+      }
+      opened = wsOpen(socket, head, options.max_message);
+      resolve(Ok([opened, chosen]));
+    });
+    req.on("response", (res) => {
+      res.resume();
+      req.destroy();
+      resolve(Err(`the handshake answered ${res.statusCode}, not 101`));
+    });
+    req.on("error", (e) => resolve(Err(failureOf(e))));
+    req.end();
+  });
+  return suspend(handshake, k, () => {
+    req.destroy();
+    if (opened !== null) file_close(opened);
+  });
+}
+
+/** A table entry for the upgraded `socket` (`head`: bytes read past the handshake); its id. */
+function wsOpen(socket, head, max) {
+  const id = nextFile++;
+  const s = { socket, max, buf: new Uint8Array(0), frags: [], size: 0, op: 0, queue: [], waiter: null };
+  Object.assign(s, { closed: null, closing: false, timer: null, paused: false, close: () => wsFree(s) });
+  files.set(id, s);
+  socket.setNoDelay(true);
+  socket.on("data", (chunk) => wsData(s, chunk));
+  socket.on("close", () => wsEnd(s, 1006, "", false));
+  socket.on("error", () => {});
+  if (head.length > 0) wsData(s, head);
+  return id;
+}
+
+/** A client frame (masked, RFC 6455 §5.3): `op` and `payload` in one final frame. */
+function wsFrame(op, payload) {
+  const n = payload.length;
+  const head = n < 126 ? 2 : n < 65536 ? 4 : 10;
+  const f = new Uint8Array(head + 4 + n);
+  f[0] = 0x80 | op;
+  if (n < 126) f[1] = 0x80 | n;
+  else if (n < 65536) f.set([0x80 | 126, n >> 8, n & 255], 1);
+  else {
+    f[1] = 0x80 | 127;
+    new DataView(f.buffer).setBigUint64(2, BigInt(n));
+  }
+  const mask = nodeCrypto().randomBytes(4);
+  f.set(mask, head);
+  for (let i = 0; i < n; i++) f[head + 4 + i] = payload[i] ^ mask[i & 3];
+  return f;
+}
+
+function wsCloseFrame(code, reason) {
+  const r = string_to_bytes(reason);
+  const p = new Uint8Array(2 + r.length);
+  p.set([code >> 8, code & 255]);
+  p.set(r, 2);
+  return wsFrame(8, p);
+}
+
+/** Parses the frames in `chunk` and whatever is held, stopping while `WS_QUEUE` messages wait. */
+function wsData(s, chunk) {
+  if (chunk.length > 0) {
+    const b = new Uint8Array(s.buf.length + chunk.length);
+    b.set(s.buf);
+    b.set(chunk, s.buf.length);
+    s.buf = b;
+  }
+  while (s.closed === null) {
+    if (s.queue.length >= WS_QUEUE) {
+      s.paused = true;
+      s.socket.pause();
+      return;
+    }
+    const b = s.buf;
+    if (b.length < 2) return;
+    const fin = (b[0] & 0x80) !== 0;
+    const op = b[0] & 0x0f;
+    let len = b[1] & 0x7f;
+    let at = 2;
+    if (len === 126) {
+      if (b.length < 4) return;
+      len = (b[2] << 8) | b[3];
+      at = 4;
+    } else if (len === 127) {
+      if (b.length < 10) return;
+      const big = new DataView(b.buffer, b.byteOffset).getBigUint64(2);
+      len = big > BigInt(s.max) ? Infinity : Number(big);
+      at = 10;
+    }
+    const control = op >= 8;
+    // Reserved bits (no extension was agreed), a masked server frame, an unknown opcode, a
+    // fragmented or long control frame, or a continuation out of place (RFC 6455 §5.2–§5.5).
+    if ((b[0] & 0x70) !== 0 || (b[1] & 0x80) !== 0 || ![0, 1, 2, 8, 9, 10].includes(op)) {
+      return wsFail(s, 1002, "protocol error");
+    }
+    if (control ? !fin || len > 125 : (op === 0) === (s.op === 0)) return wsFail(s, 1002, "protocol error");
+    if (!control && s.size + len > s.max) return wsFail(s, 1009, "message too large");
+    if (b.length < at + len) return;
+    const payload = b.slice(at, at + len);
+    s.buf = b.subarray(at + len);
+    if (op === 9) {
+      if (!s.closing) s.socket.write(wsFrame(10, payload));
+    } else if (op === 8) {
+      wsPeerClose(s, payload);
+    } else if (!control) {
+      if (op !== 0) s.op = op;
+      s.frags.push(payload);
+      s.size += len;
+      if (fin) wsMessage(s);
+    }
+  }
+}
+
+/** The message the held fragments make, queued; text that is not UTF-8 fails with 1007. */
+function wsMessage(s) {
+  const bytes = new Uint8Array(s.size);
+  let at = 0;
+  for (const f of s.frags) {
+    bytes.set(f, at);
+    at += f.length;
+  }
+  const text = s.op === 1;
+  Object.assign(s, { frags: [], size: 0, op: 0 });
+  let m;
+  if (text) {
+    const t = exactUtf8(bytes);
+    if (t === null) return wsFail(s, 1007, "invalid UTF-8");
+    m = variant("std::websocket::Message", 0, [t]);
+  } else {
+    m = variant("std::websocket::Message", 1, [bytes]);
+  }
+  wsQueue(s, variant("std::websocket::Received", 0, [m]));
+}
+
+/** The peer's close frame: answered unless the client closed first, then the clean end. */
+function wsPeerClose(s, payload) {
+  if (payload.length === 1) return wsFail(s, 1002, "protocol error");
+  const code = payload.length === 0 ? 1005 : (payload[0] << 8) | payload[1];
+  const reason = exactUtf8(payload.subarray(2));
+  if (reason === null) return wsFail(s, 1007, "invalid UTF-8");
+  if (!s.closing) s.socket.write(payload.length === 0 ? wsFrame(8, payload) : wsCloseFrame(code, ""));
+  wsEnd(s, code, reason, true);
+}
+
+/** Fails the connection (RFC 6455 §7.1.7): the close frame with `code`, then the end. */
+function wsFail(s, code, reason) {
+  if (!s.closing) s.socket.write(wsCloseFrame(code, ""));
+  s.closing = true;
+  wsEnd(s, code, reason, false);
+}
+
+/** Queues the close (once) after the messages, wakes a receive and releases the TCP socket. */
+function wsEnd(s, code, reason, clean) {
+  if (s.closed !== null) return;
+  s.closed = new (std("std::websocket::CloseInfo"))(code, reason, clean);
+  clearTimeout(s.timer);
+  wsQueue(s, variant("std::websocket::Received", 1, [s.closed]));
+  s.socket.end();
+  s.socket.unref();
+}
+
+function wsQueue(s, r) {
+  s.queue.push(r);
+  const w = s.waiter;
+  s.waiter = null;
+  w?.();
+}
+
+/** The next received value; a paused socket resumes once fewer than `WS_QUEUE` wait. */
+function wsTake(s) {
+  const r = s.queue.length > 0 ? s.queue.shift() : variant("std::websocket::Received", 1, [s.closed]);
+  if (s.paused && s.queue.length < WS_QUEUE) {
+    s.paused = false;
+    s.socket.resume();
+    wsData(s, new Uint8Array(0));
+  }
+  return r;
+}
+
+/** `ws_receive(id)`: the next message or the close, suspending until one arrives. */
+export function ws_receive(id, _ctx, k) {
+  const s = files.get(id);
+  if (s?.socket === undefined) return ret(k, Err("the socket is closed"));
+  if (s.queue.length > 0 || s.closed !== null) return ret(k, Ok(wsTake(s)));
+  const next = new Promise((resolve) => {
+    s.waiter = () => resolve(Ok(wsTake(s)));
+  });
+  return suspend(next, k, () => {
+    s.waiter = null;
+  });
+}
+
+/** `ws_send(id, message)`: `Ok(false)` once closing or closed; waits while the socket's buffer is full. */
+export function ws_send(id, message, _ctx, k) {
+  const s = files.get(id);
+  if (s?.socket === undefined || s.closing || s.closed !== null) return ret(k, Ok(false));
+  const text = message.tag === 0;
+  const payload = text ? string_to_bytes(message.fields[0]) : message.fields[0];
+  if (s.socket.write(wsFrame(text ? 1 : 2, payload))) return ret(k, Ok(true));
+  let done;
+  const drained = new Promise((resolve) => {
+    done = () => {
+      s.socket.off("drain", done).off("close", done);
+      resolve(Ok(true));
+    };
+    s.socket.on("drain", done).on("close", done);
+  });
+  return suspend(drained, k, () => s.socket.off("drain", done).off("close", done));
+}
+
+/** `ws_close(id, code, reason)`: starts the closing handshake; `WS_CLOSE_MS` later, 1006. */
+export function ws_close(id, code, reason) {
+  const s = files.get(id);
+  if (s?.socket === undefined || s.closing || s.closed !== null) return Ok(undefined);
+  s.closing = true;
+  s.socket.write(wsCloseFrame(code, reason));
+  s.timer = setTimeout(() => {
+    s.socket.destroy();
+    wsEnd(s, 1006, "", false);
+  }, WS_CLOSE_MS);
+  return Ok(undefined);
+}
+
+/** `file_close`'s step for a socket: 1001 when still open, then the TCP socket released. */
+function wsFree(s) {
+  clearTimeout(s.timer);
+  if (!s.closing && s.closed === null) s.socket.write(wsCloseFrame(1001, ""));
+  s.closing = true;
+  s.socket.end();
+  s.socket.unref();
 }

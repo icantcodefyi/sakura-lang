@@ -501,6 +501,24 @@ next read; empty at the end; `Err` after closing or when the connection drops; c
 task aborts the fetch). `http_body_of(bytes)` is a body without a connection, for
 `Http.scripted` and replayed cassettes, which deliver their body in one chunk (cut at `max`).
 
+**WebSockets** (RFC 0002 §1, §6, plan `web-apis.md` phase 8, behind `WebSocket.host()`). A
+socket is an id in the `files` table, so `std/websocket` closes it with `file_closing` and
+`file_close` runs its close step (a 1001 close frame when it is still open). `ws_connect(url,
+options, $ctx, $k) -> Result<(Int, String), String>` checks `url`'s `host:port` against `net`
+(`ws` 80, `wss` 443), then opens an RFC 6455 handshake over `node:http`/`node:https`'s upgrade
+and suspends until it ends: the id and the chosen subprotocol, or `Err` for any status but 101
+(no redirect is followed), a wrong `sec-websocket-accept`, a subprotocol or extension not
+offered, `Options.headers` naming a handshake header, or a network failure; cancelling aborts
+it. `ws_send(id, message, $ctx, $k) -> Result<Bool, String>` writes one masked frame, `Ok(false)`
+once closing or closed, and suspends while the socket's write buffer is full.
+`ws_receive(id, $ctx, $k) -> Result<Received, String>` suspends until a message or the close
+is queued; the close is returned again by every later call. `ws_close(id, code, reason) ->
+Result<Unit, String>` sends the close frame and returns; 5 s without the peer's close ends the
+connection as 1006. Frames are parsed as they arrive: a data frame that would take its
+message past `max_message` fails the connection with 1009 before its payload is held, text
+that is not UTF-8 with 1007, a protocol error with 1002; at most 64 messages wait, and while
+they do the TCP socket is paused (TCP backpressure on the peer).
+
 **Cassettes** (design §17.73, §17.122, behind std's `Http.recording`). A cassette is a JSON
 Lines file inside a `Dir`: the line `{"schema_version":"1.0","kind":"cassette"}` first, then
 one exchange per line:
@@ -646,6 +664,6 @@ container) and must be a borrowed or generation-checked id.
 | task → `kids` | owning (until finished) | `startFiber` deletes the child on completion |
 | fiber `finish` closure → parent task, fiber | back-edge | completion reports upward |
 | suspended task → `wake`, promise callbacks → `k` | owning while pending | cleared when the task resumes (`t.wake = null`) |
-| `files`, `bodies` tables → open file / stream | owning | deleted by `file_closing` and `http_stream_closing` |
+| `files`, `bodies` tables → open file / stream / WebSocket | owning | deleted by `file_closing` and `http_stream_closing` |
 | `cassettes` table → cursor | owning, never released | ponytail: one entry per `Http.recording` instance that opened a file, kept until the process exits; key cursors by handler instance if long-running programs record |
 | `opNames`, `types`, `refinements` | owning, program-lifetime | registered once at start-up |

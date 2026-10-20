@@ -40,12 +40,12 @@ absent is denied. Each key is a list of strings:
 | --- | --- |
 | `fs.read` | Directories `Fs` may read, relative to the project. |
 | `fs.write` | Directories `Fs` may write. A write through a symbolic link that leaves the grant is refused. |
-| `net` | `host:port` pairs `Http` and `Serve` may reach, checked on every redirect hop. |
+| `net` | `host:port` pairs `Http`, `Serve` and `WebSocket` may reach (`ws` defaults to port 80, `wss` to 443), checked on every redirect hop; a WebSocket handshake follows none. |
 | `env` | Environment variables `Env` may read. Other names read as absent. |
 | `process` | Reserved. `process = []` is accepted and grants nothing, the same as leaving the key out: no std effect starts processes. Any other list is [`V8006`](/docs/errors/V8006): "`process` grants nothing in this version: no std effect starts processes; the key is reserved". |
 
 The host supplies root handlers only for the std effects `main` declares. When `main`
-declares `Fs` with an empty `fs.read`, or `Http` or `Serve` with an empty `net`,
+declares `Fs` with an empty `fs.read`, or `Http`, `Serve` or `WebSocket` with an empty `net`,
 `sakura run` refuses to start it and exits with `75`, before any code runs. `sakura run`
 passes the table to the host handlers, which enforce it on every operation. This is a
 language-level boundary, not an operating-system sandbox; trusted `@external` code is

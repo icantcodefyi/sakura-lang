@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+Data(Text("last"))
+Closed(CloseInfo { code: 4000, reason: "maintenance", clean: true })
+Closed(CloseInfo { code: 4000, reason: "maintenance", clean: true })
+send after the close: Err(SocketError { reason: NotOpen })
+Closed(CloseInfo { code: 1000, reason: "bye", clean: true })
+Closed(CloseInfo { code: 1000, reason: "bye", clean: true })
+client close: Ok(())

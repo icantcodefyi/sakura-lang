@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+Ok("pong")
+protocol []
+first Data(Text("hello"))
+rest Ok([Binary(Bytes.of([3])), Text("bye")])

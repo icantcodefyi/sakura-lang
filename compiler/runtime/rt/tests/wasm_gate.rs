@@ -83,6 +83,9 @@ const IMPORTS: &[&str] = &[
     "http_body_close",
     "serve_listen",
     "serve_respond",
+    "ws_connect",
+    "ws_send",
+    "ws_receive",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

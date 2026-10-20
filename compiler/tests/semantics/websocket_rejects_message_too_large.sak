@@ -1,0 +1,31 @@
+// milestone: M3
+// spec: RFC 0002 §6; plan web-apis.md phase 8
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-7.4.1
+
+// `max_message` bounds both directions (RFC 0002 §6): a send over it fails `MessageTooLarge`
+// before anything is sent, and a received message over it ends the connection with 1009
+// ("message too large", not clean), after which a send is `NotOpen`. Text is measured in UTF-8
+// bytes: "héllo" is 6.
+import std/websocket.{Binary, Options, Push, Reply, Text, WebSocket}
+
+pub fn main() -> Unit ! {Console} {
+  let small = Options { ..WebSocket.options(), max_message: 5 }
+  with WebSocket.scripted([Reply(Text("hi"), Binary(Bytes.from_list([0, 1, 2, 3, 4, 5])))]) {
+    let got = try {
+      WebSocket.connect("ws://example.test/", small, fn(sock) {
+        let big = try { WebSocket.send(sock, Text("héllo")) }
+        Console.print("send 6 bytes: {big}")
+        WebSocket.send(sock, Text("hi"))
+        Console.print("{WebSocket.receive(sock)}")
+        WebSocket.send(sock, Text("hi"))
+      })
+    }
+    Console.print("after 1009: {got}")
+  }
+  with WebSocket.scripted([Push(Text("exact"))]) {
+    let got = try {
+      WebSocket.connect("ws://example.test/", small, fn(sock) { WebSocket.receive(sock) })
+    }
+    Console.print("5 bytes: {got}")
+  }
+}

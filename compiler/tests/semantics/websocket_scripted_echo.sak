@@ -1,0 +1,47 @@
+// milestone: M3
+// spec: RFC 0002 §1, §5; plan web-apis.md phase 8
+// Spec: https://websockets.spec.whatwg.org/#dom-websocket-send
+
+// RFC 0002's example under the scripted peer: a send answered by a reply, a pushed message,
+// a binary message, and the source view `messages` that ends at the close. A message event is
+// a value `receive` returns, so the program's control flow is a `match`.
+import std/stream.{Source, StreamError}
+import std/websocket.{Binary, Close, Closed, Data, Push, Reply, SocketError, Text, WebSocket}
+
+fn echo_once(url: String) -> String ! {WebSocket, Fail<SocketError>} {
+  WebSocket.connect(url, WebSocket.options(), fn(sock) {
+    WebSocket.send(sock, Text("ping"))
+    match WebSocket.receive(sock) {
+      Data(Text(s)) => s,
+      Data(Binary(_)) => "binary",
+      Closed(info) => "closed {info.code}",
+    }
+  })
+}
+
+pub fn main() -> Unit ! {Console} {
+  with WebSocket.scripted([Reply(Text("ping"), Text("pong"))]) {
+    Console.print("{try { echo_once("wss://example.test/echo") }}")
+  }
+  let script = [
+    Push(Text("hello")),
+    Reply(Binary(Bytes.from_list([1, 2])), Binary(Bytes.from_list([3]))),
+    Push(Text("bye")),
+    Close(1000, "done"),
+  ]
+  with WebSocket.scripted(script) {
+    let got = try {
+      WebSocket.connect(
+        "ws://example.test:8080/chat?room=1",
+        WebSocket.options(),
+        fn(sock) {
+          Console.print("protocol [{WebSocket.protocol(sock)}]")
+          Console.print("first {WebSocket.receive(sock)}")
+          WebSocket.send(sock, Binary(Bytes.from_list([1, 2])))
+          WebSocket.messages(sock).to_list(10)
+        },
+      )
+    }
+    Console.print("rest {got}")
+  }
+}

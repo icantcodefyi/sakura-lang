@@ -50,5 +50,6 @@ cookbook and `skills/sakura/references/recipes.md` through `agent_docs`.
 | `form_upload` | test (script and router) |
 | `sign_webhook` | test (direct router calls) |
 | `stream_lines` | test (`Fs.memory` and a pure source) |
+| `websocket_client` | test (`WebSocket.scripted`) |
 
 See [cookbook.md](cookbook.md) for the compiler baseline and regeneration command.

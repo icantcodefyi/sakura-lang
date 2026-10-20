@@ -1,0 +1,64 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §1, §6; plan web-apis.md phase 8
+
+import std/stream.{Source, StreamError}
+import std/websocket.{Binary, Close, Message, Options, Push, Reply, SocketError, Text, WebSocket}
+
+/// Subscribes to `topic` on a feed server and returns up to `max` text updates, in order, until
+/// the server closes the connection. A binary frame is skipped. Every message is at most 64 KiB.
+pub fn updates(url: String, topic: String, max: Int) -> List<String>
+  ! {WebSocket, Fail<SocketError | StreamError>}
+  requires max >= 0
+{
+  let opts = Options { ..WebSocket.options(), subprotocols: ["feed.v1"], max_message: 65_536 }
+  WebSocket.connect(url, opts, fn(sock) {
+    WebSocket.send(sock, Text("subscribe {topic}"))
+    WebSocket.messages(sock).filter(is_text).map(text_of).to_list(max)
+  })
+}
+
+fn is_text(m: Message) -> Bool {
+  match m {
+    Text(_) => true,
+    Binary(_) => false,
+  }
+}
+
+fn text_of(m: Message) -> String {
+  match m {
+    Text(s) => s,
+    Binary(_) => "",
+  }
+}
+
+test "updates arrive in order until the server closes" {
+  let script = [
+    Reply(Text("subscribe prices"), Text("ok")),
+    Push(Text("BTC 1")),
+    Push(Binary(Bytes.from_list([0]))),
+    Push(Text("BTC 2")),
+    Close(1000, "end of feed"),
+  ]
+  with WebSocket.scripted(script) {
+    expect_eq(
+      try { updates("wss://feed.example.com/live", "prices", 10) },
+      Ok(["ok", "BTC 1", "BTC 2"]),
+    )
+  }
+}
+
+test "more updates than asked for fail instead of growing" {
+  let script = [Reply(Text("subscribe a"), Text("1")), Push(Text("2")), Push(Text("3"))]
+  with WebSocket.scripted(script) {
+    let got = try { updates("wss://feed.example.com/live", "a", 2) }
+    expect(String.contains("{got}", "MaxItems"))
+  }
+}
+
+test "a server that answers the wrong subscription is a typed failure" {
+  with WebSocket.scripted([Reply(Text("subscribe b"), Text("ok"))]) {
+    let got = try { updates("wss://feed.example.com/live", "a", 10) }
+    expect(String.contains("{got}", "Failed"))
+  }
+}

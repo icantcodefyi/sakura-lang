@@ -81,6 +81,9 @@ pub const IMPORTS: &[&str] = &[
     "http_body_close",
     "serve_listen",
     "serve_respond",
+    "ws_connect",
+    "ws_send",
+    "ws_receive",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`

@@ -1,0 +1,42 @@
+// milestone: M3
+// spec: RFC 0002 §1, §4; plan web-apis.md phase 8
+// Spec: https://websockets.spec.whatwg.org/#the-closeevent-interface
+
+// `CloseEvent` is the value `Closed(CloseInfo { code, reason, clean })`: the peer's close comes
+// after the messages before it and is returned again by every later `receive`; a send after it
+// is `NotOpen`. The client's own `close` is answered the same way, and a second close does
+// nothing.
+import std/websocket.{Close, Push, Reply, SocketError, Text, WebSocket}
+
+pub fn main() -> Unit ! {Console} {
+  with WebSocket.scripted([Push(Text("last")), Close(4000, "maintenance")]) {
+    let peer_closed = try {
+      WebSocket.connect(
+        "wss://example.test/",
+        WebSocket.options(),
+        fn(sock) {
+          Console.print("{WebSocket.receive(sock)}")
+          Console.print("{WebSocket.receive(sock)}")
+          Console.print("{WebSocket.receive(sock)}")
+          WebSocket.send(sock, Text("too late"))
+        },
+      )
+    }
+    Console.print("send after the close: {peer_closed}")
+  }
+  with WebSocket.scripted([Reply(Text("a"), Text("b"))]) {
+    let client_closed: Result<Unit, SocketError> = try {
+      WebSocket.connect(
+        "wss://example.test/",
+        WebSocket.options(),
+        fn(sock) {
+          WebSocket.close(sock, 1000, "bye")
+          WebSocket.close(sock, 3000, "ignored")
+          Console.print("{WebSocket.receive(sock)}")
+          Console.print("{WebSocket.receive(sock)}")
+        },
+      )
+    }
+    Console.print("client close: {client_closed}")
+  }
+}

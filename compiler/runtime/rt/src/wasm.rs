@@ -329,12 +329,18 @@ fn err_string(rt: &mut Rt, reason: &[u8]) -> Res<u32> {
     Ok(e)
 }
 
+/// Request kind of a host WebSocket operation (ABI §8.5, 1.8.0).
+const WS: u32 = 4;
+
 /// The `async` imports of `async_hosted`.
 #[derive(Clone, Copy)]
 enum Async {
     Send,
     Open,
     Read,
+    WsConnect,
+    WsSend,
+    WsReceive,
 }
 
 /// An `async` host-delegated builtin (`cps`, ABI §8.2 `async`): the arguments (consumed) as
@@ -369,7 +375,11 @@ fn async_hosted(rt: &mut Rt, frame: u32, args: &[u32], secret: bool, import: Asy
 /// The request for `async_hosted`'s arguments `b` (consumed, zeroed first when `secret`): the
 /// suspension, or the ordinary error past the request limit.
 fn async_call(rt: &mut Rt, frame: u32, b: u32, secret: bool, import: Async) -> Res<u32> {
-    match rt.request(HTTP) {
+    let kind = match import {
+        Async::Send | Async::Open | Async::Read => HTTP,
+        Async::WsConnect | Async::WsSend | Async::WsReceive => WS,
+    };
+    match rt.request(kind) {
         Ok(Some(id)) => {
             let (len, at) = rt.data(b);
             // SAFETY: plain imports with a slice inside linear memory, copied in at once; the
@@ -379,6 +389,9 @@ fn async_call(rt: &mut Rt, frame: u32, b: u32, secret: bool, import: Async) -> R
                     Async::Send => host::http_send(id, at, len),
                     Async::Open => host::http_stream_open(id, at, len),
                     Async::Read => host::http_stream_read(id, at, len),
+                    Async::WsConnect => host::ws_connect(id, at, len),
+                    Async::WsSend => host::ws_send(id, at, len),
+                    Async::WsReceive => host::ws_receive(id, at, len),
                 }
             };
             drop_transport(rt, b, secret);
@@ -507,6 +520,66 @@ pub extern "C" fn rt_code_http_body_close(env: u32, _frame: u32) -> u32 {
     let rt = rt();
     match body_close(rt, rt.slot(env, 0) as u32) {
         Ok(()) => ret(rt, UNIT as u64),
+        Err(d) => rt.raise(d),
+    }
+}
+
+// ---- WebSocket (`WebSocket.host()`, ABI 1.8.0): the JS runtime's client, as `async` imports --
+
+/// `ws_connect(url, options)` (cps, as JS): `Ok((id, subprotocol))` once the handshake
+/// completes, `Err(reason)` otherwise. Cancelling the task aborts it.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_ws_connect(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    let args: [u32; 2] = cps_args(rt, frame);
+    async_hosted(rt, frame, &args, false, Async::WsConnect)
+}
+
+/// The boxed socket id in slot 0 (an `i64`) and the frame's other argument words, as
+/// `async_hosted` takes them; none when the frame resumes.
+fn ws_args<const N: usize>(rt: &mut Rt, frame: u32) -> Res<[u32; N]> {
+    if rt.block(frame) == 1 {
+        return Ok([0; N]);
+    }
+    let rest: [u32; N] = core::array::from_fn(|i| {
+        if i == 0 {
+            0
+        } else {
+            rt.take_fslot(frame, i as u32) as u32
+        }
+    });
+    let id = rt.fslot(frame, 0) as i64;
+    match rt.new_int(id) {
+        Ok(boxed) => {
+            let mut args = rest;
+            args[0] = boxed;
+            Ok(args)
+        }
+        Err(d) => {
+            for &a in &rest[1..] {
+                rt.drop(a);
+            }
+            Err(d)
+        }
+    }
+}
+
+/// `ws_send(id, message)` (cps, as JS): `Ok(true)` once written, `Ok(false)` after the close.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_ws_send(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    match ws_args::<2>(rt, frame) {
+        Ok(args) => async_hosted(rt, frame, &args, false, Async::WsSend),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// `ws_receive(id)` (cps, as JS): the next message or the close, when one arrives.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_ws_receive(_env: u32, frame: u32) -> u32 {
+    let rt = rt();
+    match ws_args::<1>(rt, frame) {
+        Ok(args) => async_hosted(rt, frame, &args, false, Async::WsReceive),
         Err(d) => rt.raise(d),
     }
 }
@@ -1354,6 +1427,12 @@ mod host {
         pub fn http_stream_open(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_stream_read(request: u32, ptr: u32, len: u32) -> u32;
         pub fn http_body_close(ptr: u32, len: u32);
+        /// `async` (1.8.0): `std/websocket`'s host operations (JS `ws_connect`, `ws_send`,
+        /// `ws_receive`), each completing `request` with a status-0 answer holding the
+        /// builtin's `Result<_, String>`; a socket is a plain `Int` id, closed by `file_close`.
+        pub fn ws_connect(request: u32, ptr: u32, len: u32) -> u32;
+        pub fn ws_send(request: u32, ptr: u32, len: u32) -> u32;
+        pub fn ws_receive(request: u32, ptr: u32, len: u32) -> u32;
         /// `async`: listen on the address at `(ptr, len)` for `listener` (`invoke`); completes
         /// `request` with a status-0 answer holding the `ServeError` when the server stops.
         pub fn serve_listen(request: u32, listener: u32, ptr: u32, len: u32) -> u32;

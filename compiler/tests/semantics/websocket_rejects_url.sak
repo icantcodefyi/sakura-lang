@@ -1,0 +1,41 @@
+// milestone: M3
+// spec: RFC 0002 §1, §4; plan web-apis.md phase 8
+// Spec: https://websockets.spec.whatwg.org/#dom-websocket-websocket
+
+// `connect` takes a `ws` or `wss` URL without a fragment, parsed by `Url.parse`; anything else
+// is `SocketError(Connect(reason))` before a connection opens, under the scripted handler as
+// under the host's. A scripted peer that meets a send it did not expect, or a receive with
+// nothing to send, fails with `Failed` naming the step instead of waiting forever.
+import std/websocket.{Reply, SocketError, Text, WebSocket}
+
+fn open(url: String) -> Result<Int, SocketError> ! {WebSocket} {
+  try { WebSocket.connect(url, WebSocket.options(), fn(_) { 1 }) }
+}
+
+pub fn main() -> Unit ! {Console} {
+  with WebSocket.scripted([Reply(Text("ping"), Text("pong"))]) {
+    for url in [
+      "wss://example.test/a",
+      "https://example.test/a",
+      "wss://example.test/a#top",
+      "wss://exa mple.test/",
+      "not a url",
+    ] { Console.print("{url} -> {open(url)}") }
+    let wrong = try {
+      WebSocket.connect(
+        "ws://example.test/",
+        WebSocket.options(),
+        fn(sock) { WebSocket.send(sock, Text("pong")) },
+      )
+    }
+    Console.print("unexpected send: {wrong}")
+    let silent = try {
+      WebSocket.connect(
+        "ws://example.test/",
+        WebSocket.options(),
+        fn(sock) { WebSocket.receive(sock) },
+      )
+    }
+    Console.print("nothing to receive: {silent}")
+  }
+}

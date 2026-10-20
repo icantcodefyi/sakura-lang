@@ -500,6 +500,32 @@ fn run_exits_75_when_permissions_do_not_cover_main() {
     assert_eq!(allowed.stdout, "started\n");
 }
 
+/// Plan `web-apis.md` phase 8 (`websocket_denied_host`), RFC 0002 §3: `net` governs
+/// `WebSocket`, so a `main` declaring it with `net = []` stops at startup with 75.
+#[test]
+fn run_exits_75_for_websocket_without_net() {
+    let dir = tmp(
+        "ws-perm",
+        "import std/websocket.{SocketError, WebSocket}\n\n\
+         pub fn main() -> Unit ! {Console, WebSocket, Fail<SocketError>} { Console.print(\"started\") }\n",
+    );
+    std::fs::write(
+        dir.join("sakura.toml"),
+        "[package]\nname = \"ws_perm\"\n\n[permissions]\nnet = []\n",
+    )
+    .unwrap();
+    let denied = sakura(&["run", "main.sak"], &dir);
+    assert_eq!(denied.code, Some(75), "{}", denied.stderr);
+    assert!(
+        denied
+            .stderr
+            .contains("`main` declares `WebSocket`, but sakura.toml grants no `net` permission"),
+        "{}",
+        denied.stderr
+    );
+    assert!(denied.stdout.is_empty());
+}
+
 #[test]
 fn run_scopes_root_handlers_to_the_manifest() {
     let dir = tmp(

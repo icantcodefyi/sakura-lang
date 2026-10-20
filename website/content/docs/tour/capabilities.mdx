@@ -34,7 +34,7 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-`sakura run` passes this table as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP/serving and environment adapters enforce it. Running emitted JS directly without that variable does not establish this ceiling. Trusted FFI is outside this language-level boundary. There is no separate `Net` effect: the `net` list limits the network effects `Http` and `Serve` (`Sql.postgres` is not implemented) and is checked on every redirect hop, not only the first URL (see [Redirects](#redirects)), and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied). [sakura.toml](/docs/manifest) lists every manifest key.
+`sakura run` passes this table as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP/serving and environment adapters enforce it. Running emitted JS directly without that variable does not establish this ceiling. Trusted FFI is outside this language-level boundary. There is no separate `Net` effect: the `net` list limits the network effects `Http`, `Serve` and `WebSocket` (`Sql.postgres` is not implemented; a `ws` URL without a port means port 80, `wss` 443) and is checked on every redirect hop, not only the first URL (see [Redirects](#redirects)), and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied). [sakura.toml](/docs/manifest) lists every manifest key.
 
 ## Narrowing authority
 

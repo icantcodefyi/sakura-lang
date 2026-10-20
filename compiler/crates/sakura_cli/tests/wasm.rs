@@ -258,6 +258,108 @@ fn http_host_sends_on_wasm_as_on_js() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan `web-apis.md` phase 8: `WebSocket.host()` against a live local peer (the JS runtime
+/// test's echo server, `runtime/js/test/ws_peer.mjs --serve`) gives the same output and effect
+/// trace on JS and through the WASM host (ABI 1.8.0's `ws_*` imports): a chosen subprotocol,
+/// text and binary echoed, a send over `max_message`, the closing handshake, the close returned
+/// again, and a host outside `net` refused before connecting.
+#[test]
+fn websocket_host_on_wasm_as_on_js() {
+    use std::io::BufRead;
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let peer_js = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/js/test/ws_peer.mjs");
+    let mut peer = std::process::Command::new("node")
+        .arg(&peer_js)
+        .arg("--serve")
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut line = String::new();
+    std::io::BufReader::new(peer.stdout.take().unwrap())
+        .read_line(&mut line)
+        .unwrap();
+    let port: u16 = line.trim().parse().expect("the peer prints its port");
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-ws-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!(
+            "[package]\nname = \"w\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+             [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        format!(
+            r#"import std/websocket.{{Binary, Options, SocketError, Text, WebSocket}}
+
+pub fn main() -> Unit ! {{Console, WebSocket, Fail<SocketError>}} {{
+  let opts = Options {{ ..WebSocket.options(), subprotocols: ["chat"], max_message: 8 }}
+  WebSocket.connect("ws://127.0.0.1:{port}/echo", opts, fn(sock) {{
+    Console.print("protocol {{WebSocket.protocol(sock)}}")
+    WebSocket.send(sock, Text("héllo"))
+    Console.print("{{WebSocket.receive(sock)}}")
+    WebSocket.send(sock, Binary(Bytes.from_list([0, 255])))
+    Console.print("{{WebSocket.receive(sock)}}")
+    Console.print("{{try {{ WebSocket.send(sock, Text("too long!")) }}}}")
+    WebSocket.close(sock, 1000, "bye")
+    Console.print("{{WebSocket.receive(sock)}}")
+    Console.print("{{WebSocket.receive(sock)}}")
+    Console.print("{{try {{ WebSocket.send(sock, Text("late")) }}}}")
+  }})
+  let denied = try {{ WebSocket.connect("ws://127.0.0.1:1/", WebSocket.options(), fn(_) {{ 0 }}) }}
+  Console.print("{{denied}}")
+}}
+"#
+        ),
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let trace = dir.join(format!("{target}.trace"));
+        let out_dir = dir.join(format!("out-{target}"));
+        let out = sakura_env(
+            &[
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ],
+            &dir,
+            &[("SAKURA_TRACE", &trace)],
+        );
+        (out, std::fs::read_to_string(&trace).unwrap_or_default())
+    };
+    let (js, js_trace) = run("js");
+    let (wasm, wasm_trace) = run("wasm");
+    let _ = peer.kill();
+    let _ = peer.wait();
+    assert_eq!(js.code, Some(0), "{}{}", js.stdout, js.stderr);
+    assert_eq!(
+        js.stdout,
+        "protocol chat\n\
+         Data(Text(\"héllo\"))\n\
+         Data(Binary(Bytes.of([0, 255])))\n\
+         Err(SocketError { reason: MessageTooLarge })\n\
+         Closed(CloseInfo { code: 1000, reason: \"bye\", clean: true })\n\
+         Closed(CloseInfo { code: 1000, reason: \"bye\", clean: true })\n\
+         Err(SocketError { reason: NotOpen })\n\
+         Err(SocketError { reason: Connect(\"127.0.0.1:1 is not in the manifest's net list\") })\n"
+    );
+    assert_eq!(
+        (wasm.code, &wasm.stdout, &wasm_trace),
+        (js.code, &js.stdout, &js_trace),
+        "{}",
+        wasm.stderr
+    );
+    assert_eq!(js_trace.matches("\"op\":\"receive\"").count(), 4);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Gate 10 (W0): with `http_send` of kind `secret`, the cassette imports still see a
 /// `secret_headers` entry redacted. A package test records through `Http.recording` from a
 /// scripted outer `Http` (`--record` is JS-only), then replays on `--target wasm` under
@@ -805,7 +907,8 @@ fn log_json_writes_what_js_writes() {
 /// entry that stays within the gauge, a held twin that defects, and every call under
 /// `--no-direct` count none. Design §17.211 (2): `List.map`'s twin calling its callback's
 /// twin, aborting at element two, or abandoned there at a closure with no twin, frees the
-/// list it built: the heap's `live` bytes end as under `--no-direct`.
+/// list it built: the heap holds as many live objects at the end as under `--no-direct` (objects,
+/// not bytes: the static code table is a run rounded to 4 KiB, and twins make it larger).
 #[test]
 fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     if !available() {
@@ -850,7 +953,7 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
         (
             v["restarts"].as_u64().expect("a restarts counter"),
-            v["live"].as_u64().expect("a live counter"),
+            v["live_objects"].as_u64().expect("a live_objects counter"),
         )
     };
     let print = |call: &str| format!("  Console.print(Int.to_string({call}))\n");
@@ -936,7 +1039,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x010700, "{name}");
+        assert_eq!(v["abi_version"], 0x010800, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),
