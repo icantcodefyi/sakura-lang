@@ -246,6 +246,26 @@ bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-i
 bench/bench bless bench/target/counted-wasm.json    # -> bench/baselines/wasm/<host-id>.json
 ```
 
+**Node flags (design §17.282).** Every measured Node process runs under `meta.flags.node`,
+`--predictable --min-semi-space-size=16 --max-semi-space-size=16` from the flag commit on (a
+file without the field ran under `--predictable` alone). `compare` and `envelope` refuse two
+files whose lists differ (`flags`), and `bless` refuses to overwrite a baseline under another
+list. **The re-bless at the flag commit** archives the `320c9980` files first, with their
+flags, then blesses that commit's counted `js` and `wasm` runs (the candidate files under
+`bench/baselines/candidate/` if their oracles are green and their trees were clean, or fresh
+runs from `../sakura-counted` at the flag commit):
+
+```sh
+mkdir -p bench/baselines/archive/320c9980/wasm
+git mv bench/baselines/d88970189598.json bench/baselines/archive/320c9980/d88970189598.json
+git mv bench/baselines/wasm/d88970189598.json bench/baselines/archive/320c9980/wasm/d88970189598.json
+bench/bench bless bench/baselines/candidate/<D>-<C>-counted-js.json
+bench/bench bless bench/baselines/candidate/<D>-<C>-counted-wasm.json
+```
+
+The checklist line names the new `meta.commit` and the flags. Until then, a compare against
+the candidate is direction, marked `pending owner bless` in `bench/deltas.md`.
+
 The native and compile runs are evidence, not baselines, and are not blessed.
 
 **Evidence files**, committed on `main` (`D` is the date, `C` the short commit, `H` the host id):

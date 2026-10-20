@@ -282,10 +282,33 @@ def spawn(cmd, timeout=PROCESS_TIMEOUT):
         return out.read().decode(), rss
 
 
+# V8's flags on every Node process the harness measures, timed and counted (§17.264 (2), §17.282).
+# `--predictable` keeps GC and compilation on the main thread: V8's helper threads retire a
+# scheduling-dependent number of instructions (hand-JS `shapes` at 100,000 counted 0.46–1.16 G per
+# call by default and 0.455–0.460 G single-threaded; n = 50,000's 2.1% range closed to 0.35%).
+# A fixed young generation removes a GC-phase alias that moved a count with the artefact's
+# directory (`shapes` n = 50,000: 481 M in-tree, 391 M under /tmp; bench/README.md).
+SEMI_SPACE_MB = 16
+NODE_FLAGS = ["--predictable", f"--min-semi-space-size={SEMI_SPACE_MB}", f"--max-semi-space-size={SEMI_SPACE_MB}"]
+
+
+def node_flags(doc):
+    """`meta.flags.node`; a file made before §17.282 ran Node under `--predictable` alone."""
+    return doc["meta"].get("flags", {}).get("node", ["--predictable"])
+
+
+def flags_refusal(**docs):
+    """Why these files are not one Node configuration, naming every file's list, or None."""
+    lists = {name: node_flags(d) for name, d in docs.items()}
+    if len({tuple(v) for v in lists.values()}) > 1:
+        return "meta.flags.node differs: " + "; ".join(f"{k} [{' '.join(v)}]" for k, v in lists.items())
+    return None
+
+
 def command(variant, engine, module_or_bin, mode, *args):
     if engine == "native":
         return [str(module_or_bin), mode, *map(str, args)]
-    return [engine, str(RUNNER), mode, str(module_or_bin), *map(str, args)]
+    return [engine, *(NODE_FLAGS if engine == "node" else []), str(RUNNER), mode, str(module_or_bin), *map(str, args)]
 
 
 def json_lines(text):
@@ -450,12 +473,7 @@ def calls_command(variant, engine, artefact, n, calls, case=None):
     entry = f"run_{case}" if case else "run"
     if engine == "wasmtime":
         return wasmtime(artefact, entry, [n], repeat=calls)
-    cmd = command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
-    # V8's helper threads (concurrent marking, parallel scavenges, background compilation) retire
-    # a scheduling-dependent number of instructions: hand-JS `shapes` at 100,000 counted 0.46–1.16 G
-    # per call by default and 0.455–0.460 G single-threaded; `--predictable` (single-threaded and
-    # GC heuristics off the clock) also closes n = 50,000's 2.1% range to 0.35% (§17.264).
-    return [cmd[0], "--predictable", *cmd[1:]] if engine == "node" else cmd
+    return command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
 
 
 def count_calls(variant, engine, artefact, n, calls, case=None):
@@ -606,7 +624,7 @@ def cmd_run(a):
     sizes_flag = a.sizes
     flags = {"suite": a.suite, "engines": engines, "lane": a.lane, "sizes": sizes_flag, "stable": a.stable,
              "filter": a.filter, "processes": a.processes, "seed": a.seed,
-             "metric": "instructions" if a.instructions else "time"}
+             "metric": "instructions" if a.instructions else "time", "node": NODE_FLAGS}
     if a.instructions and sys.platform != "darwin":
         log("--instructions reads macOS's `/usr/bin/time -l`")
         return EXIT_TOOLCHAIN
@@ -831,7 +849,11 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
     failure (checksum, oracle, malformed samples) still blocks. When every file is an
     `--instructions` run the ratios are of instructions per call and the host's load is not read
     (§17.264); the absolute floor is a time and does not apply, and a Bun row never blocks: it is
-    flagged past the block threshold and carries its four cells' spreads (§17.265 (5))."""
+    flagged past the block threshold and carries its four cells' spreads (§17.265 (5)).
+    Files whose `meta.flags.node` differ are refused: the verdict is `flags`, with no rows (§17.282)."""
+    if reason := flags_refusal(base=base, **{f"head{i + 1}": h for i, h in enumerate(heads)}):
+        return {"verdict": "flags", "flags": reason, "metric": None, "host_load": None, "rows": [],
+                "immediate": [], "rss": [], "confirmation_programs": []}
     field = "instructions" if all(metric(d) == "instructions" for d in (base, *heads)) else "median_ms"
     if field == "instructions":
         abs_ms = 0
@@ -1002,6 +1024,12 @@ def cmd_compare(a):
             log(f"not a {SCHEMA} file")
             return EXIT_BLOCKED
     out = compare(base, heads, a.flag, a.block, a.abs_ms)
+    if out["verdict"] == "flags":
+        log(f"refusing: {out['flags']}")
+        print(f"verdict: flags ({out['flags']})")
+        if a.json:
+            Path(a.json).write_text(json.dumps(out, indent=1) + "\n")
+        return EXIT_BLOCKED
     blocked_node = [r for r in out["rows"] if r["status"] == "blocked" and r["engine"] == "node"]
     if out["metric"] == "instructions" and blocked_node and not a.no_recount:
         if sys.platform != "darwin":
@@ -1071,6 +1099,8 @@ def refusal(wasm, native):
             return f"the {name} file is not a `--suite {name}` run"
     if native["meta"]["flags"].get("lane") != "matched":
         return f"the native file's lane is {native['meta']['flags'].get('lane')}; the envelope reads Rust matched"
+    if reason := flags_refusal(wasm=wasm, native=native):
+        return reason
     for field, get in (("meta.commit", lambda d: d["meta"].get("commit")),
                        ("meta.host.id", lambda d: d["meta"].get("host", {}).get("id"))):
         if get(wasm) != get(native):
@@ -1193,6 +1223,12 @@ def cmd_bless(a):
     # compare nothing to compare.
     suite = doc["meta"].get("flags", {}).get("suite")
     dest = BENCH / "baselines" / ("wasm" if suite == "wasm" else "") / f"{doc['meta']['host']['id']}.json"
+    if dest.exists():  # §17.282 (5): a baseline under other flags is archived by hand, not overwritten
+        blessed = json.loads(dest.read_text())
+        if reason := flags_refusal(blessed=blessed, run=doc):
+            archive = BENCH / "baselines" / "archive" / blessed["meta"]["commit"][:8] / dest.relative_to(BENCH / "baselines")
+            log(f"refusing to bless: {reason}; `git mv` {dest.relative_to(ROOT)} to {archive.relative_to(ROOT)} first")
+            return EXIT_ORACLE
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(a.result, dest)
     log(f"blessed {dest.relative_to(ROOT)}; review and commit it by hand")

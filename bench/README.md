@@ -423,7 +423,8 @@ the shuffled order of a timed run:
    call; the few tiny cells at the cap say so in `calls`).
 2. **Measure** each pair: a fresh process calling `run(n)` once and one calling it 1 + k
    times (`runner.mjs values`, a native port's `values`, or a WASI command whose `main`
-   loops k + 1 times). Node runs with V8's `--predictable`, which keeps garbage collection
+   loops k + 1 times). Node runs with V8's `--predictable` (and, since §17.282, a fixed
+   16 MB young generation: [below](#location-and-the-aa-recount-17272-2)), which keeps garbage collection
    and compilation on the main thread and its GC heuristics off the clock. By default the
    helper threads retire a number of instructions that depends on scheduling: hand-JS
    `shapes` at n = 100,000 counted 0.46–1.16 G per call over five pairs by default and
@@ -477,8 +478,24 @@ the two locations within 0.5%, else the 64 measured here; `meta.flags.node` reco
 list (a file without it is `["--predictable"]`) and `compare`, `envelope` and `bless` refuse
 two files whose lists differ (`flags`). The flag commit carries a candidate counted run under
 `baselines/candidate/`; the owner re-blesses the `js` and `wasm` baselines at that commit and
-the `320c9980` files move to `baselines/archive/320c9980/`. Until the flag commit lands, this
-paragraph describes the current command line.
+the `320c9980` files move to `baselines/archive/320c9980/`.
+
+**Landed with `S = 16`.** The bounded measurement (2026-10-20, Node 26.11.0, the M4 Pro
+reference host loaded by other agents' builds, five pairs an arm interleaved, each cell's own
+calibrated `calls`, 8 for both) under `--predictable --min-semi-space-size=16
+--max-semi-space-size=16` counted, per call: `shapes` n = 50,000 662.2 M in this repository's
+`bench/target/baseline/320c9980…/head/shapes` and 663.6 M at a copy under `/tmp` (+0.21%;
+spreads 0.28% and 1.14%), and its A/A recount pair (the `320c9980` artefact, 673.2 M) at
+−1.6%; `binary_trees` n = 14 1,017 M and 1,016 M (−0.08%; spreads 0.13% and 0.24%), recount
+pair −0.05%. Both cells read the two locations within 0.5% and the recount pairs within the
+flag threshold, so `S` is 16. Note what the fixed size costs: `shapes` counts 662 M at 16 MB
+against 374 M at 64 MB in the cause session and the blessed 381 M under the default, since a smaller young generation
+scavenges its short-lived records more often; both sides of every ratio run under the same
+flags, so only the counts move, once, at the re-bless. `harness/bench.py`'s `NODE_FLAGS` is
+the list: every Node process `command` builds (timed `measure`, counted pairs, oracles) runs
+under it, `run` records it as `meta.flags.node`, and `compare` (verdict `flags`, exit 2, no
+rows), `envelope` and `bless` (over an existing baseline under another list: `git mv` it to
+`baselines/archive/<commit>/` first) refuse two different lists, printing both.
 
 **`compare` re-counts every blocked Node cell** of a counted compare (macOS; `--no-recount`
 skips it) as an A/A pair in the same session and location: the baseline commit's artefact,

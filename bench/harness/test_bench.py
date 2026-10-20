@@ -965,6 +965,69 @@ class Envelope(unittest.TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
+class NodeFlags(unittest.TestCase):
+    """§17.282: one young generation on every measured Node process; files under other flags are refused."""
+    fixed = ["--predictable", "--min-semi-space-size=16", "--max-semi-space-size=16"]
+
+    def test_every_measured_node_process_runs_under_the_flags(self):
+        self.assertEqual(bench.NODE_FLAGS, self.fixed)
+        timed = bench.command("sakura", "node", "m.mjs", "measure", 20)
+        counted = bench.calls_command("sakura", "node", "m.wasm", 20, 2)
+        for cmd in (timed, counted):
+            self.assertEqual(cmd[:4], ["node", *self.fixed])
+        self.assertEqual(bench.command("js", "bun", "m.mjs", "measure", 20)[1], str(bench.RUNNER))
+        self.assertNotIn("--predictable", bench.calls_command("sakura", "wasmtime", "fib", 20, 2))
+
+    def test_a_file_without_the_list_ran_under_predictable_alone(self):
+        self.assertEqual(bench.node_flags(doc(pair(20.0, 10.0))), ["--predictable"])
+
+    def test_compare_refuses_two_flag_lists_and_prints_both(self):
+        head = doc(pair(20.0, 10.0))
+        head["meta"]["flags"] = {"node": self.fixed}
+        out = bench.compare(doc(pair(20.0, 10.0)), [head])
+        self.assertEqual((out["verdict"], out["rows"]), ("flags", []))
+        self.assertIn("base [--predictable]; head1 [" + " ".join(self.fixed) + "]", out["flags"])
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = [Path(tmp) / "base.json", Path(tmp) / "head.json"]
+            for path, document in zip(paths, (doc(pair(20.0, 10.0)), head)):
+                path.write_text(json.dumps({**document, "schema": bench.SCHEMA}))
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+                code = bench.main(["compare", *map(str, paths)])
+        self.assertEqual(code, bench.EXIT_BLOCKED)
+        self.assertIn("verdict: flags (meta.flags.node differs", stdout.getvalue())
+        same = doc(pair(20.0, 10.0))
+        same["meta"]["flags"] = {"node": self.fixed}
+        self.assertEqual(bench.compare(same, [head])["verdict"], "ok")
+
+    def test_envelope_refuses_two_flag_lists(self):
+        wasm, native = envelope_docs()
+        wasm["meta"]["flags"]["node"] = self.fixed
+        self.assertIn("meta.flags.node differs", bench.refusal(wasm, native))
+        native["meta"]["flags"]["node"] = self.fixed
+        self.assertIsNone(bench.refusal(wasm, native))
+
+    def test_bless_refuses_to_overwrite_a_baseline_under_other_flags(self):
+        run = counted_doc(5e6, 1e6)
+        run["meta"]["flags"]["node"] = self.fixed
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp) / "baselines" / "test.json"
+            dest.parent.mkdir()
+            old = counted_doc(5e6, 1e6)
+            old["meta"]["commit"] = "320c99802fd6"
+            dest.write_text(json.dumps(old))
+            path = Path(tmp) / "run.json"
+            path.write_text(json.dumps(run))
+            stderr = io.StringIO()
+            with patch.object(bench, "BENCH", Path(tmp)), patch.object(bench, "ROOT", Path(tmp)), \
+                 contextlib.redirect_stderr(stderr):
+                self.assertEqual(bench.main(["bless", str(path)]), bench.EXIT_ORACLE)
+                self.assertIn("baselines/archive/320c9980/test.json first", stderr.getvalue())
+                self.assertEqual(json.loads(dest.read_text())["meta"]["commit"], "320c99802fd6")
+                dest.unlink()  # the owner archived it
+                self.assertEqual(bench.main(["bless", str(path)]), bench.EXIT_OK)
+
+
 class EnvelopeTable(unittest.TestCase):
     def test_every_envelope_program_is_a_program_of_the_suite(self):
         for patterns, _lanes in bench.M4_ENVELOPE:

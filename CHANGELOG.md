@@ -15,6 +15,12 @@ retains earlier implementation history.
   instructions retired per call on the reference Mac (Node, n = 100,000), `map_set`'s `Int`
   case drops 38% (6.21× → 3.84× hand-written JavaScript); insertion order, `Show` and JSON are
   unchanged.
+- Benchmark harness (design §17.282): every Node process it measures runs under
+  `--predictable --min-semi-space-size=16 --max-semi-space-size=16`, a fixed young
+  generation that removes a GC-phase alias which moved a counted cell with its artefact's
+  directory (`shapes` n = 50,000: 8–19%; under the flags, 0.21%). Runs record the list as
+  `meta.flags.node`; `compare` (verdict `flags`), `envelope` and `bless` refuse two files
+  under different lists. Every Node count changes once, at the owner's re-bless.
 - JS backend performance (design §17.265 (6)): a function that returns a fresh list may now
   update the list it is given in place when the caller is done with it, and a `List<Bool>`
   built by an owned push loop is one array until a persistent update rebuilds it. By

@@ -343,7 +343,10 @@ candidate counted run of `js` and `wasm` at the flag commit under `bench/baselin
 Owner step: re-bless at the flag commit; the `320c9980` files are archived. WS-P20 and WS-P15
 compare against the file `main` has when they compare (the old one through the A/A recount,
 with the candidate compare recorded beside it) and read their exit criteria on the blessed
-file; no row waits for the bless.
+file; no row waits for the bless. **Landed with `S` = 16** (`shapes` n = 50,000 reads the two
+locations +0.21% apart and its recount pair −1.6%; `binary_trees` n = 14 −0.08% and −0.05%;
+`bench/README.md` "Location and the A/A recount"); the candidate files are under
+`bench/baselines/candidate/`, pending owner bless.
 
 **The JS lane's order from here (design §17.276):** WS-P20, WS-P15, WS-P21, WS-P16, WS-P17,
 WS-P18 (WS-P19 inside its sweep); wave 2 after WS-P16.
