@@ -1,0 +1,21 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// covers: RFC 0002 §2.5, design §17.284 (3) (`to_list` requires `max_items >= 0`)
+
+// A negative `max_items` is a defect at the caller, as every bound in `std/stream` is, not
+// a bound read as `0`: `D020` before any item is pulled.
+import std/stream.{Source, StreamError}
+
+pub fn main() -> Unit ! {Console} {
+  let src: Source<Int, {Console}> = Source.from_list([1, 2])
+    .map(fn(x) {
+      Console.print("pulled {x}")
+      x
+    })
+  match try { src.to_list(0 - 1) } {
+    Ok(xs) => Console.print("ok {xs}"),
+    Err(StreamError(reason)) => Console.print("failed {reason}"),
+  }
+  Console.print("never printed")
+}

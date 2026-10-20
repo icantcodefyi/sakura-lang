@@ -1,10 +1,11 @@
 // milestone: M3
-// spec: RFC 0002 §2.5, §6, design §17.280 (3)
+// spec: RFC 0002 §2.5, §6, design §17.280 (3), §17.284 (4)
 
 // A line longer than `max_line` bytes (`String.len`, so `é` counts 2) fails
 // `StreamError(MaxLine)`, whether it ends in an LF or is still pending when more than
 // `max_line` bytes of it have arrived; the lines before it are yielded first. A line of
-// exactly `max_line` bytes passes, and so does one whose CR arrives before its LF.
+// exactly `max_line` bytes passes, and so does one whose CR arrives before its LF. A final
+// line without an LF is yielded as it is, so its CR is data and counts: `"abc\r"` is 4 bytes.
 import std/stream.{Source, StreamError}
 
 fn show_lines(items: List<String>, max_line: Int) -> Unit ! {Console} {
@@ -23,4 +24,5 @@ pub fn main() -> Unit ! {Console} {
   show_lines(["ok\n", "abc", "de"], 4)
   show_lines(["abcd\r", "\n"], 4)
   show_lines(["éé\n", "ééa\n"], 4)
+  show_lines(["abc\r"], 3)
 }

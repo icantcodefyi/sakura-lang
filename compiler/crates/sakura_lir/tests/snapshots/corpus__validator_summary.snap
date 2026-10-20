@@ -8,7 +8,7 @@ semantics/arith_ranges_proved: 6 funcs, 31 blocks, 0 dup, 39 drop, valid
 semantics/arith_ranges_requires_seeded: 6 funcs, 33 blocks, 0 dup, 28 drop, valid
 semantics/arith_ranges_requires_violated: 3 funcs, 12 blocks, 0 dup, 3 drop, valid
 semantics/blob_slice_and_text: 20 funcs, 127 blocks, 16 dup, 132 drop, valid
-semantics/blob_source: 40 funcs, 261 blocks, 45 dup, 130 drop, valid
+semantics/blob_source: 40 funcs, 264 blocks, 46 dup, 135 drop, valid
 semantics/blob_text_rejects_invalid_utf8: 17 funcs, 87 blocks, 8 dup, 41 drop, valid
 semantics/blocks_and_let: 2 funcs, 5 blocks, 0 dup, 6 drop, valid
 semantics/bytes_base64_lenient_whitespace: 5 funcs, 23 blocks, 2 dup, 19 drop, valid
@@ -101,7 +101,7 @@ semantics/headers_validate_and_combine: 39 funcs, 315 blocks, 73 dup, 163 drop, 
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 4 drop, valid
 semantics/host_fs_env: 48 funcs, 242 blocks, 46 dup, 138 drop, valid
 semantics/host_root_handlers: 15 funcs, 75 blocks, 6 dup, 44 drop, valid
-semantics/http_body_source_scripted: 140 funcs, 1542 blocks, 228 dup, 1026 drop, valid
+semantics/http_body_source_scripted: 140 funcs, 1545 blocks, 229 dup, 1031 drop, valid
 semantics/http_redirect_21_hops: 123 funcs, 1377 blocks, 203 dup, 974 drop, valid
 semantics/http_redirect_drops_secrets_cross_origin: 125 funcs, 1370 blocks, 203 dup, 971 drop, valid
 semantics/http_redirect_error_fails: 119 funcs, 1362 blocks, 207 dup, 960 drop, valid
@@ -183,11 +183,12 @@ semantics/sql_untrusted_param: 16 funcs, 97 blocks, 10 dup, 52 drop, valid
 semantics/std_collections: 32 funcs, 192 blocks, 55 dup, 149 drop, valid
 semantics/stream_chunks_bytes: 19 funcs, 101 blocks, 30 dup, 73 drop, valid
 semantics/stream_from_list_take_map_filter_fold: 24 funcs, 86 blocks, 10 dup, 64 drop, valid
-semantics/stream_lines_rejects_max_line: 21 funcs, 97 blocks, 21 dup, 73 drop, valid
-semantics/stream_lines_split_across_chunks: 18 funcs, 93 blocks, 21 dup, 61 drop, valid
+semantics/stream_lines_rejects_max_line: 21 funcs, 101 blocks, 22 dup, 78 drop, valid
+semantics/stream_lines_split_across_chunks: 18 funcs, 96 blocks, 22 dup, 66 drop, valid
 semantics/stream_pipe_to_file_sink: 47 funcs, 183 blocks, 39 dup, 96 drop, valid
 semantics/stream_pull_persistent: 13 funcs, 69 blocks, 11 dup, 72 drop, valid
 semantics/stream_to_list_rejects_max_items: 12 funcs, 55 blocks, 4 dup, 43 drop, valid
+semantics/stream_to_list_rejects_negative_bound: 10 funcs, 44 blocks, 4 dup, 35 drop, valid
 semantics/strings_and_interpolation: 3 funcs, 10 blocks, 0 dup, 17 drop, valid
 semantics/tag_eq: 13 funcs, 56 blocks, 1 dup, 94 drop, valid
 semantics/tag_eq_defect: 3 funcs, 10 blocks, 0 dup, 5 drop, valid

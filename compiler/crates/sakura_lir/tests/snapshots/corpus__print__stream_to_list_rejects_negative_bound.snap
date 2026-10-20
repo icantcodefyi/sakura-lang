@@ -1,0 +1,104 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 record std::stream::Source | Source 24b (pull: word*)
+layout 3 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 4 error std::stream::StreamError | StreamError 24b (reason: word*)
+layout 5 variant std::stream::StreamReason | MaxItems 16b () | MaxLine 16b ()
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::stream_to_list_rejects_negative_bound, frame 7 slots [%5 word*, %7 word*, %11 bool, %21 bool, %28 bool, %30 word*, %36 word*]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 xs: ptr = alloc list(%1, %3)
+    call from_list#2(%4) -> b1()
+  b1(%5 r: ptr):
+    %6 f: ptr = closure main$1#3[]
+    call map#4(%5, %6) -> b2()
+  b2(%7 r: ptr):
+    try_push -> b10(err, )
+    %32 lit: i64 = const 0
+    %33 lit: i64 = const 1
+    %34 t: i64 = intsub %32, %33
+    %35 $site: i64 = const 2
+    call to_list#5(%7, %34, %35) -> b11()
+  b3(%8 v: ptr):
+    %14 tag: i64 = tag %8 ctor std::result::Result
+    switch %14 0 => b6(%8) 1 => b7(%8)
+  b4(%9 v: word):
+    drop %9
+    %10 lit: ptr = const str 0
+    perform std::console::Console.print(%10) -> b5()
+  b5(%11 r: unit):
+    %12 box: word = box %11
+    %13 unbox: unit = unbox %12
+    drop %12
+    ret %13
+  b6(%15 v: ptr):
+    %17 p: word = proj %15.0 std::result::Result.Ok
+    drop %15
+    %18 s: ptr = show %17
+    drop %17
+    %19 lit: ptr = const str 1
+    %20 s: ptr = concat %19, %18
+    drop %18
+    drop %19
+    perform std::console::Console.print(%20) -> b8()
+  b7(%16 v: ptr):
+    %23 p: word = proj %16.0 std::result::Result.Err
+    drop %16
+    %24 p: word = proj %23.0 std::stream::StreamError
+    drop %23
+    %25 s: ptr = show %24
+    drop %24
+    %26 lit: ptr = const str 2
+    %27 s: ptr = concat %26, %25
+    drop %25
+    drop %26
+    perform std::console::Console.print(%27) -> b9()
+  b8(%21 r: unit):
+    %22 box: word = box %21
+    jump b4(%22)
+  b9(%28 r: unit):
+    %29 box: word = box %28
+    jump b4(%29)
+  b10(%30 e: word):
+    %31 err: ptr = alloc std::result::Result.Err(%30)
+    jump b3(%31)
+  b11(%36 r: ptr) [try]:
+    %37 ok: ptr = alloc std::result::Result.Ok(%36)
+    try_pop
+    jump b3(%37)
+
+fn $entry#1 top -> unit ; main::stream_to_list_rejects_negative_bound, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::stream_to_list_rejects_negative_bound, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 3
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1(%2)
+  b1(%6 r: unit, %7 x: i64):
+    %8 box: word = box %6
+    drop %8
+    %9 box: word = box %7
+    ret %9

@@ -16,3 +16,5 @@ max 4, ["abcd\r", "\n"]:
 max 4, ["éé\n", "ééa\n"]:
   line éé
   failed MaxLine
+max 3, ["abc\r"]:
+  failed MaxLine

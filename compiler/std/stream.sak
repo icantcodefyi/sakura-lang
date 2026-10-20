@@ -122,8 +122,11 @@ pub fn each<T, e>(src: Source<T, e>, f: fn(T) -> Unit ! e) -> Unit ! e {
 }
 
 /// Every item, failing `MaxItems` at an item after the first `max_items`, as
-/// `Response.bytes` fails past its limit.
-pub fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e} {
+/// `Response.bytes` fails past its limit. `max_items` must not be negative.
+pub fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T>
+  ! {Fail<StreamError> | e}
+  requires max_items >= 0
+{
   var s = src
   var out: List<T> = []
   var more = true
@@ -198,7 +201,8 @@ fn chunk_step<e>(
 /// The lines of the text of `src`: split on LF with a CR before it removed, a final line
 /// without an LF included. A line longer than `max_line` bytes (`String.len`) fails
 /// `MaxLine` at the item that makes it so, finished or not, so at most `max_line` bytes and
-/// one item are held.
+/// one item are held and no yielded line exceeds `max_line`; a final line without an LF is
+/// yielded as it is, a trailing CR included, and checked then.
 pub fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}> {
   lines_from([], 0, "", src, max_line)
 }
@@ -237,6 +241,7 @@ fn line_step<e>(
       None => {
         match pull(s) {
           Done => {
+            if String.len(pending) > max_line { fail StreamError(MaxLine) }
             if String.len(pending) > 0 { out = Next(pending, empty()) }
             more = false
           },

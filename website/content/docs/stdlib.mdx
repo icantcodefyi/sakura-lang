@@ -712,7 +712,7 @@ fn filter<T, e>(src: Source<T, e>, keep: fn(T) -> Bool ! e) -> Source<T, e>
 fn take<T, e>(src: Source<T, e>, n: Int) -> Source<T, e> requires n >= 0
 fn fold<T, A, e>(src: Source<T, e>, init: A, f: fn(A, T) -> A ! e) -> A ! e
 fn each<T, e>(src: Source<T, e>, f: fn(T) -> Unit ! e) -> Unit ! e
-fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e}
+fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e} requires max_items >= 0
 fn chunks<e>(src: Source<Bytes, e>, size: Int) -> Source<Bytes, e> requires size > 0
 fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}>
 fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e

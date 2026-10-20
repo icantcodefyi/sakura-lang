@@ -55,7 +55,7 @@ fn $entry#1 top -> unit ; main::stream_lines_split_across_chunks, frame 1 slots 
     handle_pop
     ret %1
 
-fn show_lines#2 top -> unit ; main::stream_lines_split_across_chunks, frame 7 slots [%0 word*, %1 word*, %8 bool, %16 bool, %19 word*, %22 word*, %24 word*]
+fn show_lines#2 top -> unit ; main::stream_lines_split_across_chunks, frame 7 slots [%0 word*, %1 word*, %8 bool, %16 bool, %19 word*, %22 word*, %25 word*]
   b0(%0 items: ptr):
     call from_list#3(%0) -> b1()
   b1(%1 r: ptr):
@@ -98,8 +98,9 @@ fn show_lines#2 top -> unit ; main::stream_lines_split_across_chunks, frame 7 sl
     jump b2(%20)
   b8(%22 r: ptr) [try]:
     %23 lit: i64 = const 100
-    call to_list#5(%22, %23) -> b9()
-  b9(%24 r: ptr) [try]:
-    %25 ok: ptr = alloc std::result::Result.Ok(%24)
+    %24 $site: i64 = const 2
+    call to_list#5(%22, %23, %24) -> b9()
+  b9(%25 r: ptr) [try]:
+    %26 ok: ptr = alloc std::result::Result.Ok(%25)
     try_pop
-    jump b2(%25)
+    jump b2(%26)

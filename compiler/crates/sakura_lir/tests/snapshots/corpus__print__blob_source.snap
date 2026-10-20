@@ -18,7 +18,7 @@ layout 12 variant std::stream::StreamReason | MaxItems 16b () | MaxLine 16b ()
 layout 13 shape |  32b (word*, word*)
 layout 14 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word*, %7 word*, %8 i64, %9 word*, %10 word*, %16 word*, %17 word*, %18 word*, %19 word*, %24 word*, %25 word*, %26 word*, %29 bool, %30 word*, %34 word*, %35 word*, %36 word*, %37 word*, %41 bool, %42 word*, %47 word*, %48 word*, %51 word*, %52 word*, %53 word*, %54 word*, %58 bool, %59 word*, %63 bool, %66 word*, %70 word*, %73 word*, %75 word*, %77 word*]
+fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word*, %7 word*, %8 i64, %9 word*, %10 word*, %16 word*, %17 word*, %18 word*, %19 word*, %24 word*, %25 word*, %26 word*, %29 bool, %30 word*, %34 word*, %35 word*, %36 word*, %37 word*, %41 bool, %42 word*, %47 word*, %48 word*, %51 word*, %52 word*, %53 word*, %54 word*, %58 bool, %59 word*, %63 bool, %66 word*, %70 word*, %73 word*, %75 word*, %78 word*]
   b0():
     %0 lit: ptr = const str 0
     %1 r: ptr = $string_to_bytes(%0)
@@ -26,7 +26,7 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     call of#2(%1, %2) -> b1()
   b1(%3 r: ptr):
     %4 lit: i64 = const 4
-    %5 $site: i64 = const 2
+    %5 $site: i64 = const 3
     dup %3
     call source#3(%3, %4, %5) -> b2(%3)
   b2(%6 r: ptr, %7 r: ptr):
@@ -66,7 +66,7 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     %31 box: word = box %29
     drop %31
     %32 lit: i64 = const 100
-    %33 $site: i64 = const 3
+    %33 $site: i64 = const 4
     dup %30
     call source#3(%30, %32, %33) -> b7(%30)
   b7(%34 r: ptr, %35 r: ptr):
@@ -88,7 +88,7 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     call of#2(%45, %46) -> b10(%42)
   b10(%47 r: ptr, %48 r: ptr):
     %49 lit: i64 = const 4
-    %50 $site: i64 = const 4
+    %50 $site: i64 = const 5
     call source#3(%47, %49, %50) -> b11(%48)
   b11(%51 r: ptr, %52 r: ptr):
     call sizes#5(%51) -> b12(%52)
@@ -105,7 +105,7 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     drop %60
     try_push -> b16(err, )
     %68 lit: i64 = const 3
-    %69 $site: i64 = const 5
+    %69 $site: i64 = const 6
     call source#3(%59, %68, %69) -> b17()
   b14(%61 v: ptr):
     %62 s: ptr = show %61
@@ -128,11 +128,12 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     call lines#7(%73, %74) -> b19()
   b19(%75 r: ptr) [try]:
     %76 lit: i64 = const 10
-    call to_list#8(%75, %76) -> b20()
-  b20(%77 r: ptr) [try]:
-    %78 ok: ptr = alloc std::result::Result.Ok(%77)
+    %77 $site: i64 = const 7
+    call to_list#8(%75, %76, %77) -> b20()
+  b20(%78 r: ptr) [try]:
+    %79 ok: ptr = alloc std::result::Result.Ok(%78)
     try_pop
-    jump b14(%78)
+    jump b14(%79)
 
 fn $entry#1 top -> unit ; main::blob_source, frame 1 slots [%1 bool]
   b0():

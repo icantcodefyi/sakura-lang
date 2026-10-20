@@ -41,7 +41,7 @@ fn $entry#1 top -> unit ; main::stream_to_list_rejects_max_items, frame 1 slots 
     handle_pop
     ret %1
 
-fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slots [%0 i64, %1 i64, %3 word*, %4 i64, %5 i64, %6 word*, %7 i64, %8 i64, %10 word*, %11 i64, %12 i64, %20 bool, %21 i64, %22 word*, %32 bool, %40 bool, %43 word*, %45 word*]
+fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slots [%0 i64, %1 i64, %3 word*, %4 i64, %5 i64, %6 word*, %7 i64, %8 i64, %10 word*, %11 i64, %12 i64, %20 bool, %21 i64, %22 word*, %32 bool, %40 bool, %43 word*, %46 word*]
   b0(%0 n: i64, %1 max_items: i64):
     %2 lit: i64 = const 0
     call range#3(%2, %0) -> b1(%0, %1)
@@ -69,7 +69,8 @@ fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slot
     %23 box: word = box %20
     drop %23
     try_push -> b10(err, )
-    call to_list#7(%22, %21) -> b11()
+    %45 $site: i64 = const 2
+    call to_list#7(%22, %21, %45) -> b11()
   b5(%24 v: ptr):
     %25 tag: i64 = tag %24 ctor std::result::Result
     switch %25 0 => b6(%24) 1 => b7(%24)
@@ -108,10 +109,10 @@ fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slot
   b10(%43 e: word):
     %44 err: ptr = alloc std::result::Result.Err(%43)
     jump b5(%44)
-  b11(%45 r: ptr) [try]:
-    %46 ok: ptr = alloc std::result::Result.Ok(%45)
+  b11(%46 r: ptr) [try]:
+    %47 ok: ptr = alloc std::result::Result.Ok(%46)
     try_pop
-    jump b5(%46)
+    jump b5(%47)
 
 fn collect$1#5 lambda -> word ; main::stream_to_list_rejects_max_items, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
   b0(%0 env: ptr, %1 x: word):
