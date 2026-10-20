@@ -108,10 +108,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %67 lit: ptr = const str 4
     %68 s: ptr = concat %67, %66
     drop %66
-    drop %67
     %69 lit: ptr = const str 5
     %70 s: ptr = concat %68, %69
-    drop %68
     drop %69
     %71 lit: ptr = const str 3
     %72 $site: i64 = const 13
@@ -134,7 +132,6 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     drop %86
     %93 s: ptr = show %92
     %94 s: ptr = concat %91, %93
-    drop %91
     drop %93
     perform std::console::Console.print(%94) -> b16(%87, %88, %89, %90)
   b16(%95 r: unit, %96 r: ptr, %97 xs: ptr, %98 n: i64, %99 i: i64):
@@ -171,7 +168,6 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     drop %135
     %137 lit: ptr = const str 5
     %138 s: ptr = concat %136, %137
-    drop %136
     drop %137
     %139 f: ptr = closure main$1#9[]
     call map#10(%130, %139) -> b23(%131, %132, %133, %134, %138)
@@ -179,7 +175,6 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %146 s: ptr = show %140
     drop %140
     %147 s: ptr = concat %145, %146
-    drop %145
     drop %146
     perform std::console::Console.print(%147) -> b24(%141, %142, %143, %144)
   b24(%148 r: unit, %149 rec: ptr, %150 xs: ptr, %151 n: i64, %152 i: i64) [handle]:

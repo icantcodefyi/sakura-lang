@@ -68,7 +68,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %34 lit: ptr = const str 16
     %35 s: ptr = concat %34, %33
     drop %33
-    drop %34
     perform std::console::Console.print(%35) -> b8(%32)
   b8(%36 r: unit, %37 h: ptr):
     %38 box: word = box %36
@@ -86,7 +85,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %47 lit: ptr = const str 18
     %48 s: ptr = concat %47, %46
     drop %46
-    drop %47
     perform std::console::Console.print(%48) -> b11(%45)
   b11(%49 r: unit, %50 h: ptr):
     %51 box: word = box %49
@@ -100,10 +98,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %56 lit: ptr = const str 20
     %57 s: ptr = concat %56, %55
     drop %55
-    drop %56
     %58 lit: ptr = const str 21
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 lit: ptr = const str 0
     dup %54
@@ -111,7 +107,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
   b13(%61 r: bool, %62 h: ptr, %63 s: ptr):
     %64 s: ptr = show %61
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     perform std::console::Console.print(%65) -> b14(%62)
   b14(%66 r: unit, %67 h: ptr):
@@ -127,7 +122,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %73 lit: ptr = const str 22
     %74 s: ptr = concat %73, %72
     drop %72
-    drop %73
     perform std::console::Console.print(%74) -> b17()
   b17(%75 r: unit):
     %76 box: word = box %75
@@ -151,7 +145,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %99
     %101 lit: ptr = const str 23
     %102 s: ptr = concat %100, %101
-    drop %100
     drop %101
     %103 lit: ptr = const str 24
     %104 tup: ptr = alloc tuple#6(word, word)(%103, %93)
@@ -171,7 +164,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %117 s: ptr = show %112
     drop %112
     %118 s: ptr = concat %116, %117
-    drop %116
     drop %117
     perform std::console::Console.print(%118) -> b25(%113, %114, %115)
   b25(%119 r: unit, %120 xs: ptr, %121 n: i64, %122 i: i64):
@@ -190,7 +182,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %141
     %143 lit: ptr = const str 23
     %144 s: ptr = concat %142, %143
-    drop %142
     drop %143
     %145 lit: ptr = const str 25
     %146 tup: ptr = alloc tuple#6(word, word)(%135, %145)
@@ -210,7 +201,6 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %159 s: ptr = show %154
     drop %154
     %160 s: ptr = concat %158, %159
-    drop %158
     drop %159
     perform std::console::Console.print(%160) -> b32(%155, %156, %157)
   b32(%161 r: unit, %162 xs: ptr, %163 n: i64, %164 i: i64):

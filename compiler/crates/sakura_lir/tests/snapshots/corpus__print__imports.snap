@@ -40,7 +40,6 @@ fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5
     %14 s: ptr = show %13
     %15 lit: ptr = const str 1
     %16 s: ptr = concat %14, %15
-    drop %14
     drop %15
     %17 retry_on: word = proj %12.0 std::retry::Policy
     %18 lit: i64 = const 503
@@ -51,18 +50,15 @@ fn main#0 pub top -> unit ; main::imports, frame 9 slots [%0 word*, %2 word*, %5
     drop %20
     %24 s: ptr = show %23
     %25 s: ptr = concat %22, %24
-    drop %22
     drop %24
     %26 lit: ptr = const str 1
     %27 s: ptr = concat %25, %26
-    drop %25
     drop %26
     %28 backoff: word = proj %21.2 std::retry::Policy
     drop %21
     %29 s: ptr = show %28
     drop %28
     %30 s: ptr = concat %27, %29
-    drop %27
     drop %29
     perform std::console::Console.print(%30) -> b8()
   b8(%31 r: unit):

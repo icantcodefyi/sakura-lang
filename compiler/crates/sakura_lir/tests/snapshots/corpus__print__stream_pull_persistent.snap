@@ -26,7 +26,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %9 lit: ptr = const str 2
     %10 s: ptr = concat %9, %8
     drop %8
-    drop %9
     perform std::console::Console.print(%10) -> b4(%7)
   b4(%11 r: unit, %12 r: ptr):
     %13 box: word = box %11
@@ -41,7 +40,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %19 lit: ptr = const str 3
     %20 s: ptr = concat %19, %18
     drop %18
-    drop %19
     perform std::console::Console.print(%20) -> b7(%17)
   b7(%21 r: unit, %22 r: ptr):
     %23 box: word = box %21
@@ -64,13 +62,11 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
   b11(%34 r: word, %35 r: ptr):
     %36 t: ptr = concat %35, %34
     drop %34
-    drop %35
     %37 s: ptr = show %36
     drop %36
     %38 lit: ptr = const str 5
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b12()
   b12(%40 r: unit):
     %41 box: word = box %40
@@ -87,10 +83,8 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %48 lit: ptr = const str 6
     %49 s: ptr = concat %48, %47
     drop %47
-    drop %48
     %50 lit: ptr = const str 7
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     call pull#3(%46) -> b16(%51)
   b16(%52 r: ptr, %53 s: ptr):
@@ -99,7 +93,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %56 s: ptr = show %54
     drop %54
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     perform std::console::Console.print(%57) -> b18()
   b18(%58 r: unit):
@@ -129,7 +122,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %79 lit: ptr = const str 9
     %80 s: ptr = concat %79, %78
     drop %78
-    drop %79
     perform std::console::Console.print(%80) -> b24(%76, %77)
   b24(%81 r: unit, %82 r: ptr, %83 rest: ptr):
     %84 box: word = box %81
@@ -144,7 +136,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %92 lit: ptr = const str 9
     %93 s: ptr = concat %92, %91
     drop %91
-    drop %92
     perform std::console::Console.print(%93) -> b27(%89, %90)
   b27(%94 r: unit, %95 r: ptr, %96 rest: ptr):
     %97 box: word = box %94
@@ -177,7 +168,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %120 lit: ptr = const str 10
     %121 s: ptr = concat %120, %119
     drop %119
-    drop %120
     perform std::console::Console.print(%121) -> b35(%117, %118)
   b35(%122 r: unit, %123 r: ptr, %124 last: ptr):
     %125 box: word = box %122
@@ -191,7 +181,6 @@ fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 wor
     %131 lit: ptr = const str 10
     %132 s: ptr = concat %131, %130
     drop %130
-    drop %131
     perform std::console::Console.print(%132) -> b38(%129)
   b38(%133 r: unit, %134 r: ptr):
     %135 box: word = box %133
@@ -232,10 +221,8 @@ fn describe#4 top -> ptr ; main::stream_pull_persistent, frame 1 slots [%0 word*
     %8 lit: ptr = const str 12
     %9 s: ptr = concat %8, %7
     drop %7
-    drop %8
     %10 lit: ptr = const str 13
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     ret %11
 
@@ -243,7 +230,6 @@ fn main$1#5 lambda -> word ; main::stream_pull_persistent, captures [], frame 3 
   b0(%0 env: ptr, %1 acc: word, %2 x: word):
     drop %0
     %3 t: ptr = concat %1, %2
-    drop %1
     drop %2
     ret %3
 
@@ -251,6 +237,5 @@ fn main$2#7 lambda -> word ; main::stream_pull_persistent, captures [], frame 3 
   b0(%0 env: ptr, %1 acc: word, %2 x: word):
     drop %0
     %3 t: ptr = concat %1, %2
-    drop %1
     drop %2
     ret %3

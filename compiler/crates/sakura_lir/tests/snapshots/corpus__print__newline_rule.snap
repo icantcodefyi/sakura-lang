@@ -35,36 +35,28 @@ fn main#0 pub top -> unit ; main::newline_rule, frame 8 slots [%22 i64, %23 i64,
     %27 s: ptr = show %22
     %28 lit: ptr = const str 0
     %29 s: ptr = concat %27, %28
-    drop %27
     drop %28
     %30 s: ptr = show %23
     %31 s: ptr = concat %29, %30
-    drop %29
     drop %30
     %32 lit: ptr = const str 0
     %33 s: ptr = concat %31, %32
-    drop %31
     drop %32
     %34 s: ptr = show %24
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     %36 lit: ptr = const str 0
     %37 s: ptr = concat %35, %36
-    drop %35
     drop %36
     %38 s: ptr = show %25
     %39 s: ptr = concat %37, %38
-    drop %37
     drop %38
     %40 lit: ptr = const str 0
     %41 s: ptr = concat %39, %40
-    drop %39
     drop %40
     %42 s: ptr = show %26
     drop %26
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     perform std::console::Console.print(%43) -> b4()
   b4(%44 r: unit):

@@ -856,7 +856,8 @@ impl<'p, 'c> Run<'p, 'c> {
             PrimOp::Not => u64::from(a(0) == 0),
             PrimOp::Concat => {
                 let w = rt::rt_concat(ctx, a(0) as u32, args.get(1).map_or(0, |v| self.word(*v)));
-                self.check_zero(w, false)?;
+                // On a defect the left operand is still held (`rt_concat`).
+                self.check_zero(w, true)?;
                 u64::from(w)
             }
             PrimOp::Show => {

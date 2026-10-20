@@ -92,12 +92,10 @@ fn main#0 pub top -> unit ; main::blob_text_rejects_invalid_utf8, frame 23 slots
     drop %76
     %82 lit: ptr = const str 1
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     %84 s: ptr = show %80
     drop %80
     %85 s: ptr = concat %83, %84
-    drop %83
     drop %84
     perform std::console::Console.print(%85) -> b10(%77, %78, %79)
   b10(%86 r: unit, %87 xs: ptr, %88 n: i64, %89 i: i64):

@@ -46,7 +46,6 @@ fn main#0 pub top -> unit ; main::crypto_usage_rejected, frame 12 slots [%9 word
     %17 s: ptr = show %15
     %18 lit: ptr = const str 1
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     %20 v: ptr = const static std::crypto::Usage.Sign
     dup.candidate %16
@@ -54,7 +53,6 @@ fn main#0 pub top -> unit ; main::crypto_usage_rejected, frame 12 slots [%9 word
   b5(%21 r: bool, %22 k: ptr, %23 s: ptr):
     %24 s: ptr = show %21
     %25 s: ptr = concat %23, %24
-    drop %23
     drop %24
     perform std::console::Console.print(%25) -> b6(%22)
   b6(%26 r: unit, %27 k: ptr):

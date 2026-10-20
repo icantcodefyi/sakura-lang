@@ -32,7 +32,6 @@ fn main#0 pub top -> unit ; main::websocket_close_rejects_code, frame 8 slots [%
     %3 s: ptr = show %2
     %4 lit: ptr = const str 1
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 lit: i64 = const 1001
     %7 lit: ptr = const str 0
@@ -40,7 +39,6 @@ fn main#0 pub top -> unit ; main::websocket_close_rejects_code, frame 8 slots [%
   b2(%8 r: bool, %9 s: ptr):
     %10 s: ptr = show %8
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     perform std::console::Console.print(%11) -> b3()
   b3(%12 r: unit):

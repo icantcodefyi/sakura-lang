@@ -16,7 +16,6 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     drop %1
     %3 lit: ptr = const str 0
     %4 s: ptr = concat %2, %3
-    drop %2
     drop %3
     %5 lit: i64 = const 2
     call pick#2(%5) -> b2(%4)
@@ -24,11 +23,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %8 s: ptr = show %6
     drop %6
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 lit: ptr = const str 0
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 lit: i64 = const 3
     call pick#2(%12) -> b3(%11)
@@ -36,11 +33,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %15 s: ptr = show %13
     drop %13
     %16 s: ptr = concat %14, %15
-    drop %14
     drop %15
     %17 lit: ptr = const str 0
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     %19 lit: i64 = const 150
     call pick#2(%19) -> b4(%18)
@@ -48,11 +43,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %22 s: ptr = show %20
     drop %20
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     %24 lit: ptr = const str 0
     %25 s: ptr = concat %23, %24
-    drop %23
     drop %24
     %26 lit: i64 = const 1
     %27 t: i64 = intneg %26
@@ -61,7 +54,6 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %30 s: ptr = show %28
     drop %28
     %31 s: ptr = concat %29, %30
-    drop %29
     drop %30
     perform std::console::Console.print(%31) -> b6()
   b6(%32 r: unit):
@@ -73,47 +65,39 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %36 s: ptr = show %35
     %37 lit: ptr = const str 0
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     %39 lit: ptr = const str 2
     call kind#3(%39) -> b8(%38)
   b8(%40 r: i64, %41 s: ptr):
     %42 s: ptr = show %40
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: ptr = const str 0
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: ptr = const str 3
     call kind#3(%46) -> b9(%45)
   b9(%47 r: i64, %48 s: ptr):
     %49 s: ptr = show %47
     %50 s: ptr = concat %48, %49
-    drop %48
     drop %49
     %51 lit: ptr = const str 0
     %52 s: ptr = concat %50, %51
-    drop %50
     drop %51
     %53 lit: ptr = const str 4
     call kind#3(%53) -> b10(%52)
   b10(%54 r: i64, %55 s: ptr):
     %56 s: ptr = show %54
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     %58 lit: ptr = const str 0
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 lit: ptr = const str 5
     call kind#3(%60) -> b11(%59)
   b11(%61 r: i64, %62 s: ptr):
     %63 s: ptr = show %61
     %64 s: ptr = concat %62, %63
-    drop %62
     drop %63
     perform std::console::Console.print(%64) -> b12()
   b12(%65 r: unit):
@@ -127,7 +111,6 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %71 s: ptr = show %70
     %72 lit: ptr = const str 0
     %73 s: ptr = concat %71, %72
-    drop %71
     drop %72
     %74 lit: i64 = const 0
     %75 lit: ptr = const str 7
@@ -136,11 +119,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
   b14(%77 r: i64, %78 s: ptr):
     %79 s: ptr = show %77
     %80 s: ptr = concat %78, %79
-    drop %78
     drop %79
     %81 lit: ptr = const str 0
     %82 s: ptr = concat %80, %81
-    drop %80
     drop %81
     %83 lit: i64 = const 0
     %84 lit: ptr = const str 8
@@ -149,11 +130,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
   b15(%86 r: i64, %87 s: ptr):
     %88 s: ptr = show %86
     %89 s: ptr = concat %87, %88
-    drop %87
     drop %88
     %90 lit: ptr = const str 0
     %91 s: ptr = concat %89, %90
-    drop %89
     drop %90
     %92 lit: i64 = const 1
     %93 lit: ptr = const str 6
@@ -162,11 +141,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
   b16(%95 r: i64, %96 s: ptr):
     %97 s: ptr = show %95
     %98 s: ptr = concat %96, %97
-    drop %96
     drop %97
     %99 lit: ptr = const str 0
     %100 s: ptr = concat %98, %99
-    drop %98
     drop %99
     %101 lit: i64 = const 1
     %102 lit: ptr = const str 7
@@ -175,11 +152,9 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
   b17(%104 r: i64, %105 s: ptr):
     %106 s: ptr = show %104
     %107 s: ptr = concat %105, %106
-    drop %105
     drop %106
     %108 lit: ptr = const str 0
     %109 s: ptr = concat %107, %108
-    drop %107
     drop %108
     %110 lit: i64 = const 2
     %111 lit: ptr = const str 6
@@ -188,7 +163,6 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
   b18(%113 r: i64, %114 s: ptr):
     %115 s: ptr = show %113
     %116 s: ptr = concat %114, %115
-    drop %114
     drop %115
     perform std::console::Console.print(%116) -> b19()
   b19(%117 r: unit):
@@ -200,14 +174,12 @@ fn main#0 pub top -> unit ; main::match_literal_switch, frame 36 slots [%1 word*
     %121 s: ptr = show %120
     %122 lit: ptr = const str 0
     %123 s: ptr = concat %121, %122
-    drop %121
     drop %122
     %124 lit: i64 = const 75
     call squares#5(%124) -> b21(%123)
   b21(%125 r: i64, %126 s: ptr):
     %127 s: ptr = show %125
     %128 s: ptr = concat %126, %127
-    drop %126
     drop %127
     perform std::console::Console.print(%128) -> b22()
   b22(%129 r: unit):

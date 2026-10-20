@@ -73,7 +73,6 @@ fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*,
     %56 s: ptr = show %55
     %57 lit: ptr = const str 10
     %58 s: ptr = concat %56, %57
-    drop %56
     drop %57
     %59 lit: i64 = const 0
     %60 box: word = box %59
@@ -89,7 +88,6 @@ fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*,
     drop %66
     %68 s: ptr = show %67
     %69 s: ptr = concat %64, %68
-    drop %64
     drop %68
     perform std::console::Console.print(%69) -> b7(%63)
   b7(%70 r: unit, %71 r: ptr):

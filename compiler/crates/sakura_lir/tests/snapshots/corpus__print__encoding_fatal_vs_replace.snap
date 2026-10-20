@@ -142,12 +142,10 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     drop %117
     %123 lit: ptr = const str 0
     %124 s: ptr = concat %122, %123
-    drop %122
     drop %123
     %125 s: ptr = show %121
     drop %121
     %126 s: ptr = concat %124, %125
-    drop %124
     drop %125
     perform std::console::Console.print(%126) -> b11(%118, %119, %120)
   b11(%127 r: unit, %128 xs: ptr, %129 n: i64, %130 i: i64):
@@ -184,12 +182,10 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     drop %165
     %171 lit: ptr = const str 0
     %172 s: ptr = concat %170, %171
-    drop %170
     drop %171
     %173 s: ptr = show %169
     drop %169
     %174 s: ptr = concat %172, %173
-    drop %172
     drop %173
     perform std::console::Console.print(%174) -> b19(%166, %167, %168)
   b19(%175 r: unit, %176 xs: ptr, %177 n: i64, %178 i: i64):

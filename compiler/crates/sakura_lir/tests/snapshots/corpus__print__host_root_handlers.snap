@@ -20,7 +20,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %2 lit: ptr = const str 0
     %3 s: ptr = concat %2, %1
     drop %1
-    drop %2
     perform std::console::Console.print(%3) -> b2()
   b2(%4 r: unit):
     %5 box: word = box %4
@@ -45,7 +44,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %21 lit: ptr = const str 1
     %22 s: ptr = concat %21, %20
     drop %20
-    drop %21
     perform std::console::Console.print(%22) -> b9()
   b9(%23 r: unit):
     %24 box: word = box %23
@@ -58,7 +56,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %29 lit: ptr = const str 2
     %30 s: ptr = concat %29, %28
     drop %28
-    drop %29
     perform std::console::Console.print(%30) -> b11()
   b11(%31 r: unit):
     %32 box: word = box %31
@@ -73,7 +70,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %38 lit: ptr = const str 3
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b14()
   b14(%40 r: unit):
     %41 box: word = box %40
@@ -86,7 +82,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %46 lit: ptr = const str 4
     %47 s: ptr = concat %46, %45
     drop %45
-    drop %46
     perform std::console::Console.print(%47) -> b16()
   b16(%48 r: unit):
     %49 box: word = box %48
@@ -101,7 +96,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %54 lit: ptr = const str 5
     %55 s: ptr = concat %54, %53
     drop %53
-    drop %54
     perform std::console::Console.print(%55) -> b20()
   b20(%56 r: unit):
     %57 box: word = box %56
@@ -114,7 +108,6 @@ fn main#0 pub top -> unit ; main::host_root_handlers, frame 26 slots [%0 word*, 
     %61 lit: ptr = const str 7
     %62 s: ptr = concat %61, %60
     drop %60
-    drop %61
     perform std::console::Console.print(%62) -> b22()
   b22(%63 r: unit):
     %64 box: word = box %63

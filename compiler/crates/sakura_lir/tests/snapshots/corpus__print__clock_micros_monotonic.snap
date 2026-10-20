@@ -26,7 +26,6 @@ fn main#0 pub top -> unit ; main::clock_micros_monotonic, frame 21 slots [%0 i64
     %10 lit: ptr = const str 0
     %11 s: ptr = concat %10, %9
     drop %9
-    drop %10
     perform std::console::Console.print(%11) -> b5(%7, %5)
   b5(%12 r: unit, %13 r: i64, %14 r: i64):
     %15 box: word = box %12
@@ -38,7 +37,6 @@ fn main#0 pub top -> unit ; main::clock_micros_monotonic, frame 21 slots [%0 i64
     %20 lit: ptr = const str 1
     %21 s: ptr = concat %20, %19
     drop %19
-    drop %20
     perform std::console::Console.print(%21) -> b6()
   b6(%22 r: unit):
     %23 box: word = box %22
@@ -77,7 +75,6 @@ fn main#0 pub top -> unit ; main::clock_micros_monotonic, frame 21 slots [%0 i64
     %48 lit: ptr = const str 2
     %49 s: ptr = concat %48, %47
     drop %47
-    drop %48
     perform std::console::Console.print(%49) -> b12()
   b12(%50 r: unit) [handle]:
     %51 box: word = box %50
@@ -90,7 +87,6 @@ fn main#0 pub top -> unit ; main::clock_micros_monotonic, frame 21 slots [%0 i64
     %57 lit: ptr = const str 3
     %58 s: ptr = concat %57, %56
     drop %56
-    drop %57
     perform std::console::Console.print(%58) -> b14()
   b14(%59 r: unit) [handle]:
     %60 box: word = box %59

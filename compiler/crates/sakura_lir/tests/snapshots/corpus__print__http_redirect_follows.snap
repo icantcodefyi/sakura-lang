@@ -183,46 +183,37 @@ fn logged$Http_send#102 clause std::http::Http.send -> ptr ; main::http_redirect
     %5 lit: ptr = const str 83
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     %7 lit: ptr = const str 18
     %8 s: ptr = concat %6, %7
-    drop %6
     drop %7
     %9 url: word = proj %2.1 std::request::Request
     %10 s: ptr = show %9
     drop %9
     %11 s: ptr = concat %8, %10
-    drop %8
     drop %10
     %12 lit: ptr = const str 18
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 redirect: word = proj %2.4 std::request::Request
     %15 s: ptr = show %14
     drop %14
     %16 s: ptr = concat %13, %15
-    drop %13
     drop %15
     %17 lit: ptr = const str 18
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     %19 headers: word = proj %2.2 std::request::Request
     %20 s: ptr = show %19
     drop %19
     %21 s: ptr = concat %18, %20
-    drop %18
     drop %20
     %22 lit: ptr = const str 18
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     %24 body: word = proj %2.3 std::request::Request
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %23, %25
-    drop %23
     drop %25
     perform std::console::Console.print(%26) -> b1(%2)
   b1(%27 r: unit, %28 req: ptr):

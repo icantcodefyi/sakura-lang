@@ -46,7 +46,6 @@ fn main#0 pub top -> unit ; main::effects_and_handlers, frame 11 slots [%1 word*
     drop %11
     %13 lit: ptr = const str 1
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     %15 lit: ptr = const str 2
     perform main::effects_and_handlers::Store.get(%15) -> b7(%14)
@@ -54,7 +53,6 @@ fn main#0 pub top -> unit ; main::effects_and_handlers, frame 11 slots [%1 word*
     %18 s: ptr = show %16
     drop %16
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b8()
   b8(%20 r: unit) [handle]:

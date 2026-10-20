@@ -517,14 +517,12 @@ fn shown#6 top -> ptr ; main::json_codec, frame 1 slots [%0 word*]
     drop %7
     %9 lit: ptr = const str 64
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 message: word = proj %6.1 std::json::DecodeError
     drop %6
     %12 s: ptr = show %11
     drop %11
     %13 s: ptr = concat %10, %12
-    drop %10
     drop %12
     ret %13
 

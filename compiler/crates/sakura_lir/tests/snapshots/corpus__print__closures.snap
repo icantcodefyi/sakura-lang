@@ -32,12 +32,10 @@ fn main#0 pub top -> unit ; main::closures, frame 7 slots [%1 word*, %3 i64, %5 
     %13 s: ptr = show %12
     %14 lit: ptr = const str 0
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 lit: i64 = const 100
     %17 s: ptr = show %16
     %18 s: ptr = concat %15, %17
-    drop %15
     drop %17
     perform std::console::Console.print(%18) -> b5()
   b5(%19 r: unit):

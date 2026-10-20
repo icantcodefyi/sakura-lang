@@ -100,7 +100,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %66 lit: ptr = const str 33
     %67 s: ptr = concat %66, %65
     drop %65
-    drop %66
     perform std::console::Console.print(%67) -> b9()
   b9(%68 r: unit):
     %69 box: word = box %68
@@ -129,7 +128,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %83 lit: ptr = const str 34
     %84 s: ptr = concat %83, %82
     drop %82
-    drop %83
     perform std::console::Console.print(%84) -> b14(%81)
   b14(%85 r: unit, %86 h: ptr):
     %87 box: word = box %85
@@ -143,7 +141,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %92 lit: ptr = const str 36
     %93 s: ptr = concat %92, %91
     drop %91
-    drop %92
     perform std::console::Console.print(%93) -> b16(%90)
   b16(%94 r: unit, %95 h: ptr):
     %96 box: word = box %94
@@ -157,7 +154,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %101 lit: ptr = const str 37
     %102 s: ptr = concat %101, %100
     drop %100
-    drop %101
     perform std::console::Console.print(%102) -> b18(%99)
   b18(%103 r: unit, %104 h: ptr):
     %105 box: word = box %103
@@ -170,7 +166,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %109 lit: ptr = const str 38
     %110 s: ptr = concat %109, %108
     drop %108
-    drop %109
     perform std::console::Console.print(%110) -> b20(%107)
   b20(%111 r: unit, %112 h: ptr):
     %113 box: word = box %111
@@ -184,7 +179,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %118 lit: ptr = const str 39
     %119 s: ptr = concat %118, %117
     drop %117
-    drop %118
     perform std::console::Console.print(%119) -> b22(%116)
   b22(%120 r: unit, %121 h: ptr):
     %122 box: word = box %120
@@ -196,7 +190,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %125 lit: ptr = const str 40
     %126 s: ptr = concat %125, %124
     drop %124
-    drop %125
     perform std::console::Console.print(%126) -> b24()
   b24(%127 r: unit):
     %128 box: word = box %127
@@ -245,7 +238,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %167 s: ptr = show %162
     %168 lit: ptr = const str 41
     %169 s: ptr = concat %167, %168
-    drop %167
     drop %168
     dup %164
     call get#3(%164, %162) -> b34(%163, %164, %165, %166, %169)
@@ -253,7 +245,6 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %176 s: ptr = show %170
     drop %170
     %177 s: ptr = concat %175, %176
-    drop %175
     drop %176
     perform std::console::Console.print(%177) -> b35(%171, %172, %173, %174)
   b35(%178 r: unit, %179 xs: ptr, %180 h: ptr, %181 n: i64, %182 i: i64):

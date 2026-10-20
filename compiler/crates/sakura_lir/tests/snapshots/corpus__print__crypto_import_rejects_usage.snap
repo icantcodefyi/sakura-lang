@@ -116,17 +116,14 @@ fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%
     %88 lit: ptr = const str 1
     %89 s: ptr = concat %88, %87
     drop %87
-    drop %88
     %90 lit: ptr = const str 2
     %91 s: ptr = concat %89, %90
-    drop %89
     drop %90
     call usages#4(%86) -> b12(%83, %84, %85, %91)
   b12(%92 r: ptr, %93 xs: ptr, %94 n: i64, %95 i: i64, %96 s: ptr):
     %97 s: ptr = show %92
     drop %92
     %98 s: ptr = concat %96, %97
-    drop %96
     drop %97
     perform std::console::Console.print(%98) -> b13(%93, %94, %95)
   b13(%99 r: unit, %100 xs: ptr, %101 n: i64, %102 i: i64):

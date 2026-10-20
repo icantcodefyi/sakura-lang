@@ -25,7 +25,6 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     drop %7
     %9 lit: ptr = const str 0
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 lit: i64 = const 1
     dup.candidate %3
@@ -33,11 +32,9 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %13 s: ptr = show %12
     drop %12
     %14 s: ptr = concat %10, %13
-    drop %10
     drop %13
     %15 lit: ptr = const str 0
     %16 s: ptr = concat %14, %15
-    drop %14
     drop %15
     %17 lit: i64 = const 3
     dup.candidate %3
@@ -45,11 +42,9 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %19 s: ptr = show %18
     drop %18
     %20 s: ptr = concat %16, %19
-    drop %16
     drop %19
     %21 lit: ptr = const str 0
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 lit: i64 = const 1998
     dup.candidate %3
@@ -57,11 +52,9 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %22, %25
-    drop %22
     drop %25
     %27 lit: ptr = const str 0
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 lit: i64 = const 1999
     dup.candidate %3
@@ -69,16 +62,13 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %31 s: ptr = show %30
     drop %30
     %32 s: ptr = concat %28, %31
-    drop %28
     drop %31
     %33 lit: ptr = const str 0
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     %35 r: i64 = $list_len(%3)
     %36 s: ptr = show %35
     %37 s: ptr = concat %34, %36
-    drop %34
     drop %36
     perform std::console::Console.print(%37) -> b3(%5)
   b3(%38 r: unit, %39 r: ptr):
@@ -91,7 +81,6 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     drop %42
     %44 lit: ptr = const str 0
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: i64 = const 1998
     dup.candidate %39
@@ -99,18 +88,15 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %48 s: ptr = show %47
     drop %47
     %49 s: ptr = concat %45, %48
-    drop %45
     drop %48
     %50 lit: ptr = const str 0
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     dup.candidate %39
     call sum#4(%39) -> b4(%39, %51)
   b4(%52 r: i64, %53 r: ptr, %54 s: ptr):
     %55 s: ptr = show %52
     %56 s: ptr = concat %54, %55
-    drop %54
     drop %55
     perform std::console::Console.print(%56) -> b5(%53)
   b5(%57 r: unit, %58 r: ptr):
@@ -130,7 +116,6 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     drop %68
     %70 lit: ptr = const str 0
     %71 s: ptr = concat %69, %70
-    drop %69
     drop %70
     %72 lit: i64 = const 1999
     dup.candidate %66
@@ -138,11 +123,9 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %74 s: ptr = show %73
     drop %73
     %75 s: ptr = concat %71, %74
-    drop %71
     drop %74
     %76 lit: ptr = const str 0
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     %78 lit: i64 = const 7
     %79 box: word = box %78
@@ -156,7 +139,6 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %88 s: ptr = show %85
     drop %85
     %89 s: ptr = concat %87, %88
-    drop %87
     drop %88
     perform std::console::Console.print(%89) -> b8(%86)
   b8(%90 r: unit, %91 r: ptr):

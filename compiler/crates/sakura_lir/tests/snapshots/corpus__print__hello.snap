@@ -30,7 +30,6 @@ fn greet#2 top -> unit ; main::hello, frame 2 slots [%0 word*, %4 bool]
     %2 lit: ptr = const str 1
     %3 s: ptr = concat %2, %1
     drop %1
-    drop %2
     perform std::console::Console.print(%3) -> b1()
   b1(%4 r: unit):
     %5 box: word = box %4

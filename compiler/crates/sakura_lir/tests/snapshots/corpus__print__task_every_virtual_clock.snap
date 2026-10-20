@@ -36,7 +36,6 @@ fn main#0 pub top -> unit ; main::task_every_virtual_clock, frame 7 slots [%8 wo
     %17 lit: ptr = const str 0
     %18 s: ptr = concat %17, %16
     drop %16
-    drop %17
     perform std::console::Console.print(%18) -> b5()
   b5(%19 r: unit) [handle]:
     %20 box: word = box %19
@@ -70,14 +69,11 @@ fn main$1#4 lambda -> word ; main::task_every_virtual_clock, captures [], frame 
     %8 lit: ptr = const str 1
     %9 s: ptr = concat %8, %7
     drop %7
-    drop %8
     %10 lit: ptr = const str 2
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 s: ptr = show %6
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     perform std::console::Console.print(%13) -> b3(%5)
   b3(%14 r: unit, %15 r: i64):

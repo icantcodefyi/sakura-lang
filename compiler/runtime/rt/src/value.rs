@@ -105,22 +105,46 @@ impl Rt {
         n as i64
     }
 
-    /// `a + b` on strings.
+    /// `a + b` on strings, consuming both.
     pub fn string_concat(&mut self, a: u32, b: u32) -> Res<u32> {
-        let mut buf = self.strbuf().inspect_err(|_| self.drop2(a, b))?;
+        let r = self.append(a, b);
+        if r.is_err() {
+            self.drop(a);
+        }
+        self.drop(b);
+        r
+    }
+
+    /// `a + b` with `b` borrowed and `a` consumed on success only (the LIR's `concat`, design
+    /// §17.285 (c)). A uniquely owned `a` is appended to in place, and when its block is full it
+    /// moves to one of twice the length, so a loop `s = "{s}{w}"` copies each byte O(1) times
+    /// amortised instead of once per iteration. A shared `a` is copied to an exact block.
+    pub fn append(&mut self, a: u32, b: u32) -> Res<u32> {
         let (la, aa) = self.data(a);
         let (lb, ab) = self.data(b);
-        let r = self
-            .put_mem(&mut buf, aa, la)
-            .and_then(|_| self.put_mem(&mut buf, ab, lb));
-        self.drop2(a, b);
-        match r {
-            Ok(()) => Ok(self.finish(buf)),
-            Err(e) => {
-                self.strbuf_free(buf);
-                Err(e)
-            }
+        let len = la.checked_add(lb).ok_or(Defect::HEAP_EXHAUSTED)?;
+        let need = len.checked_add(16).ok_or(Defect::HEAP_EXHAUSTED)?;
+        let unique = self.unique(a);
+        if unique && need <= self.heap.block_size(a) {
+            self.heap.mem.copy(aa + la, ab, lb);
+            self.heap.mem.set_u32(a + 8, len);
+            self.heap.mem.set_u32(a + 12, 0); // the cached hash (ABI §3.2)
+            return Ok(a);
         }
+        let grown = if unique {
+            need.max(la.saturating_mul(2))
+        } else {
+            need
+        };
+        let p = match self.new_object(tag::STRING, grown) {
+            Err(_) if grown > need => self.new_object(tag::STRING, need)?,
+            r => r?,
+        };
+        self.heap.mem.set_u32(p + 8, len);
+        self.heap.mem.copy(p + 16, aa, la);
+        self.heap.mem.copy(p + 16 + la, ab, lb);
+        self.drop(a);
+        Ok(p)
     }
 
     pub(crate) fn drop2(&mut self, a: u32, b: u32) {

@@ -87,15 +87,12 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     drop %60
     %78 lit: ptr = const str 4
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 s: ptr = show %62
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     %82 lit: ptr = const str 4
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     %84 lit: i64 = const 8
     %85 t: i64 = intmul %84, %63
@@ -109,12 +106,10 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     drop %68
     %107 lit: ptr = const str 4
     %108 s: ptr = concat %106, %107
-    drop %106
     drop %107
     %109 s: ptr = show %105
     drop %105
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     perform std::console::Console.print(%110) -> b14(%65, %66, %67)
   b11(%87 r: ptr, %88 xs: ptr, %89 n: i64, %90 i: i64, %91 s: ptr):
@@ -124,7 +119,6 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     %98 s: ptr = show %93
     drop %93
     %99 s: ptr = concat %97, %98
-    drop %97
     drop %98
     perform std::console::Console.print(%99) -> b13(%94, %95, %96)
   b13(%100 r: unit, %101 xs: ptr, %102 n: i64, %103 i: i64):
@@ -178,7 +172,6 @@ fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 
     %36 lit: ptr = const str 5
     %37 r: ptr = $string_slice(%36, %31, %35)
     %38 t: ptr = concat %28, %37
-    drop %28
     drop %37
     %39 lit: i64 = const 16
     %40 t: i64 = intrem %29, %39
@@ -189,7 +182,6 @@ fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 
     %45 lit: ptr = const str 5
     %46 r: ptr = $string_slice(%45, %40, %44)
     %47 t: ptr = concat %38, %46
-    drop %38
     drop %46
     jump b4(%47, %25, %26, %27)
 

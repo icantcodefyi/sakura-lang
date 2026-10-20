@@ -105,7 +105,6 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %74 s: ptr = show %73
     %75 lit: ptr = const str 4
     %76 s: ptr = concat %74, %75
-    drop %74
     drop %75
     %77 $site: i64 = const 4
     dup.candidate %61
@@ -115,7 +114,6 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
   b12(%78 r: bool, %79 k: ptr, %80 k2: ptr, %81 r: ptr, %82 r: ptr, %83 r: ptr, %84 s: ptr):
     %85 s: ptr = show %78
     %86 s: ptr = concat %84, %85
-    drop %84
     drop %85
     perform std::console::Console.print(%86) -> b13(%79, %80, %81, %82, %83)
   b13(%87 r: unit, %88 k: ptr, %89 k2: ptr, %90 r: ptr, %91 r: ptr, %92 r: ptr):

@@ -20,7 +20,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %3 s: ptr = show %2
     %4 lit: ptr = const str 0
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 v: ptr = const static main::tag_eq::Dir.Forward
     %7 v: ptr = const static main::tag_eq::Dir.Backward
@@ -28,11 +27,9 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b2(%8 r: bool, %9 s: ptr):
     %10 s: ptr = show %8
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 lit: ptr = const str 0
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 v: ptr = const static main::tag_eq::Dir.NoDir
     %15 v: ptr = const static main::tag_eq::Dir.NoDir
@@ -40,7 +37,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b3(%16 r: bool, %17 s: ptr):
     %18 s: ptr = show %16
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b4()
   b4(%20 r: unit):
@@ -52,14 +48,12 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %24 s: ptr = show %23
     %25 lit: ptr = const str 0
     %26 s: ptr = concat %24, %25
-    drop %24
     drop %25
     %27 v: ptr = const static main::tag_eq::Dir.NoDir
     call not_forward#3(%27) -> b6(%26)
   b6(%28 r: bool, %29 s: ptr):
     %30 s: ptr = show %28
     %31 s: ptr = concat %29, %30
-    drop %29
     drop %30
     perform std::console::Console.print(%31) -> b7()
   b7(%32 r: unit):
@@ -71,7 +65,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %36 s: ptr = show %35
     %37 lit: ptr = const str 0
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     %39 lit: i64 = const 0
     %40 r: ptr = alloc main::tag_eq::Shape.Circle(%39)
@@ -79,11 +72,9 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b9(%41 r: bool, %42 s: ptr):
     %43 s: ptr = show %41
     %44 s: ptr = concat %42, %43
-    drop %42
     drop %43
     %45 lit: ptr = const str 0
     %46 s: ptr = concat %44, %45
-    drop %44
     drop %45
     %47 lit: i64 = const 1
     %48 lit: i64 = const 2
@@ -92,18 +83,15 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b10(%50 r: bool, %51 s: ptr):
     %52 s: ptr = show %50
     %53 s: ptr = concat %51, %52
-    drop %51
     drop %52
     %54 lit: ptr = const str 0
     %55 s: ptr = concat %53, %54
-    drop %53
     drop %54
     %56 v: ptr = const static main::tag_eq::Shape.Empty
     call not_empty#5(%56) -> b11(%55)
   b11(%57 r: bool, %58 s: ptr):
     %59 s: ptr = show %57
     %60 s: ptr = concat %58, %59
-    drop %58
     drop %59
     perform std::console::Console.print(%60) -> b12()
   b12(%61 r: unit):
@@ -118,7 +106,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %68 s: ptr = show %67
     %69 lit: ptr = const str 0
     %70 s: ptr = concat %68, %69
-    drop %68
     drop %69
     %71 lit: i64 = const 1
     %72 r: ptr = alloc main::tag_eq::Shape.Circle(%71)
@@ -128,11 +115,9 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b14(%75 r: bool, %76 s: ptr):
     %77 s: ptr = show %75
     %78 s: ptr = concat %76, %77
-    drop %76
     drop %77
     %79 lit: ptr = const str 0
     %80 s: ptr = concat %78, %79
-    drop %78
     drop %79
     %81 v: ptr = const static main::tag_eq::Shape.Empty
     %82 v: ptr = const static main::tag_eq::Shape.Empty
@@ -140,7 +125,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b15(%83 r: bool, %84 s: ptr):
     %85 s: ptr = show %83
     %86 s: ptr = concat %84, %85
-    drop %84
     drop %85
     perform std::console::Console.print(%86) -> b16()
   b16(%87 r: unit):
@@ -158,7 +142,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %97 s: ptr = show %95
     %98 lit: ptr = const str 0
     %99 s: ptr = concat %97, %98
-    drop %97
     drop %98
     %100 v: ptr = const static main::tag_eq::Dir.Backward
     %101 strength: i64 = proj %96.1 main::tag_eq::Con
@@ -167,7 +150,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b18(%103 r: bool, %104 s: ptr):
     %105 s: ptr = show %103
     %106 s: ptr = concat %104, %105
-    drop %104
     drop %105
     perform std::console::Console.print(%106) -> b19()
   b19(%107 r: unit):
@@ -184,7 +166,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %116 s: ptr = show %115
     %117 lit: ptr = const str 0
     %118 s: ptr = concat %116, %117
-    drop %116
     drop %117
     %119 v: ptr = const static main::tag_eq::Dir.Forward
     %120 xs: ptr = alloc list(%119)
@@ -194,7 +175,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b21(%123 r: bool, %124 s: ptr):
     %125 s: ptr = show %123
     %126 s: ptr = concat %124, %125
-    drop %124
     drop %125
     perform std::console::Console.print(%126) -> b22()
   b22(%127 r: unit):
@@ -211,7 +191,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %136 s: ptr = show %135
     %137 lit: ptr = const str 0
     %138 s: ptr = concat %136, %137
-    drop %136
     drop %137
     %139 v: ptr = const static main::tag_eq::Dir.Forward
     %140 lit: i64 = const 1
@@ -223,7 +202,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b24(%145 r: bool, %146 s: ptr):
     %147 s: ptr = show %145
     %148 s: ptr = concat %146, %147
-    drop %146
     drop %147
     perform std::console::Console.print(%148) -> b25()
   b25(%149 r: unit):
@@ -236,7 +214,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %154 s: ptr = show %153
     %155 lit: ptr = const str 0
     %156 s: ptr = concat %154, %155
-    drop %154
     drop %155
     %157 v: ptr = const static main::tag_eq::Dir.Forward
     %158 v: ptr = const static main::tag_eq::Dir.NoDir
@@ -244,7 +221,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b27(%159 r: bool, %160 s: ptr):
     %161 s: ptr = show %159
     %162 s: ptr = concat %160, %161
-    drop %160
     drop %161
     perform std::console::Console.print(%162) -> b28()
   b28(%163 r: unit):
@@ -256,7 +232,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %167 s: ptr = show %166
     %168 lit: ptr = const str 0
     %169 s: ptr = concat %167, %168
-    drop %167
     drop %168
     %170 lit: i64 = const 0
     %171 box: word = box %170
@@ -265,7 +240,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
   b30(%173 r: bool, %174 s: ptr):
     %175 s: ptr = show %173
     %176 s: ptr = concat %174, %175
-    drop %174
     drop %175
     perform std::console::Console.print(%176) -> b31()
   b31(%177 r: unit):
@@ -283,7 +257,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %186 s: ptr = show %185
     %187 lit: ptr = const str 0
     %188 s: ptr = concat %186, %187
-    drop %186
     drop %187
     %189 v: ptr = const static main::tag_eq::Dir.NoDir
     %190 tag: i64 = tag %180 ctor main::tag_eq::Dir
@@ -294,7 +267,6 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %193 t: bool = not %192
     %194 s: ptr = show %193
     %195 s: ptr = concat %188, %194
-    drop %188
     drop %194
     perform std::console::Console.print(%195) -> b33()
   b33(%196 r: unit):

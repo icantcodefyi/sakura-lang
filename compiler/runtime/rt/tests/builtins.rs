@@ -62,6 +62,43 @@ fn balanced(f: impl Fn(&mut Rt)) {
     assert_eq!(rt.stats().live_objects, base, "objects leaked");
 }
 
+/// `concat` appends to a uniquely owned left string in place, so a loop `s = "{s}{w}"`
+/// allocates O(n) bytes, not O(n^2) (design §17.285 (c)); a shared left string is copied.
+#[test]
+fn concat_appends_in_place_to_a_unique_string() {
+    balanced(|rt| {
+        let mut acc = s(rt, "ab");
+        let w = s(rt, "xyz");
+        let before = rt.stats().requested;
+        for _ in 0..10_000 {
+            acc = rt.append(acc, w).unwrap();
+        }
+        rt.drop(w);
+        assert!(rt.stats().requested - before < 100_000, "quadratic copying");
+        assert_eq!(rt.data_bytes(acc).len(), 30_002);
+        // The cached hash is reset by an in-place append.
+        let h = rt.string_hash(acc);
+        let w = s(rt, "!");
+        acc = rt.append(acc, w).unwrap();
+        rt.drop(w);
+        assert_ne!(rt.string_hash(acc), h);
+        rt.drop(acc);
+
+        let shared = s(rt, "ab");
+        rt.dup(shared).unwrap();
+        let w = s(rt, "c");
+        let r = rt.append(shared, w).unwrap();
+        rt.drop(w);
+        assert_ne!(r, shared);
+        assert_eq!(text(rt, r), "abc");
+        assert_eq!(text(rt, shared), "ab");
+
+        let same = s(rt, "ab");
+        let r = rt.append(same, same).unwrap();
+        assert_eq!(text(rt, r), "abab");
+    });
+}
+
 #[test]
 fn trim_uses_the_js_whitespace_set() {
     balanced(|rt| {

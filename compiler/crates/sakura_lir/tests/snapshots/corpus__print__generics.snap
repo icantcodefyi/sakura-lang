@@ -113,7 +113,6 @@ fn largest#3 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
     %9 lit: ptr = const str 3
     %10 s: ptr = concat %9, %8
     drop %8
-    drop %9
     ret %10
 
 fn largest#4 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 word*]
@@ -137,7 +136,6 @@ fn largest#4 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
     %10 lit: ptr = const str 3
     %11 s: ptr = concat %10, %9
     drop %9
-    drop %10
     ret %11
 
 fn largest#5 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 word*]
@@ -160,7 +158,6 @@ fn largest#5 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
     %9 lit: ptr = const str 3
     %10 s: ptr = concat %9, %8
     drop %8
-    drop %9
     ret %10
 
 fn insert#6 top -> ptr ; main::generics, frame 8 slots [%0 word*, %1 word*, %22 word*, %23 word*, %24 word*, %26 word*, %27 word*, %28 word*]

@@ -20,7 +20,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %3
     %6 lit: ptr = const str 1
     %7 s: ptr = concat %5, %6
-    drop %5
     drop %6
     dup.candidate %4
     call unique#3(%4) -> b2(%4, %7)
@@ -28,11 +27,9 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %11 s: ptr = show %8
     drop %8
     %12 s: ptr = concat %10, %11
-    drop %10
     drop %11
     %13 lit: ptr = const str 1
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     dup.candidate %9
     call reverse#4(%9) -> b3(%9, %14)
@@ -40,7 +37,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %18 s: ptr = show %15
     drop %15
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b4(%16)
   b4(%20 r: unit, %21 r: ptr):
@@ -54,7 +50,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %24
     %27 lit: ptr = const str 1
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 lit: ptr = const str 3
     dup.candidate %25
@@ -62,11 +57,9 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
   b6(%30 r: bool, %31 r: ptr, %32 s: ptr):
     %33 s: ptr = show %30
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     %35 lit: ptr = const str 1
     %36 s: ptr = concat %34, %35
-    drop %34
     drop %35
     %37 f: ptr = closure main$1#7[]
     dup.candidate %31
@@ -75,7 +68,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %41 s: ptr = show %38
     drop %38
     %42 s: ptr = concat %40, %41
-    drop %40
     drop %41
     perform std::console::Console.print(%42) -> b8(%39)
   b8(%43 r: unit, %44 r: ptr):
@@ -89,14 +81,12 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %50 s: ptr = show %48
     %51 lit: ptr = const str 1
     %52 s: ptr = concat %50, %51
-    drop %50
     drop %51
     call keys#14(%48) -> b10(%49, %52)
   b10(%53 r: ptr, %54 r: ptr, %55 s: ptr):
     %56 s: ptr = show %53
     drop %53
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     perform std::console::Console.print(%57) -> b11(%54)
   b11(%58 r: unit, %59 r: ptr):
@@ -115,7 +105,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %68
     %70 lit: ptr = const str 1
     %71 s: ptr = concat %69, %70
-    drop %69
     drop %70
     %72 lit: ptr = const str 4
     %73 xs: ptr = alloc list(%72)
@@ -124,11 +113,9 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %76 s: ptr = show %74
     drop %74
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     %78 lit: ptr = const str 1
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 lit: i64 = const 0
     %81 lit: i64 = const 3
@@ -137,7 +124,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %84 s: ptr = show %82
     drop %82
     %85 s: ptr = concat %83, %84
-    drop %83
     drop %84
     perform std::console::Console.print(%85) -> b15()
   b15(%86 r: unit):
@@ -149,7 +135,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     drop %89
     %91 lit: ptr = const str 6
     %92 s: ptr = concat %90, %91
-    drop %90
     drop %91
     %93 lit: ptr = const str 7
     %94 lit: i64 = const 3
@@ -160,11 +145,9 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %99 s: ptr = show %97
     drop %97
     %100 s: ptr = concat %98, %99
-    drop %98
     drop %99
     %101 lit: ptr = const str 6
     %102 s: ptr = concat %100, %101
-    drop %100
     drop %101
     %103 lit: ptr = const str 9
     %104 lit: i64 = const 2
@@ -174,7 +157,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %108 s: ptr = show %106
     drop %106
     %109 s: ptr = concat %107, %108
-    drop %107
     drop %108
     perform std::console::Console.print(%109) -> b18()
   b18(%110 r: unit):
@@ -188,7 +170,6 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %116 s: ptr = show %115
     %117 lit: ptr = const str 1
     %118 s: ptr = concat %116, %117
-    drop %116
     drop %117
     %119 lit: i64 = const 50
     %120 lit: i64 = const 0
@@ -198,11 +179,9 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
   b20(%123 r: i64, %124 s: ptr):
     %125 s: ptr = show %123
     %126 s: ptr = concat %124, %125
-    drop %124
     drop %125
     %127 lit: ptr = const str 1
     %128 s: ptr = concat %126, %127
-    drop %126
     drop %127
     %129 lit: f64 = const 3.14159
     %130 lit: i64 = const 2
@@ -210,17 +189,14 @@ fn main#0 pub top -> unit ; main::std_collections, frame 42 slots [%3 word*, %4 
     %132 s: ptr = show %131
     drop %131
     %133 s: ptr = concat %128, %132
-    drop %128
     drop %132
     %134 lit: ptr = const str 1
     %135 s: ptr = concat %133, %134
-    drop %133
     drop %134
     %136 lit: f64 = const 16.0
     %137 r: f64 = $float_sqrt(%136)
     %138 s: ptr = show %137
     %139 s: ptr = concat %135, %138
-    drop %135
     drop %138
     perform std::console::Console.print(%139) -> b21()
   b21(%140 r: unit):

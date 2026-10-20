@@ -40,21 +40,17 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %24 lit: ptr = const str 0
     %25 s: ptr = concat %24, %23
     drop %23
-    drop %24
     %26 lit: ptr = const str 1
     %27 s: ptr = concat %25, %26
-    drop %25
     drop %26
     dup.candidate %18
     call sum#3(%18) -> b5(%18, %21, %27)
   b5(%28 r: i64, %29 xs: ptr, %30 r: ptr, %31 s: ptr):
     %32 s: ptr = show %28
     %33 s: ptr = concat %31, %32
-    drop %31
     drop %32
     %34 lit: ptr = const str 1
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     %36 lit: i64 = const 5
     dup.candidate %29
@@ -62,11 +58,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %38 s: ptr = show %37
     drop %37
     %39 s: ptr = concat %35, %38
-    drop %35
     drop %38
     %40 lit: ptr = const str 1
     %41 s: ptr = concat %39, %40
-    drop %39
     drop %40
     %42 lit: i64 = const 98
     dup.candidate %29
@@ -74,18 +68,15 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %44 s: ptr = show %43
     drop %43
     %45 s: ptr = concat %41, %44
-    drop %41
     drop %44
     %46 lit: ptr = const str 1
     %47 s: ptr = concat %45, %46
-    drop %45
     drop %46
     %48 lit: i64 = const 100
     %49 item: ptr = $list_get(%29, %48)
     %50 s: ptr = show %49
     drop %49
     %51 s: ptr = concat %47, %50
-    drop %47
     drop %50
     perform std::console::Console.print(%51) -> b6(%30)
   b6(%52 r: unit, %53 r: ptr):
@@ -97,21 +88,17 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %57 lit: ptr = const str 2
     %58 s: ptr = concat %57, %56
     drop %56
-    drop %57
     %59 lit: ptr = const str 1
     %60 s: ptr = concat %58, %59
-    drop %58
     drop %59
     dup.candidate %53
     call sum#3(%53) -> b7(%53, %60)
   b7(%61 r: i64, %62 r: ptr, %63 s: ptr):
     %64 s: ptr = show %61
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 lit: ptr = const str 1
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     %68 lit: i64 = const 5
     dup.candidate %62
@@ -119,11 +106,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %70 s: ptr = show %69
     drop %69
     %71 s: ptr = concat %67, %70
-    drop %67
     drop %70
     %72 lit: ptr = const str 1
     %73 s: ptr = concat %71, %72
-    drop %71
     drop %72
     %74 lit: i64 = const 98
     dup.candidate %62
@@ -131,11 +116,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %76 s: ptr = show %75
     drop %75
     %77 s: ptr = concat %73, %76
-    drop %73
     drop %76
     %78 lit: ptr = const str 1
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 lit: i64 = const 100
     dup.candidate %62
@@ -143,7 +126,6 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %82 s: ptr = show %81
     drop %81
     %83 s: ptr = concat %79, %82
-    drop %79
     drop %82
     perform std::console::Console.print(%83) -> b8(%62)
   b8(%84 r: unit, %85 r: ptr):
@@ -174,10 +156,8 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %107 lit: ptr = const str 3
     %108 s: ptr = concat %107, %106
     drop %106
-    drop %107
     %109 lit: ptr = const str 1
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     %111 lit: i64 = const 7
     %112 box: word = box %111
@@ -186,11 +166,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %114 s: ptr = show %113
     drop %113
     %115 s: ptr = concat %110, %114
-    drop %110
     drop %114
     %116 lit: ptr = const str 1
     %117 s: ptr = concat %115, %116
-    drop %115
     drop %116
     %118 lit: i64 = const 3
     %119 box: word = box %118
@@ -199,11 +177,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %121 s: ptr = show %120
     drop %120
     %122 s: ptr = concat %117, %121
-    drop %117
     drop %121
     %123 lit: ptr = const str 1
     %124 s: ptr = concat %122, %123
-    drop %122
     drop %123
     %125 lit: i64 = const 1000
     %126 box: word = box %125
@@ -211,7 +187,6 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %128 s: ptr = show %127
     drop %127
     %129 s: ptr = concat %124, %128
-    drop %124
     drop %128
     perform std::console::Console.print(%129) -> b10(%88, %104)
   b10(%130 r: unit, %131 xs: ptr, %132 r: ptr):
@@ -223,10 +198,8 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %136 lit: ptr = const str 4
     %137 s: ptr = concat %136, %135
     drop %135
-    drop %136
     %138 lit: ptr = const str 1
     %139 s: ptr = concat %137, %138
-    drop %137
     drop %138
     %140 lit: i64 = const 7
     %141 box: word = box %140
@@ -235,11 +208,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %143 s: ptr = show %142
     drop %142
     %144 s: ptr = concat %139, %143
-    drop %139
     drop %143
     %145 lit: ptr = const str 1
     %146 s: ptr = concat %144, %145
-    drop %144
     drop %145
     %147 lit: i64 = const 3
     %148 box: word = box %147
@@ -248,11 +219,9 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %150 s: ptr = show %149
     drop %149
     %151 s: ptr = concat %146, %150
-    drop %146
     drop %150
     %152 lit: ptr = const str 1
     %153 s: ptr = concat %151, %152
-    drop %151
     drop %152
     %154 lit: i64 = const 1000
     %155 box: word = box %154
@@ -261,7 +230,6 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %157 s: ptr = show %156
     drop %156
     %158 s: ptr = concat %153, %157
-    drop %153
     drop %157
     perform std::console::Console.print(%158) -> b11(%131, %132)
   b11(%159 r: unit, %160 xs: ptr, %161 r: ptr):
@@ -281,31 +249,25 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %173 lit: ptr = const str 5
     %174 s: ptr = concat %173, %172
     drop %172
-    drop %173
     %175 lit: ptr = const str 1
     %176 s: ptr = concat %174, %175
-    drop %174
     drop %175
     %177 lit: i64 = const 999
     %178 box: word = box %177
     %179 r: bool = $set_contains(%167, %178)
     %180 s: ptr = show %179
     %181 s: ptr = concat %176, %180
-    drop %176
     drop %180
     %182 lit: ptr = const str 1
     %183 s: ptr = concat %181, %182
-    drop %181
     drop %182
     dup.candidate %170
     %184 r: i64 = $set_len(%170)
     %185 s: ptr = show %184
     %186 s: ptr = concat %183, %185
-    drop %183
     drop %185
     %187 lit: ptr = const str 1
     %188 s: ptr = concat %186, %187
-    drop %186
     drop %187
     %189 lit: i64 = const 999
     %190 box: word = box %189
@@ -313,7 +275,6 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %191 r: bool = $set_contains(%170, %190)
     %192 s: ptr = show %191
     %193 s: ptr = concat %188, %192
-    drop %188
     drop %192
     perform std::console::Console.print(%193) -> b13(%164, %166, %170)
   b13(%194 r: unit, %195 xs: ptr, %196 m: ptr, %197 r: ptr):
@@ -337,12 +298,10 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     drop %211
     %214 lit: ptr = const str 1
     %215 s: ptr = concat %213, %214
-    drop %213
     drop %214
     %216 s: ptr = show %212
     drop %212
     %217 s: ptr = concat %215, %216
-    drop %215
     drop %216
     perform std::console::Console.print(%217) -> b15()
   b15(%218 r: unit):

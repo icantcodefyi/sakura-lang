@@ -64,7 +64,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     drop %48
     %54 lit: ptr = const str 6
     %55 s: ptr = concat %53, %54
-    drop %53
     drop %54
     %56 lit: i64 = const 2
     %57 t: i64 = intneg %56
@@ -74,11 +73,9 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %64 s: ptr = show %58
     drop %58
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 lit: ptr = const str 6
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     %68 lit: i64 = const 3
     call get_int#3(%59, %68) -> b6(%60, %61, %62, %67)
@@ -86,7 +83,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %74 s: ptr = show %69
     drop %69
     %75 s: ptr = concat %73, %74
-    drop %73
     drop %74
     perform std::console::Console.print(%75) -> b7(%70, %71, %72)
   b7(%76 r: unit, %77 r: ptr, %78 r: ptr, %79 r: ptr):
@@ -99,7 +95,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %86 s: ptr = show %82
     %87 lit: ptr = const str 6
     %88 s: ptr = concat %86, %87
-    drop %86
     drop %87
     %89 lit: ptr = const str 3
     dup.candidate %83
@@ -107,11 +102,9 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
   b9(%90 r: i64, %91 r: ptr, %92 r: ptr, %93 r: ptr, %94 s: ptr):
     %95 s: ptr = show %90
     %96 s: ptr = concat %94, %95
-    drop %94
     drop %95
     %97 lit: ptr = const str 6
     %98 s: ptr = concat %96, %97
-    drop %96
     drop %97
     %99 lit: ptr = const str 7
     dup.candidate %91
@@ -119,7 +112,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
   b10(%100 r: i64, %101 r: ptr, %102 r: ptr, %103 r: ptr, %104 s: ptr):
     %105 s: ptr = show %100
     %106 s: ptr = concat %104, %105
-    drop %104
     drop %105
     perform std::console::Console.print(%106) -> b11(%101, %102, %103)
   b11(%107 r: unit, %108 r: ptr, %109 r: ptr, %110 r: ptr):
@@ -135,7 +127,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     drop %115
     %120 lit: ptr = const str 6
     %121 s: ptr = concat %119, %120
-    drop %119
     drop %120
     %122 lit: i64 = const 2
     %123 lit: ptr = const str 5
@@ -146,11 +137,9 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %130 s: ptr = show %125
     drop %125
     %131 s: ptr = concat %129, %130
-    drop %129
     drop %130
     %132 lit: ptr = const str 6
     %133 s: ptr = concat %131, %132
-    drop %131
     drop %132
     %134 lit: i64 = const 1
     %135 lit: ptr = const str 5
@@ -160,7 +149,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %141 s: ptr = show %137
     drop %137
     %142 s: ptr = concat %140, %141
-    drop %140
     drop %141
     perform std::console::Console.print(%142) -> b15(%138, %139)
   b15(%143 r: unit, %144 r: ptr, %145 r: ptr):
@@ -175,7 +163,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %153 s: ptr = show %150
     %154 lit: ptr = const str 6
     %155 s: ptr = concat %153, %154
-    drop %153
     drop %154
     %156 lit: i64 = const 2
     %157 lit: i64 = const 1
@@ -184,18 +171,15 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
   b17(%159 r: bool, %160 r: ptr, %161 s: ptr):
     %162 s: ptr = show %159
     %163 s: ptr = concat %161, %162
-    drop %161
     drop %162
     %164 lit: ptr = const str 6
     %165 s: ptr = concat %163, %164
-    drop %163
     drop %164
     %166 lit: ptr = const str 3
     call contains#7(%160, %166) -> b18(%165)
   b18(%167 r: bool, %168 s: ptr):
     %169 s: ptr = show %167
     %170 s: ptr = concat %168, %169
-    drop %168
     drop %169
     perform std::console::Console.print(%170) -> b19()
   b19(%171 r: unit):
@@ -213,7 +197,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %180 s: ptr = show %179
     %181 lit: ptr = const str 6
     %182 s: ptr = concat %180, %181
-    drop %180
     drop %181
     %183 r: ptr = $map_empty()
     %184 lit: i64 = const 5
@@ -221,7 +204,6 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
   b22(%185 r: i64, %186 s: ptr):
     %187 s: ptr = show %185
     %188 s: ptr = concat %186, %187
-    drop %186
     drop %187
     perform std::console::Console.print(%188) -> b23()
   b23(%189 r: unit):

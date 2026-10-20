@@ -27,7 +27,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %11 s: ptr = show %9
     %12 lit: ptr = const str 1
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 lit: ptr = const str 0
     %15 lit: i64 = const 200000
@@ -36,15 +35,12 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b2(%16 r: i64, %17 xs: ptr, %18 s: ptr):
     %19 s: ptr = show %16
     %20 s: ptr = concat %18, %19
-    drop %18
     drop %19
     %21 lit: ptr = const str 1
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 s: ptr = show %17
     %24 s: ptr = concat %22, %23
-    drop %22
     drop %23
     perform std::console::Console.print(%24) -> b3(%17)
   b3(%25 r: unit, %26 xs: ptr):
@@ -60,24 +56,20 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %35 s: ptr = show %34
     %36 lit: ptr = const str 1
     %37 s: ptr = concat %35, %36
-    drop %35
     drop %36
     %38 label: word = proj %32.1 main::direct_region_restart::Acc
     %39 s: ptr = show %38
     drop %38
     %40 s: ptr = concat %37, %39
-    drop %37
     drop %39
     %41 lit: ptr = const str 1
     %42 s: ptr = concat %40, %41
-    drop %40
     drop %41
     %43 lit: i64 = const 100000
     call deep_acc#4(%32, %43) -> b5(%33, %42)
   b5(%44 r: i64, %45 xs: ptr, %46 s: ptr):
     %47 s: ptr = show %44
     %48 s: ptr = concat %46, %47
-    drop %46
     drop %47
     perform std::console::Console.print(%48) -> b6(%45)
   b6(%49 r: unit, %50 xs: ptr):
@@ -90,7 +82,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %56 s: ptr = show %54
     %57 lit: ptr = const str 1
     %58 s: ptr = concat %56, %57
-    drop %56
     drop %57
     %59 lit: f64 = const 2.5
     %60 lit: i64 = const 100000
@@ -98,7 +89,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b8(%61 r: f64, %62 xs: ptr, %63 s: ptr):
     %64 s: ptr = show %61
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     perform std::console::Console.print(%65) -> b9(%62)
   b9(%66 r: unit, %67 xs: ptr):
@@ -111,7 +101,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %72 s: ptr = show %70
     %73 lit: ptr = const str 1
     %74 s: ptr = concat %72, %73
-    drop %72
     drop %73
     %75 lit: i64 = const 3
     dup.candidate %71
@@ -119,7 +108,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b11(%76 r: i64, %77 xs: ptr, %78 i: i64, %79 t: i64, %80 s: ptr):
     %81 s: ptr = show %76
     %82 s: ptr = concat %80, %81
-    drop %80
     drop %81
     perform std::console::Console.print(%82) -> b12(%77, %78, %79)
   b12(%83 r: unit, %84 xs: ptr, %85 i: i64, %86 t: i64):
@@ -131,14 +119,12 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %93 s: ptr = show %89
     %94 lit: ptr = const str 1
     %95 s: ptr = concat %93, %94
-    drop %93
     drop %94
     %96 lit: i64 = const 200000
     call bumps#7(%96) -> b14(%90, %91, %92, %95)
   b14(%97 r: i64, %98 xs: ptr, %99 i: i64, %100 t: i64, %101 s: ptr):
     %102 s: ptr = show %97
     %103 s: ptr = concat %101, %102
-    drop %101
     drop %102
     perform std::console::Console.print(%103) -> b15(%98, %99, %100)
   b15(%104 r: unit, %105 xs: ptr, %106 i: i64, %107 t: i64):
@@ -160,7 +146,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %121 s: ptr = show %117
     %122 lit: ptr = const str 1
     %123 s: ptr = concat %121, %122
-    drop %121
     drop %122
     %124 lit: i64 = const 3
     dup.candidate %118
@@ -168,7 +153,6 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b18(%125 r: i64, %126 xs: ptr, %127 i: i64, %128 t: i64, %129 s: ptr):
     %130 s: ptr = show %125
     %131 s: ptr = concat %129, %130
-    drop %129
     drop %130
     perform std::console::Console.print(%131) -> b19(%126, %127, %128)
   b19(%132 r: unit, %133 xs: ptr, %134 i: i64, %135 t: i64):
@@ -255,19 +239,15 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %224 s: ptr = show %221
     %225 lit: ptr = const str 1
     %226 s: ptr = concat %224, %225
-    drop %224
     drop %225
     %227 s: ptr = show %222
     %228 s: ptr = concat %226, %227
-    drop %226
     drop %227
     %229 lit: ptr = const str 1
     %230 s: ptr = concat %228, %229
-    drop %228
     drop %229
     %231 s: ptr = show %216
     %232 s: ptr = concat %230, %231
-    drop %230
     drop %231
     perform std::console::Console.print(%232) -> b33(%217, %218, %219, %220)
   b33(%233 r: unit, %234 xs: ptr, %235 i: i64, %236 t: i64, %237 f: ptr) [handle, handle]:
@@ -282,11 +262,9 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %254 s: ptr = show %252
     %255 lit: ptr = const str 1
     %256 s: ptr = concat %254, %255
-    drop %254
     drop %255
     %257 s: ptr = show %248
     %258 s: ptr = concat %256, %257
-    drop %256
     drop %257
     perform std::console::Console.print(%258) -> b36(%249, %250, %251)
   b36(%259 r: unit, %260 xs: ptr, %261 i: i64, %262 t: i64) [handle]:
@@ -473,7 +451,6 @@ fn main$2#12 lambda -> word ; main::direct_region_restart, captures [], frame 4 
     %4 lit: ptr = const str 4
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b1(%2)
   b1(%6 r: unit, %7 x: i64):
     %8 box: word = box %6

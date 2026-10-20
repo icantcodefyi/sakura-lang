@@ -45,14 +45,12 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     %26 s: ptr = show %25
     %27 lit: ptr = const str 1
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 lit: i64 = const 999
     %30 r: ptr = $bytes_get(%24, %29)
     %31 s: ptr = show %30
     drop %30
     %32 s: ptr = concat %28, %31
-    drop %28
     drop %31
     perform std::console::Console.print(%32) -> b3(%23)
   b3(%33 r: unit, %34 r: ptr):
@@ -106,16 +104,13 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     %95 s: ptr = show %94
     %96 lit: ptr = const str 2
     %97 s: ptr = concat %95, %96
-    drop %95
     drop %96
     %98 t: i64 = tuple_get %87.1
     %99 s: ptr = show %98
     %100 s: ptr = concat %97, %99
-    drop %97
     drop %99
     %101 lit: ptr = const str 3
     %102 s: ptr = concat %100, %101
-    drop %100
     drop %101
     %103 t: i64 = tuple_get %87.0
     %104 t: i64 = tuple_get %87.1
@@ -125,7 +120,6 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     %106 s: ptr = show %105
     drop %105
     %107 s: ptr = concat %102, %106
-    drop %102
     drop %106
     perform std::console::Console.print(%107) -> b13(%79, %80, %81, %82)
   b11(%83 r: ptr, %84 xs: ptr, %85 n: i64, %86 i: i64):

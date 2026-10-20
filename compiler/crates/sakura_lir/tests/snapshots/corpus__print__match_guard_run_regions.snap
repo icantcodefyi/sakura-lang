@@ -18,40 +18,33 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
     %3 s: ptr = show %2
     %4 lit: ptr = const str 0
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 lit: i64 = const 5
     call in_try#2(%6) -> b2(%5)
   b2(%7 r: i64, %8 s: ptr):
     %9 s: ptr = show %7
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 lit: ptr = const str 0
     %12 s: ptr = concat %10, %11
-    drop %10
     drop %11
     %13 lit: i64 = const 50
     call in_try#2(%13) -> b3(%12)
   b3(%14 r: i64, %15 s: ptr):
     %16 s: ptr = show %14
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 lit: ptr = const str 0
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     %20 lit: i64 = const 500
     call in_try#2(%20) -> b4(%19)
   b4(%21 r: i64, %22 s: ptr):
     %23 s: ptr = show %21
     %24 s: ptr = concat %22, %23
-    drop %22
     drop %23
     %25 lit: ptr = const str 0
     %26 s: ptr = concat %24, %25
-    drop %24
     drop %25
     %27 lit: i64 = const 5000
     %28 t: i64 = intneg %27
@@ -59,11 +52,9 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
   b5(%29 r: i64, %30 s: ptr):
     %31 s: ptr = show %29
     %32 s: ptr = concat %30, %31
-    drop %30
     drop %31
     %33 lit: ptr = const str 0
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     %35 lit: i64 = const 50
     %36 t: i64 = intneg %35
@@ -71,7 +62,6 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
   b6(%37 r: i64, %38 s: ptr):
     %39 s: ptr = show %37
     %40 s: ptr = concat %38, %39
-    drop %38
     drop %39
     perform std::console::Console.print(%40) -> b7()
   b7(%41 r: unit):
@@ -91,18 +81,15 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
     %48 s: ptr = show %47
     %49 lit: ptr = const str 0
     %50 s: ptr = concat %48, %49
-    drop %48
     drop %49
     %51 lit: i64 = const 60
     call regions#5(%51) -> b10(%50)
   b10(%52 r: i64, %53 s: ptr):
     %54 s: ptr = show %52
     %55 s: ptr = concat %53, %54
-    drop %53
     drop %54
     %56 lit: ptr = const str 0
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     %58 lit: i64 = const 5
     %59 t: i64 = intneg %58
@@ -110,18 +97,15 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
   b11(%60 r: i64, %61 s: ptr):
     %62 s: ptr = show %60
     %63 s: ptr = concat %61, %62
-    drop %61
     drop %62
     %64 lit: ptr = const str 0
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 lit: i64 = const 20
     call regions#5(%66) -> b12(%65)
   b12(%67 r: i64, %68 s: ptr):
     %69 s: ptr = show %67
     %70 s: ptr = concat %68, %69
-    drop %68
     drop %69
     perform std::console::Console.print(%70) -> b13()
   b13(%71 r: unit):
@@ -133,36 +117,30 @@ fn main#0 pub top -> unit ; main::match_guard_run_regions, frame 28 slots [%2 i6
     %77 s: ptr = show %76
     %78 lit: ptr = const str 0
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 lit: i64 = const 5
     call picks#4(%80) -> b15(%79)
   b15(%81 r: i64, %82 s: ptr) [handle]:
     %83 s: ptr = show %81
     %84 s: ptr = concat %82, %83
-    drop %82
     drop %83
     %85 lit: ptr = const str 0
     %86 s: ptr = concat %84, %85
-    drop %84
     drop %85
     %87 lit: i64 = const 50
     call picks#4(%87) -> b16(%86)
   b16(%88 r: i64, %89 s: ptr) [handle]:
     %90 s: ptr = show %88
     %91 s: ptr = concat %89, %90
-    drop %89
     drop %90
     %92 lit: ptr = const str 0
     %93 s: ptr = concat %91, %92
-    drop %91
     drop %92
     %94 lit: i64 = const 500
     call picks#4(%94) -> b17(%93)
   b17(%95 r: i64, %96 s: ptr) [handle]:
     %97 s: ptr = show %95
     %98 s: ptr = concat %96, %97
-    drop %96
     drop %97
     perform std::console::Console.print(%98) -> b18()
   b18(%99 r: unit) [handle]:

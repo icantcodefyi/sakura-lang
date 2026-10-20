@@ -31,23 +31,18 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %14 lit: ptr = const str 0
     %15 s: ptr = concat %14, %13
     drop %13
-    drop %14
     %16 lit: ptr = const str 1
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 s: ptr = show %11
     drop %11
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     %20 lit: ptr = const str 1
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 s: ptr = show %10
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     perform std::console::Console.print(%23) -> b4(%9)
   b4(%24 r: unit, %25 p1: ptr):
@@ -75,27 +70,22 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %42 lit: ptr = const str 2
     %43 s: ptr = concat %42, %41
     drop %41
-    drop %42
     %44 lit: ptr = const str 1
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 vars: word = proj %37.0 main::owned_tuple_threaded::Planner
     drop %37
     %47 s: ptr = show %46
     drop %46
     %48 s: ptr = concat %45, %47
-    drop %45
     drop %47
     %49 lit: ptr = const str 1
     %50 s: ptr = concat %48, %49
-    drop %48
     drop %49
     %51 vars: word = proj %40.0 main::owned_tuple_threaded::Planner
     %52 s: ptr = show %51
     drop %51
     %53 s: ptr = concat %50, %52
-    drop %50
     drop %52
     perform std::console::Console.print(%53) -> b8(%40)
   b8(%54 r: unit, %55 rec: ptr):
@@ -132,16 +122,13 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %77 lit: ptr = const str 3
     %78 s: ptr = concat %77, %76
     drop %76
-    drop %77
     %79 lit: ptr = const str 1
     %80 s: ptr = concat %78, %79
-    drop %78
     drop %79
     %81 vars: word = proj %75.0 main::owned_tuple_threaded::Planner
     %82 s: ptr = show %81
     drop %81
     %83 s: ptr = concat %80, %82
-    drop %80
     drop %82
     perform std::console::Console.print(%83) -> b14(%75)
   b14(%84 r: unit, %85 rec: ptr):
@@ -174,17 +161,14 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %105 lit: ptr = const str 4
     %106 s: ptr = concat %105, %104
     drop %104
-    drop %105
     %107 lit: ptr = const str 1
     %108 s: ptr = concat %106, %107
-    drop %106
     drop %107
     %109 vars: word = proj %101.0 main::owned_tuple_threaded::Planner
     drop %101
     %110 s: ptr = show %109
     drop %109
     %111 s: ptr = concat %108, %110
-    drop %108
     drop %110
     perform std::console::Console.print(%111) -> b18()
   b18(%112 r: unit):

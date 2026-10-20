@@ -33,7 +33,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %5 lit: ptr = const str 1
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     perform std::console::Console.print(%6) -> b3(%3)
   b3(%7 r: unit, %8 r: ptr):
     %9 box: word = box %7
@@ -47,10 +46,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %14 lit: ptr = const str 3
     %15 s: ptr = concat %14, %13
     drop %13
-    drop %14
     %16 lit: ptr = const str 4
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 lit: ptr = const str 2
     dup %12
@@ -59,7 +56,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %22 s: ptr = show %19
     drop %19
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     perform std::console::Console.print(%23) -> b6(%20)
   b6(%24 r: unit, %25 r: ptr):
@@ -73,10 +69,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %31 lit: ptr = const str 6
     %32 s: ptr = concat %31, %30
     drop %30
-    drop %31
     %33 lit: ptr = const str 7
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     %35 lit: ptr = const str 8
     dup %29
@@ -84,7 +78,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
   b8(%36 r: bool, %37 r: ptr, %38 s: ptr):
     %39 s: ptr = show %36
     %40 s: ptr = concat %38, %39
-    drop %38
     drop %39
     perform std::console::Console.print(%40) -> b9(%37)
   b9(%41 r: unit, %42 r: ptr):
@@ -103,7 +96,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %52 lit: ptr = const str 10
     %53 s: ptr = concat %52, %51
     drop %51
-    drop %52
     perform std::console::Console.print(%53) -> b12(%49, %50)
   b12(%54 r: unit, %55 r: ptr, %56 r: ptr):
     %57 box: word = box %54
@@ -119,7 +111,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %65 lit: ptr = const str 12
     %66 s: ptr = concat %65, %64
     drop %64
-    drop %65
     perform std::console::Console.print(%66) -> b15(%63)
   b15(%67 r: unit, %68 r: ptr):
     %69 box: word = box %67
@@ -135,7 +126,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %76 lit: ptr = const str 13
     %77 s: ptr = concat %76, %75
     drop %75
-    drop %76
     perform std::console::Console.print(%77) -> b18(%74)
   b18(%78 r: unit, %79 r: ptr):
     %80 box: word = box %78
@@ -147,7 +137,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %83 lit: ptr = const str 14
     %84 s: ptr = concat %83, %82
     drop %82
-    drop %83
     perform std::console::Console.print(%84) -> b20()
   b20(%85 r: unit):
     %86 box: word = box %85
@@ -185,7 +174,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %104 lit: ptr = const str 18
     %105 s: ptr = concat %104, %103
     drop %103
-    drop %104
     perform std::console::Console.print(%105) -> b28(%102)
   b28(%106 r: unit, %107 p: ptr):
     %108 box: word = box %106
@@ -208,7 +196,6 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %120 lit: ptr = const str 19
     %121 s: ptr = concat %120, %119
     drop %119
-    drop %120
     perform std::console::Console.print(%121) -> b34()
   b34(%122 r: unit):
     %123 box: word = box %122

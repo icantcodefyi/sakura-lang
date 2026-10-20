@@ -31,7 +31,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %5 lit: ptr = const str 1
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     dup %6
     call result#3(%6) -> b2(%6)
   b2(%7 r: ptr, %8 s: ptr):
@@ -40,7 +39,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %10 lit: ptr = const str 2
     %11 s: ptr = concat %10, %9
     drop %9
-    drop %10
     perform std::console::Console.print(%11) -> b3(%8)
   b3(%12 r: unit, %13 s: ptr):
     %14 box: word = box %12
@@ -49,7 +47,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     drop %13
     %16 lit: ptr = const str 0
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     call result#3(%17) -> b4()
   b4(%18 r: ptr):
@@ -58,7 +55,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %20 lit: ptr = const str 3
     %21 s: ptr = concat %20, %19
     drop %19
-    drop %20
     perform std::console::Console.print(%21) -> b5()
   b5(%22 r: unit):
     %23 box: word = box %22
@@ -75,7 +71,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %30 lit: ptr = const str 5
     %31 s: ptr = concat %30, %29
     drop %29
-    drop %30
     perform std::console::Console.print(%31) -> b8()
   b8(%32 r: unit):
     %33 box: word = box %32
@@ -92,7 +87,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %40 lit: ptr = const str 6
     %41 s: ptr = concat %40, %39
     drop %39
-    drop %40
     perform std::console::Console.print(%41) -> b11()
   b11(%42 r: unit):
     %43 box: word = box %42
@@ -114,7 +108,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 
     %53 lit: ptr = const str 8
     %54 s: ptr = concat %53, %52
     drop %52
-    drop %53
     perform std::console::Console.print(%54) -> b16()
   b16(%55 r: unit):
     %56 box: word = box %55
@@ -159,5 +152,4 @@ fn main$1#5 lambda -> word ; main::urlpattern_rejects_limits, captures [], frame
     %4 lit: ptr = const str 10
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     ret %5

@@ -1126,6 +1126,12 @@ impl<'m> Vm<'m> {
                     .map(|&a| self.get(cur, a))
                     .collect::<R<Vec<_>>>()?;
                 let v = self.prim(op, &vals)?;
+                // `concat` consumes its left operand (`PrimOp::Concat`).
+                if *op == PrimOp::Concat
+                    && let Val::W(w) = self.take(cur, args[0])?
+                {
+                    self.drop_word(w)?;
+                }
                 self.set(cur, *dst, v)
             }
             Box { dst, src } => {

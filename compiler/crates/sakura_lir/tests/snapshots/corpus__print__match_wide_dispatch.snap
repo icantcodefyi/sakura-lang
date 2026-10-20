@@ -47,7 +47,6 @@ fn main#0 pub top -> unit ; main::match_wide_dispatch, frame 9 slots [%41 word*,
     %38 s: ptr = show %32
     %39 lit: ptr = const str 0
     %40 s: ptr = concat %38, %39
-    drop %38
     drop %39
     call run#2(%32) -> b6(%25, %26, %27, %40)
   b4(%28 xs: ptr, %29 n: i64, %30 i: i64):
@@ -61,7 +60,6 @@ fn main#0 pub top -> unit ; main::match_wide_dispatch, frame 9 slots [%41 word*,
     %46 s: ptr = show %41
     drop %41
     %47 s: ptr = concat %45, %46
-    drop %45
     drop %46
     perform std::console::Console.print(%47) -> b7(%42, %43, %44)
   b7(%48 r: unit, %49 xs: ptr, %50 n: i64, %51 i: i64):

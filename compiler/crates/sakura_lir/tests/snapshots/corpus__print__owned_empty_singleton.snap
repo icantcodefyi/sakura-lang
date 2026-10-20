@@ -36,54 +36,42 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %25 s: ptr = show %15
     %26 lit: ptr = const str 2
     %27 s: ptr = concat %25, %26
-    drop %25
     drop %26
     %28 s: ptr = show %16
     %29 s: ptr = concat %27, %28
-    drop %27
     drop %28
     %30 lit: ptr = const str 2
     %31 s: ptr = concat %29, %30
-    drop %29
     drop %30
     %32 s: ptr = show %17
     %33 s: ptr = concat %31, %32
-    drop %31
     drop %32
     %34 lit: ptr = const str 2
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     %36 s: ptr = show %20
     %37 s: ptr = concat %35, %36
-    drop %35
     drop %36
     %38 lit: ptr = const str 2
     %39 s: ptr = concat %37, %38
-    drop %37
     drop %38
     %40 s: ptr = show %24
     %41 s: ptr = concat %39, %40
-    drop %39
     drop %40
     %42 lit: ptr = const str 2
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 r: i64 = $list_len(%15)
     %45 s: ptr = show %44
     %46 s: ptr = concat %43, %45
-    drop %43
     drop %45
     %47 lit: ptr = const str 2
     %48 s: ptr = concat %46, %47
-    drop %46
     drop %47
     %49 xs: ptr = alloc list()
     %50 r: i64 = $list_len(%49)
     %51 s: ptr = show %50
     %52 s: ptr = concat %48, %51
-    drop %48
     drop %51
     perform std::console::Console.print(%52) -> b2(%16, %17, %20, %24)
   b2(%53 r: unit, %54 r: ptr, %55 r: ptr, %56 r: ptr, %57 r: ptr):
@@ -108,38 +96,30 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %75 s: ptr = show %59
     %76 lit: ptr = const str 2
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     %78 s: ptr = show %65
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 lit: ptr = const str 2
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     %82 s: ptr = show %74
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     %84 lit: ptr = const str 2
     %85 s: ptr = concat %83, %84
-    drop %83
     drop %84
     %86 r: i64 = $map_len(%59)
     %87 s: ptr = show %86
     %88 s: ptr = concat %85, %87
-    drop %85
     drop %87
     %89 lit: ptr = const str 2
     %90 s: ptr = concat %88, %89
-    drop %88
     drop %89
     %91 r: ptr = $map_empty()
     %92 r: i64 = $map_len(%91)
     %93 s: ptr = show %92
     %94 s: ptr = concat %90, %93
-    drop %90
     drop %93
     perform std::console::Console.print(%94) -> b3(%54, %55, %56, %57, %65, %74)
   b3(%95 r: unit, %96 r: ptr, %97 r: ptr, %98 r: ptr, %99 r: ptr, %100 r: ptr, %101 r: ptr):
@@ -166,12 +146,10 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %125 s: ptr = show %124
     %126 lit: ptr = const str 2
     %127 s: ptr = concat %125, %126
-    drop %125
     drop %126
     %128 r: i64 = $map_len(%124)
     %129 s: ptr = show %128
     %130 s: ptr = concat %127, %129
-    drop %127
     drop %129
     perform std::console::Console.print(%130) -> b6()
   b6(%131 r: unit):
@@ -189,33 +167,27 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %142 s: ptr = show %141
     %143 lit: ptr = const str 2
     %144 s: ptr = concat %142, %143
-    drop %142
     drop %143
     dup.candidate %140
     %145 r: i64 = $set_len(%140)
     %146 s: ptr = show %145
     %147 s: ptr = concat %144, %146
-    drop %144
     drop %146
     %148 lit: ptr = const str 2
     %149 s: ptr = concat %147, %148
-    drop %147
     drop %148
     %150 r: ptr = $set_to_list(%140)
     %151 s: ptr = show %150
     drop %150
     %152 s: ptr = concat %149, %151
-    drop %149
     drop %151
     %153 lit: ptr = const str 2
     %154 s: ptr = concat %152, %153
-    drop %152
     drop %153
     %155 r: ptr = $set_empty()
     %156 r: i64 = $set_len(%155)
     %157 s: ptr = show %156
     %158 s: ptr = concat %154, %157
-    drop %154
     drop %157
     perform std::console::Console.print(%158) -> b7()
   b7(%159 r: unit):

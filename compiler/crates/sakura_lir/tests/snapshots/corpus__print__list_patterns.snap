@@ -62,7 +62,6 @@ fn main#0 pub top -> unit ; main::list_patterns, frame 9 slots [%9 i64, %11 bool
     drop %35
     %37 lit: ptr = const str 3
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     %39 lit: i64 = const 5
     dup.candidate %33
@@ -70,16 +69,13 @@ fn main#0 pub top -> unit ; main::list_patterns, frame 9 slots [%9 i64, %11 bool
     %41 s: ptr = show %40
     drop %40
     %42 s: ptr = concat %38, %41
-    drop %38
     drop %41
     %43 lit: ptr = const str 3
     %44 s: ptr = concat %42, %43
-    drop %42
     drop %43
     %45 s: ptr = show %33
     drop %33
     %46 s: ptr = concat %44, %45
-    drop %44
     drop %45
     perform std::console::Console.print(%46) -> b9()
   b9(%47 r: unit):
@@ -153,15 +149,12 @@ fn shape#3 top -> ptr ; main::list_patterns, frame 1 slots [%0 word*]
     %4 lit: ptr = const str 4
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     %6 lit: ptr = const str 5
     %7 s: ptr = concat %5, %6
-    drop %5
     drop %6
     %8 s: ptr = show %2
     drop %2
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     ret %9
   b2(%17 xs: ptr, %18 is: bool, %19 is: bool):
@@ -178,7 +171,6 @@ fn shape#3 top -> ptr ; main::list_patterns, frame 1 slots [%0 word*]
     %31 lit: ptr = const str 7
     %32 s: ptr = concat %31, %30
     drop %30
-    drop %31
     ret %32
   b5(%26 xs: ptr, %27 is: bool):
     if %27 then b6(%26) else b7(%26)

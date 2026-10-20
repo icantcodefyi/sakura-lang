@@ -96,7 +96,6 @@ fn main#0 pub top -> unit ; main::http_redirect_error_fails, frame 45 slots [%5 
     %67 lit: ptr = const str 7
     %68 s: ptr = concat %67, %66
     drop %66
-    drop %67
     %69 $site: i64 = const 10
     call Url$from#9(%68, %69) -> b12(%53, %54, %55, %59, %65)
   b10(%56 xs: ptr, %57 n: i64, %58 i: i64) [handle, handle, handle]:
@@ -127,7 +126,6 @@ fn main#0 pub top -> unit ; main::http_redirect_error_fails, frame 45 slots [%5 
     drop %93
     %95 lit: ptr = const str 8
     %96 s: ptr = concat %94, %95
-    drop %94
     drop %95
     %97 f: ptr = closure main$1#11[]
     call map#12(%89, %97) -> b15(%90, %91, %92, %96)
@@ -135,7 +133,6 @@ fn main#0 pub top -> unit ; main::http_redirect_error_fails, frame 45 slots [%5 
     %103 s: ptr = show %98
     drop %98
     %104 s: ptr = concat %102, %103
-    drop %102
     drop %103
     perform std::console::Console.print(%104) -> b16(%99, %100, %101)
   b16(%105 r: unit, %106 xs: ptr, %107 n: i64, %108 i: i64) [handle, handle, handle]:
@@ -184,7 +181,6 @@ fn logged$Http_send#100 clause std::http::Http.send -> ptr ; main::http_redirect
     %5 lit: ptr = const str 75
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     perform std::console::Console.print(%6) -> b1(%2)
   b1(%7 r: unit, %8 req: ptr):
     %9 box: word = box %7

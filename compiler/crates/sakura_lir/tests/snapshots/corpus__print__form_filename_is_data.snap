@@ -83,13 +83,11 @@ fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word
     drop %48
     %50 lit: ptr = const str 2
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     %52 xs: ptr = alloc list(%47)
     %53 s: ptr = show %52
     drop %52
     %54 s: ptr = concat %51, %53
-    drop %51
     drop %53
     perform std::console::Console.print(%54) -> b12(%37, %38, %39)
   b11(%42 entries: ptr, %43 n: i64, %44 i: i64, %45 x: ptr, %46 t: ptr):
@@ -107,18 +105,15 @@ fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word
     drop %68
     %70 lit: ptr = const str 3
     %71 s: ptr = concat %69, %70
-    drop %69
     drop %70
     %72 name: word = proj %67.1 std::blob::FileData
     %73 xs: ptr = alloc list(%72)
     %74 s: ptr = show %73
     drop %73
     %75 s: ptr = concat %71, %74
-    drop %71
     drop %74
     %76 lit: ptr = const str 4
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     %78 blob: word = proj %67.0 std::blob::FileData
     %79 media_type: word = proj %78.1 std::blob::Blob
@@ -127,27 +122,22 @@ fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word
     %81 s: ptr = show %80
     drop %80
     %82 s: ptr = concat %77, %81
-    drop %77
     drop %81
     %83 lit: ptr = const str 5
     %84 s: ptr = concat %82, %83
-    drop %82
     drop %83
     %85 s: ptr = show %62
     drop %62
     %86 s: ptr = concat %84, %85
-    drop %84
     drop %85
     %87 lit: ptr = const str 5
     %88 s: ptr = concat %86, %87
-    drop %86
     drop %87
     %89 last_modified: word = proj %67.2 std::blob::FileData
     drop %67
     %90 s: ptr = show %89
     drop %89
     %91 s: ptr = concat %88, %90
-    drop %88
     drop %90
     perform std::console::Console.print(%91) -> b14(%63, %64, %65)
   b14(%92 r: unit, %93 entries: ptr, %94 n: i64, %95 i: i64):

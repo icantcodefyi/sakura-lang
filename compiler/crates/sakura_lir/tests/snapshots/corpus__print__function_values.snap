@@ -30,7 +30,6 @@ fn main#0 pub top -> unit ; main::function_values, frame 10 slots [%0 word*, %28
     drop %19
     %21 lit: ptr = const str 0
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 run: word = proj %13.1 main::function_values::Op
     drop %13
@@ -51,7 +50,6 @@ fn main#0 pub top -> unit ; main::function_values, frame 10 slots [%0 word*, %28
     drop %28
     %34 s: ptr = show %33
     %35 s: ptr = concat %32, %34
-    drop %32
     drop %34
     perform std::console::Console.print(%35) -> b8(%29, %30, %31)
   b8(%36 r: unit, %37 r: ptr, %38 n: i64, %39 i: i64):

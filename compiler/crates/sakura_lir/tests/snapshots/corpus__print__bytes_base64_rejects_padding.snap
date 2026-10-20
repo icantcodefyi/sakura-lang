@@ -86,12 +86,10 @@ fn main#0 pub top -> unit ; main::bytes_base64_rejects_padding, frame 13 slots [
     drop %78
     %80 lit: ptr = const str 11
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     %82 s: ptr = show %77
     drop %77
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     perform std::console::Console.print(%83) -> b10(%67, %68, %69)
   b9(%72 xs: ptr, %73 n: i64, %74 i: i64, %75 x: ptr, %76 r: ptr):
@@ -103,23 +101,19 @@ fn main#0 pub top -> unit ; main::bytes_base64_rejects_padding, frame 13 slots [
     drop %90
     %92 lit: ptr = const str 11
     %93 s: ptr = concat %91, %92
-    drop %91
     drop %92
     %94 reason: word = proj %89.1 std::bytes::Base64Error
     %95 s: ptr = show %94
     drop %94
     %96 s: ptr = concat %93, %95
-    drop %93
     drop %95
     %97 lit: ptr = const str 12
     %98 s: ptr = concat %96, %97
-    drop %96
     drop %97
     %99 offset: i64 = proj %89.0 std::bytes::Base64Error
     drop %89
     %100 s: ptr = show %99
     %101 s: ptr = concat %98, %100
-    drop %98
     drop %100
     perform std::console::Console.print(%101) -> b11(%72, %73, %74)
   b10(%84 r: unit, %85 xs: ptr, %86 n: i64, %87 i: i64):

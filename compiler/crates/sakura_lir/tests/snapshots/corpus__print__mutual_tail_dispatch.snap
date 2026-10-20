@@ -16,7 +16,6 @@ fn main#0 pub top -> unit ; main::mutual_tail_dispatch, frame 18 slots [%2 i64, 
     %3 s: ptr = show %2
     %4 lit: ptr = const str 0
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 lit: i64 = const 7
     %7 lit: i64 = const 0
@@ -24,11 +23,9 @@ fn main#0 pub top -> unit ; main::mutual_tail_dispatch, frame 18 slots [%2 i64, 
   b2(%8 r: i64, %9 s: ptr):
     %10 s: ptr = show %8
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 lit: ptr = const str 0
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 lit: i64 = const 10
     %15 lit: i64 = const 0
@@ -36,7 +33,6 @@ fn main#0 pub top -> unit ; main::mutual_tail_dispatch, frame 18 slots [%2 i64, 
   b3(%16 r: i64, %17 s: ptr):
     %18 s: ptr = show %16
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b4()
   b4(%20 r: unit):
@@ -66,36 +62,30 @@ fn main#0 pub top -> unit ; main::mutual_tail_dispatch, frame 18 slots [%2 i64, 
     %36 s: ptr = show %35
     %37 lit: ptr = const str 0
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     %39 lit: i64 = const 5
     call x#8(%39) -> b10(%38)
   b10(%40 r: i64, %41 s: ptr):
     %42 s: ptr = show %40
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: ptr = const str 0
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: i64 = const 6
     call y#9(%46) -> b11(%45)
   b11(%47 r: i64, %48 s: ptr):
     %49 s: ptr = show %47
     %50 s: ptr = concat %48, %49
-    drop %48
     drop %49
     %51 lit: ptr = const str 0
     %52 s: ptr = concat %50, %51
-    drop %50
     drop %51
     %53 lit: i64 = const 7
     call z#10(%53) -> b12(%52)
   b12(%54 r: i64, %55 s: ptr):
     %56 s: ptr = show %54
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     perform std::console::Console.print(%57) -> b13()
   b13(%58 r: unit):
@@ -445,14 +435,11 @@ fn lex#5 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 wor
     %48 lit: ptr = const str 2
     %49 s: ptr = concat %48, %47
     drop %47
-    drop %48
     %50 lit: ptr = const str 0
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     %52 s: ptr = show %44
     %53 s: ptr = concat %51, %52
-    drop %51
     drop %52
     perform std::console::Console.print(%53) -> b13(%43)
   b12(%45 n: i64, %46 fresh: bool):
@@ -502,16 +489,13 @@ fn lex#5 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 wor
     %96 lit: ptr = const str 4
     %97 s: ptr = concat %96, %95
     drop %95
-    drop %96
     %98 lit: ptr = const str 0
     %99 s: ptr = concat %97, %98
-    drop %97
     drop %98
     dup.candidate %92
     %100 r: i64 = $list_len(%92)
     %101 s: ptr = show %100
     %102 s: ptr = concat %99, %101
-    drop %99
     drop %101
     perform std::console::Console.print(%102) -> b22(%91, %92)
   b21(%93 n: i64, %94 seen: ptr):
@@ -570,14 +554,11 @@ fn lex#5 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 wor
     %155 lit: ptr = const str 6
     %156 s: ptr = concat %155, %154
     drop %154
-    drop %155
     %157 lit: ptr = const str 0
     %158 s: ptr = concat %156, %157
-    drop %156
     drop %157
     %159 s: ptr = show %151
     %160 s: ptr = concat %158, %159
-    drop %158
     drop %159
     perform std::console::Console.print(%160) -> b32(%150, %151)
   b31(%152 n: i64, %153 word: ptr):
@@ -653,14 +634,11 @@ fn space#6 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 b
     %62 lit: ptr = const str 6
     %63 s: ptr = concat %62, %61
     drop %61
-    drop %62
     %64 lit: ptr = const str 0
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 s: ptr = show %58
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     perform std::console::Console.print(%67) -> b15(%57, %58)
   b14(%59 n: i64, %60 word: ptr):
@@ -710,16 +688,13 @@ fn space#6 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 b
     %111 lit: ptr = const str 4
     %112 s: ptr = concat %111, %110
     drop %110
-    drop %111
     %113 lit: ptr = const str 0
     %114 s: ptr = concat %112, %113
-    drop %112
     drop %113
     dup.candidate %107
     %115 r: i64 = $list_len(%107)
     %116 s: ptr = show %115
     %117 s: ptr = concat %114, %116
-    drop %114
     drop %116
     perform std::console::Console.print(%117) -> b24(%106, %107)
   b23(%108 n: i64, %109 seen: ptr):
@@ -766,14 +741,11 @@ fn space#6 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1 b
     %158 lit: ptr = const str 2
     %159 s: ptr = concat %158, %157
     drop %157
-    drop %158
     %160 lit: ptr = const str 0
     %161 s: ptr = concat %159, %160
-    drop %159
     drop %160
     %162 s: ptr = show %154
     %163 s: ptr = concat %161, %162
-    drop %161
     drop %162
     perform std::console::Console.print(%163) -> b32(%153)
   b31(%155 n: i64, %156 fresh: bool):
@@ -1500,14 +1472,11 @@ fn digits#11 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1
     %62 lit: ptr = const str 6
     %63 s: ptr = concat %62, %61
     drop %61
-    drop %62
     %64 lit: ptr = const str 0
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 s: ptr = show %58
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     perform std::console::Console.print(%67) -> b15(%57, %58)
   b14(%59 n: i64, %60 word: ptr):
@@ -1553,14 +1522,11 @@ fn digits#11 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1
     %105 lit: ptr = const str 2
     %106 s: ptr = concat %105, %104
     drop %104
-    drop %105
     %107 lit: ptr = const str 0
     %108 s: ptr = concat %106, %107
-    drop %106
     drop %107
     %109 s: ptr = show %101
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     perform std::console::Console.print(%110) -> b24(%100)
   b23(%102 n: i64, %103 fresh: bool):
@@ -1609,16 +1575,13 @@ fn digits#11 top -> i64 ; main::mutual_tail_dispatch, frame 10 slots [%0 i64, %1
     %154 lit: ptr = const str 4
     %155 s: ptr = concat %154, %153
     drop %153
-    drop %154
     %156 lit: ptr = const str 0
     %157 s: ptr = concat %155, %156
-    drop %155
     drop %156
     dup.candidate %150
     %158 r: i64 = $list_len(%150)
     %159 s: ptr = show %158
     %160 s: ptr = concat %157, %159
-    drop %157
     drop %159
     perform std::console::Console.print(%160) -> b32(%149, %150)
   b31(%151 n: i64, %152 seen: ptr):

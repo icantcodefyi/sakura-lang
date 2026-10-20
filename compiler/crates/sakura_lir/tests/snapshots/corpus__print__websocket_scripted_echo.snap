@@ -77,7 +77,6 @@ fn main#0 pub top -> unit ; main::websocket_scripted_echo, frame 9 slots [%6 wor
     %34 lit: ptr = const str 5
     %35 s: ptr = concat %34, %33
     drop %33
-    drop %34
     perform std::console::Console.print(%35) -> b5()
   b5(%36 r: unit) [handle]:
     %37 box: word = box %36
@@ -143,10 +142,8 @@ fn main$1#5 lambda -> word ; main::websocket_scripted_echo, captures [], frame 1
     %5 lit: ptr = const str 8
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     %7 lit: ptr = const str 9
     %8 s: ptr = concat %6, %7
-    drop %6
     drop %7
     perform std::console::Console.print(%8) -> b2(%3)
   b2(%9 r: unit, %10 sock: ptr):
@@ -160,7 +157,6 @@ fn main$1#5 lambda -> word ; main::websocket_scripted_echo, captures [], frame 1
     %15 lit: ptr = const str 10
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     perform std::console::Console.print(%16) -> b4(%13)
   b4(%17 r: unit, %18 sock: ptr):
     %19 box: word = box %17
@@ -213,7 +209,6 @@ fn echo_once$1#11 lambda -> word ; main::websocket_scripted_echo, captures [], f
     %21 lit: ptr = const str 12
     %22 s: ptr = concat %21, %20
     drop %20
-    drop %21
     ret %22
   b5(%13 p: ptr):
     %15 p: word = proj %13.0 std::websocket::Message.Text

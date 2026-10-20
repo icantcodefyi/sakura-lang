@@ -39,7 +39,6 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %13 lit: ptr = const str 2
     %14 s: ptr = concat %13, %12
     drop %12
-    drop %13
     %15 lit: ptr = const str 3
     %16 lit: ptr = const str 4
     %17 lit: ptr = const str 5
@@ -82,7 +81,6 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     drop %57
     %59 lit: ptr = const str 18
     %60 s: ptr = concat %58, %59
-    drop %58
     drop %59
     %61 r: ptr = $string_to_bytes(%50)
     %62 lit: ptr = const str 3
@@ -102,7 +100,6 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %75 s: ptr = show %69
     drop %69
     %76 s: ptr = concat %74, %75
-    drop %74
     drop %75
     perform std::console::Console.print(%76) -> b10(%70, %71, %72, %73)
   b10(%77 r: unit, %78 rec: ptr, %79 xs: ptr, %80 n: i64, %81 i: i64):
@@ -121,7 +118,6 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     drop %108
     %110 lit: ptr = const str 18
     %111 s: ptr = concat %109, %110
-    drop %109
     drop %110
     dup %90
     dup %91
@@ -140,7 +136,6 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %126 s: ptr = show %119
     drop %119
     %127 s: ptr = concat %125, %126
-    drop %125
     drop %126
     perform std::console::Console.print(%127) -> b17(%120, %121, %122, %123, %124)
   b17(%128 r: unit, %129 rec: ptr, %130 r: ptr, %131 xs: ptr, %132 n: i64, %133 i: i64):
@@ -170,7 +165,6 @@ fn outcome#4 top -> ptr ; main::form_parse_rejects_malformed, frame 1 slots [%0 
     %7 s: ptr = show %6
     %8 lit: ptr = const str 22
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     ret %9
   b2(%3 r: ptr):

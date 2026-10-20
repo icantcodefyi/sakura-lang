@@ -113,7 +113,6 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %147 s: ptr = show %130
     %148 lit: ptr = const str 0
     %149 s: ptr = concat %147, %148
-    drop %147
     drop %148
     dup.candidate %146
     call extractable#3(%146) -> b16(%126, %127, %128, %129, %130, %131, %132, %133, %134, %146, %149)
@@ -123,22 +122,18 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %192 s: ptr = show %140
     %193 lit: ptr = const str 0
     %194 s: ptr = concat %192, %193
-    drop %192
     drop %193
     %195 s: ptr = show %191
     drop %191
     %196 s: ptr = concat %194, %195
-    drop %194
     drop %195
     perform std::console::Console.print(%196) -> b19(%136, %137, %138, %139, %140, %141, %142, %143, %144)
   b16(%150 r: bool, %151 r: ptr, %152 xs: ptr, %153 n: i64, %154 i: i64, %155 alg: ptr, %156 usage: ptr, %157 xs: ptr, %158 n: i64, %159 i: i64, %160 k: ptr, %161 s: ptr):
     %162 s: ptr = show %150
     %163 s: ptr = concat %161, %162
-    drop %161
     drop %162
     %164 lit: ptr = const str 0
     %165 s: ptr = concat %163, %164
-    drop %163
     drop %164
     %166 v: ptr = const static std::crypto::KeyFormat.Raw
     call export_key#4(%160, %166) -> b17(%151, %152, %153, %154, %155, %156, %157, %158, %159, %165)
@@ -146,7 +141,6 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %178 s: ptr = show %167
     drop %167
     %179 s: ptr = concat %177, %178
-    drop %177
     drop %178
     perform std::console::Console.print(%179) -> b18(%168, %169, %170, %171, %172, %173, %174, %175, %176)
   b18(%180 r: unit, %181 r: ptr, %182 xs: ptr, %183 n: i64, %184 i: i64, %185 alg: ptr, %186 usage: ptr, %187 xs: ptr, %188 n: i64, %189 i: i64):

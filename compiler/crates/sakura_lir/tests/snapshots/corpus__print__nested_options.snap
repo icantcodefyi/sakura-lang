@@ -64,7 +64,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %37
     %42 lit: ptr = const str 0
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: i64 = const 0
     %45 box: word = box %44
@@ -75,11 +74,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %56 s: ptr = show %51
     drop %51
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     %58 lit: ptr = const str 0
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 lit: unit = const ()
     %61 box: word = box %60
@@ -92,7 +89,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %77 s: ptr = show %72
     drop %72
     %78 s: ptr = concat %76, %77
-    drop %76
     drop %77
     perform std::console::Console.print(%78) -> b12(%73, %74, %75)
   b12(%79 r: unit, %80 xs: ptr, %81 v: ptr, %82 xs: ptr):
@@ -106,7 +102,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %86
     %91 lit: ptr = const str 0
     %92 s: ptr = concat %90, %91
-    drop %90
     drop %91
     %93 lit: ptr = const str 1
     call wrap#7(%93) -> b14(%87, %88, %89, %92)
@@ -114,22 +109,18 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %99 s: ptr = show %94
     drop %94
     %100 s: ptr = concat %98, %99
-    drop %98
     drop %99
     %101 lit: ptr = const str 0
     %102 s: ptr = concat %100, %101
-    drop %100
     drop %101
     call wrap#7(%97) -> b15(%95, %96, %102)
   b15(%103 r: ptr, %104 xs: ptr, %105 v: ptr, %106 s: ptr):
     %107 s: ptr = show %103
     drop %103
     %108 s: ptr = concat %106, %107
-    drop %106
     drop %107
     %109 lit: ptr = const str 0
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     %111 v: ptr = const static std::json::Json.Null
     call wrap#7(%111) -> b16(%104, %105, %110)
@@ -137,7 +128,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %116 s: ptr = show %112
     drop %112
     %117 s: ptr = concat %115, %116
-    drop %115
     drop %116
     perform std::console::Console.print(%117) -> b17(%113, %114)
   b17(%118 r: unit, %119 xs: ptr, %120 v: ptr):
@@ -151,7 +141,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %124
     %128 lit: ptr = const str 0
     %129 s: ptr = concat %127, %128
-    drop %127
     drop %128
     %130 lit: i64 = const 9007199254740991
     %131 t: i64 = intneg %130
@@ -161,11 +150,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %137 s: ptr = show %133
     drop %133
     %138 s: ptr = concat %136, %137
-    drop %136
     drop %137
     %139 lit: ptr = const str 0
     %140 s: ptr = concat %138, %139
-    drop %138
     drop %139
     %141 lit: f64 = const 0.0
     %142 box: word = box %141
@@ -174,7 +161,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %147 s: ptr = show %143
     drop %143
     %148 s: ptr = concat %146, %147
-    drop %146
     drop %147
     perform std::console::Console.print(%148) -> b21(%144, %145)
   b21(%149 r: unit, %150 xs: ptr, %151 v: ptr):
@@ -190,7 +176,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %155
     %160 lit: ptr = const str 0
     %161 s: ptr = concat %159, %160
-    drop %159
     drop %160
     %162 lit: i64 = const 0
     %163 box: word = box %162
@@ -201,11 +186,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %171 s: ptr = show %166
     drop %166
     %172 s: ptr = concat %170, %171
-    drop %170
     drop %171
     %173 lit: ptr = const str 0
     %174 s: ptr = concat %172, %173
-    drop %172
     drop %173
     %175 r: ptr = alloc std::option::Option.Some(%168)
     call flatten#11(%175) -> b24(%167, %169, %174)
@@ -213,18 +196,15 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %180 s: ptr = show %176
     drop %176
     %181 s: ptr = concat %179, %180
-    drop %179
     drop %180
     %182 lit: ptr = const str 0
     %183 s: ptr = concat %181, %182
-    drop %181
     drop %182
     call flatten#11(%178) -> b25(%177, %183)
   b25(%184 r: ptr, %185 xs: ptr, %186 s: ptr):
     %187 s: ptr = show %184
     drop %184
     %188 s: ptr = concat %186, %187
-    drop %186
     drop %187
     perform std::console::Console.print(%188) -> b26(%185)
   b26(%189 r: unit, %190 xs: ptr):
@@ -240,7 +220,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %195
     %199 lit: ptr = const str 0
     %200 s: ptr = concat %198, %199
-    drop %198
     drop %199
     dup %197
     call %197() -> b28(%196, %197, %200)
@@ -252,11 +231,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %206
     %208 s: ptr = show %207
     %209 s: ptr = concat %204, %208
-    drop %204
     drop %208
     %210 lit: ptr = const str 0
     %211 s: ptr = concat %209, %210
-    drop %209
     drop %210
     call %203() -> b29(%202, %211)
   b29(%212 r: word, %213 xs: ptr, %214 s: ptr):
@@ -268,7 +245,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %218 t: bool = eq.int %216, %217
     %219 s: ptr = show %218
     %220 s: ptr = concat %214, %219
-    drop %214
     drop %219
     perform std::console::Console.print(%220) -> b30(%213)
   b30(%221 r: unit, %222 xs: ptr):
@@ -307,7 +283,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %249 s: ptr = show %248
     %250 lit: ptr = const str 0
     %251 s: ptr = concat %249, %250
-    drop %249
     drop %250
     %252 v: ptr = const static std::option::Option.None
     %253 r: ptr = alloc std::option::Option.Some(%252)
@@ -316,11 +291,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %255 s: ptr = show %254
     drop %254
     %256 s: ptr = concat %251, %255
-    drop %251
     drop %255
     %257 lit: ptr = const str 0
     %258 s: ptr = concat %256, %257
-    drop %256
     drop %257
     %259 v: ptr = const static std::option::Option.None
     dup.candidate %247
@@ -328,11 +301,9 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %261 s: ptr = show %260
     drop %260
     %262 s: ptr = concat %258, %261
-    drop %258
     drop %261
     %263 lit: ptr = const str 0
     %264 s: ptr = concat %262, %263
-    drop %262
     drop %263
     %265 lit: i64 = const 1
     %266 box: word = box %265
@@ -344,7 +315,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %272 s: ptr = show %271
     drop %271
     %273 s: ptr = concat %264, %272
-    drop %264
     drop %272
     perform std::console::Console.print(%273) -> b34()
   b34(%274 r: unit):
@@ -414,12 +384,10 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %335
     %337 lit: ptr = const str 5
     %338 s: ptr = concat %336, %337
-    drop %336
     drop %337
     %339 s: ptr = show %329
     drop %329
     %340 s: ptr = concat %338, %339
-    drop %338
     drop %339
     perform std::console::Console.print(%340) -> b44(%330, %331, %332, %333)
   b44(%341 r: unit, %342 xs: ptr, %343 xs: ptr, %344 n: i64, %345 i: i64):
@@ -448,7 +416,6 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %379 lit: ptr = const str 8
     %380 s: ptr = concat %379, %378
     drop %378
-    drop %379
     jump b43(%380, %369, %370, %371, %372, %373)
 
 fn $entry#1 top -> unit ; main::nested_options, frame 1 slots [%1 bool]

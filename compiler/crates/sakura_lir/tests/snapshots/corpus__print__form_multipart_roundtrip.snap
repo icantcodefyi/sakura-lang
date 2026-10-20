@@ -99,7 +99,6 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %61 lit: ptr = const str 16
     %62 lit: ptr = const str 17
     %63 t: ptr = concat %61, %62
-    drop %61
     drop %62
     %64 r: ptr = $string_to_bytes(%63)
     %65 lit: ptr = const str 15
@@ -125,7 +124,6 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %87 lit: ptr = const str 18
     %88 s: ptr = concat %87, %86
     drop %86
-    drop %87
     perform std::console::Console.print(%88) -> b20(%74, %75, %76)
   b18(%77 r: ptr, %78 n: i64, %79 i: i64):
     drop %77
@@ -149,7 +147,6 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %116 lit: ptr = const str 19
     %117 s: ptr = concat %116, %115
     drop %115
-    drop %116
     perform std::console::Console.print(%117) -> b25(%100, %101, %102, %103)
   b23(%104 rec: ptr, %105 r: ptr, %106 n: i64, %107 i: i64):
     drop %105
@@ -258,17 +255,14 @@ fn describe$1#7 lambda -> word ; main::form_multipart_roundtrip, captures [], fr
     drop %9
     %11 lit: ptr = const str 28
     %12 s: ptr = concat %10, %11
-    drop %10
     drop %11
     %13 xs: ptr = alloc list(%8)
     %14 s: ptr = show %13
     drop %13
     %15 s: ptr = concat %12, %14
-    drop %12
     drop %14
     %16 lit: ptr = const str 29
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     ret %17
   b2(%6 e: ptr, %7 t: ptr):
@@ -280,18 +274,15 @@ fn describe$1#7 lambda -> word ; main::form_multipart_roundtrip, captures [], fr
     drop %19
     %21 lit: ptr = const str 30
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 name: word = proj %18.1 std::blob::FileData
     %24 xs: ptr = alloc list(%23)
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %22, %25
-    drop %22
     drop %25
     %27 lit: ptr = const str 31
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 blob: word = proj %18.0 std::blob::FileData
     %30 media_type: word = proj %29.1 std::blob::Blob
@@ -300,11 +291,9 @@ fn describe$1#7 lambda -> word ; main::form_multipart_roundtrip, captures [], fr
     %32 s: ptr = show %31
     drop %31
     %33 s: ptr = concat %28, %32
-    drop %28
     drop %32
     %34 lit: ptr = const str 31
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     %36 blob: word = proj %18.0 std::blob::FileData
     drop %18
@@ -313,10 +302,8 @@ fn describe$1#7 lambda -> word ; main::form_multipart_roundtrip, captures [], fr
     %39 s: ptr = show %37
     drop %37
     %40 s: ptr = concat %38, %39
-    drop %38
     drop %39
     %41 lit: ptr = const str 29
     %42 s: ptr = concat %40, %41
-    drop %40
     drop %41
     ret %42

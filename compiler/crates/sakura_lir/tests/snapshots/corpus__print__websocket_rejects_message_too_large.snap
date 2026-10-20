@@ -81,7 +81,6 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 
     %36 lit: ptr = const str 2
     %37 s: ptr = concat %36, %35
     drop %35
-    drop %36
     perform std::console::Console.print(%37) -> b6()
   b6(%38 r: unit) [handle]:
     %39 box: word = box %38
@@ -102,7 +101,6 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 14 
     %51 lit: ptr = const str 4
     %52 s: ptr = concat %51, %50
     drop %50
-    drop %51
     perform std::console::Console.print(%52) -> b10(%49)
   b10(%53 r: unit, %54 rec: ptr) [handle]:
     %55 box: word = box %53
@@ -140,7 +138,6 @@ fn main$1#4 lambda -> word ; main::websocket_rejects_message_too_large, captures
     %5 lit: ptr = const str 5
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     perform std::console::Console.print(%6) -> b2(%3)
   b2(%7 r: unit, %8 sock: ptr):
     %9 box: word = box %7

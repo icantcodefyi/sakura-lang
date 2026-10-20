@@ -16,14 +16,12 @@ fn main#0 pub top -> unit ; main::mutual_tail_dispatch_blame, frame 6 slots [%2 
     %3 s: ptr = show %2
     %4 lit: ptr = const str 0
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 lit: i64 = const 4
     call right#3(%6) -> b2(%5)
   b2(%7 r: i64, %8 s: ptr):
     %9 s: ptr = show %7
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     perform std::console::Console.print(%10) -> b3()
   b3(%11 r: unit):

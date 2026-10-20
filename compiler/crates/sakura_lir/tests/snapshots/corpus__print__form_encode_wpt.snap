@@ -390,7 +390,6 @@ fn main#0 pub top -> unit ; main::form_encode_wpt, frame 636 slots [%7 word*, %8
     %963 s: ptr = show %935
     %964 lit: ptr = const str 28
     %965 s: ptr = concat %963, %964
-    drop %963
     drop %964
     call encode_urlencoded#6(%936) -> b34(%932, %933, %934, %965)
   b31(%939 r: ptr, %940 r: ptr, %941 n: i64, %942 i: i64, %943 i: i64):
@@ -401,14 +400,12 @@ fn main#0 pub top -> unit ; main::form_encode_wpt, frame 636 slots [%7 word*, %8
     %951 s: ptr = show %950
     %952 lit: ptr = const str 28
     %953 s: ptr = concat %951, %952
-    drop %951
     drop %952
     %954 lit: ptr = const str 29
     %955 r: ptr = $string_split(%946, %954)
     %956 s: ptr = show %955
     drop %955
     %957 s: ptr = concat %953, %956
-    drop %953
     drop %956
     perform std::console::Console.print(%957) -> b33(%947, %948, %949)
   b33(%958 r: unit, %959 r: ptr, %960 n: i64, %961 i: i64):
@@ -418,7 +415,6 @@ fn main#0 pub top -> unit ; main::form_encode_wpt, frame 636 slots [%7 word*, %8
     %971 s: ptr = show %966
     drop %966
     %972 s: ptr = concat %970, %971
-    drop %970
     drop %971
     perform std::console::Console.print(%972) -> b35(%967, %968, %969)
   b35(%973 r: unit, %974 r: ptr, %975 n: i64, %976 i: i64):

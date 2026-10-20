@@ -19,7 +19,6 @@ fn main#0 pub top -> unit ; main::early_return, frame 11 slots [%5 i64, %6 word*
     %7 s: ptr = show %5
     %8 lit: ptr = const str 2
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 lit: ptr = const str 0
     %11 xs: ptr = alloc list(%10)
@@ -28,11 +27,9 @@ fn main#0 pub top -> unit ; main::early_return, frame 11 slots [%5 i64, %6 word*
   b2(%13 r: i64, %14 f: ptr, %15 s: ptr):
     %16 s: ptr = show %13
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 lit: ptr = const str 2
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     %20 lit: i64 = const 1
     %21 box: word = box %20
@@ -42,11 +39,9 @@ fn main#0 pub top -> unit ; main::early_return, frame 11 slots [%5 i64, %6 word*
     %25 s: ptr = show %22
     drop %22
     %26 s: ptr = concat %24, %25
-    drop %24
     drop %25
     %27 lit: ptr = const str 2
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 lit: i64 = const 1
     %30 t: i64 = intneg %29
@@ -56,7 +51,6 @@ fn main#0 pub top -> unit ; main::early_return, frame 11 slots [%5 i64, %6 word*
     %34 s: ptr = show %32
     drop %32
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     perform std::console::Console.print(%35) -> b5()
   b5(%36 r: unit):

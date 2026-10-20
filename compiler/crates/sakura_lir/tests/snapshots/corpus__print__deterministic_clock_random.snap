@@ -46,7 +46,6 @@ fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1
     drop %19
     %22 lit: ptr = const str 0
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     %26 clause: ptr = bound %20 std::clock::Clock.monotonic
     call virtual$Clock_monotonic#13(%26, %20) -> b7(%23)
@@ -54,7 +53,6 @@ fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1
     %27 s: ptr = show %24
     drop %24
     %28 s: ptr = concat %25, %27
-    drop %25
     drop %27
     perform std::console::Console.print(%28) -> b8()
   b8(%29 r: unit) [handle]:
@@ -67,7 +65,6 @@ fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1
     %35 s: ptr = show %34
     %36 lit: ptr = const str 0
     %37 s: ptr = concat %35, %36
-    drop %35
     drop %36
     %38 lit: i64 = const 1
     %39 lit: i64 = const 100
@@ -75,11 +72,9 @@ fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1
   b10(%40 r: i64, %41 s: ptr) [handle]:
     %42 s: ptr = show %40
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: ptr = const str 0
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: i64 = const 1
     %47 lit: i64 = const 100
@@ -87,7 +82,6 @@ fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1
   b11(%48 r: i64, %49 s: ptr) [handle]:
     %50 s: ptr = show %48
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     perform std::console::Console.print(%51) -> b12()
   b12(%52 r: unit) [handle]:

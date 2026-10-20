@@ -52,7 +52,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %19 lit: ptr = const str 5
     %20 s: ptr = concat %19, %18
     drop %18
-    drop %19
     perform std::console::Console.print(%20) -> b6()
   b6(%21 r: unit):
     %22 box: word = box %21
@@ -65,7 +64,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %26 lit: ptr = const str 6
     %27 s: ptr = concat %26, %25
     drop %25
-    drop %26
     perform std::console::Console.print(%27) -> b8()
   b8(%28 r: unit) [handle]:
     %29 box: word = box %28
@@ -80,7 +78,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %32 lit: ptr = const str 7
     %33 s: ptr = concat %32, %31
     drop %31
-    drop %32
     perform std::console::Console.print(%33) -> b10()
   b10(%34 r: unit) [handle]:
     %35 box: word = box %34
@@ -95,7 +92,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %38 lit: ptr = const str 8
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b12()
   b12(%40 r: unit) [handle]:
     %41 box: word = box %40
@@ -110,7 +106,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %44 lit: ptr = const str 9
     %45 s: ptr = concat %44, %43
     drop %43
-    drop %44
     perform std::console::Console.print(%45) -> b14()
   b14(%46 r: unit) [handle]:
     %47 box: word = box %46
@@ -125,7 +120,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %50 lit: ptr = const str 10
     %51 s: ptr = concat %50, %49
     drop %49
-    drop %50
     perform std::console::Console.print(%51) -> b16()
   b16(%52 r: unit) [handle]:
     %53 box: word = box %52
@@ -140,7 +134,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %56 lit: ptr = const str 11
     %57 s: ptr = concat %56, %55
     drop %55
-    drop %56
     perform std::console::Console.print(%57) -> b18()
   b18(%58 r: unit) [handle]:
     %59 box: word = box %58
@@ -155,10 +148,8 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %65 lit: ptr = const str 13
     %66 s: ptr = concat %65, %64
     drop %64
-    drop %65
     %67 lit: ptr = const str 14
     %68 s: ptr = concat %66, %67
-    drop %66
     drop %67
     %69 lit: ptr = const str 15
     %70 $site: i64 = const 6
@@ -168,7 +159,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
   b22(%73 r: bool, %74 s: ptr) [handle]:
     %75 s: ptr = show %73
     %76 s: ptr = concat %74, %75
-    drop %74
     drop %75
     perform std::console::Console.print(%76) -> b23()
   b23(%77 r: unit) [handle]:
@@ -182,7 +172,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %81 lit: ptr = const str 16
     %82 s: ptr = concat %81, %80
     drop %80
-    drop %81
     perform std::console::Console.print(%82) -> b25()
   b25(%83 r: unit) [handle]:
     %84 box: word = box %83
@@ -195,7 +184,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %87 lit: ptr = const str 17
     %88 s: ptr = concat %87, %86
     drop %86
-    drop %87
     perform std::console::Console.print(%88) -> b27()
   b27(%89 r: unit) [handle]:
     %90 box: word = box %89
@@ -217,7 +205,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %97 lit: ptr = const str 19
     %98 s: ptr = concat %97, %96
     drop %96
-    drop %97
     perform std::console::Console.print(%98) -> b30(%95)
   b30(%99 r: unit, %100 r: ptr) [handle]:
     %101 box: word = box %99
@@ -233,7 +220,6 @@ fn main#0 pub top -> unit ; main::host_fs_env, frame 64 slots [%2 word*, %8 word
     %104 lit: ptr = const str 20
     %105 s: ptr = concat %104, %103
     drop %103
-    drop %104
     perform std::console::Console.print(%105) -> b32()
   b32(%106 r: unit) [handle]:
     %107 box: word = box %106

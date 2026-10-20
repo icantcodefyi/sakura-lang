@@ -99,7 +99,6 @@ fn main#0 pub top -> unit ; main::crypto_sha2_cavp, frame 20 slots [%87 word*, %
     drop %82
     %85 lit: ptr = const str 19
     %86 s: ptr = concat %84, %85
-    drop %84
     drop %85
     call unhex#2(%83) -> b8(%79, %80, %81, %78, %86)
   b8(%87 r: ptr, %88 xs: ptr, %89 n: i64, %90 i: i64, %91 v: ptr, %92 s: ptr):
@@ -110,7 +109,6 @@ fn main#0 pub top -> unit ; main::crypto_sha2_cavp, frame 20 slots [%87 word*, %
     %103 s: ptr = show %98
     drop %98
     %104 s: ptr = concat %102, %103
-    drop %102
     drop %103
     perform std::console::Console.print(%104) -> b11(%99, %100, %101)
   b11(%105 r: unit, %106 xs: ptr, %107 n: i64, %108 i: i64):
@@ -228,7 +226,6 @@ fn hex#4 top -> ptr ; main::crypto_sha2_cavp, frame 6 slots [%0 word*, %24 word*
     %36 lit: ptr = const str 20
     %37 r: ptr = $string_slice(%36, %31, %35)
     %38 t: ptr = concat %28, %37
-    drop %28
     drop %37
     %39 lit: i64 = const 16
     %40 t: i64 = intrem %29, %39
@@ -239,7 +236,6 @@ fn hex#4 top -> ptr ; main::crypto_sha2_cavp, frame 6 slots [%0 word*, %24 word*
     %45 lit: ptr = const str 20
     %46 r: ptr = $string_slice(%45, %40, %44)
     %47 t: ptr = concat %38, %46
-    drop %38
     drop %46
     jump b4(%47, %25, %26, %27)
 

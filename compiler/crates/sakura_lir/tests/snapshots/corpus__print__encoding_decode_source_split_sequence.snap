@@ -164,7 +164,6 @@ fn decode#2 top -> unit ; main::encoding_decode_source_split_sequence, frame 14 
     %22 lit: ptr = const str 2
     %23 s: ptr = concat %22, %21
     drop %21
-    drop %22
     perform std::console::Console.print(%23) -> b7()
   b6(%16 r: unit):
     %17 box: word = box %16

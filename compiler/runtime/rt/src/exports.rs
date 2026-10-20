@@ -423,7 +423,7 @@ pub extern "C" fn rt_tuple_get(
     }
 }
 
-/// `concat` (both borrowed).
+/// `concat`: `a` consumed on success (on a defect the caller still owns it), `b` borrowed.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_concat(
     #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
@@ -432,10 +432,7 @@ pub extern "C" fn rt_concat(
 ) -> u32 {
     let mut cx = cx!(ctx);
     let rt = cx.rt();
-    let r = rt
-        .dup(a)
-        .and_then(|_| rt.dup(b).inspect_err(|_| rt.drop(a)))
-        .and_then(|_| rt.string_concat(a, b));
+    let r = rt.append(a, b);
     ptr(rt, r)
 }
 

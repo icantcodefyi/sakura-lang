@@ -22,7 +22,6 @@ fn main#0 pub top -> unit ; main::owned_generic, frame 15 slots [%2 word*, %4 wo
     %7 s: ptr = show %6
     %8 lit: ptr = const str 2
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 lit: i64 = const 0
     dup.candidate %5
@@ -30,22 +29,18 @@ fn main#0 pub top -> unit ; main::owned_generic, frame 15 slots [%2 word*, %4 wo
     %12 s: ptr = show %11
     drop %11
     %13 s: ptr = concat %9, %12
-    drop %9
     drop %12
     %14 lit: ptr = const str 2
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 lit: i64 = const 39
     %17 item: ptr = $list_get(%5, %16)
     %18 s: ptr = show %17
     drop %17
     %19 s: ptr = concat %15, %18
-    drop %15
     drop %18
     %20 lit: ptr = const str 2
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 lit: i64 = const 0
     dup.candidate %4
@@ -53,18 +48,15 @@ fn main#0 pub top -> unit ; main::owned_generic, frame 15 slots [%2 word*, %4 wo
     %24 s: ptr = show %23
     drop %23
     %25 s: ptr = concat %21, %24
-    drop %21
     drop %24
     %26 lit: ptr = const str 2
     %27 s: ptr = concat %25, %26
-    drop %25
     drop %26
     %28 lit: i64 = const 39
     %29 item: ptr = $list_get(%4, %28)
     %30 s: ptr = show %29
     drop %29
     %31 s: ptr = concat %27, %30
-    drop %27
     drop %30
     perform std::console::Console.print(%31) -> b3()
   b3(%32 r: unit):
@@ -113,7 +105,6 @@ fn main#0 pub top -> unit ; main::owned_generic, frame 15 slots [%2 word*, %4 wo
     drop %61
     %63 lit: ptr = const str 2
     %64 s: ptr = concat %62, %63
-    drop %62
     drop %63
     %65 lit: i64 = const 3
     %66 box: word = box %65
@@ -129,7 +120,6 @@ fn main#0 pub top -> unit ; main::owned_generic, frame 15 slots [%2 word*, %4 wo
     %76 s: ptr = show %74
     drop %74
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     perform std::console::Console.print(%77) -> b13()
   b13(%78 r: unit):

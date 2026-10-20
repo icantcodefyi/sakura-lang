@@ -26,55 +26,44 @@ fn main#0 pub top -> unit ; main::owned_record_loop_twice, frame 26 slots [%0 wo
     %10 lit: ptr = const str 0
     %11 s: ptr = concat %10, %9
     drop %9
-    drop %10
     %12 lit: ptr = const str 1
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 cons: word = proj %7.1 main::owned_record_loop_twice::Planner
     %15 s: ptr = show %14
     drop %14
     %16 s: ptr = concat %13, %15
-    drop %13
     drop %15
     %17 lit: ptr = const str 1
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     %19 vars: word = proj %6.0 main::owned_record_loop_twice::Planner
     %20 s: ptr = show %19
     drop %19
     %21 s: ptr = concat %18, %20
-    drop %18
     drop %20
     %22 lit: ptr = const str 1
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     %24 cons: word = proj %6.1 main::owned_record_loop_twice::Planner
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %23, %25
-    drop %23
     drop %25
     %27 lit: ptr = const str 1
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 mark: i64 = proj %7.2 main::owned_record_loop_twice::Planner
     %30 s: ptr = show %29
     %31 s: ptr = concat %28, %30
-    drop %28
     drop %30
     %32 lit: ptr = const str 1
     %33 s: ptr = concat %31, %32
-    drop %31
     drop %32
     %34 mark: i64 = proj %6.2 main::owned_record_loop_twice::Planner
     drop %6
     %35 s: ptr = show %34
     %36 s: ptr = concat %33, %35
-    drop %33
     drop %35
     perform std::console::Console.print(%36) -> b5(%7)
   b5(%37 r: unit, %38 r: ptr):
@@ -100,37 +89,30 @@ fn main#0 pub top -> unit ; main::owned_record_loop_twice, frame 26 slots [%0 wo
     %56 lit: ptr = const str 2
     %57 s: ptr = concat %56, %55
     drop %55
-    drop %56
     %58 lit: ptr = const str 1
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 vars: word = proj %53.0 main::owned_record_loop_twice::Planner
     %61 s: ptr = show %60
     drop %60
     %62 s: ptr = concat %59, %61
-    drop %59
     drop %61
     %63 lit: ptr = const str 1
     %64 s: ptr = concat %62, %63
-    drop %62
     drop %63
     %65 vars: word = proj %50.0 main::owned_record_loop_twice::Planner
     drop %50
     %66 s: ptr = show %65
     drop %65
     %67 s: ptr = concat %64, %66
-    drop %64
     drop %66
     %68 lit: ptr = const str 1
     %69 s: ptr = concat %67, %68
-    drop %67
     drop %68
     %70 mark: i64 = proj %53.2 main::owned_record_loop_twice::Planner
     drop %53
     %71 s: ptr = show %70
     %72 s: ptr = concat %69, %71
-    drop %69
     drop %71
     perform std::console::Console.print(%72) -> b10(%51)
   b10(%73 r: unit, %74 r: ptr):
@@ -149,37 +131,30 @@ fn main#0 pub top -> unit ; main::owned_record_loop_twice, frame 26 slots [%0 wo
     %84 lit: ptr = const str 3
     %85 s: ptr = concat %84, %83
     drop %83
-    drop %84
     %86 lit: ptr = const str 1
     %87 s: ptr = concat %85, %86
-    drop %85
     drop %86
     %88 cons: word = proj %80.1 main::owned_record_loop_twice::Planner
     %89 s: ptr = show %88
     drop %88
     %90 s: ptr = concat %87, %89
-    drop %87
     drop %89
     %91 lit: ptr = const str 1
     %92 s: ptr = concat %90, %91
-    drop %90
     drop %91
     %93 mark: i64 = proj %80.2 main::owned_record_loop_twice::Planner
     drop %80
     %94 s: ptr = show %93
     %95 s: ptr = concat %92, %94
-    drop %92
     drop %94
     %96 lit: ptr = const str 1
     %97 s: ptr = concat %95, %96
-    drop %95
     drop %96
     %98 vars: word = proj %81.0 main::owned_record_loop_twice::Planner
     drop %81
     %99 s: ptr = show %98
     drop %98
     %100 s: ptr = concat %97, %99
-    drop %97
     drop %99
     perform std::console::Console.print(%100) -> b13()
   b13(%101 r: unit):

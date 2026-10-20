@@ -14,16 +14,13 @@ fn main#0 pub top -> unit ; main::constants, frame 5 slots [%9 word*, %10 word*,
     drop %0
     %2 lit: ptr = const str 1
     %3 s: ptr = concat %1, %2
-    drop %1
     drop %2
     %4 lit: i64 = const 3
     %5 s: ptr = show %4
     %6 s: ptr = concat %3, %5
-    drop %3
     drop %5
     %7 lit: ptr = const str 1
     %8 s: ptr = concat %6, %7
-    drop %6
     drop %7
     call primes#2() -> b1(%8)
   b1(%9 c: ptr, %10 s: ptr):
@@ -31,7 +28,6 @@ fn main#0 pub top -> unit ; main::constants, frame 5 slots [%9 word*, %10 word*,
   b2(%11 r: i64, %12 s: ptr):
     %13 s: ptr = show %11
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     perform std::console::Console.print(%14) -> b3()
   b3(%15 r: unit):

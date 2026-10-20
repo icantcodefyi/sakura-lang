@@ -290,14 +290,12 @@ fn main#0 pub top -> unit ; main::sql_rows, frame 111 slots [%4 word*, %5 i64, %
     drop %165
     %167 lit: ptr = const str 26
     %168 s: ptr = concat %166, %167
-    drop %166
     drop %167
     call names#18() -> b64(%168)
   b64(%169 r: ptr, %170 s: ptr) [handle]:
     %171 s: ptr = show %169
     drop %169
     %172 s: ptr = concat %170, %171
-    drop %170
     drop %171
     perform std::console::Console.print(%172) -> b65()
   b65(%173 r: unit) [handle]:
@@ -312,14 +310,12 @@ fn main#0 pub top -> unit ; main::sql_rows, frame 111 slots [%4 word*, %5 i64, %
     %179 s: ptr = show %178
     %180 lit: ptr = const str 26
     %181 s: ptr = concat %179, %180
-    drop %179
     drop %180
     call names#18() -> b67(%181)
   b67(%182 r: ptr, %183 s: ptr) [handle]:
     %184 s: ptr = show %182
     drop %182
     %185 s: ptr = concat %183, %184
-    drop %183
     drop %184
     perform std::console::Console.print(%185) -> b68()
   b68(%186 r: unit) [handle]:

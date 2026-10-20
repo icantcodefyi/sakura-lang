@@ -76,7 +76,6 @@ fn main#0 pub top -> unit ; main::stream_pipe_to_file_sink, frame 19 slots [%2 w
     %38 lit: ptr = const str 4
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b11(%36)
   b11(%40 r: unit, %41 r: ptr) [handle, try]:
     %42 box: word = box %40

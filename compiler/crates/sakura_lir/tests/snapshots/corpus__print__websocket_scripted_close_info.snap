@@ -56,7 +56,6 @@ fn main#0 pub top -> unit ; main::websocket_scripted_close_info, frame 10 slots 
     %18 lit: ptr = const str 4
     %19 s: ptr = concat %18, %17
     drop %17
-    drop %18
     perform std::console::Console.print(%19) -> b5()
   b5(%20 r: unit) [handle]:
     %21 box: word = box %20
@@ -82,7 +81,6 @@ fn main#0 pub top -> unit ; main::websocket_scripted_close_info, frame 10 slots 
     %33 lit: ptr = const str 6
     %34 s: ptr = concat %33, %32
     drop %32
-    drop %33
     perform std::console::Console.print(%34) -> b10()
   b10(%35 r: unit) [handle]:
     %36 box: word = box %35

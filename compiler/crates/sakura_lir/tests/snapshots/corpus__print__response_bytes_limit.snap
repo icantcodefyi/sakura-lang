@@ -39,7 +39,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %20 lit: ptr = const str 1
     %21 s: ptr = concat %20, %19
     drop %19
-    drop %20
     perform std::console::Console.print(%21) -> b3(%18)
   b3(%22 r: unit, %23 rec: ptr):
     %24 box: word = box %22
@@ -53,7 +52,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %29 lit: ptr = const str 2
     %30 s: ptr = concat %29, %28
     drop %28
-    drop %29
     perform std::console::Console.print(%30) -> b5(%27)
   b5(%31 r: unit, %32 rec: ptr):
     %33 box: word = box %31
@@ -78,7 +76,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %49 lit: ptr = const str 4
     %50 s: ptr = concat %49, %48
     drop %48
-    drop %49
     perform std::console::Console.print(%50) -> b8(%46, %47)
   b8(%51 r: unit, %52 rec: ptr, %53 rec: ptr):
     %54 box: word = box %51
@@ -91,7 +88,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %59 lit: ptr = const str 5
     %60 s: ptr = concat %59, %58
     drop %58
-    drop %59
     perform std::console::Console.print(%60) -> b10(%57)
   b10(%61 r: unit, %62 rec: ptr):
     %63 box: word = box %61
@@ -109,7 +105,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %73 lit: ptr = const str 7
     %74 s: ptr = concat %73, %72
     drop %72
-    drop %73
     perform std::console::Console.print(%74) -> b13(%71)
   b13(%75 r: unit, %76 rec: ptr):
     %77 box: word = box %75
@@ -127,7 +122,6 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %85 lit: ptr = const str 8
     %86 s: ptr = concat %85, %84
     drop %84
-    drop %85
     perform std::console::Console.print(%86) -> b15()
   b15(%87 r: unit):
     %88 box: word = box %87

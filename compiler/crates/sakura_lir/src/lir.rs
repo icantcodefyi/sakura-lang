@@ -374,7 +374,8 @@ pub enum PrimOp {
     FloatRem,
     FloatNeg,
     Not,
-    /// `String` `+` (borrows both, returns a new string).
+    /// `String` `+`: consumes the left operand, borrows the right, so a uniquely owned left
+    /// string is appended to in place (`rt_concat`; design §17.285 (c)).
     Concat,
     Cmp(CmpOp, CmpKind),
     /// Derived `Show` of the operand as interpolation renders it, read from the representation
@@ -405,7 +406,7 @@ pub enum Inst {
         dst: Var,
         value: Const,
     },
-    /// Borrows its operands.
+    /// Borrows its operands, except `Concat`'s first.
     Prim {
         dst: Var,
         op: PrimOp,
@@ -650,14 +651,27 @@ impl Inst {
         }
     }
 
-    /// Operands in order with their use. `Dup`/`Drop` are reported as borrows; their effect on
-    /// the count is the instruction itself.
+    /// Operands in the order the instruction reads them (operand order, except `Concat`'s),
+    /// with their use. `Dup`/`Drop` are reported as borrows; their effect on the count is the
+    /// instruction itself.
     pub fn uses(&self) -> Vec<(Var, Use)> {
         use Inst::*;
         use Use::*;
         let all = |xs: &[Var], u: Use| xs.iter().map(|&v| (v, u)).collect::<Vec<_>>();
         match self {
             Const { .. } | HandlePop | TryPop | Hole { .. } | Unsupported { .. } => vec![],
+            // The right operand is read before the left is taken, so `part + part` needs no
+            // `Dup` (`rt_concat` copies from the left string before it may free it).
+            Prim {
+                op: PrimOp::Concat,
+                args,
+                ..
+            } => args
+                .iter()
+                .enumerate()
+                .rev()
+                .map(|(i, &v)| (v, if i == 0 { Consume } else { Borrow }))
+                .collect(),
             Prim { args, .. } => all(args, Borrow),
             Box { src, .. }
             | Unbox { src, .. }

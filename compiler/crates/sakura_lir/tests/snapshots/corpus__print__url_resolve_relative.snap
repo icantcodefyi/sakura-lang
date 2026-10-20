@@ -77,7 +77,6 @@ fn main#0 pub top -> unit ; main::url_resolve_relative, frame 24 slots [%1 word*
     %130 lit: ptr = const str 41
     %131 s: ptr = concat %130, %129
     drop %129
-    drop %130
     perform std::console::Console.print(%131) -> b16()
   b4():
     %46 lit: unit = const ()
@@ -113,10 +112,8 @@ fn main#0 pub top -> unit ; main::url_resolve_relative, frame 24 slots [%1 word*
     %93 lit: ptr = const str 39
     %94 s: ptr = concat %93, %92
     drop %92
-    drop %93
     %95 lit: ptr = const str 40
     %96 s: ptr = concat %94, %95
-    drop %94
     drop %95
     call to_string#4(%91) -> b13(%79, %80, %81, %82, %96)
   b12(%85 base: ptr, %86 xs: ptr, %87 n: i64, %88 i: i64, %89 x: ptr, %90 r: ptr):
@@ -127,24 +124,20 @@ fn main#0 pub top -> unit ; main::url_resolve_relative, frame 24 slots [%1 word*
     %113 lit: ptr = const str 39
     %114 s: ptr = concat %113, %112
     drop %112
-    drop %113
     %115 lit: ptr = const str 40
     %116 s: ptr = concat %114, %115
-    drop %114
     drop %115
     %117 reason: word = proj %111.0 std::url::UrlError
     drop %111
     %118 s: ptr = show %117
     drop %117
     %119 s: ptr = concat %116, %118
-    drop %116
     drop %118
     perform std::console::Console.print(%119) -> b15(%85, %86, %87, %88)
   b13(%97 r: ptr, %98 base: ptr, %99 xs: ptr, %100 n: i64, %101 i: i64, %102 s: ptr):
     %103 s: ptr = show %97
     drop %97
     %104 s: ptr = concat %102, %103
-    drop %102
     drop %103
     perform std::console::Console.print(%104) -> b14(%98, %99, %100, %101)
   b14(%105 r: unit, %106 base: ptr, %107 xs: ptr, %108 n: i64, %109 i: i64):

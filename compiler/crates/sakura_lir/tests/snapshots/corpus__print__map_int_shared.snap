@@ -47,21 +47,17 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %31 lit: ptr = const str 0
     %32 s: ptr = concat %31, %30
     drop %30
-    drop %31
     %33 lit: ptr = const str 1
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     dup %19
     call sum_values#2(%19) -> b4(%19, %17, %28, %34)
   b4(%35 r: i64, %36 m: ptr, %37 m: ptr, %38 r: ptr, %39 s: ptr):
     %40 s: ptr = show %35
     %41 s: ptr = concat %39, %40
-    drop %39
     drop %40
     %42 lit: ptr = const str 1
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: i64 = const 3
     %45 box: word = box %44
@@ -70,11 +66,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %47 s: ptr = show %46
     drop %46
     %48 s: ptr = concat %43, %47
-    drop %43
     drop %47
     %49 lit: ptr = const str 1
     %50 s: ptr = concat %48, %49
-    drop %48
     drop %49
     %51 lit: i64 = const 40000000000
     %52 box: word = box %51
@@ -83,11 +77,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %54 s: ptr = show %53
     drop %53
     %55 s: ptr = concat %50, %54
-    drop %50
     drop %54
     %56 lit: ptr = const str 1
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     %58 lit: i64 = const 5
     %59 t: i64 = intneg %58
@@ -97,7 +89,6 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %62 s: ptr = show %61
     drop %61
     %63 s: ptr = concat %57, %62
-    drop %57
     drop %62
     perform std::console::Console.print(%63) -> b5(%36, %37, %38)
   b5(%64 r: unit, %65 m: ptr, %66 m: ptr, %67 r: ptr):
@@ -109,21 +100,17 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %71 lit: ptr = const str 2
     %72 s: ptr = concat %71, %70
     drop %70
-    drop %71
     %73 lit: ptr = const str 1
     %74 s: ptr = concat %72, %73
-    drop %72
     drop %73
     dup %66
     call sum_values#2(%66) -> b6(%65, %66, %67, %74)
   b6(%75 r: i64, %76 m: ptr, %77 m: ptr, %78 r: ptr, %79 s: ptr):
     %80 s: ptr = show %75
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     %82 lit: ptr = const str 1
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     %84 lit: i64 = const 3
     %85 box: word = box %84
@@ -132,11 +119,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %87 s: ptr = show %86
     drop %86
     %88 s: ptr = concat %83, %87
-    drop %83
     drop %87
     %89 lit: ptr = const str 1
     %90 s: ptr = concat %88, %89
-    drop %88
     drop %89
     %91 lit: i64 = const 40000000000
     %92 box: word = box %91
@@ -145,11 +130,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %94 s: ptr = show %93
     drop %93
     %95 s: ptr = concat %90, %94
-    drop %90
     drop %94
     %96 lit: ptr = const str 1
     %97 s: ptr = concat %95, %96
-    drop %95
     drop %96
     %98 lit: i64 = const 6
     %99 t: i64 = intneg %98
@@ -158,7 +141,6 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %102 s: ptr = show %101
     drop %101
     %103 s: ptr = concat %97, %102
-    drop %97
     drop %102
     perform std::console::Console.print(%103) -> b7(%76, %78)
   b7(%104 r: unit, %105 m: ptr, %106 r: ptr):
@@ -170,21 +152,17 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %110 lit: ptr = const str 3
     %111 s: ptr = concat %110, %109
     drop %109
-    drop %110
     %112 lit: ptr = const str 1
     %113 s: ptr = concat %111, %112
-    drop %111
     drop %112
     dup %106
     call sum_values#2(%106) -> b8(%105, %106, %113)
   b8(%114 r: i64, %115 m: ptr, %116 r: ptr, %117 s: ptr):
     %118 s: ptr = show %114
     %119 s: ptr = concat %117, %118
-    drop %117
     drop %118
     %120 lit: ptr = const str 1
     %121 s: ptr = concat %119, %120
-    drop %119
     drop %120
     %122 lit: i64 = const 4
     %123 box: word = box %122
@@ -193,11 +171,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %125 s: ptr = show %124
     drop %124
     %126 s: ptr = concat %121, %125
-    drop %121
     drop %125
     %127 lit: ptr = const str 1
     %128 s: ptr = concat %126, %127
-    drop %126
     drop %127
     %129 lit: i64 = const 40000000000
     %130 box: word = box %129
@@ -206,11 +182,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %132 s: ptr = show %131
     drop %131
     %133 s: ptr = concat %128, %132
-    drop %128
     drop %132
     %134 lit: ptr = const str 1
     %135 s: ptr = concat %133, %134
-    drop %133
     drop %134
     %136 lit: i64 = const 6
     %137 t: i64 = intneg %136
@@ -220,7 +194,6 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %140 s: ptr = show %139
     drop %139
     %141 s: ptr = concat %135, %140
-    drop %135
     drop %140
     perform std::console::Console.print(%141) -> b9(%115, %116)
   b9(%142 r: unit, %143 m: ptr, %144 r: ptr):
@@ -248,7 +221,6 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %161
     %163 lit: ptr = const str 1
     %164 s: ptr = concat %162, %163
-    drop %162
     drop %163
     %165 lit: i64 = const 7
     %166 box: word = box %165
@@ -257,11 +229,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %168 s: ptr = show %167
     drop %167
     %169 s: ptr = concat %164, %168
-    drop %164
     drop %168
     %170 lit: ptr = const str 1
     %171 s: ptr = concat %169, %170
-    drop %169
     drop %170
     %172 lit: i64 = const 7
     %173 box: word = box %172
@@ -270,11 +240,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %175 s: ptr = show %174
     drop %174
     %176 s: ptr = concat %171, %175
-    drop %171
     drop %175
     %177 lit: ptr = const str 1
     %178 s: ptr = concat %176, %177
-    drop %176
     drop %177
     %179 lit: i64 = const 1000
     %180 box: word = box %179
@@ -282,11 +250,9 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %182 s: ptr = show %181
     drop %181
     %183 s: ptr = concat %178, %182
-    drop %178
     drop %182
     %184 lit: ptr = const str 1
     %185 s: ptr = concat %183, %184
-    drop %183
     drop %184
     %186 lit: i64 = const 1000
     %187 box: word = box %186
@@ -294,7 +260,6 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %189 s: ptr = show %188
     drop %188
     %190 s: ptr = concat %185, %189
-    drop %185
     drop %189
     perform std::console::Console.print(%190) -> b10(%144)
   b10(%191 r: unit, %192 r: ptr):
@@ -315,10 +280,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %204 lit: ptr = const str 4
     %205 s: ptr = concat %204, %203
     drop %203
-    drop %204
     %206 lit: ptr = const str 1
     %207 s: ptr = concat %205, %206
-    drop %205
     drop %206
     %208 lit: i64 = const 295
     %209 t: i64 = intneg %208
@@ -326,21 +289,17 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %211 r: bool = $set_contains(%201, %210)
     %212 s: ptr = show %211
     %213 s: ptr = concat %207, %212
-    drop %207
     drop %212
     %214 lit: ptr = const str 1
     %215 s: ptr = concat %213, %214
-    drop %213
     drop %214
     dup.candidate %200
     %216 r: i64 = $set_len(%200)
     %217 s: ptr = show %216
     %218 s: ptr = concat %215, %217
-    drop %215
     drop %217
     %219 lit: ptr = const str 1
     %220 s: ptr = concat %218, %219
-    drop %218
     drop %219
     %221 lit: i64 = const 295
     %222 t: i64 = intneg %221
@@ -349,18 +308,15 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %224 r: bool = $set_contains(%200, %223)
     %225 s: ptr = show %224
     %226 s: ptr = concat %220, %225
-    drop %220
     drop %225
     %227 lit: ptr = const str 1
     %228 s: ptr = concat %226, %227
-    drop %226
     drop %227
     %229 lit: i64 = const 0
     %230 box: word = box %229
     %231 r: bool = $set_contains(%200, %230)
     %232 s: ptr = show %231
     %233 s: ptr = concat %228, %232
-    drop %228
     drop %232
     perform std::console::Console.print(%233) -> b13()
   b13(%234 r: unit):

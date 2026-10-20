@@ -70,7 +70,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %106 lit: ptr = const str 25
     %107 s: ptr = concat %106, %105
     drop %105
-    drop %106
     perform std::console::Console.print(%107) -> b21()
   b7(%31 p: ptr):
     %32 lit: i64 = const 70000
@@ -87,7 +86,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %41 lit: ptr = const str 20
     %42 s: ptr = concat %41, %40
     drop %40
-    drop %41
     perform std::console::Console.print(%42) -> b10(%39)
   b10(%43 r: unit, %44 p: ptr):
     %45 box: word = box %43
@@ -103,7 +101,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %51 lit: ptr = const str 22
     %52 s: ptr = concat %51, %50
     drop %50
-    drop %51
     perform std::console::Console.print(%52) -> b13()
   b13(%53 r: unit):
     %54 box: word = box %53
@@ -135,15 +132,12 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %90 lit: ptr = const str 23
     %91 s: ptr = concat %90, %89
     drop %89
-    drop %90
     %92 lit: ptr = const str 24
     %93 s: ptr = concat %91, %92
-    drop %91
     drop %92
     %94 s: ptr = show %83
     drop %83
     %95 s: ptr = concat %93, %94
-    drop %93
     drop %94
     perform std::console::Console.print(%95) -> b20(%84, %85, %86, %87)
   b20(%96 r: unit, %97 p: ptr, %98 xs: ptr, %99 n: i64, %100 i: i64):
@@ -171,7 +165,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %139 lit: ptr = const str 30
     %140 s: ptr = concat %139, %138
     drop %138
-    drop %139
     perform std::console::Console.print(%140) -> b30()
   b24(%116 r: ptr, %117 m: ptr):
     %118 f: ptr = closure main$1#5[]
@@ -182,7 +175,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %122 lit: ptr = const str 27
     %123 s: ptr = concat %122, %121
     drop %121
-    drop %122
     perform std::console::Console.print(%123) -> b26(%120)
   b26(%124 r: unit, %125 m: ptr):
     %126 box: word = box %124
@@ -198,7 +190,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %132 lit: ptr = const str 29
     %133 s: ptr = concat %132, %131
     drop %131
-    drop %132
     perform std::console::Console.print(%133) -> b29()
   b29(%134 r: unit):
     %135 box: word = box %134
@@ -234,7 +225,6 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     drop %172
     %181 lit: ptr = const str 24
     %182 s: ptr = concat %180, %181
-    drop %180
     drop %181
     call to_string#3(%179) -> b39(%169, %170, %171, %182)
   b38(%174 xs: ptr, %175 n: i64, %176 i: i64, %177 x: ptr, %178 r: ptr):
@@ -244,21 +234,18 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     drop %177
     %197 lit: ptr = const str 24
     %198 s: ptr = concat %196, %197
-    drop %196
     drop %197
     %199 reason: word = proj %195.0 std::url::UrlError
     drop %195
     %200 s: ptr = show %199
     drop %199
     %201 s: ptr = concat %198, %200
-    drop %198
     drop %200
     perform std::console::Console.print(%201) -> b41(%174, %175, %176)
   b39(%183 r: ptr, %184 xs: ptr, %185 n: i64, %186 i: i64, %187 s: ptr):
     %188 s: ptr = show %183
     drop %183
     %189 s: ptr = concat %187, %188
-    drop %187
     drop %188
     perform std::console::Console.print(%189) -> b40(%184, %185, %186)
   b40(%190 r: unit, %191 xs: ptr, %192 n: i64, %193 i: i64):

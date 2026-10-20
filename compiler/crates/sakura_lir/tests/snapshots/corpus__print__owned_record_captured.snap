@@ -30,17 +30,14 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %11 lit: ptr = const str 0
     %12 s: ptr = concat %11, %10
     drop %10
-    drop %11
     %13 lit: ptr = const str 1
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     %15 vars: word = proj %8.0 main::owned_record_captured::Planner
     call sum#4(%15) -> b4(%8, %14)
   b4(%16 r: i64, %17 r: ptr, %18 s: ptr):
     %19 s: ptr = show %16
     %20 s: ptr = concat %18, %19
-    drop %18
     drop %19
     perform std::console::Console.print(%20) -> b5(%17)
   b5(%21 r: unit, %22 r: ptr):
@@ -63,16 +60,13 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %37 lit: ptr = const str 2
     %38 s: ptr = concat %37, %36
     drop %36
-    drop %37
     %39 lit: ptr = const str 1
     %40 s: ptr = concat %38, %39
-    drop %38
     drop %39
     %41 vars: word = proj %34.0 main::owned_record_captured::Planner
     %42 s: ptr = show %41
     drop %41
     %43 s: ptr = concat %40, %42
-    drop %40
     drop %42
     perform std::console::Console.print(%43) -> b8(%34)
   b8(%44 r: unit, %45 r: ptr):
@@ -93,17 +87,14 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %56 lit: ptr = const str 3
     %57 s: ptr = concat %56, %55
     drop %55
-    drop %56
     %58 lit: ptr = const str 1
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 vars: word = proj %52.0 main::owned_record_captured::Planner
     drop %52
     %61 s: ptr = show %60
     drop %60
     %62 s: ptr = concat %59, %61
-    drop %59
     drop %61
     perform std::console::Console.print(%62) -> b12(%54)
   b12(%63 r: unit, %64 r: ptr):
@@ -121,27 +112,22 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %72 lit: ptr = const str 4
     %73 s: ptr = concat %72, %71
     drop %71
-    drop %72
     %74 lit: ptr = const str 1
     %75 s: ptr = concat %73, %74
-    drop %73
     drop %74
     %76 vars: word = proj %68.0 main::owned_record_captured::Planner
     %77 s: ptr = show %76
     drop %76
     %78 s: ptr = concat %75, %77
-    drop %75
     drop %77
     %79 lit: ptr = const str 1
     %80 s: ptr = concat %78, %79
-    drop %78
     drop %79
     %81 vars: word = proj %70.0 main::owned_record_captured::Planner
     drop %70
     %82 s: ptr = show %81
     drop %81
     %83 s: ptr = concat %80, %82
-    drop %80
     drop %82
     perform std::console::Console.print(%83) -> b15(%68)
   b15(%84 r: unit, %85 q: ptr):
@@ -168,10 +154,8 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %103 lit: ptr = const str 5
     %104 s: ptr = concat %103, %102
     drop %102
-    drop %103
     %105 lit: ptr = const str 1
     %106 s: ptr = concat %104, %105
-    drop %104
     drop %105
     %107 vars: word = proj %100.0 main::owned_record_captured::Planner
     drop %100
@@ -180,11 +164,9 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %110 s: ptr = show %109
     drop %109
     %111 s: ptr = concat %106, %110
-    drop %106
     drop %110
     %112 lit: ptr = const str 1
     %113 s: ptr = concat %111, %112
-    drop %111
     drop %112
     %114 vars: word = proj %99.0 main::owned_record_captured::Planner
     drop %99
@@ -193,7 +175,6 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %117 s: ptr = show %116
     drop %116
     %118 s: ptr = concat %113, %117
-    drop %113
     drop %117
     perform std::console::Console.print(%118) -> b20()
   b20(%119 r: unit):
@@ -211,7 +192,6 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %126 lit: ptr = const str 6
     %127 s: ptr = concat %126, %125
     drop %125
-    drop %126
     perform std::console::Console.print(%127) -> b23()
   b23(%128 r: unit):
     %129 box: word = box %128
@@ -283,7 +263,6 @@ fn keep_start#7 top -> ptr ; main::owned_record_captured, frame 9 slots [%0 word
     %7 s: ptr = show %5
     %8 lit: ptr = const str 1
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 lit: i64 = const 0
     dup.candidate %6
@@ -291,7 +270,6 @@ fn keep_start#7 top -> ptr ; main::owned_record_captured, frame 9 slots [%0 word
   b3(%11 r: i64, %12 p: ptr, %13 s: ptr):
     %14 s: ptr = show %11
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 tup: ptr = alloc tuple#5(word, word)(%12, %15)
     ret %16

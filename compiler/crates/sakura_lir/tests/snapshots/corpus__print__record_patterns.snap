@@ -66,19 +66,15 @@ fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
     drop %9
     %17 lit: ptr = const str 5
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     %19 s: ptr = show %7
     %20 s: ptr = concat %18, %19
-    drop %18
     drop %19
     %21 lit: ptr = const str 6
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 s: ptr = show %8
     %24 s: ptr = concat %22, %23
-    drop %22
     drop %23
     ret %24
   b3(%10 p: ptr):
@@ -91,5 +87,4 @@ fn where_is#2 top -> ptr ; main::record_patterns, frame 1 slots [%0 word*]
     %14 lit: ptr = const str 4
     %15 s: ptr = concat %14, %13
     drop %13
-    drop %14
     ret %15

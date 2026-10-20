@@ -35,11 +35,11 @@ handled_suspend n=1000
   direct: frames 7, boxes 0, dups 2, drops 3010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
   all-frame: frames 1012, boxes 0, dups 2, drops 3010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
 json_validate n=100
-  direct: frames 4, boxes 0, dups 493, drops 2685, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 306, borrows 0
-  all-frame: frames 107, boxes 0, dups 493, drops 2685, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 306, borrows 0
+  direct: frames 4, boxes 0, dups 493, drops 1792, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 306, borrows 0
+  all-frame: frames 107, boxes 0, dups 493, drops 1792, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 306, borrows 0
 map_set n=1000
-  direct: frames 4, boxes 15834, dups 12011, drops 25843, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
-  all-frame: frames 3005, boxes 15834, dups 12011, drops 25843, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
+  direct: frames 4, boxes 15834, dups 12011, drops 22009, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
+  all-frame: frames 3005, boxes 15834, dups 12011, drops 22009, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
 nbody n=1000
   direct: frames 4, boxes 0, dups 42026, drops 48043, restarts 0, reuse_attempts 35007, reuses 34006, borrow_candidates 37026, borrows 0
   all-frame: frames 52038, boxes 0, dups 42026, drops 48043, restarts 0, reuse_attempts 35007, reuses 34006, borrow_candidates 37026, borrows 0
@@ -62,5 +62,5 @@ tail_clique n=100000
   direct: frames 4, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
   all-frame: frames 6, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
 tokenizer n=1000
-  direct: frames 4, boxes 0, dups 3005, drops 10011, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 1004, borrows 0
-  all-frame: frames 1005, boxes 0, dups 3005, drops 10011, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 1004, borrows 0
+  direct: frames 4, boxes 0, dups 3005, drops 8011, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 1004, borrows 0
+  all-frame: frames 1005, boxes 0, dups 3005, drops 8011, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 1004, borrows 0

@@ -17,7 +17,6 @@ fn main#0 pub top -> unit ; main::loop_jump_past_inner_var, frame 9 slots [%4 bo
     %2 lit: ptr = const str 0
     %3 s: ptr = concat %2, %1
     drop %1
-    drop %2
     perform std::console::Console.print(%3) -> b2(%0)
   b2(%4 r: unit, %5 u: i64):
     %6 box: word = box %4
@@ -29,14 +28,11 @@ fn main#0 pub top -> unit ; main::loop_jump_past_inner_var, frame 9 slots [%4 bo
     %10 lit: ptr = const str 1
     %11 s: ptr = concat %10, %9
     drop %9
-    drop %10
     %12 lit: ptr = const str 2
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 s: ptr = show %8
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     perform std::console::Console.print(%15) -> b4(%7, %8)
   b4(%16 r: unit, %17 u: i64, %18 w: i64):
@@ -69,7 +65,6 @@ fn main#0 pub top -> unit ; main::loop_jump_past_inner_var, frame 9 slots [%4 bo
     %49 lit: ptr = const str 3
     %50 s: ptr = concat %49, %48
     drop %48
-    drop %49
     perform std::console::Console.print(%50) -> b11(%47, %44, %45)
   b11(%51 r: unit, %52 i: i64, %53 u: i64, %54 w: i64):
     %55 box: word = box %51

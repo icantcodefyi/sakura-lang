@@ -26,21 +26,17 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %6 lit: ptr = const str 0
     %7 s: ptr = concat %6, %5
     drop %5
-    drop %6
     %8 lit: ptr = const str 1
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     dup.candidate %3
     call sum#5(%3) -> b2(%3, %9)
   b2(%10 r: i64, %11 v: ptr, %12 s: ptr):
     %13 s: ptr = show %10
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     %15 lit: ptr = const str 1
     %16 s: ptr = concat %14, %15
-    drop %14
     drop %15
     %17 lit: i64 = const 0
     dup.candidate %11
@@ -48,18 +44,15 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %19 s: ptr = show %18
     drop %18
     %20 s: ptr = concat %16, %19
-    drop %16
     drop %19
     %21 lit: ptr = const str 1
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 lit: i64 = const 39
     %24 item: ptr = $list_get(%11, %23)
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %22, %25
-    drop %22
     drop %25
     perform std::console::Console.print(%26) -> b3()
   b3(%27 r: unit):
@@ -83,28 +76,23 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %35 lit: ptr = const str 2
     %36 s: ptr = concat %35, %34
     drop %34
-    drop %35
     %37 lit: ptr = const str 1
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     dup.candidate %32
     call sum#5(%32) -> b6(%32, %38)
   b6(%39 r: i64, %40 v: ptr, %41 s: ptr):
     %42 s: ptr = show %39
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: ptr = const str 1
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: i64 = const 0
     %47 item: ptr = $list_get(%40, %46)
     %48 s: ptr = show %47
     drop %47
     %49 s: ptr = concat %45, %48
-    drop %45
     drop %48
     perform std::console::Console.print(%49) -> b7()
   b7(%50 r: unit):
@@ -127,7 +115,6 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %58 lit: ptr = const str 2
     %59 s: ptr = concat %58, %57
     drop %57
-    drop %58
     perform std::console::Console.print(%59) -> b11()
   b11(%60 r: unit):
     %61 box: word = box %60
@@ -154,15 +141,12 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %72 lit: ptr = const str 3
     %73 s: ptr = concat %72, %71
     drop %71
-    drop %72
     %74 lit: ptr = const str 1
     %75 s: ptr = concat %73, %74
-    drop %73
     drop %74
     %76 s: ptr = show %69
     drop %69
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     perform std::console::Console.print(%77) -> b14()
   b14(%78 r: unit):

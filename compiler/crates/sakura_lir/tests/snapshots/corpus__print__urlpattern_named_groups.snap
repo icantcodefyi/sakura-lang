@@ -138,15 +138,12 @@ fn show_exec#4 top -> unit ; main::urlpattern_named_groups, frame 11 slots [%0 w
     drop %6
     %14 lit: ptr = const str 19
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 s: ptr = show %7
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 lit: ptr = const str 22
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     call exec#7(%12, %7) -> b4(%19)
   b3(%9 pattern: ptr, %10 url: ptr, %11 r: ptr):
@@ -157,12 +154,10 @@ fn show_exec#4 top -> unit ; main::urlpattern_named_groups, frame 11 slots [%0 w
     drop %9
     %32 lit: ptr = const str 22
     %33 s: ptr = concat %31, %32
-    drop %31
     drop %32
     %34 s: ptr = show %30
     drop %30
     %35 s: ptr = concat %33, %34
-    drop %33
     drop %34
     perform std::console::Console.print(%35) -> b7()
   b4(%20 r: ptr, %21 s: ptr):
@@ -172,7 +167,6 @@ fn show_exec#4 top -> unit ; main::urlpattern_named_groups, frame 11 slots [%0 w
     %25 s: ptr = show %23
     drop %23
     %26 s: ptr = concat %24, %25
-    drop %24
     drop %25
     perform std::console::Console.print(%26) -> b6()
   b6(%27 r: unit):

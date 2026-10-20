@@ -116,32 +116,25 @@ fn main#0 pub top -> unit ; main::bytes_base64_vectors, frame 43 slots [%23 word
     %99 lit: ptr = const str 9
     %100 s: ptr = concat %99, %98
     drop %98
-    drop %99
     %101 lit: ptr = const str 10
     %102 s: ptr = concat %100, %101
-    drop %100
     drop %101
     %103 s: ptr = show %96
     drop %96
     %104 s: ptr = concat %102, %103
-    drop %102
     drop %103
     %105 lit: ptr = const str 11
     %106 s: ptr = concat %104, %105
-    drop %104
     drop %105
     %107 s: ptr = show %97
     drop %97
     %108 s: ptr = concat %106, %107
-    drop %106
     drop %107
     %109 lit: ptr = const str 11
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     %111 s: ptr = show %91
     %112 s: ptr = concat %110, %111
-    drop %110
     drop %111
     perform std::console::Console.print(%112) -> b18(%92, %93, %94)
   b18(%113 r: unit, %114 xs: ptr, %115 n: i64, %116 i: i64):

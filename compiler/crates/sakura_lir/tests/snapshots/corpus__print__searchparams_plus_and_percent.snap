@@ -74,18 +74,15 @@ fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots 
     drop %46
     %48 lit: ptr = const str 6
     %49 s: ptr = concat %47, %48
-    drop %47
     drop %48
     %50 t: ptr = tuple_get %40.1
     drop %40
     %51 s: ptr = show %50
     drop %50
     %52 s: ptr = concat %49, %51
-    drop %49
     drop %51
     %53 lit: ptr = const str 7
     %54 s: ptr = concat %52, %53
-    drop %52
     drop %53
     perform std::console::Console.print(%54) -> b18(%34, %35, %36)
   b16(%37 r: ptr, %38 n: i64, %39 i: i64):

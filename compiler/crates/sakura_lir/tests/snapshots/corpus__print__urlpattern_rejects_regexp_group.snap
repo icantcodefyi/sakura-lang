@@ -51,7 +51,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_regexp_group, frame 14 slot
     %32 s: ptr = show %26
     %33 lit: ptr = const str 13
     %34 s: ptr = concat %32, %33
-    drop %32
     drop %33
     call compile#2(%26) -> b6(%20, %21, %22, %34)
   b4(%23 xs: ptr, %24 n: i64, %25 i: i64):
@@ -68,7 +67,6 @@ fn main#0 pub top -> unit ; main::urlpattern_rejects_regexp_group, frame 14 slot
     %46 s: ptr = show %41
     drop %41
     %47 s: ptr = concat %45, %46
-    drop %45
     drop %46
     perform std::console::Console.print(%47) -> b8(%42, %43, %44)
   b8(%48 r: unit, %49 xs: ptr, %50 n: i64, %51 i: i64):

@@ -31,7 +31,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %6 lit: ptr = const str 1
     %7 s: ptr = concat %6, %5
     drop %5
-    drop %6
     perform std::console::Console.print(%7) -> b2()
   b2(%8 r: unit):
     %9 box: word = box %8
@@ -46,7 +45,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %15 lit: ptr = const str 2
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     perform std::console::Console.print(%16) -> b4()
   b4(%17 r: unit):
     %18 box: word = box %17
@@ -60,7 +58,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %23 lit: ptr = const str 3
     %24 s: ptr = concat %23, %22
     drop %22
-    drop %23
     perform std::console::Console.print(%24) -> b6()
   b6(%25 r: unit):
     %26 box: word = box %25
@@ -80,7 +77,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %37 lit: ptr = const str 4
     %38 s: ptr = concat %37, %36
     drop %36
-    drop %37
     perform std::console::Console.print(%38) -> b8()
   b8(%39 r: unit):
     %40 box: word = box %39
@@ -100,7 +96,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %51 lit: ptr = const str 5
     %52 s: ptr = concat %51, %50
     drop %50
-    drop %51
     perform std::console::Console.print(%52) -> b10()
   b10(%53 r: unit):
     %54 box: word = box %53
@@ -116,7 +111,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %61 lit: ptr = const str 7
     %62 s: ptr = concat %61, %60
     drop %60
-    drop %61
     perform std::console::Console.print(%62) -> b12()
   b12(%63 r: unit):
     %64 box: word = box %63
@@ -136,7 +130,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %75 lit: ptr = const str 8
     %76 s: ptr = concat %75, %74
     drop %74
-    drop %75
     perform std::console::Console.print(%76) -> b14()
   b14(%77 r: unit):
     %78 box: word = box %77
@@ -151,7 +144,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %84 lit: ptr = const str 9
     %85 s: ptr = concat %84, %83
     drop %83
-    drop %84
     perform std::console::Console.print(%85) -> b16()
   b16(%86 r: unit):
     %87 box: word = box %86
@@ -164,7 +156,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %92 lit: ptr = const str 12
     %93 s: ptr = concat %92, %91
     drop %91
-    drop %92
     perform std::console::Console.print(%93) -> b17()
   b17(%94 r: unit):
     %95 box: word = box %94
@@ -179,7 +170,6 @@ fn main#0 pub top -> unit ; main::request_text_strict_utf8, frame 19 slots [%4 w
     %101 lit: ptr = const str 13
     %102 s: ptr = concat %101, %100
     drop %100
-    drop %101
     perform std::console::Console.print(%102) -> b19()
   b19(%103 r: unit):
     %104 box: word = box %103

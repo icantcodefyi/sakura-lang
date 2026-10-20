@@ -27,12 +27,10 @@ fn main#0 pub top -> unit ; main::generic_refinement, frame 10 slots [%8 word*, 
     %11 s: ptr = show %9
     %12 lit: ptr = const str 0
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 s: ptr = show %10
     drop %10
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     perform std::console::Console.print(%15) -> b3()
   b3(%16 r: unit):
@@ -148,13 +146,11 @@ fn check#4 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 wo
     %7 s: ptr = show %6
     %8 lit: ptr = const str 0
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 t: bool = eq.any %5, %5
     drop %5
     %11 s: ptr = show %10
     %12 s: ptr = concat %9, %11
-    drop %9
     drop %11
     ret %12
   b3(%4 r: ptr):
@@ -167,7 +163,6 @@ fn check#4 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 wo
     %16 lit: ptr = const str 3
     %17 s: ptr = concat %16, %15
     drop %15
-    drop %16
     ret %17
 
 fn Full$from#5 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 i64]

@@ -44,7 +44,6 @@ fn main#0 pub top -> unit ; main::handler_cancel_twin, frame 5 slots [%10 bool, 
     %15 lit: ptr = const str 0
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     perform std::console::Console.print(%16) -> b4()
   b4(%17 r: unit) [handle, handle]:
     %18 box: word = box %17
@@ -80,7 +79,6 @@ fn main$1#3 lambda -> word ; main::handler_cancel_twin, captures [], frame 7 slo
     %4 lit: ptr = const str 1
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b2()
   b2(%6 r: unit):
     %7 box: word = box %6
@@ -99,7 +97,6 @@ fn main$1#3 lambda -> word ; main::handler_cancel_twin, captures [], frame 7 slo
     %15 lit: ptr = const str 2
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     perform std::console::Console.print(%16) -> b6()
   b6(%17 r: unit):
     %18 box: word = box %17

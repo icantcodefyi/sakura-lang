@@ -40,11 +40,9 @@ fn main#0 pub top -> unit ; main::loop_resume_twice, frame 4 slots [%20 bool, %2
     %15 s: ptr = show %14
     %16 lit: ptr = const str 0
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 s: ptr = show %13
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b3()
   b3(%20 r: unit) [handle]:
@@ -124,39 +122,30 @@ fn spin#4 top -> i64 ; main::loop_resume_twice, frame 46 slots [%0 word*, %16 i6
     %59 s: ptr = show %52
     %60 lit: ptr = const str 3
     %61 s: ptr = concat %59, %60
-    drop %59
     drop %60
     %62 s: ptr = show %56
     %63 s: ptr = concat %61, %62
-    drop %61
     drop %62
     %64 lit: ptr = const str 4
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 s: ptr = show %53
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     %68 lit: ptr = const str 5
     %69 s: ptr = concat %67, %68
-    drop %67
     drop %68
     %70 s: ptr = show %54
     %71 s: ptr = concat %69, %70
-    drop %69
     drop %70
     %72 lit: ptr = const str 6
     %73 s: ptr = concat %71, %72
-    drop %71
     drop %72
     %74 s: ptr = show %58
     %75 s: ptr = concat %73, %74
-    drop %73
     drop %74
     %76 lit: ptr = const str 7
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     perform std::clock::Clock.now() -> b11(%52, %56, %58, %77)
   b11(%78 r: ptr, %79 tag: ptr, %80 i: i64, %81 t: i64, %82 s: ptr):
@@ -164,7 +153,6 @@ fn spin#4 top -> i64 ; main::loop_resume_twice, frame 46 slots [%0 word*, %16 i6
   b12(%83 r: i64, %84 tag: ptr, %85 i: i64, %86 t: i64, %87 s: ptr):
     %88 s: ptr = show %83
     %89 s: ptr = concat %87, %88
-    drop %87
     drop %88
     perform std::console::Console.print(%89) -> b13(%84, %85, %86)
   b13(%90 r: unit, %91 tag: ptr, %92 i: i64, %93 t: i64):

@@ -72,7 +72,6 @@ fn main#0 pub top -> unit ; main::router_matches_through_urlpattern, frame 47 sl
     %34 lit: ptr = const str 15
     %35 s: ptr = concat %34, %33
     drop %33
-    drop %34
     perform std::console::Console.print(%35) -> b7()
   b7(%36 r: unit):
     %37 box: word = box %36
@@ -112,35 +111,28 @@ fn main#0 pub top -> unit ; main::router_matches_through_urlpattern, frame 47 sl
     drop %95
     %98 lit: ptr = const str 16
     %99 s: ptr = concat %97, %98
-    drop %97
     drop %98
     %100 status: i64 = proj %96.0 std::response::Response
     %101 s: ptr = show %100
     %102 s: ptr = concat %99, %101
-    drop %99
     drop %101
     %103 lit: ptr = const str 17
     %104 s: ptr = concat %102, %103
-    drop %102
     drop %103
     %105 body: word = proj %96.2 std::response::Response
     drop %96
     %106 s: ptr = show %105
     drop %105
     %107 s: ptr = concat %104, %106
-    drop %104
     drop %106
     %108 lit: ptr = const str 18
     %109 s: ptr = concat %107, %108
-    drop %107
     drop %108
     %110 s: ptr = show %89
     %111 s: ptr = concat %109, %110
-    drop %109
     drop %110
     %112 lit: ptr = const str 19
     %113 s: ptr = concat %111, %112
-    drop %111
     drop %112
     perform std::console::Console.print(%113) -> b16(%90, %91, %92, %93, %94)
   b16(%114 r: unit, %115 xs: ptr, %116 r: ptr, %117 xs: ptr, %118 n: i64, %119 i: i64):

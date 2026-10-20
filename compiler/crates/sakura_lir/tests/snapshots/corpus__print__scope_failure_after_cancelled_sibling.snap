@@ -45,7 +45,6 @@ fn main#0 pub top -> unit ; main::scope_failure_after_cancelled_sibling, frame 6
     %17 lit: ptr = const str 0
     %18 s: ptr = concat %17, %16
     drop %16
-    drop %17
     jump b1(%18)
   b6(%21 r: word) [handle, try]:
     try_pop

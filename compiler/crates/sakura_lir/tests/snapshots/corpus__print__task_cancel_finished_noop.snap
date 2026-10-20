@@ -21,7 +21,6 @@ fn main#0 pub top -> unit ; main::task_cancel_finished_noop, frame 2 slots [%2 w
     %5 lit: ptr = const str 0
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     perform std::console::Console.print(%6) -> b2()
   b2(%7 r: unit):
     %8 box: word = box %7

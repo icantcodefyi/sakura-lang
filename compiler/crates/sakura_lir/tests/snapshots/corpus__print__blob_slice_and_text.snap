@@ -27,17 +27,14 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %7 lit: ptr = const str 2
     %8 s: ptr = concat %7, %6
     drop %6
-    drop %7
     %9 lit: ptr = const str 3
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 media_type: word = proj %5.1 std::blob::Blob
     %12 xs: ptr = alloc list(%11)
     %13 s: ptr = show %12
     drop %12
     %14 s: ptr = concat %10, %13
-    drop %10
     drop %13
     perform std::console::Console.print(%14) -> b3(%5)
   b3(%15 r: unit, %16 r: ptr):
@@ -116,16 +113,13 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %81 lit: ptr = const str 15
     %82 s: ptr = concat %81, %80
     drop %80
-    drop %81
     %83 lit: ptr = const str 16
     %84 s: ptr = concat %82, %83
-    drop %82
     drop %83
     call size#3(%79) -> b8(%78, %84)
   b8(%85 r: i64, %86 r: ptr, %87 s: ptr):
     %88 s: ptr = show %85
     %89 s: ptr = concat %87, %88
-    drop %87
     drop %88
     perform std::console::Console.print(%89) -> b9(%86)
   b9(%90 r: unit, %91 r: ptr):
@@ -141,18 +135,15 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     drop %98
     %100 lit: ptr = const str 18
     %101 s: ptr = concat %99, %100
-    drop %99
     drop %100
     %102 blob: word = proj %97.0 std::blob::FileData
     call size#3(%102) -> b11(%97, %101)
   b11(%103 r: i64, %104 rec: ptr, %105 s: ptr):
     %106 s: ptr = show %103
     %107 s: ptr = concat %105, %106
-    drop %105
     drop %106
     %108 lit: ptr = const str 19
     %109 s: ptr = concat %107, %108
-    drop %107
     drop %108
     %110 blob: word = proj %104.0 std::blob::FileData
     %111 media_type: word = proj %110.1 std::blob::Blob
@@ -160,11 +151,9 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %112 s: ptr = show %111
     drop %111
     %113 s: ptr = concat %109, %112
-    drop %109
     drop %112
     %114 lit: ptr = const str 20
     %115 s: ptr = concat %113, %114
-    drop %113
     drop %114
     %116 last_modified: word = proj %104.2 std::blob::FileData
     drop %104
@@ -173,7 +162,6 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %119 s: ptr = show %117
     drop %117
     %120 s: ptr = concat %118, %119
-    drop %118
     drop %119
     perform std::console::Console.print(%120) -> b13()
   b13(%121 r: unit):
@@ -193,7 +181,6 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     drop %144
     %146 lit: ptr = const str 21
     %147 s: ptr = concat %145, %146
-    drop %145
     drop %146
     %148 lit: i64 = const 0
     %149 lit: i64 = const 4
@@ -213,7 +200,6 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %158 s: ptr = show %157
     drop %157
     %159 s: ptr = concat %155, %158
-    drop %155
     drop %158
     perform std::console::Console.print(%159) -> b19(%151, %152, %153, %154)
   b19(%160 r: unit, %161 r: ptr, %162 xs: ptr, %163 n: i64, %164 i: i64):
@@ -246,18 +232,14 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %202 lit: ptr = const str 22
     %203 s: ptr = concat %202, %201
     drop %201
-    drop %202
     %204 lit: ptr = const str 20
     %205 s: ptr = concat %203, %204
-    drop %203
     drop %204
     %206 s: ptr = show %200
     %207 s: ptr = concat %205, %206
-    drop %205
     drop %206
     %208 lit: ptr = const str 23
     %209 s: ptr = concat %207, %208
-    drop %207
     drop %208
     dup %194
     call text#5(%194) -> b26(%195, %196, %197, %198, %194, %209)
@@ -265,21 +247,17 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %217 s: ptr = show %210
     drop %210
     %218 s: ptr = concat %216, %217
-    drop %216
     drop %217
     %219 lit: ptr = const str 24
     %220 s: ptr = concat %218, %219
-    drop %218
     drop %219
     call size#3(%215) -> b27(%211, %212, %213, %214, %220)
   b27(%221 r: i64, %222 r: ptr, %223 xs: ptr, %224 n: i64, %225 i: i64, %226 s: ptr):
     %227 s: ptr = show %221
     %228 s: ptr = concat %226, %227
-    drop %226
     drop %227
     %229 lit: ptr = const str 25
     %230 s: ptr = concat %228, %229
-    drop %228
     drop %229
     perform std::console::Console.print(%230) -> b28(%222, %223, %224, %225)
   b28(%231 r: unit, %232 r: ptr, %233 xs: ptr, %234 n: i64, %235 i: i64):

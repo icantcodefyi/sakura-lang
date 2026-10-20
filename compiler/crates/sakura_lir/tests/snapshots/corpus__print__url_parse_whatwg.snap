@@ -721,7 +721,6 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
     %710 s: ptr = show %709
     %711 lit: ptr = const str 171
     %712 s: ptr = concat %710, %711
-    drop %710
     drop %711
     call row#5(%708, %700) -> b12(%696, %697, %698, %712)
   b11(%702 r: ptr, %703 n: i64, %704 i: i64, %705 x: ptr, %706 with_origin: bool, %707 v: ptr):
@@ -733,14 +732,12 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
     %727 s: ptr = show %726
     %728 lit: ptr = const str 172
     %729 s: ptr = concat %727, %728
-    drop %727
     drop %728
     perform std::console::Console.print(%729) -> b14(%702, %703, %704)
   b12(%713 r: ptr, %714 r: ptr, %715 n: i64, %716 i: i64, %717 s: ptr):
     %718 s: ptr = show %713
     drop %713
     %719 s: ptr = concat %717, %718
-    drop %717
     drop %718
     perform std::console::Console.print(%719) -> b13(%714, %715, %716)
   b13(%720 r: unit, %721 r: ptr, %722 n: i64, %723 i: i64):
@@ -797,7 +794,6 @@ fn row#5 top -> ptr ; main::url_parse_whatwg, frame 83 slots [%0 word*, %1 bool,
     %11 scheme: word = proj %8.0 std::url::UrlParts
     %12 lit: ptr = const str 173
     %13 t: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 username: word = proj %8.1 std::url::UrlParts
     %15 lit: ptr = const str 5
@@ -877,7 +873,6 @@ fn row$3#12 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots 
     %7 lit: ptr = const str 176
     %8 t: ptr = concat %7, %5
     drop %5
-    drop %7
     ret %8
 
 fn row$4#13 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots [%0 word*, %1 word*]
@@ -895,5 +890,4 @@ fn row$4#13 lambda -> word ; main::url_parse_whatwg, captures [], frame 2 slots 
     %7 lit: ptr = const str 175
     %8 t: ptr = concat %7, %5
     drop %5
-    drop %7
     ret %8

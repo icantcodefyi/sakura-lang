@@ -143,7 +143,6 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
     %19 s: ptr = show %18
     %20 lit: ptr = const str 2
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 m: word = state_get %17[0] row 4
     %23 lit: i64 = const 1
@@ -154,7 +153,6 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
     drop %26
     %28 s: ptr = show %27
     %29 s: ptr = concat %21, %28
-    drop %21
     drop %28
     perform std::console::Console.print(%29) -> b4(%16)
   b4(%30 r: unit, %31 r: word):

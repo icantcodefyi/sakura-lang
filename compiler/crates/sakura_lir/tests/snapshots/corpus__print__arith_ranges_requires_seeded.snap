@@ -17,7 +17,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
     %4 s: ptr = show %3
     %5 lit: ptr = const str 0
     %6 s: ptr = concat %4, %5
-    drop %4
     drop %5
     %7 lit: i64 = const 1
     %8 lit: i64 = const 0
@@ -26,11 +25,9 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b2(%10 r: i64, %11 s: ptr):
     %12 s: ptr = show %10
     %13 s: ptr = concat %11, %12
-    drop %11
     drop %12
     %14 lit: ptr = const str 0
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 lit: i64 = const 100000
     %17 lit: i64 = const 0
@@ -39,7 +36,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b3(%19 r: i64, %20 s: ptr):
     %21 s: ptr = show %19
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     perform std::console::Console.print(%22) -> b4()
   b4(%23 r: unit):
@@ -63,7 +59,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
     %36 s: ptr = show %35
     %37 lit: ptr = const str 0
     %38 s: ptr = concat %36, %37
-    drop %36
     drop %37
     %39 lit: i64 = const 999
     %40 lit: i64 = const 7
@@ -72,11 +67,9 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b8(%42 r: i64, %43 s: ptr):
     %44 s: ptr = show %42
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 lit: ptr = const str 0
     %47 s: ptr = concat %45, %46
-    drop %45
     drop %46
     %48 lit: i64 = const 1
     %49 t: i64 = intneg %48
@@ -88,7 +81,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b9(%54 r: i64, %55 s: ptr):
     %56 s: ptr = show %54
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     perform std::console::Console.print(%57) -> b10()
   b10(%58 r: unit):
@@ -101,7 +93,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
     %63 s: ptr = show %62
     %64 lit: ptr = const str 0
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     %66 lit: i64 = const 7
     %67 t: i64 = intneg %66
@@ -110,11 +101,9 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b12(%69 r: i64, %70 s: ptr):
     %71 s: ptr = show %69
     %72 s: ptr = concat %70, %71
-    drop %70
     drop %71
     %73 lit: ptr = const str 0
     %74 s: ptr = concat %72, %73
-    drop %72
     drop %73
     %75 lit: i64 = const 37
     %76 lit: i64 = const 9007199254740991
@@ -122,7 +111,6 @@ fn main#0 pub top -> unit ; main::arith_ranges_requires_seeded, frame 20 slots [
   b13(%77 r: i64, %78 s: ptr):
     %79 s: ptr = show %77
     %80 s: ptr = concat %78, %79
-    drop %78
     drop %79
     perform std::console::Console.print(%80) -> b14()
   b14(%81 r: unit):

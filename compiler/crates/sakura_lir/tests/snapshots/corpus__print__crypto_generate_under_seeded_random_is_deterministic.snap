@@ -36,7 +36,6 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     %10 s: ptr = show %9
     %11 lit: ptr = const str 0
     %12 s: ptr = concat %10, %11
-    drop %10
     drop %11
     %13 lit: i64 = const 42
     dup %7
@@ -51,7 +50,6 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     drop %21
     %23 s: ptr = show %22
     %24 s: ptr = concat %20, %23
-    drop %20
     drop %23
     perform std::console::Console.print(%24) -> b5(%19)
   b5(%25 r: unit, %26 r: ptr):
@@ -88,7 +86,6 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     %57 s: ptr = show %51
     %58 lit: ptr = const str 0
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 r: ptr = alloc std::crypto::Algorithm.Hmac(%51)
     call material_len#4(%60) -> b14(%45, %46, %47, %59)
@@ -103,7 +100,6 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     %66 s: ptr = show %61
     drop %61
     %67 s: ptr = concat %65, %66
-    drop %65
     drop %66
     perform std::console::Console.print(%67) -> b15(%62, %63, %64)
   b15(%68 r: unit, %69 xs: ptr, %70 n: i64, %71 i: i64):

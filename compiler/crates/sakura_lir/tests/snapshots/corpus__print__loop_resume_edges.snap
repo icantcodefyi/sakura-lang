@@ -75,7 +75,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %38 lit: ptr = const str 0
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b8()
   b8(%40 r: unit) [handle]:
     %41 box: word = box %40
@@ -88,7 +87,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %46 lit: ptr = const str 1
     %47 s: ptr = concat %46, %45
     drop %45
-    drop %46
     perform std::console::Console.print(%47) -> b10(%44)
   b10(%48 r: unit, %49 $act: id) [handle, handle]:
     %50 box: word = box %48
@@ -100,7 +98,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %54 lit: ptr = const str 2
     %55 s: ptr = concat %54, %53
     drop %53
-    drop %54
     perform std::console::Console.print(%55) -> b12(%52)
   b12(%56 r: unit, %57 $act: id) [handle, handle]:
     %58 box: word = box %56
@@ -120,7 +117,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %70 lit: ptr = const str 3
     %71 s: ptr = concat %70, %69
     drop %69
-    drop %70
     perform std::console::Console.print(%71) -> b16(%68)
   b16(%72 r: unit, %73 $act: id) [handle, handle]:
     %74 box: word = box %72
@@ -139,7 +135,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %87 lit: ptr = const str 4
     %88 s: ptr = concat %87, %86
     drop %86
-    drop %87
     perform std::console::Console.print(%88) -> b20(%85)
   b20(%89 r: unit, %90 $act: id) [handle, handle, handle]:
     %91 box: word = box %89
@@ -151,7 +146,6 @@ fn main#0 pub top -> unit ; main::loop_resume_edges, frame 27 slots [%34 word*, 
     %96 lit: ptr = const str 5
     %97 s: ptr = concat %96, %95
     drop %95
-    drop %96
     perform std::console::Console.print(%97) -> b22(%94)
   b22(%98 r: unit, %99 $act: id) [handle, handle]:
     %100 box: word = box %98
@@ -272,14 +266,11 @@ fn matcher#6 top -> i64 ; main::loop_resume_edges, frame 19 slots [%0 i64, %16 w
     %54 lit: ptr = const str 6
     %55 s: ptr = concat %54, %53
     drop %53
-    drop %54
     %56 lit: ptr = const str 7
     %57 s: ptr = concat %55, %56
-    drop %55
     drop %56
     %58 s: ptr = show %39
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     perform std::console::Console.print(%59) -> b12(%35, %36, %37, %52)
   b10(%40 n: i64, %41 i: i64, %42 acc: i64, %43 r: ptr, %44 r: i64):
@@ -387,7 +378,6 @@ fn breaker#8 top -> i64 ; main::loop_resume_edges, frame 7 slots [%12 i64, %13 i
     %30 lit: ptr = const str 8
     %31 s: ptr = concat %30, %29
     drop %29
-    drop %30
     perform std::console::Console.print(%31) -> b8(%27, %28, %26)
   b8(%32 r: unit, %33 i: i64, %34 r: i64, %35 acc: i64):
     %36 box: word = box %32

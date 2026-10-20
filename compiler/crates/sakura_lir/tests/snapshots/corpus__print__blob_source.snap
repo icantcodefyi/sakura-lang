@@ -37,10 +37,8 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     %12 lit: ptr = const str 2
     %13 s: ptr = concat %12, %11
     drop %11
-    drop %12
     %14 lit: ptr = const str 3
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     dup %10
     call sizes#5(%10) -> b4(%9, %10, %15)
@@ -48,18 +46,15 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     %20 s: ptr = show %16
     drop %16
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 lit: ptr = const str 4
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     call sizes#5(%18) -> b5(%17, %23)
   b5(%24 r: ptr, %25 r: ptr, %26 s: ptr):
     %27 s: ptr = show %24
     drop %24
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     perform std::console::Console.print(%28) -> b6(%25)
   b6(%29 r: unit, %30 r: ptr):
@@ -77,7 +72,6 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     %39 lit: ptr = const str 5
     %40 s: ptr = concat %39, %38
     drop %38
-    drop %39
     perform std::console::Console.print(%40) -> b9(%37)
   b9(%41 r: unit, %42 r: ptr):
     %43 box: word = box %41
@@ -98,7 +92,6 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     %56 lit: ptr = const str 7
     %57 s: ptr = concat %56, %55
     drop %55
-    drop %56
     perform std::console::Console.print(%57) -> b13(%54)
   b13(%58 r: unit, %59 r: ptr):
     %60 box: word = box %58

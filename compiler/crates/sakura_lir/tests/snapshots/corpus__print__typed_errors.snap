@@ -129,7 +129,6 @@ fn show_age#2 top -> ptr ; main::typed_errors, frame 3 slots [%0 word*, %1 word*
     %7 lit: ptr = const str 8
     %8 s: ptr = concat %7, %6
     drop %6
-    drop %7
     ret %8
   b3(%4 e: ptr):
     %9 p: i64 = proj %4.0 main::typed_errors::Negative
@@ -138,14 +137,12 @@ fn show_age#2 top -> ptr ; main::typed_errors, frame 3 slots [%0 word*, %1 word*
     %11 lit: ptr = const str 9
     %12 s: ptr = concat %11, %10
     drop %10
-    drop %11
     ret %12
   b4(%13 r: i64) [try]:
     %14 s: ptr = show %13
     %15 lit: ptr = const str 10
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     try_pop
     ret %16
 

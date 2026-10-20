@@ -27,22 +27,18 @@ fn main#0 pub top -> unit ; main::tuples, frame 6 slots [%3 word*, %4 word*, %15
     drop %5
     %9 lit: ptr = const str 1
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 s: ptr = show %6
     %12 s: ptr = concat %10, %11
-    drop %10
     drop %11
     %13 lit: ptr = const str 1
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     call swap#2(%7) -> b3(%14)
   b3(%15 r: ptr, %16 s: ptr):
     %17 s: ptr = show %15
     drop %15
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     perform std::console::Console.print(%18) -> b4()
   b4(%19 r: unit):
@@ -58,34 +54,28 @@ fn main#0 pub top -> unit ; main::tuples, frame 6 slots [%3 word*, %4 word*, %15
     %28 s: ptr = show %27
     %29 lit: ptr = const str 1
     %30 s: ptr = concat %28, %29
-    drop %28
     drop %29
     %31 lit: i64 = const 1
     %32 tup: ptr = alloc tuple#6(i64)(%31)
     %33 s: ptr = show %32
     drop %32
     %34 s: ptr = concat %30, %33
-    drop %30
     drop %33
     %35 lit: ptr = const str 1
     %36 s: ptr = concat %34, %35
-    drop %34
     drop %35
     %37 t: i64 = tuple_get %26.1
     drop %26
     %38 s: ptr = show %37
     %39 s: ptr = concat %36, %38
-    drop %36
     drop %38
     %40 lit: ptr = const str 1
     %41 s: ptr = concat %39, %40
-    drop %39
     drop %40
     %42 t: i64 = tuple_get %25.1
     drop %25
     %43 s: ptr = show %42
     %44 s: ptr = concat %41, %43
-    drop %41
     drop %43
     perform std::console::Console.print(%44) -> b5()
   b5(%45 r: unit):

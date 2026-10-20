@@ -54,15 +54,12 @@ fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slot
     %13 s: ptr = show %11
     %14 lit: ptr = const str 0
     %15 s: ptr = concat %13, %14
-    drop %13
     drop %14
     %16 s: ptr = show %12
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 lit: ptr = const str 1
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b4(%12, %10)
   b4(%20 r: unit, %21 max_items: i64, %22 r: ptr):
@@ -82,7 +79,6 @@ fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slot
     %30 lit: ptr = const str 2
     %31 s: ptr = concat %30, %29
     drop %29
-    drop %30
     perform std::console::Console.print(%31) -> b8()
   b7(%27 v: ptr):
     %35 p: word = proj %27.0 std::result::Result.Err
@@ -94,7 +90,6 @@ fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slot
     %38 lit: ptr = const str 3
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b9()
   b8(%32 r: unit):
     %33 box: word = box %32
@@ -123,7 +118,6 @@ fn collect$1#5 lambda -> word ; main::stream_to_list_rejects_max_items, captures
     %4 lit: ptr = const str 4
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b1(%2)
   b1(%6 r: unit, %7 x: i64):
     %8 box: word = box %6

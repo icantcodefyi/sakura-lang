@@ -56,7 +56,6 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %45 s: ptr = show %37
     %46 lit: ptr = const str 5
     %47 s: ptr = concat %45, %46
-    drop %45
     drop %46
     %48 lit: ptr = const str 6
     dup %44
@@ -68,14 +67,12 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     drop %42
     %104 lit: ptr = const str 5
     %105 s: ptr = concat %103, %104
-    drop %103
     drop %104
     %106 reason: word = proj %102.0 std::url::UrlError
     drop %102
     %107 s: ptr = show %106
     drop %106
     %108 s: ptr = concat %105, %107
-    drop %105
     drop %107
     perform std::console::Console.print(%108) -> b17(%39, %40, %41)
   b10(%49 r: ptr, %50 xs: ptr, %51 n: i64, %52 i: i64, %53 x: ptr, %54 p: ptr, %55 s: ptr):
@@ -85,7 +82,6 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %64 s: ptr = show %57
     drop %57
     %65 s: ptr = concat %63, %64
-    drop %63
     drop %64
     perform std::console::Console.print(%65) -> b12(%58, %59, %60, %61, %62)
   b12(%66 r: unit, %67 xs: ptr, %68 n: i64, %69 i: i64, %70 x: ptr, %71 p: ptr):
@@ -95,7 +91,6 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     drop %70
     %74 lit: ptr = const str 7
     %75 s: ptr = concat %73, %74
-    drop %73
     drop %74
     %76 lit: ptr = const str 8
     %77 r: ptr = alloc std::option::Option.Some(%76)
@@ -110,7 +105,6 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %95 s: ptr = show %90
     drop %90
     %96 s: ptr = concat %94, %95
-    drop %94
     drop %95
     perform std::console::Console.print(%96) -> b16(%91, %92, %93)
   b16(%97 r: unit, %98 xs: ptr, %99 n: i64, %100 i: i64):

@@ -31,16 +31,13 @@ fn main#0 pub top -> unit ; main::owned_captured_and_stored, frame 27 slots [%2 
     %14 lit: ptr = const str 0
     %15 s: ptr = concat %14, %13
     drop %13
-    drop %14
     %16 lit: ptr = const str 1
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     call sum#4(%11) -> b4(%17)
   b4(%18 r: i64, %19 s: ptr):
     %20 s: ptr = show %18
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     perform std::console::Console.print(%21) -> b5()
   b5(%22 r: unit):
@@ -68,27 +65,22 @@ fn main#0 pub top -> unit ; main::owned_captured_and_stored, frame 27 slots [%2 
     %42 lit: ptr = const str 2
     %43 s: ptr = concat %42, %41
     drop %41
-    drop %42
     %44 lit: ptr = const str 1
     %45 s: ptr = concat %43, %44
-    drop %43
     drop %44
     %46 items: word = proj %39.0 main::owned_captured_and_stored::Box
     drop %39
     %47 r: i64 = $list_len(%46)
     %48 s: ptr = show %47
     %49 s: ptr = concat %45, %48
-    drop %45
     drop %48
     %50 lit: ptr = const str 1
     %51 s: ptr = concat %49, %50
-    drop %49
     drop %50
     call sum#4(%40) -> b9(%51)
   b9(%52 r: i64, %53 s: ptr):
     %54 s: ptr = show %52
     %55 s: ptr = concat %53, %54
-    drop %53
     drop %54
     perform std::console::Console.print(%55) -> b10()
   b10(%56 r: unit):
@@ -116,16 +108,13 @@ fn main#0 pub top -> unit ; main::owned_captured_and_stored, frame 27 slots [%2 
     %74 lit: ptr = const str 4
     %75 s: ptr = concat %74, %73
     drop %73
-    drop %74
     %76 lit: ptr = const str 1
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     call sum#4(%69) -> b13(%77)
   b13(%78 r: i64, %79 s: ptr):
     %80 s: ptr = show %78
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     perform std::console::Console.print(%81) -> b14()
   b14(%82 r: unit):
@@ -152,15 +141,12 @@ fn main#0 pub top -> unit ; main::owned_captured_and_stored, frame 27 slots [%2 
     %100 lit: ptr = const str 5
     %101 s: ptr = concat %100, %99
     drop %99
-    drop %100
     %102 lit: ptr = const str 1
     %103 s: ptr = concat %101, %102
-    drop %101
     drop %102
     %104 s: ptr = show %98
     drop %98
     %105 s: ptr = concat %103, %104
-    drop %103
     drop %104
     perform std::console::Console.print(%105) -> b15()
   b15(%106 r: unit):
@@ -187,15 +173,12 @@ fn main#0 pub top -> unit ; main::owned_captured_and_stored, frame 27 slots [%2 
     %123 lit: ptr = const str 6
     %124 s: ptr = concat %123, %122
     drop %122
-    drop %123
     %125 lit: ptr = const str 1
     %126 s: ptr = concat %124, %125
-    drop %124
     drop %125
     %127 s: ptr = show %120
     drop %120
     %128 s: ptr = concat %126, %127
-    drop %126
     drop %127
     perform std::console::Console.print(%128) -> b17()
   b17(%129 r: unit):

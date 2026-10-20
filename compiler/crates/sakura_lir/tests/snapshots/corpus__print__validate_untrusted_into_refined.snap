@@ -76,7 +76,6 @@ fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slot
     %38 lit: ptr = const str 2
     %39 s: ptr = concat %38, %37
     drop %37
-    drop %38
     perform std::console::Console.print(%39) -> b16()
   b15(%34 r: ptr):
     %42 p: word = proj %34.0 std::result::Result.Err
@@ -86,14 +85,12 @@ fn main#0 pub top -> unit ; main::validate_untrusted_into_refined, frame 12 slot
     drop %43
     %45 lit: ptr = const str 3
     %46 s: ptr = concat %44, %45
-    drop %44
     drop %45
     %47 clause: word = proj %42.1 std::core::Violation
     drop %42
     %48 s: ptr = show %47
     drop %47
     %49 s: ptr = concat %46, %48
-    drop %46
     drop %48
     perform std::console::Console.print(%49) -> b17()
   b16(%40 r: unit):

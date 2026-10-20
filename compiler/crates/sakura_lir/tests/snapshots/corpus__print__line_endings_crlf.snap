@@ -26,18 +26,15 @@ fn main#0 pub top -> unit ; main::line_endings_crlf, frame 5 slots [%1 word*, %4
     %8 s: ptr = show %7
     %9 lit: ptr = const str 1
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 lit: ptr = const str 2
     %12 r: ptr = $string_split(%5, %11)
     %13 r: i64 = $list_len(%12)
     %14 s: ptr = show %13
     %15 s: ptr = concat %10, %14
-    drop %10
     drop %14
     %16 lit: ptr = const str 3
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     perform main::line_endings_crlf::Note.note(%17) -> b3()
   b3(%18 r: unit) [handle]:
@@ -49,7 +46,6 @@ fn main#0 pub top -> unit ; main::line_endings_crlf, frame 5 slots [%1 word*, %4
     %23 lit: ptr = const str 5
     %24 s: ptr = concat %23, %22
     drop %22
-    drop %23
     perform main::line_endings_crlf::Note.note(%24) -> b4()
   b4(%25 r: unit) [handle]:
     %26 box: word = box %25
@@ -74,10 +70,8 @@ fn poem#2 top -> ptr ; main::line_endings_crlf, frame 1 slots [%0 word*]
     %2 lit: ptr = const str 6
     %3 s: ptr = concat %2, %1
     drop %1
-    drop %2
     %4 lit: ptr = const str 7
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     ret %5
 
@@ -95,10 +89,8 @@ fn console_notes$Note_note#4 clause main::line_endings_crlf::Note.note -> unit ;
     %4 lit: ptr = const str 8
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     %6 lit: ptr = const str 9
     %7 s: ptr = concat %5, %6
-    drop %5
     drop %6
     perform std::console::Console.print(%7) -> b1()
   b1(%8 r: unit):

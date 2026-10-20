@@ -59,7 +59,6 @@ fn main#0 pub top -> unit ; main::stream_from_list_take_map_filter_fold, frame 3
     %41 lit: ptr = const str 1
     %42 s: ptr = concat %41, %40
     drop %40
-    drop %41
     perform std::console::Console.print(%42) -> b8(%38)
   b8(%43 r: unit, %44 r: ptr):
     %45 box: word = box %43
@@ -87,7 +86,6 @@ fn main#0 pub top -> unit ; main::stream_from_list_take_map_filter_fold, frame 3
     %63 lit: ptr = const str 1
     %64 s: ptr = concat %63, %62
     drop %62
-    drop %63
     perform std::console::Console.print(%64) -> b13(%60)
   b13(%65 r: unit, %66 r: ptr):
     %67 box: word = box %65
@@ -188,7 +186,6 @@ fn main$6#13 lambda -> word ; main::stream_from_list_take_map_filter_fold, captu
     %4 lit: ptr = const str 4
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b1()
   b1(%6 r: unit):
     %7 box: word = box %6
@@ -203,7 +200,6 @@ fn noisy$1#21 lambda -> word ; main::stream_from_list_take_map_filter_fold, capt
     %4 lit: ptr = const str 5
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b1(%2)
   b1(%6 r: unit, %7 x: i64):
     %8 box: word = box %6

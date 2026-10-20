@@ -26,14 +26,12 @@ fn main#0 pub top -> unit ; main::form_encode_rejects_boundary, frame 9 slots [%
     %9 s: ptr = show %7
     %10 lit: ptr = const str 3
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 lit: ptr = const str 4
     call is_boundary#2(%12) -> b2(%8, %11)
   b2(%13 r: bool, %14 rec: ptr, %15 s: ptr):
     %16 s: ptr = show %13
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     perform std::console::Console.print(%17) -> b3(%14)
   b3(%18 r: unit, %19 rec: ptr):

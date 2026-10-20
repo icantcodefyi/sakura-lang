@@ -57,7 +57,6 @@ fn main#0 pub top -> unit ; main::bytes_base64_lenient_whitespace, frame 12 slot
     %48 lit: ptr = const str 9
     %49 s: ptr = concat %48, %47
     drop %47
-    drop %48
     perform std::console::Console.print(%49) -> b10(%37, %38, %39)
   b9(%41 xs: ptr, %42 n: i64, %43 i: i64, %44 r: ptr):
     %55 p: word = proj %44.0 std::result::Result.Err
@@ -67,13 +66,11 @@ fn main#0 pub top -> unit ; main::bytes_base64_lenient_whitespace, frame 12 slot
     drop %56
     %58 lit: ptr = const str 10
     %59 s: ptr = concat %57, %58
-    drop %57
     drop %58
     %60 offset: i64 = proj %55.0 std::bytes::Base64Error
     drop %55
     %61 s: ptr = show %60
     %62 s: ptr = concat %59, %61
-    drop %59
     drop %61
     perform std::console::Console.print(%62) -> b11(%41, %42, %43)
   b10(%50 r: unit, %51 xs: ptr, %52 n: i64, %53 i: i64):

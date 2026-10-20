@@ -36,11 +36,9 @@ fn main#0 pub top -> unit ; main::loop_resume_bound, frame 4 slots [%20 bool, %2
     %15 s: ptr = show %14
     %16 lit: ptr = const str 0
     %17 s: ptr = concat %15, %16
-    drop %15
     drop %16
     %18 s: ptr = show %13
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     perform std::console::Console.print(%19) -> b3()
   b3(%20 r: unit) [handle]:
@@ -124,23 +122,18 @@ fn nine#4 top -> i64 ; main::loop_resume_bound, frame 79 slots [%0 word*, %16 i6
     %85 s: ptr = show %73
     %86 lit: ptr = const str 3
     %87 s: ptr = concat %85, %86
-    drop %85
     drop %86
     %88 s: ptr = show %78
     %89 s: ptr = concat %87, %88
-    drop %87
     drop %88
     %90 lit: ptr = const str 4
     %91 s: ptr = concat %89, %90
-    drop %89
     drop %90
     %92 s: ptr = show %84
     %93 s: ptr = concat %91, %92
-    drop %91
     drop %92
     %94 lit: ptr = const str 5
     %95 s: ptr = concat %93, %94
-    drop %93
     drop %94
     perform std::clock::Clock.now() -> b14(%73, %78, %84, %95)
   b14(%96 r: ptr, %97 tag: ptr, %98 i: i64, %99 t: i64, %100 s: ptr):
@@ -148,7 +141,6 @@ fn nine#4 top -> i64 ; main::loop_resume_bound, frame 79 slots [%0 word*, %16 i6
   b15(%101 r: i64, %102 tag: ptr, %103 i: i64, %104 t: i64, %105 s: ptr):
     %106 s: ptr = show %101
     %107 s: ptr = concat %105, %106
-    drop %105
     drop %106
     perform std::console::Console.print(%107) -> b16(%102, %103, %104)
   b16(%108 r: unit, %109 tag: ptr, %110 i: i64, %111 t: i64):
@@ -221,23 +213,18 @@ fn eight#5 top -> i64 ; main::loop_resume_bound, frame 70 slots [%0 word*, %16 i
     %75 s: ptr = show %65
     %76 lit: ptr = const str 3
     %77 s: ptr = concat %75, %76
-    drop %75
     drop %76
     %78 s: ptr = show %70
     %79 s: ptr = concat %77, %78
-    drop %77
     drop %78
     %80 lit: ptr = const str 4
     %81 s: ptr = concat %79, %80
-    drop %79
     drop %80
     %82 s: ptr = show %74
     %83 s: ptr = concat %81, %82
-    drop %81
     drop %82
     %84 lit: ptr = const str 5
     %85 s: ptr = concat %83, %84
-    drop %83
     drop %84
     perform std::clock::Clock.now() -> b13(%65, %70, %74, %85)
   b13(%86 r: ptr, %87 tag: ptr, %88 i: i64, %89 t: i64, %90 s: ptr):
@@ -245,7 +232,6 @@ fn eight#5 top -> i64 ; main::loop_resume_bound, frame 70 slots [%0 word*, %16 i
   b14(%91 r: i64, %92 tag: ptr, %93 i: i64, %94 t: i64, %95 s: ptr):
     %96 s: ptr = show %91
     %97 s: ptr = concat %95, %96
-    drop %95
     drop %96
     perform std::console::Console.print(%97) -> b15(%92, %93, %94)
   b15(%98 r: unit, %99 tag: ptr, %100 i: i64, %101 t: i64):

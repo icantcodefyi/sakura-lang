@@ -67,7 +67,6 @@ fn main#0 pub top -> unit ; main::http_redirect_21_hops, frame 11 slots [%1 bool
     %23 lit: ptr = const str 3
     %24 s: ptr = concat %23, %22
     drop %22
-    drop %23
     perform std::console::Console.print(%24) -> b7()
   b7(%25 r: unit) [handle]:
     %26 box: word = box %25
@@ -120,7 +119,6 @@ fn counted#2 top -> unit ; main::http_redirect_21_hops, frame 24 slots [%0 i64, 
     %16 s: ptr = show %15
     %17 lit: ptr = const str 6
     %18 s: ptr = concat %16, %17
-    drop %16
     drop %17
     %19 f: ptr = closure counted$1#110[]
     call map#11(%14, %19) -> b6(%18)
@@ -128,7 +126,6 @@ fn counted#2 top -> unit ; main::http_redirect_21_hops, frame 24 slots [%0 i64, 
     %22 s: ptr = show %20
     drop %20
     %23 s: ptr = concat %21, %22
-    drop %21
     drop %22
     perform std::console::Console.print(%23) -> b7()
   b7(%24 r: unit) [handle, handle, handle]:
@@ -171,7 +168,6 @@ fn chain#107 top -> ptr ; main::http_redirect_21_hops, frame 8 slots [%0 i64, %2
     %8 lit: ptr = const str 10
     %9 s: ptr = concat %8, %7
     drop %7
-    drop %8
     %10 r: ptr = alloc std::http::Matcher.Path(%9)
     %11 lit: i64 = const 200
     %12 lit: ptr = const str 72
@@ -222,16 +218,13 @@ fn counting$Http_send#119 clause std::http::Http.send -> ptr ; main::http_redire
     %19 lit: ptr = const str 76
     %20 s: ptr = concat %19, %18
     drop %18
-    drop %19
     %21 lit: ptr = const str 77
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 url: word = proj %14.1 std::request::Request
     %24 s: ptr = show %23
     drop %23
     %25 s: ptr = concat %22, %24
-    drop %22
     drop %24
     perform std::console::Console.print(%25) -> b5(%14)
   b4(%15 inst: id, %16 req: ptr):
@@ -266,7 +259,6 @@ fn chain$1#122 lambda -> word ; main::http_redirect_21_hops, captures [], frame 
     %4 lit: ptr = const str 10
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     %6 r: ptr = alloc std::http::Matcher.Path(%5)
     %7 lit: i64 = const 302
     %8 lit: ptr = const str 0
@@ -279,7 +271,6 @@ fn chain$1#122 lambda -> word ; main::http_redirect_21_hops, captures [], frame 
     %16 lit: ptr = const str 10
     %17 s: ptr = concat %16, %15
     drop %15
-    drop %16
     %18 lit: ptr = const str 1
     %19 tup: ptr = alloc tuple#18(word, word)(%18, %17)
     %20 xs: ptr = alloc list(%19)

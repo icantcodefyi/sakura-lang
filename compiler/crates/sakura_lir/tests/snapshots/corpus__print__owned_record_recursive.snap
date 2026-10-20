@@ -34,27 +34,22 @@ fn main#0 pub top -> unit ; main::owned_record_recursive, frame 17 slots [%2 wor
     %16 lit: ptr = const str 0
     %17 s: ptr = concat %16, %15
     drop %15
-    drop %16
     %18 lit: ptr = const str 1
     %19 s: ptr = concat %17, %18
-    drop %17
     drop %18
     %20 vars: word = proj %11.0 main::owned_record_recursive::Planner
     drop %11
     %21 s: ptr = show %20
     drop %20
     %22 s: ptr = concat %19, %21
-    drop %19
     drop %21
     %23 lit: ptr = const str 1
     %24 s: ptr = concat %22, %23
-    drop %22
     drop %23
     %25 vars: word = proj %12.0 main::owned_record_recursive::Planner
     %26 s: ptr = show %25
     drop %25
     %27 s: ptr = concat %24, %26
-    drop %24
     drop %26
     perform std::console::Console.print(%27) -> b4(%12)
   b4(%28 r: unit, %29 rec: ptr):
@@ -75,16 +70,13 @@ fn main#0 pub top -> unit ; main::owned_record_recursive, frame 17 slots [%2 wor
     %40 lit: ptr = const str 2
     %41 s: ptr = concat %40, %39
     drop %39
-    drop %40
     %42 lit: ptr = const str 1
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 vars: word = proj %37.0 main::owned_record_recursive::Planner
     %45 s: ptr = show %44
     drop %44
     %46 s: ptr = concat %43, %45
-    drop %43
     drop %45
     perform std::console::Console.print(%46) -> b7(%37)
   b7(%47 r: unit, %48 rec: ptr):
@@ -100,27 +92,22 @@ fn main#0 pub top -> unit ; main::owned_record_recursive, frame 17 slots [%2 wor
     %55 lit: ptr = const str 3
     %56 s: ptr = concat %55, %54
     drop %54
-    drop %55
     %57 lit: ptr = const str 1
     %58 s: ptr = concat %56, %57
-    drop %56
     drop %57
     %59 mark: i64 = proj %51.1 main::owned_record_recursive::Planner
     drop %51
     %60 s: ptr = show %59
     %61 s: ptr = concat %58, %60
-    drop %58
     drop %60
     %62 lit: ptr = const str 1
     %63 s: ptr = concat %61, %62
-    drop %61
     drop %62
     %64 vars: word = proj %52.0 main::owned_record_recursive::Planner
     drop %52
     %65 s: ptr = show %64
     drop %64
     %66 s: ptr = concat %63, %65
-    drop %63
     drop %65
     perform std::console::Console.print(%66) -> b9()
   b9(%67 r: unit):

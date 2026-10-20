@@ -91,7 +91,6 @@ fn main$1#2 lambda -> word ; main::row_param_type, captures [], frame 4 slots [%
     %4 lit: ptr = const str 0
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     perform std::console::Console.print(%5) -> b1(%2)
   b1(%6 r: unit, %7 x: i64):
     %8 box: word = box %6

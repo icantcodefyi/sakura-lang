@@ -82,7 +82,6 @@ fn main#0 pub top -> unit ; main::http_redirect_rejects_location, frame 45 slots
     %84 lit: ptr = const str 9
     %85 s: ptr = concat %84, %83
     drop %83
-    drop %84
     %86 $site: i64 = const 7
     call Url$from#7(%85, %86) -> b15(%43, %44, %45, %49, %82)
   b9(%46 xs: ptr, %47 n: i64, %48 i: i64) [handle]:
@@ -97,7 +96,6 @@ fn main#0 pub top -> unit ; main::http_redirect_rejects_location, frame 45 slots
     drop %59
     %61 lit: ptr = const str 8
     %62 s: ptr = concat %60, %61
-    drop %60
     drop %61
     %63 f: ptr = closure main$1#9[]
     call map#10(%55, %63) -> b12(%56, %57, %58, %62)
@@ -105,7 +103,6 @@ fn main#0 pub top -> unit ; main::http_redirect_rejects_location, frame 45 slots
     %69 s: ptr = show %64
     drop %64
     %70 s: ptr = concat %68, %69
-    drop %68
     drop %69
     perform std::console::Console.print(%70) -> b13(%65, %66, %67)
   b13(%71 r: unit, %72 xs: ptr, %73 n: i64, %74 i: i64) [handle]:

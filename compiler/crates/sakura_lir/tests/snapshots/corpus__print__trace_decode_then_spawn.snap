@@ -33,17 +33,14 @@ fn main#0 pub top -> unit ; main::trace_decode_then_spawn, frame 5 slots [%1 wor
     %19 lit: ptr = const str 2
     %20 s: ptr = concat %19, %18
     drop %18
-    drop %19
     %21 lit: ptr = const str 3
     %22 s: ptr = concat %20, %21
-    drop %20
     drop %21
     %23 message: word = proj %16.1 std::json::DecodeError
     drop %16
     %24 s: ptr = show %23
     drop %23
     %25 s: ptr = concat %22, %24
-    drop %22
     drop %24
     perform std::console::Console.print(%25) -> b7()
   b4(%7 r: ptr):
@@ -54,7 +51,6 @@ fn main#0 pub top -> unit ; main::trace_decode_then_spawn, frame 5 slots [%1 wor
     %11 lit: ptr = const str 1
     %12 s: ptr = concat %11, %10
     drop %10
-    drop %11
     perform std::console::Console.print(%12) -> b6()
   b6(%13 r: unit):
     %14 box: word = box %13
@@ -117,13 +113,11 @@ fn main$1$1#5 lambda -> word ; main::trace_decode_then_spawn, captures [word*], 
     drop %2
     %4 lit: ptr = const str 5
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     %6 percent: i64 = proj %1.1 main::trace_decode_then_spawn::Score
     drop %1
     %7 s: ptr = show %6
     %8 s: ptr = concat %5, %7
-    drop %5
     drop %7
     perform std::console::Console.print(%8) -> b1()
   b1(%9 r: unit):

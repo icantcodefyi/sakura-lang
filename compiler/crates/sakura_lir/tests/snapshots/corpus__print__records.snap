@@ -21,22 +21,18 @@ fn main#0 pub top -> unit ; main::records, frame 11 slots [%4 word*, %5 word*, %
     %7 s: ptr = show %6
     %8 lit: ptr = const str 1
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 admin: bool = proj %4.2 main::records::User
     %11 s: ptr = show %10
     %12 s: ptr = concat %9, %11
-    drop %9
     drop %11
     %13 lit: ptr = const str 1
     %14 s: ptr = concat %12, %13
-    drop %12
     drop %13
     %15 name: word = proj %4.1 main::records::User
     %16 s: ptr = show %15
     drop %15
     %17 s: ptr = concat %14, %16
-    drop %14
     drop %16
     perform std::console::Console.print(%17) -> b2(%5, %4)
   b2(%18 r: unit, %19 rec: ptr, %20 r: ptr):
@@ -51,14 +47,12 @@ fn main#0 pub top -> unit ; main::records, frame 11 slots [%4 word*, %5 word*, %
     drop %26
     %28 lit: ptr = const str 1
     %29 s: ptr = concat %27, %28
-    drop %27
     drop %28
     %30 name: word = proj %25.1 main::records::User
     drop %25
     %31 s: ptr = show %30
     drop %30
     %32 s: ptr = concat %29, %31
-    drop %29
     drop %31
     perform std::console::Console.print(%32) -> b3(%19, %20)
   b3(%33 r: unit, %34 rec: ptr, %35 r: ptr):

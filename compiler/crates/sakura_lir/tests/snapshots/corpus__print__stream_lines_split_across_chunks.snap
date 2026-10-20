@@ -81,7 +81,6 @@ fn show_lines#2 top -> unit ; main::stream_lines_split_across_chunks, frame 7 sl
     %14 lit: ptr = const str 10
     %15 s: ptr = concat %14, %13
     drop %13
-    drop %14
     perform std::console::Console.print(%15) -> b6()
   b5(%8 r: unit):
     %9 box: word = box %8

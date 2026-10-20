@@ -50,14 +50,12 @@ fn main#0 pub top -> unit ; main::searchparams_sort_stable, frame 13 slots [%1 w
     drop %29
     %31 lit: ptr = const str 1
     %32 s: ptr = concat %30, %31
-    drop %30
     drop %31
     %33 t: ptr = tuple_get %23.1
     drop %23
     %34 s: ptr = show %33
     drop %33
     %35 s: ptr = concat %32, %34
-    drop %32
     drop %34
     perform std::console::Console.print(%35) -> b12(%17, %18, %19)
   b10(%20 r: ptr, %21 n: i64, %22 i: i64):

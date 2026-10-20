@@ -71,7 +71,6 @@ fn loud$Greeter_greet#4 clause main::handler_forwarding::Greeter.greet -> ptr ; 
     %4 r: ptr = $string_to_upper(%3)
     %5 lit: ptr = const str 1
     %6 t: ptr = concat %4, %5
-    drop %4
     drop %5
     ret %6
 
@@ -83,5 +82,4 @@ fn plain$Greeter_greet#5 clause main::handler_forwarding::Greeter.greet -> ptr ;
     %4 lit: ptr = const str 2
     %5 s: ptr = concat %4, %3
     drop %3
-    drop %4
     ret %5

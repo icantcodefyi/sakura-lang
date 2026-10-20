@@ -15,25 +15,21 @@ fn main#0 pub top -> unit ; main::mutual_recursion, frame 6 slots [%1 bool, %6 b
     %2 s: ptr = show %1
     %3 lit: ptr = const str 0
     %4 s: ptr = concat %2, %3
-    drop %2
     drop %3
     %5 lit: i64 = const 7
     call is_odd#3(%5) -> b2(%4)
   b2(%6 r: bool, %7 s: ptr):
     %8 s: ptr = show %6
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 lit: ptr = const str 0
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     %12 lit: i64 = const 100001
     call is_even#2(%12) -> b3(%11)
   b3(%13 r: bool, %14 s: ptr):
     %15 s: ptr = show %13
     %16 s: ptr = concat %14, %15
-    drop %14
     drop %15
     perform std::console::Console.print(%16) -> b4()
   b4(%17 r: unit):

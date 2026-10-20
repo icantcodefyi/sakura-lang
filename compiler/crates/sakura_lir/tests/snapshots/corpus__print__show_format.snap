@@ -37,7 +37,6 @@ fn main#0 pub top -> unit ; main::show_format, frame 6 slots [%12 bool, %34 word
     drop %18
     %20 lit: ptr = const str 3
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 v: ptr = const static main::show_format::Color.Red
     %23 lit: ptr = const str 4
@@ -45,11 +44,9 @@ fn main#0 pub top -> unit ; main::show_format, frame 6 slots [%12 bool, %34 word
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %21, %25
-    drop %21
     drop %25
     %27 lit: ptr = const str 3
     %28 s: ptr = concat %26, %27
-    drop %26
     drop %27
     %29 lit: i64 = const 3
     %30 box: word = box %29
@@ -61,7 +58,6 @@ fn main#0 pub top -> unit ; main::show_format, frame 6 slots [%12 bool, %34 word
     %36 s: ptr = show %34
     drop %34
     %37 s: ptr = concat %35, %36
-    drop %35
     drop %36
     perform std::console::Console.print(%37) -> b3()
   b3(%38 r: unit):
@@ -72,14 +68,12 @@ fn main#0 pub top -> unit ; main::show_format, frame 6 slots [%12 bool, %34 word
     drop %40
     %42 lit: ptr = const str 3
     %43 s: ptr = concat %41, %42
-    drop %41
     drop %42
     %44 lit: ptr = const str 6
     %45 xs: ptr = alloc list(%44)
     %46 s: ptr = show %45
     drop %45
     %47 s: ptr = concat %43, %46
-    drop %43
     drop %46
     perform std::console::Console.print(%47) -> b4()
   b4(%48 r: unit):
@@ -89,33 +83,27 @@ fn main#0 pub top -> unit ; main::show_format, frame 6 slots [%12 bool, %34 word
     %51 s: ptr = show %50
     %52 lit: ptr = const str 3
     %53 s: ptr = concat %51, %52
-    drop %51
     drop %52
     %54 lit: f64 = const 0.1
     %55 lit: f64 = const 0.2
     %56 t: f64 = floatadd %54, %55
     %57 s: ptr = show %56
     %58 s: ptr = concat %53, %57
-    drop %53
     drop %57
     %59 lit: ptr = const str 3
     %60 s: ptr = concat %58, %59
-    drop %58
     drop %59
     %61 lit: f64 = const 0.5
     %62 t: f64 = floatneg %61
     %63 s: ptr = show %62
     %64 s: ptr = concat %60, %63
-    drop %60
     drop %63
     %65 lit: ptr = const str 3
     %66 s: ptr = concat %64, %65
-    drop %64
     drop %65
     %67 lit: f64 = const 1e21
     %68 s: ptr = show %67
     %69 s: ptr = concat %66, %68
-    drop %66
     drop %68
     perform std::console::Console.print(%69) -> b5()
   b5(%70 r: unit):

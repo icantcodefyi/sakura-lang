@@ -127,7 +127,6 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %88 lit: ptr = const str 13
     %89 s: ptr = concat %88, %87
     drop %87
-    drop %88
     perform std::console::Console.print(%89) -> b12(%86)
   b12(%90 r: unit, %91 r: ptr) [handle, handle, handle]:
     %92 box: word = box %90
@@ -140,7 +139,6 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %95 lit: ptr = const str 14
     %96 s: ptr = concat %95, %94
     drop %94
-    drop %95
     perform std::console::Console.print(%96) -> b14()
   b14(%97 r: unit) [handle, handle, handle]:
     %98 box: word = box %97
@@ -173,7 +171,6 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %150 lit: ptr = const str 16
     %151 s: ptr = concat %150, %149
     drop %149
-    drop %150
     %152 $site: i64 = const 13
     call Url$from#9(%151, %152) -> b24(%109, %110, %111, %115, %148)
   b18(%112 xs: ptr, %113 n: i64, %114 i: i64) [handle, handle, handle]:
@@ -188,7 +185,6 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     drop %125
     %127 lit: ptr = const str 15
     %128 s: ptr = concat %126, %127
-    drop %126
     drop %127
     %129 f: ptr = closure main$1#11[]
     call map#12(%121, %129) -> b21(%122, %123, %124, %128)
@@ -196,7 +192,6 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %135 s: ptr = show %130
     drop %130
     %136 s: ptr = concat %134, %135
-    drop %134
     drop %135
     perform std::console::Console.print(%136) -> b22(%131, %132, %133)
   b22(%137 r: unit, %138 xs: ptr, %139 n: i64, %140 i: i64) [handle, handle, handle]:
@@ -263,7 +258,6 @@ fn logged$Http_send#100 clause std::http::Http.send -> ptr ; main::http_redirect
     %5 lit: ptr = const str 83
     %6 s: ptr = concat %5, %4
     drop %4
-    drop %5
     perform std::console::Console.print(%6) -> b1(%2)
   b1(%7 r: unit, %8 req: ptr):
     %9 box: word = box %7

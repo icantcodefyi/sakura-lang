@@ -53,7 +53,6 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %33 lit: ptr = const str 0
     %34 s: ptr = concat %33, %32
     drop %32
-    drop %33
     perform std::console::Console.print(%34) -> b3(%30, %31)
   b3(%35 r: unit, %36 r: ptr, %37 f: ptr):
     %38 box: word = box %35
@@ -71,7 +70,6 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %48 lit: ptr = const str 1
     %49 s: ptr = concat %48, %47
     drop %47
-    drop %48
     perform std::console::Console.print(%49) -> b6(%45, %46)
   b6(%50 r: unit, %51 r: ptr, %52 f: ptr):
     %53 box: word = box %50
@@ -89,7 +87,6 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %63 lit: ptr = const str 2
     %64 s: ptr = concat %63, %62
     drop %62
-    drop %63
     perform std::console::Console.print(%64) -> b9(%60, %61)
   b9(%65 r: unit, %66 r: ptr, %67 f: ptr):
     %68 box: word = box %65
@@ -107,7 +104,6 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %78 lit: ptr = const str 3
     %79 s: ptr = concat %78, %77
     drop %77
-    drop %78
     perform std::console::Console.print(%79) -> b12(%75, %76)
   b12(%80 r: unit, %81 r: ptr, %82 f: ptr):
     %83 box: word = box %80
@@ -124,7 +120,6 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %91 lit: ptr = const str 4
     %92 s: ptr = concat %91, %90
     drop %90
-    drop %91
     perform std::console::Console.print(%92) -> b15(%89)
   b15(%93 r: unit, %94 f: ptr):
     %95 box: word = box %93
@@ -145,10 +140,8 @@ fn main#0 pub top -> unit ; main::stream_chunks_bytes, frame 46 slots [%27 word*
     %107 lit: ptr = const str 5
     %108 s: ptr = concat %107, %106
     drop %106
-    drop %107
     %109 lit: ptr = const str 6
     %110 s: ptr = concat %108, %109
-    drop %108
     drop %109
     perform std::console::Console.print(%110) -> b19()
   b19(%111 r: unit):
@@ -190,7 +183,6 @@ fn main$1#3 lambda -> word ; main::stream_chunks_bytes, captures [], frame 5 slo
     %11 lit: ptr = const str 7
     %12 s: ptr = concat %11, %10
     drop %10
-    drop %11
     ret %12
   b4(%7 r: ptr):
     ret %7

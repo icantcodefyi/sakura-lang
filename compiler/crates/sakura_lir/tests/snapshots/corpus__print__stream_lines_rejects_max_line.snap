@@ -68,18 +68,14 @@ fn show_lines#2 top -> unit ; main::stream_lines_rejects_max_line, frame 12 slot
     %3 lit: ptr = const str 12
     %4 s: ptr = concat %3, %2
     drop %2
-    drop %3
     %5 lit: ptr = const str 13
     %6 s: ptr = concat %4, %5
-    drop %4
     drop %5
     %7 s: ptr = show %0
     %8 s: ptr = concat %6, %7
-    drop %6
     drop %7
     %9 lit: ptr = const str 14
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     perform std::console::Console.print(%10) -> b1(%0, %1)
   b1(%11 r: unit, %12 items: ptr, %13 max_line: i64):
@@ -108,7 +104,6 @@ fn show_lines#2 top -> unit ; main::stream_lines_rejects_max_line, frame 12 slot
     %29 lit: ptr = const str 16
     %30 s: ptr = concat %29, %28
     drop %28
-    drop %29
     perform std::console::Console.print(%30) -> b7()
   b6(%23 r: unit):
     %24 box: word = box %23
@@ -140,7 +135,6 @@ fn show_lines$1#5 lambda -> word ; main::stream_lines_rejects_max_line, captures
     %3 lit: ptr = const str 18
     %4 s: ptr = concat %3, %2
     drop %2
-    drop %3
     perform std::console::Console.print(%4) -> b1()
   b1(%5 r: unit):
     %6 box: word = box %5

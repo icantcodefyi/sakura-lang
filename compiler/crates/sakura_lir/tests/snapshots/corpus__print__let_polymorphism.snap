@@ -21,7 +21,6 @@ fn main#0 pub top -> unit ; main::let_polymorphism, frame 13 slots [%4 word*, %5
     %8 s: ptr = show %7
     %9 lit: ptr = const str 0
     %10 s: ptr = concat %8, %9
-    drop %8
     drop %9
     %11 lit: bool = const true
     %12 box: word = box %11
@@ -32,11 +31,9 @@ fn main#0 pub top -> unit ; main::let_polymorphism, frame 13 slots [%4 word*, %5
     drop %13
     %18 s: ptr = show %17
     %19 s: ptr = concat %16, %18
-    drop %16
     drop %18
     %20 lit: ptr = const str 0
     %21 s: ptr = concat %19, %20
-    drop %19
     drop %20
     %22 lit: ptr = const str 1
     call %14(%22) -> b3(%15, %21)
@@ -44,11 +41,9 @@ fn main#0 pub top -> unit ; main::let_polymorphism, frame 13 slots [%4 word*, %5
     %26 s: ptr = show %23
     drop %23
     %27 s: ptr = concat %25, %26
-    drop %25
     drop %26
     %28 lit: ptr = const str 0
     %29 s: ptr = concat %27, %28
-    drop %27
     drop %28
     %30 lit: i64 = const 1
     %31 box: word = box %30
@@ -58,7 +53,6 @@ fn main#0 pub top -> unit ; main::let_polymorphism, frame 13 slots [%4 word*, %5
     %35 s: ptr = show %33
     drop %33
     %36 s: ptr = concat %34, %35
-    drop %34
     drop %35
     perform std::console::Console.print(%36) -> b5()
   b5(%37 r: unit):

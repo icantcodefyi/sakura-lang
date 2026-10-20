@@ -21,14 +21,12 @@ fn main#0 pub top -> unit ; main::strings_and_interpolation, frame 6 slots [%1 w
     drop %4
     %6 lit: ptr = const str 1
     %7 s: ptr = concat %5, %6
-    drop %5
     drop %6
     %8 lit: i64 = const 1
     %9 lit: i64 = const 1
     %10 t: i64 = intadd %8, %9
     %11 s: ptr = show %10
     %12 s: ptr = concat %7, %11
-    drop %7
     drop %11
     call greet#2(%12) -> b3()
   b3(%13 r: ptr):
@@ -37,7 +35,6 @@ fn main#0 pub top -> unit ; main::strings_and_interpolation, frame 6 slots [%1 w
     %15 lit: ptr = const str 2
     %16 s: ptr = concat %15, %14
     drop %14
-    drop %15
     perform std::console::Console.print(%16) -> b4()
   b4(%17 r: unit):
     %18 box: word = box %17
@@ -71,9 +68,7 @@ fn greet#2 top -> ptr ; main::strings_and_interpolation, frame 1 slots [%0 word*
     %2 lit: ptr = const str 5
     %3 s: ptr = concat %2, %1
     drop %1
-    drop %2
     %4 lit: ptr = const str 6
     %5 s: ptr = concat %3, %4
-    drop %3
     drop %4
     ret %5

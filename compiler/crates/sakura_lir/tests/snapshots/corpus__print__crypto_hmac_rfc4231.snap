@@ -207,21 +207,17 @@ fn main#0 pub top -> unit ; main::crypto_hmac_rfc4231, frame 67 slots [%167 word
     drop %204
     %276 lit: ptr = const str 23
     %277 s: ptr = concat %275, %276
-    drop %275
     drop %276
     %278 s: ptr = show %205
     drop %205
     %279 s: ptr = concat %277, %278
-    drop %277
     drop %278
     %280 lit: ptr = const str 23
     %281 s: ptr = concat %279, %280
-    drop %279
     drop %280
     %282 s: ptr = show %274
     drop %274
     %283 s: ptr = concat %281, %282
-    drop %281
     drop %282
     perform std::console::Console.print(%283) -> b19(%201, %202, %203)
   b13(%210 r: ptr, %211 xs: ptr, %212 n: i64, %213 i: i64, %214 case: ptr, %215 alg: ptr, %216 data: ptr, %217 bits: i64, %218 k: ptr):
@@ -240,25 +236,20 @@ fn main#0 pub top -> unit ; main::crypto_hmac_rfc4231, frame 67 slots [%167 word
     drop %233
     %244 lit: ptr = const str 23
     %245 s: ptr = concat %243, %244
-    drop %243
     drop %244
     %246 s: ptr = show %234
     drop %234
     %247 s: ptr = concat %245, %246
-    drop %245
     drop %246
     %248 lit: ptr = const str 23
     %249 s: ptr = concat %247, %248
-    drop %247
     drop %248
     %250 s: ptr = show %242
     drop %242
     %251 s: ptr = concat %249, %250
-    drop %249
     drop %250
     %252 lit: ptr = const str 23
     %253 s: ptr = concat %251, %252
-    drop %251
     drop %252
     call unhex#2(%235) -> b16(%230, %231, %232, %237, %238, %253)
   b16(%254 r: ptr, %255 xs: ptr, %256 n: i64, %257 i: i64, %258 k: ptr, %259 r: ptr, %260 s: ptr):
@@ -267,7 +258,6 @@ fn main#0 pub top -> unit ; main::crypto_hmac_rfc4231, frame 67 slots [%167 word
   b17(%262 r: bool, %263 xs: ptr, %264 n: i64, %265 i: i64, %266 s: ptr):
     %267 s: ptr = show %262
     %268 s: ptr = concat %266, %267
-    drop %266
     drop %267
     perform std::console::Console.print(%268) -> b18(%263, %264, %265)
   b18(%269 r: unit, %270 xs: ptr, %271 n: i64, %272 i: i64):
@@ -387,7 +377,6 @@ fn hex#5 top -> ptr ; main::crypto_hmac_rfc4231, frame 6 slots [%0 word*, %24 wo
     %36 lit: ptr = const str 24
     %37 r: ptr = $string_slice(%36, %31, %35)
     %38 t: ptr = concat %28, %37
-    drop %28
     drop %37
     %39 lit: i64 = const 16
     %40 t: i64 = intrem %29, %39
@@ -398,7 +387,6 @@ fn hex#5 top -> ptr ; main::crypto_hmac_rfc4231, frame 6 slots [%0 word*, %24 wo
     %45 lit: ptr = const str 24
     %46 r: ptr = $string_slice(%45, %40, %44)
     %47 t: ptr = concat %38, %46
-    drop %38
     drop %46
     jump b4(%47, %25, %26, %27)
 

@@ -99,12 +99,10 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     drop %87
     %137 lit: ptr = const str 10
     %138 s: ptr = concat %136, %137
-    drop %136
     drop %137
     %139 s: ptr = show %135
     drop %135
     %140 s: ptr = concat %138, %139
-    drop %138
     drop %139
     perform std::console::Console.print(%140) -> b17(%84, %85, %86)
   b12(%93 r: ptr, %94 xs: ptr, %95 n: i64, %96 i: i64, %97 case: ptr, %98 info: ptr, %99 len: i64, %100 k: ptr):
@@ -116,7 +114,6 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     drop %105
     %112 lit: ptr = const str 10
     %113 s: ptr = concat %111, %112
-    drop %111
     drop %112
     %114 lit: i64 = const 8
     %115 t: i64 = intmul %114, %106
@@ -129,7 +126,6 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     %128 s: ptr = show %123
     drop %123
     %129 s: ptr = concat %127, %128
-    drop %127
     drop %128
     perform std::console::Console.print(%129) -> b16(%124, %125, %126)
   b16(%130 r: unit, %131 xs: ptr, %132 n: i64, %133 i: i64):
@@ -235,7 +231,6 @@ fn hex#5 top -> ptr ; main::crypto_hkdf_rfc5869, frame 6 slots [%0 word*, %24 wo
     %36 lit: ptr = const str 11
     %37 r: ptr = $string_slice(%36, %31, %35)
     %38 t: ptr = concat %28, %37
-    drop %28
     drop %37
     %39 lit: i64 = const 16
     %40 t: i64 = intrem %29, %39
@@ -246,7 +241,6 @@ fn hex#5 top -> ptr ; main::crypto_hkdf_rfc5869, frame 6 slots [%0 word*, %24 wo
     %45 lit: ptr = const str 11
     %46 r: ptr = $string_slice(%45, %40, %44)
     %47 t: ptr = concat %38, %46
-    drop %38
     drop %46
     jump b4(%47, %25, %26, %27)
 

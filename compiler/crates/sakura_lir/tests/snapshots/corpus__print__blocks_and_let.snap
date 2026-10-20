@@ -19,11 +19,9 @@ fn main#0 pub top -> unit ; main::blocks_and_let, frame 2 slots [%12 bool, %15 b
     %7 s: ptr = show %2
     %8 lit: ptr = const str 0
     %9 s: ptr = concat %7, %8
-    drop %7
     drop %8
     %10 s: ptr = show %6
     %11 s: ptr = concat %9, %10
-    drop %9
     drop %10
     perform std::console::Console.print(%11) -> b1()
   b1(%12 r: unit):
