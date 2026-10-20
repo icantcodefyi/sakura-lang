@@ -1,0 +1,4 @@
+ending: Exit(3)
+--- stdout
+opened
+closing

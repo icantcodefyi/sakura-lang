@@ -283,7 +283,7 @@ fn require() -> bool {
     std::env::var("SAKURA_REQUIRE_WASM").as_deref() == Ok("1")
 }
 
-/// How a run ended, in `.expected` terms: `ok` or the defect code.
+/// How a run ended, in `.expected` terms: `ok`, the defect code or `Exit(code)`.
 fn ending(code: Option<i32>, stderr: &str) -> String {
     match code {
         Some(0) => "ok".into(),
@@ -294,6 +294,8 @@ fn ending(code: Option<i32>, stderr: &str) -> String {
             })
             .unwrap_or("defect?")
             .into(),
+        // `Cli.exit(n)`: the code, with nothing on stderr (a failed `main` writes its error).
+        Some(c) if stderr.is_empty() => format!("Exit({c})"),
         other => format!("exit {other:?}: {stderr}"),
     }
 }

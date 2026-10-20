@@ -106,6 +106,11 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
             .get("expect-defect@wasm")
             .or_else(|| d.get("expect-defect"))
             .cloned()
+            .or_else(|| {
+                // `Cli.exit(n)` ends the run `exit` with its code (design §17.292 (1)).
+                let code = d.get("expect-exit").filter(|c| c.trim() != "0")?;
+                Some(format!("Exit({})", code.trim()))
+            })
             .unwrap_or_else(|| "ok".into());
         // `D003` is the JS profile's; `Int` is i64 on WASM (§17.80).
         if ending == "D003" {

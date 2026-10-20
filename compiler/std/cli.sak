@@ -5,7 +5,9 @@
 pub effect Cli {
   /// The arguments after `--` in `sakura run -- …`.
   fn args() -> List<String>
-  /// Ends the process with `code`; finalizers run first.
+  /// Ends the process with `code`; finalizers run first. A typed failure escaping `main` exits
+  /// 1 (STABILITY.md); a program that needs another code handles the failure in `main` and
+  /// calls `exit`.
   fn exit(code: Int) -> Never
     requires code >= 0 && code <= 255
 }

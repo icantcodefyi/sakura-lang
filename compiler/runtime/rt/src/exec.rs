@@ -208,6 +208,9 @@ pub struct Sched {
     sleepers: Option<Stack>,
     sleeper_seq: u32,
     pub exit_code: i32,
+    /// Set by `rt_b_cli_exit` with `raised`: the `step::DEFECT` compiled code returns next is
+    /// the exit [`Rt::exit`] began, not a defect.
+    pub exiting: bool,
     /// Set when an export compiled code called raised a defect (wasm32 `rt_take_defect`).
     pub raised: bool,
     /// Contract predicates being evaluated (`contract_enter`/`contract_exit`): a defect
@@ -1169,7 +1172,8 @@ impl Rt {
     }
 
     /// `Cli.exit(code)` from compiled code: the task unwinds every finalizer and ends `exit`;
-    /// the caller returns `step::YIELD`.
+    /// the caller returns `step::YIELD`, or, through the builtin `rt_b_cli_exit`'s flag,
+    /// `step::DEFECT`, which `exiting` turns into the same return.
     pub fn exit(&mut self, code: i32) {
         self.sched.exit_code = code;
         let t = self.cur();
@@ -1507,6 +1511,9 @@ impl Rt {
                 // A builtin's flag for compiled code (`wasm::raised`) is moot now; left set, it
                 // would stop the next task's first check (a pointer result does not read it).
                 self.sched.raised = false;
+                if core::mem::take(&mut self.sched.exiting) {
+                    return;
+                }
                 self.abort_finalizers(t);
                 if self.u(t, T_DEFECT) == 0 {
                     self.record_defect(t, Defect::INTERNAL);

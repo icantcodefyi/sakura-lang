@@ -185,6 +185,8 @@ fn exe_ending(status: std::process::ExitStatus, stderr: &str) -> String {
             Some((_, rest)) => rest.chars().take(4).collect(),
             None => format!("exit 70: {stderr}"),
         },
+        // `Cli.exit(c)`: nothing on stderr (a failed `main` writes its error).
+        Some(c) if stderr.is_empty() => format!("Exit({c})"),
         Some(c) => format!("exit {c}"),
         None => format!("killed: {status:?}"),
     }

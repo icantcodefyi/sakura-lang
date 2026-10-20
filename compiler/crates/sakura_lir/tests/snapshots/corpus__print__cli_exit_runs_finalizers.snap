@@ -1,0 +1,67 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 variant std::task::Fiber
+layout 3 variant std::task::Scope
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::cli_exit_runs_finalizers, frame 3 slots [%1 bool, %5 word*, %7 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 f: ptr = closure main$1#5[]
+    %4 callback: ptr = callback %3
+    perform std::task::Task.scope(%4) -> b2()
+  b2(%5 r: word):
+    drop %5
+    %6 lit: ptr = const str 1
+    perform std::console::Console.print(%6) -> b3()
+  b3(%7 r: unit):
+    %8 box: word = box %7
+    %9 unbox: unit = unbox %8
+    drop %8
+    ret %9
+
+fn $entry#2 top -> unit ; main::cli_exit_runs_finalizers, frame 1 slots [%5 bool]
+  b0():
+    %0 args: ptr = closure host$Cli_args#3[]
+    %1 exit: ptr = closure host$Cli_exit#4[]
+    %2 cli: ptr = handler std::cli::Cli row 6 state() clauses(%0, %1)
+    handle_push %2
+    %3 console: ptr = $console_host()
+    handle_push %3
+    %4 task: ptr = $task_host()
+    handle_push %4
+    call main#0() -> b1()
+  b1(%5 r: unit) [handle, handle, handle]:
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %5
+
+fn main$1#5 lambda -> word ; main::cli_exit_runs_finalizers, captures [], frame 5 slots [%0 word*, %1 word*, %3 bool, %7 bool, %9 bool]
+  b0(%0 env: ptr, %1 _s: word):
+    drop %0
+    drop %1
+    %2 lit: ptr = const str 2
+    perform std::console::Console.print(%2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 lit: i64 = const 3
+    %6 $site: i64 = const 2
+    call Cli.exit#6(%5, %6) -> b2()
+  b2(%7 pre: unit):
+    %8 lit: i64 = const 3
+    perform std::cli::Cli.exit(%8) -> b3()
+  b3(%9 r: unit):
+    %10 box: word = box %9
+    ret %10

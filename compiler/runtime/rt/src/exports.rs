@@ -1796,6 +1796,14 @@ builtins! {
         rt.sched.contract_depth = rt.sched.contract_depth.saturating_sub(1)
     };
     rt_b_match_failure() -> () = plain |rt| raised(rt, crate::builtins::MATCH_FAILURE);
+    // `Cli.exit(code)` of `Cli.host()` (design §17.292 (1)): the task unwinds every finalizer
+    // and ends `exit` with `code`; the flag stops compiled code, as after a defect, and the
+    // scheduler sees `exiting` instead of recording one. No host import: the outcome crosses.
+    rt_b_cli_exit(code: i64) -> () = plain |rt| {
+        rt.exit(code as i32);
+        rt.sched.exiting = true;
+        rt.sched.raised = true;
+    };
     rt_b_list_len(xs: u32) -> i64 = plain |rt| rt.list_len(xs);
     rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i);
     rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i);

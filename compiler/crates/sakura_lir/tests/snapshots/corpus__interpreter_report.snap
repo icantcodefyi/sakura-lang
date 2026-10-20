@@ -23,6 +23,7 @@ semantics/channel_recv_every_task_waiting: unsupported (builtin task_host)
 semantics/channel_rejects_capacity: unsupported (builtin task_host)
 semantics/channel_try_send_full: unsupported (builtin task_host)
 semantics/cli_exit_rejects_code: D020, 5 allocated, 0 dup, 5 drop, peak 5, live 0/0
+semantics/cli_exit_runs_finalizers: unsupported (builtin task_host)
 semantics/cli_parse_messages: unsupported (builtin cli_parse)
 semantics/clock_micros_monotonic: unsupported (builtin clock_host)
 semantics/closures: ok, 24 allocated, 12 dup, 36 drop, peak 9, live 0/0

@@ -449,6 +449,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   and to write `\{` (design §17.294 WP-5); the lexer resumes after the literal's closing `"`
   on that line, where the quotes of the rest of the file paired up wrongly and one byte gave
   83 diagnostics. An invalid character at a line's end now ends its statement there.
+- `Cli.exit(code)` works on the WASM backend, under the Node host and as a WASI command, as on
+  JS: the task unwinds through its finalizers and the process exits with `code`, where `v0.1.0`
+  stopped with the defect `D090` ("builtin cli_exit is not supported by the WASM backend yet")
+  (design §17.292 (1)). No ABI change: the guest's existing `exit` outcome carries the code.
+  `Cli.exit`'s doc now says a typed failure escaping `main` exits 1.
 
 ### Security
 

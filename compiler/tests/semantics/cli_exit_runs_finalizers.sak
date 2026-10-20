@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-exit: 3
+// spec: design §17.292 (1); STABILITY.md (exit codes)
+
+// `Cli.exit(3)` of `Cli.host()` ends the process with code 3 on JS, on WASM under the Node host
+// and as a WASI command: the task unwinds through the open scope's finalizer (the trace's
+// `finalizer` event) and nothing after the call runs. A typed failure escaping `main` would exit
+// 1 instead.
+import std/cli.{Cli}
+
+pub fn main() -> Unit ! {Cli, Console, Task} {
+  Console.print("opened")
+  Task.scope(fn(_s) {
+    Console.print("closing")
+    Cli.exit(3)
+  })
+  Console.print("never printed")
+}
