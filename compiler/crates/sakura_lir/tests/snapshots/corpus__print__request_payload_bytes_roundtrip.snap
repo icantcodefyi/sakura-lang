@@ -1,0 +1,179 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::core::Trust
+layout 1 variant std::encoding::Bom | Strip 16b () | Keep 16b ()
+layout 2 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 3 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 4 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 5 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 6 variant std::http::Body
+layout 7 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 8 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 9 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 10 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 11 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 12 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 13 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 14 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 15 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 16 shape |  32b (word*, word*)
+layout 17 shape |  32b (i64, word*)
+layout 18 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::request_payload_bytes_roundtrip, frame 7 slots [%0 word*, %3 bool, %6 word*, %21 bool, %24 bool, %28 bool, %30 bool]
+  b0():
+    call echo#5() -> b1()
+  b1(%0 r: ptr):
+    handle_push %0
+    try_push -> b4(err, )
+    %8 lit: i64 = const 0
+    %9 box: word = box %8
+    %10 lit: i64 = const 159
+    %11 box: word = box %10
+    %12 lit: i64 = const 146
+    %13 box: word = box %12
+    %14 lit: i64 = const 150
+    %15 box: word = box %14
+    %16 lit: i64 = const 255
+    %17 box: word = box %16
+    %18 xs: ptr = alloc list(%9, %11, %13, %15, %17)
+    %19 r: ptr = $bytes_from_list(%18)
+    %20 r: ptr = alloc std::request::Payload.Bytes(%19)
+    call round_trip#6(%20) -> b5()
+  b2(%1 v: ptr) [handle]:
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b3()
+  b3(%3 r: unit) [handle]:
+    %4 box: word = box %3
+    %5 unbox: unit = unbox %4
+    drop %4
+    handle_pop
+    ret %5
+  b4(%6 e: word) [handle]:
+    %7 err: ptr = alloc std::result::Result.Err(%6)
+    jump b2(%7)
+  b5(%21 r: unit) [handle, try]:
+    %22 lit: ptr = const str 0
+    %23 r: ptr = alloc std::request::Payload.Text(%22)
+    call round_trip#6(%23) -> b6()
+  b6(%24 r: unit) [handle, try]:
+    %25 lit: ptr = const str 0
+    %26 r: ptr = $string_to_bytes(%25)
+    %27 r: ptr = alloc std::request::Payload.Bytes(%26)
+    call round_trip#6(%27) -> b7()
+  b7(%28 r: unit) [handle, try]:
+    %29 v: ptr = const static std::request::Payload.Empty
+    call round_trip#6(%29) -> b8()
+  b8(%30 r: unit) [handle, try]:
+    %31 box: word = box %30
+    %32 ok: ptr = alloc std::result::Result.Ok(%31)
+    try_pop
+    jump b2(%32)
+
+fn $entry#1 top -> unit ; main::request_payload_bytes_roundtrip, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn echo#5 top -> ptr ; main::request_payload_bytes_roundtrip, frame 0 slots []
+  b0():
+    %0 send: ptr = closure echo$Http_send#23[]
+    %1 stream: ptr = closure echo$Http_stream#25[]
+    %2 read_chunk: ptr = closure echo$Http_read_chunk#26[]
+    %3 handler: ptr = handler std::http::Http row 18 state() clauses(%0, %1, %2)
+    ret %3
+
+fn round_trip#6 top -> unit ; main::request_payload_bytes_roundtrip, frame 16 slots [%0 word*, %4 word*, %5 word*, %6 word*, %7 word*, %8 word*, %9 word*, %10 word*, %12 word*, %13 word*, %16 word*, %17 word*, %23 word*, %24 word*, %25 word*, %33 bool]
+  b0(%0 body: ptr):
+    %1 v: ptr = const static std::request::Method.Put
+    %2 lit: ptr = const str 5
+    %3 $site: i64 = const 4
+    call Url$from#7(%2, %3) -> b1(%0, %1)
+  b1(%4 r: ptr, %5 body: ptr, %6 v: ptr):
+    call of#8(%6, %4) -> b2(%5)
+  b2(%7 r: ptr, %8 body: ptr):
+    call with_payload#9(%7, %8) -> b3()
+  b3(%9 r: ptr):
+    perform std::http::Http.send(%9) -> b4()
+  b4(%10 r: ptr):
+    %11 lit: i64 = const 16
+    dup %10
+    call text#10(%10, %11) -> b5(%10)
+  b5(%12 r: ptr, %13 r: ptr):
+    %14 lit: unit = const ()
+    %15 box: word = box %14
+    call trust#11(%12, %15) -> b6(%13)
+  b6(%16 r: word, %17 r: ptr):
+    %18 body: word = proj %17.2 std::response::Response
+    %19 s: ptr = show %18
+    drop %18
+    %20 lit: ptr = const str 6
+    %21 s: ptr = concat %19, %20
+    drop %19
+    drop %20
+    %22 lit: i64 = const 16
+    call bytes#12(%17, %22) -> b7(%16, %21)
+  b7(%23 r: ptr, %24 r: ptr, %25 s: ptr):
+    %26 s: ptr = show %23
+    drop %23
+    %27 s: ptr = concat %25, %26
+    drop %25
+    drop %26
+    %28 lit: ptr = const str 7
+    %29 s: ptr = concat %27, %28
+    drop %27
+    drop %28
+    %30 xs: ptr = alloc list(%24)
+    %31 s: ptr = show %30
+    drop %30
+    %32 s: ptr = concat %29, %31
+    drop %29
+    drop %31
+    perform std::console::Console.print(%32) -> b8()
+  b8(%33 r: unit):
+    %34 box: word = box %33
+    %35 unbox: unit = unbox %34
+    drop %34
+    ret %35
+
+fn echo$Http_send#23 clause std::http::Http.send -> ptr ; main::request_payload_bytes_roundtrip, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %6 word*, %7 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 req: ptr):
+    drop %0
+    %3 lit: i64 = const 200
+    %4 lit: ptr = const str 11
+    %5 $site: i64 = const 5
+    call status#24(%3, %4, %5) -> b1(%2)
+  b1(%6 r: ptr, %7 req: ptr):
+    %8 body: word = proj %7.3 std::request::Request
+    drop %7
+    %9 status: i64 = proj %6.0 std::response::Response
+    %10 headers: word = proj %6.1 std::response::Response
+    drop %6
+    %11 rec: ptr = alloc std::response::Response(%9, %10, %8)
+    ret %11
+
+fn echo$Http_stream#25 clause std::http::Http.stream -> word ; main::request_payload_bytes_roundtrip, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 _req: ptr, %3 _body: ptr):
+    drop %0
+    drop %2
+    drop %3
+    %4 v: ptr = const static std::option::Option.None
+    %5 lit: ptr = const str 13
+    %6 rec: ptr = alloc std::response::HttpError(%4, %5)
+    fail %6
+
+fn echo$Http_read_chunk#26 clause std::http::Http.read_chunk -> ptr ; main::request_payload_bytes_roundtrip, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 _b: ptr, %3 _max: i64):
+    drop %0
+    drop %2
+    %4 v: ptr = const static std::option::Option.None
+    %5 lit: ptr = const str 13
+    %6 rec: ptr = alloc std::response::HttpError(%4, %5)
+    fail %6

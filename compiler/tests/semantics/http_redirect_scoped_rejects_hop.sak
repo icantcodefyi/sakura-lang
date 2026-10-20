@@ -1,0 +1,39 @@
+// milestone: M3
+// spec: RFC 0002 §2.4; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#http-redirect-fetch
+
+// `Http.scoped(hosts)` checks every hop against its list before forwarding it: a granted host
+// that redirects to an unlisted one fails `HttpError` with the same message as an unlisted
+// first request, and the unlisted host is never sent anything (`logged` sees one request).
+// `Http.host()` checks the manifest's `net` the same way, per send, in the host.
+import std/http.{Http, Path}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn logged() -> Handler<Http, {Console, Http}> {
+  handler Http {
+    fn send(req) {
+      Console.print("  send {req.url}")
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let script = [
+    (
+      Path("/start"),
+      Response { ..Response.status(301, ""), headers: [("location", "https://c.example/x")] },
+    ),
+    (Path("/x"), Response.status(200, "c")),
+  ]
+  with Http.scripted(script), logged(), Http.scoped(["a.example:443"]) {
+    for url in ["https://a.example/start", "https://c.example/x"] {
+      let got: Result<Response, HttpError> = try { Http.send(Request.of(Get, Url.from(url))) }
+      Console.print("{url}: {got.map(fn(r) { r.status })}")
+    }
+  }
+}

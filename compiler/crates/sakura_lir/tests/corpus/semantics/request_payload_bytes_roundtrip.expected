@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+Bytes(Bytes.of([0, 159, 146, 150, 255])): bytes Bytes.of([0, 159, 146, 150, 255]), text ["\0����"]
+Text("hé"): bytes Bytes.of([104, 195, 169]), text ["hé"]
+Bytes(Bytes.of([104, 195, 169])): bytes Bytes.of([104, 195, 169]), text ["hé"]
+Empty: bytes Bytes.of([]), text [""]
+Ok(())

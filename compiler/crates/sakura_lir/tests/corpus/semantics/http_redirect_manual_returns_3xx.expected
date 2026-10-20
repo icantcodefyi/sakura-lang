@@ -1,0 +1,13 @@
+ending: ok
+--- stdout
+  send https://a.example/old
+Manual: Ok(Response { status: 301, headers: [("Location", "/new")], body: Text("moved") })
+  send https://a.example/old
+  send https://a.example/new
+Follow: Ok(Response { status: 200, headers: [], body: Text("new") })
+  send https://a.example/bare
+/bare: Ok(302)
+  send https://a.example/choices
+/choices: Ok(300)
+  send https://a.example/cached
+/cached: Ok(304)

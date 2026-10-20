@@ -1,5 +1,5 @@
 test "oracle/health" {
   let r = Router.handle(app(), Request.of(Get, Url.from("/health")))
   expect_eq(r.status, Status.from(200))
-  expect_eq(r.body, "ready")
+  expect_eq(r.body, Text("ready"))
 }

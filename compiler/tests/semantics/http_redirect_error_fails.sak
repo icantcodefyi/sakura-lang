@@ -1,0 +1,36 @@
+// milestone: M3
+// spec: RFC 0002 §2.4; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#concept-request-redirect-mode
+
+// `redirect: Error` fails `HttpError` with the redirect's status before any second request,
+// with or without a `location` (Fetch's "error" mode); a 200 under `Error` is returned.
+import std/http.{Http, Path}
+import std/request.{Error, Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn logged() -> Handler<Http, {Console, Http}> {
+  handler Http {
+    fn send(req) {
+      Console.print("  send {req.url}")
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let script = [
+    (Path("/old"), Response { ..Response.status(308, ""), headers: [("location", "/new")] }),
+    (Path("/bare"), Response.status(303, "")),
+    (Path("/new"), Response.status(200, "new")),
+  ]
+  with Http.scripted(script), logged(), Http.scoped(["a.example:443"]) {
+    for path in ["/old", "/bare", "/new"] {
+      let req = Request { ..Request.of(Get, Url.from("https://a.example{path}")), redirect: Error }
+      let got: Result<Response, HttpError> = try { Http.send(req) }
+      Console.print("{path}: {got.map(fn(r) { r.status })}")
+    }
+  }
+}

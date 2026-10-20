@@ -1300,14 +1300,14 @@ import std/request.{{Method, Request}}
 import std/response.{{HttpError, Response}}
 import std/url.{{Url}}
 
-fn get(path: String) -> String ! {{Http, Fail<HttpError>}} {{
+fn get(path: String) -> Bytes ! {{Http, Fail<HttpError>}} {{
   let req = Http.bearer(Request.of(Method.Get, Url.from("https://api.example/{{path}}")), Secret.of("sk-live"))
-  Http.send(req).body
+  Response.bytes(Http.send(req), 64)
 }}
 
 test "replays" {{
   with Fs.rooted(Test.fixtures()), {outer}, Http.recording("api.jsonl") {{
-    expect_eq(try {{ get("a") }}, Ok("live"))
+    expect_eq(try {{ get("a") }}, Ok(String.to_bytes("live")))
   }}
 }}
 "#

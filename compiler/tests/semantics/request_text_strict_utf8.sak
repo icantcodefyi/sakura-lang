@@ -1,0 +1,38 @@
+// milestone: M3
+// spec: RFC 0002 §2.4, design §17.271 (5), §17.269 (1)
+// Spec: https://fetch.spec.whatwg.org/#dom-body-text
+
+// `Request.text(req, limit)` is `Request.bytes` decoded as strict UTF-8: a body that is not
+// UTF-8 is `BadRequest("body is not UTF-8")` where Fetch's `text()` substitutes U+FFFD, since a
+// server refuses a client's bytes rather than reading a different document. `Request.json` is
+// `Json.decode` of `text`, so it holds the same limit and the same rule, and a body that does not
+// decode is `BadRequest` with the `DecodeError`'s path and message.
+import std/json.{DecodeError}
+import std/request.{BadRequest, Bytes, Empty, Payload, Post, Request, Text}
+import std/url.{Url}
+
+fn req(body: Payload) -> Request { Request.of(Post, Url.from("/hook")).with_payload(body) }
+
+fn text(body: Payload, limit: Int) -> String {
+  let got: Result<String, BadRequest> = try { Request.text(req(body), limit) }
+  "{got}"
+}
+
+fn json(body: Payload, limit: Int) -> String {
+  let got: Result<Int, BadRequest> = try { Request.json(req(body), limit) }
+  "{got}"
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("utf-8 bytes: {text(Bytes(String.to_bytes("h\u{E9}")), 3)}")
+  Console.print("text: {text(Text("h\u{E9}"), 3)}")
+  Console.print("empty: {text(Empty, 0)}")
+  Console.print("not utf-8: {text(Bytes(Bytes.from_list([104, 233])), 8)}")
+  Console.print("over limit: {text(Bytes(Bytes.from_list([104, 233])), 1)}")
+  Console.print("json: {json(Bytes(String.to_bytes("42")), 2)}")
+  Console.print("json not utf-8: {json(Bytes(Bytes.from_list([52, 255])), 8)}")
+  Console.print("json over limit: {json(Text("42"), 1)}")
+  let direct: Result<Int, DecodeError> = Json.decode("true")
+  Console.print("decode: {direct}")
+  Console.print("json not a number: {json(Text("true"), 8)}")
+}

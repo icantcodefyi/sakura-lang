@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+Options: Ok((204, [("allow", "GET, OPTIONS")]))
+Trace: Ok((405, []))
+Get: Err(HttpError { status: None, reason: "no scripted response for Get https://a.example/" })
+route Options: 204
+route Get: 200
+route Trace: 405

@@ -34,7 +34,7 @@ env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
 process  = []          # no subprocesses
 ```
 
-`sakura run` passes this table as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP/serving and environment adapters enforce it. Running emitted JS directly without that variable does not establish this ceiling. Trusted FFI is outside this language-level boundary. There is no separate `Net` effect: the `net` list limits the network effects `Http` and `Serve` (`Sql.postgres` is not implemented) and is checked on every redirect hop, not only the first URL, and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied). [sakura.toml](/docs/manifest) lists every manifest key.
+`sakura run` passes this table as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP/serving and environment adapters enforce it. Running emitted JS directly without that variable does not establish this ceiling. Trusted FFI is outside this language-level boundary. There is no separate `Net` effect: the `net` list limits the network effects `Http` and `Serve` (`Sql.postgres` is not implemented) and is checked on every redirect hop, not only the first URL (see [Redirects](#redirects)), and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied). [sakura.toml](/docs/manifest) lists every manifest key.
 
 ## Narrowing authority
 
@@ -62,6 +62,36 @@ test "only the allowed HTTP host is forwarded" {
 ```
 
 The same attenuation wraps a host HTTP handler, which additionally enforces manifest permissions.
+
+### Redirects
+
+Redirects are followed by `std/http`, not by the host. A request's `redirect` field is `Follow` by default: every handler in `std/http` follows at most 20 hops, and each hop is its own send, so `Http.host()` checks `net` and `Http.scoped` checks its list on every hop before anything is sent there. A hop to another scheme, host or port drops `authorization` and every `secret_headers` entry. `Manual` returns the 3xx response itself, and `Error` fails with its status. Because the loop is ordinary Sakura code, `Http.scripted` can answer a 3xx, and this test needs no network:
+
+```sakura
+import std/http.{Http, Matcher}
+import std/request.{Get, Manual, Request}
+import std/response.{HttpError, Response, Status}
+import std/url.{Url}
+
+test "a hop outside the scoped list is never sent" {
+  let moved = Response {
+    ..Response.status(302, ""),
+    headers: [("location", "https://other.example/x")],
+  }
+  with Http.scripted([(Matcher.Any, moved)]), Http.scoped(["example.com:443"]) {
+    let req = Request.of(Get, Url.from("https://example.com/start"))
+    let followed: Result<Response, HttpError> = try { Http.send(req) }
+    expect_eq(
+      followed,
+      Err(HttpError { status: None, reason: "other.example:443 is outside Http.scoped" }),
+    )
+    let manual: Result<Response, HttpError> = try { Http.send(Request { ..req, redirect: Manual }) }
+    expect_eq(manual.map(fn(r) { r.status }), Ok(Status.from(302)))
+  }
+}
+```
+
+Bodies are a `Payload`: `Empty`, `Text(String)` or `Bytes(Bytes)`. The builders make `Text` or `Empty`, `Request.with_payload(Bytes(b))` sends binary data, and a host response arrives as `Bytes`; read it with `Response.text`, `Response.json` or `Response.bytes`, each with a byte limit.
 
 ## Forged capabilities are rejected
 

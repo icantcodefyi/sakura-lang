@@ -1,0 +1,8 @@
+through scoped:
+  Post https://a.example/start Manual [("content-type", "text/plain")] Text("hi")
+  Post https://b.example/next Manual [("content-type", "text/plain")] Text("hi")
+  Post https://b.example/form?x=1 Manual [("content-type", "text/plain")] Text("hi")
+  Get https://b.example/done Manual [] Empty
+Ok(Response { status: 200, headers: [], body: Text("done") })
+scripted alone:
+Ok(Response { status: 200, headers: [], body: Text("done") })

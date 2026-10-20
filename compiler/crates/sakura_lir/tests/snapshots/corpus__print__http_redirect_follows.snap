@@ -1,0 +1,248 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::http::Body
+layout 1 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 2 variant std::http::Matcher | Any 16b () | Path 24b (word*) | Method 24b (word*)
+layout 3 variant std::http::Step | Done 24b (word*) | Hop 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 7 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 8 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 9 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 10 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 11 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 14 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 15 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 16 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 17 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+layout 20 shape |  16b ()
+layout 21 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::http_redirect_follows, frame 55 slots [%4 word*, %5 word*, %11 word*, %12 word*, %13 word*, %19 word*, %20 word*, %21 word*, %22 word*, %29 word*, %30 word*, %31 word*, %32 word*, %33 word*, %39 word*, %40 word*, %41 word*, %42 word*, %43 word*, %46 word*, %47 word*, %50 word*, %51 word*, %53 bool, %54 word*, %55 word*, %57 word*, %58 word*, %59 word*, %60 word*, %61 word*, %62 word*, %63 word*, %67 word*, %68 word*, %69 word*, %70 word*, %71 word*, %76 bool, %77 word*, %78 word*, %80 word*, %81 word*, %84 bool, %87 word*, %89 word*, %95 bool, %96 word*, %97 word*, %99 word*, %100 word*, %101 word*, %103 word*, %104 word*, %105 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::http::Matcher.Path(%0)
+    %2 lit: i64 = const 307
+    %3 lit: ptr = const str 1
+    call redirect#3(%2, %3) -> b1(%1)
+  b1(%4 r: ptr, %5 r: ptr):
+    %6 tup: ptr = alloc tuple#18(word, word)(%5, %4)
+    %7 lit: ptr = const str 2
+    %8 r: ptr = alloc std::http::Matcher.Path(%7)
+    %9 lit: i64 = const 308
+    %10 lit: ptr = const str 3
+    call redirect#3(%9, %10) -> b2(%6, %8)
+  b2(%11 r: ptr, %12 tup: ptr, %13 r: ptr):
+    %14 tup: ptr = alloc tuple#18(word, word)(%13, %11)
+    %15 lit: ptr = const str 4
+    %16 r: ptr = alloc std::http::Matcher.Path(%15)
+    %17 lit: i64 = const 302
+    %18 lit: ptr = const str 5
+    call redirect#3(%17, %18) -> b3(%12, %14, %16)
+  b3(%19 r: ptr, %20 tup: ptr, %21 tup: ptr, %22 r: ptr):
+    %23 tup: ptr = alloc tuple#18(word, word)(%22, %19)
+    %24 lit: ptr = const str 5
+    %25 r: ptr = alloc std::http::Matcher.Path(%24)
+    %26 lit: i64 = const 200
+    %27 lit: ptr = const str 6
+    %28 $site: i64 = const 7
+    call status#4(%26, %27, %28) -> b4(%20, %21, %23, %25)
+  b4(%29 r: ptr, %30 tup: ptr, %31 tup: ptr, %32 tup: ptr, %33 r: ptr):
+    %34 tup: ptr = alloc tuple#18(word, word)(%33, %29)
+    %35 xs: ptr = alloc list(%30, %31, %32, %34)
+    %36 v: ptr = const static std::request::Method.Post
+    %37 lit: ptr = const str 7
+    %38 $site: i64 = const 8
+    call Url$from#7(%37, %38) -> b5(%35, %36)
+  b5(%39 r: ptr, %40 xs: ptr, %41 v: ptr):
+    call of#8(%41, %39) -> b6(%40)
+  b6(%42 r: ptr, %43 xs: ptr):
+    %44 lit: ptr = const str 8
+    %45 lit: ptr = const str 9
+    call with_header#9(%42, %44, %45) -> b7(%43)
+  b7(%46 r: ptr, %47 xs: ptr):
+    %48 lit: ptr = const str 10
+    %49 r: ptr = alloc std::request::Payload.Text(%48)
+    call with_payload#10(%46, %49) -> b8(%47)
+  b8(%50 r: ptr, %51 xs: ptr):
+    %52 lit: ptr = const str 11
+    perform std::console::Console.print(%52) -> b9(%51, %50)
+  b9(%53 r: unit, %54 xs: ptr, %55 r: ptr):
+    %56 box: word = box %53
+    drop %56
+    dup %54
+    call scripted#11(%54) -> b10(%54, %55)
+  b10(%57 r: ptr, %58 xs: ptr, %59 r: ptr):
+    call logged#12() -> b11(%58, %59, %57)
+  b11(%60 r: ptr, %61 xs: ptr, %62 r: ptr, %63 r: ptr):
+    %64 lit: ptr = const str 12
+    %65 lit: ptr = const str 13
+    %66 xs: ptr = alloc list(%64, %65)
+    call scoped#13(%66) -> b12(%61, %62, %63, %60)
+  b12(%67 r: ptr, %68 xs: ptr, %69 r: ptr, %70 r: ptr, %71 r: ptr):
+    handle_push %70
+    handle_push %71
+    handle_push %67
+    dup %68
+    dup %69
+    try_push -> b22(err, %68, %69)
+    dup %69
+    perform std::http::Http.send(%69) -> b23(%68, %69)
+  b13(%72 v: word, %73 xs: ptr, %74 r: ptr):
+    drop %72
+    %75 lit: ptr = const str 14
+    perform std::console::Console.print(%75) -> b14(%73, %74)
+  b14(%76 r: unit, %77 xs: ptr, %78 r: ptr):
+    %79 box: word = box %76
+    drop %79
+    call scripted#11(%77) -> b15(%78)
+  b15(%80 r: ptr, %81 r: ptr):
+    handle_push %80
+    try_push -> b18(err, )
+    perform std::http::Http.send(%81) -> b19()
+  b16(%82 v: ptr) [handle]:
+    %83 s: ptr = show %82
+    drop %82
+    perform std::console::Console.print(%83) -> b17()
+  b17(%84 r: unit) [handle]:
+    %85 box: word = box %84
+    %86 unbox: unit = unbox %85
+    drop %85
+    handle_pop
+    ret %86
+  b18(%87 e: word) [handle]:
+    %88 err: ptr = alloc std::result::Result.Err(%87)
+    jump b16(%88)
+  b19(%89 r: ptr) [handle, try]:
+    %90 ok: ptr = alloc std::result::Result.Ok(%89)
+    try_pop
+    jump b16(%90)
+  b20(%91 v: ptr, %92 xs: ptr, %93 r: ptr) [handle, handle, handle]:
+    %94 s: ptr = show %91
+    drop %91
+    perform std::console::Console.print(%94) -> b21(%92, %93)
+  b21(%95 r: unit, %96 xs: ptr, %97 r: ptr) [handle, handle, handle]:
+    %98 box: word = box %95
+    handle_pop
+    handle_pop
+    handle_pop
+    jump b13(%98, %96, %97)
+  b22(%99 e: word, %100 xs: ptr, %101 r: ptr) [handle, handle, handle]:
+    %102 err: ptr = alloc std::result::Result.Err(%99)
+    jump b20(%102, %100, %101)
+  b23(%103 r: ptr, %104 xs: ptr, %105 r: ptr) [handle, handle, handle, try]:
+    %106 ok: ptr = alloc std::result::Result.Ok(%103)
+    try_pop
+    jump b20(%106, %104, %105)
+
+fn $entry#1 top -> unit ; main::http_redirect_follows, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn redirect#3 top -> ptr ; main::http_redirect_follows, frame 4 slots [%0 i64, %1 word*, %4 word*, %5 word*]
+  b0(%0 code: i64, %1 location: ptr):
+    %2 lit: ptr = const str 15
+    %3 $site: i64 = const 9
+    call status#4(%0, %2, %3) -> b1(%1)
+  b1(%4 r: ptr, %5 location: ptr):
+    %6 lit: ptr = const str 16
+    %7 tup: ptr = alloc tuple#18(word, word)(%6, %5)
+    %8 xs: ptr = alloc list(%7)
+    %9 status: i64 = proj %4.0 std::response::Response
+    %10 body: word = proj %4.2 std::response::Response
+    drop %4
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10)
+    ret %11
+
+fn logged#12 top -> ptr ; main::http_redirect_follows, frame 0 slots []
+  b0():
+    %0 send: ptr = closure logged$Http_send#102[]
+    %1 stream: ptr = closure logged$Http_stream#103[]
+    %2 read_chunk: ptr = closure logged$Http_read_chunk#104[]
+    %3 handler: ptr = handler std::http::Http row 20 state() clauses(%0, %1, %2)
+    ret %3
+
+fn logged$Http_send#102 clause std::http::Http.send -> ptr ; main::http_redirect_follows, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %27 bool, %28 word*, %30 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 req: ptr):
+    drop %0
+    %3 method: word = proj %2.0 std::request::Request
+    %4 s: ptr = show %3
+    drop %3
+    %5 lit: ptr = const str 83
+    %6 s: ptr = concat %5, %4
+    drop %4
+    drop %5
+    %7 lit: ptr = const str 18
+    %8 s: ptr = concat %6, %7
+    drop %6
+    drop %7
+    %9 url: word = proj %2.1 std::request::Request
+    %10 s: ptr = show %9
+    drop %9
+    %11 s: ptr = concat %8, %10
+    drop %8
+    drop %10
+    %12 lit: ptr = const str 18
+    %13 s: ptr = concat %11, %12
+    drop %11
+    drop %12
+    %14 redirect: word = proj %2.4 std::request::Request
+    %15 s: ptr = show %14
+    drop %14
+    %16 s: ptr = concat %13, %15
+    drop %13
+    drop %15
+    %17 lit: ptr = const str 18
+    %18 s: ptr = concat %16, %17
+    drop %16
+    drop %17
+    %19 headers: word = proj %2.2 std::request::Request
+    %20 s: ptr = show %19
+    drop %19
+    %21 s: ptr = concat %18, %20
+    drop %18
+    drop %20
+    %22 lit: ptr = const str 18
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    %24 body: word = proj %2.3 std::request::Request
+    %25 s: ptr = show %24
+    drop %24
+    %26 s: ptr = concat %23, %25
+    drop %23
+    drop %25
+    perform std::console::Console.print(%26) -> b1(%2)
+  b1(%27 r: unit, %28 req: ptr):
+    %29 box: word = box %27
+    drop %29
+    perform std::http::Http.send(%28) -> b2()
+  b2(%30 r: ptr):
+    ret %30
+
+fn logged$Http_stream#103 clause std::http::Http.stream -> word ; main::http_redirect_follows, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 word*, %5 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 req: ptr, %3 body: ptr):
+    drop %0
+    %4 callback: ptr = callback %3
+    perform std::http::Http.stream(%2, %4) -> b1()
+  b1(%5 r: word):
+    ret %5
+
+fn logged$Http_read_chunk#104 clause std::http::Http.read_chunk -> ptr ; main::http_redirect_follows, captures [], frame 5 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
+    drop %0
+    perform std::http::Http.read_chunk(%2, %3) -> b1()
+  b1(%4 r: ptr):
+    ret %4

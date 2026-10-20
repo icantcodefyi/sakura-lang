@@ -78,7 +78,7 @@ test "429 then success replays with a virtual backoff" {
       Clock.virtual() {
     let response = fetch()
     expect_eq(response.status, Status.from(200))
-    expect_eq(response.body, "ready")
+    expect_eq(Response.bytes(response, 64), String.to_bytes("ready"))
     expect_eq(Clock.monotonic(), Duration.millis(100))
   }
 }

@@ -1,11 +1,14 @@
 // milestone: M3
 // mode: test
 // covers: TestDecl Lambda TryExpr; design §17.88; plan m3-completion-and-m4 §3.7 W2
+// Spec: https://fetch.spec.whatwg.org/#http-redirect-fetch
 
 // `Http.stream` over a scripted response: the body is read in chunks, then empty; it closes when
 // the callback returns or fails (the finalizer shows in the trace), and on WASM it crosses as a
-// host handle of kind `body` (runtime/rt/ABI.md §8.4).
-import std/http.{Any, Http}
+// host handle of kind `body` (runtime/rt/ABI.md §8.4). A 3xx is followed as `Http.send` follows
+// it (RFC 0002 §2.4): its body is closed and the next hop opened, and only the last answer
+// reaches the callback.
+import std/http.{Any, Http, Path}
 import std/request.{Get, Request}
 import std/response.{HttpError, Response, Status}
 import std/url.{Url}
@@ -36,5 +39,15 @@ test "a failing callback closes the body and fails the stream" {
   with Http.scripted([(Any, Response.status(200, "unread"))]) {
     let got: Result<Int, HttpError | Stop> = try { Http.stream(req(), fn(_i) { fail Stop }) }
     expect_eq(got, Err(Stop))
+  }
+}
+
+test "a redirect closes the 3xx body and opens the next hop" {
+  let moved = Response { ..Response.status(302, "moved"), headers: [("location", "/y")] }
+  with Http.scripted([(Path("/x"), moved), (Path("/y"), Response.status(200, "there"))]) {
+    let got = try {
+      Http.stream(req(), fn(i) { (i.status, String.from_bytes(Http.read_chunk(i.body, 100))) })
+    }
+    expect_eq(got, Ok((Status.from(200), Ok("there"))))
   }
 }

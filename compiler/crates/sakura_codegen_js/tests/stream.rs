@@ -221,7 +221,7 @@ test "streams replay" {{
       }})
     }}
     expect_eq(got, Ok((Status.from(200), Ok("streamed"))))
-    expect_eq(try {{ Http.send(Request.of(Method.Get, Url.from("https://api.example/s"))).body }}, Ok("streamed"))
+    expect_eq(try {{ Response.bytes(Http.send(Request.of(Method.Get, Url.from("https://api.example/s"))), 64) }}, Ok(String.to_bytes("streamed")))
   }}
 }}
 {llm_test}"#

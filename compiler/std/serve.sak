@@ -2,10 +2,13 @@
 // each request runs in its own task with the handlers installed around `listen`, and a
 // handler's defect becomes a 500 with a redacted report, never a crashed server. The host
 // server reads at most 1 MiB (1,048,576 bytes) of a request body: a larger one is answered
-// 413 and its connection closed without running the handler (design §17.159 (6)).
+// 413 and its connection closed without running the handler (design §17.159 (6)). A request
+// body reaches the handler as `Bytes` (`Empty` when there is none) and a response's `Payload`
+// is sent as it is.
 // needs M3: `[permissions] net` scoping of the address.
 
-import std/request.{Get, Request}
+import std/encoding.{Encoding, Errors}
+import std/request.{Bytes, Empty, Get, Request, Text}
 import std/response.{Response}
 import std/router.{Router}
 import std/url.{Url}
@@ -46,14 +49,20 @@ fn serve_listen<e>(addr: Address, handle: fn(Request) -> Response ! e) -> Never
   ! {Fail<ServeError> | e}
 
 /// Test handler: `serve` answers each of `requests` in order, writes
-/// `"<METHOD> <path> -> <status> <body>"` to the test output, then fails with
+/// `"<METHOD> <path> -> <status> <body>"` to the test output (a `Bytes` body as UTF-8 with
+/// U+FFFD), then fails with
 /// `ServeError { reason: "no more requests" }`.
 pub fn scripted(requests: List<Request>) -> Handler<Serve, {Test}> {
   handler Serve {
     fn serve(handle, addr) {
       for req in requests {
         let resp = handle(req)
-        Test.output("{req.method} {Url.path(req.url)} -> {resp.status} {resp.body}")
+        let text = match resp.body {
+          Empty => "",
+          Text(s) => s,
+          Bytes(b) => Encoding.decode(b, Encoding.Utf8, Errors.Replace).unwrap_or(""),
+        }
+        Test.output("{req.method} {Url.path(req.url)} -> {resp.status} {text}")
       }
       fail ServeError { reason: "no more requests" }
     }

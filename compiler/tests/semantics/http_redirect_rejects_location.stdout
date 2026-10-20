@@ -1,0 +1,4 @@
+/data: Err(HttpError { status: None, reason: "redirect to data: refused" })
+/file: Err(HttpError { status: None, reason: "redirect to file: refused" })
+/bad: Err(HttpError { status: None, reason: "invalid redirect location https://exa mple.com/" })
+/idna: Err(HttpError { status: None, reason: "invalid redirect location https://bücher.example/" })

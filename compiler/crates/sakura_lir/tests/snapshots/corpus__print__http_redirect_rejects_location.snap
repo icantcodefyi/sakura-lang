@@ -1,0 +1,158 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::http::Body
+layout 1 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 2 variant std::http::Matcher | Any 16b () | Path 24b (word*) | Method 24b (word*)
+layout 3 variant std::http::Step | Done 24b (word*) | Hop 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 7 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 8 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 9 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 10 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 11 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 12 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 13 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 14 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 15 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 16 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 17 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+layout 20 shape |  16b ()
+layout 21 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::http_redirect_rejects_location, frame 45 slots [%3 word*, %4 word*, %9 word*, %10 word*, %11 word*, %16 word*, %17 word*, %18 word*, %19 word*, %24 word*, %25 word*, %26 word*, %27 word*, %28 word*, %31 word*, %64 word*, %65 word*, %66 i64, %67 i64, %68 word*, %71 bool, %72 word*, %73 i64, %74 i64, %76 word*, %77 word*, %78 i64, %79 i64, %80 word*, %87 word*, %88 word*, %89 i64, %90 i64, %91 word*, %92 word*, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %98 word*, %99 word*, %100 i64, %101 i64, %102 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::http::Matcher.Path(%0)
+    %2 lit: ptr = const str 1
+    call redirect#3(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 r: ptr):
+    %5 tup: ptr = alloc tuple#18(word, word)(%4, %3)
+    %6 lit: ptr = const str 2
+    %7 r: ptr = alloc std::http::Matcher.Path(%6)
+    %8 lit: ptr = const str 3
+    call redirect#3(%8) -> b2(%5, %7)
+  b2(%9 r: ptr, %10 tup: ptr, %11 r: ptr):
+    %12 tup: ptr = alloc tuple#18(word, word)(%11, %9)
+    %13 lit: ptr = const str 4
+    %14 r: ptr = alloc std::http::Matcher.Path(%13)
+    %15 lit: ptr = const str 5
+    call redirect#3(%15) -> b3(%10, %12, %14)
+  b3(%16 r: ptr, %17 tup: ptr, %18 tup: ptr, %19 r: ptr):
+    %20 tup: ptr = alloc tuple#18(word, word)(%19, %16)
+    %21 lit: ptr = const str 6
+    %22 r: ptr = alloc std::http::Matcher.Path(%21)
+    %23 lit: ptr = const str 7
+    call redirect#3(%23) -> b4(%17, %18, %20, %22)
+  b4(%24 r: ptr, %25 tup: ptr, %26 tup: ptr, %27 tup: ptr, %28 r: ptr):
+    %29 tup: ptr = alloc tuple#18(word, word)(%28, %24)
+    %30 xs: ptr = alloc list(%25, %26, %27, %29)
+    call scripted#6(%30) -> b5()
+  b5(%31 r: ptr):
+    handle_push %31
+    %32 lit: ptr = const str 0
+    %33 lit: ptr = const str 2
+    %34 lit: ptr = const str 4
+    %35 lit: ptr = const str 6
+    %36 xs: ptr = alloc list(%32, %33, %34, %35)
+    dup.candidate %36
+    %37 n: i64 = $list_len(%36)
+    %104 lit: i64 = const 0
+    jump b7(%104, %36, %37)
+  b6() [handle]:
+    %38 lit: unit = const ()
+    handle_pop
+    ret %38
+  b7(%39 i: i64, %40 xs: ptr, %41 n: i64) [handle]:
+    %42 more: bool = lt.int %39, %41
+    if %42 then b8(%40, %41, %39) else b9(%40, %41, %39)
+  b8(%43 xs: ptr, %44 n: i64, %45 i: i64) [handle]:
+    dup.candidate %43
+    %49 x: word = $list_at(%43, %45)
+    dup %43
+    dup %49
+    try_push -> b14(err, %43, %44, %45, %49)
+    %82 v: ptr = const static std::request::Method.Get
+    %83 s: ptr = show %49
+    %84 lit: ptr = const str 9
+    %85 s: ptr = concat %84, %83
+    drop %83
+    drop %84
+    %86 $site: i64 = const 7
+    call Url$from#7(%85, %86) -> b15(%43, %44, %45, %49, %82)
+  b9(%46 xs: ptr, %47 n: i64, %48 i: i64) [handle]:
+    drop %46
+    jump b6()
+  b10(%50 xs: ptr, %51 n: i64, %52 i: i64) [handle]:
+    %53 lit: i64 = const 1
+    %54 i: i64 = intadd %52, %53
+    jump b7(%54, %50, %51)
+  b11(%55 v: ptr, %56 xs: ptr, %57 n: i64, %58 i: i64, %59 x: ptr) [handle]:
+    %60 s: ptr = show %59
+    drop %59
+    %61 lit: ptr = const str 8
+    %62 s: ptr = concat %60, %61
+    drop %60
+    drop %61
+    %63 f: ptr = closure main$1#9[]
+    call map#10(%55, %63) -> b12(%56, %57, %58, %62)
+  b12(%64 r: ptr, %65 xs: ptr, %66 n: i64, %67 i: i64, %68 s: ptr) [handle]:
+    %69 s: ptr = show %64
+    drop %64
+    %70 s: ptr = concat %68, %69
+    drop %68
+    drop %69
+    perform std::console::Console.print(%70) -> b13(%65, %66, %67)
+  b13(%71 r: unit, %72 xs: ptr, %73 n: i64, %74 i: i64) [handle]:
+    %75 box: word = box %71
+    drop %75
+    jump b10(%72, %73, %74)
+  b14(%76 e: word, %77 xs: ptr, %78 n: i64, %79 i: i64, %80 x: ptr) [handle]:
+    %81 err: ptr = alloc std::result::Result.Err(%76)
+    jump b11(%81, %77, %78, %79, %80)
+  b15(%87 r: ptr, %88 xs: ptr, %89 n: i64, %90 i: i64, %91 x: ptr, %92 v: ptr) [handle, try]:
+    call of#8(%92, %87) -> b16(%88, %89, %90, %91)
+  b16(%93 r: ptr, %94 xs: ptr, %95 n: i64, %96 i: i64, %97 x: ptr) [handle, try]:
+    perform std::http::Http.send(%93) -> b17(%94, %95, %96, %97)
+  b17(%98 r: ptr, %99 xs: ptr, %100 n: i64, %101 i: i64, %102 x: ptr) [handle, try]:
+    %103 ok: ptr = alloc std::result::Result.Ok(%98)
+    try_pop
+    jump b11(%103, %99, %100, %101, %102)
+
+fn $entry#1 top -> unit ; main::http_redirect_rejects_location, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn redirect#3 top -> ptr ; main::http_redirect_rejects_location, frame 3 slots [%0 word*, %4 word*, %5 word*]
+  b0(%0 location: ptr):
+    %1 lit: i64 = const 302
+    %2 lit: ptr = const str 10
+    %3 $site: i64 = const 8
+    call status#105(%1, %2, %3) -> b1(%0)
+  b1(%4 r: ptr, %5 location: ptr):
+    %6 lit: ptr = const str 11
+    %7 tup: ptr = alloc tuple#18(word, word)(%6, %5)
+    %8 xs: ptr = alloc list(%7)
+    %9 status: i64 = proj %4.0 std::response::Response
+    %10 body: word = proj %4.2 std::response::Response
+    drop %4
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10)
+    ret %11
+
+fn main$1#9 lambda -> word ; main::http_redirect_rejects_location, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 r: word):
+    drop %0
+    %2 status: i64 = proj %1.0 std::response::Response
+    drop %1
+    %3 box: word = box %2
+    ret %3

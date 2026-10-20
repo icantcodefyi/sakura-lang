@@ -1,0 +1,7 @@
+  request 20: https://a.example/19
+  request 21: https://a.example/20
+20 redirects: Ok(200)
+  request 20: https://a.example/19
+  request 21: https://a.example/20
+21 redirects: Err(HttpError { status: None, reason: "too many redirects" })
+loop: Err(HttpError { status: None, reason: "too many redirects" })

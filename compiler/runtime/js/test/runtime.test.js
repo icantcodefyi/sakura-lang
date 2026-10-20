@@ -9,6 +9,23 @@ import * as rt from "../sakura_runtime.js";
 const { G, LIMIT, bounce, ret } = rt;
 const ok = (value) => ({ kind: "ok", value });
 
+// `std::request::Payload` and `Redirect` (RFC 0002 §2.4), as the emitted std defines them.
+class Payload extends rt.Variant {}
+Payload.prototype.$t = rt.variantType("Payload", "std::request", [
+  ["Empty", []],
+  ["Text", [["String"]]],
+  ["Bytes", [["Bytes"]]],
+]);
+rt.def("std::request::Payload", Payload);
+class Redirect extends rt.Variant {}
+Redirect.prototype.$t = rt.variantType("Redirect", "std::request", [["Follow", []], ["Manual", []], ["Error", []]]);
+rt.def("std::request::Redirect", Redirect);
+const EMPTY = new Payload(0, []);
+const txt = (s) => new Payload(1, [s]);
+const bin = (b) => new Payload(2, [Uint8Array.from(b)]);
+/** A payload's bytes as text. */
+const textOf = (p) => (p.tag === 0 ? "" : p.tag === 1 ? p.fields[0] : Buffer.from(p.fields[0]).toString("utf8"));
+
 // fn sum(n: Int) -> Int { if n == 0 { 0 } else { n + sum(n - 1) } }   (not a tail call)
 function sum(n, $ctx, $k) {
   if (++G.d > LIMIT) return bounce(sum, [n, $ctx, $k]);
@@ -716,6 +733,53 @@ test("sseMessage rebuilds a Messages API stream and the text after each delta", 
   assert.equal(rt.sseMessage(head + ev("error", { error: { type: "overloaded_error" } })), null);
 });
 
+test("a binary body records as Base64 and replays as the same bytes; Text and Bytes of one body match", async () => {
+  const fs = await import("node:fs");
+  const os = await import("node:os");
+  const path = await import("node:path");
+  class Response {
+    constructor(status, headers, body) {
+      Object.assign(this, { status, headers, body });
+    }
+  }
+  rt.def("std::response::Response", Response);
+  rt.def(
+    "std::http::Incoming",
+    class {
+      constructor(status, headers, body) {
+        Object.assign(this, { status, headers, body });
+      }
+    },
+  );
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  const req = (body) => ({ method: new Method(1, []), url: "https://x/up", headers: rt.list([]), body, secret_headers: rt.list([]) });
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "sakura-cassette-")), "fixtures");
+  const saved = process.env.SAKURA_RECORD;
+  try {
+    process.env.SAKURA_RECORD = "1";
+    const id = rt.http_recording_open(rt.fixtures_dir(dir, true), "bin.jsonl").fields[0];
+    const png = [0x89, 0x50, 0x4e, 0x47, 0x00, 0xff];
+    assert.deepEqual(rt.http_recording_append(id, req(bin([0xff, 0x00])), new Response(200, rt.list([]), bin(png))), rt.Ok(undefined));
+    assert.deepEqual(rt.http_recording_append(id, req(txt("é")), new Response(200, rt.list([]), txt("ok"))), rt.Ok(undefined));
+    const lines = fs.readFileSync(path.join(dir, "bin.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    assert.equal(lines[1].body_base64, "/wA=");
+    assert.equal(lines[1].response_body_base64, "iVBORwD/");
+    assert.equal(lines[1].body, undefined);
+    assert.equal(lines[2].body, "é");
+    delete process.env.SAKURA_RECORD;
+    const again = rt.http_recording_open(rt.fixtures_dir(dir, false), "bin.jsonl").fields[0];
+    assert.deepEqual(rt.http_recording_lookup(again, req(bin([0xff, 0x00]))).fields[0].fields[0].body, bin(png));
+    const asBytes = rt.http_recording_lookup(again, req(bin(Buffer.from("é"))));
+    assert.deepEqual(asBytes.fields[0].fields[0].body, bin(Buffer.from("ok")), "Bytes matches the recorded Text");
+    const stream = rt.http_recording_lookup_stream(again, req(bin([0xff, 0x00]))).fields[0].fields[0];
+    assert.equal(stream.status, 200);
+  } finally {
+    if (saved === undefined) delete process.env.SAKURA_RECORD;
+    else process.env.SAKURA_RECORD = saved;
+  }
+});
+
 test("cassettes record, replay in order and never touch secret headers", async () => {
   const fs = await import("node:fs");
   const os = await import("node:os");
@@ -730,8 +794,8 @@ test("cassettes record, replay in order and never touch secret headers", async (
   rt.def("std::response::Response", Response);
   class Method extends rt.Variant {}
   Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
-  const req = (url, body = "") => ({
-    method: new Method(body === "" ? 0 : 1, []),
+  const req = (url, body = EMPTY) => ({
+    method: new Method(body === EMPTY ? 0 : 1, []),
     url,
     headers: rt.list([["accept", "text/plain"]]),
     body,
@@ -747,14 +811,14 @@ test("cassettes record, replay in order and never touch secret headers", async (
     const miss = rt.http_recording_lookup(empty, req("https://x/a"));
     assert.equal(miss.tag, 1);
     assert.equal(miss.fields[0], "no recording for GET https://x/a in api.jsonl; run sakura test --record");
-    assert.equal(rt.http_recording_append(empty, req("https://x/a"), new Response(200, rt.list([]), "")).tag, 1);
+    assert.equal(rt.http_recording_append(empty, req("https://x/a"), new Response(200, rt.list([]), EMPTY)).tag, 1);
     assert.equal(rt.fs_write(ro, "x.txt", rt.string_to_bytes("x")).tag, 1);
 
     process.env.SAKURA_RECORD = "1";
     const rw = rt.fixtures_dir(dir, true);
     const id = rt.http_recording_open(rw, "api.jsonl").fields[0];
     assert.deepEqual(rt.http_recording_lookup(id, req("https://x/a")), rt.Ok(rt.None));
-    for (const body of ["one", "two"]) {
+    for (const body of [txt("one"), bin(Buffer.from("two"))]) {
       const resp = new Response(200, rt.list([["content-type", "text/plain"]]), body);
       assert.deepEqual(rt.http_recording_append(id, req("https://x/a"), resp), rt.Ok(undefined));
     }
@@ -775,9 +839,10 @@ test("cassettes record, replay in order and never touch secret headers", async (
     // Replay: a fresh open consumes the exchanges in order, then repeats the last.
     delete process.env.SAKURA_RECORD;
     const again = rt.http_recording_open(rt.fixtures_dir(dir, false), "api.jsonl").fields[0];
+    // A replayed body is `Bytes`, as `Http.host()` answers, however it was recorded.
     const bodies = [1, 2, 3].map(() => rt.http_recording_lookup(again, req("https://x/a")).fields[0].fields[0].body);
-    assert.deepEqual(bodies, ["one", "two", "two"]);
-    assert.equal(rt.http_recording_lookup(again, req("https://x/a", "{}")).tag, 1);
+    assert.deepEqual(bodies, [bin(Buffer.from("one")), bin(Buffer.from("two")), bin(Buffer.from("two"))]);
+    assert.equal(rt.http_recording_lookup(again, req("https://x/a", txt("{}"))).tag, 1);
     fs.writeFileSync(path.join(dir, "bad.jsonl"), "{\n");
     assert.match(rt.http_recording_open(rt.fixtures_dir(dir, false), "bad.jsonl").fields[0], /^bad\.jsonl:1: /);
 
@@ -826,12 +891,12 @@ test("cassettes record, replay in order and never touch secret headers", async (
       assert.equal(refused.tag, 1);
       assert.equal(refused.fields[0], `header ${name} belongs in secret_headers (Http.bearer); not recorded`);
       assert.equal(rt.http_recording_lookup_stream(rec, leaky).tag, 1);
-      assert.equal(rt.http_recording_append(rec, leaky, new Response(200, rt.list([]), "")).tag, 1);
+      assert.equal(rt.http_recording_append(rec, leaky, new Response(200, rt.list([]), EMPTY)).tag, 1);
     }
     assert.equal(fs.readFileSync(path.join(dir, "api.jsonl"), "utf8"), text);
 
     // `set-cookie` is stored, and replays, as `<redacted>`; other response headers stay.
-    const cookie = new Response(200, rt.list([["Set-Cookie", "session=s3cret"], ["etag", "x1"]]), "c");
+    const cookie = new Response(200, rt.list([["Set-Cookie", "session=s3cret"], ["etag", "x1"]]), txt("c"));
     assert.deepEqual(rt.http_recording_append(rec, req("https://x/cookie"), cookie), rt.Ok(undefined));
     assert.ok(!fs.readFileSync(path.join(dir, "api.jsonl"), "utf8").includes("s3cret"));
     delete process.env.SAKURA_RECORD;
@@ -957,8 +1022,8 @@ test("serveHttp refuses a body over 1 MiB or a too large request with 413 and an
   class Method extends rt.Variant {}
   Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
   class Request {
-    constructor(method, url, headers, body) {
-      Object.assign(this, { method, url, headers, body });
+    constructor(method, url, headers, body, redirect) {
+      Object.assign(this, { method, url, headers, body, redirect });
     }
   }
   rt.def("std::request::Method", Method);
@@ -974,7 +1039,8 @@ test("serveHttp refuses a body over 1 MiB or a too large request with 413 and an
     seen.push(req.url);
     if (req.url === "/huge") return reply({ kind: "too large", code: "D091", message: "request too large" });
     const status = req.url === "/bad" ? 42 : 200;
-    reply({ kind: "ok", value: { status, headers: rt.list([]), body: String(req.body.length) } });
+    const size = req.body.tag === 0 ? 0 : req.body.fields[0].length;
+    reply({ kind: "ok", value: { status, headers: rt.list([]), body: txt(String(size)) } });
   });
   const send = (path, chunks = []) =>
     new Promise((resolve) => {
@@ -1021,7 +1087,7 @@ test("http_send whose body is cut short is Err, not a defect", async () => {
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   const { port } = server.address();
   try {
-    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: `http://127.0.0.1:${port}/`, headers: rt.list([]), secret_headers: rt.list([]), body: "" };
+    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: `http://127.0.0.1:${port}/`, headers: rt.list([]), secret_headers: rt.list([]), body: EMPTY };
     const o = await rt.runTask(rt.http_send, [req]);
     assert.equal(o.kind, "ok", o.message);
     assert.equal(o.value.tag, 1, "a truncated Ok is never returned");
@@ -1058,7 +1124,7 @@ test("SAKURA_MAX_COPY_BYTES is decimal digits from 1, unset is 256 MiB, anything
   // `http_send` refuses before any request leaves.
   process.env[name] = "abc";
   try {
-    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: "http://127.0.0.1:9/", headers: rt.list([]), secret_headers: rt.list([]), body: "" };
+    const req = { method: { $t: { ctors: [{ name: "Get" }] }, tag: 0 }, url: "http://127.0.0.1:9/", headers: rt.list([]), secret_headers: rt.list([]), body: EMPTY };
     const o = await rt.runTask(rt.http_send, [req]);
     assert.deepEqual([o.kind, o.code], ["defect", "D091"]);
   } finally {
@@ -1089,16 +1155,17 @@ test("http_send past SAKURA_MAX_COPY_BYTES is Err(response too large) and aborts
   const method = (tag) => ({ $t: { ctors: [{ name: "Get" }, { name: "Head" }] }, tag });
   const send = (path, tag = 0) =>
     rt.runTask(rt.http_send, [
-      { method: method(tag), url: `http://127.0.0.1:${port}${path}`, headers: rt.list([]), secret_headers: rt.list([]), body: "" },
+      { method: method(tag), url: `http://127.0.0.1:${port}${path}`, headers: rt.list([]), secret_headers: rt.list([]), body: EMPTY },
     ]);
   process.env.SAKURA_MAX_COPY_BYTES = "1024";
   try {
     const fits = await send("/fits");
     assert.equal(fits.value.tag, 0);
-    assert.equal(fits.value.fields[0].body, "a".repeat(1024));
+    assert.equal(textOf(fits.value.fields[0].body), "a".repeat(1024));
+    assert.equal(fits.value.fields[0].body.tag, 2, "a host body is Bytes");
     const head = await send("/head", 1);
     assert.equal(head.value.tag, 0, "a declared length with no body to follow is not refused");
-    assert.equal(head.value.fields[0].body, "");
+    assert.deepEqual(head.value.fields[0].body, EMPTY, "no bytes is Empty");
     for (const path of ["/declared", "/chunked"]) {
       assert.deepEqual(await send(path), ok(rt.Err("response too large")), path);
       assert.equal(await closed.get(path), false, `${path}: the connection closed before the body ended`);
@@ -1164,8 +1231,8 @@ test("serveHttp answers heap exhaustion 503 with one record; after close a reque
   rt.def(
     "std::request::Request",
     class {
-      constructor(method, url, headers, body) {
-        Object.assign(this, { method, url, headers, body });
+      constructor(method, url, headers, body, redirect) {
+        Object.assign(this, { method, url, headers, body, redirect });
       }
     },
   );
@@ -1177,7 +1244,7 @@ test("serveHttp answers heap exhaustion 503 with one record; after close a reque
   const s = rt.serveHttp({ host: "127.0.0.1", port }, (req, reply) => {
     seen.push(req.url);
     if (req.url === "/full") return reply({ kind: "defect", code: "D096", message: "heap exhausted: request not started" });
-    reply({ kind: "ok", value: { status: 200, headers: rt.list([]), body: "ok" } });
+    reply({ kind: "ok", value: { status: 200, headers: rt.list([]), body: txt("ok") } });
   });
   try {
     const c = await wire(port);

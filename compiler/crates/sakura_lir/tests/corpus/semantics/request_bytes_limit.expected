@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+3 of 3: Ok(Bytes.of([0, 159, 255]))
+3 of 2: Err(BadRequest { detail: "body exceeds 2 bytes" })
+text 2 of 2: Ok(Bytes.of([195, 169]))
+text 2 of 1: Err(BadRequest { detail: "body exceeds 1 bytes" })
+empty: Ok(Bytes.of([]))

@@ -1,12 +1,27 @@
 // HTTP client as an effect (design §10.2, §10.4, M3). The manifest's `net` list limits the
 // host handler (§6.2); `Http.scoped(hosts)` attenuates by data; there is no `Net` effect.
 // `Http.recording(path)` replays cassettes (design §17.73). `Http.stream` reads a response as
-// it arrives (design §17.88).
+// it arrives (design §17.88). Every handler here follows redirects with one loop, `follow`
+// (RFC 0002 §2.4, design §17.263 (4), §17.271).
 
 import std/duration.{Duration}
 import std/fs.{Dir, Fs}
 import std/path.{Path}
-import std/request.{Method, Request}
+import std/request.{
+  Bytes,
+  Empty,
+  Error,
+  Follow,
+  Get,
+  Head,
+  Manual,
+  Method,
+  Payload,
+  Post,
+  Redirect,
+  Request,
+  Text,
+}
 import std/response.{HttpError, Response, Status}
 import std/url.{Url}
 
@@ -55,15 +70,23 @@ pub fn bearer(req: Request, token: Secret<String>) -> Request {
 }
 
 /// The root handler the host installs for a `main` that declares `Http`: `fetch`, limited
-/// to the manifest's `net` list. Redirects are followed for at most 20 hops, each hop's
-/// `host:port` checked against `net` before it is fetched; a hop to another origin drops
-/// `authorization` and every `secret_headers` entry.
+/// to the manifest's `net` list, which is checked on every send. A response body arrives as
+/// `Bytes` (`Empty` when it has no bytes). Redirects follow `req.redirect` (`follow`): each
+/// hop is its own send, so its `host:port` is checked against `net` before it is fetched.
 pub fn host() -> Handler<Http> {
   handler Http {
-    fn send(req) { ok_or_fail(http_send(req)) }
+    fn send(req) { follow(req, req, 0, fn(r) { ok_or_fail(http_send(r)) }) }
     fn stream(req, body) {
-      let incoming = ok_or_fail(http_stream_open(req))
-      http_stream_closing(incoming.body, fn() { body(incoming) })
+      follow_stream(
+        req,
+        req,
+        0,
+        fn(r, k) {
+          let incoming = ok_or_fail(http_stream_open(r))
+          http_stream_closing(incoming.body, fn() { k(incoming) })
+        },
+        body,
+      )
     }
     fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
   }
@@ -71,20 +94,135 @@ pub fn host() -> Handler<Http> {
 
 /// Forwards to the enclosing `Http` only for requests to the listed `host:port` entries (a
 /// URL without a port means 443 for `https` and 80 otherwise); others fail with `HttpError`.
-/// The list is checked against the request's URL; redirect hops are checked by `host()`
-/// against `net`, not against this list.
+/// It follows redirects itself (`follow`), forwarding each hop with `redirect: Manual`, so
+/// every hop is checked against this list before it is forwarded.
 pub fn scoped(hosts: List<String>) -> Handler<Http, {Http}> {
   handler Http {
     fn send(req) {
-      allowed(hosts, req)
-      Http.send(req)
+      follow(req, req, 0, fn(r) {
+        allowed(hosts, r)
+        Http.send(r)
+      })
     }
     fn stream(req, body) {
-      allowed(hosts, req)
-      Http.stream(req, body)
+      follow_stream(
+        req,
+        req,
+        0,
+        fn(r, k) {
+          allowed(hosts, r)
+          Http.stream(r, k)
+        },
+        body,
+      )
     }
     fn read_chunk(b, max) { Http.read_chunk(b, max) }
   }
+}
+
+// Redirects (RFC 0002 §2.4, design §17.263 (4), §17.271), as Fetch's HTTP-redirect fetch.
+let max_redirects = 20
+
+let body_headers = ["content-encoding", "content-language", "content-location", "content-type"]
+
+/// What one hop of `follow_stream` ends with: the callback's value, or the next hop.
+type Step<T> = Done(T) | Hop(Request)
+
+/// `send(at)` with `redirect: Manual`, then the hops `req.redirect` asks for, each through
+/// `send`; `hops` is the number followed before `at` (design §17.263 (4), §17.271).
+fn follow<e>(
+  req: Request,
+  at: Request,
+  hops: Int,
+  send: fn(Request) -> Response ! {Fail<HttpError> | e},
+) -> Response
+  ! {Fail<HttpError> | e}
+{
+  let resp = send(Request { ..at, redirect: Manual })
+  match next_hop(req.redirect, at, hops, resp.status, resp.headers) {
+    None => resp,
+    Some(next) => follow(req, next, hops + 1, send),
+  }
+}
+
+/// `follow` for `Http.stream`: `open(at, k)` runs `k` while the answer is open and closes it
+/// when `k` returns, so a 3xx body is closed before the next hop opens.
+fn follow_stream<T, e>(
+  req: Request,
+  at: Request,
+  hops: Int,
+  open: fn(Request, fn(Incoming) -> Step<T> ! {Fail<HttpError> | e}) -> Step<T> ! {Fail<HttpError> | e},
+  body: fn(Incoming) -> T ! e,
+) -> T
+  ! {Fail<HttpError> | e}
+{
+  let step = open(Request { ..at, redirect: Manual }, fn(i) {
+    match next_hop(req.redirect, at, hops, i.status, i.headers) {
+      None => Done(body(i)),
+      Some(next) => Hop(next),
+    }
+  })
+  match step {
+    Done(value) => value,
+    Hop(next) => follow_stream(req, next, hops + 1, open, body),
+  }
+}
+
+/// The request after an answer to `at` with `status` and `headers`, or `None` when the answer
+/// is the result: not a redirect (301, 302, 303, 307, 308), `Manual`, or no `location`. `Error`
+/// fails with the status; after 20 hops, a location that does not resolve against `at.url` or is
+/// not `http`/`https` fails. A hop to another origin (scheme, host or port) drops `authorization`
+/// and every `secret_headers` entry; a 303, or a 301/302 after a `POST`, becomes a `GET` with no
+/// body and none of Fetch's request-body headers (`content-type`, `-encoding`, `-language`,
+/// `-location`).
+fn next_hop(
+  mode: Redirect,
+  at: Request,
+  hops: Int,
+  status: Status,
+  headers: List<(String, String)>,
+) -> Option<Request>
+  ! {Fail<HttpError>}
+{
+  let code: Int = status
+  if !List.contains([301, 302, 303, 307, 308], code) { return None }
+  match mode {
+    Manual => { return None },
+    Error => fail HttpError { status: Some(status), reason: "unexpected redirect" },
+    Follow => {},
+  }
+  let location = match List.find(headers, fn(h) { String.to_lower(h.0) == "location" }) {
+    Some(h) => h.1,
+    None => { return None },
+  }
+  if hops == max_redirects { fail HttpError { status: None, reason: "too many redirects" } }
+  let resolved = match Url.parse(at.url) {
+    Ok(from) => Url.resolve(from, location).map(fn(to) { (from, to) }),
+    Err(e) => Err(e),
+  }
+  let (from, to) = match resolved {
+    Ok(pair) => pair,
+    Err(_) => fail HttpError { status: None, reason: "invalid redirect location {location}" },
+  }
+  if to.scheme != "http" && to.scheme != "https" {
+    fail HttpError { status: None, reason: "redirect to {to.scheme}: refused" }
+  }
+  let cross = Url.origin(from) != Url.origin(to)
+  let secret = List.map(at.secret_headers, fn(h) { String.to_lower(h.0) })
+  let to_get = (code == 303 && at.method != Head) || (code <= 302 && at.method == Post)
+  let dropped = fn(name: String) -> Bool {
+    let n = String.to_lower(name)
+    (cross && (n == "authorization" || List.contains(secret, n)))
+      || (to_get && List.contains(body_headers, n))
+  }
+  Some(Request {
+    ..at,
+    method: if to_get { Get } else { at.method },
+    url: Url.to_url(to),
+    headers: List.filter(at.headers, fn(h) { !dropped(h.0) }),
+    body: if to_get { Empty } else { at.body },
+    secret_headers: if cross { [] } else { at.secret_headers },
+  })
 }
 
 fn allowed(hosts: List<String>, req: Request) -> Unit ! {Fail<HttpError>} {
@@ -109,18 +247,21 @@ fn host_port(u: Url) -> String {
 
 /// Replays the cassette at `path` (JSON Lines, inside the installed `Fs` handler's directory,
 /// usually `with Fs.rooted(Test.fixtures())`): a request whose method, url, headers and body
-/// match a recorded exchange gets its response; identical requests replay in recorded order,
-/// the last one repeating. A miss fails with `HttpError` naming `sakura test --record`, under
-/// which it is forwarded to the enclosing `Http` and appended. `secret_headers` are never
-/// written and never part of the match (design §17.57, §17.73). Three rules (§17.122): the
-/// file's first line is `{"schema_version":"1.0","kind":"cassette"}`, written on the first
-/// append and required by `open`; a request whose `headers` hold `authorization`,
-/// `proxy-authorization`, `x-api-key`, `api-key`, `x-auth-token` or `cookie` (any case) fails
-/// with `HttpError` before any replay or forward (put it in `secret_headers`, `Http.bearer`);
-/// a `set-cookie` response header is stored and replayed as `<redacted>`. The URL and body are
-/// stored verbatim. A response body, sent or streamed, is recorded only up to 16 MiB
-/// (16,777,216 bytes): past it `send` or `stream` fails with `HttpError` naming the limit and
-/// the exchange is not appended.
+/// match a recorded exchange gets its response, its body as `host()` gives it; identical
+/// requests replay in recorded order, the last one repeating. Each redirect hop is its own
+/// exchange (`follow`), so a cassette without 3xx exchanges replays as before. A miss fails
+/// with `HttpError` naming `sakura test --record`, under which it is forwarded to the
+/// enclosing `Http` and appended. `secret_headers` are never written and never part of the
+/// match (design §17.57, §17.73). Three rules (§17.122): the file's first line is
+/// `{"schema_version":"1.0","kind":"cassette"}`, written on the first append and required by
+/// `open`; a request whose `headers` hold `authorization`, `proxy-authorization`, `x-api-key`,
+/// `api-key`, `x-auth-token` or `cookie` (any case) fails with `HttpError` before any replay or
+/// forward (put it in `secret_headers`, `Http.bearer`); a `set-cookie` response header is
+/// stored and replayed as `<redacted>`. The URL and body are stored verbatim, a body that is
+/// not UTF-8 as Base64 (`body_base64`, `response_body_base64`); a `Text` and a `Bytes` request
+/// body with the same bytes match. A response body, sent or streamed, is recorded only up to
+/// 16 MiB (16,777,216 bytes): past it `send` or `stream` fails with `HttpError` naming the
+/// limit and the exchange is not appended.
 pub fn recording(path: Path) -> Handler<Http, {Fs, Http}> { replaying(cassette(path)) }
 
 /// A cassette file, read on first use. `Llm.recording` opens one per installation and replays
@@ -143,30 +284,42 @@ pub fn replaying(c: Cassette) -> Handler<Http, {Fs, Http}> {
     fn send(req) {
       cur = open(cur)
       let id = cur.id
-      match http_recording_lookup(id, req) {
-        Ok(Some(resp)) => resp,
-        Ok(None) => {
-          let resp = Http.send(req)
-          if String.len(resp.body) > max_recorded_body { fail too_large_to_record() }
-          ok_or_fail(http_recording_append(id, req, resp))
-          resp
-        },
-        Err(reason) => fail HttpError { status: None, reason },
-      }
+      follow(req, req, 0, fn(r) {
+        match http_recording_lookup(id, r) {
+          Ok(Some(resp)) => resp,
+          Ok(None) => {
+            let resp = Http.send(r)
+            if Bytes.len(payload_bytes(resp.body)) > max_recorded_body {
+              fail too_large_to_record()
+            }
+            ok_or_fail(http_recording_append(id, r, resp))
+            resp
+          },
+          Err(reason) => fail HttpError { status: None, reason },
+        }
+      })
     }
     fn stream(req, body) {
       cur = open(cur)
       let id = cur.id
-      let incoming = match ok_or_fail(http_recording_lookup_stream(id, req)) {
-        Some(incoming) => incoming,
-        None => {
-          // Recording: read the whole body from the enclosing `Http`, store it, replay it.
-          let got = Http.stream(req, fn(i) { (i.status, i.headers, read_body(i.body)) })
-          ok_or_fail(http_recording_append_stream(id, req, got.0, got.1, got.2))
-          Incoming { status: got.0, headers: got.1, body: http_body_of(got.2) }
+      follow_stream(
+        req,
+        req,
+        0,
+        fn(r, k) {
+          let incoming = match ok_or_fail(http_recording_lookup_stream(id, r)) {
+            Some(incoming) => incoming,
+            None => {
+              // Recording: read the whole body from the enclosing `Http`, store it, replay it.
+              let got = Http.stream(r, fn(i) { (i.status, i.headers, read_body(i.body)) })
+              ok_or_fail(http_recording_append_stream(id, r, got.0, got.1, got.2))
+              Incoming { status: got.0, headers: got.1, body: http_body_of(got.2) }
+            },
+          }
+          http_stream_closing(incoming.body, fn() { k(incoming) })
         },
-      }
-      http_stream_closing(incoming.body, fn() { body(incoming) })
+        body,
+      )
     }
     fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
   }
@@ -202,16 +355,34 @@ fn ok_or_fail<T>(r: Result<T, String>) -> T ! {Fail<HttpError>} {
   }
 }
 
-/// Test handler: the response of the first matching entry; no match is an `HttpError`.
+/// The bytes on the wire for `p`: `Text` as UTF-8.
+fn payload_bytes(p: Payload) -> Bytes {
+  match p {
+    Empty => Bytes.from_list([]),
+    Text(s) => String.to_bytes(s),
+    Bytes(b) => b,
+  }
+}
+
+/// Test handler: the response of the first matching entry; no match is an `HttpError`. A
+/// scripted 3xx with a `location` header is a redirect, followed as `host()` does (`follow`).
 pub fn scripted(script: List<(Matcher, Response)>) -> Handler<Http> {
   handler Http {
-    fn send(req) { scripted_response(script, req) }
+    fn send(req) { follow(req, req, 0, fn(r) { scripted_response(script, r) }) }
     fn stream(req, body) {
-      let resp = scripted_response(script, req)
-      let b = http_body_of(String.to_bytes(resp.body))
-      http_stream_closing(b, fn() {
-        body(Incoming { status: resp.status, headers: resp.headers, body: b })
-      })
+      follow_stream(
+        req,
+        req,
+        0,
+        fn(r, k) {
+          let resp = scripted_response(script, r)
+          let b = http_body_of(payload_bytes(resp.body))
+          http_stream_closing(b, fn() {
+            k(Incoming { status: resp.status, headers: resp.headers, body: b })
+          })
+        },
+        body,
+      )
     }
     fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
   }
@@ -290,7 +461,7 @@ test "scripted matches by path and method" {
     (Method(Method.Post), Response.status(201, "p")),
   ]
   with scripted(script) {
-    expect_eq(try { get(Url.from("https://x/a?q=1")).body }, Ok("a"))
+    expect_eq(try { get(Url.from("https://x/a?q=1")).body }, Ok(Text("a")))
     expect_eq(try { Http.send(Request.post("/b", "")).status }, Ok(Status.from(201)))
     expect((try { get(Url.from("https://x/c")) }).is_err())
   }

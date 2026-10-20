@@ -557,12 +557,19 @@ fn seeded(seed: Int) -> Handler<Random>
 ### `std/request`
 
 ```sakura fragment
-type Method = Get | Head | Post | Put | Patch | Delete
-type Request = { method: Method, url: Url, headers: List<(String, String)>, body: String, secret_headers: List<(String, Secret<String>)>, params: List<(String, String)> }
+type Method = Get | Head | Post | Put | Patch | Delete | Options | Trace
+type Payload = Empty | Text(String) | Bytes(Bytes)
+type Redirect = Follow | Manual | Error
+type Request = { method: Method, url: Url, headers: List<(String, String)>, body: Payload, redirect: Redirect, secret_headers: List<(String, Secret<String>)>, params: List<(String, String)> }
 error BadRequest(detail: String)
 fn of(method: Method, url: Url) -> Request
 fn post(path: String, body: String) -> Request
 fn post_json<T: Schema>(url: Url, body: T) -> Request
+fn with_payload(req: Request, body: Payload) -> Request
+fn with_header(req: Request, name: String, value: String) -> Request
+fn with_headers(req: Request, h: Headers) -> Request
+fn bytes(req: Request, limit: Int) -> Bytes ! {Fail<BadRequest>}
+fn text(req: Request, limit: Int) -> String ! {Fail<BadRequest>}
 fn json<T: Schema>(req: Request, limit: Int) -> T ! {Fail<BadRequest>}
 fn param(req: Request, name: String) -> Option<String>
 fn header(req: Request, name: String) -> Option<String>
@@ -572,13 +579,14 @@ fn header(req: Request, name: String) -> Option<String>
 
 ```sakura fragment
 type Status = Int where it >= 100 && it <= 599
-type Response = { status: Status, headers: List<(String, String)>, body: String }
+type Response = { status: Status, headers: List<(String, String)>, body: Payload }
 error HttpError(status: Option<Status>, reason: String)
 fn status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
 fn ok_json<T: Schema>(value: T) -> Response
 fn html(h: Html) -> Response
 fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<DecodeError | HttpError>}
 fn text(r: Response, limit: Int) -> Untrusted<String> ! {Fail<HttpError>}
+fn bytes(r: Response, limit: Int) -> Bytes ! {Fail<HttpError>}
 ```
 
 ### `std/result`

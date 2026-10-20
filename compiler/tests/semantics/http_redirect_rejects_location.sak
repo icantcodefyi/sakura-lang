@@ -1,0 +1,31 @@
+// milestone: M3
+// spec: RFC 0002 §2.4; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#http-redirect-fetch
+
+// A `location` that does not resolve against the hop's URL, or resolves to a scheme other than
+// `http` or `https`, fails `HttpError` before anything is sent to it.
+import std/http.{Http, Path}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn redirect(location: String) -> Response {
+  Response { ..Response.status(302, ""), headers: [("location", location)] }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let script = [
+    (Path("/data"), redirect("data:text/plain,hi")),
+    (Path("/file"), redirect("file:///etc/passwd")),
+    (Path("/bad"), redirect("https://exa mple.com/")),
+    (Path("/idna"), redirect("https://b\u{FC}cher.example/")),
+  ]
+  with Http.scripted(script) {
+    for path in ["/data", "/file", "/bad", "/idna"] {
+      let got: Result<Response, HttpError> = try {
+        Http.send(Request.of(Get, Url.from("https://a.example{path}")))
+      }
+      Console.print("{path}: {got.map(fn(r) { r.status })}")
+    }
+  }
+}

@@ -1,0 +1,40 @@
+// milestone: M3
+// spec: RFC 0002 §2.4
+// Spec: https://fetch.spec.whatwg.org/#bodies
+
+// `Request.body` and `Response.body` are a `Payload`: `Empty`, `Text` or `Bytes`. Bytes that
+// are not UTF-8 go out and come back unchanged (`echo` answers each request with its own
+// body), `Response.bytes` reads any payload as bytes (`Text` as UTF-8), and `Response.text`
+// substitutes U+FFFD where Fetch's `text()` does.
+import std/http.{Http}
+import std/request.{Bytes, Empty, Payload, Put, Request, Text}
+import std/response.{HttpError, Response}
+import std/untrusted
+import std/url.{Url}
+
+fn echo() -> Handler<Http> {
+  handler Http {
+    fn send(req) { Response { ..Response.status(200, ""), body: req.body } }
+    fn stream(_req, _body) { fail HttpError { status: None, reason: "not streamed" } }
+    fn read_chunk(_b, _max) { fail HttpError { status: None, reason: "not streamed" } }
+  }
+}
+
+fn round_trip(body: Payload) -> Unit ! {Console, Http, Fail<HttpError>} {
+  let req = Request.of(Put, Url.from("https://a.example/blob")).with_payload(body)
+  let resp = Http.send(req)
+  let text = untrusted.trust(Response.text(resp, 16), @trust("printed by the fixture"))
+  Console.print("{resp.body}: bytes {Response.bytes(resp, 16)}, text {[text]}")
+}
+
+pub fn main() -> Unit ! {Console} {
+  with echo() {
+    let got: Result<Unit, HttpError> = try {
+      round_trip(Bytes(Bytes.from_list([0, 159, 146, 150, 255])))
+      round_trip(Text("h\u{E9}"))
+      round_trip(Bytes(String.to_bytes("h\u{E9}")))
+      round_trip(Empty)
+    }
+    Console.print("{got}")
+  }
+}

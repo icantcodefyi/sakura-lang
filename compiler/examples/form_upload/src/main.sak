@@ -4,72 +4,94 @@
 
 import std/blob.{Blob, FileData}
 import std/form.{Form, FormError, FormLimits, Part}
-import std/http.{Http, Path}
-import std/request.{Post, Request}
+import std/fs.{Fs}
+import std/http.{Http, Matcher}
+import std/path.{Path}
+import std/request.{BadRequest, Bytes, Post, Request, Text}
 import std/response.{HttpError, Response, Status}
 import std/router.{Router}
 import std/url.{Url}
 
-/// The upload as a `POST` of a `multipart/form-data` body with a fresh boundary.
-fn upload_request(target: Url, title: String, csv: String) -> Request ! {Random} {
-  let report = FileData {
-    blob: Blob.of(String.to_bytes(csv), "text/csv"),
-    name: "report.csv",
-    last_modified: Instant.from_unix_millis(0),
-  }
-  let form = Form { entries: [("title", Part.Text(title)), ("report", Part.File(report))] }
-  let boundary = Form.boundary()
-  // The body is text here because both parts are; binary file bytes wait for byte bodies.
-  let body = String.from_bytes(Form.encode_multipart(form, boundary)).unwrap_or("")
-  Request {
-    ..Request.of(Post, target),
-    headers: [("content-type", "multipart/form-data; boundary={boundary}")],
-    body,
-  }
+/// A file named `name` holding `bytes` of `media_type`.
+fn file(name: String, bytes: Bytes, media_type: String) -> FileData {
+  FileData { blob: Blob.of(bytes, media_type), name, last_modified: Instant.from_unix_millis(0) }
 }
 
-fn upload(target: Url, title: String, csv: String) -> Status ! {Http, Random, Fail<HttpError>} {
-  Http.send(upload_request(target, title, csv)).status
+/// The upload as a `POST` of a `multipart/form-data` body with a fresh boundary. The body is
+/// `Bytes`, so the file may be any bytes.
+fn upload_request(target: Url, title: String, report: FileData) -> Request ! {Random} {
+  let form = Form { entries: [("title", Part.Text(title)), ("report", Part.File(report))] }
+  let boundary = Form.boundary()
+  Request.of(Post, target)
+    .with_header("content-type", "multipart/form-data; boundary={boundary}")
+    .with_payload(Bytes(Form.encode_multipart(form, boundary)))
 }
+
+fn upload(target: Url, title: String, report: FileData) -> Status
+  ! {Http, Random, Fail<HttpError>}
+{ Http.send(upload_request(target, title, report)).status }
+
+fn csv(text: String) -> FileData { file("report.csv", String.to_bytes(text), "text/csv") }
 
 /// The receiving side: at most 4 parts, 64 KiB in all and 32 KiB per part.
 fn receive(req: Request) -> Response {
   let limits = FormLimits { max_parts: 4, max_bytes: 65_536, max_field_bytes: 32_768 }
   let content_type = Request.header(req, "content-type").unwrap_or("")
-  match Form.parse_multipart(String.to_bytes(req.body), content_type, limits) {
-    Ok(form) => {
-      let names = List.map(form.entries, fn(e) {
-        match e.1 {
-          Part.Text(v) => "{e.0}={v}",
-          Part.File(f) => "{e.0}={f.name} ({f.blob.media_type}, {Blob.size(f.blob)} bytes)",
-        }
-      })
-      Response.status(201, List.join(names, "; "))
-    },
-    Err(FormError { reason }) => Response.status(400, "bad form: {reason}"),
+  try {
+    match Form.parse_multipart(Request.bytes(req, limits.max_bytes), content_type, limits) {
+      Ok(form) => {
+        let names = List.map(form.entries, fn(e) {
+          match e.1 {
+            Part.Text(v) => "{e.0}={v}",
+            Part.File(f) => "{e.0}={f.name} ({f.blob.media_type}, {Blob.size(f.blob)} bytes)",
+          }
+        })
+        Response.status(201, List.join(names, "; "))
+      },
+      Err(FormError { reason }) => Response.status(400, "bad form: {reason}"),
+    }
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
   }
 }
 
 test "the upload is sent once, as multipart" {
-  with Http.scripted([(Path("/v1/reports"), Response.status(201, "stored"))]) {
+  with Http.scripted([(Matcher.Path("/v1/reports"), Response.status(201, "stored"))]) {
     expect_eq(
-      upload(url"https://files.example.test/v1/reports", "Q3", "a,b\n1,2\n"),
+      upload(url"https://files.example.test/v1/reports", "Q3", csv("a,b\n1,2\n")),
       Status.from(201),
     )
   }
 }
 
+test "a binary upload and its binary answer replay from the cassette" {
+  let png = Bytes.from_list([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0xFF])
+  let thumb = Response { ..Response.status(201, ""), body: Bytes(Bytes.from_list([0xFF, 0xD8])) }
+  with Fs.rooted(Test.fixtures()),
+      Http.scripted([(Matcher.Path("/v1/images"), thumb)]),
+      Http.recording(Path.of("upload.jsonl")) {
+    let req = upload_request(
+      url"https://files.example.test/v1/images",
+      "logo",
+      file("logo.png", png, "image/png"),
+    )
+    let resp = Http.send(req)
+    expect_eq(resp.status, Status.from(201))
+    expect_eq(Response.bytes(resp, 16), Bytes.from_list([0xFF, 0xD8]))
+  }
+}
+
 test "the receiving side reads both parts back" {
-  let req = upload_request(url"/v1/reports", "Q3 \u{1F338}", "a,b\n1,2\n")
+  let req = upload_request(url"/v1/reports", "Q3 \u{1F338}", csv("a,b\n1,2\n"))
   let response = Router.handle(Router.new().post("/v1/reports", receive), req)
   expect_eq(response.status, Status.from(201))
-  expect_eq(response.body, "title=Q3 \u{1F338}; report=report.csv (text/csv, 8 bytes)")
+  expect_eq(response.body, Text("title=Q3 \u{1F338}; report=report.csv (text/csv, 8 bytes)"))
 }
 
 test "a body over the limits or with the wrong content type is refused" {
-  let big = upload_request(url"/v1/reports", "big", String.repeat("x", 40_000))
+  let big = upload_request(url"/v1/reports", "big", csv(String.repeat("x", 40_000)))
   let app = Router.new().post("/v1/reports", receive)
-  expect_eq(Router.handle(app, big).body, "bad form: Limit(MaxFieldBytes)")
+  expect_eq(Router.handle(app, big).body, Text("bad form: Limit(MaxFieldBytes)"))
   let plain = Request { ..big, headers: [("content-type", "text/plain")] }
-  expect_eq(Router.handle(app, plain).body, "bad form: ContentType")
+  expect_eq(Router.handle(app, plain).body, Text("bad form: ContentType"))
 }

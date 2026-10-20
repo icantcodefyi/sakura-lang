@@ -135,21 +135,23 @@ test("http_send is of kind secret: secret_headers reach fetch and the copied sli
   class Method extends rt.Variant {}
   Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
   class Request {
-    constructor(method, url, headers, body, secret_headers, params) {
-      Object.assign(this, { method, url, headers, body, secret_headers, params });
+    constructor(method, url, headers, body, redirect, secret_headers, params) {
+      Object.assign(this, { method, url, headers, body, redirect, secret_headers, params });
     }
   }
   class Response {}
+  const { Payload, Redirect } = payloadTypes();
   rt.def("std::request::Method", Method);
   rt.def("std::request::Request", Request);
   rt.def("std::response::Response", Response);
   h.typeIds = new Map();
-  h.typeNames = ["std::request::Request", "std::request::Method"];
+  h.typeNames = ["std::request::Request", "std::request::Method", "std::request::Payload", "std::request::Redirect"];
   const str = (s) => [4, ...u32(Buffer.byteLength(s)), ...Buffer.from(s)];
-  // (Request { Get, url, [], "", [("authorization", Secret("Bearer s3cr3t"))], [] }), as the
-  // guest encodes it for a kind-`secret` import.
-  const tuple = [9, ...u32(1), 7, ...u32(0), ...u32(6), 8, ...u32(1), ...u32(0), ...u32(0)];
-  tuple.push(...str("http://127.0.0.1:1/x"), 6, ...u32(0), ...str(""));
+  const ctor = (type, tag) => [8, ...u32(type), ...u32(tag), ...u32(0)];
+  // (Request { Get, url, [], Empty, Follow, [("authorization", Secret("Bearer s3cr3t"))], [] }),
+  // as the guest encodes it for a kind-`secret` import.
+  const tuple = [9, ...u32(1), 7, ...u32(0), ...u32(7), ...ctor(1, 0)];
+  tuple.push(...str("http://127.0.0.1:1/x"), 6, ...u32(0), ...ctor(2, 0), ...ctor(3, 0));
   tuple.push(6, ...u32(1), 9, ...u32(2), ...str("authorization"), 14, ...str("Bearer s3cr3t"));
   tuple.push(6, ...u32(0));
   put(64, tuple);
@@ -175,6 +177,17 @@ test("http_send is of kind secret: secret_headers reach fetch and the copied sli
   assert.ok(slices.length > 0 && slices.every((s) => s.every((b) => b === 0)), "the host slice is zeroed");
   h.close();
 });
+
+/** `std::request::Payload` and `Redirect` (RFC 0002 §2.4), registered as the emitted std does. */
+function payloadTypes() {
+  class Payload extends rt.Variant {}
+  Payload.prototype.$t = rt.variantType("Payload", "std::request", [["Empty", []], ["Text", [["String"]]], ["Bytes", [["Bytes"]]]]);
+  class Redirect extends rt.Variant {}
+  Redirect.prototype.$t = rt.variantType("Redirect", "std::request", [["Follow", []], ["Manual", []], ["Error", []]]);
+  rt.def("std::request::Payload", Payload);
+  rt.def("std::request::Redirect", Redirect);
+  return { Payload, Redirect };
+}
 
 /** The guest bytes of a `Bytes` the stand-in `alloc_bytes` returned at `p` (`len` of them). */
 const outBytes = (h, p, len) => new Uint8Array(h.exports.memory.buffer).slice(p + 12, p + 12 + len);
@@ -467,6 +480,7 @@ function serving(port, { invoke = (t) => t, hold = () => false, trap = () => nul
   Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
   rt.def("std::request::Method", Method);
   rt.def("std::request::Request", class {});
+  const { Payload } = payloadTypes();
   const h = new Host();
   let value = null;
   let listening = false;
@@ -499,7 +513,7 @@ function serving(port, { invoke = (t) => t, hold = () => false, trap = () => nul
       for (const t of h.served.keys()) {
         if (finished.has(t) || hold(t)) continue;
         trap(t)?.();
-        guest(() => host.serve_respond(t, 0, 0), { status: 200, headers: rt.list([]), body: "ok" });
+        guest(() => host.serve_respond(t, 0, 0), { status: 200, headers: rt.list([]), body: new Payload(1, ["ok"]) });
         finished.add(t);
       }
       return done ? OUTCOME.ok : OUTCOME.pending;
@@ -688,11 +702,11 @@ function versioned(v) {
 }
 
 test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
-  assert.equal(ABI_VERSION, 0x010600);
-  for (const v of [0x010700, 0x020000, 0x000600]) {
+  assert.equal(ABI_VERSION, 0x010700);
+  for (const v of [0x010800, 0x020000, 0x000700]) {
     await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
   }
-  for (const v of [0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010601]) {
+  for (const v of [0x010700, 0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010701]) {
     await new Host().instantiate(versioned(v));
   }
 });

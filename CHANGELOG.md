@@ -50,6 +50,39 @@ retains earlier implementation history.
 - **MCP results are the CLI's records.** `symbol_query` returns the `symbol_query` record
   `sakura doc --json` prints, gaining `schema_version` and `kind`; `test`'s `summary` field
   holds the `test_summary` record; both are built by the same code as the CLI's.
+- **Breaking (0.2.0, RFC 0002 §2.4, design §17.262 (3), §17.263 (4)).** `Request.body` and
+  `Response.body` are a `Payload` (`Empty | Text(String) | Bytes(Bytes)`, in `std/request`),
+  so a body may be binary on JS and WASM. Migration: `body: "s"` in a record becomes
+  `body: Text("s")` (or `.with_payload(Text("s"))`), and a read of `r.body` becomes a `match`,
+  or `Response.text`, `Response.json` or the new `Response.bytes(r, limit)` for a response.
+  `Request.of`, `post`, `post_json`, `Response.status`, `ok_json` and `html` keep their
+  signatures and build `Text` or `Empty`. `Http.host()`, `Serve.host()` and a replayed
+  cassette deliver a body as `Bytes` (`Empty` with no bytes), so a test that compared a
+  replayed `response.body` with a string compares `Response.bytes` or `Response.text`.
+  `Method` gains `Options` and `Trace` (a user `match` on `Method` gains two arms); `Request`
+  gains `redirect: Redirect` (`Follow`, `Manual`, `Error`; `Follow` from every builder) and
+  the builders `with_payload`, `with_header` and `with_headers(h: Headers)`.
+- **Redirects are followed in `std/http`, not in the host** (design §17.263 (4)). Every
+  `Http.host()` send reaches `fetch` with `redirect: "manual"`, and one Sakura function,
+  shared by `host()`, `scoped()`, `scripted()` and `recording()`, follows at most 20 hops,
+  each its own send: `Location` is resolved with `Url.resolve`, `net` is checked by the host
+  and `Http.scoped`'s list by `scoped` on every hop (before, a hop was checked against `net`
+  only), `authorization` and every `secret_headers` entry are dropped when the scheme, host
+  or port changes, and a 303 (or a 301/302 after a `POST`) becomes a body-less `GET`, as
+  phase 0 did in the host. `Manual` returns the 3xx response and `Error` fails `HttpError`
+  with its status. The messages are phase 0's (`too many redirects`, `redirect to <scheme>:
+  refused`, `invalid redirect location <location>`). `Http.scripted` can now answer a 3xx,
+  which is followed like a host's; `Http.recording` records each hop as an exchange, and a
+  cassette without 3xx exchanges replays as before. `Http.stream` closes a 3xx body before
+  it opens the next hop. The host's own hop loop is gone.
+- Cassettes store a request or response body that is not UTF-8 as `body_base64` or
+  `response_body_base64` (the field `response_body_base64` already existed for streamed
+  bodies); a `Text` and a `Bytes` request body with the same bytes match the same exchange.
+  An exchange with a `*_base64` field that is not Base64 now fails `open` naming the line.
+- The WASM runtime ABI is 1.7.0 (`sakura_abi_version` `0x010700`; design §17.270 (3)):
+  `http_send` and `http_stream_open` carry `Payload` bodies and the `redirect` field, send
+  with `redirect: "manual"` and answer a 3xx as it is; `serve_listen` carries `Payload`
+  bodies. The import names are unchanged; a 1.6 host refuses a 1.7 module (`V8003`).
 
 ### Added
 
@@ -67,6 +100,17 @@ retains earlier implementation history.
 - A cookbook recipe, `sign_webhook`: a router endpoint that checks a delivery's Base64
   HMAC-SHA-256 `X-Signature` with a verify-only `CryptoKey` (`key.verify`, constant time),
   tested with a changed body, another secret and a missing or malformed header.
+- `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
+  readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
+  (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.
+
+### Security
+
+- `Http.scoped(hosts)` checks every redirect hop against its list, not only the first URL
+  (design §17.263 (4)): the hops are now followed by `std/http` (see Changed), so a listed
+  host that redirects to an unlisted one fails `HttpError` (`<host:port> is outside
+  Http.scoped`) and the unlisted host is never sent anything. Security-sensitive: the owner
+  reviews the relocated redirect loop.
 
 ## [0.1.0] - 2026-10-20
 

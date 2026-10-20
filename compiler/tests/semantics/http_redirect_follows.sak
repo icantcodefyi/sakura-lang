@@ -1,0 +1,51 @@
+// milestone: M3
+// spec: RFC 0002 §2.4; design §17.263 (4)
+// Spec: https://fetch.spec.whatwg.org/#http-redirect-fetch
+
+// Under `Follow` (every builder's default) a 3xx with a `location` is followed by `std/http`'s
+// one loop, each hop its own send with `redirect: Manual`. `logged` sits between `Http.scoped`
+// (which follows) and `Http.scripted` (which answers), so it prints every hop: the location
+// resolved against the hop's URL, a 307 and a 308 keeping the method and body, a 302 turning a
+// `POST` into a `GET` without its body or `content-type`. `Http.scripted` alone follows the
+// same way.
+import std/http.{Http, Path}
+import std/request.{Post, Request, Text}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn redirect(code: Int, location: String) -> Response {
+  Response { ..Response.status(code, "moved"), headers: [("location", location)] }
+}
+
+fn logged() -> Handler<Http, {Console, Http}> {
+  handler Http {
+    fn send(req) {
+      Console.print("  {req.method} {req.url} {req.redirect} {req.headers} {req.body}")
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let script = [
+    (Path("/start"), redirect(307, "https://b.example/next")),
+    (Path("/next"), redirect(308, "../form?x=1")),
+    (Path("/form"), redirect(302, "/done")),
+    (Path("/done"), Response.status(200, "done")),
+  ]
+  let req = Request.of(Post, Url.from("https://a.example/start"))
+    .with_header("content-type", "text/plain")
+    .with_payload(Text("hi"))
+  Console.print("through scoped:")
+  with Http.scripted(script), logged(), Http.scoped(["a.example:443", "b.example:443"]) {
+    let got: Result<Response, HttpError> = try { Http.send(req) }
+    Console.print("{got}")
+  }
+  Console.print("scripted alone:")
+  with Http.scripted(script) {
+    let got: Result<Response, HttpError> = try { Http.send(req) }
+    Console.print("{got}")
+  }
+}
