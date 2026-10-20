@@ -3,6 +3,8 @@
 
     release.py prepare [--previous-tag TAG] [--date YYYY-MM-DD]
     release.py version                       print the workspace version (rejects 0.0.0)
+    release.py dist-tag                      print its npm dist-tag (latest, alpha, beta or rc)
+    release.py formula                       print its Homebrew formula name
     release.py compat-base                   print the release tag the compat job runs
     release.py archive  --target T --binary B --out DIR
     release.py smoke    --archive A --commit C
@@ -77,9 +79,24 @@ def dist_tag(ver):
     identifiers = semver(ver)[4]
     if not identifiers:
         return "latest"
-    if identifiers[0][1] not in ("alpha", "rc"):
-        fail(f"prerelease identifier must start with alpha or rc: {ver!r}")
+    if identifiers[0][1] not in ("alpha", "beta", "rc"):
+        fail(f"prerelease identifier must start with alpha, beta or rc: {ver!r}")
     return identifiers[0][1]
+
+
+def formula_name(ver):
+    # The tap mirrors npm: `sakuralang` follows `latest`, a prerelease is its own formula
+    # (`sakuralang-beta`; Homebrew allows `@` only before a digit), so `brew install
+    # sakuralang` stays on the latest final release.
+    tag = dist_tag(ver)
+    return "sakuralang" if tag == "latest" else f"sakuralang-{tag}"
+
+
+def promise(ver):
+    if dist_tag(ver) == "beta":
+        return ("a beta of 1.0. It may have bugs and may change before 1.0.0, and it is not\n"
+                "for production; every breaking change is listed in CHANGELOG.md with a migration.")
+    return "a pre-1.0 preview with no stable language or API contract."
 
 
 def release_date(value):
@@ -348,8 +365,8 @@ def readme(ver, target, macos_signed=False):
     )
     return f"""# Sakura Lang {ver} ({target})
 
-A pre-1.0 preview with no stable language or API contract (see STABILITY.md in the
-source repository). `sakura` is self-contained: the standard library, the JS and WASM runtimes,
+Sakura Lang {ver} is {promise(ver)} See STABILITY.md in the
+source repository. `sakura` is self-contained: the standard library, the JS and WASM runtimes,
 `docs/llms.txt` and the agent skill are embedded, so it needs no checkout.
 
 {installation} `sakura --version` prints the version and the source commit.
@@ -375,9 +392,15 @@ def release_notes(ver, commit, macos_signed=False):
         "Dry run: macOS signing and notarization were skipped; these artifacts have no\n"
         "Developer ID signature or notarization."
     )
-    return f"""Sakura Lang {ver}, a pre-1.0 preview release from commit {commit}. There is no stability
+    if dist_tag(ver) == "beta":
+        status = f"""Sakura Lang {ver}, a beta of 1.0 from commit {commit}. It may have bugs and may
+change before 1.0.0, and it is not for production. Every breaking change is listed in
+CHANGELOG.md with a migration; STABILITY.md lists what each contract covers today."""
+    else:
+        status = f"""Sakura Lang {ver}, a pre-1.0 preview release from commit {commit}. There is no stability
 promise yet: RFC 0001 proposes the guarantees and, if the owner accepts it, they begin at
-v0.2.0; STABILITY.md lists what each contract covers today.
+v1.0.0-beta.1; STABILITY.md lists what each contract covers today."""
+    return f"""{status}
 
 Packaging targets (called supported for this version only after the published-install
 smoke passes on every applicable channel):
@@ -691,7 +714,14 @@ def assemble(args):
     (out / "install.ps1").write_text(windows_installer.replace('$DefaultVersion = ""', f'$DefaultVersion = "{ver}"', 1))
 
     formula = render((ROOT / "packaging/homebrew/sakuralang.rb").read_text(), ver, sums)
-    (out / "sakuralang.rb").write_text(formula)
+    name = formula_name(ver)
+    if name != "sakuralang":
+        head, install = "class Sakuralang < Formula\n", "\n  def install\n"
+        if head not in formula or install not in formula:
+            fail("packaging/homebrew/sakuralang.rb lost its class or install line")
+        formula = formula.replace(head, f"class {name.title().replace('-', '')} < Formula\n", 1).replace(
+            install, '\n  conflicts_with "sakuralang", because: "both install `sakura`"\n' + install, 1)
+    (out / f"{name}.rb").write_text(formula)
 
     # npm: the reviewed wrapper as committed, and one platform package per target.
     wrapper = json.loads((ROOT / "packaging/npm/sakuralang/package.json").read_text())
@@ -764,6 +794,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("version")
     sub.add_parser("dist-tag")
+    sub.add_parser("formula")
     sub.add_parser("compat-base")
     p = sub.add_parser("prepare")
     p.add_argument("--previous-tag")
@@ -791,6 +822,8 @@ def main():
         print(version())
     elif args.cmd == "dist-tag":
         print(dist_tag(version()))
+    elif args.cmd == "formula":
+        print(formula_name(version()))
     elif args.cmd == "compat-base":
         base = compat_base()
         if base is None:

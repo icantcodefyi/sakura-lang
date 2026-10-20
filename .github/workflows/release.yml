@@ -46,6 +46,7 @@ jobs:
       commit: ${{ steps.plan.outputs.commit }}
       publish: ${{ steps.plan.outputs.publish }}
       dist_tag: ${{ steps.plan.outputs.dist_tag }}
+      formula: ${{ steps.plan.outputs.formula }}
       matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +64,7 @@ jobs:
         run: |
           version=$(python3 -I tools/release/release.py version)
           dist_tag=$(python3 -I tools/release/release.py dist-tag)
+          formula=$(python3 -I tools/release/release.py formula)
           commit=$(git rev-parse HEAD)
           test "$commit" = "$GITHUB_SHA"
           publish=false
@@ -83,9 +85,10 @@ jobs:
             echo "commit=$commit"
             echo "publish=$publish"
             echo "dist_tag=$dist_tag"
+            echo "formula=$formula"
             echo "matrix=$matrix"
           } >> "$GITHUB_OUTPUT"
-          echo "Sakura Lang $version at $commit; publish: $publish; npm dist-tag: $dist_tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "Sakura Lang $version at $commit; publish: $publish; npm dist-tag: $dist_tag; formula: $formula" >> "$GITHUB_STEP_SUMMARY"
       - name: Release tooling tests
         run: |
           shellcheck tools/release/sign-macos.sh tools/release/verify-macos.sh
@@ -319,6 +322,7 @@ jobs:
       VERSION: ${{ needs.plan.outputs.version }}
       COMMIT: ${{ needs.plan.outputs.commit }}
       NPM_PACKAGE: ${{ matrix.npm }}
+      FORMULA: ${{ needs.plan.outputs.formula }}
     steps:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -351,20 +355,20 @@ jobs:
         run: |
           # Mirror only the URLs for this local smoke; hashes and production asset stay intact.
           brew tap-new --no-git sakuralang/release-smoke
-          FORMULA="$(brew --repository sakuralang/release-smoke)/Formula/sakuralang.rb"
-          export FORMULA
+          FORMULA_PATH="$(brew --repository sakuralang/release-smoke)/Formula/$FORMULA.rb"
+          export FORMULA_PATH
           python3 -I - <<'PYTHON'
           import os, re
           from pathlib import Path
-          source = Path('dist/sakuralang.rb').read_text()
+          source = Path('dist', os.environ['FORMULA'] + '.rb').read_text()
           source = re.sub(r'https://github.com/icantcodefyi/sakuralang/releases/download/v[^/]+/([^"\n]+)',
                           lambda match: (Path('dist') / match[1]).resolve().as_uri(), source)
-          Path(os.environ['FORMULA']).write_text(source)
+          Path(os.environ['FORMULA_PATH']).write_text(source)
           PYTHON
-          brew trust --formula sakuralang/release-smoke/sakuralang
-          brew install --formula sakuralang/release-smoke/sakuralang
+          brew trust --formula "sakuralang/release-smoke/$FORMULA"
+          brew install --formula "sakuralang/release-smoke/$FORMULA"
           test "$(sakura --version)" = "sakura $VERSION ($COMMIT)"
-          brew test sakuralang/release-smoke/sakuralang
+          brew test "sakuralang/release-smoke/$FORMULA"
 
       - name: Windows installer and npm offline install
         if: runner.os == 'Windows'
@@ -419,7 +423,7 @@ jobs:
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/*
-      # Design §17.249: a plain X.Y.Z is marked latest; -alpha.N / -rc.N is a prerelease.
+      # Design §17.249: a plain X.Y.Z is marked latest; -alpha.N / -beta.N / -rc.N is a prerelease.
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -438,6 +442,7 @@ jobs:
     environment: release-homebrew
     env:
       VERSION: ${{ needs.plan.outputs.version }}
+      FORMULA: ${{ needs.plan.outputs.formula }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -445,6 +450,8 @@ jobs:
           path: dist
       - name: Verify the approved bytes
         run: (cd dist && sha256sum --check --strict SHA256SUMS)
+      # `sakuralang` for X.Y.Z; a prerelease is its own formula (`sakuralang-beta`), so the
+      # tap's `sakuralang` stays on the latest final release, as npm `latest` does.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: icantcodefyi/homebrew-sakuralang
@@ -454,11 +461,11 @@ jobs:
         working-directory: tap
         run: |
           mkdir -p Formula
-          cp ../dist/sakuralang.rb Formula/sakuralang.rb
+          cp "../dist/$FORMULA.rb" "Formula/$FORMULA.rb"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/sakuralang.rb
-          git commit -m "sakuralang $VERSION"
+          git add "Formula/$FORMULA.rb"
+          git commit -m "$FORMULA $VERSION"
           git push origin HEAD
 
   publish-npm:
@@ -487,7 +494,7 @@ jobs:
         run: (cd dist && sha256sum --check --strict SHA256SUMS)
       # Trusted publishing (OIDC) when configured on npmjs.com; otherwise NPM_TOKEN from the
       # environment. Platform packages first, then the wrapper, under the version's dist-tag:
-      # `latest` for a plain X.Y.Z, `alpha` or `rc` for a prerelease (design §17.249).
+      # `latest` for a plain X.Y.Z, `alpha`, `beta` or `rc` for a prerelease (design §17.249).
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

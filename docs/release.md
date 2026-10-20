@@ -86,7 +86,11 @@ publication token, not the owner approval gate.
 
 Create public repository **`icantcodefyi/homebrew-sakuralang`** with a README.
 The reviewed `Formula/sakuralang.rb` will install `sakura` from immutable archives.
-The user command will be `brew install icantcodefyi/sakuralang/sakuralang`.
+The user command will be `brew install icantcodefyi/sakuralang/sakuralang`. A prerelease is
+its own formula, `Formula/sakuralang-<identifier>.rb` (`sakuralang-beta` for `-beta.N`;
+Homebrew allows `@` only before a digit), declaring `conflicts_with "sakuralang"`, so
+`brew install sakuralang` stays on the latest final release as npm `latest` does
+(`release.py formula` prints the name).
 This is a custom tap, not Homebrew core; see [tap maintenance](https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap).
 
 Automation uses a deploy key: an Ed25519 key added to `homebrew-sakuralang` with write
@@ -438,8 +442,9 @@ Proof-key storage remains unavailable on Windows; its Unix-only tests stay gated
 
 **The beta (design §17.291).** The next tag is `v1.0.0-beta.1`, then `v1.0.0-beta.N`, then
 `v1.0.0`; `v0.2.0` and `v1.0.0-rc.1` are not tagged. A beta is a GitHub prerelease under the
-npm dist-tag `beta` (`latest` stays on `v0.1.0` until `v1.0.0`); `release.py`'s `dist_tag`
-must accept `beta` beside `alpha` and `rc` before the preparation commit. The beta's
+npm dist-tag `beta` (`latest` stays on `v0.1.0` until `v1.0.0`) and the Homebrew formula
+`sakuralang-beta` (`sakuralang` stays on `v0.1.0`); `release.py`'s `dist_tag` accepts `beta`
+beside `alpha` and `rc`. The beta's
 preparation commit closes the breaking window: after it, a `pub` std shape, an effect's
 operation set or a diagnostic record changes only to fix a soundness, security or
 specification defect, each a `Breaking` CHANGELOG line with its migration. The beta waits
@@ -473,8 +478,9 @@ approving `release-github` attests every file and creates the release;
 publishes the platform packages, then the wrapper (trusted publishing, else `NPM_TOKEN`).
 The latter two wait for the first. The flags follow the version string (design §17.249): a
 plain `X.Y.Z` such as `0.1.0` is created `--latest=true` and publishes to npm `latest`; only a
-version with a prerelease identifier (`-alpha.N`, `-rc.N`) is created
-`--prerelease --latest=false` and publishes under that identifier's dist-tag (`alpha`, `rc`).
+version with a prerelease identifier (`-alpha.N`, `-beta.N`, `-rc.N`) is created
+`--prerelease --latest=false`, publishes under that identifier's dist-tag (`alpha`, `beta`,
+`rc`) and goes to the tap as `sakuralang-<identifier>`.
 Native builds are not proven byte-identical, so review the tag run's own `SHA256SUMS`
 and summary before approving, not only the dry run's.
 
@@ -493,7 +499,7 @@ and summary before approving, not only the dry run's.
    pinning; immutable archive downloads remain the pinned route.
 3. **npm.** Approve `release-npm`. Publish platform packages first, verify their
    availability/digests, then `sakuralang` with exact matching optional dependency
-   versions and the version's dist-tag (`latest` for `X.Y.Z`, else `alpha`/`rc`). Owner
+   versions and the version's dist-tag (`latest` for `X.Y.Z`, else `alpha`/`beta`/`rc`). Owner
    handles initial ownership/2FA. Test `npm install -g sakuralang@<version>` and the
    binary on clean hosts; upload success does not prove platform selection works.
 

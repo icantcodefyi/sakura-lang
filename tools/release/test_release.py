@@ -2,6 +2,7 @@ import argparse
 import contextlib
 import io
 import json
+import shutil
 from pathlib import Path
 import tarfile
 import tempfile
@@ -35,10 +36,13 @@ class ReleasePackaging(unittest.TestCase):
         self.assertNotIn("install -m", readme)
 
     def test_dist_tag_follows_the_version_string(self):
-        for ver, tag in (("0.1.0", "latest"), ("1.2.3", "latest"), ("0.1.0-alpha.1", "alpha"), ("0.2.0-rc.2", "rc")):
+        for ver, tag, formula in (("0.1.0", "latest", "sakuralang"), ("1.2.3", "latest", "sakuralang"),
+                                  ("0.1.0-alpha.1", "alpha", "sakuralang-alpha"),
+                                  ("1.0.0-beta.1", "beta", "sakuralang-beta"), ("1.0.0-rc.2", "rc", "sakuralang-rc")):
             with self.subTest(ver=ver):
                 self.assertEqual(release.dist_tag(ver), tag)
-        for ver in ("0.1.0-beta.1", "0.1.0-1", "0.1.0-dev"):
+                self.assertEqual(release.formula_name(ver), formula)
+        for ver in ("1.0.0-gamma.1", "0.1.0-1", "0.1.0-dev"):
             with self.subTest(ver=ver), contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 release.dist_tag(ver)
 
@@ -46,8 +50,18 @@ class ReleasePackaging(unittest.TestCase):
         for ver in ("0.1.0", "0.1.0-alpha.1"):
             notes = release.release_notes(ver, "0" * 40)
             self.assertIn(f"Sakura Lang {ver}, a pre-1.0 preview release", notes)
-            self.assertIn("they begin at\nv0.2.0; STABILITY.md lists what each contract covers today.", notes)
+            self.assertIn("they begin at\nv1.0.0-beta.1; STABILITY.md lists what each contract covers today.", notes)
             self.assertNotIn("pre-alpha", notes)
+
+    def test_beta_notes_and_readme_say_it_may_have_bugs_and_change(self):
+        notes = release.release_notes("1.0.0-beta.1", "0" * 40)
+        self.assertIn("Sakura Lang 1.0.0-beta.1, a beta of 1.0", notes)
+        self.assertIn("It may have bugs and may\nchange before 1.0.0, and it is not for production.", notes)
+        self.assertIn("listed in\nCHANGELOG.md with a migration", notes)
+        self.assertNotIn("pre-1.0 preview", notes)
+        readme = release.readme("1.0.0-beta.1", "aarch64-apple-darwin")
+        self.assertIn("may have bugs and may change before 1.0.0", readme)
+        self.assertNotIn("pre-1.0 preview", readme)
 
     def test_notes_distinguish_unsigned_dry_run_and_notarized_release(self):
         unsigned = release.release_notes("1.2.3", "0" * 40)
@@ -61,11 +75,33 @@ class ReleasePackaging(unittest.TestCase):
             self.assertIn(target["target"], signed)
 
     def test_assembly_preserves_signed_bytes_for_homebrew_and_npm(self):
+        self.assemble_and_check(release.version())
+
+    def test_beta_assembly_names_its_formula_and_packages(self):
+        # A dry run of a -beta.N release on a copy of the packaging inputs, bumped as the
+        # preparation commit bumps them.
+        version = "1.0.0-beta.1"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for path in ("website/public/skills", "tools/install", "packaging"):
+                shutil.copytree(release.ROOT / path, root / path)
+            for name in release.LICENSES:
+                shutil.copy(release.ROOT / name, root / name)
+            wrapper = root / "packaging/npm/sakuralang/package.json"
+            package = json.loads(wrapper.read_text())
+            package["version"] = version
+            package["optionalDependencies"] = {t["npm"]: version for t in release.TARGETS}
+            wrapper.write_text(json.dumps(package))
+            manifest = root / "website/public/skills/manifest.json"
+            manifest.write_text(json.dumps({**json.loads(manifest.read_text()), "compiler_version": version}))
+            with patch.object(release, "ROOT", root), patch.object(release, "version", return_value=version):
+                self.assemble_and_check(version)
+
+    def assemble_and_check(self, version):
         with tempfile.TemporaryDirectory() as tmp:
             tmp = Path(tmp)
             archives = tmp / "archives"
             archives.mkdir()
-            version = release.version()
             binaries = {}
             for target in release.TARGETS:
                 binary = b"signed-binary-" + target["target"].encode()
@@ -79,11 +115,15 @@ class ReleasePackaging(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 release.assemble(args)
             output = tmp / "out"
+            name = release.formula_name(version)
+            formula = (output / f"{name}.rb").read_text()
+            self.assertIn(f"class {name.title().replace('-', '')} < Formula\n", formula)
+            self.assertEqual('conflicts_with "sakuralang"' in formula, name != "sakuralang")
             for target in release.TARGETS:
                 archive_name = release.archive_name(version, target["target"])
                 self.assertEqual((output / archive_name).read_bytes(), (archives / archive_name).read_bytes())
                 if target["os"] == "darwin" or target["target"] == "x86_64-unknown-linux-gnu":
-                    self.assertIn(release.sha256(output / archive_name), (output / "sakuralang.rb").read_text())
+                    self.assertIn(release.sha256(output / archive_name), formula)
                 with tarfile.open(output / f"{target['npm']}-{version}.tgz") as package:
                     self.assertEqual(package.extractfile("package/bin/" + release.binary_name(target["target"])).read(), binaries[target["target"]])
                     self.assertIn("npm i -g sakuralang", package.extractfile("package/README.md").read().decode())
