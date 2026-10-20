@@ -35,7 +35,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V0001` | error | `syntax_error` | [V0001_effect_violation_in_broken_body.sak](../../compiler/tests/ui/V0001_effect_violation_in_broken_body.sak) | active |
 | `V0002` | error | `unterminated` | [V0002_unterminated_block_comment.sak](../../compiler/tests/ui/V0002_unterminated_block_comment.sak) | active |
 | `V0003` | error | `int_literal_out_of_range` | [V0003_int_literal_out_of_range.sak](../../compiler/tests/ui/V0003_int_literal_out_of_range.sak) | active |
-| `V0004` | error | `invalid_character` | [V0004_invalid_character.sak](../../compiler/tests/ui/V0004_invalid_character.sak) | active |
+| `V0004` | error | `invalid_character` | [V0004_interpolation_hole.sak](../../compiler/tests/ui/V0004_interpolation_hole.sak) | active |
 | `V0005` | error | `invalid_escape` | [V0005_invalid_escape.sak](../../compiler/tests/ui/V0005_invalid_escape.sak) | active |
 | `V0006` | error | `malformed_number` | [V0006_malformed_number.sak](../../compiler/tests/ui/V0006_malformed_number.sak) | active |
 | `V0007` | error | `reserved_keyword` | [V0007_reserved_keyword.sak](../../compiler/tests/ui/V0007_reserved_keyword.sak) | active |
@@ -48,7 +48,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V0014` | error | `named_argument` | [V0014_named_argument.sak](../../compiler/tests/ui/V0014_named_argument.sak) | active |
 | `V0015` | error | `source_not_utf8` | [app.sak](../../compiler/tests/ui/V0015_source_not_utf8/app.sak), [names.sak](../../compiler/tests/ui/V0015_source_not_utf8/names.sak) | active |
 | `V1001` | error | `duplicate_definition` | [V1001_duplicate_definition.sak](../../compiler/tests/ui/V1001_duplicate_definition.sak) | active |
-| `V1002` | error | `unresolved_name` | [V1002_module_function_did_you_mean.sak](../../compiler/tests/ui/V1002_module_function_did_you_mean.sak) | active |
+| `V1002` | error | `unresolved_name` | [V1002_anonymous_record_literal.sak](../../compiler/tests/ui/V1002_anonymous_record_literal.sak) | active |
 | `V1003` | error | `unresolved_type` | [V1003_unresolved_type.sak](../../compiler/tests/ui/V1003_unresolved_type.sak) | active |
 | `V1004` | error | `name_case_mismatch` | [V1004_name_case_mismatch.sak](../../compiler/tests/ui/V1004_name_case_mismatch.sak) | active |
 | `V1005` | error | `unresolved_module` | [V1005_unresolved_module.sak](../../compiler/tests/ui/V1005_unresolved_module.sak) | active |
