@@ -36,7 +36,10 @@ the reason recorded. The implementation order is
   §17.286, which amended §1's example, the first-use list, §6's `WebSocket` row and the
   security bullet. Phase 7b (`std/crypto` tier 1b on JS and native, `d401d073` vectors,
   `2a12eee4`) is on `main`; its readings are ratified in design §17.288, which amended §2.7,
-  §5, §6 and §Compatibility; its WASM step 7b-W is next at ABI 1.9.0. Phases and owners are
+  §5, §6 and §Compatibility; its WASM step 7b-W is next at ABI 1.9.0. The WebSocket server
+  (`WebSocket.accept` inside a `Serve` handler, §2.10) joined the RFC on the owner's request
+  of 2026-10-21 as phase 8s (design §17.289), which amended §Non-goals, §1, §4, §5, §6,
+  §Security and §Tests. Phases and owners are
   in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
@@ -74,12 +77,12 @@ Non-goals:
 
 - Source-level compatibility with JavaScript (`new Headers()`, `addEventListener`,
   promises, `any`). Sakura has no JS interop layer and this RFC adds none.
-- Bun-specific APIs (`Bun.serve` upgrade hooks, `Bun.file`, `ArrayBufferSink`, TCP/UDP,
-  FFI). They are a separate product surface (research/15 §12).
+- Bun-specific APIs (`Bun.file`, `ArrayBufferSink`, TCP/UDP, FFI). They are a separate
+  product surface (research/15 §12). `Bun.serve`'s WebSocket upgrade was in this list until
+  design §17.289 (2026-10-21) delivered it as `WebSocket.accept` (§2.10).
 - The browser-only entries: the DOM, History, object URLs (`URL.createObjectURL`), and
   the modal dialogs as UI. `alert`/`confirm`/`prompt` are delivered as console helpers,
   as Bun does.
-- A WebSocket **server** (`Serve` upgrade): not on the page; a follow-up to `std/serve`.
 - Shared memory (`SharedArrayBuffer`, `Atomics`): not on the page and excluded by §8.1.
 
 ## Concrete examples and guide-level explanation
@@ -137,6 +140,40 @@ test "echo" {
   with WebSocket.scripted([Reply(Text("ping"), Text("pong"))]) {
     expect_eq(echo_once("wss://example.test/echo"), "pong")
   }
+}
+```
+
+The server side (design §17.289): a `Serve` handler upgrades the request it was given with
+`WebSocket.accept`, runs the socket's body to its end, and the same `send`/`receive`/`close`
+serve the accepted socket. The handshake is checked by a pure `handshake`, so a handler can
+answer 426, 403 or 503 itself; `origins` admits no browser origin it does not name.
+
+```sakura fragment
+import std/websocket.{WebSocket, Upgrade, Socket}
+
+fn chat(req: Request) -> Response ! {WebSocket} {
+  if Url.path(req.url) != "/ws" { return Response.status(404, "not found") }
+  let options = Upgrade { ..WebSocket.upgrade(), origins: ["https://app.example"] }
+  match try { WebSocket.accept(req, options, fn(sock) { echo(sock) }) } {
+    Ok(switched) => switched,                        // the 101, already on the wire
+    Err(SocketError { reason: Accept(why) }) => Response.status(400, why),
+    Err(_) => Response.status(500, "internal error"),
+  }
+}
+
+fn echo(sock: Socket) -> Unit ! {WebSocket, Fail<SocketError>} {
+  match WebSocket.receive(sock) {
+    Data(m) => { WebSocket.send(sock, m); echo(sock) },
+    Closed(_) => {},
+  }
+}
+
+test "upgrade and echo" {
+  let reqs = [WebSocket.upgrade_request("/ws", [])]
+  with Serve.scripted(reqs), WebSocket.scripted([Reply(Text("hi"), Text("hi")), Close(1000, "")]) {
+    expect_fail(fn() { Serve.serve(chat, Serve.of("127.0.0.1", 8080)) }, ServeError { reason: "no more requests" })
+  }
+  expect_output(["Get /ws -> 101 "])
 }
 ```
 
@@ -243,6 +280,7 @@ the program at startup (rule §7), `gap` means deliberately not provided, with t
 | 8 reader/writer/controller classes | none | internal to `Source`/`Sink`; BYOB is a gap | — | — | — | — | — |
 | `Blob` | `Bytes` | `std/blob.Blob { bytes, media_type }` | pure | — | ✓ | ✓ | ✓ |
 | `WebSocket` (client) | none | `std/websocket`, effect `WebSocket` | `WebSocket` | `net` | ✓ | host | refuse until ported |
+| `WebSocket` (server; `Bun.serve`'s upgrade, `subscribe`/`publish`) | none | `std/websocket.accept` inside a `Serve` handler; topics in the host (§2.10) | `WebSocket` | `net` (the listener's) | ✓ | host | refuse until ported |
 | `Uint8Array` | `Bytes` (immutable) | `Bytes.slice`, `concat`; mutation is a gap | pure | — | ✓ | rt | rt |
 | `Uint8Array.prototype.toBase64` | none (internal only) | `Bytes.to_base64(b, Alphabet, padded)` | pure | — | ✓ | rt | rt |
 | `Uint8Array.fromBase64` | none | `Bytes.from_base64(text, Alphabet)` strict | pure | — | ✓ | rt | rt |
@@ -644,10 +682,79 @@ hold a cursor (`V2041`, design §8.1).
   the emitted module); that is the one language-level change in this RFC and it stays
   experimental until the owner stabilizes `std/worker`.
 
+#### 2.10 WebSocket server (`std/websocket.accept`; design §17.289)
+
+A served request is upgraded by an operation of the `WebSocket` effect, performed inside a
+`Serve` handler; the accepted socket is the client's `Socket` with the client's operations.
+
+- `WebSocket.accept<e>(req: Request, options: Upgrade, body: fn(Socket) -> Unit ! e) ->
+  Response ! {Fail<SocketError> | e}` (`requires options.max_message > 0`): when `req` is a
+  served upgrade request that `handshake` admits, the host writes the 101, runs `body` with
+  the socket under the performer's handlers, closes it with 1001 on every exit of `body`
+  (`file_closing`, as `connect`), and returns `Response { status: 101, headers: [], body:
+  Empty }` so the handler's type is met. **The server discards what the handler returns for a
+  connection it upgraded**; a 101 returned for a connection that was not upgraded is the
+  invalid response it is today (`D091`, answered 500).
+- `Upgrade = { subprotocol: Option<String>, origins: List<String>, headers: List<(String,
+  String)>, max_message: Int }`; `WebSocket.upgrade()` is `{ None, [], [], 16_777_216 }`.
+  `subprotocol: Some(p)` must be one the client offered and is echoed; `None` sends no
+  header. `headers` go on the 101 after the client's refusal of `host`, `upgrade`,
+  `connection`, `content-length`, `transfer-encoding` and any `sec-websocket-*` name.
+- `WebSocket.handshake(req: Request) -> Result<Handshake, String>`, pure, `Handshake = {
+  key: String, subprotocols: List<String>, origin: Option<String> }`: RFC 6455 §4.2.1 read
+  strictly (method `Get`; a `host` header; `upgrade` containing the token `websocket`;
+  `connection` containing the token `upgrade`; `sec-websocket-key` 24 Base64 characters
+  decoding to 16 bytes; `sec-websocket-version` exactly `13`; `body` is `Empty`, the host
+  never reading an upgrade request's body; `sec-websocket-protocol` split on commas, each a
+  token, none repeated; `origin` ASCII-lowercased). Each refusal is one string naming the
+  header. `accept` runs it first and fails `Accept(reason)` with its string; a handler that
+  answers 426 with `sec-websocket-version: 13`, or 404, or 403, calls `handshake` itself first.
+- `origins` fails closed for browsers: a request carrying `origin` whose value is not in the
+  list (ASCII-lowercased, no wildcard, no pattern) is `Accept("origin … is not accepted")`; a
+  request without `origin` is admitted (only a browser sends one). The empty default refuses
+  every browser (cross-site WebSocket hijacking, RFC 6455 §10.2). Authentication stays the
+  handler's, as §2.3 says of `Serve`.
+- `SocketReason` gains `Accept(String)`: no upgrade happened, and why (a `handshake` refusal,
+  the origin, the subprotocol, "the socket limit of N is reached", "not a served upgrade
+  request" (outside a served task, on a request whose connection is not an upgrade or is
+  already answered, or a second `accept` on one request), the host's failure string). The
+  strings carry the peer's own header bytes and nothing else.
+- Topics, in the host, instance-local: `subscribe(sock, topic: String) -> Unit !
+  {Fail<SocketError>}`, `unsubscribe(sock, topic)` (both `requires String.len(topic) <= 256`;
+  `NotOpen` on a closing or closed socket) and `publish(topic: String, message: Message,
+  except: Option<Socket>) -> Int ! {Fail<SocketError>}`: writes `message` to every open
+  subscribed socket but `except`, **never waits**, skips a subscriber whose write buffer
+  already holds `max_message` bytes or more (Bun's `backpressureLimit` read as that socket's
+  `max_message`; the socket is kept, as `closeOnBackpressureLimit: false`) and one whose
+  `max_message` the message exceeds, and returns the number of sockets written to. A
+  socket's subscriptions end with it. Cross-instance delivery is `Worker.topic`'s (§2.9).
+- The wire in the server role: no extension is negotiated (an offer is ignored, nothing
+  echoed; no `permessage-deflate`); server frames are unmasked (RFC 6455 §5.1) and a client
+  frame without a mask fails the connection with 1002; everything else is the client's rule
+  (§6: 1009 before the payload is held, 1007, the queue, the pong rule, the 5 s close
+  timer, 1001 on every exit). The runtime sends no ping in either role and runs no idle
+  timer: an idle policy is `Task.timeout(limit, fn() { WebSocket.receive(sock) })` around
+  the wait; TCP keepalive is enabled on every socket so a vanished peer surfaces as 1006.
+- Delivery: `serveHttp` adds an `upgrade` listener that builds the same `Request` (body
+  `Empty`) and runs `handle` as a task holding the raw connection by task; a handler that
+  returns without accepting is answered on the raw connection by the host (status, headers,
+  `content-length`, `connection: close`, body), the stop's 503 and the 405 as for any
+  request. On WASM, `ws_accept(task, …)` is a `hosted` import keyed by the served task, as
+  `serve_respond` is; with `ws_subscribe`, `ws_unsubscribe` and `ws_publish`, one ABI MINOR.
+- `WebSocket.scripted(script)` plays the peer for `accept` as for `connect` (the handshake,
+  origin and subprotocol checks included), and `publish` meets each subscribed scripted
+  socket as a send does. `WebSocket.upgrade_request(path, subprotocols) -> Request`, pure,
+  builds a test request with the handshake headers (the RFC's sample key, no `origin`), so a
+  server test is `Serve.scripted` around `WebSocket.scripted`, on three backends.
+- Native refuses `Serve` and `WebSocket` at startup today (§7); the row that ports
+  `WebSocket` natively ports both roles.
+
 ### 3. Effects and permissions
 
 - New effects: `WebSocket` (`std/websocket`) and `Worker` (`std/worker`). Everything else
   is pure or rides on `Http`, `Fs`, `Task`, `Clock`, `Random`, `Console`, `Log`.
+  `WebSocket.accept` adds no permission: the listener was admitted by `Serve.host()` under
+  `net`, and `accept` opens nothing (§2.10).
 - Manifest keys: `net` governs `Http`, `Serve` and now `WebSocket` (`ws` defaults to port
   80, `wss` to 443; the check is the same `host:port` string). No new key is added.
   `process` stays reserved (§17.253 (3)). A worker's `Grants` are a subset of the parent's
@@ -663,15 +770,17 @@ Every expected failure is a nominal `error` tag in its module: `Base64Error`,
 `CompressionError`, `CryptoError`, `KeyError`, `SocketError`, `SendError`, `WorkerError`.
 `HttpError` and `Utf8Error` are reused. Each carries a typed reason variant where the web
 standard distinguishes cases (`Unsupported(name)`, `OutputLimit`, `NotExtractable`,
-`GrantExceeded`, …). `DOMException` names (`AbortError`, `DataError`, `OperationError`)
-appear only as documentation cross-references. Defects stay defects.
+`GrantExceeded`, …). `SocketReason` is `Connect(String) | MessageTooLarge | NotOpen |
+Failed(String) | Accept(String)` (§2.10). `DOMException` names (`AbortError`, `DataError`,
+`OperationError`) appear only as documentation cross-references. Defects stay defects.
 
 ### 5. Determinism
 
 Every pure function returns the same bytes on every backend for the same input, with two
 declared exceptions: compressed output (§2.6) and randomized signatures (§2.7). Every
-effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`,
-`Console.captured`, `Clock.virtual`, `Random.seeded`, `Http.scripted`.
+effect has a scripted or captured handler: `WebSocket.scripted` (both roles, `publish`
+included), `Worker.inline`, `Console.captured`, `Clock.virtual`, `Random.seeded`,
+`Http.scripted`, `Serve.scripted`.
 
 ### 6. Resource limits
 
@@ -684,6 +793,7 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 | `Stream.buffer`, `tee` (phase 10, over `Channel`) | `capacity`/`max_lag` required | producer waits (backpressure) |
 | `Http` bodies | unchanged: `SAKURA_MAX_COPY_BYTES`, 16 MiB cassettes | unchanged |
 | `WebSocket` | `max_message` (default 16 MiB) per message and per receive queue (a frame is bounded by it before its payload is held; no `max_frame`), 64 queued messages, then TCP backpressure; a pong only while the socket is writable; close handshake timeout 5 s (design §17.286 (4)) | `SocketError(MessageTooLarge)`, `Closed(1009)` |
+| `WebSocket.accept` and topics (design §17.289) | `max_message` per accepted socket (default 16 MiB) with the client's queue, pong and close rules; `SAKURA_MAX_SOCKETS` (default 1,024, a positive integer or a startup refusal) open sockets per instance, both roles; a topic name at most 256 bytes; `publish` never waits and skips a subscriber whose write buffer holds `max_message` bytes or more; no idle timer (the handler's `Task.timeout`) | `SocketError(Accept("the socket limit of N is reached"))`, `Connect(…)` the same for `connect`; `D020` on the topic length; a missed message counted out of `publish`'s `Int` |
 | Redirects | 20 hops | `HttpError("too many redirects")` |
 | `Channel`, `Worker` queues | `capacity` per channel | `SendError(Full)` only on `try_send`; `send` waits |
 | Workers | 16 live per instance; heap per worker `SAKURA_MAX_HEAP` | `WorkerError(Limit)`, worker `D096` reported as `Failed` |
@@ -818,6 +928,14 @@ MINOR revision per phase that adds imports.
   every queue has a capacity; workers are capped; WebSocket messages, frames and the receive
   queue are capped by `max_message` (§17.286 (4));
   multipart parts are capped. Heap exhaustion stays `D096`.
+- The served upgrade (§2.10, design §17.289): the handshake is parsed by pure Sakura code
+  shared by the host and the scripted handler, each refusal one string naming the header;
+  `origins` empty refuses every browser and admits no wildcard; the 101 carries only the four
+  handshake headers and the filtered `Upgrade.headers`, and a refusal written by the host
+  echoes no request header and closes the connection; no extension is negotiated, so no
+  decompression surface; an unmasked client frame is 1002; `SAKURA_MAX_SOCKETS` bounds both
+  roles; topics are instance-local and a subscription ends with its socket; `ws_accept`
+  answers only for the performing task's own upgrade request, once; no dependency is added.
 - Unsafe code: none new in `sakura_rt` is expected; codec crates are pure Rust
   (`miniz_oxide`, RustCrypto) and `no_std`-capable. Any `unsafe` added must be listed in
   the phase's PR.
@@ -837,6 +955,13 @@ MINOR revision per phase that adds imports.
   RFC 7578 multipart, RFC 6455 close codes.
 - Permission tests: a refused redirect hop; a `ws://` host outside `net`; a worker grant
   wider than the parent's.
+- The served upgrade (§2.10): scripted fixtures for the echo, each `handshake` refusal, the
+  origin, the subprotocol, the fan-out with `except`, the `D020` bounds, a `V6003` escape;
+  runtime tests with Node's global `WebSocket` and a raw client as peers (the frames, the
+  close codes in both directions, the unmasked client frame, the refusal path with
+  `connection: close`, the 426 with `sec-websocket-version: 13`, the extension offer not
+  echoed, `SAKURA_MAX_SOCKETS=1`, the backpressure skip); one served program on JS and WASM
+  with the same output and trace (`tests/wasm.rs`).
 - Limits: every bound in §6 has one fixture that trips it.
 - Determinism: runtime `.test.js` and `runtime/rt` unit tests for each codec; snapshots
   only for diagnostics, never for compressed bytes or signatures.
@@ -849,7 +974,8 @@ The order, files, owners and acceptance criteria are in
 [docs/plans/web-apis.md](../plans/web-apis.md): phase 0 the redirect fix; phases 1–4 the
 0.2.0 set (bytes/base64/encoding, URL/search params, headers/blob/form, the HTTP record
 changes and effect additions); phases 5–10 additive modules before the rc (streams,
-compression, crypto, WebSocket, URL patterns, channels); phase 11 workers (experimental);
+compression, crypto, WebSocket client and server (8 and 8s), URL patterns, channels); phase
+11 workers (experimental);
 phase 12 docs and the stability inventory. Opus writes the code; Sol does the mechanical
 subtasks the plan names; the owner accepts the RFC and stabilizes.
 

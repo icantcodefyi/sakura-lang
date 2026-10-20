@@ -72,8 +72,9 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc, **now** | Opus | 7b (landed) |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the 0.2.0 preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
+| 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract; one ABI MINOR: the first of 8s and 10 to be ready takes 1.10.0, the other 1.11.0 (§17.289 (11)); **now** in its own lane if an implementer is free, else after 6 in the web lane | Opus | 8 (landed); 7b-W's number |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
-| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc | Opus | 4b, 5 |
+| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; 1.10.0 or 1.11.0 by §17.289 (11) | Opus | 4b, 5, 6; 8s in the web lane's order |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
@@ -84,7 +85,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 last), with 12 beside each. Phases 5 and 9 are pure Sakura and start now in the web lane's
 worktree beside the perf lane's WS-P20 and WS-P15 (§17.276); phase 8 starts when WS-P20 is on
 `main` and rebases over WS-P15, since both edit `sakura_runtime.js`; 6 and 10 follow 8. A
-WebSocket server (`Serve` upgrade) stays outside the RFC. **Round 41:** phase 9 landed
+WebSocket server (`Serve` upgrade) stayed outside the RFC until round 43 (phase 8s, below). **Round 41:** phase 9 landed
 first (`b2fde35d`, §17.281) while phase 5 waited on its design question; §17.280 answers it
 (a stream is a value), so phase 5 is next and pure Sakura as before, then 8 as ordered. Phase 5
 then landed as specified (`9139a178`, ratified §17.284); 8 is next, when WS-P20 is on `main`. **Round 42 (design §17.285):** WS-P20 is on `main` and phase 8 is in flight (it holds ABI
@@ -114,7 +115,17 @@ freed; `docs(native)`: THIRD_PARTY.md's nine crypto rows with their notice files
 test that keeps the table complete); phase 10 takes 1.10.0 after 7b-W lands. Phase 7c is no
 longer optional-before-the-rc: a variant added to a `pub` std sum after 0.2.0 breaks
 exhaustive matches, so 7c lands before the 0.2.0 preparation commit or its variants are not
-in 1.0 (§17.288 (6)).
+in 1.0 (§17.288 (6)). **Round 43 (design §17.289, the owner's request of 2026-10-21):** the
+WebSocket server is in the RFC and in 1.0 as **phase 8s** (`WebSocket.accept` inside a `Serve`
+handler). Its files (`websocket.sak`, `serve.sak`'s comments, the WebSocket section and
+`serveHttp` of `sakura_runtime.js`, `served` in `sakura_wasm_host.js`, `WASM_HOSTED`,
+`validate.rs`, ABI.md, fixtures, `websocket.test.js`, `tests/wasm.rs`) are disjoint from phase
+6's and 10's but for `sakura_runtime.js` by section, so **8s starts now in its own lane if an
+implementer is free, else after phase 6 in the web lane; before 10 in either case**; the web
+lane's order reads 7b-W, 6, 8s, 10, 11. One ABI MINOR inside its commit: the first of 8s and
+phase 10 to be ready takes 1.10.0 and the other 1.11.0 after it lands (§17.266 (1), as
+§17.286 (12) ordered 7b-W and 10); 1.9.0 stays 7b-W's. **7c runs in its own lane now** under
+its deadline, its lock hunk by the shared append-only rule.
 
 ## 3. Phases
 
@@ -568,6 +579,75 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   `net = []` (`websocket_denied_host`) and the native driver's refusal. `websocket_redirect_not_followed`
   is a runtime test, since a semantics fixture has no live server to redirect.
 
+### Phase 8s: `std/websocket` server (`WebSocket.accept`; RFC §2.10, design §17.289)
+
+- **Scope.** The `WebSocket` effect gains `accept<e>(req: Request, options: Upgrade, body:
+  fn(Socket) -> Unit ! e) -> Response ! {Fail<SocketError> | e}` (`requires
+  options.max_message > 0`), `subscribe(sock, topic)`, `unsubscribe(sock, topic)` and
+  `publish(topic, message, except: Option<Socket>) -> Int` (the topic at most 256 bytes by
+  `requires`); `Upgrade = { subprotocol: Option<String>, origins: List<String>, headers:
+  List<(String, String)>, max_message: Int }` with `WebSocket.upgrade()`; the pure
+  `handshake(req) -> Result<Handshake, String>` with `Handshake = { key, subprotocols,
+  origin }` (RFC 6455 §4.2.1 strictly; body `Empty`; `origin` lowercased); `SocketReason`
+  gains `Accept(String)`; `upgrade_request(path, subprotocols) -> Request` for tests;
+  `host()` and `scripted` implement the four new operations (`scripted` runs the same
+  `handshake`, origin and subprotocol checks, plays `script` as the peer, and `publish` meets
+  each subscribed scripted socket as a send). The accepted socket's `send`, `receive`,
+  `close`, `messages` and `protocol` are the client's, unchanged. `accept` returns the 101
+  `Response`; the server discards the handler's return for an upgraded connection.
+- **Rules (the entry's numbers).** `origins` empty refuses every browser, no wildcard, a
+  request without `origin` admitted (5); the subprotocol must be offered, `headers` filtered
+  as the client's (6); no extension negotiated, server frames unmasked, an unmasked client
+  frame 1002, otherwise the client's wire rules, no runtime ping (7); `SAKURA_MAX_SOCKETS`
+  (default 1,024; a positive integer or a startup refusal) counting both roles, `accept` and
+  `connect` refused at the limit with the same string; no idle timer (`Task.timeout` around
+  `receive`); `setKeepAlive(true)` on every socket (8); `publish` never waits, skips a
+  subscriber whose write buffer holds `max_message` bytes or more or whose `max_message` the
+  message exceeds, returns the count, subscriptions end with the socket (9); a refused upgrade
+  is the handler's `Response` written by the host on the raw connection with `content-length`
+  and `connection: close`, the 503 and 405 paths as `serveHttp`'s, a defect after the 101
+  reported on stderr and the socket closed 1001 (10).
+- **Files.** `compiler/std/websocket.sak` (imports `std/request.{Empty, Request}` and
+  `std/response.{Response, Status}`; the header's "client only" sentence rewritten);
+  `compiler/std/serve.sak` (comments: upgrade requests reach `handle`; `WebSocket.accept`);
+  `sakura_core::builtins`; `sakura_runtime.js` (the WebSocket section: a role flag on the
+  table entry, `wsFrame(op, payload, masked)`, unmasking in `wsData`, `ws_accept` keyed by
+  `ctx.t`, the topic map, `ws_subscribe`/`ws_unsubscribe`/`ws_publish`, the socket counter
+  and `SAKURA_MAX_SOCKETS` read as `SAKURA_MAX_COPY_BYTES` is; `serveHttp`: the `upgrade`
+  listener building the same `Request`, the raw connection held by task, the host-written
+  refusal); `sakura_wasm_host.js` (`served` holds the raw connection; the four `hosted`
+  imports, `ws_accept(task, ptr, len)` keyed by the served task as `serve_respond` is);
+  `sakura_lir::image::WASM_HOSTED`, `validate.rs`; `ABI.md` §0 and §8.2's WebSocket
+  paragraph at the MINOR; `sakura_abi_version` on both hosts and `test_bench.py`'s assertion
+  (§17.270 (2)); `CHANGELOG.md`; `std/INDEX.md` regenerated. No dependency.
+- **Tests.** Semantics: `websocket_accept_scripted_echo.sak` (`Serve.scripted([upgrade_request("/ws", [])])`
+  around `WebSocket.scripted`, output `Get /ws -> 101 ` and the body's `Test.output`),
+  `websocket_accept_rejects_handshake.sak` (method, `upgrade`, `connection`, key, version,
+  body: one `Accept` string each), `websocket_accept_rejects_origin.sak`,
+  `websocket_accept_rejects_subprotocol.sak`, `websocket_accept_rejects_max_message.sak`
+  (`expect-defect: D020`, the perform span), `websocket_publish_scripted_fanout.sak` (two
+  accepted sockets, `except`, the `Int`), `websocket_publish_rejects_topic_length.sak`
+  (`D020`); UI: `V6003` for a socket escaping `accept`'s body; each with `// Spec:
+  https://www.rfc-editor.org/rfc/rfc6455#section-…`. Runtime (`websocket.test.js`): a
+  Sakura-served server with Node's global `WebSocket` and a raw client (`ws_peer.mjs`'s kind)
+  as peers: text, binary, fragmented, ping/pong, an unmasked client frame 1002, 1009, 1007,
+  close 1000 both directions, 1001 on `body`'s return, the refusal path (`Upgrade: h2c` gets
+  the handler's response with `connection: close`; a plain `GET` on the route gets its
+  response), the 426 with `sec-websocket-version: 13`, an origin refused and one admitted,
+  the subprotocol echoed, an extension offer not echoed, `SAKURA_MAX_SOCKETS=1` → the second
+  accept `Accept(…)` → 503, two subscribed clients with `except`, the backpressure skip (the
+  predicate on `writableLength` unit-tested if the TCP buffer cannot be filled
+  deterministically). `tests/wasm.rs::websocket_accept_on_wasm_as_on_js`: one served
+  program, same output and trace on JS and WASM. `cli.rs`: `net = []` exit 75 unchanged.
+- **Docs (phase 12).** Stdlib regenerated; `cookbook/websocket_server.mdx` (Opus: the route,
+  `handshake` then `accept`, `origins`, the 426/403/503 answers, a `Task.timeout` idle);
+  `manifest.mdx` one sentence (`net` covers the listener; `accept` adds no entry); the RFC's
+  gap sentence for `Bun.serve` rewritten as delivered (Sol).
+- **Who.** Opus, one commit, one MINOR. **Acceptance.** Every fixture above green on three
+  backends (native: the startup refusal unchanged); the runtime tests green on JS and through
+  the WASM host; the owner's review of the served-upgrade path recorded as a dated line under
+  the REQUESTS entry (§17.289's list (a)–(j)); no new diagnostic code; no dependency.
+
 ### Phase 9: `std/urlpattern`
 
 - **Scope.** `UrlPattern.compile`, `exec`, `UrlMatch`, `PatternError`; `Router.route`
@@ -673,6 +753,8 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   and its generating test in its header, and that test is the staleness gate (§17.268 (5)).
 - A setter the standard would silently ignore returns `Err` with a typed reason; a setter
   that applies to every value returns the value (§17.268 (3)).
+- A served request's connection is the task's: the host finds it by the performing task
+  (`ctx.t` on JS, the served task on WASM), never by a field of `Request` (§17.289 (10)).
 
 ## 5. Open items for Fable
 
@@ -680,6 +762,7 @@ Queue them in `compiler/REQUESTS.md` as `design-question` entries, as before. Cl
 `Console.captured` scripted input (phase 4b, `Console.scripted`, §17.267); `Router` does not
 expose `UrlMatch`, `Request.params` is the surface (§17.281 (3)); where a stream's cursor
 lives (§17.280: nowhere, a stream is a value); phase 5's six readings (§17.284); phase 7b's
-seven readings and the four items beside them (§17.288). Phase 9's follow-ups: the `route` doc-comment
+seven readings and the four items beside them (§17.288); the WebSocket server's shape, lane
+and number (§17.289). Phase 9's follow-ups: the `route` doc-comment
 line with the next `router.sak` change (§17.281 (2)) and two gap rows in phase 12
 (§17.281 (4)).
