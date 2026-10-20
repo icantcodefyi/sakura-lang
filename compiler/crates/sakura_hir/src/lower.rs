@@ -1921,9 +1921,24 @@ impl Cx {
         TypeRes::Err
     }
 
-    /// The fix adding `import std/<module>.{name}` when exactly one std module exports `name`,
-    /// or `import std/<name>` when `is_module` and that module exists (design §9, §17.36).
+    /// The fix adding an import for `name`: `import <pkg>/<path>` when `name` is the last segment
+    /// of exactly one module of `m`'s package or its dependencies (design §17.293 PQ-6; two such
+    /// modules give no fix), else `import std/<module>.{name}` when exactly one std module
+    /// exports `name`, or `import std/<name>` when `is_module` and that module exists (design §9,
+    /// §17.36).
     pub(crate) fn std_import_fix(&self, m: ModuleId, name: &str, is_module: bool) -> Option<Fix> {
+        let pkg = &self.program.packages[self.program.module(m).package.0 as usize];
+        let mut own = (std::iter::once(&pkg.modules).chain(
+            pkg.deps
+                .iter()
+                .map(|d| &self.program.packages[d.0 as usize].modules),
+        ))
+        .flatten()
+        .filter(|&&t| t != m && self.program.module(t).path.rsplit('/').next() == Some(name));
+        let first = own.next();
+        if first.is_some() && own.next().is_some() {
+            return None;
+        }
         let mut std = (0..self.program.modules.len() as u32)
             .map(ModuleId)
             .filter(|&t| {
@@ -1931,7 +1946,9 @@ impl Cx {
                     && self.program.packages[self.program.module(t).package.0 as usize].name
                         == "std"
             });
-        let line = if is_module {
+        let line = if let Some(&t) = first {
+            format!("import {}", self.module_name(t))
+        } else if is_module {
             std.find(|&t| self.program.module(t).path == name)?;
             format!("import std/{name}")
         } else {

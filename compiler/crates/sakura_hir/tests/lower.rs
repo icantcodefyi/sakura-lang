@@ -496,6 +496,17 @@ fn g(r: Request) -> Unit { () }
     "lib" => "import std/console\npub fn one() -> Int { 1 }\n",
 );
 
+// Design §17.293 PQ-6: a module of the program's own package wins over a std export of the
+// same name (`unwrap_or`), a module with no std namesake gets its import (`carrier`), and two
+// package modules of one name give no fix (`dup`).
+snap!(diag_import_fix_prefers_own_module,
+    "main" => "import app/util/unwrap_or.{one}\nfn f() -> Int { unwrap_or.one() + carrier.two() + dup.three() + one() }\n",
+    "util/unwrap_or" => "pub fn one() -> Int { 1 }\n",
+    "carrier" => "pub fn two() -> Int { 2 }\n",
+    "a/dup" => "pub fn three() -> Int { 3 }\n",
+    "b/dup" => "pub fn three() -> Int { 3 }\n",
+);
+
 snap!(diag_shadowed_import,
     "main" => "import app/lib.{value}\nfn f() -> Int { let value = 2; value }\n",
     "lib" => "pub fn value() -> Int { 1 }\n",
