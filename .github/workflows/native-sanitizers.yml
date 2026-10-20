@@ -1,0 +1,158 @@
+# The native sanitizer lanes of design §17.173 and plan m5-native.md §4, each with the detection
+# control that turns it red when it misses its own seeded fault: Miri (invalid slot kind) on both
+# platform-A hosts, ASan + LSan (double drop, stale request) and Memcheck with the allocator's
+# client requests (freed-object read) on x86_64 Linux. The controls run on every change to the
+# native runtime, host or backend; the full Memcheck corpus runs nightly and on demand.
+name: Native sanitizers
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/native-sanitizers.yml
+      - compiler/Cargo.lock
+      - compiler/runtime/rt/**
+      - compiler/crates/sakura_codegen_native/**
+      - compiler/crates/sakura_host_native/**
+      - compiler/crates/sakura_lir/**
+      - compiler/crates/sakura_native_driver/**
+  pull_request:
+    paths:
+      - .github/workflows/native-sanitizers.yml
+      - compiler/Cargo.lock
+      - compiler/runtime/rt/**
+      - compiler/crates/sakura_codegen_native/**
+      - compiler/crates/sakura_host_native/**
+      - compiler/crates/sakura_lir/**
+      - compiler/crates/sakura_native_driver/**
+  schedule:
+    - cron: "41 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'schedule' && github.run_id || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+
+env:
+  CARGO_INCREMENTAL: "0"
+  NATIVE_NIGHTLY: nightly-2026-10-17
+
+jobs:
+  miri:
+    name: Miri (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        working-directory: compiler
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned nightly with Miri
+        run: rustup toolchain install "$NATIVE_NIGHTLY" --profile minimal --component miri,rust-src
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          shared-key: native-miri
+      - name: Miri over the native runtime (heap reservation, allocator, instances, hosted glue) and its control
+        timeout-minutes: 20
+        run: cargo +"$NATIVE_NIGHTLY" miri test -p sakura_rt --features native --locked --test native --test heap --test native_detect 2>&1 | tee "$RUNNER_TEMP/miri.txt"
+      - name: The invalid-slot-kind control ran
+        run: grep -F 'test an_invalid_slot_kind_is_stopped - should panic ... ok' "$RUNNER_TEMP/miri.txt"
+
+  asan:
+    name: ASan + LSan (x86_64 Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: compiler
+    env:
+      RUSTFLAGS: -Zsanitizer=address
+      # Bundled C (SQLite, ring's C) is compiled under the sanitizer too; LLVM's, to match the
+      # runtime rustc links.
+      CC: clang
+      CFLAGS: -fsanitize=address -fno-omit-frame-pointer
+      ASAN_OPTIONS: detect_leaks=1
+      TARGET: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned nightly
+        run: rustup toolchain install "$NATIVE_NIGHTLY" --profile minimal --component rust-src
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          shared-key: native-asan
+      - name: The double-drop and stale-request controls
+        timeout-minutes: 15
+        run: |
+          cargo +"$NATIVE_NIGHTLY" test --target "$TARGET" -p sakura_rt --features asan --locked --test native_detect -- --nocapture 2>&1 | tee "$RUNNER_TEMP/controls.txt"
+          grep -F 'test asan_reports_a_double_drop ... ok' "$RUNNER_TEMP/controls.txt"
+          grep -F 'test asan_reports_a_stale_request ... ok' "$RUNNER_TEMP/controls.txt"
+      - name: The runtime's tests with the allocator poisoning freed blocks
+        timeout-minutes: 15
+        run: cargo +"$NATIVE_NIGHTLY" test --target "$TARGET" -p sakura_rt --features asan --locked
+      - name: The native host and the in-process corpus (the executables' code is Memcheck's)
+        timeout-minutes: 20
+        run: |
+          cargo +"$NATIVE_NIGHTLY" test --target "$TARGET" -p sakura_host_native --features native,sakura_rt/asan --locked --lib
+          cargo +"$NATIVE_NIGHTLY" test --target "$TARGET" -p sakura_host_native --features native,sakura_rt/asan --locked --test corpus -- \
+            --exact the_corpus_runs_natively host_root_handlers_runs_natively \
+            virtual_clock_and_seeded_random_match_js two_instances_close_in_one_process
+      - name: Uninstrumented libraries
+        if: always()
+        run: |
+          echo "Not instrumented: the prebuilt Rust standard library (no -Zbuild-std), ring's assembly, and the shared libraries the tests load:"
+          exe=$(find target/"$TARGET" -type f -perm -u+x -name 'corpus-*' | head -n 1)
+          if [ -n "$exe" ]; then ldd "$exe"; fi
+
+  memcheck:
+    name: Memcheck (x86_64 Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: compiler
+    env:
+      # The driver every test links is built with the allocator's client requests, and each
+      # executable runs under Memcheck.
+      SAKURA_NATIVE_DRIVER_FEATURES: sakura_rt/valgrind
+      SAKURA_NATIVE_RUNNER: valgrind --quiet --error-exitcode=99
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Install Valgrind and libclang (crabgrind's bindings)
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes valgrind libclang-dev
+          valgrind --version
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          shared-key: native-memcheck
+      - name: The freed-object-read control
+        timeout-minutes: 20
+        run: |
+          cargo test -p sakura_host_native --features native --locked --test native_detect -- --exact memcheck_catches_a_freed_object_read --nocapture 2>&1 | tee "$RUNNER_TEMP/control.txt"
+          if grep -F 'skipped:' "$RUNNER_TEMP/control.txt"; then exit 1; fi
+          grep -F 'test memcheck_catches_a_freed_object_read ... ok' "$RUNNER_TEMP/control.txt"
+      - name: The compiled corpus under Memcheck (nightly and on demand)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        timeout-minutes: 35
+        run: cargo test -p sakura_host_native --features native --locked --test corpus -- --exact the_corpus_compiles_links_and_runs_natively --nocapture

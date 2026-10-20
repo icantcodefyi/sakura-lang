@@ -399,7 +399,8 @@ pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), String> {
 
 /// Build the driver staticlib from the workspace at `workspace` (`compiler/`) into the driver
 /// directory `target/debug` under `target`, with `cargo` (tests and packaging; the compiler
-/// never builds it). Returns the directory.
+/// never builds it). Returns the directory. `SAKURA_NATIVE_DRIVER_FEATURES` adds features, as
+/// the Memcheck lane adds `sakura_rt/valgrind` (design §17.173 (3)).
 pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> {
     let dir = target.join("debug");
     let (lib, libs_file) = (dir.join(DRIVER_LIB), dir.join(DRIVER_LIBS));
@@ -407,16 +408,15 @@ pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> 
         // `--print native-static-libs` speaks only when it links.
         std::fs::remove_file(&lib).map_err(|e| e.to_string())?;
     }
+    let mut features = String::from("native");
+    if let Ok(extra) = std::env::var("SAKURA_NATIVE_DRIVER_FEATURES") {
+        features = format!("{features},{extra}");
+    }
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let output = Command::new(cargo)
         .current_dir(workspace)
-        .args([
-            "rustc",
-            "-p",
-            "sakura_native_driver",
-            "--features",
-            "native",
-        ])
+        .args(["rustc", "-p", "sakura_native_driver", "--features"])
+        .arg(features)
         .args([
             "--lib",
             "--locked",

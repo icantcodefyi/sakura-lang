@@ -343,10 +343,14 @@ fn a_wipe_buffer_overwrites_every_block_it_leaves_behind() {
     let first = b.obj();
     rt.put(&mut b, &[0x5a; 200]).unwrap();
     assert_ne!(b.obj(), first, "the buffer grew");
+    // The abandoned blocks are free; an `asan` or `valgrind` build closed them, so open them
+    // to look.
+    rt.heap.mem.unpoison(first + 16, 40);
     assert!(rt.heap.mem.bytes(first + 16, 40).iter().all(|&x| x == 0));
     let last = b.obj();
     let out = rt.finish_bytes(b).unwrap();
     assert_eq!(&rt.data_bytes(out)[..40], &key[..]);
+    rt.heap.mem.unpoison(last + 16, 240);
     assert!(rt.heap.mem.bytes(last + 16, 240).iter().all(|&x| x == 0));
     rt.drop(out);
     // Without `wipe` nothing is overwritten (the cost stays on secret arguments only).
@@ -354,6 +358,7 @@ fn a_wipe_buffer_overwrites_every_block_it_leaves_behind() {
     rt.put(&mut b, &key).unwrap();
     let first = b.obj();
     rt.put(&mut b, &[0x5a; 200]).unwrap();
+    rt.heap.mem.unpoison(first + 16, 40);
     assert_eq!(rt.heap.mem.bytes(first + 16, 40), &key[..]);
     rt.strbuf_free(b);
 }

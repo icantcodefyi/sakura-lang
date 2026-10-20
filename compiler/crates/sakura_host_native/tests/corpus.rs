@@ -208,7 +208,18 @@ fn run_compiled(
     };
     let stats = exe.with_extension("stats");
     let _ = std::fs::remove_file(&stats);
-    let out = Command::new(&exe)
+    // The Memcheck lane runs each executable under `valgrind ...` (design §17.173 (3)).
+    let runner = std::env::var("SAKURA_NATIVE_RUNNER").unwrap_or_default();
+    let mut words = runner.split_whitespace();
+    let mut cmd = match words.next() {
+        Some(tool) => {
+            let mut cmd = Command::new(tool);
+            cmd.args(words).arg(&exe);
+            cmd
+        }
+        None => Command::new(&exe),
+    };
+    let out = cmd
         .current_dir(std::env::temp_dir())
         .env_remove("SAKURA_PERMISSIONS")
         .env_remove("SAKURA_TRACE")

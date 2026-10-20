@@ -216,6 +216,8 @@ fn handles_retire_and_secrets_zero_on_destruction() {
     let secret = rt.new_object(tag::SECRET, 12).unwrap();
     rt.heap.mem.set_u32(secret + 8, inner);
     rt.drop(secret);
+    // The block is free; an `asan` or `valgrind` build closed it, so open it to look.
+    rt.heap.mem.unpoison(inner, 16);
     assert_eq!(rt.heap.mem.bytes(inner + 12, 4), [0; 4]);
 }
 

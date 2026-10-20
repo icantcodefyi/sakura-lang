@@ -138,7 +138,7 @@ impl Heap {
                     r => r,
                 };
                 small.map(|addr| {
-                    self.mem.fill(addr, 0, CLASSES[c]);
+                    self.mem.init(addr, 0, CLASSES[c]);
                     self.mem.set_u16(addr, RAW);
                     self.mem.set_u8(addr + 2, c as u8);
                     (addr, CLASSES[c])
@@ -148,7 +148,7 @@ impl Heap {
                 let total = (size as u64 + 8).next_multiple_of(RUN_PAGE as u64);
                 let total = u32::try_from(total).map_err(|_| Defect::HEAP_EXHAUSTED);
                 total.and_then(|t| self.pages(t)).map(|(start, total)| {
-                    self.mem.fill(start, 0, total);
+                    self.mem.init(start, 0, total);
                     self.mem.set_u32(start, total);
                     self.mem.set_u16(start + 8, RAW);
                     self.mem.set_u8(start + 8 + 2, RUN);
@@ -183,7 +183,7 @@ impl Heap {
         let pool = if in_em { &mut self.em } else { &mut self.main };
         let next = pool.free[class as usize];
         pool.free[class as usize] = addr;
-        self.mem.set_u32(addr + 4, next);
+        self.mem.set_link(addr, next, size);
     }
 
     /// Size of the block at `addr` (its class size or run size).
@@ -229,7 +229,7 @@ impl Heap {
         if a == 0 {
             return None;
         }
-        pool.free[c] = mem.u32(a + 4);
+        pool.free[c] = mem.link(a);
         Some(a)
     }
 
@@ -249,7 +249,7 @@ impl Heap {
                     size
                 };
                 let rest = if taken < size {
-                    let rest = r + taken;
+                    let rest = self.mem.head(r + taken);
                     self.mem.set_u32(rest, size - taken);
                     self.mem.set_u32(rest + 4, next);
                     rest
@@ -280,6 +280,8 @@ impl Heap {
     }
 
     fn free_run(&mut self, start: u32, total: u32) {
+        // The run's header stays open: the free-run list walks it (`mem.rs`, annotations).
+        self.mem.poison(start + 8, total - 8);
         self.stats.free_list_bytes += total as u64;
         let (mut prev, mut r) = (0, self.runs);
         while r != 0 && r < start {

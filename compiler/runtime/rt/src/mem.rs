@@ -323,3 +323,87 @@ impl Mem {
         self.bytes_mut(addr, len).fill(byte);
     }
 }
+
+/// Allocator annotations (design §17.173 (2), (3)). In an `asan` or `valgrind` build the
+/// allocator tells the tool which heap bytes belong to a live block, so an access of a freed
+/// block is reported although the heap is one mapping; elsewhere they compile to nothing. A
+/// free block is closed whole except while the allocator reads its free-list link; a free page
+/// run keeps its 8-byte header open, since the run list walks it. (At the end of the file: the
+/// wasm32 runtime embeds its panic locations, so nothing above may move.)
+impl Mem {
+    /// Open `len` bytes at `addr` and fill them with `byte`: a block being handed out.
+    pub fn init(&mut self, addr: u32, byte: u8, len: u32) {
+        self.unpoison(addr, len);
+        self.fill(addr, byte, len);
+    }
+
+    /// The free-list link of the free block at `block`, whose header is opened first.
+    pub fn link(&mut self, block: u32) -> u32 {
+        self.unpoison(block, 8);
+        self.u32(block + 4)
+    }
+
+    /// Link the freed block of `size` bytes at `block` to `next`, then close the block.
+    pub fn set_link(&mut self, block: u32, next: u32, size: u32) {
+        self.set_u32(block + 4, next);
+        self.poison(block, size);
+    }
+
+    /// Open the run header at `addr`, where a free run is split, and return `addr`.
+    pub fn head(&mut self, addr: u32) -> u32 {
+        self.unpoison(addr, 8);
+        addr
+    }
+
+    /// Make `len` bytes at `addr` unaddressable to the tool.
+    #[allow(unused_variables)]
+    pub fn poison(&mut self, addr: u32, len: u32) {
+        #[cfg(any(feature = "asan", feature = "valgrind"))]
+        annotate::poison(self.bytes(addr, len));
+    }
+
+    /// Make `len` bytes at `addr` addressable (and defined) to the tool.
+    #[allow(unused_variables)]
+    pub fn unpoison(&mut self, addr: u32, len: u32) {
+        #[cfg(any(feature = "asan", feature = "valgrind"))]
+        annotate::unpoison(self.bytes(addr, len));
+    }
+}
+
+#[cfg(any(feature = "asan", feature = "valgrind"))]
+mod annotate {
+    #[cfg(feature = "asan")]
+    unsafe extern "C" {
+        fn __asan_poison_memory_region(addr: *const u8, size: usize);
+        fn __asan_unpoison_memory_region(addr: *const u8, size: usize);
+    }
+
+    pub fn poison(range: &[u8]) {
+        #[cfg(feature = "asan")]
+        // SAFETY: the range is inside the heap's mapping (`Mem::bytes` checked it); poisoning
+        // changes ASan's shadow only.
+        unsafe {
+            __asan_poison_memory_region(range.as_ptr(), range.len())
+        };
+        #[cfg(feature = "valgrind")]
+        let _ = crabgrind::memcheck::mark_memory(
+            range.as_ptr().cast(),
+            range.len(),
+            crabgrind::memcheck::MemState::NoAccess,
+        );
+    }
+
+    pub fn unpoison(range: &[u8]) {
+        #[cfg(feature = "asan")]
+        // SAFETY: as in `poison`.
+        unsafe {
+            __asan_unpoison_memory_region(range.as_ptr(), range.len())
+        };
+        #[cfg(feature = "valgrind")]
+        let _ = crabgrind::memcheck::mark_memory(
+            range.as_ptr().cast(),
+            range.len(),
+            crabgrind::memcheck::MemState::Defined,
+        );
+    }
+}
