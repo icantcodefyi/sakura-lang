@@ -632,7 +632,9 @@ impl<'m> Machine<'m> {
                         consumed.is_some() && matches!(bind, Bind::Call(Atom::Global(_), _));
                     let bound = self.bind(env, bind, hs);
                     self.owned.enter = false;
-                    if let Err(Stop::Defect { code, .. }) = &bound {
+                    if let Err(Stop::Defect { code, .. }) = &bound
+                        && !unsafe_int_operand(bind, code)
+                    {
                         self.audit(def, *local, code)?;
                     }
                     match bound.map_err(|e| self.in_contract(e))? {
@@ -892,6 +894,15 @@ fn str_of(v: &Value) -> R<Rc<str>> {
 
 /// The JS backend represents `Int` exactly only within ±(2^53−1) (design §4.1, §13.4).
 pub(crate) const MAX_SAFE: i64 = (1 << 53) - 1;
+
+/// Whether `bind`'s `D003` is its operand's, not its own: an `Int` literal beyond the JS range
+/// defects when read (`$rt.unsafeInt` on JS), before the operation `opt::ranges` proved runs.
+fn unsafe_int_operand(bind: &Bind, code: &str) -> bool {
+    code == "D003"
+        && matches!(bind, Bind::Prim(_, args) if args.iter().any(|a| {
+            matches!(a, Atom::Lit(Lit::Int(i)) if !(-MAX_SAFE..=MAX_SAFE).contains(i))
+        }))
+}
 
 pub(crate) fn int(i: i64) -> R<Value> {
     if (-MAX_SAFE..=MAX_SAFE).contains(&i) {

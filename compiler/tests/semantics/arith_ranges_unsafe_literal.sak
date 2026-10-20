@@ -1,0 +1,14 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D003
+// expect-exit@wasm: 0
+// covers: design §4.1, §17.114 (a literal past the JS range defects when read); nightly fuzz `exec`
+
+// `-9_007_199_254_740_992` negates a literal one past the JS range. On JS the literal defects
+// before the negation, which opt::ranges proves from in-range operands; on i64 it prints.
+fn pred(flag: Bool, n: Int) -> Int { if flag && n < -1 { 0 } else { n } }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{pred(true, 5)}")
+  Console.print("{pred(true, -9_007_199_254_740_992)}")
+}
