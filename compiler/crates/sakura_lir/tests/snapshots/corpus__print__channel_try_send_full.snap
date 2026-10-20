@@ -1,0 +1,192 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_try_send_full, frame 1 slots [%3 word*]
+  b0():
+    %0 f: ptr = closure main$1#2[]
+    %1 lit: i64 = const 2
+    %2 $site: i64 = const 2
+    call with_channel#7(%1, %0, %2) -> b1()
+  b1(%3 r: word):
+    %4 unbox: unit = unbox %3
+    drop %3
+    ret %4
+
+fn $entry#1 top -> unit ; main::channel_try_send_full, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_try_send_full, captures [], frame 65 slots [%0 word*, %1 word*, %2 word*, %13 word*, %14 word*, %15 word*, %19 bool, %20 word*, %21 word*, %25 word*, %26 word*, %27 word*, %28 word*, %29 word*, %30 word*, %34 bool, %35 word*, %36 word*, %40 word*, %41 word*, %42 word*, %43 word*, %44 word*, %45 word*, %49 bool, %50 word*, %51 word*, %53 bool, %54 word*, %55 word*, %58 word*, %59 word*, %60 word*, %61 word*, %65 bool, %66 word*, %68 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %74 word*, %75 word*, %80 bool, %113 word*, %114 word*, %115 word*, %116 word*, %117 i64, %118 i64, %119 word*, %120 word*, %121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 word*, %129 bool, %130 word*, %131 word*, %132 word*, %133 i64, %134 i64]
+  b0(%0 env: ptr, %1 tx: word, %2 rx: word):
+    drop %0
+    %3 lit: i64 = const 1
+    %4 box: word = box %3
+    %5 lit: i64 = const 2
+    %6 box: word = box %5
+    %7 lit: i64 = const 3
+    %8 box: word = box %7
+    %9 xs: ptr = alloc list(%4, %6, %8)
+    dup.candidate %9
+    %10 n: i64 = $list_len(%9)
+    %136 lit: i64 = const 0
+    jump b18(%136, %1, %2, %9, %10)
+  b1(%11 tx: ptr, %12 rx: ptr):
+    dup %12
+    call recv#5(%12) -> b2(%11, %12)
+  b2(%13 r: ptr, %14 tx: ptr, %15 rx: ptr):
+    %16 s: ptr = show %13
+    drop %13
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %17, %16
+    drop %16
+    perform std::console::Console.print(%18) -> b3(%14, %15)
+  b3(%19 r: unit, %20 tx: ptr, %21 rx: ptr):
+    %22 box: word = box %19
+    drop %22
+    %23 lit: i64 = const 4
+    %24 box: word = box %23
+    dup %20
+    call try_send#3(%20, %24) -> b4(%20, %21)
+  b4(%25 r: ptr, %26 tx: ptr, %27 rx: ptr):
+    call show#4(%25) -> b5(%26, %27)
+  b5(%28 r: ptr, %29 tx: ptr, %30 rx: ptr):
+    %31 s: ptr = show %28
+    drop %28
+    %32 lit: ptr = const str 1
+    %33 s: ptr = concat %32, %31
+    drop %31
+    perform std::console::Console.print(%33) -> b6(%29, %30)
+  b6(%34 r: unit, %35 tx: ptr, %36 rx: ptr):
+    %37 box: word = box %34
+    drop %37
+    %38 lit: i64 = const 5
+    %39 box: word = box %38
+    dup %35
+    call try_send#3(%35, %39) -> b7(%35, %36)
+  b7(%40 r: ptr, %41 tx: ptr, %42 rx: ptr):
+    call show#4(%40) -> b8(%41, %42)
+  b8(%43 r: ptr, %44 tx: ptr, %45 rx: ptr):
+    %46 s: ptr = show %43
+    drop %43
+    %47 lit: ptr = const str 2
+    %48 s: ptr = concat %47, %46
+    drop %46
+    perform std::console::Console.print(%48) -> b9(%44, %45)
+  b9(%49 r: unit, %50 tx: ptr, %51 rx: ptr):
+    %52 box: word = box %49
+    drop %52
+    dup %50
+    call close#6(%50) -> b10(%50, %51)
+  b10(%53 r: unit, %54 tx: ptr, %55 rx: ptr):
+    %56 lit: i64 = const 6
+    %57 box: word = box %56
+    call try_send#3(%54, %57) -> b11(%55)
+  b11(%58 r: ptr, %59 rx: ptr):
+    call show#4(%58) -> b12(%59)
+  b12(%60 r: ptr, %61 rx: ptr):
+    %62 s: ptr = show %60
+    drop %60
+    %63 lit: ptr = const str 3
+    %64 s: ptr = concat %63, %62
+    drop %62
+    perform std::console::Console.print(%64) -> b13(%61)
+  b13(%65 r: unit, %66 rx: ptr):
+    %67 box: word = box %65
+    drop %67
+    dup %66
+    call recv#5(%66) -> b14(%66)
+  b14(%68 r: ptr, %69 rx: ptr):
+    dup %69
+    call recv#5(%69) -> b15(%69, %68)
+  b15(%70 r: ptr, %71 rx: ptr, %72 r: ptr):
+    call recv#5(%71) -> b16(%72, %70)
+  b16(%73 r: ptr, %74 r: ptr, %75 r: ptr):
+    %76 xs: ptr = alloc list(%74, %75, %73)
+    %77 s: ptr = show %76
+    drop %76
+    %78 lit: ptr = const str 4
+    %79 s: ptr = concat %78, %77
+    drop %77
+    perform std::console::Console.print(%79) -> b17()
+  b17(%80 r: unit):
+    %81 box: word = box %80
+    ret %81
+  b18(%82 i: i64, %83 tx: ptr, %84 rx: ptr, %85 xs: ptr, %86 n: i64):
+    %87 more: bool = lt.int %82, %86
+    if %87 then b19(%83, %84, %85, %86, %82) else b20(%83, %84, %85, %86, %82)
+  b19(%88 tx: ptr, %89 rx: ptr, %90 xs: ptr, %91 n: i64, %92 i: i64):
+    dup.candidate %90
+    %98 x: word = $list_at(%90, %92)
+    %99 unbox: i64 = unbox %98
+    drop %98
+    %107 s: ptr = show %99
+    %108 lit: ptr = const str 5
+    %109 s: ptr = concat %108, %107
+    drop %107
+    %110 lit: ptr = const str 6
+    %111 s: ptr = concat %109, %110
+    drop %110
+    %112 box: word = box %99
+    dup %88
+    call try_send#3(%88, %112) -> b22(%88, %89, %90, %91, %92, %111)
+  b20(%93 tx: ptr, %94 rx: ptr, %95 xs: ptr, %96 n: i64, %97 i: i64):
+    drop %95
+    jump b1(%93, %94)
+  b21(%100 tx: ptr, %101 rx: ptr, %102 xs: ptr, %103 n: i64, %104 i: i64):
+    %105 lit: i64 = const 1
+    %106 i: i64 = intadd %104, %105
+    jump b18(%106, %100, %101, %102, %103)
+  b22(%113 r: ptr, %114 tx: ptr, %115 rx: ptr, %116 xs: ptr, %117 n: i64, %118 i: i64, %119 s: ptr):
+    call show#4(%113) -> b23(%114, %115, %116, %117, %118, %119)
+  b23(%120 r: ptr, %121 tx: ptr, %122 rx: ptr, %123 xs: ptr, %124 n: i64, %125 i: i64, %126 s: ptr):
+    %127 s: ptr = show %120
+    drop %120
+    %128 s: ptr = concat %126, %127
+    drop %127
+    perform std::console::Console.print(%128) -> b24(%121, %122, %123, %124, %125)
+  b24(%129 r: unit, %130 tx: ptr, %131 rx: ptr, %132 xs: ptr, %133 n: i64, %134 i: i64):
+    %135 box: word = box %129
+    drop %135
+    jump b21(%130, %131, %132, %133, %134)
+
+fn show#4 top -> ptr ; main::channel_try_send_full, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    drop %4
+    %5 lit: ptr = const str 7
+    ret %5
+  b2(%3 r: ptr):
+    %6 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %7 tag: i64 = tag %6 ctor std::channel::SendError
+    drop %6
+    switch %7 0 => b3() 1 => b4()
+  b3():
+    %8 lit: ptr = const str 8
+    ret %8
+  b4():
+    %9 lit: ptr = const str 9
+    ret %9

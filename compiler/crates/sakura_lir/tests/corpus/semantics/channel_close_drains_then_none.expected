@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+Ok(()) Ok(())
+third send waits
+third send: Err(Closed)
+after close: Err(Closed) Err(Closed)
+recv Some("a")
+recv Some("b")
+recv None
+recv None
+closed twice: None

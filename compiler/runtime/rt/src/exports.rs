@@ -95,7 +95,7 @@ pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -
 // ---- set-up, outcomes -----------------------------------------------------------------------
 
 /// The module's tables (static-block addresses) and the native codes the runtime builds
-/// closures of (`natives`, ten `u32`s in `NATIVE_CODES` order); false when the layout table is
+/// closures of (`natives`, eleven `u32`s in `NATIVE_CODES` order); false when the layout table is
 /// malformed.
 pub(crate) fn init(
     rt: &mut Rt,
@@ -115,6 +115,7 @@ pub(crate) fn init(
     rt.sched.body_close_code = code(rt, 7);
     rt.sched.js_callback_code = code(rt, 8);
     rt.sched.serve_request_code = code(rt, 9);
+    rt.sched.channel_end_code = code(rt, 10);
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1043,6 +1044,105 @@ pub extern "C" fn rt_k_compress_inflate_push(
     }
 }
 
+// ---- std/channel (`crate::channel`) -----------------------------------------------------------
+
+/// `channel_with(capacity, body)` (as JS: `finalize` with the channel's end): a fresh channel,
+/// a finalizer that closes and empties it (`rt_code_channel_end`, run on `fail`, defect or
+/// cancellation), `body(channel)`, then on its return the finalizer popped and run.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_channel_with(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    if rt.block(frame) == 1 {
+        let result = rt.take_ret();
+        let closer = rt.fin_pop();
+        let ch = rt.slot(closer, 0) as u32;
+        rt.channel_end(ch);
+        rt.drop(closer);
+        return ret(rt, result);
+    }
+    let capacity = rt.fslot(frame, 0) as i64;
+    let body = rt.take_fslot(frame, 1) as u32;
+    let r = (|| {
+        let ch = rt.channel_new(capacity)?;
+        let closer = rt
+            .new_object(tag::CLOSURE, 24)
+            .inspect_err(|_| rt.drop(ch))?;
+        rt.heap.mem.set_u32(closer + 8, rt.sched.channel_end_code);
+        rt.heap.mem.set_u32(closer + 12, 1);
+        rt.set_slot(closer, 0, ch as u64);
+        rt.dup(ch).inspect_err(|_| rt.drop(closer))?;
+        rt.fin_push(closer).inspect_err(|_| rt.drop(ch))?;
+        Ok(ch)
+    })();
+    let ch = match r {
+        Ok(ch) => ch,
+        Err(d) => {
+            rt.drop(body);
+            return rt.raise(d);
+        }
+    };
+    match rt.call_value(body, 1) {
+        Ok(c) => {
+            rt.set_fslot(c, 1, ch as u64);
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => {
+            rt.drop(ch);
+            rt.raise(d)
+        }
+    }
+}
+
+/// The finalizer `channel_with` registers: closes and empties the channel in its capture.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_channel_end(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    env: u32,
+    _frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let ch = rt.slot(env, 0) as u32;
+    rt.channel_end(ch);
+    ret(rt, UNIT as u64)
+}
+
+/// `channel_send(ch, v)`: 0 queued or 2 closed; waits while the channel is full.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_channel_send(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let r = rt.channel_send(frame);
+    raise_or(rt, r)
+}
+
+/// `channel_recv(ch)`: the oldest item, or `None` once closed and drained; waits while empty.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_channel_recv(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let r = rt.channel_recv(frame);
+    raise_or(rt, r)
+}
+
+fn raise_or(rt: &mut Rt, r: Res<u32>) -> u32 {
+    r.unwrap_or_else(|d| rt.raise(d))
+}
+
 // ---- std::task::Task (`crate::task`) ----------------------------------------------------------
 
 /// `Task.host()`: the clauses at `codes`, no generator.
@@ -1771,6 +1871,13 @@ builtins! {
         rt.encoding_decode(b, enc, fatal)
     };
     rt_b_encoding_encode(s: u32, enc: i64) -> u32 = ptr |rt| rt.encoding_encode(s, enc);
+    // `std/channel` (RFC 0002 §2.9, `channel.rs`): a `Receiver` is its channel's object.
+    rt_b_channel_receiver(ch: u32) -> u32 = plain |rt| {
+        let _ = rt;
+        ch
+    };
+    rt_b_channel_try_send(ch: u32, v: u32) -> i64 = scalar |rt| rt.channel_try_send(ch, v);
+    rt_b_channel_close(ch: u32) -> () = plain |rt| rt.channel_close(ch);
     // `std/compress` (RFC 0002 §2.6, `compress.rs`).
     rt_b_compress_deflate(b: u32, level: i64, last: i64) -> u32 = ptr |rt| {
         rt.compress_deflate(b, level, last)

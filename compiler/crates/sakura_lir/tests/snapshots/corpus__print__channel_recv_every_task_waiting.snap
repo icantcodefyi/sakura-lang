@@ -1,0 +1,56 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::Sender
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 variant std::task::Fiber
+layout 5 variant std::task::Scope
+layout 6 shape |  32b (word*, word*)
+layout 7 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_recv_every_task_waiting, frame 3 slots [%1 bool, %6 word*, %10 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 f: ptr = closure main$1#2[]
+    %4 lit: i64 = const 1
+    %5 $site: i64 = const 2
+    call with_channel#4(%4, %3, %5) -> b2()
+  b2(%6 r: word):
+    %7 s: ptr = show %6
+    drop %6
+    %8 lit: ptr = const str 1
+    %9 s: ptr = concat %8, %7
+    drop %7
+    perform std::console::Console.print(%9) -> b3()
+  b3(%10 r: unit):
+    %11 box: word = box %10
+    %12 unbox: unit = unbox %11
+    drop %11
+    ret %12
+
+fn $entry#1 top -> unit ; main::channel_recv_every_task_waiting, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_recv_every_task_waiting, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 word*]
+  b0(%0 env: ptr, %1 _tx: word, %2 rx: word):
+    drop %0
+    drop %1
+    call recv#3(%2) -> b1()
+  b1(%3 r: ptr):
+    ret %3

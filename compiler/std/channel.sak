@@ -1,0 +1,81 @@
+// Channels (RFC 0002 §2.9, design §17.280 (4); plan `web-apis.md` phase 10): `MessageChannel`
+// and `MessagePort` inside one instance. `with_channel(capacity, body)` gives `body` the two ends of a
+// queue that holds at most `capacity` items: `send` waits while it is full, `recv` waits while
+// it is empty, and nothing is copied or serialized, since a value is already copied by
+// assignment (design §8.1). There are no listeners: a message is a value `recv` returns, so
+// control flow is a `match` and cancellation is the scope's.
+//
+// Both ends are resources (`V6003`): they cannot leave `with_channel`'s callback or sit in handler
+// state. When the callback returns, fails, or its task is cancelled, the channel is closed and
+// its items dropped, so a fiber that still holds an end sees `Err(Closed)` and `None`.
+//
+// Scheduling is the scheduler's: one instance runs on one thread, a waiting task wakes in the
+// order it waited, and under `Task.deterministic` every run of a seed interleaves the same way.
+// A program in which every task waits (a `recv` that no `send` or `close` will answer) ends
+// with the defect `D090`, "every task is waiting".
+
+/// The sending end of a channel (`MessagePort.postMessage`). A resource: it lives as long as
+/// the `with_channel` call that made it.
+@resource
+pub type Sender<T>
+
+/// The receiving end of a channel (`MessagePort.onmessage`, as a value). A resource.
+@resource
+pub type Receiver<T>
+
+/// `Full`: `try_send` found `capacity` items queued. `Closed`: the channel was closed.
+pub type SendError = Full | Closed
+
+/// Runs `body` with the two ends of a fresh channel that holds at most `capacity` items, then
+/// closes it. `capacity` must be positive (`D020`).
+pub fn with_channel<T, R, e>(capacity: Int, body: fn(Sender<T>, Receiver<T>) -> R ! e) -> R
+  ! {Task | e}
+  requires capacity > 0
+{ channel_with(capacity, fn(tx) { body(tx, channel_receiver(tx)) }) }
+
+/// Queues `v`, waiting while the channel is full; `Err(Closed)` once it is closed, before or
+/// while waiting (`v` is then dropped). It never fails `Full`.
+pub fn send<T>(tx: Sender<T>, v: T) -> Result<Unit, SendError> ! {Task} {
+  if channel_send(tx, v) == 0 { Ok(()) } else { Err(Closed) }
+}
+
+/// Queues `v` if there is room: `Err(Full)` when `capacity` items are queued, `Err(Closed)` once
+/// the channel is closed. It never waits.
+pub fn try_send<T>(tx: Sender<T>, v: T) -> Result<Unit, SendError> ! {Task} {
+  match channel_try_send(tx, v) {
+    0 => Ok(()),
+    1 => Err(Full),
+    _ => Err(Closed),
+  }
+}
+
+/// The oldest queued item, waiting while there is none; `None` once the channel is closed and
+/// every item sent before the close has been received.
+pub fn recv<T>(rx: Receiver<T>) -> Option<T> ! {Task} { channel_recv(rx) }
+
+/// Closes the channel: later sends fail `Closed`, waiting senders wake with `Closed`, and
+/// receivers take what is queued, then `None`. A second close does nothing.
+pub fn close<T>(tx: Sender<T>) -> Unit ! {Task} { channel_close(tx) }
+
+/// A fresh channel of `capacity` items as its sending end, passed to `body`; closed and emptied
+/// by a finalizer on every exit of `body`.
+@external(js, "sakura_runtime", "channel_with")
+fn channel_with<T, R, e>(capacity: Int, body: fn(Sender<T>) -> R ! e) -> R ! e
+
+/// The receiving end of the channel `tx` sends to (the same runtime object).
+@external(js, "sakura_runtime", "channel_receiver")
+fn channel_receiver<T>(tx: Sender<T>) -> Receiver<T>
+
+/// 0 queued, 2 closed (as `channel_try_send`).
+@external(js, "sakura_runtime", "channel_send")
+fn channel_send<T>(tx: Sender<T>, v: T) -> Int
+
+/// 0 queued, 1 full, 2 closed.
+@external(js, "sakura_runtime", "channel_try_send")
+fn channel_try_send<T>(tx: Sender<T>, v: T) -> Int
+
+@external(js, "sakura_runtime", "channel_recv")
+fn channel_recv<T>(rx: Receiver<T>) -> Option<T>
+
+@external(js, "sakura_runtime", "channel_close")
+fn channel_close<T>(tx: Sender<T>) -> Unit

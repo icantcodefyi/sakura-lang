@@ -1,0 +1,42 @@
+// milestone: M3
+// spec: RFC 0002 §2.8, §2.9; design §8.6, §17.280 (4); plan web-apis.md phase 10
+// Spec: https://dom.spec.whatwg.org/#dom-abortcontroller-abort
+
+// A task waiting in `recv` or `send` is a cancellation point: `Task.cancel` wakes it and it
+// unwinds without taking an item, and the waiters behind it are not stranded: the next item
+// goes to the other receiver. A sender cancelled while the channel is full queues nothing.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(3) {
+    channel.with_channel(1, fn(tx: Sender<String>, rx: Receiver<String>) {
+      Task.scope(fn(s) {
+        let a = Task.spawn(s, fn() {
+          Console.print("a waits")
+          let got = rx.recv()
+          Console.print("a never gets {got}")
+        })
+        let b = Task.spawn(s, fn() {
+          Console.print("b waits")
+          let got = rx.recv()
+          Console.print("b got {got}")
+        })
+        Task.cancel(a)
+        Console.print("a cancelled")
+        Console.print("send: {tx.send("petal")}")
+        Task.join(b)
+        Console.print("fill: {tx.send("one")}")
+        let c = Task.spawn(s, fn() {
+          Console.print("c waits to send")
+          let r = tx.send("two")
+          Console.print("c never sends {r}")
+        })
+        Task.cancel(c)
+        Console.print("c cancelled")
+        tx.close()
+        Console.print("queued: {rx.recv()} then {rx.recv()}")
+      })
+    })
+  }
+}

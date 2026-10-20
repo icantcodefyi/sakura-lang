@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+a waits
+b waits
+a cancelled
+send: Ok(())
+b got Some("petal")
+fill: Ok(())
+c waits to send
+c cancelled
+queued: Some("one") then None

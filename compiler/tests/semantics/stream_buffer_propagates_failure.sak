@@ -1,0 +1,41 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §6; design §8.6, §17.280 (4); plan web-apis.md phase 10
+// Spec: https://streams.spec.whatwg.org/#rs-cancel
+
+// A failure on either side of `buffer` is its result: the producer's pull failing `MaxLine`
+// cancels the body, which was waiting for the next item, and a body that fails cancels the
+// producer, which was waiting to send. Neither side is left waiting. The body runs under the
+// source's row and `Task`, so each source names what its body may perform.
+import std/stream.{Source, StreamError}
+
+error Stop(at: Int)
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(2) {
+    let text: Source<String, {Console}> = Source.from_list([
+      "ok\nfine\n",
+      "far too long a line\n",
+      "x\n",
+    ])
+    let r: Result<Int, StreamError> = try {
+      text.lines(8)
+        .buffer(1, fn(lines) {
+          lines.fold(0, fn(n, line) {
+            Console.print("line {line}")
+            n + 1
+          })
+        })
+    }
+    Console.print("producer failed: {r}")
+    let nums: Source<Int, {Fail<Stop>}> = Source.from_list(List.range(0, 10))
+    let s: Result<Int, Stop> = try {
+      nums.buffer(2, fn(items) {
+        items.fold(0, fn(acc, x) {
+          if x == 3 { fail Stop { at: x } }
+          acc + x
+        })
+      })
+    }
+    Console.print("body failed: {s}")
+  }
+}

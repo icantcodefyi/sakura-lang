@@ -1,0 +1,206 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_cancel_wakes_waiters, frame 1 slots [%5 word*]
+  b0():
+    %0 lit: i64 = const 3
+    %1 r: ptr = $task_deterministic(%0)
+    handle_push %1
+    %2 f: ptr = closure main$1#2[]
+    %3 lit: i64 = const 1
+    %4 $site: i64 = const 2
+    call with_channel#10(%3, %2, %4) -> b1()
+  b1(%5 r: word) [handle]:
+    %6 unbox: unit = unbox %5
+    drop %5
+    handle_pop
+    ret %6
+
+fn $entry#1 top -> unit ; main::channel_cancel_wakes_waiters, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_cancel_wakes_waiters, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %5 word*]
+  b0(%0 env: ptr, %1 tx: word, %2 rx: word):
+    drop %0
+    %3 f: ptr = closure main$1$1#3[%1, %2]
+    %4 callback: ptr = callback %3
+    perform std::task::Task.scope(%4) -> b1()
+  b1(%5 r: word):
+    ret %5
+
+fn main$1$1#3 lambda -> word ; main::channel_cancel_wakes_waiters, captures [word*, word*], frame 59 slots [%0 word*, %1 word*, %6 word*, %7 word*, %8 word*, %9 word*, %12 word*, %13 word*, %14 word*, %15 word*, %16 word*, %17 bool, %18 word*, %19 word*, %20 word*, %21 word*, %24 bool, %25 word*, %26 word*, %27 word*, %28 word*, %31 word*, %32 word*, %33 word*, %34 word*, %35 word*, %39 bool, %40 word*, %41 word*, %42 word*, %43 word*, %45 word*, %46 word*, %47 word*, %48 word*, %50 word*, %51 word*, %52 word*, %53 word*, %57 bool, %58 word*, %59 word*, %60 word*, %64 word*, %65 word*, %66 word*, %67 bool, %68 word*, %69 word*, %72 bool, %73 word*, %74 word*, %76 bool, %77 word*, %78 word*, %79 word*, %85 word*, %86 word*, %89 bool]
+  b0(%0 env: ptr, %1 s: word):
+    %2 tx: ptr = capture %0.0
+    %3 rx: ptr = capture %0.1
+    drop %0
+    dup %3
+    %4 f: ptr = closure main$1$1$1#4[%3]
+    %5 callback: ptr = callback %4
+    dup %1
+    perform std::task::Task.spawn(%1, %5) -> b1(%2, %3, %1)
+  b1(%6 r: ptr, %7 tx: ptr, %8 rx: ptr, %9 s: ptr):
+    dup %8
+    %10 f: ptr = closure main$1$1$2#6[%8]
+    %11 callback: ptr = callback %10
+    dup %9
+    perform std::task::Task.spawn(%9, %11) -> b2(%7, %8, %9, %6)
+  b2(%12 r: ptr, %13 tx: ptr, %14 rx: ptr, %15 s: ptr, %16 r: ptr):
+    perform std::task::Task.cancel(%16) -> b3(%13, %14, %15, %12)
+  b3(%17 r: unit, %18 tx: ptr, %19 rx: ptr, %20 s: ptr, %21 r: ptr):
+    %22 box: word = box %17
+    drop %22
+    %23 lit: ptr = const str 0
+    perform std::console::Console.print(%23) -> b4(%18, %19, %20, %21)
+  b4(%24 r: unit, %25 tx: ptr, %26 rx: ptr, %27 s: ptr, %28 r: ptr):
+    %29 box: word = box %24
+    drop %29
+    %30 lit: ptr = const str 1
+    dup %25
+    call send#7(%25, %30) -> b5(%25, %26, %27, %28)
+  b5(%31 r: ptr, %32 tx: ptr, %33 rx: ptr, %34 s: ptr, %35 r: ptr):
+    %36 s: ptr = show %31
+    drop %31
+    %37 lit: ptr = const str 2
+    %38 s: ptr = concat %37, %36
+    drop %36
+    perform std::console::Console.print(%38) -> b6(%32, %33, %34, %35)
+  b6(%39 r: unit, %40 tx: ptr, %41 rx: ptr, %42 s: ptr, %43 r: ptr):
+    %44 box: word = box %39
+    drop %44
+    perform std::task::Task.join(%43) -> b7(%40, %41, %42)
+  b7(%45 r: word, %46 tx: ptr, %47 rx: ptr, %48 s: ptr):
+    drop %45
+    %49 lit: ptr = const str 3
+    dup %46
+    call send#7(%46, %49) -> b8(%46, %47, %48)
+  b8(%50 r: ptr, %51 tx: ptr, %52 rx: ptr, %53 s: ptr):
+    %54 s: ptr = show %50
+    drop %50
+    %55 lit: ptr = const str 4
+    %56 s: ptr = concat %55, %54
+    drop %54
+    perform std::console::Console.print(%56) -> b9(%51, %52, %53)
+  b9(%57 r: unit, %58 tx: ptr, %59 rx: ptr, %60 s: ptr):
+    %61 box: word = box %57
+    drop %61
+    dup %58
+    %62 f: ptr = closure main$1$1$3#8[%58]
+    %63 callback: ptr = callback %62
+    perform std::task::Task.spawn(%60, %63) -> b10(%58, %59)
+  b10(%64 r: ptr, %65 tx: ptr, %66 rx: ptr):
+    perform std::task::Task.cancel(%64) -> b11(%65, %66)
+  b11(%67 r: unit, %68 tx: ptr, %69 rx: ptr):
+    %70 box: word = box %67
+    drop %70
+    %71 lit: ptr = const str 5
+    perform std::console::Console.print(%71) -> b12(%68, %69)
+  b12(%72 r: unit, %73 tx: ptr, %74 rx: ptr):
+    %75 box: word = box %72
+    drop %75
+    call close#9(%73) -> b13(%74)
+  b13(%76 r: unit, %77 rx: ptr):
+    dup %77
+    call recv#5(%77) -> b14(%77)
+  b14(%78 r: ptr, %79 rx: ptr):
+    %80 s: ptr = show %78
+    drop %78
+    %81 lit: ptr = const str 6
+    %82 s: ptr = concat %81, %80
+    drop %80
+    %83 lit: ptr = const str 7
+    %84 s: ptr = concat %82, %83
+    drop %83
+    call recv#5(%79) -> b15(%84)
+  b15(%85 r: ptr, %86 s: ptr):
+    %87 s: ptr = show %85
+    drop %85
+    %88 s: ptr = concat %86, %87
+    drop %87
+    perform std::console::Console.print(%88) -> b16()
+  b16(%89 r: unit):
+    %90 box: word = box %89
+    ret %90
+
+fn main$1$1$1#4 lambda -> word ; main::channel_cancel_wakes_waiters, captures [word*], frame 5 slots [%0 word*, %3 bool, %4 word*, %6 word*, %10 bool]
+  b0(%0 env: ptr):
+    %1 rx: ptr = capture %0.0
+    drop %0
+    %2 lit: ptr = const str 8
+    perform std::console::Console.print(%2) -> b1(%1)
+  b1(%3 r: unit, %4 rx: ptr):
+    %5 box: word = box %3
+    drop %5
+    call recv#5(%4) -> b2()
+  b2(%6 r: ptr):
+    %7 s: ptr = show %6
+    drop %6
+    %8 lit: ptr = const str 9
+    %9 s: ptr = concat %8, %7
+    drop %7
+    perform std::console::Console.print(%9) -> b3()
+  b3(%10 r: unit):
+    %11 box: word = box %10
+    ret %11
+
+fn main$1$1$2#6 lambda -> word ; main::channel_cancel_wakes_waiters, captures [word*], frame 5 slots [%0 word*, %3 bool, %4 word*, %6 word*, %10 bool]
+  b0(%0 env: ptr):
+    %1 rx: ptr = capture %0.0
+    drop %0
+    %2 lit: ptr = const str 10
+    perform std::console::Console.print(%2) -> b1(%1)
+  b1(%3 r: unit, %4 rx: ptr):
+    %5 box: word = box %3
+    drop %5
+    call recv#5(%4) -> b2()
+  b2(%6 r: ptr):
+    %7 s: ptr = show %6
+    drop %6
+    %8 lit: ptr = const str 11
+    %9 s: ptr = concat %8, %7
+    drop %7
+    perform std::console::Console.print(%9) -> b3()
+  b3(%10 r: unit):
+    %11 box: word = box %10
+    ret %11
+
+fn main$1$1$3#8 lambda -> word ; main::channel_cancel_wakes_waiters, captures [word*], frame 5 slots [%0 word*, %3 bool, %4 word*, %7 word*, %11 bool]
+  b0(%0 env: ptr):
+    %1 tx: ptr = capture %0.0
+    drop %0
+    %2 lit: ptr = const str 12
+    perform std::console::Console.print(%2) -> b1(%1)
+  b1(%3 r: unit, %4 tx: ptr):
+    %5 box: word = box %3
+    drop %5
+    %6 lit: ptr = const str 13
+    call send#7(%4, %6) -> b2()
+  b2(%7 r: ptr):
+    %8 s: ptr = show %7
+    drop %7
+    %9 lit: ptr = const str 14
+    %10 s: ptr = concat %9, %8
+    drop %8
+    perform std::console::Console.print(%10) -> b3()
+  b3(%11 r: unit):
+    %12 box: word = box %11
+    ret %12

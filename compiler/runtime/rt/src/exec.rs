@@ -198,6 +198,8 @@ pub struct Sched {
     pub sql_rollback_code: u32,
     /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.
     pub cancel_all_code: u32,
+    /// The code of `channel_with`'s finalizer (`rt_code_channel_end`), set at link time.
+    pub channel_end_code: u32,
     /// The property case handler's clause codes: `record_failure`, `failures`, forwarding.
     pub prop_codes: [u32; 3],
     /// A task to run before the current one continues (`handoff`): a fiber starts eagerly.
@@ -2077,6 +2079,36 @@ impl Rt {
         let t = self.cur();
         self.set(t, T_BLOCKED, self.u(t, T_BLOCKED) + 1);
         true
+    }
+
+    /// Block the current task on a wait list its caller keeps (a channel's, `channel.rs`): its
+    /// id and epoch for [`Self::wake_waiter`]; the caller returns `step::YIELD`. A cancelled task
+    /// does not wait (`None`): the `YIELD` unwinds it, as JS `drive` throws at a suspension.
+    pub fn wait_here(&mut self) -> Option<(u32, u32)> {
+        let t = self.cur();
+        if self.u(t, T_CANCELLED) != 0 {
+            return None;
+        }
+        self.set(t, T_BLOCKED, self.u(t, T_BLOCKED) + 1);
+        Some((self.sched.current, self.u(t, T_EPOCH)))
+    }
+
+    /// Make task `id`, blocked by [`Self::wait_here`] at `epoch`, runnable at the back of the
+    /// queue (JS: its promise resolves). One cancelled since (its epoch moved on) or gone is left
+    /// alone: cancellation already woke it.
+    pub fn wake_waiter(&mut self, id: u32, epoch: u32) {
+        let Some(t) = self.arena_obj(id, tag::TASK) else {
+            return;
+        };
+        if self.u(t, T_EPOCH) != epoch || self.u(t, T_STATE) != BLOCKED {
+            return;
+        }
+        let b = self.u(t, T_BLOCKED).saturating_sub(1);
+        self.set(t, T_BLOCKED, b);
+        if b == 0 {
+            self.set(t, T_STATE, RUNNABLE);
+            let _ = self.enqueue(id, false);
+        }
     }
 
     /// A member of a fiber group ended (JS `onDone`).

@@ -1,0 +1,34 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §6 (the `Stream.buffer` row); design §17.280 (4); plan web-apis.md phase 10
+// Spec: https://streams.spec.whatwg.org/#cqs-class
+
+// `buffer(src, 2, body)` is `CountQueuingStrategy({ highWaterMark: 2 })`: a producer task pulls
+// ahead of the body, at most two items queued plus the one it waits to send, and the body's
+// source receives them in order. The effect trace under `Task.deterministic` shows which pull
+// happened before which receive, the same on every backend.
+import std/stream.{Source}
+
+fn noisy(n: Int) -> Source<Int, {Console}> {
+  Source.from_list(List.range(0, n))
+    .map(fn(x) {
+      Console.print("pulled {x}")
+      x
+    })
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(1) {
+    let total = noisy(6).buffer(2, fn(items) {
+      items.fold(0, fn(acc, x) {
+        Console.print("  body got {x}")
+        acc + x
+      })
+    })
+    Console.print("total {total}")
+    // The body stops early: the producer's next send finds the channel closed and it stops.
+    let firsts = noisy(100).buffer(3, fn(items) {
+      items.take(2).fold([], fn(xs, x) { xs.push(x) })
+    })
+    Console.print("first two {firsts}")
+  }
+}

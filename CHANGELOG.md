@@ -65,6 +65,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `validate` returns the string as given and `of`/`join` normalise. Migration: write `/`, no
   drive. `Dir.subdir`'s doc now says `name` may hold several segments and that the manifest's
   grant is checked on the directory it opens (§17.292 (6)).
+- JS backend scheduling (plan `web-apis.md` phase 10): a fiber that ends after it suspended is
+  seen to end at once, so its scope, `Task.all` or `Task.race` decides then and its waiters
+  resume next, as on WASM and native; before, the end was seen one promise hop later, which a
+  channel made observable as a different interleaving from WASM.
 - WASM backend performance (design §17.285 (c), WS-W6; the native backend shares the runtime,
   unmeasured): building a string by
   repeated `+` or interpolation (`s = "{s}{w}"`) appends to the left string in place when
@@ -201,6 +205,25 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 
 ### Added
 
+- `std/channel` (RFC 0002 §2.9; plan `web-apis.md` phase 10; design §17.280 (4)), the
+  `MessageChannel`/`MessagePort` capability inside one program: `with_channel(capacity, body)`
+  gives `body` a `Sender<T>` and a `Receiver<T>` for a queue of at most `capacity` items
+  (positive, else `D020`). `send` waits while it is full and is `Err(Closed)` once closed;
+  `try_send` never waits and is `Err(Full)` or `Err(Closed)`; `recv` waits while it is empty
+  and is `None` once closed and drained; `close` wakes every waiter. Both ends are resources
+  (`V6003` if returned from the callback or kept in handler state), and the channel is closed
+  and emptied on every exit of the callback. Waiters wake in the order they waited, a waiting
+  task is a cancellation point, and `Task.deterministic` interleaves the same way on JS, WASM
+  and native. The RFC's `Channel.with` is `with_channel`, since `with` is a keyword.
+- `Source.buffer(src, capacity, body)` (`CountQueuingStrategy`) and `Source.tee(src, max_lag,
+  body)` (`ReadableStream.tee`) in `std/stream`, over channels: a producer task pulls `src`
+  ahead of `body`, waiting at the bound, and a failure on either side cancels the other and is
+  the result (`capacity`/`max_lag` positive, else `D020`).
+- A run in which every task waits (a `recv` no `send` or `close` will answer) ends with the
+  defect `D090` "every task is waiting" on the JS backend too, as on WASM and native, instead
+  of exiting 0 with `main` unfinished.
+- ABI 1.12.0 (MINOR): tag 19 `Channel` and `rt_code_channel_end` as the eleventh `rt_init`
+  native code; no import or export changes. A 1.11 host refuses a 1.12 module.
 - A WebSocket server in `std/websocket` (RFC 0002 §2.10; plan `web-apis.md` phase 8s; design
   §17.289), `Bun.serve`'s upgrade in Sakura's shape. Inside a `Serve` handler,
   `WebSocket.accept(req, options, body)` upgrades the request and runs `body` with a `Socket`

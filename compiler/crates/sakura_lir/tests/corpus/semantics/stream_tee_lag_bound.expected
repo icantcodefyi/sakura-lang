@@ -1,0 +1,21 @@
+ending: ok
+--- stdout
+pulled 0 at 0
+pulled 1 at 0
+pulled 2 at 0
+fast 0 at 0
+fast 1 at 0
+pulled 3 at 0
+fast 2 at 0
+fast 3 at 0
+slow 0 at 10
+pulled 4 at 10
+fast 4 at 10
+slow 1 at 20
+pulled 5 at 20
+fast 5 at 20
+slow 2 at 30
+slow 3 at 40
+slow 4 at 50
+slow 5 at 60
+sums [15, 150]

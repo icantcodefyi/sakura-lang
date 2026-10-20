@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.11.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.12.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -21,7 +21,8 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 `std/websocket`'s host operations (§8.2, §8.5; RFC 0002 §1, §6), 1.9.0 `std/crypto` tier
 1b's `hosted` imports (§8.2; design §17.288 (10), RFC 0002 §2.7), 1.10.0 the WebSocket server
 (§8.2; design §17.289, RFC 0002 §2.10) and 1.11.0 `std/crypto` tier 2 (§8.2; design §17.288
-(6), RFC 0002 §2.7). Owned by
+(6), RFC 0002 §2.7) and 1.12.0 `std/channel`'s object and finalizer code
+(§3.2, §3.5, §7.4; RFC 0002 §2.9). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -250,6 +251,16 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   by the MINOR rule. The native runtime answers `crypto_tier2` with `false` and has no tier-2
   primitive; a WASI command reaches both as unsupported builtins (`D090`). `sakura_abi_version`
   is `0x010b00`.
+- 1.12.0 (MINOR, RFC 0002 §2.9, design §17.280 (4), plan `web-apis.md` phase 10, after 7c's
+  1.11.0, §17.266 (1)) adds `std/channel` (§3.2, §3.5, §7.4): tag 19 `Channel`, an ordinary
+  reference-counted object that both a `Sender` and a `Receiver` are, owning its queued items;
+  the runtime's `rt_code_channel_end` as the eleventh code of the native-code table `rt_init`
+  receives (`channel_with`'s finalizer, after `rt_code_serve_request`); and the `cps` builtins
+  `channel_with`, `channel_send` and `channel_recv` (`rt_k_*` code-table rows) with the plain
+  `channel_receiver`, `channel_try_send` and `channel_close`. No import or export changes: a
+  channel never crosses to the host, which serves no request for it; the version records the
+  new tag and table entry, and an older host refuses a 1.12 module by the MINOR rule.
+  `sakura_abi_version` is `0x010c00`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -451,6 +462,7 @@ object is a pointer word (§4) whose `static` flag is clear.
 | 16 | `Untrusted` | `ptr inner` |
 | 17 | `Handle` | `u32 kind`, `u32 slot`, `u32 generation` (§8.4, kinds as listed there): `Dir`, `Body`, a JS value; `flags.scoped = 1` for `Body` |
 | 18 | `Range` | two `i64` (JS: the tuple `[start, end]`) |
+| 19 | `Channel` (1.12.0) | `u32 capacity`, `u32 closed`, `u32 head`, then three 12-byte arrays (`block`, `len`, `cap`): the queued item words from `head`, owned, and the waiting senders and receivers as (task id, epoch) pairs; `std/channel`'s `Sender` and `Receiver` are both this object (JS: one object) |
 | 0x8000 | `SomeBox` | `slot` payload (§4.3); produced only by the runtime's `some` constructor under `--layout=niche` |
 | 0x8001 | `Frame`, 0x8002 `Activation`, 0x8003 `FinEntry`, 0x8004 `Task`, 0x8005 `Request` | execution state, §7; allocated in the activation arena, never in a user slot |
 
@@ -502,9 +514,9 @@ with the table.
 `rc`; if nonzero, return. Otherwise push `p` on the **destruction worklist**, a stack threaded
 through the `rc` fields of the objects being released (a count of zero has no other use), so
 destruction never allocates. A loop pops, decrements each owned child by the layout (pushing
-the ones that reach zero), runs the object's runtime destructor for tags 15–17 (`Secret` zeroes
-the bytes of an inner `String`/`Bytes` that dies with it; `Handle` retires the host slot,
-§8.4), then frees the block. No recursion anywhere (§17.82; research/09 §3). The
+the ones that reach zero), runs the object's runtime destructor for tags 15–17 and 19 (`Secret`
+zeroes the bytes of an inner `String`/`Bytes` that dies with it; `Handle` retires the host
+slot, §8.4; `Channel` drops its queued items and frees its arrays), then frees the block. No recursion anywhere (§17.82; research/09 §3). The
 million-object linked-list destruction test is an M4-RT gate.
 
 ## 4. Boxing at polymorphism boundaries
@@ -795,6 +807,14 @@ it sets `joined`, calls `cancel(task)` and joins the task, so it returns after t
 finalizers have run; on a finished fiber it does nothing else, and the outcome stays for the
 scope. `Task.cancelled(s)` is whether the scope's group is decided, that is whether a member
 failed and the others are being cancelled.
+A channel (1.12.0, RFC 0002 §2.9, as JS): a `channel_send` on a full channel or a `channel_recv`
+on an empty open one blocks the task in the channel's senders or receivers with its epoch;
+every change that may let one go on (an item queued, an item taken, the close) makes every
+waiter of the other kind runnable at the back of the queue in the order they waited, and each
+tries again; a waiter whose epoch moved on (cancelled since) is skipped, and a cancelled task
+never waits. `channel_with`'s finalizer closes the channel and drops its items on every exit
+of the body. When nothing can run and no request is pending, the root's outcome stays pending
+and the host reports `D090` `every task is waiting` (§6.5).
 
 ### 7.5 Required cycle and lifetime tests (M4-RT gate; from research/09 §4)
 

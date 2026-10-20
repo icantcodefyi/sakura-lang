@@ -8,6 +8,12 @@ bytes_get: (ptr, i64) -> ptr
 bytes_len: (ptr) -> i64
 bytes_slice: (ptr, i64, i64) -> ptr
 bytes_to_base64: (ptr, i64, i64) -> ptr
+channel_close: (ptr) -> unit
+channel_receiver: (ptr) -> ptr
+channel_recv: (ptr) -> ptr cps
+channel_send: (ptr, word) -> i64 cps
+channel_try_send: (ptr, word) -> i64
+channel_with: (i64, ptr) -> word cps
 cli_args: () -> ptr
 cli_exit: (i64) -> unit
 cli_parse: (ptr, ptr) -> word cps

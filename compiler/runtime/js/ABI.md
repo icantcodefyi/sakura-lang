@@ -303,6 +303,9 @@ caller. `std/test`'s `expect_defect` is built on it.
   {"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}
   ```
   plus `"spans": [...]` (section 5) when the defect has a source location.
+  If the event loop drains while `main` is unfinished (every task waits on another, such as a
+  `recv` on a channel nobody sends to), `runMain` reports the defect `D090` `every task is
+  waiting`, as the WASM and native hosts do.
 - `Cli.exit(code)` throws `$rt.Exit`: every task on the way out runs its finalizers, then
   `runMain` flushes and exits with `code`. `Cli.args()` is `process.argv` after the script.
 - `Console` output is buffered and flushed before suspending, before writing to stderr, and at
@@ -339,6 +342,20 @@ suspend; `timeout` is std code over `race`. `clock_virtual_sleep(now, ms, $ctx, 
 `Clock.virtual`) suspends until no other task can run and then wakes sleepers in order of
 `now + ms` (ties first come, first served), returning that time, so under virtual time a
 `timeout` loses to work that needs less virtual time whatever the start order.
+A fiber's end is delivered when it happens (`t.done`, called from the resume that finished
+it): its scope, `all` or `race` decides at once, and each task waiting for it (`join`, a
+scope's end, `cancel`) resumes one promise hop later, which is the WASM runtime's run queue
+(the waiters enqueued at the back when the task finishes) in JS terms.
+
+**Channels** (`std/channel`, RFC 0002 §2.9). `channel_with(capacity, body, $ctx, $k)` runs
+`body(channel)` under `finalize` with the channel's end (closed and emptied) as the finalizer;
+`Sender` and `Receiver` are the same object `{ cap, items, closed, senders, receivers }`
+(`channel_receiver` is the identity). `channel_send(ch, v, $ctx, $k)` (0 queued, 2 closed) and
+`channel_recv(ch, $ctx, $k)` (`Some(item)`, or `None` once closed and drained) suspend in the
+channel's senders or receivers while it is full or empty; `channel_try_send(ch, v)` (0, 1 full,
+2 closed) and `channel_close(ch)` never wait. Every change that may let a waiter go on (an item
+queued, an item taken, the close) resolves every waiter of the other kind in the order they
+waited, and each tries again; a cancelled waiter leaves its list (`suspend`'s cancel).
 
 ## 7. Values (design §13.4)
 

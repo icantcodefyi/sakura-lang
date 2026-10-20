@@ -74,7 +74,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
-| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; the next free MINOR (8s took 1.10.0, 7c 1.11.0) | Opus | 4b, 5, 6, 8s (landed) |
+| 10 | `std/channel` (`with_channel`, since `with` is a keyword), and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc, in the 1.0 contract (ABI 1.12.0, the next free MINOR after 7c's 1.11.0: tag 19 `Channel`, `rt_code_channel_end`; native as JS and WASM through `rt`; readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
@@ -690,6 +690,19 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   `channel_sender_cannot_escape.sak` (UI, `V6003`), `channel_cancel_wakes_waiters.sak`.
 - **Docs.** Stdlib regenerated; `tour/concurrency.mdx` one example.
 - **Who.** Opus. **Acceptance.** Green on three backends with identical traces.
+- **Landed** (ABI 1.12.0). `std/channel`: `with_channel(capacity, body)` (`requires capacity >
+  0`), `Sender`/`Receiver` as `@resource` external types, `send`, `try_send`, `recv`, `close`,
+  `SendError = Full | Closed`, every function with `Task` in its row; the channel is closed and
+  emptied by a finalizer on every exit of the callback. `Source.buffer` and `Source.tee` run the
+  producer and the body under `Task.all`, the body closing the channels when it returns. The
+  channel lives in `sakura_runtime.js` and in `rt` (`channel.rs`, tag 19, shared by WASM and
+  native), so native runs it as JS does. A run in which every task waits is `D090` on all
+  three (`runMain` gained the `beforeExit` check), and the JS scheduler now delivers a resumed
+  fiber's end at once, as `rt` does, so a channel wake and a fiber's end order alike. Fixtures
+  as listed plus `channel_rejects_capacity` (`D020`), `channel_recv_every_task_waiting`
+  (`D090`), `stream_tee_rejects_max_lag` (`D020`), `stream_buffer_propagates_failure` and the
+  UI case `channel_receiver_cannot_be_handler_state`; readings beyond the RFC (the name, the
+  rows, a `buffer` body's view not reached by `V6003`) are the REQUESTS entry.
 
 ### Phase 11: `std/worker` (experimental)
 

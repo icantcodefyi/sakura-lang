@@ -125,7 +125,7 @@ pub struct Image {
     pub codes: u32,
     pub effects: u32,
     pub ops: u32,
-    /// The ten `u32` codes `rt_init` receives (`NATIVE_CODES` order).
+    /// The eleven `u32` codes `rt_init` receives (`NATIVE_CODES` order).
     pub natives: u32,
     /// The type descriptors the JSON and SQL codecs read (`u32 len`, UTF-8 JSON;
     /// `sakura_lir::schema::descriptors`).
@@ -291,9 +291,13 @@ impl<H: Host + 'static> Instance<H> {
         }
     }
 
-    /// Release a finished root task.
+    /// Release a finished root task. One still pending (the run ended `D090`, every task
+    /// waiting) is left, as the Node host leaves it: its tasks wait on each other for good.
     pub fn task_free(&mut self, task: u32) {
         let mut cx = self.cx();
+        if !cx.rt().task_done(task) {
+            return;
+        }
         cx.rt().task_free(task);
         cx.flush();
     }
@@ -401,6 +405,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
         ("rt_code_callback_stub", e::rt_code_callback_stub),
+        ("rt_code_channel_end", e::rt_code_channel_end),
         ("rt_code_clock_monotonic", e::rt_code_clock_monotonic),
         (
             "rt_code_clock_monotonic_micros",
@@ -443,6 +448,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_test_record_failure", e::rt_code_unsupported),
         ("rt_code_test_snapshot", e::rt_code_unsupported),
         ("rt_code_unsupported", e::rt_code_unsupported),
+        ("rt_k_channel_recv", e::rt_k_channel_recv),
+        ("rt_k_channel_send", e::rt_k_channel_send),
+        ("rt_k_channel_with", e::rt_k_channel_with),
         ("rt_k_clock_virtual_sleep", e::rt_k_clock_virtual_sleep),
         ("rt_k_compress_inflate_push", e::rt_k_compress_inflate_push),
         ("rt_k_file_closing", e::rt_k_file_closing),

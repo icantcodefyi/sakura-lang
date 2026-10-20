@@ -70,6 +70,7 @@ pub const NATIVE_CODES: &[&str] = &[
     "rt_code_http_body_close",
     "rt_code_js_callback",
     "rt_code_serve_request",
+    "rt_code_channel_end",
 ];
 
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
@@ -89,6 +90,13 @@ pub fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         // request.
         "rt_k_serve_listen" | "rt_code_serve_request" => (vec![w, w], vec![]),
         "rt_code_file_close" | "rt_code_task_cancel_all" => (vec![], vec![i]),
+        // `std/channel`: `channel_with`'s capacity and body (taken at once); the channel a
+        // waiting `channel_send` (with its value) or `channel_recv` keeps; the finalizer's
+        // capture, the channel.
+        "rt_k_channel_with" => (vec![i, w], vec![]),
+        "rt_k_channel_send" => (vec![w, w], vec![]),
+        "rt_k_channel_recv" => (vec![w], vec![]),
+        "rt_code_channel_end" => (vec![], vec![w]),
         // Slot 0 the instance, 1 the activation, then the arguments, kept while a
         // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`); the
         // capture is the instance's handle, retired with the handler.

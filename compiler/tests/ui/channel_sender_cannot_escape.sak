@@ -1,0 +1,13 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §2.9 ("`Sender`/`Receiver` ... cannot leave the callback"); design §6.3, §8.4; plan web-apis.md phase 10
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels
+
+// A channel is closed and emptied when `with_channel`'s callback returns, so its `Sender` cannot
+// be the callback's result: a send through it later would only ever see `Err(Closed)`.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+fn open_channel() -> Sender<Int> ! {Task} {
+  channel.with_channel(4, fn(tx: Sender<Int>, _rx: Receiver<Int>) { tx })
+}

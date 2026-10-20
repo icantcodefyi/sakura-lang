@@ -1,0 +1,39 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §6 (the `Stream.tee` row); design §17.280 (4); plan web-apis.md phase 10
+// Spec: https://streams.spec.whatwg.org/#rs-tee
+
+// `tee(src, 2, body)` is `ReadableStream.tee()` with a bound: `src` is pulled once, and each
+// branch reads every item. Two tasks read the branches at different speeds under a virtual
+// clock: the slow one sleeps 10 ms per item, and the fast one runs ahead only until the slow
+// branch's channel holds two items, then waits for it, so the printed times show the bound.
+import std/stream.{Source}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(5) {
+    with Clock.virtual() {
+      let src: Source<Int, {Clock, Console}> = Source.from_list(List.range(0, 6))
+        .map(fn(x) {
+          Console.print("pulled {x} at {Clock.monotonic().to_millis()}")
+          x
+        })
+      let sums = src.tee(2, fn(fast, slow) {
+        Task.all([
+          fn() {
+            fast.fold(0, fn(acc, x) {
+              Console.print("fast {x} at {Clock.monotonic().to_millis()}")
+              acc + x
+            })
+          },
+          fn() {
+            slow.fold(0, fn(acc, x) {
+              Clock.sleep(Duration.millis(10))
+              Console.print("slow {x} at {Clock.monotonic().to_millis()}")
+              acc + x * 10
+            })
+          },
+        ])
+      })
+      Console.print("sums {sums}")
+    }
+  }
+}

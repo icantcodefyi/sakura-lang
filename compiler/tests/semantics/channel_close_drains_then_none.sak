@@ -1,0 +1,30 @@
+// milestone: M3
+// spec: RFC 0002 §2.9; design §17.280 (4); plan web-apis.md phase 10
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#dom-messageport-close
+
+// `close` ends the sending side: the items queued before it are still received in order, then
+// `recv` is `None` (and stays `None`); a send after the close is `Err(Closed)`, and so is a
+// send that was waiting on a full channel when it closed, which the close wakes.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(1) {
+    channel.with_channel(2, fn(tx: Sender<String>, rx: Receiver<String>) {
+      Task.scope(fn(s) {
+        Console.print("{tx.send("a")} {tx.send("b")}")
+        let waiting = Task.spawn(s, fn() {
+          Console.print("third send waits")
+          let r = tx.send("c")
+          Console.print("third send: {r}")
+        })
+        tx.close()
+        Task.join(waiting)
+        Console.print("after close: {tx.send("d")} {tx.try_send("e")}")
+        for _i in List.range(0, 4) { Console.print("recv {rx.recv()}") }
+        tx.close()
+        Console.print("closed twice: {rx.recv()}")
+      })
+    })
+  }
+}

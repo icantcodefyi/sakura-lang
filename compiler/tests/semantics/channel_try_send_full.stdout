@@ -1,0 +1,8 @@
+try_send 1: ok
+try_send 2: ok
+try_send 3: full
+recv Some(1)
+try_send 4: ok
+try_send 5: full
+try_send 6: closed
+drained [Some(2), Some(4), None]

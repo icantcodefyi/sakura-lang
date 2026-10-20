@@ -1,0 +1,18 @@
+pulled 0
+pulled 1
+pulled 2
+  body got 0
+  body got 1
+pulled 3
+pulled 4
+  body got 2
+  body got 3
+pulled 5
+  body got 4
+  body got 5
+total 15
+pulled 0
+pulled 1
+pulled 2
+pulled 3
+first two [0, 1]

@@ -1,0 +1,28 @@
+// milestone: M3
+// spec: RFC 0002 §2.9, §6 (the `Channel` row); design §17.280 (4); plan web-apis.md phase 10
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels
+
+// `try_send` never waits: with `capacity` items queued it is `Err(Full)` and the value is not
+// queued; once an item is received there is room again. `send` would have waited instead.
+import std/channel
+import std/channel.{Closed, Full, Receiver, SendError, Sender}
+
+fn show(r: Result<Unit, SendError>) -> String {
+  match r {
+    Ok(_) => "ok",
+    Err(Full) => "full",
+    Err(Closed) => "closed",
+  }
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  channel.with_channel(2, fn(tx: Sender<Int>, rx: Receiver<Int>) {
+    for i in [1, 2, 3] { Console.print("try_send {i}: {show(tx.try_send(i))}") }
+    Console.print("recv {rx.recv()}")
+    Console.print("try_send 4: {show(tx.try_send(4))}")
+    Console.print("try_send 5: {show(tx.try_send(5))}")
+    tx.close()
+    Console.print("try_send 6: {show(tx.try_send(6))}")
+    Console.print("drained {[rx.recv(), rx.recv(), rx.recv()]}")
+  })
+}

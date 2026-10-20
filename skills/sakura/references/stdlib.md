@@ -233,6 +233,19 @@ fn from_base64(text: String, alphabet: Alphabet) -> Result<Bytes, Base64Error>
 fn from_base64_lenient(text: String) -> Result<Bytes, Base64Error>
 ```
 
+### `std/channel`
+
+```sakura fragment
+type Sender<T>    // @resource
+type Receiver<T>    // @resource
+type SendError = Full | Closed
+fn with_channel<T, R, e>(capacity: Int, body: fn(Sender<T>, Receiver<T>) -> R ! e) -> R ! {Task | e} requires capacity > 0
+fn send<T>(tx: Sender<T>, v: T) -> Result<Unit, SendError> ! {Task}
+fn try_send<T>(tx: Sender<T>, v: T) -> Result<Unit, SendError> ! {Task}
+fn recv<T>(rx: Receiver<T>) -> Option<T> ! {Task}
+fn close<T>(tx: Sender<T>) -> Unit ! {Task}
+```
+
 ### `std/cli`
 
 ```sakura fragment
@@ -865,6 +878,8 @@ fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamErr
 fn chunks<e>(src: Source<Bytes, e>, size: Int) -> Source<Bytes, e> requires size > 0
 fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}>
 fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e
+fn buffer<T, R, e>(src: Source<T, e>, capacity: Int, body: fn(Source<T, {Task | e}>) -> R ! {Task | e}) -> R ! {Task | e} requires capacity > 0
+fn tee<T, R, e>(src: Source<T, e>, max_lag: Int, body: fn(Source<T, {Task | e}>, Source<T, {Task | e}>) -> R ! {Task | e}) -> R ! {Task | e} requires max_lag > 0
 ```
 
 ### `std/string`

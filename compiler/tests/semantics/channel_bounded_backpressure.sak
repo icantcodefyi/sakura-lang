@@ -1,0 +1,43 @@
+// milestone: M3
+// spec: RFC 0002 §2.9, §6; design §17.280 (4); plan web-apis.md phase 10
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels
+
+// A channel of two items between a producer and a consumer under `Task.deterministic`: the
+// producer sends until two are queued and waits on the third; the consumer takes what is
+// queued, which wakes the producer, and waits once the channel is empty. The printed order,
+// and the effect trace, are the same on every backend and every run of the seed.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(7) {
+    let sums = channel.with_channel(2, fn(tx: Sender<Int>, rx: Receiver<Int>) {
+      Task.all([
+        fn() {
+          for i in List.range(0, 5) {
+            Console.print("send {i}")
+            let r = tx.send(i)
+            Console.print("sent {i}: {r}")
+          }
+          tx.close()
+          0
+        },
+        fn() {
+          var n = 0
+          var more = true
+          while more {
+            match rx.recv() {
+              Some(x) => {
+                Console.print("recv {x}")
+                n = n + x
+              },
+              None => { more = false },
+            }
+          }
+          n
+        },
+      ])
+    })
+    Console.print("producer and consumer: {sums}")
+  }
+}

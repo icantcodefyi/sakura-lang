@@ -157,6 +157,25 @@ test("a bound perform of a cancelled task is a cancellation point", () => {
   assert.equal(after, false);
 });
 
+test("a channel's waiting receivers wake in order, and its extent's end closes and empties it (std/channel)", async () => {
+  let ch;
+  const got = [];
+  const receiver = (c, $ctx, $k) => rt.channel_recv(c, $ctx, (v) => (got.push(v), ret($k, v)));
+  const first = rt.runTask(($ctx, $k) =>
+    rt.channel_with(2, (c, c1, k1) => ((ch = c), receiver(c, c1, k1)), $ctx, $k),
+  );
+  const second = rt.runTask(($ctx, $k) => receiver(ch, $ctx, $k));
+  assert.ok(first instanceof Promise && second instanceof Promise);
+  assert.deepEqual([rt.channel_try_send(ch, "a"), rt.channel_try_send(ch, "b")], [0, 0]);
+  assert.equal(rt.channel_try_send(ch, "c"), 1, "full");
+  // Both wake; the first takes "a" and returns, so its `channel_with` ends the channel, dropping
+  // "b", and the second, resuming after it, finds it closed and empty.
+  assert.deepEqual((await first).value, rt.Some("a"));
+  assert.deepEqual((await second).value, rt.None);
+  assert.deepEqual(got, [rt.Some("a"), rt.None]);
+  assert.deepEqual([ch.closed, ch.items.length, rt.channel_try_send(ch, "d")], [true, 0, 2]);
+});
+
 test("missing handler is an internal defect, not a crash", () => {
   const o = rt.runTask(next);
   assert.equal(o.kind, "defect");

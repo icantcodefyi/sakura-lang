@@ -1,0 +1,166 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::list::Builder
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 variant std::task::Fiber
+layout 7 variant std::task::Scope
+layout 8 shape |  32b (word*, word*)
+layout 9 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_bounded_backpressure, frame 2 slots [%5 word*, %9 bool]
+  b0():
+    %0 lit: i64 = const 7
+    %1 r: ptr = $task_deterministic(%0)
+    handle_push %1
+    %2 f: ptr = closure main$1#2[]
+    %3 lit: i64 = const 2
+    %4 $site: i64 = const 2
+    call with_channel#9(%3, %2, %4) -> b1()
+  b1(%5 r: word) [handle]:
+    %6 s: ptr = show %5
+    drop %5
+    %7 lit: ptr = const str 0
+    %8 s: ptr = concat %7, %6
+    drop %6
+    perform std::console::Console.print(%8) -> b2()
+  b2(%9 r: unit) [handle]:
+    %10 box: word = box %9
+    %11 unbox: unit = unbox %10
+    drop %10
+    handle_pop
+    ret %11
+
+fn $entry#1 top -> unit ; main::channel_bounded_backpressure, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_bounded_backpressure, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %6 word*]
+  b0(%0 env: ptr, %1 tx: word, %2 rx: word):
+    drop %0
+    %3 f: ptr = closure main$1$1#3[%1]
+    %4 f: ptr = closure main$1$2#7[%2]
+    %5 xs: ptr = alloc list(%3, %4)
+    perform std::task::Task.all(%5) -> b1()
+  b1(%6 r: ptr):
+    ret %6
+
+fn main$1$1#3 lambda -> word ; main::channel_bounded_backpressure, captures [word*], frame 21 slots [%0 word*, %4 word*, %5 word*, %8 bool, %35 bool, %36 word*, %37 word*, %38 i64, %39 i64, %40 i64, %43 word*, %44 word*, %45 word*, %46 i64, %47 i64, %48 i64, %56 bool, %57 word*, %58 word*, %59 i64, %60 i64]
+  b0(%0 env: ptr):
+    %1 tx: ptr = capture %0.0
+    drop %0
+    %2 lit: i64 = const 0
+    %3 lit: i64 = const 5
+    call range#4(%2, %3) -> b1(%1)
+  b1(%4 r: ptr, %5 tx: ptr):
+    dup.candidate %4
+    %6 n: i64 = $list_len(%4)
+    %62 lit: i64 = const 0
+    jump b4(%62, %5, %4, %6)
+  b2(%7 tx: ptr):
+    call close#6(%7) -> b3()
+  b3(%8 r: unit):
+    %9 lit: i64 = const 0
+    %10 box: word = box %9
+    ret %10
+  b4(%11 i: i64, %12 tx: ptr, %13 r: ptr, %14 n: i64):
+    %15 more: bool = lt.int %11, %14
+    if %15 then b5(%12, %13, %14, %11) else b6(%12, %13, %14, %11)
+  b5(%16 tx: ptr, %17 r: ptr, %18 n: i64, %19 i: i64):
+    dup.candidate %17
+    %24 x: word = $list_at(%17, %19)
+    %25 unbox: i64 = unbox %24
+    drop %24
+    %32 s: ptr = show %25
+    %33 lit: ptr = const str 1
+    %34 s: ptr = concat %33, %32
+    drop %32
+    perform std::console::Console.print(%34) -> b8(%16, %17, %18, %19, %25)
+  b6(%20 tx: ptr, %21 r: ptr, %22 n: i64, %23 i: i64):
+    drop %21
+    jump b2(%20)
+  b7(%26 tx: ptr, %27 r: ptr, %28 n: i64, %29 i: i64):
+    %30 lit: i64 = const 1
+    %31 i: i64 = intadd %29, %30
+    jump b4(%31, %26, %27, %28)
+  b8(%35 r: unit, %36 tx: ptr, %37 r: ptr, %38 n: i64, %39 i: i64, %40 x: i64):
+    %41 box: word = box %35
+    drop %41
+    %42 box: word = box %40
+    dup %36
+    call send#5(%36, %42) -> b9(%36, %37, %38, %39, %40)
+  b9(%43 r: ptr, %44 tx: ptr, %45 r: ptr, %46 n: i64, %47 i: i64, %48 x: i64):
+    %49 s: ptr = show %48
+    %50 lit: ptr = const str 2
+    %51 s: ptr = concat %50, %49
+    drop %49
+    %52 lit: ptr = const str 3
+    %53 s: ptr = concat %51, %52
+    drop %52
+    %54 s: ptr = show %43
+    drop %43
+    %55 s: ptr = concat %53, %54
+    drop %54
+    perform std::console::Console.print(%55) -> b10(%44, %45, %46, %47)
+  b10(%56 r: unit, %57 tx: ptr, %58 r: ptr, %59 n: i64, %60 i: i64):
+    %61 box: word = box %56
+    drop %61
+    jump b7(%57, %58, %59, %60)
+
+fn main$1$2#7 lambda -> word ; main::channel_bounded_backpressure, captures [word*], frame 10 slots [%0 word*, %15 word*, %16 word*, %17 i64, %18 bool, %39 bool, %40 word*, %41 i64, %42 bool, %43 i64]
+  b0(%0 env: ptr):
+    %1 rx: ptr = capture %0.0
+    drop %0
+    %48 lit: i64 = const 0
+    %49 lit: bool = const true
+    jump b1(%48, %49, %1)
+  b1(%2 n: i64, %3 more: bool, %4 rx: ptr):
+    if %3 then b3(%4, %2, %3) else b4(%4, %2, %3)
+  b2(%5 v: unit, %6 n: i64, %7 more: bool, %8 rx: ptr):
+    jump b1(%6, %7, %8)
+  b3(%9 rx: ptr, %10 n: i64, %11 more: bool):
+    dup %9
+    call recv#8(%9) -> b5(%9, %10, %11)
+  b4(%12 rx: ptr, %13 n: i64, %14 more: bool):
+    drop %12
+    %47 box: word = box %13
+    ret %47
+  b5(%15 r: ptr, %16 rx: ptr, %17 n: i64, %18 more: bool):
+    %23 tag: i64 = tag %15 ctor std::option::Option
+    switch %23 0 => b7(%16, %17, %18, %15) 1 => b8(%16, %17, %18, %15)
+  b6(%19 v: unit, %20 n: i64, %21 more: bool, %22 rx: ptr):
+    jump b2(%19, %20, %21, %22)
+  b7(%24 rx: ptr, %25 n: i64, %26 more: bool, %27 r: ptr):
+    drop %27
+    %32 lit: unit = const ()
+    %33 lit: bool = const false
+    jump b6(%32, %25, %33, %24)
+  b8(%28 rx: ptr, %29 n: i64, %30 more: bool, %31 r: ptr):
+    %34 p: word = proj %31.0 std::option::Option.Some
+    drop %31
+    %35 unbox: i64 = unbox %34
+    drop %34
+    %36 s: ptr = show %35
+    %37 lit: ptr = const str 4
+    %38 s: ptr = concat %37, %36
+    drop %36
+    perform std::console::Console.print(%38) -> b9(%28, %29, %30, %35)
+  b9(%39 r: unit, %40 rx: ptr, %41 n: i64, %42 more: bool, %43 x: i64):
+    %44 box: word = box %39
+    drop %44
+    %45 t: i64 = intadd %41, %43
+    %46 lit: unit = const ()
+    jump b6(%46, %45, %42, %40)

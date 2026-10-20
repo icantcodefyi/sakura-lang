@@ -370,7 +370,10 @@ function resumeLater(t, { p, k, cancel }) {
       settled = true;
       t.wake = null;
       try {
-        resolve(drive(t, start));
+        const o = drive(t, start);
+        // A fiber's end is seen when it happens, as rt's `finish_task` (not a hop later).
+        if (!(o instanceof Promise)) t.done?.(o);
+        resolve(o);
       } catch (e) {
         reject(e);
       }
@@ -428,7 +431,20 @@ export function runMain(entry) {
   };
   try {
     const o = runTask(entry);
-    return o instanceof Promise ? o.then(done, exit) : done(o);
+    if (!(o instanceof Promise)) return done(o);
+    // The event loop drained with `main` unfinished: every task waits on another (a channel
+    // nobody sends to), as the WASM and native hosts' `D090`.
+    let settled = false;
+    const waiting = () => {
+      if (!settled) done({ kind: "defect", code: "D090", message: "every task is waiting" });
+    };
+    proc?.once("beforeExit", waiting);
+    const settle = (f) => (v) => {
+      settled = true;
+      proc?.off("beforeExit", waiting);
+      return f(v);
+    };
+    return o.then(settle(done), settle(exit));
   } catch (e) {
     return exit(e);
   }
@@ -4017,12 +4033,16 @@ function cliValue(text, s) {
 // operation (`find`) or suspension point, and a suspended one is woken at once, so its
 // finalizers have run when `cancelTask` returns (that is the join). The first failure or
 // defect among a scope's children cancels the others and is propagated.
+//
+// A fiber's end is delivered when it happens (`t.done`): its group decides at once, and each
+// task waiting for it resumes one promise hop later, as a channel's waiter does, which is
+// rt's run queue (`exec.rs`: `finish_task` enqueues the waiters at the back) in JS terms.
 
 const TASK = "std::task::Task";
 
 let nextTask = 0;
 function newTask() {
-  return { id: nextTask++, fins: [], cancelled: false, wake: null, kids: new Set() };
+  return { id: nextTask++, fins: [], cancelled: false, wake: null, kids: new Set(), done: null };
 }
 
 /** Cancel `t` and its descendants; a suspended task unwinds (finalizers run) before return. */
@@ -4039,17 +4059,21 @@ function startFiber(body, ctx, onDone) {
   const t = newTask();
   const parent = ctx.t;
   parent.kids.add(t);
-  const fiber = { t, outcome: null, promise: null, joined: false, consumed: false };
-  const finish = (o) => {
+  const fiber = { t, outcome: null, waiters: [], joined: false, consumed: false };
+  t.done = (o) => {
     fiber.outcome = o;
     parent.kids.delete(t);
     onDone(fiber, o);
-    return o;
+    for (const w of fiber.waiters.splice(0)) w(o);
   };
   const o = runTask(body, [], ctx.p ?? ctx.h, t);
-  if (o instanceof Promise) fiber.promise = o.then(finish);
-  else finish(o);
+  if (!(o instanceof Promise)) t.done(o);
   return fiber;
+}
+
+/** A promise of `f`'s outcome, settled when it ends (at once if it has). */
+function ended(f) {
+  return f.outcome !== null ? Promise.resolve(f.outcome) : new Promise((r) => f.waiters.push(r));
 }
 
 /** Continue the performer with a child's outcome. */
@@ -4067,8 +4091,13 @@ function propagate(o, ctx, k) {
 
 /** Call `then()` once every fiber in `fibers` has an outcome (suspending if needed). */
 function joinAll(fibers, then) {
-  const pending = fibers.filter((f) => f.outcome === null).map((f) => f.promise);
-  return pending.length === 0 ? then() : suspend(Promise.all(pending), () => then());
+  const pending = fibers.filter((f) => f.outcome === null);
+  if (pending.length === 0) return then();
+  let left = pending.length;
+  const all = new Promise((r) => {
+    for (const f of pending) f.waiters.push(() => --left === 0 && r());
+  });
+  return suspend(all, () => then());
 }
 
 /** Start order: input order, or a seeded permutation (`Task.deterministic`). */
@@ -4117,7 +4146,10 @@ function taskHandler(rng, yieldNow) {
       fibers.push(startFiber(fns[i], ctx, onDone));
     }
     if (winner !== null) return propagate(winner, ctx, k);
-    return suspend(Promise.race(fibers.map((f) => f.promise)), () => propagate(winner, ctx, k));
+    const decided = new Promise((r) => {
+      for (const f of fibers) f.waiters.push(r);
+    });
+    return suspend(decided, () => propagate(winner, ctx, k));
   };
   const scope = (_i, body, ctx, k) => {
     const s = { fibers: [], failed: null };
@@ -4149,7 +4181,7 @@ function taskHandler(rng, yieldNow) {
   const join = (_i, f, ctx, k) => {
     if (f.consumed) defect("D095", "join on a cancelled fiber");
     f.joined = true;
-    return f.outcome !== null ? propagate(f.outcome, ctx, k) : suspend(f.promise, (o) => propagate(o, ctx, k));
+    return f.outcome !== null ? propagate(f.outcome, ctx, k) : suspend(ended(f), (o) => propagate(o, ctx, k));
   };
   // `cancel` uses the fiber up (a later `join` is D095). A running one is marked joined, so its
   // scope ignores the `cancelled` outcome, and awaited until its finalizers have run; a finished
@@ -4160,7 +4192,7 @@ function taskHandler(rng, yieldNow) {
     if (f.outcome !== null) return ret(k, undefined);
     f.joined = true;
     cancelTask(f.t);
-    return f.outcome !== null ? ret(k, undefined) : suspend(f.promise, () => ret(k, undefined));
+    return suspend(ended(f), () => ret(k, undefined));
   };
   const cancelled = (_i, s, _ctx, k) => ret(k, s.failed !== null);
   return new Handler(TASK, [scope, spawn, join, all, race, yieldNow, cancel, cancelled], []);
@@ -4179,6 +4211,84 @@ export function task_host() {
  */
 export function task_deterministic(seed) {
   return taskHandler(taskStream(seed), (_i, _ctx, k) => ret(k, undefined));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Channels (RFC 0002 §2.9, plan `web-apis.md` phase 10; `runtime/rt/src/channel.rs` is the
+// twin): a bounded FIFO inside the instance, `Sender` and `Receiver` both this object. A task
+// that cannot go on waits in the channel's senders or receivers, in order; every change that
+// may let one go on (an item queued, an item taken, the close) wakes every waiter of the other
+// kind, in the order they waited, and each tries again, so a wake-up lost to a cancelled waiter
+// cannot strand another. A cancelled waiter leaves its list at once.
+
+/** `channel_with(capacity, body)`: `body(channel)`, then the channel closed and emptied. */
+export function channel_with(capacity, body, ctx, k) {
+  const ch = { cap: capacity, items: [], closed: false, senders: [], receivers: [] };
+  return finalize(ctx, () => channelEnd(ch), (c, kk) => body(ch, c, kk), k);
+}
+
+export function channel_receiver(ch) {
+  return ch;
+}
+
+/** Wake every waiter in `list` (each resolves to a retry). */
+function wakeAll(list) {
+  for (const w of list.splice(0)) w();
+}
+
+/** Wait in `list` until woken, then continue with `again()`. */
+function channelWait(list, again) {
+  let w;
+  const woken = new Promise((resolve) => {
+    w = resolve;
+    list.push(w);
+  });
+  return suspend(woken, again, () => {
+    const i = list.indexOf(w);
+    if (i >= 0) list.splice(i, 1);
+  });
+}
+
+/** Closed and emptied: the end of `channel_with`'s extent. */
+function channelEnd(ch) {
+  ch.items.length = 0;
+  channel_close(ch);
+}
+
+export function channel_send(ch, v, _ctx, k) {
+  const attempt = () => {
+    if (ch.closed || ch.items.length < ch.cap) return ret(k, channel_try_send(ch, v));
+    return channelWait(ch.senders, attempt);
+  };
+  return attempt();
+}
+
+export function channel_try_send(ch, v) {
+  if (ch.closed) return 2;
+  if (ch.items.length >= ch.cap) return 1;
+  ch.items.push(v);
+  wakeAll(ch.receivers);
+  return 0;
+}
+
+export function channel_recv(ch, _ctx, k) {
+  const attempt = () => {
+    if (ch.items.length > 0) {
+      const v = ch.items.shift();
+      wakeAll(ch.senders);
+      return ret(k, Some(v));
+    }
+    if (ch.closed) return ret(k, None);
+    return channelWait(ch.receivers, attempt);
+  };
+  return attempt();
+}
+
+export function channel_close(ch) {
+  if (ch.closed) return;
+  ch.closed = true;
+  wakeAll(ch.senders);
+  wakeAll(ch.receivers);
 }
 
 // ---------------------------------------------------------------------------------------------

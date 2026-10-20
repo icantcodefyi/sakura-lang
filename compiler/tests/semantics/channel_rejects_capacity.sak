@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: RFC 0002 §2.9, §6 (`capacity` per channel); design §7.2; plan web-apis.md phase 10
+
+// A channel's bound is explicit and positive: `with_channel(0, …)` is the caller's defect
+// (`D020`, blaming this call); there is no unbounded or rendezvous channel.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  channel.with_channel(0, fn(tx: Sender<Int>, _rx: Receiver<Int>) { tx.close() })
+  Console.print("never")
+}

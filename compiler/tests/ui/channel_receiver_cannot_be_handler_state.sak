@@ -1,0 +1,24 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §2.9; design §6.3, §8.4 (a resource in handler state); plan web-apis.md phase 10
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#message-channels
+
+// A `Receiver` is a resource like a `File`: a handler cannot keep it in its state to read from
+// after the `with_channel` call that made it has returned and closed the channel.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+effect Inbox {
+  fn keep(rx: Receiver<String>) -> Unit
+}
+
+fn inbox() -> Handler<Inbox> {
+  handler Inbox {
+    var kept: Option<Receiver<String>> = None
+    fn keep(rx) { kept = Some(rx) }
+  }
+}
+
+fn listen() -> Unit ! {Inbox, Task} {
+  channel.with_channel(1, fn(_tx: Sender<String>, rx: Receiver<String>) { Inbox.keep(rx) })
+}

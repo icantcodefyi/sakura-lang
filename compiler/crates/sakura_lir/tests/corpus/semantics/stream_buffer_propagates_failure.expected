@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+line ok
+producer failed: Err(StreamError { reason: MaxLine })
+body failed: Err(Stop { at: 3 })

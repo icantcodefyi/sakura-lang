@@ -1,0 +1,16 @@
+send 0
+sent 0: Ok(())
+send 1
+sent 1: Ok(())
+send 2
+recv 0
+recv 1
+sent 2: Ok(())
+send 3
+sent 3: Ok(())
+send 4
+recv 2
+recv 3
+sent 4: Ok(())
+recv 4
+producer and consumer: [0, 10]

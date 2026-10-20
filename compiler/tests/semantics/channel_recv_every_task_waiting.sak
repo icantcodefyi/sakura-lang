@@ -1,0 +1,15 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D090
+// spec: RFC 0002 §2.9; design §8.6, §17.280 (4); plan web-apis.md phase 10
+
+// A `recv` that no `send` or `close` can answer: every task waits, and the run ends with the
+// defect `D090`, "every task is waiting", on every backend, instead of hanging.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  let got = channel.with_channel(1, fn(_tx: Sender<Int>, rx: Receiver<Int>) { rx.recv() })
+  Console.print("never {got}")
+}

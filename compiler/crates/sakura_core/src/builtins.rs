@@ -199,6 +199,9 @@ table! {
     Direct file_write/2,
     // Task
     Direct task_host/0, Direct task_deterministic/1,
+    // Channels (RFC 0002 §2.9, plan `web-apis.md` phase 10)
+    Cps channel_with/2, Direct channel_receiver/1, Cps channel_send/2, Direct channel_try_send/2,
+    Cps channel_recv/1, Direct channel_close/1,
     // Http
     Cps http_send/1, Direct http_recording_open/2, Direct http_recording_lookup/2,
     Direct http_recording_append/3, Cps http_stream_open/1, Cps http_stream_closing/2,

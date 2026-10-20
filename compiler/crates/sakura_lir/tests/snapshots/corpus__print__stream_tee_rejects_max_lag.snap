@@ -1,0 +1,86 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 record std::stream::Source | Source 24b (pull: word*)
+layout 6 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 7 variant std::task::Fiber
+layout 8 variant std::task::Scope
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::stream_tee_rejects_max_lag, frame 5 slots [%7 word*, %9 bool, %10 word*, %15 word*, %20 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 lit: i64 = const 3
+    %5 box: word = box %4
+    %6 xs: ptr = alloc list(%1, %3, %5)
+    call from_list#2(%6) -> b1()
+  b1(%7 r: ptr):
+    %8 lit: ptr = const str 0
+    perform std::console::Console.print(%8) -> b2(%7)
+  b2(%9 r: unit, %10 r: ptr):
+    %11 box: word = box %9
+    drop %11
+    %12 f: ptr = closure main$1#3[]
+    %13 lit: i64 = const 0
+    %14 $site: i64 = const 3
+    call tee#6(%10, %13, %12, %14) -> b3()
+  b3(%15 r: word):
+    %16 unbox: i64 = unbox %15
+    drop %15
+    %17 s: ptr = show %16
+    %18 lit: ptr = const str 1
+    %19 s: ptr = concat %18, %17
+    drop %17
+    perform std::console::Console.print(%19) -> b4()
+  b4(%20 r: unit):
+    %21 box: word = box %20
+    %22 unbox: unit = unbox %21
+    drop %21
+    ret %22
+
+fn $entry#1 top -> unit ; main::stream_tee_rejects_max_lag, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#3 lambda -> word ; main::stream_tee_rejects_max_lag, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %6 word*]
+  b0(%0 env: ptr, %1 a: word, %2 _b: word):
+    drop %0
+    drop %2
+    %3 f: ptr = closure main$1$1#4[]
+    %4 lit: i64 = const 0
+    %5 box: word = box %4
+    call fold#5(%1, %5, %3) -> b1()
+  b1(%6 r: word):
+    %7 unbox: i64 = unbox %6
+    drop %6
+    %8 box: word = box %7
+    ret %8
+
+fn main$1$1#4 lambda -> word ; main::stream_tee_rejects_max_lag, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 x: word):
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 unbox: i64 = unbox %2
+    drop %2
+    %5 t: i64 = intadd %3, %4
+    %6 box: word = box %5
+    ret %6

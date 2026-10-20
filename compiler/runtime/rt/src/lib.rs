@@ -9,6 +9,7 @@ extern crate alloc;
 
 pub mod arena;
 pub mod builtins;
+pub mod channel;
 pub mod cmp;
 pub mod codec;
 pub mod compress;
@@ -118,6 +119,8 @@ pub mod tag {
     pub const UNTRUSTED: u16 = 16;
     pub const HANDLE: u16 = 17;
     pub const RANGE: u16 = 18;
+    /// A `std/channel` queue (ABI 1.12.0, `channel.rs`).
+    pub const CHANNEL: u16 = 19;
     pub const SOME_BOX: u16 = 0x8000;
     pub const FRAME: u16 = 0x8001;
     pub const ACTIVATION: u16 = 0x8002;

@@ -124,7 +124,42 @@ Children inherit the handler environment at spawn time. A handler's `var` state 
 
 ## No data races
 
-Values have value semantics and closures capture by value (design §8.1). There is no shared mutable memory, so data races cannot occur. Tasks communicate through their results (`join`, `all`, `race`) and through handler state. There is no channel type in v0; bounded channels may be added as `Task` operations when a program needs streaming between fibers (design §16.13).
+Values have value semantics and closures capture by value (design §8.1). There is no shared mutable memory, so data races cannot occur. Tasks communicate through their results (`join`, `all`, `race`), through handler state, and through bounded channels.
+
+## Channels
+
+`std/channel` is `MessageChannel` inside one program. `with_channel(capacity, body)` gives `body` a `Sender` and a `Receiver` for a queue of at most `capacity` items: `send` waits while it is full, `try_send` fails `Full` instead, and `recv` waits while it is empty and returns `None` once the channel is closed and drained. Both ends are resources, so neither can leave the callback (`V6003`), and the channel is closed when the callback returns.
+
+```sakura
+import std/channel
+import std/channel.{Receiver, Sender}
+
+fn sum_of_squares(n: Int) -> Int ! {Task} {
+  channel.with_channel(4, fn(tx: Sender<Int>, rx: Receiver<Int>) {
+    let results = Task.all([
+      fn() {
+        for i in List.range(0, n) { let _sent = tx.send(i * i) }
+        tx.close()
+        0
+      },
+      fn() {
+        var total = 0
+        var more = true
+        while more {
+          match rx.recv() {
+            Some(x) => { total = total + x },
+            None => { more = false },
+          }
+        }
+        total
+      },
+    ])
+    results[1].unwrap_or(0)
+  })
+}
+```
+
+The producer runs at most four items ahead of the consumer. Under `Task.deterministic(seed)` the interleaving is the same on every run and every backend. A program in which every task waits, such as a `recv` that no `send` or `close` will answer, ends with the defect `D090` instead of hanging. `Source.buffer(src, capacity, body)` and `Source.tee(src, max_lag, body)` from `std/stream` are built on channels.
 
 Logical races with the outside world, such as two tasks reading and then writing the same database row, are still possible. The type system does not prove their absence.
 
@@ -212,7 +247,7 @@ The first backend compiles to JavaScript with a CPS trampoline and is single-thr
 - An `Async` effect, `async`/`await`, or colored functions (design §5.6).
 - Durable workflows. They are a later official package, not part of the language (design §1.1, §11.3).
 - Actors. `spawn` and `actor` are reserved keywords (`Task.spawn` is legal because a reserved word is accepted after `.`).
-- Channels, detached or supervised tasks, and timer ids (`setTimeout` is a fiber, above).
+- Detached or supervised tasks, and timer ids (`setTimeout` is a fiber, above).
 - Shared mutable state or locks in user code.
 
 ## What the compiler checks
@@ -221,6 +256,7 @@ The first backend compiles to JavaScript with a CPS trampoline and is single-thr
 - Child rows flow into the parent's row through the `e` variables of `Task`'s operations.
 - A capability or capturing handler does not escape into a task that outlives its scope (`V6002`).
 - A `Fiber<T>` does not outlive its scope.
+- A channel's `Sender` or `Receiver` is not returned from `with_channel`'s callback or kept in handler state (`V6003`).
 
 ## Next
 

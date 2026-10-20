@@ -10,6 +10,12 @@
 // equivalent view, two uses interleave on the resource, and it cannot leave the callback that
 // received the resource (`V6003`). There are no locks: one instance runs on one thread.
 // Every bound is an argument; no combinator holds more than its arguments name.
+//
+// `buffer` and `tee` are the two that run a task: a producer pulls the source into a channel
+// (`std/channel`), and the body reads a view over its receiving end (design §17.280 (4)).
+
+import std/channel
+import std/channel.{Receiver, Sender}
 
 /// What pulling a source returns: the end, or one item and the source after it.
 pub type Step<T, e> = Done | Next(T, Source<T, e>)
@@ -283,6 +289,112 @@ pub fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e {
   }
   let close = k.close
   close()
+}
+
+/// `src` read ahead through a channel of `capacity` items (`CountQueuingStrategy`): a producer
+/// task pulls `src` and sends each item, waiting while `capacity` are queued (it holds at most
+/// one more, the item it waits to send), and `body`'s source receives them in order. A byte
+/// bound is `chunks` before `buffer`. When `body` returns the channel is closed and emptied, so
+/// the producer stops at its next send (a pull already started finishes first) and the source,
+/// pulled later, is `Done`; a failure on either side cancels the other and is the result.
+/// `body` performs only `src`'s row and `Task`. `capacity` must be positive (`D020`).
+pub fn buffer<T, R, e>(
+  src: Source<T, e>,
+  capacity: Int,
+  body: fn(Source<T, {Task | e}>) -> R ! {Task | e},
+) -> R
+  ! {Task | e}
+  requires capacity > 0
+{
+  channel.with_channel(capacity, fn(tx, rx) {
+    consumed(
+      Task.all([
+        fn() {
+          fill(src, [tx])
+          None
+        },
+        fn() {
+          let r = body(received(rx))
+          tx.close()
+          Some(r)
+        },
+      ]),
+    )
+  })
+}
+
+/// `src` read by two sources (`ReadableStream.tee`): a producer task pulls `src` once and sends
+/// each item to two channels of `max_lag` items, so the faster branch waits while the slower
+/// one has `max_lag` items to read. A `body` that reads one branch more than `max_lag` items
+/// ahead with nothing reading the other waits forever (`D090` once every task waits). As
+/// `buffer` otherwise. `max_lag` must be positive (`D020`).
+pub fn tee<T, R, e>(
+  src: Source<T, e>,
+  max_lag: Int,
+  body: fn(Source<T, {Task | e}>, Source<T, {Task | e}>) -> R ! {Task | e},
+) -> R
+  ! {Task | e}
+  requires max_lag > 0
+{
+  channel.with_channel(max_lag, fn(tx1, rx1) {
+    channel.with_channel(max_lag, fn(tx2, rx2) {
+      consumed(
+        Task.all([
+          fn() {
+            fill(src, [tx1, tx2])
+            None
+          },
+          fn() {
+            let r = body(received(rx1), received(rx2))
+            tx1.close()
+            tx2.close()
+            Some(r)
+          },
+        ]),
+      )
+    })
+  })
+}
+
+// Sends each item of `src` to every channel in order, until `src` ends or a channel is closed,
+// then closes them all.
+fn fill<T, e>(src: Source<T, e>, txs: List<Sender<T>>) -> Unit ! {Task | e} {
+  var s = src
+  var more = true
+  while more {
+    match pull(s) {
+      Done => { more = false },
+      Next(x, rest) => {
+        for tx in txs {
+          if more {
+            match tx.send(x) {
+              Ok(_) => {},
+              Err(_) => { more = false },
+            }
+          }
+        }
+        s = rest
+      },
+    }
+  }
+  for tx in txs { tx.close() }
+}
+
+// A view over `rx`: each pull receives, `Done` once the channel is closed and drained.
+fn received<T, e>(rx: Receiver<T>) -> Source<T, {Task | e}> {
+  Source {
+    pull: fn() {
+      match rx.recv() {
+        Some(x) => Next(x, received(rx)),
+        None => Done,
+      }
+    },
+  }
+}
+
+// The body's result: the last of `Task.all`'s, which come in input order.
+fn consumed<R>(outs: List<Option<R>>) -> R {
+  outs[List.len(outs) - 1].unwrap_or(None).expect("the body's result")
 }
 
 fn pull<T, e>(src: Source<T, e>) -> Step<T, e> ! e {

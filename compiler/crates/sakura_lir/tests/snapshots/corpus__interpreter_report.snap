@@ -16,6 +16,12 @@ semantics/bytes_base64_rejects_padding: unsupported (builtin bytes_from_base64)
 semantics/bytes_base64_vectors: unsupported (builtin string_to_bytes)
 semantics/bytes_slice_concat: unsupported (builtin string_to_bytes)
 semantics/catch_around_row_polymorphic_call: ok, 17 allocated, 9 dup, 26 drop, peak 9, live 0/0
+semantics/channel_bounded_backpressure: unsupported (builtin task_host)
+semantics/channel_cancel_wakes_waiters: unsupported (builtin task_host)
+semantics/channel_close_drains_then_none: unsupported (builtin task_host)
+semantics/channel_recv_every_task_waiting: unsupported (builtin task_host)
+semantics/channel_rejects_capacity: unsupported (builtin task_host)
+semantics/channel_try_send_full: unsupported (builtin task_host)
 semantics/cli_exit_rejects_code: D020, 5 allocated, 0 dup, 5 drop, peak 5, live 0/0
 semantics/cli_parse_messages: unsupported (builtin cli_parse)
 semantics/clock_micros_monotonic: unsupported (builtin clock_host)
@@ -222,12 +228,16 @@ semantics/sql_cancel_committed: unsupported (builtin clock_host)
 semantics/sql_rows: unsupported (builtin sql_memory)
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 191 allocated, 350 dup, 541 drop, peak 17, live 0/0
+semantics/stream_buffer_backpressure: unsupported (builtin task_host)
+semantics/stream_buffer_propagates_failure: unsupported (builtin task_host)
 semantics/stream_chunks_bytes: unsupported (builtin bytes_from_list)
 semantics/stream_from_list_take_map_filter_fold: ok, 202 allocated, 298 dup, 500 drop, peak 39, live 0/0
 semantics/stream_lines_rejects_max_line: ok, 278 allocated, 385 dup, 663 drop, peak 20, live 0/0
 semantics/stream_lines_split_across_chunks: ok, 250 allocated, 495 dup, 745 drop, peak 22, live 0/0
 semantics/stream_pipe_to_file_sink: unsupported (builtin fs_memory_root)
 semantics/stream_pull_persistent: ok, 84 allocated, 72 dup, 156 drop, peak 11, live 0/0
+semantics/stream_tee_lag_bound: unsupported (builtin task_host)
+semantics/stream_tee_rejects_max_lag: unsupported (builtin task_host)
 semantics/stream_to_list_rejects_max_items: ok, 167 allocated, 176 dup, 343 drop, peak 22, live 0/0
 semantics/stream_to_list_rejects_negative_bound: D020, 9 allocated, 0 dup, 9 drop, peak 9, live 0/0
 semantics/strings_and_interpolation: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0

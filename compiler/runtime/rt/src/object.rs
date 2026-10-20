@@ -226,6 +226,7 @@ impl Rt {
                 let (kind, slot, generation) = (m(self, 8), m(self, 12), m(self, 16));
                 self.retire_handle(kind, slot, generation);
             }
+            tag::CHANNEL => self.channel_release(obj, head),
             _ => {}
         }
     }
