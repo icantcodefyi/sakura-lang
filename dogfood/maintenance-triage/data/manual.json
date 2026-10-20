@@ -1,0 +1,44 @@
+{
+  "entries": [
+    {
+      "id": "bandsaw-blade-drift",
+      "title": "Bandsaw blade drifts off the line",
+      "text": "With the saw unplugged, check blade tension against the gauge mark, then adjust tracking so the blade runs centred on the upper wheel."
+    },
+    {
+      "id": "belt-sander-belt-slips",
+      "title": "Belt sander belt slips",
+      "text": "Unplug the sander, release the tension lever, re-seat the sanding belt with the arrow pointing in the direction of travel and re-tension."
+    },
+    {
+      "id": "drill-press-belt-slip",
+      "title": "Drill press belt slips or squeals",
+      "text": "Unplug the drill press, open the pulley cover, loosen the motor lock knob, pull the motor back until the belt deflects about 12 mm, and lock it."
+    },
+    {
+      "id": "jointer-belt-squeal",
+      "title": "Jointer belt squeals on start-up",
+      "text": "A squeal at start-up means a loose drive belt. Unplug the jointer and ask a trained volunteer to adjust the motor mount."
+    },
+    {
+      "id": "lathe-belt-cover",
+      "title": "Lathe belt cover will not close",
+      "text": "Unplug the lathe. Move the belt fully onto a matching pair of pulley steps before closing the cover. Never run the lathe with the cover open."
+    },
+    {
+      "id": "planer-belt-wear",
+      "title": "Planer belt shows wear",
+      "text": "Cracks or glazing on the planer belt mean it must be replaced. Tag the planer out of service and report it."
+    },
+    {
+      "id": "table-saw-belt-tension",
+      "title": "Table saw belt tension",
+      "text": "Belt tension on the table saw is adjusted only by the supervisor. Tag the saw out of service."
+    },
+    {
+      "id": "table-saw-smoke",
+      "title": "Smoke or burning smell from a saw",
+      "text": "Stop the machine, unplug it if safe, keep people away and tell the supervisor at once. Do not restart the machine."
+    }
+  ]
+}
