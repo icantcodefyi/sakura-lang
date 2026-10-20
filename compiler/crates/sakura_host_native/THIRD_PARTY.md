@@ -3,7 +3,12 @@
 N0a registry check: 2026-10-18. Exact direct pins are in the workspace manifest.
 The table records upstream SPDX choices; linked files are unmodified upstream notices.
 The native HTTP stack selects ring (reqwest defaults and system proxy are disabled);
-SQLite is bundled. This skeleton ships no release artifact. Transitive crates remain
+SQLite is bundled. The native runtime is experimental and off the tag gates (design
+§17.245 (2)), and `release.yml` ships no native binary; this file is what a binary
+distribution ships beside one. Rows cover every dependency of `sakura_host_native` and of
+`sakura_rt` (its `native` feature included), and every transitive crate whose licence
+requires its notice in a binary (BSD-3-Clause `curve25519-dalek`, design §17.288 (9));
+`tests/third_party.rs` keeps the direct rows complete. Other transitive crates remain
 locked in `compiler/Cargo.lock`; full source archives retain their own licence files.
 
 | Crate | Version | Upstream license | Notices |
@@ -27,3 +32,15 @@ locked in `compiler/Cargo.lock`; full source archives retain their own licence f
 | [libsqlite3-sys](https://crates.io/crates/libsqlite3-sys/0.38.2) | 0.38.2 | MIT | [LICENSE](third-party/libsqlite3-sys/LICENSE) |
 | [miniz_oxide](https://crates.io/crates/miniz_oxide/0.9.1) | 0.9.1 | MIT OR Zlib OR Apache-2.0; linked into `sakura_rt` (native and the WASM runtime) for `std/compress` | [LICENSE-ZLIB](third-party/miniz_oxide/LICENSE-ZLIB.md), [LICENSE-MIT](third-party/miniz_oxide/LICENSE-MIT.md) |
 | [adler2](https://crates.io/crates/adler2/2.0.1) | 2.0.1 | 0BSD OR MIT OR Apache-2.0; miniz_oxide's dependency | [LICENSE-0BSD](third-party/adler2/LICENSE-0BSD), [LICENSE-MIT](third-party/adler2/LICENSE-MIT) |
+| [serde_json](https://crates.io/crates/serde_json/1.0.154) | 1.0.154 | MIT OR Apache-2.0 | [LICENSE-APACHE](third-party/serde_json/LICENSE-APACHE), [LICENSE-MIT](third-party/serde_json/LICENSE-MIT) |
+| [libc](https://crates.io/crates/libc/0.2.191) | 0.2.191 | MIT OR Apache-2.0; `sakura_rt`'s `native` feature | [LICENSE-APACHE](third-party/libc/LICENSE-APACHE), [LICENSE-MIT](third-party/libc/LICENSE-MIT) |
+| [sha2](https://crates.io/crates/sha2/0.11.1) | 0.11.1 | MIT OR Apache-2.0; `std/crypto` on native (`sakura_rt`'s `native` feature) | [LICENSE-APACHE](third-party/sha2/LICENSE-APACHE), [LICENSE-MIT](third-party/sha2/LICENSE-MIT) |
+| [hmac](https://crates.io/crates/hmac/0.13.0) | 0.13.0 | MIT OR Apache-2.0; `std/crypto` on native | [LICENSE-APACHE](third-party/hmac/LICENSE-APACHE), [LICENSE-MIT](third-party/hmac/LICENSE-MIT) |
+| [hkdf](https://crates.io/crates/hkdf/0.13.0) | 0.13.0 | MIT OR Apache-2.0; `std/crypto` on native | [LICENSE-APACHE](third-party/hkdf/LICENSE-APACHE), [LICENSE-MIT](third-party/hkdf/LICENSE-MIT) |
+| [pbkdf2](https://crates.io/crates/pbkdf2/0.13.0) | 0.13.0 | MIT OR Apache-2.0; `std/crypto` on native | [LICENSE-APACHE](third-party/pbkdf2/LICENSE-APACHE), [LICENSE-MIT](third-party/pbkdf2/LICENSE-MIT) |
+| [aes-gcm](https://crates.io/crates/aes-gcm/0.11.1) | 0.11.1 | Apache-2.0 OR MIT; `std/crypto` on native | [LICENSE-APACHE](third-party/aes-gcm/LICENSE-APACHE), [LICENSE-MIT](third-party/aes-gcm/LICENSE-MIT) |
+| [p256](https://crates.io/crates/p256/0.14.0) | 0.14.0 | Apache-2.0 OR MIT; `std/crypto` on native | [LICENSE-APACHE](third-party/p256/LICENSE-APACHE), [LICENSE-MIT](third-party/p256/LICENSE-MIT) |
+| [ed25519-dalek](https://crates.io/crates/ed25519-dalek/3.0.0) | 3.0.0 | BSD-3-Clause; `std/crypto` on native | [LICENSE](third-party/ed25519-dalek/LICENSE) |
+| [x25519-dalek](https://crates.io/crates/x25519-dalek/3.0.0) | 3.0.0 | BSD-3-Clause; `std/crypto` on native | [LICENSE](third-party/x25519-dalek/LICENSE) |
+| [curve25519-dalek](https://crates.io/crates/curve25519-dalek/5.0.0) | 5.0.0 | BSD-3-Clause; transitive through `ed25519-dalek` and `x25519-dalek` | [LICENSE](third-party/curve25519-dalek/LICENSE) |
+| [zeroize](https://crates.io/crates/zeroize/1.9.1) | 1.9.1 | Apache-2.0 OR MIT; `rt::crypto`'s zeroed copies | [LICENSE-APACHE](third-party/zeroize/LICENSE-APACHE), [LICENSE-MIT](third-party/zeroize/LICENSE-MIT) |
