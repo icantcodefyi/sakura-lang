@@ -68,9 +68,9 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
-| 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc, **now** | Opus | 7a (landed) |
-| 7b-W | tier 1b on WASM: the hosted imports, the next free MINOR (1.9.0 or 1.10.0, §17.286 (12)), `KNOWN` emptied | pre-rc | Opus | 7b |
-| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
+| 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288, with two small commits to follow: `rt`'s key copies zeroed, THIRD_PARTY.md with its test) | Opus | landed |
+| 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc, **now** | Opus | 7b (landed) |
+| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the 0.2.0 preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
 | 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc | Opus | 4b, 5 |
@@ -107,7 +107,14 @@ lane's last commit, rebased over whatever lock `main` has, adding only its own c
 it no longer waits for 7b's lock. MINOR 1.9.0 is free: the first of 7b-W (after 7b is on
 `main`) or phase 10 (after 6) to be ready takes it, the other 1.10.0 after it lands
 (§17.266 (1)). N1b's remainder may take the next free line (`m5-native.md` §2). The rest of the
-order stands.
+order stands. **Phase 7b landed (`d401d073`, `2a12eee4`; ratified §17.288).** 7b-W is the
+ready one, so it **starts now at ABI 1.9.0** in the web lane, after two small commits the
+entry orders first (`fix(rt)`: every key copy `rt::crypto` makes is zeroed before it is
+freed; `docs(native)`: THIRD_PARTY.md's nine crypto rows with their notice files and the
+test that keeps the table complete); phase 10 takes 1.10.0 after 7b-W lands. Phase 7c is no
+longer optional-before-the-rc: a variant added to a `pub` std sum after 0.2.0 breaks
+exhaustive matches, so 7c lands before the 0.2.0 preparation commit or its variants are not
+in 1.0 (§17.288 (6)).
 
 ## 3. Phases
 
@@ -472,8 +479,27 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
 - **Docs.** Stdlib regenerated; the capabilities tour's key section extended.
 - **Who.** Opus; Sol: the vector tables.
 - **Acceptance.** As 7a; the ECDSA fixture passes without a `.wasm.stdout`.
+- **Landed (`d401d073`, `2a12eee4`; design §17.288).** JS and native; WASM `D090` under
+  eight `KNOWN` rows until 7b-W. Ratified as built: ECDSA P-256 with SHA-256 only, `r || s`;
+  `sign` keeps `Random` and the backends keep their nonces (RFC 6979 on native, OpenSSL's on
+  JS; compared through `verify` only); a 12-byte nonce; `kind: KeyKind`, `KeyPair`,
+  `generate_key_pair`, `EcdhWith`, `Format`/`Malformed`, `Nonce`/`Tag`/`ZeroSecret`; the
+  private material layout std-private; imports read only the DER forms `export_key` writes.
+  The new variants are 0.2.0's. Two small commits follow in the web lane before 7b-W:
+  `fix(rt)`, every `Vec` `take_bytes` and `rt::crypto` make zeroed before it is freed
+  (§17.288 (7)); `docs(native)`, THIRD_PARTY.md's nine crypto rows (7a's four, 7b's four,
+  `curve25519-dalek`) with unmodified notice files and a `sakura_host_native` test that every
+  `native` dependency has a row (§17.288 (9)). The `import_key` reachability cost is accepted;
+  7b-W's REQUESTS answer line records the WASM and JS bytes of `crypto_hmac_rfc4231` at
+  `2a12eee4` against its parent (§17.288 (8)). The heap's secret hygiene is `m5-native.md`
+  row N-S, for the 1.0 security review.
+- **7b-W (now, ABI 1.9.0; §17.288 (10)).** As 7a-W: the seven new `crypto_*` builtins as
+  `hosted` imports (`WASM_HOSTED`, `sakura_wasm_host.js`, `validate.rs`), ABI.md §0 and §8.2
+  at 1.9.0, `sakura_abi_version` `0x010900` on both hosts and in `test_bench.py`, the guest's
+  argument tuple wiped, the eight `KNOWN` rows emptied (`Host::Wasi`-only rows stay), the
+  three "waits" sentences deleted; one commit, green on its own base.
 
-### Phase 7c: tier 2 on JS and WASM-on-JS (optional before the rc)
+### Phase 7c: tier 2 on JS and WASM-on-JS (before the 0.2.0 preparation commit)
 
 - **Scope.** `RsaOaep`, `RsaPss`, `RsassaPkcs1`, `P384`, `P521`, `AesCbc`, `AesCtr`,
   `AesKw` through `crypto.subtle`; native answers `Err(CryptoError(Unsupported(name)))`.
@@ -482,6 +508,10 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   difference only if the harness supports it; otherwise a `// needs: tier 2 on native`
   header and the fixture skipped on native with the reason printed by the harness.
 - **Who.** Opus. **Acceptance.** Typed `Unsupported` on native is a fixture, not a gap.
+- **Deadline (design §17.288 (6)).** Its variants (`Algorithm`, `Curve`, `CryptoReason`'s
+  `Unsupported`) grow `pub` std sums, which after 0.2.0 is not an additive change (an
+  exhaustive `match` stops compiling), so 7c is on `main` before the 0.2.0 preparation commit
+  or tier 2 is not in 1.0; its variants are not declared ahead of its implementation.
 
 ### Phase 8: `std/websocket` client
 
@@ -641,6 +671,7 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
 Queue them in `compiler/REQUESTS.md` as `design-question` entries, as before. Closed:
 `Console.captured` scripted input (phase 4b, `Console.scripted`, §17.267); `Router` does not
 expose `UrlMatch`, `Request.params` is the surface (§17.281 (3)); where a stream's cursor
-lives (§17.280: nowhere, a stream is a value); phase 5's six readings (§17.284). Phase 9's follow-ups: the `route` doc-comment
+lives (§17.280: nowhere, a stream is a value); phase 5's six readings (§17.284); phase 7b's
+seven readings and the four items beside them (§17.288). Phase 9's follow-ups: the `route` doc-comment
 line with the next `router.sak` change (§17.281 (2)) and two gap rows in phase 12
 (§17.281 (4)).

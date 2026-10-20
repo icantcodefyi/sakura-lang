@@ -34,7 +34,10 @@ the reason recorded. The implementation order is
   specifies it, which amended §2.5 below; its readings are ratified in design §17.284. Phase 8
   (`std/websocket`, `6b633a99`, ABI 1.8.0) is on `main`; its readings are ratified in design
   §17.286, which amended §1's example, the first-use list, §6's `WebSocket` row and the
-  security bullet. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  security bullet. Phase 7b (`std/crypto` tier 1b on JS and native, `d401d073` vectors,
+  `2a12eee4`) is on `main`; its readings are ratified in design §17.288, which amended §2.7,
+  §5, §6 and §Compatibility; its WASM step 7b-W is next at ABI 1.9.0. Phases and owners are
+  in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -535,9 +538,27 @@ hold a cursor (`V2041`, design §8.1).
   ignore it). `import_key(format, alg, usages, extractable, material) -> Result<CryptoKey,
   KeyError>` and `export_key(key, format) -> Result<Bytes, KeyError>` with `KeyFormat = Raw
   | Pkcs8 | Spki | Jwk` (JWK as JSON text bytes); `KeyError(reason: KeyReason)` with
-  `KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty`;
-  `CryptoError(reason: CryptoReason)` with `CryptoReason = Length(Int) | Iterations(Int) |
-  Info(Int)` (tier 1b adds its variants).
+  `KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty | Format(KeyFormat) |
+  Malformed`; `CryptoError(reason: CryptoReason)` with `CryptoReason = Length(Int) |
+  Iterations(Int) | Info(Int) | Nonce(Int) | Tag | ZeroSecret`.
+- Tier 1b (design §17.288): `Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest) |
+  AesGcm(AesLength) | Ecdsa(Curve) | Ecdh(Curve) | Ed25519 | X25519` with `AesLength = Aes128 |
+  Aes256` and `Curve = P256`; `Usage = Sign | Verify | DeriveBits | Encrypt | Decrypt`;
+  `CryptoKey` carries `kind: KeyKind = SecretKey | PublicKey | PrivateKey` (Web Crypto's
+  `type`, read by `crypto.kind(key)`); `generate_key_pair(alg, usages, extractable) -> KeyPair
+  ! {Random}` with `KeyPair = { public, private }` (`generate_key` stays symmetric: HMAC,
+  AES-GCM); `DeriveParams` gains `EcdhWith(peer: CryptoKey)`, and ECDH and X25519
+  `derive_bits` give at most 256 bits. ECDSA is P-256 with SHA-256 (JOSE `ES256`), the hash
+  fixed by the curve, the signature `r || s` (64 bytes); a later curve fixes its own hash the
+  same way. A public key may only `Verify` (ECDH and X25519 public keys have no usage), a
+  private key the rest; `NoUsages` applies to secret and private keys. Key formats are std
+  code, the same bytes on every backend: SPKI and PKCS #8 are the DER forms Web Crypto writes
+  (P-256 PKCS #8 with its public key, read also without it; RFC 8410 v1 for Ed25519 and
+  X25519), everything else `Malformed`; JWK is written in member order with `ext` and
+  `key_ops` and read with `kty`, `crv`, `alg`, `key_ops` and `ext` checked and `use` ignored.
+  P-256 points are checked on the curve and scalars in range; Ed25519 and X25519 public keys
+  are any 32 bytes; Ed25519 `verify` is the cofactorless check; a small-order X25519 peer is
+  `Err(CryptoError(ZeroSecret))`. A `CryptoKey`'s material layout is private to the module.
 - Names: `import std/crypto` binds `crypto`, so calls are `crypto.digest(alg, b)` and
   `crypto.verify(key, sig, b)` (or `key.verify(sig, b)`); `verify` stays a reserved word
   outside member position (design §2.1, §17.266 (3)).
@@ -558,9 +579,14 @@ hold a cursor (`V2041`, design §8.1).
 - Entropy authority is `Random`: `Random.host()` is the OS CSPRNG on every backend;
   `Random.seeded` is for tests and the docs state that keys made under it are not secret.
   No `Crypto` effect and no manifest key: nothing here touches the network or disk.
-- Signatures are not canonical bytes: ECDSA on JS is randomized (Web Crypto), on WASM and
-  native deterministic (RFC 6979). Parity compares `verify` round trips, never signature
-  bytes. Ed25519, HMAC and digests are canonical and are compared byte for byte.
+- Signatures are not canonical bytes: ECDSA on JS is randomized (OpenSSL's nonce through
+  `node:crypto`), on WASM and native deterministic (RFC 6979). `sign` declares `Random`
+  because its output is not a function of its inputs, although no backend draws from it
+  today; a hedged nonce (RFC 6979 §3.6) may later, without a signature change. Parity
+  compares `verify` round trips, never signature bytes; nothing prints a signature. Key
+  generation draws from `Random` in std, so a pair under `Random.seeded` is the same bytes
+  on every backend. Ed25519, HMAC and digests are canonical and are compared byte for byte
+  (design §17.288 (2)).
 
 #### 2.8 Time, scheduling and diagnostics (`std/clock`, `std/task`, `std/console`)
 
@@ -666,7 +692,9 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
   PBKDF2 iterations `1..=2^31 − 1` (`Iterations(n)`), HKDF output at most 255 × the hash
   length and PBKDF2 output at most 2^20 bytes (`Length(bits)`), all checked in Sakura before
   the external, on every backend. The lowest host's bound is the contract, and a limit is a
-  typed error, never a defect that differs by backend.
+  typed error, never a defect that differs by backend. Tier 1b (design §17.288 (3)): an
+  AES-GCM nonce is exactly 12 bytes (`Nonce(n)`); ECDH and X25519 output at most 256 bits
+  (`Length(bits)`); a ciphertext that does not authenticate is `Tag`.
 
 ### 7. Backend coverage rule
 
@@ -748,8 +776,12 @@ MINOR revision per phase that adds imports.
   variants, `Request.redirect`, `Clock.monotonic_micros`, `Task.cancel`/`cancelled`.
   Migration: `body: "s"` becomes `body: Text("s")` and `r.body` reads become a `match` or
   `Response.text`/`json`/`bytes` and `Request.text`/`json`/`bytes`; a user `match` on `Method` gains two arms; a user `handler Clock`/`Task`
-  gains the new operations. Astra's migration list for the dogfood corpus (§17.255 (3))
-  carries these; Opus applies them.
+  gains the new operations. `std/crypto`'s tier 1b variants (`Algorithm`, `Usage`,
+  `KeyFormat`, `KeyReason`, `CryptoReason`; design §17.288 (6)) are in this window too: an
+  exhaustive `match` written against 0.1.0 gains arms. Astra's migration list for the
+  dogfood corpus (§17.255 (3)) carries these; Opus applies them. A variant added to a `pub`
+  std sum after 0.2.0 is not an additive function, so tier 2 (phase 7c) lands before the
+  0.2.0 preparation commit or its variants are not in 1.0.
 - **After `v0.2.0`, before the rc:** only additive modules (`std/stream`, `std/compress`,
   `std/crypto`, `std/websocket`, `std/urlpattern`, `std/channel`) and additive functions.
   Each enters the STABILITY inventory as `stable`, first honouring `1.0.0`, when it lands
