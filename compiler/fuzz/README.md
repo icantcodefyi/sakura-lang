@@ -37,6 +37,10 @@ takes `max_total_time`, the seconds per target (default 600; the job allows up t
 for the campaign of design §17.225 (4a): at least 24 CPU-hours per target on GitHub-hosted
 runners. Mutated inputs go to `target/fuzz-corpus` and the artifacts, never into git.
 
+CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` on this crate
+for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a
+stale `fuzz/Cargo.lock` fails CI the same day instead of the next nightly. It does not fuzz.
+
 `exec` needs node on `PATH` (or `SAKURA_NODE`) and the `wasm32-unknown-unknown` target. Its
 limits: the reference evaluator stops at 50,000 steps and depth 10,000 (such a program is
 skipped), the LIR evaluator at 20,000,000 steps, 2,000,000 objects and 1,000,000 arena slots,

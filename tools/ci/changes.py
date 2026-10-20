@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import subprocess
 
-AREAS = ("compiler", "website", "docs", "workflows")
+AREAS = ("compiler", "website", "docs", "workflows", "fuzz")
 
 
 def classify(paths):
@@ -15,6 +15,9 @@ def classify(paths):
             changed.add("workflows")
         elif path.startswith(("compiler/", "runtime/", "std/", "bench/programs/", "editors/")):
             changed.add("compiler")
+            # The fuzz crate has its own lock, which a compiler lock change can make stale.
+            if path == "compiler/Cargo.lock" or path.startswith("compiler/fuzz/"):
+                changed.add("fuzz")
         elif path.startswith("website/"):
             changed.add("website")
         elif path.startswith(("docs/", "research/")) or path.endswith(".md"):
