@@ -1,0 +1,1128 @@
+// Supplier Stock: reconcile three supplier stock feeds against a wanted-items
+// file and print a deterministic purchase-planning report as JSON.
+//
+// Author: Claude Opus 5.5 (Claude family), as a dogfood user.
+// Provenance: one fresh session with no repository checkout or path to one;
+// sources were the installed CLI (`sakura prompt`, `sakura doc`), the public
+// website https://www.sakuralang.com and BRIEF.md.
+// Built against `sakura --version`:
+//   sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+//
+// The program recommends suppliers. It never places an order or contacts anyone.
+
+import std/cli.{Cli, CliError}
+import std/core.{Violation}
+import std/duration.{Duration}
+import std/fs.{Dir, Fs, FsError, Read}
+import std/http.{Any, Body, Http, RateLimited}
+import std/json.{DecodeError, Json}
+import std/path.{Path}
+import std/request.{Method, Request}
+import std/response.{HttpError, Response}
+import std/retry
+import std/retry.{Policy}
+import std/task.{Timeout, timeout}
+import std/url.{Url}
+
+// ---------------------------------------------------------------- limits
+
+/// The wanted-items file is read up to this many bytes; one more is an error.
+fn max_wanted_bytes() -> Int { 65_536 }
+
+fn max_wanted_items() -> Int { 100 }
+
+/// Each supplier response is read up to this many bytes; one more is an error.
+fn max_feed_bytes() -> Int { 262_144 }
+
+fn max_feed_offers() -> Int { 100 }
+
+/// Total time one supplier may take, across every attempt and backoff.
+fn supplier_deadline() -> Duration { Duration.seconds(5) }
+
+// ---------------------------------------------------------------- domain types
+
+fn is_sku_char(c: String) -> Bool {
+  String.contains("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-", c)
+}
+
+/// 1–40 ASCII letters, digits or hyphens.
+pub type Sku = String where String.len(it) >= 1
+  && String.len(it) <= 40
+  && List.all(String.chars(it), is_sku_char)
+
+pub type Quantity = Int where it >= 1 && it <= 1_000
+
+pub type Stock = Int where it >= 0 && it <= 100_000
+
+/// Integer minor currency units.
+pub type Price = Int where it >= 0 && it <= 1_000_000
+
+pub type WantedItem = { sku: Sku, quantity: Quantity }
+
+pub type Offer = { supplier_id: String, sku: Sku, available: Stock, unit_price: Price }
+
+/// One operator-controlled endpoint and the exact `host:port` it may reach.
+pub type SupplierConfig = { id: String, url: Url, host_port: String }
+
+pub type Config = { currency: String, suppliers: List<SupplierConfig> }
+
+/// The wire shapes, before validation. Every field is checked again below.
+type RawWanted = { items: List<RawItem> }
+
+type RawItem = { sku: String, quantity: Int }
+
+pub type RawFeed = { offers: List<RawOffer> }
+
+pub type RawOffer = {
+  sku: String,
+  available: Int,
+  unit_price: Int,
+  currency: String,
+  supplier_id: String,
+}
+
+// ---------------------------------------------------------------- errors
+
+/// The wanted-items file is unusable; no supplier is contacted.
+pub error WantedInvalid(reason: String)
+
+/// No response arrived (connection, DNS, scoped refusal, cassette miss).
+pub error TransportFailed(reason: String)
+
+/// A status other than 200 or 429.
+pub error BadStatus(status: Int)
+
+/// The body is not UTF-8 or not JSON.
+pub error MalformedFeed(reason: String)
+
+/// The body, the offer count or a number is outside its bound.
+pub error FeedBounds(reason: String)
+
+/// A well-formed feed whose records are wrong (supplier, currency, SKU, duplicate).
+pub error InvalidFeed(reason: String)
+
+/// Every expected supplier failure; `Timeout` from std/task is added around retries.
+pub type FetchError = TransportFailed
+  | BadStatus
+  | RateLimited
+  | MalformedFeed
+  | FeedBounds
+  | InvalidFeed
+
+// ---------------------------------------------------------------- report
+
+pub type OfferLine = { supplier_id: String, unit_price: Int, available: Int, line_total: Int }
+
+pub type ItemLine = {
+  sku: String,
+  requested: Int,
+  eligible: List<OfferLine>,
+  cheapest: Option<OfferLine>,
+  reason: Option<String>,
+}
+
+pub type SupplierLine = {
+  supplier_id: String,
+  status: String,
+  offers: Int,
+  failure: Option<String>,
+  detail: Option<String>,
+}
+
+pub type Report = {
+  currency: String,
+  complete: Bool,
+  failed_suppliers: List<String>,
+  suppliers: List<SupplierLine>,
+  items: List<ItemLine>,
+  fulfillable_items: Int,
+  planned_total: Int,
+}
+
+/// What one child task hands back: offers, or the failure as data.
+pub type SupplierResult = {
+  supplier_id: String,
+  offers: List<Offer>,
+  fault: Option<(String, String)>,
+}
+
+// ---------------------------------------------------------------- configuration
+
+pub fn shop_config() -> Config {
+  Config {
+    currency: "USD",
+    suppliers: [
+      SupplierConfig {
+        id: "supplier-a",
+        url: Url.from("https://supplier-a.invalid/stock"),
+        host_port: "supplier-a.invalid:443",
+      },
+      SupplierConfig {
+        id: "supplier-b",
+        url: Url.from("https://supplier-b.invalid/stock"),
+        host_port: "supplier-b.invalid:443",
+      },
+      SupplierConfig {
+        id: "supplier-c",
+        url: Url.from("https://supplier-c.invalid/stock"),
+        host_port: "supplier-c.invalid:443",
+      },
+    ],
+  }
+}
+
+// ---------------------------------------------------------------- wanted items
+
+// 0.1.0 reports `clause` as the literal "where", so the text names the type, not the clause.
+fn violation_text(v: Violation) -> String { "{v.value_summary} is not a valid {v.type_name}" }
+
+/// Bytes → validated wanted items. Rejects oversize, non-UTF-8, bad JSON,
+/// more than 100 items, invalid SKUs or quantities, and duplicate SKUs.
+pub fn parse_wanted(bytes: Bytes) -> List<WantedItem> ! {Fail<WantedInvalid>} {
+  if Bytes.len(bytes) > max_wanted_bytes() {
+    fail WantedInvalid { reason: "wanted file is over {max_wanted_bytes()} bytes" }
+  }
+  let text = match String.from_bytes(bytes) {
+    Ok(t) => t,
+    Err(e) => fail WantedInvalid { reason: "wanted file is not UTF-8 (byte {e.offset})" },
+  }
+  let raw: RawWanted = match Json.decode(text) {
+    Ok(r) => r,
+    Err(e) => fail WantedInvalid { reason: "wanted file at '{e.path}': {e.message}" },
+  }
+  if List.len(raw.items) > max_wanted_items() {
+    fail WantedInvalid { reason: "wanted file lists more than {max_wanted_items()} SKUs" }
+  }
+  var seen: Set<String> = Set.empty()
+  var items: List<WantedItem> = []
+  for (i, item) in List.enumerate(raw.items) {
+    let sku_result: Result<Sku, Violation> = Untrusted.validate(Untrusted.of(item.sku))
+    let sku = match sku_result {
+      Ok(s) => s,
+      Err(v) => fail WantedInvalid { reason: "items/{i}/sku: {violation_text(v)}" },
+    }
+    let qty_result: Result<Quantity, Violation> = Untrusted.validate(Untrusted.of(item.quantity))
+    let quantity = match qty_result {
+      Ok(q) => q,
+      Err(v) => fail WantedInvalid { reason: "items/{i}/quantity: {violation_text(v)}" },
+    }
+    if Set.contains(seen, item.sku) {
+      fail WantedInvalid { reason: "items/{i}/sku: duplicate SKU {item.sku}" }
+    }
+    seen = Set.insert(seen, item.sku)
+    items = List.push(items, WantedItem { sku, quantity })
+  }
+  items
+}
+
+/// Reads at most `max_wanted_bytes() + 1` bytes of `path`, so an oversize file
+/// is rejected without reading the rest of it.
+pub fn read_wanted(path: Path) -> Bytes ! {Fs, Fail<FsError>} {
+  Fs.with_file(path, Read, fn(file) {
+    var parts: List<Bytes> = []
+    var total = 0
+    var done = false
+    while !done && total <= max_wanted_bytes() {
+      let chunk = Fs.read_chunk(file, max_wanted_bytes() + 1 - total)
+      if Bytes.len(chunk) == 0 {
+        done = true
+      } else {
+        parts = List.push(parts, chunk)
+        total = total + Bytes.len(chunk)
+      }
+    }
+    Bytes.concat(parts)
+  })
+}
+
+// ---------------------------------------------------------------- feeds
+
+/// Bytes → validated offers for supplier `c` in `currency`. A feed is rejected
+/// whole; rows are never dropped or relabelled.
+pub fn parse_feed(c: SupplierConfig, currency: String, bytes: Bytes) -> List<Offer>
+  ! {Fail<FeedBounds | InvalidFeed | MalformedFeed>}
+{
+  if Bytes.len(bytes) > max_feed_bytes() {
+    fail FeedBounds { reason: "response is over {max_feed_bytes()} bytes" }
+  }
+  let text = match String.from_bytes(bytes) {
+    Ok(t) => t,
+    Err(e) => fail MalformedFeed { reason: "response is not UTF-8 (byte {e.offset})" },
+  }
+  // ponytail: parses twice (syntax, then shape) to tell malformed from invalid; bounded by 256 KiB.
+  if Result.is_err(Json.parse(text)) { fail MalformedFeed { reason: "response is not JSON" } }
+  let raw: RawFeed = match Json.decode(text) {
+    Ok(r) => r,
+    Err(e) => fail InvalidFeed { reason: "record at '{e.path}': {e.message}" },
+  }
+  if List.len(raw.offers) > max_feed_offers() {
+    fail FeedBounds { reason: "feed has {List.len(raw.offers)} offers, limit {max_feed_offers()}" }
+  }
+  var seen: Set<String> = Set.empty()
+  var offers: List<Offer> = []
+  for (i, o) in List.enumerate(raw.offers) {
+    if o.supplier_id != c.id {
+      fail InvalidFeed { reason: "offers/{i}: supplier_id {o.supplier_id}, expected {c.id}" }
+    }
+    if o.currency != currency {
+      fail InvalidFeed { reason: "offers/{i}: currency {o.currency}, expected {currency}" }
+    }
+    let sku_result: Result<Sku, Violation> = Untrusted.validate(Untrusted.of(o.sku))
+    let sku = match sku_result {
+      Ok(s) => s,
+      Err(v) => fail InvalidFeed { reason: "offers/{i}/sku: {violation_text(v)}" },
+    }
+    let stock_result: Result<Stock, Violation> = Untrusted.validate(Untrusted.of(o.available))
+    let available = match stock_result {
+      Ok(s) => s,
+      Err(v) => fail FeedBounds { reason: "offers/{i}/available: {violation_text(v)}" },
+    }
+    let price_result: Result<Price, Violation> = Untrusted.validate(Untrusted.of(o.unit_price))
+    let unit_price = match price_result {
+      Ok(p) => p,
+      Err(v) => fail FeedBounds { reason: "offers/{i}/unit_price: {violation_text(v)}" },
+    }
+    if Set.contains(seen, o.sku) {
+      fail InvalidFeed { reason: "offers/{i}: duplicate SKU {o.sku}" }
+    }
+    seen = Set.insert(seen, o.sku)
+    offers = List.push(offers, Offer { supplier_id: c.id, sku, available, unit_price })
+  }
+  offers
+}
+
+// ---------------------------------------------------------------- HTTP adapter
+
+/// Reads at most `max_feed_bytes() + 1` bytes; the extra byte proves the body
+/// is over the cap, and the rest is never read.
+fn read_capped(body: Body, cap: Int) -> Bytes ! {Http, Fail<FeedBounds | HttpError>} {
+  var parts: List<Bytes> = []
+  var total = 0
+  var done = false
+  while !done {
+    let chunk = Http.read_chunk(body, cap + 1 - total)
+    if Bytes.len(chunk) == 0 {
+      done = true
+    } else {
+      parts = List.push(parts, chunk)
+      total = total + Bytes.len(chunk)
+      if total > cap { fail FeedBounds { reason: "response is over {cap} bytes" } }
+    }
+  }
+  Bytes.concat(parts)
+}
+
+/// One GET. The status is translated here: 429 is `RateLimited`, anything
+/// else but 200 is `BadStatus`, and a missing response is `TransportFailed`.
+fn fetch_once(c: SupplierConfig) -> Bytes
+  ! {Http, Fail<BadStatus | FeedBounds | RateLimited | TransportFailed>}
+{
+  try {
+    Http.stream(Request.of(Method.Get, c.url), fn(incoming) {
+      match incoming.status {
+        200 => read_capped(incoming.body, max_feed_bytes()),
+        429 => fail RateLimited { retry_after: None },
+        s => fail BadStatus { status: s },
+      }
+    })
+  } catch {
+    HttpError { reason, .. } => fail TransportFailed { reason },
+  }
+}
+
+/// Three attempts, 100 ms then 200 ms, no jitter; only `RateLimited` retries.
+pub fn retry_policy() -> Policy<FetchError> {
+  Policy {
+    ..retry.policy(
+      fn(e: FetchError) {
+        match e {
+          RateLimited { .. } => true,
+          _ => false,
+        }
+      },
+      3,
+    ),
+    backoff: Duration.millis(100),
+    jitter: false,
+    deadline: None,
+  }
+}
+
+/// The supplier adapter: narrowed to the supplier's own `host:port`, retried on
+/// 429 and bounded by one five-second timeout over every attempt.
+pub fn fetch_offers(c: SupplierConfig, currency: String) -> List<Offer>
+  ! {Clock, Http, Random, Task, Fail<FetchError | Timeout>}
+{
+  with Http.scoped([c.host_port]) {
+    timeout(supplier_deadline(), fn() {
+      retry.retry(retry_policy(), fn() { parse_feed(c, currency, fetch_once(c)) })
+    })
+  }
+}
+
+// ---------------------------------------------------------------- fan-out
+
+fn fault(c: SupplierConfig, kind: String, detail: String) -> SupplierResult {
+  SupplierResult { supplier_id: c.id, offers: [], fault: Some((kind, detail)) }
+}
+
+/// The child boundary: expected failures become report data. Defects are not
+/// caught and still fail the scope.
+fn settle<e>(
+  c: SupplierConfig,
+  fetch: fn(SupplierConfig) -> List<Offer> ! {Fail<FetchError | Timeout> | e},
+) -> SupplierResult
+  ! e
+{
+  try { SupplierResult { supplier_id: c.id, offers: fetch(c), fault: None } } catch {
+    TransportFailed { reason } => fault(c, "transport", reason),
+    BadStatus { status } => fault(c, "status", "HTTP {status}"),
+    RateLimited { .. } => fault(c, "rate_limited", "HTTP 429 on all 3 attempts"),
+    Timeout { limit } => fault(c, "timeout", "no feed within {Duration.to_millis(limit)} ms"),
+    MalformedFeed { reason } => fault(c, "malformed", reason),
+    FeedBounds { reason } => fault(c, "bounds", reason),
+    InvalidFeed { reason } => fault(c, "invalid", reason),
+  }
+}
+
+/// Every supplier in its own child of one scope; all are joined before return.
+pub fn gather<e>(
+  suppliers: List<SupplierConfig>,
+  fetch: fn(SupplierConfig) -> List<Offer> ! {Fail<FetchError | Timeout> | e},
+) -> List<SupplierResult>
+  ! {Task | e}
+{
+  Task.scope(fn(s) {
+    let fibers = List.map(suppliers, fn(c) { Task.spawn(s, fn() { settle(c, fetch) }) })
+    List.map(fibers, fn(f) { Task.join(f) })
+  })
+}
+
+// ---------------------------------------------------------------- reconciliation (pure)
+
+fn offer_line(o: Offer, quantity: Int) -> OfferLine {
+  OfferLine {
+    supplier_id: o.supplier_id,
+    unit_price: o.unit_price,
+    available: o.available,
+    line_total: o.unit_price * quantity,
+  }
+}
+
+/// Offers that fill the whole quantity, cheapest first, ties by supplier ID.
+pub fn eligible_offers(item: WantedItem, offers: List<Offer>) -> List<OfferLine> {
+  let fits = List.filter(offers, fn(o) { o.sku == item.sku && o.available >= item.quantity })
+  let sorted = List.sort_by(fits, fn(o) { (o.unit_price, o.supplier_id) })
+  List.map(sorted, fn(o) { offer_line(o, item.quantity) })
+}
+
+fn item_line(item: WantedItem, offers: List<Offer>) -> ItemLine {
+  let eligible = eligible_offers(item, offers)
+  let cheapest = List.first(eligible)
+  let listed = List.any(offers, fn(o) { o.sku == item.sku })
+  let reason = match cheapest {
+    Some(_) => None,
+    None if listed => Some("insufficient_stock"),
+    None => Some("not_offered"),
+  }
+  ItemLine { sku: item.sku, requested: item.quantity, eligible, cheapest, reason }
+}
+
+fn supplier_line(r: SupplierResult) -> SupplierLine {
+  match r.fault {
+    None =>
+      SupplierLine {
+        supplier_id: r.supplier_id,
+        status: "ok",
+        offers: List.len(r.offers),
+        failure: None,
+        detail: None,
+      },
+    Some((kind, detail)) =>
+      SupplierLine {
+        supplier_id: r.supplier_id,
+        status: "failed",
+        offers: 0,
+        failure: Some(kind),
+        detail: Some(detail),
+      },
+  }
+}
+
+/// The report depends only on its inputs; supplier order is by ID, not by
+/// completion, and item order is the wanted file's.
+pub fn reconcile(
+  currency: String,
+  wanted: List<WantedItem>,
+  results: List<SupplierResult>,
+) -> Report
+{
+  let ordered = List.sort_by(results, fn(r) { r.supplier_id })
+  let offers = List.flat_map(ordered, fn(r) { r.offers })
+  let items = List.map(wanted, fn(w) { item_line(w, offers) })
+  let failed = List.map(
+    List.filter(ordered, fn(r) { Option.is_some(r.fault) }),
+    fn(r) { r.supplier_id },
+  )
+  let chosen = List.filter_map(items, fn(i) { i.cheapest })
+  Report {
+    currency,
+    complete: List.len(failed) == 0,
+    failed_suppliers: failed,
+    suppliers: List.map(ordered, supplier_line),
+    items,
+    fulfillable_items: List.len(chosen),
+    planned_total: List.sum(List.map(chosen, fn(o) { o.line_total })),
+  }
+}
+
+/// 0 for a complete report, 1 for an incomplete one.
+pub fn exit_status(r: Report) -> Int { if r.complete { 0 } else { 1 } }
+
+pub fn render(r: Report) -> String { Json.encode(r) }
+
+/// The whole pipeline: the wanted file is validated before any supplier is contacted.
+pub fn plan<e>(
+  config: Config,
+  wanted_bytes: Bytes,
+  fetch: fn(SupplierConfig) -> List<Offer> ! {Fail<FetchError | Timeout> | e},
+) -> Report
+  ! {Task, Fail<WantedInvalid> | e}
+{
+  let wanted = parse_wanted(wanted_bytes)
+  reconcile(config.currency, wanted, gather(config.suppliers, fetch))
+}
+
+// ---------------------------------------------------------------- main
+
+/// `--wanted <path under ./data>`; `--replay` serves each supplier from
+/// `data/cassettes/<id>.jsonl` instead of the network (a demo of the exit path).
+type Args = { wanted: String, replay: Bool }
+
+pub type InputError = { input_error: String }
+
+fn input_error(message: String) -> Int ! {Console} {
+  Console.print(Json.encode(InputError { input_error: message }))
+  1
+}
+
+fn run(args: Args) -> Int
+  ! {Clock, Console, Fs, Http, Random, Task, Fail<FsError | WantedInvalid>}
+{
+  let config = shop_config()
+  let path_result: Result<Path, Violation> = Path.validate(args.wanted)
+  let path = match path_result {
+    Ok(p) => p,
+    Err(_) => fail WantedInvalid { reason: "--wanted must be a relative path inside ./data" },
+  }
+  let report = with Fs.rooted(Dir.subdir(Fs.root(), "data")) {
+    let bytes = read_wanted(path)
+    if args.replay {
+      plan(config, bytes, fn(c) {
+        with Http.scripted([]), Http.recording(Path.join(Path.of("cassettes"), "{c.id}.jsonl")) {
+          fetch_offers(c, config.currency)
+        }
+      })
+    } else {
+      plan(config, bytes, fn(c) { fetch_offers(c, config.currency) })
+    }
+  }
+  Console.print(render(report))
+  exit_status(report)
+}
+
+pub fn main() -> Unit ! {Cli, Clock, Console, Fs, Http, Random, Task} {
+  let code = try {
+    let args: Args = Cli.parse(Cli.args())
+    run(args)
+  } catch {
+    CliError { message } => input_error(message),
+    FsError { path, reason } => input_error("cannot read {path}: {reason}"),
+    WantedInvalid { reason } => input_error(reason),
+  }
+  if code != 0 { Cli.exit(code) }
+}
+
+// ================================================================ tests
+//
+// Every test installs `Clock.virtual()`, `Task.deterministic(7)` and
+// `Random.seeded(42)` outermost, so handlers installed inside them (cassettes,
+// scripts and the gate below) sleep on virtual time and schedule reproducibly.
+// Each supplier's transport is installed inside its own child task.
+
+fn supplier(id: String) -> SupplierConfig {
+  Option.expect(List.find(shop_config().suppliers, fn(c) { c.id == id }), "test supplier exists")
+}
+
+fn raw(sup: String, sku: String, available: Int, price: Int) -> RawOffer {
+  RawOffer { sku, available, unit_price: price, currency: "USD", supplier_id: sup }
+}
+
+fn feed(offers: List<RawOffer>) -> String { Json.encode(RawFeed { offers }) }
+
+fn ok_feed(offers: List<RawOffer>) -> Response { Response.status(200, feed(offers)) }
+
+fn healthy(id: String) -> Response {
+  match id {
+    "supplier-a" =>
+      ok_feed([
+        raw(id, "W-1", 10, 500),
+        raw(id, "W-2", 5, 300),
+        raw(id, "W-3", 2, 700),
+        raw(id, "W-5", 0, 100),
+        raw(id, "FREE-1", 5, 0),
+      ]),
+    "supplier-b" =>
+      ok_feed([raw(id, "W-1", 5, 450), raw(id, "W-2", 20, 400), raw(id, "W-3", 9, 700)]),
+    _ => ok_feed([raw(id, "W-1", 100, 450), raw(id, "W-2", 10, 410), raw(id, "W-5", 2, 50)]),
+  }
+}
+
+fn wanted(items: List<(String, Int)>) -> Bytes {
+  String.to_bytes(
+    Json.encode(RawWanted {
+      items: List.map(items, fn(p) { RawItem { sku: p.0, quantity: p.1 } }),
+    }),
+  )
+}
+
+fn sample_wanted() -> Bytes {
+  wanted([("W-1", 5), ("W-2", 10), ("W-3", 2), ("W-4", 1), ("W-5", 3), ("FREE-1", 2)])
+}
+
+/// Replays `<id>.jsonl` unless `overrides` names another cassette for `c`.
+fn replay(c: SupplierConfig, overrides: List<(String, String)>) -> List<Offer>
+  ! {Clock, Fs, Http, Random, Task, Fail<FetchError | Timeout>}
+{
+  let file = match List.find(overrides, fn(p) { p.0 == c.id }) {
+    Some((_, f)) => f,
+    None => "{c.id}.jsonl",
+  }
+  with Http.recording(Path.of(file)) { fetch_offers(c, "USD") }
+}
+
+/// `responses` for `c` in order (a scripted handler repeats the first match, so
+/// one entry per supplier); the healthy feed when `c` is not listed.
+fn scripted(c: SupplierConfig, responses: List<(String, Response)>) -> List<Offer>
+  ! {Clock, Random, Task, Fail<FetchError | Timeout>}
+{
+  let script = match List.find(responses, fn(p) { p.0 == c.id }) {
+    Some((_, r)) => [(Any, r)],
+    None => [(Any, healthy(c.id))],
+  }
+  with Http.scripted(script) { fetch_offers(c, "USD") }
+}
+
+/// A scheduling-aware pass-through: logs when a request starts, holds it for
+/// `hold` virtual ms, then logs its release and forwards it.
+fn gate(hold: Int) -> Handler<Http, {Clock, Http, Test}> {
+  handler Http {
+    fn send(req) { Http.send(req) }
+    fn stream(req, body) {
+      Test.output("start {req.url}")
+      Clock.sleep(Duration.millis(hold))
+      Test.output("release {req.url}")
+      Http.stream(req, body)
+    }
+    fn read_chunk(b, max) {
+      let bytes = Http.read_chunk(b, max)
+      if Bytes.len(bytes) > 0 { Test.output("read {Bytes.len(bytes)}") }
+      bytes
+    }
+  }
+}
+
+fn hold_for(c: SupplierConfig, holds: List<(String, Int)>) -> Int {
+  match List.find(holds, fn(p) { p.0 == c.id }) {
+    Some((_, h)) => h,
+    None => 0,
+  }
+}
+
+fn cheapest_of(r: Report) -> List<Option<String>> {
+  List.map(r.items, fn(i) { Option.map(i.cheapest, fn(o) { o.supplier_id }) })
+}
+
+fn line(r: Report, id: String) -> SupplierLine {
+  Option.expect(List.find(r.suppliers, fn(s) { s.supplier_id == id }), "supplier line exists")
+}
+
+fn item(r: Report, sku: String) -> ItemLine {
+  Option.expect(List.find(r.items, fn(i) { i.sku == sku }), "item line exists")
+}
+
+fn offer(sup: String, sku: String, available: Int, price: Int) -> Offer {
+  Offer {
+    supplier_id: sup,
+    sku: Sku.from(sku),
+    available: Stock.from(available),
+    unit_price: Price.from(price),
+  }
+}
+
+fn want(sku: String, quantity: Int) -> WantedItem {
+  WantedItem { sku: Sku.from(sku), quantity: Quantity.from(quantity) }
+}
+
+test "01 three healthy cassettes pick the cheapest eligible supplier for every SKU" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      Random.seeded(42),
+      Fs.rooted(Test.fixtures()),
+      Http.scripted([]) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) { replay(c, []) })
+    expect_eq(
+      cheapest_of(r),
+      [Some("supplier-b"), Some("supplier-b"), Some("supplier-a"), None, None, Some("supplier-a")],
+    )
+    expect_eq(r.planned_total, 7_650)
+    expect_eq(r.fulfillable_items, 4)
+    expect_eq(List.map(r.suppliers, fn(s) { s.offers }), [5, 3, 3])
+    expect_eq(Clock.monotonic(), Duration.millis(0))
+    expect_snapshot("healthy-report", render(r))
+  }
+}
+
+test "02 a cheaper supplier short of stock loses to one that fills the quantity" {
+  let offers = [offer("supplier-a", "W-2", 5, 300), offer("supplier-b", "W-2", 20, 400)]
+  let eligible = eligible_offers(want("W-2", 10), offers)
+  expect_eq(List.map(eligible, fn(o) { o.supplier_id }), ["supplier-b"])
+  expect_eq(List.map(eligible, fn(o) { o.line_total }), [4_000])
+}
+
+test "03 equal prices select the alphabetically first supplier ID" {
+  let offers = [
+    offer("supplier-c", "W-1", 100, 450),
+    offer("supplier-a", "W-1", 10, 500),
+    offer("supplier-b", "W-1", 5, 450),
+  ]
+  let eligible = eligible_offers(want("W-1", 5), offers)
+  expect_eq(List.map(eligible, fn(o) { o.supplier_id }), ["supplier-b", "supplier-c", "supplier-a"])
+}
+
+test "04 a SKU missing from every successful feed is reported, not omitted" {
+  let r = reconcile(
+    "USD",
+    [want("W-4", 1)],
+    [
+      SupplierResult {
+        supplier_id: "supplier-a",
+        offers: [offer("supplier-a", "W-1", 1, 1)],
+        fault: None,
+      },
+    ],
+  )
+  expect_eq(List.len(r.items), 1)
+  expect_eq(item(r, "W-4").cheapest, None)
+  expect_eq(item(r, "W-4").reason, Some("not_offered"))
+}
+
+test "05 zero stock is valid input but cannot fulfil a positive request" {
+  let r = reconcile(
+    "USD",
+    [want("W-5", 1)],
+    [
+      SupplierResult {
+        supplier_id: "supplier-a",
+        offers: [offer("supplier-a", "W-5", 0, 100)],
+        fault: None,
+      },
+    ],
+  )
+  expect_eq(item(r, "W-5").eligible, [])
+  expect_eq(item(r, "W-5").reason, Some("insufficient_stock"))
+  expect(r.complete)
+}
+
+test "06 a free item with enough stock stays an eligible zero-price offer" {
+  let eligible = eligible_offers(want("FREE-1", 2), [offer("supplier-a", "FREE-1", 5, 0)])
+  expect_eq(
+    eligible,
+    [OfferLine { supplier_id: "supplier-a", unit_price: 0, available: 5, line_total: 0 }],
+  )
+}
+
+test "07 a duplicate SKU rejects that feed and leaves the others usable" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let dup = ok_feed([raw("supplier-b", "W-1", 5, 1), raw("supplier-b", "W-1", 6, 2)])
+    let r = plan(shop_config(), sample_wanted(), fn(c) { scripted(c, [("supplier-b", dup)]) })
+    expect_eq(line(r, "supplier-b").failure, Some("invalid"))
+    expect_eq(line(r, "supplier-b").detail, Some("offers/1: duplicate SKU W-1"))
+    expect_eq(line(r, "supplier-a").status, "ok")
+    expect_eq(line(r, "supplier-c").status, "ok")
+    expect_eq(
+      cheapest_of(r),
+      [Some("supplier-c"), Some("supplier-c"), Some("supplier-a"), None, None, Some("supplier-a")],
+    )
+  }
+}
+
+test "08 an incorrect supplier ID rejects the feed instead of relabelling it" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let wrong = ok_feed([raw("supplier-a", "W-1", 50, 1)])
+    let r = plan(shop_config(), sample_wanted(), fn(c) { scripted(c, [("supplier-b", wrong)]) })
+    expect_eq(
+      line(r, "supplier-b").detail,
+      Some("offers/0: supplier_id supplier-a, expected supplier-b"),
+    )
+    expect(List.all(item(r, "W-1").eligible, fn(o) { o.unit_price != 1 }))
+  }
+}
+
+test "09 a currency mismatch is a supplier error, never compared across currencies" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let eur = ok_feed([RawOffer { ..raw("supplier-c", "W-1", 100, 1), currency: "EUR" }])
+    let r = plan(shop_config(), sample_wanted(), fn(c) { scripted(c, [("supplier-c", eur)]) })
+    expect_eq(line(r, "supplier-c").failure, Some("invalid"))
+    expect_eq(line(r, "supplier-c").detail, Some("offers/0: currency EUR, expected USD"))
+    expect_eq(
+      item(r, "W-1").cheapest,
+      Some(OfferLine {
+        supplier_id: "supplier-b",
+        unit_price: 450,
+        available: 5,
+        line_total: 2_250,
+      }),
+    )
+  }
+}
+
+test "10 malformed JSON from one supplier yields a partial report" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      scripted(c, [("supplier-a", Response.status(200, "\{\"offers\": ["))])
+    })
+    expect_eq(line(r, "supplier-a").failure, Some("malformed"))
+    expect_eq(List.map(r.suppliers, fn(s) { s.status }), ["failed", "ok", "ok"])
+    expect_eq(r.complete, false)
+    expect_eq(
+      item(r, "W-2").cheapest,
+      Some(OfferLine {
+        supplier_id: "supplier-b",
+        unit_price: 400,
+        available: 20,
+        line_total: 4_000,
+      }),
+    )
+  }
+}
+
+test "11 invalid UTF-8 is a feed error with no raw body in the report" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      Random.seeded(42),
+      Fs.rooted(Test.fixtures()),
+      Http.scripted([]) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      replay(c, [("supplier-b", "supplier-b-invalid-utf8.jsonl")])
+    })
+    expect_eq(line(r, "supplier-b").failure, Some("malformed"))
+    expect_eq(line(r, "supplier-b").detail, Some("response is not UTF-8 (byte 105)"))
+    expect(!String.contains(render(r), "note"))
+  }
+}
+
+test "12 out-of-range stock or price is a validation error, not a defect" {
+  let c = supplier("supplier-a")
+  expect_fail(
+    fn() { parse_feed(c, "USD", String.to_bytes(feed([raw("supplier-a", "W-1", 100_001, 1)]))) },
+    FeedBounds { reason: "offers/0/available: 100001 is not a valid Stock" },
+  )
+  expect_fail(
+    fn() { parse_feed(c, "USD", String.to_bytes(feed([raw("supplier-a", "W-1", 1, -1)]))) },
+    FeedBounds { reason: "offers/0/unit_price: -1 is not a valid Price" },
+  )
+  expect_fails_with(
+    fn() {
+      parse_feed(
+        c,
+        "USD",
+        String.to_bytes(
+          "\{\"offers\":[\{\"sku\":\"W-1\",\"available\":1e300,\"unit_price\":1,\"currency\":\"USD\",\"supplier_id\":\"supplier-a\"}]}",
+        ),
+      )
+    },
+    fn(e) {
+      match e {
+        InvalidFeed { .. } => true,
+        _ => false,
+      }
+    },
+  )
+}
+
+test "13 exactly 100 offers pass the bound and 101 reject the feed" {
+  let c = supplier("supplier-a")
+  let hundred = List.map(List.range(0, 100), fn(i) { raw("supplier-a", "S-{i}", 1, 1) })
+  expect_eq(List.len(parse_feed(c, "USD", String.to_bytes(feed(hundred)))), 100)
+  let more = List.push(hundred, raw("supplier-a", "S-100", 1, 1))
+  expect_fail(
+    fn() { parse_feed(c, "USD", String.to_bytes(feed(more))) },
+    FeedBounds { reason: "feed has 101 offers, limit 100" },
+  )
+}
+
+fn padded(n: Int) -> String {
+  let body = feed([raw("supplier-a", "W-1", 1, 1)])
+  body + String.repeat(" ", n - String.len(body))
+}
+
+test "14 a body at the byte cap decodes; one byte over stops reading" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let c = supplier("supplier-a")
+    let at_cap = with Http.scripted([(Any, Response.status(200, padded(262_144)))]) {
+      fetch_offers(c, "USD")
+    }
+    expect_eq(List.len(at_cap), 1)
+    let lines_before = List.len(Test.output_lines())
+    with Http.scripted([(Any, Response.status(200, padded(262_144 + 100_000)))]), gate(0) {
+      expect_fail(
+        fn() { fetch_offers(c, "USD") },
+        FeedBounds { reason: "response is over 262144 bytes" },
+      )
+    }
+    let reads = List.filter(
+      List.slice(Test.output_lines(), lines_before, 1_000),
+      fn(l) { String.starts_with(l, "read ") },
+    )
+    expect_eq(reads, ["read 262145"])
+  }
+}
+
+test "15 a 429 then 200 cassette succeeds after one 100 ms virtual backoff" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      Random.seeded(42),
+      Fs.rooted(Test.fixtures()),
+      Http.scripted([]) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      replay(c, [("supplier-a", "supplier-a-429-then-200.jsonl")])
+    })
+    expect(r.complete)
+    expect_eq(line(r, "supplier-a").offers, 5)
+    expect_eq(Clock.monotonic(), Duration.millis(100))
+  }
+}
+
+test "16 three 429 responses exhaust attempts after 300 ms and keep the rate limit" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      scripted(c, [("supplier-a", Response.status(429, "busy"))])
+    })
+    expect_eq(line(r, "supplier-a").failure, Some("rate_limited"))
+    expect_eq(Clock.monotonic(), Duration.millis(300))
+  }
+}
+
+test "17 a 500 response is reported at once without a retry" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      scripted(c, [("supplier-c", Response.status(500, "oops"))])
+    })
+    expect_eq(line(r, "supplier-c").failure, Some("status"))
+    expect_eq(line(r, "supplier-c").detail, Some("HTTP 500"))
+    expect_eq(Clock.monotonic(), Duration.millis(0))
+  }
+}
+
+test "18 a scripted transport failure is reported at once" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      if c.id == "supplier-b" {
+        with Http.scripted([]) { fetch_offers(c, "USD") }
+      } else {
+        scripted(c, [])
+      }
+    })
+    expect_eq(line(r, "supplier-b").failure, Some("transport"))
+    expect_eq(Clock.monotonic(), Duration.millis(0))
+  }
+}
+
+test "19 a supplier slower than five seconds is cancelled, joined and reported" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let holds = [("supplier-c", 6_000)]
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      with Http.scripted([(Any, healthy(c.id))]), gate(hold_for(c, holds)) {
+        fetch_offers(c, "USD")
+      }
+    })
+    expect_eq(line(r, "supplier-c").failure, Some("timeout"))
+    expect_eq(line(r, "supplier-c").detail, Some("no feed within 5000 ms"))
+    expect(!List.contains(Test.output_lines(), "release https://supplier-c.invalid/stock"))
+    expect_eq(Clock.monotonic(), Duration.millis(5_000))
+    expect_eq(List.map(r.suppliers, fn(s) { s.status }), ["ok", "ok", "failed"])
+  }
+}
+
+test "20 all three requests start before any gated response is released" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      with Http.scripted([(Any, healthy(c.id))]), gate(100) { fetch_offers(c, "USD") }
+    })
+    let events = List.filter(Test.output_lines(), fn(l) { !String.starts_with(l, "read ") })
+    expect_eq(List.len(events), 6)
+    expect(List.all(List.slice(events, 0, 3), fn(l) { String.starts_with(l, "start ") }))
+    expect(List.all(List.slice(events, 3, 6), fn(l) { String.starts_with(l, "release ") }))
+    expect_eq(Clock.monotonic(), Duration.millis(100))
+    expect_eq(List.len(r.suppliers), 3)
+    expect(r.complete)
+  }
+}
+
+fn run_with_holds(holds: List<(String, Int)>) -> (String, List<String>)
+  ! {Test, Fail<WantedInvalid>}
+{
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let before = List.len(Test.output_lines())
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      with Http.scripted([(Any, healthy(c.id))]), gate(hold_for(c, holds)) {
+        fetch_offers(c, "USD")
+      }
+    })
+    let released = List.filter(
+      List.slice(Test.output_lines(), before, 1_000),
+      fn(l) { String.starts_with(l, "release ") },
+    )
+    (render(r), released)
+  }
+}
+
+test "21 reversing completion order leaves the report byte-for-byte unchanged" {
+  let forward = run_with_holds([("supplier-a", 10), ("supplier-b", 20), ("supplier-c", 30)])
+  let backward = run_with_holds([("supplier-a", 30), ("supplier-b", 20), ("supplier-c", 10)])
+  expect_eq(forward.1, List.reverse(backward.1))
+  expect(forward.1 != backward.1)
+  expect_eq(forward.0, backward.0)
+}
+
+/// An outer handler that would answer anything, and says when it is reached.
+fn permissive() -> Handler<Http, {Http, Test}> {
+  handler Http {
+    fn send(req) {
+      Test.output("outer reached {req.url}")
+      Http.send(req)
+    }
+    fn stream(req, body) {
+      Test.output("outer reached {req.url}")
+      Http.stream(req, body)
+    }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+test "22 a scoped adapter refuses an unrelated host before the outer handler" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      Random.seeded(42),
+      Http.scripted([(Any, healthy("supplier-a"))]),
+      permissive() {
+    let elsewhere = SupplierConfig {
+      ..supplier("supplier-a"),
+      url: Url.from("https://elsewhere.invalid/stock"),
+    }
+    expect_fails_with(fn() { fetch_offers(elsewhere, "USD") }, fn(e) {
+      match e {
+        TransportFailed { reason } => String.contains(reason, "outside Http.scoped"),
+        _ => false,
+      }
+    })
+    expect_eq(Test.output_lines(), [])
+    expect_eq(List.len(fetch_offers(supplier("supplier-a"), "USD")), 5)
+    expect_eq(Test.output_lines(), ["outer reached https://supplier-a.invalid/stock"])
+  }
+}
+
+test "23 a cassette miss fails offline as a supplier error, not as zero stock" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      Random.seeded(42),
+      Fs.rooted(Test.fixtures()),
+      Http.scripted([]) {
+    let r = plan(shop_config(), sample_wanted(), fn(c) {
+      replay(c, [("supplier-c", "supplier-a.jsonl")])
+    })
+    expect_eq(line(r, "supplier-c").failure, Some("transport"))
+    expect_eq(line(r, "supplier-c").offers, 0)
+    expect_eq(r.failed_suppliers, ["supplier-c"])
+    expect_eq(item(r, "W-5").reason, Some("insufficient_stock"))
+  }
+}
+
+fn no_request(c: SupplierConfig) -> List<Offer> ! {Test} {
+  Test.output("requested {c.id}")
+  []
+}
+
+fn rejected(bytes: Bytes, reason: String) -> Unit ! {Test} {
+  with Task.deterministic(7) {
+    expect_fail(fn() { plan(shop_config(), bytes, no_request) }, WantedInvalid { reason })
+  }
+}
+
+test "24 duplicate or invalid wanted SKUs fail before any supplier request" {
+  rejected(wanted([("W-1", 1), ("W-1", 2)]), "items/1/sku: duplicate SKU W-1")
+  rejected(wanted([("W_1", 1)]), "items/0/sku: W_1 is not a valid Sku")
+  rejected(wanted([("", 1)]), "items/0/sku:  is not a valid Sku")
+  rejected(wanted([("W-1", 0)]), "items/0/quantity: 0 is not a valid Quantity")
+  rejected(wanted([("W-1", 1_001)]), "items/0/quantity: 1001 is not a valid Quantity")
+  rejected(
+    wanted(List.map(List.range(0, 101), fn(i) { ("S-{i}", 1) })),
+    "wanted file lists more than 100 SKUs",
+  )
+  rejected(String.to_bytes(String.repeat(" ", 65_537)), "wanted file is over 65536 bytes")
+  with Task.deterministic(7) {
+    expect_fails_with(
+      fn() { plan(shop_config(), String.to_bytes("[1, 2"), no_request) },
+      fn(e) { String.starts_with(e.reason, "wanted file at '':") },
+    )
+  }
+  expect_eq(Test.output_lines(), [])
+}
+
+test "25 maximal wanted quantities and prices compute exact totals" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let skus = List.map(List.range(0, 100), fn(i) {
+      "MAX-{String.pad_left(Int.to_string(i), 3, "0")}"
+    })
+    let a = ok_feed(List.map(skus, fn(s) { raw("supplier-a", s, 100_000, 1_000_000) }))
+    let empty_b = ok_feed([])
+    let r = plan(
+      shop_config(),
+      wanted(List.map(skus, fn(s) { (s, 1_000) })),
+      fn(c) {
+        scripted(c, [("supplier-a", a), ("supplier-b", empty_b), ("supplier-c", ok_feed([]))])
+      },
+    )
+    expect_eq(r.planned_total, 100_000_000_000)
+    expect_eq(r.fulfillable_items, 100)
+    expect_eq(
+      item(r, "MAX-099").cheapest,
+      Some(OfferLine {
+        supplier_id: "supplier-a",
+        unit_price: 1_000_000,
+        available: 100_000,
+        line_total: 1_000_000_000,
+      }),
+    )
+  }
+}
+
+test "26 a healthy run is complete and any failure is incomplete and named" {
+  with Clock.virtual(), Task.deterministic(7), Random.seeded(42) {
+    let good = plan(shop_config(), sample_wanted(), fn(c) { scripted(c, []) })
+    expect_eq((good.complete, good.failed_suppliers, exit_status(good)), (true, [], 0))
+    let bad = plan(shop_config(), sample_wanted(), fn(c) {
+      scripted(c, [("supplier-b", Response.status(503, "down"))])
+    })
+    expect_eq((bad.complete, bad.failed_suppliers, exit_status(bad)), (false, ["supplier-b"], 1))
+  }
+}
+
+test "27 the wanted file is read with a bounded number of bytes" {
+  let big = String.to_bytes(String.repeat("x", 100_000))
+  with Fs.memory([(Path.of("big.json"), big), (Path.of("w.json"), sample_wanted())]) {
+    expect_eq(Bytes.len(read_wanted(Path.of("big.json"))), 65_537)
+    expect_eq(List.len(parse_wanted(read_wanted(Path.of("w.json")))), 6)
+  }
+}

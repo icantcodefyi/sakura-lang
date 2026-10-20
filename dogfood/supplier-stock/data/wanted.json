@@ -1,0 +1,28 @@
+{
+  "items": [
+    {
+      "sku": "W-1",
+      "quantity": 5
+    },
+    {
+      "sku": "W-2",
+      "quantity": 10
+    },
+    {
+      "sku": "W-3",
+      "quantity": 2
+    },
+    {
+      "sku": "W-4",
+      "quantity": 1
+    },
+    {
+      "sku": "W-5",
+      "quantity": 3
+    },
+    {
+      "sku": "FREE-1",
+      "quantity": 2
+    }
+  ]
+}

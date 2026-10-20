@@ -1,0 +1,2 @@
+{"schema_version":"1.0","kind":"cassette"}
+{"method":"GET","url":"https://supplier-c.invalid/stock","headers":[],"body":"","status":200,"response_headers":[["content-type","application/json"]],"response_body":"{\"offers\":[{\"sku\":\"W-1\",\"available\":100,\"unit_price\":450,\"currency\":\"USD\",\"supplier_id\":\"supplier-c\"},{\"sku\":\"W-2\",\"available\":10,\"unit_price\":410,\"currency\":\"USD\",\"supplier_id\":\"supplier-c\"},{\"sku\":\"W-5\",\"available\":2,\"unit_price\":50,\"currency\":\"USD\",\"supplier_id\":\"supplier-c\"}]}"}

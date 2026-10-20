@@ -1,0 +1,10 @@
+[package]
+name = "supplier_stock"
+version = "0.1.0"
+edition = "2026"
+
+# Root authority `main` gets; everything absent is denied (design §6.2).
+# Read only ./data; reach only the three configured supplier endpoints.
+[permissions]
+fs.read = ["./data"]
+net = ["supplier-a.invalid:443", "supplier-b.invalid:443", "supplier-c.invalid:443"]

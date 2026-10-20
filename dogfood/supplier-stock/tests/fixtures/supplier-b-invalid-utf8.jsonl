@@ -1,0 +1,2 @@
+{"schema_version":"1.0","kind":"cassette"}
+{"method":"GET","url":"https://supplier-b.invalid/stock","headers":[],"body":"","status":200,"response_headers":[["content-type","application/json"]],"response_body_base64":"eyJvZmZlcnMiOlt7InNrdSI6IlctMSIsImF2YWlsYWJsZSI6MSwidW5pdF9wcmljZSI6MSwiY3VycmVuY3kiOiJVU0QiLCJzdXBwbGllcl9pZCI6InN1cHBsaWVyLWIiLCJub3RlIjoi//4ifV19"}
