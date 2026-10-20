@@ -1,0 +1,9 @@
+# profile	symbol	site	status	clause
+i64	main::main::half	post%9	proved	ensures smaller
+i64	main::main::half	t%10	proved	division t%10 = n / 2
+i64	main::main::main	r%0	proved	requires non_negative
+i64	main::main::test_helper	r%5	proved	requires non_negative
+js	main::main::half	post%9	proved	ensures smaller
+js	main::main::half	t%10	proved	division t%10 = n / 2
+js	main::main::main	r%0	proved	requires non_negative
+js	main::main::test_helper	r%5	proved	requires non_negative

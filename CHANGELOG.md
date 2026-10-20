@@ -405,6 +405,13 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - A WebSocket, in either role, drops the bytes a peer sends after the close is known and
   destroys its TCP connection `WS_CLOSE_MS` (5 s) after ending it, where a peer that kept the
   connection open could make the host hold its bytes without bound (design §17.295 F1).
+- `sakura verify` (preview) skips `test` bodies, with no flag (design §17.294 WP-9): a test is
+  executed, never proved, so its `expect_defect` calls, the values its lambdas capture and its
+  generated inputs gave `disproved` obligations and `W7002` warnings named `test$N`, and
+  `verify` with no paths exited 1 on a project whose tests sit under `src/`. Those obligations
+  and the `verify_summary` counts for them are gone; functions in a test file that are not
+  `test` blocks are still verified. `sakura test --contracts` is how a test checks contracts.
+  Fixture: `compiler/tests/verify/tests_skipped.sak`.
 
 ### Security
 

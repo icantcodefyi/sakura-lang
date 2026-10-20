@@ -1,0 +1,27 @@
+// Design §17.294 WP-9 (dogfood/workshop-power FRICTION item 9): `sakura verify` skips `test`
+// bodies. A test is executed, never proved: this one calls `half` with a violating literal
+// under `expect_defect` and captures a value in a lambda, and neither yields an obligation.
+// Only `half`'s own obligations remain, and `verify` exits 0.
+fn half(n: Int) -> Int
+  requires non_negative: n >= 0
+  ensures smaller: result <= n
+{ n / 2 }
+
+// A function whose name starts with `test` is program code: verified.
+fn test_helper(n: Int) -> Int
+  requires non_negative: n >= 0
+{ half(n) }
+
+pub fn main() -> Unit {
+  let _a = half(4)
+}
+
+test "half rejects a negative" {
+  expect_defect(fn() { half(-1) })
+}
+
+test "a captured value is not an input" {
+  let k = 0 - 3
+  let f = fn() { half(k) }
+  expect_defect(f)
+}

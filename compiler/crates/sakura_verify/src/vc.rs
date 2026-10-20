@@ -243,15 +243,25 @@ pub struct DefVc {
     pub notes: Vec<String>,
 }
 
-/// VCs for every function of the user's package (modules outside `std`), in def order.
+/// VCs for every function of the user's package (modules outside `std`), in def order, except
+/// `test` code (design §17.294 WP-9): a test is executed, never proved, so its captures would be
+/// unconstrained inputs and an `expect_defect` call violates on purpose.
 pub fn generate(m: &Module, profile: Profile) -> Vec<DefVc> {
     (0..m.defs.len() as u32)
         .filter(|&d| {
             let def = m.def(d);
-            !def.module.starts_with("std::") && def.name != "$entry"
+            !def.module.starts_with("std::") && def.name != "$entry" && !is_test_code(&def.name)
         })
         .map(|d| generate_def(m, profile, d))
         .collect()
+}
+
+/// A `test` block's body `test$N`, its runner `test$N$run`, and the lambdas and handler clauses
+/// lifted from them (`test$1`, `test$1$2`, `test$Eff_op`): Core names all of them after the
+/// keyword `test` and `$` is the compiler's, so no user function has such a name.
+fn is_test_code(name: &str) -> bool {
+    name.strip_prefix("test")
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with('$'))
 }
 
 /// Statement budget per function, so a pathological body cannot hang the encoder.
