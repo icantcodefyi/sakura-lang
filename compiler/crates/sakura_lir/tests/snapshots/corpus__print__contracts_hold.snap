@@ -55,10 +55,10 @@ fn Percent$from#2 top -> i64 ; main::contracts_hold, frame 2 slots [%0 i64, %1 i
 
 fn scale#3 top -> i64 ; main::contracts_hold, frame 3 slots [%0 i64, %1 i64, %2 i64]
   b0(%0 p: i64, %1 total: i64, %2 $site: i64):
-    %3 enter: unit = $contract_enter()
+    %3 lit: unit = const ()
     %4 lit: i64 = const 0
     %5 t: bool = ge.int %1, %4
-    %6 exit: unit = $contract_exit()
+    %6 lit: unit = const ()
     check D020 %5 blame %2+0 ; scale
     %7 pre: unit = const ()
     %14 t: i64 = intmul %1, %0
@@ -66,9 +66,9 @@ fn scale#3 top -> i64 ; main::contracts_hold, frame 3 slots [%0 i64, %1 i64, %2 
     %16 t: i64 = intdiv %14, %15
     jump b1(%16, %1)
   b1(%8 result: i64, %9 total: i64):
-    %10 enter: unit = $contract_enter()
+    %10 lit: unit = const ()
     %11 t: bool = le.int %8, %9
-    %12 exit: unit = $contract_exit()
+    %12 lit: unit = const ()
     check D021 %11 ; scale
     %13 post: unit = const ()
     ret %8

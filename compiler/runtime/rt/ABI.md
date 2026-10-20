@@ -671,7 +671,13 @@ clause's offset in it when the group is not 0, else the clause's own site (role
 `definition`). A defect whose message carries program data (`Option.expect`'s own text,
 `D031`'s offset, `D004`'s value, `D011`'s `contract evaluation failed: <code>: <message>`)
 holds it in a runtime `String` the task owns until it is freed; the outcome's message is that
-text, so a record says what JS's says (design §17.162). Exit: `Cli.exit(code)` is a fourth terminal, `exit(code)`, that
+text, so a record says what JS's says (design §17.162). A contract predicate runs between
+`contract_enter` and `contract_exit` (`rt_b_contract_enter`/`_exit`), which make a defect
+raised inside it `D011`. **Since design §17.285 (2b)** the LIR emits neither call when nothing
+between them can raise (atoms and projections that are not boxed, `not`, `Float` arithmetic,
+comparisons of `Int`, `Float` and `Bool`: no call, no allocation, no checked `Int`
+arithmetic), as JS elides such a bracket, so a passing check of such a predicate is a compare
+and a branch; no record changes, since such a bracket never sees a defect. Exit: `Cli.exit(code)` is a fourth terminal, `exit(code)`, that
 unwinds finalizers of every task and sets the process exit code (as JS `$rt.Exit`).
 
 ## 7. Ownership rules (RC without cycles)

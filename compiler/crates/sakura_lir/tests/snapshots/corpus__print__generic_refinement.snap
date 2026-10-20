@@ -172,8 +172,8 @@ fn check#4 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 wo
 
 fn Full$from#5 top -> ptr ; main::generic_refinement, frame 2 slots [%0 word*, %1 i64]
   b0(%0 it: ptr, %1 $site: i64):
-    %2 enter: unit = $contract_enter()
-    %3 exit: unit = $contract_exit()
+    %2 lit: unit = const ()
+    %3 lit: unit = const ()
     %4 lit: bool = const true
     check D010 %4 blame %1+0 ; Full
     %5 ok: unit = const ()

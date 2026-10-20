@@ -43,9 +43,9 @@ fn grow#2 top -> i64 ; main::defect_D021_ensures_blames_callee, frame 1 slots [%
   b0(%0 x: i64):
     jump b1(%0, %0)
   b1(%1 result: i64, %2 x: i64):
-    %3 enter: unit = $contract_enter()
+    %3 lit: unit = const ()
     %4 t: bool = gt.int %1, %2
-    %5 exit: unit = $contract_exit()
+    %5 lit: unit = const ()
     check D021 %4 ; grow
     %6 post: unit = const ()
     ret %1

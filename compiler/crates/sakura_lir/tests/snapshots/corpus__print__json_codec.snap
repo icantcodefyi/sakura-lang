@@ -493,10 +493,10 @@ fn main$1#3 lambda -> word ; main::json_codec, captures [], frame 2 slots [%0 wo
 
 fn Small$check#5 top -> bool ; main::json_codec, frame 1 slots [%0 i64]
   b0(%0 it: i64):
-    %1 enter: unit = $contract_enter()
+    %1 lit: unit = const ()
     %2 lit: i64 = const 10
     %3 t: bool = lt.int %0, %2
-    %4 exit: unit = $contract_exit()
+    %4 lit: unit = const ()
     ret %3
 
 fn shown#6 top -> ptr ; main::json_codec, frame 1 slots [%0 word*]

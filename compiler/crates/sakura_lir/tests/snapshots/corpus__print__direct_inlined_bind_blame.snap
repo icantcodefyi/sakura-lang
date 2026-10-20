@@ -49,10 +49,10 @@ fn run#2 top -> i64 ; main::direct_inlined_bind_blame, frame 3 slots [%0 i64, %2
 
 fn boxed#3 top -> ptr ; main::direct_inlined_bind_blame, frame 2 slots [%0 i64, %1 i64]
   b0(%0 n: i64, %1 $site: i64):
-    %2 enter: unit = $contract_enter()
+    %2 lit: unit = const ()
     %3 lit: i64 = const 0
     %4 t: bool = gt.int %0, %3
-    %5 exit: unit = $contract_exit()
+    %5 lit: unit = const ()
     check D020 %4 blame %1+0 ; positive
     %6 pre: unit = const ()
     %7 rec: ptr = alloc main::direct_inlined_bind_blame::Box(%0)

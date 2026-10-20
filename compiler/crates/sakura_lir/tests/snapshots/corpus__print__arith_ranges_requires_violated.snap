@@ -48,10 +48,10 @@ fn down2#2 top -> i64 ; main::arith_ranges_requires_violated, frame 2 slots [%0 
   b0(%0 n: i64, %1 $site: i64):
     jump b1(%0, %1)
   b1(%2 n: i64, %3 $site: i64):
-    %4 enter: unit = $contract_enter()
+    %4 lit: unit = const ()
     %5 lit: i64 = const 0
     %6 t: bool = ge.int %2, %5
-    %7 exit: unit = $contract_exit()
+    %7 lit: unit = const ()
     check D020 %6 blame %3+0 ; nonneg
     %8 pre: unit = const ()
     %9 lit: i64 = const 0

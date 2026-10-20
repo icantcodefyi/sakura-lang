@@ -59,10 +59,10 @@ fn halve#4 top -> i64 ; main::direct_inlined_bind_defect, frame 1 slots [%0 word
     %9 t: i64 = intdiv %7, %8
     jump b1(%9)
   b1(%1 result: i64):
-    %2 enter: unit = $contract_enter()
+    %2 lit: unit = const ()
     %3 lit: i64 = const 0
     %4 t: bool = gt.int %1, %3
-    %5 exit: unit = $contract_exit()
+    %5 lit: unit = const ()
     check D021 %4 ; halved
     %6 post: unit = const ()
     ret %1

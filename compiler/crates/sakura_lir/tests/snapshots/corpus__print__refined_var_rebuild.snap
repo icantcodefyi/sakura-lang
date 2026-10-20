@@ -115,11 +115,11 @@ fn $entry#1 top -> unit ; main::refined_var_rebuild, frame 1 slots [%1 bool]
 
 fn Pos$from#2 top -> ptr ; main::refined_var_rebuild, frame 2 slots [%0 word*, %1 i64]
   b0(%0 it: ptr, %1 $site: i64):
-    %2 enter: unit = $contract_enter()
+    %2 lit: unit = const ()
     %3 n: i64 = proj %0.0 main::refined_var_rebuild::PosRepr
     %4 lit: i64 = const 0
     %5 t: bool = gt.int %3, %4
-    %6 exit: unit = $contract_exit()
+    %6 lit: unit = const ()
     check D010 %5 blame %1+0 ; Pos
     %7 ok: unit = const ()
     ret %0
@@ -138,10 +138,10 @@ fn next#3 top -> ptr ; main::refined_var_rebuild, frame 2 slots [%0 word*, %6 wo
 
 fn Pos$check#25 top -> bool ; main::refined_var_rebuild, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
-    %1 enter: unit = $contract_enter()
+    %1 lit: unit = const ()
     %2 n: i64 = proj %0.0 main::refined_var_rebuild::PosRepr
     drop %0
     %3 lit: i64 = const 0
     %4 t: bool = gt.int %2, %3
-    %5 exit: unit = $contract_exit()
+    %5 lit: unit = const ()
     ret %4

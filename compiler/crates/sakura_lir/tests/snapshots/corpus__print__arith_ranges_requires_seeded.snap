@@ -144,10 +144,10 @@ fn sum_tail#2 top -> i64 ; main::arith_ranges_requires_seeded, frame 3 slots [%0
   b0(%0 n: i64, %1 acc: i64, %2 $site: i64):
     jump b1(%0, %1, %2)
   b1(%3 n: i64, %4 acc: i64, %5 $site: i64):
-    %6 enter: unit = $contract_enter()
+    %6 lit: unit = const ()
     %7 lit: i64 = const 0
     %8 t: bool = ge.int %3, %7
-    %9 exit: unit = $contract_exit()
+    %9 lit: unit = const ()
     check D020 %8 blame %5+0 ; sum_tail
     %10 pre: unit = const ()
     %11 lit: i64 = const 0

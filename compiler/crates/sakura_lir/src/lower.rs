@@ -722,6 +722,48 @@ impl<'c, 'a> Fl<'c, 'a> {
         self.reprs[l as usize]
     }
 
+    /// The index of the `contract_exit` that closes the `contract_enter` at `stmts[i]` when
+    /// nothing between them can defect: then the bracket cannot turn a defect into `D011`, so
+    /// neither runtime call is emitted and a passing check is a compare and a branch (ABI
+    /// §6.5, design §17.285 (2b)). Between them only binds that neither call, allocate nor
+    /// raise: atoms and projections that are not boxed, `not`, `Float` arithmetic and the
+    /// comparisons of scalars (checked `Int` arithmetic can raise `D001`/`D002`).
+    fn total_bracket(&self, stmts: &[Stmt], i: usize) -> Option<usize> {
+        use core::{CmpTy as C, PrimOp as P};
+        for (j, s) in stmts.iter().enumerate().skip(i + 1) {
+            let Stmt::Let { local, bind, .. } = s else {
+                return None;
+            };
+            let unboxed = self.local_repr(*local) != Repr::Word;
+            let total = match bind {
+                Bind::Call(..) if is_builtin(bind, "contract_exit") => return Some(j),
+                Bind::Atom(a) => unboxed || atom_repr(&self.reprs, a).is_managed(),
+                Bind::Proj(..) => unboxed,
+                Bind::Prim(op, _) => matches!(
+                    op,
+                    P::Not
+                        | P::FloatAdd
+                        | P::FloatSub
+                        | P::FloatMul
+                        | P::FloatDiv
+                        | P::FloatRem
+                        | P::FloatNeg
+                        | P::Eq(C::Int | C::Float | C::Bool)
+                        | P::Ne(C::Int | C::Float | C::Bool)
+                        | P::Lt(C::Int | C::Float | C::Bool)
+                        | P::Le(C::Int | C::Float | C::Bool)
+                        | P::Gt(C::Int | C::Float | C::Bool)
+                        | P::Ge(C::Int | C::Float | C::Bool)
+                ),
+                _ => false,
+            };
+            if !total {
+                return None;
+            }
+        }
+        None
+    }
+
     fn name(&self, l: Local) -> &'a str {
         if l == self.site {
             return SITE_MARK;
@@ -1144,7 +1186,17 @@ impl<'c, 'a> Fl<'c, 'a> {
         mut regions: Vec<RegionKind>,
     ) -> R<()> {
         let blk = rest.block;
+        // The `contract_exit`s of brackets [`Self::total_bracket`] dropped in this block.
+        let mut unbracketed = Vec::new();
         for (i, s) in blk.stmts.iter().enumerate().skip(rest.from) {
+            let elide = match s {
+                Stmt::Let { bind, .. } if is_builtin(bind, "contract_enter") => {
+                    let exit = self.total_bracket(&blk.stmts, i);
+                    unbracketed.extend(exit);
+                    exit.is_some()
+                }
+                _ => unbracketed.contains(&i),
+            };
             match s {
                 // A self tail call's position: the next iteration's checks blame it.
                 Stmt::Let {
@@ -1163,6 +1215,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                         block: blk,
                         from: i + 1,
                     };
+                    let bind = if elide { &UNIT_BIND } else { bind };
                     match self.bind(b, &env, &regions, *local, bind, after)? {
                         Step::Value(v) => {
                             let v = self.b.coerce(b, v, self.local_repr(*local))?;
@@ -2082,6 +2135,14 @@ fn natural_repr(cx: &Cx, reprs: &[Repr], b: &Bind) -> Repr {
         },
         Bind::Check(..) | Bind::StateSet(..) | Bind::Hole(_) => Repr::Unit,
     }
+}
+
+/// What an elided contract bracket's `contract_enter` and `contract_exit` bind instead.
+static UNIT_BIND: Bind = Bind::Atom(Atom::Lit(core::Lit::Unit));
+
+/// Is `bind` a call of the builtin `name` with no arguments?
+fn is_builtin(bind: &Bind, name: &str) -> bool {
+    matches!(bind, Bind::Call(Atom::Builtin(n), args) if n == name && args.is_empty())
 }
 
 fn atom_repr(reprs: &[Repr], a: &Atom) -> Repr {

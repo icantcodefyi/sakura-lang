@@ -44,9 +44,9 @@ fn $entry#1 top -> unit ; main::defect_D020_requires_blames_caller, frame 1 slot
 
 fn clamp#2 top -> i64 ; main::defect_D020_requires_blames_caller, frame 7 slots [%0 i64, %1 i64, %2 i64, %3 i64, %8 i64, %9 i64, %10 i64]
   b0(%0 x: i64, %1 lo: i64, %2 hi: i64, %3 $site: i64):
-    %4 enter: unit = $contract_enter()
+    %4 lit: unit = const ()
     %5 t: bool = le.int %1, %2
-    %6 exit: unit = $contract_exit()
+    %6 lit: unit = const ()
     check D020 %5 blame %3+0 ; ordered
     %7 pre: unit = const ()
     call min#3(%0, %2) -> b1(%1)

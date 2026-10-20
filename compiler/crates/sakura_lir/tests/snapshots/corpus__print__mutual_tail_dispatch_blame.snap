@@ -54,10 +54,10 @@ fn down#2 top -> i64 ; main::mutual_tail_dispatch_blame, frame 2 slots [%0 i64, 
   b0(%0 n: i64, %1 $site: i64):
     jump b1(%0, %1)
   b1(%2 n: i64, %3 $site: i64):
-    %53 enter: unit = $contract_enter()
+    %53 lit: unit = const ()
     %54 lit: i64 = const 0
     %55 t: bool = ge.int %2, %54
-    %56 exit: unit = $contract_exit()
+    %56 lit: unit = const ()
     check D020 %55 blame %3+0 ; nonneg
     %57 pre: unit = const ()
     %58 lit: i64 = const 0
