@@ -30,8 +30,8 @@ the reason recorded. The implementation order is
   (PR #6, ABI 1.6.0, stacked on #5) and 4a (PR #7, `1f7f0ea9`, stacked on #6, ABI 1.7.0, ratified in design §17.271) are held
   for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271); the held series is
   merged after the `v0.1.0` tag. Phase 9 (`std/urlpattern`, `b2fde35d`) is on `main`
-  (design §17.281). Phase 5 (`std/stream`) is on `main` as design §17.280 specifies
-  it, which amended §2.5 below. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  (design §17.281). Phase 5 (`std/stream`, `9139a178`) is on `main` as design §17.280
+  specifies it, which amended §2.5 below; its readings are ratified in design §17.284. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -473,17 +473,21 @@ hold a cursor (`V2041`, design §8.1).
   resource it captured (design §6.3, `V6003`). An empty `Bytes` item from a pure source is
   data; the host views end at the first empty chunk. There are no locks; the docs say so.
 - Combinators, all pure Sakura: `empty`, `from_list(xs)`, `map`, `filter`, `take(src, n)`,
-  `fold`, `each`, `to_list(src, max_items) -> List<T> ! {Fail<StreamError> | e}`,
-  `chunks(src, size)` (bytes re-chunked to exactly `size`, the last shorter; holds at most
-  `size` bytes), `lines(src: Source<String, e>, max_line) -> Source<String,
-  {Fail<StreamError> | e}>` (LF, a trailing CR removed, a final unterminated line yielded),
-  `pipe(src, sink)`. `error StreamError(reason: StreamReason)`, `StreamReason = MaxItems |
+  `fold`, `each`, `to_list(src, max_items) -> List<T> ! {Fail<StreamError> | e}` (`requires
+  max_items >= 0`; the item after `max_items` fails `MaxItems`), `chunks(src, size)` (bytes
+  re-chunked to exactly `size`, the last shorter; holds at most `size` bytes), `lines(src:
+  Source<String, e>, max_line) -> Source<String, {Fail<StreamError> | e}>` (split on LF, a
+  CR before the LF removed, a lone CR is data, a final unterminated line yielded; no yielded
+  line exceeds `max_line` bytes, design §17.284), `pipe(src, sink)`. `error StreamError(reason: StreamReason)`, `StreamReason = MaxItems |
   MaxLine`. `Encoding.decode_source(src, enc, errors) -> Source<String, {Fail<EncodingError>
   | e}>` and `Encoding.encode_source(src, enc)` thread `Decoder`'s immutable state.
   `Blob.source(b, chunk)` is pure. Every bound is an argument; no combinator holds more
   than its argument names.
-- Views: `Http.body_source(body, chunk) -> Source<Bytes, {Http}>`, `Fs.file_source(file,
-  chunk) -> Source<Bytes, {Fs}>`, `Fs.file_sink(file) -> Sink<Bytes, {Fs}>`.
+- Views, each with its operation's row as declared (design §17.284): `Http.body_source(body,
+  chunk) -> Source<Bytes, {Http, Fail<HttpError>}>`, `Fs.file_source(file, chunk) ->
+  Source<Bytes, {Fs, Fail<FsError>}>`, `Fs.file_sink(file) -> Sink<Bytes, {Fs,
+  Fail<FsError>}>` (its `close` writes nothing; `with_file` closes the file); `chunk > 0`
+  required.
 - `buffer(src, capacity, body)` and `tee(src, max_lag, body)` are phase 10, over `Channel`
   (§2.9): a producer fiber fills a channel of `capacity` items and waits when it is full;
   the body's sources are views over the receivers. A byte bound is `chunks` before
