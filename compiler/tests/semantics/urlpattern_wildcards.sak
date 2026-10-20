@@ -1,0 +1,29 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://urlpattern.spec.whatwg.org/#full-wildcard
+
+// `*` matches exactly one segment and `**` zero or more; both are unnamed groups, numbered
+// `"0"`, `"1"`, … in pattern order as the standard numbers them. `**`'s value is its segments
+// joined with `/`, and it is greedy: it takes the most segments that let the rest match.
+import std/url.{Url}
+import std/urlpattern.{UrlPattern}
+
+fn show_exec(pattern: String, url: Url) -> Unit ! {Console} {
+  match UrlPattern.compile(pattern) {
+    Ok(p) => Console.print("{pattern} {url}: {UrlPattern.exec(p, url).map(fn(m) { m.groups })}"),
+    Err(e) => Console.print("{pattern}: {e}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  show_exec("/files/*", Url.from("/files/a.txt"))
+  show_exec("/files/*", Url.from("/files"))
+  show_exec("/files/*", Url.from("/files/a/b.txt"))
+  show_exec("/files/**", Url.from("/files"))
+  show_exec("/files/**", Url.from("/files/a/b/c.txt"))
+  show_exec("/files/**/raw", Url.from("/files/a/b/raw"))
+  show_exec("/files/**/raw", Url.from("/files/raw"))
+  show_exec("/**/x/**", Url.from("/a/x/b/x/c"))
+  show_exec("/:user/*/**", Url.from("/mina/repo/src/main.sak"))
+  show_exec("/**", Url.from("/"))
+}

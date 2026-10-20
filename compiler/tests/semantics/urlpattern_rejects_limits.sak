@@ -1,0 +1,24 @@
+// milestone: M3
+// spec: RFC 0002 §6
+// Spec: https://urlpattern.spec.whatwg.org/#parsing-patterns
+
+// A pattern is at most 4,096 bytes and has at most 64 groups (`:name`, `*` and `**`), RFC 0002
+// §6; past either bound `compile` answers `PatternError(Limit)` before matching anything.
+import std/urlpattern.{UrlPattern}
+
+fn result(pattern: String) -> String {
+  match UrlPattern.compile(pattern) {
+    Ok(_) => "ok",
+    Err(e) => "{e}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let at_bytes = "/{String.repeat("a", 4_095)}"
+  Console.print("4096 bytes: {result(at_bytes)}")
+  Console.print("4097 bytes: {result("{at_bytes}a")}")
+  Console.print("64 groups: {result(String.repeat("/*", 64))}")
+  Console.print("65 groups: {result(String.repeat("/*", 65))}")
+  let named = List.join(List.map(List.range(0, 65), fn(i) { "/:g{i}" }), "")
+  Console.print("65 named: {result(named)}")
+}

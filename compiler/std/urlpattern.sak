@@ -1,0 +1,242 @@
+// URL patterns (RFC 0002 §2.2): a subset of the WHATWG URL Pattern Standard
+// (https://urlpattern.spec.whatwg.org/) with no regular expressions, so a pattern matches the
+// same URLs on every backend. A pattern is a path, `/users/:id/files/**`, or an absolute URL
+// whose scheme, host and port are literal, `https://api.example.com/users/:id`. Each path
+// segment is literal text, a named group `:name`, `*` (exactly one segment) or `**` (zero or
+// more segments). Empty segments are ignored on both sides, so `/a/` and `/a` match alike, and
+// a pattern ignores the query and fragment. `std/router` matches its routes through this
+// module, so a route and a pattern never disagree.
+
+import std/url.{Url, UrlParts}
+
+/// `Unsupported`: syntax outside the subset (a regexp group `(…)`, a `{…}` group, a modifier
+/// `?` or `+`, an escape, a group or wildcard inside a segment, a name that is not an
+/// identifier, credentials, a query or fragment, or an origin that does not parse), with the
+/// text that used it. `Duplicate`: a group name used twice. `Limit`: a pattern over 4,096
+/// bytes or with more than 64 groups.
+pub type PatternReason = Unsupported(String) | Duplicate(String) | Limit
+
+pub error PatternError(reason: PatternReason)
+
+type Part = Literal(String) | Named(String) | One | Rest
+
+type Origin = { scheme: String, host: Option<String>, port: Option<Int> }
+
+/// A compiled pattern (`new URLPattern(pattern)`).
+pub opaque type UrlPattern = { origin: Option<Origin>, parts: List<Part> }
+
+/// The groups of a match in pattern order: a `:name` group under its name, `*` and `**` under
+/// `"0"`, `"1"`, … as the standard numbers unnamed groups. A value is the raw segment text, not
+/// percent-decoded; `**`'s is its segments joined with `/`, `""` for none.
+pub type UrlMatch = { groups: List<(String, String)> }
+
+/// `pattern` compiled, or why it is outside the subset.
+pub fn compile(pattern: String) -> Result<UrlPattern, PatternError> {
+  if String.len(pattern) > 4_096 { return Err(PatternError(Limit)) }
+  var origin: Option<Origin> = None
+  var path = pattern
+  if !String.starts_with(pattern, "/") && String.contains(pattern, "://") {
+    let halves = String.split(pattern, "://")
+    let scheme = List.first(halves).unwrap_or("")
+    let rest = List.join(List.slice(halves, 1, List.len(halves)), "://")
+    let pieces = String.split(rest, "/")
+    let authority = List.first(pieces).unwrap_or("")
+    match origin_of(scheme, authority) {
+      Ok(o) => { origin = Some(o) },
+      Err(e) => { return Err(e) },
+    }
+    path = "/{List.join(List.slice(pieces, 1, List.len(pieces)), "/")}"
+  }
+  var parts: List<Part> = []
+  var names: List<String> = []
+  var groups = 0
+  for s in String.split(path, "/") {
+    if s == "" { continue }
+    let part = if s == "*" {
+      One
+    } else if s == "**" {
+      Rest
+    } else if String.starts_with(s, ":") {
+      let name = String.slice(s, 1, String.len(s))
+      if !is_name(name) { return Err(PatternError(Unsupported(s))) }
+      if List.contains(names, name) { return Err(PatternError(Duplicate(name))) }
+      names = names.push(name)
+      Named(name)
+    } else if List.any(
+      ["*", ":", "(", ")", "\{", "\}", "?", "+", "#", "\\"],
+      fn(c) { String.contains(s, c) },
+    ) {
+      return Err(PatternError(Unsupported(s)))
+    } else {
+      Literal(s)
+    }
+    match part {
+      Literal(_) => (),
+      _ => { groups = groups + 1 },
+    }
+    if groups > 64 { return Err(PatternError(Limit)) }
+    parts = parts.push(part)
+  }
+  Ok(UrlPattern { origin, parts })
+}
+
+/// The groups if `url` matches `p` (`exec`), else `None`. A path pattern reads `url`'s path,
+/// so it matches `/users/7` and `https://any.example/users/7` alike; a pattern with an origin
+/// matches only an absolute URL with that scheme, host and port.
+pub fn exec(p: UrlPattern, url: Url) -> Option<UrlMatch> {
+  let path = match p.origin {
+    None => Url.path(url),
+    Some(o) => match Url.parse(url) {
+      Ok(u) if u.scheme == o.scheme && u.host == o.host && u.port == o.port => u.path,
+      _ => { return None },
+    },
+  }
+  let segs = List.filter(String.split(path, "/"), fn(s) { s != "" })
+  bind(p.parts, segs).map(fn(groups) { UrlMatch { groups } })
+}
+
+fn origin_of(scheme: String, authority: String) -> Result<Origin, PatternError> {
+  let text = "{scheme}://{authority}"
+  if List.any(
+    ["*", "(", ")", "\{", "\}", "?", "#", "@", "\\"],
+    fn(c) { String.contains(authority, c) },
+  ) { return Err(PatternError(Unsupported(text))) }
+  match Url.parse("{text}/") {
+    Ok(u) if u.host.is_some() && u.path == "/" =>
+      Ok(Origin { scheme: u.scheme, host: u.host, port: u.port }),
+    _ => Err(PatternError(Unsupported(text))),
+  }
+}
+
+/// An ASCII identifier, as the standard's name code points are for ASCII input.
+fn is_name(s: String) -> Bool {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  if n == 0 { return false }
+  for i in 0..n {
+    let c = Bytes.get(b, i).unwrap_or(0)
+    let start = c >= 0x41 && c <= 0x5A || c >= 0x61 && c <= 0x7A || c == 0x5F || c == 0x24
+    if !start && !(i > 0 && c >= 0x30 && c <= 0x39) { return false }
+  }
+  true
+}
+
+/// The groups if `parts` match `segs`. `ok[i][j]` says whether `parts[i..]` match `segs[j..]`;
+/// each `**` then takes the most segments that still let the rest match, as the standard's
+/// greedy wildcard does.
+fn bind(parts: List<Part>, segs: List<String>) -> Option<List<(String, String)>> {
+  let m = List.len(parts)
+  let n = List.len(segs)
+  if !List.any(parts, fn(p) { p == Rest }) { if m != n { return None } }
+  // ponytail: an (m + 1) × (n + 1) table per call; a route has few parts and a path few segments.
+  var rows: List<List<Bool>> = [List.map(List.range(0, n + 1), fn(j) { j == n })]
+  var i = m - 1
+  while i >= 0 {
+    let next = List.first(rows).unwrap_or([])
+    let part = parts[i].unwrap_or(Rest)
+    var row: List<Bool> = []
+    if part == Rest {
+      var after = false
+      var j = n
+      while j >= 0 {
+        after = next[j].unwrap_or(false) || after
+        row = row.push(after)
+        j = j - 1
+      }
+      row = List.reverse(row)
+    } else {
+      row = List.map(List.range(0, n + 1), fn(j) {
+        j < n && fits(part, segs[j].unwrap_or("")) && next[j + 1].unwrap_or(false)
+      })
+    }
+    rows = List.concat([row], rows)
+    i = i - 1
+  }
+  if !(rows[0].unwrap_or([])[0].unwrap_or(false)) { return None }
+  var groups: List<(String, String)> = []
+  var unnamed = 0
+  var j = 0
+  for (k, part) in List.enumerate(parts) {
+    let next = rows[k + 1].unwrap_or([])
+    match part {
+      Literal(_) => { j = j + 1 },
+      Named(name) => {
+        groups = groups.push((name, segs[j].unwrap_or("")))
+        j = j + 1
+      },
+      One => {
+        groups = groups.push(("{unnamed}", segs[j].unwrap_or("")))
+        unnamed = unnamed + 1
+        j = j + 1
+      },
+      Rest => {
+        var end = n
+        while !next[end].unwrap_or(false) { end = end - 1 }
+        groups = groups.push(("{unnamed}", List.join(List.slice(segs, j, end), "/")))
+        unnamed = unnamed + 1
+        j = end
+      },
+    }
+  }
+  Some(groups)
+}
+
+fn fits(part: Part, seg: String) -> Bool {
+  match part {
+    Literal(s) => s == seg,
+    _ => true,
+  }
+}
+
+fn groups_of(pattern: String, url: Url) -> Option<List<(String, String)>> {
+  match compile(pattern) {
+    Ok(p) => exec(p, url).map(fn(m: UrlMatch) { m.groups }),
+    Err(_) => None,
+  }
+}
+
+test "named groups and literal segments" {
+  expect_eq(groups_of("/users/:id", Url.from("/users/7?x=1")), Some([("id", "7")]))
+  expect_eq(groups_of("/users/:id", Url.from("/users/7/")), Some([("id", "7")]))
+  expect_eq(groups_of("/users/:id", Url.from("/users")), None)
+  expect_eq(groups_of("/users/:id", Url.from("/posts/7")), None)
+  expect_eq(groups_of("/", Url.from("/")), Some([]))
+}
+
+test "wildcards: one segment, then any number, greedy" {
+  expect_eq(groups_of("/files/*", Url.from("/files/a")), Some([("0", "a")]))
+  expect_eq(groups_of("/files/*", Url.from("/files/a/b")), None)
+  expect_eq(groups_of("/files/**", Url.from("/files")), Some([("0", "")]))
+  expect_eq(groups_of("/files/**", Url.from("/files/a/b")), Some([("0", "a/b")]))
+  expect_eq(groups_of("/**/x/**", Url.from("/a/x/b/x/c")), Some([("0", "a/x/b"), ("1", "c")]))
+  expect_eq(
+    groups_of("/:a/**/:b", Url.from("/1/2/3/4")),
+    Some([("a", "1"), ("0", "2/3"), ("b", "4")]),
+  )
+}
+
+test "an origin pattern matches scheme, host and port" {
+  let p = "https://API.example.com/v1/:id"
+  expect_eq(groups_of(p, Url.from("https://api.example.com/v1/7")), Some([("id", "7")]))
+  expect_eq(groups_of(p, Url.from("https://api.example.com:443/v1/7")), Some([("id", "7")]))
+  expect_eq(groups_of(p, Url.from("http://api.example.com/v1/7")), None)
+  expect_eq(groups_of(p, Url.from("https://api.example.com:8443/v1/7")), None)
+  expect_eq(groups_of(p, Url.from("/v1/7")), None)
+  expect_eq(groups_of("https://a.example", Url.from("https://a.example/")), Some([]))
+}
+
+test "syntax outside the subset is rejected" {
+  let reason = fn(s: String) { compile(s).map(fn(_) { () }).map_err(fn(e) { e.reason }) }
+  expect_eq(reason("/a/(\\d+)"), Err(Unsupported("(\\d+)")))
+  expect_eq(reason("/a/:id(\\d+)"), Err(Unsupported(":id(\\d+)")))
+  expect_eq(reason("/a\{s\}?"), Err(Unsupported("a\{s\}?")))
+  expect_eq(reason("/c++"), Err(Unsupported("c++")))
+  expect_eq(reason("/*.js"), Err(Unsupported("*.js")))
+  expect_eq(reason("/:"), Err(Unsupported(":")))
+  expect_eq(reason("/:a/:a"), Err(Duplicate("a")))
+  expect_eq(reason("https://*.example.com/"), Err(Unsupported("https://*.example.com")))
+  expect_eq(reason("https://u:p@a.example/"), Err(Unsupported("https://u:p@a.example")))
+  expect_eq(reason("/{String.repeat("a", 4_096)}"), Err(Limit))
+  expect_eq(reason(String.repeat("/*", 65)), Err(Limit))
+  expect_eq(reason(String.repeat("/*", 64)), Ok(()))
+}

@@ -1,0 +1,15 @@
+ending: ok
+--- stdout
+/users/(\d+): Err(PatternError { reason: Unsupported("(\\d+)") })
+/users/:id(\d+): Err(PatternError { reason: Unsupported(":id(\\d+)") })
+/books{/old}?: Err(PatternError { reason: Unsupported("books\{") })
+/users/:id?: Err(PatternError { reason: Unsupported(":id?") })
+/files/:rest+: Err(PatternError { reason: Unsupported(":rest+") })
+/c\+\+: Err(PatternError { reason: Unsupported("c\\+\\+") })
+/assets/*.js: Err(PatternError { reason: Unsupported("*.js") })
+/v:version: Err(PatternError { reason: Unsupported("v:version") })
+/users/:: Err(PatternError { reason: Unsupported(":") })
+/users/:user-id: Err(PatternError { reason: Unsupported(":user-id") })
+https://*.example.com/: Err(PatternError { reason: Unsupported("https://*.example.com") })
+https://user:pw@example.com/: Err(PatternError { reason: Unsupported("https://user:pw@example.com") })
+/a/:id/b/:id: Err(PatternError { reason: Duplicate("id") })

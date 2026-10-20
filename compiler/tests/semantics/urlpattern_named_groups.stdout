@@ -1,0 +1,13 @@
+/users/:id /users/7: Some([("id", "7")])
+/users/:id /users/7?tab=posts: Some([("id", "7")])
+/users/:id /users/caf%C3%A9/: Some([("id", "caf%C3%A9")])
+/users/:id /users//7: Some([("id", "7")])
+/users/:id /users: None
+/users/:id /users/7/posts: None
+/users/:id/posts/:post_id /users/7/posts/12: Some([("id", "7"), ("post_id", "12")])
+/users/:id https://any.example/users/7: Some([("id", "7")])
+https://API.example.com/v1/:id https://api.example.com/v1/7: Some([("id", "7")])
+https://api.example.com/v1/:id https://api.example.com:443/v1/7: Some([("id", "7")])
+https://api.example.com/v1/:id http://api.example.com/v1/7: None
+https://api.example.com:8443/v1/:id https://api.example.com:8443/v1/7: Some([("id", "7")])
+https://api.example.com/v1/:id /v1/7: None

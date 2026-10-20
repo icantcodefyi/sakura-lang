@@ -1,0 +1,31 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://urlpattern.spec.whatwg.org/#regexp-group
+
+// Regexp groups have no portable engine on WASM or native, so `(…)` is
+// `PatternError(Unsupported(text))` naming the segment, never a literal match. The rest of the
+// syntax outside the subset is refused the same way: `{…}` groups, modifiers, escapes, a group
+// or wildcard inside a segment, a name that is not an identifier, and an origin with a wildcard
+// or credentials. A name used twice is `Duplicate`.
+import std/urlpattern.{UrlPattern}
+
+pub fn main() -> Unit ! {Console} {
+  let patterns = [
+    "/users/(\\d+)",
+    "/users/:id(\\d+)",
+    "/books\{/old\}?",
+    "/users/:id?",
+    "/files/:rest+",
+    "/c\\+\\+",
+    "/assets/*.js",
+    "/v:version",
+    "/users/:",
+    "/users/:user-id",
+    "https://*.example.com/",
+    "https://user:pw@example.com/",
+    "/a/:id/b/:id",
+  ]
+  for pattern in patterns {
+    Console.print("{pattern}: {UrlPattern.compile(pattern).map(fn(_) { "ok" })}")
+  }
+}

@@ -1,0 +1,44 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://urlpattern.spec.whatwg.org/#dom-urlpattern-exec
+
+// `Router` compiles each route through `UrlPattern.compile` and matches with `UrlPattern.exec`,
+// so a route and a pattern never disagree. `:name` routes behave as before (one segment each,
+// empty segments ignored, the query not read), and `*` and `**` routes now work, their segments
+// in `Request.param(req, "0")`, `"1"`, …. Routes are tried in the order they were added.
+import std/request.{Get, Post, Request}
+import std/response.{Response}
+import std/router.{Router}
+import std/url.{Url}
+import std/urlpattern.{UrlPattern}
+
+fn echo(req: Request) -> Response { Response.status(200, "{req.params}") }
+
+pub fn main() -> Unit ! {Console} {
+  let routes = ["/users/:id", "/files/*", "/static/**", "/a/**/z"]
+  let router = List.fold(routes, Router.new(), fn(r, p) { r.get(p, echo) })
+    .post("/users", fn(_) { Response.status(201, "made") })
+  let paths = [
+    "/users/7",
+    "/users/7/?x=1",
+    "/files/a.txt",
+    "/files/a/b.txt",
+    "/static",
+    "/static/css/site.css",
+    "/a/z",
+    "/a/b/c/z",
+    "/nope",
+  ]
+  for path in paths {
+    let url = Url.from(path)
+    let resp = Router.handle(router, Request.of(Get, url))
+    let agrees = List.any(routes, fn(p) {
+      match UrlPattern.compile(p) {
+        Ok(pattern) => UrlPattern.exec(pattern, url).is_some(),
+        Err(_) => false,
+      }
+    })
+    Console.print("{path}: {resp.status} {resp.body} (a pattern matches: {agrees})")
+  }
+  Console.print("POST /users/7: {Router.handle(router, Request.post("/users/7", "")).status}")
+}

@@ -111,6 +111,20 @@ retains earlier implementation history.
 - A cookbook recipe, `sign_webhook`: a router endpoint that checks a delivery's Base64
   HMAC-SHA-256 `X-Signature` with a verify-only `CryptoKey` (`key.verify`, constant time),
   tested with a changed body, another secret and a missing or malformed header.
+- `std/urlpattern` (RFC 0002 §2.2; plan `web-apis.md` phase 9): `UrlPattern.compile(pattern)`
+  and `UrlPattern.exec(p, url) -> Option<UrlMatch>`, the web's `URLPattern` without regular
+  expressions, so a pattern matches alike on JS, WASM and native. A pattern is a path or an
+  absolute URL with a literal scheme, host and port; each segment is literal, a `:name`
+  group, `*` (one segment) or `**` (any number, greedy). `UrlMatch.groups` lists the groups
+  in pattern order, unnamed ones as `"0"`, `"1"`, …. Regexp groups, `{…}` groups, modifiers,
+  escapes and a group inside a segment are `PatternError(Unsupported(text))`, a repeated name
+  `Duplicate(name)`, and a pattern over 4,096 bytes or 64 groups `Limit`.
+- `Router` routes are `UrlPattern` patterns, matched through `UrlPattern.exec`, so `*` and
+  `**` routes work, their segments in `Request.param(req, "0")`, `"1"`, …. A `:name` route
+  matches as before. A route pattern `UrlPattern.compile` rejects (a `(…)`, `{…}`, `?`, `+`
+  or `\` in a segment, a `:` or `*` inside one, a name that is not an identifier) is now the
+  caller defect `D020` at `Router.route`/`get`/`post`/`put`/`delete`, where it was a literal
+  segment before.
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.

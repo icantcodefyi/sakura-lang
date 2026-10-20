@@ -65,7 +65,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Transform, filter or update collections | `List.map`, `filter_map`, `fold`, `set`; `Map.update`; `Set.of` |
 | Parse text and validate data | `String.parse_int`, `Json.decode`, `Untrusted.validate`, `Result` |
 | Read CLI arguments and files | `Cli.parse`, `Path`, `Dir`, `Fs.rooted`; test with `Cli.of`, `Fs.memory` |
-| Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests |
+| Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests; `UrlPattern.compile`, `exec` for route patterns |
 | Read headers, build or parse a form | `Headers.of`, `get`, `entries`; `Form.encode_multipart`, `parse_multipart` with `FormLimits`; `Blob`, `FileData` |
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
@@ -154,9 +154,10 @@ retry → duration, int   (+ Clock, Random)     task → duration, list, int (+ 
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int                 cli
 url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
+urlpattern → url, string, list, bytes
 fs → path, untrusted, map
 request → url, json, encoding, headers         response → request, encoding, html, json, untrusted
-html → core             router → request, response, url
+html → core             router → request, response, url, urlpattern
 serve → request, response, router, url, encoding
 http → request, response, url, duration, fs, path       budget           prompt
 llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
@@ -733,11 +734,11 @@ fn retry<T, E, e>(p: Policy<E>, action: fn() -> T ! {Fail<E> | e}) -> T ! {Clock
 ```sakura fragment
 opaque type Router<e> = { routes: List<Route<e>> }
 fn new<e>() -> Router<e>
-fn route<e>(r: Router<e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
-fn get<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
-fn post<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
-fn put<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
-fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e>
+fn route<e>(r: Router<e>, method: Method, pattern: String, h: fn(Request) -> Response ! e) -> Router<e> requires UrlPattern.compile(pattern).is_ok()
+fn get<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e> requires UrlPattern.compile(pattern).is_ok()
+fn post<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e> requires UrlPattern.compile(pattern).is_ok()
+fn put<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e> requires UrlPattern.compile(pattern).is_ok()
+fn delete<e>(r: Router<e>, pattern: String, h: fn(Request) -> Response ! e) -> Router<e> requires UrlPattern.compile(pattern).is_ok()
 fn handle<e>(r: Router<e>, req: Request) -> Response ! e
 ```
 
@@ -937,6 +938,17 @@ fn with_search(p: UrlParts, sp: SearchParams) -> UrlParts
 opaque type UrlPart = UrlPart(String)
 fn from<T: Show>(v: T) -> UrlPart
 fn to_string(p: UrlPart) -> String
+```
+
+### `std/urlpattern`
+
+```sakura fragment
+type PatternReason = Unsupported(String) | Duplicate(String) | Limit
+error PatternError(reason: PatternReason)
+opaque type UrlPattern = { origin: Option<Origin>, parts: List<Part> }
+type UrlMatch = { groups: List<(String, String)> }
+fn compile(pattern: String) -> Result<UrlPattern, PatternError>
+fn exec(p: UrlPattern, url: Url) -> Option<UrlMatch>
 ```
 
 ### `std/uuid`

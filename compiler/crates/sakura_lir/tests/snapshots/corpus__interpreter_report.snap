@@ -153,10 +153,12 @@ semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
 semantics/request_bytes_limit: unsupported (builtin bytes_from_list)
-semantics/request_method_options_trace: ok, 203 allocated, 320 dup, 523 drop, peak 31, live 0/0
+semantics/request_method_options_trace: ok, 439 allocated, 798 dup, 1237 drop, peak 35, live 0/0
 semantics/request_payload_bytes_roundtrip: unsupported (builtin bytes_from_list)
 semantics/request_text_strict_utf8: unsupported (builtin string_to_bytes)
 semantics/response_bytes_limit: unsupported (builtin bytes_from_list)
+semantics/router_matches_through_urlpattern: unsupported (builtin string_to_bytes)
+semantics/router_rejects_unsupported_pattern: D020, 37 allocated, 110 dup, 147 drop, peak 13, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0
 semantics/row_widening: ok, 12 allocated, 4 dup, 16 drop, peak 8, live 0/0
 semantics/scope_failure_after_cancelled_sibling: unsupported (builtin task_host)
@@ -188,6 +190,10 @@ semantics/url_rejects_malformed: unsupported (builtin string_to_bytes)
 semantics/url_rejects_opaque_path: unsupported (builtin string_to_bytes)
 semantics/url_resolve_relative: unsupported (builtin string_to_bytes)
 semantics/url_untrusted_component: unsupported (builtin string_to_bytes)
+semantics/urlpattern_named_groups: unsupported (builtin string_to_bytes)
+semantics/urlpattern_rejects_limits: unsupported (builtin string_to_bytes)
+semantics/urlpattern_rejects_regexp_group: unsupported (builtin string_to_bytes)
+semantics/urlpattern_wildcards: unsupported (builtin string_to_bytes)
 semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0

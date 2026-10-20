@@ -1,0 +1,10 @@
+/files/* /files/a.txt: Some([("0", "a.txt")])
+/files/* /files: None
+/files/* /files/a/b.txt: None
+/files/** /files: Some([("0", "")])
+/files/** /files/a/b/c.txt: Some([("0", "a/b/c.txt")])
+/files/**/raw /files/a/b/raw: Some([("0", "a/b")])
+/files/**/raw /files/raw: Some([("0", "")])
+/**/x/** /a/x/b/x/c: Some([("0", "a/x/b"), ("1", "c")])
+/:user/*/** /mina/repo/src/main.sak: Some([("user", "mina"), ("0", "repo"), ("1", "src/main.sak")])
+/** /: Some([("0", "")])

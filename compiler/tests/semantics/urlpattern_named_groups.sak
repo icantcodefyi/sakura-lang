@@ -1,0 +1,33 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://urlpattern.spec.whatwg.org/#parsing-patterns
+
+// A `:name` group matches one whole segment and is reported under its name, raw (not
+// percent-decoded), in pattern order. A path pattern reads the URL's path and ignores the
+// query; empty segments are ignored on both sides. A pattern with an origin matches only an
+// absolute URL with that scheme, host and port, the port compared after the default is removed.
+import std/url.{Url}
+import std/urlpattern.{UrlPattern}
+
+fn show_exec(pattern: String, url: Url) -> Unit ! {Console} {
+  match UrlPattern.compile(pattern) {
+    Ok(p) => Console.print("{pattern} {url}: {UrlPattern.exec(p, url).map(fn(m) { m.groups })}"),
+    Err(e) => Console.print("{pattern}: {e}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  show_exec("/users/:id", Url.from("/users/7"))
+  show_exec("/users/:id", Url.from("/users/7?tab=posts"))
+  show_exec("/users/:id", Url.from("/users/caf%C3%A9/"))
+  show_exec("/users/:id", Url.from("/users//7"))
+  show_exec("/users/:id", Url.from("/users"))
+  show_exec("/users/:id", Url.from("/users/7/posts"))
+  show_exec("/users/:id/posts/:post_id", Url.from("/users/7/posts/12"))
+  show_exec("/users/:id", Url.from("https://any.example/users/7"))
+  show_exec("https://API.example.com/v1/:id", Url.from("https://api.example.com/v1/7"))
+  show_exec("https://api.example.com/v1/:id", Url.from("https://api.example.com:443/v1/7"))
+  show_exec("https://api.example.com/v1/:id", Url.from("http://api.example.com/v1/7"))
+  show_exec("https://api.example.com:8443/v1/:id", Url.from("https://api.example.com:8443/v1/7"))
+  show_exec("https://api.example.com/v1/:id", Url.from("/v1/7"))
+}

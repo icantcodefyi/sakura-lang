@@ -1,0 +1,163 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 4 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 5 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 6 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 7 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 8 record std::urlpattern::Origin | Origin 40b (scheme: word*, host: word*, port: word*)
+layout 9 variant std::urlpattern::Part | Literal 24b (word*) | Named 24b (word*) | One 16b () | Rest 16b ()
+layout 10 error std::urlpattern::PatternError | PatternError 24b (reason: word*)
+layout 11 variant std::urlpattern::PatternReason | Unsupported 24b (word*) | Duplicate 24b (word*) | Limit 16b ()
+layout 12 record std::urlpattern::UrlPattern | UrlPattern 32b (origin: word*, parts: word*)
+layout 13 shape |  32b (word*, word*)
+layout 14 shape |  32b (i64, word*)
+layout 15 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::urlpattern_rejects_limits, frame 18 slots [%3 word*, %7 word*, %8 word*, %12 bool, %13 word*, %18 word*, %22 bool, %27 word*, %28 word*, %32 bool, %37 word*, %38 word*, %42 bool, %46 word*, %48 word*, %50 word*, %51 word*, %55 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: i64 = const 4095
+    %2 $site: i64 = const 4
+    call repeat#2(%0, %1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 s: ptr = show %3
+    drop %3
+    %5 lit: ptr = const str 1
+    %6 s: ptr = concat %5, %4
+    drop %4
+    drop %5
+    dup %6
+    call result#3(%6) -> b2(%6)
+  b2(%7 r: ptr, %8 s: ptr):
+    %9 s: ptr = show %7
+    drop %7
+    %10 lit: ptr = const str 2
+    %11 s: ptr = concat %10, %9
+    drop %9
+    drop %10
+    perform std::console::Console.print(%11) -> b3(%8)
+  b3(%12 r: unit, %13 s: ptr):
+    %14 box: word = box %12
+    drop %14
+    %15 s: ptr = show %13
+    drop %13
+    %16 lit: ptr = const str 0
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    call result#3(%17) -> b4()
+  b4(%18 r: ptr):
+    %19 s: ptr = show %18
+    drop %18
+    %20 lit: ptr = const str 3
+    %21 s: ptr = concat %20, %19
+    drop %19
+    drop %20
+    perform std::console::Console.print(%21) -> b5()
+  b5(%22 r: unit):
+    %23 box: word = box %22
+    drop %23
+    %24 lit: ptr = const str 4
+    %25 lit: i64 = const 64
+    %26 $site: i64 = const 5
+    call repeat#2(%24, %25, %26) -> b6()
+  b6(%27 r: ptr):
+    call result#3(%27) -> b7()
+  b7(%28 r: ptr):
+    %29 s: ptr = show %28
+    drop %28
+    %30 lit: ptr = const str 5
+    %31 s: ptr = concat %30, %29
+    drop %29
+    drop %30
+    perform std::console::Console.print(%31) -> b8()
+  b8(%32 r: unit):
+    %33 box: word = box %32
+    drop %33
+    %34 lit: ptr = const str 4
+    %35 lit: i64 = const 65
+    %36 $site: i64 = const 6
+    call repeat#2(%34, %35, %36) -> b9()
+  b9(%37 r: ptr):
+    call result#3(%37) -> b10()
+  b10(%38 r: ptr):
+    %39 s: ptr = show %38
+    drop %38
+    %40 lit: ptr = const str 6
+    %41 s: ptr = concat %40, %39
+    drop %39
+    drop %40
+    perform std::console::Console.print(%41) -> b11()
+  b11(%42 r: unit):
+    %43 box: word = box %42
+    drop %43
+    %44 lit: i64 = const 0
+    %45 lit: i64 = const 65
+    call range#4(%44, %45) -> b12()
+  b12(%46 r: ptr):
+    %47 f: ptr = closure main$1#5[]
+    call map#6(%46, %47) -> b13()
+  b13(%48 r: ptr):
+    %49 lit: ptr = const str 7
+    call join#7(%48, %49) -> b14()
+  b14(%50 r: ptr):
+    call result#3(%50) -> b15()
+  b15(%51 r: ptr):
+    %52 s: ptr = show %51
+    drop %51
+    %53 lit: ptr = const str 8
+    %54 s: ptr = concat %53, %52
+    drop %52
+    drop %53
+    perform std::console::Console.print(%54) -> b16()
+  b16(%55 r: unit):
+    %56 box: word = box %55
+    %57 unbox: unit = unbox %56
+    drop %56
+    ret %57
+
+fn $entry#1 top -> unit ; main::urlpattern_rejects_limits, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn result#3 top -> ptr ; main::urlpattern_rejects_limits, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 pattern: ptr):
+    call compile#9(%0) -> b1()
+  b1(%1 r: ptr):
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 r: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    drop %5
+    %6 lit: ptr = const str 9
+    ret %6
+  b3(%4 r: ptr):
+    %7 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %8 s: ptr = show %7
+    drop %7
+    ret %8
+
+fn main$1#5 lambda -> word ; main::urlpattern_rejects_limits, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 i: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 10
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    ret %5

@@ -1,0 +1,7 @@
+ending: ok
+--- stdout
+4096 bytes: ok
+4097 bytes: PatternError { reason: Limit }
+64 groups: ok
+65 groups: PatternError { reason: Limit }
+65 named: PatternError { reason: Limit }

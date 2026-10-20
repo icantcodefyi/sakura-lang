@@ -1,0 +1,18 @@
+// milestone: M3
+// spec: RFC 0002 §2.2
+// Spec: https://urlpattern.spec.whatwg.org/#regexp-group
+// expect-exit: 70
+// expect-defect: D020
+
+// A route's pattern is part of the program, so one `UrlPattern.compile` rejects is the caller
+// defect `D020` at `Router.get`, not a route that silently never matches. Check a pattern that
+// comes from data with `UrlPattern.compile` first.
+import std/response.{Response}
+import std/router.{Router}
+import std/urlpattern.{UrlPattern}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{UrlPattern.compile("/users/(\\d+)").map(fn(_) { "ok" })}")
+  let _ = Router.new().get("/users/(\\d+)", fn(_) { Response.status(200, "") })
+  Console.print("unreachable")
+}

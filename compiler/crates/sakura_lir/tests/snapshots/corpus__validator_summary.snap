@@ -153,10 +153,12 @@ semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 17 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid
 semantics/request_bytes_limit: 9 funcs, 43 blocks, 6 dup, 33 drop, valid
-semantics/request_method_options_trace: 116 funcs, 1391 blocks, 214 dup, 981 drop, valid
+semantics/request_method_options_trace: 128 funcs, 1589 blocks, 249 dup, 1119 drop, valid
 semantics/request_payload_bytes_roundtrip: 28 funcs, 117 blocks, 11 dup, 57 drop, valid
 semantics/request_text_strict_utf8: 21 funcs, 106 blocks, 8 dup, 88 drop, valid
 semantics/response_bytes_limit: 8 funcs, 50 blocks, 4 dup, 41 drop, valid
+semantics/router_matches_through_urlpattern: 104 funcs, 1411 blocks, 229 dup, 937 drop, valid
+semantics/router_rejects_unsupported_pattern: 83 funcs, 1235 blocks, 194 dup, 811 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
 semantics/row_widening: 16 funcs, 30 blocks, 1 dup, 11 drop, valid
 semantics/scope_failure_after_cancelled_sibling: 14 funcs, 32 blocks, 1 dup, 15 drop, valid
@@ -188,6 +190,10 @@ semantics/url_rejects_malformed: 77 funcs, 1248 blocks, 180 dup, 870 drop, valid
 semantics/url_rejects_opaque_path: 72 funcs, 1149 blocks, 169 dup, 798 drop, valid
 semantics/url_resolve_relative: 66 funcs, 1098 blocks, 167 dup, 779 drop, valid
 semantics/url_untrusted_component: 14 funcs, 97 blocks, 25 dup, 52 drop, valid
+semantics/urlpattern_named_groups: 90 funcs, 1364 blocks, 218 dup, 899 drop, valid
+semantics/urlpattern_rejects_limits: 76 funcs, 1227 blocks, 193 dup, 833 drop, valid
+semantics/urlpattern_rejects_regexp_group: 73 funcs, 1197 blocks, 191 dup, 801 drop, valid
+semantics/urlpattern_wildcards: 90 funcs, 1358 blocks, 218 dup, 899 drop, valid
 semantics/uuid_decode: 9 funcs, 52 blocks, 6 dup, 38 drop, valid
 semantics/validate_untrusted_into_refined: 9 funcs, 43 blocks, 1 dup, 28 drop, valid
 semantics/variants_and_match: 4 funcs, 38 blocks, 2 dup, 35 drop, valid

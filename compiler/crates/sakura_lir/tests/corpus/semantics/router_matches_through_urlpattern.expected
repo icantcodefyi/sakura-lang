@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+/users/7: 200 Text("[(\"id\", \"7\")]") (a pattern matches: true)
+/users/7/?x=1: 200 Text("[(\"id\", \"7\")]") (a pattern matches: true)
+/files/a.txt: 200 Text("[(\"0\", \"a.txt\")]") (a pattern matches: true)
+/files/a/b.txt: 404 Text("not found") (a pattern matches: false)
+/static: 200 Text("[(\"0\", \"\")]") (a pattern matches: true)
+/static/css/site.css: 200 Text("[(\"0\", \"css/site.css\")]") (a pattern matches: true)
+/a/z: 200 Text("[(\"0\", \"\")]") (a pattern matches: true)
+/a/b/c/z: 200 Text("[(\"0\", \"b/c\")]") (a pattern matches: true)
+/nope: 404 Text("not found") (a pattern matches: false)
+POST /users/7: 405

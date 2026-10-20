@@ -1,0 +1,194 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 4 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 5 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 6 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 7 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 8 record std::urlpattern::Origin | Origin 40b (scheme: word*, host: word*, port: word*)
+layout 9 variant std::urlpattern::Part | Literal 24b (word*) | Named 24b (word*) | One 16b () | Rest 16b ()
+layout 10 error std::urlpattern::PatternError | PatternError 24b (reason: word*)
+layout 11 variant std::urlpattern::PatternReason | Unsupported 24b (word*) | Duplicate 24b (word*) | Limit 16b ()
+layout 12 record std::urlpattern::UrlMatch | UrlMatch 24b (groups: word*)
+layout 13 record std::urlpattern::UrlPattern | UrlPattern 32b (origin: word*, parts: word*)
+layout 14 shape |  32b (word*, word*)
+layout 15 shape |  32b (i64, word*)
+layout 16 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::urlpattern_named_groups, frame 26 slots [%2 word*, %4 bool, %7 word*, %9 bool, %12 word*, %14 bool, %17 word*, %19 bool, %22 word*, %24 bool, %27 word*, %29 bool, %32 word*, %34 bool, %37 word*, %39 bool, %42 word*, %44 bool, %47 word*, %49 bool, %52 word*, %54 bool, %57 word*, %59 bool, %62 word*, %64 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 $site: i64 = const 4
+    call Url$from#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: ptr = const str 1
+    call show_exec#4(%3, %2) -> b2()
+  b2(%4 r: unit):
+    %5 lit: ptr = const str 2
+    %6 $site: i64 = const 5
+    call Url$from#2(%5, %6) -> b3()
+  b3(%7 r: ptr):
+    %8 lit: ptr = const str 1
+    call show_exec#4(%8, %7) -> b4()
+  b4(%9 r: unit):
+    %10 lit: ptr = const str 3
+    %11 $site: i64 = const 6
+    call Url$from#2(%10, %11) -> b5()
+  b5(%12 r: ptr):
+    %13 lit: ptr = const str 1
+    call show_exec#4(%13, %12) -> b6()
+  b6(%14 r: unit):
+    %15 lit: ptr = const str 4
+    %16 $site: i64 = const 7
+    call Url$from#2(%15, %16) -> b7()
+  b7(%17 r: ptr):
+    %18 lit: ptr = const str 1
+    call show_exec#4(%18, %17) -> b8()
+  b8(%19 r: unit):
+    %20 lit: ptr = const str 5
+    %21 $site: i64 = const 8
+    call Url$from#2(%20, %21) -> b9()
+  b9(%22 r: ptr):
+    %23 lit: ptr = const str 1
+    call show_exec#4(%23, %22) -> b10()
+  b10(%24 r: unit):
+    %25 lit: ptr = const str 6
+    %26 $site: i64 = const 9
+    call Url$from#2(%25, %26) -> b11()
+  b11(%27 r: ptr):
+    %28 lit: ptr = const str 1
+    call show_exec#4(%28, %27) -> b12()
+  b12(%29 r: unit):
+    %30 lit: ptr = const str 7
+    %31 $site: i64 = const 10
+    call Url$from#2(%30, %31) -> b13()
+  b13(%32 r: ptr):
+    %33 lit: ptr = const str 8
+    call show_exec#4(%33, %32) -> b14()
+  b14(%34 r: unit):
+    %35 lit: ptr = const str 9
+    %36 $site: i64 = const 11
+    call Url$from#2(%35, %36) -> b15()
+  b15(%37 r: ptr):
+    %38 lit: ptr = const str 1
+    call show_exec#4(%38, %37) -> b16()
+  b16(%39 r: unit):
+    %40 lit: ptr = const str 10
+    %41 $site: i64 = const 12
+    call Url$from#2(%40, %41) -> b17()
+  b17(%42 r: ptr):
+    %43 lit: ptr = const str 11
+    call show_exec#4(%43, %42) -> b18()
+  b18(%44 r: unit):
+    %45 lit: ptr = const str 12
+    %46 $site: i64 = const 13
+    call Url$from#2(%45, %46) -> b19()
+  b19(%47 r: ptr):
+    %48 lit: ptr = const str 13
+    call show_exec#4(%48, %47) -> b20()
+  b20(%49 r: unit):
+    %50 lit: ptr = const str 14
+    %51 $site: i64 = const 14
+    call Url$from#2(%50, %51) -> b21()
+  b21(%52 r: ptr):
+    %53 lit: ptr = const str 13
+    call show_exec#4(%53, %52) -> b22()
+  b22(%54 r: unit):
+    %55 lit: ptr = const str 15
+    %56 $site: i64 = const 15
+    call Url$from#2(%55, %56) -> b23()
+  b23(%57 r: ptr):
+    %58 lit: ptr = const str 16
+    call show_exec#4(%58, %57) -> b24()
+  b24(%59 r: unit):
+    %60 lit: ptr = const str 17
+    %61 $site: i64 = const 16
+    call Url$from#2(%60, %61) -> b25()
+  b25(%62 r: ptr):
+    %63 lit: ptr = const str 13
+    call show_exec#4(%63, %62) -> b26()
+  b26(%64 r: unit):
+    ret %64
+
+fn $entry#1 top -> unit ; main::urlpattern_named_groups, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn show_exec#4 top -> unit ; main::urlpattern_named_groups, frame 11 slots [%0 word*, %1 word*, %2 word*, %3 word*, %4 word*, %20 word*, %21 word*, %23 word*, %24 word*, %27 bool, %36 bool]
+  b0(%0 pattern: ptr, %1 url: ptr):
+    dup %0
+    call compile#6(%0) -> b1(%0, %1)
+  b1(%2 r: ptr, %3 pattern: ptr, %4 url: ptr):
+    %5 tag: i64 = tag %2 ctor std::result::Result
+    switch %5 0 => b2(%3, %4, %2) 1 => b3(%3, %4, %2)
+  b2(%6 pattern: ptr, %7 url: ptr, %8 r: ptr):
+    %12 p: word = proj %8.0 std::result::Result.Ok
+    drop %8
+    %13 s: ptr = show %6
+    drop %6
+    %14 lit: ptr = const str 19
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    %16 s: ptr = show %7
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 22
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    call exec#7(%12, %7) -> b4(%19)
+  b3(%9 pattern: ptr, %10 url: ptr, %11 r: ptr):
+    drop %10
+    %30 p: word = proj %11.0 std::result::Result.Err
+    drop %11
+    %31 s: ptr = show %9
+    drop %9
+    %32 lit: ptr = const str 22
+    %33 s: ptr = concat %31, %32
+    drop %31
+    drop %32
+    %34 s: ptr = show %30
+    drop %30
+    %35 s: ptr = concat %33, %34
+    drop %33
+    drop %34
+    perform std::console::Console.print(%35) -> b7()
+  b4(%20 r: ptr, %21 s: ptr):
+    %22 f: ptr = closure show_exec$1#8[]
+    call map#9(%20, %22) -> b5(%21)
+  b5(%23 r: ptr, %24 s: ptr):
+    %25 s: ptr = show %23
+    drop %23
+    %26 s: ptr = concat %24, %25
+    drop %24
+    drop %25
+    perform std::console::Console.print(%26) -> b6()
+  b6(%27 r: unit):
+    %28 box: word = box %27
+    %29 unbox: unit = unbox %28
+    drop %28
+    ret %29
+  b7(%36 r: unit):
+    %37 box: word = box %36
+    %38 unbox: unit = unbox %37
+    drop %37
+    ret %38
+
+fn show_exec$1#8 lambda -> word ; main::urlpattern_named_groups, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 m: word):
+    drop %0
+    %2 groups: word = proj %1.0 std::urlpattern::UrlMatch
+    drop %1
+    ret %2
