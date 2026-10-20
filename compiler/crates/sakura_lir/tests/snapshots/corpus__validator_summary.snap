@@ -168,7 +168,6 @@ semantics/owned_argument_used_after_call: 10 funcs, 49 blocks, 21 dup, 47 drop, 
 semantics/owned_captured_and_stored: 8 funcs, 41 blocks, 10 dup, 36 drop, valid
 semantics/owned_effects: 11 funcs, 86 blocks, 14 dup, 45 drop, valid
 semantics/owned_elements_guard: 5 funcs, 28 blocks, 7 dup, 12 drop, valid
-semantics/owned_elements_moved: 5 funcs, 30 blocks, 7 dup, 15 drop, valid
 semantics/owned_elements_shared: 6 funcs, 26 blocks, 7 dup, 22 drop, valid
 semantics/owned_empty_set_defect: 3 funcs, 9 blocks, 1 dup, 2 drop, valid
 semantics/owned_empty_singleton: 3 funcs, 24 blocks, 1 dup, 39 drop, valid
