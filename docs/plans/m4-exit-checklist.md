@@ -58,3 +58,9 @@ the `v0.1.0` tag on that candidate SHA (never on `dee11301`; §17.250) and the t
 approvals ([road-to-1.0.md](road-to-1.0.md) stage 2), then `verify-published.yml` on the
 published channels ([docs/release.md §7](../release.md#7-close-out)). After the tag: 4b, PR #4
 and 4a merge in queue order (§17.263 (2)), and the performance push of §17.265 (6) starts.
+
+**Re-bless at the flag commit (§17.282), 2026-10-20.** `bench/baselines/d88970189598.json` and
+`bench/baselines/wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at `meta.commit`
+`3bf2343f`, Node flags `--predictable --min-semi-space-size=16 --max-semi-space-size=16`; the
+`320c9980` files are in `bench/baselines/archive/320c9980/`. Blessed by Claude Opus 5.5 on the
+owner's direct instruction of 2026-10-20.

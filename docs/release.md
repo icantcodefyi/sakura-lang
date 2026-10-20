@@ -265,6 +265,8 @@ bench/bench bless bench/baselines/candidate/2026-10-20-d88970189598-3bf2343f-was
 
 The checklist line names the new `meta.commit` and the flags. Until then, a compare against
 the candidate is direction, marked `pending owner bless` in `bench/deltas.md`.
+**Done 2026-10-20:** the baselines are the `3bf2343f` runs under the flags above
+([checklist](plans/m4-exit-checklist.md)); compares from then on read them.
 
 The native and compile runs are evidence, not baselines, and are not blessed.
 
