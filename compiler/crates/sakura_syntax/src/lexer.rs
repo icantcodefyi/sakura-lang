@@ -81,6 +81,7 @@ pub(crate) fn lex(src: &str) -> (Vec<Token>, Vec<LexError>) {
             src.len(),
         );
     }
+    error_field_names(&mut lx.tokens);
     let tokens = apply_newline_rule(lx.tokens);
     (tokens, lx.errors)
 }
@@ -553,6 +554,23 @@ fn continues_statement(kind: SyntaxKind) -> bool {
             | AMP2
             | PIPE2
     )
+}
+
+/// The keyword `error` is a field name after `.` and before `:` (design §17.294 RQ-3), so it lexes
+/// as `IDENT` there: in a field declaration, a record literal or update, a record pattern and a
+/// field access. An `error` item never stands in either place, so it keeps `ERROR_KW`.
+fn error_field_names(tokens: &mut [Token]) {
+    let sig: Vec<usize> = (0..tokens.len())
+        .filter(|&i| !tokens[i].kind.is_trivia() && tokens[i].kind != NEWLINE)
+        .collect();
+    for (j, &i) in sig.iter().enumerate() {
+        if tokens[i].kind == ERROR_KW
+            && (j > 0 && tokens[sig[j - 1]].kind == DOT
+                || sig.get(j + 1).is_some_and(|&n| tokens[n].kind == COLON))
+        {
+            tokens[i].kind = IDENT;
+        }
+    }
 }
 
 /// Demote `NEWLINE` candidates that §2.4 does not make significant, then merge whitespace runs.

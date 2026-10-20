@@ -1,0 +1,39 @@
+// milestone: M4
+// covers: design §17.294 RQ-3 (the keyword `error` is a valid field name)
+// spec: §17.294
+
+// `error` names a field wherever a field name stands: declared in a record type and an error
+// tag's fields, constructed, updated with `..`, matched in a record pattern, read after `.` (a
+// line ending in `.error` ends the statement), and encoded and decoded as an ordinary JSON
+// member. Item position still declares an error tag.
+import std/json.{DecodeError, Json}
+
+type ErrorView = { error: String, message: String }
+
+error Problem(error: String)
+
+fn describe(v: ErrorView) -> String {
+  match v {
+    ErrorView { error: "busy", .. } => "busy",
+    ErrorView { error: e, message: m } => "{e}: {m}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let v = ErrorView { error: "busy", message: "try later" }
+  let w = ErrorView { ..v, error: "gone" }
+  Console.print(v.error)
+  Console.print(describe(v))
+  Console.print(describe(w))
+  Console.print(Json.encode(w))
+  let decoded: Result<ErrorView, DecodeError> = Json.decode(
+    "\{\"error\":\"late\",\"message\":\"m\"}",
+  )
+  match decoded {
+    Ok(d) => Console.print(d.error),
+    Err(_) => Console.print("decode failed"),
+  }
+  let p = Problem { error: "x" }
+  let text = p.error
+  Console.print(text)
+}

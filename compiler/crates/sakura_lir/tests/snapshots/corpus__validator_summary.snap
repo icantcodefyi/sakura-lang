@@ -97,6 +97,7 @@ semantics/encoding_decode_windows1252: 20 funcs, 125 blocks, 21 dup, 50 drop, va
 semantics/encoding_decoder_split_sequence: 16 funcs, 148 blocks, 15 dup, 45 drop, valid
 semantics/encoding_fatal_vs_replace: 10 funcs, 57 blocks, 9 dup, 27 drop, valid
 semantics/encoding_rejects_unsupported_label: 11 funcs, 80 blocks, 18 dup, 30 drop, valid
+semantics/error_field_name: 3 funcs, 18 blocks, 1 dup, 19 drop, valid
 semantics/error_unions: 5 funcs, 28 blocks, 0 dup, 5 drop, valid
 semantics/float_rem: 3 funcs, 11 blocks, 0 dup, 4 drop, valid
 semantics/form_encode_rejects_boundary: 13 funcs, 105 blocks, 14 dup, 59 drop, valid

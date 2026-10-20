@@ -97,6 +97,7 @@ semantics/encoding_decode_windows1252: unsupported (builtin bytes_from_list)
 semantics/encoding_decoder_split_sequence: unsupported (builtin bytes_from_list)
 semantics/encoding_fatal_vs_replace: unsupported (builtin bytes_from_list)
 semantics/encoding_rejects_unsupported_label: ok, 562 allocated, 2015 dup, 2577 drop, peak 27, live 0/0
+semantics/error_field_name: unsupported (builtin json_encode)
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
 semantics/float_rem: ok, 5 allocated, 0 dup, 5 drop, peak 2, live 0/0
 semantics/form_encode_rejects_boundary: unsupported (builtin string_to_bytes)

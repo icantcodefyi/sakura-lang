@@ -1,0 +1,114 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::error_field_name::ErrorView | ErrorView 32b (error: word*, message: word*)
+layout 1 error main::error_field_name::Problem | Problem 24b (error: word*)
+layout 2 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::error_field_name, frame 15 slots [%7 bool, %8 word*, %9 word*, %11 word*, %12 word*, %13 bool, %14 word*, %16 word*, %17 word*, %18 bool, %19 word*, %23 bool, %32 bool, %40 bool, %44 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 rec: ptr = alloc main::error_field_name::ErrorView(%0, %1)
+    %3 message: word = proj %2.1 main::error_field_name::ErrorView
+    %4 lit: ptr = const str 2
+    %5 rec: ptr = alloc main::error_field_name::ErrorView(%4, %3)
+    %6 error: word = proj %2.0 main::error_field_name::ErrorView
+    perform std::console::Console.print(%6) -> b1(%2, %5)
+  b1(%7 r: unit, %8 rec: ptr, %9 rec: ptr):
+    %10 box: word = box %7
+    drop %10
+    call describe#2(%8) -> b2(%9)
+  b2(%11 r: ptr, %12 rec: ptr):
+    perform std::console::Console.print(%11) -> b3(%12)
+  b3(%13 r: unit, %14 rec: ptr):
+    %15 box: word = box %13
+    drop %15
+    dup %14
+    call describe#2(%14) -> b4(%14)
+  b4(%16 r: ptr, %17 rec: ptr):
+    perform std::console::Console.print(%16) -> b5(%17)
+  b5(%18 r: unit, %19 rec: ptr):
+    %20 box: word = box %18
+    drop %20
+    %21 schema: ptr = const str 3
+    %22 r: ptr = $json_encode(%19, %21)
+    perform std::console::Console.print(%22) -> b6()
+  b6(%23 r: unit):
+    %24 box: word = box %23
+    drop %24
+    %25 schema: ptr = const str 3
+    %26 lit: ptr = const str 4
+    %27 r: ptr = $json_decode(%26, %25)
+    %35 tag: i64 = tag %27 ctor std::result::Result
+    switch %35 0 => b9(%27) 1 => b10(%27)
+  b7(%28 v: word):
+    drop %28
+    %29 lit: ptr = const str 5
+    %30 rec: ptr = alloc main::error_field_name::Problem(%29)
+    %31 error: word = proj %30.0 main::error_field_name::Problem
+    drop %30
+    perform std::console::Console.print(%31) -> b8()
+  b8(%32 r: unit):
+    %33 box: word = box %32
+    %34 unbox: unit = unbox %33
+    drop %33
+    ret %34
+  b9(%36 r: ptr):
+    %38 p: word = proj %36.0 std::result::Result.Ok
+    drop %36
+    %39 error: word = proj %38.0 main::error_field_name::ErrorView
+    drop %38
+    perform std::console::Console.print(%39) -> b11()
+  b10(%37 r: ptr):
+    %42 p: word = proj %37.0 std::result::Result.Err
+    drop %37
+    drop %42
+    %43 lit: ptr = const str 6
+    perform std::console::Console.print(%43) -> b12()
+  b11(%40 r: unit):
+    %41 box: word = box %40
+    jump b7(%41)
+  b12(%44 r: unit):
+    %45 box: word = box %44
+    jump b7(%45)
+
+fn $entry#1 top -> unit ; main::error_field_name, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn describe#2 top -> ptr ; main::error_field_name, frame 1 slots [%0 word*]
+  b0(%0 v: ptr):
+    %1 p: word = proj %0.0 main::error_field_name::ErrorView
+    %2 p: word = proj %0.1 main::error_field_name::ErrorView
+    drop %0
+    %3 lit: ptr = const str 0
+    %4 is: bool = eq.string %1, %3
+    drop %3
+    if %4 then b1(%1, %2) else b2(%1, %2)
+  b1(%5 p: ptr, %6 p: ptr):
+    drop %5
+    drop %6
+    %9 lit: ptr = const str 0
+    ret %9
+  b2(%7 p: ptr, %8 p: ptr):
+    %10 s: ptr = show %7
+    drop %7
+    %11 lit: ptr = const str 7
+    %12 s: ptr = concat %10, %11
+    drop %11
+    %13 s: ptr = show %8
+    drop %8
+    %14 s: ptr = concat %12, %13
+    drop %13
+    ret %14

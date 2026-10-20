@@ -1,0 +1,9 @@
+// Design §17.294 RQ-3: `error` as a field name is printed as written.
+type ErrorView = {error:String,
+  message: String}
+error Problem(error:String)
+fn f(v: ErrorView) -> String {
+  let w = ErrorView{..v,error:"gone"}
+  let e = w.error
+  match w { ErrorView{error:x,..} => x }
+}

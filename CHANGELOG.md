@@ -335,6 +335,12 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.
+- The keyword `error` is a valid field name (design §17.294 RQ-3): in a record type or an
+  error tag's fields, a record literal and its `..` update, a record pattern and after `.`, so
+  `type ErrorView = { error: String, message: String }` encodes as
+  `{"error":…,"message":…}`. `error` at item position still declares an error tag, so no
+  program changes meaning; there is no raw-identifier syntax. Fixture
+  `compiler/tests/semantics/error_field_name.sak`.
 
 ### Fixed
 
