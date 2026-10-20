@@ -965,6 +965,40 @@ class Envelope(unittest.TestCase):
         return code, stdout.getvalue(), stderr.getvalue()
 
 
+def peaks(document, one_mb, many_mb, calls):
+    """Give every row of a counted document five pairs with these one-call and many-call peaks."""
+    for r in document["results"]:
+        r.update(calls=calls, rss_bytes=many_mb << 20,
+                 process_counters=[{"one": {"rss_bytes": one_mb << 20}, "many": {"rss_bytes": many_mb << 20}}] * 5)
+    return document
+
+
+class CountedRss(unittest.TestCase):
+    """§17.283 (3): a counted compare's RSS gate reads the one-call peak, not the many-call one."""
+
+    def test_a_many_call_crossing_at_doubled_calls_reads_ok(self):
+        out = bench.compare(peaks(counted_doc(5e6, 1e6), 100, 200, 8), [peaks(counted_doc(5e6, 1e6), 100, 300, 16)])
+        self.assertEqual((out["verdict"], out["confirmation_programs"]), ("ok", []))
+        row = out["rss"][0]
+        self.assertEqual((row["statistic"], row["status"], row["base_bytes"], row["head_bytes"]),
+                         ("one-call maximum", "ok", 100 << 20, 100 << 20))
+        self.assertEqual((row["many_call_base_bytes"], row["many_call_head_bytes"], row["base_calls"], row["head_calls"]),
+                         (200 << 20, 300 << 20, 8, 16))
+
+    def test_a_one_call_crossing_takes_the_confirmation_group(self):
+        base = peaks(counted_doc(5e6, 1e6), 100, 200, 8)
+        out = bench.compare(base, [peaks(counted_doc(5e6, 1e6), 130, 200, 8)])
+        self.assertEqual((out["verdict"], out["confirmation_programs"]), ("flagged", ["p"]))
+        self.assertEqual(out["rss"][0]["head_bytes"], 130 << 20)
+        confirmed = bench.compare(base, [peaks(counted_doc(5e6, 1e6), 130, 200, 8),
+                                         peaks(counted_doc(5e6, 1e6), 131, 150, 8)])
+        self.assertEqual((confirmed["verdict"], confirmed["rss"][0]["confirmation_bytes"]), ("blocked", 131 << 20))
+
+    def test_a_timed_compare_still_reads_the_process_peak(self):
+        out = bench.compare(doc(pair(20.0, 10.0), rss=100), [doc(pair(20.0, 10.0), rss=200)])
+        self.assertEqual((out["rss"][0]["statistic"], out["verdict"]), ("maximum", "flagged"))
+
+
 class NodeFlags(unittest.TestCase):
     """§17.282: one young generation on every measured Node process; files under other flags are refused."""
     fixed = ["--predictable", "--min-semi-space-size=16", "--max-semi-space-size=16"]

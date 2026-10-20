@@ -21,6 +21,9 @@ retains earlier implementation history.
   directory (`shapes` n = 50,000: 8–19%; under the flags, 0.21%). Runs record the list as
   `meta.flags.node`; `compare` (verdict `flags`), `envelope` and `bless` refuse two files
   under different lists. Every Node count changes once, at the owner's re-bless.
+- Benchmark harness (design §17.283): a counted `compare` gates peak RSS on the one-call
+  processes' maximum, not the many-call processes', whose call count the file's own speed
+  sets; the many-call maxima and `calls` are printed beside it as a diagnostic.
 - JS backend performance (design §17.265 (6)): a function that returns a fresh list may now
   update the list it is given in place when the caller is done with it, and a `List<Bool>`
   built by an owned push loop is one array until a persistent update rebuilds it. By

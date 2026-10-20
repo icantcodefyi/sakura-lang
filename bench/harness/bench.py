@@ -828,18 +828,32 @@ def rss_samples(document, row):
     return peaks
 
 
-def rss_comparison(base, b, head, r, jump):
-    """Keep the maximum gate; process medians explain variation without changing policy."""
+def one_call_peaks(row):
+    """The one-call processes' peaks of a counted row, or None (§17.283 (3))."""
+    peaks = [c["one"].get("rss_bytes") for c in row.get("process_counters", [])]
+    return peaks if peaks and all(peaks) else None
+
+
+def rss_comparison(base, b, head, r, jump, counted=False):
+    """Keep the maximum gate; process medians explain variation without changing policy. In a
+    counted compare the gate reads the one-call processes' maximum: a many-call process's call
+    count is set by the file's own speed and its peak by the collector's phase (§17.283 (3));
+    the many-call maxima and `calls` are kept beside it as a diagnostic."""
     bp, hp = rss_samples(base, b), rss_samples(head, r)
     if not b.get("rss_bytes") or not r.get("rss_bytes"):
         return None
     before, after = b["rss_bytes"], r["rss_bytes"]
-    return {"statistic": "maximum", "base_bytes": before, "head_bytes": after,
+    extra, statistic = {}, "maximum"
+    if counted and (bo := one_call_peaks(b)) and (ho := one_call_peaks(r)):
+        extra = {"many_call_base_bytes": before, "many_call_head_bytes": after,
+                 "base_calls": b.get("calls"), "head_calls": r.get("calls")}
+        (before, after), (bp, hp), statistic = (max(bo), max(ho)), (bo, ho), "one-call maximum"
+    return {"statistic": statistic, "base_bytes": before, "head_bytes": after,
             "base_median_bytes": statistics.median(bp) if bp is not None else None,
             "head_median_bytes": statistics.median(hp) if hp is not None else None,
             "base_processes": len(bp) if bp is not None else None,
             "head_processes": len(hp) if hp is not None else None,
-            "status": "blocked" if after > before * (1 + jump) else "ok"}
+            **extra, "status": "blocked" if after > before * (1 + jump) else "ok"}
 
 
 def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_jump=0.25):
@@ -909,9 +923,9 @@ def compare(base, heads, flag=0.05, block=0.10, abs_ms=0.1, slope_jump=0.5, rss_
         b = b_by.get(key)
         if b:
             try:
-                memory = rss_comparison(base, b, head, r, rss_jump)
+                memory = rss_comparison(base, b, head, r, rss_jump, field == "instructions")
                 cr = confirmation_by.get(key)
-                confirmed = rss_comparison(base, b, confirmation, cr, rss_jump) if cr else None
+                confirmed = rss_comparison(base, b, confirmation, cr, rss_jump, field == "instructions") if cr else None
             except ValueError as error:
                 correctness.append(f"{key}: {error}")
                 memory = None
@@ -1052,7 +1066,8 @@ def cmd_compare(a):
                   f"{r['status']}{', location: the recount is off the blessed number' if c['location'] else ''}")
     memory_changes = [r for r in out["rss"] if r["status"] in ("flagged", "blocked")
                       or (r["base_median_bytes"] and r["head_median_bytes"]
-                          and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)]
+                          and r["head_median_bytes"] > r["base_median_bytes"] * 1.25)
+                      or r.get("many_call_head_bytes", 0) > r.get("many_call_base_bytes", 0) * 1.25]
     for r in memory_changes:
         median = (f"{r['base_median_bytes']} → {r['head_median_bytes']} bytes"
                   if r["base_median_bytes"] is not None and r["head_median_bytes"] is not None else "unavailable (legacy result)")
@@ -1061,8 +1076,10 @@ def cmd_compare(a):
                         f"(processes {r['confirmation_processes'] or 'unknown'})"
                         if r["confirmation_bytes"] is not None else "")
         print(f"\nRSS detail: {r['program']} {r['variant']}/{r['backend']}/{r['engine']} n={r['size']}: "
-              f"maximum {r['base_bytes']} → {r['head_bytes']} bytes; "
-              f"process median {median} "
+              f"{r['statistic']} {r['base_bytes']} → {r['head_bytes']} bytes; "
+              + (f"many-call maximum {r['many_call_base_bytes']} → {r['many_call_head_bytes']} bytes at calls "
+                 f"{r['base_calls']} → {r['head_calls']} (diagnostic only, §17.283); " if "many_call_base_bytes" in r else "")
+              + f"process median {median} "
               f"(processes {r['base_processes'] or 'unknown'} → {r['head_processes'] or 'unknown'}; median is diagnostic only)"
               f"{confirmation}; {r['status']} {r['note']}")
     for i in out["immediate"]:
