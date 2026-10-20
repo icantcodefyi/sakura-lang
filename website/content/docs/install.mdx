@@ -103,6 +103,9 @@ stand-in for a Pi 4 with 2 GB. Until that run passes, there is no measured memor
 claim. A container is not Pi hardware evidence. Use a 64-bit OS (`uname -m` should
 print `aarch64`), not 32-bit Raspberry Pi OS.
 
+Node's ARM64 build needs `libatomic1`. Raspberry Pi OS ships it; a minimal Debian
+image needs `sudo apt install libatomic1` first.
+
 Install Node 26 with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 in Bash. Download and inspect its installer, then run it:
 
