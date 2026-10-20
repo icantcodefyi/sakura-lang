@@ -1,0 +1,11 @@
+RsassaPkcs1(Sha256) KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+RsaPss(Sha384) KeyError { reason: Unavailable("RSA-PSS") }
+RsaOaep(Sha512) KeyError { reason: Unavailable("RSA-OAEP") }
+raw Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+spki cut Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+spki extended Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+pkcs8 as spki Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+pkcs8 cut Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+pkcs8 that cannot sign Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+jwk KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+jwk private KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }

@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.9.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.11.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -18,8 +18,10 @@ and borrow counters (§10; design §17.176 (1)), 1.4.0 the native profile (§1b;
 design §17.262, RFC 0002 §2.8), 1.6.0 `std/crypto`'s `hosted` imports (§8.1, §8.2; design
 §17.266 (1), RFC 0002 §2.7), 1.7.0 the HTTP 0.2.0 shape, `Payload` bodies and redirects
 followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4), 1.8.0
-`std/websocket`'s host operations (§8.2, §8.5; RFC 0002 §1, §6) and 1.9.0 `std/crypto` tier
-1b's `hosted` imports (§8.2; design §17.288 (10), RFC 0002 §2.7). Owned by
+`std/websocket`'s host operations (§8.2, §8.5; RFC 0002 §1, §6), 1.9.0 `std/crypto` tier
+1b's `hosted` imports (§8.2; design §17.288 (10), RFC 0002 §2.7), 1.10.0 the WebSocket server
+(§8.2; design §17.289, RFC 0002 §2.10) and 1.11.0 `std/crypto` tier 2 (§8.2; design §17.288
+(6), RFC 0002 §2.7). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -239,6 +241,15 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   changes, but a module that imports them needs a host that has them, so an older host refuses
   a 1.10 module by the MINOR rule. Native has no WebSocket in either role (§7). None is of kind
   `secret`. `sakura_abi_version` is `0x010a00`.
+- 1.11.0 (MINOR, design §17.288 (6), RFC 0002 §2.7, plan `web-apis.md` phase 7c, after 8s's
+  1.10.0, §17.266 (1)) adds `std/crypto` tier 2 (§8.2): the `hosted` imports `crypto_tier2` and
+  `crypto_cipher`, Node host only (`WASM_HOSTED`), and the P-384, P-521 and RSA codes of the
+  five pair imports of 1.9.0. The guest wipes the argument tuple of each by the `crypto_` prefix
+  rule and the Node host zeroes its copies, as for 1.6.0's. Nothing shipped changes, but a
+  module that imports them needs a host that has them, so an older host refuses a 1.11 module
+  by the MINOR rule. The native runtime answers `crypto_tier2` with `false` and has no tier-2
+  primitive; a WASI command reaches both as unsupported builtins (`D090`). `sakura_abi_version`
+  is `0x010b00`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -864,7 +875,7 @@ an import the Node host lacks. Every import has one of four shapes:
 | `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `ws_accept` (1.10.0), `trace_*`, `retire_handle`, `abort` |
 | `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0); completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
-| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0), `ws_close` (1.8.0), `ws_subscribe`, `ws_unsubscribe`, `ws_publish` (1.10.0) |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0; tier 2's 1.11.0), `ws_close` (1.8.0), `ws_subscribe`, `ws_unsubscribe`, `ws_publish` (1.10.0) |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
@@ -955,6 +966,20 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   does not verify; result top `option`). As the five above: `std/crypto` checks lengths and
   usages first, both sides zero their copies, nothing is printed or logged, and the native
   runtime has the seven as builtins.
+- `hosted`, Node host only (1.11.0, design §17.288 (6), plan `web-apis.md` phase 7c), tier 2.
+  The five pair imports above also take `curve` 3 and 4 (P-384 and P-521: scalars of 48 and 66
+  bytes, ECDSA with SHA-384 and SHA-512, signatures of 96 and 132 bytes) and the RSA codes
+  `10 + h`, `20 + h` and `30 + h` (RSASSA-PKCS1-v1_5, RSA-PSS with a salt of the hash's length,
+  RSA-OAEP; `h` 0, 1, 2 for SHA-256, -384, -512), whose keys are DER (SPKI public, PKCS #8
+  private): `crypto_public_of` answers an RSA private key's SPKI, or no bytes when the key does
+  not sign what its public key verifies. New: `crypto_tier2() -> Bool` (`true`; `std/crypto`
+  asks before any tier-2 primitive, and the native runtime answers `false`) and
+  `crypto_cipher(code, key, iv, aad, data) -> Option<Bytes>` (`code` is `2 * mode +
+  direction`, direction 0 encrypt and 1 decrypt, mode 0 AES-CBC with PKCS #7 padding, 1 AES-CTR
+  with the whole 16-byte block as the counter, 2 AES-KW (RFC 3394, `iv` empty), `3 + h`
+  RSA-OAEP with MGF1 of the same hash, `iv` the caller's seed and `aad` the label; `None` when a
+  ciphertext does not decrypt; result top `option`). The native runtime has `crypto_tier2` and
+  answers `D090` for any tier-2 code or cipher; a WASI command does not have either import.
 
 **Host `Err` text** (design §17.229 (5)a; both hosts). The runtime's own messages for `fs_*` and
 `file_*` (`not found`, `escapes the directory`, `not a relative path`, `no such directory`,

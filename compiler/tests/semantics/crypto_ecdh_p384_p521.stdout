@@ -1,0 +1,4 @@
+P-384 initiator true responder true Err(CryptoError { reason: Length(392) })
+P-384 generated agree true Ok(48)
+P-521 initiator true responder true Err(CryptoError { reason: Length(536) })
+P-521 generated agree true Ok(66)

@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010a00;
+export const ABI_VERSION = 0x010b00;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -324,8 +324,9 @@ export const HOSTED = {
     error: () => ["A", "std::cli::CliError", []],
   },
   // `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1); tier 1b's seven at 1.9.0, design
-  // §17.288 (10)): the arguments hold key material, so `wipe` zeroes the copied tuple, the
-  // decoded `Bytes` and the answer once used (`hosted`), an `Option`'s `Bytes` included.
+  // §17.288 (10); tier 2's `crypto_cipher` and `crypto_tier2` at 1.11.0): the arguments hold key
+  // material, so `wipe` zeroes the copied tuple, the decoded `Bytes` and the answer once used
+  // (`hosted`), an `Option`'s `Bytes` included.
   crypto_aes_gcm_open: {
     wipe: true,
     run: (_h, key, nonce, aad, ct) => ({ ok: rt.crypto_aes_gcm_open(key, nonce, aad, ct) }),
@@ -336,6 +337,12 @@ export const HOSTED = {
     run: (_h, key, nonce, aad, pt) => ({ ok: rt.crypto_aes_gcm_seal(key, nonce, aad, pt) }),
     result: () => "Y",
   },
+  crypto_cipher: {
+    wipe: true,
+    run: (_h, code, key, iv, aad, data) => ({ ok: rt.crypto_cipher(code, key, iv, aad, data) }),
+    result: () => OPT("Y"),
+  },
+  crypto_tier2: { run: () => ({ ok: rt.crypto_tier2() }), result: () => "B" },
   crypto_digest: { wipe: true, run: (_h, alg, data) => ({ ok: rt.crypto_digest(alg, data) }), result: () => "Y" },
   crypto_ecdh: { wipe: true, run: (_h, c, d, p) => ({ ok: rt.crypto_ecdh(c, d, p) }), result: () => "Y" },
   crypto_hkdf: {

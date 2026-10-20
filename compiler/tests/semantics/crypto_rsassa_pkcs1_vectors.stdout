@@ -1,0 +1,6 @@
+Sha256 tcId 81 sign true verify true other false flipped false
+Sha256 tcId 82 sign true verify true other false flipped false
+Sha384 tcId 89 sign true verify true other false flipped false
+Sha384 tcId 90 sign true verify true other false flipped false
+Sha512 tcId 97 sign true verify true other false flipped false
+Sha512 tcId 98 sign true verify true other false flipped false

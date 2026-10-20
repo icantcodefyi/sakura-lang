@@ -775,6 +775,31 @@ fn native_agrees_with_js_on_run_mode_programs() {
             }
             continue;
         }
+        // `<name>.native.stdout` is the declared difference of RFC 0002 §2.7 (plan `web-apis.md`
+        // phase 7c): `std/crypto` tier 2 is not on native, which prints its typed refusals where
+        // JS runs the algorithm. Both native runs exit 0 and print exactly that file.
+        let own = match job {
+            Job::Fixture(path, _, _) => {
+                std::fs::read_to_string(path.with_extension("native.stdout")).ok()
+            }
+            Job::Example(..) => None,
+        };
+        if let Some(want) = own {
+            let runs = [Some(&twins), frames.as_ref()];
+            if runs
+                .iter()
+                .flatten()
+                .all(|r| r.code == Some(0) && r.stdout == want)
+            {
+                agree += 1;
+            } else {
+                failures.push(format!(
+                    "{label}: native exit {:?}, stdout {:?}; expected 0 and its .native.stdout",
+                    twins.code, twins.stdout
+                ));
+            }
+            continue;
+        }
         let why = compare(expect, "run", &js, &twins)
             .map(|w| format!("twins: {w}"))
             .or_else(|| {

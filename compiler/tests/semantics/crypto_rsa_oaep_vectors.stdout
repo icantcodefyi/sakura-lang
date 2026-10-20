@@ -1,0 +1,20 @@
+Sha256 tcId 1 valid Ok("") true
+Sha256 tcId 2 valid Ok("0000000000000000000000000000000000000000") true
+Sha256 tcId 12 invalid Err(CryptoError { reason: Padding }) false
+Sha256 tcId 13 invalid Err(CryptoError { reason: Padding }) false
+Sha384 tcId 1 valid Ok("") true
+Sha384 tcId 2 valid Ok("0000000000000000000000000000000000000000") true
+Sha384 tcId 12 invalid Err(CryptoError { reason: Padding }) false
+Sha384 tcId 13 invalid Err(CryptoError { reason: Padding }) false
+Sha512 tcId 1 valid Ok("") true
+Sha512 tcId 2 valid Ok("0000000000000000000000000000000000000000") true
+Sha512 tcId 12 invalid Err(CryptoError { reason: Padding }) false
+Sha512 tcId 13 invalid Err(CryptoError { reason: Padding }) false
+own Ok(256) same seed true other seed true
+opens true true
+other label Err(CryptoError { reason: Padding })
+with a seed Err(CryptoError { reason: Nonce(32) })
+cut Err(CryptoError { reason: Padding })
+190 bytes Ok(256)
+191 bytes Err(CryptoError { reason: Length(1528) })
+seed 31 Err(CryptoError { reason: Nonce(31) })

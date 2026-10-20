@@ -70,11 +70,11 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 1.0.0-beta.1; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288; `rt`'s key copies zeroed `94ac097d`, THIRD_PARTY.md with its test `56aabd32`) | Opus | landed |
 | 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc (ABI 1.9.0) | Opus | landed |
-| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the `v1.0.0-beta.1` preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
+| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc (ABI 1.11.0; native a typed `Unavailable`/`Unsupported`; readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
-| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; 1.11.0 by §17.289 (11) (8s took 1.10.0) | Opus | 4b, 5, 6, 8s (landed) |
+| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; the next free MINOR (8s took 1.10.0, 7c 1.11.0) | Opus | 4b, 5, 6, 8s (landed) |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
@@ -533,6 +533,17 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   `Unsupported`) grow `pub` std sums, which after the beta's preparation commit is not an additive change (an
   exhaustive `match` stops compiling), so 7c is on `main` before the `v1.0.0-beta.1` preparation commit
   or tier 2 is not in 1.0; its variants are not declared ahead of its implementation.
+- **Landed (ABI 1.11.0).** JS through synchronous `node:crypto` (`createCipheriv`, `sign`,
+  `verify`, `privateDecrypt`, and `publicEncrypt` without padding under std's own EME-OAEP so
+  the seed is the caller's nonce); WASM-on-JS through two new `hosted` imports,
+  `crypto_cipher` and `crypto_tier2`; native's `crypto_tier2` is `false`, so std answers
+  `KeyError(Unavailable(name))` from `import_key` and `CryptoError(Unsupported(name))` from
+  `encrypt`/`decrypt`, and `rt` refuses a tier-2 code with `D090` should one reach it. The
+  harness now honours `<name>.native.stdout` as the declared difference, so each of the nine
+  vector fixtures runs on native and prints its typed errors. Vector tables in
+  `compiler/tests/vectors/` (NIST CAVP, RFC 3686, 3394, 6979, 5903; Wycheproof for RSA).
+  RSA keys are imported only. Readings and the open questions are in `compiler/REQUESTS.md`
+  (2026-10-21).
 
 ### Phase 8: `std/websocket` client
 

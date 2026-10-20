@@ -1826,4 +1826,12 @@ builtins! {
     rt_b_crypto_aes_gcm_open(key: u32, nonce: u32, aad: u32, ct: u32) -> u32 = ptr |rt| {
         rt.crypto_aes_gcm_open(key, nonce, aad, ct)
     };
+    // Tier 2 is JS and the JS host's (RFC 0002 §2.7): `std/crypto` asks first and answers
+    // `Unavailable`/`Unsupported`, so the cipher is `D090` if it is ever reached.
+    #[cfg(feature = "native")]
+    rt_b_crypto_tier2() -> u32 = plain |_rt| 0;
+    #[cfg(feature = "native")]
+    rt_b_crypto_cipher(code: i64, key: u32, iv: u32, aad: u32, data: u32) -> u32 = ptr |rt| {
+        rt.crypto_cipher(code, key, iv, aad, data)
+    };
 }

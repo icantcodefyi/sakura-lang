@@ -1,6 +1,8 @@
 //! `std/crypto`'s primitives on native (RFC 0002 §2.7): SHA-2, HMAC, HKDF, PBKDF2, AES-GCM,
 //! ECDSA and ECDH over P-256, Ed25519 and X25519 from the RustCrypto and dalek crates, no
-//! primitive of our own. Each matches the JS runtime's `node:crypto`
+//! primitive of our own. Tier 2 (AES-CBC, AES-CTR, AES-KW, P-384, P-521, RSA) is not here:
+//! `crypto_tier2` answers `false`, so `std/crypto` returns its typed errors, and a tier-2 code
+//! that still arrives (a P-384 or P-521 pair generated here) is [`TIER2`], `D090`. Each matches the JS runtime's `node:crypto`
 //! function of the same name; `tests/vectors/` and the semantics fixtures hold the two equal.
 //! `std/crypto` checks every argument (lengths, iterations) before it calls these, so they do not
 //! fail. Arguments are taken owned and results returned owned (ABI.md P2). Native only: the
@@ -24,11 +26,24 @@ use crate::{Res, Rt};
 const SHA384: i64 = 1;
 const SHA512: i64 = 2;
 
-/// `std/crypto`'s `curve(alg)`: 0 P-256 (ECDSA and ECDH), 1 Ed25519, 2 X25519. A private key
-/// is the scalar or seed (32 bytes), a public key the point: SEC1 uncompressed for P-256 (65
-/// bytes), RFC 8032's and RFC 7748's encodings for the other two (32 bytes).
+/// `std/crypto`'s `curve(alg)`: 0 P-256 (ECDSA and ECDH), 1 Ed25519, 2 X25519 (3 and up are tier
+/// 2's). A private key is the scalar or seed (32 bytes), a public key the point: SEC1
+/// uncompressed for P-256 (65 bytes), RFC 8032's and RFC 7748's encodings for the other two (32
+/// bytes).
+const P256: i64 = 0;
 const ED25519: i64 = 1;
 const X25519: i64 = 2;
+
+/// A tier-2 primitive reached on native, which has none (`std/crypto` asks `crypto_tier2` first).
+pub const TIER2: crate::Defect = crate::Defect {
+    code: 90,
+    message: "std/crypto tier 2 (AES-CBC, AES-CTR, AES-KW, P-384, P-521, RSA) is not on native",
+};
+
+/// Whether `curve` is one of tier 1b's three.
+fn tier1(curve: i64) -> bool {
+    matches!(curve, P256 | ED25519 | X25519)
+}
 
 /// Calls `$f::<H>($args)` with `H` the hash `std/crypto` numbered `$alg`.
 macro_rules! by_hash {
@@ -127,7 +142,10 @@ pub fn public_of(curve: i64, private: &[u8]) -> Vec<u8> {
             let k = x25519_dalek::StaticSecret::from(*s);
             x25519_dalek::PublicKey::from(&k).to_bytes().to_vec()
         }),
-        _ => p256_secret(private).map(|k| k.public_key().to_sec1_point(false).as_bytes().to_vec()),
+        P256 => {
+            p256_secret(private).map(|k| k.public_key().to_sec1_point(false).as_bytes().to_vec())
+        }
+        _ => None,
     }
     .unwrap_or_default()
 }
@@ -137,7 +155,8 @@ pub fn public_of(curve: i64, private: &[u8]) -> Vec<u8> {
 pub fn public_valid(curve: i64, public: &[u8]) -> bool {
     match curve {
         ED25519 | X25519 => public.len() == 32,
-        _ => p256_public(public).is_some(),
+        P256 => p256_public(public).is_some(),
+        _ => false,
     }
 }
 
@@ -172,12 +191,13 @@ pub fn sign_verify(curve: i64, public: &[u8], sig: &[u8], data: &[u8]) -> bool {
             key.zip(sig)
                 .is_some_and(|(k, s)| k.verify(data, &s).is_ok())
         }
-        _ => {
+        P256 => {
             let key = p256_public(public).map(p256::ecdsa::VerifyingKey::from);
             let sig = p256::ecdsa::Signature::from_slice(sig).ok();
             key.zip(sig)
                 .is_some_and(|(k, s)| k.verify(data, &s).is_ok())
         }
+        _ => false,
     }
 }
 
@@ -297,6 +317,9 @@ impl Rt {
 
     pub fn crypto_public_of(&mut self, curve: i64, private: u32) -> Res<u32> {
         let [private] = self.take_bytes([private]);
+        if !tier1(curve) {
+            return Err(TIER2);
+        }
         self.bytes_from(&Zeroizing::new(public_of(curve, &private)))
     }
 
@@ -307,6 +330,9 @@ impl Rt {
 
     pub fn crypto_sign(&mut self, curve: i64, private: u32, data: u32) -> Res<u32> {
         let [private, data] = self.take_bytes([private, data]);
+        if !tier1(curve) {
+            return Err(TIER2);
+        }
         self.bytes_from(&Zeroizing::new(sign(curve, &private, &data)))
     }
 
@@ -317,6 +343,9 @@ impl Rt {
 
     pub fn crypto_ecdh(&mut self, curve: i64, private: u32, public: u32) -> Res<u32> {
         let [private, public] = self.take_bytes([private, public]);
+        if !tier1(curve) {
+            return Err(TIER2);
+        }
         self.bytes_from(&Zeroizing::new(ecdh(curve, &private, &public)))
     }
 
@@ -337,6 +366,19 @@ impl Rt {
             None => Ok(self.none()),
         }
     }
+
+    /// Tier 2's ciphers are not on native: `std/crypto` answers `Unsupported` before this.
+    pub fn crypto_cipher(
+        &mut self,
+        _code: i64,
+        key: u32,
+        iv: u32,
+        aad: u32,
+        data: u32,
+    ) -> Res<u32> {
+        drop(self.take_bytes([key, iv, aad, data]));
+        Err(TIER2)
+    }
 }
 
 #[cfg(test)]
@@ -353,5 +395,18 @@ mod tests {
         let b = rt.bytes_from(b"key").unwrap();
         let [copy] = take(&mut rt, [b]);
         assert_eq!(copy.as_slice(), b"key");
+    }
+
+    /// Tier 2 is not on native: a P-384 code or a cipher that reaches `rt` is `D090`, never a
+    /// P-256 answer to another curve's question.
+    #[test]
+    fn a_tier_two_code_is_d090() {
+        let mut rt = Rt::new(1 << 20).unwrap();
+        let d = rt.bytes_from(&[7; 48]).unwrap();
+        assert_eq!(rt.crypto_public_of(3, d), Err(TIER2));
+        let [k, iv, aad, pt] = [b"k", b"i", b"a", b"p"].map(|b| rt.bytes_from(b).unwrap());
+        assert_eq!(rt.crypto_cipher(0, k, iv, aad, pt), Err(TIER2));
+        assert!(public_of(4, &[1; 66]).is_empty() && !public_valid(3, &[4; 97]));
+        assert_eq!(TIER2.code, 90);
     }
 }

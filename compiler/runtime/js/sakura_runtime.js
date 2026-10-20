@@ -2660,52 +2660,87 @@ export function crypto_pbkdf2(alg, password, salt, iterations, len) {
   return new Uint8Array(nodeCrypto().pbkdf2Sync(password, salt, iterations, len, HASHES[alg]));
 }
 
-// Tier 1b. `curve` is `std/crypto`'s `curve(alg)`: 0 P-256, 1 Ed25519, 2 X25519. A private key is
-// the 32-byte scalar or seed, a public key the point (65-byte uncompressed SEC1 on P-256, 32
-// bytes otherwise); Node takes them wrapped in the fixed DER prefixes below.
+// Tier 1b and 2. `curve` is `std/crypto`'s code of a pair's algorithm: 0 P-256, 1 Ed25519, 2
+// X25519, 3 P-384, 4 P-521; `10 + h`, `20 + h` and `30 + h` RSASSA-PKCS1-v1_5, RSA-PSS and
+// RSA-OAEP with hash `h` (`HASHES`). A curve's private key is its scalar or seed (32 bytes; 48 on
+// P-384, 66 on P-521), its public key the point (uncompressed SEC1 on the NIST curves, 32 bytes
+// otherwise); Node takes them wrapped in the fixed DER prefixes below. An RSA key is its DER
+// (PKCS #8 private, SPKI public), which `std/crypto` reads and writes itself.
 const PKCS8 = [
   "3041020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420",
   "302e020100300506032b657004220420",
   "302e020100300506032b656e04220420",
+  "304e020100301006072a8648ce3d020106052b81040022043730350201010430",
+  "3060020100301006072a8648ce3d020106052b81040023044930470201010442",
 ].map((h) => Buffer.from(h, "hex"));
 const SPKI = [
   "3059301306072a8648ce3d020106082a8648ce3d030107034200",
   "302a300506032b6570032100",
   "302a300506032b656e032100",
+  "3076301006072a8648ce3d020106052b81040022036200",
+  "30819b301006072a8648ce3d020106052b8104002303818600",
 ].map((h) => Buffer.from(h, "hex"));
+/** The NIST curves by code, with the hash ECDSA signs with (fixed by the curve, JOSE's `ES*`). */
+const EC = { 0: ["prime256v1", "sha256"], 3: ["secp384r1", "sha384"], 4: ["secp521r1", "sha512"] };
+const HASH_LEN = [32, 48, 64];
+const isRsa = (curve) => curve >= 10;
 const privateKeyOf = (curve, d) =>
-  nodeCrypto().createPrivateKey({ key: Buffer.concat([PKCS8[curve], d]), format: "der", type: "pkcs8" });
+  isRsa(curve)
+    ? nodeCrypto().createPrivateKey({ key: Buffer.from(d), format: "der", type: "pkcs8" })
+    : nodeCrypto().createPrivateKey({ key: Buffer.concat([PKCS8[curve], d]), format: "der", type: "pkcs8" });
 const publicKeyOf = (curve, p) =>
-  nodeCrypto().createPublicKey({ key: Buffer.concat([SPKI[curve], p]), format: "der", type: "spki" });
-/** ECDSA P-256 signs SHA-256 digests; signatures are `r || s` (IEEE P1363), as Web Crypto's. */
-const signing = (curve, key) => (curve === 0 ? ["sha256", { key, dsaEncoding: "ieee-p1363" }] : [null, key]);
-const p256 = (d) => {
-  const e = nodeCrypto().createECDH("prime256v1");
+  nodeCrypto().createPublicKey({
+    key: isRsa(curve) ? Buffer.from(p) : Buffer.concat([SPKI[curve], p]),
+    format: "der",
+    type: "spki",
+  });
+/**
+ * ECDSA signs the curve's hash, its signature `r || s` (IEEE P1363), as Web Crypto's; RSA-PSS
+ * salts with the hash's length, as JOSE's `PS*`.
+ */
+const signing = (curve, key) => {
+  const h = HASHES[curve % 10];
+  if (curve >= 20) return [h, { key, padding: nodeCrypto().constants.RSA_PKCS1_PSS_PADDING, saltLength: HASH_LEN[curve % 10] }];
+  if (curve >= 10) return [h, { key, padding: nodeCrypto().constants.RSA_PKCS1_PADDING }];
+  return EC[curve] ? [EC[curve][1], { key, dsaEncoding: "ieee-p1363" }] : [null, key];
+};
+const ecdh = (curve, d) => {
+  const e = nodeCrypto().createECDH(EC[curve][0]);
   e.setPrivateKey(d);
   return e;
 };
 
-/** The public key, or no bytes for a P-256 scalar of zero or at least the order (Node refuses those). */
+/**
+ * The public key, or no bytes for a scalar that is not a key (zero or at least the order; Node
+ * refuses those). An RSA private key answers its SPKI once it signs a message its public key
+ * verifies, as BoringSSL's import checks a key, or no bytes.
+ */
 export function crypto_public_of(curve, d) {
   try {
-    if (curve === 0) return new Uint8Array(p256(d).getPublicKey());
+    if (EC[curve]) return new Uint8Array(ecdh(curve, d).getPublicKey());
+    if (isRsa(curve)) {
+      const key = privateKeyOf(curve, d);
+      const pub = nodeCrypto().createPublicKey(key);
+      const empty = Buffer.alloc(0);
+      const ok = key.asymmetricKeyType === "rsa" && nodeCrypto().verify("sha256", empty, pub, nodeCrypto().sign("sha256", empty, key));
+      return ok ? new Uint8Array(pub.export({ format: "der", type: "spki" })) : new Uint8Array(0);
+    }
     const spki = nodeCrypto().createPublicKey(privateKeyOf(curve, d)).export({ format: "der", type: "spki" });
     return new Uint8Array(spki.subarray(SPKI[curve].length));
   } catch {
     return new Uint8Array(0);
   }
 }
-/** A P-256 point must decode on the curve; Ed25519 and X25519 take any 32 bytes. */
+/** A NIST point must decode on the curve and an RSA SPKI as an RSA key; Ed25519 and X25519 take any 32 bytes. */
 export function crypto_public_valid(curve, p) {
-  if (curve !== 0) return p.length === 32;
+  if (curve === 1 || curve === 2) return p.length === 32;
   try {
-    publicKeyOf(0, p);
-    return true;
+    return publicKeyOf(curve, p).asymmetricKeyType === (isRsa(curve) ? "rsa" : "ec");
   } catch {
     return false;
   }
 }
-/** ECDSA here is randomized (OpenSSL), so signatures are not canonical bytes; Ed25519's are. */
+/** ECDSA and RSA-PSS here are randomized (OpenSSL), so signatures are not canonical bytes; Ed25519's and RSASSA-PKCS1-v1_5's are. */
 export function crypto_sign(curve, d, data) {
   const [hash, key] = signing(curve, privateKeyOf(curve, d));
   return new Uint8Array(nodeCrypto().sign(hash, data, key));
@@ -2720,7 +2755,7 @@ export function crypto_sign_verify(curve, p, sig, data) {
 }
 /** X25519 with a small-order point would be all zeros: Node refuses it, and this answers no bytes. */
 export function crypto_ecdh(curve, d, p) {
-  if (curve === 0) return new Uint8Array(p256(d).computeSecret(p));
+  if (EC[curve]) return new Uint8Array(ecdh(curve, d).computeSecret(p));
   try {
     const privateKey = privateKeyOf(curve, d);
     return new Uint8Array(nodeCrypto().diffieHellman({ privateKey, publicKey: publicKeyOf(curve, p) }));
@@ -2741,6 +2776,71 @@ export function crypto_aes_gcm_open(key, nonce, aad, ct) {
   d.setAAD(aad);
   try {
     return Some(new Uint8Array(Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()])));
+  } catch {
+    return None;
+  }
+}
+
+/** Tier 2 runs here, so `std/crypto` reaches its primitives (native answers `false`). */
+export function crypto_tier2() {
+  return true;
+}
+/** RFC 3394's default initial value, the one Web Crypto's AES-KW uses. */
+const KW_IV = Buffer.from("a6a6a6a6a6a6a6a6", "hex");
+/** MGF1 (RFC 8017 §B.2.1) of `seed`, `len` bytes. */
+const mgf1 = (hash, seed, len) => {
+  const blocks = [];
+  for (let i = 0; i * HASH_LEN[hash] < len; i++) {
+    const n = Buffer.alloc(4);
+    n.writeUInt32BE(i);
+    blocks.push(nodeCrypto().createHash(HASHES[hash]).update(seed).update(n).digest());
+  }
+  return Buffer.concat(blocks).subarray(0, len);
+};
+const xorInto = (a, b) => {
+  for (let i = 0; i < a.length; i++) a[i] ^= b[i];
+  return a;
+};
+/**
+ * RSAES-OAEP encryption (RFC 8017 §7.1.1) with MGF1 of the same hash and the caller's `seed`, so
+ * the ciphertext is a function of its inputs: EME-OAEP here, then the bare RSA operation, which
+ * Node offers (`RSA_NO_PADDING`) where its own OAEP draws the seed itself. Decryption is Node's.
+ */
+const oaepSeal = (hash, spki, seed, label, msg) => {
+  const key = publicKeyOf(30 + hash, spki);
+  const k = Math.ceil(key.asymmetricKeyDetails.modulusLength / 8);
+  const h = HASH_LEN[hash];
+  const lHash = nodeCrypto().createHash(HASHES[hash]).update(label).digest();
+  const db = Buffer.concat([lHash, Buffer.alloc(k - msg.length - 2 * h - 2), Buffer.from([1]), msg]);
+  xorInto(db, mgf1(hash, seed, k - h - 1));
+  const masked = xorInto(Buffer.from(seed), mgf1(hash, db, h));
+  const em = Buffer.concat([Buffer.from([0]), masked, db]);
+  try {
+    return nodeCrypto().publicEncrypt({ key, padding: nodeCrypto().constants.RSA_NO_PADDING }, em);
+  } finally {
+    for (const b of [db, masked, em]) b.fill(0);
+  }
+};
+const oaepOpen = (hash, pkcs8, label, ct) =>
+  nodeCrypto().privateDecrypt(
+    { key: privateKeyOf(30 + hash, pkcs8), padding: nodeCrypto().constants.RSA_PKCS1_OAEP_PADDING, oaepHash: HASHES[hash], oaepLabel: label },
+    ct,
+  );
+/**
+ * Tier 2's ciphers. `code` is `2 * mode + direction` (0 encrypt, 1 decrypt), the mode 0 AES-CBC
+ * (PKCS #7 padding, Web Crypto's), 1 AES-CTR (the whole 16-byte block is the counter, Web Crypto's
+ * `length: 128`), 2 AES-KW (RFC 3394), `3 + h` RSA-OAEP with hash `h`, whose `iv` is the seed and
+ * `aad` the label. `std/crypto` checks lengths first; `None` when a ciphertext does not decrypt
+ * (CBC or OAEP padding, a KW integrity check).
+ */
+export function crypto_cipher(code, key, iv, aad, data) {
+  const [mode, decrypt] = [code >> 1, code & 1];
+  try {
+    if (mode >= 3) return Some(new Uint8Array(decrypt ? oaepOpen(mode - 3, key, aad, data) : oaepSeal(mode - 3, key, iv, aad, data)));
+    const bits = key.length * 8;
+    const name = [`aes-${bits}-cbc`, `aes-${bits}-ctr`, `id-aes${bits}-wrap`][mode];
+    const c = (decrypt ? nodeCrypto().createDecipheriv : nodeCrypto().createCipheriv)(name, key, mode === 2 ? KW_IV : iv);
+    return Some(new Uint8Array(Buffer.concat([c.update(data), c.final()])));
   } catch {
     return None;
   }

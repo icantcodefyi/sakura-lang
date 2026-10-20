@@ -4,7 +4,8 @@
 //! ending and stdout byte for byte: from the evaluator's harness (`eval`) over
 //! `sakura_rt::native` and the native host, and compiled by `sakura_codegen_native`, linked with
 //! the driver staticlib and run as an executable, whose `stats()` counters at exit must equal
-//! the evaluator's. Two instances live in one process and `close()` releases each one's
+//! the evaluator's. A fixture with a `.native.stdout` agrees with that file instead (phase 7c's
+//! declared difference). Two instances live in one process and `close()` releases each one's
 //! resources.
 
 mod eval;
@@ -32,6 +33,7 @@ struct Program {
 
 fn programs() -> Vec<Program> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../sakura_lir/tests/corpus");
+    let semantics = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
     let mut out = Vec::new();
     for sub in ["semantics", "diff", "lir"] {
         let mut paths: Vec<PathBuf> = std::fs::read_dir(root.join(sub))
@@ -45,11 +47,25 @@ fn programs() -> Vec<Program> {
             let core = snapshot::Snapshot::from_json(&text).unwrap().module;
             let expected = std::fs::read_to_string(p.with_extension("expected")).unwrap();
             let (head, stdout) = expected.split_once("--- stdout\n").unwrap();
+            let stem = p.file_stem().unwrap().to_string_lossy().into_owned();
+            // The fixture's `<name>.native.stdout` is its declared difference (RFC 0002 §2.7,
+            // plan `web-apis.md` phase 7c), as in `sakura_cli`'s parity test: native ends `ok`
+            // and prints exactly that file.
+            let own = (sub == "semantics")
+                .then(|| semantics.join(format!("{stem}.native.stdout")))
+                .and_then(|f| std::fs::read_to_string(f).ok());
+            let (ending, stdout) = match own {
+                Some(own) => ("ok".to_owned(), own),
+                None => (
+                    head.trim().strip_prefix("ending: ").unwrap().to_owned(),
+                    stdout.to_owned(),
+                ),
+            };
             out.push(Program {
-                name: format!("{sub}/{}", p.file_stem().unwrap().to_string_lossy()),
+                name: format!("{sub}/{stem}"),
                 core,
-                ending: head.trim().strip_prefix("ending: ").unwrap().to_owned(),
-                stdout: stdout.to_owned(),
+                ending,
+                stdout,
             });
         }
     }

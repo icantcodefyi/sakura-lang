@@ -1,0 +1,6 @@
+P-384 sample rfc true own 96 true refused true
+P-384 test rfc true own 96 true refused true
+P-521 sample rfc true own 132 true refused true
+P-521 test rfc true own 132 true refused true
+P-384 generated true refused true
+P-521 generated true refused true

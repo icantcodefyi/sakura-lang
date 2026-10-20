@@ -50,8 +50,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
    `Path.from`, a `Path` literal (`V5004`), `Cli.parse` and `Json.decode` into a `Path` reject
    `a\b`, `C:\x`, `\\server\share` and `C:x`; write `/`, no drive.
 
-Phase 7c's `std/crypto` tier 2 variants (design §17.288 (6)) are not on `main` yet; they join
-this list when they land, before the beta's preparation commit.
+9. **`std/crypto`'s sums gain tier 2's variants** (Added, plan `web-apis.md` phase 7c): an
+   exhaustive `match` on `Algorithm` adds `AesCbc`, `AesCtr`, `AesKw`, `RsassaPkcs1`, `RsaPss`
+   and `RsaOaep`; on `Curve`, `P384` and `P521`; on `KeyReason`, `Unavailable(name)`; on
+   `CryptoReason`, `Padding` and `Unsupported(name)`.
 
 ### Changed
 
@@ -131,6 +133,10 @@ this list when they land, before the beta's preparation commit.
   under 1.6.0's zeroing rule (an opened plaintext included), so the NIST and RFC vectors
   agree on JS, WASM and native. A 1.8 host refuses a 1.9 module (`V8003`); a WASI command
   does not have the imports.
+- The WASM runtime ABI is 1.11.0 (`sakura_abi_version` `0x010b00`; plan `web-apis.md` phase
+  7c): two `hosted` imports, `crypto_cipher` (AES-CBC, AES-CTR, AES-KW and RSA-OAEP, the
+  arguments wiped as 1.6.0's) and `crypto_tier2`, carry `std/crypto` tier 2 to the Node host.
+  A 1.10 host refuses a 1.11 module (`V8003`).
 
 - **`--json` closing records have one `kind` per shape** (design §17.242). `check`, `fix`
   and `build` still end with `summary` 1.0, now with all eight fields always present
@@ -315,6 +321,17 @@ this list when they land, before the beta's preparation commit.
   `KeyFormat`, `KeyReason` and `CryptoReason`, which RFC 0002 §2.7 reserved for this tier,
   make an exhaustive `match` over one of them in a program written against `v0.1.0`
   non-exhaustive; std signatures are stable from 1.0.0-beta.1 (STABILITY.md).
+- **Breaking:** `std/crypto` tier 2 on JS and WASM-on-JS (RFC 0002 §2.7; plan `web-apis.md`
+  phase 7c): `Algorithm` gains `AesCbc`, `AesCtr`, `AesKw` (each over `AesLength`),
+  `RsassaPkcs1`, `RsaPss` and `RsaOaep` (each over `Digest`); `Curve` gains `P384` and `P521`
+  (ECDSA with SHA-384 and SHA-512, ECDH); `KeyReason` gains `Unavailable(name)` and
+  `CryptoReason` gains `Padding` and `Unsupported(name)`. RSA keys are imported (SPKI,
+  PKCS #8, JWK; 2,048–16,384-bit moduli), not generated; RSA-OAEP takes its seed as the
+  `encrypt` nonce and its label as `aad`. On native, `import_key` answers
+  `KeyError(Unavailable(name))` and `encrypt`/`decrypt` `CryptoError(Unsupported(name))`.
+  NIST CAVP, RFC 3686, 3394, 6979 and 5903 vectors and Project Wycheproof's RSA cases are in
+  `compiler/tests/vectors`. An exhaustive `match` over one of these sums stops compiling. No
+  dependency was added.
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.

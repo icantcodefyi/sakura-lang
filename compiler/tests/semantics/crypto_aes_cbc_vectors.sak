@@ -1,0 +1,118 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://csrc.nist.gov/pubs/sp/800/38/a/final
+
+// AES-CBC with PKCS #7 padding (NIST SP 800-38A, Web Crypto's AES-CBC): the first three NIST CAVP
+// MMT rows of each key length (`tests/vectors/aes_cbc.txt`). The table's CBC has no padding, so
+// `encrypt` writes its ciphertext and then one block more, which the output shows as the table's CT
+// and "+16"; `decrypt` gives the plaintext back. A changed padding byte and a ciphertext that is not
+// whole blocks are `Padding`, and a 12-byte IV is `Nonce(12)`. On native, which has no tier 2, `import_key` answers `Unavailable("AES-CBC")` and `encrypt` under a generated key `Unsupported("AES-CBC")` (`.native.stdout`, RFC 0002 §2.7's declared difference).
+// Generated from the table.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  let none = Bytes.from_list([])
+  for (bits, key, iv, pt) in [
+    (
+      128,
+      "1f8e4973953f3fb0bd6b16662e9a3c17",
+      "2fe2b333ceda8f98f4a99b40d2cd34a8",
+      "45cf12964fc824ab76616ae2f4bf0822",
+    ),
+    (
+      128,
+      "0700d603a1c514e46b6191ba430a3a0c",
+      "aad1583cd91365e3bb2f0c3430d065bb",
+      "068b25c7bfb1f8bdd4cfc908f69dffc5ddc726a197f0e5f720f730393279be91",
+    ),
+    (
+      128,
+      "3348aa51e9a45c2dbe33ccc47f96e8de",
+      "19153c673160df2b1d38c28060e59b96",
+      "9b7cee827a26575afdbb7c7a329f887238052e3601a7917456ba61251c214763d5e1847a6ad5d54127a399ab07ee3599",
+    ),
+    (
+      256,
+      "6ed76d2d97c69fd1339589523931f2a6cff554b15f738f21ec72dd97a7330907",
+      "851e8764776e6796aab722dbb644ace8",
+      "6282b8c05c5c1530b97d4816ca434762",
+    ),
+    (
+      256,
+      "dce26c6b4cfb286510da4eecd2cffe6cdf430f33db9b5f77b460679bd49d13ae",
+      "fdeaa134c8d7379d457175fd1a57d3fc",
+      "50e9eee1ac528009e8cbcd356975881f957254b13f91d7c6662d10312052eb00",
+    ),
+    (
+      256,
+      "fe8901fecd3ccd2ec5fdc7c7a0b50519c245b42d611a5ef9e90268d59f3edf33",
+      "bd416cb3b9892228d8f1df575692e4d0",
+      "8d3aa196ec3d7c9b5bb122e7fe77fb1295a6da75abe5d3a510194d3a8a4157d5c89d40619716619859da3ec9b247ced9",
+    ),
+  ] {
+    match crypto.import_key(KeyFormat.Raw, alg(bits), usages, false, Secret.of(unhex(key))) {
+      Ok(k) => match crypto.encrypt(k, unhex(iv), none, unhex(pt)) {
+        Ok(sealed) => {
+          let n = Bytes.len(unhex(pt))
+          let back = crypto.decrypt(k, unhex(iv), none, sealed) == Ok(unhex(pt))
+          Console.print("{bits} {hex(Bytes.slice(sealed, 0, n))} +{Bytes.len(sealed) - n} {back}")
+        },
+        Err(e) => Console.print("{bits} {e}"),
+      },
+      Err(e) => Console.print("{bits} {e}"),
+    }
+  }
+  let k = with Random.seeded(4) { crypto.generate_key(alg(128), usages, false) }
+  let iv = unhex("2fe2b333ceda8f98f4a99b40d2cd34a8")
+  match crypto.encrypt(k, iv, none, unhex("45cf12964fc824ab76616ae2f4bf0822")) {
+    Ok(sealed) => {
+      Console.print(
+        "changed padding {crypto.decrypt(k, iv, none, flip(sealed, Bytes.len(sealed) - 17))}",
+      )
+      Console.print("not whole blocks {crypto.decrypt(k, iv, none, Bytes.slice(sealed, 0, 31))}")
+      Console.print("empty {crypto.decrypt(k, iv, none, none)}")
+    },
+    Err(e) => Console.print("generated {e}"),
+  }
+  Console.print("iv 12 {crypto.encrypt(k, Bytes.slice(iv, 0, 12), none, none)}")
+}
+
+fn alg(bits: Int) -> Algorithm {
+  if bits == 128 { Algorithm.AesCbc(AesLength.Aes128) } else { Algorithm.AesCbc(AesLength.Aes256) }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}
+
+/// `b` with bit 4 of byte `at` flipped.
+fn flip(b: Bytes, at: Int) -> Bytes {
+  let x = Bytes.get(b, at).unwrap_or(0)
+  let y = if x / 16 % 2 == 1 { x - 16 } else { x + 16 }
+  Bytes.concat([Bytes.slice(b, 0, at), Bytes.from_list([y]), Bytes.slice(b, at + 1, Bytes.len(b))])
+}

@@ -1645,3 +1645,156 @@ test("ECDSA P-256 verifies RFC 6979 §A.2.5 and its own signatures", () => {
     assert.ok(!rt.crypto_sign_verify(P256, pub, new Uint8Array(64), unhex(msg)), `message ${m}`);
   }
 });
+
+// Tier 2 (phase 7c). `crypto_cipher`'s code is `2 * mode + direction`; a pair's code is the curve
+// (3 P-384, 4 P-521) or `10 + h`, `20 + h`, `30 + h` for the three RSA algorithms with hash `h`.
+const [P384, P521] = [3, 4];
+const [CBC, CTR, KW] = [0, 1, 2];
+const seal = (mode, key, iv, aad, pt) => rt.crypto_cipher(2 * mode, key, iv, aad, pt);
+const open = (mode, key, iv, aad, ct) => rt.crypto_cipher(2 * mode + 1, key, iv, aad, ct);
+const none = new Uint8Array(0);
+
+test("crypto_tier2 answers true on JS", () => {
+  assert.equal(rt.crypto_tier2(), true);
+});
+
+test("AES-CBC matches NIST CAVP MMT, with Web Crypto's PKCS #7 block after it", () => {
+  const rows = vectorRows("aes_cbc.txt");
+  assert.equal(rows.length, 20);
+  for (const [bits, key, iv, pt, ct] of rows) {
+    const [k, n] = [unhex(key), unhex(iv)];
+    const row = `${bits} iv ${iv}`;
+    const sealed = seal(CBC, k, n, none, unhex(pt)).fields[0];
+    assert.equal(sealed.length, pt.length / 2 + 16, row);
+    assert.equal(hex(sealed.subarray(0, pt.length / 2)), ct, row);
+    assert.ok(same(open(CBC, k, n, none, sealed).fields[0], unhex(pt)), row);
+    const bad = sealed.slice();
+    bad[bad.length - 17] ^= 0x10; // the padding byte's plaintext becomes 0x00
+    assert.equal(open(CBC, k, n, none, bad), rt.None, row);
+  }
+});
+
+test("AES-CTR matches RFC 3686 §6", () => {
+  const rows = vectorRows("aes_ctr.txt");
+  assert.equal(rows.length, 6);
+  for (const [bits, key, block, pt, ct] of rows) {
+    const [k, c] = [unhex(key), unhex(block)];
+    assert.equal(hex(seal(CTR, k, c, none, unhex(pt)).fields[0]), ct, `${bits} ${block}`);
+    assert.equal(hex(open(CTR, k, c, none, unhex(ct)).fields[0]), pt, `${bits} ${block}`);
+  }
+});
+
+test("AES-KW matches RFC 3394 §4 and refuses a changed byte", () => {
+  const rows = vectorRows("aes_kw.txt");
+  assert.equal(rows.length, 4);
+  for (const [bits, kek, data, ct] of rows) {
+    const k = unhex(kek);
+    assert.equal(hex(seal(KW, k, none, none, unhex(data)).fields[0]), ct, `${bits} ${data}`);
+    assert.equal(hex(open(KW, k, none, none, unhex(ct)).fields[0]), data, `${bits} ${data}`);
+    const bad = unhex(ct);
+    bad[3] ^= 1;
+    assert.equal(open(KW, k, none, none, bad), rt.None, `${bits} ${data}`);
+  }
+});
+
+test("ECDSA P-384 and P-521 verify RFC 6979 §A.2.6 and §A.2.7 and their own signatures", () => {
+  for (const [file, curve, n] of [["ecdsa_p384.txt", P384, 48], ["ecdsa_p521.txt", P521, 66]]) {
+    const rows = vectorRows(file);
+    assert.equal(rows.length, 2);
+    for (const [m, x, ux, uy, msg, , r, s] of rows) {
+      const pub = unhex("04" + ux + uy);
+      const row = `${file} message ${m}`;
+      assert.ok(same(rt.crypto_public_of(curve, unhex(x)), pub), row);
+      assert.ok(rt.crypto_public_valid(curve, pub), row);
+      assert.ok(rt.crypto_sign_verify(curve, pub, unhex(r + s), unhex(msg)), row);
+      const mine = rt.crypto_sign(curve, unhex(x), unhex(msg));
+      assert.equal(mine.length, 2 * n, row);
+      assert.ok(rt.crypto_sign_verify(curve, pub, mine, unhex(msg)), row);
+      assert.ok(!rt.crypto_sign_verify(curve, pub, mine, new TextEncoder().encode("other")), row);
+      const off = pub.slice();
+      off[off.length - 1] ^= 1;
+      assert.ok(!rt.crypto_public_valid(curve, off), row);
+    }
+  }
+});
+
+test("P-384 and P-521 ECDH match RFC 5903 §8.2 and §8.3", () => {
+  for (const [file, curve] of [["ecdh_p384.txt", P384], ["ecdh_p521.txt", P521]]) {
+    const [i, gix, giy, r, grx, gry, girx] = vectorRows(file)[0];
+    const [gi, gr] = [unhex("04" + gix + giy), unhex("04" + grx + gry)];
+    assert.ok(same(rt.crypto_public_of(curve, unhex(i)), gi) && same(rt.crypto_public_of(curve, unhex(r)), gr), file);
+    assert.ok(same(rt.crypto_ecdh(curve, unhex(i), gr), unhex(girx)), file);
+    assert.ok(same(rt.crypto_ecdh(curve, unhex(r), gi), unhex(girx)), file);
+    assert.equal(rt.crypto_public_of(curve, new Uint8Array(unhex(i).length)).length, 0, file);
+  }
+});
+
+/** The `key` rows of an RSA table by number, and its other rows. */
+const rsaTable = (file) => {
+  const keys = new Map();
+  const rest = [];
+  for (const [kind, n, ...cols] of vectorRows(file)) {
+    if (kind === "key") keys.set(n, cols.map(unhex));
+    else rest.push([n, ...cols]);
+  }
+  return [keys, rest];
+};
+
+test("RSASSA-PKCS1-v1_5 signs Wycheproof's signatures byte for byte and verifies them", () => {
+  const [keys, rows] = rsaTable("rsassa_pkcs1.txt");
+  assert.equal(rows.length, 24);
+  for (const [n, hash, id, msg, sig] of rows) {
+    const [pkcs8, spki] = keys.get(n);
+    const code = 10 + HASH_CODE[hash.replace("sha", "SHA-")];
+    assert.ok(same(rt.crypto_public_of(code, pkcs8), spki), `tcId ${id}`);
+    assert.ok(rt.crypto_public_valid(code, spki), `tcId ${id}`);
+    assert.equal(hex(rt.crypto_sign(code, pkcs8, unhex(msg))), sig, `tcId ${id}`);
+    assert.ok(rt.crypto_sign_verify(code, spki, unhex(sig), unhex(msg)), `tcId ${id}`);
+    const bad = unhex(sig);
+    bad[0] ^= 1;
+    assert.ok(!rt.crypto_sign_verify(code, spki, bad, unhex(msg)), `tcId ${id}`);
+  }
+});
+
+test("RSA-PSS verifies Wycheproof's valid signatures and refuses its invalid ones", () => {
+  const [keys, rows] = rsaTable("rsa_pss.txt");
+  assert.equal(rows.length, 48);
+  for (const [n, hash, id, result, msg, sig] of rows) {
+    const [spki] = keys.get(n);
+    const code = 20 + HASH_CODE[hash.replace("sha", "SHA-")];
+    assert.equal(rt.crypto_sign_verify(code, spki, unhex(sig), unhex(msg)), result === "valid", `${hash} tcId ${id}`);
+  }
+});
+
+test("RSA-OAEP decrypts Wycheproof's valid ciphertexts, refuses its invalid ones and opens its own", () => {
+  const [keys, rows] = rsaTable("rsa_oaep.txt");
+  assert.equal(rows.length, 48);
+  for (const [n, hash, id, result, label, msg, ct] of rows) {
+    const [pkcs8] = keys.get(n);
+    const h = HASH_CODE[hash.replace("sha", "SHA-")];
+    const mode = 3 + h;
+    const row = `${hash} tcId ${id}`;
+    const opened = open(mode, pkcs8, none, unhex(label), unhex(ct));
+    if (result === "valid") assert.equal(hex(opened.fields[0]), msg, row);
+    else assert.equal(opened, rt.None, row);
+    if (result !== "valid") continue;
+    // The seed is the caller's, so the ciphertext is a function of the inputs.
+    const spki = rt.crypto_public_of(30 + h, pkcs8);
+    const seed = new Uint8Array([32, 48, 64][h]).fill(id % 256);
+    const mine = seal(mode, spki, seed, unhex(label), unhex(msg)).fields[0];
+    assert.ok(same(mine, seal(mode, spki, seed, unhex(label), unhex(msg)).fields[0]), row);
+    assert.equal(hex(open(mode, pkcs8, none, unhex(label), mine).fields[0]), msg, row);
+    assert.equal(open(mode, pkcs8, none, new Uint8Array([1]), mine), rt.None, row);
+  }
+});
+
+// A key whose signatures its own public key refuses. (A wrong CRT part alone is not one: OpenSSL
+// checks its CRT result and falls back to `d`, so such a key still signs correctly.)
+test("an RSA private key that cannot sign answers no public key", () => {
+  const [keys] = rsaTable("rsassa_pkcs1.txt");
+  const [pkcs8] = keys.get("0");
+  const bad = pkcs8.slice();
+  bad[60] ^= 1; // inside the modulus
+  assert.equal(rt.crypto_public_of(10, bad).length, 0);
+  assert.equal(rt.crypto_public_of(10, new Uint8Array([48, 0])).length, 0);
+});

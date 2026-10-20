@@ -6,28 +6,31 @@ layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
 layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
 layout 2 variant std::core::Trust
 layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
-layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
 layout 5 error std::crypto::CryptoError | CryptoError 24b (reason: word*)
 layout 6 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
-layout 7 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64) | Nonce 24b (i64) | Tag 16b () | ZeroSecret 16b ()
-layout 8 variant std::crypto::Curve | P256 16b ()
+layout 7 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64) | Nonce 24b (i64) | Tag 16b () | ZeroSecret 16b () | Padding 16b () | Unsupported 24b (word*)
+layout 8 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
 layout 9 variant std::crypto::DeriveParams | HkdfWith 24b (word*) | Pbkdf2With 24b (word*) | EcdhWith 24b (word*)
 layout 10 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
 layout 11 record std::crypto::HkdfParams | HkdfParams 32b (salt: word*, info: word*)
 layout 12 error std::crypto::KeyError | KeyError 24b (reason: word*)
 layout 13 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
 layout 14 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
-layout 15 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 15 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
 layout 16 record std::crypto::Pbkdf2Params | Pbkdf2Params 32b (salt: word*, iterations: i64)
 layout 17 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
 layout 18 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 19 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
-layout 20 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 21 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 22 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
-layout 23 shape |  32b (word*, word*)
-layout 24 shape |  32b (i64, word*)
-layout 25 shape |  48b (word*, word*, word*, word*)
+layout 20 variant std::list::Builder
+layout 21 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 22 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 24 shape |  32b (word*, word*)
+layout 25 shape |  32b (i64, word*)
+layout 26 shape |  48b (word*, word*, word*, word*)
+layout 27 shape |  32b (bool, word*)
+layout 28 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 word*, %26 word*, %30 word*, %31 word*, %32 word*, %33 word*, %36 bool, %56 word*, %58 word*, %62 bool, %88 word*, %89 word*, %90 i64, %91 i64, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 i64, %98 i64, %99 word*, %100 word*, %101 word*, %114 bool, %115 word*, %116 i64, %117 i64, %156 word*, %157 word*, %158 i64, %159 i64, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 word*, %182 word*, %183 word*, %184 word*, %185 bool, %186 word*, %187 word*, %188 i64, %189 i64, %190 word*, %191 word*, %192 word*, %193 bool, %194 word*, %213 word*, %214 word*, %215 i64, %216 i64, %217 word*, %219 word*, %220 word*, %221 i64, %222 i64, %223 word*, %226 bool, %227 word*, %228 i64, %229 i64]
   b0():
@@ -35,22 +38,22 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
     %1 lit: ptr = const str 1
     %2 lit: ptr = const str 2
     %3 lit: ptr = const str 3
-    %4 tup: ptr = alloc tuple#25(word, word, word, word)(%0, %1, %2, %3)
+    %4 tup: ptr = alloc tuple#26(word, word, word, word)(%0, %1, %2, %3)
     %5 lit: ptr = const str 0
     %6 lit: ptr = const str 4
     %7 lit: ptr = const str 5
     %8 lit: ptr = const str 6
-    %9 tup: ptr = alloc tuple#25(word, word, word, word)(%5, %6, %7, %8)
+    %9 tup: ptr = alloc tuple#26(word, word, word, word)(%5, %6, %7, %8)
     %10 lit: ptr = const str 7
     %11 lit: ptr = const str 8
     %12 lit: ptr = const str 9
     %13 lit: ptr = const str 10
-    %14 tup: ptr = alloc tuple#25(word, word, word, word)(%10, %11, %12, %13)
+    %14 tup: ptr = alloc tuple#26(word, word, word, word)(%10, %11, %12, %13)
     %15 lit: ptr = const str 11
     %16 lit: ptr = const str 12
     %17 lit: ptr = const str 13
     %18 lit: ptr = const str 10
-    %19 tup: ptr = alloc tuple#25(word, word, word, word)(%15, %16, %17, %18)
+    %19 tup: ptr = alloc tuple#26(word, word, word, word)(%15, %16, %17, %18)
     %20 xs: ptr = alloc list(%4, %9, %14, %19)
     dup.candidate %20
     %21 n: i64 = $list_len(%20)
@@ -71,7 +74,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
   b4(%30 r: ptr, %31 r: ptr):
     call public_key#3(%30) -> b5(%31)
   b5(%32 r: ptr, %33 r: ptr):
-    %34 tup: ptr = alloc tuple#23(word, word)(%33, %32)
+    %34 tup: ptr = alloc tuple#24(word, word)(%33, %32)
     %39 p: ptr = tuple_get %34.0
     %40 p: ptr = tuple_get %34.1
     drop %34
@@ -106,7 +109,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
     drop %51
     jump b6()
   b12(%56 r: ptr):
-    %57 fn: ptr = const static closure $bytes_len$value#60
+    %57 fn: ptr = const static closure $bytes_len$value#88
     call map#6(%56, %57) -> b13()
   b13(%58 r: ptr):
     %59 s: ptr = show %58
@@ -144,7 +147,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
   b20(%88 r: ptr, %89 xs: ptr, %90 n: i64, %91 i: i64, %92 case: ptr, %93 u: ptr, %94 out: ptr):
     call public_key#3(%93) -> b21(%89, %90, %91, %92, %94, %88)
   b21(%95 r: ptr, %96 xs: ptr, %97 n: i64, %98 i: i64, %99 case: ptr, %100 out: ptr, %101 r: ptr):
-    %102 tup: ptr = alloc tuple#23(word, word)(%101, %95)
+    %102 tup: ptr = alloc tuple#24(word, word)(%101, %95)
     %119 p: ptr = tuple_get %102.0
     %120 p: ptr = tuple_get %102.1
     drop %102
@@ -231,7 +234,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
     %212 $site: i64 = const 8
     call derive_bits#4(%191, %192, %211, %212) -> b33(%187, %188, %189, %210)
   b33(%213 r: ptr, %214 xs: ptr, %215 n: i64, %216 i: i64, %217 s: ptr):
-    %218 fn: ptr = const static closure $bytes_len$value#60
+    %218 fn: ptr = const static closure $bytes_len$value#88
     call map#6(%213, %218) -> b34(%214, %215, %216, %217)
   b34(%219 r: ptr, %220 xs: ptr, %221 n: i64, %222 i: i64, %223 s: ptr):
     %224 s: ptr = show %219
@@ -265,7 +268,7 @@ fn private_key#2 top -> ptr ; main::crypto_x25519_rfc7748, frame 3 slots [%0 wor
     %7 xs: ptr = alloc list(%6)
     %8 r: ptr = $secret_wrap(%3)
     %9 lit: bool = const false
-    call import_key#22(%4, %5, %7, %9, %8) -> b2()
+    call import_key#24(%4, %5, %7, %9, %8) -> b2()
   b2(%10 r: ptr):
     ret %10
 
@@ -278,7 +281,7 @@ fn public_key#3 top -> ptr ; main::crypto_x25519_rfc7748, frame 6 slots [%0 word
   b1(%4 r: ptr, %5 v: ptr, %6 v: ptr, %7 xs: ptr):
     %8 r: ptr = $secret_wrap(%4)
     %9 lit: bool = const true
-    call import_key#22(%5, %6, %7, %9, %8) -> b2()
+    call import_key#24(%5, %6, %7, %9, %8) -> b2()
   b2(%10 r: ptr):
     ret %10
 
@@ -367,7 +370,7 @@ fn nibble#8 top -> i64 ; main::crypto_x25519_rfc7748, frame 1 slots [%0 word*]
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
 
-fn $bytes_len$value#60 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#88 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

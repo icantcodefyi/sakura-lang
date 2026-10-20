@@ -1,0 +1,6 @@
+Sha256 tcId 81 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+Sha256 tcId 82 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+Sha384 tcId 89 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+Sha384 tcId 90 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+Sha512 tcId 97 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
+Sha512 tcId 98 KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }

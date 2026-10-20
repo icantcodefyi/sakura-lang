@@ -299,15 +299,15 @@ type Trust
 
 ```sakura fragment
 type Digest = Sha256 | Sha384 | Sha512
-type Curve = P256
+type Curve = P256 | P384 | P521
 type AesLength = Aes128 | Aes256
-type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest) | AesGcm(AesLength) | Ecdsa(Curve) | Ecdh(Curve) | Ed25519 | X25519
+type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest) | AesGcm(AesLength) | AesCbc(AesLength) | AesCtr(AesLength) | AesKw(AesLength) | Ecdsa(Curve) | Ecdh(Curve) | Ed25519 | X25519 | RsassaPkcs1(Digest) | RsaPss(Digest) | RsaOaep(Digest)
 type Usage = Sign | Verify | DeriveBits | Encrypt | Decrypt
 type KeyFormat = Raw | Pkcs8 | Spki | Jwk
 type KeyKind = SecretKey | PublicKey | PrivateKey
-type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty | Format(KeyFormat) | Malformed
+type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty | Format(KeyFormat) | Malformed | Unavailable(String)
 error KeyError(reason: KeyReason)
-type CryptoReason = Length(Int) | Iterations(Int) | Info(Int) | Nonce(Int) | Tag | ZeroSecret
+type CryptoReason = Length(Int) | Iterations(Int) | Info(Int) | Nonce(Int) | Tag | ZeroSecret | Padding | Unsupported(String)
 error CryptoError(reason: CryptoReason)
 opaque type CryptoKey = { algorithm: Algorithm, kind: KeyKind, usages: List<Usage>, extractable: Bool, material: Secret<Bytes> }
 type KeyPair = { public: CryptoKey, private: CryptoKey }
@@ -328,8 +328,8 @@ fn generate_key_pair(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> 
 fn hmac(key: CryptoKey, data: Bytes) -> Bytes requires is_hmac(key.algorithm) && permits(key, Sign)
 fn sign(key: CryptoKey, data: Bytes) -> Bytes ! {Random} requires signs(key.algorithm) && permits(key, Sign)
 fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool requires signs(key.algorithm) && permits(key, Verify)
-fn encrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, plaintext: Bytes) -> Result<Bytes, CryptoError> requires is_aes(key.algorithm) && permits(key, Encrypt)
-fn decrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, ciphertext: Bytes) -> Result<Bytes, CryptoError> requires is_aes(key.algorithm) && permits(key, Decrypt)
+fn encrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, plaintext: Bytes) -> Result<Bytes, CryptoError> requires encrypts(key.algorithm) && permits(key, Encrypt) && (Bytes.len(aad) == 0 || takes_aad(key.algorithm))
+fn decrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, ciphertext: Bytes) -> Result<Bytes, CryptoError> requires encrypts(key.algorithm) && permits(key, Decrypt) && (Bytes.len(aad) == 0 || takes_aad(key.algorithm))
 fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError> requires permits(key, DeriveBits) && fits(key, params)
 ```
 

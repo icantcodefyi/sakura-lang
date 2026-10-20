@@ -6,15 +6,15 @@ layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
 layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
 layout 2 variant std::core::Trust
 layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
-layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
 layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
-layout 6 variant std::crypto::Curve | P256 16b ()
+layout 6 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
 layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
 layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
 layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
 layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
 layout 11 record std::crypto::KeyPair | KeyPair 32b (public: word*, private: word*)
-layout 12 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 12 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
 layout 13 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
 layout 14 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 15 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
@@ -26,6 +26,8 @@ layout 20 shape |  32b (word*, word*)
 layout 21 shape |  32b (i64, word*)
 layout 22 shape |  24b (i64)
 layout 23 shape |  72b (word*, word*, word*, word*, word*, word*, word*)
+layout 24 shape |  32b (bool, word*)
+layout 25 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 slots [%22 word*, %23 word*, %28 word*, %29 word*, %30 word*, %36 bool, %37 word*, %38 word*, %39 word*, %46 bool, %47 word*, %50 bool, %55 word*, %56 word*, %57 word*, %63 word*, %100 word*, %101 word*, %102 word*, %103 i64, %104 i64, %105 word*, %106 word*, %107 word*, %108 word*, %109 word*, %110 word*, %111 word*, %112 word*, %115 word*, %116 word*, %117 word*, %118 i64, %119 i64, %120 word*, %121 word*, %122 word*, %123 word*, %124 word*, %125 word*, %132 word*, %133 word*, %134 word*, %135 i64, %136 i64, %137 word*, %138 word*, %139 word*, %140 word*, %141 word*, %142 word*, %143 word*, %146 word*, %147 word*, %148 word*, %149 i64, %150 i64, %151 word*, %152 word*, %153 word*, %154 word*, %155 word*, %170 bool, %171 word*, %172 word*, %173 i64, %174 i64, %222 word*, %223 word*, %224 word*, %225 i64, %226 i64, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %233 word*, %234 word*, %235 word*, %236 i64, %237 i64, %238 word*, %239 word*, %240 word*, %241 word*, %242 word*, %243 word*, %258 word*, %259 word*, %260 word*, %261 i64, %262 i64, %263 word*, %264 word*, %265 word*, %266 word*, %268 bool, %269 word*, %270 word*, %271 i64, %272 i64, %273 word*, %274 word*, %275 word*, %276 word*, %287 bool, %288 word*, %289 word*, %290 i64, %291 i64, %292 word*, %293 word*, %294 word*, %295 word*, %300 bool, %301 word*, %302 word*, %303 i64, %304 i64, %305 word*, %308 bool, %309 word*, %310 word*, %311 i64, %312 i64, %315 word*, %316 word*, %317 word*, %318 i64, %319 i64, %320 word*, %321 word*, %322 word*, %323 word*, %324 word*]
   b0():
@@ -295,7 +297,7 @@ fn unhex#2 top -> ptr ; main::crypto_ecdsa_sign_verify_roundtrip, frame 12 slots
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#79(%32) -> b6(%12, %13, %14, %15)
+    call nibble#107(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -316,7 +318,7 @@ fn unhex#2 top -> ptr ; main::crypto_ecdsa_sign_verify_roundtrip, frame 12 slots
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#79(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#107(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
@@ -397,7 +399,7 @@ fn refused#7 top -> bool ; main::crypto_ecdsa_sign_verify_roundtrip, frame 17 sl
     %80 t: i64 = intsub %76, %79
     jump b2(%80, %73, %74, %75)
 
-fn nibble#79 top -> i64 ; main::crypto_ecdsa_sign_verify_roundtrip, frame 1 slots [%0 word*]
+fn nibble#107 top -> i64 ; main::crypto_ecdsa_sign_verify_roundtrip, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0

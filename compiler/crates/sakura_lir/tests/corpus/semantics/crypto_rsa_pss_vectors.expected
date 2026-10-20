@@ -1,0 +1,15 @@
+ending: ok
+--- stdout
+Sha256 tcId 1 valid true
+Sha256 tcId 2 valid true
+Sha256 tcId 62 invalid false
+Sha256 tcId 63 invalid false
+Sha384 tcId 1 valid true
+Sha384 tcId 2 valid true
+Sha384 tcId 94 invalid false
+Sha384 tcId 95 invalid false
+Sha512 tcId 1 valid true
+Sha512 tcId 2 valid true
+Sha512 tcId 131 invalid false
+Sha512 tcId 132 invalid false
+own 256 true other false flipped false

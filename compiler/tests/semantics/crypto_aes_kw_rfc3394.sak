@@ -1,0 +1,112 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc3394#section-4
+
+// AES-KW (RFC 3394, Web Crypto's AES-KW) through `encrypt` and `decrypt` with an empty nonce and
+// no additional data: RFC 3394 §4's vectors with 128- and 256-bit KEKs (`tests/vectors/aes_kw.txt`).
+// `encrypt` writes the RFC's ciphertext and `decrypt` gives the key data back. A changed byte fails
+// the integrity check (`Tag`), key data that is not a multiple of 8 bytes or under 16 is
+// `Length(bits)`, and a nonce is `Nonce(n)`. A KW key's JWK names its usages `wrapKey` and
+// `unwrapKey`, as Web Crypto writes them (the text holds the key and is not printed).
+// On native, which has no tier 2, `import_key` answers `Unavailable("AES-KW")` (`.native.stdout`, RFC 0002 §2.7's declared difference). Generated from the table.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  let none = Bytes.from_list([])
+  for (bits, kek, data) in [
+    (128, "000102030405060708090a0b0c0d0e0f", "00112233445566778899aabbccddeeff"),
+    (
+      256,
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "00112233445566778899aabbccddeeff",
+    ),
+    (
+      256,
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "00112233445566778899aabbccddeeff0001020304050607",
+    ),
+    (
+      256,
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+      "00112233445566778899aabbccddeeff000102030405060708090a0b0c0d0e0f",
+    ),
+  ] {
+    match crypto.import_key(KeyFormat.Raw, alg(bits), usages, true, Secret.of(unhex(kek))) {
+      Ok(k) => match crypto.encrypt(k, none, none, unhex(data)) {
+        Ok(ct) => {
+          let back = crypto.decrypt(k, none, none, ct) == Ok(unhex(data))
+          Console.print(
+            "{bits} {hex(ct)} {back} changed {crypto.decrypt(k, none, none, flip(ct, 3))}",
+          )
+        },
+        Err(e) => Console.print("{bits} {e}"),
+      },
+      Err(e) => Console.print("{bits} {e}"),
+    }
+  }
+  match crypto.import_key(
+    KeyFormat.Raw,
+    alg(128),
+    usages,
+    true,
+    Secret.of(unhex("000102030405060708090a0b0c0d0e0f")),
+  ) {
+    Ok(k) => {
+      let data = unhex("00112233445566778899aabbccddeeff")
+      Console.print("15 bytes {crypto.encrypt(k, none, none, Bytes.slice(data, 0, 15))}")
+      Console.print("8 bytes {crypto.encrypt(k, none, none, Bytes.slice(data, 0, 8))}")
+      Console.print("a nonce {crypto.encrypt(k, Bytes.slice(data, 0, 8), none, data)}")
+      Console.print("16 bytes to unwrap {crypto.decrypt(k, none, none, data)}")
+      let jwk = crypto.export_key(k, KeyFormat.Jwk)
+        .map(fn(b) {
+          String.contains(String.from_bytes(b).unwrap_or(""), "\"alg\":\"A128KW\"")
+            && String.contains(
+              String.from_bytes(b).unwrap_or(""),
+              "\"key_ops\":[\"wrapKey\",\"unwrapKey\"]",
+            )
+        })
+      Console.print("jwk names A128KW, wrapKey and unwrapKey {jwk}")
+    },
+    Err(e) => Console.print("{e}"),
+  }
+}
+
+fn alg(bits: Int) -> Algorithm {
+  if bits == 128 { Algorithm.AesKw(AesLength.Aes128) } else { Algorithm.AesKw(AesLength.Aes256) }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}
+
+/// `b` with bit 4 of byte `at` flipped.
+fn flip(b: Bytes, at: Int) -> Bytes {
+  let x = Bytes.get(b, at).unwrap_or(0)
+  let y = if x / 16 % 2 == 1 { x - 16 } else { x + 16 }
+  Bytes.concat([Bytes.slice(b, 0, at), Bytes.from_list([y]), Bytes.slice(b, at + 1, Bytes.len(b))])
+}

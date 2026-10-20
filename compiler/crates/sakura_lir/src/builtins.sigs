@@ -26,6 +26,7 @@ contract_enter: () -> unit
 contract_exit: () -> unit
 crypto_aes_gcm_open: (ptr, ptr, ptr, ptr) -> ptr
 crypto_aes_gcm_seal: (ptr, ptr, ptr, ptr) -> ptr
+crypto_cipher: (i64, ptr, ptr, ptr, ptr) -> ptr
 crypto_digest: (i64, ptr) -> ptr
 crypto_ecdh: (i64, ptr, ptr) -> ptr
 crypto_hkdf: (i64, ptr, ptr, ptr, i64) -> ptr
@@ -36,6 +37,7 @@ crypto_public_of: (i64, ptr) -> ptr
 crypto_public_valid: (i64, ptr) -> bool
 crypto_sign: (i64, ptr, ptr) -> ptr
 crypto_sign_verify: (i64, ptr, ptr, ptr) -> bool
+crypto_tier2: () -> bool
 encoding_decode: (ptr, i64, i64) -> ptr
 encoding_encode: (ptr, i64) -> ptr
 env_get: (ptr) -> ptr

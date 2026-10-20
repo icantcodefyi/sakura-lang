@@ -6,15 +6,15 @@ layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
 layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
 layout 2 variant std::core::Trust
 layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
-layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
 layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
-layout 6 variant std::crypto::Curve | P256 16b ()
+layout 6 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
 layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
 layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
 layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
 layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
 layout 11 record std::crypto::KeyPair | KeyPair 32b (public: word*, private: word*)
-layout 12 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 12 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
 layout 13 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
 layout 14 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 15 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
@@ -27,6 +27,8 @@ layout 21 shape |  32b (i64, word*)
 layout 22 shape |  24b (i64)
 layout 23 shape |  48b (word*, word*, word*, bool)
 layout 24 shape |  40b (word*, word*, word*)
+layout 25 shape |  32b (bool, word*)
+layout 26 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word*, %9 word*, %11 bool, %12 word*, %19 word*, %20 word*, %22 bool, %23 word*, %30 word*, %31 word*, %33 bool, %34 word*, %64 word*, %65 word*, %66 word*, %71 word*, %72 word*, %73 word*, %74 word*, %76 word*, %77 word*, %78 word*, %79 word*, %81 word*, %82 word*, %83 word*, %84 word*, %168 word*, %169 word*, %172 word*, %173 word*, %181 word*, %182 word*, %183 word*, %185 word*, %186 word*, %187 word*, %191 bool, %192 word*, %193 word*, %202 word*, %203 word*, %205 word*, %206 word*, %210 bool, %211 word*, %219 word*, %221 word*, %225 bool, %233 word*, %236 word*, %237 word*, %239 word*, %240 word*, %244 bool, %245 word*, %249 word*, %251 word*, %255 bool, %293 word*, %294 word*, %295 word*, %296 word*, %297 i64, %298 i64, %299 word*, %300 word*, %301 bool, %305 word*, %306 word*, %307 word*, %308 word*, %309 i64, %310 i64, %311 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 i64, %321 i64, %322 word*, %325 bool, %326 word*, %327 word*, %328 word*, %329 i64, %330 i64, %365 word*, %366 word*, %367 word*, %368 i64, %369 i64, %372 bool, %373 word*, %374 word*, %375 i64, %376 i64, %377 word*, %380 bool, %381 word*, %382 word*, %383 i64, %384 i64]
   b0():
@@ -228,7 +230,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     dup %174
     call import_key#9(%175, %177, %179, %180, %174) -> b16(%173, %174)
   b16(%181 r: ptr, %182 r: ptr, %183 r: ptr) [handle]:
-    %184 fn: ptr = const static closure kind$value#101
+    %184 fn: ptr = const static closure kind$value#130
     call map#11(%181, %184) -> b17(%182, %183)
   b17(%185 r: ptr, %186 r: ptr, %187 r: ptr) [handle]:
     %188 s: ptr = show %185
@@ -249,7 +251,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %201 lit: bool = const true
     call import_key#9(%198, %192, %200, %201, %197) -> b19(%193)
   b19(%202 r: ptr, %203 r: ptr) [handle]:
-    %204 fn: ptr = const static closure kind$value#101
+    %204 fn: ptr = const static closure kind$value#130
     call map#11(%202, %204) -> b20(%203)
   b20(%205 r: ptr, %206 r: ptr) [handle]:
     %207 s: ptr = show %205
@@ -293,7 +295,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %235 v: ptr = const static std::crypto::KeyFormat.Jwk
     call export_key#12(%234, %235) -> b26(%233)
   b26(%236 r: ptr, %237 r: ptr) [handle]:
-    %238 fn: ptr = const static closure $bytes_len$value#102
+    %238 fn: ptr = const static closure $bytes_len$value#131
     call map#11(%236, %238) -> b27(%237)
   b27(%239 r: ptr, %240 r: ptr) [handle]:
     %241 s: ptr = show %239
@@ -360,7 +362,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %313 lit: ptr = const str 24
     %314 s: ptr = concat %312, %313
     drop %313
-    %315 fn: ptr = const static closure kind$value#101
+    %315 fn: ptr = const static closure kind$value#130
     call map#11(%305, %315) -> b39(%306, %307, %308, %309, %310, %314)
   b39(%316 r: ptr, %317 r: ptr, %318 r: ptr, %319 xs: ptr, %320 n: i64, %321 i: i64, %322 s: ptr) [handle]:
     %323 s: ptr = show %316
@@ -431,11 +433,11 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     drop %11
     %146 p: word = proj %12.0 std::result::Result.Err
     drop %12
-    call algorithm#83(%10) -> b24(%146)
+    call algorithm#112(%10) -> b24(%146)
   b4(%14 r: ptr, %15 key: ptr, %16 via: ptr, %17 jwk: ptr):
-    call keys#81(%14) -> b5(%15, %16, %17)
+    call keys#110(%14) -> b5(%15, %16, %17)
   b5(%18 r: ptr, %19 key: ptr, %20 via: ptr, %21 jwk: ptr):
-    call sort#82(%18) -> b6(%19, %20, %21)
+    call sort#111(%18) -> b6(%19, %20, %21)
   b6(%22 r: ptr, %23 key: ptr, %24 via: ptr, %25 jwk: ptr):
     dup.candidate %23
     call members#6(%23) -> b7(%23, %24, %25, %22)
@@ -444,10 +446,10 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %32 r: ptr = $map_get(%26, %31)
     %33 v: ptr = const static std::crypto::KeyFormat.Jwk
     dup.candidate %27
-    call algorithm#83(%27) -> b8(%27, %28, %29, %30, %32, %33)
+    call algorithm#112(%27) -> b8(%27, %28, %29, %30, %32, %33)
   b8(%34 r: ptr, %35 key: ptr, %36 via: ptr, %37 jwk: ptr, %38 r: ptr, %39 r: ptr, %40 v: ptr):
     dup %35
-    call usages#84(%35) -> b9(%35, %36, %37, %38, %39, %40, %34)
+    call usages#113(%35) -> b9(%35, %36, %37, %38, %39, %40, %34)
   b9(%41 r: ptr, %42 key: ptr, %43 via: ptr, %44 jwk: ptr, %45 r: ptr, %46 r: ptr, %47 v: ptr, %48 r: ptr):
     %49 r: ptr = $secret_wrap(%44)
     %50 lit: bool = const true
@@ -457,7 +459,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     switch %90 0 => b15(%52, %53, %54, %55, %51) 1 => b16(%52, %53, %54, %55, %51)
   b11(%56 v: bool, %57 key: ptr, %58 r: ptr, %59 r: ptr):
     dup.candidate %57
-    call algorithm#83(%57) -> b12(%57, %58, %59, %56)
+    call algorithm#112(%57) -> b12(%57, %58, %59, %56)
   b12(%60 r: ptr, %61 key: ptr, %62 r: ptr, %63 r: ptr, %64 v: bool):
     %65 s: ptr = show %60
     drop %60
@@ -594,7 +596,7 @@ fn main$1#14 lambda -> word ; main::crypto_jwk_roundtrip, captures [], frame 4 s
     %2 v: ptr = const static std::crypto::KeyFormat.Jwk
     call export_key#12(%1, %2) -> b1()
   b1(%3 r: ptr):
-    %4 fn: ptr = const static closure $bytes_len$value#102
+    %4 fn: ptr = const static closure $bytes_len$value#131
     call map#11(%3, %4) -> b2()
   b2(%5 r: ptr):
     ret %5
@@ -607,7 +609,7 @@ fn main$2#15 lambda -> word ; main::crypto_jwk_roundtrip, captures [], frame 2 s
     %3 box: word = box %2
     ret %3
 
-fn $bytes_len$value#102 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#131 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

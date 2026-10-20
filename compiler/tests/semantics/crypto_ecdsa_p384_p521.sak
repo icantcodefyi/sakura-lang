@@ -1,0 +1,147 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc6979#appendix-A.2.6
+
+// ECDSA over P-384 with SHA-384 and P-521 with SHA-512 (JOSE's ES384 and ES512): the RFC 6979
+// §A.2.6 and §A.2.7 keys (`tests/vectors/ecdsa_p384.txt`, `ecdsa_p521.txt`), the private key
+// imported as PKCS #8 without its public key, which import computes, and the public key raw. The
+// RFC's signatures (`r || s`) verify; a signature `sign` writes is 96 or 132 bytes and verifies,
+// but its bytes are not compared or printed (OpenSSL's nonce is random). Other data and a flipped
+// bit do not verify, and a pair generated under a seed signs and verifies the same way.
+// On native, which has no tier 2, `import_key` answers `Unavailable("P-384")` or `Unavailable("P-521")`, and the generated pairs are not made there (`.native.stdout`, RFC 0002 §2.7's declared difference).
+// Generated from the tables.
+import std/crypto
+import std/crypto.{Algorithm, CryptoKey, Curve, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  for (bits, message, pkcs8, point, data, signature) in [
+    (
+      384,
+      "sample",
+      "304e020100301006072a8648ce3d020106052b810400220437303502010104306b9d3dad2e1b8c1c05b19875b6659f4de23c3b667bf297ba9aa47740787137d896d5724e4c70a825f872c9ea60d2edf5",
+      "04ec3a4e415b4e19a4568618029f427fa5da9a8bc4ae92e02e06aae5286b300c64def8f0ea9055866064a254515480bc138015d9b72d7d57244ea8ef9ac0c621896708a59367f9dfb9f54ca84b3f1c9db1288b231c3ae0d4fe7344fd2533264720",
+      "73616d706c65",
+      "94edbb92a5ecb8aad4736e56c691916b3f88140666ce9fa73d64c4ea95ad133c81a648152e44acf96e36dd1e80fabe4699ef4aeb15f178cea1fe40db2603138f130e740a19624526203b6351d0a3a94fa329c145786e679e7b82c71a38628ac8",
+    ),
+    (
+      384,
+      "test",
+      "304e020100301006072a8648ce3d020106052b810400220437303502010104306b9d3dad2e1b8c1c05b19875b6659f4de23c3b667bf297ba9aa47740787137d896d5724e4c70a825f872c9ea60d2edf5",
+      "04ec3a4e415b4e19a4568618029f427fa5da9a8bc4ae92e02e06aae5286b300c64def8f0ea9055866064a254515480bc138015d9b72d7d57244ea8ef9ac0c621896708a59367f9dfb9f54ca84b3f1c9db1288b231c3ae0d4fe7344fd2533264720",
+      "74657374",
+      "8203b63d3c853e8d77227fb377bcf7b7b772e97892a80f36ab775d509d7a5feb0542a7f0812998da8f1dd3ca3cf023dbddd0760448d42d8a43af45af836fce4de8be06b485e9b61b827c2f13173923e06a739f040649a667bf3b828246baa5a5",
+    ),
+    (
+      521,
+      "sample",
+      "3060020100301006072a8648ce3d020106052b8104002304493047020101044200fad06daa62ba3b25d2fb40133da757205de67f5bb0018fee8c86e1b68c7e75caa896eb32f1f47c70855836a6d16fcc1466f6d8fbec67db89ec0c08b0e996b83538",
+      "0401894550d0785932e00eaa23b694f213f8c3121f86dc97a04e5a7167db4e5bcd371123d46e45db6b5d5370a7f20fb633155d38ffa16d2bd761dcac474b9a2f5023a400493101c962cd4d2fddf782285e64584139c2f91b47f87ff82354d6630f746a28a0db25741b5b34a828008b22acc23f924faafbd4d33f81ea66956dfeaa2bfdfcf5",
+      "73616d706c65",
+      "00c328fafcbd79dd77850370c46325d987cb525569fb63c5d3bc53950e6d4c5f174e25a1ee9017b5d450606add152b534931d7d4e8455cc91f9b15bf05ec36e377fa00617cce7cf5064806c467f678d3b4080d6f1cc50af26ca209417308281b68af282623eaa63e5b5c0723d8b8c37ff0777b1a20f8ccb1dccc43997f1ee0e44da4a67a",
+    ),
+    (
+      521,
+      "test",
+      "3060020100301006072a8648ce3d020106052b8104002304493047020101044200fad06daa62ba3b25d2fb40133da757205de67f5bb0018fee8c86e1b68c7e75caa896eb32f1f47c70855836a6d16fcc1466f6d8fbec67db89ec0c08b0e996b83538",
+      "0401894550d0785932e00eaa23b694f213f8c3121f86dc97a04e5a7167db4e5bcd371123d46e45db6b5d5370a7f20fb633155d38ffa16d2bd761dcac474b9a2f5023a400493101c962cd4d2fddf782285e64584139c2f91b47f87ff82354d6630f746a28a0db25741b5b34a828008b22acc23f924faafbd4d33f81ea66956dfeaa2bfdfcf5",
+      "74657374",
+      "013e99020abf5cee7525d16b69b229652ab6bdf2affcaef38773b4b7d08725f10cdb93482fdcc54edcee91eca4166b2a7c6265ef0ce2bd7051b7cef945babd47ee6d01fbd0013c674aa79cb39849527916ce301c66ea7ce8b80682786ad60f98f7e78a19ca69eff5c57400e3b3a0ad66ce0978214d13baf4e9ac60752f7b155e2de4dce3",
+    ),
+  ] {
+    let alg = curve(bits)
+    let private = crypto.import_key(
+      KeyFormat.Pkcs8,
+      alg,
+      [Usage.Sign],
+      false,
+      Secret.of(unhex(pkcs8)),
+    )
+    let public = crypto.import_key(
+      KeyFormat.Raw,
+      alg,
+      [Usage.Verify],
+      true,
+      Secret.of(unhex(point)),
+    )
+    match (private, public) {
+      (Ok(k), Ok(p)) => {
+        let msg = unhex(data)
+        let mine = with Random.seeded(0) { crypto.sign(k, msg) }
+        Console.print(
+          "P-{bits} {message} rfc {p.verify(unhex(signature), msg)} own {Bytes.len(mine)} {p.verify(mine, msg)} refused {refused(p, mine, msg)}",
+        )
+      },
+      (Err(e), _) => Console.print("P-{bits} {message} {e}"),
+      (_, Err(e)) => Console.print("P-{bits} {message} {e}"),
+    }
+  }
+  let unavailable = match crypto.import_key(
+    KeyFormat.Raw,
+    curve(384),
+    [],
+    true,
+    Secret.of(
+      unhex(
+        "04ec3a4e415b4e19a4568618029f427fa5da9a8bc4ae92e02e06aae5286b300c64def8f0ea9055866064a254515480bc138015d9b72d7d57244ea8ef9ac0c621896708a59367f9dfb9f54ca84b3f1c9db1288b231c3ae0d4fe7344fd2533264720",
+      ),
+    ),
+  ) {
+    Err(_) => true,
+    Ok(_) => false,
+  }
+  if !unavailable {
+    for bits in [384, 521] {
+      let pair = with Random.seeded(9) {
+        crypto.generate_key_pair(curve(bits), [Usage.Sign, Usage.Verify], false)
+      }
+      let msg = String.to_bytes("generated")
+      let mine = with Random.seeded(1) { crypto.sign(pair.private, msg) }
+      Console.print(
+        "P-{bits} generated {pair.public.verify(mine, msg)} refused {refused(pair.public, mine, msg)}",
+      )
+    }
+  }
+}
+
+fn curve(bits: Int) -> Algorithm {
+  if bits == 384 { Algorithm.Ecdsa(Curve.P384) } else { Algorithm.Ecdsa(Curve.P521) }
+}
+
+/// Other data and a flipped bit are refused.
+fn refused(p: CryptoKey, sig: Bytes, msg: Bytes) -> Bool {
+  !p.verify(sig, String.to_bytes("other")) && !p.verify(flip(sig, 0), msg)
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}
+
+/// `b` with bit 4 of byte `at` flipped.
+fn flip(b: Bytes, at: Int) -> Bytes {
+  let x = Bytes.get(b, at).unwrap_or(0)
+  let y = if x / 16 % 2 == 1 { x - 16 } else { x + 16 }
+  Bytes.concat([Bytes.slice(b, 0, at), Bytes.from_list([y]), Bytes.slice(b, at + 1, Bytes.len(b))])
+}

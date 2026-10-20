@@ -39,7 +39,9 @@ the reason recorded. The implementation order is
   §5, §6 and §Compatibility; its WASM step 7b-W is next at ABI 1.9.0. The WebSocket server
   (`WebSocket.accept` inside a `Serve` handler, §2.10) joined the RFC on the owner's request
   of 2026-10-21 as phase 8s (design §17.289), which amended §Non-goals, §1, §4, §5, §6,
-  §Security and §Tests. Phases and owners are
+  §Security and §Tests. Phase 7c (`std/crypto` tier 2 on JS and WASM-on-JS, ABI 1.11.0;
+  native a typed error) is on `main` and amended §2.7 and §6; its readings are in
+  `compiler/REQUESTS.md` (2026-10-21) for ratification. Phases and owners are
   in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v1.0.0-beta.1` contract and which stay experimental.
@@ -562,8 +564,9 @@ hold a cursor (`V2041`, design §8.1).
   a hardware boundary, and the docs say so.
 - Tier 1, every backend: `Digest = Sha256 | Sha384 | Sha512`; `Hmac(Digest)`;
   `AesGcm(128 | 256)`; `Hkdf(Digest)`; `Pbkdf2(Digest)`; `Ecdsa(P256)`; `Ecdh(P256)`;
-  `Ed25519`; `X25519`. Tier 2, JS and WASM-on-JS-host only in 1.0.0-beta.1, native
-  `Err(Unsupported)`: `RsaOaep`, `RsaPss`, `RsassaPkcs1`, `P384`, `P521`, `AesCbc`,
+  `Ed25519`; `X25519`. Tier 2, JS and WASM-on-JS-host only in 1.0.0-beta.1, native a typed
+  error (`KeyError(Unavailable(name))` from `import_key`, `CryptoError(Unsupported(name))`
+  from `encrypt`/`decrypt`): `RsaOaep`, `RsaPss`, `RsassaPkcs1`, `P384`, `P521`, `AesCbc`,
   `AesCtr`, `AesKw`. SHA-1 and MD5 are not offered.
 - Operations: `digest(alg, b) -> Bytes` and `verify(key, signature, b) -> Bool` are pure.
   `hmac(key, b) -> Bytes` is pure. `encrypt(key, nonce, aad, plaintext) -> Result<Bytes,
@@ -597,6 +600,24 @@ hold a cursor (`V2041`, design §8.1).
   P-256 points are checked on the curve and scalars in range; Ed25519 and X25519 public keys
   are any 32 bytes; Ed25519 `verify` is the cofactorless check; a small-order X25519 peer is
   `Err(CryptoError(ZeroSecret))`. A `CryptoKey`'s material layout is private to the module.
+- Tier 2 (phase 7c): `Curve = P256 | P384 | P521`; `Algorithm` gains `AesCbc(AesLength) |
+  AesCtr(AesLength) | AesKw(AesLength)` after `AesGcm` and `RsassaPkcs1(Digest) |
+  RsaPss(Digest) | RsaOaep(Digest)` last; `KeyReason` gains `Unavailable(String)` and
+  `CryptoReason` gains `Padding | Unsupported(String)` (two sums in one module cannot share a
+  constructor name, so the key-side reason is `Unavailable`). ECDSA P-384 signs with SHA-384
+  and P-521 with SHA-512 (`r || s`, 96 and 132 bytes); ECDH gives at most 384 and 528 bits.
+  AES-CBC (PKCS #7) and AES-CTR (all 128 counter bits) take a 16-byte nonce, the IV or
+  counter block, and no `aad`; AES-KW (RFC 3394) takes neither and wraps a multiple of 8
+  bytes, at least 16, its JWK `key_ops` written `wrapKey`/`unwrapKey` for `Encrypt`/`Decrypt`.
+  RSA keys are imported only (SPKI, PKCS #8, JWK; `generate_key_pair` is `D020`): canonical
+  DER, a modulus of 2,048 to 16,384 bits, an odd public exponent above 1 of at most 8 bytes,
+  a private key that signs and verifies under its own public key, and in JWK minimal integers
+  with every CRT member and no `oth`; everything else `Malformed`. RSASSA-PKCS1-v1_5 is
+  deterministic; RSA-PSS uses the hash's length as salt. RSA-OAEP `encrypt` takes the seed as
+  its nonce (the hash's length, from `Random.bytes`) and the label as `aad`, so encryption is
+  a function of its inputs like AES-GCM's; `decrypt` takes an empty nonce. A ciphertext that
+  does not decode is `Padding` (CBC, OAEP) or `Tag` (KW). `aad` given to an algorithm without
+  one is `D020`.
 - Names: `import std/crypto` binds `crypto`, so calls are `crypto.digest(alg, b)` and
   `crypto.verify(key, sig, b)` (or `key.verify(sig, b)`); `verify` stays a reserved word
   outside member position (design §2.1, §17.266 (3)).
@@ -808,7 +829,10 @@ included), `Worker.inline`, `Console.captured`, `Clock.virtual`, `Random.seeded`
   the external, on every backend. The lowest host's bound is the contract, and a limit is a
   typed error, never a defect that differs by backend. Tier 1b (design §17.288 (3)): an
   AES-GCM nonce is exactly 12 bytes (`Nonce(n)`); ECDH and X25519 output at most 256 bits
-  (`Length(bits)`); a ciphertext that does not authenticate is `Tag`.
+  (`Length(bits)`); a ciphertext that does not authenticate is `Tag`. Tier 2 (phase 7c): an
+  RSA modulus 2,048–16,384 bits and exponent at most 8 bytes (`Malformed`); an RSA-OAEP
+  plaintext at most `k − 2·hLen − 2` bytes and an AES-KW plaintext a multiple of 8, at least
+  16 (`Length(bits)`); P-384 and P-521 ECDH output at most 384 and 528 bits.
 
 ### 7. Backend coverage rule
 

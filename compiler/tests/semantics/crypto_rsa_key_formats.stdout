@@ -1,0 +1,25 @@
+RsassaPkcs1(Sha256) der true true
+RsassaPkcs1(Sha256) private jwk Ok(["alg", "d", "dp", "dq", "e", "ext", "key_ops", "kty", "n", "p", "q", "qi"]) true
+RsassaPkcs1(Sha256) public jwk Ok(["alg", "e", "ext", "key_ops", "kty", "n"]) true
+RsassaPkcs1(Sha256) raw Err(KeyError { reason: Format(Raw) }) spki of private Err(KeyError { reason: Format(Spki) })
+RsaPss(Sha384) der true true
+RsaPss(Sha384) private jwk Ok(["alg", "d", "dp", "dq", "e", "ext", "key_ops", "kty", "n", "p", "q", "qi"]) true
+RsaPss(Sha384) public jwk Ok(["alg", "e", "ext", "key_ops", "kty", "n"]) true
+RsaPss(Sha384) raw Err(KeyError { reason: Format(Raw) }) spki of private Err(KeyError { reason: Format(Spki) })
+RsaOaep(Sha512) der true true
+RsaOaep(Sha512) private jwk Ok(["alg", "d", "dp", "dq", "e", "ext", "key_ops", "kty", "n", "p", "q", "qi"]) true
+RsaOaep(Sha512) public jwk Ok(["alg", "e", "ext", "key_ops", "kty", "n"]) true
+RsaOaep(Sha512) raw Err(KeyError { reason: Format(Raw) }) spki of private Err(KeyError { reason: Format(Spki) })
+raw Err(KeyError { reason: Format(Raw) })
+spki cut Err(KeyError { reason: Malformed })
+spki extended Err(KeyError { reason: Malformed })
+pkcs8 as spki Err(KeyError { reason: Malformed })
+pkcs8 cut Err(KeyError { reason: Malformed })
+pkcs8 that cannot sign Err(KeyError { reason: Malformed })
+jwk as written Ok(())
+jwk alg PS256 Err(KeyError { reason: Malformed })
+jwk n with a zero byte Err(KeyError { reason: Malformed })
+jwk 1024-bit n Err(KeyError { reason: Malformed })
+jwk even e Err(KeyError { reason: Malformed })
+jwk oth Err(KeyError { reason: Malformed })
+jwk private without qi Err(KeyError { reason: Malformed })

@@ -12,8 +12,9 @@ use std::process::Command;
 use sakura_codegen_wasm::{Host, Options};
 use sakura_lir::snapshot;
 
-/// `std/crypto`'s primitives are the Node host's `hosted` imports (ABI 1.6.0, tier 1b's 1.9.0); a WASI command
-/// has no JS host and the wasm32 runtime no cryptography (design §17.266 (1)).
+/// `std/crypto`'s primitives are the Node host's `hosted` imports (ABI 1.6.0, tier 1b's 1.9.0,
+/// tier 2's 1.11.0); a WASI command has no JS host and the wasm32 runtime no cryptography
+/// (design §17.266 (1)).
 const CRYPTO_ON_WASI: &str = "std/crypto is Node host imports, which WASI lacks";
 
 /// Programs that cannot run as a bare corpus module, on one runner (`Some`) or both, with
@@ -56,6 +57,51 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
     ),
     (
         "semantics/crypto_x25519_rfc7748",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_aes_cbc_vectors",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_aes_ctr_rfc3686",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_aes_kw_rfc3394",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_ecdh_p384_p521",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_ecdsa_p384_p521",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_rsa_key_formats",
+        None,
+        "`Json.parse` answers a `Json`, whose JS type descriptor a bare corpus module lacks (and WASI has no crypto)",
+    ),
+    (
+        "semantics/crypto_rsa_oaep_vectors",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_rsa_pss_vectors",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
+        "semantics/crypto_rsassa_pkcs1_vectors",
         Some(Host::Wasi),
         CRYPTO_ON_WASI,
     ),

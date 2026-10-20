@@ -1,0 +1,121 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc3686#section-6
+
+// AES-CTR (NIST SP 800-38A, Web Crypto's AES-CTR with `length: 128`): RFC 3686's test vectors
+// with 128- and 256-bit keys (`tests/vectors/aes_ctr.txt`), the nonce being the RFC's first
+// counter block. `encrypt` writes the table's ciphertext and `decrypt` gives the plaintext back; a
+// counter block of all ones carries into zero, as Web Crypto's 128-bit counter does, so encrypting
+// two zero blocks from it and from zero gives the same second and first block. A 12-byte nonce is
+// `Nonce(12)`. On native, which has no tier 2, `import_key` answers `Unavailable("AES-CTR")` (`.native.stdout`, RFC 0002 §2.7's declared difference). Generated from the table.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  let none = Bytes.from_list([])
+  for (bits, key, block, pt) in [
+    (
+      128,
+      "ae6852f8121067cc4bf7a5765577f39e",
+      "00000030000000000000000000000001",
+      "53696e676c6520626c6f636b206d7367",
+    ),
+    (
+      128,
+      "7e24067817fae0d743d6ce1f32539163",
+      "006cb6dbc0543b59da48d90b00000001",
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    ),
+    (
+      128,
+      "7691be035e5020a8ac6e618529f9a0dc",
+      "00e0017b27777f3f4a1786f000000001",
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223",
+    ),
+    (
+      256,
+      "776beff2851db06f4c8a0542c8696f6c6a81af1eec96b4d37fc1d689e6c1c104",
+      "00000060db5672c97aa8f0b200000001",
+      "53696e676c6520626c6f636b206d7367",
+    ),
+    (
+      256,
+      "f6d66d6bd52d59bb0796365879eff886c66dd51a5b6a99744b50590c87a23884",
+      "00faac24c1585ef15a43d87500000001",
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    ),
+    (
+      256,
+      "ff7a617ce69148e4f1726e2f43581de2aa62d9f805532edff1eed687fb54153d",
+      "001cc5b751a51d70a1c1114800000001",
+      "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223",
+    ),
+  ] {
+    match crypto.import_key(KeyFormat.Raw, alg(bits), usages, false, Secret.of(unhex(key))) {
+      Ok(k) => match crypto.encrypt(k, unhex(block), none, unhex(pt)) {
+        Ok(ct) => {
+          let back = crypto.decrypt(k, unhex(block), none, ct) == Ok(unhex(pt))
+          Console.print("{bits} {hex(ct)} {back}")
+        },
+        Err(e) => Console.print("{bits} {e}"),
+      },
+      Err(e) => Console.print("{bits} {e}"),
+    }
+  }
+  match crypto.import_key(
+    KeyFormat.Raw,
+    alg(128),
+    usages,
+    false,
+    Secret.of(unhex("ae6852f8121067cc4bf7a5765577f39e")),
+  ) {
+    Ok(k) => {
+      let ones = unhex("ffffffffffffffffffffffffffffffff")
+      let zero = unhex("00000000000000000000000000000000")
+      let wrapped = crypto.encrypt(k, ones, none, Bytes.concat([zero, zero]))
+        .map(fn(c) { Bytes.slice(c, 16, 32) })
+      Console.print("carries into zero {wrapped == crypto.encrypt(k, zero, none, zero)}")
+      Console.print("nonce 12 {crypto.encrypt(k, Bytes.slice(ones, 0, 12), none, zero)}")
+    },
+    Err(e) => Console.print("{e}"),
+  }
+}
+
+fn alg(bits: Int) -> Algorithm {
+  if bits == 128 { Algorithm.AesCtr(AesLength.Aes128) } else { Algorithm.AesCtr(AesLength.Aes256) }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}
+
+/// `b` with bit 4 of byte `at` flipped.
+fn flip(b: Bytes, at: Int) -> Bytes {
+  let x = Bytes.get(b, at).unwrap_or(0)
+  let y = if x / 16 % 2 == 1 { x - 16 } else { x + 16 }
+  Bytes.concat([Bytes.slice(b, 0, at), Bytes.from_list([y]), Bytes.slice(b, at + 1, Bytes.len(b))])
+}

@@ -6,14 +6,14 @@ layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
 layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
 layout 2 variant std::core::Trust
 layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
-layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
 layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
-layout 6 variant std::crypto::Curve | P256 16b ()
+layout 6 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
 layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
 layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
 layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
 layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
-layout 11 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 11 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
 layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
 layout 13 variant std::list::Builder
 layout 14 variant std::option::Option | None 16b () | Some 24b (word*)
@@ -22,6 +22,8 @@ layout 16 shape |  32b (word*, word*)
 layout 17 shape |  32b (i64, word*)
 layout 18 shape |  24b (i64)
 layout 19 shape |  40b (word*, word*, word*)
+layout 20 shape |  32b (bool, word*)
+layout 21 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_deterministic, frame 26 slots [%3 word*, %4 word*, %6 word*, %7 word*, %8 word*, %14 word*, %15 word*, %16 word*, %18 word*, %19 word*, %20 word*, %21 word*, %25 bool, %26 word*, %29 word*, %32 word*, %33 bool, %61 word*, %62 word*, %63 i64, %64 i64, %65 word*, %68 bool, %69 word*, %70 i64, %71 i64]
   b0():
@@ -135,7 +137,7 @@ fn tag#2 top -> ptr ; main::crypto_generate_under_seeded_random_is_deterministic
     %5 lit: ptr = const str 1
     %6 r: ptr = $string_to_bytes(%5)
     %7 $site: i64 = const 6
-    call hmac#59(%4, %6, %7) -> b3()
+    call hmac#78(%4, %6, %7) -> b3()
   b3(%8 r: ptr):
     ret %8
   b4(%13 r: ptr) [handle]:
@@ -157,7 +159,7 @@ fn material_len#4 top -> ptr ; main::crypto_generate_under_seeded_random_is_dete
     %5 v: ptr = const static std::crypto::KeyFormat.Raw
     call export_key#7(%4, %5) -> b3()
   b3(%6 r: ptr):
-    %7 fn: ptr = const static closure $bytes_len$value#66
+    %7 fn: ptr = const static closure $bytes_len$value#84
     call map#8(%6, %7) -> b4()
   b4(%8 r: ptr):
     ret %8
@@ -165,7 +167,7 @@ fn material_len#4 top -> ptr ; main::crypto_generate_under_seeded_random_is_dete
     handle_pop
     jump b2(%13)
 
-fn $bytes_len$value#66 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#84 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

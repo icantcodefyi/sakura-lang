@@ -6,28 +6,31 @@ layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
 layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
 layout 2 variant std::core::Trust
 layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
-layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
 layout 5 error std::crypto::CryptoError | CryptoError 24b (reason: word*)
 layout 6 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
-layout 7 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64) | Nonce 24b (i64) | Tag 16b () | ZeroSecret 16b ()
-layout 8 variant std::crypto::Curve | P256 16b ()
+layout 7 variant std::crypto::CryptoReason | Length 24b (i64) | Iterations 24b (i64) | Info 24b (i64) | Nonce 24b (i64) | Tag 16b () | ZeroSecret 16b () | Padding 16b () | Unsupported 24b (word*)
+layout 8 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
 layout 9 variant std::crypto::DeriveParams | HkdfWith 24b (word*) | Pbkdf2With 24b (word*) | EcdhWith 24b (word*)
 layout 10 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
 layout 11 record std::crypto::HkdfParams | HkdfParams 32b (salt: word*, info: word*)
 layout 12 error std::crypto::KeyError | KeyError 24b (reason: word*)
 layout 13 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
 layout 14 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
-layout 15 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 15 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
 layout 16 record std::crypto::Pbkdf2Params | Pbkdf2Params 32b (salt: word*, iterations: i64)
 layout 17 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
 layout 18 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 19 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
-layout 20 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 21 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 22 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
-layout 23 shape |  32b (word*, word*)
-layout 24 shape |  32b (i64, word*)
-layout 25 shape |  56b (word*, word*, word*, word*, i64)
+layout 20 variant std::list::Builder
+layout 21 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 22 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 24 shape |  32b (word*, word*)
+layout 25 shape |  32b (i64, word*)
+layout 26 shape |  56b (word*, word*, word*, word*, i64)
+layout 27 shape |  32b (bool, word*)
+layout 28 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*, %51 word*, %52 i64, %53 i64, %54 word*, %55 word*, %56 word*, %57 i64, %58 word*, %59 word*, %60 word*, %63 word*, %64 word*, %65 i64, %66 i64, %67 word*, %68 word*, %69 word*, %70 i64, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %98 word*, %99 i64, %100 word*, %101 word*, %102 word*, %103 i64, %104 i64, %105 word*, %106 i64, %107 word*, %108 word*, %117 word*, %118 word*, %119 i64, %120 i64, %121 word*, %123 word*, %124 word*, %125 i64, %126 i64, %127 word*, %130 bool, %131 word*, %132 i64, %133 i64, %141 bool, %142 word*, %143 i64, %144 i64]
   b0():
@@ -36,19 +39,19 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     %2 lit: ptr = const str 2
     %3 lit: ptr = const str 3
     %4 lit: i64 = const 42
-    %5 tup: ptr = alloc tuple#25(word, word, word, word, i64)(%0, %1, %2, %3, %4)
+    %5 tup: ptr = alloc tuple#26(word, word, word, word, i64)(%0, %1, %2, %3, %4)
     %6 lit: ptr = const str 4
     %7 lit: ptr = const str 5
     %8 lit: ptr = const str 6
     %9 lit: ptr = const str 7
     %10 lit: i64 = const 82
-    %11 tup: ptr = alloc tuple#25(word, word, word, word, i64)(%6, %7, %8, %9, %10)
+    %11 tup: ptr = alloc tuple#26(word, word, word, word, i64)(%6, %7, %8, %9, %10)
     %12 lit: ptr = const str 8
     %13 lit: ptr = const str 1
     %14 lit: ptr = const str 9
     %15 lit: ptr = const str 9
     %16 lit: i64 = const 42
-    %17 tup: ptr = alloc tuple#25(word, word, word, word, i64)(%12, %13, %14, %15, %16)
+    %17 tup: ptr = alloc tuple#26(word, word, word, word, i64)(%12, %13, %14, %15, %16)
     %18 xs: ptr = alloc list(%5, %11, %17)
     dup.candidate %18
     %19 n: i64 = $list_len(%18)
@@ -128,7 +131,7 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     %116 $site: i64 = const 2
     call derive_bits#4(%107, %110, %115, %116) -> b14(%102, %103, %104, %113)
   b14(%117 r: ptr, %118 xs: ptr, %119 n: i64, %120 i: i64, %121 s: ptr):
-    %122 fn: ptr = const static closure hex$value#58
+    %122 fn: ptr = const static closure hex$value#86
     call map#6(%117, %122) -> b15(%118, %119, %120, %121)
   b15(%123 r: ptr, %124 xs: ptr, %125 n: i64, %126 i: i64, %127 s: ptr):
     %128 s: ptr = show %123
@@ -176,7 +179,7 @@ fn unhex#2 top -> ptr ; main::crypto_hkdf_rfc5869, frame 12 slots [%0 word*, %33
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#57(%32) -> b6(%12, %13, %14, %15)
+    call nibble#85(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -197,7 +200,7 @@ fn unhex#2 top -> ptr ; main::crypto_hkdf_rfc5869, frame 12 slots [%0 word*, %33
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#57(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#85(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
@@ -252,7 +255,7 @@ fn hex#5 top -> ptr ; main::crypto_hkdf_rfc5869, frame 6 slots [%0 word*, %24 wo
     drop %46
     jump b4(%47, %25, %26, %27)
 
-fn nibble#57 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
+fn nibble#85 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0
@@ -285,7 +288,7 @@ fn nibble#57 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
 
-fn hex$value#58 adapter of hex#5 -> word ; main::crypto_hkdf_rfc5869, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn hex$value#86 adapter of hex#5 -> word ; main::crypto_hkdf_rfc5869, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     call hex#5(%1) -> b1()

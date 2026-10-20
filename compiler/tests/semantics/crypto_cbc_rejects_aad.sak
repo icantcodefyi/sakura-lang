@@ -1,0 +1,22 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#aes-cbc
+
+// AES-CBC takes no additional data: `encrypt` with `aad` under an AES-CBC key is a caller defect
+// (`D020`, `encrypt`'s `requires`), as Web Crypto's AES-CBC has no such parameter. The key is
+// generated, which every backend does, and the contract is checked before the body, so native,
+// which has no AES-CBC, fails the same way.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let k = with Random.seeded(2) {
+    crypto.generate_key(Algorithm.AesCbc(AesLength.Aes128), [Usage.Encrypt], false)
+  }
+  let iv = Bytes.from_list(List.map(List.range(0, 16), fn(i) { i }))
+  Console.print("before")
+  let sealed = crypto.encrypt(k, iv, String.to_bytes("aad"), String.to_bytes("plaintext"))
+  Console.print("unreachable {sealed.map(Bytes.len)}")
+}
