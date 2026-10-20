@@ -1,0 +1,24 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §2.10; design §6.3, §8.4, §17.289 (9); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-7.1.1
+import std/request.{Request}
+import std/response.{Response}
+import std/websocket.{Socket, SocketError, WebSocket}
+
+// An accepted `Socket` is closed when `accept`'s body returns, so a handler cannot keep it in
+// its state to write to later; a fan-out to every member is `WebSocket.publish`.
+effect Members {
+  fn join(sock: Socket) -> Unit
+}
+
+fn members() -> Handler<Members> {
+  handler Members {
+    var all: List<Socket> = []
+    fn join(sock) { all = List.push(all, sock) }
+  }
+}
+
+fn chat(req: Request) -> Response ! {Members, WebSocket, Fail<SocketError>} {
+  WebSocket.accept(req, WebSocket.upgrade(), fn(sock) { Members.join(sock) })
+}

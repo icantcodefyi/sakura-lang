@@ -1,0 +1,46 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.10; design §17.289 (6); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-4.2.2
+
+// The subprotocol is the handler's choice among those the client offered: one it did not offer
+// is `Accept`, `None` sends none, and `Socket.protocol` reads the choice.
+import std/request.{Request}
+import std/response.{Response}
+import std/serve.{Address, Serve, ServeError}
+import std/websocket.{Accept, Upgrade, WebSocket}
+
+fn handle(req: Request) -> Response ! {Test, WebSocket} {
+  let options = Upgrade { ..WebSocket.upgrade(), subprotocol: Request.param(req, "pick") }
+  let body = fn(sock) { Test.output("protocol [{WebSocket.protocol(sock)}]") }
+  match try { WebSocket.accept(req, options, body) } {
+    Ok(switched) => switched,
+    Err(e) => match e.reason {
+      Accept(why) => Response.status(400, why),
+      other => Response.status(500, "{other}"),
+    },
+  }
+}
+
+test "accept echoes an offered subprotocol and refuses one that was not offered" {
+  let requests = [
+    WebSocket.upgrade_request("/ws?pick=v2", ["v1", "v2"]),
+    WebSocket.upgrade_request("/ws?pick=v3", ["v1", "v2"]),
+    WebSocket.upgrade_request("/ws?pick=v1", []),
+    WebSocket.upgrade_request("/ws", ["v1"]),
+  ]
+  with Serve.scripted(requests), WebSocket.scripted([]) {
+    expect_fail(
+      fn() { Serve.serve(handle, Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output([
+    "protocol [v2]",
+    "Get /ws -> 101 ",
+    "Get /ws -> 400 subprotocol v3 was not offered",
+    "Get /ws -> 400 subprotocol v1 was not offered",
+    "protocol []",
+    "Get /ws -> 101 ",
+  ])
+}

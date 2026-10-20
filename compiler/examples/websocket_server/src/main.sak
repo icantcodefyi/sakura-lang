@@ -1,0 +1,102 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.10, §6; design §17.289; plan web-apis.md phase 8s
+
+import std/request.{Get, Request}
+import std/response.{Response}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/task.{timeout}
+import std/url.{Url}
+import std/websocket.{
+  Accept,
+  Binary,
+  Close,
+  Closed,
+  Data,
+  Reply,
+  Socket,
+  SocketError,
+  Text,
+  Upgrade,
+  WebSocket,
+}
+
+/// The chat route. A request that is not a WebSocket handshake is answered 426 with the version
+/// the server speaks; a browser page from an origin other than the chat's own is 403; a server
+/// at its socket limit is 503. An accepted member joins the `room` topic, and each text message
+/// it sends goes to every other member. A member silent for five minutes is closed with 4000.
+pub fn chat(req: Request) -> Response ! {Clock, Task, WebSocket} {
+  match WebSocket.handshake(req) {
+    Err(why) =>
+      Response { ..Response.status(426, why), headers: [("sec-websocket-version", "13")] },
+    Ok(_) => join(req),
+  }
+}
+
+fn join(req: Request) -> Response ! {Clock, Task, WebSocket} {
+  let options = Upgrade {
+    ..WebSocket.upgrade(),
+    origins: ["https://chat.example.com"],
+    max_message: 65_536,
+  }
+  match try { WebSocket.accept(req, options, member) } {
+    Ok(switched) => switched,
+    Err(e) => match e.reason {
+      Accept(why) if String.starts_with(why, "origin ") => Response.status(403, why),
+      _ => Response { ..Response.status(503, "busy"), headers: [("retry-after", "1")] },
+    },
+  }
+}
+
+fn member(sock: Socket) -> Unit ! {Clock, Task, WebSocket, Fail<SocketError>} {
+  WebSocket.subscribe(sock, "room")
+  WebSocket.send(sock, Text("welcome"))
+  var open = true
+  while open {
+    match try { timeout(Duration.seconds(300), fn() { WebSocket.receive(sock) }) } {
+      Ok(Data(Text(s))) => { let _ = WebSocket.publish("room", Text(s), Some(sock)) },
+      Ok(Data(Binary(_))) => {},
+      Ok(Closed(_)) => { open = false },
+      Err(_) => {
+        WebSocket.close(sock, 4000, "idle")
+        open = false
+      },
+    }
+  }
+}
+
+pub fn router() -> Router<{Clock, Task, WebSocket}> { Router.new().get("/chat", chat) }
+
+test "a member is welcomed, talks, and leaves at the close; the upgrade answers 101" {
+  let script = [Reply(Text("welcome"), Text("hello room")), Close(1000, "bye")]
+  with Serve.scripted([WebSocket.upgrade_request("/chat", [])]),
+      WebSocket.scripted(script),
+      Clock.virtual(),
+      Task.deterministic(1) {
+    expect_fail(
+      fn() { Serve.listen(router(), Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output(["Get /chat -> 101 "])
+}
+
+test "a plain GET is 426, a foreign browser origin 403" {
+  let foreign = Request.with_header(
+    WebSocket.upgrade_request("/chat", []),
+    "origin",
+    "https://evil.example",
+  )
+  let plain = Request.with_header(Request.of(Get, Url.from("/chat")), "host", "example.test")
+  with Serve.scripted([plain, foreign]),
+      WebSocket.scripted([]),
+      Clock.virtual(),
+      Task.deterministic(1) {
+    let _ = try { Serve.listen(router(), Address.of("127.0.0.1", 8080)) }
+  }
+  expect_output([
+    "Get /chat -> 426 upgrade does not name websocket",
+    "Get /chat -> 403 origin https://evil.example is not accepted",
+  ])
+}

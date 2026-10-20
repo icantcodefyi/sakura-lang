@@ -154,8 +154,10 @@ pub const HOSTED: &[(&str, u32)] = &[
 
 /// `hosted` imports beyond [`HOSTED`] that only the Node host serves, for an ABI module:
 /// `std/crypto`'s primitives (ABI 1.6.0, design §17.266 (1); tier 1b's seven at 1.9.0, design
-/// §17.288 (10)), which the host runs as the JS runtime's `node:crypto` functions, and `std/websocket`'s `ws_close` (ABI 1.8.0), which only
-/// `WebSocket.host()` reaches (native refuses that root handler at startup). They are not in `HOSTED`, the table the native runtime
+/// §17.288 (10)), which the host runs as the JS runtime's `node:crypto` functions, and
+/// `std/websocket`'s `ws_close` (ABI 1.8.0) and topics (`ws_publish`, `ws_subscribe`,
+/// `ws_unsubscribe`, 1.10.0), which only `WebSocket.host()` reaches (native refuses that root
+/// handler at startup). They are not in `HOSTED`, the table the native runtime
 /// shares, because native has them as builtins (`rt_b_crypto_*`); the wasm32 runtime has no
 /// cryptography, so a WASI command still reaches them as unsupported builtins (`D090`).
 pub const WASM_HOSTED: &[(&str, u32)] = &[
@@ -172,6 +174,9 @@ pub const WASM_HOSTED: &[(&str, u32)] = &[
     ("crypto_sign", top::BYTES),
     ("crypto_sign_verify", top::BOOL),
     ("ws_close", top::RESULT),
+    ("ws_publish", top::RESULT),
+    ("ws_subscribe", top::RESULT),
+    ("ws_unsubscribe", top::RESULT),
 ];
 
 /// The result top of a hosted builtin of [`HOSTED`] or [`WASM_HOSTED`], if `name` is one.

@@ -689,6 +689,212 @@ fn serve_host_answers_on_wasm_as_on_js() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A served program for `websocket_accept_on_wasm_as_on_js`: `/echo` and `/room` upgrade through
+/// a `handshake` then `accept`, answering 426, 403 and 503 themselves; `PORT` is replaced.
+const WS_SERVER: &str = r#"import std/request.{Request}
+import std/response.{Response}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/websocket.{Accept, Binary, Closed, Data, Socket, SocketError, Text, Upgrade, WebSocket}
+
+fn upgrade(req: Request, body: fn(Socket) -> Unit ! {Console, WebSocket, Fail<SocketError>}) -> Response
+  ! {Console, WebSocket}
+{
+  match WebSocket.handshake(req) {
+    Err(why) =>
+      Response { ..Response.status(426, why), headers: [("sec-websocket-version", "13")] },
+    Ok(hs) => {
+      let chosen = if List.contains(hs.subprotocols, "chat") { Some("chat") } else { None }
+      let options = Upgrade {
+        ..WebSocket.upgrade(),
+        subprotocol: chosen,
+        origins: ["http://ok.test"],
+        headers: [("x-served", "yes")],
+        max_message: 16,
+      }
+      match try { WebSocket.accept(req, options, body) } {
+        Ok(r) => r,
+        Err(e) => match e.reason {
+          Accept(why) if String.starts_with(why, "origin ") => Response.status(403, why),
+          Accept(why) => Response { ..Response.status(503, why), headers: [("retry-after", "1")] },
+          _ => Response.status(500, "{e}"),
+        },
+      }
+    },
+  }
+}
+
+fn echo(sock: Socket) -> Unit ! {Console, WebSocket, Fail<SocketError>} {
+  var open = true
+  while open {
+    match WebSocket.receive(sock) {
+      Data(Text("bye")) => {
+        WebSocket.close(sock, 1000, "done")
+        open = false
+      },
+      Data(Text("leave")) => { open = false },
+      Data(m) => WebSocket.send(sock, m),
+      Closed(info) => {
+        Console.print("closed {info.code} {info.clean}")
+        open = false
+      },
+    }
+  }
+}
+
+fn room(sock: Socket) -> Unit ! {Console, WebSocket, Fail<SocketError>} {
+  WebSocket.subscribe(sock, "room")
+  WebSocket.send(sock, Text("joined"))
+  var open = true
+  while open {
+    match WebSocket.receive(sock) {
+      Data(Text(s)) => {
+        let n = WebSocket.publish("room", Text(s), Some(sock))
+        WebSocket.send(sock, Text("sent to {n}"))
+      },
+      Data(Binary(_)) => {},
+      Closed(_) => { open = false },
+    }
+  }
+}
+
+pub fn main() -> Unit ! {Console, Serve, WebSocket, Fail<ServeError>} {
+  let router = Router.new()
+    .get("/echo", fn(req) { upgrade(req, echo) })
+    .get("/room", fn(req) { upgrade(req, room) })
+    .get("/plain", fn(_req) { Response.status(200, "plain") })
+  Serve.listen(router, Address.of("127.0.0.1", PORT))
+}
+"#;
+
+/// Plan `web-apis.md` phase 8s, RFC 0002 §2.10: a Sakura-served `WebSocket.accept` against Node's
+/// global `WebSocket` and raw connections (`ws_peer.mjs --drive`) gives the same observations and
+/// the same server output on JS and through the WASM host (ABI 1.10.0's `ws_accept` and topic
+/// imports): the chosen subprotocol, no extension, text and binary echoed, the close in both
+/// directions, a non-WebSocket upgrade answered by the handler with `connection: close`, the 426
+/// with `sec-websocket-version: 13`, a foreign origin 403 and an admitted one, `Upgrade.headers`
+/// on the 101, fragments joined, a ping answered, unmasked server frames, 1001 when `body`
+/// returns, 1002 for an unmasked client frame, 1009 and 1007, a published message reaching the
+/// other member only, and `SAKURA_MAX_SOCKETS=2` refusing the third socket (503).
+#[cfg(unix)]
+#[test]
+fn websocket_accept_on_wasm_as_on_js() {
+    use std::os::unix::process::CommandExt;
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let driver = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/js/test/ws_peer.mjs");
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-ws-accept-{}", std::process::id()));
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let mut runs = vec![];
+    for target in ["js", "wasm"] {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        std::fs::write(
+            dir.join("sakura.toml"),
+            format!(
+                "[package]\nname = \"wsa\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+                 [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+            ),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/main.sak"),
+            WS_SERVER.replace("PORT", &port.to_string()),
+        )
+        .unwrap();
+        let (out, err) = (
+            dir.join(format!("{target}.stdout")),
+            dir.join(format!("{target}.stderr")),
+        );
+        let out_dir = dir.join(format!("out-{target}"));
+        let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+            .args([
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+            ])
+            .current_dir(&dir)
+            .env("SAKURA_MAX_SOCKETS", "2")
+            .stdin(std::process::Stdio::null())
+            .stdout(std::fs::File::create(&out).unwrap())
+            .stderr(std::fs::File::create(&err).unwrap())
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let start = std::time::Instant::now();
+        while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+            assert!(
+                start.elapsed() < time_limit(),
+                "{target}: the server did not start\n{}",
+                std::fs::read_to_string(&err).unwrap_or_default()
+            );
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let drove = std::process::Command::new("node")
+            .arg(&driver)
+            .args(["--drive", &port.to_string()])
+            .output()
+            .unwrap();
+        // As in `serve_host_answers_on_wasm_as_on_js`: `--` is required by procps `kill`.
+        let _ = std::process::Command::new("kill")
+            .args(["-9", "--", &format!("-{}", child.id())])
+            .status();
+        let _ = child.wait();
+        let stderr = std::fs::read_to_string(&err).unwrap_or_default();
+        assert!(
+            drove.status.success(),
+            "{target}: {}\n{stderr}",
+            String::from_utf8_lossy(&drove.stderr)
+        );
+        runs.push((
+            String::from_utf8(drove.stdout).unwrap(),
+            std::fs::read_to_string(&out).unwrap_or_default(),
+            stderr,
+        ));
+    }
+    let accept = "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=";
+    assert_eq!(
+        runs[0].0,
+        format!(
+            "global protocol chat extensions \"\"\n\
+             global echo hi\n\
+             global echo bytes 1,2\n\
+             global close 1000 done true\n\
+             global client close 1000 true\n\
+             h2c 200 close plain\n\
+             plain 426 13 upgrade does not name websocket\n\
+             version 8 426 13 close sec-websocket-version is not 13\n\
+             evil origin 403 close origin http://evil.test is not accepted\n\
+             ok origin 101 {accept} chat - yes\n\
+             frame 10 false p\n\
+             frame 1 false hello\n\
+             leave 8 1001\n\
+             unmasked 8 1002\n\
+             too large 8 1009\n\
+             bad utf-8 8 1007\n\
+             joined joined joined\n\
+             limit 503 1 the socket limit of 2 is reached\n\
+             room sent to 1 from a\n"
+        ),
+        "{}",
+        runs[0].2
+    );
+    assert_eq!(
+        runs[0].1,
+        "closed 1000 true\nclosed 1002 false\nclosed 1009 false\nclosed 1007 false\n"
+    );
+    assert!(runs[0].2.is_empty(), "{}", runs[0].2);
+    assert_eq!(runs[1], runs[0]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// `method path` with `body` on `port`: the status code, the `connection` header and the body.
 #[cfg(unix)]
 fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
@@ -1045,7 +1251,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x010900, "{name}");
+        assert_eq!(v["abi_version"], 0x010a00, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),

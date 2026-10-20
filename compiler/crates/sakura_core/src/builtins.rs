@@ -211,6 +211,8 @@ table! {
     Cps serve_listen/2,
     // WebSocket (RFC 0002 §1, plan `web-apis.md` phase 8)
     Cps ws_connect/2, Cps ws_send/2, Cps ws_receive/1, Direct ws_close/3,
+    // WebSocket server (RFC 0002 §2.10, plan `web-apis.md` phase 8s)
+    Direct ws_accept/2, Direct ws_subscribe/2, Direct ws_unsubscribe/2, Direct ws_publish/3,
     // Compiler support
     Direct match_failure/0, Direct contract_enter/0, Direct contract_exit/0,
 }

@@ -1,0 +1,11 @@
+ending: ok
+--- stdout
+to everyone: 2
+all but a: 1
+a got Data(Text("got all"))
+b got Data(Text("got all"))
+b got Data(Text("got only b"))
+after b left: 0
+after b's body: 0
+elsewhere: 0
+Ok(101)

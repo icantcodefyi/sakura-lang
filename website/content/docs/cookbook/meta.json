@@ -14,6 +14,7 @@
     "form_upload",
     "sign_webhook",
     "stream_lines",
-    "websocket_client"
+    "websocket_client",
+    "websocket_server"
   ]
 }

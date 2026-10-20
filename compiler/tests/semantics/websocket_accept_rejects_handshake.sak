@@ -1,0 +1,58 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.10, §4; design §17.289 (3), (4); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-4.2.1
+
+// `handshake` reads RFC 6455 §4.2.1 strictly and `accept` fails `Accept` with its string, one
+// per header: the method, `upgrade`, `connection`, the key, the version and the body. No upgrade
+// happens, so the handler's own answer is what `Serve.scripted` prints.
+import std/request.{Post, Request, Text}
+import std/response.{Response}
+import std/serve.{Address, Serve, ServeError}
+import std/websocket.{Accept, WebSocket}
+
+fn handle(req: Request) -> Response ! {WebSocket} {
+  match try { WebSocket.accept(req, WebSocket.upgrade(), fn(_sock) {}) } {
+    Ok(switched) => switched,
+    Err(e) => match e.reason {
+      Accept(why) => Response.status(400, why),
+      other => Response.status(500, "{other}"),
+    },
+  }
+}
+
+test "each malformed opening handshake is refused with the header it got wrong" {
+  let good = WebSocket.upgrade_request("/ws", [])
+  let requests = [
+    Request { ..good, method: Post },
+    Request.with_header(good, "upgrade", "h2c"),
+    Request.with_header(good, "connection", "keep-alive"),
+    Request.with_header(good, "sec-websocket-key", "c2hvcnQ="),
+    Request.with_header(good, "sec-websocket-version", "8"),
+    Request { ..good, body: Text("hello") },
+    Request.with_header(good, "content-length", "5"),
+    Request.with_header(good, "sec-websocket-protocol", "chat, chat"),
+    Request.with_header(
+      Request.with_header(good, "Upgrade", "WebSocket"),
+      "connection",
+      "keep-alive, Upgrade",
+    ),
+  ]
+  with Serve.scripted(requests), WebSocket.scripted([]) {
+    expect_fail(
+      fn() { Serve.serve(handle, Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output([
+    "Post /ws -> 400 the method is not GET",
+    "Get /ws -> 400 upgrade does not name websocket",
+    "Get /ws -> 400 connection does not name upgrade",
+    "Get /ws -> 400 sec-websocket-key is not one 16-byte Base64 value",
+    "Get /ws -> 400 sec-websocket-version is not 13",
+    "Get /ws -> 400 an upgrade request has no body",
+    "Get /ws -> 400 content-length is not 0",
+    "Get /ws -> 400 sec-websocket-protocol is not a list of distinct tokens",
+    "Get /ws -> 101 ",
+  ])
+}

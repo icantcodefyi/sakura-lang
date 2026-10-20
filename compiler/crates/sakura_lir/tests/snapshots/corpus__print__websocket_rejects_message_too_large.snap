@@ -2,26 +2,36 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 variant std::list::Builder
-layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 3 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
-layout 4 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
-layout 5 error std::url::UrlError | UrlError 24b (reason: word*)
-layout 6 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
-layout 7 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
-layout 8 record std::websocket::CloseInfo | CloseInfo 40b (code: i64, reason: word*, clean: bool)
-layout 9 variant std::websocket::Message | Text 24b (word*) | Binary 24b (word*)
-layout 10 record std::websocket::Options | Options 40b (subprotocols: word*, headers: word*, max_message: i64)
-layout 11 record std::websocket::Peer | Peer 48b (steps: word*, inbox: word*, closed: word*, max_message: i64)
-layout 12 variant std::websocket::Received | Data 24b (word*) | Closed 24b (word*)
-layout 13 variant std::websocket::ScriptStep | Reply 32b (word*, word*) | Push 24b (word*) | Close 32b (i64, word*)
-layout 14 record std::websocket::Socket | Socket 40b (id: i64, protocol: word*, max_message: i64)
-layout 15 error std::websocket::SocketError | SocketError 24b (reason: word*)
-layout 16 variant std::websocket::SocketReason | Connect 24b (word*) | MessageTooLarge 16b () | NotOpen 16b () | Failed 24b (word*)
-layout 17 shape |  32b (word*, word*)
-layout 18 shape |  32b (i64, word*)
-layout 19 shape |  32b (word*, i64)
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 5 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 6 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 7 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 8 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 9 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 10 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 11 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 12 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 13 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 14 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 15 record std::websocket::CloseInfo | CloseInfo 40b (code: i64, reason: word*, clean: bool)
+layout 16 record std::websocket::Handshake | Handshake 40b (key: word*, subprotocols: word*, origin: word*)
+layout 17 variant std::websocket::Message | Text 24b (word*) | Binary 24b (word*)
+layout 18 record std::websocket::Options | Options 40b (subprotocols: word*, headers: word*, max_message: i64)
+layout 19 record std::websocket::Peer | Peer 48b (steps: word*, inbox: word*, closed: word*, max_message: i64)
+layout 20 variant std::websocket::Received | Data 24b (word*) | Closed 24b (word*)
+layout 21 variant std::websocket::ScriptStep | Reply 32b (word*, word*) | Push 24b (word*) | Close 32b (i64, word*)
+layout 22 record std::websocket::Socket | Socket 40b (id: i64, protocol: word*, max_message: i64)
+layout 23 error std::websocket::SocketError | SocketError 24b (reason: word*)
+layout 24 variant std::websocket::SocketReason | Connect 24b (word*) | MessageTooLarge 16b () | NotOpen 16b () | Failed 24b (word*) | Accept 24b (word*)
+layout 25 record std::websocket::Upgrade | Upgrade 48b (subprotocol: word*, origins: word*, headers: word*, max_message: i64)
+layout 26 shape |  32b (word*, word*)
+layout 27 shape |  32b (i64, word*)
+layout 28 shape |  40b (word*, word*, i64)
+layout 29 shape |  32b (word*, i64)
 
 fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 slots [%0 word*, %24 word*, %25 word*, %32 word*, %33 word*, %38 bool, %41 word*, %46 bool, %47 word*, %48 word*, %51 word*, %58 bool, %59 word*, %61 word*, %62 word*, %67 bool, %68 word*, %69 word*, %72 word*, %73 word*]
   b0():
@@ -51,33 +61,33 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 
     %21 r: ptr = alloc std::websocket::Message.Binary(%20)
     %22 r: ptr = alloc std::websocket::ScriptStep.Reply(%6, %21)
     %23 xs: ptr = alloc list(%22)
-    call scripted#3(%23) -> b2(%4)
+    call scripted#6(%23) -> b2(%4)
   b2(%24 r: ptr, %25 rec: ptr):
     handle_push %24
     dup %25
     try_push -> b12(err, %25)
-    %64 f: ptr = closure main$1#4[]
+    %64 f: ptr = closure main$1#7[]
     %65 lit: ptr = const str 3
-    %66 $site: i64 = const 5
+    %66 $site: i64 = const 6
     dup.candidate %25
     dup.candidate %64
-    call WebSocket.connect#5(%65, %25, %64, %66) -> b13(%25, %64)
+    call WebSocket.connect#8(%65, %25, %64, %66) -> b13(%25, %64)
   b3(%26 v: word, %27 rec: ptr):
     drop %26
     %28 lit: ptr = const str 1
     %29 r: ptr = alloc std::websocket::Message.Text(%28)
     %30 r: ptr = alloc std::websocket::ScriptStep.Push(%29)
     %31 xs: ptr = alloc list(%30)
-    call scripted#3(%31) -> b4(%27)
+    call scripted#6(%31) -> b4(%27)
   b4(%32 r: ptr, %33 rec: ptr):
     handle_push %32
     try_push -> b7(err, )
-    %43 f: ptr = closure main$2#6[]
+    %43 f: ptr = closure main$2#9[]
     %44 lit: ptr = const str 3
-    %45 $site: i64 = const 4
+    %45 $site: i64 = const 5
     dup.candidate %33
     dup.candidate %43
-    call WebSocket.connect#5(%44, %33, %43, %45) -> b8(%33, %43)
+    call WebSocket.connect#8(%44, %33, %43, %45) -> b8(%33, %43)
   b5(%34 v: ptr) [handle]:
     %35 s: ptr = show %34
     drop %34
@@ -135,19 +145,19 @@ fn $entry#1 top -> unit ; main::websocket_rejects_message_too_large, frame 1 slo
     handle_pop
     ret %1
 
-fn main$1#4 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 15 slots [%0 word*, %1 word*, %7 bool, %8 word*, %12 bool, %13 word*, %15 word*, %16 word*, %18 bool, %19 word*, %23 bool, %25 word*, %26 word*, %30 bool, %31 word*]
+fn main$1#7 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 15 slots [%0 word*, %1 word*, %7 bool, %8 word*, %12 bool, %13 word*, %15 word*, %16 word*, %18 bool, %19 word*, %23 bool, %25 word*, %26 word*, %30 bool, %31 word*]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
     dup %1
     try_push -> b7(err, %1)
-    %28 lit: ptr = const str 6
+    %28 lit: ptr = const str 10
     %29 r: ptr = alloc std::websocket::Message.Text(%28)
     dup %1
     perform std::websocket::WebSocket.send(%1, %29) -> b8(%1)
   b1(%2 v: ptr, %3 sock: ptr):
     %4 s: ptr = show %2
     drop %2
-    %5 lit: ptr = const str 5
+    %5 lit: ptr = const str 9
     %6 s: ptr = concat %5, %4
     drop %4
     perform std::console::Console.print(%6) -> b2(%3)
@@ -185,7 +195,7 @@ fn main$1#4 lambda -> word ; main::websocket_rejects_message_too_large, captures
     try_pop
     jump b1(%33, %31)
 
-fn main$2#6 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$2#9 lambda -> word ; main::websocket_rejects_message_too_large, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
     perform std::websocket::WebSocket.receive(%1) -> b1()

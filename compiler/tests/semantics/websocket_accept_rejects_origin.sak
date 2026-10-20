@@ -1,0 +1,57 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.10, Security; design §17.289 (5); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-10.2
+
+// `origins` fails closed for browsers: a request whose `origin` is not in the list (compared
+// ASCII-lowercased, no wildcard) is `Accept`, a request without one is admitted, and the empty
+// default refuses every browser.
+import std/request.{Request}
+import std/response.{Response}
+import std/serve.{Address, Serve, ServeError}
+import std/websocket.{Accept, Upgrade, WebSocket}
+
+fn handle(req: Request) -> Response ! {WebSocket} {
+  let options = if Request.param(req, "open") == Some("no") {
+    WebSocket.upgrade()
+  } else {
+    Upgrade { ..WebSocket.upgrade(), origins: ["https://App.example"] }
+  }
+  match try { WebSocket.accept(req, options, fn(_sock) {}) } {
+    Ok(switched) => switched,
+    Err(e) => match e.reason {
+      Accept(why) => Response.status(403, why),
+      other => Response.status(500, "{other}"),
+    },
+  }
+}
+
+test "only the listed browser origins are admitted" {
+  let with_origin = fn(path: String, o: String) {
+    Request.with_header(WebSocket.upgrade_request(path, []), "origin", o)
+  }
+  let requests = [
+    WebSocket.upgrade_request("/ws", []),
+    with_origin("/ws", "https://app.EXAMPLE"),
+    with_origin("/ws", "https://evil.example"),
+    with_origin("/ws", "https://app.example:8443"),
+    with_origin("/ws", "null"),
+    with_origin("/ws?open=no", "https://app.example"),
+    WebSocket.upgrade_request("/ws?open=no", []),
+  ]
+  with Serve.scripted(requests), WebSocket.scripted([]) {
+    expect_fail(
+      fn() { Serve.serve(handle, Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output([
+    "Get /ws -> 101 ",
+    "Get /ws -> 101 ",
+    "Get /ws -> 403 origin https://evil.example is not accepted",
+    "Get /ws -> 403 origin https://app.example:8443 is not accepted",
+    "Get /ws -> 403 origin null is not accepted",
+    "Get /ws -> 403 origin https://app.example is not accepted",
+    "Get /ws -> 101 ",
+  ])
+}

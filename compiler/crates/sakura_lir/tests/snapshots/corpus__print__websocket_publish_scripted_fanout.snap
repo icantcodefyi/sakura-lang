@@ -1,0 +1,311 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::list::Builder
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 5 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 6 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 7 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 8 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 9 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 10 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 11 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 12 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 13 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 14 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 15 record std::websocket::CloseInfo | CloseInfo 40b (code: i64, reason: word*, clean: bool)
+layout 16 record std::websocket::Handshake | Handshake 40b (key: word*, subprotocols: word*, origin: word*)
+layout 17 variant std::websocket::Message | Text 24b (word*) | Binary 24b (word*)
+layout 18 record std::websocket::Options | Options 40b (subprotocols: word*, headers: word*, max_message: i64)
+layout 19 record std::websocket::Peer | Peer 48b (steps: word*, inbox: word*, closed: word*, max_message: i64)
+layout 20 variant std::websocket::Received | Data 24b (word*) | Closed 24b (word*)
+layout 21 variant std::websocket::ScriptStep | Reply 32b (word*, word*) | Push 24b (word*) | Close 32b (i64, word*)
+layout 22 record std::websocket::Socket | Socket 40b (id: i64, protocol: word*, max_message: i64)
+layout 23 error std::websocket::SocketError | SocketError 24b (reason: word*)
+layout 24 variant std::websocket::SocketReason | Connect 24b (word*) | MessageTooLarge 16b () | NotOpen 16b () | Failed 24b (word*) | Accept 24b (word*)
+layout 25 record std::websocket::Upgrade | Upgrade 48b (subprotocol: word*, origins: word*, headers: word*, max_message: i64)
+layout 26 shape |  32b (word*, word*)
+layout 27 shape |  32b (i64, word*)
+layout 28 shape |  40b (word*, word*, i64)
+layout 29 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::websocket_publish_scripted_fanout, frame 12 slots [%11 word*, %14 word*, %16 bool, %19 word*, %21 word*, %24 word*, %25 word*, %28 bool, %29 word*, %30 word*, %31 word*, %33 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = alloc std::websocket::Message.Text(%0)
+    %2 lit: ptr = const str 1
+    %3 r: ptr = alloc std::websocket::Message.Text(%2)
+    %4 r: ptr = alloc std::websocket::ScriptStep.Reply(%1, %3)
+    %5 lit: ptr = const str 2
+    %6 r: ptr = alloc std::websocket::Message.Text(%5)
+    %7 lit: ptr = const str 3
+    %8 r: ptr = alloc std::websocket::Message.Text(%7)
+    %9 r: ptr = alloc std::websocket::ScriptStep.Reply(%6, %8)
+    %10 xs: ptr = alloc list(%4, %9)
+    call scripted#5(%10) -> b1()
+  b1(%11 r: ptr):
+    handle_push %11
+    try_push -> b5(err, )
+    call upgrade#6() -> b6()
+  b2(%12 v: ptr) [handle]:
+    %13 f: ptr = closure main$2#14[]
+    call map#15(%12, %13) -> b3()
+  b3(%14 r: ptr) [handle]:
+    %15 s: ptr = show %14
+    drop %14
+    perform std::console::Console.print(%15) -> b4()
+  b4(%16 r: unit) [handle]:
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    handle_pop
+    ret %18
+  b5(%19 e: word) [handle]:
+    %20 err: ptr = alloc std::result::Result.Err(%19)
+    jump b2(%20)
+  b6(%21 r: ptr) [handle, try]:
+    %22 xs: ptr = alloc list()
+    %23 lit: ptr = const str 4
+    call upgrade_request#7(%23, %22) -> b7(%21)
+  b7(%24 r: ptr, %25 r: ptr) [handle, try]:
+    dup %25
+    %26 f: ptr = closure main$1#8[%25]
+    %27 $site: i64 = const 9
+    dup.candidate %24
+    dup.candidate %25
+    dup.candidate %26
+    call WebSocket.accept#13(%24, %25, %26, %27) -> b8(%25, %24, %26)
+  b8(%28 pre: unit, %29 r: ptr, %30 r: ptr, %31 f: ptr) [handle, try]:
+    %32 callback: ptr = callback %31
+    perform std::websocket::WebSocket.accept(%30, %29, %32) -> b9()
+  b9(%33 r: ptr) [handle, try]:
+    %34 ok: ptr = alloc std::result::Result.Ok(%33)
+    try_pop
+    jump b2(%34)
+
+fn $entry#1 top -> unit ; main::websocket_publish_scripted_fanout, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [word*], frame 28 slots [%0 word*, %1 word*, %5 bool, %6 word*, %7 word*, %9 bool, %10 word*, %11 word*, %15 word*, %16 word*, %17 word*, %20 bool, %21 word*, %22 word*, %23 word*, %24 word*, %26 word*, %27 word*, %33 bool, %34 word*, %35 word*, %37 i64, %41 bool, %48 bool, %49 word*, %50 word*, %52 i64, %56 bool]
+  b0(%0 env: ptr, %1 a: word):
+    %2 up: ptr = capture %0.0
+    drop %0
+    %3 lit: ptr = const str 21
+    %4 $site: i64 = const 11
+    dup %1
+    call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
+  b1(%5 pre: unit, %6 up: ptr, %7 a: ptr):
+    %8 lit: ptr = const str 21
+    dup %7
+    perform std::websocket::WebSocket.subscribe(%7, %8) -> b2(%6, %7)
+  b2(%9 r: unit, %10 up: ptr, %11 a: ptr):
+    %12 box: word = box %9
+    drop %12
+    %13 xs: ptr = alloc list()
+    %14 lit: ptr = const str 22
+    call upgrade_request#7(%14, %13) -> b3(%10, %11)
+  b3(%15 r: ptr, %16 up: ptr, %17 a: ptr):
+    dup %17
+    %18 f: ptr = closure main$1$1#10[%17]
+    %19 $site: i64 = const 12
+    dup.candidate %15
+    dup.candidate %16
+    dup.candidate %18
+    call WebSocket.accept#13(%15, %16, %18, %19) -> b4(%16, %17, %15, %18)
+  b4(%20 pre: unit, %21 up: ptr, %22 a: ptr, %23 r: ptr, %24 f: ptr):
+    %25 callback: ptr = callback %24
+    perform std::websocket::WebSocket.accept(%23, %21, %25) -> b5(%22)
+  b5(%26 r: ptr, %27 a: ptr):
+    drop %26
+    %28 lit: ptr = const str 23
+    %29 r: ptr = alloc std::websocket::Message.Text(%28)
+    %30 r: ptr = alloc std::option::Option.Some(%27)
+    %31 lit: ptr = const str 21
+    %32 $site: i64 = const 13
+    dup %29
+    dup %30
+    call WebSocket.publish#11(%31, %29, %30, %32) -> b6(%29, %30)
+  b6(%33 pre: unit, %34 r: ptr, %35 r: ptr):
+    %36 lit: ptr = const str 21
+    perform std::websocket::WebSocket.publish(%36, %34, %35) -> b7()
+  b7(%37 r: i64):
+    %38 s: ptr = show %37
+    %39 lit: ptr = const str 24
+    %40 s: ptr = concat %39, %38
+    drop %38
+    perform std::console::Console.print(%40) -> b8()
+  b8(%41 r: unit):
+    %42 box: word = box %41
+    drop %42
+    %43 lit: ptr = const str 23
+    %44 r: ptr = alloc std::websocket::Message.Text(%43)
+    %45 v: ptr = const static std::option::Option.None
+    %46 lit: ptr = const str 25
+    %47 $site: i64 = const 14
+    dup %44
+    dup %45
+    call WebSocket.publish#11(%46, %44, %45, %47) -> b9(%44, %45)
+  b9(%48 pre: unit, %49 r: ptr, %50 v: ptr):
+    %51 lit: ptr = const str 25
+    perform std::websocket::WebSocket.publish(%51, %49, %50) -> b10()
+  b10(%52 r: i64):
+    %53 s: ptr = show %52
+    %54 lit: ptr = const str 26
+    %55 s: ptr = concat %54, %53
+    drop %53
+    perform std::console::Console.print(%55) -> b11()
+  b11(%56 r: unit):
+    %57 box: word = box %56
+    ret %57
+
+fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, captures [word*], frame 65 slots [%0 word*, %1 word*, %5 bool, %6 word*, %7 word*, %9 bool, %10 word*, %11 word*, %18 bool, %19 word*, %20 word*, %21 word*, %22 word*, %24 i64, %25 word*, %26 word*, %30 bool, %31 word*, %32 word*, %39 bool, %40 word*, %41 word*, %42 word*, %43 word*, %45 i64, %46 word*, %47 word*, %51 bool, %52 word*, %53 word*, %55 word*, %56 word*, %57 word*, %61 bool, %62 word*, %63 word*, %65 word*, %66 word*, %67 word*, %71 bool, %72 word*, %73 word*, %75 word*, %76 word*, %77 word*, %81 bool, %82 word*, %83 word*, %87 bool, %88 word*, %89 word*, %91 bool, %92 word*, %93 word*, %100 bool, %101 word*, %102 word*, %103 word*, %105 i64, %106 word*, %110 bool, %111 word*, %115 bool, %116 word*, %118 bool]
+  b0(%0 env: ptr, %1 b: word):
+    %2 a: ptr = capture %0.0
+    drop %0
+    %3 lit: ptr = const str 21
+    %4 $site: i64 = const 15
+    dup %1
+    call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
+  b1(%5 pre: unit, %6 a: ptr, %7 b: ptr):
+    %8 lit: ptr = const str 21
+    dup %7
+    perform std::websocket::WebSocket.subscribe(%7, %8) -> b2(%6, %7)
+  b2(%9 r: unit, %10 a: ptr, %11 b: ptr):
+    %12 box: word = box %9
+    drop %12
+    %13 lit: ptr = const str 0
+    %14 r: ptr = alloc std::websocket::Message.Text(%13)
+    %15 v: ptr = const static std::option::Option.None
+    %16 lit: ptr = const str 21
+    %17 $site: i64 = const 16
+    dup %14
+    dup %15
+    call WebSocket.publish#11(%16, %14, %15, %17) -> b3(%10, %11, %14, %15)
+  b3(%18 pre: unit, %19 a: ptr, %20 b: ptr, %21 r: ptr, %22 v: ptr):
+    %23 lit: ptr = const str 21
+    perform std::websocket::WebSocket.publish(%23, %21, %22) -> b4(%19, %20)
+  b4(%24 r: i64, %25 a: ptr, %26 b: ptr):
+    %27 s: ptr = show %24
+    %28 lit: ptr = const str 27
+    %29 s: ptr = concat %28, %27
+    drop %27
+    perform std::console::Console.print(%29) -> b5(%25, %26)
+  b5(%30 r: unit, %31 a: ptr, %32 b: ptr):
+    %33 box: word = box %30
+    drop %33
+    %34 lit: ptr = const str 2
+    %35 r: ptr = alloc std::websocket::Message.Text(%34)
+    dup %31
+    %36 r: ptr = alloc std::option::Option.Some(%31)
+    %37 lit: ptr = const str 21
+    %38 $site: i64 = const 17
+    dup %35
+    dup %36
+    call WebSocket.publish#11(%37, %35, %36, %38) -> b6(%31, %32, %35, %36)
+  b6(%39 pre: unit, %40 a: ptr, %41 b: ptr, %42 r: ptr, %43 r: ptr):
+    %44 lit: ptr = const str 21
+    perform std::websocket::WebSocket.publish(%44, %42, %43) -> b7(%40, %41)
+  b7(%45 r: i64, %46 a: ptr, %47 b: ptr):
+    %48 s: ptr = show %45
+    %49 lit: ptr = const str 28
+    %50 s: ptr = concat %49, %48
+    drop %48
+    perform std::console::Console.print(%50) -> b8(%46, %47)
+  b8(%51 r: unit, %52 a: ptr, %53 b: ptr):
+    %54 box: word = box %51
+    drop %54
+    dup %52
+    perform std::websocket::WebSocket.receive(%52) -> b9(%52, %53)
+  b9(%55 r: ptr, %56 a: ptr, %57 b: ptr):
+    %58 s: ptr = show %55
+    drop %55
+    %59 lit: ptr = const str 29
+    %60 s: ptr = concat %59, %58
+    drop %58
+    perform std::console::Console.print(%60) -> b10(%56, %57)
+  b10(%61 r: unit, %62 a: ptr, %63 b: ptr):
+    %64 box: word = box %61
+    drop %64
+    dup %63
+    perform std::websocket::WebSocket.receive(%63) -> b11(%62, %63)
+  b11(%65 r: ptr, %66 a: ptr, %67 b: ptr):
+    %68 s: ptr = show %65
+    drop %65
+    %69 lit: ptr = const str 30
+    %70 s: ptr = concat %69, %68
+    drop %68
+    perform std::console::Console.print(%70) -> b12(%66, %67)
+  b12(%71 r: unit, %72 a: ptr, %73 b: ptr):
+    %74 box: word = box %71
+    drop %74
+    dup %73
+    perform std::websocket::WebSocket.receive(%73) -> b13(%72, %73)
+  b13(%75 r: ptr, %76 a: ptr, %77 b: ptr):
+    %78 s: ptr = show %75
+    drop %75
+    %79 lit: ptr = const str 30
+    %80 s: ptr = concat %79, %78
+    drop %78
+    perform std::console::Console.print(%80) -> b14(%76, %77)
+  b14(%81 r: unit, %82 a: ptr, %83 b: ptr):
+    %84 box: word = box %81
+    drop %84
+    %85 lit: ptr = const str 21
+    %86 $site: i64 = const 18
+    dup %83
+    call WebSocket.unsubscribe#12(%83, %85, %86) -> b15(%82, %83)
+  b15(%87 pre: unit, %88 a: ptr, %89 b: ptr):
+    %90 lit: ptr = const str 21
+    dup %89
+    perform std::websocket::WebSocket.unsubscribe(%89, %90) -> b16(%88, %89)
+  b16(%91 r: unit, %92 a: ptr, %93 b: ptr):
+    %94 box: word = box %91
+    drop %94
+    %95 lit: ptr = const str 23
+    %96 r: ptr = alloc std::websocket::Message.Text(%95)
+    %97 r: ptr = alloc std::option::Option.Some(%92)
+    %98 lit: ptr = const str 21
+    %99 $site: i64 = const 19
+    dup %96
+    dup %97
+    call WebSocket.publish#11(%98, %96, %97, %99) -> b17(%93, %96, %97)
+  b17(%100 pre: unit, %101 b: ptr, %102 r: ptr, %103 r: ptr):
+    %104 lit: ptr = const str 21
+    perform std::websocket::WebSocket.publish(%104, %102, %103) -> b18(%101)
+  b18(%105 r: i64, %106 b: ptr):
+    %107 s: ptr = show %105
+    %108 lit: ptr = const str 31
+    %109 s: ptr = concat %108, %107
+    drop %107
+    perform std::console::Console.print(%109) -> b19(%106)
+  b19(%110 r: unit, %111 b: ptr):
+    %112 box: word = box %110
+    drop %112
+    %113 lit: ptr = const str 21
+    %114 $site: i64 = const 20
+    dup %111
+    call WebSocket.subscribe#9(%111, %113, %114) -> b20(%111)
+  b20(%115 pre: unit, %116 b: ptr):
+    %117 lit: ptr = const str 21
+    perform std::websocket::WebSocket.subscribe(%116, %117) -> b21()
+  b21(%118 r: unit):
+    %119 box: word = box %118
+    ret %119
+
+fn main$2#14 lambda -> word ; main::websocket_publish_scripted_fanout, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 r: word):
+    drop %0
+    %2 status: i64 = proj %1.0 std::response::Response
+    drop %1
+    %3 box: word = box %2
+    ret %3

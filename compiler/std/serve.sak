@@ -4,7 +4,9 @@
 // server reads at most 1 MiB (1,048,576 bytes) of a request body: a larger one is answered
 // 413 and its connection closed without running the handler (design §17.159 (6)). A request
 // body reaches the handler as `Bytes` (`Empty` when there is none) and a response's `Payload`
-// is sent as it is.
+// is sent as it is. An upgrade request (`connection: Upgrade`) reaches `handle` like any other,
+// its body `Empty` and unread; `WebSocket.accept` inside `handle` upgrades it (RFC 0002 §2.10),
+// and otherwise the host writes the handler's response with `connection: close`.
 // needs M3: `[permissions] net` scoping of the address.
 
 import std/encoding.{Encoding, Errors}

@@ -133,7 +133,11 @@ test_expect_defect: (ptr) -> unit cps
 untrusted_of: (word) -> ptr
 untrusted_validate: (ptr) -> ptr
 untrusted_value: (ptr) -> word
+ws_accept: (ptr, ptr) -> ptr
 ws_close: (i64, i64, ptr) -> ptr
 ws_connect: (ptr, ptr) -> ptr cps
+ws_publish: (ptr, ptr, ptr) -> ptr
 ws_receive: (i64) -> ptr cps
 ws_send: (i64, ptr) -> ptr cps
+ws_subscribe: (i64, ptr) -> ptr
+ws_unsubscribe: (i64, ptr) -> ptr

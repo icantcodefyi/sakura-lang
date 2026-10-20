@@ -72,9 +72,9 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc (ABI 1.9.0) | Opus | landed |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the 0.2.0 preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
-| 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract; one ABI MINOR: the first of 8s and 10 to be ready takes 1.10.0, the other 1.11.0 (§17.289 (11)); **now** in its own lane if an implementer is free, else after 6 in the web lane | Opus | 8 (landed); 7b-W's number |
+| 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
-| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; 1.10.0 or 1.11.0 by §17.289 (11) | Opus | 4b, 5, 6; 8s in the web lane's order |
+| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc; 1.11.0 by §17.289 (11) (8s took 1.10.0) | Opus | 4b, 5, 6, 8s (landed) |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |

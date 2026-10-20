@@ -584,6 +584,31 @@ pub extern "C" fn rt_k_ws_receive(_env: u32, frame: u32) -> u32 {
     }
 }
 
+/// `ws_accept(handshake, upgrade)` (ABI 1.10.0, design §17.289 (10)): the host upgrades the
+/// served request of the current task, the one `serve_respond` would answer, and returns
+/// `Ok((id, subprotocol))` or `Err(reason)`. Called only from `WebSocket.host()`'s `accept`
+/// clause, which runs in the performer's task.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_b_ws_accept(handshake: u32, upgrade: u32) -> u32 {
+    let task = i64::from(rt().sched.current);
+    // SAFETY: a plain import with a slice inside linear memory, copied in at once; it answers
+    // through `alloc_bytes`, so no `&mut Rt` is held across it.
+    let out = with_args_reentrant(&[handshake, upgrade], |at, len| unsafe {
+        host::ws_accept(task, at, len)
+    });
+    let rt = rt();
+    let r = out
+        .and_then(|b| answer(rt, b))
+        .and_then(|(status, v)| match status {
+            0 => Ok(v),
+            _ => {
+                rt.drop(v);
+                Err(crate::vt::MALFORMED)
+            }
+        });
+    ptr(r)
+}
+
 // ---- the server host (`Serve.host()`): `serve_listen` and `invoke` -----------------------
 
 /// Request kind of a listening server (ABI §8.5).
@@ -1433,6 +1458,10 @@ mod host {
         pub fn ws_connect(request: u32, ptr: u32, len: u32) -> u32;
         pub fn ws_send(request: u32, ptr: u32, len: u32) -> u32;
         pub fn ws_receive(request: u32, ptr: u32, len: u32) -> u32;
+        /// 1.10.0: `std/websocket`'s `accept` (JS `wsAcceptOn`): upgrade the served request of
+        /// `task` (`invoke`, as `serve_respond`) with the `(Handshake, Upgrade)` tuple at
+        /// `(ptr, len)`; a status-prefixed answer holding the `Result<(Int, String), String>`.
+        pub fn ws_accept(task: i64, ptr: u32, len: u32) -> u32;
         /// `async`: listen on the address at `(ptr, len)` for `listener` (`invoke`); completes
         /// `request` with a status-0 answer holding the `ServeError` when the server stops.
         pub fn serve_listen(request: u32, listener: u32, ptr: u32, len: u32) -> u32;

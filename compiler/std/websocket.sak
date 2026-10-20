@@ -1,11 +1,16 @@
-// WebSocket client as an effect (RFC 0002 §1, §3, §6, §7; design §17.262 (2), §17.279; plan
-// `web-apis.md` phase 8). There are no event listeners: every web event is a value `receive`
-// returns, a message or the close, so control flow is a `match` and nothing runs after the
-// `connect` callback ends. The manifest's `net` list limits the host handler, `ws` on port 80
-// and `wss` on 443 by default, checked like `Http`'s; the opening handshake follows no
-// redirect. `WebSocket.scripted(script)` is the deterministic peer for tests. Client only: a
-// server upgrade is not part of `std/serve`.
+// WebSocket client and server as an effect (RFC 0002 §1, §2.10, §3, §6, §7; design §17.262 (2),
+// §17.279, §17.289; plan `web-apis.md` phases 8 and 8s). There are no event listeners: every
+// web event is a value `receive` returns, a message or the close, so control flow is a `match`
+// and nothing runs after the `connect` or `accept` callback ends. The manifest's `net` list
+// limits the host handler, `ws` on port 80 and `wss` on 443 by default, checked like `Http`'s;
+// the opening handshake follows no redirect. A server upgrades a request its `Serve` handler
+// received with `accept`, which opens nothing (`net` admitted the listener); the socket is the
+// client's `Socket` with the same operations. `WebSocket.scripted(script)` is the deterministic
+// peer for tests, in both roles.
 
+import std/bytes.{Alphabet}
+import std/request.{Empty, Get, Request}
+import std/response.{Response, Status}
 import std/stream.{Done, Next, Source}
 import std/url.{Url}
 
@@ -22,10 +27,17 @@ pub type CloseInfo = { code: Int, reason: String, clean: Bool }
 pub type Received = Data(Message) | Closed(CloseInfo)
 
 /// `Connect`: no connection opened, and why (a host outside `net`, a URL that is not `ws` or
-/// `wss`, a handshake answered with anything but 101, a network failure). `MessageTooLarge`:
-/// `send` of a message over `max_message`. `NotOpen`: `send` after the close. `Failed`: the
-/// host could not run the operation, or a scripted peer has no step for it.
-pub type SocketReason = Connect(String) | MessageTooLarge | NotOpen | Failed(String)
+/// `wss`, a handshake answered with anything but 101, a network failure, the socket limit).
+/// `MessageTooLarge`: `send` of a message over `max_message`. `NotOpen`: `send` after the
+/// close, or `subscribe` on a socket that is closing. `Failed`: the host could not run the
+/// operation, or a scripted peer has no step for it. `Accept`: no upgrade happened, and why (a
+/// `handshake` refusal, the origin, the subprotocol, the socket limit, a request that is not a
+/// served upgrade request); the string carries the peer's own header bytes and nothing else.
+pub type SocketReason = Connect(String)
+  | MessageTooLarge
+  | NotOpen
+  | Failed(String)
+  | Accept(String)
 
 pub error SocketError(reason: SocketReason)
 
@@ -36,7 +48,31 @@ pub type Options = { subprotocols: List<String>, headers: List<(String, String)>
 /// No subprotocols, no extra headers, messages up to 16 MiB (16,777,216 bytes; RFC 0002 §6).
 pub fn options() -> Options { Options { subprotocols: [], headers: [], max_message: 16_777_216 } }
 
-/// An open connection, valid only inside the `connect` callback that received it (`V6003`).
+/// How `accept` answers an upgrade: the subprotocol it chooses (one the client offered, or
+/// `None` for no `sec-websocket-protocol` header), the browser origins it admits (exact,
+/// compared ASCII-lowercased; a request with an `origin` not in the list is refused, one without
+/// is admitted), extra headers for the 101 (not `host`, `upgrade`, `connection`,
+/// `content-length`, `transfer-encoding` or any `sec-websocket-*`), and the largest message
+/// either side may carry (`max_message`, at least 1).
+pub type Upgrade = {
+  subprotocol: Option<String>,
+  origins: List<String>,
+  headers: List<(String, String)>,
+  max_message: Int,
+}
+
+/// No subprotocol, no browser origin, no extra headers, messages up to 16 MiB.
+pub fn upgrade() -> Upgrade {
+  Upgrade { subprotocol: None, origins: [], headers: [], max_message: 16_777_216 }
+}
+
+/// An opening handshake a server may accept (RFC 6455 §4.2.1): the client's
+/// `sec-websocket-key`, the subprotocols it offered in its order, and its `origin`
+/// ASCII-lowercased, if it sent one.
+pub type Handshake = { key: String, subprotocols: List<String>, origin: Option<String> }
+
+/// An open connection, valid only inside the `connect` or `accept` callback that received it
+/// (`V6003`).
 @resource
 pub opaque type Socket = { id: Int, protocol: String, max_message: Int }
 
@@ -62,6 +98,96 @@ pub effect WebSocket {
   fn close(sock: Socket, code: Int, reason: String) -> Unit
     ! {Fail<SocketError>}
     requires closable(code, reason)
+  /// Upgrades `req`, a request a `Serve` handler received, when `handshake` admits it and its
+  /// origin and subprotocol fit `options`: the host writes the 101, runs `body` with the socket
+  /// and closes it with 1001 when `body` returns, fails, defects or is cancelled, unless it is
+  /// closed already. Returns the 101 `Response`; the server discards what the handler returns
+  /// for a connection it upgraded. No upgrade happened when this fails `Accept(reason)`.
+  fn accept<e>(req: Request, options: Upgrade, body: fn(Socket) -> Unit ! e) -> Response
+    ! {Fail<SocketError> | e}
+    requires options.max_message > 0
+  /// Adds `sock` to `topic` (at most 256 bytes) for `publish`, until the socket closes.
+  fn subscribe(sock: Socket, topic: String) -> Unit
+    ! {Fail<SocketError>}
+    requires String.len(topic) <= 256
+  /// Removes `sock` from `topic`.
+  fn unsubscribe(sock: Socket, topic: String) -> Unit
+    ! {Fail<SocketError>}
+    requires String.len(topic) <= 256
+  /// Sends `message` to every open socket of this instance subscribed to `topic` but `except`,
+  /// without waiting: a subscriber whose send buffer already holds `max_message` bytes, or
+  /// whose `max_message` the message exceeds, misses it and stays open. The number of sockets
+  /// it was written to.
+  fn publish(topic: String, message: Message, except: Option<Socket>) -> Int
+    ! {Fail<SocketError>}
+    requires String.len(topic) <= 256
+}
+
+/// Whether a server may accept `req` (RFC 6455 §4.2.1, read strictly): a `GET` with a `host`,
+/// an `upgrade` naming `websocket`, a `connection` naming `upgrade` (tokens, any case), one
+/// `sec-websocket-key` of 24 Base64 characters decoding to 16 bytes, one `sec-websocket-version`
+/// of `13`, no body, and `sec-websocket-protocol` (if sent) a list of distinct tokens. `Err`
+/// names the header that failed. A handler that answers a refusal itself (426 with
+/// `sec-websocket-version: 13`, 403, 404) calls it before `accept`.
+pub fn handshake(req: Request) -> Result<Handshake, String> {
+  if req.method != Get { return Err("the method is not GET") }
+  if List.len(values(req, "host")) != 1 { return Err("host is missing or repeated") }
+  if !List.contains(tokens(req, "upgrade"), "websocket") {
+    return Err("upgrade does not name websocket")
+  }
+  if !List.contains(tokens(req, "connection"), "upgrade") {
+    return Err("connection does not name upgrade")
+  }
+  let keys = values(req, "sec-websocket-key")
+  let key = List.first(keys).unwrap_or("")
+  let sixteen = match Bytes.from_base64(key, Alphabet.Standard) {
+    Ok(b) => Bytes.len(b) == 16,
+    Err(_) => false,
+  }
+  if List.len(keys) != 1 || String.len(key) != 24 || !sixteen {
+    return Err("sec-websocket-key is not one 16-byte Base64 value")
+  }
+  if values(req, "sec-websocket-version") != ["13"] {
+    return Err("sec-websocket-version is not 13")
+  }
+  let bodyless = match req.body {
+    Empty => true,
+    _ => false,
+  }
+  if !bodyless { return Err("an upgrade request has no body") }
+  if !List.all(values(req, "content-length"), fn(v) { v == "0" }) {
+    return Err("content-length is not 0")
+  }
+  if List.len(values(req, "transfer-encoding")) > 0 {
+    return Err("transfer-encoding is not allowed")
+  }
+  let offered = List.flat_map(values(req, "sec-websocket-protocol"), fn(v) {
+    List.map(String.split(v, ","), trim_ows)
+  })
+  if !List.all(offered, is_token) || List.len(List.unique(offered)) != List.len(offered) {
+    return Err("sec-websocket-protocol is not a list of distinct tokens")
+  }
+  let origin = List.first(values(req, "origin")).map(ascii_lower)
+  Ok(Handshake { key, subprotocols: offered, origin })
+}
+
+/// A request with the opening handshake's headers for tests (RFC 6455 §1.3's sample key,
+/// `host: example.test`, version 13, `subprotocols` offered when not empty, no `origin`; add
+/// one with `Request.with_header`).
+pub fn upgrade_request(path: String, subprotocols: List<String>) -> Request {
+  let base = [
+    ("host", "example.test"),
+    ("upgrade", "websocket"),
+    ("connection", "Upgrade"),
+    ("sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ=="),
+    ("sec-websocket-version", "13"),
+  ]
+  let headers = if List.len(subprotocols) == 0 {
+    base
+  } else {
+    List.push(base, ("sec-websocket-protocol", List.join(subprotocols, ", ")))
+  }
+  Request { ..Request.of(Get, Url.from(path)), headers }
 }
 
 /// Whether `close` accepts `code` and `reason` (the WebSocket standard's `close()` rules).
@@ -85,7 +211,9 @@ pub fn messages(sock: Socket) -> Source<Message, {WebSocket, Fail<SocketError>}>
 
 /// The root handler the host installs for a `main` that declares `WebSocket`: an RFC 6455
 /// client over the host's TCP and TLS, limited to the manifest's `net` list, checked before the
-/// connection opens.
+/// connection opens, and the server side of the connections `Serve.host()` received. At most
+/// `SAKURA_MAX_SOCKETS` (default 1,024) sockets of both roles are open at once; past it
+/// `connect` fails `Connect` and `accept` fails `Accept`, "the socket limit of N is reached".
 pub fn host() -> Handler<WebSocket> {
   handler WebSocket {
     fn connect(url, options, body) {
@@ -96,6 +224,21 @@ pub fn host() -> Handler<WebSocket> {
       }
       let sock = Socket { id: opened.0, protocol: opened.1, max_message: options.max_message }
       ws_closing(sock.id, fn() { body(sock) })
+    }
+    fn accept(req, options, body) {
+      let hs = admitted(req, options)
+      let opened = match ws_accept(hs, options) {
+        Ok(o) => o,
+        Err(reason) => fail SocketError { reason: Accept(reason) },
+      }
+      let sock = Socket { id: opened.0, protocol: opened.1, max_message: options.max_message }
+      ws_closing(sock.id, fn() { body(sock) })
+      switched()
+    }
+    fn subscribe(sock, topic) { open_ok(ws_subscribe(sock.id, topic)) }
+    fn unsubscribe(sock, topic) { open_ok(ws_unsubscribe(sock.id, topic)) }
+    fn publish(topic, message, except) {
+      host_ok(ws_publish(topic, message, except.map(fn(s) { s.id })))
     }
     fn send(sock, message) {
       fits(sock, message)
@@ -120,10 +263,15 @@ pub type ScriptStep = Reply(Message, Message) | Push(Message) | Close(Int, Strin
 /// close, fails with `Failed` naming the step, where a real peer would leave the program
 /// waiting. A message over `max_message` either way is handled as `host()` handles it, and so
 /// are `close`, the close returned again, and `NotOpen` after it. The URL is checked as
-/// `host()` checks it; `net` is not consulted, and the subprotocol is `""`.
+/// `host()` checks it; `net` is not consulted, and the subprotocol is `""`. Each `accept` runs
+/// `handshake` and the origin and subprotocol checks as `host()` does, on any request, then
+/// meets a peer that plays `script` the same way, and its socket's subscriptions end when
+/// `body` returns. `publish` meets each subscribed open peer but `except` as a send does, in
+/// the order they subscribed, skipping one whose `max_message` the message exceeds.
 pub fn scripted(script: List<ScriptStep>) -> Handler<WebSocket> {
   handler WebSocket {
     var peers: Map<Int, Peer> = Map.empty()
+    var topics: Map<String, List<Int>> = Map.empty()
     var next = 0
     fn connect(url, options, body) {
       let _ = checked_url(url)
@@ -133,21 +281,51 @@ pub fn scripted(script: List<ScriptStep>) -> Handler<WebSocket> {
       peers = Map.insert(peers, id, advance(peer))
       body(Socket { id, protocol: "", max_message: options.max_message })
     }
+    fn accept(req, options, body) {
+      let _ = admitted(req, options)
+      next = next + 1
+      let id = next
+      let peer = Peer { steps: script, inbox: [], closed: None, max_message: options.max_message }
+      peers = Map.insert(peers, id, advance(peer))
+      let protocol = options.subprotocol.unwrap_or("")
+      body(Socket { id, protocol, max_message: options.max_message })
+      topics = Map.of(
+        List.map(Map.entries(topics), fn(t) { (t.0, List.filter(t.1, fn(s) { s != id })) }),
+      )
+      switched()
+    }
+    fn subscribe(sock, topic) {
+      if peer_of(peers, sock).closed.is_some() { fail SocketError { reason: NotOpen } }
+      let ids = Map.get(topics, topic).unwrap_or([])
+      if !List.contains(ids, sock.id) {
+        topics = Map.insert(topics, topic, List.push(ids, sock.id))
+      }
+    }
+    fn unsubscribe(sock, topic) {
+      if peer_of(peers, sock).closed.is_some() { fail SocketError { reason: NotOpen } }
+      let ids = Map.get(topics, topic).unwrap_or([])
+      topics = Map.insert(topics, topic, List.filter(ids, fn(s) { s != sock.id }))
+    }
+    fn publish(topic, message, except) {
+      let skip = except.map(fn(s) { s.id }).unwrap_or(0)
+      var count = 0
+      for id in Map.get(topics, topic).unwrap_or([]) {
+        let peer = match Map.get(peers, id) {
+          Some(p) => p,
+          None => fail SocketError { reason: Failed("not a scripted socket") },
+        }
+        if id != skip && !peer.closed.is_some() && size(message) <= peer.max_message {
+          peers = Map.insert(peers, id, met(peer, message))
+          count = count + 1
+        }
+      }
+      count
+    }
     fn send(sock, message) {
       fits(sock, message)
       let peer = peer_of(peers, sock)
       if peer.closed.is_some() { fail SocketError { reason: NotOpen } }
-      let answer = match List.first(peer.steps) {
-        Some(Reply(expect, answer)) if expect == message => answer,
-        Some(step) =>
-          fail SocketError {
-            reason: Failed("the scripted peer expected {step}, not a send of {message}"),
-          },
-        None =>
-          fail SocketError { reason: Failed("the script has no step for a send of {message}") },
-      }
-      let rest = List.slice(peer.steps, 1, List.len(peer.steps))
-      peers = Map.insert(peers, sock.id, advance(deliver(Peer { ..peer, steps: rest }, answer)))
+      peers = Map.insert(peers, sock.id, met(peer, message))
     }
     fn receive(sock) {
       let peer = peer_of(peers, sock)
@@ -199,6 +377,20 @@ fn peer_of(peers: Map<Int, Peer>, sock: Socket) -> Peer ! {Fail<SocketError>} {
     Some(p) => p,
     None => fail SocketError { reason: Failed("not a scripted socket") },
   }
+}
+
+/// `peer` after it received `message`: the next step must be a `Reply` expecting it.
+fn met(peer: Peer, message: Message) -> Peer ! {Fail<SocketError>} {
+  let answer = match List.first(peer.steps) {
+    Some(Reply(expect, answer)) if expect == message => answer,
+    Some(step) =>
+      fail SocketError {
+        reason: Failed("the scripted peer expected {step}, not a send of {message}"),
+      },
+    None => fail SocketError { reason: Failed("the script has no step for a send of {message}") },
+  }
+  let rest = List.slice(peer.steps, 1, List.len(peer.steps))
+  advance(deliver(Peer { ..peer, steps: rest }, answer))
 }
 
 /// `peer` after the `Push` and `Close` steps at its front, which need no send.
@@ -259,6 +451,83 @@ fn host_ok<T>(r: Result<T, String>) -> T ! {Fail<SocketError>} {
   }
 }
 
+/// `Ok(false)` from the host is a socket that is closing or closed.
+fn open_ok(r: Result<Bool, String>) -> Unit ! {Fail<SocketError>} {
+  if !host_ok(r) { fail SocketError { reason: NotOpen } }
+}
+
+/// `handshake(req)`, then `options`' origin and subprotocol rules, as `Accept` failures.
+fn admitted(req: Request, options: Upgrade) -> Handshake ! {Fail<SocketError>} {
+  let hs = match handshake(req) {
+    Ok(h) => h,
+    Err(reason) => fail SocketError { reason: Accept(reason) },
+  }
+  match hs.origin {
+    Some(o) if !List.contains(List.map(options.origins, ascii_lower), o) =>
+      fail SocketError { reason: Accept("origin {o} is not accepted") },
+    _ => {},
+  }
+  match options.subprotocol {
+    Some(p) if !List.contains(hs.subprotocols, p) =>
+      fail SocketError { reason: Accept("subprotocol {p} was not offered") },
+    _ => {},
+  }
+  hs
+}
+
+/// What `accept` returns: 101, which the server does not send again.
+fn switched() -> Response { Response { status: Status.from(101), headers: [], body: Empty } }
+
+/// Every value of the header `name` (any case), in order.
+fn values(req: Request, name: String) -> List<String> {
+  List.filter_map(req.headers, fn(h) { if ascii_lower(h.0) == name { Some(h.1) } else { None } })
+}
+
+/// The comma-separated tokens of every `name` header, ASCII-lowercased.
+fn tokens(req: Request, name: String) -> List<String> {
+  List.flat_map(values(req, name), fn(v) {
+    List.map(String.split(v, ","), fn(t) { ascii_lower(trim_ows(t)) })
+  })
+}
+
+/// `s` with A to Z lowercased and nothing else changed (RFC 6454's origin serialization).
+fn ascii_lower(s: String) -> String {
+  let upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  List.join(
+    List.map(String.chars(s), fn(c) {
+      if String.contains(upper, c) { String.to_lower(c) } else { c }
+    }),
+    "",
+  )
+}
+
+/// `s` without the spaces and tabs around it (RFC 9110 `OWS`).
+fn trim_ows(s: String) -> String {
+  let cs = String.chars(s)
+  var a = 0
+  var b = List.len(cs)
+  while a < b && List.contains([" ", "\t"], cs[a].unwrap_or("")) { a = a + 1 }
+  while b > a && List.contains([" ", "\t"], cs[b - 1].unwrap_or("")) { b = b - 1 }
+  List.join(List.slice(cs, a, b), "")
+}
+
+/// RFC 9110 `token`: one or more of ALPHA, DIGIT and ``!#$%&'*+-.^_`|~`` (as `std/headers`).
+fn is_token(s: String) -> Bool {
+  let b = String.to_bytes(s)
+  let n = Bytes.len(b)
+  if n == 0 { return false }
+  for i in 0..n {
+    let c = Bytes.get(b, i).unwrap_or(0)
+    let alnum = c >= 0x30 && c <= 0x39 || c >= 0x41 && c <= 0x5A || c >= 0x61 && c <= 0x7A
+    if !alnum
+      && !List.contains(
+        [0x21, 0x23, 0x24, 0x25, 0x26, 0x27, 0x2A, 0x2B, 0x2D, 0x2E, 0x5E, 0x5F, 0x60, 0x7C, 0x7E],
+        c,
+      ) { return false }
+  }
+  true
+}
+
 /// Opens a connection to the serialized `url`: its id and the chosen subprotocol, or why not.
 @external(js, "sakura_runtime", "ws_connect")
 fn ws_connect(url: String, options: Options) -> Result<(Int, String), String>
@@ -276,6 +545,22 @@ fn ws_receive(id: Int) -> Result<Received, String>
 
 @external(js, "sakura_runtime", "ws_close")
 fn ws_close(id: Int, code: Int, reason: String) -> Result<Unit, String>
+
+/// Upgrades the performing task's own served request, once: writes the 101 and opens the
+/// socket's table entry. Its id and the chosen subprotocol, or why not.
+@external(js, "sakura_runtime", "ws_accept")
+fn ws_accept(hs: Handshake, options: Upgrade) -> Result<(Int, String), String>
+
+/// `Ok(false)` once the socket is closing or closed.
+@external(js, "sakura_runtime", "ws_subscribe")
+fn ws_subscribe(id: Int, topic: String) -> Result<Bool, String>
+
+@external(js, "sakura_runtime", "ws_unsubscribe")
+fn ws_unsubscribe(id: Int, topic: String) -> Result<Bool, String>
+
+/// The number of sockets written to; it never waits.
+@external(js, "sakura_runtime", "ws_publish")
+fn ws_publish(topic: String, message: Message, except: Option<Int>) -> Result<Int, String>
 
 test "scripted replies, pushes and closes in order" {
   let script = [Push(Text("hello")), Reply(Text("ping"), Text("pong")), Close(1000, "bye")]
@@ -303,4 +588,33 @@ test "closable follows the standard's close() rules" {
   expect(closable(1000, "") && closable(3000, "") && closable(4999, ""))
   expect(!closable(1001, "") && !closable(2999, "") && !closable(5000, ""))
   expect(!closable(1000, String.repeat("x", 124)))
+}
+
+test "handshake reads the sample request and refuses a wrong version" {
+  let offered = upgrade_request("/ws", ["chat", "superchat"])
+  let req = Request.with_header(offered, "Origin", "HTTPS://A.Test")
+  let want = Handshake {
+    key: "dGhlIHNhbXBsZSBub25jZQ==",
+    subprotocols: ["chat", "superchat"],
+    origin: Some("https://a.test"),
+  }
+  expect_eq(handshake(req), Ok(want))
+  let v8 = Request.with_header(req, "sec-websocket-version", "8")
+  expect_eq(handshake(v8), Err("sec-websocket-version is not 13"))
+}
+
+test "scripted accept checks the origin and plays the peer" {
+  with scripted([Reply(Text("hi"), Text("hello"))]) {
+    let req = Request.with_header(upgrade_request("/ws", []), "origin", "https://evil.test")
+    let refused = try { WebSocket.accept(req, upgrade(), fn(_) {}) }
+    let why = Accept("origin https://evil.test is not accepted")
+    expect_eq(refused.map(fn(r) { r.status }), Err(SocketError { reason: why }))
+    let got = try {
+      WebSocket.accept(upgrade_request("/ws", []), upgrade(), fn(sock) {
+        WebSocket.send(sock, Text("hi"))
+        expect_eq(WebSocket.receive(sock), Data(Text("hello")))
+      })
+    }
+    expect_eq(got.map(fn(r) { r.status }), Ok(Status.from(101)))
+  }
 }

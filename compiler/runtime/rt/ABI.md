@@ -228,6 +228,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   refuses a 1.9 module by the MINOR rule. The native runtime implements the seven as builtins,
   and a WASI command reaches them as unsupported builtins (`D090`). `sakura_abi_version` is
   `0x010900`.
+- 1.10.0 (MINOR, RFC 0002 §2.10, design §17.289 (11), plan `web-apis.md` phase 8s, after 7b-W's
+  1.9.0, §17.266 (1)) adds the WebSocket server (§8.2): the `sync` import
+  `ws_accept(task, ptr, len)`, keyed by the served task as `serve_respond` is, and the
+  `hosted` imports `ws_subscribe`, `ws_unsubscribe` and `ws_publish`, Node host only
+  (`WASM_HOSTED`). `serve_listen` delivers an upgrade request to `invoke` as any other (its
+  body `Empty`, nothing read) and holds its raw connection beside the reply until the task
+  ends; a response for a connection that was not upgraded is written on that connection with
+  `connection: close`, and one for an upgraded connection is discarded. Nothing shipped
+  changes, but a module that imports them needs a host that has them, so an older host refuses
+  a 1.10 module by the MINOR rule. Native has no WebSocket in either role (§7). None is of kind
+  `secret`. `sakura_abi_version` is `0x010a00`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -850,10 +861,10 @@ an import the Node host lacks. Every import has one of four shapes:
 
 | Shape | Signature | Used for |
 |---|---|---|
-| `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `trace_*`, `retire_handle`, `abort` |
+| `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `ws_accept` (1.10.0), `trace_*`, `retire_handle`, `abort` |
 | `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0); completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
-| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0), `ws_close` (1.8.0) |
+| `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0), `ws_close` (1.8.0), `ws_subscribe`, `ws_unsubscribe`, `ws_publish` (1.10.0) |
 
 Statuses: `0 ok`, `1 err` (the operation's ordinary `Err(reason)`; the reason string is copied
 out), `2 denied` (a `[permissions]` refusal, reported as the operation's ordinary error, as JS),
@@ -900,6 +911,23 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   frame before its payload is held (1009), 64 queued messages or more than `max_message` queued
   bytes before the host stops reading, a pong only while the socket needs no drain, 5 s for the
   closing handshake.
+- WebSocket server (1.10.0, RFC 0002 §2.10, plan `web-apis.md` phase 8s): `ws_accept(task: i64,
+  ptr, len) -> Bytes` (the tuple `(Handshake, Upgrade)`; a status-prefixed answer holding
+  `Result<(Int, String), String>`): the host upgrades the upgrade request whose task `invoke`
+  returned as `task`, only once and only when `Handshake.key` is that request's
+  `sec-websocket-key` (else `Err("not a served upgrade request")`), writes the 101 with
+  `sec-websocket-accept`, the chosen `sec-websocket-protocol` and the filtered
+  `Upgrade.headers`, and opens a server-role socket in the file table: its frames go out
+  unmasked and a client frame without a mask is 1002 (RFC 6455 §5.1). `hosted`, Node host only
+  (`WASM_HOSTED`): `ws_subscribe(id, topic)` and `ws_unsubscribe(id, topic)` (`Result<Bool,
+  String>`, `Ok(false)` once the socket is closing or closed) and `ws_publish(topic, Message,
+  Option<Int>) -> Result<Int, String>`, which writes to every subscribed socket but the
+  excepted one without waiting, passing over one whose write buffer holds `max_message` bytes
+  or whose `max_message` the message exceeds, and answers the count. Topics are the host's, per
+  process; a socket leaves them when `file_close` closes it. `SAKURA_MAX_SOCKETS` (default
+  1,024; a positive integer, else `D091` before the server starts) bounds the open sockets of
+  both roles; past it `ws_accept` and `ws_connect` answer `Err("the socket limit of N is
+  reached")`. TCP keepalive is on for every socket, and no ping is sent in either role.
 - `hosted` (W1, W2): `cli_args`, `cli_parse`, `env_get`, `file_open`, `file_read`,
   `file_write`, `fs_exists`, `fs_list`, `fs_memory_root`, `fs_read`, `fs_root`, `fs_subdir`,
   `fs_write`, `http_body_of`, `http_recording_append`, `http_recording_append_stream`,

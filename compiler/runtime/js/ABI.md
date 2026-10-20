@@ -522,6 +522,29 @@ TCP socket is paused (TCP backpressure on the peer), and reading resumes below b
 answered with its pong only while the socket's write buffer needs no drain (RFC 6455 §5.5.2), so
 pings cannot grow it (1.8.0, design §17.286 (4)).
 
+**WebSocket server** (RFC 0002 §2.10, design §17.289, plan `web-apis.md` phase 8s).
+`serveHttp` has an `upgrade` listener: an upgrade request becomes the same `Request` (body
+`Empty`, nothing read) and `serve_listen` runs `handle` on it as a task that holds the raw
+connection (`upgrades`, by task) until it ends. `ws_accept(handshake, upgrade) ->
+Result<(Int, String), String>` (direct; the WASM host's `wsAcceptOn` takes the connection by
+the task the guest names) upgrades the performing task's own request, once, and only when
+`handshake.key` is its `sec-websocket-key`: it writes the 101 (`upgrade`, `connection`,
+`sec-websocket-accept`, `sec-websocket-protocol` when chosen, then `Upgrade.headers`, refused
+as `ws_connect` refuses `Options.headers`) and opens a table entry with `server` set, whose
+frames go out unmasked and whose peer's unmasked frames fail with 1002; every other rule above
+holds in both roles. A handler that returns without accepting is answered on the raw
+connection (status line, its headers, `content-length`, `connection: close`, the body), and
+the outcome of a task that accepted is discarded (a defect still reported on stderr). A 101
+returned for a connection that was not upgraded is a `D091` answered 500. Topics:
+`ws_subscribe(id, topic)` and `ws_unsubscribe(id, topic)` (`Ok(false)` once closing or closed)
+and `ws_publish(topic, message, except) -> Result<Int, String>`, which writes to every
+subscribed socket but `except` without waiting and passes over one that is closing, whose
+`max_message` the message exceeds, or whose `writableLength` is already `max_message` or more
+(`wsSkips`); `file_close` ends a socket's subscriptions. `SAKURA_MAX_SOCKETS` (default 1,024,
+read with `bytesEnv`'s rule at `serveHttp`'s start and at each connect or accept) bounds the
+open sockets of both roles: past it the answer is `Err("the socket limit of N is reached")`.
+Every socket has TCP keepalive on; no ping is sent in either role.
+
 **Cassettes** (design §17.73, §17.122, behind std's `Http.recording`). A cassette is a JSON
 Lines file inside a `Dir`: the line `{"schema_version":"1.0","kind":"cassette"}` first, then
 one exchange per line:

@@ -1,0 +1,35 @@
+// milestone: M3
+// spec: RFC 0002 §2.10, §5; design §17.289 (9), (13); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-6.1
+
+// Topics under the scripted peer: two accepted sockets subscribe to `room`; `publish` meets each
+// open subscriber but `except` as a send does, in the order they subscribed, and returns how
+// many it reached; an unsubscribed socket is passed over, and a socket's subscriptions end when
+// its `accept` body returns.
+import std/websocket.{Reply, Text, WebSocket}
+
+pub fn main() -> Unit ! {Console} {
+  let script = [Reply(Text("all"), Text("got all")), Reply(Text("only b"), Text("got only b"))]
+  with WebSocket.scripted(script) {
+    let room = try {
+      let up = WebSocket.upgrade()
+      WebSocket.accept(WebSocket.upgrade_request("/a", []), up, fn(a) {
+        WebSocket.subscribe(a, "room")
+        let _ = WebSocket.accept(WebSocket.upgrade_request("/b", []), up, fn(b) {
+          WebSocket.subscribe(b, "room")
+          Console.print("to everyone: {WebSocket.publish("room", Text("all"), None)}")
+          Console.print("all but a: {WebSocket.publish("room", Text("only b"), Some(a))}")
+          Console.print("a got {WebSocket.receive(a)}")
+          Console.print("b got {WebSocket.receive(b)}")
+          Console.print("b got {WebSocket.receive(b)}")
+          WebSocket.unsubscribe(b, "room")
+          Console.print("after b left: {WebSocket.publish("room", Text("x"), Some(a))}")
+          WebSocket.subscribe(b, "room")
+        })
+        Console.print("after b's body: {WebSocket.publish("room", Text("x"), Some(a))}")
+        Console.print("elsewhere: {WebSocket.publish("lobby", Text("x"), None)}")
+      })
+    }
+    Console.print("{room.map(fn(r) { r.status })}")
+  }
+}

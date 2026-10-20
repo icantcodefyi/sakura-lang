@@ -84,6 +84,7 @@ pub const IMPORTS: &[&str] = &[
     "ws_connect",
     "ws_send",
     "ws_receive",
+    "ws_accept",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`

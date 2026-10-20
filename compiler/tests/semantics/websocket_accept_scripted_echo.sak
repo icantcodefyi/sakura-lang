@@ -1,0 +1,51 @@
+// milestone: M3
+// mode: test
+// spec: RFC 0002 §2.10, §5; design §17.289 (2), (6), (13); plan web-apis.md phase 8s
+// Spec: https://www.rfc-editor.org/rfc/rfc6455#section-4.2.2
+
+// A served upgrade under `Serve.scripted` around `WebSocket.scripted`: `accept` runs the body
+// with the socket (the subprotocol it chose, sends answered by the scripted peer, the peer's
+// close), then returns the 101 that `Serve.scripted` prints.
+import std/request.{Request}
+import std/response.{Response}
+import std/serve.{Address, Serve, ServeError}
+import std/websocket.{Binary, Close, Closed, Data, Reply, Text, Upgrade, WebSocket}
+
+fn handle(req: Request) -> Response ! {Test, WebSocket} {
+  let options = Upgrade { ..WebSocket.upgrade(), subprotocol: Some("chat") }
+  let accepted = try {
+    WebSocket.accept(req, options, fn(sock) {
+      Test.output("protocol [{WebSocket.protocol(sock)}]")
+      WebSocket.send(sock, Text("ping"))
+      Test.output("{WebSocket.receive(sock)}")
+      WebSocket.send(sock, Binary(Bytes.from_list([1])))
+      Test.output("{WebSocket.receive(sock)}")
+      Test.output("{WebSocket.receive(sock)}")
+    })
+  }
+  match accepted {
+    Ok(switched) => switched,
+    Err(e) => Response.status(400, "{e.reason}"),
+  }
+}
+
+test "an accepted socket meets the scripted peer and the upgrade answers 101" {
+  let script = [
+    Reply(Text("ping"), Text("pong")),
+    Reply(Binary(Bytes.from_list([1])), Binary(Bytes.from_list([2]))),
+    Close(1000, "bye"),
+  ]
+  with Serve.scripted([WebSocket.upgrade_request("/ws", ["chat"])]), WebSocket.scripted(script) {
+    expect_fail(
+      fn() { Serve.serve(handle, Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output([
+    "protocol [chat]",
+    "Data(Text(\"pong\"))",
+    "Data(Binary(Bytes.of([2])))",
+    "Closed(CloseInfo \{ code: 1000, reason: \"bye\", clean: true \})",
+    "Get /ws -> 101 ",
+  ])
+}

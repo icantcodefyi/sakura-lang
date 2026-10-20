@@ -265,3 +265,63 @@ test("headers reach the handshake", async () => {
   assert.equal(token, "t1");
   rt.file_close(id);
 });
+
+// The server role (RFC 0002 §2.10, design §17.289; plan `web-apis.md` phase 8s). A served
+// program against Node's global `WebSocket` and raw clients, on JS and WASM, is
+// `tests/wasm.rs::websocket_accept_on_wasm_as_on_js`; these are the runtime's own rules.
+
+test("accept outside the performing task's own upgrade request is refused, and writes nothing", () => {
+  const hs = { key: "dGhlIHNhbXBsZSBub25jZQ==", subprotocols: rt.list([]), origin: rt.None };
+  const up = { subprotocol: rt.None, origins: rt.list([]), headers: rt.list([]), max_message: 16 };
+  assert.deepEqual(rt.ws_accept(hs, up), rt.Err("not a served upgrade request"));
+  const conn = { socket: { writable: true }, head: new Uint8Array(0), key: "other", upgraded: false };
+  assert.deepEqual(rt.wsAcceptOn(conn, hs, up), rt.Err("not a served upgrade request"));
+  const own = { ...conn, key: hs.key };
+  const bad = { ...up, headers: rt.list([["Sec-WebSocket-Extensions", "x"]]) };
+  assert.deepEqual(rt.wsAcceptOn(own, hs, bad), rt.Err("header Sec-WebSocket-Extensions is set by the handshake"));
+  assert.equal(own.upgraded, false);
+});
+
+test("publish skips a subscriber whose send buffer holds max_message bytes, or that is closing", () => {
+  const s = (writableLength, extra = {}) => ({ closing: false, closed: null, max: 8, socket: { writableLength }, ...extra });
+  assert.equal(rt.wsSkips(s(0), 8), false);
+  assert.equal(rt.wsSkips(s(7), 8), false);
+  assert.equal(rt.wsSkips(s(8), 1), true);
+  assert.equal(rt.wsSkips(s(0), 9), true);
+  assert.equal(rt.wsSkips(s(0, { closing: true }), 1), true);
+});
+
+test("publish writes to every subscriber but except, without waiting; subscriptions end with the socket", async () => {
+  const got = [];
+  behaviours.set("/topic", async (conn) => got.push(await conn.next()));
+  const [a] = await connect("/topic");
+  const [b] = await connect("/topic");
+  assert.deepEqual(rt.ws_subscribe(a, "t"), rt.Ok(true));
+  assert.deepEqual(rt.ws_subscribe(b, "t"), rt.Ok(true));
+  assert.deepEqual(rt.ws_publish("t", text("news"), rt.Some(a)), rt.Ok(1));
+  await until(() => got.length === 1, "the subscriber never received the message");
+  assert.deepEqual([got[0].op, got[0].masked, got[0].payload.toString()], [1, true, "news"]);
+  rt.file_close(b);
+  assert.deepEqual(rt.ws_publish("t", text("again"), rt.None), rt.Ok(1));
+  assert.deepEqual(rt.ws_subscribe(b, "t"), rt.Ok(false));
+  rt.file_close(a);
+  assert.deepEqual(rt.ws_publish("t", text("none"), rt.None), rt.Ok(0));
+});
+
+test("SAKURA_MAX_SOCKETS bounds the open sockets, and an invalid value is a D091", async () => {
+  const [id] = await connect("/echo");
+  process.env.SAKURA_MAX_SOCKETS = "1";
+  try {
+    const r = await run(rt.ws_connect, [`ws://127.0.0.1:${peer.port}/echo`, options()]);
+    assert.deepEqual(r, rt.Err("the socket limit of 1 is reached"));
+    process.env.SAKURA_MAX_SOCKETS = "0";
+    const o = await rt.runTask(rt.ws_connect, [`ws://127.0.0.1:${peer.port}/echo`, options()]);
+    assert.equal(o.kind, "defect");
+    assert.match(o.message, /SAKURA_MAX_SOCKETS must be a positive integer number of sockets/);
+  } finally {
+    delete process.env.SAKURA_MAX_SOCKETS;
+  }
+  rt.file_close(id);
+  const [again] = await connect("/echo");
+  rt.file_close(again);
+});

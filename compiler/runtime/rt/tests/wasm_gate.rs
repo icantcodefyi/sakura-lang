@@ -86,6 +86,7 @@ const IMPORTS: &[&str] = &[
     "ws_connect",
     "ws_send",
     "ws_receive",
+    "ws_accept",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

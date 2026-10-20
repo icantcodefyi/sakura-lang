@@ -141,6 +141,35 @@ retains earlier implementation history.
 
 ### Added
 
+- A WebSocket server in `std/websocket` (RFC 0002 §2.10; plan `web-apis.md` phase 8s; design
+  §17.289), `Bun.serve`'s upgrade in Sakura's shape. Inside a `Serve` handler,
+  `WebSocket.accept(req, options, body)` upgrades the request and runs `body` with a `Socket`
+  that has the client's `send`, `receive`, `close` and `messages`, closing it with 1001 on every
+  exit; it returns the 101 `Response`, and the server discards what the handler returns for a
+  connection it upgraded. `WebSocket.handshake(req)` is the pure RFC 6455 §4.2.1 check
+  (`Handshake { key, subprotocols, origin }`, or a string naming the header that failed), so a
+  handler can answer 426, 403 or 404 itself. `Upgrade { subprotocol, origins, headers,
+  max_message }` (`WebSocket.upgrade()`: none, none, none, 16 MiB) chooses an offered
+  subprotocol and the browser origins to admit: a request whose `origin` is not listed is
+  refused and the empty default refuses every browser (cross-site WebSocket hijacking), while a
+  request without `origin` is admitted. `SocketReason` gains `Accept(String)`, which a `match`
+  on it must now cover. Topics: `subscribe(sock, topic)`, `unsubscribe` and `publish(topic,
+  message, except)`, which never waits, passes over a subscriber whose send buffer already
+  holds `max_message` bytes, and returns the number of sockets it wrote to; a topic is at most
+  256 bytes (`D020`). Server frames are unmasked and an unmasked client frame closes the
+  connection with 1002; no extension is negotiated and no ping is sent; there is no idle timer
+  (`Task.timeout` around `receive`). `SAKURA_MAX_SOCKETS` (default 1,024) bounds the open
+  sockets of both roles, so past it `connect` fails `Connect` and `accept` fails `Accept` with
+  "the socket limit of N is reached"; an invalid value is a `D091` at server start or connect.
+  TCP keepalive is on for every socket. `WebSocket.scripted` plays the peer for `accept` and
+  `publish`, and `WebSocket.upgrade_request(path, subprotocols)` builds a test request. A
+  cookbook recipe, `websocket_server`. `Serve.host()` now delivers an upgrade request to the
+  handler instead of answering it as a plain request, writes a handler's answer to one it did
+  not upgrade with `connection: close`, and answers a 101 for a connection that was not
+  upgraded with 500 (`D091`) instead of sending it. WASM runtime ABI 1.10.0
+  (`sakura_abi_version` `0x010a00`) adds `ws_accept` and the topic imports, so an older host
+  refuses a module from this version (`V8003`). Native refuses `WebSocket` and `Serve` at
+  startup as before.
 - `std/compress` (RFC 0002 §2.6; plan `web-apis.md` phase 6; design §17.280 (4)): gzip, zlib
   (`Deflate`) and raw DEFLATE on JS, WASM and native. `compress(b, format, level)` and
   `decompress(b, format, max_out)` work on whole `Bytes`. `compress_source(src, format, level,

@@ -1026,10 +1026,13 @@ fn is_canonical(text: String) -> Bool    // @total
 type Message = Text(String) | Binary(Bytes)
 type CloseInfo = { code: Int, reason: String, clean: Bool }
 type Received = Data(Message) | Closed(CloseInfo)
-type SocketReason = Connect(String) | MessageTooLarge | NotOpen | Failed(String)
+type SocketReason = Connect(String) | MessageTooLarge | NotOpen | Failed(String) | Accept(String)
 error SocketError(reason: SocketReason)
 type Options = { subprotocols: List<String>, headers: List<(String, String)>, max_message: Int }
 fn options() -> Options
+type Upgrade = { subprotocol: Option<String>, origins: List<String>, headers: List<(String, String)>, max_message: Int }
+fn upgrade() -> Upgrade
+type Handshake = { key: String, subprotocols: List<String>, origin: Option<String> }
 opaque type Socket = { id: Int, protocol: String, max_message: Int }    // @resource
 fn protocol(sock: Socket) -> String
 effect WebSocket {
@@ -1037,7 +1040,13 @@ effect WebSocket {
   fn send(sock: Socket, message: Message) -> Unit ! {Fail<SocketError>}
   fn receive(sock: Socket) -> Received ! {Fail<SocketError>}
   fn close(sock: Socket, code: Int, reason: String) -> Unit ! {Fail<SocketError>} requires closable(code, reason)
+  fn accept<e>(req: Request, options: Upgrade, body: fn(Socket) -> Unit ! e) -> Response ! {Fail<SocketError> | e} requires options.max_message > 0
+  fn subscribe(sock: Socket, topic: String) -> Unit ! {Fail<SocketError>} requires String.len(topic) <= 256
+  fn unsubscribe(sock: Socket, topic: String) -> Unit ! {Fail<SocketError>} requires String.len(topic) <= 256
+  fn publish(topic: String, message: Message, except: Option<Socket>) -> Int ! {Fail<SocketError>} requires String.len(topic) <= 256
 }
+fn handshake(req: Request) -> Result<Handshake, String>
+fn upgrade_request(path: String, subprotocols: List<String>) -> Request
 fn closable(code: Int, reason: String) -> Bool    // @total
 fn messages(sock: Socket) -> Source<Message, {WebSocket, Fail<SocketError>}>
 fn host() -> Handler<WebSocket>

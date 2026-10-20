@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010900;
+export const ABI_VERSION = 0x010a00;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -401,6 +401,13 @@ export const HOSTED = {
   },
   // `std/websocket` (ABI 1.8.0): starts the closing handshake of socket `id` at once.
   ws_close: { run: (_h, id, code, reason) => ({ ok: rt.ws_close(id, code, reason) }), result: () => R("U", "S") },
+  // `std/websocket`'s topics (ABI 1.10.0), in the JS runtime's map of this process.
+  ws_publish: {
+    run: (_h, topic, message, except) => ({ ok: rt.ws_publish(topic, message, except) }),
+    result: () => R("I", "S"),
+  },
+  ws_subscribe: { run: (_h, id, topic) => ({ ok: rt.ws_subscribe(id, topic) }), result: () => R("B", "S") },
+  ws_unsubscribe: { run: (_h, id, topic) => ({ ok: rt.ws_unsubscribe(id, topic) }), result: () => R("B", "S") },
   json_decode: {
     run: (_h, text, schema) => ({ ok: rt.json_decode(text, JSON.parse(schema)) }),
     result: ([, schema]) => R(JSON.parse(schema), DECODE_ERROR),
@@ -501,7 +508,8 @@ export class Host {
     // A failure on its way out of a JS clause through the guest's frames (`js_resume`).
     this.escaping = null;
     // Served requests by task (`serve_listen`): how to reply, and the answer once the response
-    // is sent (its `D091` past the copy budget).
+    // is sent (its `D091` past the copy budget), and an upgrade request's raw connection for
+    // `ws_accept` (`conn`, ABI 1.10.0).
     this.served = new Map();
     // What ended the instance inside a request callback (a trap in `invoke`), for `runTask`.
     this.trapped = null;
@@ -780,7 +788,7 @@ export class Host {
             this.complete(request, 0, this.answerBytes({ ok: e }, ["A", "std::serve::ServeError", []]));
           };
           this.inflight.set(request, () => {});
-          const s = rt.serveHttp(addr, (value, reply) => {
+          const s = rt.serveHttp(addr, (value, reply, conn) => {
             const w = new Writer();
             this.encode(w, value, ["A", "std::request::Request", []]);
             const bytes = w.done();
@@ -804,7 +812,7 @@ export class Host {
             // `serveHttp` calls this only while the server runs, so the listener is live and 0 is
             // the guest heap (design §17.223 (1)).
             if (task === 0) return reply({ kind: "defect", code: "D096", message: "heap exhausted: request not started" });
-            this.served.set(task, { reply, answer: null });
+            this.served.set(task, { reply, answer: null, conn });
             this.wake?.();
           });
           if (s.err !== undefined) {
@@ -825,6 +833,13 @@ export class Host {
           const [r] = this.decode(new Reader(this.copyIn(ptr, len)));
           if (s !== undefined) s.answer = { kind: "ok", value: r };
         },
+        // `std/websocket`'s `accept` (ABI 1.10.0): the guest names its task as `serve_respond`
+        // does, so only that task's own upgrade request can be upgraded, once (`wsAcceptOn`).
+        ws_accept: (task, ptr, len) =>
+          this.hosted("ws_accept", ptr, len, {
+            run: (h, hs, up) => ({ ok: rt.wsAcceptOn(h.served.get(Number(task))?.conn, hs, up) }),
+            result: () => R(["T", "I", "S"], "S"),
+          }),
         js_callback: (id, ptr, len) => {
           const c = this.callbacks.get(Number(id));
           if (c === undefined) throw new HostFault("an unknown JS callback");
@@ -1248,8 +1263,7 @@ export class Host {
    * back as a `Bytes`: `u8` status (0 ok, 1 the operation failed with the value, 2 a defect:
    * `u32` code and the message), then the value.
    */
-  hosted(name, ptr, len) {
-    const op = HOSTED[name];
+  hosted(name, ptr, len, op = HOSTED[name]) {
     const w = new Writer();
     let args;
     try {

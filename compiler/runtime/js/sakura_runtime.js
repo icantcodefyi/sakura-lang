@@ -4146,12 +4146,12 @@ const failureOf = (e) => String(e?.cause?.message ?? e?.message ?? e);
  * from 1 to 2^53 - 1 are that value, anything else is the defect `D091` naming the variable,
  * the value seen and the accepted form, so a limit is never off and never zero by accident.
  */
-export function bytesEnv(name, fallback) {
+export function bytesEnv(name, fallback, unit = "bytes") {
   const raw = proc?.env?.[name];
   if (raw === undefined) return fallback;
   const n = /^[0-9]+$/.test(raw) ? Number(raw) : 0;
   if (n >= 1 && Number.isSafeInteger(n)) return n;
-  const form = "a positive integer number of bytes (1 to 2^53 - 1)";
+  const form = `a positive integer number of ${unit} (1 to 2^53 - 1)`;
   throw new Defect("D091", `${name} must be ${form}, got ${JSON.stringify(raw)}`);
 }
 
@@ -4997,14 +4997,24 @@ export function llm_anthropic(key, handlerModel) {
 // Serve (design §10.2, §10.4). `serve_listen(addr, handle)` serves HTTP on `addr` (within the
 // manifest's `net` list) until the process stops; each request runs `handle(req)` as its own
 // child task under the caller's handlers. A failure or defect in it is a 500 with a redacted
-// body (the defect record goes to stderr), never a crashed server.
+// body (the defect record goes to stderr), never a crashed server. An upgrade request's raw
+// connection is held by its task until the task ends, for `ws_accept` (design §17.289 (10)).
+
+/** The raw connections of served upgrade requests, by the task answering each. */
+const upgrades = new Map();
 
 export function serve_listen(addr, handle, ctx, k) {
   const ServeError = std("std::serve::ServeError");
-  const s = serveHttp(addr, (value, reply) => {
-    const o = runTask(handle, [value], ctx.h);
-    if (o instanceof Promise) o.then(reply, () => reply({ kind: "rejected" }));
-    else reply(o);
+  const s = serveHttp(addr, (value, reply, conn) => {
+    const t = newTask();
+    if (conn !== undefined) upgrades.set(t, conn);
+    const done = (o) => {
+      upgrades.delete(t);
+      reply(o);
+    };
+    const o = runTask(handle, [value], ctx.h, t);
+    if (o instanceof Promise) o.then(done, () => done({ kind: "rejected" }));
+    else done(o);
   });
   if (s.err !== undefined) return fail(ctx, new ServeError(s.err));
   return suspend(s.stopped, (reason) => fail(ctx, new ServeError(reason)), s.close);
@@ -5015,48 +5025,115 @@ export const MAX_REQUEST_BODY = 1 << 20;
 
 /**
  * The HTTP server behind `serve_listen` (the WASM host's too): `addr` must be in the manifest's
- * `net` list; each request becomes a `Request` for `run(request, reply)`, where `reply(o)` takes
- * the handler's outcome (`ok` with the `Response`; a `fail`, its `error` or `Show` text
+ * `net` list; each request becomes a `Request` for `run(request, reply, conn)`, where `reply(o)`
+ * takes the handler's outcome (`ok` with the `Response`; a `fail`, its `error` or `Show` text
  * `shown`, or a `defect` is reported on stderr and answered 500). A body over
  * `MAX_REQUEST_BODY` is answered 413 and the connection closed without running the handler (so
  * is the outcome `too large`, the WASM host's request past its copy budget, whose defect is
  * reported on stderr); a
- * `Response` whose status or headers Node refuses is reported as a `D091` defect and answered
- * 500, and the server keeps running. A `D096` defect (the WASM guest's heap could not take the
+ * `Response` whose status or headers Node refuses, or a 101 for a connection that was not
+ * upgraded, is reported as a `D091` defect and answered 500, and the server keeps running. A
+ * `D096` defect (the WASM guest's heap could not take the
  * request) is reported and answered 503, the connection kept; the outcome `ended` (the instance
  * ended, its record already written) is a 500 with nothing more on stderr. Once the server
  * stops (`close`, or `stopped` settling) a request still arriving is 503 with the connection
- * closed and never reaches `run` (design §17.223 (3)). Returns `{ err }`, or
- * `{ stopped, close }` (`stopped` resolves to why the server stopped).
+ * closed and never reaches `run` (design §17.223 (3)). An upgrade request (design §17.289 (10))
+ * reaches `run` with body `Empty`, nothing of it read, and `conn`, its raw connection, which
+ * `ws_accept` upgrades (`conn.upgraded`; the handler's outcome is then discarded); otherwise
+ * the response is written on the raw connection with `content-length` and `connection: close`.
+ * `SAKURA_MAX_SOCKETS` is read before the server starts, so an invalid value is this run's
+ * `D091`. Returns `{ err }`, or `{ stopped, close }` (`stopped` resolves to why the server
+ * stopped).
  */
 export function serveHttp(addr, run) {
   const where = `${addr.host}:${addr.port}`;
   const net = granted()?.net;
   if (net !== undefined && !net.includes(where)) return { err: `${where} is not in the manifest's net list` };
+  maxSockets();
+  const http = proc.getBuiltinModule("node:http");
   const Request = std("std::request::Request");
   const Method = std("std::request::Method");
   const methods = Method.prototype.$t.ctors.map((c) => c.name.toUpperCase());
   const report = (o) =>
     writeErr(JSON.stringify({ schema_version: "1.0", kind: "defect", code: o.code, message: o.message }));
+  const plain = (send, status, text, extra = {}) =>
+    send(status, { "content-type": "text/plain", "content-length": Buffer.byteLength(text), ...extra }, text);
   let server;
   let open = true;
   const close = () => {
     if (open) server.close();
     open = false;
   };
+  /** Answers `req` (its body read) with `send(status, headers, body)`, which throws on an invalid response. */
+  const answer = (req, chunks, send, tooLarge, conn) => {
+    if (!open) return plain(send, 503, "server stopped", { connection: "close" });
+    const tag = methods.indexOf(req.method);
+    if (tag < 0) return plain(send, 405, "method not allowed");
+    const headers = [];
+    for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+    const body = payloadOf(new Uint8Array(Buffer.concat(chunks)));
+    const follow = variant("std::request::Redirect", 0, []);
+    const value = new Request(new Method(tag, []), req.url, list(headers), body, follow, list([]), list([]));
+    run(
+      value,
+      (o) => {
+        if (o.kind === "too large") {
+          report(o);
+          tooLarge();
+          return;
+        }
+        if (conn?.upgraded) {
+          // The connection is a WebSocket now: the handler's return is discarded, and
+          // `file_closing` closed the socket with 1001 (design §17.289 (10)).
+          if (o.kind === "defect") report(o);
+          else if (o.kind === "fail") writeErr(`error: request failed with ${o.shown ?? show(o.error)}`);
+          return;
+        }
+        if (o.kind === "ok") {
+          const r = o.value;
+          const bytes = payloadBytes(r.body);
+          try {
+            if (r.status === 101) throw new Error("101 for a connection that was not upgraded");
+            send(r.status, { ...Object.fromEntries(items(r.headers)), "content-length": bytes.length }, bytes);
+            return;
+          } catch (e) {
+            // An invalid status or header: a defect of this request, not of the server.
+            o = { kind: "defect", code: "D091", message: `host operation failed: invalid response: ${e.message}` };
+          }
+        }
+        if (o.kind === "defect" && o.code === "D096") {
+          report(o);
+          plain(send, 503, "server out of memory", { "retry-after": "1" });
+          return;
+        }
+        if (o.kind === "defect") {
+          report(o);
+        } else if (o.kind === "fail") {
+          writeErr(`error: request failed with ${o.shown ?? show(o.error)}`);
+        }
+        plain(send, 500, "internal error");
+      },
+      conn,
+    );
+  };
   const stopped = new Promise((resolve) => {
-    server = proc.getBuiltinModule("node:http").createServer((req, res) => {
-      const plain = (status, text, extra = {}) =>
-        res
-          .writeHead(status, { "content-type": "text/plain", "content-length": Buffer.byteLength(text), ...extra })
-          .end(text);
+    server = http.createServer((req, res) => {
+      const send = (status, hs, body) => {
+        try {
+          res.writeHead(status, hs);
+        } catch (e) {
+          for (const name of res.getHeaderNames()) res.removeHeader(name);
+          throw e;
+        }
+        res.end(body);
+      };
       const chunks = [];
       let size = 0;
       let refused = false;
       const tooLarge = () => {
         refused = true;
         chunks.length = 0;
-        plain(413, "request body too large", { connection: "close" });
+        plain(send, 413, "request body too large", { connection: "close" });
       };
       if (Number(req.headers["content-length"]) > MAX_REQUEST_BODY) tooLarge();
       req.on("data", (c) => {
@@ -5066,56 +5143,15 @@ export function serveHttp(addr, run) {
         else chunks.push(c);
       });
       req.on("end", () => {
-        if (refused) return;
-        if (!open) {
-          plain(503, "server stopped", { connection: "close" });
-          return;
-        }
-        const tag = methods.indexOf(req.method);
-        if (tag < 0) {
-          plain(405, "method not allowed");
-          return;
-        }
-        const headers = [];
-        for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
-        const body = payloadOf(new Uint8Array(Buffer.concat(chunks)));
-        const follow = variant("std::request::Redirect", 0, []);
-        const value = new Request(new Method(tag, []), req.url, list(headers), body, follow, list([]), list([]));
-        run(value, (o) => {
-          if (o.kind === "too large") {
-            report(o);
-            tooLarge();
-            return;
-          }
-          if (o.kind === "ok") {
-            const r = o.value;
-            const body = payloadBytes(r.body);
-            const hs = { ...Object.fromEntries(items(r.headers)), "content-length": body.length };
-            try {
-              res.writeHead(r.status, hs);
-            } catch (e) {
-              // An invalid status or header: a defect of this request, not of the server.
-              o = { kind: "defect", code: "D091", message: `host operation failed: invalid response: ${e.message}` };
-              for (const name of res.getHeaderNames()) res.removeHeader(name);
-            }
-            if (o.kind === "ok") {
-              res.end(body);
-              return;
-            }
-          }
-          if (o.kind === "defect" && o.code === "D096") {
-            report(o);
-            plain(503, "server out of memory", { "retry-after": "1" });
-            return;
-          }
-          if (o.kind === "defect") {
-            report(o);
-          } else if (o.kind === "fail") {
-            writeErr(`error: request failed with ${o.shown ?? show(o.error)}`);
-          }
-          plain(500, "internal error");
-        });
+        if (!refused) answer(req, chunks, send, tooLarge);
       });
+    });
+    server.on("upgrade", (req, socket, head) => {
+      socket.on("error", () => {});
+      const send = (status, hs, body) => rawResponse(http, socket, status, hs, body);
+      const tooLarge = () => plain(send, 413, "request body too large", { connection: "close" });
+      const conn = { socket, head, key: req.headers["sec-websocket-key"], upgraded: false };
+      answer(req, [], send, tooLarge, conn);
     });
     server.on("error", (e) => {
       open = false;
@@ -5124,6 +5160,24 @@ export function serveHttp(addr, run) {
     server.listen(addr.port, addr.host);
   });
   return { stopped, close };
+}
+
+/**
+ * A response written on the raw connection of an upgrade request that was not upgraded: the
+ * status line, the handler's headers (Node's validation; its own `connection`,
+ * `content-length` and `transfer-encoding` dropped), `content-length`, `connection: close`, the
+ * body, then the end. Throws on an invalid header, before anything is written.
+ */
+function rawResponse(http, socket, status, headers, body) {
+  let head = `HTTP/1.1 ${status} ${http.STATUS_CODES[status] ?? ""}\r\n`;
+  for (const [name, value] of Object.entries(headers)) {
+    if (["connection", "content-length", "transfer-encoding"].includes(name.toLowerCase())) continue;
+    http.validateHeaderName(name);
+    http.validateHeaderValue(name, value);
+    head += `${name}: ${value}\r\n`;
+  }
+  head += `content-length: ${Buffer.byteLength(body)}\r\nconnection: close\r\n\r\n`;
+  socket.end(Buffer.concat([Buffer.from(head, "latin1"), Buffer.from(body)]));
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -5137,6 +5191,14 @@ export function serveHttp(addr, run) {
 // buffer needs no drain (RFC 6455 §5.5.2 lets a pong answer the latest ping), so pings cannot
 // grow it. The close, once known, follows the messages and is returned again by every later
 // receive. A close the client starts waits `WS_CLOSE_MS` for the peer's.
+//
+// The server role (RFC 0002 §2.10, design §17.289; plan phase 8s): `ws_accept` upgrades the
+// performing task's own served request (`upgrades`, filled by `serve_listen`), and the table
+// entry is the client's with `server` set: its frames go out unmasked and a client frame
+// without a mask fails with 1002 (RFC 6455 §5.1); no extension is negotiated in either role and
+// no ping is sent. At most `SAKURA_MAX_SOCKETS` (default 1,024) sockets of both roles are open
+// at once; TCP keepalive is on for every one. Topics (`ws_subscribe`, `ws_publish`) are a map of
+// this instance from a topic to the ids subscribed, an id leaving it with its table entry.
 
 const WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const WS_QUEUE = 64;
@@ -5144,6 +5206,19 @@ const WS_CLOSE_MS = 5000;
 /** Headers the opening handshake sets itself (RFC 6455 §4.1); `Options.headers` may not. */
 const WS_OWN = new Set(["host", "upgrade", "connection", "content-length", "transfer-encoding"]);
 const TOKEN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+export const DEFAULT_MAX_SOCKETS = 1024;
+/** `SAKURA_MAX_SOCKETS`, read at each use as `SAKURA_MAX_COPY_BYTES` is (design §17.209 (1)). */
+const maxSockets = () => bytesEnv("SAKURA_MAX_SOCKETS", DEFAULT_MAX_SOCKETS, "sockets");
+/** Open sockets of both roles, and connects in flight. */
+let wsCount = 0;
+/** Takes a socket slot: `undefined`, or why not. */
+function wsReserve() {
+  const max = maxSockets();
+  if (wsCount >= max) return `the socket limit of ${max} is reached`;
+  wsCount++;
+}
+/** Topic → the ids of the sockets subscribed to it. */
+const topics = new Map();
 
 /**
  * `ws_connect(url, options)`: suspends until the handshake ends. `Ok((id, subprotocol))` after a
@@ -5168,6 +5243,14 @@ export function ws_connect(url, options, _ctx, k) {
   Object.assign(headers, { connection: "Upgrade", upgrade: "websocket", "sec-websocket-key": key, "sec-websocket-version": "13" });
   if (protocols.length > 0) headers["sec-websocket-protocol"] = protocols.join(", ");
   const secure = u.protocol === "wss:";
+  const full = wsReserve();
+  if (full !== undefined) return ret(k, Err(full));
+  // The slot is the table entry's once open; any other end gives it back.
+  let reserved = true;
+  const unreserve = () => {
+    if (reserved) wsCount--;
+    reserved = false;
+  };
   let req;
   try {
     req = proc.getBuiltinModule(secure ? "node:https" : "node:http").request({
@@ -5177,10 +5260,15 @@ export function ws_connect(url, options, _ctx, k) {
       headers,
     });
   } catch (e) {
+    unreserve();
     return ret(k, Err(failureOf(e)));
   }
   let opened = null;
-  const handshake = new Promise((resolve) => {
+  const handshake = new Promise((done) => {
+    const resolve = (r) => {
+      if (opened === null) unreserve();
+      done(r);
+    };
     req.on("upgrade", (res, socket, head) => {
       const accept = nodeCrypto().createHash("sha1").update(key + WS_GUID).digest("base64");
       const chosen = res.headers["sec-websocket-protocol"] ?? "";
@@ -5197,7 +5285,8 @@ export function ws_connect(url, options, _ctx, k) {
         resolve(Err(why));
         return;
       }
-      opened = wsOpen(socket, head, options.max_message);
+      opened = wsOpen(socket, head, options.max_message, false);
+      reserved = false;
       resolve(Ok([opened, chosen]));
     });
     req.on("response", (res) => {
@@ -5211,16 +5300,65 @@ export function ws_connect(url, options, _ctx, k) {
   return suspend(handshake, k, () => {
     req.destroy();
     if (opened !== null) file_close(opened);
+    else unreserve();
   });
 }
 
-/** A table entry for the upgraded `socket` (`head`: bytes read past the handshake); its id. */
-function wsOpen(socket, head, max) {
+/**
+ * `ws_accept(handshake, upgrade)` (design §17.289 (10)): upgrades the performing task's own
+ * served request (`wsAcceptOn`). Direct: the task is the current one.
+ */
+export function ws_accept(hs, up) {
+  return wsAcceptOn(upgrades.get(T.t), hs, up);
+}
+
+/**
+ * Upgrades the served connection `conn` (`serveHttp`'s), once and only for the request whose
+ * `sec-websocket-key` `hs` read: writes the 101 (`upgrade`, `connection`,
+ * `sec-websocket-accept`, `sec-websocket-protocol` when `up` chose one, then `up.headers`,
+ * refused as `ws_connect` refuses `Options.headers`) and opens the server-role table entry.
+ * `Ok((id, subprotocol))`, or `Err(reason)`; the WASM host calls it with its own `conn`.
+ */
+export function wsAcceptOn(conn, hs, up) {
+  if (conn === undefined || conn.upgraded || conn.key !== hs.key) return Err("not a served upgrade request");
+  const http = proc.getBuiltinModule("node:http");
+  let extra = "";
+  for (const [name, value] of items(up.headers)) {
+    const n = name.toLowerCase();
+    if (WS_OWN.has(n) || n.startsWith("sec-websocket-")) return Err(`header ${name} is set by the handshake`);
+    try {
+      http.validateHeaderName(name);
+      http.validateHeaderValue(name, value);
+    } catch (e) {
+      return Err(failureOf(e));
+    }
+    extra += `${name}: ${value}\r\n`;
+  }
+  const chosen = up.subprotocol.tag === 1 ? up.subprotocol.fields[0] : "";
+  if (chosen !== "" && !TOKEN.test(chosen)) return Err(`invalid subprotocol ${JSON.stringify(chosen)}`);
+  if (!conn.socket.writable) return Err("the connection is closed");
+  const full = wsReserve();
+  if (full !== undefined) return Err(full);
+  conn.upgraded = true;
+  const accept = nodeCrypto().createHash("sha1").update(hs.key + WS_GUID).digest("base64");
+  const protocol = chosen === "" ? "" : `sec-websocket-protocol: ${chosen}\r\n`;
+  const head = `HTTP/1.1 101 Switching Protocols\r\nupgrade: websocket\r\nconnection: Upgrade\r\nsec-websocket-accept: ${accept}\r\n`;
+  conn.socket.write(Buffer.from(`${head}${protocol}${extra}\r\n`, "latin1"));
+  return Ok([wsOpen(conn.socket, conn.head, up.max_message, true), chosen]);
+}
+
+/**
+ * A table entry for the upgraded `socket` (`head`: bytes read past the handshake; `server`: the
+ * role), holding the slot `wsReserve` took; its id.
+ */
+function wsOpen(socket, head, max, server) {
   const id = nextFile++;
   const s = { socket, max, buf: new Uint8Array(0), frags: [], size: 0, op: 0, queue: [], sizes: [], queued: 0, waiter: null };
   Object.assign(s, { closed: null, closing: false, timer: null, paused: false, close: () => wsFree(s) });
+  Object.assign(s, { id, server, topics: new Set() });
   files.set(id, s);
   socket.setNoDelay(true);
+  socket.setKeepAlive(true);
   socket.on("data", (chunk) => wsData(s, chunk));
   socket.on("close", () => wsEnd(s, 1006, "", false));
   socket.on("error", () => {});
@@ -5228,17 +5366,25 @@ function wsOpen(socket, head, max) {
   return id;
 }
 
-/** A client frame (masked, RFC 6455 §5.3): `op` and `payload` in one final frame. */
-function wsFrame(op, payload) {
+/**
+ * One final frame of `op` and `payload` (RFC 6455 §5.2): masked with a fresh mask as a client's
+ * (§5.3), or unmasked as a server's (§5.1).
+ */
+function wsFrame(op, payload, masked) {
   const n = payload.length;
   const head = n < 126 ? 2 : n < 65536 ? 4 : 10;
-  const f = new Uint8Array(head + 4 + n);
+  const m = masked ? 0x80 : 0;
+  const f = new Uint8Array(head + (masked ? 4 : 0) + n);
   f[0] = 0x80 | op;
-  if (n < 126) f[1] = 0x80 | n;
-  else if (n < 65536) f.set([0x80 | 126, n >> 8, n & 255], 1);
+  if (n < 126) f[1] = m | n;
+  else if (n < 65536) f.set([m | 126, n >> 8, n & 255], 1);
   else {
-    f[1] = 0x80 | 127;
+    f[1] = m | 127;
     new DataView(f.buffer).setBigUint64(2, BigInt(n));
+  }
+  if (!masked) {
+    f.set(payload, head);
+    return f;
   }
   const mask = nodeCrypto().randomBytes(4);
   f.set(mask, head);
@@ -5246,12 +5392,15 @@ function wsFrame(op, payload) {
   return f;
 }
 
-function wsCloseFrame(code, reason) {
+/** A frame socket `s` sends: masked in the client role only. */
+const wsOut = (s, op, payload) => wsFrame(op, payload, !s.server);
+
+function wsCloseFrame(s, code, reason) {
   const r = string_to_bytes(reason);
   const p = new Uint8Array(2 + r.length);
   p.set([code >> 8, code & 255]);
   p.set(r, 2);
-  return wsFrame(8, p);
+  return wsOut(s, 8, p);
 }
 
 /** Whether the received messages waiting fill the queue: `WS_QUEUE` of them, or more than `max_message` bytes. */
@@ -5288,18 +5437,22 @@ function wsData(s, chunk) {
       at = 10;
     }
     const control = op >= 8;
-    // Reserved bits (no extension was agreed), a masked server frame, an unknown opcode, a
-    // fragmented or long control frame, or a continuation out of place (RFC 6455 §5.2–§5.5).
-    if ((b[0] & 0x70) !== 0 || (b[1] & 0x80) !== 0 || ![0, 1, 2, 8, 9, 10].includes(op)) {
+    // Reserved bits (no extension was agreed), a masked server frame or an unmasked client one,
+    // an unknown opcode, a fragmented or long control frame, or a continuation out of place
+    // (RFC 6455 §5.1–§5.5).
+    const masked = (b[1] & 0x80) !== 0;
+    if ((b[0] & 0x70) !== 0 || masked !== s.server || ![0, 1, 2, 8, 9, 10].includes(op)) {
       return wsFail(s, 1002, "protocol error");
     }
     if (control ? !fin || len > 125 : (op === 0) === (s.op === 0)) return wsFail(s, 1002, "protocol error");
     if (!control && s.size + len > s.max) return wsFail(s, 1009, "message too large");
-    if (b.length < at + len) return;
-    const payload = b.slice(at, at + len);
-    s.buf = b.subarray(at + len);
+    const key = masked ? 4 : 0;
+    if (b.length < at + key + len) return;
+    const payload = b.slice(at + key, at + key + len);
+    if (masked) for (let i = 0; i < len; i++) payload[i] ^= b[at + (i & 3)];
+    s.buf = b.subarray(at + key + len);
     if (op === 9) {
-      if (!s.closing && !s.socket.writableNeedDrain) s.socket.write(wsFrame(10, payload));
+      if (!s.closing && !s.socket.writableNeedDrain) s.socket.write(wsOut(s, 10, payload));
     } else if (op === 8) {
       wsPeerClose(s, payload);
     } else if (!control) {
@@ -5338,13 +5491,13 @@ function wsPeerClose(s, payload) {
   const code = payload.length === 0 ? 1005 : (payload[0] << 8) | payload[1];
   const reason = exactUtf8(payload.subarray(2));
   if (reason === null) return wsFail(s, 1007, "invalid UTF-8");
-  if (!s.closing) s.socket.write(payload.length === 0 ? wsFrame(8, payload) : wsCloseFrame(code, ""));
+  if (!s.closing) s.socket.write(payload.length === 0 ? wsOut(s, 8, payload) : wsCloseFrame(s, code, ""));
   wsEnd(s, code, reason, true);
 }
 
 /** Fails the connection (RFC 6455 §7.1.7): the close frame with `code`, then the end. */
 function wsFail(s, code, reason) {
-  if (!s.closing) s.socket.write(wsCloseFrame(code, ""));
+  if (!s.closing) s.socket.write(wsCloseFrame(s, code, ""));
   s.closing = true;
   wsEnd(s, code, reason, false);
 }
@@ -5405,7 +5558,7 @@ export function ws_send(id, message, _ctx, k) {
   if (s?.socket === undefined || s.closing || s.closed !== null) return ret(k, Ok(false));
   const text = message.tag === 0;
   const payload = text ? string_to_bytes(message.fields[0]) : message.fields[0];
-  if (s.socket.write(wsFrame(text ? 1 : 2, payload))) return ret(k, Ok(true));
+  if (s.socket.write(wsOut(s, text ? 1 : 2, payload))) return ret(k, Ok(true));
   let done;
   const drained = new Promise((resolve) => {
     done = () => {
@@ -5422,7 +5575,7 @@ export function ws_close(id, code, reason) {
   const s = files.get(id);
   if (s?.socket === undefined || s.closing || s.closed !== null) return Ok(undefined);
   s.closing = true;
-  s.socket.write(wsCloseFrame(code, reason));
+  s.socket.write(wsCloseFrame(s, code, reason));
   s.timer = setTimeout(() => {
     s.socket.destroy();
     wsEnd(s, 1006, "", false);
@@ -5430,11 +5583,76 @@ export function ws_close(id, code, reason) {
   return Ok(undefined);
 }
 
-/** `file_close`'s step for a socket: 1001 when still open, then the TCP socket released. */
+/**
+ * `file_close`'s step for a socket: 1001 when still open, then the TCP socket released, its
+ * slot given back and its subscriptions ended.
+ */
 function wsFree(s) {
   clearTimeout(s.timer);
-  if (!s.closing && s.closed === null) s.socket.write(wsCloseFrame(1001, ""));
+  if (!s.closing && s.closed === null) s.socket.write(wsCloseFrame(s, 1001, ""));
   s.closing = true;
   s.socket.end();
   s.socket.unref();
+  wsCount--;
+  for (const topic of s.topics) wsLeave(s, topic);
+}
+
+/** The socket of `id` while it is open: neither closing nor closed. */
+function wsOpenSocket(id) {
+  const s = files.get(id);
+  return s?.socket === undefined || s.closing || s.closed !== null ? null : s;
+}
+
+function wsLeave(s, topic) {
+  const ids = topics.get(topic);
+  ids?.delete(s.id);
+  if (ids?.size === 0) topics.delete(topic);
+  s.topics.delete(topic);
+}
+
+/** `ws_subscribe(id, topic)`: `Ok(false)` once the socket is closing or closed. */
+export function ws_subscribe(id, topic) {
+  const s = wsOpenSocket(id);
+  if (s === null) return Ok(false);
+  if (!topics.has(topic)) topics.set(topic, new Set());
+  topics.get(topic).add(id);
+  s.topics.add(topic);
+  return Ok(true);
+}
+
+/** `ws_unsubscribe(id, topic)`: `Ok(false)` once the socket is closing or closed. */
+export function ws_unsubscribe(id, topic) {
+  const s = wsOpenSocket(id);
+  if (s === null) return Ok(false);
+  wsLeave(s, topic);
+  return Ok(true);
+}
+
+/**
+ * Whether `publish` passes over socket `s` for a message of `n` bytes (design §17.289 (9)): it
+ * is closing or closed, the message is over its `max_message`, or its write buffer already
+ * holds `max_message` bytes (Bun's `backpressureLimit`, the socket kept).
+ */
+export const wsSkips = (s, n) => s.closing || s.closed !== null || n > s.max || s.socket.writableLength >= s.max;
+
+/**
+ * `ws_publish(topic, message, except)`: writes `message` to every socket subscribed to `topic`
+ * but `except` (an `Option<Int>`) that `wsSkips` does not pass over, without waiting for any;
+ * `Ok(count)` of the sockets written to.
+ */
+export function ws_publish(topic, message, except) {
+  const skip = except.tag === 1 ? except.fields[0] : null;
+  const text = message.tag === 0;
+  const payload = text ? string_to_bytes(message.fields[0]) : message.fields[0];
+  let unmasked = null;
+  let count = 0;
+  for (const id of topics.get(topic) ?? []) {
+    const s = files.get(id);
+    if (id === skip || wsSkips(s, payload.length)) continue;
+    // A client's frame needs a mask of its own; a server's is the same bytes for every socket.
+    const f = s.server ? (unmasked ??= wsFrame(text ? 1 : 2, payload, false)) : wsFrame(text ? 1 : 2, payload, true);
+    s.socket.write(f);
+    count++;
+  }
+  return Ok(count);
 }
