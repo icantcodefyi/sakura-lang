@@ -444,6 +444,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_test_snapshot", e::rt_code_unsupported),
         ("rt_code_unsupported", e::rt_code_unsupported),
         ("rt_k_clock_virtual_sleep", e::rt_k_clock_virtual_sleep),
+        ("rt_k_compress_inflate_push", e::rt_k_compress_inflate_push),
         ("rt_k_file_closing", e::rt_k_file_closing),
         ("rt_k_http_send", e::rt_code_unsupported),
         ("rt_k_http_stream_closing", hosted::rt_k_http_stream_closing),

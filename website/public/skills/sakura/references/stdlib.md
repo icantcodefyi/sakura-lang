@@ -164,6 +164,7 @@ graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int                 cli
 url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
 urlpattern → url, string, list, bytes        stream → list, bytes, string
+compress → stream, bytes, int
 fs → path, untrusted, map, stream
 request → url, json, encoding, headers         response → request, encoding, html, json, untrusted
 html → core             router → request, response, url, urlpattern
@@ -258,6 +259,18 @@ effect Clock {
 fn host() -> Handler<Clock>    // @external
 fn fixed(at: Instant) -> Handler<Clock>
 fn virtual() -> Handler<Clock>
+```
+
+### `std/compress`
+
+```sakura fragment
+type Format = Gzip | Deflate | DeflateRaw
+type CompressionReason = Malformed(Int) | OutputLimit | Truncated
+error CompressionError(reason: CompressionReason)
+fn compress(b: Bytes, format: Format, level: Int) -> Bytes requires level >= 0 && level <= 9
+fn decompress(b: Bytes, format: Format, max_out: Int) -> Result<Bytes, CompressionError> requires max_out >= 0
+fn compress_source<T, e>(src: Source<Bytes, e>, format: Format, level: Int, body: fn(Source<Bytes, e>) -> T ! e) -> T ! e requires level >= 0 && level <= 9
+fn decompress_source<T, e>(src: Source<Bytes, e>, format: Format, max_out: Int, body: fn(Source<Bytes, {Fail<CompressionError> | e}>) -> T ! {Fail<CompressionError> | e}) -> T ! {Fail<CompressionError> | e} requires max_out >= 0
 ```
 
 ### `std/console`

@@ -1,0 +1,87 @@
+// milestone: M3
+// spec: RFC 0002 §2.6, design §17.280 (4)
+// Spec: https://www.rfc-editor.org/rfc/rfc1950#section-2.2
+
+// Input not in the format is `CompressionError(Malformed(offset))`, the same offset on every
+// backend and in both forms (the streaming one is fed 3-byte items). The offset is the field
+// that is wrong in a gzip (RFC 1952 §2.3) or zlib (RFC 1950 §2.2) header or trailer, the first
+// byte after the end of the stream when more follows (a second gzip member included, as
+// `DecompressionStream` refuses it), or the first byte of the DEFLATE data for a fault inside
+// it (RFC 1951 §3.2: a reserved block type, a distance before the start of the output).
+// Compressed lengths differ by backend, so an offset in the trailer or past it is printed from
+// the end of the intact stream.
+import std/compress
+import std/compress.{CompressionError, Format, Malformed}
+import std/stream.{Source}
+
+fn set(b: Bytes, i: Int, x: Int) -> Bytes {
+  Bytes.concat([Bytes.slice(b, 0, i), Bytes.from_list([x]), Bytes.slice(b, i + 1, Bytes.len(b))])
+}
+
+fn flip(b: Bytes, i: Int) -> Bytes { set(b, i, (Bytes.get(b, i).unwrap_or(0) + 1) % 256) }
+
+fn shown(r: Result<Int, CompressionError>, end: Int) -> String {
+  match r {
+    Ok(n) => "{n} bytes",
+    Err(CompressionError(Malformed(at))) => {
+      if at >= end {
+        "Malformed(end + {at - end})"
+      } else if at >= end - 8 {
+        "Malformed(end - {end - at})"
+      } else {
+        "Malformed({at})"
+      }
+    },
+    Err(CompressionError(reason)) => "{reason}",
+  }
+}
+
+// `end` is the length of the intact stream `z` was made from.
+fn check(label: String, z: Bytes, f: Format, end: Int) -> Unit ! {Console} {
+  let whole = shown(compress.decompress(z, f, 10_000).map(fn(b) { Bytes.len(b) }), end)
+  let src: Source<Bytes, {}> = Source.from_list([z]).chunks(3)
+  let r: Result<Int, CompressionError> = try {
+    compress.decompress_source(src, f, 10_000, fn(plain) {
+      plain.fold(0, fn(n, b) { n + Bytes.len(b) })
+    })
+  }
+  Console.print("{f} {label}: {whole}, streamed {shown(r, end)}")
+}
+
+pub fn main() -> Unit ! {Console} {
+  let text = String.to_bytes(String.repeat("blossom ", 40))
+  let gz = compress.compress(text, Format.Gzip, 6)
+  let n = Bytes.len(gz)
+  check("intact", gz, Format.Gzip, n)
+  check("ID1", set(gz, 0, 0x1E), Format.Gzip, n)
+  check("ID2", set(gz, 1, 0), Format.Gzip, n)
+  check("CM 7", set(gz, 2, 7), Format.Gzip, n)
+  check("reserved flag", set(gz, 3, 0x20), Format.Gzip, n)
+  check("block type 3", set(gz, 10, 0x07), Format.Gzip, n)
+  check("CRC-32", flip(gz, n - 8), Format.Gzip, n)
+  check("ISIZE", flip(gz, n - 4), Format.Gzip, n)
+  check("trailing byte", Bytes.concat([gz, Bytes.from_list([0])]), Format.Gzip, n)
+  check("second member", Bytes.concat([gz, gz]), Format.Gzip, n)
+  // FHCRC set: the two bytes after the fixed header are the CRC-32 of the header, low half.
+  let hcrc = Bytes.concat([
+    set(Bytes.slice(gz, 0, 10), 3, 2),
+    Bytes.from_list([0, 0]),
+    Bytes.slice(gz, 10, n),
+  ])
+  check("header CRC", hcrc, Format.Gzip, n)
+  let zz = compress.compress(text, Format.Deflate, 6)
+  let m = Bytes.len(zz)
+  check("intact", zz, Format.Deflate, m)
+  check("CM 9", set(zz, 0, 0x79), Format.Deflate, m)
+  check("CINFO 8", set(zz, 0, 0x88), Format.Deflate, m)
+  check("FCHECK", set(zz, 1, 0), Format.Deflate, m)
+  check("FDICT", set(zz, 1, 0xBB), Format.Deflate, m)
+  check("Adler-32", flip(zz, m - 1), Format.Deflate, m)
+  check("gzip input", gz, Format.Deflate, m)
+  let raw = compress.compress(text, Format.DeflateRaw, 6)
+  let k = Bytes.len(raw)
+  check("intact", raw, Format.DeflateRaw, k)
+  check("block type 3", set(raw, 0, 0x07), Format.DeflateRaw, k)
+  check("distance too far back", Bytes.from_list([3, 2, 0]), Format.DeflateRaw, k)
+  check("trailing byte", Bytes.concat([raw, Bytes.from_list([0])]), Format.DeflateRaw, k)
+}

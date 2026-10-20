@@ -25,3 +25,5 @@ locked in `compiler/Cargo.lock`; full source archives retain their own licence f
 | [crabgrind](https://crates.io/crates/crabgrind/0.4.0) | 0.4.0 | MIT; bundled Valgrind headers: BSD-style | [MIT](third-party/crabgrind/MIT.LICENSE), [header notices](third-party/crabgrind/) |
 | [ring](https://crates.io/crates/ring/0.17.14) | 0.17.14 | Apache-2.0 AND ISC | [LICENSE](third-party/ring/LICENSE), [LICENSE-BoringSSL](third-party/ring/LICENSE-BoringSSL), [LICENSE-other-bits](third-party/ring/LICENSE-other-bits) |
 | [libsqlite3-sys](https://crates.io/crates/libsqlite3-sys/0.38.2) | 0.38.2 | MIT | [LICENSE](third-party/libsqlite3-sys/LICENSE) |
+| [miniz_oxide](https://crates.io/crates/miniz_oxide/0.9.1) | 0.9.1 | MIT OR Zlib OR Apache-2.0; linked into `sakura_rt` (native and the WASM runtime) for `std/compress` | [LICENSE-ZLIB](third-party/miniz_oxide/LICENSE-ZLIB.md), [LICENSE-MIT](third-party/miniz_oxide/LICENSE-MIT.md) |
+| [adler2](https://crates.io/crates/adler2/2.0.1) | 2.0.1 | 0BSD OR MIT OR Apache-2.0; miniz_oxide's dependency | [LICENSE-0BSD](third-party/adler2/LICENSE-0BSD), [LICENSE-MIT](third-party/adler2/LICENSE-MIT) |

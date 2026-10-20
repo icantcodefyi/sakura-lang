@@ -1,0 +1,13 @@
+empty Gzip: round trip true, smaller at 1 to 9 false
+empty Deflate: round trip true, smaller at 1 to 9 false
+empty DeflateRaw: round trip true, smaller at 1 to 9 false
+one byte Gzip: round trip true, smaller at 1 to 9 false
+one byte Deflate: round trip true, smaller at 1 to 9 false
+one byte DeflateRaw: round trip true, smaller at 1 to 9 false
+text Gzip: round trip true, smaller at 1 to 9 true
+text Deflate: round trip true, smaller at 1 to 9 true
+text DeflateRaw: round trip true, smaller at 1 to 9 true
+every byte Gzip: round trip true, smaller at 1 to 9 false
+every byte Deflate: round trip true, smaller at 1 to 9 false
+every byte DeflateRaw: round trip true, smaller at 1 to 9 false
+2112 bytes: 桜 blossoms fall on the stream;

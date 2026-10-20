@@ -2771,6 +2771,130 @@ export function map_get_expect(m, k, msg) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Compression (RFC 0002 §2.6): raw DEFLATE over `node:zlib`, synchronous for whole buffers and an
+// `InflateRaw` stream behind the scheduler for `decompress_source`; `std/compress` reads and
+// writes the gzip and zlib framing and checks every bound first. `runtime/rt/src/compress.rs`
+// is the twin.
+
+const nodeZlib = () => proc.getBuiltinModule("node:zlib");
+/** `std/compress`'s codec error codes. */
+const MALFORMED = 0;
+const OUTPUT_LIMIT = 1;
+const TRUNCATED = 2;
+
+/** The code of a `node:zlib` failure; anything else is the host's fault, a defect. */
+function inflateFailure(e) {
+  if (e?.code === "ERR_BUFFER_TOO_LARGE") return OUTPUT_LIMIT;
+  if (e?.code === "Z_BUF_ERROR") return TRUNCATED;
+  if (e?.code === "Z_DATA_ERROR") return MALFORMED;
+  throw e;
+}
+
+/** Raw DEFLATE of `b`: the final block when `last` is 1, else a sync flush. */
+export function compress_deflate(b, level, last) {
+  const z = nodeZlib();
+  const finishFlush = last === 1 ? z.constants.Z_FINISH : z.constants.Z_SYNC_FLUSH;
+  return new Uint8Array(z.deflateRawSync(b, { level, finishFlush }));
+}
+
+/** The raw DEFLATE stream at `b[at..]`: `Ok([output, rest])`, `rest` the input after its end. */
+export function compress_inflate(b, at, max) {
+  const z = nodeZlib();
+  const input = b.subarray(at);
+  const limit = Math.min(Math.max(max, 1), proc.getBuiltinModule("node:buffer").constants.MAX_LENGTH);
+  let r;
+  try {
+    r = z.inflateRawSync(input, { info: true, maxOutputLength: limit });
+  } catch (e) {
+    return Err(inflateFailure(e));
+  }
+  if (r.buffer.length > max) return Err(OUTPUT_LIMIT);
+  return Ok([new Uint8Array(r.buffer), input.slice(r.engine.bytesWritten)]);
+}
+
+/** A raw DEFLATE decoding state (`std/compress`'s `Inflater`). */
+export function compress_inflater() {
+  return { z: nodeZlib().createInflateRaw(), used: 0, done: false };
+}
+
+/**
+ * Feeds `b[at..]` to `st` and waits for its output, at most `max` bytes; with nothing left at
+ * `at` it finishes (`Z_FINISH`), which fails `TRUNCATED` unless the stream is complete. The
+ * stream ends early when it takes less than it was given.
+ */
+export function compress_inflate_push(st, b, at, max, _ctx, k) {
+  const z = nodeZlib();
+  const input = b.subarray(at);
+  const s = st.z;
+  const before = s.bytesWritten;
+  const parts = [];
+  let n = 0;
+  let settle;
+  const answer = new Promise((resolve) => {
+    settle = (r) => {
+      if (settle === null) return;
+      settle = null;
+      s.off("data", onData).off("error", onError);
+      resolve(r);
+    };
+  });
+  const onData = (d) => {
+    n += d.length;
+    if (n > max) {
+      s.destroy();
+      settle?.(Err(OUTPUT_LIMIT));
+    } else parts.push(d);
+  };
+  const onError = (e) => settle?.(Err(inflateFailure(e)));
+  s.on("data", onData).on("error", onError);
+  if (input.length > 0) s.write(input);
+  const flush = input.length > 0 ? z.constants.Z_SYNC_FLUSH : z.constants.Z_FINISH;
+  s.flush(flush, () =>
+    setImmediate(() => {
+      st.used = s.bytesWritten - before;
+      st.done = input.length === 0 || st.used < input.length;
+      const out = new Uint8Array(n);
+      let o = 0;
+      for (const p of parts) {
+        out.set(p, o);
+        o += p.length;
+      }
+      settle?.(Ok(out));
+    }),
+  );
+  return suspend(answer, k, () => s.destroy());
+}
+
+export function compress_inflate_used(st) {
+  return st.used;
+}
+
+export function compress_inflate_done(st) {
+  return st.done;
+}
+
+/** CRC-32 (as gzip) of `b`, continuing from `crc`. */
+export function compress_crc32(crc, b) {
+  return nodeZlib().crc32(b, crc);
+}
+
+/** Adler-32 (RFC 1950 §8.2) of `b`, continuing from `adler`. */
+export function compress_adler32(adler, b) {
+  let a = adler % 65536;
+  let s = Math.floor(adler / 65536);
+  for (let i = 0; i < b.length; ) {
+    const end = Math.min(i + 65536, b.length);
+    for (; i < end; i++) {
+      a += b[i];
+      s += a;
+    }
+    a %= 65521;
+    s %= 65521;
+  }
+  return s * 65536 + a;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Host primitives (design §10.2). Std wraps them in handlers; `console_host` is a handler value.
 
 const proc = globalThis.process;

@@ -1,0 +1,51 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §2.6, design §17.280 (4)
+// Spec: https://compression.spec.whatwg.org/#compression-stream
+
+// `compress_source` is `CompressionStream` and `decompress_source` `DecompressionStream`, both
+// callback-shaped: the body receives a source valid inside the call. Text compressed item by
+// item decompresses to the same text whole and streamed, with the compressed bytes cut into
+// 7-byte items so the header and trailer span items. `compress_source` re-chunks its input to
+// 65,536 bytes, so its items are the header, one per 64 KiB, and the end with the trailer;
+// the decompressed items are as the codec yields them, so they are re-chunked with
+// `Stream.chunks` before their sizes are printed.
+import std/compress
+import std/compress.{CompressionError, Format}
+import std/encoding.{Encoding, EncodingError, Errors}
+import std/stream.{Source, StreamError}
+
+fn line(i: Int) -> String { "line {i}: petals on the stream\n" }
+
+pub fn main() -> Unit ! {Console} {
+  let lines = List.map(List.range(0, 3_000), line)
+  let text = List.join(lines, "")
+  let src: Source<Bytes, {}> = Source.from_list(List.map(lines, String.to_bytes))
+  for f in [Format.Gzip, Format.Deflate, Format.DeflateRaw] {
+    let items = compress.compress_source(src, f, 6, fn(packed) {
+      packed.fold([], fn(acc, b) { acc.push(b) })
+    })
+    let z = Bytes.concat(items)
+    let whole = compress.decompress(z, f, 1_000_000).map(fn(b) { b == String.to_bytes(text) })
+    let cut: Source<Bytes, {}> = Source.from_list([z]).chunks(7)
+    let sizes: Result<List<Int>, CompressionError> = try {
+      compress.decompress_source(cut, f, 1_000_000, fn(plain) {
+        plain.chunks(40_000).fold([], fn(acc, b) { acc.push(Bytes.len(b)) })
+      })
+    }
+    // RFC 0002 §1's pipeline: decompress, decode, split into lines, count.
+    let counted: Result<Int, CompressionError | EncodingError | StreamError> = try {
+      compress.decompress_source(cut, f, 1_000_000, fn(plain) {
+        Encoding.decode_source(plain, Encoding.Utf8, Errors.Fatal)
+          .lines(1_024)
+          .fold(0, fn(n, _l) { n + 1 })
+      })
+    }
+    Console.print("{f}: {List.len(items)} items, whole {whole}, sizes {sizes}, lines {counted}")
+  }
+  let empty: Source<Bytes, {}> = Source.empty()
+  let n = compress.compress_source(empty, Format.Gzip, 6, fn(packed) {
+    let z = Bytes.concat(packed.fold([], fn(acc, b) { acc.push(b) }))
+    compress.decompress(z, Format.Gzip, 0)
+  })
+  Console.print("empty source: {n}")
+}

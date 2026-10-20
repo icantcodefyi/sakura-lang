@@ -20,6 +20,9 @@ semantics/cli_exit_rejects_code: 6 funcs, 13 blocks, 0 dup, 7 drop, valid
 semantics/cli_parse_messages: 5 funcs, 41 blocks, 3 dup, 16 drop, valid
 semantics/clock_micros_monotonic: 15 funcs, 36 blocks, 0 dup, 19 drop, valid
 semantics/closures: 8 funcs, 24 blocks, 4 dup, 17 drop, valid
+semantics/compress_rejects_level: 8 funcs, 49 blocks, 6 dup, 8 drop, valid
+semantics/compress_roundtrip_formats: 24 funcs, 313 blocks, 47 dup, 140 drop, valid
+semantics/compress_source_roundtrip: 75 funcs, 650 blocks, 124 dup, 313 drop, valid
 semantics/constants: 6 funcs, 16 blocks, 3 dup, 12 drop, valid
 semantics/contract_site_blame: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contract_site_blame_callback: 5 funcs, 15 blocks, 3 dup, 5 drop, valid
@@ -46,6 +49,10 @@ semantics/crypto_spki_import_rejects_garbage: 90 funcs, 660 blocks, 132 dup, 353
 semantics/crypto_usage_rejected: 51 funcs, 391 blocks, 54 dup, 243 drop, valid
 semantics/crypto_verify_rejects_tampered: 53 funcs, 428 blocks, 76 dup, 266 drop, valid
 semantics/crypto_x25519_rfc7748: 61 funcs, 510 blocks, 66 dup, 347 drop, valid
+semantics/decompress_known_gzip_bytes: 39 funcs, 405 blocks, 66 dup, 221 drop, valid
+semantics/decompress_rejects_malformed: 44 funcs, 467 blocks, 96 dup, 220 drop, valid
+semantics/decompress_rejects_output_limit: 37 funcs, 422 blocks, 68 dup, 212 drop, valid
+semantics/decompress_rejects_truncated: 41 funcs, 435 blocks, 75 dup, 219 drop, valid
 semantics/deep_countdown: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/deep_recursion_defect: 4 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/deep_sum: 3 funcs, 9 blocks, 0 dup, 1 drop, valid

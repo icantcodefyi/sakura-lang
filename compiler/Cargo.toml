@@ -105,6 +105,9 @@ aes-gcm = { version = "=0.11.1", default-features = false, features = ["aes", "a
 p256 = { version = "=0.14.0", default-features = false, features = ["ecdsa", "ecdh"] }
 ed25519-dalek = { version = "=3.0.0", default-features = false }
 x25519-dalek = { version = "=3.0.0", default-features = false, features = ["static_secrets"] }
+# `std/compress`'s DEFLATE codec in `runtime/rt` (RFC 0002 §2.6, plan web-apis phase 6), on WASM
+# and native alike: `no_std`, its allocation-free decoder and the compressor (`with-alloc`).
+miniz_oxide = { version = "=0.9.1", default-features = false, features = ["with-alloc"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

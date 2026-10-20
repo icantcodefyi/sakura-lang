@@ -1,0 +1,47 @@
+// milestone: M3
+// spec: RFC 0002 §2.6, §6, design §17.280 (4)
+// Spec: https://compression.spec.whatwg.org/#decompress-and-enqueue-a-chunk
+
+// `max_out` bounds the decompressed bytes and is required: exactly `max_out` bytes pass, one
+// more is `CompressionError(OutputLimit)`, and a 1 MiB run of zeros (a few hundred compressed
+// bytes, the shape of a decompression bomb) stops at the limit instead of being produced. The
+// streaming form fails the pull that would cross the limit, after the items before it.
+import std/compress
+import std/compress.{CompressionError, Format}
+import std/stream.{Source}
+
+fn whole(label: String, z: Bytes, f: Format, max_out: Int) -> Unit ! {Console} {
+  match compress.decompress(z, f, max_out) {
+    Ok(b) => Console.print("{label} max {max_out}: {Bytes.len(b)} bytes"),
+    Err(CompressionError(reason)) => Console.print("{label} max {max_out}: {reason}"),
+  }
+}
+
+fn streamed(label: String, z: Bytes, f: Format, max_out: Int) -> Unit ! {Console} {
+  let src: Source<Bytes, {}> = Source.from_list([z])
+  let r: Result<Int, CompressionError> = try {
+    compress.decompress_source(src, f, max_out, fn(plain) {
+      plain.fold(0, fn(n, b) { n + Bytes.len(b) })
+    })
+  }
+  Console.print("{label} streamed, max {max_out}: {r}")
+}
+
+pub fn main() -> Unit ! {Console} {
+  let text = String.to_bytes(String.repeat("sakura ", 100))
+  for f in [Format.Gzip, Format.Deflate, Format.DeflateRaw] {
+    let z = compress.compress(text, f, 6)
+    whole("{f}", z, f, 700)
+    whole("{f}", z, f, 699)
+    streamed("{f}", z, f, 700)
+    streamed("{f}", z, f, 699)
+  }
+  whole("empty", compress.compress(Bytes.from_list([]), Format.Gzip, 6), Format.Gzip, 0)
+  whole("one byte", compress.compress(Bytes.from_list([7]), Format.Gzip, 6), Format.Gzip, 0)
+  let zeros = Bytes.from_list(List.map(List.range(0, 1_048_576), fn(_i) { 0 }))
+  let bomb = compress.compress(zeros, Format.Gzip, 9)
+  Console.print("bomb: {Bytes.len(bomb) < 4_096} under 4 KiB compressed")
+  whole("bomb", bomb, Format.Gzip, 65_536)
+  streamed("bomb", bomb, Format.Gzip, 65_536)
+  whole("bomb", bomb, Format.Gzip, 1_048_576)
+}

@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: RFC 0002 §2.6, design §7.2, §17.162
+// Spec: https://www.rfc-editor.org/rfc/rfc1950#section-2.2
+
+// A level outside 0..=9 is a caller defect (`requires level >= 0 && level <= 9`), never
+// clamped: which level a call passes is a fact about the program. A negative `max_out` is the
+// same for `decompress`.
+import std/compress
+import std/compress.{Format}
+
+pub fn main() -> Unit ! {Console} {
+  let b = String.to_bytes("petals")
+  Console.print("{Bytes.len(compress.compress(b, Format.Gzip, 9)) > 0}")
+  Console.print("{Bytes.len(compress.compress(b, Format.Gzip, 10)) > 0}")
+  Console.print("never printed")
+}

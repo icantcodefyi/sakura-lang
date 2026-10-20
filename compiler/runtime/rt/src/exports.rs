@@ -1022,6 +1022,27 @@ pub extern "C" fn rt_k_clock_virtual_sleep(
     }
 }
 
+/// `compress_inflate_push(st, b, at, max)` (`std/compress`): answers at once; `cps` because the
+/// JS runtime's codec is a `node:zlib` stream behind the scheduler.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_compress_inflate_push(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let (st, b) = (
+        rt.take_fslot(frame, 0) as u32,
+        rt.take_fslot(frame, 1) as u32,
+    );
+    let (at, max) = (rt.fslot(frame, 2) as i64, rt.fslot(frame, 3) as i64);
+    match rt.compress_inflate_push(st, b, at, max) {
+        Ok(r) => ret(rt, u64::from(r)),
+        Err(d) => rt.raise(d),
+    }
+}
+
 // ---- std::task::Task (`crate::task`) ----------------------------------------------------------
 
 /// `Task.host()`: the clauses at `codes`, no generator.
@@ -1750,6 +1771,16 @@ builtins! {
         rt.encoding_decode(b, enc, fatal)
     };
     rt_b_encoding_encode(s: u32, enc: i64) -> u32 = ptr |rt| rt.encoding_encode(s, enc);
+    // `std/compress` (RFC 0002 §2.6, `compress.rs`).
+    rt_b_compress_deflate(b: u32, level: i64, last: i64) -> u32 = ptr |rt| {
+        rt.compress_deflate(b, level, last)
+    };
+    rt_b_compress_inflate(b: u32, at: i64, max: i64) -> u32 = ptr |rt| rt.compress_inflate(b, at, max);
+    rt_b_compress_inflater() -> u32 = ptr |rt| rt.compress_inflater();
+    rt_b_compress_inflate_used(s: u32) -> i64 = plain |rt| rt.compress_inflate_used(s);
+    rt_b_compress_inflate_done(s: u32) -> u32 = plain |rt| u32::from(rt.compress_inflate_done(s));
+    rt_b_compress_crc32(crc: i64, b: u32) -> i64 = plain |rt| rt.compress_crc32(crc, b);
+    rt_b_compress_adler32(adler: i64, b: u32) -> i64 = plain |rt| rt.compress_adler32(adler, b);
     // `std/crypto` (RFC 0002 §2.7), native only (`crypto.rs`).
     #[cfg(feature = "native")]
     rt_b_crypto_digest(alg: i64, data: u32) -> u32 = ptr |rt| rt.crypto_digest(alg, data);

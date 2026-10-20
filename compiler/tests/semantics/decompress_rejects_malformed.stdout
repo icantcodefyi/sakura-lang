@@ -1,0 +1,22 @@
+Gzip intact: 320 bytes, streamed 320 bytes
+Gzip ID1: Malformed(0), streamed Malformed(0)
+Gzip ID2: Malformed(1), streamed Malformed(1)
+Gzip CM 7: Malformed(2), streamed Malformed(2)
+Gzip reserved flag: Malformed(3), streamed Malformed(3)
+Gzip block type 3: Malformed(10), streamed Malformed(10)
+Gzip CRC-32: Malformed(end - 8), streamed Malformed(end - 8)
+Gzip ISIZE: Malformed(end - 4), streamed Malformed(end - 4)
+Gzip trailing byte: Malformed(end + 0), streamed Malformed(end + 0)
+Gzip second member: Malformed(end + 0), streamed Malformed(end + 0)
+Gzip header CRC: Malformed(10), streamed Malformed(10)
+Deflate intact: 320 bytes, streamed 320 bytes
+Deflate CM 9: Malformed(0), streamed Malformed(0)
+Deflate CINFO 8: Malformed(0), streamed Malformed(0)
+Deflate FCHECK: Malformed(1), streamed Malformed(1)
+Deflate FDICT: Malformed(1), streamed Malformed(1)
+Deflate Adler-32: Malformed(end - 4), streamed Malformed(end - 4)
+Deflate gzip input: Malformed(0), streamed Malformed(0)
+DeflateRaw intact: 320 bytes, streamed 320 bytes
+DeflateRaw block type 3: Malformed(0), streamed Malformed(0)
+DeflateRaw distance too far back: Malformed(0), streamed Malformed(0)
+DeflateRaw trailing byte: Malformed(end + 0), streamed Malformed(end + 0)

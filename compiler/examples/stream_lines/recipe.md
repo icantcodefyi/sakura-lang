@@ -14,3 +14,10 @@ pure source built with `Source.from_list`, which reads the same items every time
 pulled. The file view advances the file and is valid only inside the `Fs.with_file`
 callback: returning it from the callback is `V6003`. The tests use `Fs.memory`, so they
 need no permissions.
+
+A rotated log is often gzipped. `summarize_gz` puts `compress.decompress_source` between
+the file and the decoder: the codec state lives only inside its callback, the compressed
+bytes are read 4 KiB at a time, and `max_out` (64 MiB here) bounds what the file may expand
+to, so a small file that inflates without end fails `CompressionError(OutputLimit)` instead
+of filling memory. A cut-off file fails `Truncated` and bytes that are not gzip fail
+`Malformed(offset)`.

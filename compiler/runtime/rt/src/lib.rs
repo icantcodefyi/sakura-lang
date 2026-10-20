@@ -5,13 +5,13 @@
 
 #![cfg_attr(not(feature = "native"), no_std)]
 
-#[cfg(not(target_arch = "wasm32"))]
 extern crate alloc;
 
 pub mod arena;
 pub mod builtins;
 pub mod cmp;
 pub mod codec;
+pub mod compress;
 #[cfg(all(feature = "native", not(target_arch = "wasm32")))]
 pub mod crypto;
 #[cfg(any(target_arch = "wasm32", feature = "native"))]

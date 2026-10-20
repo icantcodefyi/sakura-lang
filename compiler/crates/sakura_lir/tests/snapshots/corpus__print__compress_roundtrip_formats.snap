@@ -1,0 +1,239 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error std::compress::CompressionError | CompressionError 24b (reason: word*)
+layout 1 variant std::compress::CompressionReason | Malformed 24b (i64) | OutputLimit 16b () | Truncated 16b ()
+layout 2 variant std::compress::Format | Gzip 16b () | Deflate 16b () | DeflateRaw 16b ()
+layout 3 record std::compress::Scan | Scan 48b (stage: i64, flags: i64, left: i64, crc: i64)
+layout 4 variant std::list::Builder
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 8 shape |  32b (word*, word*)
+layout 9 shape |  32b (i64, word*)
+layout 10 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::compress_roundtrip_formats, frame 17 slots [%3 word*, %7 bool, %8 word*, %14 bool, %15 word*, %18 bool, %19 word*, %22 word*, %23 word*, %26 bool, %27 word*, %32 word*, %36 word*, %47 word*, %48 word*, %54 bool, %62 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: i64 = const 64
+    %2 $site: i64 = const 4
+    call repeat#2(%0, %1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 xs: ptr = alloc list()
+    %5 r: ptr = $bytes_from_list(%4)
+    %6 lit: ptr = const str 1
+    call round_trip#3(%6, %5) -> b2(%3)
+  b2(%7 r: unit, %8 r: ptr):
+    %9 lit: i64 = const 0
+    %10 box: word = box %9
+    %11 xs: ptr = alloc list(%10)
+    %12 r: ptr = $bytes_from_list(%11)
+    %13 lit: ptr = const str 2
+    call round_trip#3(%13, %12) -> b3(%8)
+  b3(%14 r: unit, %15 r: ptr):
+    dup %15
+    %16 r: ptr = $string_to_bytes(%15)
+    %17 lit: ptr = const str 3
+    call round_trip#3(%17, %16) -> b4(%15)
+  b4(%18 r: unit, %19 r: ptr):
+    %20 lit: i64 = const 0
+    %21 lit: i64 = const 256
+    call range#4(%20, %21) -> b5(%19)
+  b5(%22 r: ptr, %23 r: ptr):
+    %24 r: ptr = $bytes_from_list(%22)
+    %25 lit: ptr = const str 4
+    call round_trip#3(%25, %24) -> b6(%23)
+  b6(%26 r: unit, %27 r: ptr):
+    %28 r: ptr = $string_to_bytes(%27)
+    %29 v: ptr = const static std::compress::Format.Gzip
+    %30 lit: i64 = const 9
+    %31 $site: i64 = const 5
+    call compress#5(%28, %29, %30, %31) -> b7()
+  b7(%32 r: ptr):
+    %33 v: ptr = const static std::compress::Format.Gzip
+    %34 lit: i64 = const 4096
+    %35 $site: i64 = const 6
+    call decompress#6(%32, %33, %34, %35) -> b8()
+  b8(%36 r: ptr):
+    %37 tag: i64 = tag %36 ctor std::result::Result
+    switch %37 0 => b9(%36) 1 => b10(%36)
+  b9(%38 r: ptr):
+    %40 p: word = proj %38.0 std::result::Result.Ok
+    drop %38
+    dup %40
+    %41 r: i64 = $bytes_len(%40)
+    %42 s: ptr = show %41
+    %43 lit: ptr = const str 5
+    %44 s: ptr = concat %42, %43
+    drop %43
+    %45 r: ptr = $string_from_bytes(%40)
+    %46 lit: ptr = const str 6
+    call unwrap_or#7(%45, %46) -> b11(%44)
+  b10(%39 r: ptr):
+    %57 p: word = proj %39.0 std::result::Result.Err
+    drop %39
+    %58 p: word = proj %57.0 std::compress::CompressionError
+    drop %57
+    %59 s: ptr = show %58
+    drop %58
+    %60 lit: ptr = const str 7
+    %61 s: ptr = concat %60, %59
+    drop %59
+    perform std::console::Console.print(%61) -> b13()
+  b11(%47 r: word, %48 s: ptr):
+    %49 lit: i64 = const 0
+    %50 lit: i64 = const 32
+    %51 r: ptr = $string_slice(%47, %49, %50)
+    %52 s: ptr = show %51
+    drop %51
+    %53 s: ptr = concat %48, %52
+    drop %52
+    perform std::console::Console.print(%53) -> b12()
+  b12(%54 r: unit):
+    %55 box: word = box %54
+    %56 unbox: unit = unbox %55
+    drop %55
+    ret %56
+  b13(%62 r: unit):
+    %63 box: word = box %62
+    %64 unbox: unit = unbox %63
+    drop %63
+    ret %64
+
+fn $entry#1 top -> unit ; main::compress_roundtrip_formats, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [%0 word*, %1 word*, %34 word*, %35 word*, %36 word*, %37 word*, %38 i64, %39 i64, %40 word*, %63 bool, %64 word*, %65 word*, %66 word*, %67 i64, %68 i64, %120 word*, %121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 word*, %127 word*, %128 i64, %129 i64, %130 bool, %131 bool, %132 i64, %256 word*, %257 word*, %258 word*, %259 word*, %260 i64, %261 i64, %262 word*, %263 word*, %264 i64, %265 i64, %266 bool, %267 bool, %268 i64, %269 word*]
+  b0(%0 label: ptr, %1 b: ptr):
+    %2 v: ptr = const static std::compress::Format.Gzip
+    %3 v: ptr = const static std::compress::Format.Deflate
+    %4 v: ptr = const static std::compress::Format.DeflateRaw
+    %5 xs: ptr = alloc list(%2, %3, %4)
+    dup.candidate %5
+    %6 n: i64 = $list_len(%5)
+    %276 lit: i64 = const 0
+    jump b2(%276, %0, %1, %5, %6)
+  b1():
+    %7 lit: unit = const ()
+    ret %7
+  b2(%8 i: i64, %9 label: ptr, %10 b: ptr, %11 xs: ptr, %12 n: i64):
+    %13 more: bool = lt.int %8, %12
+    if %13 then b3(%9, %10, %11, %12, %8) else b4(%9, %10, %11, %12, %8)
+  b3(%14 label: ptr, %15 b: ptr, %16 xs: ptr, %17 n: i64, %18 i: i64):
+    dup.candidate %16
+    %24 x: word = $list_at(%16, %18)
+    %32 lit: i64 = const 0
+    %33 lit: i64 = const 10
+    call range#4(%32, %33) -> b6(%14, %15, %16, %17, %18, %24)
+  b4(%19 label: ptr, %20 b: ptr, %21 xs: ptr, %22 n: i64, %23 i: i64):
+    drop %19
+    drop %20
+    drop %21
+    jump b1()
+  b5(%25 label: ptr, %26 b: ptr, %27 xs: ptr, %28 n: i64, %29 i: i64):
+    %30 lit: i64 = const 1
+    %31 i: i64 = intadd %29, %30
+    jump b2(%31, %25, %26, %27, %28)
+  b6(%34 r: ptr, %35 label: ptr, %36 b: ptr, %37 xs: ptr, %38 n: i64, %39 i: i64, %40 x: ptr):
+    dup.candidate %34
+    %41 n: i64 = $list_len(%34)
+    %273 lit: i64 = const 0
+    %274 lit: bool = const true
+    %275 lit: bool = const true
+    jump b9(%273, %274, %275, %35, %36, %37, %38, %39, %40, %34, %41)
+  b7(%42 same: bool, %43 smaller: bool, %44 label: ptr, %45 b: ptr, %46 xs: ptr, %47 n: i64, %48 i: i64, %49 x: ptr):
+    %50 s: ptr = show %44
+    %51 lit: ptr = const str 8
+    %52 s: ptr = concat %50, %51
+    drop %51
+    %53 s: ptr = show %49
+    drop %49
+    %54 s: ptr = concat %52, %53
+    drop %53
+    %55 lit: ptr = const str 9
+    %56 s: ptr = concat %54, %55
+    drop %55
+    %57 s: ptr = show %42
+    %58 s: ptr = concat %56, %57
+    drop %57
+    %59 lit: ptr = const str 10
+    %60 s: ptr = concat %58, %59
+    drop %59
+    %61 s: ptr = show %43
+    %62 s: ptr = concat %60, %61
+    drop %61
+    perform std::console::Console.print(%62) -> b8(%44, %45, %46, %47, %48)
+  b8(%63 r: unit, %64 label: ptr, %65 b: ptr, %66 xs: ptr, %67 n: i64, %68 i: i64):
+    %69 box: word = box %63
+    drop %69
+    jump b5(%64, %65, %66, %67, %68)
+  b9(%70 i: i64, %71 same: bool, %72 smaller: bool, %73 label: ptr, %74 b: ptr, %75 xs: ptr, %76 n: i64, %77 i: i64, %78 x: ptr, %79 r: ptr, %80 n: i64):
+    %81 more: bool = lt.int %70, %80
+    if %81 then b10(%73, %74, %75, %76, %77, %78, %79, %80, %70, %71, %72) else b11(%73, %74, %75, %76, %77, %78, %79, %80, %70, %71, %72)
+  b10(%82 label: ptr, %83 b: ptr, %84 xs: ptr, %85 n: i64, %86 i: i64, %87 x: ptr, %88 r: ptr, %89 n: i64, %90 i: i64, %91 same: bool, %92 smaller: bool):
+    dup.candidate %88
+    %104 x: word = $list_at(%88, %90)
+    %105 unbox: i64 = unbox %104
+    drop %104
+    %119 $site: i64 = const 7
+    dup %83
+    dup %87
+    call compress#5(%83, %87, %105, %119) -> b13(%82, %83, %84, %85, %86, %87, %88, %89, %90, %91, %92, %105)
+  b11(%93 label: ptr, %94 b: ptr, %95 xs: ptr, %96 n: i64, %97 i: i64, %98 x: ptr, %99 r: ptr, %100 n: i64, %101 i: i64, %102 same: bool, %103 smaller: bool):
+    drop %99
+    jump b7(%102, %103, %93, %94, %95, %96, %97, %98)
+  b12(%106 same: bool, %107 smaller: bool, %108 label: ptr, %109 b: ptr, %110 xs: ptr, %111 n: i64, %112 i: i64, %113 x: ptr, %114 r: ptr, %115 n: i64, %116 i: i64):
+    %117 lit: i64 = const 1
+    %118 i: i64 = intadd %116, %117
+    jump b9(%118, %106, %107, %108, %109, %110, %111, %112, %113, %114, %115)
+  b13(%120 r: ptr, %121 label: ptr, %122 b: ptr, %123 xs: ptr, %124 n: i64, %125 i: i64, %126 x: ptr, %127 r: ptr, %128 n: i64, %129 i: i64, %130 same: bool, %131 smaller: bool, %132 x: i64):
+    if %130 then b21(%121, %122, %123, %124, %125, %126, %127, %128, %129, %130, %131, %132, %120) else b22(%121, %122, %123, %124, %125, %126, %127, %128, %129, %130, %131, %132, %120)
+  b14(%133 v: bool, %134 same: bool, %135 smaller: bool, %136 label: ptr, %137 b: ptr, %138 xs: ptr, %139 n: i64, %140 i: i64, %141 x: ptr, %142 r: ptr, %143 n: i64, %144 i: i64, %145 x: i64, %146 r: ptr):
+    if %135 then b16(%136, %137, %138, %139, %140, %141, %142, %143, %144, %145, %146, %133, %135) else b17(%136, %137, %138, %139, %140, %141, %142, %143, %144, %145, %146, %133, %135)
+  b15(%147 v: bool, %148 same: bool, %149 smaller: bool, %150 label: ptr, %151 b: ptr, %152 xs: ptr, %153 n: i64, %154 i: i64, %155 x: ptr, %156 r: ptr, %157 n: i64, %158 i: i64):
+    jump b12(%148, %147, %150, %151, %152, %153, %154, %155, %156, %157, %158)
+  b16(%159 label: ptr, %160 b: ptr, %161 xs: ptr, %162 n: i64, %163 i: i64, %164 x: ptr, %165 r: ptr, %166 n: i64, %167 i: i64, %168 x: i64, %169 r: ptr, %170 v: bool, %171 smaller: bool):
+    %185 lit: i64 = const 0
+    %186 t: bool = eq.int %168, %185
+    if %186 then b19(%159, %160, %161, %162, %163, %164, %165, %166, %167, %169, %170, %171) else b20(%159, %160, %161, %162, %163, %164, %165, %166, %167, %169, %170, %171)
+  b17(%172 label: ptr, %173 b: ptr, %174 xs: ptr, %175 n: i64, %176 i: i64, %177 x: ptr, %178 r: ptr, %179 n: i64, %180 i: i64, %181 x: i64, %182 r: ptr, %183 v: bool, %184 smaller: bool):
+    drop %182
+    %227 lit: bool = const false
+    jump b15(%227, %183, %184, %172, %173, %174, %175, %176, %177, %178, %179, %180)
+  b18(%187 v: bool, %188 same: bool, %189 smaller: bool, %190 label: ptr, %191 b: ptr, %192 xs: ptr, %193 n: i64, %194 i: i64, %195 x: ptr, %196 r: ptr, %197 n: i64, %198 i: i64):
+    jump b15(%187, %188, %189, %190, %191, %192, %193, %194, %195, %196, %197, %198)
+  b19(%199 label: ptr, %200 b: ptr, %201 xs: ptr, %202 n: i64, %203 i: i64, %204 x: ptr, %205 r: ptr, %206 n: i64, %207 i: i64, %208 r: ptr, %209 v: bool, %210 smaller: bool):
+    drop %208
+    %223 lit: bool = const true
+    jump b18(%223, %209, %210, %199, %200, %201, %202, %203, %204, %205, %206, %207)
+  b20(%211 label: ptr, %212 b: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 x: ptr, %217 r: ptr, %218 n: i64, %219 i: i64, %220 r: ptr, %221 v: bool, %222 smaller: bool):
+    %224 r: i64 = $bytes_len(%220)
+    dup %212
+    %225 r: i64 = $bytes_len(%212)
+    %226 t: bool = lt.int %224, %225
+    jump b18(%226, %221, %222, %211, %212, %213, %214, %215, %216, %217, %218, %219)
+  b21(%228 label: ptr, %229 b: ptr, %230 xs: ptr, %231 n: i64, %232 i: i64, %233 x: ptr, %234 r: ptr, %235 n: i64, %236 i: i64, %237 same: bool, %238 smaller: bool, %239 x: i64, %240 r: ptr):
+    dup %229
+    %254 r: i64 = $bytes_len(%229)
+    %255 $site: i64 = const 8
+    dup %233
+    dup %240
+    call decompress#6(%240, %233, %254, %255) -> b23(%228, %229, %230, %231, %232, %233, %234, %235, %236, %237, %238, %239, %240)
+  b22(%241 label: ptr, %242 b: ptr, %243 xs: ptr, %244 n: i64, %245 i: i64, %246 x: ptr, %247 r: ptr, %248 n: i64, %249 i: i64, %250 same: bool, %251 smaller: bool, %252 x: i64, %253 r: ptr):
+    %272 lit: bool = const false
+    jump b14(%272, %250, %251, %241, %242, %243, %244, %245, %246, %247, %248, %249, %252, %253)
+  b23(%256 r: ptr, %257 label: ptr, %258 b: ptr, %259 xs: ptr, %260 n: i64, %261 i: i64, %262 x: ptr, %263 r: ptr, %264 n: i64, %265 i: i64, %266 same: bool, %267 smaller: bool, %268 x: i64, %269 r: ptr):
+    dup %258
+    %270 r: ptr = alloc std::result::Result.Ok(%258)
+    %271 t: bool = eq.any %256, %270
+    drop %256
+    drop %270
+    jump b14(%271, %266, %267, %257, %258, %259, %260, %261, %262, %263, %264, %265, %268, %269)

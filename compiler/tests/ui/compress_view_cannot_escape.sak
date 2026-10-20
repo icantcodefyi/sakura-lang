@@ -1,0 +1,23 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §2.6, design §17.280 (2), (4), §8.4
+// Spec: https://compression.spec.whatwg.org/#decompression-stream
+import std/compress
+import std/compress.{CompressionError, Format}
+import std/http.{Http}
+import std/request.{Get, Request}
+import std/response.{HttpError}
+import std/stream.{Source}
+import std/url.{Url}
+
+// A decompression view over a body view is scoped like the body: `decompress_source`'s result
+// pulls `Http.body_source`, so returning it from `Http.stream`'s callback would decode a
+// closed connection later.
+fn open(url: Url) -> Source<Bytes, {Http, Fail<CompressionError | HttpError>}>
+  ! {Http, Fail<CompressionError | HttpError>}
+{
+  Http.stream(Request.of(Get, url), fn(incoming) {
+    let body = Http.body_source(incoming.body, 1_024)
+    compress.decompress_source(body, Format.Gzip, 1_048_576, fn(plain) { plain })
+  })
+}

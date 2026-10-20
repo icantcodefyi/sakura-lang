@@ -177,6 +177,10 @@ table! {
     Direct bytes_slice/3, Direct bytes_concat/1, Direct bytes_to_base64/3,
     Direct bytes_from_base64/2, Direct bytes_from_base64_lenient/1, Direct encoding_decode/3,
     Direct encoding_encode/2,
+    // Compression (RFC 0002 §2.6)
+    Direct compress_deflate/3, Direct compress_inflate/3, Direct compress_inflater/0,
+    Cps compress_inflate_push/4, Direct compress_inflate_used/1, Direct compress_inflate_done/1,
+    Direct compress_crc32/2, Direct compress_adler32/2,
     // Cryptography (RFC 0002 §2.7)
     Direct crypto_digest/2, Direct crypto_hmac/3, Direct crypto_hmac_verify/4,
     Direct crypto_hkdf/5, Direct crypto_pbkdf2/5, Direct crypto_public_of/2,

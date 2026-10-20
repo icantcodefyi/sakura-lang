@@ -1,0 +1,40 @@
+// milestone: M3
+// spec: RFC 0002 §2.6, §5, design §17.280 (4)
+// Spec: https://compression.spec.whatwg.org/#supported-formats
+
+// `compress` then `decompress` gives the input back in each of the standard's three formats
+// (`gzip`, `deflate` as zlib, `deflate-raw`) at every level, for empty, short, repetitive and
+// non-ASCII input. Compressed bytes are not a contract (each backend's codec encodes its own
+// way), so only decompressed text and lengths are printed, and whether a repetitive text came
+// out smaller than it went in at levels 1 to 9 (level 0 stores).
+import std/compress
+import std/compress.{CompressionError, Format}
+
+fn round_trip(label: String, b: Bytes) -> Unit ! {Console} {
+  for f in [Format.Gzip, Format.Deflate, Format.DeflateRaw] {
+    var same = true
+    var smaller = true
+    for level in List.range(0, 10) {
+      let z = compress.compress(b, f, level)
+      same = same && compress.decompress(z, f, Bytes.len(b)) == Ok(b)
+      smaller = smaller && (level == 0 || Bytes.len(z) < Bytes.len(b))
+    }
+    Console.print("{label} {f}: round trip {same}, smaller at 1 to 9 {smaller}")
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let text = String.repeat("桜 blossoms fall on the stream; ", 64)
+  round_trip("empty", Bytes.from_list([]))
+  round_trip("one byte", Bytes.from_list([0]))
+  round_trip("text", String.to_bytes(text))
+  round_trip("every byte", Bytes.from_list(List.range(0, 256)))
+  let z = compress.compress(String.to_bytes(text), Format.Gzip, 9)
+  match compress.decompress(z, Format.Gzip, 4_096) {
+    Ok(b) =>
+      Console.print(
+        "{Bytes.len(b)} bytes: {String.slice(String.from_bytes(b).unwrap_or(""), 0, 32)}",
+      ),
+    Err(CompressionError(reason)) => Console.print("failed {reason}"),
+  }
+}

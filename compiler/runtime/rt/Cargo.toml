@@ -13,8 +13,9 @@ publish.workspace = true
 # (`crates/sakura_host_native/tests/smoke.rs`).
 [features]
 default = []
-# The crypto crates are native-only: the wasm32 object is built by `rustc` with no dependencies
-# (`sakura_codegen_wasm/build.rs`), so `std/crypto` on WASM is the host's (RFC 0002 §7).
+# The crypto crates are native-only: the wasm32 object is built by `rustc` with `miniz_oxide` as
+# its one dependency (`sakura_codegen_wasm/build.rs`), so `std/crypto` on WASM is the host's
+# (RFC 0002 §7).
 native = [
   "dep:libc",
   "dep:sha2",
@@ -32,6 +33,8 @@ asan = ["native"]
 valgrind = ["native", "dep:crabgrind"]
 
 [dependencies]
+# Also compiled into the wasm32 object by `sakura_codegen_wasm/build.rs`.
+miniz_oxide.workspace = true
 crabgrind = { workspace = true, optional = true }
 libc = { workspace = true, optional = true }
 sha2 = { workspace = true, optional = true }

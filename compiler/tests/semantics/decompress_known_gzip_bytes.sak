@@ -1,0 +1,87 @@
+// milestone: M3
+// spec: RFC 0002 §2.6, design §17.280 (4)
+// Spec: https://www.rfc-editor.org/rfc/rfc1952#section-2.3
+
+// Decompressed bytes are the contract: files written by other tools decode to their text on
+// every backend. `tests/vectors/compress` holds `blossom.txt` and four encodings of it, embedded
+// here as Base64 (`sakura_rt`'s `tests/compress.rs` checks they are current): `gzip -9` (a
+// name and a time in the header), Python's `zlib.compress` at level 9, the raw stream, and a
+// gzip header with every optional field (FTEXT, FHCRC, FEXTRA, FNAME, FCOMMENT). Each is
+// decoded whole and as a source of 5-byte items.
+import std/compress
+import std/compress.{CompressionError, Format}
+import std/stream.{Source}
+
+fn file(text: String) -> Bytes {
+  Bytes.from_base64(text, Bytes.Alphabet.Standard).unwrap_or(Bytes.from_list([]))
+}
+
+fn streamed(z: Bytes, f: Format) -> Result<Bytes, CompressionError> {
+  let src: Source<Bytes, {}> = Source.from_list([z]).chunks(5)
+  try {
+    compress.decompress_source(src, f, 4_096, fn(plain) {
+      Bytes.concat(plain.fold([], fn(acc, b) { acc.push(b) }))
+    })
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let files = [
+    (
+      "blossom.txt.gz",
+      Format.Gzip,
+      file(
+        "H4sICIB79WgCA2Jsb3Nzb20udHh0AJ3STUoDQRCG4X1OUQcYZarK35zBnV6gTDozgz3doXsk6MoRV+LKtSBeQNArNYrH0AzkAH67oqm3qcVzblfXyejMQkOL2K+Ty9ll2nRDS81tt65o6VbeBkcWlrt5L9lmf/b99lLG95/HjzI+fT1/lvGhjK/l7p4uWkfZeke+C64ia6wLUz5N89n2meq6npPRonUp3dCljznHnlbmfa6m5WH7y5Cc9dTEv5Ni2IWMhoKGioYHaHiIhkdoeIyGJ2h4CoaMymFUDqNyGJXDqBxG5TAqh1E5jMphVI6gcgSVI6gcQeUIKkdQOYLKEVSOoHIElaOoHEXlKCpHUTmKylFUjqJyFJWjqBz9v5xfaRVLOlwJAAA=",
+      ),
+    ),
+    (
+      "blossom.zz",
+      Format.Deflate,
+      file(
+        "eNqd0k1KA0EQhuF9TlEHGGWqyt+cwZ1eoEw6M4M93aF7JOjKEVfiyrUgXkDQKzWKx9AM5AB+u6Kpt6nFc25X18nozEJDi9ivk8vZZdp0Q0vNbbeuaOlW3gZHFpa7eS/ZZn/2/fZSxvefx48yPn09f5bxoYyv5e6eLlpH2XpHvguuImusC1M+TfPZ9pnqup6T0aJ1Kd3QpY85x55W5n2upuVh+8uQnPXUxL+TYtiFjIaChoqGB2h4iIZHaHiMhidoeAqGjMphVA6jchiVw6gcRuUwKodROYzKYVSOoHIElSOoHEHlCCpHUDmCyhFUjqByBJWjqBxF5SgqR1E5ispRVI6ichSVo6gc/b+cX2KfOzw=",
+      ),
+    ),
+    (
+      "blossom.deflate",
+      Format.DeflateRaw,
+      file(
+        "ndJNSgNBEIbhfU5RBxhlqsrfnMGdXqBMOjODPd2heyToyhFX4sq1IF5A0Cs1isfQDOQAfruiqbepxXNuV9fJ6MxCQ4vYr5PL2WXadENLzW23rmjpVt4GRxaWu3kv2WZ/9v32Usb3n8ePMj59PX+W8aGMr+Xuni5aR9l6R74LriJrrAtTPk3z2faZ6rqek9GidSnd0KWPOceeVuZ9rqblYfvLkJz11MS/k2LYhYyGgoaKhgdoeIiGR2h4jIYnaHgKhozKYVQOo3IYlcOoHEblMCqHUTmMymFUjqByBJUjqBxB5QgqR1A5gsoRVI6gcgSVo6gcReUoKkdROYrKUVSOonIUlaOoHP2/nF8=",
+      ),
+    ),
+    (
+      "blossom-fields.gz",
+      Format.Gzip,
+      file(
+        "H4sIHwAAAAAA/wgAU0sEAAECAwRibG9zc29tLnR4dABhIGNvbW1lbnQsIOahnAAc9J3STUoDQRCG4X1OUQcYZarK35zBnV6gTDozgz3doXsk6MoRV+LKtSBeQNArNYrH0AzkAH67oqm3qcVzblfXyejMQkOL2K+Ty9ll2nRDS81tt65o6VbeBkcWlrt5L9lmf/b99lLG95/HjzI+fT1/lvGhjK/l7p4uWkfZeke+C64ia6wLUz5N89n2meq6npPRonUp3dCljznHnlbmfa6m5WH7y5Cc9dTEv5Ni2IWMhoKGioYHaHiIhkdoeIyGJ2h4CoaMymFUDqNyGJXDqBxG5TAqh1E5jMphVI6gcgSVI6gcQeUIKkdQOYLKEVSOoHIElaOoHEXlKCpHUTmKylFUjqJyFJWjqBz9v5xfaRVLOlwJAAA=",
+      ),
+    ),
+  ]
+  var first: Option<Bytes> = None
+  for entry in files {
+    let (name, f, z) = entry
+    match compress.decompress(z, f, 4_096) {
+      Ok(b) => {
+        let same = match first {
+          None => {
+            first = Some(b)
+            true
+          },
+          Some(a) => a == b,
+        }
+        Console.print(
+          "{name}: {Bytes.len(b)} bytes, same text {same}, streamed {streamed(z, f) == Ok(b)}",
+        )
+      },
+      Err(CompressionError(reason)) => Console.print("{name}: {reason}"),
+    }
+  }
+  match first {
+    Some(b) => {
+      let text = String.from_bytes(b).unwrap_or("")
+      let lines = String.split(text, "\n")
+      Console.print("{List.len(lines) - 1} lines")
+      for line in List.slice(lines, 0, 3) { Console.print(line) }
+    },
+    None => Console.print("nothing decoded"),
+  }
+}

@@ -65,7 +65,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (`796e553e`; §17.271 (9)) | Opus | landed |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
 | 5 | `std/stream` (`Step`/`Source`/`Sink` as values, §17.280), `Encoding.decode_source`/`encode_source`, `Blob.source`, the `Http`/`Fs` views | pre-rc (`9139a178`; ratified §17.284 with one `fix(std)` commit to follow: `to_list`'s `requires`, the `Done`-arm `MaxLine` check) | Opus | landed |
-| 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc | Opus | 5 |
+| 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc (no ABI MINOR; `miniz_oxide` 0.9.1 in `rt`; §17.286 (12); readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288, with two small commits to follow: `rt`'s key copies zeroed, THIRD_PARTY.md with its test) | Opus | landed |
@@ -411,6 +411,14 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
 - **Acceptance.** Round trips agree on three backends; decompression of the checked-in
   files is byte-identical; no fixture prints compressed bytes; the dependency is pinned and
   its licence listed where the other runtime crates are.
+- **Landed.** As scoped, on JS, WASM and native, with
+  `compress_rejects_level.sak` and `tests/ui/compress_view_cannot_escape.sak` (`V6003`) added
+  to the tests. `Test.fixtures()` cannot be reached from a run-mode fixture, so
+  `decompress_known_gzip_bytes.sak` embeds the Base64 of `compiler/tests/vectors/compress/`.
+  `runtime/rt/tests/compress.rs` decodes the same files and fails if the two copies drift
+  apart. Headers, trailers and checksums are parsed in Sakura, so errors and offsets agree on
+  every backend. Readings beyond the RFC, including `decompress_source`'s `Fail` row and a
+  `V6003` gap, are listed in `compiler/REQUESTS.md` (2026-10-21) for the designer.
 
 ### Phase 7a: `std/crypto` tier 1a
 

@@ -1,0 +1,18 @@
+ending: ok
+--- stdout
+Gzip in the header: Truncated, streamed Truncated
+Gzip in the trailer: Truncated, streamed Truncated
+Gzip empty: Truncated, streamed Truncated
+Gzip in the data: Truncated, streamed Truncated
+Gzip one byte short: Truncated, streamed Truncated
+Gzip whole: 350 bytes, streamed 350 bytes
+Deflate in the header: Truncated, streamed Truncated
+Deflate in the trailer: Truncated, streamed Truncated
+Deflate empty: Truncated, streamed Truncated
+Deflate in the data: Truncated, streamed Truncated
+Deflate one byte short: Truncated, streamed Truncated
+Deflate whole: 350 bytes, streamed 350 bytes
+DeflateRaw empty: Truncated, streamed Truncated
+DeflateRaw in the data: Truncated, streamed Truncated
+DeflateRaw one byte short: Truncated, streamed Truncated
+DeflateRaw whole: 350 bytes, streamed 350 bytes

@@ -1279,6 +1279,13 @@ pulled. The file view advances the file and is valid only inside the `Fs.with_fi
 callback: returning it from the callback is `V6003`. The tests use `Fs.memory`, so they
 need no permissions.
 
+A rotated log is often gzipped. `summarize_gz` puts `compress.decompress_source` between
+the file and the decoder: the codec state lives only inside its callback, the compressed
+bytes are read 4 KiB at a time, and `max_out` (64 MiB here) bounds what the file may expand
+to, so a small file that inflates without end fails `CompressionError(OutputLimit)` instead
+of filling memory. A cut-off file fails `Truncated` and bytes that are not gzip fail
+`Malformed(offset)`.
+
 [Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/stream_lines) · harness mode: `test`.
 
 From the repository root, with this checkout's `sakura` on `PATH`:
@@ -1305,6 +1312,8 @@ edition = "2026"
 `src/main.sak` includes all required imports and tests.
 
 ```sakura test id=cookbook-stream_lines project=stream_lines
+import std/compress
+import std/compress.{CompressionError, Format, Truncated}
 import std/encoding.{Encoding, EncodingError, Errors, Malformed}
 import std/fs.{Fs, FsError, Read}
 import std/path.{Path}
@@ -1318,6 +1327,21 @@ pub type Summary = { lines: Int, errors: Int, longest: Int }
 pub fn summarize(path: Path) -> Summary ! {Fs, Fail<EncodingError | FsError | StreamError>} {
   Fs.with_file(path, Read, fn(file) {
     summarize_text(Encoding.decode_source(Fs.file_source(file, 4_096), Encoding.Utf8, Errors.Fatal))
+  })
+}
+
+/// The same count over a gzipped log. The file may expand to at most 64 MiB; past that the
+/// read fails `CompressionError(OutputLimit)`.
+pub fn summarize_gz(path: Path) -> Summary
+  ! {Fs, Fail<CompressionError | EncodingError | FsError | StreamError>}
+{
+  Fs.with_file(path, Read, fn(file) {
+    compress.decompress_source(
+      Fs.file_source(file, 4_096),
+      Format.Gzip,
+      67_108_864,
+      fn(plain) { summarize_text(Encoding.decode_source(plain, Encoding.Utf8, Errors.Fatal)) },
+    )
   })
 }
 
@@ -1359,6 +1383,16 @@ test "a malformed byte fails the read" {
   let log = Path.of("bad.log")
   with Fs.memory([(log, Bytes.from_list([0x6F, 0x6B, 0x0A, 0xFF]))]) {
     expect_eq(try { summarize(log) }, Err(EncodingError(Malformed(3))))
+  }
+}
+
+test "a gzipped log gives the same count, and a cut-off one fails" {
+  let gz = compress.compress(String.to_bytes("INFO a\nERROR b\nINFO c"), Format.Gzip, 6)
+  let log = Path.of("app.log.gz")
+  let cut = Path.of("cut.log.gz")
+  with Fs.memory([(log, gz), (cut, Bytes.slice(gz, 0, Bytes.len(gz) - 4))]) {
+    expect_eq(try { summarize_gz(log) }, Ok(Summary { lines: 3, errors: 1, longest: 7 }))
+    expect_eq(try { summarize_gz(cut) }, Err(CompressionError(Truncated)))
   }
 }
 ```

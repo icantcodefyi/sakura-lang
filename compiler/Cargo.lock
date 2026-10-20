@@ -2674,6 +2674,7 @@ dependencies = [
  "hmac",
  "insta",
  "libc",
+ "miniz_oxide",
  "p256",
  "pbkdf2",
  "sha2",

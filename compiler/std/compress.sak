@@ -1,0 +1,491 @@
+// Compression (RFC 0002 §2.6): `CompressionStream` and `DecompressionStream` for `gzip`
+// (RFC 1952), `deflate` (the zlib format, RFC 1950) and `deflate-raw` (RFC 1951). The DEFLATE
+// codec is the runtime's (`node:zlib` on JS, `miniz_oxide` in `runtime/rt` on WASM and native);
+// the gzip and zlib headers, trailers and checksums are read and written here, so every backend
+// reports the same `CompressionError` at the same offset. Decompressed bytes are a contract,
+// compressed bytes are not: the two codecs encode differently, and nothing prints them.
+//
+// The streaming forms are callback-shaped (design §17.280 (4)): a codec state is mutable in
+// both runtimes, so a decompression source is a view over a state that lives as long as the
+// callback, never a pure source. Every bound is an argument: `decompress` and
+// `decompress_source` fail `OutputLimit` past `max_out` bytes of output, and there is no
+// unbounded form.
+
+import std/stream.{Done, Next, Source, Step}
+
+/// `gzip` (RFC 1952), `deflate` (the zlib format, RFC 1950) or `deflate-raw` (RFC 1951), as the
+/// Compression Streams standard names them.
+pub type Format = Gzip | Deflate | DeflateRaw
+
+/// `Malformed(offset)`: the input is not in the format. The offset is the byte of the header
+/// or trailer field that is wrong, the first byte after the end of the stream when more
+/// follows, or the first byte of the DEFLATE data when the fault is inside it (the codecs read
+/// ahead by different amounts, so nothing finer is the same on every backend). `OutputLimit`:
+/// the output would exceed `max_out` bytes. `Truncated`: the input ended inside the stream.
+pub type CompressionReason = Malformed(Int) | OutputLimit | Truncated
+
+pub error CompressionError(reason: CompressionReason)
+
+/// `b` compressed in `format` at `level` (0, stored, to 9, smallest). The bytes differ by
+/// backend; `decompress` of them is `b` on every one. A gzip header carries no name and no
+/// time, and its operating system byte is 255 (unknown).
+pub fn compress(b: Bytes, format: Format, level: Int) -> Bytes
+  requires level >= 0 && level <= 9
+{
+  Bytes.concat([
+    header(format, level),
+    compress_deflate(b, level, 1),
+    trailer(format, checksum(format, start_check(format), b), Bytes.len(b)),
+  ])
+}
+
+/// The bytes `b` holds in `format`, at most `max_out` of them. The input must be exactly one
+/// stream: anything after its end is `Malformed`, as `DecompressionStream` refuses it, so a
+/// gzip file of several members is refused at the second.
+pub fn decompress(b: Bytes, format: Format, max_out: Int) -> Result<Bytes, CompressionError>
+  requires max_out >= 0
+{ try { decompress_all(b, format, max_out) } }
+
+/// `body` with the compressed bytes of `src` (`CompressionStream`): the header, then one item
+/// per 65,536 bytes of input (`Stream.chunks`, so at most that much is held besides the item
+/// being cut), then the end of the stream with the trailer. Each item is compressed on its
+/// own and flushed to a byte boundary, so the output is never shared with the next.
+pub fn compress_source<T, e>(
+  src: Source<Bytes, e>,
+  format: Format,
+  level: Int,
+  body: fn(Source<Bytes, e>) -> T ! e,
+) -> T
+  ! e
+  requires level >= 0 && level <= 9
+{
+  let started = match format {
+    DeflateRaw => true,
+    _ => false,
+  }
+  body(deflating(src.chunks(65_536), format, level, start_check(format), 0, started))
+}
+
+/// `body` with the decompressed bytes of `src` (`DecompressionStream`), at most `max_out` of
+/// them. The source `body` receives is a view over a codec state that lives as long as the
+/// call: pulling it pulls `src` and runs the codec, so it is valid only inside `body`, and each
+/// source value is pulled once, as the `Stream` combinators do. Its items are as the codec
+/// produces them (re-chunk with `Stream.chunks`); a fault fails the pull that reaches it, after
+/// the items before it were yielded, and the end of the stream is checked against its
+/// trailer before `Done`.
+pub fn decompress_source<T, e>(
+  src: Source<Bytes, e>,
+  format: Format,
+  max_out: Int,
+  body: fn(Source<Bytes, {Fail<CompressionError> | e}>) -> T ! {Fail<CompressionError> | e},
+) -> T
+  ! {Fail<CompressionError> | e}
+  requires max_out >= 0
+{
+  let at = Inflating {
+    format,
+    max_out,
+    phase: InHeader,
+    scan: fresh,
+    body: 0,
+    tail: Bytes.from_list([]),
+    check: start_check(format),
+    total: 0,
+    item: Bytes.from_list([]),
+    at: 0,
+    base: 0,
+    ended: false,
+  }
+  body(inflating(compress_inflater(), at, src))
+}
+
+// ---- whole buffers ----------------------------------------------------------------------------
+
+fn decompress_all(b: Bytes, format: Format, max_out: Int) -> Bytes ! {Fail<CompressionError>} {
+  let h = scan(fresh, format, b, 0, 0)
+  if h.0.stage < scanned { fail CompressionError(Truncated) }
+  let body = h.1
+  let r = match compress_inflate(b, body, max_out) {
+    Ok(r) => r,
+    Err(code) => fail CompressionError(reason(code, body)),
+  }
+  let out = r.0
+  let end = Bytes.len(b) - Bytes.len(r.1)
+  let size = trailer_size(format)
+  if Bytes.len(b) - end < size { fail CompressionError(Truncated) }
+  let tail = Bytes.slice(b, end, end + size)
+  check_trailer(format, tail, end, checksum(format, start_check(format), out), Bytes.len(out))
+  if Bytes.len(b) > end + size { fail CompressionError(Malformed(end + size)) }
+  out
+}
+
+// ---- compression --------------------------------------------------------------------------
+
+fn deflating<e>(
+  src: Source<Bytes, e>,
+  format: Format,
+  level: Int,
+  check: Int,
+  total: Int,
+  started: Bool,
+) -> Source<Bytes, e>
+{
+  Source {
+    pull: fn() {
+      if !started {
+        Next(header(format, level), deflating(src, format, level, check, total, true))
+      } else {
+        let p = src.pull
+        match p() {
+          Done =>
+            Next(
+              Bytes.concat([Bytes.from_list([0x03, 0x00]), trailer(format, check, total)]),
+              Source.empty(),
+            ),
+          Next(b, rest) =>
+            Next(
+              compress_deflate(b, level, 0),
+              deflating(
+                rest,
+                format,
+                level,
+                checksum(format, check, b),
+                total + Bytes.len(b),
+                true,
+              ),
+            ),
+        }
+      }
+    },
+  }
+}
+
+// RFC 1952 §2.3: no FTEXT, no time; XFL as zlib sets it; OS 255. RFC 1950 §2.2: CM 8 with a
+// 32 KiB window, FLEVEL as zlib sets it, FCHECK making the pair a multiple of 31.
+fn header(format: Format, level: Int) -> Bytes {
+  match format {
+    Gzip => {
+      let xfl = if level == 9 { 2 } else if level < 2 { 4 } else { 0 }
+      Bytes.from_list([0x1F, 0x8B, 8, 0, 0, 0, 0, 0, xfl, 255])
+    },
+    Deflate => {
+      let flevel = if level < 2 { 0 } else if level < 6 { 1 } else if level == 6 { 2 } else { 3 }
+      let flg = flevel * 64
+      Bytes.from_list([0x78, flg + 31 - (0x78 * 256 + flg) % 31])
+    },
+    DeflateRaw => Bytes.from_list([]),
+  }
+}
+
+fn trailer(format: Format, check: Int, total: Int) -> Bytes {
+  match format {
+    Gzip => Bytes.concat([le32(check), le32(total % 4_294_967_296)]),
+    Deflate =>
+      Bytes.from_list([check / 16_777_216, check / 65_536 % 256, check / 256 % 256, check % 256]),
+    DeflateRaw => Bytes.from_list([]),
+  }
+}
+
+fn le32(x: Int) -> Bytes {
+  Bytes.from_list([x % 256, x / 256 % 256, x / 65_536 % 256, x / 16_777_216 % 256])
+}
+
+// ---- decompression ------------------------------------------------------------------------
+
+/// A codec state: a raw DEFLATE decoder the runtime mutates in place (`node:zlib`'s
+/// `InflateRaw`, or `miniz_oxide`'s state in a guest heap block). A resource: it lives as long
+/// as the `decompress_source` call that made it.
+@resource
+type Inflater
+
+// Where a decompression view is in the stream.
+type Phase = InHeader | InBody | InTrailer | AtEnd
+
+// The position of a decompression view besides the codec state: `item` from `at` is the input
+// not yet read, `base` the stream offset of `item`'s first byte, `ended` whether `src` is done.
+type Inflating = {
+  format: Format,
+  max_out: Int,
+  phase: Phase,
+  scan: Scan,
+  body: Int,
+  tail: Bytes,
+  check: Int,
+  total: Int,
+  item: Bytes,
+  at: Int,
+  base: Int,
+  ended: Bool,
+}
+
+fn inflating<e>(
+  st: Inflater,
+  v: Inflating,
+  src: Source<Bytes, e>,
+) -> Source<Bytes, {Fail<CompressionError> | e}>
+{ Source { pull: fn() { inflate_step(st, v, src) } } }
+
+fn inflate_step<e>(
+  st: Inflater,
+  v0: Inflating,
+  src: Source<Bytes, e>,
+) -> Step<Bytes, {Fail<CompressionError> | e}>
+  ! {Fail<CompressionError> | e}
+{
+  var v = v0
+  var s = src
+  var out: Step<Bytes, {Fail<CompressionError> | e}> = Done
+  var more = true
+  while more {
+    let left = Bytes.len(v.item) - v.at
+    if v.phase == InHeader && left > 0 {
+      let h = scan(v.scan, v.format, v.item, v.at, v.base)
+      let phase = if h.0.stage == scanned { InBody } else { InHeader }
+      v = Inflating { ..v, scan: h.0, at: h.1, phase, body: v.base + h.1 }
+    } else if v.phase == InBody && (left > 0 || v.ended) {
+      let chunk = match compress_inflate_push(st, v.item, v.at, v.max_out - v.total) {
+        Ok(chunk) => chunk,
+        Err(code) => fail CompressionError(reason(code, v.body)),
+      }
+      let done = compress_inflate_done(st)
+      v = Inflating {
+        ..v,
+        at: v.at + compress_inflate_used(st),
+        phase: if done { InTrailer } else { InBody },
+        check: checksum(v.format, v.check, chunk),
+        total: v.total + Bytes.len(chunk),
+      }
+      if Bytes.len(chunk) > 0 {
+        out = Next(chunk, inflating(st, v, s))
+        more = false
+      } else if v.ended && !done {
+        fail CompressionError(Truncated)
+      }
+    } else if v.phase == InTrailer && (left > 0 || v.ended) {
+      let size = trailer_size(v.format)
+      let need = size - Bytes.len(v.tail)
+      let take = Int.min(need, left)
+      let tail = Bytes.concat([v.tail, Bytes.slice(v.item, v.at, v.at + take)])
+      if Bytes.len(tail) == size {
+        let start = v.base + v.at + take - size
+        check_trailer(v.format, tail, start, v.check, v.total)
+        v = Inflating { ..v, tail, at: v.at + take, phase: AtEnd }
+      } else if v.ended {
+        fail CompressionError(Truncated)
+      } else {
+        v = Inflating { ..v, tail, at: v.at + take }
+      }
+    } else if v.phase == AtEnd && left > 0 {
+      fail CompressionError(Malformed(v.base + v.at))
+    } else if v.ended {
+      if v.phase == InHeader { fail CompressionError(Truncated) }
+      more = false
+    } else {
+      let p = s.pull
+      match p() {
+        Done => { v = Inflating { ..v, ended: true } },
+        Next(b, rest) => {
+          v = Inflating { ..v, item: b, at: 0, base: v.base + Bytes.len(v.item) }
+          s = rest
+        },
+      }
+    }
+  }
+  out
+}
+
+// ---- headers, trailers, checksums ---------------------------------------------------------
+
+// The header scanner: `stage` 0..=9 are gzip's ten fixed bytes, 10 and 11 XLEN, 12 the extra
+// field (`left` bytes), 13 the name, 14 the comment, 15 and 16 the header CRC; for zlib 0 is
+// CMF and 1 FLG (`flags` holds CMF); `scanned` ends it. `crc` is the CRC-32 of the gzip
+// header bytes before the header CRC, kept from one call to the next.
+type Scan = { stage: Int, flags: Int, left: Int, crc: Int }
+
+let scanned = 17
+
+let fresh = Scan { stage: 0, flags: 0, left: 0, crc: 0 }
+
+// Reads the header from `b[at0]`, whose stream offset is `base + at0`, to its end or to the
+// end of `b`: the scan after and the offset in `b` it stopped at.
+fn scan(s0: Scan, format: Format, b: Bytes, at0: Int, base: Int) -> (Scan, Int)
+  ! {Fail<CompressionError>}
+{
+  var s = match format {
+    DeflateRaw => Scan { ..s0, stage: scanned },
+    _ => s0,
+  }
+  var at = at0
+  var hashed = s0.stage >= 15
+  let n = Bytes.len(b)
+  let bad = fn(i: Int) -> CompressionError { CompressionError(Malformed(base + i)) }
+  while s.stage < scanned && at < n {
+    let x = Bytes.get(b, at).unwrap_or(0)
+    match format {
+      Gzip => {
+        if s.stage <= 9 {
+          if s.stage == 0 && x != 0x1F { fail bad(at) }
+          if s.stage == 1 && x != 0x8B { fail bad(at) }
+          if s.stage == 2 && x != 8 { fail bad(at) }
+          if s.stage == 3 && x >= 32 { fail bad(at) }
+          let flags = if s.stage == 3 { x } else { s.flags }
+          let stage = if s.stage == 9 { after(flags, 9) } else { s.stage + 1 }
+          s = Scan { ..s, stage, flags }
+          at = at + 1
+        } else if s.stage == 10 {
+          s = Scan { ..s, stage: 11, left: x }
+          at = at + 1
+        } else if s.stage == 11 || s.stage == 12 {
+          let left = if s.stage == 11 { s.left + x * 256 } else { s.left }
+          let skip = if s.stage == 11 { 1 } else { Int.min(left, n - at) }
+          let rest = if s.stage == 11 { left } else { left - skip }
+          s = Scan { ..s, stage: if rest > 0 { 12 } else { after(s.flags, 12) }, left: rest }
+          at = at + skip
+        } else if s.stage == 13 || s.stage == 14 {
+          if x == 0 { s = Scan { ..s, stage: after(s.flags, s.stage) } }
+          at = at + 1
+        } else {
+          let want = if s.stage == 15 { s.crc % 256 } else { s.crc / 256 % 256 }
+          if x != want { fail bad(at) }
+          s = Scan { ..s, stage: if s.stage == 15 { 16 } else { scanned } }
+          at = at + 1
+        }
+        if !hashed && s.stage >= 15 {
+          s = Scan { ..s, crc: compress_crc32(s0.crc, Bytes.slice(b, at0, at)) }
+          hashed = true
+        }
+      },
+      _ => {
+        if s.stage == 0 {
+          if x % 16 != 8 || x / 16 > 7 { fail bad(at) }
+          s = Scan { ..s, stage: 1, flags: x }
+        } else {
+          if (s.flags * 256 + x) % 31 != 0 || x / 32 % 2 == 1 { fail bad(at) }
+          s = Scan { ..s, stage: scanned }
+        }
+        at = at + 1
+      },
+    }
+  }
+  if format == Gzip && !hashed {
+    s = Scan { ..s, crc: compress_crc32(s0.crc, Bytes.slice(b, at0, at)) }
+  }
+  (s, at)
+}
+
+// The stage after `stage` given the gzip flags: FEXTRA (4), FNAME (8), FCOMMENT (16), FHCRC (2).
+fn after(flags: Int, stage: Int) -> Int {
+  if stage < 10 && flags / 4 % 2 == 1 {
+    10
+  } else if stage < 13 && flags / 8 % 2 == 1 {
+    13
+  } else if stage < 14 && flags / 16 % 2 == 1 {
+    14
+  } else if stage < 15 && flags / 2 % 2 == 1 {
+    15
+  } else {
+    scanned
+  }
+}
+
+fn trailer_size(format: Format) -> Int {
+  match format {
+    Gzip => 8,
+    Deflate => 4,
+    DeflateRaw => 0,
+  }
+}
+
+// `tail` is the trailer, at stream offset `start`: gzip's CRC-32 and ISIZE (little-endian),
+// zlib's Adler-32 (big-endian).
+fn check_trailer(format: Format, tail: Bytes, start: Int, check: Int, total: Int) -> Unit
+  ! {Fail<CompressionError>}
+{
+  let at = fn(i: Int) -> Int { Bytes.get(tail, i).unwrap_or(0) }
+  match format {
+    Gzip => {
+      let crc = at(0) + at(1) * 256 + at(2) * 65_536 + at(3) * 16_777_216
+      let size = at(4) + at(5) * 256 + at(6) * 65_536 + at(7) * 16_777_216
+      if crc != check { fail CompressionError(Malformed(start)) }
+      if size != total % 4_294_967_296 { fail CompressionError(Malformed(start + 4)) }
+    },
+    Deflate => {
+      let adler = at(0) * 16_777_216 + at(1) * 65_536 + at(2) * 256 + at(3)
+      if adler != check { fail CompressionError(Malformed(start)) }
+    },
+    DeflateRaw => {},
+  }
+}
+
+fn start_check(format: Format) -> Int {
+  match format {
+    Deflate => 1,
+    _ => 0,
+  }
+}
+
+fn checksum(format: Format, check: Int, b: Bytes) -> Int {
+  match format {
+    Gzip => compress_crc32(check, b),
+    Deflate => compress_adler32(check, b),
+    DeflateRaw => 0,
+  }
+}
+
+// The codec's error codes: 0 malformed DEFLATE data, 1 output past the limit, 2 input ended.
+fn reason(code: Int, body: Int) -> CompressionReason {
+  if code == 1 { OutputLimit } else if code == 2 { Truncated } else { Malformed(body) }
+}
+
+/// Raw DEFLATE of `b` at `level`: the final block when `last` is 1, else blocks ending with a
+/// sync flush (an empty stored block), so more blocks may follow.
+@external(js, "sakura_runtime", "compress_deflate")
+fn compress_deflate(b: Bytes, level: Int, last: Int) -> Bytes
+
+/// Raw DEFLATE data at `b[at..]`, decoded to at most `max` bytes: the output and the input after
+/// the end of the DEFLATE stream, or an error code (`reason`).
+@external(js, "sakura_runtime", "compress_inflate")
+fn compress_inflate(b: Bytes, at: Int, max: Int) -> Result<(Bytes, Bytes), Int>
+
+@external(js, "sakura_runtime", "compress_inflater")
+fn compress_inflater() -> Inflater
+
+/// Feeds `b[at..]` to the state: the output, at most `max` bytes (else code 1). With nothing
+/// left at `at` it finishes: the output still held, and the stream must be complete (else
+/// code 2). `compress_inflate_used` and `compress_inflate_done` then read how many input bytes
+/// it took and whether the DEFLATE stream has ended.
+@external(js, "sakura_runtime", "compress_inflate_push")
+fn compress_inflate_push(st: Inflater, b: Bytes, at: Int, max: Int) -> Result<Bytes, Int>
+
+@external(js, "sakura_runtime", "compress_inflate_used")
+fn compress_inflate_used(st: Inflater) -> Int
+
+@external(js, "sakura_runtime", "compress_inflate_done")
+fn compress_inflate_done(st: Inflater) -> Bool
+
+/// CRC-32 (ISO 3309, as gzip) of `b`, continuing from `crc`.
+@external(js, "sakura_runtime", "compress_crc32")
+fn compress_crc32(crc: Int, b: Bytes) -> Int
+
+/// Adler-32 (RFC 1950 §8.2) of `b`, continuing from `adler`.
+@external(js, "sakura_runtime", "compress_adler32")
+fn compress_adler32(adler: Int, b: Bytes) -> Int
+
+test "every format round trips" {
+  let b = String.to_bytes(String.repeat("sakura ", 100))
+  for f in [Gzip, Deflate, DeflateRaw] {
+    expect_eq(decompress(compress(b, f, 6), f, 700), Ok(b))
+    expect_eq(decompress(compress(b, f, 6), f, 699), Err(CompressionError(OutputLimit)))
+  }
+}
+
+test "headers and trailers are checked" {
+  let gz = compress(String.to_bytes("hi"), Gzip, 6)
+  let n = Bytes.len(gz)
+  expect_eq(decompress(Bytes.slice(gz, 1, n), Gzip, 10), Err(CompressionError(Malformed(0))))
+  expect_eq(decompress(Bytes.slice(gz, 0, n - 1), Gzip, 10), Err(CompressionError(Truncated)))
+  expect_eq(
+    decompress(Bytes.concat([gz, Bytes.from_list([0])]), Gzip, 10),
+    Err(CompressionError(Malformed(n))),
+  )
+}

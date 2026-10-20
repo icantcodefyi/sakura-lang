@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+Gzip: 4 items, whole Ok(true), sizes Ok([40000, 40000, 14890]), lines Ok(3000)
+Deflate: 4 items, whole Ok(true), sizes Ok([40000, 40000, 14890]), lines Ok(3000)
+DeflateRaw: 3 items, whole Ok(true), sizes Ok([40000, 40000, 14890]), lines Ok(3000)
+empty source: Ok(Bytes.of([]))

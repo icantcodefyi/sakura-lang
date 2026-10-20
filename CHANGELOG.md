@@ -134,6 +134,20 @@ retains earlier implementation history.
 
 ### Added
 
+- `std/compress` (RFC 0002 §2.6; plan `web-apis.md` phase 6; design §17.280 (4)): gzip, zlib
+  (`Deflate`) and raw DEFLATE on JS, WASM and native. `compress(b, format, level)` and
+  `decompress(b, format, max_out)` work on whole `Bytes`. `compress_source(src, format, level,
+  body)` and `decompress_source(src, format, max_out, body)` are `CompressionStream` and
+  `DecompressionStream`: callback-shaped views whose codec state lives only inside `body`.
+  `max_out` is required and bounds the decompressed bytes, so a decompression bomb fails
+  `CompressionError(OutputLimit)`. Input that is not in the format fails `Malformed(offset)`,
+  with the same offset on every backend. A cut-off stream fails `Truncated`. Trailing data and
+  a second gzip member are refused. A level outside 0–9 or a negative `max_out` is `D020`.
+  Output is deterministic: the gzip header has mtime 0 and OS 255. The compressed bytes can
+  differ between backends, but each backend decompresses the others' output. The codec is
+  `miniz_oxide` 0.9.1 inside `sakura_rt`, and `node:zlib` on JS. The ABI MINOR is unchanged:
+  `sakura_rt` gains exports but no import. The cookbook's `stream_lines` reads a gzipped log.
+
 - `std/websocket` (RFC 0002 §1, §3, §6, §7; plan `web-apis.md` phase 8): a WebSocket client as
   the effect `WebSocket`. `WebSocket.connect(url, options, body)` opens a `ws` or `wss` URL and
   runs `body` with a `Socket` that cannot leave it (`V6003`), closing it with 1001 on every exit;

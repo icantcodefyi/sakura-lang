@@ -13,6 +13,14 @@ cli_exit: (i64) -> unit
 cli_parse: (ptr, ptr) -> word cps
 clock_host: () -> ptr
 clock_virtual_sleep: (i64, i64) -> i64 cps
+compress_adler32: (i64, ptr) -> i64
+compress_crc32: (i64, ptr) -> i64
+compress_deflate: (ptr, i64, i64) -> ptr
+compress_inflate: (ptr, i64, i64) -> ptr
+compress_inflate_done: (ptr) -> bool
+compress_inflate_push: (ptr, ptr, i64, i64) -> ptr cps
+compress_inflate_used: (ptr) -> i64
+compress_inflater: () -> ptr
 console_host: () -> ptr
 contract_enter: () -> unit
 contract_exit: () -> unit

@@ -1,0 +1,20 @@
+ending: ok
+--- stdout
+Gzip max 700: 700 bytes
+Gzip max 699: OutputLimit
+Gzip streamed, max 700: Ok(700)
+Gzip streamed, max 699: Err(CompressionError { reason: OutputLimit })
+Deflate max 700: 700 bytes
+Deflate max 699: OutputLimit
+Deflate streamed, max 700: Ok(700)
+Deflate streamed, max 699: Err(CompressionError { reason: OutputLimit })
+DeflateRaw max 700: 700 bytes
+DeflateRaw max 699: OutputLimit
+DeflateRaw streamed, max 700: Ok(700)
+DeflateRaw streamed, max 699: Err(CompressionError { reason: OutputLimit })
+empty max 0: 0 bytes
+one byte max 0: OutputLimit
+bomb: true under 4 KiB compressed
+bomb max 65536: OutputLimit
+bomb streamed, max 65536: Err(CompressionError { reason: OutputLimit })
+bomb max 1048576: 1048576 bytes

@@ -1,0 +1,10 @@
+ending: ok
+--- stdout
+blossom.txt.gz: 2396 bytes, same text true, streamed true
+blossom.zz: 2396 bytes, same text true, streamed true
+blossom.deflate: 2396 bytes, same text true, streamed true
+blossom-fields.gz: 2396 bytes, same text true, streamed true
+42 lines
+Sakura Lang compresses with gzip, deflate and deflate-raw.
+桜の花が咲いた。 The same line, again and again:
+line 000: a cherry blossom falls, and the stream goes on

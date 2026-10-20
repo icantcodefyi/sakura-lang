@@ -1,0 +1,48 @@
+// milestone: M3
+// spec: RFC 0002 §2.6, design §17.280 (4)
+// Spec: https://www.rfc-editor.org/rfc/rfc1952#section-2.3
+
+// Input that ends inside the stream is `CompressionError(Truncated)` wherever it ends: in the
+// gzip or zlib header, in the DEFLATE data, in the trailer, or before the first byte. The
+// streaming form says the same at its last pull, after yielding what the input held, here with
+// the input cut into items of three bytes so the header and trailer span several of them.
+import std/compress
+import std/compress.{CompressionError, Format}
+import std/stream.{Source}
+
+fn whole(z: Bytes, f: Format, cut: Int) -> String {
+  match compress.decompress(Bytes.slice(z, 0, cut), f, 1_000) {
+    Ok(b) => "{Bytes.len(b)} bytes",
+    Err(CompressionError(reason)) => "{reason}",
+  }
+}
+
+fn streamed(z: Bytes, f: Format, cut: Int) -> String {
+  let src: Source<Bytes, {}> = Source.from_list([Bytes.slice(z, 0, cut)]).chunks(3)
+  let r: Result<Int, CompressionError> = try {
+    compress.decompress_source(src, f, 1_000, fn(plain) {
+      plain.fold(0, fn(n, b) { n + Bytes.len(b) })
+    })
+  }
+  match r {
+    Ok(n) => "{n} bytes",
+    Err(CompressionError(reason)) => "{reason}",
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let text = String.to_bytes(String.repeat("cherry ", 50))
+  for f in [Format.Gzip, Format.Deflate, Format.DeflateRaw] {
+    let z = compress.compress(text, f, 6)
+    let n = Bytes.len(z)
+    let framing = match f {
+      Format.Gzip => [("in the header", 5), ("in the trailer", n - 4)],
+      Format.Deflate => [("in the header", 1), ("in the trailer", n - 2)],
+      Format.DeflateRaw => [],
+    }
+    let cuts = [("empty", 0), ("in the data", n / 2), ("one byte short", n - 1), ("whole", n)]
+    for c in List.concat(framing, cuts) {
+      Console.print("{f} {c.0}: {whole(z, f, c.1)}, streamed {streamed(z, f, c.1)}")
+    }
+  }
+}

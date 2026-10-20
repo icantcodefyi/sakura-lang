@@ -1,0 +1,273 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 error std::compress::CompressionError | CompressionError 24b (reason: word*)
+layout 3 variant std::compress::CompressionReason | Malformed 24b (i64) | OutputLimit 16b () | Truncated 16b ()
+layout 4 variant std::compress::Format | Gzip 16b () | Deflate 16b () | DeflateRaw 16b ()
+layout 5 variant std::compress::Inflater
+layout 6 record std::compress::Inflating | Inflating 112b (format: word*, max_out: i64, phase: word*, scan: word*, body: i64, tail: word*, check: i64, total: i64, item: word*, at: i64, base: i64, ended: bool)
+layout 7 variant std::compress::Phase | InHeader 16b () | InBody 16b () | InTrailer 16b () | AtEnd 16b ()
+layout 8 record std::compress::Scan | Scan 48b (stage: i64, flags: i64, left: i64, crc: i64)
+layout 9 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 10 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 11 record std::stream::Source | Source 24b (pull: word*)
+layout 12 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 13 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 14 shape |  32b (word*, word*)
+layout 15 shape |  32b (i64, word*)
+layout 16 shape |  40b (word*, word*, word*)
+layout 17 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%2 word*, %3 word*, %8 word*, %9 word*, %10 word*, %15 word*, %16 word*, %17 word*, %18 word*, %23 word*, %24 word*, %25 word*, %26 word*, %27 word*, %38 bool, %44 word*, %45 word*, %54 bool, %55 word*, %56 word*, %84 bool, %85 word*, %86 i64, %87 i64, %88 word*, %120 word*, %121 word*, %122 i64, %123 i64, %124 word*, %125 word*, %126 word*, %127 word*, %172 word*, %173 word*, %174 i64, %175 i64, %176 word*, %177 word*, %178 word*, %183 bool, %184 word*, %185 i64, %186 i64, %187 word*, %217 bool, %218 word*, %219 i64, %220 i64, %221 word*]
+  b0():
+    %0 v: ptr = const static std::compress::Format.Gzip
+    %1 lit: ptr = const str 0
+    call file#2(%1) -> b1(%0)
+  b1(%2 r: ptr, %3 v: ptr):
+    %4 lit: ptr = const str 1
+    %5 tup: ptr = alloc tuple#16(word, word, word)(%4, %3, %2)
+    %6 v: ptr = const static std::compress::Format.Deflate
+    %7 lit: ptr = const str 2
+    call file#2(%7) -> b2(%5, %6)
+  b2(%8 r: ptr, %9 tup: ptr, %10 v: ptr):
+    %11 lit: ptr = const str 3
+    %12 tup: ptr = alloc tuple#16(word, word, word)(%11, %10, %8)
+    %13 v: ptr = const static std::compress::Format.DeflateRaw
+    %14 lit: ptr = const str 4
+    call file#2(%14) -> b3(%9, %12, %13)
+  b3(%15 r: ptr, %16 tup: ptr, %17 tup: ptr, %18 v: ptr):
+    %19 lit: ptr = const str 5
+    %20 tup: ptr = alloc tuple#16(word, word, word)(%19, %18, %15)
+    %21 v: ptr = const static std::compress::Format.Gzip
+    %22 lit: ptr = const str 6
+    call file#2(%22) -> b4(%16, %17, %20, %21)
+  b4(%23 r: ptr, %24 tup: ptr, %25 tup: ptr, %26 tup: ptr, %27 v: ptr):
+    %28 lit: ptr = const str 7
+    %29 tup: ptr = alloc tuple#16(word, word, word)(%28, %27, %23)
+    %30 xs: ptr = alloc list(%24, %25, %26, %29)
+    %31 v: ptr = const static std::option::Option.None
+    dup.candidate %30
+    %32 n: i64 = $list_len(%30)
+    %226 lit: i64 = const 0
+    jump b17(%226, %31, %30, %32)
+  b5(%33 first: ptr):
+    %34 tag: i64 = tag %33 ctor std::option::Option
+    switch %34 0 => b6(%33) 1 => b7(%33)
+  b6(%35 first: ptr):
+    drop %35
+    %37 lit: ptr = const str 8
+    perform std::console::Console.print(%37) -> b8()
+  b7(%36 first: ptr):
+    %41 p: word = proj %36.0 std::option::Option.Some
+    %42 r: ptr = $string_from_bytes(%41)
+    %43 lit: ptr = const str 9
+    call unwrap_or#5(%42, %43) -> b9(%36)
+  b8(%38 r: unit):
+    %39 box: word = box %38
+    %40 unbox: unit = unbox %39
+    drop %39
+    ret %40
+  b9(%44 r: word, %45 first: ptr):
+    %46 lit: ptr = const str 10
+    %47 r: ptr = $string_split(%44, %46)
+    dup.candidate %47
+    %48 r: i64 = $list_len(%47)
+    %49 lit: i64 = const 1
+    %50 t: i64 = intsub %48, %49
+    %51 s: ptr = show %50
+    %52 lit: ptr = const str 11
+    %53 s: ptr = concat %51, %52
+    drop %52
+    perform std::console::Console.print(%53) -> b10(%45, %47)
+  b10(%54 r: unit, %55 first: ptr, %56 r: ptr):
+    %57 box: word = box %54
+    drop %57
+    %58 lit: i64 = const 0
+    %59 lit: i64 = const 3
+    %60 r: ptr = $list_slice(%56, %58, %59)
+    dup.candidate %60
+    %61 n: i64 = $list_len(%60)
+    %90 lit: i64 = const 0
+    jump b12(%90, %55, %60, %61)
+  b11(%62 first: ptr):
+    drop %62
+    %63 lit: unit = const ()
+    ret %63
+  b12(%64 i: i64, %65 first: ptr, %66 r: ptr, %67 n: i64):
+    %68 more: bool = lt.int %64, %67
+    if %68 then b13(%66, %67, %64, %65) else b14(%66, %67, %64, %65)
+  b13(%69 r: ptr, %70 n: i64, %71 i: i64, %72 first: ptr):
+    dup.candidate %69
+    %77 x: word = $list_at(%69, %71)
+    perform std::console::Console.print(%77) -> b16(%69, %70, %71, %72)
+  b14(%73 r: ptr, %74 n: i64, %75 i: i64, %76 first: ptr):
+    drop %73
+    jump b11(%76)
+  b15(%78 first: ptr, %79 r: ptr, %80 n: i64, %81 i: i64):
+    %82 lit: i64 = const 1
+    %83 i: i64 = intadd %81, %82
+    jump b12(%83, %78, %79, %80)
+  b16(%84 r: unit, %85 r: ptr, %86 n: i64, %87 i: i64, %88 first: ptr):
+    %89 box: word = box %84
+    drop %89
+    jump b15(%88, %85, %86, %87)
+  b17(%91 i: i64, %92 first: ptr, %93 xs: ptr, %94 n: i64):
+    %95 more: bool = lt.int %91, %94
+    if %95 then b18(%93, %94, %91, %92) else b19(%93, %94, %91, %92)
+  b18(%96 xs: ptr, %97 n: i64, %98 i: i64, %99 first: ptr):
+    dup.candidate %96
+    %104 x: word = $list_at(%96, %98)
+    %223 p: ptr = tuple_get %104.0
+    %224 p: ptr = tuple_get %104.1
+    %225 p: ptr = tuple_get %104.2
+    drop %104
+    jump b21(%223, %224, %225, %96, %97, %98, %99)
+  b19(%100 xs: ptr, %101 n: i64, %102 i: i64, %103 first: ptr):
+    drop %100
+    jump b5(%103)
+  b20(%105 first: ptr, %106 xs: ptr, %107 n: i64, %108 i: i64):
+    %109 lit: i64 = const 1
+    %110 i: i64 = intadd %108, %109
+    jump b17(%110, %105, %106, %107)
+  b21(%111 name: ptr, %112 f: ptr, %113 z: ptr, %114 xs: ptr, %115 n: i64, %116 i: i64, %117 first: ptr):
+    %118 lit: i64 = const 4096
+    %119 $site: i64 = const 4
+    dup %112
+    dup %113
+    call decompress#3(%113, %112, %118, %119) -> b22(%114, %115, %116, %117, %111, %112, %113)
+  b22(%120 r: ptr, %121 xs: ptr, %122 n: i64, %123 i: i64, %124 first: ptr, %125 name: ptr, %126 f: ptr, %127 z: ptr):
+    %133 tag: i64 = tag %120 ctor std::result::Result
+    switch %133 0 => b24(%121, %122, %123, %124, %125, %126, %127, %120) 1 => b25(%121, %122, %123, %124, %125, %126, %127, %120)
+  b23(%128 v: word, %129 first: ptr, %130 xs: ptr, %131 n: i64, %132 i: i64):
+    drop %128
+    jump b20(%129, %130, %131, %132)
+  b24(%134 xs: ptr, %135 n: i64, %136 i: i64, %137 first: ptr, %138 name: ptr, %139 f: ptr, %140 z: ptr, %141 r: ptr):
+    %150 p: word = proj %141.0 std::result::Result.Ok
+    drop %141
+    %189 tag: i64 = tag %137 ctor std::option::Option
+    switch %189 0 => b29(%134, %135, %136, %137, %138, %139, %140, %150) 1 => b30(%134, %135, %136, %137, %138, %139, %140, %150)
+  b25(%142 xs: ptr, %143 n: i64, %144 i: i64, %145 first: ptr, %146 name: ptr, %147 f: ptr, %148 z: ptr, %149 r: ptr):
+    drop %147
+    drop %148
+    %210 p: word = proj %149.0 std::result::Result.Err
+    drop %149
+    %211 p: word = proj %210.0 std::compress::CompressionError
+    drop %210
+    %212 s: ptr = show %146
+    drop %146
+    %213 lit: ptr = const str 12
+    %214 s: ptr = concat %212, %213
+    drop %213
+    %215 s: ptr = show %211
+    drop %211
+    %216 s: ptr = concat %214, %215
+    drop %215
+    perform std::console::Console.print(%216) -> b31(%142, %143, %144, %145)
+  b26(%151 v: bool, %152 first: ptr, %153 xs: ptr, %154 n: i64, %155 i: i64, %156 name: ptr, %157 f: ptr, %158 z: ptr, %159 b: ptr):
+    %160 s: ptr = show %156
+    drop %156
+    %161 lit: ptr = const str 12
+    %162 s: ptr = concat %160, %161
+    drop %161
+    dup %159
+    %163 r: i64 = $bytes_len(%159)
+    %164 s: ptr = show %163
+    %165 s: ptr = concat %162, %164
+    drop %164
+    %166 lit: ptr = const str 13
+    %167 s: ptr = concat %165, %166
+    drop %166
+    %168 s: ptr = show %151
+    %169 s: ptr = concat %167, %168
+    drop %168
+    %170 lit: ptr = const str 14
+    %171 s: ptr = concat %169, %170
+    drop %170
+    call streamed#4(%158, %157) -> b27(%153, %154, %155, %159, %152, %171)
+  b27(%172 r: ptr, %173 xs: ptr, %174 n: i64, %175 i: i64, %176 b: ptr, %177 first: ptr, %178 s: ptr):
+    %179 r: ptr = alloc std::result::Result.Ok(%176)
+    %180 t: bool = eq.any %172, %179
+    drop %172
+    drop %179
+    %181 s: ptr = show %180
+    %182 s: ptr = concat %178, %181
+    drop %181
+    perform std::console::Console.print(%182) -> b28(%173, %174, %175, %177)
+  b28(%183 r: unit, %184 xs: ptr, %185 n: i64, %186 i: i64, %187 first: ptr):
+    %188 box: word = box %183
+    jump b23(%188, %187, %184, %185, %186)
+  b29(%190 xs: ptr, %191 n: i64, %192 i: i64, %193 first: ptr, %194 name: ptr, %195 f: ptr, %196 z: ptr, %197 b: ptr):
+    drop %193
+    dup %197
+    %206 r: ptr = alloc std::option::Option.Some(%197)
+    %207 lit: bool = const true
+    jump b26(%207, %206, %190, %191, %192, %194, %195, %196, %197)
+  b30(%198 xs: ptr, %199 n: i64, %200 i: i64, %201 first: ptr, %202 name: ptr, %203 f: ptr, %204 z: ptr, %205 b: ptr):
+    %208 p: word = proj %201.0 std::option::Option.Some
+    %209 t: bool = eq.any %208, %205
+    drop %208
+    jump b26(%209, %201, %198, %199, %200, %202, %203, %204, %205)
+  b31(%217 r: unit, %218 xs: ptr, %219 n: i64, %220 i: i64, %221 first: ptr):
+    %222 box: word = box %217
+    jump b23(%222, %221, %218, %219, %220)
+
+fn $entry#1 top -> unit ; main::decompress_known_gzip_bytes, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn file#2 top -> ptr ; main::decompress_known_gzip_bytes, frame 3 slots [%0 word*, %2 word*, %5 word*]
+  b0(%0 text: ptr):
+    %1 v: ptr = const static std::bytes::Alphabet.Standard
+    call from_base64#36(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 xs: ptr = alloc list()
+    %4 r: ptr = $bytes_from_list(%3)
+    call unwrap_or#5(%2, %4) -> b2()
+  b2(%5 r: word):
+    ret %5
+
+fn streamed#4 top -> ptr ; main::decompress_known_gzip_bytes, frame 8 slots [%0 word*, %1 word*, %3 word*, %4 word*, %7 word*, %8 word*, %9 word*, %14 word*]
+  b0(%0 z: ptr, %1 f: ptr):
+    %2 xs: ptr = alloc list(%0)
+    call from_list#6(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 f: ptr):
+    %5 lit: i64 = const 5
+    %6 $site: i64 = const 5
+    call chunks#7(%3, %5, %6) -> b2(%4)
+  b2(%7 r: ptr, %8 f: ptr):
+    try_push -> b3(err, )
+    %11 f: ptr = closure streamed$1#8[]
+    %12 lit: i64 = const 4096
+    %13 $site: i64 = const 6
+    call decompress_source#11(%7, %8, %12, %11, %13) -> b4()
+  b3(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    ret %10
+  b4(%14 r: word) [try]:
+    %15 ok: ptr = alloc std::result::Result.Ok(%14)
+    try_pop
+    ret %15
+
+fn streamed$1#8 lambda -> word ; main::decompress_known_gzip_bytes, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr, %1 plain: word):
+    drop %0
+    %2 xs: ptr = alloc list()
+    %3 f: ptr = closure streamed$1$1#9[]
+    call fold#10(%1, %2, %3) -> b1()
+  b1(%4 r: word):
+    %5 r: ptr = $bytes_concat(%4)
+    ret %5
+
+fn streamed$1$1#9 lambda -> word ; main::decompress_known_gzip_bytes, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 b: word):
+    drop %0
+    %3 r: ptr = $list_push(%1, %2)
+    ret %3
