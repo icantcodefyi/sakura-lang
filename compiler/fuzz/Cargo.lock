@@ -131,9 +131,9 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "equivalent"
-version = "1.0.3"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00d174d5400e5e8fd687ad1049e2f578285fa914201b1af7e8b112a4546bd826"
+checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "errno"
@@ -372,7 +372,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_analysis"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "postcard",
  "rustix",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_js"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_wasm"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_lir",
  "wasm-encoder",
@@ -408,7 +408,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_diagnostics",
  "sakura_hir",
@@ -419,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core_snapshot"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -431,7 +431,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_diagnostics"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "codespan-reporting",
  "serde",
@@ -441,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_eval"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_core",
  "sakura_lir",
@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_fmt"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "pretty",
  "sakura_diagnostics",
@@ -458,7 +458,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_hir"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -470,7 +470,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_lir"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sakura_core",
  "sakura_core_snapshot",
@@ -478,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_syntax"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_types"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "rustc-hash 2.1.3",
  "sakura_diagnostics",
@@ -498,7 +498,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_verify"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "rustix",
  "sakura_core_snapshot",
