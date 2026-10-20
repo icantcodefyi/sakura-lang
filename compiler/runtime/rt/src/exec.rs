@@ -171,6 +171,9 @@ pub struct Sched {
     /// The task `next` is driving (0 between tasks) and the frame id it dispatched.
     driving: u32,
     dispatched: u32,
+    /// The object of frame `dispatched`, resolved once when it is dispatched (0 once popped),
+    /// so the step's `call`, `after` and `pop_frame` do not resolve its id again (WS-W3).
+    frame: u32,
     running: bool,
     unwinding: u32,
     /// Live requests (ABI §8.5 limit) and the configured limit.
@@ -241,6 +244,21 @@ impl Rt {
 
     fn cur(&self) -> u32 {
         self.task(self.sched.current)
+    }
+
+    /// Frame `id`'s object if it is live: the dispatched frame without a lookup.
+    fn frame_obj(&self, id: u32) -> Option<u32> {
+        if id == self.sched.dispatched && self.sched.frame != 0 {
+            Some(self.sched.frame)
+        } else {
+            self.arena_obj(id, tag::FRAME)
+        }
+    }
+
+    /// Dispatch frame `id`, whose object is `f` (0 when it is not live).
+    fn set_dispatched(&mut self, id: u32, f: u32) {
+        self.sched.dispatched = id;
+        self.sched.frame = f;
     }
 
     fn tstack(&self, t: u32, off: u32) -> Stack {
@@ -447,7 +465,7 @@ impl Rt {
     pub fn call(&mut self, code: u32, n_slots: u32, env: u32) -> Res<u32> {
         let t = self.cur();
         let parent = self.u(t, T_FRAME);
-        let p = self.arena_get(parent, tag::FRAME)?;
+        let p = self.frame_obj(parent).ok_or(Defect::INTERNAL)?;
         let (id, f) = self.frame_alloc(code, n_slots)?;
         self.set(f, F_PARENT, parent);
         self.set(f, F_ACT, self.u(p, F_ACT));
@@ -491,13 +509,14 @@ impl Rt {
         while self.u(t, T_MODE) != NONE && self.unwind(t) {}
         let fid = self.u(t, T_FRAME);
         if fid == n.base {
-            self.sched.dispatched = n.base;
+            let b = self.arena_obj(n.base, tag::FRAME).unwrap_or(0);
+            self.set_dispatched(n.base, b);
             return None;
         }
         let f = self.arena_obj(fid, tag::FRAME)?;
         let env = self.u(t, T_NEXT_ENV);
         self.set(t, T_NEXT_ENV, 0);
-        self.sched.dispatched = fid;
+        self.set_dispatched(fid, f);
         Some((self.u(f, F_CODE), env, f))
     }
 
@@ -554,7 +573,8 @@ impl Rt {
                     fid = parent;
                 }
                 self.set(t, T_FRAME, n.base);
-                self.sched.dispatched = n.base;
+                let b = self.arena_obj(n.base, tag::FRAME).unwrap_or(0);
+                self.set_dispatched(n.base, b);
                 Err(d)
             }
         }
@@ -562,9 +582,12 @@ impl Rt {
 
     /// Pop frame `id`: release the activations it installed, drop its slots, retire it.
     fn pop_frame(&mut self, t: u32, id: u32) {
-        let Some(f) = self.arena_obj(id, tag::FRAME) else {
+        let Some(f) = self.frame_obj(id) else {
             return;
         };
+        if id == self.sched.dispatched {
+            self.sched.frame = 0;
+        }
         loop {
             let acts = self.tstack(t, T_ACTS);
             if acts.len == 0 {
@@ -1406,7 +1429,7 @@ impl Rt {
             let env = self.u(t, T_NEXT_ENV);
             self.set(t, T_NEXT_ENV, 0);
             self.sched.running = true;
-            self.sched.dispatched = fid;
+            self.set_dispatched(fid, f);
             return Next::Dispatch {
                 code: self.u(f, F_CODE),
                 env,
@@ -1426,7 +1449,7 @@ impl Rt {
         let id = self.sched.driving;
         let t = self.task(id);
         let fid = self.sched.dispatched;
-        let f = self.arena_obj(fid, tag::FRAME).unwrap_or(0);
+        let f = self.sched.frame;
         match s {
             step::RETURN => {
                 let parent = self.u(f, F_PARENT);
