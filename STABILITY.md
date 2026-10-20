@@ -75,7 +75,7 @@ and built-in help commands are also captured in the baseline.
 | CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 0.2.0 |
 | CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 0.2.0 |
 | CLI | `lsp`; `mcp serve --root` | stable | 0.2.0 |
-| Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature, and release binaries are built without it; a native `main` that declares `Http`, `Serve` or `Llm` exits 75 at startup (RFC 0002 §7) | experimental | — |
+| Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature, and release binaries are built without it; a native `main` that declares `Http`, `Serve`, `WebSocket` or `Llm` exits 75 at startup (RFC 0002 §7) | experimental | — |
 | JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix, pre-verification errors and a `test` run that does not compile; one `kind` per closing shape, every `summary` field required (design §17.242 (1)) | stable | 0.2.0 |
 | JSON Lines | `audit`, `audit_summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic`: `1.1`; `verify_summary`: `1.0` | stable | 0.2.0 |
 | JSON Lines | Test `test`, `test_summary`: `1.0` on JS and WASM; `regression` `1.0`, the record `test --contracts` stores as `tests/regressions/<fn>.json` and replays | stable | 0.2.0 |
