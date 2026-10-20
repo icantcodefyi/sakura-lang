@@ -469,8 +469,16 @@ pooled, 2.3 ms). Anything that shifts the heap at start-up (the module's locatio
 larger runtime file) can move when the collector runs relative to the benchmark's
 allocation, and `shapes`, whose records die young, pays for it. `handled_reentry` n = 1,000
 is unmoved by the flags (+12.5% default, +13.0% fixed): its cause is code, not the collector.
-No flag joins the Node command line: a fixed young generation would change every Node count
-against the blessed baseline, which is the design lead's call (§17.272 (2)(c)).
+**Decided (design §17.282):** the fixed young generation joins the counted Node command line,
+`--min-semi-space-size=S --max-semi-space-size=S` beside `--predictable`, for every Node
+process the harness measures on every OS; `S` is 16 if one bounded measurement (`shapes`
+n = 50,000 and `binary_trees` at its largest size, both locations, five pairs an arm) reads
+the two locations within 0.5%, else the 64 measured here; `meta.flags.node` records the
+list (a file without it is `["--predictable"]`) and `compare`, `envelope` and `bless` refuse
+two files whose lists differ (`flags`). The flag commit carries a candidate counted run under
+`baselines/candidate/`; the owner re-blesses the `js` and `wasm` baselines at that commit and
+the `320c9980` files move to `baselines/archive/320c9980/`. Until the flag commit lands, this
+paragraph describes the current command line.
 
 **`compare` re-counts every blocked Node cell** of a counted compare (macOS; `--no-recount`
 skips it) as an A/A pair in the same session and location: the baseline commit's artefact,

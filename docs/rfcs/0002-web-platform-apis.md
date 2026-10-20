@@ -28,7 +28,10 @@ the reason recorded. The implementation order is
   (`3481039f`), phase 3 (`d506e2b1`), row R (`3a027001`) and phase 7a on JS and native
   (`3eab0003`) are on `main` and ship in `v0.1.0`; 4b (PR #5, ABI 1.5.0), 7a's WASM step
   (PR #6, ABI 1.6.0, stacked on #5) and 4a (PR #7, `1f7f0ea9`, stacked on #6, ABI 1.7.0, ratified in design §17.271) are held
-  for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271). Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271); the held series is
+  merged after the `v0.1.0` tag. Phase 9 (`std/urlpattern`, `b2fde35d`) is on `main`
+  (design §17.281). Phase 5 (`std/stream`) is specified by design §17.280, which amended
+  §2.5 below. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -138,11 +141,13 @@ lines, with every bound explicit:
 import std/stream.{Source}
 import std/compress
 
-fn count_lines(url: Url) -> Int ! {Http, Fail<HttpError | CompressionError | EncodingError>} {
+fn count_lines(url: Url) -> Int ! {Http, Fail<HttpError | CompressionError | EncodingError | StreamError>} {
   Http.stream(Request.of(Get, url), fn(incoming) {
     let bytes = Http.body_source(incoming.body, 65_536)
-    let text = Encoding.decode_source(Compress.gunzip_source(bytes, 64 * 1_048_576), Utf8, Fatal)
-    Stream.fold(Stream.lines(text), 0, fn(n, _line) { n + 1 })
+    Compress.decompress_source(bytes, Gzip, 64 * 1_048_576, fn(plain) {
+      let text = Encoding.decode_source(plain, Utf8, Fatal)
+      Stream.fold(Stream.lines(text, 1_048_576), 0, fn(n, _line) { n + 1 })
+    })
   })
 }
 ```
@@ -224,8 +229,8 @@ the program at startup (rule §7), `gap` means deliberately not provided, with t
 | `ReadableStream` | `Http.read_chunk`, `Fs.read_chunk` | `std/stream.Source<T, e>` | source's row | source's | ✓ | ✓ | ✓ |
 | `WritableStream` | `Fs.write_chunk` | `std/stream.Sink<T, e>` | sink's row | sink's | ✓ | ✓ | ✓ |
 | `TransformStream` | none | `fn(Source<A, e>) -> Source<B, e>` | pure | — | ✓ | ✓ | ✓ |
-| `ByteLengthQueuingStrategy` | none | `Stream.buffer(src, Limit.bytes(n))` | `Task` | — | ✓ | ✓ | ✓ |
-| `CountQueuingStrategy` | none | `Stream.buffer(src, Limit.items(n))` | `Task` | — | ✓ | ✓ | ✓ |
+| `ByteLengthQueuingStrategy` | none | gap: `Stream.chunks(src, size)` before `buffer` bounds bytes (§17.280 (4)) | — | — | — | — | — |
+| `CountQueuingStrategy` | none | `Stream.buffer(src, capacity, body)` over `Channel` (phase 10) | `Task` | — | ✓ | ✓ | ✓ |
 | 8 reader/writer/controller classes | none | internal to `Source`/`Sink`; BYOB is a gap | — | — | — | — | — |
 | `Blob` | `Bytes` | `std/blob.Blob { bytes, media_type }` | pure | — | ✓ | ✓ | ✓ |
 | `WebSocket` (client) | none | `std/websocket`, effect `WebSocket` | `WebSocket` | `net` | ✓ | host | refuse until ported |
@@ -337,7 +342,25 @@ capability, the Sakura form that covers the need, and the reason.
   `:name` segments, `*` and `**` wildcards, and optional pathname-only or full-URL patterns;
   regexp groups `(…)` are `Err(PatternError(Unsupported(…)))`, because no JS regexp engine
   exists on WASM or native. `UrlPattern.exec(p, url) -> Option<UrlMatch>` with named
-  groups. `std/router` matches through it, so the two never disagree.
+  groups. `std/router` matches through it, so the two never disagree. Built as phase 9
+  (`b2fde35d`); the readings are design §17.281: `PatternError(reason: PatternReason)`,
+  `PatternReason = Unsupported(String) | Duplicate(String) | Limit` (the text that used
+  the syntax; a repeated name; over 4,096 bytes or 64 groups); `UrlMatch = { groups:
+  List<(String, String)> }` in pattern order, unnamed groups `"0"`, `"1"`, … as the
+  standard numbers them, no per-component `input` and no `test` (`exec(p, url).is_some()`);
+  `*` is exactly one segment and `**` zero or more, greedy, its value the segments joined
+  with `/` (`""` for none), a documented divergence from the standard's `*` (`.*`); a
+  `:name` is a whole segment with an ASCII-identifier name; a `:`, `*`, `(`, `)`, `{`,
+  `}`, `?`, `+`, `#` or `\` anywhere else in a segment is `Unsupported(segment)`, never a
+  literal, so the standard's meaning can arrive additively; empty segments are ignored on
+  both sides (`/users/7/` matches `/users/:id`, the router's existing contract and the
+  second documented divergence); the query and fragment are never read; values are raw
+  segment text; a full-URL pattern is `scheme://authority/path` with a literal origin
+  normalized and compared through `Url.parse`, a relative `Url` never matches one, and a
+  pattern starting with `/` or without `://` reads `Url.path`. `Router.route`/`get`/`post`/
+  `put`/`delete` declare `requires UrlPattern.compile(pattern).is_ok()`, so a route whose
+  pattern does not compile is `D020`: a route is part of the program; `Request.params`
+  stays the router's surface, wildcards under `"0"`, `"1"`, ….
 
 #### 2.3 Headers, Blob, FileData, Form (`std/headers`, `std/blob`, `std/form`)
 
@@ -432,28 +455,51 @@ design §17.271.
 
 #### 2.5 Streams (`std/stream`)
 
-- `type Source<T, e> = { pull: fn() -> Option<T> ! e, close: fn() -> Unit ! e }` and
-  `type Sink<T, e> = { write: fn(T) -> Unit ! e, close: fn() -> Unit ! e, abort:
-  fn(String) -> Unit ! e }` are plain records of closures. Pull returns `None` exactly once
-  at the end; an empty chunk is data. A transform is a function from a source to a source.
-  There are no locks: one instance runs on one thread (§17.171) and a cursor pulled from two
-  copies interleaves deterministically; the docs say so.
-- Combinators (pure unless stated): `from_list`, `to_list(src, max_items)`, `map`,
-  `filter`, `take`, `fold`, `each`, `chunks(src, size)`, `lines(src)`, `pipe(src, sink)`,
-  `tee(src, max_lag)` (`Task`; the slower branch is at most `max_lag` items behind, then
-  the faster one waits), `buffer(src, limit)` (`Task`; a producer fiber prefetches up to
-  `Limit.items(n)` or `Limit.bytes(n)`, the two queuing strategies). Every bound is an
-  argument; no combinator buffers without one.
-- `Fs.file_source(file, chunk)` and `Fs.file_sink(file)` adapt files. BYOB readers and byte
-  controllers are a gap: there is no caller-owned buffer in Sakura.
+Amended by design §17.280 (round 41): a stream is a value, since a Sakura closure cannot
+hold a cursor (`V2041`, design §8.1).
+
+- `type Step<T, e> = Done | Next(T, Source<T, e>)` and `type Source<T, e> = { pull: fn()
+  -> Step<T, e> ! e }`: pulling performs the source's row and returns the end or one item
+  with the source that continues after it. `type Sink<T, e> = { write: fn(T) -> Sink<T, e>
+  ! e, close: fn() -> Unit ! e }`. A source has no `close` and a sink no `abort`: a value
+  holds nothing to close, a resource is closed by the callback that owns it, and a failure
+  travels in the row. A transform is a function from a source to a source.
+- Two kinds. A **pure source** closes over values only and is persistent: pulling the same
+  source value twice returns the same `Step`, so using one source in two places reads the
+  same items from the same place (`tee` of a pure source is using it twice). A **view**
+  closes over a resource (`Body`, `File`; a `Receiver` or a codec state later): pulling it
+  advances the resource, `rest` is an equivalent view, two uses interleave on the resource
+  (deterministically; one instance runs on one thread, §17.171), and it is scoped like the
+  resource it captured (design §6.3, `V6003`). An empty `Bytes` item from a pure source is
+  data; the host views end at the first empty chunk. There are no locks; the docs say so.
+- Combinators, all pure Sakura: `empty`, `from_list(xs)`, `map`, `filter`, `take(src, n)`,
+  `fold`, `each`, `to_list(src, max_items) -> List<T> ! {Fail<StreamError> | e}`,
+  `chunks(src, size)` (bytes re-chunked to exactly `size`, the last shorter; holds at most
+  `size` bytes), `lines(src: Source<String, e>, max_line) -> Source<String,
+  {Fail<StreamError> | e}>` (LF, a trailing CR removed, a final unterminated line yielded),
+  `pipe(src, sink)`. `error StreamError(reason: StreamReason)`, `StreamReason = MaxItems |
+  MaxLine`. `Encoding.decode_source(src, enc, errors) -> Source<String, {Fail<EncodingError>
+  | e}>` and `Encoding.encode_source(src, enc)` thread `Decoder`'s immutable state.
+  `Blob.source(b, chunk)` is pure. Every bound is an argument; no combinator holds more
+  than its argument names.
+- Views: `Http.body_source(body, chunk) -> Source<Bytes, {Http}>`, `Fs.file_source(file,
+  chunk) -> Source<Bytes, {Fs}>`, `Fs.file_sink(file) -> Sink<Bytes, {Fs}>`.
+- `buffer(src, capacity, body)` and `tee(src, max_lag, body)` are phase 10, over `Channel`
+  (§2.9): a producer fiber fills a channel of `capacity` items and waits when it is full;
+  the body's sources are views over the receivers. A byte bound is `chunks` before
+  `buffer`; there is no `Limit` type. Codec-backed streams (§2.6) are callback-shaped views
+  for the same reason. BYOB readers and byte controllers are a gap: there is no
+  caller-owned buffer in Sakura.
 
 #### 2.6 Compression (`std/compress`)
 
 - `type Format = Gzip | Deflate | DeflateRaw`. Whole-buffer: `compress(b, format, level)
   -> Bytes`; `decompress(b, format, max_out) -> Result<Bytes, CompressionError>` with
   `max_out` required and `CompressionError = Malformed(offset) | OutputLimit | Truncated`.
-  Streaming: `compress_source(src, format, level)` and `decompress_source(src, format,
-  max_out)`. Decompressed bytes are a contract; compressed bytes are not (`zlib` on JS,
+  Streaming: `compress_source(src, format, level, body)` and `decompress_source(src,
+  format, max_out, body)` are callback-shaped (design §17.280 (4)): the body receives a
+  view over a scoped codec state, which is mutable in both runtimes and so never a pure
+  source. Decompressed bytes are a contract; compressed bytes are not (`zlib` on JS,
   the runtime's codec on WASM and native differ), so no fixture pins compressed output.
 
 #### 2.7 Cryptography (`std/crypto`)
@@ -598,7 +644,8 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 | Base64, encoding, URL, headers, form parsing | input is an in-memory `Bytes`/`String`; heap-bound | `D096` as today |
 | `Form.parse_multipart` | `FormLimits` required | `FormError(Limit(MaxParts \| MaxBytes \| MaxFieldBytes))` |
 | `Compress.decompress*` | `max_out` required | `CompressionError(OutputLimit)` |
-| `Stream.buffer`, `tee` | `Limit`/`max_lag` required | producer waits (backpressure) |
+| `Stream.to_list`, `lines` | `max_items`, `max_line` required | `StreamError(MaxItems \| MaxLine)` |
+| `Stream.buffer`, `tee` (phase 10, over `Channel`) | `capacity`/`max_lag` required | producer waits (backpressure) |
 | `Http` bodies | unchanged: `SAKURA_MAX_COPY_BYTES`, 16 MiB cassettes | unchanged |
 | `WebSocket` | `max_message` (default 16 MiB), `max_frame`, receive queue 64 messages then TCP backpressure, close handshake timeout 5 s | `SocketError(MessageTooLarge)`, `Closed(1009)` |
 | Redirects | 20 hops | `HttpError("too many redirects")` |
@@ -630,8 +677,8 @@ precedes the contract.
 
 ### 8. Sections of the design that change
 
-§6.2 (`net` covers `WebSocket`; worker grants), §8.4 (closure records as stream
-cursors), §8.6 (bounded channels and workers lift the "no channel" and "no detached work"
+§6.2 (`net` covers `WebSocket`; worker grants), §8.4 (a stream is a value; a view over a
+resource is scoped with it, design §17.280), §8.6 (bounded channels and workers lift the "no channel" and "no detached work"
 lines for the experimental module only), §10.2–10.4 (new modules), §16 items 13 and 22
 (answered for the experimental module), §17.206 (4) (`Bytes.concat` lands). The ABI gains a
 MINOR revision per phase that adds imports.
@@ -651,8 +698,8 @@ MINOR revision per phase that adds imports.
   separate instances with a `Schema` wire, like Deno/Node workers with `postMessage`.
 - **Prior art.** Deno (permissions as a runtime boundary; workers inherit or restrict
   grants), Node (`node:stream/web`, `worker_threads`, `MessagePort`), Rust (`url`,
-  `encoding_rs`, RustCrypto, `miniz_oxide`), Gleam/OCaml (records of closures as stream
-  cursors), Koka (effects as rows). Deno's model transfers best: permissions are data, a
+  `encoding_rs`, RustCrypto, `miniz_oxide`), Gleam/OCaml (iterators as unfolds, the
+  `yielder`/`Seq.t` shape), Koka (effects as rows). Deno's model transfers best: permissions are data, a
   worker's grant is a subset.
 
 ## Drawbacks and costs

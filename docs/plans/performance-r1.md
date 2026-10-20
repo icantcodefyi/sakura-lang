@@ -334,7 +334,16 @@ on the cause, and the bless path named in `release.md` §2. **Landed** (`bench.p
 with the recount is blocked only on `handled_reentry` n = 1,000 (+12.9% head over recount,
 carried); `shapes` n = 50,000 reads +7.1% and `location`; the cause is a GC-phase alias (a
 fixed 64 MB young generation reads the same pair +0.4% and the two locations within 0.2%), the
-identity-hash hypothesis is dropped, and no flag joins the Node command line.
+identity-hash hypothesis is dropped, and no flag joined the Node command line at that
+commit. **Round 41 (design §17.282):** the fixed young generation joins it, as a *flag commit*
+(Opus, `bench.py`, `test_bench.py`, `bench/README.md`, `release.md` §2) that lands as soon as
+it is green, before WS-P20's compare if it is ready first: `S` = 16 or 64 by one bounded
+measurement, `meta.flags.node` recorded and never mixed by `compare`/`envelope`/`bless`, a
+candidate counted run of `js` and `wasm` at the flag commit under `bench/baselines/candidate/`.
+Owner step: re-bless at the flag commit; the `320c9980` files are archived. WS-P20 and WS-P15
+compare against the file `main` has when they compare (the old one through the A/A recount,
+with the candidate compare recorded beside it) and read their exit criteria on the blessed
+file; no row waits for the bless.
 
 **The JS lane's order from here (design §17.276):** WS-P20, WS-P15, WS-P21, WS-P16, WS-P17,
 WS-P18 (WS-P19 inside its sweep); wave 2 after WS-P16.

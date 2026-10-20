@@ -64,15 +64,15 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 0.2.0; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
 | B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (`796e553e`; §17.271 (9)) | Opus | landed |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
-| 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a, B |
-| 6 | `std/compress` | pre-rc | Opus | 5 |
+| 5 | `std/stream` (`Step`/`Source`/`Sink` as values, §17.280), `Encoding.decode_source`/`encode_source`, `Blob.source`, the `Http`/`Fs` views | pre-rc; unblocked by §17.280 after the `17d3b20d` question | Opus | 4a, B (both landed) |
+| 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc | Opus | 7a |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
 | 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
-| 9 | `std/urlpattern` and `Router` on it | pre-rc | Opus | 2 |
-| 10 | `std/channel` | pre-rc | Opus | 4b |
+| 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
+| 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc | Opus | 4b, 5 |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
@@ -83,7 +83,9 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 last), with 12 beside each. Phases 5 and 9 are pure Sakura and start now in the web lane's
 worktree beside the perf lane's WS-P20 and WS-P15 (§17.276); phase 8 starts when WS-P20 is on
 `main` and rebases over WS-P15, since both edit `sakura_runtime.js`; 6 and 10 follow 8. A
-WebSocket server (`Serve` upgrade) stays outside the RFC.
+WebSocket server (`Serve` upgrade) stays outside the RFC. **Round 41:** phase 9 landed
+first (`b2fde35d`, §17.281) while phase 5 waited on its design question; §17.280 answers it
+(a stream is a value), so phase 5 is next and pure Sakura as before, then 8 as ordered.
 
 ## 3. Phases
 
@@ -322,28 +324,43 @@ WebSocket server (`Serve` upgrade) stays outside the RFC.
 
 ### Phase 5: `std/stream`
 
-- **Scope.** `Source`, `Sink`, `Limit`, and the combinators of RFC §2.5; `Http.body_source`,
-  `Fs.file_source`, `Fs.file_sink`. Pure Sakura except nothing: `buffer` and `tee` use
-  `Task` and handler state.
-- **Files.** New `compiler/std/stream.sak`; `http.sak`, `fs.sak` adapters; `INDEX.md` graph
-  (`stream → list, bytes, string, task`); design §8.4 one sentence (closure records as
-  cursors) in phase 12.
-- **Tests.** `stream_pull_end_once.sak` (`None` once; an empty chunk is data),
-  `stream_map_filter_take_fold.sak`, `stream_lines_split_across_chunks.sak`,
-  `stream_chunks_bytes.sak`, `stream_buffer_items_backpressure.sak` (under
-  `Task.deterministic`: the producer waits when full; effect trace order),
-  `stream_buffer_bytes.sak`, `stream_tee_lag_bound.sak`, `stream_pipe_to_file_sink.sak`
-  (`Fs.memory`), `http_body_source_scripted.sak`, `stream_to_list_limit_rejects.sak`.
+Stopped before code at `17d3b20d` (a closure cannot hold a cursor, `V2041`); answered by
+design §17.280, which is the specification: a stream is a value.
+
+- **Scope.** `Step<T, e> = Done | Next(T, Source<T, e>)`, `Source<T, e> = { pull }`,
+  `Sink<T, e> = { write -> Sink, close }`, `StreamError(MaxItems | MaxLine)` and the
+  combinators of §17.280 (3): `empty`, `from_list`, `map`, `filter`, `take`, `fold`, `each`,
+  `to_list(src, max_items)`, `chunks(src, size)`, `lines(src, max_line)`, `pipe`;
+  `Encoding.decode_source`/`encode_source` over `Decoder`; `Blob.source` (phase 3's
+  deferral); the views `Http.body_source`, `Fs.file_source`, `Fs.file_sink`. Pure Sakura, no
+  runtime work. **Not here:** `buffer`, `tee` and any `Limit` type (phase 10, over `Channel`).
+- **Files.** New `compiler/std/stream.sak`; `encoding.sak`, `blob.sak`, `http.sak`,
+  `fs.sak`; `INDEX.md` graph (`stream → list, bytes, string`; `encoding → stream`); design
+  §8.4 one sentence (a source is a value; a view is scoped with its resource) in phase 12.
+- **Tests** (§17.280 (5)). `stream_pull_persistent.sak` (the same pure source value pulled
+  twice yields the same items; `Done` is stable), `stream_from_list_take_map_filter_fold.sak`,
+  `stream_chunks_bytes.sak` (an empty `Bytes` item is data; re-sizing across items),
+  `stream_lines_split_across_chunks.sak` (a line across two items, CRLF, a final
+  unterminated line), `stream_lines_rejects_max_line.sak`,
+  `stream_to_list_rejects_max_items.sak`, `encoding_decode_source_split_sequence.sak`,
+  `stream_pipe_to_file_sink.sak` (`Fs.memory`), `http_body_source_scripted.sak`,
+  `blob_source.sak`, `stream_view_cannot_escape.sak` (UI, `V6003`; if the escape check does
+  not reach a closure's captured resource, file a `design-question`, do not work around it).
 - **Docs.** Stdlib regenerated; `cookbook/stream_lines.mdx`; `tour/memory.mdx` one
-  paragraph on cursors and copies.
+  paragraph: a source is a value, a view is a resource's position; the module header states
+  the `V2041` reason.
 - **Who.** Opus.
-- **Acceptance.** Fixtures green on three backends with identical effect traces; no
-  combinator allocates a queue without a bound (reviewed by reading the module).
+- **Acceptance.** Fixtures green on three backends with identical effect traces, no
+  `.wasm.stdout`; no combinator holds more than its argument names (reviewed by reading the
+  module); no ABI, JSON or diagnostic change.
 
 ### Phase 6: `std/compress`
 
-- **Scope.** RFC §2.6: `Format`, `compress`, `decompress`, `compress_source`,
-  `decompress_source`, `CompressionError`.
+- **Scope.** RFC §2.6: `Format`, `compress`, `decompress`, `CompressionError`; the
+  streaming forms are callback-shaped views over a scoped codec state (§17.280 (4)):
+  `decompress_source(src, format, max_out, body)` and `compress_source(src, format, level,
+  body)`, the body receiving a `Source<Bytes, …>` valid inside it; a codec state is never a
+  pure source.
 - **Files.** New `compiler/std/compress.sak`; `sakura_core::builtins`; `sakura_runtime.js`
   (`node:zlib` sync for whole-buffer, streaming via the zlib stream classes behind the
   scheduler); `runtime/rt` (`miniz_oxide` with `no_std`; a streaming state handle in the
@@ -485,7 +502,11 @@ WebSocket server (`Serve` upgrade) stays outside the RFC.
 
 - **Scope.** `Channel.with`, `Sender`, `Receiver`, `send`, `try_send`, `recv`, `close`,
   `SendError = Full | Closed`; external scoped types registered like `Scope`/`Fiber`
-  (`V6001`/`V6002`/`V6003` apply).
+  (`V6001`/`V6002`/`V6003` apply). Then, in `std/stream` over it (§17.280 (4)):
+  `buffer(src, capacity, body)` (a producer fiber fills a channel and waits when full; the
+  body's source is a view over the `Receiver`) and `tee(src, max_lag, body)` (two channels
+  of `max_lag`); fixtures `stream_buffer_backpressure.sak` (effect trace order under
+  `Task.deterministic`) and `stream_tee_lag_bound.sak` join this phase.
 - **Files.** New `compiler/std/channel.sak`; `sakura_types` external-type list if it is a
   list; `sakura_runtime.js` scheduler (wait queues); `runtime/rt` scheduler; `ABI.md`
   (MINOR bump); design §8.6 sentence in phase 12.
@@ -573,6 +594,9 @@ WebSocket server (`Serve` upgrade) stays outside the RFC.
 
 ## 5. Open items for Fable
 
-Queue them in `compiler/REQUESTS.md` as `design-question` entries, as before. Known ones:
-`Console.captured` scripted input (phase 4b decides it; no question needed); whether
-`Router` should expose `UrlMatch` (phase 9 keeps `Request.params` as the surface).
+Queue them in `compiler/REQUESTS.md` as `design-question` entries, as before. Closed:
+`Console.captured` scripted input (phase 4b, `Console.scripted`, §17.267); `Router` does not
+expose `UrlMatch`, `Request.params` is the surface (§17.281 (3)); where a stream's cursor
+lives (§17.280: nowhere, a stream is a value). Phase 9's follow-ups: the `route` doc-comment
+line with the next `router.sak` change (§17.281 (2)) and two gap rows in phase 12
+(§17.281 (4)).
