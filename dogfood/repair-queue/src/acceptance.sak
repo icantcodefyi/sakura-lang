@@ -1,0 +1,452 @@
+// Acceptance tests from BRIEF.md, numbered as there. Each one drives the
+// actual router through `Router.handle` over a fresh `Sql.memory()`, decodes
+// the response body into its record and inspects the database afterwards.
+
+import std/json.{DecodeError}
+import std/request.{Delete, Get, Put, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/sql.{Sql, SqlError}
+import std/url.{Url}
+
+import repair_queue/api.{ErrorView, ListView, TicketView, app}
+import repair_queue/policy
+import repair_queue/policy.{Description, InProgress, Intake, TicketId, Waiting}
+import repair_queue/store
+import repair_queue/store.{HistoryEntry}
+
+type CountRow = { n: Int }
+type SchemaRow = { version: Int }
+
+fn send(req: Request) -> Response ! {Sql} { Router.handle(app(), req) }
+
+fn post(body: String) -> Response ! {Sql} { send(Request.post("/tickets", body)) }
+
+fn create(id: String, description: String) -> Response ! {Sql} {
+  post(Json.encode(CreateBodyRaw { id, description }))
+}
+
+/// The create body as plain strings, so tests can send invalid values.
+type CreateBodyRaw = { id: String, description: String }
+
+fn get(path: String) -> Response ! {Sql} { send(Request.of(Get, Url.from(path))) }
+
+fn put(path: String, body: String) -> Response ! {Sql} {
+  send(Request { ..Request.of(Put, Url.from(path)), body })
+}
+
+fn move(id: String, expected: String, state: String) -> Response ! {Sql} {
+  put("/tickets/{id}/state", "\{\"state\":\"{state}\",\"expected\":\"{expected}\"\}")
+}
+
+fn ticket(r: Response) -> TicketView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+
+fn problem(r: Response) -> ErrorView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+
+fn listing(r: Response) -> ListView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+
+fn status(code: Int) -> Status
+  requires code >= 100 && code <= 599
+{ Status.from(code) }
+
+fn rows() -> Int ! {Sql, Fail<SqlError>} { store.count() }
+
+fn history_rows() -> Int ! {Sql, Fail<SqlError>} {
+  let r: List<CountRow> = Sql.query(sql"select count(*) as n from history")
+  r.first().map(fn(c) { c.n }).unwrap_or(-1)
+}
+
+test "01 creating a valid ticket returns 201 at intake/waiting" {
+  with Sql.memory() {
+    let _ = store.init()
+    let r = create("LAMP-7", "Desk lamp flickers")
+    expect_eq(r.status, status(201))
+    let t = ticket(r)
+    expect_eq(t.id, "LAMP-7")
+    expect_eq(t.station, "intake")
+    expect_eq(t.state, "waiting")
+    expect_eq(t.history, [])
+    expect_eq(store.get("LAMP-7").station, Intake)
+    expect_eq(rows(), 1)
+  }
+}
+
+test "02 fetching returns exactly the stored description and state" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("LAMP-7", "Desk lamp flickers, ünïcode kept")
+    let r = get("/tickets/LAMP-7")
+    expect_eq(r.status, status(200))
+    let t = ticket(r)
+    expect_eq(t.description, "Desk lamp flickers, ünïcode kept")
+    expect_eq(t.state, "waiting")
+    expect_eq(store.get("LAMP-7").description, t.description)
+  }
+}
+
+test "03 listing sorts by ID regardless of insertion order" {
+  with Sql.memory() {
+    let _ = store.init()
+    for id in ["m-2", "B-9", "a-1", "Z", "10"] { let _ = create(id, "item {id}") }
+    let r = get("/tickets")
+    expect_eq(r.status, status(200))
+    let l = listing(r)
+    expect_eq(List.map(l.tickets, fn(t) { t.id }), ["10", "B-9", "Z", "a-1", "m-2"])
+    expect_eq(l.count, 5)
+    expect_eq(l.capacity, 500)
+  }
+}
+
+test "04 a duplicate ID returns 409 and preserves the original row" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("RADIO", "Radio hums")
+    let r = create("RADIO", "Something else")
+    expect_eq(r.status, status(409))
+    expect_eq(problem(r).code, "duplicate")
+    expect_eq(store.get("RADIO").description, "Radio hums")
+    expect_eq(rows(), 1)
+  }
+}
+
+test "05 a malformed JSON body returns 400 without inserting" {
+  with Sql.memory() {
+    let _ = store.init()
+    let r = post("\{\"id\": \"A\", \"description\": ")
+    expect_eq(r.status, status(400))
+    expect_eq(problem(r).code, "bad_request")
+    expect_eq(rows(), 0)
+  }
+}
+
+test "06 a missing required field returns 400 without a write" {
+  with Sql.memory() {
+    let _ = store.init()
+    let r = post("\{\"id\": \"A\"\}")
+    expect_eq(r.status, status(400))
+    expect_eq(problem(r).code, "bad_request")
+    expect_eq(rows(), 0)
+    expect_eq(history_rows(), 0)
+  }
+}
+
+test "07 an empty description is rejected, 200 bytes accepted" {
+  with Sql.memory() {
+    let _ = store.init()
+    expect_eq(create("E", "").status, status(400))
+    expect_eq(rows(), 0)
+    let full = String.repeat("d", 200)
+    let r = create("F", full)
+    expect_eq(r.status, status(201))
+    expect_eq(ticket(r).description, full)
+    expect_eq(store.get("F").description, full)
+  }
+}
+
+test "08 a 201-byte description is rejected, including at a multibyte boundary" {
+  with Sql.memory() {
+    let _ = store.init()
+    expect_eq(create("A", String.repeat("d", 201)).status, status(400))
+    // 199 ASCII bytes + "é" (2 bytes) = 201 bytes but only 200 characters.
+    let multibyte = String.repeat("d", 199) + "é"
+    expect_eq(String.len(multibyte), 201)
+    expect_eq(List.len(String.chars(multibyte)), 200)
+    expect_eq(create("B", multibyte).status, status(400))
+    expect_eq(rows(), 0)
+    // 198 + 2 = 200 bytes is accepted.
+    expect_eq(create("C", String.repeat("d", 198) + "é").status, status(201))
+    expect_eq(rows(), 1)
+  }
+}
+
+test "09 a 4,097-byte body is rejected before storage; 4,096 is read" {
+  with Sql.memory() {
+    let _ = store.init()
+    let core = Json.encode(CreateBodyRaw { id: "BIG", description: "padded body" })
+    let at_limit = core + String.repeat(" ", 4096 - String.len(core))
+    let over = at_limit + " "
+    expect_eq(String.len(over), 4097)
+    let r = post(over)
+    expect_eq(r.status, status(400))
+    expect_eq(problem(r).code, "bad_request")
+    expect_eq(rows(), 0)
+    expect_eq(post(at_limit).status, status(201))
+    expect_eq(rows(), 1)
+  }
+}
+
+test "10 an invalid ID alphabet is rejected without reaching a path or query" {
+  with Sql.memory() {
+    let _ = store.init()
+    for bad in ["a b", "a/b", "../x", "a;b", "é", "", String.repeat("x", 33)] {
+      expect_eq(create(bad, "item").status, status(400))
+    }
+    expect_eq(rows(), 0)
+    let r = get("/tickets/a'b")
+    expect_eq(r.status, status(400))
+    expect_eq(problem(r).code, "bad_request")
+    expect_eq(put("/tickets/a;b/station", "\{\"station\":\"textiles\"\}").status, status(400))
+  }
+}
+
+test "11 an unknown station is rejected; each documented station is accepted" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("COAT", "Torn coat lining")
+    let r = put("/tickets/COAT/station", "\{\"station\":\"plumbing\"\}")
+    expect_eq(r.status, status(400))
+    expect_eq(store.get("COAT").station, Intake)
+    for s in ["intake", "electrical", "textiles", "mechanical"] {
+      let ok = put("/tickets/COAT/station", "\{\"station\":\"{s}\"\}")
+      expect_eq(ok.status, status(200))
+      expect_eq(ticket(ok).station, s)
+      expect_eq(policy.station_name(store.get("COAT").station), s)
+    }
+  }
+}
+
+test "12 assignment changes the station and keeps ID and description" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("BIKE-3", "Gears slip")
+    let r = put("/tickets/BIKE-3/station", "\{\"station\":\"mechanical\"\}")
+    expect_eq(r.status, status(200))
+    let t = ticket(r)
+    expect_eq(
+      (t.id, t.description, t.station, t.state),
+      ("BIKE-3", "Gears slip", "mechanical", "waiting"),
+    )
+    let stored = store.get("BIKE-3")
+    expect_eq((stored.id, stored.description), ("BIKE-3", "Gears slip"))
+    expect_eq(history_rows(), 0)
+    expect_eq(put("/tickets/NOPE/station", "\{\"station\":\"mechanical\"\}").status, status(404))
+  }
+}
+
+test "13 waiting to in-progress appends exactly one history entry" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let r = move("T1", "waiting", "in-progress")
+    expect_eq(r.status, status(200))
+    let t = ticket(r)
+    expect_eq(t.state, "in-progress")
+    expect_eq(List.len(t.history), 1)
+    expect_eq(store.history("T1"), [HistoryEntry { seq: 1, from: Waiting, to: InProgress }])
+    expect_eq(history_rows(), 1)
+  }
+}
+
+test "14 in-progress to completed appends the next entry in stable order" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let _ = move("T1", "waiting", "in-progress")
+    let r = move("T1", "in-progress", "completed")
+    expect_eq(r.status, status(200))
+    let t = ticket(r)
+    expect_eq(t.state, "completed")
+    expect_eq(
+      List.map(t.history, fn(e) { (e.seq, e.from, e.to) }),
+      [(1, "waiting", "in-progress"), (2, "in-progress", "completed")],
+    )
+    expect_eq(List.map(store.history("T1"), fn(e) { e.seq }), [1, 2])
+  }
+}
+
+test "15 waiting to withdrawn succeeds and is terminal" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let r = move("T1", "waiting", "withdrawn")
+    expect_eq(r.status, status(200))
+    expect_eq(ticket(r).state, "withdrawn")
+    for next in ["waiting", "in-progress", "completed"] {
+      let again = move("T1", "withdrawn", next)
+      expect_eq(again.status, status(409))
+      expect_eq(problem(again).code, "invalid_transition")
+    }
+    expect(policy.is_terminal(store.get("T1").state))
+    expect_eq(history_rows(), 1)
+  }
+}
+
+test "16 in-progress to withdrawn succeeds and is terminal" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let _ = move("T1", "waiting", "in-progress")
+    let r = move("T1", "in-progress", "withdrawn")
+    expect_eq(r.status, status(200))
+    expect_eq(ticket(r).state, "withdrawn")
+    expect_eq(move("T1", "withdrawn", "completed").status, status(409))
+    expect(policy.is_terminal(store.get("T1").state))
+    expect_eq(history_rows(), 2)
+  }
+}
+
+test "17 a terminal to waiting request returns 409 with unchanged history" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let _ = move("T1", "waiting", "in-progress")
+    let _ = move("T1", "in-progress", "completed")
+    let before = store.history("T1")
+    let r = move("T1", "completed", "waiting")
+    expect_eq(r.status, status(409))
+    expect_eq(problem(r).code, "invalid_transition")
+    expect_eq(store.history("T1"), before)
+    expect_eq(policy.state_name(store.get("T1").state), "completed")
+  }
+}
+
+test "18 repeating the current state succeeds without duplicate history" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let first = move("T1", "waiting", "waiting")
+    expect_eq(first.status, status(200))
+    expect_eq(ticket(first).history, [])
+    let _ = move("T1", "waiting", "in-progress")
+    let again = move("T1", "in-progress", "in-progress")
+    expect_eq(again.status, status(200))
+    expect_eq(ticket(again).state, "in-progress")
+    expect_eq(history_rows(), 1)
+  }
+}
+
+test "19 a stale expected state returns 409 without overwriting" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    let _ = move("T1", "waiting", "in-progress")
+    // A second client still believes the ticket is waiting.
+    let r = move("T1", "waiting", "withdrawn")
+    expect_eq(r.status, status(409))
+    let p = problem(r)
+    expect_eq(p.code, "stale")
+    expect(String.contains(p.message, "in-progress"))
+    expect_eq(store.get("T1").state, InProgress)
+    expect_eq(history_rows(), 1)
+  }
+}
+
+test "20 a failure inside the transaction rolls back state and history" {
+  with Sql.memory() {
+    let _ = store.init()
+    let _ = create("T1", "Toaster")
+    // Controlled SQL failure: occupy history (T1, 1) so the transition's own
+    // history insert hits the primary key after its state update ran.
+    let _ = Sql.execute(
+      sql"insert into history (ticket_id, seq, from_state, to_state) values ('T1', 1, 'waiting', 'waiting')",
+    )
+    expect_fails_with(
+      fn() { store.transition("T1", Waiting, InProgress) },
+      fn(e) {
+        match e {
+          SqlError { .. } => true,
+          _ => false,
+        }
+      },
+    )
+    expect_eq(store.get("T1").state, Waiting)
+    let seq: List<CountRow> = Sql.query(sql"select seq as n from tickets where id = 'T1'")
+    expect_eq(seq, [CountRow { n: 0 }])
+    expect_eq(history_rows(), 1)
+    let r = move("T1", "waiting", "in-progress")
+    expect_eq(r.status, status(500))
+    expect_eq(store.get("T1").state, Waiting)
+  }
+}
+
+test "21 SQL-looking description text is stored literally" {
+  with Sql.memory() {
+    let _ = store.init()
+    let nasty = "x'); drop table tickets; -- OR 1=1"
+    let _ = create("SAFE", "plain")
+    let r = create("INJ", nasty)
+    expect_eq(r.status, status(201))
+    expect_eq(ticket(get("/tickets/INJ")).description, nasty)
+    expect_eq(rows(), 2)
+    // Even bypassing ID validation, a bound parameter matches nothing.
+    expect_fail(fn() { store.get("x' OR '1'='1") }, store.UnknownTicket { id: "x' OR '1'='1" })
+    expect_eq(listing(get("/tickets")).count, 2)
+  }
+}
+
+test "22 unknown ticket, unknown route and wrong method are distinct" {
+  with Sql.memory() {
+    let _ = store.init()
+    let unknown = get("/tickets/NOPE")
+    expect_eq(unknown.status, status(404))
+    expect_eq(problem(unknown).code, "unknown_ticket")
+    expect_eq(move("NOPE", "waiting", "in-progress").status, status(404))
+    let route = get("/nowhere")
+    expect_eq(route.status, status(404))
+    expect(route.body != unknown.body)
+    let method = send(Request.of(Delete, Url.from("/tickets")))
+    expect_eq(method.status, status(405))
+    expect_eq(rows(), 0)
+  }
+}
+
+test "23 initialising twice keeps tickets and skips schema work" {
+  with Sql.memory() {
+    expect_eq(store.init(), 1)
+    let _ = create("KEEP", "Sewing machine")
+    expect_eq(store.init(), 0)
+    expect_eq(store.init(), 0)
+    expect_eq(store.get("KEEP").description, "Sewing machine")
+    let versions: List<SchemaRow> = Sql.query(
+      sql"select version from schema_version order by version",
+    )
+    expect_eq(versions, [SchemaRow { version: 1 }])
+  }
+}
+
+test "24 the 500th ticket is accepted and the 501st is a capacity conflict" {
+  with Sql.memory() {
+    let _ = store.init()
+    for i in 0..499 { let _ = store.create(TicketId.from("T{i}"), Description.from("item {i}")) }
+    let r500 = create("LAST", "the 500th")
+    expect_eq(r500.status, status(201))
+    expect_eq(rows(), 500)
+    let r501 = create("OVER", "the 501st")
+    expect_eq(r501.status, status(409))
+    expect_eq(problem(r501).code, "capacity")
+    expect_eq(rows(), 500)
+    expect_fail(fn() { store.get("OVER") }, store.UnknownTicket { id: "OVER" })
+    // A duplicate in a full session is still reported as a duplicate.
+    expect_eq(problem(create("LAST", "again")).code, "duplicate")
+  }
+}
+
+/// A database that fails every operation with an internal-looking message.
+fn broken_db() -> Handler<Sql> {
+  handler Sql {
+    fn query(q) {
+      fail SqlError { message: "SQLITE_IOERR: /srv/data/repair-queue.sqlite select * from tickets" }
+    }
+    fn execute(q) {
+      fail SqlError { message: "SQLITE_IOERR: /srv/data/repair-queue.sqlite insert into tickets" }
+    }
+    fn transaction(body) { body() }
+  }
+}
+
+test "25 a simulated SqlError yields a generic 500 without paths or SQL" {
+  with broken_db() {
+    for r in [
+      get("/tickets"),
+      get("/tickets/A"),
+      create("A", "x"),
+      move("A", "waiting", "completed"),
+    ] {
+      expect_eq(r.status, status(500))
+      expect_eq(problem(r), ErrorView { code: "internal", message: "internal error" })
+      expect(!String.contains(r.body, "sqlite"))
+      expect(!String.contains(r.body, "/srv"))
+      expect(!String.contains(r.body, "select"))
+    }
+  }
+}

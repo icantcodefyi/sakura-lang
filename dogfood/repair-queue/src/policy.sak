@@ -1,0 +1,143 @@
+// Pure domain policy for the repair queue: identifiers, descriptions, stations,
+// states and the transition table. Nothing here touches SQL, HTTP or the clock,
+// so it is tested on its own below.
+
+/// Most tickets one cafe session may hold.
+pub fn capacity() -> Int { 500 }
+
+/// Request bodies above this many bytes are rejected at `Request.json`.
+pub fn body_limit() -> Int { 4096 }
+
+/// True when `c` is one ASCII letter, digit or hyphen.
+pub fn is_id_char(c: String) -> Bool {
+  c == "-" || ("0" <= c && c <= "9") || ("a" <= c && c <= "z") || ("A" <= c && c <= "Z")
+}
+
+/// 1 to 32 ASCII letters, digits or hyphens.
+pub fn is_ticket_id(s: String) -> Bool {
+  let n = String.len(s)
+  n >= 1 && n <= 32 && List.all(String.chars(s), is_id_char)
+}
+
+/// 1 to 200 UTF-8 bytes (`String.len` counts bytes).
+pub fn is_description(s: String) -> Bool {
+  let n = String.len(s)
+  n >= 1 && n <= 200
+}
+
+/// An operator-supplied ticket ID; refined so decoding validates it.
+pub type TicketId = String where is_ticket_id(it)
+
+/// An item description, without customer names or contact details by policy.
+pub type Description = String where is_description(it)
+
+pub type Station = Intake | Electrical | Textiles | Mechanical
+
+pub type State = Waiting | InProgress | Completed | Withdrawn
+
+pub fn station_name(s: Station) -> String {
+  match s {
+    Intake => "intake",
+    Electrical => "electrical",
+    Textiles => "textiles",
+    Mechanical => "mechanical",
+  }
+}
+
+pub fn parse_station(s: String) -> Option<Station> {
+  match s {
+    "intake" => Some(Intake),
+    "electrical" => Some(Electrical),
+    "textiles" => Some(Textiles),
+    "mechanical" => Some(Mechanical),
+    _ => None,
+  }
+}
+
+pub fn state_name(s: State) -> String {
+  match s {
+    Waiting => "waiting",
+    InProgress => "in-progress",
+    Completed => "completed",
+    Withdrawn => "withdrawn",
+  }
+}
+
+pub fn parse_state(s: String) -> Option<State> {
+  match s {
+    "waiting" => Some(Waiting),
+    "in-progress" => Some(InProgress),
+    "completed" => Some(Completed),
+    "withdrawn" => Some(Withdrawn),
+    _ => None,
+  }
+}
+
+pub fn is_terminal(s: State) -> Bool {
+  match s {
+    Completed | Withdrawn => true,
+    Waiting | InProgress => false,
+  }
+}
+
+/// What a requested state change means for a ticket currently in `from`.
+pub type Decision = Unchanged | Move | Forbidden
+
+/// The transition table: waiting → in-progress | withdrawn,
+/// in-progress → completed | withdrawn; repeating the current state is
+/// `Unchanged`; everything else, including reopening a terminal state, is
+/// `Forbidden`.
+pub fn decide(from: State, to: State) -> Decision {
+  if from == to { return Unchanged }
+  match (from, to) {
+    (Waiting, InProgress) => Move,
+    (Waiting, Withdrawn) => Move,
+    (InProgress, Completed) => Move,
+    (InProgress, Withdrawn) => Move,
+    _ => Forbidden,
+  }
+}
+
+test "policy: documented transitions move" {
+  expect_eq(decide(Waiting, InProgress), Move)
+  expect_eq(decide(Waiting, Withdrawn), Move)
+  expect_eq(decide(InProgress, Completed), Move)
+  expect_eq(decide(InProgress, Withdrawn), Move)
+}
+
+test "policy: repeats are unchanged and terminal states never reopen" {
+  for s in [Waiting, InProgress, Completed, Withdrawn] { expect_eq(decide(s, s), Unchanged) }
+  for t in [Completed, Withdrawn] {
+    expect(is_terminal(t))
+    for to in [Waiting, InProgress, Completed, Withdrawn] {
+      if to != t { expect_eq(decide(t, to), Forbidden) }
+    }
+  }
+  expect_eq(decide(Waiting, Completed), Forbidden)
+  expect_eq(decide(InProgress, Waiting), Forbidden)
+}
+
+test "policy: names round-trip" {
+  for s in [Waiting, InProgress, Completed, Withdrawn] {
+    expect_eq(parse_state(state_name(s)), Some(s))
+  }
+  for s in [Intake, Electrical, Textiles, Mechanical] {
+    expect_eq(parse_station(station_name(s)), Some(s))
+  }
+  expect_eq(parse_state("WAITING"), None)
+  expect_eq(parse_station("plumbing"), None)
+}
+
+test "policy: id and description bounds" {
+  expect(is_ticket_id("A-1"))
+  expect(is_ticket_id(String.repeat("z", 32)))
+  expect(!is_ticket_id(""))
+  expect(!is_ticket_id(String.repeat("z", 33)))
+  expect(!is_ticket_id("a b"))
+  expect(!is_ticket_id("a/b"))
+  expect(!is_ticket_id("é"))
+  expect(is_description(String.repeat("x", 200)))
+  expect(!is_description(String.repeat("x", 201)))
+  expect(!is_description(""))
+  expect(!is_description(String.repeat("x", 199) + "é"))
+}

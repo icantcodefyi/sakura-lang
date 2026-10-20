@@ -1,0 +1,11 @@
+[package]
+name = "repair_queue"
+version = "0.1.0"
+edition = "2026"
+
+# Root authority `main` gets; everything absent is denied (design §6.2).
+# Loopback listener only, and the SQLite file under ./data.
+[permissions]
+fs.read = ["./data"]
+fs.write = ["./data"]
+net = ["127.0.0.1:8787"]

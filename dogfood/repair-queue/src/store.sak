@@ -1,0 +1,216 @@
+// SQLite persistence for the repair queue. Every query is a bound `sql"…"`
+// template over fixed tables; no table name or SQL text comes from a request.
+// Duplicate detection, the capacity cap and the expected-state check run
+// inside `Sql.transaction`, not as a separate read-before-write promise.
+
+import std/sql.{Query, Sql, SqlError}
+
+import repair_queue/policy.{
+  Description,
+  Forbidden,
+  Intake,
+  Move,
+  State,
+  Station,
+  TicketId,
+  Unchanged,
+  Waiting,
+  capacity,
+  decide,
+  parse_state,
+  parse_station,
+  state_name,
+  station_name,
+}
+
+/// The schema version this application writes. Bump it with a new step in
+/// `migrations`.
+pub fn schema_version() -> Int { 1 }
+
+pub error UnknownTicket(id: String)
+pub error DuplicateTicket(id: String)
+pub error StaleState(expected: String, current: String)
+pub error InvalidTransition(from: String, to: String)
+pub error CapacityReached(limit: Int)
+
+/// The domain failures an operation can report; `SqlError` stays separate.
+pub type StoreError = UnknownTicket
+  | DuplicateTicket
+  | StaleState
+  | InvalidTransition
+  | CapacityReached
+
+pub type Ticket = { id: String, description: String, station: Station, state: State }
+
+pub type HistoryEntry = { seq: Int, from: State, to: State }
+
+type TicketRow = { id: String, description: String, station: String, state: String }
+type HistoryRow = { seq: Int, from_state: String, to_state: String }
+type VersionRow = { version: Int }
+type CountRow = { n: Int }
+type IdRow = { id: String }
+
+fn migrations() -> List<List<Query<Unit>>> {
+  [
+    [
+      sql"create table tickets (id text primary key, description text not null, station text not null, state text not null, seq integer not null default 0)",
+      sql"create table history (ticket_id text not null references tickets(id), seq integer not null, from_state text not null, to_state text not null, primary key (ticket_id, seq))",
+    ],
+  ]
+}
+
+/// Creates or upgrades the schema and returns how many migration steps ran:
+/// the schema count on a fresh database, 0 when it is already current.
+pub fn init() -> Int ! {Sql, Fail<SqlError>} {
+  Sql.migrate([sql"create table if not exists schema_version (version integer not null)"])
+  Sql.transaction(fn() {
+    let rows: List<VersionRow> = Sql.query(
+      sql"select coalesce(max(version), 0) as version from schema_version",
+    )
+    let current = match rows {
+      [r, ..] => r.version,
+      [] => 0,
+    }
+    var ran = 0
+    for (i, step) in List.enumerate(migrations()) {
+      let version = i + 1
+      if version > current {
+        Sql.migrate(step)
+        let _ = Sql.execute(sql"insert into schema_version (version) values ({version})")
+        ran = ran + 1
+      }
+    }
+    ran
+  })
+}
+
+fn corrupt(what: String) -> SqlError { SqlError { message: "stored {what} is not recognised" } }
+
+fn to_ticket(r: TicketRow) -> Ticket ! {Fail<SqlError>} {
+  let station = match parse_station(r.station) {
+    Some(s) => s,
+    None => fail corrupt("station"),
+  }
+  let state = match parse_state(r.state) {
+    Some(s) => s,
+    None => fail corrupt("state"),
+  }
+  Ticket { id: r.id, description: r.description, station, state }
+}
+
+fn to_entry(r: HistoryRow) -> HistoryEntry ! {Fail<SqlError>} {
+  match (parse_state(r.from_state), parse_state(r.to_state)) {
+    (Some(from), Some(to)) => HistoryEntry { seq: r.seq, from, to },
+    _ => fail corrupt("history state"),
+  }
+}
+
+fn find(id: String) -> Option<Ticket> ! {Sql, Fail<SqlError>} {
+  let rows: List<TicketRow> = Sql.query(
+    sql"select id, description, station, state from tickets where id = {id}",
+  )
+  match rows {
+    [r, ..] => Some(to_ticket(r)),
+    [] => None,
+  }
+}
+
+/// Inserts a new ticket at intake/waiting. A duplicate ID or a full session
+/// fails without inserting.
+pub fn create(id: TicketId, description: Description) -> Ticket
+  ! {Sql, Fail<CapacityReached | DuplicateTicket | SqlError>}
+{
+  let limit = capacity()
+  let station = station_name(Intake)
+  let state = state_name(Waiting)
+  Sql.transaction(fn() {
+    let inserted = Sql.execute(
+      sql"insert into tickets (id, description, station, state) select {id}, {description}, {station}, {state} where (select count(*) from tickets) < {limit} on conflict (id) do nothing",
+    )
+    if inserted == 0 {
+      let existing: List<IdRow> = Sql.query(sql"select id from tickets where id = {id}")
+      match existing {
+        [] => fail CapacityReached { limit },
+        _ => fail DuplicateTicket { id },
+      }
+    }
+    Ticket { id, description, station: Intake, state: Waiting }
+  })
+}
+
+pub fn get(id: String) -> Ticket ! {Sql, Fail<SqlError | UnknownTicket>} {
+  match find(id) {
+    Some(t) => t,
+    None => fail UnknownTicket { id },
+  }
+}
+
+/// Every ticket, in ID order.
+pub fn list() -> List<Ticket> ! {Sql, Fail<SqlError>} {
+  let rows: List<TicketRow> = Sql.query(
+    sql"select id, description, station, state from tickets order by id",
+  )
+  var out: List<Ticket> = []
+  for r in rows { out = List.push(out, to_ticket(r)) }
+  out
+}
+
+/// A ticket's history in explicit sequence order.
+pub fn history(id: String) -> List<HistoryEntry> ! {Sql, Fail<SqlError>} {
+  let rows: List<HistoryRow> = Sql.query(
+    sql"select seq, from_state, to_state from history where ticket_id = {id} order by seq",
+  )
+  var out: List<HistoryEntry> = []
+  for r in rows { out = List.push(out, to_entry(r)) }
+  out
+}
+
+pub fn count() -> Int ! {Sql, Fail<SqlError>} {
+  let rows: List<CountRow> = Sql.query(sql"select count(*) as n from tickets")
+  match rows {
+    [r, ..] => r.n,
+    [] => 0,
+  }
+}
+
+/// Moves a ticket to another station; ID, description and state are kept.
+pub fn assign(id: String, station: Station) -> Ticket ! {Sql, Fail<SqlError | UnknownTicket>} {
+  let name = station_name(station)
+  Sql.transaction(fn() {
+    let changed = Sql.execute(sql"update tickets set station = {name} where id = {id}")
+    if changed == 0 { fail UnknownTicket { id } }
+    get(id)
+  })
+}
+
+/// Changes state when the ticket is still in `expected`. A repeat of the
+/// current state succeeds without history; a genuine move updates the row and
+/// appends one history entry in the same transaction.
+pub fn transition(id: String, expected: State, to: State) -> Ticket
+  ! {Sql, Fail<InvalidTransition | SqlError | StaleState | UnknownTicket>}
+{
+  let expected_name = state_name(expected)
+  let to_name = state_name(to)
+  Sql.transaction(fn() {
+    let current = get(id)
+    if current.state != expected {
+      fail StaleState { expected: expected_name, current: state_name(current.state) }
+    }
+    match decide(current.state, to) {
+      Unchanged => current,
+      Forbidden => fail InvalidTransition { from: expected_name, to: to_name },
+      Move => {
+        // The `state = expected` guard keeps the write conditional even
+        // though the read above already matched.
+        let changed = Sql.execute(
+          sql"update tickets set state = {to_name}, seq = seq + 1 where id = {id} and state = {expected_name}",
+        )
+        if changed != 1 { fail StaleState { expected: expected_name, current: "unknown" } }
+        let _ = Sql.execute(
+          sql"insert into history (ticket_id, seq, from_state, to_state) select {id}, seq, {expected_name}, {to_name} from tickets where id = {id}",
+        )
+        Ticket { ..current, state: to }
+      },
+    }
+  })
+}

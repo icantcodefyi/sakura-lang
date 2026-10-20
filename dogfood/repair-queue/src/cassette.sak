@@ -1,0 +1,72 @@
+// Offline client evidence. `tests/fixtures/client-session.jsonl` is a
+// SYNTHETIC cassette (see tests/fixtures/README.md): it was produced by this
+// service's own router in memory, not by a live server. Replaying it tests the
+// client side only, so a second test sends the same requests through the
+// actual router and compares the decoded records.
+
+import std/fs.{Fs}
+import std/http.{Http}
+import std/path.{Path}
+import std/response.{HttpError, Response}
+import std/router.{Router}
+import std/sql.{Sql}
+
+import repair_queue/api.{ErrorView, TicketView, app}
+import repair_queue/client
+import repair_queue/store
+
+fn cassette() -> Path { Path.of("client-session.jsonl") }
+
+fn replay() -> List<Response> ! {Test, Fail<HttpError>} {
+  with Fs.rooted(Test.fixtures()), Http.scripted([]), Http.recording(cassette()) {
+    client.run(client.session())
+  }
+}
+
+fn statuses(rs: List<Response>) -> List<Int> { List.map(rs, fn(r) { r.status }) }
+
+test "cassette: the client create/read/conflict sequence replays offline" {
+  let rs = replay()
+  expect_eq(statuses(rs), [201, 200, 409])
+  let created: TicketView = Json.decode(rs[0].map(fn(r) { r.body }).unwrap_or(""))?
+  expect_eq((created.id, created.station, created.state), ("VAC-12", "intake", "waiting"))
+  let read: TicketView = Json.decode(rs[1].map(fn(r) { r.body }).unwrap_or(""))?
+  expect_eq(read, created)
+  let conflict: ErrorView = Json.decode(rs[2].map(fn(r) { r.body }).unwrap_or(""))?
+  expect_eq(conflict.code, "duplicate")
+}
+
+test "cassette: the actual router gives the recorded response records" {
+  let recorded = replay()
+  with Sql.memory() {
+    let _ = store.init()
+    let live = List.map(client.session(), fn(req) { Router.handle(app(), req) })
+    expect_eq(statuses(live), statuses(recorded))
+    for (i, r) in List.enumerate(live) {
+      let want = recorded[i].map(fn(x) { x.body }).unwrap_or("")
+      if i == 2 {
+        let a: ErrorView = Json.decode(r.body)?
+        let b: ErrorView = Json.decode(want)?
+        expect_eq(a, b)
+      } else {
+        let a: TicketView = Json.decode(r.body)?
+        let b: TicketView = Json.decode(want)?
+        expect_eq(a, b)
+      }
+    }
+    expect_eq(store.count(), 1)
+  }
+}
+
+test "cassette: a request missing from the cassette fails offline" {
+  with Fs.rooted(Test.fixtures()), Http.scripted([]), Http.recording(cassette()) {
+    expect_fails_with(
+      fn() { Http.send(client.fetch_request("NOT-RECORDED")) },
+      fn(e) {
+        match e {
+          HttpError { reason, .. } => String.contains(reason, "--record"),
+        }
+      },
+    )
+  }
+}

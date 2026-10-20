@@ -1,0 +1,35 @@
+// Repair Queue: a local repair cafe's intake service.
+//
+// Author: Claude Opus 5.5 (Anthropic), writing as a dogfood user.
+// Provenance: one fresh session with no repository checkout and no path to
+// one; sources were the installed CLI (`sakura --help`, `prompt`, `doc`), the
+// public website https://www.sakuralang.com and BRIEF.md.
+// Built and tested against the installed release, whose `sakura --version` is:
+//   sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+//
+// The service listens on 127.0.0.1:8787 only and stores its queue in
+// ./data/repair-queue.sqlite. It is unauthenticated and meant for loopback use.
+
+import std/fs.{Dir, Fs, FsError}
+import std/path.{Path}
+import std/serve.{Serve, ServeError}
+import std/sql.{Sql, SqlError}
+
+import repair_queue/api.{app}
+import repair_queue/store
+
+/// The listener's host; it must match the manifest's `net` grant exactly.
+pub fn listen_host() -> String { "127.0.0.1" }
+
+pub fn listen_port() -> Int { 8787 }
+
+pub fn main() -> Unit ! {Console, Fs, Serve, Fail<FsError | ServeError | SqlError>} {
+  with Fs.rooted(Dir.subdir(Fs.root(), "data")), Sql.sqlite(Path.of("repair-queue.sqlite")) {
+    let ran = store.init()
+    Console.print(
+      "repair-queue: schema v{store.schema_version()} ({ran} migration steps applied), {store.count()} tickets",
+    )
+    Console.print("repair-queue: starting listener on http://{listen_host()}:{listen_port()}")
+    Serve.listen(app(), Serve.of(listen_host(), listen_port()))
+  }
+}

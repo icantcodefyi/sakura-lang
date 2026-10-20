@@ -1,0 +1,34 @@
+// A minimal client for the service over `Http`, used by the offline cassette
+// tests. It only builds requests to the fixed loopback address; it never
+// chooses a host from data.
+
+import std/http.{Http}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+pub type NewTicket = { id: String, description: String }
+
+pub fn base() -> String { "http://127.0.0.1:8787" }
+
+pub fn create_request(id: String, description: String) -> Request {
+  Request.post_json(Url.from("{base()}/tickets"), NewTicket { id, description })
+}
+
+pub fn fetch_request(id: String) -> Request { Request.of(Get, Url.from("{base()}/tickets/{id}")) }
+
+/// The recorded client session: create, read back, then a duplicate create.
+pub fn session() -> List<Request> {
+  [
+    create_request("VAC-12", "Vacuum cleaner loses suction"),
+    fetch_request("VAC-12"),
+    create_request("VAC-12", "Second intake of the same vacuum"),
+  ]
+}
+
+/// Sends each request in order and keeps every response.
+pub fn run(requests: List<Request>) -> List<Response> ! {Http, Fail<HttpError>} {
+  var out: List<Response> = []
+  for req in requests { out = List.push(out, Http.send(req)) }
+  out
+}

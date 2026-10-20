@@ -1,0 +1,199 @@
+// HTTP translation: fixed routes, typed request records bounded at
+// `Request.json`, and one place that maps domain failures and `SqlError` to
+// status codes. Handlers never fail; every error becomes a response.
+
+import std/request.{BadRequest, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/sql.{Sql, SqlError}
+
+import repair_queue/policy
+import repair_queue/policy.{
+  Description,
+  State,
+  Station,
+  TicketId,
+  body_limit,
+  parse_state,
+  parse_station,
+  state_name,
+  station_name,
+}
+import repair_queue/store
+import repair_queue/store.{
+  CapacityReached,
+  DuplicateTicket,
+  HistoryEntry,
+  InvalidTransition,
+  StaleState,
+  Ticket,
+  UnknownTicket,
+}
+
+/// `POST /tickets`: a new ticket always starts at intake/waiting.
+pub type CreateBody = { id: TicketId, description: Description }
+
+/// `PUT /tickets/:id/station`.
+pub type AssignBody = { station: String }
+
+/// `PUT /tickets/:id/state`: `expected` is the state the client last saw.
+pub type StateBody = { state: String, expected: String }
+
+pub type EntryView = { seq: Int, from: String, to: String }
+
+pub type TicketView = {
+  id: String,
+  description: String,
+  station: String,
+  state: String,
+  history: List<EntryView>,
+}
+
+pub type SummaryView = { id: String, description: String, station: String, state: String }
+
+pub type ListView = { tickets: List<SummaryView>, count: Int, capacity: Int }
+
+/// Every non-2xx body: a stable machine code and a human message. (`error`
+/// is a keyword, so the JSON field is `code`.)
+pub type ErrorView = { code: String, message: String }
+
+error Invalid(message: String)
+
+fn json_status<T: Schema>(code: Int, value: T) -> Response
+  requires code >= 100 && code <= 599
+{ Response { ..Response.ok_json(value), status: Status.from(code) } }
+
+fn problem(status: Int, code: String, message: String) -> Response
+  requires status >= 100 && status <= 599
+{ json_status(status, ErrorView { code, message }) }
+
+fn summary(t: Ticket) -> SummaryView {
+  SummaryView {
+    id: t.id,
+    description: t.description,
+    station: station_name(t.station),
+    state: state_name(t.state),
+  }
+}
+
+fn entry_view(e: HistoryEntry) -> EntryView {
+  EntryView { seq: e.seq, from: state_name(e.from), to: state_name(e.to) }
+}
+
+fn ticket_view(t: Ticket, history: List<HistoryEntry>) -> TicketView {
+  TicketView {
+    id: t.id,
+    description: t.description,
+    station: station_name(t.station),
+    state: state_name(t.state),
+    history: List.map(history, entry_view),
+  }
+}
+
+/// The `:id` path parameter, validated before it reaches a query.
+fn path_id(req: Request) -> String ! {Fail<Invalid>} {
+  let raw = Request.param(req, "id").unwrap_or("")
+  match TicketId.validate(raw) {
+    Ok(id) => id,
+    Err(_) => fail Invalid { message: "id must be 1-32 ASCII letters, digits or hyphens" },
+  }
+}
+
+fn station_of(name: String) -> Station ! {Fail<Invalid>} {
+  match parse_station(name) {
+    Some(s) => s,
+    None => fail Invalid { message: "station must be intake, electrical, textiles or mechanical" },
+  }
+}
+
+fn state_of(name: String) -> State ! {Fail<Invalid>} {
+  match parse_state(name) {
+    Some(s) => s,
+    None => fail Invalid { message: "state must be waiting, in-progress, completed or withdrawn" },
+  }
+}
+
+/// Runs `body` and translates every failure at the HTTP boundary. A
+/// `SqlError` becomes a generic 500: its message may name SQL or a file.
+fn respond(
+  body: fn() -> Response ! {Sql, Fail<BadRequest | CapacityReached | DuplicateTicket | Invalid | InvalidTransition | SqlError | StaleState | UnknownTicket>},
+) -> Response
+  ! {Sql}
+{
+  try { body() } catch {
+    BadRequest { .. } =>
+      problem(
+        400,
+        "bad_request",
+        "body must be a JSON object of at most 4096 bytes with valid fields",
+      ),
+    Invalid { message } => problem(400, "bad_request", message),
+    UnknownTicket { id } => problem(404, "unknown_ticket", "no ticket {id}"),
+    DuplicateTicket { id } => problem(409, "duplicate", "ticket {id} already exists"),
+    StaleState { expected, current } =>
+      problem(409, "stale", "expected {expected} but the ticket is {current}"),
+    InvalidTransition { from, to } =>
+      problem(409, "invalid_transition", "cannot move from {from} to {to}"),
+    CapacityReached { limit } =>
+      problem(409, "capacity", "the session already holds {limit} tickets"),
+    SqlError { .. } => problem(500, "internal", "internal error"),
+  }
+}
+
+fn create(req: Request) -> Response ! {Sql} {
+  respond(fn() {
+    let input: CreateBody = Request.json(req, body_limit())
+    let t = store.create(input.id, input.description)
+    json_status(201, ticket_view(t, []))
+  })
+}
+
+fn fetch(req: Request) -> Response ! {Sql} {
+  respond(fn() {
+    let id = path_id(req)
+    let t = store.get(id)
+    Response.ok_json(ticket_view(t, store.history(id)))
+  })
+}
+
+fn list(req: Request) -> Response ! {Sql} {
+  respond(fn() {
+    let ts = store.list()
+    Response.ok_json(ListView {
+      tickets: List.map(ts, summary),
+      count: List.len(ts),
+      capacity: policy.capacity(),
+    })
+  })
+}
+
+fn assign(req: Request) -> Response ! {Sql} {
+  respond(fn() {
+    let id = path_id(req)
+    let input: AssignBody = Request.json(req, body_limit())
+    let t = store.assign(id, station_of(input.station))
+    Response.ok_json(ticket_view(t, store.history(id)))
+  })
+}
+
+fn change_state(req: Request) -> Response ! {Sql} {
+  respond(fn() {
+    let id = path_id(req)
+    let input: StateBody = Request.json(req, body_limit())
+    let to = state_of(input.state)
+    let expected = state_of(input.expected)
+    let t = store.transition(id, expected, to)
+    Response.ok_json(ticket_view(t, store.history(id)))
+  })
+}
+
+/// The service's fixed routes. Unknown paths are 404 and known paths with
+/// another method are 405, both from `Router.handle`.
+pub fn app() -> Router<{Sql}> {
+  Router.new()
+    .post("/tickets", create)
+    .get("/tickets", list)
+    .get("/tickets/:id", fetch)
+    .put("/tickets/:id/station", assign)
+    .put("/tickets/:id/state", change_state)
+}
