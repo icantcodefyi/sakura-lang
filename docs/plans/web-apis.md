@@ -62,7 +62,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 2 | `std/url` parser, `std/searchparams` | 0.1.0 (`3481039f`) | Opus | landed |
 | 3 | `std/headers`, `std/blob`, `std/form` | 0.1.0 (`d506e2b1`; §17.269) | Opus | landed |
 | 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 0.2.0; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
-| B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (§17.271 (9)) | Opus | 4a merged |
+| B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (`796e553e`; §17.271 (9)) | Opus | landed |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
 | 5 | `std/stream` and the `Http`/`Fs` adapters | pre-rc | Opus | 4a, B |
 | 6 | `std/compress` | pre-rc | Opus | 5 |
@@ -259,6 +259,19 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 - **Who.** Opus, right after 4a merges and before phase 5.
 - **Acceptance.** The fixture exits 75 with the message on native and runs on JS and WASM;
   gates green.
+- **As built (`796e553e`).** The compiler lists `main`'s root effects (the analysis's
+  `main_effects`) in the native module descriptor, which grows to 96 bytes, so the entry is
+  renamed `sakura_native_main_v4`; the driver refuses `Http`, `Llm` or `Serve` after the
+  `sakura.native` record's check and before the instance exists, naming the first in sorted
+  order; the line has no `error:` prefix. A run-mode fixture without `sakura.toml` cannot
+  declare `Http`: `sakura run` denies it on every backend (exit 75, no `net` grant, design
+  §6.2) before the program starts. So the positive case is the `secrets` example (`main`
+  declares `Http`, `net` granted), with `expect-exit@native: 75` and
+  `expect-stderr@native` in its header in place of its `KNOWN_NATIVE` entry; the negative
+  case is `tests/semantics/native_coverage_handled_http_runs.sak` (`Http.scripted` inside
+  `main`), and `sakura_host_native`'s `the_driver_refuses_a_root_effect_native_lacks`
+  holds the driver to the line and code. `Llm` in `main`'s row is `V9002` at build on every
+  backend (no parameterless `Llm.host()`), so the driver's `Llm` entry is unreachable today.
 
 ### Phase 4b: effect additions and small functions
 
