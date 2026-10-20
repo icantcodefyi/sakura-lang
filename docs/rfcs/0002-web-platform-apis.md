@@ -615,9 +615,11 @@ hold a cursor (`V2041`, design §8.1).
   with every CRT member and no `oth`; everything else `Malformed`. RSASSA-PKCS1-v1_5 is
   deterministic; RSA-PSS uses the hash's length as salt. RSA-OAEP `encrypt` takes the seed as
   its nonce (the hash's length, from `Random.bytes`) and the label as `aad`, so encryption is
-  a function of its inputs like AES-GCM's; `decrypt` takes an empty nonce. A ciphertext that
-  does not decode is `Padding` (CBC, OAEP) or `Tag` (KW). `aad` given to an algorithm without
-  one is `D020`.
+  a function of its inputs like AES-GCM's; `decrypt` takes an empty nonce. An RSA-OAEP seed
+  must be unpredictable as well as fresh (`Random.bytes(n)`, never a counter): a seed an
+  attacker can guess lets them confirm a guessed plaintext by sealing it themselves. A
+  ciphertext that does not decode is `Padding` (CBC, OAEP) or `Tag` (KW). `aad` given to an
+  algorithm without one is `D020`.
 - Names: `import std/crypto` binds `crypto`, so calls are `crypto.digest(alg, b)` and
   `crypto.verify(key, sig, b)` (or `key.verify(sig, b)`); `verify` stays a reserved word
   outside member position (design §2.1, §17.266 (3)).

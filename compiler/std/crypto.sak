@@ -326,9 +326,11 @@ pub fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool
 /// §7.1) under a public key: `nonce` is the seed, the hash's length (32, 48 or 64 bytes), and
 /// `aad` the label; at most the modulus's length less two hash lengths and 2 bytes. A nonce is
 /// fresh for every message (`Random.bytes(n)`): AES-GCM and AES-CTR leak the plaintext when one
-/// repeats under a key, and a repeated seed shows that two RSA-OAEP plaintexts are equal. Fails
-/// with `Nonce(n)`, `Length(bits)` or `Unsupported(name)` (`CryptoReason`); a key that does not
-/// encrypt or lacks `Encrypt`, or `aad` given to an algorithm without one, is `D020`.
+/// repeats under a key, and a repeated seed shows that two RSA-OAEP plaintexts are equal. An
+/// RSA-OAEP seed must be unpredictable as well as fresh (`Random.bytes(n)`, never a counter): a
+/// seed an attacker can guess lets them confirm a guessed plaintext by sealing it themselves.
+/// Fails with `Nonce(n)`, `Length(bits)` or `Unsupported(name)` (`CryptoReason`); a key that does
+/// not encrypt or lacks `Encrypt`, or `aad` given to an algorithm without one, is `D020`.
 pub fn encrypt(
   key: CryptoKey,
   nonce: Bytes,

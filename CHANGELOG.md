@@ -432,6 +432,9 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - Native target (experimental): `ed25519-dalek`, `x25519-dalek` and `aes-gcm` build with their
   `zeroize` feature, so a signing key, a static secret and the AES round keys zero on drop
   (design §17.295 (3)); no new crate.
+- `crypto.encrypt`'s doc and RFC 0002 §2.7 say an RSA-OAEP seed must be unpredictable as well
+  as fresh (`Random.bytes(n)`, never a counter): a guessable seed lets an attacker confirm a
+  guessed plaintext by sealing it themselves (design §17.295 (4)).
 - `Http.scoped(hosts)` checks every redirect hop against its list, not only the first URL
   (design §17.263 (4)): the hops are now followed by `std/http` (see Changed), so a listed
   host that redirects to an unlisted one fails `HttpError` (`<host:port> is outside
