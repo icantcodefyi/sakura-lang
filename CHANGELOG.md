@@ -391,6 +391,17 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `unsupported: a merge of values the encoder does not model`. The `Ok` arm assumes the
   predicate; the same join from an `if` (`Some(3)` or `None`) is decided too. Fixture:
   `compiler/tests/verify/validate_join.sak`.
+- An unresolved name heading a `name: expr` statement of a brace expression, as in the
+  anonymous record literal `{ request: 0, cap: 0 }`, reads "a record literal names its type"
+  and offers no import (design §17.294 WP-6), where it was offered an unrelated std export
+  (`import std/llm.{request}`).
+- `sakura setup --help` says it lists the agent files and, with `--apply`, writes them
+  (design §17.294 SS-S4); it said "Print". Behaviour is unchanged.
+- Doc comments (design §17.294): `Sql.transaction` rolls back when the body fails with any
+  error, `SqlError` or its own; a `Url` is a `String` and `Url.to_string` renders `UrlParts`;
+  `Http.host`, `Http.scoped` and `Fs.host` state their refusal texts (`"<host:port> is not in
+  the manifest's net list"`, `"<host:port> is outside Http.scoped"`, `"not in the manifest's
+  fs.<read|write> list"`), which a program may match.
 
 ### Security
 

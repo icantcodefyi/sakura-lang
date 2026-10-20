@@ -6,6 +6,8 @@ import std/searchparams.{SearchParams}
 import std/urlpart.{UrlPart}
 
 /// An absolute `http://` or `https://` URL, or an origin-form path such as `/users?id=1`.
+/// A `Url` is a `String`: interpolate it or pass it where a `String` goes; `to_string` renders
+/// `UrlParts`.
 pub type Url = String where is_valid(it)
 
 /// Starts with `https://`, `http://` or `/`, and has no spaces.

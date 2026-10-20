@@ -1,0 +1,10 @@
+// milestone: M3
+// expect: V1002 V1002 V0009 V0009 V0009 V0009 V0009
+// §17.294 WP-6: `{ request: 0, cap: 0 }` in expression position is a block whose first statement
+// is `request`, so `request` is unresolved. The message says a record literal names its type and
+// no `import std/llm.{request}` is offered, though std/llm exports a `request`. The V0009s are
+// the parser's cascade after each `name:`.
+pub fn budget() -> Int {
+  let c = { request: 0, cap: 0 }
+  0
+}

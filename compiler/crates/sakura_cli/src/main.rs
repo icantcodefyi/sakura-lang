@@ -265,7 +265,7 @@ enum Command {
         #[arg(long, default_value = "cli", value_parser = ["cli", "lib", "agent", "api"])]
         kind: String,
     },
-    /// Print, and with `--apply` write, this project's agent files: the `sakura` skill, the
+    /// List this project's agent files and, with `--apply`, write them: the `sakura` skill, the
     /// client's MCP entry (merged into an existing config), Cursor's rule, and `AGENTS.md` and
     /// `CLAUDE.md` when absent. Nothing outside the project is touched.
     Setup {

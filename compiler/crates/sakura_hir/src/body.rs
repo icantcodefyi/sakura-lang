@@ -958,6 +958,15 @@ impl<'a> BodyCx<'a> {
                 .report(diag::error(diag::RECURSIVE_LAMBDA, file, range, msg));
             return;
         }
+        if heads_field_stmt(name) {
+            // Design §17.294 WP-6: `{ request: 0, … }` is a block, so no import is offered.
+            let msg = format!(
+                "cannot find `{text}` in this scope; a record literal names its type: `Type {{ {text}: …, … }}`"
+            );
+            self.cx
+                .report(diag::error(diag::UNRESOLVED_NAME, file, range, msg));
+            return;
+        }
         let flipped = if name.kind() == IDENT {
             upper_first(text)
         } else {
@@ -1642,6 +1651,21 @@ fn field_parts(n: &SyntaxNode) -> Option<(SyntaxNode, SyntaxToken)> {
         .filter(|t| matches!(t.kind(), IDENT | TYPE_NAME | INT))
         .last()?;
     Some((base, name))
+}
+
+/// Whether `name` is the whole of a statement followed by `:` in a block, as in an anonymous
+/// record literal `{ name: expr, … }` (design §17.294 WP-6).
+fn heads_field_stmt(name: &SyntaxToken) -> bool {
+    let Some(stmt) = name.parent_ancestors().find(|n| n.kind() == EXPR_STMT) else {
+        return false;
+    };
+    let last = stmt.last_token();
+    stmt.parent().is_some_and(|b| b.kind() == BLOCK)
+        && stmt.first_token().as_ref() == Some(name)
+        && last.as_ref() == Some(name)
+        && std::iter::successors(last.and_then(|t| t.next_token()), |t| t.next_token())
+            .find(|t| !t.kind().is_trivia())
+            .is_some_and(|t| t.kind() == COLON)
 }
 
 fn lit_of(n: &SyntaxNode) -> Option<Literal> {

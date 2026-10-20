@@ -87,7 +87,9 @@ pub fn bearer(req: Request, token: Secret<String>) -> Request {
 /// The root handler the host installs for a `main` that declares `Http`: `fetch`, limited
 /// to the manifest's `net` list, which is checked on every send. A response body arrives as
 /// `Bytes` (`Empty` when it has no bytes). Redirects follow `req.redirect` (`follow`): each
-/// hop is its own send, so its `host:port` is checked against `net` before it is fetched.
+/// hop is its own send, so its `host:port` is checked against `net` before it is fetched. A
+/// host outside the list fails `HttpError { status: None, reason: "<host:port> is not in the
+/// manifest's net list" }`.
 pub fn host() -> Handler<Http> {
   handler Http {
     fn send(req) { follow(req, req, 0, fn(r) { ok_or_fail(http_send(r)) }) }
@@ -108,7 +110,8 @@ pub fn host() -> Handler<Http> {
 }
 
 /// Forwards to the enclosing `Http` only for requests to the listed `host:port` entries (a
-/// URL without a port means 443 for `https` and 80 otherwise); others fail with `HttpError`.
+/// URL without a port means 443 for `https` and 80 otherwise); others fail
+/// `HttpError { status: None, reason: "<host:port> is outside Http.scoped" }`.
 /// It follows redirects itself (`follow`), forwarding each hop with `redirect: Manual`, so
 /// every hop is checked against this list before it is forwarded.
 pub fn scoped(hosts: List<String>) -> Handler<Http, {Http}> {

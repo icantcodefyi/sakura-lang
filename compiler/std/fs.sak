@@ -47,7 +47,9 @@ pub effect Fs {
 }
 
 /// The root handler the host installs for a `main` that declares `Fs`: the package
-/// directory, limited to the manifest's `fs.read`/`fs.write` lists.
+/// directory, limited to the manifest's `fs.read`/`fs.write` lists. A path outside them fails
+/// `FsError` with reason `"not in the manifest's fs.<read|write> list"` (a `SqlError` wraps it
+/// behind the file's name).
 pub fn host() -> Handler<Fs> { rooted(fs_root()) }
 
 /// A handler confined to `dir`.

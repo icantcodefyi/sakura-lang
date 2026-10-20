@@ -34,7 +34,8 @@ pub effect Sql {
   fn query<R: Schema>(q: Query<R>) -> List<R> ! {Fail<SqlError>}
   /// Rows affected.
   fn execute(q: Query<Unit>) -> Int ! {Fail<SqlError>}
-  /// Runs `body` in a transaction: committed when it returns, rolled back when it fails.
+  /// Runs `body` in a transaction: committed when it returns, rolled back when it fails with
+  /// any error, `SqlError` or the body's own.
   fn transaction<T, e>(body: fn() -> T ! {Sql | e}) -> T ! {Fail<SqlError> | e}
 }
 
