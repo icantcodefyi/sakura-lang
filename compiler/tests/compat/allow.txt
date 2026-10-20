@@ -4,3 +4,7 @@
 # and the anchor is `CHANGELOG.md#<heading>`. An unlisted difference fails the `compat` job; so
 # does a listed fixture that matches again or is not in that release. The harness is
 # `crates/sakura_cli/tests/compat.rs`.
+
+examples/form_upload Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
+examples/http_retry Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
+examples/router_endpoint Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
