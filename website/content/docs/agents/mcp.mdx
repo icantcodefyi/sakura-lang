@@ -4,7 +4,7 @@ description: The sakura mcp serve server, which exposes the compiler to agents a
 ---
 
 <Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet. The next, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 `sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
@@ -84,7 +84,7 @@ In the planned MCP export, the model never supplies authority. The handlers inst
 
 ## Stability
 
-The stdio server, the ten tools above, their parameters, and the snapshot, content-hash and patch-id protocol are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability). **Planned before v0.2.0:** a tool that returns a CLI record, such as `symbol_query` or `hole_context`, returns exactly the `--json` record of the same name, `kind` included (design §17.242). Function export, HTTP transport and the `verify`, `refactor` and `impact` tools are not implemented and carry no promise.
+The stdio server, the ten tools above, their parameters, and the snapshot, content-hash and patch-id protocol are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). A tool that returns a CLI record, such as `symbol_query` or `hole_context`, returns exactly the `--json` record of the same name, `kind` included (design §17.242). Function export, HTTP transport and the `verify`, `refactor` and `impact` tools are not implemented and carry no promise.
 
 ## Next
 

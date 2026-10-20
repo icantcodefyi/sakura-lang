@@ -67,7 +67,8 @@ export function Install() {
           </h2>
           <p className="text-[17px] leading-relaxed text-pretty text-muted-foreground">
             <code className="font-mono text-[15px] text-foreground">sakuralang@{VERSION}</code> is a
-            preview with no compatibility promise yet. <code className="font-mono">check</code> and{" "}
+            preview with no compatibility promise yet; the next release is a beta that may have
+            bugs. <code className="font-mono">check</code> and{" "}
             <code className="font-mono">build</code> need nothing else;{" "}
             <code className="font-mono">run</code> and <code className="font-mono">test</code> need
             Node 26.

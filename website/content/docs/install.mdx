@@ -7,9 +7,35 @@ Sakura Lang's published release is `0.1.0`, on npm, Homebrew and GitHub Releases
 Apple silicon and Intel macOS, Linux x64 and ARM64, and Windows x64 (Homebrew serves macOS
 and Linux x64). The npm `latest` tag points to it. It is a preview with no stable language or
 API compatibility promise ([Stability](/docs/stability)). These docs also describe [changes on main](/docs/changes),
-which require a source build until the next release. Install Node 26 before using npm, `sakura run`, or `sakura test`.
+which require a source build until [the beta](#the-beta). Install Node 26 before using npm, `sakura run`, or `sakura test`.
 The standalone compiler can check and build without Node; the installer does not
 install Node for you.
+
+## The beta
+
+The next release is `v1.0.0-beta.1`, a beta of 1.0. **It is not for production**: it may have
+bugs and may change before 1.0.0, and every breaking change until then is listed in the
+[changelog](/changelog) with a migration ([Stability](/docs/stability)). It is not published
+yet. Once `v1.0.0-beta.1` is tagged, it is a
+[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.1) and
+these commands install it:
+
+```bash title="npm"
+npm install --global sakuralang@beta
+sakura --version
+```
+
+```bash title="Homebrew"
+brew tap icantcodefyi/sakuralang && brew install sakuralang-beta
+sakura --version
+```
+
+The [release installer](#release-installer) takes `version=1.0.0-beta.1`, and the
+[Windows installer](#windows-x64) from that release takes `-Version 1.0.0-beta.1`. The beta stays off the default channels:
+`npm install --global sakuralang` (the `latest` tag) and `brew install sakuralang` keep
+installing `0.1.0` until `v1.0.0`. The two Homebrew formulas both install `sakura`, so remove
+one (`brew uninstall sakuralang`) before installing the other. The platform claims below are
+for v0.1.0; the beta earns its own with its own published-install run.
 
 ## Platform claims
 

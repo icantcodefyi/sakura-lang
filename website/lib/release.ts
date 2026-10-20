@@ -1,7 +1,7 @@
 import { site } from "@/lib/site";
 
 // The release line of docs/plans/road-to-1.0.md, in order.
-const LINE = ["0.1.0-alpha.1", "0.1.0", "0.2.0", "1.0.0"] as const;
+const LINE = ["0.1.0-alpha.1", "0.1.0", "1.0.0-beta.1", "1.0.0"] as const;
 export type Version = (typeof LINE)[number];
 
 /**

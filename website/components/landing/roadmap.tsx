@@ -15,14 +15,14 @@ const STAGES: { id: Version; name: string; body: string }[] = [
     body: "WASM complete, the web's bytes, URL, headers, forms and crypto in std, and Linux ARM64, Windows x64 and Intel Mac, each smoke-tested from the published channels.",
   },
   {
-    id: "0.2.0",
-    name: "Native and stability",
-    body: "The stability guarantees of RFC 0001, binary HTTP bodies, web timers, streams and URL patterns. Native stays experimental.",
+    id: "1.0.0-beta.1",
+    name: "The beta",
+    body: "Feature-complete for 1.0 and not for production: it may have bugs and may change before 1.0.0. RFC 0001's contracts, binary HTTP bodies, streams, channels and URL patterns. Native stays experimental.",
   },
   {
     id: "1.0.0",
     name: "Stable",
-    body: "A release candidate, a seven-day soak with no P1 defect, then 1.0. Packages follow in 1.x.",
+    body: "Seven clean fuzzing nights and seven days after the last beta with no P1 defect, then 1.0. Packages follow in 1.x.",
   },
 ];
 

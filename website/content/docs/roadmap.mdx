@@ -4,7 +4,7 @@ description: What is built (JS and WASM backends, contract verification), what i
 ---
 
 <Callout type="info" title="Where things stand">
-  `0.1.0` is the published preview (2026-10-20), and `v0.2.0` is next. **M3 is complete** (signed 2026-10-18). **M4 is complete** (signed 2026-10-20, exit commit `dee11301`) and shipped in `v0.1.0`: the WebAssembly backend runs every corpus program the way JavaScript does, and `sakura verify` proves contracts with Z3. Native code generation (M5) is experimental. Changes on main after `0.1.0` are not in that package ([changes since 0.1.0](/docs/changes)). Releases have no dates.
+  `0.1.0` is the published preview (2026-10-20), and `v1.0.0-beta.1` is next, a beta that may have bugs and is not for production. **M3 is complete** (signed 2026-10-18). **M4 is complete** (signed 2026-10-20, exit commit `dee11301`) and shipped in `v0.1.0`: the WebAssembly backend runs every corpus program the way JavaScript does, and `sakura verify` proves contracts with Z3. Native code generation (M5) is experimental. Changes on main after `0.1.0` are not in that package ([changes since 0.1.0](/docs/changes)). Releases have no dates.
 </Callout>
 
 The milestones run **M3 → M4 → M5**; [Toward 1.0](#toward-10) lists the releases. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
@@ -89,9 +89,8 @@ The order is set in the [road to 1.0](https://github.com/icantcodefyi/sakuralang
 | --- | --- | --- |
 | `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and `sakura verify`, on npm, Homebrew and the release installer, for Apple silicon macOS and Linux x64 | published 2026-10-18 |
 | `v0.1.0` | M4 exit, the first non-alpha preview: WASM complete, the web platform's byte, URL, header, form and crypto APIs in std, and Linux ARM64, Windows x64 and Intel Mac | published 2026-10-20 |
-| `v0.2.0` | The [stability guarantees](/docs/stability) of RFC 0001 take effect; the `--json` summary split and binary HTTP bodies (both on main); the spec's grammar and diagnostics | planned |
-| `v1.0.0-rc.1` | Seven clean nights of fuzzing, upgraded dogfood programs, agent evaluation results, the complete spec, signed macOS archives | planned |
-| `v1.0.0` | After a seven-day release-candidate soak with no serious defect and no contract change | planned |
+| `v1.0.0-beta.1` | A beta of 1.0, not for production: it may have bugs and may change before 1.0.0, and every breaking change until then is listed in the changelog with a migration. RFC 0001's machine contracts are intended from this tag; binary HTTP bodies, the `--json` summary split, web timers, streams, channels, URL patterns and WebSockets (all on main); the spec's grammar and diagnostics. A GitHub prerelease, npm under the `beta` tag and the Homebrew formula `sakuralang-beta` | planned |
+| `v1.0.0` | Produced under the beta: seven consecutive clean nights of fuzzing ending at the tag, upgraded dogfood programs, agent evaluation results, the complete spec, signed macOS archives, and seven days after the last beta with no serious defect and no contract change | planned |
 
 Not part of 1.0: packages (1.x), native as a stable target, Perceus reuse and borrow inference, crates.io publication, the playground and Linguist support.
 

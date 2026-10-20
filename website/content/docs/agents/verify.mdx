@@ -117,4 +117,4 @@ Loop invariants, recursion and termination proofs, `Float` and `String` theories
 
 ## Stability
 
-The `verify` command, its flags, its exit codes, the `obligation` record and `[verify] rlimit` are proposed as **stable from v0.2.0** under [draft RFC 0001](/docs/stability). Its closing record becomes `verify_summary` before then. Which obligations are `proved` rather than `unknown` or `unsupported` may improve in any release; the proof cache's files have no format promise and are solved again when the format changes.
+The `verify` command, its flags, its exit codes, the `obligation` record and `[verify] rlimit` are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). Its closing record is `verify_summary`. Which obligations are `proved` rather than `unknown` or `unsupported` may improve in any release; the proof cache's files have no format promise and are solved again when the format changes.

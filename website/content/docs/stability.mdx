@@ -1,20 +1,34 @@
 ---
 title: Stability
-description: What the preview promises today, what draft RFC 0001 proposes to make stable from v0.2.0, and what stays experimental.
+description: What the preview promises today, what the v1.0.0-beta.1 beta may still change, what draft RFC 0001 proposes to make stable, and what stays experimental.
 ---
 
 **Today there is no compatibility promise.** The published preview is `0.1.0`, and
-behaviour may change between previews. [Draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md)
-proposes the guarantees below for acceptance at `v0.2.0`. Until the owner accepts it, the
-policy in [STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md)
+behaviour may change between previews.
+
+<Callout type="warn" title="The next release is a beta">
+  `v1.0.0-beta.1` is a beta of 1.0 and **not for production**. It may have bugs, and it may
+  change before 1.0.0, including the contracts below. Every breaking change between the beta
+  and 1.0.0 is listed in the [changelog](/changelog) with a migration. Once it is tagged it
+  is published as a GitHub prerelease, on npm under the `beta` tag and as the Homebrew
+  formula `sakuralang-beta` ([Install](/docs/install#the-beta)); `npm i -g sakuralang` and
+  `brew install sakuralang` stay on `0.1.0`.
+</Callout>
+
+[Draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md)
+proposes the guarantees below. Its final comment period does not gate the beta: the guarantees
+bind from the release at which the owner accepts the RFC, and in full from `v1.0.0`. Until then
+the policy in [STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md)
 applies, and that file's inventory is the authoritative list.
 
 ## Levels
 
-- **Stable**: covered by the RFC's compatibility rules from the version named. From `0.2.0`,
-  machine contracts (diagnostic codes, `--json` records, exit codes, the WASM ABI) change
-  only additively within a 0.x minor line. From `1.0.0`, source and standard-library
-  compatibility hold within a major version.
+- **Stable**: covered by the RFC's compatibility rules from the version named. From
+  `1.0.0-beta.1`, machine contracts (diagnostic codes, `--json` records, exit codes, the WASM
+  ABI) are meant to change only additively, but during the beta they may still change, each
+  with a migration in the changelog; source and standard-library changes come with a listed
+  migration. From `1.0.0`, source and standard-library compatibility hold within a major
+  version.
 - **Experimental**: may change or disappear in any release. Opt-in and labelled.
 - **Internal**: an implementation detail with no promise, even when you can see it.
 
@@ -22,27 +36,27 @@ applies, and that file's inventory is the authoritative list.
 
 | Area | Proposed level | From |
 | --- | --- | --- |
-| [CLI](/docs/cli) commands, documented flags, exit codes and environment variables | stable | 0.2.0 |
+| [CLI](/docs/cli) commands, documented flags, exit codes and environment variables | stable | 1.0.0-beta.1 |
 | `build --emit`, `--layout`, `--dump`; hidden switches | experimental or internal | — |
-| [`sakura.toml`](/docs/manifest): `[package]`, `[permissions]`, `[verify]`; the `V8005` and `V8006` refusals | stable | 0.2.0 |
-| [Diagnostic codes](/docs/errors): a code is never reused or renumbered | stable | 0.2.0 |
-| [`--json` records](/docs/agents/diagnostics#record-kinds): fields are only added within a major | stable | 0.2.0 |
-| [Standard library](/docs/stdlib) public signatures | stable | 0.2.0 within a minor; 1.0.0 within a major |
-| WASM runtime ABI | stable | 0.2.0 |
+| [`sakura.toml`](/docs/manifest): `[package]`, `[permissions]`, `[verify]`; the `V8005` and `V8006` refusals | stable | 1.0.0-beta.1 |
+| [Diagnostic codes](/docs/errors): a code is never reused or renumbered | stable | 1.0.0-beta.1 |
+| [`--json` records](/docs/agents/diagnostics#record-kinds): fields are only added within a major | stable | 1.0.0-beta.1 |
+| [Standard library](/docs/stdlib) public signatures | stable | 1.0.0-beta.1 with a listed migration; 1.0.0 within a major |
+| WASM runtime ABI | stable | 1.0.0-beta.1 |
 | JS backend ABI, generated code, LIR and Core, the compiler's Rust crates, cache files | internal | — |
-| [Language server](/docs/editors) standard protocol features | stable | 0.2.0 |
+| [Language server](/docs/editors) standard protocol features | stable | 1.0.0-beta.1 |
 | The `sakura/holeContext` LSP extension | experimental | — |
-| [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 0.2.0 |
+| [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 1.0.0-beta.1 |
 | `--target native` and the native runtime | experimental | — |
 | Runtime limits: the JS and WASM hosts read none from the environment; the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` | experimental | — |
 
 Human-readable output, help text, diagnostic wording and generated code bytes are never
 contracts. A diagnostic's code, fields and fixes are.
 
-## Changes planned before v0.2.0
+## Changes made before the guarantees
 
-These decisions are made (design §17.239–§17.243, §17.253) but not yet built. They land before the
-first version that honours the guarantees, so they are not breaking changes under the RFC:
+These decisions (design §17.239–§17.243, §17.253) are built, ahead of the first version that
+honours the guarantees, so they are not breaking changes under the RFC:
 
 - **Lexical rules.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
   A digit separator `_` goes only between two digits.

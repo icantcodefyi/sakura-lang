@@ -4,7 +4,7 @@ description: Value semantics, var rebinding, compiler-inserted reference countin
 ---
 
 <Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet. The next, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.
@@ -182,7 +182,7 @@ WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-intege
 
 A compiler built from source with `cargo build --release -p sakura_cli --features native` also accepts `--target native` on `build`, `run` and `test`, producing an executable that runs directly. It is **experimental**: it agrees with JavaScript on the semantics corpus, but `Http`, serving, `Llm` and `WebSocket` are not ported yet: a `main` that declares one of them exits 75 at startup with "`Http` is not available on target `native`", before any of its code runs, and a host handler for one installed inside the program stops with a `D090` defect at first use (exit 70). See the [roadmap](/docs/roadmap#m5-native-code-experimental).
 
-**Stability.** `--target js` and `--target wasm` are proposed as stable from v0.2.0, and so is the WASM runtime ABI. Generated JavaScript, LIR and WASM bytes are internal and may change in any release. `--target native` is experimental. See [Stability](/docs/stability).
+**Stability.** `--target js` and `--target wasm` are proposed as stable from v1.0.0-beta.1, and so is the WASM runtime ABI. Generated JavaScript, LIR and WASM bytes are internal and may change in any release. `--target native` is experimental. See [Stability](/docs/stability).
 
 ## Costs and limits
 
