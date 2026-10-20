@@ -156,19 +156,20 @@ fn Slug$validate#6 top -> ptr ; main::validate_untrusted_into_refined, frame 1 s
     %5 lit: i64 = const 1
     %6 t: bool = eq.int %4, %5
     %7 exit: unit = $contract_exit()
-    %8 summary: ptr = show %0
-    %9 lit: ptr = const str 4
-    %10 lit: ptr = const str 5
-    %11 violation: ptr = alloc std::core::Violation(%9, %10, %8)
-    if %6 then b1(%0, %11) else b2(%0, %11)
-  b1(%12 it: ptr, %13 violation: ptr):
-    drop %13
-    %16 ok: ptr = alloc std::result::Result.Ok(%12)
+    if %6 then b2(%0) else b3(%0)
+  b1(%8 it: ptr):
+    %9 ok: ptr = alloc std::result::Result.Ok(%8)
+    ret %9
+  b2(%10 it: ptr):
+    jump b1(%10)
+  b3(%11 it: ptr):
+    %12 summary: ptr = show %11
+    drop %11
+    %13 lit: ptr = const str 4
+    %14 lit: ptr = const str 5
+    %15 violation: ptr = alloc std::core::Violation(%13, %14, %12)
+    %16 err: ptr = alloc std::result::Result.Err(%15)
     ret %16
-  b2(%14 it: ptr, %15 violation: ptr):
-    drop %14
-    %17 err: ptr = alloc std::result::Result.Err(%15)
-    ret %17
 
 fn Percent$check#7 top -> bool ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
   b0(%0 it: i64):
@@ -189,29 +190,36 @@ fn Percent$check#7 top -> bool ; main::validate_untrusted_into_refined, frame 1 
 
 fn Percent$validate#8 top -> ptr ; main::validate_untrusted_into_refined, frame 1 slots [%0 i64]
   b0(%0 it: i64):
-    %1 enter: unit = $contract_enter()
+    %1 lit: unit = const ()
     %2 lit: i64 = const 0
     %3 t: bool = ge.int %0, %2
-    if %3 then b4(%0) else b5(%0)
-  b1(%4 v: bool, %5 it: i64):
-    %6 exit: unit = $contract_exit()
-    %7 summary: ptr = show %5
-    %8 lit: ptr = const str 6
-    %9 lit: ptr = const str 5
-    %10 violation: ptr = alloc std::core::Violation(%8, %9, %7)
-    if %4 then b2(%5, %10) else b3(%5, %10)
-  b2(%11 it: i64, %12 violation: ptr):
-    drop %12
-    %15 box: word = box %11
-    %16 ok: ptr = alloc std::result::Result.Ok(%15)
-    ret %16
-  b3(%13 it: i64, %14 violation: ptr):
-    %17 err: ptr = alloc std::result::Result.Err(%14)
-    ret %17
-  b4(%18 it: i64):
-    %20 lit: i64 = const 100
-    %21 t: bool = le.int %18, %20
-    jump b1(%21, %18)
-  b5(%19 it: i64):
-    %22 lit: bool = const false
-    jump b1(%22, %19)
+    %4 lit: unit = const ()
+    if %3 then b5(%0) else b6(%0)
+  b1(%5 it: i64):
+    %6 lit: unit = const ()
+    %7 lit: i64 = const 100
+    %8 t: bool = le.int %5, %7
+    %9 lit: unit = const ()
+    if %8 then b3(%5) else b4(%5)
+  b2(%10 it: i64):
+    %11 box: word = box %10
+    %12 ok: ptr = alloc std::result::Result.Ok(%11)
+    ret %12
+  b3(%13 it: i64):
+    jump b2(%13)
+  b4(%14 it: i64):
+    %15 summary: ptr = show %14
+    %16 lit: ptr = const str 6
+    %17 lit: ptr = const str 7
+    %18 violation: ptr = alloc std::core::Violation(%16, %17, %15)
+    %19 err: ptr = alloc std::result::Result.Err(%18)
+    ret %19
+  b5(%20 it: i64):
+    jump b1(%20)
+  b6(%21 it: i64):
+    %22 summary: ptr = show %21
+    %23 lit: ptr = const str 6
+    %24 lit: ptr = const str 8
+    %25 violation: ptr = alloc std::core::Violation(%23, %24, %22)
+    %26 err: ptr = alloc std::result::Result.Err(%25)
+    ret %26

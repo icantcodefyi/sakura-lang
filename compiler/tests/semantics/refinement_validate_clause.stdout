@@ -1,0 +1,6 @@
+it <= 100
+it >= 0
+ok 50
+Err(Violation { type_name: "Path", clause: "is_relative(it)", value_summary: "../x" })
+Err(Violation { type_name: "Name", clause: "String.len(it) >= 1", value_summary: "" })
+Err(Violation { type_name: "Digit", clause: "Int.abs(it) < 10", value_summary: "10" })

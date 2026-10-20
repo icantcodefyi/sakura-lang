@@ -24,6 +24,8 @@ pub const PRELUDE: &[(&str, &str)] = &[
     ("show", "core"),
     // Compiler-known (§9, §17.16): the type of `@trust("…")`, declared in std/core.
     ("Trust", "core"),
+    // What every refined type's `validate` and `Untrusted.check` return (§17.292 (12)).
+    ("Violation", "core"),
     // Std types the prelude effects mention (std/INDEX.md).
     ("Duration", "duration"),
     ("Instant", "instant"),

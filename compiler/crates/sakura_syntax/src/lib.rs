@@ -177,6 +177,57 @@ pub fn parse_file(file: FileId, text: &str) -> Parse {
     }
 }
 
+/// Joins the tokens of `elements` on one line: trivia collapses to one space, except right after
+/// an opening bracket or before a closing one or a comma, and a trailing comma before a closing
+/// bracket is dropped. `sakura doc`'s contract lines and a `Violation`'s `clause` both use it.
+pub fn join_tokens(elements: impl Iterator<Item = SyntaxElement>) -> String {
+    let mut tokens = Vec::new();
+    for el in elements {
+        match el {
+            NodeOrToken::Token(t) => tokens.push(t),
+            NodeOrToken::Node(n) => tokens.extend(
+                n.descendants_with_tokens()
+                    .filter_map(NodeOrToken::into_token),
+            ),
+        }
+    }
+    let mut out = String::new();
+    let mut gap = false;
+    for (i, t) in tokens.iter().enumerate() {
+        if t.kind().is_trivia() || t.kind() == SyntaxKind::NEWLINE {
+            gap = !out.is_empty();
+            continue;
+        }
+        let next_closes = tokens[i + 1..]
+            .iter()
+            .find(|n| !n.kind().is_trivia() && n.kind() != SyntaxKind::NEWLINE)
+            .is_some_and(|n| {
+                matches!(
+                    n.kind(),
+                    SyntaxKind::R_PAREN | SyntaxKind::R_BRACKET | SyntaxKind::R_BRACE
+                )
+            });
+        if t.kind() == SyntaxKind::COMMA && next_closes {
+            continue;
+        }
+        let after_open = out.ends_with(['(', '[']);
+        let closes = matches!(
+            t.kind(),
+            SyntaxKind::R_PAREN | SyntaxKind::R_BRACKET | SyntaxKind::COMMA
+        );
+        if gap && !after_open && !closes {
+            out.push(' ');
+        }
+        gap = false;
+        // A `\r\n` in a string means `\n` (§2): a CRLF checkout keeps its frozen texts.
+        match t.kind() {
+            SyntaxKind::STRING_TEXT => out.push_str(&t.text().replace("\r\n", "\n")),
+            _ => out.push_str(t.text()),
+        }
+    }
+    out
+}
+
 /// Indented `KIND@start..end` dump of a subtree; tokens also show their text.
 pub fn debug_tree(node: &SyntaxNode) -> String {
     use std::fmt::Write;

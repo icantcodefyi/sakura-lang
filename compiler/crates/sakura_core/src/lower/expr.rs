@@ -495,12 +495,15 @@ impl<'a, 'p> FnLower<'a, 'p> {
         }
     }
 
-    /// `T.from(x)` (defect `D010` unless `where` holds) or `T.validate(x)`.
+    /// `T.from(x)` (defect `D010` unless `where` holds) or `T.validate(x)`. `validate` checks
+    /// the top-level `&&` conjuncts left to right; the first false one is the `Violation`'s
+    /// `clause` (design §17.292 (4)).
     pub(crate) fn lower_refinement(
         l: &'a mut Lower<'p>,
         ty_def: hir::DefId,
         intro_def: hir::DefId,
         pred: hir::BodyId,
+        text: &hir::PredText,
         intro: hir::RefinementIntro,
         id: DefId,
     ) -> FnDef {
@@ -511,56 +514,56 @@ impl<'a, 'p> FnLower<'a, 'p> {
         let params: Vec<Local> = it.iter().map(|&p| s.param(p)).collect();
         let x = params.first().map(|p| local(*p)).unwrap_or(unit());
         let base = params.first().map_or(Ty::Unit, |p| s.b.ty(*p).clone());
-        let cond = s.body.value.and_then(|v| s.predicate(v));
         let ret_ty;
-        let r = match (cond, intro) {
-            (Some(c), hir::RefinementIntro::From) => {
-                let contract = s.contract(ContractKind::Where, tname.clone(), pos);
-                s.bind("ok", Ty::Unit, Bind::Check(contract, c), None);
+        let r = match (s.body.value, intro) {
+            (Some(v), hir::RefinementIntro::From) => {
                 ret_ty = base.clone();
-                Some(x)
+                s.predicate(v).map(|c| {
+                    let contract = s.contract(ContractKind::Where, tname.clone(), pos);
+                    s.bind("ok", Ty::Unit, Bind::Check(contract, c), None);
+                    x
+                })
             }
-            (Some(c), hir::RefinementIntro::Validate) => {
+            (Some(v), hir::RefinementIntro::Validate) => {
                 let result = s.l.m.builtin_type("Result");
-                let violation = s.violation(&tname, x.clone());
-                let violation_ty = match &violation {
-                    Atom::Local(v) => s.b.ty(*v).clone(),
-                    _ => Ty::String,
+                let violation_ty = match s.l.p.lang.violation {
+                    Some(d) => Ty::Adt(s.l.type_def(d), vec![]),
+                    None => Ty::String,
                 };
                 ret_ty = result.map_or(Ty::Var(u32::MAX), |rt| {
                     Ty::Adt(rt, vec![base.clone(), violation_ty])
                 });
-                result.map(|rt| {
-                    let after = s.b.label();
-                    let out = s.b.local("r", ret_ty.clone());
-                    let ok = s.scoped(|s| {
-                        let v = s.bind(
-                            "ok",
-                            ret_ty.clone(),
-                            Bind::Alloc(Alloc::Variant(rt, 0), vec![x.clone()]),
-                            None,
+                let conjuncts = s.conjuncts(v, text);
+                result.and_then(|rt| {
+                    for (e, clause) in conjuncts {
+                        let c = s.predicate(e)?;
+                        let next = s.b.label();
+                        let err = s.scoped(|s| {
+                            let violation = s.violation(&tname, x.clone(), clause);
+                            let v = s.bind(
+                                "err",
+                                ret_ty.clone(),
+                                Bind::Alloc(Alloc::Variant(rt, 1), vec![violation]),
+                                None,
+                            );
+                            s.ret_expr(v)
+                        });
+                        s.blk.continue_at(
+                            next,
+                            vec![],
+                            Expr::If {
+                                cond: c,
+                                then: Box::new(Expr::Jump(next, vec![])),
+                                els: Box::new(err),
+                            },
                         );
-                        Expr::Jump(after, vec![v])
-                    });
-                    let err = s.scoped(|s| {
-                        let v = s.bind(
-                            "err",
-                            ret_ty.clone(),
-                            Bind::Alloc(Alloc::Variant(rt, 1), vec![violation]),
-                            None,
-                        );
-                        Expr::Jump(after, vec![v])
-                    });
-                    s.blk.continue_at(
-                        after,
-                        vec![out],
-                        Expr::If {
-                            cond: c,
-                            then: Box::new(ok),
-                            els: Box::new(err),
-                        },
-                    );
-                    local(out)
+                    }
+                    Some(s.bind(
+                        "ok",
+                        ret_ty.clone(),
+                        Bind::Alloc(Alloc::Variant(rt, 0), vec![x.clone()]),
+                        None,
+                    ))
                 })
             }
             (None, _) => {
@@ -646,8 +649,39 @@ impl<'a, 'p> FnLower<'a, 'p> {
         s.into_def(id, params, Ty::Bool, body, pos)
     }
 
+    /// The predicate `v` split at its top-level `&&` as HIR lowered it, each conjunct with its
+    /// text; the whole predicate and its whole text when it is not a chain. The HIR has no
+    /// parentheses, so the spine is peeled exactly as many times as the syntax found conjuncts.
+    fn conjuncts(&self, v: ExprId, text: &hir::PredText) -> Vec<(ExprId, String)> {
+        let whole = vec![(v, text.text.clone())];
+        if text.conjuncts.len() < 2 {
+            return whole;
+        }
+        let mut rights = Vec::new();
+        let mut cur = v;
+        for _ in 1..text.conjuncts.len() {
+            match &self.body.exprs[cur] {
+                hir::Expr::Binary {
+                    op: hir::BinaryOp::And,
+                    lhs,
+                    rhs,
+                } => {
+                    rights.push(*rhs);
+                    cur = *lhs;
+                }
+                _ => return whole,
+            }
+        }
+        rights.push(cur);
+        rights.reverse();
+        rights
+            .into_iter()
+            .zip(text.conjuncts.iter().cloned())
+            .collect()
+    }
+
     /// `Violation { type_name, clause, value_summary }` (design §4.3) for `validate`.
-    fn violation(&mut self, tname: &str, x: Atom) -> Atom {
+    fn violation(&mut self, tname: &str, x: Atom, clause: String) -> Atom {
         let Some(v) = self.l.p.lang.violation else {
             return Atom::Lit(Lit::String(format!("{tname}: refinement violated")));
         };
@@ -664,7 +698,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
         for f in fields {
             args.push(match f.as_str() {
                 "type_name" => Atom::Lit(Lit::String(tname.to_owned())),
-                "clause" => Atom::Lit(Lit::String("where".into())),
+                "clause" => Atom::Lit(Lit::String(clause.clone())),
                 "value_summary" => self.bind(
                     "summary",
                     Ty::String,

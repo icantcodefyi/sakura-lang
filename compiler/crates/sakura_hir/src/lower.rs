@@ -246,6 +246,28 @@ pub(crate) fn exprs(n: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
     n.children().filter(|c| is_expr(c.kind()))
 }
 
+/// A `where` clause's predicate text and its top-level `&&` conjuncts, rendered as `sakura doc`
+/// renders the clause. The `&&` spine is walked as a loop: a chain may be any length.
+pub(crate) fn pred_text(w: &SyntaxNode) -> PredText {
+    let line = |n: SyntaxNode| sakura_syntax::join_tokens(std::iter::once(n.into()));
+    let text = sakura_syntax::join_tokens(w.children().map(Into::into));
+    let mut conjuncts = Vec::new();
+    let mut cur = exprs(w).next();
+    while let Some(e) = cur.take() {
+        let and = e.kind() == BIN_EXPR && e.children_with_tokens().any(|t| t.kind() == AMP2);
+        let sides: Vec<SyntaxNode> = exprs(&e).collect();
+        match sides.as_slice() {
+            [lhs, rhs] if and => {
+                conjuncts.push(line(rhs.clone()));
+                cur = Some(lhs.clone());
+            }
+            _ => conjuncts.push(line(e)),
+        }
+    }
+    conjuncts.reverse();
+    PredText { text, conjuncts }
+}
+
 /// The `Ident`/`TypeName` tokens of a `PATH` (or of `n` itself if it has no `PATH` child).
 pub(crate) fn path_segments(n: &SyntaxNode) -> Vec<SyntaxToken> {
     let p = if n.kind() == PATH {
@@ -1144,6 +1166,7 @@ impl Cx {
             TypeDefBody::Refined {
                 base: missing_type(node.text_range()),
                 pred,
+                text: PredText::default(),
                 from,
                 validate,
             }
@@ -1480,6 +1503,7 @@ impl Cx {
                             None => missing_type(node.text_range()),
                         };
                         let where_clause = child(node, WHERE_CLAUSE);
+                        let text = where_clause.as_ref().map(pred_text).unwrap_or_default();
                         let pred = self.lower_refinement(m, idx, pred, where_clause, &generics);
                         for intro in [from, validate] {
                             self.lower_intro(m, idx, intro, &base, &generics);
@@ -1487,6 +1511,7 @@ impl Cx {
                         TypeDefBody::Refined {
                             base,
                             pred,
+                            text,
                             from,
                             validate,
                         }
@@ -1602,7 +1627,8 @@ impl Cx {
             }
             let refinement = child(&f, WHERE_CLAUSE).map(|w| {
                 let b = self.placeholder_body(m);
-                self.lower_refinement(m, owner, b, Some(w), generics)
+                let text = pred_text(&w);
+                (self.lower_refinement(m, owner, b, Some(w), generics), text)
             });
             out.push(FieldDef {
                 name,

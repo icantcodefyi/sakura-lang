@@ -103,7 +103,7 @@ semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, 
 semantics/fused_get_expect_out_of_range: D030, 84 allocated, 824 dup, 908 drop, peak 43, live 0/0
 semantics/fused_get_expect_owned_push: ok, 269 allocated, 2230 dup, 2499 drop, peak 41, live 0/0
 semantics/fused_get_or: ok, 97 allocated, 61 dup, 158 drop, peak 20, live 0/0
-semantics/generic_refinement: ok, 31 allocated, 21 dup, 52 drop, peak 7, live 0/0
+semantics/generic_refinement: ok, 29 allocated, 21 dup, 50 drop, peak 7, live 0/0
 semantics/generics: ok, 81 allocated, 158 dup, 239 drop, peak 12, live 0/0
 semantics/handler_callback_context: ok, 34 allocated, 29 dup, 63 drop, peak 16, live 0/0
 semantics/handler_cancel_bound: unsupported (builtin task_deterministic)
@@ -190,6 +190,7 @@ semantics/random_int_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, p
 semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
+semantics/refinement_validate_clause: ok, 23 allocated, 3 dup, 26 drop, peak 5, live 0/0
 semantics/request_bytes_limit: unsupported (builtin bytes_from_list)
 semantics/request_method_options_trace: ok, 439 allocated, 798 dup, 1237 drop, peak 35, live 0/0
 semantics/request_payload_bytes_roundtrip: unsupported (builtin bytes_from_list)
@@ -241,7 +242,7 @@ semantics/urlpattern_rejects_limits: unsupported (builtin string_to_bytes)
 semantics/urlpattern_rejects_regexp_group: unsupported (builtin string_to_bytes)
 semantics/urlpattern_wildcards: unsupported (builtin string_to_bytes)
 semantics/uuid_decode: unsupported (builtin json_decode)
-semantics/validate_untrusted_into_refined: ok, 34 allocated, 7 dup, 41 drop, peak 5, live 0/0
+semantics/validate_untrusted_into_refined: ok, 30 allocated, 7 dup, 37 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0
 semantics/websocket_accept_rejects_max_message: D020, 30 allocated, 11 dup, 41 drop, peak 26, live 0/0
 semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)

@@ -189,7 +189,9 @@ impl<'p> Checker<'p> {
         let types = self.record_fields(def);
         let generics = self.generics_of(def);
         for (f, (_, ty)) in fields.iter().zip(types) {
-            let Some(bid) = f.refinement else { continue };
+            let Some((bid, _)) = f.refinement else {
+                continue;
+            };
             let body = program.body(def.module, bid);
             let Some(value) = body.value else { continue };
             self.with_body(def.module, bid, generics.clone(), |cx| {

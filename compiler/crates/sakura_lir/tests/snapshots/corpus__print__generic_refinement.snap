@@ -182,19 +182,20 @@ fn NonEmpty$validate#6 top -> ptr ; main::generic_refinement, frame 1 slots [%0 
     %3 lit: i64 = const 0
     %4 t: bool = gt.int %2, %3
     %5 exit: unit = $contract_exit()
-    %6 summary: ptr = show %0
-    %7 lit: ptr = const str 4
-    %8 lit: ptr = const str 5
-    %9 violation: ptr = alloc std::core::Violation(%7, %8, %6)
-    if %4 then b1(%0, %9) else b2(%0, %9)
-  b1(%10 it: ptr, %11 violation: ptr):
-    drop %11
-    %14 ok: ptr = alloc std::result::Result.Ok(%10)
+    if %4 then b2(%0) else b3(%0)
+  b1(%6 it: ptr):
+    %7 ok: ptr = alloc std::result::Result.Ok(%6)
+    ret %7
+  b2(%8 it: ptr):
+    jump b1(%8)
+  b3(%9 it: ptr):
+    %10 summary: ptr = show %9
+    drop %9
+    %11 lit: ptr = const str 4
+    %12 lit: ptr = const str 5
+    %13 violation: ptr = alloc std::core::Violation(%11, %12, %10)
+    %14 err: ptr = alloc std::result::Result.Err(%13)
     ret %14
-  b2(%12 it: ptr, %13 violation: ptr):
-    drop %12
-    %15 err: ptr = alloc std::result::Result.Err(%13)
-    ret %15
 
 fn NonEmpty$check#7 top -> bool ; main::generic_refinement, frame 1 slots [%0 word*]
   b0(%0 it: ptr):

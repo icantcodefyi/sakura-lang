@@ -960,7 +960,10 @@ impl<'p> Lower<'p> {
             | hir::DefKind::Error(hir::ErrorDef { fields: fs, .. }) => vec![
                 fs.iter()
                     .map(|f| {
-                        let pred = f.refinement.map(|b| (b, f.name.clone(), f.range));
+                        let pred = f
+                            .refinement
+                            .as_ref()
+                            .map(|(b, _)| (*b, f.name.clone(), f.range));
                         (f.ty.clone(), pred)
                     })
                     .collect(),
@@ -1166,13 +1169,14 @@ impl<'p> Lower<'p> {
                             from,
                             validate,
                             pred,
+                            text,
                             ..
                         },
                     ..
-                }) if *from == f.index || *validate == f.index => Some((idx, *pred)),
+                }) if *from == f.index || *validate == f.index => Some((idx, *pred, text.clone())),
                 _ => None,
             });
-        let Some((owner, pred)) = owner else {
+        let Some((owner, pred, text)) = owner else {
             return self.def(f);
         };
         let ty_def = hir::DefId {
@@ -1185,7 +1189,7 @@ impl<'p> Lower<'p> {
         let name = format!("{}${}", self.p.def(ty_def).name, intro.name());
         let id = self.push_placeholder(&name, self.module_name(f.module));
         self.refined.insert((ty_def, intro), id);
-        let fd = expr::FnLower::lower_refinement(self, ty_def, f, pred, intro, id);
+        let fd = expr::FnLower::lower_refinement(self, ty_def, f, pred, &text, intro, id);
         self.m.defs[id.index()] = fd;
         id
     }

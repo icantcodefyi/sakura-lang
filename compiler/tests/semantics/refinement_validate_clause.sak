@@ -1,0 +1,30 @@
+// milestone: M3
+// covers: TypeDecl CallExpr
+// spec: §4.3, §17.292
+
+// A `Violation`'s `clause` is the failing top-level `&&` conjunct's source text, checked left
+// to right, or the whole predicate when it is not a chain. `Violation` is in the prelude.
+import std/path.{Path}
+
+type Percent = Int where it >= 0 && it <= 100
+
+type Name = String where String.len(it) >= 1
+
+// The clause is the conjunct as `sakura doc` shows the `where` line, one space between tokens.
+type Digit = Int where it >= 0 && Int.abs(it) < 10
+
+fn clause(r: Result<Percent, Violation>) -> String {
+  match r {
+    Ok(p) => "ok {p}",
+    Err(v) => v.clause,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(clause(Percent.validate(101)))
+  Console.print(clause(Percent.validate(-1)))
+  Console.print(clause(Percent.validate(50)))
+  Console.print("{Path.validate("../x")}")
+  Console.print("{Name.validate("")}")
+  Console.print("{Digit.validate(10)}")
+}

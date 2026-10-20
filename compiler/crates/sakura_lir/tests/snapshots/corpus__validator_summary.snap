@@ -103,7 +103,7 @@ semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
 semantics/fused_get_expect_out_of_range: 4 funcs, 16 blocks, 1 dup, 4 drop, valid
 semantics/fused_get_expect_owned_push: 4 funcs, 22 blocks, 2 dup, 10 drop, valid
 semantics/fused_get_or: 11 funcs, 48 blocks, 11 dup, 40 drop, valid
-semantics/generic_refinement: 11 funcs, 41 blocks, 10 dup, 27 drop, valid
+semantics/generic_refinement: 11 funcs, 42 blocks, 10 dup, 26 drop, valid
 semantics/generics: 16 funcs, 88 blocks, 21 dup, 41 drop, valid
 semantics/handler_callback_context: 15 funcs, 35 blocks, 2 dup, 21 drop, valid
 semantics/handler_cancel_bound: 14 funcs, 40 blocks, 0 dup, 15 drop, valid
@@ -190,6 +190,7 @@ semantics/random_int_rejects_reversed_range: 19 funcs, 100 blocks, 8 dup, 23 dro
 semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 12 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 18 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 19 dup, 45 drop, valid
+semantics/refinement_validate_clause: 10 funcs, 67 blocks, 5 dup, 19 drop, valid
 semantics/request_bytes_limit: 9 funcs, 43 blocks, 6 dup, 25 drop, valid
 semantics/request_method_options_trace: 128 funcs, 1589 blocks, 249 dup, 954 drop, valid
 semantics/request_payload_bytes_roundtrip: 28 funcs, 117 blocks, 11 dup, 49 drop, valid
@@ -241,7 +242,7 @@ semantics/urlpattern_rejects_limits: 76 funcs, 1227 blocks, 193 dup, 703 drop, v
 semantics/urlpattern_rejects_regexp_group: 73 funcs, 1197 blocks, 191 dup, 681 drop, valid
 semantics/urlpattern_wildcards: 90 funcs, 1358 blocks, 218 dup, 766 drop, valid
 semantics/uuid_decode: 9 funcs, 52 blocks, 6 dup, 32 drop, valid
-semantics/validate_untrusted_into_refined: 9 funcs, 43 blocks, 1 dup, 25 drop, valid
+semantics/validate_untrusted_into_refined: 9 funcs, 45 blocks, 1 dup, 23 drop, valid
 semantics/variants_and_match: 4 funcs, 38 blocks, 2 dup, 26 drop, valid
 semantics/websocket_accept_rejects_max_message: 124 funcs, 1501 blocks, 236 dup, 852 drop, valid
 semantics/websocket_close_rejects_code: 123 funcs, 1504 blocks, 234 dup, 852 drop, valid

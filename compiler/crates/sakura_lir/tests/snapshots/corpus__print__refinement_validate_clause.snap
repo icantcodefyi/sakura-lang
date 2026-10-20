@@ -1,0 +1,213 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::core::Violation | Violation 40b (type_name: word*, clause: word*, value_summary: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::refinement_validate_clause, frame 15 slots [%1 word*, %2 word*, %3 bool, %7 word*, %8 word*, %9 bool, %12 word*, %13 word*, %14 bool, %17 word*, %19 bool, %22 word*, %24 bool, %27 word*, %29 bool]
+  b0():
+    %0 lit: i64 = const 101
+    call Percent$validate#2(%0) -> b1()
+  b1(%1 r: ptr):
+    call clause#3(%1) -> b2()
+  b2(%2 r: ptr):
+    perform std::console::Console.print(%2) -> b3()
+  b3(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 lit: i64 = const 1
+    %6 t: i64 = intneg %5
+    call Percent$validate#2(%6) -> b4()
+  b4(%7 r: ptr):
+    call clause#3(%7) -> b5()
+  b5(%8 r: ptr):
+    perform std::console::Console.print(%8) -> b6()
+  b6(%9 r: unit):
+    %10 box: word = box %9
+    drop %10
+    %11 lit: i64 = const 50
+    call Percent$validate#2(%11) -> b7()
+  b7(%12 r: ptr):
+    call clause#3(%12) -> b8()
+  b8(%13 r: ptr):
+    perform std::console::Console.print(%13) -> b9()
+  b9(%14 r: unit):
+    %15 box: word = box %14
+    drop %15
+    %16 lit: ptr = const str 0
+    call Path$validate#4(%16) -> b10()
+  b10(%17 r: ptr):
+    %18 s: ptr = show %17
+    drop %17
+    perform std::console::Console.print(%18) -> b11()
+  b11(%19 r: unit):
+    %20 box: word = box %19
+    drop %20
+    %21 lit: ptr = const str 1
+    call Name$validate#6(%21) -> b12()
+  b12(%22 r: ptr):
+    %23 s: ptr = show %22
+    drop %22
+    perform std::console::Console.print(%23) -> b13()
+  b13(%24 r: unit):
+    %25 box: word = box %24
+    drop %25
+    %26 lit: i64 = const 10
+    call Digit$validate#7(%26) -> b14()
+  b14(%27 r: ptr):
+    %28 s: ptr = show %27
+    drop %27
+    perform std::console::Console.print(%28) -> b15()
+  b15(%29 r: unit):
+    %30 box: word = box %29
+    %31 unbox: unit = unbox %30
+    drop %30
+    ret %31
+
+fn $entry#1 top -> unit ; main::refinement_validate_clause, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn Percent$validate#2 top -> ptr ; main::refinement_validate_clause, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 lit: unit = const ()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    %4 lit: unit = const ()
+    if %3 then b5(%0) else b6(%0)
+  b1(%5 it: i64):
+    %6 lit: unit = const ()
+    %7 lit: i64 = const 100
+    %8 t: bool = le.int %5, %7
+    %9 lit: unit = const ()
+    if %8 then b3(%5) else b4(%5)
+  b2(%10 it: i64):
+    %11 box: word = box %10
+    %12 ok: ptr = alloc std::result::Result.Ok(%11)
+    ret %12
+  b3(%13 it: i64):
+    jump b2(%13)
+  b4(%14 it: i64):
+    %15 summary: ptr = show %14
+    %16 lit: ptr = const str 2
+    %17 lit: ptr = const str 3
+    %18 violation: ptr = alloc std::core::Violation(%16, %17, %15)
+    %19 err: ptr = alloc std::result::Result.Err(%18)
+    ret %19
+  b5(%20 it: i64):
+    jump b1(%20)
+  b6(%21 it: i64):
+    %22 summary: ptr = show %21
+    %23 lit: ptr = const str 2
+    %24 lit: ptr = const str 4
+    %25 violation: ptr = alloc std::core::Violation(%23, %24, %22)
+    %26 err: ptr = alloc std::result::Result.Err(%25)
+    ret %26
+
+fn clause#3 top -> ptr ; main::refinement_validate_clause, frame 1 slots [%0 word*]
+  b0(%0 r: ptr):
+    %1 tag: i64 = tag %0 ctor std::result::Result
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 r: ptr):
+    %4 p: word = proj %2.0 std::result::Result.Ok
+    drop %2
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 s: ptr = show %5
+    %7 lit: ptr = const str 5
+    %8 s: ptr = concat %7, %6
+    drop %6
+    ret %8
+  b2(%3 r: ptr):
+    %9 p: word = proj %3.0 std::result::Result.Err
+    drop %3
+    %10 clause: word = proj %9.1 std::core::Violation
+    drop %9
+    ret %10
+
+fn Name$validate#6 top -> ptr ; main::refinement_validate_clause, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    dup %0
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 1
+    %4 t: bool = ge.int %2, %3
+    %5 exit: unit = $contract_exit()
+    if %4 then b2(%0) else b3(%0)
+  b1(%6 it: ptr):
+    %7 ok: ptr = alloc std::result::Result.Ok(%6)
+    ret %7
+  b2(%8 it: ptr):
+    jump b1(%8)
+  b3(%9 it: ptr):
+    %10 summary: ptr = show %9
+    drop %9
+    %11 lit: ptr = const str 13
+    %12 lit: ptr = const str 14
+    %13 violation: ptr = alloc std::core::Violation(%11, %12, %10)
+    %14 err: ptr = alloc std::result::Result.Err(%13)
+    ret %14
+
+fn Digit$validate#7 top -> ptr ; main::refinement_validate_clause, frame 3 slots [%0 i64, %7 i64, %8 i64]
+  b0(%0 it: i64):
+    %1 lit: unit = const ()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    %4 lit: unit = const ()
+    if %3 then b6(%0) else b7(%0)
+  b1(%5 it: i64):
+    %6 enter: unit = $contract_enter()
+    call abs#8(%5) -> b2(%5)
+  b2(%7 r: i64, %8 it: i64):
+    %9 lit: i64 = const 10
+    %10 t: bool = lt.int %7, %9
+    %11 exit: unit = $contract_exit()
+    if %10 then b4(%8) else b5(%8)
+  b3(%12 it: i64):
+    %13 box: word = box %12
+    %14 ok: ptr = alloc std::result::Result.Ok(%13)
+    ret %14
+  b4(%15 it: i64):
+    jump b3(%15)
+  b5(%16 it: i64):
+    %17 summary: ptr = show %16
+    %18 lit: ptr = const str 15
+    %19 lit: ptr = const str 16
+    %20 violation: ptr = alloc std::core::Violation(%18, %19, %17)
+    %21 err: ptr = alloc std::result::Result.Err(%20)
+    ret %21
+  b6(%22 it: i64):
+    jump b1(%22)
+  b7(%23 it: i64):
+    %24 summary: ptr = show %23
+    %25 lit: ptr = const str 15
+    %26 lit: ptr = const str 4
+    %27 violation: ptr = alloc std::core::Violation(%25, %26, %24)
+    %28 err: ptr = alloc std::result::Result.Err(%27)
+    ret %28
+
+fn Percent$check#9 top -> bool ; main::refinement_validate_clause, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: i64 = const 100
+    %9 t: bool = le.int %6, %8
+    jump b1(%9)
+  b3(%7 it: i64):
+    %10 lit: bool = const false
+    jump b1(%10)

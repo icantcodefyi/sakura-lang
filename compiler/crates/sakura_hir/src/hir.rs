@@ -340,6 +340,7 @@ pub enum TypeDefBody {
     Refined {
         base: TypeRef,
         pred: BodyId,
+        text: PredText,
         from: Idx<Def>,
         validate: Idx<Def>,
     },
@@ -366,8 +367,17 @@ pub struct FieldDef {
     pub name: String,
     pub range: TextRange,
     pub ty: TypeRef,
-    /// `name: T where pred` (field refinement): `pred.params == [it]`.
-    pub refinement: Option<BodyId>,
+    /// `name: T where pred` (field refinement): `pred.params == [it]`, with its text.
+    pub refinement: Option<(BodyId, PredText)>,
+}
+
+/// A `where` predicate's source text on one line, as `sakura doc` shows it, and the texts of its
+/// top-level `&&` conjuncts left to right (one, the whole text, when it is not an `&&` chain).
+/// A `Violation`'s `clause` is the first conjunct that is false (design §17.292 (4)).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PredText {
+    pub text: String,
+    pub conjuncts: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

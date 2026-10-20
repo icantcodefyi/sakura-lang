@@ -327,6 +327,12 @@ this list when they land, before the beta's preparation commit.
 - `sakura fmt` no longer refuses (`V9001`) a line comment that ends in a bare `\r` followed by
   spaces or tabs, such as `//\r `: the trailing `\r` is trimmed with the spaces, where it
   would otherwise end the line before the comment's text and change it.
+- A refined type's `validate` (and `Untrusted.validate` into one) names the failing clause
+  (design §17.292 (4)): `Violation.clause` is the source text of the first false top-level
+  `&&` conjunct of the `where`, checked left to right (`Percent.validate(101)` gives
+  `"it <= 100"`), or the whole predicate when it is not a chain (`"is_relative(it)"` for
+  `Path`), in the form `sakura doc` shows; in `v0.1.0` it was always `"where"`. `Violation`
+  is now in the prelude (§17.292 (12)); `import std/core.{Violation}` stays valid.
 
 ### Security
 

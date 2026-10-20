@@ -4,7 +4,7 @@
 
 use sakura_diagnostics::FileId;
 use sakura_hir::{DefId, DefKind, ModuleId, Program};
-use sakura_syntax::{NodeOrToken, SyntaxKind as K, SyntaxNode, TextRange, TextSize};
+use sakura_syntax::{NodeOrToken, SyntaxKind as K, SyntaxNode, TextRange, TextSize, join_tokens};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -212,49 +212,6 @@ fn item_node(root: &SyntaxNode, offset: TextSize) -> Option<SyntaxNode> {
     root.covering_element(TextRange::at(offset, 1.into()))
         .ancestors()
         .find(|n| ITEM_KINDS.contains(&n.kind()))
-}
-
-/// Joins the tokens of `elements` on one line: trivia collapses to one space, except right after
-/// an opening bracket or before a closing one or a comma, and a trailing comma before a closing
-/// bracket is dropped.
-fn join_tokens(elements: impl Iterator<Item = sakura_syntax::SyntaxElement>) -> String {
-    let mut tokens = Vec::new();
-    for el in elements {
-        match el {
-            NodeOrToken::Token(t) => tokens.push(t),
-            NodeOrToken::Node(n) => tokens.extend(
-                n.descendants_with_tokens()
-                    .filter_map(NodeOrToken::into_token),
-            ),
-        }
-    }
-    let mut out = String::new();
-    let mut gap = false;
-    for (i, t) in tokens.iter().enumerate() {
-        if t.kind().is_trivia() || t.kind() == K::NEWLINE {
-            gap = !out.is_empty();
-            continue;
-        }
-        let next_closes = tokens[i + 1..]
-            .iter()
-            .find(|n| !n.kind().is_trivia() && n.kind() != K::NEWLINE)
-            .is_some_and(|n| matches!(n.kind(), K::R_PAREN | K::R_BRACKET | K::R_BRACE));
-        if t.kind() == K::COMMA && next_closes {
-            continue;
-        }
-        let after_open = out.ends_with(['(', '[']);
-        let closes = matches!(t.kind(), K::R_PAREN | K::R_BRACKET | K::COMMA);
-        if gap && !after_open && !closes {
-            out.push(' ');
-        }
-        gap = false;
-        // A `\r\n` in a string means `\n` (§2): a CRLF checkout keeps its frozen texts.
-        match t.kind() {
-            K::STRING_TEXT => out.push_str(&t.text().replace("\r\n", "\n")),
-            _ => out.push_str(t.text()),
-        }
-    }
-    out
 }
 
 /// Whole item text, normalized (test and property bodies).

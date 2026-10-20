@@ -1,6 +1,6 @@
 ending: ok
 --- stdout
 Ok(50)
-Percent where
+Percent it <= 100
 Ok("sakura-lang")
 true
