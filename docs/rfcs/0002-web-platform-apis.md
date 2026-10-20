@@ -272,7 +272,7 @@ the program at startup (rule §7), `gap` means deliberately not provided, with t
 | `self.postMessage` | none | `Worker.send(outbox, m)` | `Worker` | — | ✓ | host | ✓ |
 | `structuredClone` | value semantics | gap by design; `Schema` codec is the wire form | — | — | gap | gap | gap |
 | `MessagePort` | none | `std/channel.{Sender, Receiver}` | `Task` | — | ✓ | ✓ | ✓ |
-| `MessageChannel` | none | `Channel.with(capacity, body)` | `Task` | — | ✓ | ✓ | ✓ |
+| `MessageChannel` | none | `channel.with_channel(capacity, body)` | `Task` | — | ✓ | ✓ | ✓ |
 | `BroadcastChannel` | none | `Worker.topic(name)` in-process fan-out | `Worker` | — | ✓ | host | ✓ |
 | `ReadableStream` | `Http.read_chunk`, `Fs.read_chunk` | `std/stream.Source<T, e>` | source's row | source's | ✓ | ✓ | ✓ |
 | `WritableStream` | `Fs.write_chunk` | `std/stream.Sink<T, e>` | sink's row | sink's | ✓ | ✓ | ✓ |
@@ -680,8 +680,9 @@ hold a cursor (`V2041`, design §8.1).
 
 #### 2.9 Channels and workers (`std/channel`, `std/worker`; experimental)
 
-- `Channel.with<T, R, e>(capacity: Int, body: fn(Sender<T>, Receiver<T>) -> R ! e) -> R !
-  {Task | e}`: a bounded in-instance queue (`§16` item 13's "add bounded channels when
+- `channel.with_channel<T, R, e>(capacity: Int, body: fn(Sender<T>, Receiver<T>) -> R ! e) -> R !
+  {Task | e}` `requires capacity > 0` (named `with_channel`, as `Fs.with_file`, since `with`
+  is the handler keyword; design §17.296 (1)): a bounded in-instance queue (`§16` item 13's "add bounded channels when
   needed"). `send(tx, v) -> Result<Unit, SendError>` waits while full, fails `Closed` after
   `close`; `recv(rx) -> Option<T>` waits while empty, `None` after close and drain.
   `Sender`/`Receiver` are external scoped types (§6.3): they cannot leave the callback.
