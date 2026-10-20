@@ -417,7 +417,17 @@ WS-P20. `Map.update`'s two index walks are an arm of WS-P18's sweep, not a row (
 `emit.rs` (the in-place element update guarded by an identity test against each live element
 local, at most two), `--dump owned`. Packet: the soundness argument, the two-indices fixture,
 the `i == j` guard fixture, the differential eval run with the fact off. Delta: `nbody` (at
-least 25% on Node counts at n = 100,000).
+least 25% on Node counts at n = 100,000). **Landed below its exit; for the design lead**
+(`bench/deltas.md` row WS-P21): the ruled site (`2dfdcd58`, `opt/owned/elems.rs`) takes
+`nbody` n = 100,000 from 687.4 M to 623.6 M on Node (−9.3%), and a second reuse shape §17.273
+does not rule (`555a2d84`: `b = {..b, …}` reuses `b` once it is a moved fresh record, guarded
+by `b !== r` against the element read it started as) to 581.6 M (−15.4%, 6.08× → 5.14× hand
+JS); no other Node cell flagged. §17.273's −32% was the unguarded reuse of both records, which
+counts 485.8 M here and is sound only with `j > i`; what is left is the first rebuild of `b`
+after each read (a range fact, rejected) or the five bodies `List.map` rebuilds a step. Two
+readings of (1) are in the first commit for the review: an element put back at the index it
+was read from keeps the fact, and a use that may retain elements is allowed when nothing of the
+list is live after it (`List.map` at the end of `advance`, `energy` after `run`'s loop).
 
 ### 4.2 File ownership
 

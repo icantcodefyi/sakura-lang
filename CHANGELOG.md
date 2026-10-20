@@ -16,6 +16,15 @@ retains earlier implementation history.
   quadratic: `tokenizer` at n = 100,000 runs 90.6% fewer instructions on WASM-on-Node and
   `json_validate` at n = 30,000 75% fewer. No semantic change; the LIR's `concat` now consumes
   its left operand (an internal runtime convention, not an ABI change).
+- JS backend performance (design §17.273): a record update of a list element stored back where
+  it was read (`let c = at(bs, j)` then `bs = List.set(bs, j, Body { ..c, v: … })`) reuses the element's record when
+  the compiler proves the list owns its elements, and a record rebuilt round a loop
+  (`b = { ..b, … }`) reuses itself once it is no longer an element of a list; an identity test
+  at run time keeps every other live reference out. `sakura build --dump owned` shows each
+  reuse (`T {..b} in place`, `in place unless b is c`) and `shared(elements)` where a call
+  cannot prove the elements. By instructions retired per call on the reference Mac (Node,
+  n = 100,000), `nbody` drops 15% (6.08× → 5.14× hand-written JavaScript); no program's output
+  changes.
 - Map performance (design §17.275): on the JS backend a `Map<Int, _>` or `Set<Int>` indexes
   its keys by their own bits instead of a hash, and on every backend `Map.get` consumed at once
   by `unwrap_or`, `is_some` or `expect` (and `Map.contains`) builds no `Option`. By

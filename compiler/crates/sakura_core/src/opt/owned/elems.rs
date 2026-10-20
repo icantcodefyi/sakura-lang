@@ -57,7 +57,8 @@ pub(super) fn callback(m: &Module, ty: &Ty) -> bool {
     matches!(ty, Ty::Fn(f) if elemish(m, &f.ret))
 }
 
-/// [`Summary::elem_read`]: `fn at(bs, i) { bs[i]! }`, the list read nowhere else.
+/// [`Summary::elem_read`]: `fn at(bs, i) { Option.expect(bs[i], "…") }`, the list read nowhere
+/// else.
 pub(super) fn elem_read(m: &Module, def: &FnDef, sums: &[Summary]) -> Option<(usize, usize)> {
     if def.kind == FnKind::Const || !elemish(m, &def.ret) {
         return None;
