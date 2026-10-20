@@ -371,10 +371,19 @@ persistence (`snapshot`), `Set<Int>`, the runtime tests. Delta: `map_set:int` (a
 on Node counts at n = 100,000); `map_set`, `map_set:string`, `map_set:tuple` not regressed.
 **Landed** (`bench/deltas.md` row WS-P15): `map_set:int` Node 839.7 M → 522.5 M (−37.8%), Bun
 −19.0%; `map_set:string` and `map_set:tuple` within 1% at one location. Every key kind is
-fused (`map_get_or`; `is_some` is `map_contains`, so std's `Map.contains` too). The compare is
+fused (`map_get_or`; `is_some` is `map_contains`, so std's `Map.contains` too). The compare read
 blocked on three confirmed Node peak RSS crossings, none a count: one is the doubled call count,
-two are the fusion's fewer allocations moving V8's mark-compacts (lower post-GC heap); open for
-the design lead under §17.136.
+two are the fusion's fewer allocations moving V8's mark-compacts (lower post-GC heap).
+**Ruled (design §17.283): accepted and closed.** The crossings are a harness defect: a counted
+compare read the many-call processes' peak, whose call count the head's speed doubles; the
+one-call peaks in both files read down on every crossed cell (121 → 98, 73 → 72, 84 → 80 MB).
+Harness item (Opus, one commit before WS-P21's compare): a counted compare's RSS gate and
+§17.136's confirmation read the maximum one-call `process_counters[*].one.rss_bytes`, the
+many-call peak printed as a diagnostic only; `test_bench.py` fixtures for both shapes;
+`bench/README.md` `compare` row and peak-RSS section (the fusion's equal-k and `--trace-gc`
+readings as the second GC-phase case); the WS-P15 compare re-run over the existing files and
+the `deltas.md` verdict rewritten. `sieve`'s RSS (§17.272 (4)) is re-read the same way inside
+WS-P20. `Map.update`'s two index walks are an arm of WS-P18's sweep, not a row (§17.283 (6)).
 
 **WS-P21 — list-element ownership (Opus, after WS-P15; design §17.273).** Paths:
 `opt/owned.rs` (the *owned elements* fact on an owned list local; the builtin column
