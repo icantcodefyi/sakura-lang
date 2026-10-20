@@ -16,18 +16,22 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
   installed `v0.1.0-alpha.1`, but `v0.1.0` was installed. I recorded no alpha.1
   failures because I never ran alpha.1. Test 18 checks immediate transport failure
   on 0.1.0; the alpha.1 cut-body bug does not apply to this build.
+  - **Triage (2026-10-21, §17.294):** process, no toolchain item (§17.291 (3c)); see §17.294 RQ-10.
 - **2026-10-21: Beta steps skipped (they need a beta binary).** I did no
   1.0.0-beta.1 migration and no MIGRATION.md-driven edits; that half of "Delivery
   and release evidence" needs a beta binary. Astra's review step is also out of
   scope.
+  - **Triage (2026-10-21, §17.294):** process; the migration is per beta (§17.291 (1b)).
 - **2026-10-21: Built outside the repository.** The brief places the project at
   `dogfood/supplier-stock/` in the repository. This session had no checkout, so the
   project is at `/tmp/sakura-dogfood/supplier-stock/`.
+  - **Triage (2026-10-21, §17.294):** process; the program is now `dogfood/supplier-stock/`.
 - **2026-10-21: I could not read the setup skill.** The brief says Opus starts from
   "its setup skill". `sakura setup` without `--apply` only lists the paths it would
   create (`.claude/skills/sakura/SKILL.md`, …); it does not print their contents. I
   was limited to a dry run, so I never read the skill and relied on `sakura prompt`
   and `sakura doc`.
+  - **Triage (2026-10-21, §17.294):** bug (help text), rider in lane B's running round: `setup`'s help reads "List … and, with `--apply`, write"; the skill is readable at the site's `/skills` mirror; no `--print` flag; not blocking.
 
 ## Friction items
 
@@ -40,6 +44,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      (`std::http::Incoming`) work.
    - Got past it: ran `sakura init` first, then queried about 80 names in a loop and
      grepped the `std::…` lines out of the output to build my own index.
+   - **Triage (2026-10-21, §17.294):** duplicate of §17.292 (11), first in the beta.N queue; not blocking.
 
 2. **2026-10-21: The guide and website track main, not 0.1.0.**
    - Expected: docs that match the installed binary.
@@ -50,12 +55,14 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      `Task` has no `cancel`.
    - Got past it: checked every signature against `sakura doc` before using it, and
      read the website's "Changes since 0.1.0" page to see which items are main-only.
+   - **Triage (2026-10-21, §17.294):** duplicate of §17.292 (14): the beta's `sakura prompt` opens with its version; not blocking.
 
 3. **2026-10-21: `Url.to_string` does not take a `Url`.**
    - Expected: `Url.to_string(req.url)` to give the text of the URL.
    - Happened: `V2001 expected UrlParts, found Url`. `Url` is a refined `String`, and
      `to_string` is defined over `UrlParts`.
    - Got past it: interpolated it directly, `"{req.url}"`.
+   - **Triage (2026-10-21, §17.294):** by design: a `Url` is a `String`; one doc line on `Url` in lane B's running round; not blocking.
 
 4. **2026-10-21: A refinement's `where` cannot start a new line.**
    - Expected: `pub type Sku = String` followed by an indented `where …` line to parse,
@@ -65,6 +72,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      `Untrusted.validate` site. `sakura fmt` itself breaks long predicates across
      lines, but after `where`, at the `&&`s.
    - Got past it: put `where` on the `type` line.
+   - **Triage (2026-10-21, §17.294):** bug (grammar inconsistency with `requires`/`ensures`), beta.N (additive): a `type` item continues past newlines to `where`; lane B's queue; not blocking.
 
 5. **2026-10-21: `error` cannot be a record field name.**
    - Expected: a report field named `error`, the obvious JSON key.
@@ -72,6 +80,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      there.
    - Got past it: named the fields `failure` (supplier lines) and `input_error`
      (input-failure JSON). Keywords therefore shape the report's JSON keys.
+   - **Triage (2026-10-21, §17.294):** language gap, beta.N (additive); see §17.294 RQ-3; not blocking.
 
 6. **2026-10-21: `Violation` needs an import.**
    - Expected: `Violation` to be usable with `Untrusted.validate`, since the guide
@@ -79,6 +88,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
    - Happened: `V1003 cannot find type Violation`.
    - Got past it: the help line offered `import std/core.{Violation}`, and that
      worked.
+   - **Triage (2026-10-21, §17.294):** fixed on `main` (`3ee39c9d`, §17.292 (12)): `Violation` is in the prelude.
 
 7. **2026-10-21: `Violation.clause` is the literal `"where"`.**
    - Expected: per `sakura doc std::core::Violation`, "`clause` is the source text of
@@ -87,6 +97,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      read `Stock requires where, got 100001`.
    - Got past it: messages now say `100001 is not a valid Stock` and do not use
      `clause`. Tests assert that wording.
+   - **Triage (2026-10-21, §17.294):** fixed on `main` (`3ee39c9d`, §17.292 (4)): `clause` is the failing top-level conjunct's text.
 
 8. **2026-10-21: JSON decode messages are confusing and depend on the host.**
    - Expected: a clear message for an out-of-range integer, and the same syntax-error
@@ -99,6 +110,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      wanted-file syntax test asserts only the `wanted file at '':` prefix.
    - Open gap: extra keys in a feed record are ignored, not rejected. The brief does
      not require rejecting them, and I did not add a strict-key check.
+   - **Triage (2026-10-21, §17.294):** the `1e300` text is a bug that rides §17.292 (2) in lane A ("found a number outside the Int range" on both backends); the host syntax text is §17.292 (2) (`malformed JSON`); unknown members are ignored by design and `decode`'s comment says so; not blocking on its own.
 
 9. **2026-10-21: Handler order silently changes which `Clock` a user handler uses.**
    - Expected: a `Clock.sleep` inside my pass-through `handler Http` to use the
@@ -109,6 +121,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
      own effects to whatever is outside them where they are installed.
    - Got past it: every test installs `Clock.virtual()`, `Task.deterministic(7)` and
      `Random.seeded(42)` first (outermost).
+   - **Triage (2026-10-21, §17.294):** by design (§5.5: a handler's clauses run with the handlers outside it); two doc sentences on the effects and testing pages (lane D); no diagnostic; not blocking.
 
 10. **2026-10-21: `timeout` fires immediately under the default test clock.**
     - Expected: `timeout(5s, …)` around a scripted `Http.stream` to return the body
@@ -118,6 +131,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
       `Timeout { limit: 5000 }`. This follows from the documented semantics, but
       nothing warns about it.
     - Got past it: `Clock.virtual()` in every test that reaches `fetch_offers`.
+    - **Triage (2026-10-21, §17.294):** duplicate of §17.293 PQ-8 (doc sentence, lanes B and D); not blocking.
 
 11. **2026-10-21: `Http.scripted` cannot replay a sequence.**
     - Expected: a way to script 429 then 200.
@@ -126,6 +140,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Got past it: test 15 uses a cassette (`supplier-a-429-then-200.jsonl`);
       identical requests replay in recorded order. Test 16 (three 429s) uses
       `scripted`, which simply repeats.
+    - **Triage (2026-10-21, §17.294):** duplicate of §17.293 MT-4: `Http.sequence` is beta.N (additive), the in-order handler recipe goes on the cassettes page now; not blocking.
 
 12. **2026-10-21: On WASM, `Clock.virtual` treats a fiber blocked in `Http.read_chunk`
     as idle (a backend bug that blocks the wasm requirement).**
@@ -155,6 +170,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Got past it: **I did not.** I did not swap `Task.timeout` for a homemade race or
       drop the virtual clock: the brief requires both, and the race shows the same
       bug. The wasm half of "CI must pass on js and wasm" is reported as failing.
+    - **Triage (2026-10-21, §17.294):** duplicate of §17.293 PQ-2, beta-blocking, lane C running; the twelve-line reduction here is the fixture's shape.
 
 13. **2026-10-21: Snapshot names are checked only at run time.**
     - Expected: `expect_snapshot("healthy report", …)` to be accepted, or rejected by
@@ -162,6 +178,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Happened: `check` passed, and the test failed at run time with
       `snapshot name … must be letters, digits, '_', '-' or '.'`.
     - Got past it: renamed it to `healthy-report`.
+    - **Triage (2026-10-21, §17.294):** bug (small), beta.N: the checker reports a literal `expect_snapshot` name outside `[A-Za-z0-9_.-]`; lane B's queue; not blocking.
 
 14. **2026-10-21: Invalid UTF-8 cannot be scripted on 0.1.0.**
     - Expected: an `Http.scripted` response whose body holds invalid bytes.
@@ -170,6 +187,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Got past it: a cassette line with `response_body_base64` (bytes `FF FE`). That
       field is documented on the main-tracking website page, and 0.1.0 replays it
       through `Http.stream` as the raw bytes. Test 11 covers it.
+    - **Triage (2026-10-21, §17.294):** fixed on `main` (`Payload`/`Bytes` bodies, §17.262); `response_body_base64` replays as bytes on 0.1.0 as found.
 
 15. **2026-10-21: A scope refusal looks like any other transport failure.**
     - Expected: some typed way to tell a refused request apart.
@@ -179,6 +197,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Got past it: the adapter maps all of them to `TransportFailed { reason }`.
       Test 22 checks the reason substring and that the permissive outer handler logs
       nothing.
+    - **Triage (2026-10-21, §17.294):** by design (shape): `HttpError` gains no field (52 construction sites, every user handler, inside a closing window); the three refusal texts are promised in `Http.host`, `scoped` and `Fs`'s doc comments (lane B's running round) and listed on the capabilities page; `Http.is_refused` is beta.N if asked; not blocking.
 
 16. **2026-10-21: No latch or condition primitive for the "gated" test.**
     - Expected: test 20 asks for "a gated response". I expected a latch or condition
@@ -190,6 +209,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
       asserts that all three `start` lines come before any `release`, and that total
       virtual time is 100 ms rather than 300. The gate releases on a timer, not on a
       signal.
+    - **Triage (2026-10-21, §17.294):** by design (§8.6, §16.13: no channel in v0); the timer gate is the pattern and the testing page shows it (lane D); after 1.0 if a program needs one.
 
 17. **2026-10-21: No bounded `read_text`.**
     - Expected: a way to read at most N bytes of a file as text.
@@ -199,6 +219,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
     - Got past it: `read_wanted` reads at most 65,537 bytes, and `parse_wanted`
       decodes UTF-8 with `String.from_bytes`. Fields go through `Untrusted.validate`
       after decoding into raw records, not through `read_text`'s `Untrusted` wrapper.
+    - **Triage (2026-10-21, §17.294):** duplicate of §17.293 MT-8 (`Fs.read_up_to`, beta.N); not blocking.
 
 18. **2026-10-21: Brief items that live in the guide only, not in the CLI.**
     - Expected: CLI support for the brief's release-provenance and budget items.
@@ -206,6 +227,7 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
       repository file (`../website-gaps.md`); I could not read it without a checkout.
       The program uses only its own explicit byte limits, as the brief asks.
     - Got past it: did not consult the register.
+    - **Triage (2026-10-21, §17.294):** a brief defect, no toolchain item: briefs cite the website alone (§17.255 (2)) and carry the register's items they need.
 
 ## Design notes (not toolchain friction)
 

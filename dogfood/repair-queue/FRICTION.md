@@ -18,6 +18,7 @@ what I expected, what happened and how I got past it.
   promises to match the installed release, and no versioned docs exist for 0.1.0.
 - **Got past it:** I treated `sakura doc <symbol>` as the authority for this binary and
   used `String` bodies (`Json.decode(r.body)`).
+- **Triage (2026-10-21, §17.294):** duplicate of §17.292 (14) and §17.293 PQ-4; `Text` is `main`'s `Payload` body, the beta's `sakura prompt` opens with its version; not blocking.
 
 ## 2026-10-21: `sakura doc` cannot show a module or an effect operation
 
@@ -30,6 +31,7 @@ what I expected, what happened and how I got past it.
 - **Got past it:** I read the website stdlib page for module listings. I tested rollback
   in a scratch project: a domain `fail` inside the transaction body rolls back the earlier
   insert on js and wasm. Test 20 now covers the SQL-failure case.
+- **Triage (2026-10-21, §17.294):** duplicate of §17.292 (11), first in the beta.N queue; `transaction`'s comment already says it rolls back when the body fails and gains "with any error" in lane B's running round; not blocking.
 
 ## 2026-10-21: `error` is a keyword, so a JSON body cannot have an `error` field
 
@@ -40,6 +42,7 @@ what I expected, what happened and how I got past it.
   attribute renames a field for JSON.
 - **Got past it:** I named the field `code`. The API's error bodies are
   `{"code": "...", "message": "..."}`, and a comment in `src/api.sak` explains why.
+- **Triage (2026-10-21, §17.294):** language gap, beta.N (additive): `error` becomes a valid field name in declarations, literals, patterns and `.` access, first in lane B's queue after the gates; no raw-identifier syntax; not blocking.
 
 ## 2026-10-21: importing names from a package module does not bind the module
 
@@ -50,6 +53,7 @@ what I expected, what happened and how I got past it.
   name. Accepting that fix would have compiled into something wrong.
 - **Got past it:** I wrote two lines per module, `import repair_queue/store` and
   `import repair_queue/store.{…}`. `sakura fmt` accepts this.
+- **Triage (2026-10-21, §17.294):** duplicate of §17.293 PQ-6 (the wrong `std/retry.{policy}` fix is the bug, lane B running) and MT-11b (the import rule is by design); not blocking.
 
 ## 2026-10-21: no unused-import diagnostic
 
@@ -57,6 +61,7 @@ what I expected, what happened and how I got past it.
 - **Happened:** `check` printed `no problems` while `Decision`, `InProgress`, `CreateBody`
   and `StateBody` were imported but unused.
 - **Got past it:** I removed them by reading the import lists by hand.
+- **Triage (2026-10-21, §17.294):** tooling gap, beta.N (additive): `W1003 unused_import` with a `MachineApplicable` fix for `sakura fix`, second in the agent-DX queue; not blocking.
 
 ## 2026-10-21: no helper for a JSON response with a non-200 status
 
@@ -65,6 +70,7 @@ what I expected, what happened and how I got past it.
 - **Happened:** No such helper exists on 0.1.0.
 - **Got past it:** `Response { ..Response.ok_json(value), status: Status.from(code) }`
   inside a small `json_status` function with a `requires` range check.
+- **Triage (2026-10-21, §17.294):** API gap, beta.N (additive): `Response.status_json(code, value)` beside `ok_json`; the record-update spelling stays valid; not blocking.
 
 ## 2026-10-21: producing a synthetic cassette had no public recipe
 
@@ -86,6 +92,7 @@ what I expected, what happened and how I got past it.
     relies on it.
   - Under `--record` my filter also matched the replay-vs-router test, which failed
     because the cassette was still empty. That was my mistake, not the tool's.
+  - **Triage (2026-10-21, §17.294):** bug (over-strict guard), beta.N: `--record` with an empty `net` list runs with every host send failing closed and a note instead of exit 75; the Node warning is §17.293 MT-11f (lane C); the throwaway-test recipe goes on the cassettes page now (lane D); not blocking.
 
 ## 2026-10-21: a host-spelling mismatch or a read-only grant passes the startup check
 
@@ -102,6 +109,7 @@ what I expected, what happened and how I got past it.
   "same host spelling" rule is enforced late.
 - **Got past it:** `integration.sh` asserts the exit codes actually observed: 75, 75, 1
   and 1. It also asserts that no listener is left running.
+- **Triage (2026-10-21, §17.294):** by design: 75 is the manifest's shape check by effect; a value outside a list fails at the operation with the effect's error, and `localhost` is a different spelling from `127.0.0.1` (no name resolution); one sentence on the capabilities page (lane D); the script's 75, 75, 1, 1 is the correct record.
 
 ## 2026-10-21: no in-language way to test persistence or the socket (G03/G05)
 
@@ -121,6 +129,7 @@ what I expected, what happened and how I got past it.
   - checks the refused-grant cases.
 
   This runs on the installed binary but is not a `sakura test`.
+  - **Triage (2026-10-21, §17.294):** by design (§17.102: tests have no host grants); `integration.sh` is the pattern and the testing page gets a paragraph linking it (lane D); no `sakura test --host` mode.
 
 ## 2026-10-21: the brief's release and migration steps do not fit this session
 
@@ -131,3 +140,4 @@ what I expected, what happened and how I got past it.
 - **Got past it:** I built and tested against 0.1.0 only and recorded its exact version
   in `src/main.sak`. No migration was attempted, and none is claimed. I did not set up
   CI, so the js and wasm results are local runs only.
+- **Triage (2026-10-21, §17.294):** process, no toolchain item: §17.291 (3c) runs the programs on `v0.1.0`; Astra's `MIGRATION.md` is written against beta.1's notes when they exist.
