@@ -170,6 +170,8 @@ pub struct Sched {
     pub current: u32,
     /// The task `next` is driving (0 between tasks) and the frame id it dispatched.
     driving: u32,
+    /// The object of task `driving`, resolved once when it starts to drive (0 between tasks).
+    driving_task: u32,
     dispatched: u32,
     /// The object of frame `dispatched`, resolved once when it is dispatched (0 once popped),
     /// so the step's `call`, `after` and `pop_frame` do not resolve its id again (WS-W3).
@@ -239,6 +241,9 @@ impl Rt {
     }
 
     fn task(&self, t: u32) -> u32 {
+        if t == self.sched.driving && self.sched.driving_task != 0 {
+            return self.sched.driving_task;
+        }
         self.arena_obj(t, tag::TASK).expect("live task")
     }
 
@@ -1080,6 +1085,9 @@ impl Rt {
     pub fn task_free(&mut self, id: u32) {
         let t = self.task(id);
         assert_eq!(self.u(t, T_STATE), DONE, "task_free of a live task");
+        if id == self.sched.driving {
+            self.sched.driving_task = 0;
+        }
         while let Some(k) = self.tpop(t, T_KIDS) {
             self.task_free(k);
         }
@@ -1409,6 +1417,7 @@ impl Rt {
                 {
                     self.sched.current = id;
                     self.sched.driving = id;
+                    self.sched.driving_task = t;
                     self.set(t, T_STATE, RUNNING);
                 }
                 continue;
@@ -1440,6 +1449,7 @@ impl Rt {
 
     fn end_drive(&mut self) {
         self.sched.driving = 0;
+        self.sched.driving_task = 0;
         self.sched.current = 0;
     }
 
