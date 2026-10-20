@@ -26,6 +26,12 @@ Items are ordered by impact.
   is still safe only because `net` allows `api.anthropic.com:443` alone, so a
   redirected base URL would be refused rather than reached. I did not check
   that, because a live call is not authorised.
+- Triage (2026-10-21, Fable, design §17.293 MT-1): bug, security-relevant, still on `main`
+  (`sakura_runtime.js` line 4870 reads the process environment around `Env`, the manifest's
+  `env` grant and the test's empty environment, and the cassette key carries the URL);
+  **beta-blocking**, Breaking since 0.1.0. The read is deleted; `Llm.anthropic` always sends
+  to `api.anthropic.com` and the new `Llm.anthropic_at(base, key, model)` takes the endpoint
+  as a value (read it under your own `Env` if you want it from the environment). Lane A.
 
 ## 2026-10-21: The provider answer shape differs from `Llm.scripted`, and the error message is confusing
 
@@ -40,6 +46,11 @@ Items are ordered by impact.
   unwrapped value.
 - **How I got past it:** I read `output_config` out of a recorded request body,
   then wrapped provider answers with a `provider_answer` helper.
+- Triage (2026-10-21, Fable, design §17.293 MT-2): bug (the message) and doc gap, still on
+  `main`; rides with MT-1 in lane A. A missing `value` field fails `InvalidOutput` with
+  `expected an object with a "value" field` ("a undefined" goes), and the doc comments of
+  `anthropic` and `scripted` and the cassettes page say which shape each takes. The shapes
+  themselves stay: the API needs the wrapper and `scripted` takes the Sakura-side value.
 
 ## 2026-10-21: Refinements are not sent to the model in the JSON Schemas
 
@@ -53,6 +64,11 @@ Items are ordered by impact.
   so a live model is likelier to waste a turn.
 - **How I got past it:** I restated the limits in the fixed system
   instruction. The checks themselves come from decoding (tests 7, 8 and 11).
+- Triage (2026-10-21, Fable, design §17.293 MT-3): API gap, still on `main` (a refinement is
+  a compiled predicate with no structure the schema could carry); post-beta (beta.N,
+  additive): the compiler lowers recognisable `where` conjuncts to `maxLength`, `maxItems`,
+  `minimum`, `pattern` and the like. Now: the MCP page's "refinements included" sentence is
+  corrected, since the refinement is checked on decode, not sent to the model.
 
 ## 2026-10-21: Recording multi-turn synthetic cassettes needs a hand-written `Http` handler
 
@@ -69,6 +85,11 @@ Items are ordered by impact.
   `regenerate ...` test runs under `sakura test --record --filter regenerate`.
   A cassette must be deleted before it is regenerated, because the in-order
   handler sees only misses. This is documented in `tests/fixtures/README.md`.
+- Triage (2026-10-21, Fable, design §17.293 MT-4): API gap, still on `main`; post-beta
+  (beta.N, additive): `Http.sequence(script)` answers each entry once, in order; `scripted`
+  stays first-match because the retry recipes rely on it. Now, with the website sweep: the
+  cassettes page shows the in-order handler recipe and the delete-before-regenerate step, and
+  `agent_loop` and `llm_extract` become cookbook pages so the page links them on the site.
 
 ## 2026-10-21: `sakura doc` needs a project and cannot find effect operations
 
@@ -84,6 +105,9 @@ Items are ordered by impact.
   is in neither `sakura doc` nor the stdlib page's `std/tool` listing.
 - **How I got past it:** I ran `sakura init` first, then looked up the effect
   declarations and read the website's `/docs/stdlib.md` for module listings.
+- Triage (2026-10-21, Fable, design §17.293 MT-5): duplicate of §17.292 (11) (`sakura doc`
+  on std without a project, `Module.op` name forms, module paths as queries); bug, still on
+  `main`; post-beta, first in the beta.N queue.
 
 ## 2026-10-21: Agent loop failure tags are undocumented
 
@@ -95,6 +119,9 @@ Items are ordered by impact.
   by printing results in a probe test. The recipes show only a user error tag.
 - **How I got past it:** I added a probe test, then wrote tests 11, 12 and 22
   against the observed tags.
+- Triage (2026-10-21, Fable, design §17.293 MT-6): doc gap; the tags are `UnknownTool`
+  (payload `Null`) and `DecodeError` (payload `path`, `message`), stable; one sentence in
+  `Agent.run`'s doc comment names them. Lane B's rider (`std/agent.sak`).
 
 ## 2026-10-21: Budget estimates are not observable
 
@@ -109,6 +136,10 @@ Items are ordered by impact.
   live limits (20,000 tokens, $0.25, 4 calls) admit the three-turn fixture.
   These numbers are tied to the adapter's estimator and may change between
   releases.
+- Triage (2026-10-21, Fable, design §17.293 MT-7): doc gap. The estimate is
+  `ceil(request bytes / 4) + max_tokens` tokens at the model's price; `Llm.anthropic`'s doc
+  comment states it (with MT-1 in lane A) and the cassettes page shows a `Budget` handler
+  that logs each reservation. No API: a wrapping handler is the Sakura way to observe it.
 
 ## 2026-10-21: No bounded read API
 
@@ -120,6 +151,10 @@ Items are ordered by impact.
   `Fs.with_file(path, Mode.Read, ...)` and `Fs.read_chunk(file, limit + 1 - total)`
   and fails `TooLarge` past the limit, followed by `String.from_bytes`. That
   makes about 30 lines for a common need.
+- Triage (2026-10-21, Fable, design §17.293 MT-8): API gap, still on `main`; post-beta
+  (beta.N, additive): `Fs.read_up_to(path, limit) -> Bytes`, a std function over `with_file`
+  and `read_chunk` that fails `FsError` past the limit. `read` and `read_text` keep their
+  shape (an operation change breaks every user `Fs` handler and no fix can choose a limit).
 
 ## 2026-10-21: Log fields render as `Json` `Show`, and `Json` has no integer variant
 
@@ -133,6 +168,11 @@ Items are ordered by impact.
   would find noisy.
 - **How I got past it:** I used `Json.Number(Int.to_float(n))` and asserted
   the exact rendered strings in tests 2 and 29.
+- Triage (2026-10-21, Fable, design §17.293 MT-9): `Json.Int` is by design (one number
+  type, as JSON); the rendering is a bug, still on `main`, **beta-blocking** because its
+  text is what tests assert and so it is now or never, Breaking since 0.1.0: `Log.stderr`
+  and `Log.captured` render a field as compact JSON (`hits=3 id="drill-press-belt-slip"`);
+  `Log.json` is unchanged. Migration: tests 2 and 29 match `hits=3`. Lane A.
 
 ## 2026-10-21: `Console` cannot write to stderr
 
@@ -142,6 +182,8 @@ Items are ordered by impact.
 - **How I got past it:** The failure line goes through
   `Log.event(Level.Error, ...)`, which `sakura run` sends to stderr with an
   `Error ` prefix. The exit code still carries the failure class.
+- Triage (2026-10-21, Fable, design §17.293 MT-10): duplicate of §17.292 (9),
+  `Console.eprint`; **beta-blocking** there (an ABI MINOR on the chain). Lane A.
 
 ## 2026-10-21: Smaller API gaps and papercuts
 
@@ -168,6 +210,13 @@ Items are ordered by impact.
 - **`--record` prints a Node warning.** `sakura test --record` prints a Node
   `ExperimentalWarning: The flag --allow-net is under experimental phase` on
   stderr.
+- Triage (2026-10-21, Fable, design §17.293 MT-11): `Result.ok` is an API gap, beta.N
+  (additive `Result.ok`/`Result.err` to `Option`); the explicit imports are by design (design
+  line 705; the help lines name them); the escaped braces are §17.292's cosmetic item,
+  beta.N; the cookbook links are a doc gap fixed with MT-4 (the two examples become cookbook
+  pages); "docs track main" is §17.292 (14), the `sakura prompt` and website version sweep;
+  the Node warning is a cosmetic bug, `--disable-warning=ExperimentalWarning` beside
+  `--allow-net` in `sakura_cli/src/testing.rs`, lane C's rider.
 
 ## 2026-10-21: Environment: the `sakura` CLI is a Node script, so a broken Node breaks even `--help`
 
@@ -180,6 +229,9 @@ Items are ordered by impact.
   nothing in the error says the CLI needs Node.
 - **How I got past it:** I waited until Homebrew finished relinking Node
   (26.12.0), about a minute.
+- Triage (2026-10-21, Fable, design §17.293 MT-12): by design; the npm `sakura` is a Node
+  launcher, and the installer and the Homebrew tap ship the Rust binary, which `--help`s
+  without Node. Not a Sakura defect; no change.
 
 ## Not friction
 

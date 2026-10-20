@@ -27,6 +27,13 @@ and BRIEF.md.
   and resumption, no-HTTP invalid input, host failure translation, two isolated invocations,
   denied network) is **not implemented and not verified**. The sample runner is a CLI
   `main`, which the brief says does not count as a library consumer.
+- Triage (2026-10-21, Fable, design §17.293 PQ-1): API gap, still on `main` (the host has
+  `runMain`/`runTests` and the encoders; nothing starts a `pub fn` with host-encoded
+  arguments). In 1.0, **not a beta.1 gate**: "library entries" is a beta.N ABI MINOR after
+  phase 10 (`entries()` and `start_entry` guest exports, one public host function
+  `callEntry(host, name, args)`, one page), and this program's Node consumer is written
+  against it as 1.0 evidence. Now the backends page says plainly that no such call exists
+  yet. The owner may cut it from 1.0 instead.
 
 ## 2026-10-21: on WASM, `timeout` around `Http.stream` + `Http.read_chunk` fires at once under `Clock.virtual()` (backend parity bug)
 
@@ -56,6 +63,14 @@ and BRIEF.md.
   runs under `Clock.virtual()`. It passes on both backends because its delay comes before the
   stream. I deleted a planned case, "a 4 s delayed fetch still completes in virtual time". It
   cannot pass on WASM 0.1.0.
+- Triage (2026-10-21, Fable, design §17.293 PQ-2): bug (JS/WASM divergence), still on
+  `main`; **beta-blocking**. Root cause: the guest scheduler (`rt/src/exec.rs` `next`)
+  advances virtual time whenever no task is runnable, even while a host request such as the
+  async `http_stream_read` is in flight; the JS runtime ticks only after every resolved
+  promise. Fix: a sleeper pops only when every live request is a virtual sleeper, else the
+  guest reports `PENDING` and the host delivers its completions first. No ABI change; parity
+  fixture `virtual_timeout_stream_read.sak`. Lane C. The `Clock.host()` workaround here
+  stays until this program's migration.
 
 ## 2026-10-21: `Cli.exit` is a defect on `--target wasm` in 0.1.0
 
@@ -68,6 +83,8 @@ and BRIEF.md.
 - **How I got past it:** I didn't work around it. The runner's exit codes (2, 3, 4 and 64)
   are verified on JS only. On WASM its output matches but the exit code is 70. The library and
   its tests do not use `Cli`.
+- Triage (2026-10-21, Fable, design §17.293 PQ-3): duplicate of §17.292 (1); bug, still on
+  `main`, **beta-blocking** there (one builtin row, no ABI change). Lane A.
 
 ## 2026-10-21: the website stdlib documents `main`, not 0.1.0 (`Payload`, redirects)
 
@@ -86,6 +103,13 @@ and BRIEF.md.
   **Open question I could not check offline:** does `Http.host()` on 0.1.0 let Node's `fetch`
   follow redirects itself? If it does, a deployment's `Http.scoped` list would not be checked
   on later hops.
+- Triage (2026-10-21, Fable, design §17.293 PQ-4): fixed on `main` (`Payload` and
+  `Request.redirect` are CHANGELOG migration items 1 and 3; test 25b's 302 assertion is a
+  migration hunk, `Redirect.Manual` keeps it); the docs-track-`main` half is §17.292 (14).
+  The open question is answered: on 0.1.0 `Http.host()` fetched with `redirect: "manual"`
+  and its own loop checked every hop's `host:port` against the manifest's `net` before
+  fetching it (phase 0, design §17.262 (4)); `Http.scoped` saw only the first URL there,
+  and on `main` checks every hop in the Sakura loop (§17.263 (4)). No unchecked hop.
 
 ## 2026-10-21: `sakura doc` cannot find `Http.scoped` by the name code uses
 
@@ -99,6 +123,9 @@ and BRIEF.md.
   `"fn(List<String>) -> Handler<Http, {Http}>"` finds it.
 - **How I got past it:** I read the website's `/docs/stdlib.md`, then used
   `sakura doc std::http::scoped`.
+- Triage (2026-10-21, Fable, design §17.293 PQ-5): duplicate of §17.292 (11) (`Module.fn`
+  resolves through the mapping hole candidates already use); bug, still on `main`;
+  post-beta, first in the beta.N queue.
 
 ## 2026-10-21: importing names from a module does not bind the module, and the fix hint is wrong
 
@@ -110,6 +137,12 @@ and BRIEF.md.
   `policy`. For `carrier` it gave no hint at all.
 - **How I got past it:** I import each of my modules twice: `import parcel_quotes/policy` and
   `import parcel_quotes/policy.{…}`.
+- Triage (2026-10-21, Fable, design §17.293 PQ-6): the binding rule is by design (design
+  line 705: `import m.{…}` binds the names, `import m` the module); the hint is a bug, still
+  on `main` (`std_import_fix` never asks whether the name is one of the program's own
+  modules, so a `MachineApplicable` fix is wrong and `sakura fix` would apply it);
+  post-beta, beta.N with §17.292 (11): a package module match wins and offers
+  `import parcel_quotes/policy`. Lane B after its gates.
 
 ## 2026-10-21: `sakura prompt` points at repository files and "main", not the installed release
 
@@ -122,6 +155,10 @@ and BRIEF.md.
   in 0.1.0. `Payload` and redirect following do not (see above).
 - **How I got past it:** I checked every API with `sakura doc` and `sakura check` before
   relying on it.
+- Triage (2026-10-21, Fable, design §17.293 PQ-7): duplicate of §17.292 (14), extended: the
+  prompt (`docs/llms.txt`) opens with the binary's version and sends the reader to
+  `sakura doc` and the website where it names `compiler/std/INDEX.md`, `docs/design.md` and
+  `docs/plans/*.md`. Doc gap, with the beta's website sweep (lane D).
 
 ## 2026-10-21: the test-default `Clock.fixed` makes any `timeout` that yields fire immediately
 
@@ -133,6 +170,10 @@ and BRIEF.md.
   warn about it.
 - **How I got past it:** every test that calls `quote` installs a clock: `Clock.virtual()`, or
   `Clock.host()` for the WASM reason above.
+- Triage (2026-10-21, Fable, design §17.293 PQ-8): by design (`timeout` is a race against
+  `Clock.sleep`, which returns at once under `fixed`); doc gap: `timeout`'s doc comment
+  (lane B, `std/task.sak`) and the testing page's `Clock` default row say so and point at
+  `Clock.virtual()`.
 
 ## 2026-10-21: per-field typed errors from an `Untrusted` record need `trust`
 
@@ -145,6 +186,9 @@ and BRIEF.md.
   plain record after that. To echo a rejected weight it uses one audited
   `@trust("the weight is only echoed back in InvalidWeight, never used for pricing")`.
   `sakura audit` lists it.
+- Triage (2026-10-21, Fable, design §17.293 PQ-9): by design. A typed error that carries a
+  rejected untrusted value is the program's audited choice, which is what `@trust` with a
+  reason and `sakura audit` are for; the capabilities page shows this pattern (lane D).
 
 ## 2026-10-21: `Json.decode` errors carry host-engine text and an empty path
 
@@ -154,6 +198,9 @@ and BRIEF.md.
   this run. A wrong shape gives `expected an object, found an array`, which reads well.
 - **How I got past it:** `BadJson` passes `path` and `message` through. The sample runner
   leaves out an empty path. Tests match `BadJson { .. }` and do not check the message text.
+- Triage (2026-10-21, Fable, design §17.293 PQ-10): duplicate of §17.292 (2); bug, still on
+  `main`, **beta-blocking** there: every syntax error is `malformed JSON` on every backend,
+  no location (V8 gives none a program can rely on). Lane A.
 
 ## 2026-10-21: smaller items
 
@@ -165,3 +212,6 @@ and BRIEF.md.
 - Not friction: check, fmt and test each took about 0.2–0.3 s, with no slow tooling.
   `Http.recording` + `--record` with a scripted outer handler produced a correct request key on
   the first try, as `/docs/agents/cassettes` describes.
+- Triage (2026-10-21, Fable, design §17.293 PQ-11): `init`'s files are by design (§17.292's
+  small item); printing the derived package name is cosmetic, beta.N; the Node warning is
+  MT-11f of the maintenance-triage log, a one-line `--disable-warning` in lane C.
