@@ -1,0 +1,25 @@
+// milestone: M3
+// covers: RFC 0002 §2.8 (`Task.cancel` unwinds the fiber through its finalizers before it returns)
+// Spec: https://dom.spec.whatwg.org/#dom-abortcontroller-abort
+
+// The child waits in a nested scope; cancelling it runs that scope's finalizer (the trace's
+// `finalizer` event) before `Task.cancel` returns, and the outer scope ends normally because a
+// cancelled fiber's outcome is not a failure of its scope.
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Clock.virtual() {
+    Task.scope(fn(s) {
+      let f = Task.spawn(s, fn() {
+        Task.scope(fn(inner) {
+          Console.print("child waits")
+          Clock.sleep(Duration.seconds(5))
+          Console.print("never printed")
+        })
+      })
+      Clock.sleep(Duration.millis(10))
+      Task.cancel(f)
+      Console.print("cancelled at {Clock.monotonic().to_millis()}")
+    })
+  }
+  Console.print("done")
+}

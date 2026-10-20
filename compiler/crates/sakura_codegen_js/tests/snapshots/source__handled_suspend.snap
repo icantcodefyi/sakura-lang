@@ -7,7 +7,8 @@ export function run(n, $ctx, $k) {
   const now = $std_clock.virtual$Clock_now;
   const monotonic = $std_clock.virtual$Clock_monotonic;
   const sleep = $std_clock.virtual$Clock_sleep;
-  const r = $rt.makeHandler("std::clock::Clock", [0], [now, monotonic, sleep]);
+  const monotonic_micros = $std_clock.virtual$Clock_monotonic_micros;
+  const r = $rt.makeHandler("std::clock::Clock", [0], [now, monotonic, sleep, monotonic_micros]);
   const $ctx1 = $rt.install($ctx, r);
   const $i1 = $ctx1.h.i;
   const next = counter$Tick_next;

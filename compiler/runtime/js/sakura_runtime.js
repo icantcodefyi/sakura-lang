@@ -2514,6 +2514,9 @@ const t0 = globalThis.performance?.now() ?? Date.now();
 export function clock_monotonic_ms() {
   return Math.floor((globalThis.performance?.now() ?? Date.now()) - t0);
 }
+export function clock_monotonic_us() {
+  return Math.floor(((globalThis.performance?.now() ?? Date.now()) - t0) * 1000);
+}
 export function clock_sleep_ms(ms, _ctx, k) {
   if (ms <= 0) return ret(k, undefined);
   let cancel;
@@ -2609,7 +2612,7 @@ function uniformBelow(range, draw) {
   }
 }
 
-/** Root handler for `std::clock::Clock` (now, monotonic, sleep); times in milliseconds. */
+/** Root handler for `std::clock::Clock` (now, monotonic, sleep, monotonic_micros). */
 export function clock_host() {
   return new Handler(
     "std::clock::Clock",
@@ -2617,6 +2620,7 @@ export function clock_host() {
       (_i, _ctx, k) => ret(k, variant("std::instant::Instant", 0, [clock_now_ms()])),
       (_i, _ctx, k) => ret(k, variant("std::duration::Duration", 0, [clock_monotonic_ms()])),
       (_i, d, ctx, k) => clock_sleep_ms(d.fields[0], ctx, k),
+      (_i, _ctx, k) => ret(k, clock_monotonic_us()),
     ],
     [],
   );
@@ -3467,7 +3471,7 @@ function startFiber(body, ctx, onDone) {
   const t = newTask();
   const parent = ctx.t;
   parent.kids.add(t);
-  const fiber = { t, outcome: null, promise: null, joined: false };
+  const fiber = { t, outcome: null, promise: null, joined: false, consumed: false };
   const finish = (o) => {
     fiber.outcome = o;
     parent.kids.delete(t);
@@ -3575,10 +3579,23 @@ function taskHandler(rng, yieldNow) {
     return ret(k, fiber);
   };
   const join = (_i, f, ctx, k) => {
+    if (f.consumed) defect("D095", "join on a cancelled fiber");
     f.joined = true;
     return f.outcome !== null ? propagate(f.outcome, ctx, k) : suspend(f.promise, (o) => propagate(o, ctx, k));
   };
-  return new Handler(TASK, [scope, spawn, join, all, race, yieldNow], []);
+  // `cancel` uses the fiber up (a later `join` is D095). A running one is marked joined, so its
+  // scope ignores the `cancelled` outcome, and awaited until its finalizers have run; a finished
+  // one keeps its outcome for its scope.
+  const cancel = (_i, f, _ctx, k) => {
+    if (f.consumed) return ret(k, undefined);
+    f.consumed = true;
+    if (f.outcome !== null) return ret(k, undefined);
+    f.joined = true;
+    cancelTask(f.t);
+    return f.outcome !== null ? ret(k, undefined) : suspend(f.promise, () => ret(k, undefined));
+  };
+  const cancelled = (_i, s, _ctx, k) => ret(k, s.failed !== null);
+  return new Handler(TASK, [scope, spawn, join, all, race, yieldNow, cancel, cancelled], []);
 }
 
 /** Root `Task` handler on the host event loop: `yield_now` lets other fibers and I/O run. */

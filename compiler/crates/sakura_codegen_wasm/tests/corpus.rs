@@ -73,6 +73,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.encode`, `Json.decode` and `Json.schema` need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/json_render_indent",
+        None,
+        "`Json.render` calls `Json.encode`, which needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/cli_parse_messages",
         None,
         "`Cli.parse` needs the program's JS type descriptors, which a bare corpus module lacks",
@@ -86,6 +91,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "semantics/host_root_handlers",
         Some(Host::Wasi),
         "the root Clock, Random and Console imports are impure, which a WASI command traps (W1 note 8)",
+    ),
+    (
+        "semantics/clock_micros_monotonic",
+        Some(Host::Wasi),
+        "the root Clock imports are impure, which a WASI command traps (W1 note 8)",
     ),
 ];
 

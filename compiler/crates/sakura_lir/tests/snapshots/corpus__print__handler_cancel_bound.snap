@@ -13,45 +13,46 @@ layout 7 shape |  32b (word*, word*)
 layout 8 shape |  32b (i64, word*)
 layout 9 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::handler_cancel_bound, frame 4 slots [%9 bool, %12 bool, %15 word*, %20 word*]
+fn main#0 pub top -> unit ; main::handler_cancel_bound, frame 4 slots [%10 bool, %13 bool, %16 word*, %21 word*]
   b0():
     %0 now: ptr = closure virtual$Clock_now#8[]
     %1 monotonic: ptr = closure virtual$Clock_monotonic#10[]
     %2 sleep: ptr = closure virtual$Clock_sleep#11[]
-    %3 lit: i64 = const 0
-    %4 r: ptr = handler std::clock::Clock row 9 state(%3) clauses(%0, %1, %2)
-    %5 lit: i64 = const 7
-    %6 r: ptr = $task_deterministic(%5)
-    handle_push %4
-    handle_push %6
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#13[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 9 state(%4) clauses(%0, %1, %2, %3)
+    %6 lit: i64 = const 7
+    %7 r: ptr = $task_deterministic(%6)
+    handle_push %5
+    handle_push %7
     try_push -> b4(err, )
-    %17 f: ptr = closure main$1#3[]
-    %18 f: ptr = closure main$2#6[]
-    %19 xs: ptr = alloc list(%17, %18)
-    perform std::task::Task.all(%19) -> b5()
-  b1(%7 v: ptr) [handle, handle]:
-    %8 s: ptr = show %7
-    drop %7
-    perform std::console::Console.print(%8) -> b2()
-  b2(%9 r: unit) [handle, handle]:
-    %10 box: word = box %9
-    drop %10
-    %11 lit: ptr = const str 0
-    perform std::console::Console.print(%11) -> b3()
-  b3(%12 r: unit) [handle, handle]:
-    %13 box: word = box %12
-    %14 unbox: unit = unbox %13
-    drop %13
+    %18 f: ptr = closure main$1#3[]
+    %19 f: ptr = closure main$2#6[]
+    %20 xs: ptr = alloc list(%18, %19)
+    perform std::task::Task.all(%20) -> b5()
+  b1(%8 v: ptr) [handle, handle]:
+    %9 s: ptr = show %8
+    drop %8
+    perform std::console::Console.print(%9) -> b2()
+  b2(%10 r: unit) [handle, handle]:
+    %11 box: word = box %10
+    drop %11
+    %12 lit: ptr = const str 0
+    perform std::console::Console.print(%12) -> b3()
+  b3(%13 r: unit) [handle, handle]:
+    %14 box: word = box %13
+    %15 unbox: unit = unbox %14
+    drop %14
     handle_pop
     handle_pop
-    ret %14
-  b4(%15 e: word) [handle, handle]:
-    %16 err: ptr = alloc std::result::Result.Err(%15)
-    jump b1(%16)
-  b5(%20 r: ptr) [handle, handle, try]:
-    %21 ok: ptr = alloc std::result::Result.Ok(%20)
+    ret %15
+  b4(%16 e: word) [handle, handle]:
+    %17 err: ptr = alloc std::result::Result.Err(%16)
+    jump b1(%17)
+  b5(%21 r: ptr) [handle, handle, try]:
+    %22 ok: ptr = alloc std::result::Result.Ok(%21)
     try_pop
-    jump b1(%21)
+    jump b1(%22)
 
 fn $entry#1 top -> unit ; main::handler_cancel_bound, frame 1 slots [%1 bool]
   b0():

@@ -56,6 +56,8 @@ pub trait Host {
     fn console_read_line(&mut self) -> Option<String>;
     fn clock_now_ms(&mut self) -> i64;
     fn clock_monotonic_ms(&mut self) -> i64;
+    /// Microseconds on the same clock as `clock_monotonic_ms`.
+    fn clock_monotonic_us(&mut self) -> i64;
     /// `async` (ABI §8.2): complete `request` (`Instance::complete`) after `ms` milliseconds.
     fn clock_sleep_ms(&mut self, request: u32, ms: i64);
     /// Cancel the host side of `request` (ABI §8.5); a later completion is discarded anyway.

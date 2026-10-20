@@ -26,9 +26,12 @@ pub effect Task {
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
+  fn cancel<T>(f: Fiber<T>) -> Unit
+  fn cancelled(s: Scope) -> Bool
 }
 pub fn host() -> Handler<Task>
 pub fn deterministic(seed: Int) -> Handler<Task>
+pub fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e}
 pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 ```
 
@@ -84,6 +87,36 @@ fn total_size(chunks: List<List<Int>>) -> Int ! {Task} {
   total
 }
 ```
+
+## Timers: `setTimeout`, `setInterval` and `clearTimeout`
+
+There are no timer ids. A web timer is a fiber or a loop in a scope:
+
+- `setTimeout(work, d)` is a fiber that sleeps first, `Task.spawn(s, fn() { Clock.sleep(d); work() })`; `queueMicrotask` is `Task.spawn` without the sleep.
+- `clearTimeout` (and `AbortController.abort`) is `Task.cancel(f)`. The fiber unwinds through its finalizers before `cancel` returns, and it is used up: a later `Task.join(f)` is the defect `D095`. Cancelling a finished fiber does nothing else.
+- `setInterval(work, period)` is `every(period, body)` from `std/task`. Ticks never overlap: a tick that comes due while `body` runs is skipped, and the next call receives how many were skipped. `clearInterval` is `body` returning `false`, or `Task.cancel` of the fiber running the loop.
+- `AbortSignal.aborted` is `Task.cancelled(s)`: whether a child of `s` failed, so the scope is cancelling the others.
+- `performance.now()` and `console.time` are `Clock.monotonic_micros()`, microseconds on the monotonic clock.
+
+```sakura
+import std/task.{every}
+
+fn heartbeat() -> Unit ! {Clock, Console, Task} {
+  Task.scope(fn(s) {
+    let reminder = Task.spawn(s, fn() {
+      Clock.sleep(Duration.seconds(30))
+      Console.print("still working")
+    })
+    every(Duration.seconds(1), fn(skipped) {
+      if skipped > 0 { Console.print("{skipped} ticks skipped") }
+      Clock.monotonic().to_millis() < 10_000
+    })
+    Task.cancel(reminder)
+  })
+}
+```
+
+Under `Clock.virtual()` the ticks are reproducible, so a test can check what `heartbeat` prints without waiting.
 
 ## Handlers in child tasks
 
@@ -179,7 +212,7 @@ The first backend compiles to JavaScript with a CPS trampoline and is single-thr
 - An `Async` effect, `async`/`await`, or colored functions (design §5.6).
 - Durable workflows. They are a later official package, not part of the language (design §1.1, §11.3).
 - Actors. `spawn` and `actor` are reserved keywords (`Task.spawn` is legal because a reserved word is accepted after `.`).
-- Channels, and detached or supervised tasks.
+- Channels, detached or supervised tasks, and timer ids (`setTimeout` is a fiber, above).
 - Shared mutable state or locks in user code.
 
 ## What the compiler checks

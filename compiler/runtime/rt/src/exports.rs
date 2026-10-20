@@ -1101,6 +1101,26 @@ pub extern "C" fn rt_code_task_yield_now(
     crate::task::yield_now(cx.rt(), env, frame)
 }
 
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_cancel(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    crate::task::cancel(cx.rt(), env, frame)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_task_cancelled(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    crate::task::cancelled(cx.rt(), env, frame)
+}
+
 /// `Task.scope`'s finalizer.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_task_cancel_all(
@@ -1198,6 +1218,19 @@ pub extern "C" fn rt_code_clock_monotonic(
     let rt = cx.rt();
     let r = wrap_int(rt, b"std::duration::Duration", ms);
     ok_or_raise(rt, r)
+}
+
+/// `Clock.monotonic_micros()`: the host's monotonic clock in microseconds (ABI 1.5.0).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_clock_monotonic_micros(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    clause_args(cx.rt(), frame);
+    let us = cx.clock_monotonic_us();
+    ret(cx.rt(), us as u64)
 }
 
 /// Request kind of a host sleep (ABI §8.5).

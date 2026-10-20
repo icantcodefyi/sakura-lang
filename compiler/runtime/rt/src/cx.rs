@@ -79,6 +79,8 @@ mod wasm {
         pub fn console_read_line() -> u32;
         pub fn clock_now_ms() -> i64;
         pub fn clock_monotonic_ms() -> i64;
+        /// Microseconds on the same clock as `clock_monotonic_ms` (ABI 1.5.0).
+        pub fn clock_monotonic_us() -> i64;
         /// `async`: completes `request` after `ms` milliseconds (ABI §8.2).
         pub fn clock_sleep_ms(request: u32, ms: i64) -> u32;
         pub fn random_int(lo: i64, hi: i64) -> i64;
@@ -134,6 +136,11 @@ impl Cx<'_> {
     pub fn clock_monotonic_ms(&mut self) -> i64 {
         // SAFETY: a plain import returning a scalar.
         unsafe { wasm::clock_monotonic_ms() }
+    }
+
+    pub fn clock_monotonic_us(&mut self) -> i64 {
+        // SAFETY: a plain import returning a scalar.
+        unsafe { wasm::clock_monotonic_us() }
     }
 
     pub fn clock_sleep_ms(&mut self, request: u32, ms: i64) {
@@ -292,6 +299,10 @@ impl Cx<'_> {
 
     pub fn clock_monotonic_ms(&mut self) -> i64 {
         self.host().1.clock_monotonic_ms()
+    }
+
+    pub fn clock_monotonic_us(&mut self) -> i64 {
+        self.host().1.clock_monotonic_us()
     }
 
     pub fn clock_sleep_ms(&mut self, request: u32, ms: i64) {

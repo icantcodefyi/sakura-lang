@@ -16,6 +16,7 @@ semantics/bytes_base64_vectors: 7 funcs, 42 blocks, 9 dup, 37 drop, valid
 semantics/bytes_slice_concat: 2 funcs, 16 blocks, 5 dup, 20 drop, valid
 semantics/catch_around_row_polymorphic_call: 6 funcs, 28 blocks, 4 dup, 13 drop, valid
 semantics/cli_parse_messages: 5 funcs, 41 blocks, 3 dup, 16 drop, valid
+semantics/clock_micros_monotonic: 15 funcs, 36 blocks, 0 dup, 23 drop, valid
 semantics/closures: 8 funcs, 24 blocks, 4 dup, 19 drop, valid
 semantics/constants: 6 funcs, 16 blocks, 3 dup, 16 drop, valid
 semantics/contract_site_blame: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
@@ -53,9 +54,9 @@ semantics/defect_D021_ensures_blames_callee: 3 funcs, 9 blocks, 0 dup, 3 drop, v
 semantics/defect_D030_joined_fiber: 6 funcs, 19 blocks, 3 dup, 12 drop, valid
 semantics/defect_D030_option_expect: 3 funcs, 8 blocks, 0 dup, 4 drop, valid
 semantics/defect_D031_string_slice_boundary: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
-semantics/deterministic_clock_random: 32 funcs, 154 blocks, 10 dup, 94 drop, valid
+semantics/deterministic_clock_random: 33 funcs, 155 blocks, 10 dup, 95 drop, valid
 semantics/direct_closure_values: 6 funcs, 22 blocks, 6 dup, 21 drop, valid
-semantics/direct_higher_order: 20 funcs, 58 blocks, 10 dup, 57 drop, valid
+semantics/direct_higher_order: 21 funcs, 59 blocks, 10 dup, 58 drop, valid
 semantics/direct_inlined_bind_blame: 5 funcs, 12 blocks, 0 dup, 3 drop, valid
 semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/direct_region_restart: 19 funcs, 99 blocks, 12 dup, 80 drop, valid
@@ -82,9 +83,9 @@ semantics/fused_get_expect_owned_push: 4 funcs, 22 blocks, 2 dup, 14 drop, valid
 semantics/generic_refinement: 11 funcs, 41 blocks, 10 dup, 32 drop, valid
 semantics/generics: 16 funcs, 88 blocks, 21 dup, 46 drop, valid
 semantics/handler_callback_context: 15 funcs, 37 blocks, 2 dup, 24 drop, valid
-semantics/handler_cancel_bound: 13 funcs, 39 blocks, 0 dup, 14 drop, valid
-semantics/handler_cancel_in_loop: 14 funcs, 41 blocks, 0 dup, 14 drop, valid
-semantics/handler_cancel_twin: 15 funcs, 38 blocks, 0 dup, 20 drop, valid
+semantics/handler_cancel_bound: 14 funcs, 40 blocks, 0 dup, 15 drop, valid
+semantics/handler_cancel_in_loop: 15 funcs, 42 blocks, 0 dup, 15 drop, valid
+semantics/handler_cancel_twin: 16 funcs, 39 blocks, 0 dup, 21 drop, valid
 semantics/handler_clause_fail: 6 funcs, 17 blocks, 0 dup, 6 drop, valid
 semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 9 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid
@@ -97,6 +98,7 @@ semantics/host_root_handlers: 15 funcs, 75 blocks, 6 dup, 44 drop, valid
 semantics/if_else: 3 funcs, 20 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 21 blocks, 0 dup, 20 drop, valid
 semantics/json_codec: 12 funcs, 100 blocks, 5 dup, 76 drop, valid
+semantics/json_render_indent: 8 funcs, 117 blocks, 18 dup, 62 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 19 drop, valid
 semantics/line_endings_crlf: 5 funcs, 11 blocks, 2 dup, 23 drop, valid
 semantics/line_endings_lf: 5 funcs, 11 blocks, 2 dup, 23 drop, valid
@@ -108,9 +110,9 @@ semantics/literal_refinement_decided: 5 funcs, 23 blocks, 3 dup, 14 drop, valid
 semantics/literal_refinement_passes_once: 6 funcs, 17 blocks, 1 dup, 3 drop, valid
 semantics/literals_and_operators: 2 funcs, 12 blocks, 0 dup, 51 drop, valid
 semantics/loop_jump_past_inner_var: 2 funcs, 38 blocks, 0 dup, 18 drop, valid
-semantics/loop_resume_bound: 14 funcs, 65 blocks, 0 dup, 47 drop, valid
-semantics/loop_resume_edges: 20 funcs, 105 blocks, 0 dup, 51 drop, valid
-semantics/loop_resume_twice: 15 funcs, 48 blocks, 0 dup, 39 drop, valid
+semantics/loop_resume_bound: 15 funcs, 66 blocks, 0 dup, 48 drop, valid
+semantics/loop_resume_edges: 21 funcs, 106 blocks, 0 dup, 52 drop, valid
+semantics/loop_resume_twice: 16 funcs, 49 blocks, 0 dup, 40 drop, valid
 semantics/loops: 4 funcs, 53 blocks, 10 dup, 29 drop, valid
 semantics/match_guard_run_regions: 10 funcs, 71 blocks, 0 dup, 56 drop, valid
 semantics/match_literal_switch: 6 funcs, 141 blocks, 0 dup, 83 drop, valid
@@ -141,8 +143,8 @@ semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 17 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 24 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 18 dup, 55 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 16 drop, valid
-semantics/row_widening: 15 funcs, 29 blocks, 1 dup, 10 drop, valid
-semantics/scope_failure_after_cancelled_sibling: 13 funcs, 31 blocks, 1 dup, 14 drop, valid
+semantics/row_widening: 16 funcs, 30 blocks, 1 dup, 11 drop, valid
+semantics/scope_failure_after_cancelled_sibling: 14 funcs, 32 blocks, 1 dup, 15 drop, valid
 semantics/searchparams_order_and_repeats: 97 funcs, 1324 blocks, 215 dup, 899 drop, valid
 semantics/searchparams_plus_and_percent: 22 funcs, 172 blocks, 32 dup, 80 drop, valid
 semantics/searchparams_sort_stable: 33 funcs, 226 blocks, 50 dup, 101 drop, valid
@@ -155,6 +157,11 @@ semantics/std_collections: 32 funcs, 192 blocks, 55 dup, 149 drop, valid
 semantics/strings_and_interpolation: 3 funcs, 10 blocks, 0 dup, 17 drop, valid
 semantics/tag_eq: 13 funcs, 56 blocks, 1 dup, 94 drop, valid
 semantics/tag_eq_defect: 3 funcs, 10 blocks, 0 dup, 5 drop, valid
+semantics/task_cancel_fiber_runs_finalizers: 14 funcs, 35 blocks, 0 dup, 17 drop, valid
+semantics/task_cancel_finished_noop: 4 funcs, 13 blocks, 2 dup, 10 drop, valid
+semantics/task_cancel_then_join_is_d095: 4 funcs, 12 blocks, 1 dup, 8 drop, valid
+semantics/task_every_stops_on_scope_cancel: 16 funcs, 61 blocks, 4 dup, 31 drop, valid
+semantics/task_every_virtual_clock: 13 funcs, 50 blocks, 1 dup, 22 drop, valid
 semantics/trace_decode_then_spawn: 7 funcs, 25 blocks, 3 dup, 25 drop, valid
 semantics/tuples: 3 funcs, 9 blocks, 1 dup, 29 drop, valid
 semantics/type_aliases: 4 funcs, 9 blocks, 0 dup, 7 drop, valid

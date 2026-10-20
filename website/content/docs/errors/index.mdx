@@ -154,5 +154,5 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [D092](/docs/errors/D092) | `rc_overflow` | On the WASM runtime, an object's reference count would pass 2^32 − 1. |
 | [D093](/docs/errors/D093) | `finalizer_failed` | On the WASM runtime, a finalizer (the cleanup of `Fs.with_file` and similar) failed with an error. |
 | [D094](/docs/errors/D094) | `context_escaped` | On the WASM runtime, an operation callback was called after its handler's perform site was gone. |
-| [D095](/docs/errors/D095) | `fiber_retired` | On the WASM runtime, `join` was called on a fiber that had already been retired. |
+| [D095](/docs/errors/D095) | `fiber_retired` | `Task.join` was called on a fiber that `Task.cancel` had already used up (`join on a cancelled fiber`): a cancelled fiber has no result. |
 | [D096](/docs/errors/D096) | `heap_exhausted` | The WASM runtime's heap limit (`runtime/rt/ABI.md` §13) was reached or memory could not grow. |

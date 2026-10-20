@@ -1,0 +1,24 @@
+{"name":"a, b: [c] {d} \"e\" \\","n":1.5,"ok":true,"none":null,"list":[1,[],{}],"nested":{"deep":["x"]}}
+true true
+{
+  "name": "a, b: [c] {d} \"e\" \\",
+  "n": 1.5,
+  "ok": true,
+  "none": null,
+  "list": [
+    1,
+    [],
+    {}
+  ],
+  "nested": {
+    "deep": [
+      "x"
+    ]
+  }
+}
+[
+          1,
+          2
+]
+[]
+"plain"

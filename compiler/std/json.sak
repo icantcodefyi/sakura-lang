@@ -28,6 +28,62 @@ pub fn parse(text: String) -> Result<Json, DecodeError>
 @external(js, "sakura_runtime", "json_schema")
 pub fn schema<T: Schema>(witness: Option<T>) -> Json
 
+/// `j` as JSON text (`JSON.stringify(j, null, indent)`): compact, as `encode`, for `None` or an
+/// indent under 1; otherwise one element or member per line, nested `indent` spaces a level (at
+/// most 10), `": "` after each key, and `[]`/`{}` for empty containers. Member order, numbers
+/// and string escapes are `encode`'s.
+pub fn render(j: Json, indent: Option<Int>) -> String {
+  let text = encode(j)
+  let n = match indent {
+    Some(k) if k > 0 => Int.min(k, 10),
+    _ => 0,
+  }
+  if n == 0 { return text }
+  let pad = String.repeat(" ", n)
+  // Re-indent `encode`'s text, which has no whitespace outside strings.
+  var out: List<String> = []
+  var depth = 0
+  var in_string = false
+  var escaped = false
+  var opened = false
+  for c in String.chars(text) {
+    if in_string {
+      out = out.push(c)
+      if escaped {
+        escaped = false
+      } else if c == "\\" {
+        escaped = true
+      } else if c == "\"" {
+        in_string = false
+      }
+    } else if opened && (c == "]" || c == "\}") {
+      opened = false
+      out = out.push(c)
+    } else {
+      if opened {
+        opened = false
+        depth = depth + 1
+        out = out.push("\n" + String.repeat(pad, depth))
+      }
+      if c == "[" || c == "\{" {
+        out = out.push(c)
+        opened = true
+      } else if c == "]" || c == "\}" {
+        depth = depth - 1
+        out = out.push("\n" + String.repeat(pad, depth) + c)
+      } else if c == "," {
+        out = out.push(",\n" + String.repeat(pad, depth))
+      } else if c == ":" {
+        out = out.push(": ")
+      } else {
+        out = out.push(c)
+        in_string = c == "\""
+      }
+    }
+  }
+  List.join(out, "")
+}
+
 /// The member `key` of an object; `None` for other values or a missing key.
 pub fn get(j: Json, key: String) -> Option<Json> {
   match j {
@@ -50,4 +106,21 @@ test "get and get_string read object members" {
   expect_eq(get_string(j, "id"), Some("u1"))
   expect_eq(get_string(j, "n"), None)
   expect_eq(get(Json.Null, "id"), None)
+}
+
+test "render indents like JSON.stringify" {
+  let j = Json.Object(
+    Map.of([
+      ("a", Json.Array([Json.Number(1.0), Json.Array([]), Json.Object(Map.empty())])),
+      ("b:\"\\", Json.String("x,\\\"]\\")),
+    ]),
+  )
+  expect_eq(render(j, None), encode(j))
+  expect_eq(render(j, Some(0)), encode(j))
+  expect_eq(render(Json.Array([]), Some(2)), "[]")
+  expect_eq(render(Json.Null, Some(2)), "null")
+  expect_eq(
+    render(j, Some(2)),
+    "\{\n  \"a\": [\n    1,\n    [],\n    \{\}\n  ],\n  \"b:\\\"\\\\\": \"x,\\\\\\\"]\\\\\"\n\}",
+  )
 }

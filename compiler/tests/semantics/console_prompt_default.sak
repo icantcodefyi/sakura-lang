@@ -1,0 +1,19 @@
+// milestone: M3
+// mode: test
+// covers: RFC 0002 §2.8 (`Console.prompt`: the line, the default on an empty line, `None` at the end)
+// Spec: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-prompt
+
+test "prompt returns the line, the default for an empty line, None at the end" {
+  with Console.scripted(["Ada", "", "", "  "]) {
+    expect_eq(Console.prompt("name?", Some("anon")), Some("Ada"))
+    expect_eq(Console.prompt("name?", Some("anon")), Some("anon"))
+    expect_eq(Console.prompt("city?", None), None)
+    expect_eq(Console.prompt("note?", None), Some("  "))
+    expect_eq(Console.prompt("more?", Some("x")), None)
+  }
+  expect_output(["name? [anon]", "name? [anon]", "city?", "note?", "more? [x]"])
+}
+
+test "prompt at end of input under the captured default is None" {
+  expect_eq(Console.prompt("name?", Some("anon")), None)
+}

@@ -1,0 +1,36 @@
+// milestone: M3
+// mode: test
+// covers: RFC 0002 §2.8 (`Console.confirm`: only `y`/`yes` in any case is `true`; `Console.scripted`)
+// Spec: https://html.spec.whatwg.org/multipage/timers-and-user-prompts.html#dom-confirm
+
+test "confirm is true only for y and yes, in any case" {
+  with Console.scripted(["y", "YES", "n", "", "Yes "]) {
+    expect_eq(Console.confirm("one?"), true)
+    expect_eq(Console.confirm("two?"), true)
+    expect_eq(Console.confirm("three?"), false)
+    expect_eq(Console.confirm("four?"), false)
+    expect_eq(Console.confirm("five?"), false)
+    expect_eq(Console.confirm("six?"), false)
+  }
+  expect_output([
+    "one? [y/N]",
+    "two? [y/N]",
+    "three? [y/N]",
+    "four? [y/N]",
+    "five? [y/N]",
+    "six? [y/N]",
+  ])
+}
+
+test "confirm at end of input under the captured default is false" {
+  expect_eq(Console.confirm("go?"), false)
+  expect_output(["go? [y/N]"])
+}
+
+test "alert waits for one line" {
+  with Console.scripted(["ignored", "y"]) {
+    Console.alert("saved")
+    expect_eq(Console.confirm("again?"), true)
+  }
+  expect_output(["saved", "again? [y/N]"])
+}

@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010400;
+export const ABI_VERSION = 0x010500;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -579,6 +579,7 @@ export class Host {
         },
         clock_now_ms: () => BigInt(rt.clock_now_ms()),
         clock_monotonic_ms: () => BigInt(rt.clock_monotonic_ms()),
+        clock_monotonic_us: () => BigInt(rt.clock_monotonic_us()),
         clock_sleep_ms: (request, ms) => {
           this.inflight.set(
             request,

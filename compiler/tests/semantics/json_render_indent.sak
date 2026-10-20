@@ -1,0 +1,29 @@
+// milestone: M3
+// covers: RFC 0002 §1 (`Json.render(j, indent)`, `JSON.stringify` with an indent)
+// Spec: https://tc39.es/ecma262/#sec-json.stringify
+
+// Compact for `None` and indents under 1 (the same text as `Json.encode`), one member a line
+// otherwise, at most 10 spaces a level; empty containers stay `[]`/`{}`; strings keep their
+// escapes, including brackets, commas and colons inside them.
+import std/json.{Json}
+
+pub fn main() -> Unit ! {Console} {
+  let j = Json.Object(
+    Map.of([
+      ("name", Json.String("a, b: [c] \{d\} \"e\" \\")),
+      ("n", Json.Number(1.5)),
+      ("ok", Json.Bool(true)),
+      ("none", Json.Null),
+      ("list", Json.Array([Json.Number(1.0), Json.Array([]), Json.Object(Map.empty())])),
+      ("nested", Json.Object(Map.of([("deep", Json.Array([Json.String("x")]))]))),
+    ]),
+  )
+  Console.print(Json.render(j, None))
+  Console.print(
+    "{Json.render(j, None) == Json.encode(j)} {Json.render(j, Some(0)) == Json.encode(j)}",
+  )
+  Console.print(Json.render(j, Some(2)))
+  Console.print(Json.render(Json.Array([Json.Number(1.0), Json.Number(2.0)]), Some(20)))
+  Console.print(Json.render(Json.Array([]), Some(4)))
+  Console.print(Json.render(Json.String("plain"), Some(4)))
+}

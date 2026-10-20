@@ -12,87 +12,88 @@ layout 6 shape |  32b (i64, word*)
 layout 7 shape |  24b (i64)
 layout 8 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1 word*, %10 word*, %11 i64, %12 bool, %13 i64, %15 word*, %16 i64, %18 word*, %19 i64, %23 word*, %24 word*, %28 bool, %33 i64, %39 i64, %40 word*, %47 i64, %48 word*, %51 bool]
+fn main#0 pub top -> unit ; main::deterministic_clock_random, frame 18 slots [%1 word*, %11 word*, %12 i64, %13 bool, %14 i64, %16 word*, %17 i64, %19 word*, %20 i64, %24 word*, %25 word*, %29 bool, %34 i64, %40 i64, %41 word*, %48 i64, %49 word*, %52 bool]
   b0():
     %0 lit: i64 = const 42
     call seeded#2(%0) -> b1()
   b1(%1 r: ptr):
     handle_push %1
-    %31 lit: i64 = const 1
-    %32 lit: i64 = const 100
-    perform std::random::Random.int(%31, %32) -> b9()
+    %32 lit: i64 = const 1
+    %33 lit: i64 = const 100
+    perform std::random::Random.int(%32, %33) -> b9()
   b2(%2 v: word):
     drop %2
     %3 now: ptr = closure virtual$Clock_now#11[]
     %4 monotonic: ptr = closure virtual$Clock_monotonic#13[]
     %5 sleep: ptr = closure virtual$Clock_sleep#15[]
-    %6 lit: i64 = const 0
-    %7 r: ptr = handler std::clock::Clock row 7 state(%6) clauses(%3, %4, %5)
-    %8 $act: id = handle_push %7
-    %9 lit: i64 = const 90
-    call seconds#4(%9) -> b3(%8)
-  b3(%10 r: ptr, %11 $act: id) [handle]:
-    perform std::clock::Clock.sleep(%10) -> b4(%11)
-  b4(%12 r: unit, %13 $act: id) [handle]:
-    %14 box: word = box %12
-    drop %14
-    %17 clause: ptr = bound %13 std::clock::Clock.now
-    call virtual$Clock_now#11(%17, %13) -> b5(%13)
-  b5(%15 r: ptr, %16 $act: id) [handle]:
-    call format_iso#5(%15) -> b6(%16)
-  b6(%18 r: ptr, %19 $act: id) [handle]:
-    %20 s: ptr = show %18
-    drop %18
-    %21 lit: ptr = const str 0
-    %22 s: ptr = concat %20, %21
-    drop %20
+    %6 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#17[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler std::clock::Clock row 7 state(%7) clauses(%3, %4, %5, %6)
+    %9 $act: id = handle_push %8
+    %10 lit: i64 = const 90
+    call seconds#4(%10) -> b3(%9)
+  b3(%11 r: ptr, %12 $act: id) [handle]:
+    perform std::clock::Clock.sleep(%11) -> b4(%12)
+  b4(%13 r: unit, %14 $act: id) [handle]:
+    %15 box: word = box %13
+    drop %15
+    %18 clause: ptr = bound %14 std::clock::Clock.now
+    call virtual$Clock_now#11(%18, %14) -> b5(%14)
+  b5(%16 r: ptr, %17 $act: id) [handle]:
+    call format_iso#5(%16) -> b6(%17)
+  b6(%19 r: ptr, %20 $act: id) [handle]:
+    %21 s: ptr = show %19
+    drop %19
+    %22 lit: ptr = const str 0
+    %23 s: ptr = concat %21, %22
     drop %21
-    %25 clause: ptr = bound %19 std::clock::Clock.monotonic
-    call virtual$Clock_monotonic#13(%25, %19) -> b7(%22)
-  b7(%23 r: ptr, %24 s: ptr) [handle]:
-    %26 s: ptr = show %23
-    drop %23
-    %27 s: ptr = concat %24, %26
+    drop %22
+    %26 clause: ptr = bound %20 std::clock::Clock.monotonic
+    call virtual$Clock_monotonic#13(%26, %20) -> b7(%23)
+  b7(%24 r: ptr, %25 s: ptr) [handle]:
+    %27 s: ptr = show %24
     drop %24
-    drop %26
-    perform std::console::Console.print(%27) -> b8()
-  b8(%28 r: unit) [handle]:
-    %29 box: word = box %28
-    %30 unbox: unit = unbox %29
-    drop %29
+    %28 s: ptr = concat %25, %27
+    drop %25
+    drop %27
+    perform std::console::Console.print(%28) -> b8()
+  b8(%29 r: unit) [handle]:
+    %30 box: word = box %29
+    %31 unbox: unit = unbox %30
+    drop %30
     handle_pop
-    ret %30
-  b9(%33 r: i64) [handle]:
-    %34 s: ptr = show %33
-    %35 lit: ptr = const str 0
-    %36 s: ptr = concat %34, %35
-    drop %34
+    ret %31
+  b9(%34 r: i64) [handle]:
+    %35 s: ptr = show %34
+    %36 lit: ptr = const str 0
+    %37 s: ptr = concat %35, %36
     drop %35
-    %37 lit: i64 = const 1
-    %38 lit: i64 = const 100
-    perform std::random::Random.int(%37, %38) -> b10(%36)
-  b10(%39 r: i64, %40 s: ptr) [handle]:
-    %41 s: ptr = show %39
-    %42 s: ptr = concat %40, %41
-    drop %40
+    drop %36
+    %38 lit: i64 = const 1
+    %39 lit: i64 = const 100
+    perform std::random::Random.int(%38, %39) -> b10(%37)
+  b10(%40 r: i64, %41 s: ptr) [handle]:
+    %42 s: ptr = show %40
+    %43 s: ptr = concat %41, %42
     drop %41
-    %43 lit: ptr = const str 0
-    %44 s: ptr = concat %42, %43
     drop %42
+    %44 lit: ptr = const str 0
+    %45 s: ptr = concat %43, %44
     drop %43
-    %45 lit: i64 = const 1
-    %46 lit: i64 = const 100
-    perform std::random::Random.int(%45, %46) -> b11(%44)
-  b11(%47 r: i64, %48 s: ptr) [handle]:
-    %49 s: ptr = show %47
-    %50 s: ptr = concat %48, %49
-    drop %48
+    drop %44
+    %46 lit: i64 = const 1
+    %47 lit: i64 = const 100
+    perform std::random::Random.int(%46, %47) -> b11(%45)
+  b11(%48 r: i64, %49 s: ptr) [handle]:
+    %50 s: ptr = show %48
+    %51 s: ptr = concat %49, %50
     drop %49
-    perform std::console::Console.print(%50) -> b12()
-  b12(%51 r: unit) [handle]:
-    %52 box: word = box %51
+    drop %50
+    perform std::console::Console.print(%51) -> b12()
+  b12(%52 r: unit) [handle]:
+    %53 box: word = box %52
     handle_pop
-    jump b2(%52)
+    jump b2(%53)
 
 fn $entry#1 top -> unit ; main::deterministic_clock_random, frame 1 slots [%1 bool]
   b0():

@@ -13,42 +13,43 @@ layout 7 shape |  32b (word*, word*)
 layout 8 shape |  32b (i64, word*)
 layout 9 shape |  24b (i64)
 
-fn main#0 pub top -> unit ; main::scope_failure_after_cancelled_sibling, frame 6 slots [%7 bool, %10 word*, %11 i64, %12 word*, %14 i64, %20 word*]
+fn main#0 pub top -> unit ; main::scope_failure_after_cancelled_sibling, frame 6 slots [%8 bool, %11 word*, %12 i64, %13 word*, %15 i64, %21 word*]
   b0():
     %0 now: ptr = closure virtual$Clock_now#9[]
     %1 monotonic: ptr = closure virtual$Clock_monotonic#11[]
     %2 sleep: ptr = closure virtual$Clock_sleep#12[]
-    %3 lit: i64 = const 0
-    %4 r: ptr = handler std::clock::Clock row 9 state(%3) clauses(%0, %1, %2)
-    %5 $act: id = handle_push %4
-    try_push -> b3(err, %5)
-    %18 f: ptr = closure main$1#4[]
-    %19 callback: ptr = callback %18
-    perform std::task::Task.scope(%19) -> b6()
-  b1(%6 v: ptr) [handle]:
-    perform std::console::Console.print(%6) -> b2()
-  b2(%7 r: unit) [handle]:
-    %8 box: word = box %7
-    %9 unbox: unit = unbox %8
-    drop %8
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#13[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 9 state(%4) clauses(%0, %1, %2, %3)
+    %6 $act: id = handle_push %5
+    try_push -> b3(err, %6)
+    %19 f: ptr = closure main$1#4[]
+    %20 callback: ptr = callback %19
+    perform std::task::Task.scope(%20) -> b6()
+  b1(%7 v: ptr) [handle]:
+    perform std::console::Console.print(%7) -> b2()
+  b2(%8 r: unit) [handle]:
+    %9 box: word = box %8
+    %10 unbox: unit = unbox %9
+    drop %9
     handle_pop
-    ret %9
-  b3(%10 e: word, %11 $act: id) [handle]:
-    drop %10
-    %13 clause: ptr = bound %11 std::clock::Clock.monotonic
-    call virtual$Clock_monotonic#11(%13, %11) -> b4()
-  b4(%12 r: ptr) [handle]:
-    call to_millis#3(%12) -> b5()
-  b5(%14 r: i64) [handle]:
-    %15 s: ptr = show %14
-    %16 lit: ptr = const str 0
-    %17 s: ptr = concat %16, %15
-    drop %15
+    ret %10
+  b3(%11 e: word, %12 $act: id) [handle]:
+    drop %11
+    %14 clause: ptr = bound %12 std::clock::Clock.monotonic
+    call virtual$Clock_monotonic#11(%14, %12) -> b4()
+  b4(%13 r: ptr) [handle]:
+    call to_millis#3(%13) -> b5()
+  b5(%15 r: i64) [handle]:
+    %16 s: ptr = show %15
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %17, %16
     drop %16
-    jump b1(%17)
-  b6(%20 r: word) [handle, try]:
+    drop %17
+    jump b1(%18)
+  b6(%21 r: word) [handle, try]:
     try_pop
-    jump b1(%20)
+    jump b1(%21)
 
 fn $entry#1 top -> unit ; main::scope_failure_after_cancelled_sibling, frame 1 slots [%2 bool]
   b0():

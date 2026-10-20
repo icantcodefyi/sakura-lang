@@ -168,12 +168,12 @@ fn apply#3 top -> i64 ; main::direct_higher_order, frame 3 slots [%0 word*, %1 i
 
 fn twice_each#5 top -> ptr ; main::direct_higher_order, frame 3 slots [%0 word*, %1 word*, %3 word*]
   b0(%0 xs: ptr, %1 f: ptr):
-    %2 f: ptr = closure twice_each$1#19[%1]
+    %2 f: ptr = closure twice_each$1#20[%1]
     call map#4(%0, %2) -> b1()
   b1(%3 r: ptr):
     ret %3
 
-fn main$2#6 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %8 word*, %9 i64, %10 bool, %11 i64]
+fn main$2#6 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %9 word*, %10 i64, %11 bool, %12 i64]
   b0(%0 env: ptr, %1 x: word):
     drop %0
     %2 unbox: i64 = unbox %1
@@ -181,22 +181,23 @@ fn main$2#6 lambda -> word ; main::direct_higher_order, captures [], frame 6 slo
     %3 now: ptr = closure virtual$Clock_now#14[]
     %4 monotonic: ptr = closure virtual$Clock_monotonic#16[]
     %5 sleep: ptr = closure virtual$Clock_sleep#17[]
-    %6 lit: i64 = const 0
-    %7 r: ptr = handler std::clock::Clock row 7 state(%6) clauses(%3, %4, %5)
-    handle_push %7
+    %6 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#19[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler std::clock::Clock row 7 state(%7) clauses(%3, %4, %5, %6)
+    handle_push %8
     call millis#8(%2) -> b1(%2)
-  b1(%8 r: ptr, %9 x: i64) [handle]:
-    perform std::clock::Clock.sleep(%8) -> b2(%9)
-  b2(%10 r: unit, %11 x: i64) [handle]:
-    %12 box: word = box %10
-    drop %12
-    %13 lit: i64 = const 10
-    %14 t: i64 = intmul %11, %13
-    %15 box: word = box %14
+  b1(%9 r: ptr, %10 x: i64) [handle]:
+    perform std::clock::Clock.sleep(%9) -> b2(%10)
+  b2(%11 r: unit, %12 x: i64) [handle]:
+    %13 box: word = box %11
+    drop %13
+    %14 lit: i64 = const 10
+    %15 t: i64 = intmul %12, %14
+    %16 box: word = box %15
     handle_pop
-    ret %15
+    ret %16
 
-fn main$3#9 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %9 word*, %10 i64, %11 bool, %12 i64]
+fn main$3#9 lambda -> word ; main::direct_higher_order, captures [], frame 6 slots [%0 word*, %1 word*, %10 word*, %11 i64, %12 bool, %13 i64]
   b0(%0 env: ptr, %1 y: word):
     drop %0
     %2 unbox: i64 = unbox %1
@@ -204,19 +205,20 @@ fn main$3#9 lambda -> word ; main::direct_higher_order, captures [], frame 6 slo
     %3 now: ptr = closure virtual$Clock_now#14[]
     %4 monotonic: ptr = closure virtual$Clock_monotonic#16[]
     %5 sleep: ptr = closure virtual$Clock_sleep#17[]
-    %6 lit: i64 = const 0
-    %7 r: ptr = handler std::clock::Clock row 7 state(%6) clauses(%3, %4, %5)
-    handle_push %7
-    %8 lit: i64 = const 1
-    call millis#8(%8) -> b1(%2)
-  b1(%9 r: ptr, %10 y: i64) [handle]:
-    perform std::clock::Clock.sleep(%9) -> b2(%10)
-  b2(%11 r: unit, %12 y: i64) [handle]:
-    %13 box: word = box %11
-    drop %13
+    %6 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#19[]
+    %7 lit: i64 = const 0
+    %8 r: ptr = handler std::clock::Clock row 7 state(%7) clauses(%3, %4, %5, %6)
+    handle_push %8
+    %9 lit: i64 = const 1
+    call millis#8(%9) -> b1(%2)
+  b1(%10 r: ptr, %11 y: i64) [handle]:
+    perform std::clock::Clock.sleep(%10) -> b2(%11)
+  b2(%12 r: unit, %13 y: i64) [handle]:
     %14 box: word = box %12
+    drop %14
+    %15 box: word = box %13
     handle_pop
-    ret %14
+    ret %15
 
 fn main$4#10 lambda -> word ; main::direct_higher_order, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
   b0(%0 env: ptr, %1 h: word):
@@ -264,7 +266,7 @@ fn down$1#13 lambda -> word ; main::direct_higher_order, captures [], frame 3 sl
     %4 box: word = box %3
     ret %4
 
-fn twice_each$1#19 lambda -> word ; main::direct_higher_order, captures [word*], frame 5 slots [%0 word*, %1 word*, %5 word*, %6 word*, %9 word*]
+fn twice_each$1#20 lambda -> word ; main::direct_higher_order, captures [word*], frame 5 slots [%0 word*, %1 word*, %5 word*, %6 word*, %9 word*]
   b0(%0 env: ptr, %1 x: word):
     %2 f: ptr = capture %0.0
     drop %0

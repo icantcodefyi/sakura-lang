@@ -1330,6 +1330,7 @@ fn virt() -> Handler<Clock> {
     fn now() { Instant.from_unix_millis(elapsed) }
     fn monotonic() { Duration.millis(elapsed) }
     fn sleep(d) { elapsed = clock_virtual_sleep(elapsed, d.to_millis()) }
+    fn monotonic_micros() { elapsed * 1000 }
   }
 }
 fn nap(ms: Int, name: String) -> Unit ! {Clock, Console} {

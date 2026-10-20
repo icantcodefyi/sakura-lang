@@ -189,7 +189,7 @@ Runtime defects are not diagnostics from `sakura check`. They terminate the task
 | `D030` | `Option.expect` on `None` |
 | `D031` | `String.slice` off a character boundary |
 | `D090`, `D091` | runtime-internal error, host operation failed |
-| `D092`–`D095` | WASM runtime limits: a reference count overflow, a failed finalizer, a callback after its handler ended, a join on a retired fiber |
+| `D092`–`D095` | WASM runtime limits: a reference count overflow, a failed finalizer, a callback after its handler ended, a join on a retired fiber (`D095` is also a `Task.join` after `Task.cancel`, on every backend) |
 | `D096` | the WASM heap limit was reached or memory could not grow |
 
 ## Exit codes

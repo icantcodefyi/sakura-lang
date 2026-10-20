@@ -19,3 +19,61 @@ pub fn captured() -> Handler<Console, {Test}> {
     fn read_line() { None }
   }
 }
+
+/// A test handler whose input is `lines`, one per `read_line`, then end of input; printed lines
+/// go to the test's captured output, as under `captured()`.
+pub fn scripted(lines: List<String>) -> Handler<Console, {Test}> {
+  handler Console {
+    var next = 0
+    fn print(line) { Test.output(line) }
+    fn read_line() {
+      next = next + 1
+      List.get(lines, next - 1)
+    }
+  }
+}
+
+/// Prints `message` and waits for a line, which it discards (`alert`); end of input also
+/// returns.
+pub fn alert(message: String) -> Unit ! {Console} {
+  Console.print(message)
+  let _ = Console.read_line()
+}
+
+/// Prints `message [y/N]` and reads a line (`confirm`): `true` only for `y` or `yes` in any
+/// case; any other line, an empty one and end of input are `false`.
+pub fn confirm(message: String) -> Bool ! {Console} {
+  Console.print("{message} [y/N]")
+  match Console.read_line() {
+    Some(line) => {
+      let answer = String.to_lower(line)
+      answer == "y" || answer == "yes"
+    },
+    None => false,
+  }
+}
+
+/// Prints `message`, followed by ` [default]` when there is one, and reads a line (`prompt`):
+/// the line, `default` for an empty line, `None` at end of input.
+pub fn prompt(message: String, default: Option<String>) -> Option<String> ! {Console} {
+  match default {
+    Some(d) => Console.print("{message} [{d}]"),
+    None => Console.print(message),
+  }
+  match Console.read_line() {
+    Some("") => default,
+    line => line,
+  }
+}
+
+test "scripted input answers the dialogs in order" {
+  with scripted(["", "YES", "Ada", ""]) {
+    alert("ready?")
+    expect_eq(confirm("go?"), true)
+    expect_eq(prompt("name?", None), Some("Ada"))
+    expect_eq(prompt("city?", Some("Oslo")), Some("Oslo"))
+    expect_eq(confirm("again?"), false)
+    expect_eq(prompt("more?", Some("x")), None)
+  }
+  expect_output(["ready?", "go? [y/N]", "name?", "city? [Oslo]", "again? [y/N]", "more? [x]"])
+}

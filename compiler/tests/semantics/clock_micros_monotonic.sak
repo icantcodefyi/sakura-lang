@@ -1,0 +1,18 @@
+// milestone: M3
+// covers: RFC 0002 §2.8 (`Clock.monotonic_micros`: never goes backwards; fixed 0; virtual from ms)
+// Spec: https://w3c.github.io/hr-time/#dom-performance-now
+
+pub fn main() -> Unit ! {Clock, Console} {
+  let a = Clock.monotonic_micros()
+  let ms = Clock.monotonic().to_millis()
+  let b = Clock.monotonic_micros()
+  Console.print("non-decreasing: {a <= b}")
+  Console.print("same clock as monotonic: {b >= ms * 1000}")
+  with Clock.fixed(Instant.from_unix_millis(5)) {
+    Console.print("fixed: {Clock.monotonic_micros()}")
+  }
+  with Clock.virtual() {
+    Clock.sleep(Duration.millis(7))
+    Console.print("virtual: {Clock.monotonic_micros()}")
+  }
+}

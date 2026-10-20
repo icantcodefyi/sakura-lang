@@ -11,6 +11,9 @@ pub effect Clock {
   fn monotonic() -> Duration
   /// Suspends for `d` (returns at once for `d <= 0`).
   fn sleep(d: Duration) -> Unit
+  /// Whole microseconds since an arbitrary origin; never goes backwards (`performance.now()`).
+  /// For timing work; differences are meaningful, the value itself is not.
+  fn monotonic_micros() -> Int
 }
 
 /// Root handler over the host clock and timers.
@@ -24,11 +27,13 @@ pub fn fixed(at: Instant) -> Handler<Clock> {
     fn now() { at }
     fn monotonic() { Duration.millis(0) }
     fn sleep(d) {}
+    fn monotonic_micros() { 0 }
   }
 }
 
 /// Virtual time starting at the Unix epoch: `sleep(d)` parks the task until nothing else can
-/// run, then advances `now` and `monotonic` by `d`; sleepers wake in virtual-time order. Use it
+/// run, then advances `now`, `monotonic` and `monotonic_micros` by
+/// `d`; sleepers wake in virtual-time order. Use it
 /// to test timeouts and backoff.
 pub fn virtual() -> Handler<Clock> {
   handler Clock {
@@ -36,6 +41,7 @@ pub fn virtual() -> Handler<Clock> {
     fn now() { Instant.from_unix_millis(elapsed) }
     fn monotonic() { Duration.millis(elapsed) }
     fn sleep(d) { elapsed = clock_virtual_sleep(elapsed, d.to_millis()) }
+    fn monotonic_micros() { elapsed * 1000 }
   }
 }
 
@@ -47,9 +53,9 @@ test "fixed clock never moves" {
   let at = Instant.from_unix_millis(42)
   let seen = with fixed(at) {
     Clock.sleep(Duration.seconds(10))
-    (Clock.now(), Clock.monotonic())
+    (Clock.now(), Clock.monotonic(), Clock.monotonic_micros())
   }
-  expect_eq(seen, (at, Duration.millis(0)))
+  expect_eq(seen, (at, Duration.millis(0), 0))
 }
 
 test "virtual clock advances only by sleeping" {
@@ -57,10 +63,10 @@ test "virtual clock advances only by sleeping" {
     let before = Clock.now()
     Clock.sleep(Duration.seconds(3))
     Clock.sleep(Duration.millis(-50))
-    (before, Clock.now(), Clock.monotonic())
+    (before, Clock.now(), Clock.monotonic(), Clock.monotonic_micros())
   }
   expect_eq(
     seen,
-    (Instant.from_unix_millis(0), Instant.from_unix_millis(3000), Duration.millis(3000)),
+    (Instant.from_unix_millis(0), Instant.from_unix_millis(3000), Duration.millis(3000), 3_000_000),
   )
 }

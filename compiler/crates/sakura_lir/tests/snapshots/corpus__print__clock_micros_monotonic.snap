@@ -1,0 +1,110 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::instant::Instant | Instant 24b (i64)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  16b ()
+layout 7 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::clock_micros_monotonic, frame 21 slots [%0 i64, %1 word*, %2 i64, %3 i64, %4 i64, %5 i64, %6 i64, %7 i64, %12 bool, %13 i64, %14 i64, %22 bool, %25 word*, %40 word*, %41 i64, %42 bool, %43 i64, %45 i64, %50 bool, %54 i64, %59 bool]
+  b0():
+    perform std::clock::Clock.monotonic_micros() -> b1()
+  b1(%0 r: i64):
+    perform std::clock::Clock.monotonic() -> b2(%0)
+  b2(%1 r: ptr, %2 r: i64):
+    call to_millis#2(%1) -> b3(%2)
+  b3(%3 r: i64, %4 r: i64):
+    perform std::clock::Clock.monotonic_micros() -> b4(%4, %3)
+  b4(%5 r: i64, %6 r: i64, %7 r: i64):
+    %8 t: bool = le.int %6, %5
+    %9 s: ptr = show %8
+    %10 lit: ptr = const str 0
+    %11 s: ptr = concat %10, %9
+    drop %9
+    drop %10
+    perform std::console::Console.print(%11) -> b5(%7, %5)
+  b5(%12 r: unit, %13 r: i64, %14 r: i64):
+    %15 box: word = box %12
+    drop %15
+    %16 lit: i64 = const 1000
+    %17 t: i64 = intmul %13, %16
+    %18 t: bool = ge.int %14, %17
+    %19 s: ptr = show %18
+    %20 lit: ptr = const str 1
+    %21 s: ptr = concat %20, %19
+    drop %19
+    drop %20
+    perform std::console::Console.print(%21) -> b6()
+  b6(%22 r: unit):
+    %23 box: word = box %22
+    drop %23
+    %24 lit: i64 = const 5
+    call from_unix_millis#3(%24) -> b7()
+  b7(%25 r: ptr):
+    %26 now: ptr = closure fixed$Clock_now#11[%25]
+    %27 monotonic: ptr = closure fixed$Clock_monotonic#12[]
+    %28 sleep: ptr = closure fixed$Clock_sleep#13[]
+    %29 monotonic_micros: ptr = closure fixed$Clock_monotonic_micros#14[]
+    %30 r: ptr = handler std::clock::Clock row 6 state() clauses(%26, %27, %28, %29)
+    %53 $act: id = handle_push %30
+    %55 clause: ptr = bound %53 std::clock::Clock.monotonic_micros
+    call fixed$Clock_monotonic_micros#14(%55, %53) -> b13()
+  b8(%31 v: word):
+    drop %31
+    %32 now: ptr = closure virtual$Clock_now#7[]
+    %33 monotonic: ptr = closure virtual$Clock_monotonic#8[]
+    %34 sleep: ptr = closure virtual$Clock_sleep#9[]
+    %35 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#10[]
+    %36 lit: i64 = const 0
+    %37 r: ptr = handler std::clock::Clock row 7 state(%36) clauses(%32, %33, %34, %35)
+    %38 $act: id = handle_push %37
+    %39 lit: i64 = const 7
+    call millis#6(%39) -> b9(%38)
+  b9(%40 r: ptr, %41 $act: id) [handle]:
+    perform std::clock::Clock.sleep(%40) -> b10(%41)
+  b10(%42 r: unit, %43 $act: id) [handle]:
+    %44 box: word = box %42
+    drop %44
+    %46 clause: ptr = bound %43 std::clock::Clock.monotonic_micros
+    call virtual$Clock_monotonic_micros#10(%46, %43) -> b11()
+  b11(%45 r: i64) [handle]:
+    %47 s: ptr = show %45
+    %48 lit: ptr = const str 2
+    %49 s: ptr = concat %48, %47
+    drop %47
+    drop %48
+    perform std::console::Console.print(%49) -> b12()
+  b12(%50 r: unit) [handle]:
+    %51 box: word = box %50
+    %52 unbox: unit = unbox %51
+    drop %51
+    handle_pop
+    ret %52
+  b13(%54 r: i64) [handle]:
+    %56 s: ptr = show %54
+    %57 lit: ptr = const str 3
+    %58 s: ptr = concat %57, %56
+    drop %56
+    drop %57
+    perform std::console::Console.print(%58) -> b14()
+  b14(%59 r: unit) [handle]:
+    %60 box: word = box %59
+    handle_pop
+    jump b8(%60)
+
+fn $entry#1 top -> unit ; main::clock_micros_monotonic, frame 1 slots [%2 bool]
+  b0():
+    %0 clock: ptr = $clock_host()
+    handle_push %0
+    %1 console: ptr = $console_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2

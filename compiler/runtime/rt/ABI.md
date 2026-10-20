@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.4.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.5.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -13,8 +13,9 @@ per-instance ceiling and a cut body as `Err` (design §17.209), and 1.2.2 the ro
 the copy budget of a served request (design §17.212, §17.216 (4)), 1.2.3 the failure modes of a
 served request (design §17.223), 1.2.4 bound performs and `with` regions in direct twins
 (§5, §6.3; design §17.211 (1)), 1.2.5 closure twins (§5; design §17.211 (2)), 1.3.0 the reuse
-and borrow counters (§10; design §17.176 (1)) and 1.4.0 the native profile (§1b; design
-§17.169). Owned by
+and borrow counters (§10; design §17.176 (1)), 1.4.0 the native profile (§1b; design
+§17.169) and 1.5.0 the `clock_monotonic_us` import and `Task.cancel`'s fiber rule (§7, §8.2;
+design §17.262, RFC 0002 §2.8). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -157,6 +158,14 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `D090` ("the host could not link the module"). A module without the section (`sakura build
   --strip`) is held to `sakura_abi_version` after instantiation, as before. No byte, import or
   export changes, so `sakura_abi_version` stays `0x010400`.
+- 1.5.0 (MINOR, design §17.262 (3), RFC 0002 §2.8, plan `web-apis.md` phase 4b) adds the
+  `sync` import `clock_monotonic_us() -> i64` (§8.2; `Clock.monotonic_micros()` on
+  `Clock.host()`) and states `Task.cancel` and `Task.cancelled` (§7.1, §7.3, §7.4): `cancel`
+  clears the task id in the `Fiber` handle, so a later `join` is `D095`, and sets the task
+  record's `joined` flag on a running fiber, so its scope ignores the `cancelled` outcome.
+  Nothing shipped changes, but a module that imports `clock_monotonic_us` needs a host that
+  has it, so a 1.4 host refuses a 1.5 module by the MINOR rule. `sakura_abi_version` is
+  `0x010500`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -641,7 +650,7 @@ frames/activations/finalizers/requests).** All other links are non-owning genera
 | finalizer entry → task | non-owning id | |
 | task → child task ids (scope) | owning of the **slot**, not of the child's values | a scope ends only after every child has an outcome (§7.4) |
 | child → parent task | non-owning id | completion notifies by id |
-| `Fiber<T>` value → task | non-owning id + generation | `join` on a retired id is `D095 fiber_retired` (unreachable in checked programs; defence) |
+| `Fiber<T>` value → task | non-owning id + generation | `join` on a retired id is `D095 fiber_retired` (unreachable in checked programs; defence); `Task.cancel` (1.5.0) sets the handle's id to 0, so a later `join` is `D095` with the message `join on a cancelled fiber`, and a later `cancel` does nothing |
 | request → continuation frame | owning | moved back to the task on completion or dropped on cancel |
 | host completion → request | id + generation + task epoch | §8.5 |
 | `Handle` value → host table slot | owning of the slot (retire on drop) | §8.4 |
@@ -659,6 +668,8 @@ escape rules make it unreachable).
 
 `epoch: u32` (incremented on cancel, §8.5), `state` (runnable, waiting, done), `outcome`
 (§6.5), `frame` (current frame id), `catch_top`, `fin_top` (stack tops), `cancelled: u8`,
+`joined` (set by `Task.join`, and by `Task.cancel` on a running fiber, 1.5.0: a scope's end
+skips a joined member's outcome),
 `parent` (id), `children` (small owned list of ids), `request` (pending request id or 0),
 `seed_state` (for `Task.deterministic`, §11). The task owns its frame, catch, finalizer and
 destruction stacks (arena arrays).
@@ -674,6 +685,11 @@ dropped without running user code; a running task stops at its next `perform` (w
 returns no frame) or suspension; "before `cancel` returns" is reached by the canceller joining
 the task (design §17.129 P12). A scope ends only when every child
 has an outcome and every request of the scope's tasks is terminal (research/09 §4).
+`Task.cancel(f)` (1.5.0, RFC 0002 §2.8, as JS) uses the fiber up (§7.1); on a running fiber
+it sets `joined`, calls `cancel(task)` and joins the task, so it returns after the fiber's
+finalizers have run; on a finished fiber it does nothing else, and the outcome stays for the
+scope. `Task.cancelled(s)` is whether the scope's group is decided, that is whether a member
+failed and the others are being cancelled.
 
 ### 7.5 Required cycle and lifetime tests (M4-RT gate; from research/09 §4)
 
@@ -768,7 +784,8 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
 - Runtime (M4-RT): `retire_handle(kind, slot, generation)`, `abort(request)`,
   `trace_enabled() -> i32`, `trace_write(ptr, len)` (one §17.80 trace line).
 - Console, clock, random, log (M4-WASM): `console_print(ptr, len)`, `console_read_line() ->
-  Bytes` (0 at the end), `clock_now_ms() -> i64`, `clock_monotonic_ms() -> i64`, `async`
+  Bytes` (0 at the end), `clock_now_ms() -> i64`, `clock_monotonic_ms() -> i64`,
+  `clock_monotonic_us() -> i64` (1.5.0, the same clock in microseconds), `async`
   `clock_sleep_ms(request, ms: i64)`, `random_int(lo: i64, hi: i64) -> i64`, `random_float() ->
   f64`, `random_bytes(n: i64) -> Bytes`, `random_uuid() -> Bytes`, `log_write(ptr, len)`,
   `file_close(id: i64)`.
@@ -1121,8 +1138,10 @@ it to the list).
 To be registered in `sakura_diagnostics::codes` by REQUESTS entry (never constructed before
 the runtime exists): `V8003 abi_version_mismatch` (driver), `D092 rc_overflow`, `D093
 finalizer_failed`, `D094 context_escaped`, `D095 fiber_retired`, `D096 heap_exhausted`. `D094`
-and `D095` are defence in depth: unreachable from a program that passes the WS1 escape check,
-tested only through the runtime's own unit tests with hand-built frames.
+is defence in depth: unreachable from a program that passes the WS1 escape check, tested only
+through the runtime's own unit tests with hand-built frames. `D095` was too until 1.5.0; since
+then `join` after `Task.cancel` reaches it on every backend (§7.1, fixture
+`task_cancel_then_join_is_d095`), and a retired id stays defence in depth.
 
 ## 14. Conformance fixtures this document owns
 

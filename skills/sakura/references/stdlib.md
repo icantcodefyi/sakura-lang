@@ -43,9 +43,11 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 - **Indexing never defects:** `List.get`/`xs[i]`, `Bytes.get`, `Map.get` return `Option`;
   `List.slice` and `String.slice` clamp their bounds.
 - **Insertion order** for `Map`/`Set` iteration on every backend.
-- **Time** is whole milliseconds (`Duration`, `Instant` since the Unix epoch, UTC).
+- **Time** is whole milliseconds (`Duration`, `Instant` since the Unix epoch, UTC);
+  `Clock.monotonic_micros()` is the one microsecond reading, for timing work.
 - **Test defaults** (§5.8): `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)`,
-  `Env.of(Map.empty())`, `Console.captured()`, `Log.captured()`. Expectations record a
+  `Env.of(Map.empty())`, `Console.captured()` (`Console.scripted(lines)` scripts a test's
+  input), `Log.captured()`. Expectations record a
   failure and let the test continue; the runner fails the test at the end.
 - **Show format** assumed by the std tests and the example outputs (pending a spec, see the
   design questions): valid Sakura Lang expression syntax — `[1, 2]`, `(1, "a")`, `Some("x")`,
@@ -67,8 +69,8 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Read headers, build or parse a form | `Headers.of`, `get`, `entries`; `Form.encode_multipart`, `parse_multipart` with `FormLimits`; `Blob`, `FileData` |
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
-| Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map` |
-| Test effects deterministically | `Test`, `Console.captured`, `Clock.fixed`, `Http.scripted`, `Serve.scripted` |
+| Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map`, `std/task.every`, `Task.cancel` |
+| Test effects deterministically | `Test`, `Console.captured`, `Console.scripted`, `Clock.fixed`, `Http.scripted`, `Serve.scripted` |
 
 ## Complexity and behaviour notes
 
@@ -135,11 +137,11 @@ encoding → bytes, string, list                searchparams → encoding, strin
 crypto → bytes, list, secret   (+ Random for `generate_key`)
 headers → string, list, bytes                 blob → bytes, string, int
 form → blob, bytes, encoding, searchparams, string, list, instant   (+ Random for `boundary`)
-json → map              uuid → string, list   instant → duration, string, list, int
-test → core, fs         console → test        clock → duration, instant, int
+json → map, string, list, int                 uuid → string, list   instant → duration, string, list, int
+test → core, fs         console → test, string, list                  clock → duration, instant, int
 random → uuid, int, string, bytes, list       env → map, list
 log → json, test, list, core                  gen → test, random, list, int, string
-retry → duration, int   (+ Clock, Random)     task → duration, list (+ Clock)
+retry → duration, int   (+ Clock, Random)     task → duration, list, int (+ Clock)
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int                 cli
 url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
@@ -230,6 +232,7 @@ effect Clock {
   fn now() -> Instant
   fn monotonic() -> Duration
   fn sleep(d: Duration) -> Unit
+  fn monotonic_micros() -> Int
 }
 fn host() -> Handler<Clock>    // @external
 fn fixed(at: Instant) -> Handler<Clock>
@@ -245,6 +248,10 @@ effect Console {
 }
 fn host() -> Handler<Console>    // @external
 fn captured() -> Handler<Console, {Test}>
+fn scripted(lines: List<String>) -> Handler<Console, {Test}>
+fn alert(message: String) -> Unit ! {Console}
+fn confirm(message: String) -> Bool ! {Console}
+fn prompt(message: String, default: Option<String>) -> Option<String> ! {Console}
 ```
 
 ### `std/core`
@@ -516,6 +523,7 @@ fn encode<T: Schema>(value: T) -> String    // @external
 fn decode<T: Schema>(text: String) -> Result<T, DecodeError>    // @external
 fn parse(text: String) -> Result<Json, DecodeError>    // @external
 fn schema<T: Schema>(witness: Option<T>) -> Json    // @external
+fn render(j: Json, indent: Option<Int>) -> String
 fn get(j: Json, key: String) -> Option<Json>
 fn get_string(j: Json, key: String) -> Option<String>
 ```
@@ -819,11 +827,14 @@ effect Task {
   fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
   fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
   fn yield_now() -> Unit
+  fn cancel<T>(f: Fiber<T>) -> Unit
+  fn cancelled(s: Scope) -> Bool
 }
 fn host() -> Handler<Task>    // @external
 fn deterministic(seed: Int) -> Handler<Task>    // @external
 error Timeout(limit: Duration)
 fn timeout<T, e>(limit: Duration, action: fn() -> T ! e) -> T ! {Clock, Task, Fail<Timeout> | e}
+fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e}
 fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
 ```
 
