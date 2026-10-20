@@ -1,0 +1,2147 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "2014e821b87a0d30cb8061b6158f99723f0f676d",
+  "dirty": false,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776,
+   "quiet": false,
+   "load": {
+    "quiet": false,
+    "ci": false,
+    "threshold": 3.0,
+    "logical_cpus": 12,
+    "interval_s": 15,
+    "max_load_1m": 5.7109375,
+    "reasons": [
+     "one-minute load 5.71 > 3",
+     "busy: claude, rustc"
+    ],
+    "snapshots": [
+     {
+      "utc": "2026-10-20T02:08:38Z",
+      "load_1m": 3.2568359375,
+      "busiest": [
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 5.3
+       },
+       {
+        "executable": "ServiceExtension",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 1.8
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper",
+        "cpu_percent": 1.6
+       },
+       {
+        "executable": "TestFlightServiceExtension",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "trustd",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 0.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-20T02:08:53Z",
+      "load_1m": 3.1982421875,
+      "busiest": [
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 5.8
+       },
+       {
+        "executable": "Wispr Flow",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Wispr Flow Helper (Renderer)",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 1.2
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif Renderer)",
+        "cpu_percent": 1.1
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 0.4
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 0.2
+       },
+       {
+        "executable": "OpenUsage",
+        "cpu_percent": 0.2
+       },
+       {
+        "executable": "corebrightnessd",
+        "cpu_percent": 0.1
+       },
+       {
+        "executable": "clocksyncd",
+        "cpu_percent": 0.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-20T02:09:08Z",
+      "load_1m": 4.4287109375,
+      "busiest": [
+       {
+        "executable": "rustc",
+        "cpu_percent": 87.0
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 85.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 81.8
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 73.3
+       },
+       {
+        "executable": "(rustc)",
+        "cpu_percent": 49.3
+       },
+       {
+        "executable": "clippy-driver",
+        "cpu_percent": 24.4
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 11.4
+       },
+       {
+        "executable": "syspolicyd",
+        "cpu_percent": 11.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 10.3
+       },
+       {
+        "executable": "(rustc)",
+        "cpu_percent": 7.7
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 7.6
+       },
+       {
+        "executable": "T3 Code (Nightly)",
+        "cpu_percent": 7.1
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-20T02:09:21Z",
+      "load_1m": 5.7109375,
+      "busiest": [
+       {
+        "executable": "rustc",
+        "cpu_percent": 80.7
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 80.2
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 69.9
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 69.0
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 66.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 59.3
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 33.5
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 23.7
+       },
+       {
+        "executable": "(rustc)",
+        "cpu_percent": 12.2
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 11.0
+       },
+       {
+        "executable": "rustc",
+        "cpu_percent": 10.9
+       },
+       {
+        "executable": "T3 Code (Nightly) Helper (Renderer)",
+        "cpu_percent": 8.7
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "engines": {
+   "node": "26.11.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0",
+   "wasmtime": "49.0.3"
+  },
+  "flags": {
+   "suite": "js",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "all",
+   "stable": false,
+   "filter": "shapes",
+   "processes": 5,
+   "seed": 20261018,
+   "metric": "instructions"
+  },
+  "seed": 20261018,
+  "started": "2026-10-20T02:08:23Z",
+  "missing": [],
+  "failures": [],
+  "absent": []
+ },
+ "results": [
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "calls": 1024,
+   "instructions": 5168692.92578125,
+   "process_instructions": [
+    5193937.15625,
+    5173706.5,
+    5168692.92578125,
+    5166677.6279296875,
+    5044913.5888671875
+   ],
+   "instruction_spread": 0.028831963810325902,
+   "cycles": 1599379.7705078125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 221501671,
+      "cycles": 84673053,
+      "wall_s": 0.018324209027923644,
+      "rss_bytes": 33013760
+     },
+     "many": {
+      "instructions": 5535277284,
+      "cycles": 1723609823,
+      "wall_s": 0.2453863749979064,
+      "rss_bytes": 62914560
+     }
+    },
+    {
+     "one": {
+      "instructions": 216314886,
+      "cycles": 82298769,
+      "wall_s": 0.01838937506545335,
+      "rss_bytes": 32522240
+     },
+     "many": {
+      "instructions": 5514561092,
+      "cycles": 1712358962,
+      "wall_s": 0.24475062498822808,
+      "rss_bytes": 64126976
+     }
+    },
+    {
+     "one": {
+      "instructions": 213147961,
+      "cycles": 80880113,
+      "wall_s": 0.01830254099331796,
+      "rss_bytes": 32423936
+     },
+     "many": {
+      "instructions": 5509427192,
+      "cycles": 1711310000,
+      "wall_s": 0.2449090409791097,
+      "rss_bytes": 63897600
+     }
+    },
+    {
+     "one": {
+      "instructions": 216685636,
+      "cycles": 82683488,
+      "wall_s": 0.019204583019018173,
+      "rss_bytes": 31637504
+     },
+     "many": {
+      "instructions": 5507363527,
+      "cycles": 1725011068,
+      "wall_s": 0.2445498330052942,
+      "rss_bytes": 64126976
+     }
+    },
+    {
+     "one": {
+      "instructions": 216781390,
+      "cycles": 110872281,
+      "wall_s": 0.03824362496379763,
+      "rss_bytes": 31948800
+     },
+     "many": {
+      "instructions": 5382677151,
+      "cycles": 1720448373,
+      "wall_s": 0.598726624972187,
+      "rss_bytes": 63733760
+     }
+    }
+   ],
+   "samples_ms": [
+    0.22167675774653617,
+    0.2210559081277097,
+    0.22121061124380503,
+    0.22085982220687583,
+    0.5667355956120446
+   ],
+   "median_ms": 0.22121061124380503,
+   "process_medians_ms": [
+    0.22167675774653617,
+    0.2210559081277097,
+    0.22121061124380503,
+    0.22085982220687583,
+    0.5667355956120446
+   ],
+   "rss_bytes": 64126976,
+   "process_rss_bytes": [
+    62914560,
+    64126976,
+    63897600,
+    64126976,
+    63733760
+   ],
+   "checksum_ok": true,
+   "checksum": "6657763"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "calls": 256,
+   "instructions": 27182943.1171875,
+   "process_instructions": [
+    27235895.0546875,
+    27177665.80078125,
+    27175413.140625,
+    27182943.1171875,
+    27231589.140625
+   ],
+   "instruction_spread": 0.0022249950567073767,
+   "cycles": 7302538.29296875,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1513582564,
+      "cycles": 376730871,
+      "wall_s": 0.09733104193583131,
+      "rss_bytes": 58261504
+     },
+     "many": {
+      "instructions": 8485971698,
+      "cycles": 2250877269,
+      "wall_s": 0.561028708005324,
+      "rss_bytes": 85622784
+     }
+    },
+    {
+     "one": {
+      "instructions": 1500711050,
+      "cycles": 374342115,
+      "wall_s": 0.09630283305887133,
+      "rss_bytes": 58277888
+     },
+     "many": {
+      "instructions": 8471065009,
+      "cycles": 2234097056,
+      "wall_s": 0.556710375007242,
+      "rss_bytes": 85671936
+     }
+    },
+    {
+     "one": {
+      "instructions": 1500639814,
+      "cycles": 381427466,
+      "wall_s": 0.09841045900247991,
+      "rss_bytes": 58261504
+     },
+     "many": {
+      "instructions": 8470488328,
+      "cycles": 2237043610,
+      "wall_s": 0.5576084590284154,
+      "rss_bytes": 85704704
+     }
+    },
+    {
+     "one": {
+      "instructions": 1527579459,
+      "cycles": 388452573,
+      "wall_s": 0.10295770806260407,
+      "rss_bytes": 58507264
+     },
+     "many": {
+      "instructions": 8472416002,
+      "cycles": 2366760610,
+      "wall_s": 0.6037392920115963,
+      "rss_bytes": 85819392
+     }
+    },
+    {
+     "one": {
+      "instructions": 1524564794,
+      "cycles": 445605594,
+      "wall_s": 0.1568912089569494,
+      "rss_bytes": 58245120
+     },
+     "many": {
+      "instructions": 8484869384,
+      "cycles": 2563544805,
+      "wall_s": 0.8966360000194982,
+      "rss_bytes": 86097920
+     }
+    }
+   ],
+   "samples_ms": [
+    1.8071025351673597,
+    1.7902340468936018,
+    1.7937421876013104,
+    1.9739407539418607,
+    3.1180685195977276
+   ],
+   "median_ms": 1.8071025351673597,
+   "process_medians_ms": [
+    1.8071025351673597,
+    1.7902340468936018,
+    1.7937421876013104,
+    1.9739407539418607,
+    3.1180685195977276
+   ],
+   "rss_bytes": 86097920,
+   "process_rss_bytes": [
+    85622784,
+    85671936,
+    85704704,
+    85819392,
+    86097920
+   ],
+   "checksum_ok": true,
+   "checksum": "70030571"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "calls": 16,
+   "instructions": 390716554.6875,
+   "process_instructions": [
+    390781347.5,
+    389550952.875,
+    363840022.9375,
+    429657480.75,
+    390716554.6875
+   ],
+   "instruction_spread": 0.16845320993665505,
+   "cycles": 105535696.375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 788259922,
+      "cycles": 233222700,
+      "wall_s": 0.040462750010192394,
+      "rss_bytes": 92553216
+     },
+     "many": {
+      "instructions": 7119670075,
+      "cycles": 1957640124,
+      "wall_s": 0.3431922910967842,
+      "rss_bytes": 186728448
+     }
+    },
+    {
+     "one": {
+      "instructions": 751930077,
+      "cycles": 227921539,
+      "wall_s": 0.04130825004540384,
+      "rss_bytes": 84525056
+     },
+     "many": {
+      "instructions": 7099983761,
+      "cycles": 1947203492,
+      "wall_s": 0.34337341703940183,
+      "rss_bytes": 156303360
+     }
+    },
+    {
+     "one": {
+      "instructions": 874751866,
+      "cycles": 272024176,
+      "wall_s": 0.041890625027008355,
+      "rss_bytes": 91111424
+     },
+     "many": {
+      "instructions": 6688608882,
+      "cycles": 1877824482,
+      "wall_s": 0.3446103329770267,
+      "rss_bytes": 233816064
+     }
+    },
+    {
+     "one": {
+      "instructions": 867168515,
+      "cycles": 269068982,
+      "wall_s": 0.04122691706288606,
+      "rss_bytes": 91013120
+     },
+     "many": {
+      "instructions": 7741688207,
+      "cycles": 2032193583,
+      "wall_s": 0.36384504195302725,
+      "rss_bytes": 144588800
+     }
+    },
+    {
+     "one": {
+      "instructions": 892813414,
+      "cycles": 276319597,
+      "wall_s": 0.04074337496422231,
+      "rss_bytes": 94322688
+     },
+     "many": {
+      "instructions": 7118633390,
+      "cycles": 1969158458,
+      "wall_s": 0.3464579589199275,
+      "rss_bytes": 163282944
+     }
+    }
+   ],
+   "samples_ms": [
+    18.872835877118632,
+    18.884156248532236,
+    18.96146349463379,
+    20.163632805633824,
+    19.07694011606509
+   ],
+   "median_ms": 18.96146349463379,
+   "process_medians_ms": [
+    18.872835877118632,
+    18.884156248532236,
+    18.96146349463379,
+    20.163632805633824,
+    19.07694011606509
+   ],
+   "rss_bytes": 233816064,
+   "process_rss_bytes": [
+    186728448,
+    156303360,
+    233816064,
+    144588800,
+    163282944
+   ],
+   "checksum_ok": true,
+   "checksum": "702336374"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "calls": 2048,
+   "instructions": 2729034.8916015625,
+   "process_instructions": [
+    2729344.3427734375,
+    2729034.8916015625,
+    2728601.3608398438,
+    2728656.4877929688,
+    2729448.984375
+   ],
+   "instruction_spread": 0.0003105946126833187,
+   "cycles": 625872.966796875,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1384214445,
+      "cycles": 345077135,
+      "wall_s": 0.0891558340517804,
+      "rss_bytes": 46022656
+     },
+     "many": {
+      "instructions": 6973911659,
+      "cycles": 1626864971,
+      "wall_s": 0.4071100000292063,
+      "rss_bytes": 82788352
+     }
+    },
+    {
+     "one": {
+      "instructions": 1370590865,
+      "cycles": 343502937,
+      "wall_s": 0.08860720798838884,
+      "rss_bytes": 45907968
+     },
+     "many": {
+      "instructions": 6973277903,
+      "cycles": 1637290416,
+      "wall_s": 0.4119802499189973,
+      "rss_bytes": 82935808
+     }
+    },
+    {
+     "one": {
+      "instructions": 1385114069,
+      "cycles": 352955835,
+      "wall_s": 0.09135766606777906,
+      "rss_bytes": 45989888
+     },
+     "many": {
+      "instructions": 6972390032,
+      "cycles": 1587017688,
+      "wall_s": 0.397404957911931,
+      "rss_bytes": 82771968
+     }
+    },
+    {
+     "one": {
+      "instructions": 1371033742,
+      "cycles": 344160880,
+      "wall_s": 0.08907337498385459,
+      "rss_bytes": 45957120
+     },
+     "many": {
+      "instructions": 6972502932,
+      "cycles": 1601898166,
+      "wall_s": 0.40070504101458937,
+      "rss_bytes": 82804736
+     }
+    },
+    {
+     "one": {
+      "instructions": 1398974931,
+      "cycles": 364868961,
+      "wall_s": 0.09951825009193271,
+      "rss_bytes": 45957120
+     },
+     "many": {
+      "instructions": 6974125965,
+      "cycles": 1675591601,
+      "wall_s": 0.4308597499039024,
+      "rss_bytes": 83116032
+     }
+    }
+   ],
+   "samples_ms": [
+    0.15525105760616498,
+    0.1576291093101645,
+    0.15051226750983915,
+    0.15212363621230907,
+    0.16684761516216895
+   ],
+   "median_ms": 0.15525105760616498,
+   "process_medians_ms": [
+    0.15525105760616498,
+    0.1576291093101645,
+    0.15051226750983915,
+    0.15212363621230907,
+    0.16684761516216895
+   ],
+   "rss_bytes": 83116032,
+   "process_rss_bytes": [
+    82788352,
+    82935808,
+    82771968,
+    82804736,
+    83116032
+   ],
+   "checksum_ok": true,
+   "checksum": "6657763"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "calls": 16,
+   "instructions": 380340277.25,
+   "process_instructions": [
+    380310438.6875,
+    380412459.0,
+    380276267.5,
+    380340277.25,
+    380529750.75
+   ],
+   "instruction_spread": 0.0006664643877129634,
+   "cycles": 97751896.25,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 2399742428,
+      "cycles": 606042676,
+      "wall_s": 0.15404166700318456,
+      "rss_bytes": 141901824
+     },
+     "many": {
+      "instructions": 8484785642,
+      "cycles": 2170429018,
+      "wall_s": 0.5413764999248087,
+      "rss_bytes": 504332288
+     }
+    },
+    {
+     "one": {
+      "instructions": 2399818623,
+      "cycles": 606398678,
+      "wall_s": 0.15317479195073247,
+      "rss_bytes": 142229504
+     },
+     "many": {
+      "instructions": 8486417967,
+      "cycles": 2168479019,
+      "wall_s": 0.5400704999919981,
+      "rss_bytes": 504315904
+     }
+    },
+    {
+     "one": {
+      "instructions": 2399100812,
+      "cycles": 604598197,
+      "wall_s": 0.15279625006951392,
+      "rss_bytes": 142000128
+     },
+     "many": {
+      "instructions": 8484238903,
+      "cycles": 2155590545,
+      "wall_s": 0.5368536249734461,
+      "rss_bytes": 504299520
+     }
+    },
+    {
+     "one": {
+      "instructions": 2414723396,
+      "cycles": 628704232,
+      "wall_s": 0.1651068750070408,
+      "rss_bytes": 142114816
+     },
+     "many": {
+      "instructions": 8485263059,
+      "cycles": 2207525250,
+      "wall_s": 0.5541229170048609,
+      "rss_bytes": 504791040
+     }
+    },
+    {
+     "one": {
+      "instructions": 2426394678,
+      "cycles": 630739377,
+      "wall_s": 0.16393954190425575,
+      "rss_bytes": 142262272
+     },
+     "many": {
+      "instructions": 8488294635,
+      "cycles": 2296274376,
+      "wall_s": 0.614049916039221,
+      "rss_bytes": 504889344
+     }
+    }
+   ],
+   "samples_ms": [
+    24.20842705760151,
+    24.126802061800845,
+    23.92574737314135,
+    25.005078125104774,
+    28.750515564752277
+   ],
+   "median_ms": 24.20842705760151,
+   "process_medians_ms": [
+    24.20842705760151,
+    24.126802061800845,
+    23.92574737314135,
+    25.005078125104774,
+    28.750515564752277
+   ],
+   "rss_bytes": 504889344,
+   "process_rss_bytes": [
+    504332288,
+    504315904,
+    504299520,
+    504791040,
+    504889344
+   ],
+   "checksum_ok": true,
+   "checksum": "352360464"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "calls": 128,
+   "instructions": 60845317.1171875,
+   "process_instructions": [
+    60718153.6953125,
+    60738778.3671875,
+    60996908.4140625,
+    60845317.1171875,
+    61080157.1484375
+   ],
+   "instruction_spread": 0.005949569667420498,
+   "cycles": 17031704.875,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1829279434,
+      "cycles": 458672177,
+      "wall_s": 0.11773483408614993,
+      "rss_bytes": 76709888
+     },
+     "many": {
+      "instructions": 9629190776,
+      "cycles": 2495277476,
+      "wall_s": 0.6215263329213485,
+      "rss_bytes": 532365312
+     }
+    },
+    {
+     "one": {
+      "instructions": 1828967253,
+      "cycles": 450956837,
+      "wall_s": 0.11498054198455065,
+      "rss_bytes": 76906496
+     },
+     "many": {
+      "instructions": 9631830734,
+      "cycles": 2516317296,
+      "wall_s": 0.6258406670531258,
+      "rss_bytes": 532316160
+     }
+    },
+    {
+     "one": {
+      "instructions": 1857858658,
+      "cycles": 532661177,
+      "wall_s": 0.16810045903548598,
+      "rss_bytes": 76693504
+     },
+     "many": {
+      "instructions": 9664871380,
+      "cycles": 2707721559,
+      "wall_s": 0.7358152499655262,
+      "rss_bytes": 533151744
+     }
+    },
+    {
+     "one": {
+      "instructions": 1857267103,
+      "cycles": 480332553,
+      "wall_s": 0.1265645829262212,
+      "rss_bytes": 76972032
+     },
+     "many": {
+      "instructions": 9645467694,
+      "cycles": 2660390777,
+      "wall_s": 0.7093089160043746,
+      "rss_bytes": 532676608
+     }
+    },
+    {
+     "one": {
+      "instructions": 1857343043,
+      "cycles": 522650165,
+      "wall_s": 0.19887929200194776,
+      "rss_bytes": 77037568
+     },
+     "many": {
+      "instructions": 9675527218,
+      "cycles": 2984245668,
+      "wall_s": 1.324235666077584,
+      "rss_bytes": 533037056
+     }
+    }
+   ],
+   "samples_ms": [
+    3.866888671836932,
+    3.9005944072414422,
+    4.75977083624457,
+    4.552690102173074,
+    9.356805337120022
+   ],
+   "median_ms": 4.552690102173074,
+   "process_medians_ms": [
+    3.866888671836932,
+    3.9005944072414422,
+    4.75977083624457,
+    4.552690102173074,
+    9.356805337120022
+   ],
+   "rss_bytes": 533151744,
+   "process_rss_bytes": [
+    532365312,
+    532316160,
+    533151744,
+    532676608,
+    533037056
+   ],
+   "checksum_ok": true,
+   "checksum": "70030571"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "calls": 4,
+   "instructions": 1212020398.0,
+   "process_instructions": [
+    1212020398.0,
+    1211996564.0,
+    1212328876.5,
+    1211787332.25,
+    1220544119.5
+   ],
+   "instruction_spread": 0.007224950392295295,
+   "cycles": 297510204.75,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 3761372599,
+      "cycles": 925165961,
+      "wall_s": 0.23241291695740074,
+      "rss_bytes": 218841088
+     },
+     "many": {
+      "instructions": 8607982690,
+      "cycles": 2110776685,
+      "wall_s": 0.5257951249368489,
+      "rss_bytes": 490323968
+     }
+    },
+    {
+     "one": {
+      "instructions": 3759826217,
+      "cycles": 921047109,
+      "wall_s": 0.23208254110068083,
+      "rss_bytes": 218759168
+     },
+     "many": {
+      "instructions": 8607887354,
+      "cycles": 2115530992,
+      "wall_s": 0.5260437090182677,
+      "rss_bytes": 490766336
+     }
+    },
+    {
+     "one": {
+      "instructions": 3758839193,
+      "cycles": 916177253,
+      "wall_s": 0.23049462505150586,
+      "rss_bytes": 218791936
+     },
+     "many": {
+      "instructions": 8609216604,
+      "cycles": 2115206780,
+      "wall_s": 0.5263132090913132,
+      "rss_bytes": 490176512
+     }
+    },
+    {
+     "one": {
+      "instructions": 3759901098,
+      "cycles": 926121203,
+      "wall_s": 0.2314127079444006,
+      "rss_bytes": 218873856
+     },
+     "many": {
+      "instructions": 8607050427,
+      "cycles": 2104637639,
+      "wall_s": 0.5226633339188993,
+      "rss_bytes": 490045440
+     }
+    },
+    {
+     "one": {
+      "instructions": 3788240378,
+      "cycles": 1045422081,
+      "wall_s": 0.3226943339686841,
+      "rss_bytes": 219086848
+     },
+     "many": {
+      "instructions": 8642077576,
+      "cycles": 2303263362,
+      "wall_s": 0.7077145000221208,
+      "rss_bytes": 490586112
+     }
+    }
+   ],
+   "samples_ms": [
+    73.42814595904201,
+    73.49029197939672,
+    73.55766699765809,
+    72.64519820455462,
+    118.90798973035999
+   ],
+   "median_ms": 73.49029197939672,
+   "process_medians_ms": [
+    73.42814595904201,
+    73.49029197939672,
+    73.55766699765809,
+    72.64519820455462,
+    118.90798973035999
+   ],
+   "rss_bytes": 490766336,
+   "process_rss_bytes": [
+    490323968,
+    490766336,
+    490176512,
+    490045440,
+    490586112
+   ],
+   "checksum_ok": true,
+   "checksum": "702336374"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "calls": 2048,
+   "instructions": 3665447.271484375,
+   "process_instructions": [
+    3665492.7416992188,
+    3664589.705078125,
+    3665447.271484375,
+    3665374.4067382812,
+    3682562.9145507812
+   ],
+   "instruction_spread": 0.004903415092744669,
+   "cycles": 674873.2290039062,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1453834066,
+      "cycles": 369849841,
+      "wall_s": 0.09520966606214643,
+      "rss_bytes": 50724864
+     },
+     "many": {
+      "instructions": 8961363960,
+      "cycles": 1748500346,
+      "wall_s": 0.4380184590118006,
+      "rss_bytes": 120930304
+     }
+    },
+    {
+     "one": {
+      "instructions": 1454740781,
+      "cycles": 373448091,
+      "wall_s": 0.09668162500020117,
+      "rss_bytes": 50708480
+     },
+     "many": {
+      "instructions": 8959514541,
+      "cycles": 1743571318,
+      "wall_s": 0.43640595907345414,
+      "rss_bytes": 121044992
+     }
+    },
+    {
+     "one": {
+      "instructions": 1453781329,
+      "cycles": 372303646,
+      "wall_s": 0.09580474998801947,
+      "rss_bytes": 50692096
+     },
+     "many": {
+      "instructions": 8961270837,
+      "cycles": 1755588464,
+      "wall_s": 0.438974125077948,
+      "rss_bytes": 120995840
+     }
+    },
+    {
+     "one": {
+      "instructions": 1454434825,
+      "cycles": 379752272,
+      "wall_s": 0.09919983299914747,
+      "rss_bytes": 50675712
+     },
+     "many": {
+      "instructions": 8961121610,
+      "cycles": 1792278178,
+      "wall_s": 0.4526403750060126,
+      "rss_bytes": 121094144
+     }
+    },
+    {
+     "one": {
+      "instructions": 1481925683,
+      "cycles": 415525046,
+      "wall_s": 0.13959387491922826,
+      "rss_bytes": 51036160
+     },
+     "many": {
+      "instructions": 8996323674,
+      "cycles": 2153262475,
+      "wall_s": 0.7159075000090525,
+      "rss_bytes": 121618432
+     }
+    }
+   ],
+   "samples_ms": [
+    0.16666837598222628,
+    0.16588102249670555,
+    0.1671350098035873,
+    0.17380798340127512,
+    0.30235638428166567
+   ],
+   "median_ms": 0.1671350098035873,
+   "process_medians_ms": [
+    0.16666837598222628,
+    0.16588102249670555,
+    0.1671350098035873,
+    0.17380798340127512,
+    0.30235638428166567
+   ],
+   "rss_bytes": 121618432,
+   "process_rss_bytes": [
+    120930304,
+    121044992,
+    120995840,
+    121094144,
+    121618432
+   ],
+   "checksum_ok": true,
+   "checksum": "6657763"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "calls": 128,
+   "instructions": 37425236.1640625,
+   "process_instructions": [
+    37242028.3515625,
+    37425236.1640625,
+    38204929.0859375,
+    37370237.7265625,
+    37554484.8125
+   ],
+   "instruction_spread": 0.025728648181507625,
+   "cycles": 11426909.0625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 190734007,
+      "cycles": 71083070,
+      "wall_s": 0.017412209068425,
+      "rss_bytes": 32833536
+     },
+     "many": {
+      "instructions": 4957713636,
+      "cycles": 1458507709,
+      "wall_s": 0.26976454199757427,
+      "rss_bytes": 56573952
+     }
+    },
+    {
+     "one": {
+      "instructions": 188977586,
+      "cycles": 71909615,
+      "wall_s": 0.017604000051505864,
+      "rss_bytes": 32833536
+     },
+     "many": {
+      "instructions": 4981164236,
+      "cycles": 1458161768,
+      "wall_s": 0.2680168329970911,
+      "rss_bytes": 57327616
+     }
+    },
+    {
+     "one": {
+      "instructions": 189288036,
+      "cycles": 71366527,
+      "wall_s": 0.0182284580077976,
+      "rss_bytes": 32784384
+     },
+     "many": {
+      "instructions": 5080964930,
+      "cycles": 1534553975,
+      "wall_s": 0.28248891700059175,
+      "rss_bytes": 56410112
+     }
+    },
+    {
+     "one": {
+      "instructions": 198119697,
+      "cycles": 76116121,
+      "wall_s": 0.01925725000910461,
+      "rss_bytes": 32391168
+     },
+     "many": {
+      "instructions": 4974124436,
+      "cycles": 1607447631,
+      "wall_s": 0.4204544590320438,
+      "rss_bytes": 58982400
+     }
+    },
+    {
+     "one": {
+      "instructions": 190818554,
+      "cycles": 73896734,
+      "wall_s": 0.01895533304195851,
+      "rss_bytes": 32849920
+     },
+     "many": {
+      "instructions": 4997708063,
+      "cycles": 1618895771,
+      "wall_s": 0.4184702500933781,
+      "rss_bytes": 57982976
+     }
+    }
+   ],
+   "samples_ms": [
+    1.9651256561701302,
+    1.9514716796038556,
+    2.0645348358812043,
+    3.1423906330019236,
+    3.126889000668598
+   ],
+   "median_ms": 2.0645348358812043,
+   "process_medians_ms": [
+    1.9651256561701302,
+    1.9514716796038556,
+    2.0645348358812043,
+    3.1423906330019236,
+    3.126889000668598
+   ],
+   "rss_bytes": 58982400,
+   "process_rss_bytes": [
+    56573952,
+    57327616,
+    56410112,
+    58982400,
+    57982976
+   ],
+   "checksum_ok": true,
+   "checksum": "70030571"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 10000,
+   "calls": 64,
+   "instructions": 80399781.078125,
+   "process_instructions": [
+    80399781.078125,
+    83341121.28125,
+    86305914.796875,
+    78467896.25,
+    77564004.765625
+   ],
+   "instruction_spread": 0.10873052033257936,
+   "cycles": 30725035.078125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 428899611,
+      "cycles": 163241851,
+      "wall_s": 0.02511674992274493,
+      "rss_bytes": 50102272
+     },
+     "many": {
+      "instructions": 5567384564,
+      "cycles": 2123351568,
+      "wall_s": 0.22470299992710352,
+      "rss_bytes": 83329024
+     }
+    },
+    {
+     "one": {
+      "instructions": 413081548,
+      "cycles": 152377300,
+      "wall_s": 0.02538912498857826,
+      "rss_bytes": 48496640
+     },
+     "many": {
+      "instructions": 5755630337,
+      "cycles": 2219018445,
+      "wall_s": 0.2276420829584822,
+      "rss_bytes": 74121216
+     }
+    },
+    {
+     "one": {
+      "instructions": 420766409,
+      "cycles": 156498760,
+      "wall_s": 0.02473704202566296,
+      "rss_bytes": 49037312
+     },
+     "many": {
+      "instructions": 5945377122,
+      "cycles": 2226807359,
+      "wall_s": 0.2372601249953732,
+      "rss_bytes": 84148224
+     }
+    },
+    {
+     "one": {
+      "instructions": 421798575,
+      "cycles": 156949323,
+      "wall_s": 0.02521929203066975,
+      "rss_bytes": 49037312
+     },
+     "many": {
+      "instructions": 5443743935,
+      "cycles": 1995538036,
+      "wall_s": 0.22059112507849932,
+      "rss_bytes": 110477312
+     }
+    },
+    {
+     "one": {
+      "instructions": 424040331,
+      "cycles": 158819507,
+      "wall_s": 0.025182582903653383,
+      "rss_bytes": 50446336
+     },
+     "many": {
+      "instructions": 5385894880,
+      "cycles": 1970744742,
+      "wall_s": 0.22335883299820125,
+      "rss_bytes": 82083840
+     }
+    }
+   ],
+   "samples_ms": [
+    3.1175065159914084,
+    3.1634296883567004,
+    3.313711595183122,
+    3.0532584714819677,
+    3.0965039077273104
+   ],
+   "median_ms": 3.1175065159914084,
+   "process_medians_ms": [
+    3.1175065159914084,
+    3.1634296883567004,
+    3.313711595183122,
+    3.0532584714819677,
+    3.0965039077273104
+   ],
+   "rss_bytes": 110477312,
+   "process_rss_bytes": [
+    83329024,
+    74121216,
+    84148224,
+    110477312,
+    82083840
+   ],
+   "checksum_ok": true,
+   "checksum": "70030571"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "calls": 32,
+   "instructions": 213826524.09375,
+   "process_instructions": [
+    213454020.0625,
+    213455941.03125,
+    214518636.8125,
+    214296889.5,
+    213826524.09375
+   ],
+   "instruction_spread": 0.004978880681487531,
+   "cycles": 58866900.9375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1958440321,
+      "cycles": 482034406,
+      "wall_s": 0.12309920892585069,
+      "rss_bytes": 120094720
+     },
+     "many": {
+      "instructions": 8802299370,
+      "cycles": 2330580783,
+      "wall_s": 0.5785981670487672,
+      "rss_bytes": 291684352
+     }
+    },
+    {
+     "one": {
+      "instructions": 1958317788,
+      "cycles": 479457894,
+      "wall_s": 0.12238724995404482,
+      "rss_bytes": 120029184
+     },
+     "many": {
+      "instructions": 8802360841,
+      "cycles": 2327839107,
+      "wall_s": 0.57972641591914,
+      "rss_bytes": 291717120
+     }
+    },
+    {
+     "one": {
+      "instructions": 1974470386,
+      "cycles": 513165437,
+      "wall_s": 0.1422567080007866,
+      "rss_bytes": 120029184
+     },
+     "many": {
+      "instructions": 8836367106,
+      "cycles": 2526667017,
+      "wall_s": 0.7302641670685261,
+      "rss_bytes": 292110336
+     }
+    },
+    {
+     "one": {
+      "instructions": 1971770728,
+      "cycles": 503021220,
+      "wall_s": 0.13192429195623845,
+      "rss_bytes": 120045568
+     },
+     "many": {
+      "instructions": 8829271192,
+      "cycles": 2386762050,
+      "wall_s": 0.6202092079911381,
+      "rss_bytes": 291815424
+     }
+    },
+    {
+     "one": {
+      "instructions": 1973276052,
+      "cycles": 513075629,
+      "wall_s": 0.13505937496665865,
+      "rss_bytes": 120225792
+     },
+     "many": {
+      "instructions": 8814219499,
+      "cycles": 2426584554,
+      "wall_s": 0.667773166904226,
+      "rss_bytes": 292028416
+     }
+    }
+   ],
+   "samples_ms": [
+    13.958558596641524,
+    13.993816373840673,
+    18.69812109725899,
+    15.258903626090614,
+    16.74527734212461
+   ],
+   "median_ms": 15.258903626090614,
+   "process_medians_ms": [
+    13.958558596641524,
+    13.993816373840673,
+    18.69812109725899,
+    15.258903626090614,
+    16.74527734212461
+   ],
+   "rss_bytes": 292110336,
+   "process_rss_bytes": [
+    291684352,
+    291717120,
+    292110336,
+    291815424,
+    292028416
+   ],
+   "checksum_ok": true,
+   "checksum": "352360464"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "calls": 8,
+   "instructions": 816515422.875,
+   "process_instructions": [
+    816515422.875,
+    814413717.625,
+    802387726.875,
+    920273645.875,
+    904801928.75
+   ],
+   "instruction_spread": 0.14437684298101386,
+   "cycles": 218234046.75,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1546143122,
+      "cycles": 473068862,
+      "wall_s": 0.05784525000490248,
+      "rss_bytes": 137052160
+     },
+     "many": {
+      "instructions": 8078266505,
+      "cycles": 2121988657,
+      "wall_s": 0.27290070801973343,
+      "rss_bytes": 387809280
+     }
+    },
+    {
+     "one": {
+      "instructions": 1493391815,
+      "cycles": 445999615,
+      "wall_s": 0.05648679193109274,
+      "rss_bytes": 136855552
+     },
+     "many": {
+      "instructions": 8061452863,
+      "cycles": 2192006795,
+      "wall_s": 0.2799072499619797,
+      "rss_bytes": 461963264
+     }
+    },
+    {
+     "one": {
+      "instructions": 1548319297,
+      "cycles": 474968356,
+      "wall_s": 0.05888879101257771,
+      "rss_bytes": 137478144
+     },
+     "many": {
+      "instructions": 7965244937,
+      "cycles": 2218941236,
+      "wall_s": 0.2811478750081733,
+      "rss_bytes": 365150208
+     }
+    },
+    {
+     "one": {
+      "instructions": 1536910243,
+      "cycles": 469369687,
+      "wall_s": 0.05801141692791134,
+      "rss_bytes": 161382400
+     },
+     "many": {
+      "instructions": 8908332289,
+      "cycles": 2349460571,
+      "wall_s": 0.295654832967557,
+      "rss_bytes": 383156224
+     }
+    },
+    {
+     "one": {
+      "instructions": 1565020057,
+      "cycles": 504303762,
+      "wall_s": 0.08189629099797457,
+      "rss_bytes": 138264576
+     },
+     "many": {
+      "instructions": 8784558552,
+      "cycles": 2393692033,
+      "wall_s": 0.5195416249334812,
+      "rss_bytes": 698679296
+     }
+    }
+   ],
+   "samples_ms": [
+    26.86116138647776,
+    27.736979129258543,
+    27.892057260032743,
+    29.70542700495571,
+    57.691276000696234
+   ],
+   "median_ms": 27.892057260032743,
+   "process_medians_ms": [
+    26.86116138647776,
+    27.736979129258543,
+    27.892057260032743,
+    29.70542700495571,
+    57.691276000696234
+   ],
+   "rss_bytes": 698679296,
+   "process_rss_bytes": [
+    387809280,
+    461963264,
+    365150208,
+    383156224,
+    698679296
+   ],
+   "checksum_ok": true,
+   "checksum": "702336374"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 1000,
+   "calls": 2048,
+   "instructions": 3130462.998046875,
+   "process_instructions": [
+    3116822.4912109375,
+    3116390.6899414062,
+    3145252.5571289062,
+    3130462.998046875,
+    3155085.4443359375
+   ],
+   "instruction_spread": 0.012360712910094534,
+   "cycles": 698910.0141601562,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 131307084,
+      "cycles": 49739589,
+      "wall_s": 0.014635583967901766,
+      "rss_bytes": 22478848
+     },
+     "many": {
+      "instructions": 6514814454,
+      "cycles": 1439320273,
+      "wall_s": 0.2854561669519171,
+      "rss_bytes": 55738368
+     }
+    },
+    {
+     "one": {
+      "instructions": 131561992,
+      "cycles": 49245448,
+      "wall_s": 0.014657999970950186,
+      "rss_bytes": 22462464
+     },
+     "many": {
+      "instructions": 6513930125,
+      "cycles": 1466641456,
+      "wall_s": 0.29292729194276035,
+      "rss_bytes": 55443456
+     }
+    },
+    {
+     "one": {
+      "instructions": 132924580,
+      "cycles": 51669421,
+      "wall_s": 0.015254582976922393,
+      "rss_bytes": 22478848
+     },
+     "many": {
+      "instructions": 6573039229,
+      "cycles": 1486616725,
+      "wall_s": 0.2963249580934644,
+      "rss_bytes": 55902208
+     }
+    },
+    {
+     "one": {
+      "instructions": 131541116,
+      "cycles": 49902256,
+      "wall_s": 0.015312000061385334,
+      "rss_bytes": 22511616
+     },
+     "many": {
+      "instructions": 6542750212,
+      "cycles": 1481269965,
+      "wall_s": 0.29824879101943225,
+      "rss_bytes": 56098816
+     }
+    },
+    {
+     "one": {
+      "instructions": 133396591,
+      "cycles": 53038286,
+      "wall_s": 0.016241332981735468,
+      "rss_bytes": 22446080
+     },
+     "many": {
+      "instructions": 6593176982,
+      "cycles": 1544114605,
+      "wall_s": 0.30517183302436024,
+      "rss_bytes": 56246272
+     }
+    }
+   ],
+   "samples_ms": [
+    0.1319343671752904,
+    0.13558237742472556,
+    0.13724139409987401,
+    0.13818076564575676,
+    0.1415611572497255
+   ],
+   "median_ms": 0.13724139409987401,
+   "process_medians_ms": [
+    0.1319343671752904,
+    0.13558237742472556,
+    0.13724139409987401,
+    0.13818076564575676,
+    0.1415611572497255
+   ],
+   "rss_bytes": 56246272,
+   "process_rss_bytes": [
+    55738368,
+    55443456,
+    55902208,
+    56098816,
+    56246272
+   ],
+   "checksum_ok": true,
+   "checksum": "6657763"
+  },
+  {
+   "program": "shapes",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "calls": 16,
+   "instructions": 437299016.0,
+   "process_instructions": [
+    430100331.8125,
+    448526633.0,
+    429767817.1875,
+    442746144.25,
+    437299016.0
+   ],
+   "instruction_spread": 0.04289699982425755,
+   "cycles": 115462617.5625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 928274554,
+      "cycles": 307327915,
+      "wall_s": 0.04147983295843005,
+      "rss_bytes": 95092736
+     },
+     "many": {
+      "instructions": 7822140680,
+      "cycles": 2198839995,
+      "wall_s": 0.28948133310768753,
+      "rss_bytes": 232947712
+     }
+    },
+    {
+     "one": {
+      "instructions": 940535371,
+      "cycles": 316586539,
+      "wall_s": 0.04118695796933025,
+      "rss_bytes": 95010816
+     },
+     "many": {
+      "instructions": 8116961499,
+      "cycles": 2158373732,
+      "wall_s": 0.2698103749426082,
+      "rss_bytes": 226017280
+     }
+    },
+    {
+     "one": {
+      "instructions": 935374056,
+      "cycles": 307591171,
+      "wall_s": 0.040472791995853186,
+      "rss_bytes": 95453184
+     },
+     "many": {
+      "instructions": 7816820446,
+      "cycles": 2155104502,
+      "wall_s": 0.2879925000015646,
+      "rss_bytes": 231555072
+     }
+    },
+    {
+     "one": {
+      "instructions": 970607257,
+      "cycles": 310971851,
+      "wall_s": 0.041312457993626595,
+      "rss_bytes": 108462080
+     },
+     "many": {
+      "instructions": 8024473679,
+      "cycles": 2265046227,
+      "wall_s": 0.2861089580692351,
+      "rss_bytes": 214630400
+     }
+    },
+    {
+     "one": {
+      "instructions": 953556511,
+      "cycles": 334612259,
+      "wall_s": 0.043251416995190084,
+      "rss_bytes": 95092736
+     },
+     "many": {
+      "instructions": 7937319627,
+      "cycles": 2154526298,
+      "wall_s": 0.3079890420194715,
+      "rss_bytes": 222953472
+     }
+    }
+   ],
+   "samples_ms": [
+    15.510554694628809,
+    14.281119809311349,
+    15.417502625496127,
+    15.29978125472553,
+    16.66728650161531
+   ],
+   "median_ms": 15.417502625496127,
+   "process_medians_ms": [
+    15.510554694628809,
+    14.281119809311349,
+    15.417502625496127,
+    15.29978125472553,
+    16.66728650161531
+   ],
+   "rss_bytes": 232947712,
+   "process_rss_bytes": [
+    232947712,
+    226017280,
+    231555072,
+    214630400,
+    222953472
+   ],
+   "checksum_ok": true,
+   "checksum": "352360464"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 50000,
+   "calls": 32,
+   "instructions": 187273668.28125,
+   "process_instructions": [
+    179614155.25,
+    187273668.28125,
+    215031290.34375,
+    195974112.625,
+    182320769.65625
+   ],
+   "instruction_spread": 0.18911967399794877,
+   "cycles": 55375763.28125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 476732920,
+      "cycles": 158623710,
+      "wall_s": 0.029591624974273145,
+      "rss_bytes": 51019776
+     },
+     "many": {
+      "instructions": 6251675645,
+      "cycles": 1769883994,
+      "wall_s": 0.3302188749657944,
+      "rss_bytes": 139624448
+     }
+    },
+    {
+     "one": {
+      "instructions": 504022677,
+      "cycles": 162516782,
+      "wall_s": 0.029489959008060396,
+      "rss_bytes": 51822592
+     },
+     "many": {
+      "instructions": 6496780062,
+      "cycles": 1828435439,
+      "wall_s": 0.33155758306384087,
+      "rss_bytes": 135643136
+     }
+    },
+    {
+     "one": {
+      "instructions": 476788261,
+      "cycles": 157580053,
+      "wall_s": 0.02957391692325473,
+      "rss_bytes": 51380224
+     },
+     "many": {
+      "instructions": 7385023968,
+      "cycles": 1984827535,
+      "wall_s": 0.3545139590278268,
+      "rss_bytes": 95830016
+     }
+    },
+    {
+     "one": {
+      "instructions": 516194789,
+      "cycles": 167930442,
+      "wall_s": 0.029725707951001823,
+      "rss_bytes": 51265536
+     },
+     "many": {
+      "instructions": 6775194281,
+      "cycles": 1934541207,
+      "wall_s": 0.343728750012815,
+      "rss_bytes": 90243072
+     }
+    },
+    {
+     "one": {
+      "instructions": 648814561,
+      "cycles": 221316741,
+      "wall_s": 0.0887924589915201,
+      "rss_bytes": 54525952
+     },
+     "many": {
+      "instructions": 6338287306,
+      "cycles": 1951318255,
+      "wall_s": 0.5224862919421867,
+      "rss_bytes": 149110784
+     }
+    }
+   ],
+   "samples_ms": [
+    9.394601562235039,
+    9.436436190298991,
+    10.153822939173551,
+    9.816785157454433,
+    15.402958342747297
+   ],
+   "median_ms": 9.816785157454433,
+   "process_medians_ms": [
+    9.394601562235039,
+    9.436436190298991,
+    10.153822939173551,
+    9.816785157454433,
+    15.402958342747297
+   ],
+   "rss_bytes": 149110784,
+   "process_rss_bytes": [
+    139624448,
+    135643136,
+    95830016,
+    90243072,
+    149110784
+   ],
+   "checksum_ok": true,
+   "checksum": "352360464"
+  },
+  {
+   "program": "shapes",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 100000,
+   "calls": 8,
+   "instructions": 539572437.125,
+   "process_instructions": [
+    539490607.125,
+    539420209.125,
+    539572437.125,
+    539764300.75,
+    543896639.125
+   ],
+   "instruction_spread": 0.00829625401892604,
+   "cycles": 141275118.5,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 2472169256,
+      "cycles": 611170994,
+      "wall_s": 0.15511520800646394,
+      "rss_bytes": 198934528
+     },
+     "many": {
+      "instructions": 6788094113,
+      "cycles": 1739298394,
+      "wall_s": 0.4340189170325175,
+      "rss_bytes": 304480256
+     }
+    },
+    {
+     "one": {
+      "instructions": 2471704140,
+      "cycles": 629302100,
+      "wall_s": 0.1580346670234576,
+      "rss_bytes": 199016448
+     },
+     "many": {
+      "instructions": 6787530929,
+      "cycles": 1732042301,
+      "wall_s": 0.4310446250019595,
+      "rss_bytes": 304644096
+     }
+    },
+    {
+     "one": {
+      "instructions": 2486497629,
+      "cycles": 618139710,
+      "wall_s": 0.156764917075634,
+      "rss_bytes": 198934528
+     },
+     "many": {
+      "instructions": 6788748753,
+      "cycles": 1766436349,
+      "wall_s": 0.4444252500543371,
+      "rss_bytes": 304693248
+     }
+    },
+    {
+     "one": {
+      "instructions": 2471983821,
+      "cycles": 612602770,
+      "wall_s": 0.15506166708655655,
+      "rss_bytes": 198967296
+     },
+     "many": {
+      "instructions": 6790283662,
+      "cycles": 1748340658,
+      "wall_s": 0.4384786250302568,
+      "rss_bytes": 304676864
+     }
+    },
+    {
+     "one": {
+      "instructions": 2499510077,
+      "cycles": 655064825,
+      "wall_s": 0.1899405000731349,
+      "rss_bytes": 196493312
+     },
+     "many": {
+      "instructions": 6823342369,
+      "cycles": 1892683472,
+      "wall_s": 0.597494792076759,
+      "rss_bytes": 304922624
+     }
+    }
+   ],
+   "samples_ms": [
+    34.656749994610436,
+    34.28496349079069,
+    35.957541622337885,
+    35.21421349432785,
+    55.09123437514063
+   ],
+   "median_ms": 35.21421349432785,
+   "process_medians_ms": [
+    34.656749994610436,
+    34.28496349079069,
+    35.957541622337885,
+    35.21421349432785,
+    55.09123437514063
+   ],
+   "rss_bytes": 304922624,
+   "process_rss_bytes": [
+    304480256,
+    304644096,
+    304693248,
+    304676864,
+    304922624
+   ],
+   "checksum_ok": true,
+   "checksum": "702336374"
+  }
+ ]
+}
