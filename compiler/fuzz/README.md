@@ -56,14 +56,6 @@ dated `compiler/REQUESTS.md` entry for its owner.
 
 Follow-ups for `exec` (2026-10-19):
 
-- First local runs found two divergences, so the nightly `exec` job fails until they are fixed.
-  The runs used a driver outside the repository that calls the target's oracle on the
-  `tests/semantics` seeds and on eight typed mutations of each (libFuzzer does not link on
-  Windows MSVC). First, the reference evaluator stops with `Internal("bad operands for
-  FloatRem …")` on any `Float % Float`: for `1.0 % 3.0`, JS prints `1.0`. Second, the range
-  audit (`Limits::audit_ranges`) reports that `opt::ranges` proves an operation that then
-  defects with `D003`, for `Console.print("{-9007199254740992}")`. Each needs a
-  `tests/semantics` regression and a fix in its owning crate.
 - The evaluators record no effect trace and no defect site, so traces and spans are compared
   between JS and WASM only.
 - Design §17.225 (4c), running the same programs under `sakura verify` with replay, is not

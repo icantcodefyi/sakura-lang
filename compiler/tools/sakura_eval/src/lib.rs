@@ -940,6 +940,7 @@ fn prim(module: &Module, op: &PrimOp, args: &[Value]) -> R<Value> {
         (FloatSub, [Float(a), Float(b)]) => Float(a - b),
         (FloatMul, [Float(a), Float(b)]) => Float(a * b),
         (FloatDiv, [Float(a), Float(b)]) => Float(a / b),
+        (FloatRem, [Float(a), Float(b)]) => Float(a % b),
         (FloatNeg, [Float(a)]) => Float(-a),
         (Concat, [Str(a), Str(b)]) => Str(format!("{a}{b}").into()),
         (Not, [Bool(a)]) => Bool(!a),

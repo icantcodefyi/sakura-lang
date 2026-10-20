@@ -1,0 +1,11 @@
+// milestone: M1
+// covers: design §4.1 (`Float % Float` is the IEEE remainder of truncating division, as JS `%`); nightly fuzz `exec`
+
+fn rem(a: Float, b: Float) -> Float { a % b }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{rem(1.0, 3.0)}")
+  Console.print("{rem(7.5, 2.0)}")
+  Console.print("{rem(-7.5, 2.0)}")
+  Console.print("{1.0 % 3.0}")
+}
