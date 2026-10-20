@@ -1,0 +1,118 @@
+// The allocation policy over a validated snapshot. Each scalar result and its
+// bounds come from a contracted kernel function before the final record is
+// assembled; this module only sequences the three explicit steps (A, then B,
+// then C) and attaches an explanation to each circuit.
+
+import workshop_power/input.{Snapshot, Watts}
+import workshop_power/kernel.{
+  allocate,
+  capped_request,
+  ramp_allowance,
+  reason_code,
+  remaining_after,
+  unmet_demand,
+  usable_budget,
+}
+
+/// Why a circuit received what it did. When several limits are equal to the
+/// allocation, the first in this order is reported: request satisfied,
+/// circuit cap, upward-step cap, shared supply.
+pub type Reason = RequestSatisfied | CircuitCap | UpwardStep | SharedSupply
+
+/// One circuit's outcome.
+pub type CircuitPlan = {
+  name: String,
+  request: Int,
+  eligible: Int,
+  allocation: Int,
+  unmet: Int,
+  reason: Reason,
+}
+
+/// The proposed schedule for one snapshot. `unallocated` is usable power no
+/// circuit took; the reserve is never part of it.
+pub type Plan = { usable: Int, unallocated: Int, a: CircuitPlan, b: CircuitPlan, c: CircuitPlan }
+
+/// One step of the priority chain: allocate from `remaining` and explain it.
+/// The quantities arrive as separate `Watts` parameters because
+/// `sakura verify` 0.1.0 assumes the refinement of a parameter but not of a
+/// record field (see FRICTION.md).
+fn step(
+  name: String,
+  request: Watts,
+  cap: Watts,
+  previous: Watts,
+  upward: Watts,
+  remaining: Int,
+) -> CircuitPlan
+  requires remaining_in_range: remaining >= 0 && remaining <= 100_000
+  ensures allocation_nonneg: result.allocation >= 0
+  ensures allocation_within_remaining: result.allocation <= remaining
+{
+  let ramp = ramp_allowance(previous, upward)
+  let eligible = capped_request(request, cap, ramp)
+  let allocation = allocate(eligible, remaining)
+  CircuitPlan {
+    name,
+    request,
+    eligible,
+    allocation,
+    unmet: unmet_demand(request, allocation),
+    reason: reason_of(reason_code(request, cap, ramp, allocation)),
+  }
+}
+
+/// The usable budget with the refinement bound restated as a result bound,
+/// so the steps below can rely on it.
+fn usable_of(available: Watts, reserve: Watts) -> Int
+  requires reserve_within_available: reserve <= available
+  ensures exact: result == available - reserve
+  ensures nonneg: result >= 0
+  ensures bounded: result <= 100_000
+{ usable_budget(available, reserve) }
+
+/// The policy: subtract the reserve, then allocate to A, B and C in turn from
+/// what is left. The reserve and previous-within-cap rules are checked by
+/// `input.validate_snapshot`; these `requires` restate them for direct callers.
+pub fn plan(s: Snapshot) -> Plan
+  requires reserve_within_available: s.reserve <= s.available
+  requires a_previous_within_cap: s.a.previous <= s.a.cap
+  requires b_previous_within_cap: s.b.previous <= s.b.cap
+  requires c_previous_within_cap: s.c.previous <= s.c.cap
+  ensures conserved: result.a.allocation
+    + result.b.allocation
+    + result.c.allocation
+    + result.unallocated
+    == result.usable
+  ensures usable_is_available_minus_reserve: result.usable == s.available - s.reserve
+{
+  let usable = usable_of(s.available, s.reserve)
+  let a = step("A", s.a.request, s.a.cap, s.a.previous, s.a.step, usable)
+  let after_a = remaining_after(usable, a.allocation)
+  let b = step("B", s.b.request, s.b.cap, s.b.previous, s.b.step, after_a)
+  let after_b = remaining_after(after_a, b.allocation)
+  let c = step("C", s.c.request, s.c.cap, s.c.previous, s.c.step, after_b)
+  let unallocated = remaining_after(after_b, c.allocation)
+  Plan { usable, unallocated, a, b, c }
+}
+
+/// Decodes a kernel reason code. Codes outside 0..=3 cannot come from
+/// `reason_code`, whose `code_range` clause bounds them.
+fn reason_of(code: Int) -> Reason {
+  match code {
+    0 => RequestSatisfied,
+    1 => CircuitCap,
+    2 => UpwardStep,
+    _ => SharedSupply,
+  }
+}
+
+/// The stable output name of a reason.
+pub fn reason_name(r: Reason) -> String {
+  match r {
+    RequestSatisfied => "request_satisfied",
+    CircuitCap => "circuit_cap",
+    UpwardStep => "upward_step",
+    SharedSupply => "shared_supply",
+  }
+}

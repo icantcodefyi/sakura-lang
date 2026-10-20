@@ -1,0 +1,418 @@
+// Acceptance tests for the workshop power policy. Scenario numbers follow
+// BRIEF.md. Generated cases are built constructively (every candidate is a
+// valid snapshot) and checked against `oracle_allocations`, an independent
+// prefix-sum formulation of the policy, not against the implementation.
+
+import std/cli.{Cli}
+import std/gen
+import std/gen.{Gen}
+
+import workshop_power/input.{
+  Circuit,
+  InputError,
+  Malformed,
+  OutOfRange,
+  PreviousExceedsCap,
+  RawCircuit,
+  RawSnapshot,
+  ReserveExceedsAvailable,
+  Snapshot,
+  TooLarge,
+  read_snapshot,
+  validate_snapshot,
+}
+import workshop_power/kernel.{
+  allocate,
+  conserved_total,
+  reason_code,
+  remaining_after,
+  usable_budget,
+}
+import workshop_power/main.{evaluate, run_cli}
+import workshop_power/policy.{
+  CircuitCap,
+  Plan,
+  Reason,
+  RequestSatisfied,
+  SharedSupply,
+  UpwardStep,
+  plan,
+}
+
+// ---- helpers ---------------------------------------------------------------
+
+fn rc(request: Int, cap: Int, previous: Int, step: Int) -> RawCircuit {
+  RawCircuit { request, cap, previous, step }
+}
+
+/// A circuit with cap 100,000 and an upward step that never binds.
+fn open_circuit(request: Int) -> RawCircuit { rc(request, 100_000, 0, 100_000) }
+
+fn raw(available: Int, reserve: Int, a: RawCircuit, b: RawCircuit, c: RawCircuit) -> RawSnapshot {
+  RawSnapshot { available, reserve, a, b, c }
+}
+
+fn run_policy(r: RawSnapshot) -> Plan ! {Fail<InputError>} { plan(validate_snapshot(r)) }
+
+fn allocations(p: Plan) -> (Int, Int, Int) { (p.a.allocation, p.b.allocation, p.c.allocation) }
+
+fn unmet(p: Plan) -> (Int, Int, Int) { (p.a.unmet, p.b.unmet, p.c.unmet) }
+
+fn reasons(p: Plan) -> (Reason, Reason, Reason) { (p.a.reason, p.b.reason, p.c.reason) }
+
+fn json_of(r: RawSnapshot) -> String { Json.encode(r) }
+
+/// The brief's 100/10 example as JSON.
+fn example_json() -> String {
+  json_of(raw(100, 10, open_circuit(50), open_circuit(40), open_circuit(30)))
+}
+
+// ---- independent oracle ----------------------------------------------------
+
+fn oracle_eligible(c: RawCircuit) -> Int {
+  List.fold([c.cap, c.previous + c.step], c.request, fn(m, x) { Int.min(m, x) })
+}
+
+/// Allocations as differences of clamped prefix sums: circuit k receives
+/// min(e1 + … + ek, usable) − min(e1 + … + e(k−1), usable).
+fn oracle_allocations(r: RawSnapshot) -> (Int, Int, Int) {
+  let usable = r.available - r.reserve
+  let eligible = List.map([r.a, r.b, r.c], oracle_eligible)
+  let prefixes = List.fold(eligible, [], fn(acc, e) {
+    let before = Option.unwrap_or(List.last(acc), 0)
+    List.push(acc, before + e)
+  })
+  let reached = List.map(prefixes, fn(p) { Int.min(p, usable) })
+  match reached {
+    [x, y, z] => (x, y - x, z - y),
+    _ => (-1, -1, -1),
+  }
+}
+
+// ---- constructive generators -----------------------------------------------
+
+/// Picks a magnitude so small cases (many ties) and full-range cases both occur.
+fn magnitude() -> Int ! {Random} {
+  match Random.int(0, 2) {
+    0 => 10,
+    1 => 1_000,
+    _ => 100_000,
+  }
+}
+
+fn valid_circuit(hi: Int) -> RawCircuit ! {Random} {
+  let cap = Random.int(0, hi)
+  RawCircuit {
+    request: Random.int(0, hi),
+    cap,
+    previous: Random.int(0, cap),
+    step: Random.int(0, hi),
+  }
+}
+
+/// A valid snapshot by construction: reserve ≤ available, previous ≤ cap.
+fn valid_snapshot() -> RawSnapshot ! {Random} {
+  let hi = magnitude()
+  let available = Random.int(0, hi)
+  RawSnapshot {
+    available,
+    reserve: Random.int(0, available),
+    a: valid_circuit(hi),
+    b: valid_circuit(hi),
+    c: valid_circuit(hi),
+  }
+}
+
+fn snapshots() -> Gen<RawSnapshot> { Gen { sample: fn(_size) { valid_snapshot() } } }
+
+/// A valid snapshot and an amount of extra supply that keeps it valid.
+fn supply_raises() -> Gen<(RawSnapshot, Int)> {
+  Gen {
+    sample: fn(_size) {
+      let s = valid_snapshot()
+      (s, Random.int(0, 100_000 - s.available))
+    },
+  }
+}
+
+// ---- scenarios 1–16: policy examples ---------------------------------------
+
+test "01 the 100/10 example allocates 50/40/0 with unmet 0/0/30" {
+  let p = run_policy(raw(100, 10, open_circuit(50), open_circuit(40), open_circuit(30)))
+  expect_eq(p.usable, 90)
+  expect_eq(allocations(p), (50, 40, 0))
+  expect_eq(p.unallocated, 0)
+  expect_eq(unmet(p), (0, 0, 30))
+  expect_eq(reasons(p), (RequestSatisfied, RequestSatisfied, SharedSupply))
+}
+
+test "02 sufficient supply satisfies all requests and reports the exact remainder" {
+  let p = run_policy(raw(1_000, 100, open_circuit(200), open_circuit(300), open_circuit(150)))
+  expect_eq(allocations(p), (200, 300, 150))
+  expect_eq(p.unallocated, 250)
+  expect_eq(unmet(p), (0, 0, 0))
+}
+
+test "03 zero available power with zero reserve allocates nothing" {
+  let p = run_policy(raw(0, 0, open_circuit(10), open_circuit(20), open_circuit(30)))
+  expect_eq(allocations(p), (0, 0, 0))
+  expect_eq(p.unallocated, 0)
+  expect_eq(unmet(p), (10, 20, 30))
+  expect_eq(reasons(p), (SharedSupply, SharedSupply, SharedSupply))
+}
+
+test "04 reserve equal to available power leaves no usable allocation" {
+  let p = run_policy(raw(500, 500, open_circuit(10), open_circuit(20), open_circuit(30)))
+  expect_eq(p.usable, 0)
+  expect_eq(allocations(p), (0, 0, 0))
+  expect_eq(p.unallocated, 0)
+}
+
+test "05 zero requests leave the entire usable budget unallocated" {
+  let p = run_policy(raw(800, 300, open_circuit(0), open_circuit(0), open_circuit(0)))
+  expect_eq(allocations(p), (0, 0, 0))
+  expect_eq(p.unallocated, 500)
+  expect_eq(reasons(p), (RequestSatisfied, RequestSatisfied, RequestSatisfied))
+}
+
+test "06 a cap below the request limits that circuit despite spare supply" {
+  let p = run_policy(raw(1_000, 0, rc(50, 20, 0, 100_000), open_circuit(0), open_circuit(0)))
+  expect_eq(p.a.allocation, 20)
+  expect_eq(p.a.unmet, 30)
+  expect_eq(p.a.reason, CircuitCap)
+  expect_eq(p.unallocated, 980)
+}
+
+test "07 previous plus upward step below the request limits the increase" {
+  let p = run_policy(raw(1_000, 0, rc(40, 100, 10, 15), open_circuit(0), open_circuit(0)))
+  expect_eq(p.a.allocation, 25)
+  expect_eq(p.a.reason, UpwardStep)
+}
+
+test "08 a zero upward step retains the previous allocation without increase" {
+  let p = run_policy(raw(1_000, 0, rc(50, 100, 30, 0), open_circuit(0), open_circuit(0)))
+  expect_eq(p.a.allocation, 30)
+  expect_eq(p.a.unmet, 20)
+  expect_eq(p.a.reason, UpwardStep)
+}
+
+test "09 a lower requested load decreases the allocation immediately" {
+  let p = run_policy(raw(1_000, 0, rc(20, 100, 80, 0), open_circuit(0), open_circuit(0)))
+  expect_eq(p.a.allocation, 20)
+  expect_eq(p.a.reason, RequestSatisfied)
+}
+
+test "10 a sudden supply reduction lowers allocations below previous values" {
+  let p = run_policy(raw(50, 0, rc(60, 100, 60, 0), rc(30, 100, 30, 0), rc(10, 100, 10, 0)))
+  expect_eq(allocations(p), (50, 0, 0))
+  expect_eq(reasons(p), (SharedSupply, SharedSupply, SharedSupply))
+}
+
+test "11 A consumes first and B receives only the remainder" {
+  let p = run_policy(raw(100, 0, open_circuit(70), open_circuit(90), open_circuit(0)))
+  expect_eq(allocations(p), (70, 30, 0))
+  expect_eq(p.b.unmet, 60)
+  expect_eq(p.b.reason, SharedSupply)
+}
+
+test "12 C receives the exact remainder after A and B" {
+  let p = run_policy(raw(100, 5, open_circuit(30), open_circuit(40), open_circuit(90)))
+  expect_eq(allocations(p), (30, 40, 25))
+  expect_eq(p.unallocated, 0)
+  expect_eq(p.c.unmet, 65)
+}
+
+test "13 exhausting the budget at A leaves B and C at zero" {
+  let p = run_policy(raw(100, 0, open_circuit(100), open_circuit(10), open_circuit(10)))
+  expect_eq(allocations(p), (100, 0, 0))
+  expect_eq(p.a.reason, RequestSatisfied)
+  expect_eq((p.b.reason, p.c.reason), (SharedSupply, SharedSupply))
+}
+
+test "14 an exact circuit-cap boundary loses nothing" {
+  let at_cap = run_policy(raw(1_000, 0, rc(50, 50, 0, 100), rc(51, 50, 0, 100), open_circuit(0)))
+  expect_eq(at_cap.a.allocation, 50)
+  expect_eq(at_cap.a.reason, RequestSatisfied)
+  expect_eq(at_cap.b.allocation, 50)
+  expect_eq(at_cap.b.reason, CircuitCap)
+  let previous_at_cap = run_policy(
+    raw(1_000, 0, rc(80, 70, 70, 5), open_circuit(0), open_circuit(0)),
+  )
+  expect_eq(previous_at_cap.a.allocation, 70)
+  expect_eq(previous_at_cap.a.reason, CircuitCap)
+}
+
+test "15 an exact upward-step boundary is reached and not exceeded" {
+  let p = run_policy(raw(1_000, 0, rc(50, 100, 10, 40), rc(51, 100, 10, 40), open_circuit(0)))
+  expect_eq(p.a.allocation, 50)
+  expect_eq(p.a.reason, RequestSatisfied)
+  expect_eq(p.b.allocation, 50)
+  expect_eq(p.b.reason, UpwardStep)
+}
+
+test "16 maximal valid values stay exact" {
+  let full = rc(100_000, 100_000, 100_000, 100_000)
+  let p = run_policy(raw(100_000, 0, full, full, full))
+  expect_eq(allocations(p), (100_000, 0, 0))
+  expect_eq(unmet(p), (0, 100_000, 100_000))
+  expect_eq(p.unallocated, 0)
+  let reserved = run_policy(raw(100_000, 100_000, full, full, full))
+  expect_eq(allocations(reserved), (0, 0, 0))
+  expect_eq(conserved_total(100_000, 100_000, 100_000, 100_000), 100_000)
+}
+
+// ---- scenarios 17–23: input errors and defects ------------------------------
+
+test "17 reserve above available power is a typed input error" {
+  expect_fail(
+    fn() { validate_snapshot(raw(10, 11, open_circuit(0), open_circuit(0), open_circuit(0))) },
+    ReserveExceedsAvailable { reserve: 11, available: 10 },
+  )
+}
+
+test "18 a negative input is rejected at validation" {
+  expect_fail(
+    fn() { validate_snapshot(raw(10, 0, open_circuit(0), rc(-1, 10, 0, 0), open_circuit(0))) },
+    OutOfRange { field: "b.request", value: -1 },
+  )
+}
+
+test "19 a value above 100,000 is rejected at validation" {
+  expect_fail(
+    fn() { validate_snapshot(raw(100_001, 0, open_circuit(0), open_circuit(0), open_circuit(0))) },
+    OutOfRange { field: "available", value: 100_001 },
+  )
+  expect_fail(
+    fn() { validate_snapshot(raw(10, 0, open_circuit(0), open_circuit(0), rc(0, 0, 0, 100_001))) },
+    OutOfRange { field: "c.step", value: 100_001 },
+  )
+}
+
+test "20 a previous allocation above its cap is rejected before the kernel" {
+  expect_fail(
+    fn() { validate_snapshot(raw(10, 0, open_circuit(0), open_circuit(0), rc(5, 40, 41, 0))) },
+    PreviousExceedsCap { circuit: "c", previous: 41, cap: 40 },
+  )
+  with Cli.of([json_of(raw(10, 0, open_circuit(0), open_circuit(0), rc(5, 40, 41, 0)))]) {
+    expect_eq(run_cli(), 2)
+  }
+  expect_output([
+    "\{\"error\":\"previous_exceeds_cap\",\"detail\":\"circuit c previous allocation 41 exceeds its cap 40\"}",
+  ])
+}
+
+test "21 malformed JSON and missing fields fail without a report" {
+  expect_fails_with(
+    fn() { read_snapshot("\{\"available\": 10,") },
+    fn(e) {
+      match e {
+        Malformed { .. } => true,
+        _ => false,
+      }
+    },
+  )
+  expect_fail(
+    fn() { read_snapshot("\{\"available\":10,\"reserve\":0}") },
+    Malformed { path: "/a", message: "missing field" },
+  )
+  expect_fails_with(
+    fn() { read_snapshot("\{\"available\":1.5,\"reserve\":0}") },
+    fn(e) {
+      match e {
+        Malformed { .. } => true,
+        _ => false,
+      }
+    },
+  )
+  with Cli.of(["not json"]) { expect_eq(run_cli(), 2) }
+  let lines = Test.output_lines()
+  expect_eq(List.len(lines), 1)
+  expect(List.all(lines, fn(l) { String.starts_with(l, "\{\"error\":\"malformed\"") }))
+}
+
+test "22 a JSON argument over 4,096 bytes is rejected before decoding" {
+  let body = example_json()
+  let padding = 4_096 - String.len(body)
+  let at_limit = String.repeat(" ", padding) + body
+  expect_eq(String.len(at_limit), 4_096)
+  expect_eq(allocations(plan(read_snapshot(at_limit))), (50, 40, 0))
+  let over = " " + at_limit
+  expect_fail(fn() { read_snapshot(over) }, TooLarge { bytes: 4_097, limit: 4_096 })
+  // Over the limit, even text that is not JSON is reported as too large.
+  expect_fail(
+    fn() { read_snapshot(String.repeat("x", 5_000)) },
+    TooLarge { bytes: 5_000, limit: 4_096 },
+  )
+}
+
+test "23 violating an internal scalar precondition is a defect, not an input error" {
+  expect_defect(fn() { usable_budget(5, 10) })
+  expect_defect(fn() { allocate(-1, 10) })
+  expect_defect(fn() { remaining_after(10, 11) })
+  // Built directly, bypassing `validate_snapshot`'s reserve rule.
+  let idle = Circuit { request: 0, cap: 0, previous: 0, step: 0 }
+  let unchecked = Snapshot { available: 10, reserve: 20, a: idle, b: idle, c: idle }
+  expect_defect(fn() { plan(unchecked) })
+}
+
+// ---- scenarios 24–28: generated properties, determinism, ties ---------------
+
+test "24 generated valid inputs conserve usable power" {
+  gen.for_all(snapshots(), 300, fn(r) {
+    let p = run_policy(r)
+    let (a, b, c) = allocations(p)
+    expect_eq(a + b + c + p.unallocated, r.available - r.reserve)
+    expect_eq(allocations(p), oracle_allocations(r))
+  })
+}
+
+test "25 generated allocations are nonnegative and within request, cap and ramp" {
+  gen.for_all(snapshots(), 300, fn(r) {
+    let p = run_policy(r)
+    let pairs = [(p.a.allocation, r.a), (p.b.allocation, r.b), (p.c.allocation, r.c)]
+    expect(
+      List.all(pairs, fn(pair) {
+        let (got, c) = pair
+        got >= 0 && got <= c.request && got <= c.cap && got <= c.previous + c.step
+      }),
+    )
+  })
+}
+
+test "26 raising supply alone never lowers an allocation" {
+  gen.for_all(supply_raises(), 300, fn(case) {
+    let (r, extra) = case
+    let low = run_policy(r)
+    let high = run_policy(RawSnapshot { ..r, available: r.available + extra })
+    expect(high.a.allocation >= low.a.allocation)
+    expect(high.b.allocation >= low.b.allocation)
+    expect(high.c.allocation >= low.c.allocation)
+  })
+}
+
+test "27 an identical snapshot gives identical output, matching the reviewed report" {
+  let first = evaluate(example_json())
+  let second = evaluate(example_json())
+  expect_eq(first, second)
+  expect_snapshot("example_report", first)
+  with Cli.of([example_json()]) { expect_eq(run_cli(), 0) }
+  expect_output([first])
+}
+
+test "28 equal limiting values pick the documented reason" {
+  // request = cap = supply: request satisfied wins.
+  expect_eq(reason_code(50, 50, 100, 50), 0)
+  // cap = ramp < request: circuit cap wins over upward step.
+  expect_eq(reason_code(80, 40, 40, 40), 1)
+  // cap = supply < request: circuit cap wins over shared supply.
+  expect_eq(reason_code(80, 40, 100, 40), 1)
+  // ramp = supply < cap < request: upward step wins over shared supply.
+  expect_eq(reason_code(80, 60, 30, 30), 2)
+  // Through the whole policy, with each tie set up on circuit A.
+  let tie = run_policy(raw(40, 0, rc(80, 40, 0, 40), open_circuit(0), open_circuit(0)))
+  expect_eq(tie.a.reason, CircuitCap)
+  let ramp_tie = run_policy(raw(30, 0, rc(80, 60, 0, 30), open_circuit(0), open_circuit(0)))
+  expect_eq(ramp_tie.a.reason, UpwardStep)
+  let exact = run_policy(raw(50, 0, rc(50, 50, 0, 50), open_circuit(0), open_circuit(0)))
+  expect_eq(exact.a.reason, RequestSatisfied)
+}

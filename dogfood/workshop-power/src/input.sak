@@ -1,0 +1,146 @@
+// Operator input: the JSON snapshot, its size limit, and validation into
+// refined types. Every rejection is a typed `InputError`, raised before any
+// contracted kernel runs, so a bad snapshot never reaches a precondition.
+
+import std/json.{DecodeError}
+
+/// The largest snapshot argument accepted, in UTF-8 bytes. Longer text is
+/// rejected before decoding.
+pub fn max_snapshot_bytes() -> Int { 4_096 }
+
+/// A validated quantity in integer watts.
+pub type Watts = Int where it >= 0 && it <= 100_000
+
+/// One circuit as the operator wrote it, before validation.
+pub type RawCircuit = { request: Int, cap: Int, previous: Int, step: Int }
+
+/// The snapshot as decoded from JSON, before validation. Every field is
+/// required; an absent one is a decode failure.
+pub type RawSnapshot = { available: Int, reserve: Int, a: RawCircuit, b: RawCircuit, c: RawCircuit }
+
+/// One validated circuit. `previous <= cap` is checked before construction.
+pub type Circuit = { request: Watts, cap: Watts, previous: Watts, step: Watts }
+
+/// A validated snapshot. `reserve <= available` and each circuit's
+/// `previous <= cap` are checked before construction.
+pub type Snapshot = { available: Watts, reserve: Watts, a: Circuit, b: Circuit, c: Circuit }
+
+/// The snapshot argument is longer than `max_snapshot_bytes()`.
+pub error TooLarge(bytes: Int, limit: Int)
+
+/// The argument is not JSON of the snapshot's shape (bad syntax, a missing
+/// field, a non-integer number). `path` is a JSON Pointer.
+pub error Malformed(path: String, message: String)
+
+/// A quantity lies outside 0..=100,000 watts.
+pub error OutOfRange(field: String, value: Int)
+
+/// The reserve is larger than the available power.
+pub error ReserveExceedsAvailable(reserve: Int, available: Int)
+
+/// A circuit's previous allocation is larger than its cap.
+pub error PreviousExceedsCap(circuit: String, previous: Int, cap: Int)
+
+/// Every way operator input can be rejected.
+pub type InputError = TooLarge
+  | Malformed
+  | OutOfRange
+  | ReserveExceedsAvailable
+  | PreviousExceedsCap
+
+/// Decodes and validates one snapshot argument. The size check runs first,
+/// then JSON decoding, then per-field ranges, then cross-field rules.
+pub fn read_snapshot(text: String) -> Snapshot
+  ! {Fail<InputError>}
+  ensures reserve_within_available: result.reserve <= result.available
+  ensures a_previous_within_cap: result.a.previous <= result.a.cap
+  ensures b_previous_within_cap: result.b.previous <= result.b.cap
+  ensures c_previous_within_cap: result.c.previous <= result.c.cap
+{
+  let bytes = String.len(text)
+  let limit = max_snapshot_bytes()
+  if bytes > limit { fail TooLarge { bytes, limit } }
+  let decoded: Result<RawSnapshot, DecodeError> = Json.decode(text)
+  match decoded {
+    Ok(raw) => validate_snapshot(raw),
+    Err(DecodeError { path, message }) => fail Malformed { path, message },
+  }
+}
+
+/// Validates a decoded snapshot: ranges first, field by field in document
+/// order, then the reserve rule, then each circuit's previous-within-cap rule.
+pub fn validate_snapshot(raw: RawSnapshot) -> Snapshot
+  ! {Fail<InputError>}
+  ensures reserve_within_available: result.reserve <= result.available
+  ensures a_previous_within_cap: result.a.previous <= result.a.cap
+  ensures b_previous_within_cap: result.b.previous <= result.b.cap
+  ensures c_previous_within_cap: result.c.previous <= result.c.cap
+{
+  let available = watts("available", raw.available)
+  let reserve = watts("reserve", raw.reserve)
+  let a = validate_circuit("a", raw.a)
+  let b = validate_circuit("b", raw.b)
+  let c = validate_circuit("c", raw.c)
+  if reserve > available { fail ReserveExceedsAvailable { reserve, available } }
+  check_previous("a", a)
+  check_previous("b", b)
+  check_previous("c", c)
+  Snapshot { available, reserve, a, b, c }
+}
+
+fn validate_circuit(name: String, raw: RawCircuit) -> Circuit
+  ! {Fail<OutOfRange>}
+  ensures same_previous: result.previous == raw.previous
+  ensures same_cap: result.cap == raw.cap
+{
+  Circuit {
+    request: watts("{name}.request", raw.request),
+    cap: watts("{name}.cap", raw.cap),
+    previous: watts("{name}.previous", raw.previous),
+    step: watts("{name}.step", raw.step),
+  }
+}
+
+fn check_previous(name: String, circuit: Circuit) -> Unit
+  ! {Fail<PreviousExceedsCap>}
+  ensures previous_within_cap: circuit.previous <= circuit.cap
+{
+  if circuit.previous > circuit.cap {
+    fail PreviousExceedsCap { circuit: name, previous: circuit.previous, cap: circuit.cap }
+  }
+}
+
+/// Enters `Watts` through its refinement; `field` names the input for the error.
+fn watts(field: String, value: Int) -> Watts
+  ! {Fail<OutOfRange>}
+  ensures unchanged: result == value
+{
+  match Watts.validate(value) {
+    Ok(w) => w,
+    Err(_) => fail OutOfRange { field, value },
+  }
+}
+
+/// A short machine-readable name for each input error, used in CLI output.
+pub fn error_kind(e: InputError) -> String {
+  match e {
+    TooLarge { .. } => "too_large",
+    Malformed { .. } => "malformed",
+    OutOfRange { .. } => "out_of_range",
+    ReserveExceedsAvailable { .. } => "reserve_exceeds_available",
+    PreviousExceedsCap { .. } => "previous_exceeds_cap",
+  }
+}
+
+/// A one-line human explanation of an input error.
+pub fn error_detail(e: InputError) -> String {
+  match e {
+    TooLarge { bytes, limit } => "snapshot is {bytes} bytes; the limit is {limit}",
+    Malformed { path, message } => "malformed snapshot at '{path}': {message}",
+    OutOfRange { field, value } => "{field} is {value}; expected 0 to 100000 watts",
+    ReserveExceedsAvailable { reserve, available } =>
+      "reserve {reserve} exceeds available power {available}",
+    PreviousExceedsCap { circuit, previous, cap } =>
+      "circuit {circuit} previous allocation {previous} exceeds its cap {cap}",
+  }
+}

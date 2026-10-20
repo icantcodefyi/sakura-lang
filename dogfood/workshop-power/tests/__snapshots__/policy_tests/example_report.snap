@@ -1,0 +1,1 @@
+{"usable":90,"unallocated":0,"circuits":[{"circuit":"A","request":50,"eligible":50,"allocation":50,"unmet":0,"reason":"request_satisfied"},{"circuit":"B","request":40,"eligible":40,"allocation":40,"unmet":0,"reason":"request_satisfied"},{"circuit":"C","request":30,"eligible":30,"allocation":0,"unmet":30,"reason":"shared_supply"}]}

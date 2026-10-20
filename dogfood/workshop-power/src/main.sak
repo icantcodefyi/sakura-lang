@@ -1,0 +1,105 @@
+// Workshop Power: a three-circuit allocation policy for a workshop power budget.
+//
+// Author: Claude Opus 5.5 (Claude family), written in one fresh session with no
+// repository checkout or path to one; sources were the installed CLI and the
+// public website only.
+// Built against `sakura --version`: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+//
+// Usage: sakura run -- '<snapshot JSON>'
+//
+// The program proposes a schedule from one snapshot. It does not connect to or
+// control electrical equipment, and its report is explanatory policy data, not
+// an engineering safety assessment.
+//
+// Exit codes: 0 with a JSON report on stdout; 2 with a JSON error on stdout for
+// a missing, oversized, malformed or invalid snapshot (no report is printed).
+
+import std/cli.{Cli}
+import std/json.{Json}
+
+import workshop_power/input.{InputError, error_detail, error_kind, read_snapshot}
+import workshop_power/policy.{CircuitPlan, Plan, plan, reason_name}
+
+/// One circuit in the JSON report.
+pub type CircuitReport = {
+  circuit: String,
+  request: Int,
+  eligible: Int,
+  allocation: Int,
+  unmet: Int,
+  reason: String,
+}
+
+/// The JSON report for one snapshot.
+pub type Report = { usable: Int, unallocated: Int, circuits: List<CircuitReport> }
+
+/// The JSON error for a rejected snapshot: `{"detail": …, "error": …}`.
+/// `error` is a keyword and cannot be a record field, so this builds the
+/// object as a `Json` value instead of encoding a record.
+pub fn error_json(kind: String, detail: String) -> String {
+  Json.encode(Json.Object(Map.of([("error", Json.String(kind)), ("detail", Json.String(detail))])))
+}
+
+/// Exit status for a rejected snapshot or a wrong argument count.
+pub fn input_failure_code() -> Int { 2 }
+
+/// Builds the typed report from a plan.
+pub fn to_report(p: Plan) -> Report {
+  Report {
+    usable: p.usable,
+    unallocated: p.unallocated,
+    circuits: [circuit(p.a), circuit(p.b), circuit(p.c)],
+  }
+}
+
+fn circuit(c: CircuitPlan) -> CircuitReport {
+  CircuitReport {
+    circuit: c.name,
+    request: c.request,
+    eligible: c.eligible,
+    allocation: c.allocation,
+    unmet: c.unmet,
+    reason: reason_name(c.reason),
+  }
+}
+
+/// Validates one snapshot argument and renders its report as compact JSON.
+pub fn evaluate(text: String) -> String ! {Fail<InputError>} {
+  let snapshot = read_snapshot(text)
+  Json.encode(to_report(plan(snapshot)))
+}
+
+/// Renders an input error as compact JSON.
+pub fn render_error(e: InputError) -> String { error_json(error_kind(e), error_detail(e)) }
+
+/// The CLI body: reads exactly one argument, prints one JSON line and returns
+/// the exit status. Kept separate from `main` so tests can run it under
+/// `Cli.of` without reaching `Cli.exit`.
+pub fn run_cli() -> Int ! {Cli, Console} {
+  match Cli.args() {
+    [text] => respond(text),
+    args => {
+      let n = List.len(args)
+      Console.print(error_json("usage", "expected exactly one JSON snapshot argument, got {n}"))
+      input_failure_code()
+    },
+  }
+}
+
+fn respond(text: String) -> Int ! {Console} {
+  match try { evaluate(text) } {
+    Ok(report) => {
+      Console.print(report)
+      0
+    },
+    Err(e) => {
+      Console.print(render_error(e))
+      input_failure_code()
+    },
+  }
+}
+
+pub fn main() -> Unit ! {Cli, Console} {
+  let code = run_cli()
+  if code != 0 { Cli.exit(code) }
+}

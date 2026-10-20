@@ -1,0 +1,118 @@
+// Scalar policy kernel for the three-circuit workshop power allocator.
+//
+// Every function here is pure, loop-free and non-recursive, takes `Int`
+// scalars and returns one `Int`. Bodies use only comparisons, branches,
+// addition and subtraction, so `sakura verify` can discharge their
+// `requires`, `ensures` and overflow obligations. Quantities are integer
+// watts in 0..=100_000; a ramp allowance (previous + step) reaches 200_000.
+
+/// Power left for the circuits once the reserve is set aside. The reserve is
+/// outside the allocatable total.
+pub fn usable_budget(available: Int, reserve: Int) -> Int
+  requires reserve_nonneg: reserve >= 0
+  requires reserve_within_available: reserve <= available
+  requires available_bounded: available <= 100_000
+  ensures exact: result == available - reserve
+  ensures nonneg: result >= 0
+  ensures within_available: result <= available
+{ available - reserve }
+
+/// The highest allocation the upward-step rule allows: the previous
+/// allocation plus the circuit's maximum upward step. Downward moves are never
+/// limited, so this is only an upper bound.
+pub fn ramp_allowance(previous: Int, step: Int) -> Int
+  requires previous_in_range: previous >= 0 && previous <= 100_000
+  requires step_in_range: step >= 0 && step <= 100_000
+  ensures exact: result == previous + step
+  ensures at_least_previous: result >= previous
+  ensures bounded: result <= 200_000
+{ previous + step }
+
+/// A circuit's eligible request: the least of its request, its circuit cap and
+/// its ramp allowance.
+pub fn capped_request(request: Int, cap: Int, ramp: Int) -> Int
+  requires request_in_range: request >= 0 && request <= 100_000
+  requires cap_in_range: cap >= 0 && cap <= 100_000
+  requires ramp_in_range: ramp >= 0 && ramp <= 200_000
+  ensures nonneg: result >= 0
+  ensures within_request: result <= request
+  ensures within_cap: result <= cap
+  ensures within_ramp: result <= ramp
+  ensures attained: result == request || result == cap || result == ramp
+{
+  let lower = if request <= cap { request } else { cap }
+  if lower <= ramp { lower } else { ramp }
+}
+
+/// What one circuit receives from the budget still remaining: all of its
+/// eligible request when that fits, otherwise everything that is left.
+pub fn allocate(eligible: Int, remaining: Int) -> Int
+  requires eligible_in_range: eligible >= 0 && eligible <= 100_000
+  requires remaining_in_range: remaining >= 0 && remaining <= 100_000
+  ensures nonneg: result >= 0
+  ensures within_eligible: result <= eligible
+  ensures within_remaining: result <= remaining
+  ensures greedy: result == eligible || result == remaining
+{ if eligible <= remaining { eligible } else { remaining } }
+
+/// The budget left after one allocation. It never grows.
+pub fn remaining_after(remaining: Int, allocation: Int) -> Int
+  requires remaining_in_range: remaining >= 0 && remaining <= 100_000
+  requires allocation_in_range: allocation >= 0 && allocation <= remaining
+  ensures exact: result == remaining - allocation
+  ensures nonneg: result >= 0
+  ensures non_increasing: result <= remaining
+{ remaining - allocation }
+
+/// Demand a circuit asked for and did not receive.
+pub fn unmet_demand(request: Int, allocation: Int) -> Int
+  requires request_in_range: request >= 0 && request <= 100_000
+  requires allocation_in_range: allocation >= 0 && allocation <= request
+  ensures exact: result == request - allocation
+  ensures nonneg: result >= 0
+  ensures within_request: result <= request
+{ request - allocation }
+
+/// Why a circuit received what it did, as a code. Ties are broken in the
+/// documented order: 0 request satisfied, 1 circuit cap, 2 upward-step cap,
+/// 3 shared supply. The first limit equal to the allocation wins.
+pub fn reason_code(request: Int, cap: Int, ramp: Int, allocation: Int) -> Int
+  requires request_in_range: request >= 0 && request <= 100_000
+  requires cap_in_range: cap >= 0 && cap <= 100_000
+  requires ramp_in_range: ramp >= 0 && ramp <= 200_000
+  requires allocation_in_range: allocation >= 0 && allocation <= request
+  ensures code_range: result >= 0 && result <= 3
+  ensures satisfied_first: (result == 0) == (allocation == request)
+  ensures cap_before_ramp: result != 1 || allocation == cap
+  ensures ramp_before_supply: result != 2 || (allocation == ramp && allocation != cap)
+{
+  if allocation == request {
+    0
+  } else if allocation == cap {
+    1
+  } else if allocation == ramp {
+    2
+  } else {
+    3
+  }
+}
+
+/// The three-step A/B/C composition over eligible requests, returning the sum
+/// of the three allocations and the final remainder. Its `conserved` clause is
+/// the scalar composition obligation behind the conservation claim: it holds
+/// only because each stage's contract chains into the next.
+pub fn conserved_total(usable: Int, eligible_a: Int, eligible_b: Int, eligible_c: Int) -> Int
+  requires usable_in_range: usable >= 0 && usable <= 100_000
+  requires a_in_range: eligible_a >= 0 && eligible_a <= 100_000
+  requires b_in_range: eligible_b >= 0 && eligible_b <= 100_000
+  requires c_in_range: eligible_c >= 0 && eligible_c <= 100_000
+  ensures conserved: result == usable
+{
+  let a = allocate(eligible_a, usable)
+  let after_a = remaining_after(usable, a)
+  let b = allocate(eligible_b, after_a)
+  let after_b = remaining_after(after_a, b)
+  let c = allocate(eligible_c, after_b)
+  let after_c = remaining_after(after_b, c)
+  a + b + c + after_c
+}
