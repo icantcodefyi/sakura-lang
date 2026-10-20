@@ -101,10 +101,10 @@ hkdf = { version = "=0.13.0", default-features = false }
 pbkdf2 = { version = "=0.13.0", default-features = false, features = ["hmac"] }
 # Tier 1b (plan web-apis phase 7b): AES-GCM, ECDSA and ECDH over P-256 (RFC 6979 signing),
 # Ed25519 and X25519; exact pins, default features off. The dalek crates are BSD-3-Clause.
-aes-gcm = { version = "=0.11.1", default-features = false, features = ["aes", "alloc"] }
+aes-gcm = { version = "=0.11.1", default-features = false, features = ["aes", "alloc", "zeroize"] }
 p256 = { version = "=0.14.0", default-features = false, features = ["ecdsa", "ecdh"] }
-ed25519-dalek = { version = "=3.0.0", default-features = false }
-x25519-dalek = { version = "=3.0.0", default-features = false, features = ["static_secrets"] }
+ed25519-dalek = { version = "=3.0.0", default-features = false, features = ["zeroize"] }
+x25519-dalek = { version = "=3.0.0", default-features = false, features = ["static_secrets", "zeroize"] }
 # `std/compress`'s DEFLATE codec in `runtime/rt` (RFC 0002 §2.6, plan web-apis phase 6), on WASM
 # and native alike: `no_std`, its allocation-free decoder and the compressor (`with-alloc`).
 miniz_oxide = { version = "=0.9.1", default-features = false, features = ["with-alloc"] }
