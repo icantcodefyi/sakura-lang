@@ -32,9 +32,10 @@ pub fn fixed(at: Instant) -> Handler<Clock> {
 }
 
 /// Virtual time starting at the Unix epoch: `sleep(d)` parks the task until nothing else can
-/// run, then advances `now`, `monotonic` and `monotonic_micros` by
-/// `d`; sleepers wake in virtual-time order. Use it
-/// to test timeouts and backoff.
+/// run and no host operation is in flight, then advances `now`, `monotonic` and
+/// `monotonic_micros` by `d`; sleepers wake in virtual-time order. Under a host `Http` or `Fs`
+/// the two backends may still order a real completion and a virtual wake differently, so
+/// virtual time is for scripted handlers. Use it to test timeouts and backoff.
 pub fn virtual() -> Handler<Clock> {
   handler Clock {
     var elapsed = 0

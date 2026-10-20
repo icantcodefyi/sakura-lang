@@ -375,6 +375,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - Doc comments: `Agent.run` names its failure tags (`UnknownTool`, `DecodeError`), and
   `timeout` says that under `Clock.fixed` an action that suspends times out at once and
   `Clock.virtual()` is the clock for testing timeouts (design §17.293 MT-6, PQ-8).
+- `Clock.virtual()` on WASM under the Node host advances virtual time only when no host
+  request is in flight (design §17.293 PQ-2): a `Task.timeout` around reading a scripted
+  `Http.stream` body no longer fires its sleeper before the read completes, so it gives the
+  JS result. `sakura test --record` no longer prints Node's `ExperimentalWarning` for
+  `--allow-net`.
 
 ### Security
 

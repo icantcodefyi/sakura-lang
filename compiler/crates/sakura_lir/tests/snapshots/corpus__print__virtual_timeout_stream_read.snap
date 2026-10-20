@@ -1,0 +1,196 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::http::Body
+layout 2 record std::http::Incoming | Incoming 40b (status: i64, headers: word*, body: word*)
+layout 3 variant std::http::Leg | Answered 24b (word*) | Hop 24b (word*)
+layout 4 variant std::http::Matcher | Any 16b () | Path 24b (word*) | Method 24b (word*)
+layout 5 variant std::instant::Instant | Instant 24b (i64)
+layout 6 variant std::list::Builder
+layout 7 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 8 variant std::request::Method | Get 16b () | Head 16b () | Post 16b () | Put 16b () | Patch 16b () | Delete 16b () | Options 16b () | Trace 16b ()
+layout 9 variant std::request::Payload | Empty 16b () | Text 24b (word*) | Bytes 24b (word*)
+layout 10 variant std::request::Redirect | Follow 16b () | Manual 16b () | Error 16b ()
+layout 11 record std::request::Request | Request 72b (method: word*, url: word*, headers: word*, body: word*, redirect: word*, secret_headers: word*, params: word*)
+layout 12 error std::response::HttpError | HttpError 32b (status: word*, reason: word*)
+layout 13 record std::response::Response | Response 40b (status: i64, headers: word*, body: word*)
+layout 14 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 15 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 16 variant std::task::Fiber
+layout 17 variant std::task::Scope
+layout 18 error std::task::Timeout | Timeout 24b (limit: word*)
+layout 19 variant std::url::State | SchemeStart 16b () | Scheme 16b () | NoScheme 16b () | SpecialRelativeOrAuthority 16b () | PathOrAuthority 16b () | RelativeState 16b () | RelativeSlash 16b () | SpecialAuthoritySlashes 16b () | SpecialAuthorityIgnoreSlashes 16b () | Authority 16b () | Host 16b () | Port 16b () | File 16b () | FileSlash 16b () | FileHost 16b () | PathStart 16b () | Path 16b () | OpaquePathState 16b () | Query 16b () | Fragment 16b ()
+layout 20 error std::url::UrlError | UrlError 24b (reason: word*)
+layout 21 record std::url::UrlParts | UrlParts 80b (scheme: word*, username: word*, password: word*, host: word*, port: word*, path: word*, query: word*, fragment: word*)
+layout 22 variant std::url::UrlReason | Idna 16b () | InvalidScheme 16b () | InvalidHost 16b () | InvalidPort 16b () | Relative 16b () | OpaquePath 16b ()
+layout 23 shape |  32b (word*, word*)
+layout 24 shape |  32b (i64, word*)
+layout 25 shape |  24b (i64)
+layout 26 shape |  16b ()
+layout 27 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::virtual_timeout_stream_read, frame 11 slots [%12 word*, %13 word*, %16 word*, %19 bool, %23 bool, %26 word*, %29 word*, %31 word*, %35 word*, %38 word*, %40 word*]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#116[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#118[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#120[]
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#122[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 25 state(%4) clauses(%0, %1, %2, %3)
+    %6 lit: i64 = const 7
+    %7 r: ptr = $task_deterministic(%6)
+    handle_push %5
+    handle_push %7
+    %8 v: ptr = const static std::http::Matcher.Any
+    %9 lit: i64 = const 200
+    %10 lit: ptr = const str 0
+    %11 $site: i64 = const 8
+    call status#6(%9, %10, %11) -> b1(%8)
+  b1(%12 r: ptr, %13 v: ptr) [handle, handle]:
+    %14 tup: ptr = alloc tuple#23(word, word)(%13, %12)
+    %15 xs: ptr = alloc list(%14)
+    call scripted#7(%15) -> b2()
+  b2(%16 r: ptr) [handle, handle]:
+    handle_push %16
+    try_push -> b10(err, )
+    %37 lit: i64 = const 5
+    call seconds#8(%37) -> b11()
+  b3(%17 v: ptr) [handle, handle, handle]:
+    %18 s: ptr = show %17
+    drop %17
+    perform std::console::Console.print(%18) -> b4()
+  b4(%19 r: unit) [handle, handle, handle]:
+    %20 box: word = box %19
+    drop %20
+    try_push -> b7(err, )
+    %28 lit: i64 = const 5
+    call seconds#8(%28) -> b8()
+  b5(%21 v: ptr) [handle, handle, handle]:
+    %22 s: ptr = show %21
+    drop %21
+    perform std::console::Console.print(%22) -> b6()
+  b6(%23 r: unit) [handle, handle, handle]:
+    %24 box: word = box %23
+    %25 unbox: unit = unbox %24
+    drop %24
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %25
+  b7(%26 e: word) [handle, handle, handle]:
+    %27 err: ptr = alloc std::result::Result.Err(%26)
+    jump b5(%27)
+  b8(%29 r: ptr) [handle, handle, handle, try]:
+    %30 f: ptr = closure main$2#14[]
+    call timeout#13(%29, %30) -> b9()
+  b9(%31 r: word) [handle, handle, handle, try]:
+    %32 unbox: i64 = unbox %31
+    drop %31
+    %33 box: word = box %32
+    %34 ok: ptr = alloc std::result::Result.Ok(%33)
+    try_pop
+    jump b5(%34)
+  b10(%35 e: word) [handle, handle, handle]:
+    %36 err: ptr = alloc std::result::Result.Err(%35)
+    jump b3(%36)
+  b11(%38 r: ptr) [handle, handle, handle, try]:
+    %39 f: ptr = closure main$1#9[]
+    call timeout#13(%38, %39) -> b12()
+  b12(%40 r: word) [handle, handle, handle, try]:
+    %41 unbox: i64 = unbox %40
+    drop %40
+    %42 box: word = box %41
+    %43 ok: ptr = alloc std::result::Result.Ok(%42)
+    try_pop
+    jump b3(%43)
+
+fn $entry#1 top -> unit ; main::virtual_timeout_stream_read, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#9 lambda -> word ; main::virtual_timeout_stream_read, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr):
+    drop %0
+    call req#10() -> b1()
+  b1(%1 r: ptr):
+    %2 f: ptr = closure main$1$1#11[]
+    %3 callback: ptr = callback %2
+    perform std::http::Http.stream(%1, %3) -> b2()
+  b2(%4 r: word):
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 box: word = box %5
+    ret %6
+
+fn req#10 top -> ptr ; main::virtual_timeout_stream_read, frame 3 slots [%3 word*, %4 word*, %5 word*]
+  b0():
+    %0 v: ptr = const static std::request::Method.Get
+    %1 lit: ptr = const str 5
+    %2 $site: i64 = const 10
+    call Url$from#18(%1, %2) -> b1(%0)
+  b1(%3 r: ptr, %4 v: ptr):
+    call of#19(%4, %3) -> b2()
+  b2(%5 r: ptr):
+    ret %5
+
+fn main$1$1#11 lambda -> word ; main::virtual_timeout_stream_read, captures [], frame 5 slots [%0 word*, %1 word*, %5 bool, %6 word*, %8 word*]
+  b0(%0 env: ptr, %1 i: word):
+    drop %0
+    %2 body: word = proj %1.2 std::http::Incoming
+    drop %1
+    %3 lit: i64 = const 100
+    %4 $site: i64 = const 11
+    dup %2
+    call Http.read_chunk#12(%2, %3, %4) -> b1(%2)
+  b1(%5 pre: unit, %6 body: ptr):
+    %7 lit: i64 = const 100
+    perform std::http::Http.read_chunk(%6, %7) -> b2()
+  b2(%8 r: ptr):
+    %9 r: i64 = $bytes_len(%8)
+    %10 box: word = box %9
+    ret %10
+
+fn main$2#14 lambda -> word ; main::virtual_timeout_stream_read, captures [], frame 3 slots [%0 word*, %1 word*, %4 word*]
+  b0(%0 env: ptr):
+    drop %0
+    call req#10() -> b1()
+  b1(%1 r: ptr):
+    %2 f: ptr = closure main$2$1#15[]
+    %3 callback: ptr = callback %2
+    perform std::http::Http.stream(%1, %3) -> b2()
+  b2(%4 r: word):
+    %5 unbox: i64 = unbox %4
+    drop %4
+    %6 box: word = box %5
+    ret %6
+
+fn main$2$1#15 lambda -> word ; main::virtual_timeout_stream_read, captures [], frame 9 slots [%0 word*, %1 word*, %3 word*, %4 word*, %5 bool, %6 word*, %11 bool, %12 word*, %14 word*]
+  b0(%0 env: ptr, %1 i: word):
+    drop %0
+    %2 lit: i64 = const 6
+    call seconds#8(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 i: ptr):
+    perform std::clock::Clock.sleep(%3) -> b2(%4)
+  b2(%5 r: unit, %6 i: ptr):
+    %7 box: word = box %5
+    drop %7
+    %8 body: word = proj %6.2 std::http::Incoming
+    drop %6
+    %9 lit: i64 = const 100
+    %10 $site: i64 = const 12
+    dup %8
+    call Http.read_chunk#12(%8, %9, %10) -> b3(%8)
+  b3(%11 pre: unit, %12 body: ptr):
+    %13 lit: i64 = const 100
+    perform std::http::Http.read_chunk(%12, %13) -> b4()
+  b4(%14 r: ptr):
+    %15 r: i64 = $bytes_len(%14)
+    %16 box: word = box %15
+    ret %16

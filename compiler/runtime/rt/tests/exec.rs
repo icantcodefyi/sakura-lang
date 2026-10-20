@@ -66,6 +66,7 @@ const OOM_MAIN: u32 = 24;
 const FIN_ALLOC: u32 = 25;
 const BAD_OP: u32 = 27;
 const TEXT_DEFECT: u32 = 28;
+const SLEEPER: u32 = 29;
 
 const TABLE: &[Code] = &[
     callback_stub,
@@ -97,6 +98,7 @@ const TABLE: &[Code] = &[
     fin_fail,
     bad_op,
     text_defect,
+    sleeper,
 ];
 
 fn codes() -> Vec<Option<CodeDesc<'static>>> {
@@ -131,6 +133,7 @@ fn codes() -> Vec<Option<CodeDesc<'static>>> {
         d("fin_fail", &[BOOL], &[]),
         d("bad_op", &[I64], &[]),
         d("text_defect", &[I64], &[]),
+        d("sleeper", &[I64], &[]),
     ]
 }
 
@@ -597,6 +600,19 @@ fn wait_one(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     rt.drop(r as u32);
     let c = rt.fin_pop();
     rt.drop(c);
+    rt.set_ret(UNIT as u64);
+    RETURN
+}
+
+/// A virtual sleeper until time slot 0; traces 99 when it wakes.
+fn sleeper(rt: &mut Rt, _env: u32, f: u32) -> u32 {
+    if rt.block(f) == 0 {
+        ok!(rt, rt.virtual_sleep(rt.fslot(f, 0) as i64));
+        rt.set_block(f, 1);
+        return SUSPEND;
+    }
+    rt.take_ret();
+    trace(rt, 99);
     rt.set_ret(UNIT as u64);
     RETURN
 }
@@ -1204,5 +1220,36 @@ fn a_completion_whose_payload_is_not_a_fresh_bytes_is_refused_untouched() {
         rt.drop(int);
         rt.drop(shared);
         rt.drop(shared);
+    });
+}
+
+#[test]
+fn virtual_time_waits_for_a_live_host_request() {
+    // Design §17.293 PQ-2: with a sleeper and a host request in flight, `next` is `PENDING`
+    // (the host delivers its completion first); once only sleepers are live, the earliest pops.
+    let mut rt = runtime(64 << 20);
+    ten_times(&mut rt, |rt| {
+        let (sleeper, f) = rt.start(SLEEPER, 1, 0).unwrap();
+        rt.set_fslot(f, 0, 5000);
+        let (task, kind) = run_task(rt, WAIT_ONE, 1, 0, 0);
+        assert_eq!(kind, outcome::PENDING);
+        let t = traces(rt);
+        assert_eq!(t.len(), 1, "the sleeper stayed parked: {t:?}");
+        let payload = rt.new_bytes(4).unwrap();
+        assert_eq!(rt.complete(t[0] as u32, status::OK, payload), 1);
+        assert_eq!(rt.run(task, TABLE), outcome::OK);
+        assert_eq!(
+            traces(rt)[1..],
+            [],
+            "the root finished before virtual time moved"
+        );
+        assert_eq!(rt.run(sleeper, TABLE), outcome::OK);
+        assert_eq!(
+            traces(rt)[1..],
+            [99],
+            "only sleepers live: the sleeper popped"
+        );
+        finish(rt, task);
+        finish(rt, sleeper);
     });
 }

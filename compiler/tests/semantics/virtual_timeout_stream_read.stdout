@@ -1,0 +1,2 @@
+Ok(5)
+Err(Timeout { limit: Duration(5000) })

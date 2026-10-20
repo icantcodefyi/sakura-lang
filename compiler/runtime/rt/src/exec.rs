@@ -1404,8 +1404,12 @@ impl Rt {
                     return Next::Done(kind);
                 }
                 let Some(id) = self.dequeue() else {
-                    // Nothing can run: virtual time advances to the earliest sleeper.
-                    if let Some(req) = self.pop_sleeper() {
+                    // Nothing can run: virtual time advances to the earliest sleeper, but only
+                    // when every live request is a sleeper; a host request in flight completes
+                    // first (design §17.293 PQ-2).
+                    if self.live_sleepers() == self.sched.requests
+                        && let Some(req) = self.pop_sleeper()
+                    {
                         self.complete(req, status::OK, 0);
                         continue;
                     }
@@ -1937,6 +1941,30 @@ impl Rt {
             .try_for_each(|&v| self.push(&mut q, v));
         self.sched.sleepers = Some(q);
         r.map(|_| req)
+    }
+
+    /// The number of virtual sleepers whose request is still live, after dropping the entries of
+    /// cancelled sleepers (`wake_cancelled` frees the request and leaves its entry here).
+    fn live_sleepers(&mut self) -> u32 {
+        let Some(mut q) = self.sched.sleepers.take() else {
+            return 0;
+        };
+        let mut kept = 0;
+        for i in 0..q.len / 4 {
+            if self
+                .arena_obj(self.stack_at(&q, 4 * i + 3), tag::REQUEST)
+                .is_some()
+            {
+                for j in 0..4 {
+                    let v = self.stack_at(&q, 4 * i + j);
+                    self.stack_set(&q, 4 * kept + j, v);
+                }
+                kept += 1;
+            }
+        }
+        q.len = 4 * kept;
+        self.sched.sleepers = Some(q);
+        kept
     }
 
     /// The request of the earliest virtual sleeper (ties in sleep order), removed.

@@ -221,6 +221,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
     ),
     (
+        "semantics/virtual_timeout_stream_read",
+        Some(Host::Wasi),
+        "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
+    ),
+    (
         "semantics/host_root_handlers",
         Some(Host::Wasi),
         "the root Clock, Random and Console imports are impure, which a WASI command traps (W1 note 8)",

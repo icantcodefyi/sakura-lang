@@ -255,6 +255,7 @@ semantics/urlpattern_wildcards: unsupported (builtin string_to_bytes)
 semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 30 allocated, 7 dup, 37 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 7 dup, 37 drop, peak 7, live 0/0
+semantics/virtual_timeout_stream_read: unsupported (builtin task_deterministic)
 semantics/websocket_accept_rejects_max_message: D020, 30 allocated, 11 dup, 41 drop, peak 26, live 0/0
 semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)
 semantics/websocket_connect_rejects_max_message: D020, 18 allocated, 7 dup, 25 drop, peak 17, live 0/0

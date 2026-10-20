@@ -1,0 +1,35 @@
+// milestone: M3
+// covers: design §17.293 PQ-2 (virtual time advances only when every live request is a sleeper)
+
+// A `timeout` around reading a scripted body under `Clock.virtual()`: on the Node host each
+// `read_chunk` is a host request in flight, and the 5-second sleeper must not fire before it
+// completes. The second read sleeps 6 virtual seconds inside the callback, so `Timeout` wins.
+import std/http.{Any, Http}
+import std/request.{Get, Request}
+import std/response.{Response}
+import std/task.{Timeout}
+import std/url.{Url}
+
+fn req() -> Request { Request.of(Get, Url.from("https://a.example/x")) }
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.virtual(), Task.deterministic(7) {
+    with Http.scripted([(Any, Response.status(200, "hello"))]) {
+      let read = try {
+        Task.timeout(Duration.seconds(5), fn() {
+          Http.stream(req(), fn(i) { Bytes.len(Http.read_chunk(i.body, 100)) })
+        })
+      }
+      Console.print("{read}")
+      let slow = try {
+        Task.timeout(Duration.seconds(5), fn() {
+          Http.stream(req(), fn(i) {
+            Clock.sleep(Duration.seconds(6))
+            Bytes.len(Http.read_chunk(i.body, 100))
+          })
+        })
+      }
+      Console.print("{slow}")
+    }
+  }
+}
