@@ -348,7 +348,8 @@ def readme(ver, target, macos_signed=False):
     )
     return f"""# Sakura Lang {ver} ({target})
 
-Pre-alpha. `sakura` is self-contained: the standard library, the JS and WASM runtimes,
+A pre-1.0 preview with no stable language or API contract (see STABILITY.md in the
+source repository). `sakura` is self-contained: the standard library, the JS and WASM runtimes,
 `docs/llms.txt` and the agent skill are embedded, so it needs no checkout.
 
 {installation} `sakura --version` prints the version and the source commit.

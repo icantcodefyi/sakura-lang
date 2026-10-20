@@ -2,38 +2,57 @@
 
 All notable changes to Sakura Lang are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-Releases follow the [stability policy](STABILITY.md). The published preview is
-`v0.1.0-alpha.1`; its section also retains earlier implementation history.
+Releases follow the [stability policy](STABILITY.md). The `0.1.0-alpha.1` section also
+retains earlier implementation history.
 
 ## [Unreleased]
 
-### Changed
+## [0.1.0] - 2026-10-20
 
-- A digit separator in a numeric literal is one `_` between two digits of one digit run
-  (design §2.2, §17.243 (2)). `1_`, `1__000`, `0x_ff`, `0xff_`, `1_.5`, `1.5_` and `1.5_e3`,
-  which the lexer used to accept, are now `V0006 malformed_number` at the misplaced `_`;
-  `1_000`, `0xff_ff` and `1_000.000_5` are unchanged.
-- `sakura test` relays its test runner's exit codes `0`, `2`, `3` and `70` unchanged (design
-  §17.243 (5)). A module of another ABI under `sakura test --target wasm` now exits `2` after
-  the runner's `V8003` line instead of `70` with "the test runner crashed"; only another
-  status, a signal or the time limit is reported by the CLI itself.
-- The Node WASM host reads a module's ABI version from its `sakura.debug` section before
-  compiling or linking it (design §17.243 (4), ABI §0 erratum, no ABI version change), so a
-  module of another ABI is `V8003` with exit `2` even when its imports differ, where it was a
-  `LinkError`. A module this host cannot link is now the defect `D090` "the host could not
-  link the module" (exit `70`) from `run` and `test` alike. A stripped module is still
-  compared after instantiation.
-- A source file that is not UTF-8 is now the diagnostic `V0015 source_not_utf8` (design
-  §17.243 (3), §17.253 (1)) instead of a usage error with exit `2`: `check`, `build`, `run`,
-  `test`, `verify`, `fmt` and the LSP report it at the first invalid byte (the message names
-  the byte and its offset), `--json` carries it like any `V` with exit `1`, the file's other
-  diagnostics are suppressed and the other files are checked. `sakura fmt` and edits never
-  rewrite such a file. `sakura.toml` that is not UTF-8 is still a usage error.
-- `[permissions] process` in `sakura.toml` is reserved (design §17.253 (3)): `process = []`
-  is accepted and grants nothing, the same as leaving the key out, and a non-empty list,
-  which used to be accepted and granted nothing either, is `V8006 manifest_invalid` at the
-  value: "`process` grants nothing in this version: no std effect starts processes; the key
-  is reserved".
+The first non-alpha preview: the WebAssembly backend is complete. Sakura Lang is still pre-1.0: read [STABILITY.md](STABILITY.md) before
+depending on anything below. The Rust MSRV is unchanged (1.99).
+
+**What is stable and what is not**
+
+- **No stability promise yet.** There is no stable language, std, CLI, `--json` or ABI
+  contract in `0.1.0`. [RFC 0001](docs/rfcs/0001-stability-guarantees.md) (Draft) proposes
+  the guarantees, and the draft inventory in STABILITY.md names what each covers; if the owner
+  accepts it, its promises begin at `v0.2.0`. Every `--json` record is versioned (`kind`,
+  `schema_version`), and `compiler/contracts/json.txt` lists its fields.
+- **WASM backend: done.** `--target wasm` builds, runs, tests (with `--contracts`) and
+  verifies programs as `--target js` does; CI's parity suite compares the two backends'
+  output, traces and defect records on Linux x64 and ARM64, macOS ARM64 and Intel, and
+  Windows x64. `sakura test --record` still needs `--target js`. Modules carry runtime ABI
+  1.4.0.
+- **`--target native`: experimental.** It exists only in a compiler built from source with
+  the Cargo `native` feature; the release binaries and packages do not include it. It is
+  outside every compatibility promise and stays experimental at `v0.2.0`. Natively, `Http`,
+  `serve` and `Llm` still stop with a `D090` or `D091` defect.
+- **Packages: not supported.** `[dependencies]` in `sakura.toml` is reserved and refused with
+  `V8005 dependencies_not_supported`; nothing is fetched. Packages are planned
+  for a 1.x minor release.
+- **Platforms.** A packaging target is called supported for this release only after its
+  published-install smoke passes on every applicable channel; the
+  [install page](website/content/docs/install.mdx) states each platform's level.
+- **Performance.** These notes quote no benchmark ratios. The owner's blessed
+  instruction-count baseline (`bench/baselines/`) is the reference later releases are
+  compared with; the [benchmarks page](https://www.sakuralang.com/docs/benchmarks) shows it.
+
+**Semantics changes for owner review** (rows 8–10 of
+[the release checklist](docs/plans/m4-exit-checklist.md)):
+
+- `Serve.host()` on `--target wasm` answers a request the heap cannot take `503` with a
+  `D096` record, a request still waiting when the program ends `500`, and a trap `500` before
+  the server stops and the program exits 70; on both backends a request arriving after the
+  server stops is `503` (Fixed below; design §17.223).
+- A response body cut short in `Http.host()`'s `send` is `Err(HttpError)` on both backends
+  instead of a defect or a crash (Changed below, **Breaking**; design §17.209 (2)).
+- Symbolic links in an `fs.write` grant: a write through a dangling link is refused, and the
+  JS and WASM hosts open the resolved path with `O_NOFOLLOW`, so a link planted during the
+  call is refused within the limits ABI §8.3 states (Security below; design §17.233). The dangling-link hole shipped in
+  `v0.1.0-alpha.1`.
+
+Entries marked **Breaking** can change what a program that worked on `v0.1.0-alpha.1` does.
 
 ### Added
 
@@ -125,101 +144,14 @@ Releases follow the [stability policy](STABILITY.md). The published preview is
   wall time per call is kept beside it as information. `bless` accepts a counted run without
   a quiet host, and `compare` and `envelope` read instructions when every file is counted.
   The quiet benchmark window no longer gates a release: the gate is a blessed
-  instruction-count baseline from the reference Mac (`docs/release.md` §2). The first counted
-  runs are on the website's [benchmarks page](https://www.sakuralang.com/docs/benchmarks),
-  pending the owner's bless.
-
-### Fixed
-
-- `String.from_bytes` on the JS backend reported the wrong `Utf8Error` offset for a truncated
-  or ill-formed sequence before other bytes (`[0x61, 0xC3, 0x28]` gave offset `2`, WASM and
-  native `1`); it now reports the start of the first ill-formed sequence on every backend.
-- `Task.scope` no longer ends its task as cancelled when a child failed after an earlier
-  sibling: at the scope's end a sibling cancelled because of the failure was taken for the
-  scope's own outcome, so the failure never reached a surrounding `try` and `main` ended with
-  a defect record without a code. The first unjoined failure or defect propagates, as the
-  runtime ABI says, on the JS, WASM and native backends alike.
-- `String.repeat(s, n)` makes O(log n) concatenations by doubling instead of `n`: a 16 MiB
-  `repeat("a", 16_777_216)` took about a second of garbage collection on JS. The result is
-  unchanged.
-- `sakura test --record` holds a recorded streamed body as its chunks, joined once with
-  `Bytes.concat` (design §17.205 (4)), not as one boxed `Int` per byte.
-- `sakura test`'s runner stops quietly with status `141` when the CLI that reads its output is
-  gone (killed, for example at a time limit), instead of Node's unhandled `EPIPE` trace.
-
-### Security
-
-- The WASM guest now also zeroes the intermediate copies of a kind-`secret` import's encoded
-  arguments (`http_send`, `http_stream_open`, `js_handler`; ABI §8.1 erratum, design §17.270
-  (1)): the blocks the encoder's growth freed and the `String` it copied into the transport
-  `Bytes` kept a secret's value in freed heap memory until reused. Hygiene under the trust
-  model, not a defence against the host; no import, export, byte or ABI version changes.
-
-- `Http.host()` checks the manifest's `net` list on every redirect hop (design §17.262 (4),
-  RFC 0002 §2.4). The JS host, and the WASM host that shares its code, checked only the first
-  URL and let `fetch` follow redirects, so a granted host could send the program to any host.
-  Redirects are now followed for at most 20 hops, each hop's `host:port` checked before it
-  is fetched; a refused hop fails `HttpError` with the first request's message
-  (`<host:port> is not in the manifest's net list`), the 21st hop fails with
-  `too many redirects`, and a redirect to a scheme other than `http` or `https` fails with
-  `redirect to <scheme>: refused`. A hop to another origin drops `authorization` and every
-  `secret_headers` entry for the rest of the chain. No signature changes. `Http.scoped`'s
-  list is still checked against the request's URL only. The native backend has no `Http`.
-
-## [0.1.0] - Unreleased
-
-The first non-alpha preview and the close of milestone M4, the WebAssembly backend (exit
-commit `dee11301`). Sakura Lang is still pre-1.0: read [STABILITY.md](STABILITY.md) before
-depending on anything below. The Rust MSRV is unchanged (1.99).
-
-**What is stable and what is not**
-
-- **No stability promise yet.** There is no stable language, std, CLI, `--json` or ABI
-  contract in `0.1.0`. [RFC 0001](docs/rfcs/0001-stability-guarantees.md) (Draft) proposes
-  the guarantees, and the draft inventory in STABILITY.md names what each covers; if the owner
-  accepts it, its promises begin at `v0.2.0`. Every `--json` record is versioned (`kind`,
-  `schema_version`), and `compiler/contracts/json.txt` lists its fields.
-- **WASM backend: done.** `--target wasm` builds, runs, tests (with `--contracts`) and
-  verifies programs as `--target js` does; CI's parity suite compares the two backends'
-  output, traces and defect records on Linux x64 and ARM64, macOS ARM64 and Intel, and
-  Windows x64. `sakura test --record` still needs `--target js`. Modules carry runtime ABI
-  1.4.0.
-- **`--target native`: experimental.** It exists only in a compiler built from source with
-  the Cargo `native` feature; the release binaries and packages do not include it. It is
-  outside every compatibility promise and stays experimental at `v0.2.0`. Natively, `Http`,
-  `serve` and `Llm` still stop with a `D090` or `D091` defect.
-- **Packages: not supported.** `[dependencies]` in `sakura.toml` is reserved and refused with
-  `V8005 dependencies_not_supported`; nothing is fetched. Packages are planned
-  for a 1.x minor release.
-- **Platforms.** A packaging target is called supported for this release only after its
-  published-install smoke passes on every applicable channel; the
-  [install page](website/content/docs/install.mdx) states each platform's level.
-- **Performance.** These notes quote no benchmark ratios: benchmark numbers stay advisory
-  until a quiet-window run on the exit commit is blessed.
-
-**Semantics changes for owner review** (rows 8–10 of
-[the M4 exit checklist](docs/plans/m4-exit-checklist.md)):
-
-- `Serve.host()` on `--target wasm` answers a request the heap cannot take `503` with a
-  `D096` record, a request still waiting when the program ends `500`, and a trap `500` before
-  the server stops and the program exits 70; on both backends a request arriving after the
-  server stops is `503` (Fixed below; design §17.223).
-- A response body cut short in `Http.host()`'s `send` is `Err(HttpError)` on both backends
-  instead of a defect or a crash (Changed below, **Breaking**; design §17.209 (2)).
-- Symbolic links in an `fs.write` grant: a write through a dangling link is refused, and the
-  JS and WASM hosts open the resolved path with `O_NOFOLLOW`, so a link planted during the
-  call is refused within the limits ABI §8.3 states (Security below; design §17.233). The dangling-link hole shipped in
-  `v0.1.0-alpha.1`.
-
-Entries marked **Breaking** can change what a program that worked on `v0.1.0-alpha.1` does.
-
-### Added
+  instruction-count baseline from the reference Mac (`docs/release.md` §2). The blessed counted
+  runs are on the website's [benchmarks page](https://www.sakuralang.com/docs/benchmarks).
 
 - The npm packages carry a README, keywords and an issues link, so the npm page shows how to
   install and start. Each platform package's README points to `sakuralang`.
 
 - Experimental `sakura build --target native` and `sakura run --target native` in a compiler
-  built with the `native` feature (plan M5 N2): Cranelift compiles the program to an
+  built with the `native` feature: Cranelift compiles the program to an
   executable `main` linked with the native runtime, whose defect records carry the same spans
   as JS and WASM. Native stays experimental at `v0.2.0`; release builds do not include it.
   Native executables carry unwind tables and a DWARF line table, so `lldb`, `gdb` and
@@ -229,7 +161,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   any generated heap access outside its object.
 
 - `sakura run --target native` (a compiler built with the `native` feature) runs `Json.encode`,
-  `Json.decode`, `Json.parse`, `Json.schema`, `Cli.args` and `Cli.parse` (plan row N1b). The JSON
+  `Json.decode`, `Json.parse`, `Json.schema`, `Cli.args` and `Cli.parse`. The JSON
   codec is written once in the Rust runtime and matches the JS runtime's text and decode
   messages, `where` clauses included. Programs that use `Http`, `serve` or `Llm` still stop
   with a `D090` or `D091` defect natively.
@@ -240,8 +172,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   that committed before stays committed.
 
 - The WASM runtime's `stats()` reports four more counters, recorded by `SAKURA_WASM_STATS`,
-  `SAKURA_NATIVE_STATS` and `bench/harness` (runtime ABI 1.3.0, design §17.176 (1), plan row
-  N0b): `reuse_attempts` and `reuses` (an owned `List`, `Map` or `Set` update testing whether it
+  `SAKURA_NATIVE_STATS` and `bench/harness` (runtime ABI 1.3.0, design §17.176 (1)): `reuse_attempts` and `reuses` (an owned `List`, `Map` or `Set` update testing whether it
   may write its wrapper and each node on its path in place, and the tests that could),
   `borrow_candidates` (executed reference-count increments before a call that only reads the
   value, which stays live after it) and `borrows` (always 0 until borrowing lands). Benchmark
@@ -264,8 +195,8 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 
 - `bench/bench run --suite wasm` times the benchmark suite built with `--target wasm` on Node
   and Wasmtime against hand JS on Node, after the same oracle, recording each row's `backend`
-  and the module's `stats()` counters; its numbers stay advisory until a quiet-window bless
-  (design §17.191 (2), §17.153). The nightly benchmark workflow runs it as its own job.
+  and the module's `stats()` counters; its numbers are advisory
+  (design §17.191 (2)). The nightly benchmark workflow runs it as its own job.
 
 - `V4004 match_too_large` (pattern phase): a `match`, `catch` or `let` pattern whose decision
   tree passes 1,048,576 nodes, counting the rows its or-patterns expand into and the matches in
@@ -288,7 +219,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 
 - `sakura verify --target wasm` replays a `disproved` obligation on the LIR evaluator, whose
   `Int` is WASM's i64, and marks a counterexample that defects as predicted `confirmed`, as
-  the JS profile already did on the Core evaluator (plan V4b, design §17.164 (4)).
+  the JS profile already did on the Core evaluator (design §17.164 (4)).
 
 - `sakura build --target wasm --manifest` writes `target/sakura/manifest.json` instead of
   refusing. The manifest is schema 1.1 and gains `target` (`js` or `wasm`); a WASM manifest
@@ -328,6 +259,32 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   supported once their published-install check is green.
 
 ### Changed
+
+- A digit separator in a numeric literal is one `_` between two digits of one digit run
+  (design §2.2, §17.243 (2)). `1_`, `1__000`, `0x_ff`, `0xff_`, `1_.5`, `1.5_` and `1.5_e3`,
+  which the lexer used to accept, are now `V0006 malformed_number` at the misplaced `_`;
+  `1_000`, `0xff_ff` and `1_000.000_5` are unchanged.
+- `sakura test` relays its test runner's exit codes `0`, `2`, `3` and `70` unchanged (design
+  §17.243 (5)). A module of another ABI under `sakura test --target wasm` now exits `2` after
+  the runner's `V8003` line instead of `70` with "the test runner crashed"; only another
+  status, a signal or the time limit is reported by the CLI itself.
+- The Node WASM host reads a module's ABI version from its `sakura.debug` section before
+  compiling or linking it (design §17.243 (4), ABI §0 erratum, no ABI version change), so a
+  module of another ABI is `V8003` with exit `2` even when its imports differ, where it was a
+  `LinkError`. A module this host cannot link is now the defect `D090` "the host could not
+  link the module" (exit `70`) from `run` and `test` alike. A stripped module is still
+  compared after instantiation.
+- A source file that is not UTF-8 is now the diagnostic `V0015 source_not_utf8` (design
+  §17.243 (3), §17.253 (1)) instead of a usage error with exit `2`: `check`, `build`, `run`,
+  `test`, `verify`, `fmt` and the LSP report it at the first invalid byte (the message names
+  the byte and its offset), `--json` carries it like any `V` with exit `1`, the file's other
+  diagnostics are suppressed and the other files are checked. `sakura fmt` and edits never
+  rewrite such a file. `sakura.toml` that is not UTF-8 is still a usage error.
+- `[permissions] process` in `sakura.toml` is reserved (design §17.253 (3)): `process = []`
+  is accepted and grants nothing, the same as leaving the key out, and a non-empty list,
+  which used to be accepted and granted nothing either, is `V8006 manifest_invalid` at the
+  value: "`process` grants nothing in this version: no std effect starts processes; the key
+  is reserved".
 
 - Diagnostic, explanation and generated-page text no longer names milestones, design-log
   entries or another release: `V8005` reads "Sakura Lang does not support packages yet",
@@ -450,7 +407,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 
 - `sakura build --target wasm` drops the checks of obligations `sakura verify --target wasm`
   proved on the `i64` profile, as the JS build does for the `js` profile, and its manifest
-  says `proved` for those clauses (design §17.163 (4), M4-OPT). The JS modules a WASM build
+  says `proved` for those clauses (design §17.163 (4)). The JS modules a WASM build
   writes for decoding keep every check.
 
 - `sakura build` deletes a proved check's predicate along with the check: an `ensures` or
@@ -461,7 +418,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - `==` and `!=` on an enumeration whose constructors have no fields (`type Dir = North | South`),
   or against a field-less constructor (`shape == Empty`, `o == None`), compare constructor tags
   instead of walking the values, on JS and WASM; results, traces and defects are unchanged and
-  `--dump core` shows the comparison as `tag_eq` (design §17.183, WS-P11a).
+  `--dump core` shows the comparison as `tag_eq` (design §17.183).
 
 - Exhaustiveness checking costs each `match` arm the earlier arms with the same head constructor,
   not every earlier arm (design §17.200 (8)), so a long `match` of guarded rows alternating with
@@ -500,6 +457,22 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 
 ### Fixed
 
+- `String.from_bytes` on the JS backend reported the wrong `Utf8Error` offset for a truncated
+  or ill-formed sequence before other bytes (`[0x61, 0xC3, 0x28]` gave offset `2`, WASM and
+  native `1`); it now reports the start of the first ill-formed sequence on every backend.
+- `Task.scope` no longer ends its task as cancelled when a child failed after an earlier
+  sibling: at the scope's end a sibling cancelled because of the failure was taken for the
+  scope's own outcome, so the failure never reached a surrounding `try` and `main` ended with
+  a defect record without a code. The first unjoined failure or defect propagates, as the
+  runtime ABI says, on the JS, WASM and native backends alike.
+- `String.repeat(s, n)` makes O(log n) concatenations by doubling instead of `n`: a 16 MiB
+  `repeat("a", 16_777_216)` took about a second of garbage collection on JS. The result is
+  unchanged.
+- `sakura test --record` holds a recorded streamed body as its chunks, joined once with
+  `Bytes.concat` (design §17.205 (4)), not as one boxed `Int` per byte.
+- `sakura test`'s runner stops quietly with status `141` when the CLI that reads its output is
+  gone (killed, for example at a time limit), instead of Node's unhandled `EPIPE` trace.
+
 - `Serve.host()` on `--target wasm` answers a request the guest heap cannot take with `503`
   and `retry-after: 1`, writing the defect `D096` to stderr, where it was a `500` with nothing
   on stderr; the server keeps serving. A request still waiting when the program ends is now
@@ -527,7 +500,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   of being static (design §17.212, ABI 1.2.2).
 
 - A WASM function with more than about 16,000 `&&`-guarded `match` rows no longer aborts Node
-  after printing its output (design §17.236, plan row 31). Past 256 jumps back to a function's
+  after printing its output (design §17.236). Past 256 jumps back to a function's
   dispatch loop, each 256 jumps branch through a stub, so the loop header has at most
   ⌈jumps/256⌉ + 1 predecessors; V8's optimizing tier failed past 65,535. 16,384 and 32,768 rows
   run on Node and Wasmtime; functions of at most 256 jumps are byte-identical.
@@ -555,7 +528,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - After an edit, an unchanged module's `test` block no longer reports a `V5004` (a literal
   that breaks a refinement) twice, or a typed hole twice, in the LSP and MCP servers and any
   other process that analyses more than once: a reused module's tests, types and effects are
-  no longer checked again (plan WS-C1a). Type diagnostics within a file are listed by position
+  no longer checked again. Type diagnostics within a file are listed by position
   in `Analysis` results, so a reusing analysis lists them as a fresh one does; the human and
   JSON output already sorted them.
 
@@ -597,7 +570,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - Tail calls around a cycle of up to four monomorphic functions without contract checks
   (`is_even`/`is_odd`, a state machine) run as one loop on both backends instead of through
   continuation frames, so they need constant stack: each function of the cycle carries a copy
-  of the others (design §17.160 (5), WS-P9). Output, effect order, defect messages and blame
+  of the others (design §17.160 (5)). Output, effect order, defect messages and blame
   sites are unchanged. A generic member, or one that checks a contract, is not copied (a
   contracted function still runs the others in its own loop); non-tail calls stay calls.
 
@@ -609,7 +582,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - A tail-call cycle whose functions cannot be nested inside each other, such as three
   functions that each call both others, also runs as one loop per function: the loop
   dispatches on a state number, with one `switch` (§17.208 (1)), to its copies of the other
-  functions (design §17.192 (2), WS-P9b). WS-P9's limits still apply (four functions, 1,024 copied expressions), and output,
+  functions (design §17.192 (2)). The earlier limits still apply (four functions, 1,024 copied expressions), and output,
   effects, defect messages and blame sites are unchanged.
 
 - Terminal output names a source outside the working directory by its OS path
@@ -637,6 +610,23 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   `verify` notes to the cookbook (design §17.182 (1)).
 
 ### Security
+
+- The WASM guest now also zeroes the intermediate copies of a kind-`secret` import's encoded
+  arguments (`http_send`, `http_stream_open`, `js_handler`; ABI §8.1 erratum, design §17.270
+  (1)): the blocks the encoder's growth freed and the `String` it copied into the transport
+  `Bytes` kept a secret's value in freed heap memory until reused. Hygiene under the trust
+  model, not a defence against the host; no import, export, byte or ABI version changes.
+
+- `Http.host()` checks the manifest's `net` list on every redirect hop (design §17.262 (4),
+  RFC 0002 §2.4). The JS host, and the WASM host that shares its code, checked only the first
+  URL and let `fetch` follow redirects, so a granted host could send the program to any host.
+  Redirects are now followed for at most 20 hops, each hop's `host:port` checked before it
+  is fetched; a refused hop fails `HttpError` with the first request's message
+  (`<host:port> is not in the manifest's net list`), the 21st hop fails with
+  `too many redirects`, and a redirect to a scheme other than `http` or `https` fails with
+  `redirect to <scheme>: refused`. A hop to another origin drops `authorization` and every
+  `secret_headers` entry for the rest of the chain. No signature changes. `Http.scoped`'s
+  list is still checked against the request's URL only. The native backend has no `Http`.
 
 - On the JS backend and `--target wasm`, a symbolic link that another process plants at a
   write's path between the grant check and the open is refused with `"escapes the
@@ -689,21 +679,21 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 ### Performance
 
 - Ownership facts follow a collection through records, tuple results, borrowing
-  parameters and closures, and through recursive calls (design §17.201 (3), WS-P13b):
+  parameters and closures, and through recursive calls (design §17.201 (3)):
   a def that threads a record of lists, such as DeltaBlue's `Planner`, updates them in
   place when its caller's record is owned, on the direct and the CPS ABI. `--dump owned`
   gains the reasons `param`, `field` and `tuple`, and prints each consuming def's
   owned-entry verdict beside the plain one. Outputs are unchanged.
 
 - The DeltaBlue benchmark stores dense variable and constraint ids in `List` instead
-  of `Map`, following design §17.217 and WS-P13c. The std index and Sakura skill
+  of `Map`, following design §17.217. The std index and Sakura skill
   reference document this collection choice. Oracle checksums are unchanged.
 
 - `SAKURA_TRACE` effect traces are written in batches on JS and WASM rather than one write per
   record. The lines are unchanged; a run killed by a signal can lose the tail of its trace.
 
 - `--target wasm` gives each variable of a function its own local only up to 256 variables;
-  past that, a block's variables share locals by liveness (design §17.219 (3), plan row 29), so
+  past that, a block's variables share locals by liveness (design §17.219 (3)), so
   V8 no longer needs memory in proportion to the variable count to compile a function of
   thousands of `let`s. Functions of at most 256 variables compile to the same bytes.
 
@@ -715,7 +705,7 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
 - Draft public-interface inventory in `STABILITY.md`, with a generated clap/environment/exit-code
   baseline and workspace drift test; classifications await RFC 0001 acceptance at v0.2.0.
 
-- Rechecked M4 guides against the compiler, repaired runnable tour examples, and
+- Rechecked the guides against the compiler, repaired runnable tour examples, and
   documented current-main migration notes, runtime limits, caching and release status.
   Added a broad sample gate and rendered-route/link checks; refreshed generated agent
   references and kept the skill entry point below 7,000 bytes.
@@ -1116,6 +1106,6 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0-alpha.1...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0-alpha.1...v0.1.0
 [0.1.0-alpha.1]: https://github.com/icantcodefyi/sakuralang/releases/tag/v0.1.0-alpha.1
