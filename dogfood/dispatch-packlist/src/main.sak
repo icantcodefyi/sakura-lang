@@ -1,0 +1,720 @@
+// Dispatch Packlist: check a community pantry's delivery files.
+//
+// Author: Claude Opus 5.5.
+// Written in a fresh session with no repository checkout; sources were only the
+// installed CLI (`sakura prompt`, `sakura doc`), the public website and BRIEF.md.
+// Built against: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+//
+// Usage: sakura run -- --batch <dir under data> --format <text|json>
+// Exit status: 0 every file accepted, 1 the batch completed with rejections,
+// 2 invalid arguments. Directory I/O failures and an over-limit batch escape
+// `main` as typed failures (the runtime reports them and exits 1) without a report.
+// On `--target wasm` in 0.1.0, `Cli.exit` is the defect D090 (exit 70), so statuses
+// 1 and 2 hold on the JS target only; see FRICTION.md.
+
+import std/cli.{Cli, CliError}
+import std/core.{Violation}
+import std/fs.{Dir, Entry, File, Fs, FsError, Mode}
+import std/json.{DecodeError}
+import std/log.{Level}
+import std/path.{Path}
+
+// ---------------------------------------------------------------- limits
+
+let max_files = 200
+
+let max_file_bytes = 65_536
+let max_lines = 100
+
+// ---------------------------------------------------------------- domain
+
+/// An ID, route or item name after trimming: 1-64 UTF-8 bytes, case kept.
+type Name = String where String.len(it) >= 1 && String.len(it) <= 64
+
+type Quantity = Int where it >= 1 && it <= 1_000
+
+type Line = { item: Name, quantity: Quantity }
+
+type Delivery = { id: Name, route: Name, lines: List<Line> }
+
+/// The JSON shape a volunteer writes, before any value is trusted.
+type RawLine = { item: String, quantity: Int }
+
+type RawDelivery = { id: String, route: String, items: List<RawLine> }
+
+// ---------------------------------------------------------------- per-file errors
+
+error TooLarge(limit: Int)
+
+error NotUtf8(offset: Int)
+error Malformed
+error WrongShape(path: String, message: String)
+error BadField(field: String, reason: String)
+error TooManyLines(count: Int)
+error DuplicateId(id: String, first: String)
+error BadFileName
+
+type FileError = TooLarge
+  | NotUtf8
+  | Malformed
+  | WrongShape
+  | BadField
+  | TooManyLines
+  | DuplicateId
+  | BadFileName
+
+// ---------------------------------------------------------------- batch and usage errors
+
+error InvalidBatch(reason: String)
+
+error BatchTooLarge(count: Int, limit: Int)
+
+type UsageError = CliError | InvalidBatch
+
+// ---------------------------------------------------------------- report
+
+type ItemTotal = { item: String, quantity: Int }
+
+type RouteTotal = { route: String, items: List<ItemTotal> }
+
+type RejectedFile = { file: String, reason: String }
+
+type Report = {
+  batch: String,
+  accepted: Int,
+  rejected: Int,
+  ignored: Int,
+  deliveries: List<String>,
+  routes: List<RouteTotal>,
+  totals: List<ItemTotal>,
+  rejections: List<RejectedFile>,
+}
+
+// ---------------------------------------------------------------- arguments
+
+type FormatFlag = String where it == "text" || it == "json"
+
+type Args = { batch: String, format: FormatFlag }
+
+type Format = TextReport | JsonReport
+
+type Request = { batch: String, segments: List<String>, format: Format }
+
+/// Decodes and validates the flags. Pure apart from failing: it cannot touch the filesystem.
+fn parse_args(args: List<String>) -> Request ! {Fail<UsageError>} {
+  let parsed: Args = Cli.parse(args)
+  let format = if parsed.format == "json" { JsonReport } else { TextReport }
+  Request { batch: parsed.batch, segments: batch_segments(parsed.batch), format }
+}
+
+/// The directory names under `data` that `raw` selects, or `InvalidBatch`.
+fn batch_segments(raw: String) -> List<String> ! {Fail<InvalidBatch>} {
+  let checked: Result<Path, Violation> = Path.validate(raw)
+  let path = match checked {
+    Ok(p) => p,
+    Err(_) => fail InvalidBatch { reason: "must be a relative path inside data, without .." },
+  }
+  let segments = String.split(Path.to_string(path), "/")
+  for segment in segments {
+    if segment == "" || segment == "." || segment == ".." || String.contains(segment, "\\") {
+      fail InvalidBatch { reason: "each path segment must be a plain directory name" }
+    }
+  }
+  segments
+}
+
+fn usage_message(e: UsageError) -> String {
+  match e {
+    CliError { message } => "invalid arguments: {message}",
+    InvalidBatch { reason } => "invalid --batch: {reason}",
+  }
+}
+
+// ---------------------------------------------------------------- reading
+
+/// At most `cap + 1` bytes of `file`, so an exact fit and an oversize file differ.
+fn read_bounded(file: File, cap: Int) -> Bytes
+  ! {Fs, Fail<FsError>}
+  requires cap > 0
+{
+  var parts: List<Bytes> = []
+  var total = 0
+  while total <= cap {
+    let chunk = Fs.read_chunk(file, cap + 1 - total)
+    let n = Bytes.len(chunk)
+    if n == 0 { break }
+    parts = List.push(parts, chunk)
+    total = total + n
+  }
+  Bytes.concat(parts)
+}
+
+fn load_file(path: Path) -> Bytes ! {Fs, Fail<FsError>} {
+  Fs.with_file(path, Mode.Read, fn(file) { read_bounded(file, max_file_bytes) })
+}
+
+fn is_selected(entry: Entry) -> Bool { !entry.is_dir && String.ends_with(entry.name, ".json") }
+
+/// Reads the immediate `.json` files of the current root, in filename order.
+/// Subdirectories and other files are counted, never opened.
+fn read_batch(batch: String) -> Report ! {Fs, Fail<BatchTooLarge | FsError>} {
+  let entries = Fs.list(Path.of("."))
+  let names = List.sort(List.map(List.filter(entries, is_selected), fn(e) { e.name }))
+  let count = List.len(names)
+  if count > max_files { fail BatchTooLarge { count, limit: max_files } }
+  var files: List<(String, Result<Delivery, FileError>)> = []
+  for name in names {
+    let checked: Result<Path, Violation> = Path.validate(name)
+    let outcome: Result<Delivery, FileError> = match checked {
+      Ok(path) => {
+        let bytes = load_file(path)
+        try { parse_delivery(bytes) }
+      },
+      Err(_) => Err(BadFileName),
+    }
+    files = List.push(files, (name, outcome))
+  }
+  assemble(batch, List.len(entries) - count, files)
+}
+
+/// Narrows `Fs` to `data/<segments>` in one step, so a manifest granting only that
+/// batch directory still admits it, and reads the batch there.
+fn run_batch(req: Request) -> Report ! {Fs, Fail<BatchTooLarge | FsError>} {
+  let dir = Dir.subdir(Fs.root(), "data/" + List.join(req.segments, "/"))
+  with Fs.rooted(dir) { read_batch(req.batch) }
+}
+
+// ---------------------------------------------------------------- parsing and validation (pure)
+
+fn check_size(bytes: Bytes) -> Bytes ! {Fail<TooLarge>} {
+  if Bytes.len(bytes) > max_file_bytes { fail TooLarge { limit: max_file_bytes } }
+  bytes
+}
+
+fn decode_text(bytes: Bytes) -> String ! {Fail<NotUtf8>} {
+  match String.from_bytes(bytes) {
+    Ok(text) => text,
+    Err(e) => fail NotUtf8 { offset: e.offset },
+  }
+}
+
+/// Syntax errors are reported without the decoder's message, which quotes the input.
+fn decode_raw(text: String) -> RawDelivery ! {Fail<Malformed | WrongShape>} {
+  if Result.is_err(Json.parse(text)) { fail Malformed }
+  let decoded: Result<RawDelivery, DecodeError> = Json.decode(text)
+  match decoded {
+    Ok(raw) => raw,
+    Err(e) => fail WrongShape { path: e.path, message: e.message },
+  }
+}
+
+/// Raw decoded text enters the application here, through a checked refinement.
+fn checked_name(field: String, raw: String) -> Name ! {Fail<BadField>} {
+  let untrusted = Untrusted.of(String.trim(raw))
+  let named: Result<Name, Violation> = Untrusted.validate(untrusted)
+  match named {
+    Ok(name) => name,
+    Err(_) if Untrusted.len(untrusted) == 0 =>
+      fail BadField { field, reason: "empty after trimming" },
+    Err(_) => fail BadField { field, reason: "longer than 64 UTF-8 bytes" },
+  }
+}
+
+fn checked_quantity(field: String, raw: Int) -> Quantity ! {Fail<BadField>} {
+  let checked: Result<Quantity, Violation> = Untrusted.validate(Untrusted.of(raw))
+  match checked {
+    Ok(q) => q,
+    Err(_) => fail BadField { field, reason: "quantity must be from 1 through 1000" },
+  }
+}
+
+fn validate(raw: RawDelivery) -> Delivery ! {Fail<BadField | TooManyLines>} {
+  let count = List.len(raw.items)
+  if count > max_lines { fail TooManyLines { count } }
+  let id = checked_name("id", raw.id)
+  let route = checked_name("route", raw.route)
+  var lines: List<Line> = []
+  for (i, line) in List.enumerate(raw.items) {
+    let item = checked_name("items[{i}].item", line.item)
+    let quantity = checked_quantity("items[{i}].quantity", line.quantity)
+    lines = List.push(lines, Line { item, quantity })
+  }
+  Delivery { id, route, lines }
+}
+
+/// One file's bytes to a validated delivery; duplicates are judged by `assemble`.
+fn parse_delivery(bytes: Bytes) -> Delivery ! {Fail<FileError>} {
+  validate(decode_raw(decode_text(check_size(bytes))))
+}
+
+// ---------------------------------------------------------------- aggregation (pure)
+
+fn add(totals: Map<String, Int>, item: String, quantity: Int) -> Map<String, Int> {
+  Map.update(totals, item, fn(old) { Option.unwrap_or(old, 0) + quantity })
+}
+
+fn sorted_totals(totals: Map<String, Int>) -> List<ItemTotal> {
+  let pairs = List.sort_by(Map.entries(totals), fn(p) { p.0 })
+  List.map(pairs, fn(p) { ItemTotal { item: p.0, quantity: p.1 } })
+}
+
+/// The report for `files`, judged in ascending filename order whatever order they arrive in.
+/// The first valid delivery with an ID counts; a rejected file reserves nothing.
+fn assemble(
+  batch: String,
+  ignored: Int,
+  files: List<(String, Result<Delivery, FileError>)>,
+) -> Report
+{
+  var first_file: Map<String, String> = Map.empty()
+  var routes: Map<String, Map<String, Int>> = Map.empty()
+  var overall: Map<String, Int> = Map.empty()
+  var rejections: List<RejectedFile> = []
+  for (file, outcome) in List.sort_by(files, fn(f) { f.0 }) {
+    match outcome {
+      Err(e) => { rejections = List.push(rejections, RejectedFile { file, reason: describe(e) }) },
+      Ok(d) => match Map.get(first_file, d.id) {
+        Some(first) => {
+          let reason = describe(DuplicateId { id: d.id, first })
+          rejections = List.push(rejections, RejectedFile { file, reason })
+        },
+        None => {
+          first_file = Map.insert(first_file, d.id, file)
+          var route = Option.unwrap_or(Map.get(routes, d.route), Map.empty())
+          for line in d.lines {
+            route = add(route, line.item, line.quantity)
+            overall = add(overall, line.item, line.quantity)
+          }
+          routes = Map.insert(routes, d.route, route)
+        },
+      },
+    }
+  }
+  let route_totals = List.map(
+    List.sort_by(Map.entries(routes), fn(p) { p.0 }),
+    fn(p) { RouteTotal { route: p.0, items: sorted_totals(p.1) } },
+  )
+  Report {
+    batch,
+    accepted: Map.len(first_file),
+    rejected: List.len(rejections),
+    ignored,
+    deliveries: List.sort(Map.keys(first_file)),
+    routes: route_totals,
+    totals: sorted_totals(overall),
+    rejections,
+  }
+}
+
+/// One concise reason; never the file's content.
+fn describe(e: FileError) -> String {
+  match e {
+    TooLarge { limit } => "larger than {limit} bytes",
+    NotUtf8 { offset } => "invalid UTF-8 at byte {offset}",
+    Malformed => "malformed JSON",
+    WrongShape { path, message } if path == "" => "unexpected JSON shape: {message}",
+    WrongShape { path, message } => "field {path}: {message}",
+    BadField { field, reason } => "field {field}: {reason}",
+    TooManyLines { count } => "{count} item lines, more than {max_lines}",
+    DuplicateId { id, first } => "duplicate delivery ID {id}, first counted in {first}",
+    BadFileName => "file name is not a valid relative path",
+  }
+}
+
+// ---------------------------------------------------------------- rendering (pure)
+
+fn exit_status(report: Report) -> Int { if report.rejected == 0 { 0 } else { 1 } }
+
+fn render_items(items: List<ItemTotal>) -> List<String> {
+  if List.len(items) == 0 {
+    ["  (none)"]
+  } else {
+    List.map(items, fn(t) { "  {t.item}: {t.quantity}" })
+  }
+}
+
+fn render_text(r: Report) -> String {
+  var out = [
+    "Dispatch report for batch {r.batch}",
+    "Files: {r.accepted} accepted, {r.rejected} rejected, {r.ignored} ignored",
+  ]
+  let ids = if List.len(r.deliveries) == 0 { "(none)" } else { List.join(r.deliveries, ", ") }
+  out = List.push(out, "Deliveries: {ids}")
+  for route in r.routes {
+    out = List.push(out, "Route {route.route}:")
+    out = List.concat(out, render_items(route.items))
+  }
+  out = List.push(out, "Overall:")
+  out = List.concat(out, render_items(r.totals))
+  if List.len(r.rejections) > 0 {
+    out = List.push(out, "Rejected:")
+    for rej in r.rejections { out = List.push(out, "  {rej.file}: {rej.reason}") }
+  }
+  List.join(out, "\n")
+}
+
+fn render(r: Report, format: Format) -> String {
+  match format {
+    TextReport => render_text(r),
+    JsonReport => Json.encode(r),
+  }
+}
+
+// ---------------------------------------------------------------- entry
+
+/// The whole CLI as a function of its arguments; returns the requested exit status.
+fn run_cli(args: List<String>) -> Int ! {Console, Fs, Log, Fail<BatchTooLarge | FsError>} {
+  let parsed: Result<Request, UsageError> = try { parse_args(args) }
+  match parsed {
+    Err(e) => {
+      Log.event(Level.Error, usage_message(e), [])
+      2
+    },
+    Ok(req) => {
+      let report = run_batch(req)
+      Console.print(render(report, req.format))
+      exit_status(report)
+    },
+  }
+}
+
+pub fn main() -> Unit ! {Cli, Console, Fs, Log, Fail<BatchTooLarge | FsError>} {
+  let code = run_cli(Cli.args())
+  if code != 0 { Cli.exit(code) }
+}
+
+// ---------------------------------------------------------------- tests
+
+fn lines_of(pairs: List<(String, Int)>) -> List<RawLine> {
+  List.map(pairs, fn(p) { RawLine { item: p.0, quantity: p.1 } })
+}
+
+fn delivery(id: String, route: String, pairs: List<(String, Int)>) -> Bytes {
+  String.to_bytes(Json.encode(RawDelivery { id, route, items: lines_of(pairs) }))
+}
+
+fn file(name: String, bytes: Bytes) -> (Path, Bytes) { (Path.of("data/b/" + name), bytes) }
+
+fn text_file(name: String, text: String) -> (Path, Bytes) { file(name, String.to_bytes(text)) }
+
+fn report_of(files: List<(Path, Bytes)>) -> Report ! {Fail<BatchTooLarge | FsError>} {
+  with Fs.memory(files) { run_batch(Request { batch: "b", segments: ["b"], format: TextReport }) }
+}
+
+fn total(item: String, quantity: Int) -> ItemTotal { ItemTotal { item, quantity } }
+
+fn reasons(r: Report) -> List<String> { List.map(r.rejections, fn(x) { "{x.file}: {x.reason}" }) }
+
+fn mixed_batch() -> List<(Path, Bytes)> {
+  [
+    file("a.json", delivery("D1", "North", [("rice", 4), ("tea", 2)])),
+    file("b.json", delivery("D1", "South", [("rice", 9)])),
+    text_file("c.json", "\{\"id\": \"D2\", "),
+    file("d.json", delivery("D3", "East", [("oil", 0)])),
+    file("e.json", delivery("D4", "East", [("oil", 3), ("rice", 1)])),
+    text_file("notes.txt", "van keys under the mat"),
+    file("old/f.json", delivery("D5", "West", [("salt", 1)])),
+  ]
+}
+
+fn clean_batch() -> List<(Path, Bytes)> { [file("a.json", delivery("D1", "North", [("rice", 4)]))] }
+
+test "one delivery with two items gives the exact route and overall totals" {
+  let r = report_of([file("a.json", delivery("D1", "North", [("tea", 2), ("rice", 5)]))])
+  expect_eq(r.routes, [RouteTotal { route: "North", items: [total("rice", 5), total("tea", 2)] }])
+  expect_eq(r.totals, [total("rice", 5), total("tea", 2)])
+  expect_eq((r.accepted, r.rejected, r.ignored), (1, 0, 0))
+}
+
+test "two routes sharing an item keep separate route totals and one overall total" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("rice", 4)])),
+    file("b.json", delivery("D2", "South", [("rice", 3), ("tea", 1)])),
+  ])
+  expect_eq(
+    r.routes,
+    [
+      RouteTotal { route: "North", items: [total("rice", 4)] },
+      RouteTotal { route: "South", items: [total("rice", 3), total("tea", 1)] },
+    ],
+  )
+  expect_eq(r.totals, [total("rice", 7), total("tea", 1)])
+}
+
+test "repeated item lines within one delivery are added together" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("tea", 2), ("tea", 5), ("rice", 1)])),
+  ])
+  expect_eq(r.totals, [total("rice", 1), total("tea", 7)])
+  expect_eq(r.routes, [RouteTotal { route: "North", items: [total("rice", 1), total("tea", 7)] }])
+}
+
+test "a duplicate delivery ID counts only the first valid file in filename order" {
+  let r = report_of([
+    file("b.json", delivery("D1", "South", [("rice", 9)])),
+    file("a.json", delivery("D1", "North", [("rice", 4)])),
+  ])
+  expect_eq(r.deliveries, ["D1"])
+  expect_eq(r.totals, [total("rice", 4)])
+  expect_eq(reasons(r), ["b.json: duplicate delivery ID D1, first counted in a.json"])
+}
+
+test "an invalid earlier file does not reserve its delivery ID" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("rice", 0)])),
+    file("b.json", delivery("D1", "South", [("rice", 2)])),
+  ])
+  expect_eq(r.deliveries, ["D1"])
+  expect_eq(r.routes, [RouteTotal { route: "South", items: [total("rice", 2)] }])
+  expect_eq(reasons(r), ["a.json: field items[0].quantity: quantity must be from 1 through 1000"])
+}
+
+test "permuting the file listing leaves the full report unchanged" {
+  let forward = report_of(mixed_batch())
+  expect_eq(report_of(List.reverse(mixed_batch())), forward)
+  let outcomes = List.map(["c.json", "a.json", "b.json"], fn(name) {
+    let d = Delivery { id: Name.from("D1"), route: Name.from(name), lines: [] }
+    let outcome: Result<Delivery, FileError> = if name == "c.json" { Err(Malformed) } else { Ok(d) }
+    (name, outcome)
+  })
+  let once = assemble("b", 0, outcomes)
+  expect_eq(assemble("b", 0, List.reverse(outcomes)), once)
+  expect_eq(
+    assemble("b", 0, List.concat(List.slice(outcomes, 1, 3), List.slice(outcomes, 0, 1))),
+    once,
+  )
+  expect_eq(once.routes, [RouteTotal { route: "a.json", items: [] }])
+}
+
+test "a malformed JSON file is rejected while its valid neighbour contributes" {
+  let r = report_of([
+    text_file("a.json", "\{\"id\": \"D1\", \"route\": "),
+    file("b.json", delivery("D2", "North", [("tea", 1)])),
+  ])
+  expect_eq(r.deliveries, ["D2"])
+  expect_eq(reasons(r), ["a.json: malformed JSON"])
+}
+
+test "a missing required field is reported by field without echoing the body" {
+  let r = report_of([
+    text_file("a.json", "\{\"id\": \"D1\", \"items\": [], \"note\": \"SECRET 12 Elm St\"\}"),
+    text_file("b.json", "SECRET 12 Elm St"),
+  ])
+  expect_eq(reasons(r), ["a.json: field /route: missing field", "b.json: malformed JSON"])
+  expect(!String.contains(render_text(r), "SECRET"))
+  expect(!String.contains(Json.encode(r), "SECRET"))
+}
+
+test "invalid UTF-8 is a recoverable per-file rejection" {
+  let r = report_of([
+    file("a.json", Bytes.from_list([123, 34, 255, 34, 125])),
+    file("b.json", delivery("D2", "North", [("tea", 1)])),
+  ])
+  expect_eq(reasons(r), ["a.json: invalid UTF-8 at byte 2"])
+  expect_eq(r.deliveries, ["D2"])
+}
+
+test "a zero quantity is rejected with no contribution to totals" {
+  let r = report_of([file("a.json", delivery("D1", "North", [("tea", 3), ("rice", 0)]))])
+  expect_eq((r.accepted, r.rejected), (0, 1))
+  expect_eq(r.totals, [])
+  expect_eq(r.routes, [])
+}
+
+test "a quantity of 1000 is accepted and 1001 is rejected" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("rice", 1_000)])),
+    file("b.json", delivery("D2", "North", [("rice", 1_001)])),
+  ])
+  expect_eq(r.totals, [total("rice", 1_000)])
+  expect_eq(reasons(r), ["b.json: field items[0].quantity: quantity must be from 1 through 1000"])
+}
+
+test "empty or whitespace-only item names are rejected after trimming" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("", 1)])),
+    file("b.json", delivery("D2", "North", [(" \t ", 1)])),
+    file("c.json", delivery(" D3 ", " North ", [("  Tea ", 1)])),
+  ])
+  expect_eq(
+    reasons(r),
+    [
+      "a.json: field items[0].item: empty after trimming",
+      "b.json: field items[0].item: empty after trimming",
+    ],
+  )
+  expect_eq(r.deliveries, ["D3"])
+  expect_eq(r.routes, [RouteTotal { route: "North", items: [total("Tea", 1)] }])
+}
+
+test "a multibyte name is measured in UTF-8 bytes at the 64-byte boundary" {
+  let fits = String.repeat("é", 32)
+  let over = fits + "a"
+  expect_eq((String.len(fits), String.len(over)), (64, 65))
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [(fits, 1)])),
+    file("b.json", delivery("D2", "North", [(over, 1)])),
+  ])
+  expect_eq(r.totals, [total(fits, 1)])
+  expect_eq(reasons(r), ["b.json: field items[0].item: longer than 64 UTF-8 bytes"])
+}
+
+test "a 100-line delivery passes and a 101-line delivery fails" {
+  let hundred = List.map(List.range(0, 100), fn(_) { ("tea", 1) })
+  let r = report_of([
+    file("a.json", delivery("D1", "North", hundred)),
+    file("b.json", delivery("D2", "North", List.push(hundred, ("tea", 1)))),
+  ])
+  expect_eq(r.totals, [total("tea", 100)])
+  expect_eq(reasons(r), ["b.json: 101 item lines, more than 100"])
+}
+
+test "a file of exactly 65536 bytes is decoded and a larger one is rejected first" {
+  let body = String.from_bytes(delivery("D1", "North", [("tea", 1)]))
+  let text = Result.unwrap_or(body, "")
+  let exact = text + String.repeat(" ", max_file_bytes - String.len(text))
+  expect_eq(String.len(exact), 65_536)
+  let r = report_of([
+    text_file("a.json", exact),
+    file("b.json", Bytes.from_list(List.map(List.range(0, 65_537), fn(_) { 255 }))),
+  ])
+  expect_eq(r.deliveries, ["D1"])
+  expect_eq(reasons(r), ["b.json: larger than 65536 bytes"])
+}
+
+test "200 selected files pass the count guard and 201 fail before any read" {
+  let names = List.map(List.range(0, 201), fn(i) {
+    String.pad_left(Int.to_string(i), 3, "0") + ".json"
+  })
+  let valid = List.map(List.slice(names, 0, 200), fn(n) {
+    file(n, delivery(n, "North", [("tea", 1)]))
+  })
+  let r = report_of(List.push(valid, text_file("extra.txt", "x")))
+  expect_eq((r.accepted, r.rejected, r.ignored), (200, 0, 1))
+  expect_eq(r.totals, [total("tea", 200)])
+  let unreadable = List.map(names, fn(n) { file(n, Bytes.from_list([255])) })
+  expect_fail(fn() { report_of(unreadable) }, BatchTooLarge { count: 201, limit: 200 })
+}
+
+test "subdirectories and non-JSON files are ignored and counted without traversal" {
+  let r = report_of([
+    file("a.json", delivery("D1", "North", [("tea", 1)])),
+    file("nested/b.json", delivery("D2", "North", [("tea", 5)])),
+    text_file("readme.md", "not a delivery"),
+    text_file("a.json.bak", "\{"),
+  ])
+  expect_eq((r.accepted, r.rejected, r.ignored), (1, 0, 3))
+  expect_eq(r.totals, [total("tea", 1)])
+}
+
+test "a nonexistent batch directory fails with FsError and no report" {
+  with Fs.memory(clean_batch()) {
+    expect_fails_with(
+      fn() { run_cli(["--batch", "missing", "--format", "text"]) },
+      fn(e) {
+        match e {
+          FsError { .. } => true,
+          _ => false,
+        }
+      },
+    )
+  }
+  expect_output([])
+}
+
+test "missing or invalid flags are rejected before filesystem operations" {
+  let cases = [
+    [],
+    ["--batch", "b"],
+    ["--format", "text"],
+    ["--batch", "b", "--format", "xml"],
+    ["--batch", "b", "--format", "text", "--verbose"],
+  ]
+  for args in cases {
+    expect_fails_with(fn() { parse_args(args) }, fn(e) {
+      match e {
+        CliError { .. } => true,
+        _ => false,
+      }
+    })
+  }
+  with Fs.memory([]) { expect_eq(run_cli(["--batch", "b"]), 2) }
+  expect_output([
+    "Error invalid arguments: missing --format\nusage: --batch <value> --format <value>",
+  ])
+}
+
+test "absolute or parent-traversing batches are rejected by validation" {
+  for batch in ["/etc", "../c", "b/../c", "b/./c", "b//c", "b\\..\\c", ""] {
+    expect_fails_with(
+      fn() { parse_args(["--batch", batch, "--format", "text"]) },
+      fn(e) {
+        match e {
+          InvalidBatch { .. } => true,
+          _ => false,
+        }
+      },
+    )
+  }
+  expect_eq(parse_args(["--batch", "2026/oct", "--format", "json"]).segments, ["2026", "oct"])
+  with Fs.memory(clean_batch()) { expect_eq(run_cli(["--batch", "../b", "--format", "text"]), 2) }
+}
+
+test "a handler rooted at one batch cannot read a sibling batch" {
+  let files = [
+    file("a.json", delivery("D1", "North", [("tea", 1)])),
+    (Path.of("data/c/secret.json"), String.to_bytes("x")),
+  ]
+  with Fs.memory(files) {
+    with Fs.rooted(Dir.subdir(Fs.root(), "data/b")) {
+      expect(Result.is_err(try { Fs.read(Path.of("secret.json")) }))
+      expect(Result.is_err(try { Fs.read(Path.of("c/secret.json")) }))
+      expect(Result.is_err(try { Dir.subdir(Fs.root(), "../c") }))
+      expect_eq(Fs.list(Path.of(".")), [Entry { name: "a.json", is_dir: false }])
+    }
+  }
+}
+
+test "an empty directory gives a zero-count report with empty totals" {
+  // Fs.memory cannot hold an empty directory (FRICTION.md), so the listing step is
+  // checked with a directory whose only entry is ignored, and the empty listing purely.
+  let empty = Report {
+    batch: "b",
+    accepted: 0,
+    rejected: 0,
+    ignored: 0,
+    deliveries: [],
+    routes: [],
+    totals: [],
+    rejections: [],
+  }
+  expect_eq(assemble("b", 0, []), empty)
+  expect_eq(
+    report_of([(Path.of("data/b/sub/.keep"), Bytes.from_list([]))]),
+    Report { ..empty, ignored: 1 },
+  )
+  expect_eq(
+    render_text(empty),
+    "Dispatch report for batch b\nFiles: 0 accepted, 0 rejected, 0 ignored\nDeliveries: (none)\nOverall:\n  (none)",
+  )
+}
+
+test "text output matches the reviewed snapshot and JSON decodes to the same report" {
+  let expected = report_of(mixed_batch())
+  with Fs.memory(mixed_batch()) {
+    let _ = run_cli(["--batch", "b", "--format", "text"])
+    let _ = run_cli(["--batch", "b", "--format", "json"])
+  }
+  let lines = Test.output_lines()
+  expect_eq(List.len(lines), 2)
+  expect_snapshot("mixed_text_report", Option.unwrap_or(List.get(lines, 0), ""))
+  let decoded: Result<Report, DecodeError> = Json.decode(Option.unwrap_or(List.get(lines, 1), ""))
+  expect_eq(decoded, Ok(expected))
+}
+
+test "a mixed batch requests status 1 and a clean batch status 0" {
+  with Fs.memory(mixed_batch()) { expect_eq(run_cli(["--batch", "b", "--format", "json"]), 1) }
+  with Fs.memory(clean_batch()) { expect_eq(run_cli(["--batch", "b", "--format", "json"]), 0) }
+  expect_eq(exit_status(report_of(clean_batch())), 0)
+  expect_eq(exit_status(report_of(mixed_batch())), 1)
+}

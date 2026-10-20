@@ -1,0 +1,9 @@
+[package]
+name = "dispatch_packlist"
+version = "0.1.0"
+edition = "2026"
+
+# Root authority `main` gets; everything absent is denied (design §6.2).
+# The program reads delivery files below ./data and nothing else.
+[permissions]
+fs.read = ["./data"]

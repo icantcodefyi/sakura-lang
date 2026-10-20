@@ -1,0 +1,17 @@
+Dispatch report for batch b
+Files: 2 accepted, 3 rejected, 2 ignored
+Deliveries: D1, D4
+Route East:
+  oil: 3
+  rice: 1
+Route North:
+  rice: 4
+  tea: 2
+Overall:
+  oil: 3
+  rice: 5
+  tea: 2
+Rejected:
+  b.json: duplicate delivery ID D1, first counted in a.json
+  c.json: malformed JSON
+  d.json: field items[0].quantity: quantity must be from 1 through 1000
