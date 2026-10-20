@@ -218,6 +218,7 @@ table. The WASI command does not call the codec yet (no Wasmtime `json_validate`
 - **When M4-OPT's first commit lands the 1.2.0 text:** N1a (N0a is in; §17.191 (1), (3)).
 - **M4-OPT is whole (round 18, §17.199; the niche left M4):** N0b after §17.200's LIR commit (both edit `sakura_lir/src/lower.rs`), then N5; N1a's condition has held since `f93e7ab7`, so it starts now (§17.203).
 - **When N1a lands:** N1b and (after L5) N2 in parallel.
+- **Round 42 (§17.285 (4)):** N2's three sanitizer controls and lanes (Miri's invalid slot kind, ASan's double drop and stale callback, the Memcheck lane with the `crabgrind` annotations; `native_detect.rs`, `sakura_host_native`, `ci.yml`'s native job) take the first slot that frees among the six round-42 lanes, lowest priority as before; the lanes run on hosted runners and the Mac's Docker only reproduces; then N1b's remainder on the same line, after phase 8's native-driver change is on `main`.
 - **Round 27 (§17.245 (2), §17.247):** no tag waits for native; N0b is done; N5 is M5b with N3 and N4; the line that remains is N1b's remainder → N2's controls and lanes → N2f, at the lowest priority.
 - **When N2 and N0b have landed (M5b):** N3; then N4.
 - **M5 exit** (§17.178): §14.3's amended M5 line; `{js, wasm, native} × {ubuntu, macos}` green on

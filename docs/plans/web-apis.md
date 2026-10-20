@@ -68,7 +68,8 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
-| 7b | `std/crypto` tier 1b: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc | Opus | 7a |
+| 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc, **now** | Opus | 7a (landed) |
+| 7b-W | tier 1b on WASM: the hosted imports, ABI 1.9.0, `KNOWN` emptied | pre-rc | Opus | 7b, 8 |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
 | 8 | `std/websocket` client | pre-rc | Opus | 4a, 5 |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
@@ -86,7 +87,16 @@ worktree beside the perf lane's WS-P20 and WS-P15 (§17.276); phase 8 starts whe
 WebSocket server (`Serve` upgrade) stays outside the RFC. **Round 41:** phase 9 landed
 first (`b2fde35d`, §17.281) while phase 5 waited on its design question; §17.280 answers it
 (a stream is a value), so phase 5 is next and pure Sakura as before, then 8 as ordered. Phase 5
-then landed as specified (`9139a178`, ratified §17.284); 8 is next, when WS-P20 is on `main`.
+then landed as specified (`9139a178`, ratified §17.284); 8 is next, when WS-P20 is on `main`. **Round 42 (design §17.285):** WS-P20 is on `main` and phase 8 is in flight (it holds ABI
+MINOR 1.8.0). Lanes are bounded by files, so **7b runs now on JS and native** as 7a did
+(`crypto.sak`, `sakura_core::builtins`, the crypto section of `sakura_runtime.js`, the rt
+crypto module and `sakura_host_native`'s table, `Cargo.toml`/`Cargo.lock`, vectors, fixtures;
+the new operations `D090` on WASM under `parity.rs` `KNOWN` rows and the "waits" sentences);
+its WASM step is **7b-W** (`sakura_wasm_host.js`, `WASM_HOSTED`, `validate.rs`, ABI.md §8),
+after phase 8 is on `main`, at ABI 1.9.0. Phase 6 follows phase 8 (the scheduler) and 7b's
+lock; phase 10 follows 6 at the next MINOR; 11 after 10; 7c after 7b-W, optional; 12 beside
+each. A phase that must touch a running lane's file files the change in `REQUESTS.md` for
+that lane or waits for it and rebases; a shared append-only file keeps both hunks.
 
 ## 3. Phases
 

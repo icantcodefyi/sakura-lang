@@ -351,6 +351,19 @@ locations +0.21% apart and its recount pair −1.6%; `binary_trees` n = 14 −0.
 **The JS lane's order from here (design §17.276):** WS-P20, WS-P15, WS-P21, WS-P16, WS-P17,
 WS-P18 (WS-P19 inside its sweep); wave 2 after WS-P16.
 
+**Round 42 (design §17.285): lanes bounded by files, not by turns.** WS-P20 and WS-P15 are
+on `main`; WS-P21 is in flight (`opt/owned.rs`, `emit.rs`, `--dump owned`). WS-P16 waits for
+WS-P21 (the same files, the same agent next); WS-P17 starts when WS-P21 is on `main`, beside
+WS-P16, confined to the handler section of `sakura_runtime.js`, `sakura_core`'s handler
+lowering and `runtime/rt/src/exec.rs`'s `find` (an `emit.rs` change goes through WS-P16's
+agent); WS-P18 after both. Wave 2 no longer waits for WS-P16: **WS-W5** (contracts on WASM:
+`sakura_lir/src/lower.rs`, `sakura_codegen_wasm/src/func.rs`, `exec.rs`'s defect and blame
+path, ABI.md §5/§6.5/§12, no §8 edit) and **WS-W6** (`tokenizer`'s superlinear cost:
+`runtime/rt/src/{string,bytes,list,heap}.rs`, the string and `Bytes` section of
+`builtins.rs`; `compare`'s log-log slope check in `bench.py` if absent) start now in their own
+worktrees; WS-W3's fix, WS-W4 and WS-W7 wait for them (§17.285 (3)). Opus adds the WS-W5 and
+WS-W6 rows to §4.1 as they open, under WS-P13a's protocol and §17.265 (6)'s exit.
+
 **WS-P20 — cold-path raising (Opus, next; design §17.274).** Paths: `sakura_runtime.js`
 (`add`/`sub`/`mul`, `list_get_expect`, `map_get_expect`, `Defect`), `emit.rs` (the contract
 bracket as a `try` whose catch rewraps as `D011`; `contract_enter`/`contract_exit` and
@@ -791,6 +804,8 @@ the next quiet window (§17.153).
 | **`tail_clique` ports** (§17.213 (4)) | Rust, Go, Python and TypeScript ports by the WS-S protocol; `verify.py` reports `skip: missing port` and fails at the end instead of stopping | Sol | `bench/programs/tail_clique/{rust,go,python,typescript}/`, `_shared`, `bench/programs/_shared/python/verify.py` | now | every checksum from `meta.toml`; `verify.py` runs the whole suite with one port missing; the cells are reported with `countdown`'s family, not gating at M4 exit |
 | **WS-W4** (§17.230 (2); **M5**, gates nothing at M4) | The three frame cliffs WS-W1/WS-W2 leave on WASM: (a) a bound perform whose clause can abort runs on frames (a twin needs the clause's state write deferred to the attempt's commit or checkpointed, a runtime rule); (b) a lambda that performs has no twin, so each entry into a region that calls it holds its arguments, abandons and restarts (the fix is a twin that can yield, WS-W3's territory); (c) `deltablue`'s 1,871 frames at n = 100 are (b)'s and (a)'s instances, inside its WASM carry | Astra (attribution, with WS-W3's), then Opus (M5) | `runtime/rt/src/{exec,wasm}.rs`, `sakura_codegen_wasm/src/func.rs`, `sakura_lir/src/direct.rs` | WS-W3's attribution (§17.218 (2)); never before the M4 window | each fix with the WS-W3 protocol before and after and `frames` as the check that the path changed; a fix that does not move its bucket is not landed; (b) first if the `wasm::rt` bucket is the frame's, else (a) |
 | **WS-C1f** (§17.214 (2)) | Share, do not copy: the `Interner` in two layers (a frozen std layer behind an `Arc` with stable `TypeId`s, a per-analysis extension), std's typed bodies and schemes, carried HIR modules and their symbols behind `Arc`s | Opus | `sakura_types`, `sakura_hir`, `sakura_analysis` | WS-C2 and WS-C1d; before WS-C1e | a reusing analysis ≤ 0.4 ms on the phase lines (`check` ≤ 0.15, lower ≤ 0.1); `--dump`, `doc --search` and LSP symbols byte-identical fresh and reused; §17.194's order test green; std `TypeId`s stable across analyses in one process |
+
+Order after round 42 (§17.285): eight implementers; a lane is a worktree with a named file set and two lanes run at once when their sets are disjoint; WS-W5 and WS-W6 start now beside WS-P21 and phase 8 (disjoint files); WS-P16 after WS-P21, WS-P17 when WS-P21 is on `main`, WS-P18 after both; WS-W3's fix after WS-W5 in `exec.rs` (its attribution may run now on any idle host), WS-W4 after WS-W3, WS-W7 after WS-W5, WS-W6 and WS-P21; row 31's successors and the Sql worker requests (§17.241) on whichever line frees next. Everything below is otherwise unchanged.
 
 Order after round 27 (§17.246): WS-P13b (`2d808283`..`0530f328`), row 31 (`9a37edbe`) and the exhaustiveness index (`25a8430e`, `1401ba2a`) are on `main` and are read at the 0.2.0 window; the window benches `dee11301` in its own worktree, so a perf commit lands when its conditions are met and the next window reads it (§17.240 (4)); the JS join-chain limit at about 32,000 guarded rows is a stated limit, not a row (§17.240 (2)); `V8006` lands after the `v0.1.0` window by its own rule; WS-W3 then WS-W4 are M5b unless a host is idle. Everything below is otherwise unchanged.
 
