@@ -90,6 +90,8 @@ Tests run under deterministic default handlers ([design §5.8](https://github.co
 | `Console` | `Console.captured()`              |
 | `Log`     | `Log.captured()`                  |
 
+Under `Clock.fixed`, `Clock.sleep` returns at once, so a `timeout` whose action suspends fails at once; install `Clock.virtual()` to test timeouts.
+
 `Console.captured()` and `Log.captured()` send each line to the test's output, which `Test.output_lines()` returns and `expect_output` checks. A `Log.captured()` line looks like `Warn message key=value`:
 
 ```sakura
@@ -146,7 +148,7 @@ The standard library ships fakes for its own effects:
 | `Http.scripted(script)`       | The HTTP client, answering from a list of request matchers and responses. |
 | `Fs.memory(files)`            | The filesystem, from a list of `(path, bytes)` pairs. `Dir.subdir` and `Fs.rooted` narrow it as on the host. |
 | `Llm.scripted(responses)`     | A model provider. `Llm.replay(path)` replays a recording. |
-| `Clock.virtual()`             | The clock. Time advances only when told to.           |
+| `Clock.virtual()`             | The clock. Time advances only when told to. Install it outermost, or a `Clock.sleep` inside your own handler sees the default `Clock.fixed`. |
 | `Task.deterministic(seed)`    | The task scheduler. Interleavings are reproducible.   |
 
 An in-memory filesystem also supports directory attenuation. The nested handler writes to the same store, using paths relative to its subdirectory:
@@ -182,6 +184,39 @@ test "deterministic under virtual time" {
 ```
 
 `fetch_both` spawns two tasks, retries with backoff, and wraps everything in a timeout ([design §15.10](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). Under these handlers, sleeps and timeouts use virtual time and task interleavings follow the seed. See [Concurrency](/docs/tour/concurrency).
+
+To test what happens while requests are in flight, hold them back with a pass-through handler that sleeps on virtual time before forwarding. Install it inside `Clock.virtual()`, so its `Clock.sleep` reaches the virtual clock. Two requests held 100 ms each, sent together, finish at 100 ms of virtual time, which shows they were in flight at once:
+
+```sakura
+import std/http.{Http, Matcher}
+import std/request.{Method, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn gate(ms: Int) -> Handler<Http, {Clock, Http}> {
+  handler Http {
+    fn send(req) {
+      Clock.sleep(Duration.millis(ms))
+      Http.send(req)
+    }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+fn status(u: String) -> Int ! {Http, Fail<HttpError>} {
+  Http.send(Request.of(Method.Get, Url.from(u))).status
+}
+
+test "two gated requests are in flight together" {
+  with Clock.virtual(), Task.deterministic(1),
+      Http.scripted([(Matcher.Any, Response.status(200, "ok"))]), gate(100) {
+    let codes = Task.all([fn() { status("https://a.test/") }, fn() { status("https://b.test/") }])
+    expect_eq(codes, [200, 200])
+    expect_eq(Clock.monotonic(), Duration.millis(100))
+  }
+}
+```
 
 ## Property tests
 
@@ -285,7 +320,7 @@ sakura test --json                           # JSON Lines records for agents
 sakura test --update-snapshots               # rewrite snapshot files
 ```
 
-The runner applies per-test time and memory limits and denies network access. `sakura test` exits with `3` when tests fail and `1` when the program has compile errors. A passing test gives its claims the `tested` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model), never `proved`.
+The runner applies per-test time and memory limits and denies network access. `sakura test` has no host grants and no mode with them. To test a program against the host, run it with `sakura run` and drive it from a script: start it, send requests, stop it by the listener's PID, restart it and read back, as [`repair-queue/integration.sh`](https://github.com/icantcodefyi/sakuralang/blob/main/dogfood/repair-queue/integration.sh) does. `sakura test` exits with `3` when tests fail and `1` when the program has compile errors. A passing test gives its claims the `tested` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model), never `proved`.
 
 ## What the compiler and runner check
 

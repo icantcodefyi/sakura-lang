@@ -45,7 +45,7 @@ A completed run exits 1 for any `disproved` obligation and otherwise 0, includin
 sakura build --manifest main.sak
 ```
 
-JS builds can remove eligible `ensures` and non-entry `where` checks using matching authenticated proof records. Missing or stale records retain checks. This does not remove preconditions or `T.from` entry checks, and the predicate's computation remains. `run`, `test`, LIR output and WASM builds retain these checks. Separate interval-based arithmetic optimization does not require the solver.
+JS builds can remove eligible `ensures` and non-entry `where` checks using matching authenticated proof records. Missing or stale records retain checks. This does not remove preconditions or `T.from` entry checks, and the predicate's computation remains. `run`, `test` and LIR output retain these checks; a WASM build drops the checks `sakura verify --target wasm` proved, as the JS build does for the `js` profile. Separate interval-based arithmetic optimization does not require the solver.
 
 Verification of loops, recursion, termination, quantified collections and Float/String theories remains planned. Proof certificates and `verify fn`, `proof` and `ghost` syntax are not implemented. Read the [verification reference](/docs/agents/verify) for solver budgets, JSON fields, cache authentication and manifest statuses.
 

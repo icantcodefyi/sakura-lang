@@ -3,7 +3,7 @@ title: Verify contracts
 description: Prove contract and arithmetic obligations with sakura verify, inspect counterexamples, and understand proof-backed check removal.
 ---
 
-`sakura verify` is part of every release of the CLI. It generates obligations for user functions, including functions unreachable from `main`, and asks Z3 whether their contracts and arithmetic are safe under the stated assumptions. This CLI command exists independently of the planned MCP `verify` tool. MCP `compiler_info` reports verification support and solver status; inspect the latter before assuming a solver is installed. See [contracts and refinements](/docs/tour/contracts) for the language rules.
+`sakura verify` is part of every release of the CLI. It generates obligations for user functions, including functions unreachable from `main`, and skips `test` blocks: a test is executed, never proved, so its body and the lambdas and handlers inside it yield no obligations (`sakura test --contracts` is how a test checks contracts). Functions in a test file that are not `test` blocks are still verified. It asks Z3 whether their contracts and arithmetic are safe under the stated assumptions. This CLI command exists independently of the planned MCP `verify` tool. MCP `compiler_info` reports verification support and solver status; inspect the latter before assuming a solver is installed. See [contracts and refinements](/docs/tour/contracts) for the language rules.
 
 ```sh
 sakura verify src

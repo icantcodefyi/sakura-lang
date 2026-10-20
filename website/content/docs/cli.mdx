@@ -84,7 +84,7 @@ feature. Release binaries are built without it. See [Backends](/docs/tour/memory
 | `doc --search PATTERN` | Search by type pattern, for example `"fn(List<A>) -> Int"`. |
 | `doc --json` | One `symbol_query` record. |
 | `prompt --budget N` | Drop whole sections from the end to fit about `N` tokens (4 bytes per token). |
-| `new KIND NAME --setup CLIENT` | Kinds `cli`, `lib`, `agent`, `api`. Then run `setup --apply` for the client. |
+| `new KIND NAME --setup CLIENT` | Kinds `cli`, `lib`, `agent`, `api`. Then run `setup --apply` for the client. A `lib` is tested with `sakura test`; a Node program cannot yet call a library function of its WASM build. |
 | `init --kind KIND` | The same kinds. Default `cli`. |
 | `setup --client CLIENT` | `claude`, `codex`, `cursor` or `all` (the default). |
 | `setup --apply` | Write the files instead of printing them. Nothing outside the project is touched. |

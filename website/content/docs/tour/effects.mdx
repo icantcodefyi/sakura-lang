@@ -60,7 +60,7 @@ effect Db {
 }
 ```
 
-An operation's row may contain `Fail<…>`, plus row variables of the operation's own type parameters that also appear in a function-typed parameter, so an operation that runs a callback performs what the callback performs (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Any other label is `V3010`. The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller.
+An operation's row may contain `Fail<…>`, plus row variables of the operation's own type parameters that also appear in a function-typed parameter, so an operation that runs a callback performs what the callback performs (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Any other label is `V3010`. The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller. A handler's clauses run with the handlers outside it: an effect a clause performs resolves where the handler was installed, not where the operation was called.
 
 ## Rows are sets
 
