@@ -55,14 +55,25 @@ mod wasm {
     pub static INSTANCE: Instance = Instance(UnsafeCell::new(None));
 
     /// The module's runtime. Callers keep at most one reference live (`Cx::rt` borrows the
-    /// `Cx`; the wasm-only exports of `wasm.rs` take it once per export, as before).
+    /// `Cx`; the wasm-only exports of `wasm.rs` take it once per export, as before). Every
+    /// runtime call takes it, so the path is a load and a test: `Rt::new`'s construction is
+    /// out of line, or each caller would reserve its frame (WS-W3, design §17.287 (4)).
+    #[inline]
     pub fn rt() -> &'static mut Rt {
         // SAFETY: one thread, and every export takes this reference once and lets it go before it
         // returns or calls out of the runtime, so no two `&mut Rt` are ever live at the same time.
         let slot = unsafe { &mut *INSTANCE.0.get() };
-        slot.get_or_insert_with(|| {
-            Rt::new(DEFAULT_MAX_HEAP).unwrap_or_else(|_| core::arch::wasm32::unreachable())
-        })
+        match slot {
+            Some(rt) => rt,
+            None => first(slot),
+        }
+    }
+
+    /// The instance's construction, at the first runtime call.
+    #[cold]
+    #[inline(never)]
+    fn first(slot: &'static mut Option<Rt>) -> &'static mut Rt {
+        slot.insert(Rt::new(DEFAULT_MAX_HEAP).unwrap_or_else(|_| core::arch::wasm32::unreachable()))
     }
 
     #[link(wasm_import_module = "sakura_link")]
