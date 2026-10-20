@@ -131,7 +131,7 @@ fn fill#3 top -> i64 ; main::effects_and_handlers, frame 8 slots [%0 word*, %1 w
     drop %37
     jump b6(%33, %34, %35, %36)
 
-fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; main::effects_and_handlers, captures [i64], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %37 bool, %38 i64, %39 word*, %40 i64]
+fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; main::effects_and_handlers, captures [i64], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %36 bool, %37 i64, %38 word*, %39 i64]
   b0(%0 env: ptr, %1 inst: id, %2 key: ptr, %3 value: i64):
     %4 limit: i64 = capture %0.0
     drop %0
@@ -141,8 +141,7 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
     if %7 then b5(%1, %2, %3) else b6(%1, %2, %3)
   b1(%8 v: bool, %9 inst: id, %10 key: ptr, %11 value: i64):
     if %8 then b3(%9, %10, %11) else b4(%9, %10, %11)
-  b2(%12 v: word, %13 inst: id, %14 key: ptr, %15 value: i64):
-    drop %12
+  b2(%12 v: unit, %13 inst: id, %14 key: ptr, %15 value: i64):
     %16 data: word = state_get %13[0] row 6
     %17 box: word = box %15
     %18 r: ptr = $map_insert(%16, %14, %17)
@@ -156,18 +155,17 @@ fn bounded$Store_put#5 clause main::effects_and_handlers::Store.put -> unit ; ma
     fail %27
   b4(%24 inst: id, %25 key: ptr, %26 value: i64):
     %28 lit: unit = const ()
-    %29 box: word = box %28
-    jump b2(%29, %24, %25, %26)
-  b5(%30 inst: id, %31 key: ptr, %32 value: i64):
-    %36 data: word = state_get %30[0] row 6
-    dup %31
-    call contains#6(%36, %31) -> b7(%30, %31, %32)
-  b6(%33 inst: id, %34 key: ptr, %35 value: i64):
-    %42 lit: bool = const false
-    jump b1(%42, %33, %34, %35)
-  b7(%37 r: bool, %38 inst: id, %39 key: ptr, %40 value: i64):
-    %41 t: bool = not %37
-    jump b1(%41, %38, %39, %40)
+    jump b2(%28, %24, %25, %26)
+  b5(%29 inst: id, %30 key: ptr, %31 value: i64):
+    %35 data: word = state_get %29[0] row 6
+    dup %30
+    call contains#6(%35, %30) -> b7(%29, %30, %31)
+  b6(%32 inst: id, %33 key: ptr, %34 value: i64):
+    %41 lit: bool = const false
+    jump b1(%41, %32, %33, %34)
+  b7(%36 r: bool, %37 inst: id, %38 key: ptr, %39 value: i64):
+    %40 t: bool = not %36
+    jump b1(%40, %37, %38, %39)
 
 fn bounded$Store_get#7 clause main::effects_and_handlers::Store.get -> ptr ; main::effects_and_handlers, captures [], frame 3 slots [%0 word*, %1 i64, %2 word*]
   b0(%0 env: ptr, %1 inst: id, %2 key: ptr):

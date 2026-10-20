@@ -140,13 +140,12 @@ fn $entry#1 top -> unit ; main::owned_generic, frame 1 slots [%1 bool]
 fn repeat#2 top -> ptr ; main::owned_generic, frame 2 slots [%0 word*, %1 i64]
   b0(%0 x: word, %1 n: i64):
     %2 xs: ptr = alloc list()
-    %26 lit: i64 = const 0
-    jump b1(%2, %26, %0, %1)
+    %25 lit: i64 = const 0
+    jump b1(%2, %25, %0, %1)
   b1(%3 out: ptr, %4 i: i64, %5 x: word, %6 n: i64):
     %7 t: bool = lt.int %4, %6
     if %7 then b3(%5, %6, %3, %4) else b4(%5, %6, %3, %4)
-  b2(%8 v: word, %9 out: ptr, %10 i: i64, %11 x: word, %12 n: i64):
-    drop %8
+  b2(%8 v: unit, %9 out: ptr, %10 i: i64, %11 x: word, %12 n: i64):
     jump b1(%9, %10, %11, %12)
   b3(%13 x: word, %14 n: i64, %15 out: ptr, %16 i: i64):
     dup %13
@@ -154,23 +153,21 @@ fn repeat#2 top -> ptr ; main::owned_generic, frame 2 slots [%0 word*, %1 i64]
     %22 lit: i64 = const 1
     %23 t: i64 = intadd %16, %22
     %24 lit: unit = const ()
-    %25 box: word = box %24
-    jump b2(%25, %21, %23, %13, %14)
+    jump b2(%24, %21, %23, %13, %14)
   b4(%17 x: word, %18 n: i64, %19 out: ptr, %20 i: i64):
     drop %17
     ret %19
 
 fn fill#3 top -> ptr ; main::owned_generic, frame 5 slots [%0 word*, %1 word*, %18 word*, %19 word*, %20 i64]
   b0(%0 xs: ptr, %1 x: word):
-    %25 lit: i64 = const 0
-    jump b1(%0, %25, %1)
+    %24 lit: i64 = const 0
+    jump b1(%0, %24, %1)
   b1(%2 out: ptr, %3 i: i64, %4 x: word):
     dup.candidate %2
     %5 r: i64 = $list_len(%2)
     %6 t: bool = lt.int %3, %5
     if %6 then b3(%4, %2, %3) else b4(%4, %2, %3)
-  b2(%7 v: word, %8 out: ptr, %9 i: i64, %10 x: word):
-    drop %7
+  b2(%7 v: unit, %8 out: ptr, %9 i: i64, %10 x: word):
     jump b1(%8, %9, %10)
   b3(%11 x: word, %12 out: ptr, %13 i: i64):
     %17 $site: i64 = const 2
@@ -183,8 +180,7 @@ fn fill#3 top -> ptr ; main::owned_generic, frame 5 slots [%0 word*, %1 word*, %
     %21 lit: i64 = const 1
     %22 t: i64 = intadd %20, %21
     %23 lit: unit = const ()
-    %24 box: word = box %23
-    jump b2(%24, %18, %22, %19)
+    jump b2(%23, %18, %22, %19)
 
 fn tally#5 top -> ptr ; main::owned_generic, frame 1 slots [%0 word*]
   b0(%0 keys: ptr):

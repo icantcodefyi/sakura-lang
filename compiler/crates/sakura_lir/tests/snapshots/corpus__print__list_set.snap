@@ -14,9 +14,9 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %1 lit: i64 = const 2000
     call range#2(%0, %1) -> b1()
   b1(%2 r: ptr):
-    %125 lit: i64 = const 0
+    %124 lit: i64 = const 0
     dup %2
-    jump b10(%2, %125, %2)
+    jump b10(%2, %124, %2)
   b2(%3 xs: ptr, %4 i: i64, %5 r: ptr):
     %6 lit: i64 = const 0
     dup.candidate %3
@@ -157,8 +157,7 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %102 lit: i64 = const 2000
     %103 t: bool = lt.int %100, %102
     if %103 then b12(%101, %99, %100) else b13(%101, %99, %100)
-  b11(%104 v: word, %105 xs: ptr, %106 i: i64, %107 r: ptr):
-    drop %104
+  b11(%104 v: unit, %105 xs: ptr, %106 i: i64, %107 r: ptr):
     jump b10(%105, %106, %107)
   b12(%108 r: ptr, %109 xs: ptr, %110 i: i64):
     %114 lit: i64 = const 2
@@ -172,8 +171,7 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %121 lit: i64 = const 3
     %122 t: i64 = intadd %120, %121
     %123 lit: unit = const ()
-    %124 box: word = box %123
-    jump b11(%124, %118, %122, %119)
+    jump b11(%123, %118, %122, %119)
 
 fn $entry#1 top -> unit ; main::list_set, frame 1 slots [%1 bool]
   b0():

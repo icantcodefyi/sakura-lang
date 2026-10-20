@@ -11,8 +11,8 @@ layout 4 shape |  32b (i64, word*)
 fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots [%3 word*, %4 word*, %11 i64, %12 word*, %13 word*, %14 word*, %29 bool, %30 word*, %31 word*, %39 i64, %40 word*, %41 word*, %42 word*, %57 bool, %58 word*, %59 word*, %65 word*, %66 word*, %76 i64, %77 word*, %78 word*, %79 word*, %100 bool]
   b0():
     %0 xs: ptr = alloc list()
-    %120 lit: i64 = const 0
-    jump b10(%0, %120)
+    %119 lit: i64 = const 0
+    jump b10(%0, %119)
   b1(%1 zs: ptr, %2 i: i64):
     dup %1
     call bump_all#2(%1) -> b2(%1)
@@ -157,8 +157,7 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %105 lit: i64 = const 40
     %106 t: bool = lt.int %104, %105
     if %106 then b12(%103, %104) else b13(%103, %104)
-  b11(%107 v: word, %108 zs: ptr, %109 i: i64):
-    drop %107
+  b11(%107 v: unit, %108 zs: ptr, %109 i: i64):
     jump b10(%108, %109)
   b12(%110 zs: ptr, %111 i: i64):
     %114 box: word = box %111
@@ -166,8 +165,7 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %116 lit: i64 = const 1
     %117 t: i64 = intadd %111, %116
     %118 lit: unit = const ()
-    %119 box: word = box %118
-    jump b11(%119, %115, %117)
+    jump b11(%118, %115, %117)
   b13(%112 zs: ptr, %113 i: i64):
     jump b1(%112, %113)
 
@@ -182,8 +180,8 @@ fn $entry#1 top -> unit ; main::owned_argument_used_after_call, frame 1 slots [%
 
 fn bump_all#2 top -> ptr ; main::owned_argument_used_after_call, frame 7 slots [%0 word*, %4 word*, %19 word*, %20 word*, %21 i64, %27 word*, %28 i64]
   b0(%0 start: ptr):
-    %33 lit: i64 = const 0
-    jump b3(%0, %33)
+    %32 lit: i64 = const 0
+    jump b3(%0, %32)
   b1(%1 xs: ptr, %2 i: i64):
     %3 f: ptr = closure bump_all$1#8[]
     call map#9(%1, %3) -> b2()
@@ -194,8 +192,7 @@ fn bump_all#2 top -> ptr ; main::owned_argument_used_after_call, frame 7 slots [
     %7 r: i64 = $list_len(%5)
     %8 t: bool = lt.int %6, %7
     if %8 then b5(%5, %6) else b6(%5, %6)
-  b4(%9 v: word, %10 xs: ptr, %11 i: i64):
-    drop %9
+  b4(%9 v: unit, %10 xs: ptr, %11 i: i64):
     jump b3(%10, %11)
   b5(%12 xs: ptr, %13 i: i64):
     dup.candidate %12
@@ -217,8 +214,7 @@ fn bump_all#2 top -> ptr ; main::owned_argument_used_after_call, frame 7 slots [
     %29 lit: i64 = const 1
     %30 t: i64 = intadd %28, %29
     %31 lit: unit = const ()
-    %32 box: word = box %31
-    jump b4(%32, %27, %30)
+    jump b4(%31, %27, %30)
 
 fn bump_all$1#8 lambda -> word ; main::owned_argument_used_after_call, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 x: word):

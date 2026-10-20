@@ -76,8 +76,7 @@ fn main$1#2 lambda -> word ; main::early_return, captures [], frame 2 slots [%0 
     %3 lit: i64 = const 0
     %4 t: bool = gt.int %2, %3
     if %4 then b2() else b3()
-  b1(%5 v: word):
-    drop %5
+  b1(%5 v: unit):
     %6 lit: ptr = const str 4
     ret %6
   b2():
@@ -85,16 +84,15 @@ fn main$1#2 lambda -> word ; main::early_return, captures [], frame 2 slots [%0 
     ret %7
   b3():
     %8 lit: unit = const ()
-    %9 box: word = box %8
-    jump b1(%9)
+    jump b1(%8)
 
 fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*]
   b0(%0 xs: ptr, %1 target: ptr):
     dup.candidate %0
     %2 n: i64 = $list_len(%0)
+    %50 lit: i64 = const 0
     %51 lit: i64 = const 0
-    %52 lit: i64 = const 0
-    jump b2(%51, %52, %0, %1, %2)
+    jump b2(%50, %51, %0, %1, %2)
   b1(%3 i: i64):
     %4 lit: i64 = const 1
     %5 t: i64 = intneg %4
@@ -116,8 +114,7 @@ fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*
     %28 lit: i64 = const 1
     %29 i: i64 = intadd %27, %28
     jump b2(%29, %23, %24, %25, %26)
-  b6(%31 v: word, %32 i: i64, %33 xs: ptr, %34 target: ptr, %35 n: i64, %36 i: i64):
-    drop %31
+  b6(%31 v: unit, %32 i: i64, %33 xs: ptr, %34 target: ptr, %35 n: i64, %36 i: i64):
     %37 lit: i64 = const 1
     %38 t: i64 = intadd %32, %37
     jump b5(%38, %33, %34, %35, %36)
@@ -127,5 +124,4 @@ fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*
     ret %43
   b8(%44 xs: ptr, %45 target: ptr, %46 n: i64, %47 i: i64, %48 i: i64):
     %49 lit: unit = const ()
-    %50 box: word = box %49
-    jump b6(%50, %48, %44, %45, %46, %47)
+    jump b6(%49, %48, %44, %45, %46, %47)

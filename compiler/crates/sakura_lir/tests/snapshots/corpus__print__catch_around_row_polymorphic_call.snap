@@ -53,8 +53,7 @@ fn main#0 pub top -> unit ; main::catch_around_row_polymorphic_call, frame 6 slo
     %24 p: i64 = proj %23.0 main::catch_around_row_polymorphic_call::Oops
     drop %23
     jump b1(%24)
-  b8(%25 v: word) [try]:
-    drop %25
+  b8(%25 v: unit) [try]:
     %26 f: ptr = closure main$1#2[]
     call twice#3(%26) -> b9()
   b9(%27 r: i64) [try]:
@@ -66,8 +65,7 @@ fn main#0 pub top -> unit ; main::catch_around_row_polymorphic_call, frame 6 slo
     fail %30
   b11() [try]:
     %31 lit: unit = const ()
-    %32 box: word = box %31
-    jump b8(%32)
+    jump b8(%31)
 
 fn $entry#1 top -> unit ; main::catch_around_row_polymorphic_call, frame 1 slots [%1 bool]
   b0():

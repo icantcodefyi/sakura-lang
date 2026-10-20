@@ -10,9 +10,9 @@ layout 4 shape |  32b (word*, i64)
 
 fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bool, %28 i64, %29 word*, %37 bool, %38 i64, %39 word*, %40 i64, %49 word*, %50 i64, %51 word*, %52 i64, %62 word*, %63 i64, %64 word*, %65 i64, %100 bool, %101 word*, %102 i64, %103 i64, %104 i64, %105 word*, %106 i64, %150 bool, %151 word*, %152 i64, %153 i64, %154 i64, %155 word*, %156 i64]
   b0():
-    %270 lit: i64 = const 0
-    %271 lit: i64 = const 0
-    jump b36(%270, %271)
+    %267 lit: i64 = const 0
+    %268 lit: i64 = const 0
+    jump b36(%267, %268)
   b1(%0 total: i64):
     %1 s: ptr = show %0
     %2 lit: ptr = const str 0
@@ -38,8 +38,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %20 xs: ptr = alloc list(%9, %11, %13, %15, %17, %19)
     dup.candidate %20
     %21 n: i64 = $list_len(%20)
-    %256 lit: i64 = const 0
-    jump b26(%256, %5, %7, %20, %21)
+    %253 lit: i64 = const 0
+    jump b26(%253, %5, %7, %20, %21)
   b3(%22 total: i64, %23 evens: ptr):
     %24 s: ptr = show %23
     %25 lit: ptr = const str 1
@@ -49,8 +49,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
   b4(%27 r: unit, %28 total: i64, %29 evens: ptr):
     %30 box: word = box %27
     drop %30
-    %180 lit: i64 = const 1
-    jump b22(%28, %29, %180)
+    %179 lit: i64 = const 1
+    jump b22(%28, %29, %179)
   b5(%31 total: i64, %32 evens: ptr, %33 n: i64):
     %34 s: ptr = show %33
     %35 lit: ptr = const str 2
@@ -143,73 +143,67 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %164 lit: i64 = const 100
     %165 t: bool = lt.int %163, %164
     if %165 then b24(%161, %162, %163) else b25(%161, %162, %163)
-  b23(%166 v: word, %167 total: i64, %168 evens: ptr, %169 n: i64):
-    drop %166
+  b23(%166 v: unit, %167 total: i64, %168 evens: ptr, %169 n: i64):
     jump b22(%167, %168, %169)
   b24(%170 total: i64, %171 evens: ptr, %172 n: i64):
     %176 lit: i64 = const 3
     %177 t: i64 = intmul %172, %176
     %178 lit: unit = const ()
-    %179 box: word = box %178
-    jump b23(%179, %170, %171, %177)
+    jump b23(%178, %170, %171, %177)
   b25(%173 total: i64, %174 evens: ptr, %175 n: i64):
     jump b5(%173, %174, %175)
-  b26(%181 i: i64, %182 total: i64, %183 evens: ptr, %184 xs: ptr, %185 n: i64):
-    %186 more: bool = lt.int %181, %185
-    if %186 then b27(%184, %185, %181, %182, %183) else b28(%184, %185, %181, %182, %183)
-  b27(%187 xs: ptr, %188 n: i64, %189 i: i64, %190 total: i64, %191 evens: ptr):
-    dup.candidate %187
-    %197 x: word = $list_at(%187, %189)
-    %198 unbox: i64 = unbox %197
-    drop %197
-    %206 lit: i64 = const 2
-    %207 t: i64 = intrem %198, %206
-    %208 lit: i64 = const 1
-    %209 t: bool = eq.int %207, %208
-    if %209 then b34(%187, %188, %189, %190, %191, %198) else b35(%187, %188, %189, %190, %191, %198)
-  b28(%192 xs: ptr, %193 n: i64, %194 i: i64, %195 total: i64, %196 evens: ptr):
-    drop %192
-    jump b3(%195, %196)
-  b29(%199 total: i64, %200 evens: ptr, %201 xs: ptr, %202 n: i64, %203 i: i64):
-    %204 lit: i64 = const 1
-    %205 i: i64 = intadd %203, %204
-    jump b26(%205, %199, %200, %201, %202)
-  b30(%210 v: word, %211 total: i64, %212 evens: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 x: i64):
-    drop %210
-    %217 lit: i64 = const 4
-    %218 t: bool = gt.int %216, %217
-    if %218 then b32(%213, %214, %215, %216, %211, %212) else b33(%213, %214, %215, %216, %211, %212)
-  b31(%219 v: word, %220 total: i64, %221 evens: ptr, %222 xs: ptr, %223 n: i64, %224 i: i64, %225 x: i64):
-    drop %219
-    %226 box: word = box %225
-    %227 r: ptr = $list_push(%221, %226)
-    jump b29(%220, %227, %222, %223, %224)
-  b32(%228 xs: ptr, %229 n: i64, %230 i: i64, %231 x: i64, %232 total: i64, %233 evens: ptr):
-    drop %228
-    jump b3(%232, %233)
-  b33(%234 xs: ptr, %235 n: i64, %236 i: i64, %237 x: i64, %238 total: i64, %239 evens: ptr):
-    %240 lit: unit = const ()
-    %241 box: word = box %240
-    jump b31(%241, %238, %239, %234, %235, %236, %237)
-  b34(%242 xs: ptr, %243 n: i64, %244 i: i64, %245 total: i64, %246 evens: ptr, %247 x: i64):
-    jump b29(%245, %246, %242, %243, %244)
-  b35(%248 xs: ptr, %249 n: i64, %250 i: i64, %251 total: i64, %252 evens: ptr, %253 x: i64):
-    %254 lit: unit = const ()
-    %255 box: word = box %254
-    jump b30(%255, %251, %252, %248, %249, %250, %253)
-  b36(%257 i: i64, %258 total: i64):
-    %259 lit: i64 = const 5
-    %260 more: bool = lt.int %257, %259
-    if %260 then b37(%257, %258) else b38(%257, %258)
-  b37(%261 i: i64, %262 total: i64):
-    %269 t: i64 = intadd %262, %261
-    jump b39(%269, %261)
-  b38(%263 i: i64, %264 total: i64):
-    jump b1(%264)
-  b39(%265 total: i64, %266 i: i64):
-    %267 lit: i64 = const 1
-    %268 i: i64 = intadd %266, %267
-    jump b36(%268, %265)
+  b26(%180 i: i64, %181 total: i64, %182 evens: ptr, %183 xs: ptr, %184 n: i64):
+    %185 more: bool = lt.int %180, %184
+    if %185 then b27(%183, %184, %180, %181, %182) else b28(%183, %184, %180, %181, %182)
+  b27(%186 xs: ptr, %187 n: i64, %188 i: i64, %189 total: i64, %190 evens: ptr):
+    dup.candidate %186
+    %196 x: word = $list_at(%186, %188)
+    %197 unbox: i64 = unbox %196
+    drop %196
+    %205 lit: i64 = const 2
+    %206 t: i64 = intrem %197, %205
+    %207 lit: i64 = const 1
+    %208 t: bool = eq.int %206, %207
+    if %208 then b34(%186, %187, %188, %189, %190, %197) else b35(%186, %187, %188, %189, %190, %197)
+  b28(%191 xs: ptr, %192 n: i64, %193 i: i64, %194 total: i64, %195 evens: ptr):
+    drop %191
+    jump b3(%194, %195)
+  b29(%198 total: i64, %199 evens: ptr, %200 xs: ptr, %201 n: i64, %202 i: i64):
+    %203 lit: i64 = const 1
+    %204 i: i64 = intadd %202, %203
+    jump b26(%204, %198, %199, %200, %201)
+  b30(%209 v: unit, %210 total: i64, %211 evens: ptr, %212 xs: ptr, %213 n: i64, %214 i: i64, %215 x: i64):
+    %216 lit: i64 = const 4
+    %217 t: bool = gt.int %215, %216
+    if %217 then b32(%212, %213, %214, %215, %210, %211) else b33(%212, %213, %214, %215, %210, %211)
+  b31(%218 v: unit, %219 total: i64, %220 evens: ptr, %221 xs: ptr, %222 n: i64, %223 i: i64, %224 x: i64):
+    %225 box: word = box %224
+    %226 r: ptr = $list_push(%220, %225)
+    jump b29(%219, %226, %221, %222, %223)
+  b32(%227 xs: ptr, %228 n: i64, %229 i: i64, %230 x: i64, %231 total: i64, %232 evens: ptr):
+    drop %227
+    jump b3(%231, %232)
+  b33(%233 xs: ptr, %234 n: i64, %235 i: i64, %236 x: i64, %237 total: i64, %238 evens: ptr):
+    %239 lit: unit = const ()
+    jump b31(%239, %237, %238, %233, %234, %235, %236)
+  b34(%240 xs: ptr, %241 n: i64, %242 i: i64, %243 total: i64, %244 evens: ptr, %245 x: i64):
+    jump b29(%243, %244, %240, %241, %242)
+  b35(%246 xs: ptr, %247 n: i64, %248 i: i64, %249 total: i64, %250 evens: ptr, %251 x: i64):
+    %252 lit: unit = const ()
+    jump b30(%252, %249, %250, %246, %247, %248, %251)
+  b36(%254 i: i64, %255 total: i64):
+    %256 lit: i64 = const 5
+    %257 more: bool = lt.int %254, %256
+    if %257 then b37(%254, %255) else b38(%254, %255)
+  b37(%258 i: i64, %259 total: i64):
+    %266 t: i64 = intadd %259, %258
+    jump b39(%266, %258)
+  b38(%260 i: i64, %261 total: i64):
+    jump b1(%261)
+  b39(%262 total: i64, %263 i: i64):
+    %264 lit: i64 = const 1
+    %265 i: i64 = intadd %263, %264
+    jump b36(%265, %262)
 
 fn $entry#1 top -> unit ; main::loops, frame 1 slots [%1 bool]
   b0():

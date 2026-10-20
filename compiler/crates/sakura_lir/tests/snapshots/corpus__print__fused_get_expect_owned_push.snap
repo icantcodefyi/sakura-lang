@@ -64,14 +64,13 @@ fn grow#2 top -> ptr ; main::fused_get_expect_owned_push, frame 2 slots [%0 i64,
     %1 lit: i64 = const 0
     call range#3(%1, %0) -> b1()
   b1(%2 r: ptr):
-    %28 lit: i64 = const 0
-    jump b2(%2, %28)
+    %27 lit: i64 = const 0
+    jump b2(%2, %27)
   b2(%3 xs: ptr, %4 i: i64):
     %5 lit: i64 = const 5
     %6 t: bool = lt.int %4, %5
     if %6 then b4(%3, %4) else b5(%3, %4)
-  b3(%7 v: word, %8 xs: ptr, %9 i: i64):
-    drop %7
+  b3(%7 v: unit, %8 xs: ptr, %9 i: i64):
     jump b2(%8, %9)
   b4(%10 xs: ptr, %11 i: i64):
     dup.candidate %10
@@ -90,7 +89,6 @@ fn grow#2 top -> ptr ; main::fused_get_expect_owned_push, frame 2 slots [%0 i64,
     %24 lit: i64 = const 1
     %25 t: i64 = intadd %11, %24
     %26 lit: unit = const ()
-    %27 box: word = box %26
-    jump b3(%27, %23, %25)
+    jump b3(%26, %23, %25)
   b5(%12 xs: ptr, %13 i: i64):
     ret %12

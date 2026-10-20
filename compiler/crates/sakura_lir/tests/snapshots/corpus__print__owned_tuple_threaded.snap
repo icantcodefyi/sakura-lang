@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %1 lit: i64 = const 0
     %2 rec: ptr = alloc main::owned_tuple_threaded::Planner(%0, %1)
     %3 xs: ptr = alloc list()
-    %156 lit: i64 = const 0
-    jump b19(%2, %3, %156)
+    %155 lit: i64 = const 0
+    jump b19(%2, %3, %155)
   b1(%4 p: ptr, %5 ids: ptr, %6 i: i64):
     call new_mark#3(%4) -> b2(%5)
   b2(%7 r: ptr, %8 ids: ptr):
@@ -180,8 +180,7 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
     %128 lit: i64 = const 8
     %129 t: bool = lt.int %127, %128
     if %129 then b21(%125, %126, %127) else b22(%125, %126, %127)
-  b20(%130 v: word, %131 p: ptr, %132 ids: ptr, %133 i: i64):
-    drop %130
+  b20(%130 v: unit, %131 p: ptr, %132 ids: ptr, %133 i: i64):
     jump b19(%131, %132, %133)
   b21(%134 p: ptr, %135 ids: ptr, %136 i: i64):
     %140 t: i64 = intmul %136, %136
@@ -189,18 +188,17 @@ fn main#0 pub top -> unit ; main::owned_tuple_threaded, frame 26 slots [%7 word*
   b22(%137 p: ptr, %138 ids: ptr, %139 i: i64):
     jump b1(%137, %138, %139)
   b23(%141 r: ptr, %142 ids: ptr, %143 i: i64):
-    %154 p: ptr = tuple_get %141.0
-    %155 p: i64 = tuple_get %141.1
+    %153 p: ptr = tuple_get %141.0
+    %154 p: i64 = tuple_get %141.1
     drop %141
-    jump b24(%154, %155, %142, %143)
+    jump b24(%153, %154, %142, %143)
   b24(%144 q: ptr, %145 id: i64, %146 ids: ptr, %147 i: i64):
     %148 box: word = box %145
     %149 r: ptr = $list_push(%146, %148)
     %150 lit: i64 = const 1
     %151 t: i64 = intadd %147, %150
     %152 lit: unit = const ()
-    %153 box: word = box %152
-    jump b20(%153, %144, %149, %151)
+    jump b20(%152, %144, %149, %151)
 
 fn $entry#1 top -> unit ; main::owned_tuple_threaded, frame 1 slots [%1 bool]
   b0():

@@ -182,11 +182,11 @@ fn empty#2 top -> ptr ; main::owned_record_loop_twice, frame 0 slots []
 
 fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %1 i64, %28 word*, %29 word*, %30 i64, %34 word*, %35 i64]
   b0(%0 start: ptr, %1 n: i64):
-    %68 lit: i64 = const 0
-    jump b9(%0, %68, %1)
+    %66 lit: i64 = const 0
+    jump b9(%0, %66, %1)
   b1(%2 p: ptr, %3 i: i64):
-    %40 lit: i64 = const 0
-    jump b3(%2, %40)
+    %39 lit: i64 = const 0
+    jump b3(%2, %39)
   b2(%4 p: ptr, %5 i: i64):
     %6 mark: i64 = proj %4.2 main::owned_record_loop_twice::Planner
     %7 lit: i64 = const 1
@@ -201,8 +201,7 @@ fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %
     %15 r: i64 = $list_len(%14)
     %16 t: bool = lt.int %13, %15
     if %16 then b5(%12, %13) else b6(%12, %13)
-  b4(%17 v: word, %18 p: ptr, %19 i: i64):
-    drop %17
+  b4(%17 v: unit, %18 p: ptr, %19 i: i64):
     jump b3(%18, %19)
   b5(%20 p: ptr, %21 i: i64):
     %24 vars: word = proj %20.0 main::owned_record_loop_twice::Planner
@@ -222,32 +221,29 @@ fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %
     %36 lit: i64 = const 1
     %37 t: i64 = intadd %35, %36
     %38 lit: unit = const ()
-    %39 box: word = box %38
-    jump b4(%39, %34, %37)
-  b9(%41 p: ptr, %42 i: i64, %43 n: i64):
-    %44 t: bool = lt.int %42, %43
-    if %44 then b11(%43, %41, %42) else b12(%43, %41, %42)
-  b10(%45 v: word, %46 p: ptr, %47 i: i64, %48 n: i64):
-    drop %45
-    jump b9(%46, %47, %48)
-  b11(%49 n: i64, %50 p: ptr, %51 i: i64):
-    %55 vars: word = proj %50.0 main::owned_record_loop_twice::Planner
-    %56 box: word = box %51
-    %57 r: ptr = $list_push(%55, %56)
-    %58 cons: word = proj %50.1 main::owned_record_loop_twice::Planner
-    %59 t: i64 = intsub %49, %51
-    %60 box: word = box %59
-    %61 r: ptr = $list_push(%58, %60)
-    %62 mark: i64 = proj %50.2 main::owned_record_loop_twice::Planner
-    drop %50
-    %63 rec: ptr = alloc main::owned_record_loop_twice::Planner(%57, %61, %62)
-    %64 lit: i64 = const 1
-    %65 t: i64 = intadd %51, %64
-    %66 lit: unit = const ()
-    %67 box: word = box %66
-    jump b10(%67, %63, %65, %49)
-  b12(%52 n: i64, %53 p: ptr, %54 i: i64):
-    jump b1(%53, %54)
+    jump b4(%38, %34, %37)
+  b9(%40 p: ptr, %41 i: i64, %42 n: i64):
+    %43 t: bool = lt.int %41, %42
+    if %43 then b11(%42, %40, %41) else b12(%42, %40, %41)
+  b10(%44 v: unit, %45 p: ptr, %46 i: i64, %47 n: i64):
+    jump b9(%45, %46, %47)
+  b11(%48 n: i64, %49 p: ptr, %50 i: i64):
+    %54 vars: word = proj %49.0 main::owned_record_loop_twice::Planner
+    %55 box: word = box %50
+    %56 r: ptr = $list_push(%54, %55)
+    %57 cons: word = proj %49.1 main::owned_record_loop_twice::Planner
+    %58 t: i64 = intsub %48, %50
+    %59 box: word = box %58
+    %60 r: ptr = $list_push(%57, %59)
+    %61 mark: i64 = proj %49.2 main::owned_record_loop_twice::Planner
+    drop %49
+    %62 rec: ptr = alloc main::owned_record_loop_twice::Planner(%56, %60, %61)
+    %63 lit: i64 = const 1
+    %64 t: i64 = intadd %50, %63
+    %65 lit: unit = const ()
+    jump b10(%65, %62, %64, %48)
+  b12(%51 n: i64, %52 p: ptr, %53 i: i64):
+    jump b1(%52, %53)
 
 fn put_var#5 top -> ptr ; main::owned_record_loop_twice, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
   b0(%0 p: ptr, %1 i: i64, %2 v: i64):

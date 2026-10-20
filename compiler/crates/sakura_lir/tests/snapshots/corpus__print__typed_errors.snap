@@ -158,16 +158,14 @@ fn parse_age#3 top -> i64 ; main::typed_errors, frame 2 slots [%0 word*, %3 word
     %5 lit: i64 = const 0
     %6 t: bool = lt.int %4, %5
     if %6 then b3(%4) else b4(%4)
-  b2(%7 v: word, %8 r: i64):
-    drop %7
+  b2(%7 v: unit, %8 r: i64):
     ret %8
   b3(%9 r: i64):
     %11 rec: ptr = alloc main::typed_errors::Negative(%9)
     fail %11
   b4(%10 r: i64):
     %12 lit: unit = const ()
-    %13 box: word = box %12
-    jump b2(%13, %10)
+    jump b2(%12, %10)
 
 fn ages#4 top -> ptr ; main::typed_errors, frame 2 slots [%0 word*, %2 word*]
   b0(%0 xs: ptr):

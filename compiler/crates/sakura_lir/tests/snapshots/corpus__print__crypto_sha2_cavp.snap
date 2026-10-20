@@ -241,9 +241,9 @@ fn hex#4 top -> ptr ; main::crypto_sha2_cavp, frame 6 slots [%0 word*, %24 word*
 
 fn nibble#7 top -> i64 ; main::crypto_sha2_cavp, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
-    %36 lit: i64 = const 0
-    %37 lit: i64 = const 0
-    jump b1(%36, %37, %0)
+    %34 lit: i64 = const 0
+    %35 lit: i64 = const 0
+    jump b1(%34, %35, %0)
   b1(%1 i: i64, %2 v: i64, %3 c: ptr):
     %4 lit: i64 = const 16
     %5 more: bool = lt.int %1, %4
@@ -263,14 +263,11 @@ fn nibble#7 top -> i64 ; main::crypto_sha2_cavp, frame 1 slots [%0 word*]
     %15 lit: i64 = const 1
     %16 i: i64 = intadd %14, %15
     jump b1(%16, %12, %13)
-  b5(%22 v: word, %23 v: i64, %24 c: ptr, %25 i: i64):
-    drop %22
+  b5(%22 v: unit, %23 v: i64, %24 c: ptr, %25 i: i64):
     jump b4(%23, %24, %25)
   b6(%26 c: ptr, %27 i: i64, %28 v: i64):
     %32 lit: unit = const ()
-    %33 box: word = box %32
-    jump b5(%33, %27, %26, %27)
+    jump b5(%32, %27, %26, %27)
   b7(%29 c: ptr, %30 i: i64, %31 v: i64):
-    %34 lit: unit = const ()
-    %35 box: word = box %34
-    jump b5(%35, %31, %29, %30)
+    %33 lit: unit = const ()
+    jump b5(%33, %31, %29, %30)

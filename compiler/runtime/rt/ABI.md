@@ -202,6 +202,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   the MINOR rule. The native runtime answers them `D090` (`rt_code_unsupported`), and the
   native driver refuses a `main` that leaves `WebSocket` to the runtime at startup (RFC 0002
   §7). `sakura_abi_version` is `0x010800`.
+- 1.8.1 is an erratum (design §17.287 (2), plan WS-W8): errata L8 represents a `Unit` join
+  parameter as a generic word only when some jump feeds it a word (or it is a `try`'s catch
+  parameter); every other `Unit` join parameter stays `Unit`, so a `while` iteration no longer
+  boxes `()` and calls `drop` on it. Which locals are words is internal to a module; no byte,
+  import, export or counter changes (`drops` falls by the calls no longer made), so
+  `sakura_abi_version` stays `0x010800`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -1439,8 +1445,11 @@ L1… so they do not collide with the M4-RT entries above.
   state captures the activation id, never the activation, as §7.1 requires).
 - **L8 `Unit`-typed Core temporaries.** Core types some temporaries `Unit` although they hold a
   value (the `ok`/`err` of a `try`, join parameters); the LIR represents a `Unit` local bound to
-  a reference, and every `Unit` join parameter, as a generic word. A request to `sakura_core`
-  for after the gates is in `compiler/REQUESTS.md`.
+  a reference, a `Unit` join parameter that some jump feeds a word, and a `try`'s `Unit` catch
+  parameter (the runtime feeds it the failure), as a generic word. Every other `Unit` join
+  parameter stays `Unit` (1.8.1, design §17.287 (2)): an optimistic fixpoint over the def's
+  blocks starts each at `Unit` and demotes it when a jump's argument is not `Unit`, until
+  nothing changes. A request to `sakura_core` for after the gates is in `compiler/REQUESTS.md`.
 - **L9 Constants** (`FnKind::Const`) are evaluated at each use, as in `sakura_eval`, not cached as
   JS does; they are pure, so only allocation counts differ.
 - **L10 `D003`.** It never occurs on this profile (§17.80): `Int` arithmetic is checked `i64`.

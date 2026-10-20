@@ -131,8 +131,7 @@ fn fill#3 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1
   b1(%3 p: ptr, %4 i: i64, %5 n: i64):
     %6 t: bool = ge.int %4, %5
     if %6 then b4(%3, %4, %5) else b5(%3, %4, %5)
-  b2(%7 v: word, %8 p: ptr, %9 i: i64, %10 n: i64):
-    drop %7
+  b2(%7 v: unit, %8 p: ptr, %9 i: i64, %10 n: i64):
     %11 lit: i64 = const 3
     %12 t: i64 = intmul %9, %11
     call put_var#6(%8, %9, %12) -> b3(%9, %10)
@@ -144,8 +143,7 @@ fn fill#3 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1
     ret %18
   b5(%21 p: ptr, %22 i: i64, %23 n: i64):
     %24 lit: unit = const ()
-    %25 box: word = box %24
-    jump b2(%25, %21, %22, %23)
+    jump b2(%24, %21, %22, %23)
 
 fn even#4 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1 i64, %13 word*, %14 i64, %24 word*, %25 i64]
   b0(%0 p: ptr, %1 i: i64):
@@ -182,8 +180,7 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
     %2 lit: i64 = const 0
     %3 t: bool = eq.int %1, %2
     if %3 then b7(%0, %1) else b8(%0, %1)
-  b1(%4 v: word, %5 p: ptr, %6 i: i64):
-    drop %4
+  b1(%4 v: unit, %5 p: ptr, %6 i: i64):
     dup %5
     call put_var#6(%5, %6, %6) -> b2(%5, %6)
   b2(%7 r: ptr, %8 p: ptr, %9 i: i64):
@@ -214,8 +211,7 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
     ret %33
   b8(%35 p: ptr, %36 i: i64):
     %37 lit: unit = const ()
-    %38 box: word = box %37
-    jump b1(%38, %35, %36)
+    jump b1(%37, %35, %36)
 
 fn put_var#6 top -> ptr ; main::owned_record_recursive, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
   b0(%0 p: ptr, %1 i: i64, %2 v: i64):

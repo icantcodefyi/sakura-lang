@@ -94,9 +94,9 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
   b9(%66 r: unit, %67 xs: ptr):
     %68 box: word = box %66
     drop %68
+    %288 lit: i64 = const 0
     %289 lit: i64 = const 0
-    %290 lit: i64 = const 0
-    jump b37(%289, %290, %67)
+    jump b37(%288, %289, %67)
   b10(%69 i: i64, %70 t: i64, %71 xs: ptr):
     %72 s: ptr = show %70
     %73 lit: ptr = const str 1
@@ -275,8 +275,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %267 lit: i64 = const 20
     %268 t: bool = lt.int %264, %267
     if %268 then b39(%266, %264, %265) else b40(%266, %264, %265)
-  b38(%269 v: word, %270 i: i64, %271 t: i64, %272 xs: ptr):
-    drop %269
+  b38(%269 v: unit, %270 i: i64, %271 t: i64, %272 xs: ptr):
     jump b37(%270, %271, %272)
   b39(%273 xs: ptr, %274 i: i64, %275 t: i64):
     %279 lit: i64 = const 5000
@@ -289,8 +288,7 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %285 lit: i64 = const 1
     %286 t: i64 = intadd %282, %285
     %287 lit: unit = const ()
-    %288 box: word = box %287
-    jump b38(%288, %286, %284, %281)
+    jump b38(%287, %286, %284, %281)
 
 fn $entry#1 top -> unit ; main::direct_region_restart, frame 1 slots [%1 bool]
   b0():

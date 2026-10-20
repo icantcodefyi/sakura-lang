@@ -299,8 +299,7 @@ fn classify#7 top -> i64 ; main::match_guard_run_regions, frame 1 slots [%0 i64]
     %1 lit: i64 = const 0
     %2 t: bool = lt.int %0, %1
     if %2 then b6(%0) else b7(%0)
-  b1(%3 v: word, %4 x: i64):
-    drop %3
+  b1(%3 v: unit, %4 x: i64):
     %5 lit: i64 = const 10
     %6 t: bool = lt.int %4, %5
     if %6 then b2(%4) else b3(%4)
@@ -322,8 +321,7 @@ fn classify#7 top -> i64 ; main::match_guard_run_regions, frame 1 slots [%0 i64]
     fail %18
   b7(%17 x: i64):
     %19 lit: unit = const ()
-    %20 box: word = box %19
-    jump b1(%20, %17)
+    jump b1(%19, %17)
 
 fn doubler$Pick_pick#8 clause main::match_guard_run_regions::Pick.pick -> i64 ; main::match_guard_run_regions, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
   b0(%0 env: ptr, %1 inst: id, %2 x: i64):

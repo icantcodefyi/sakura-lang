@@ -18,11 +18,11 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %1 xs: ptr = alloc list()
     %2 lit: i64 = const 0
     %3 rec: ptr = alloc main::owned_record_retained::Planner(%0, %1, %2)
-    %240 lit: i64 = const 0
-    jump b32(%3, %240)
+    %238 lit: i64 = const 0
+    jump b32(%3, %238)
   b1(%4 p: ptr, %5 i: i64):
-    %218 lit: i64 = const 0
-    jump b27(%4, %218)
+    %217 lit: i64 = const 0
+    jump b27(%4, %217)
   b2(%6 p: ptr, %7 i: i64):
     dup.candidate %6
     call show#3(%6) -> b3(%6, %7)
@@ -277,8 +277,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %203 lit: i64 = const 10
     %204 t: bool = lt.int %202, %203
     if %204 then b29(%201, %202) else b30(%201, %202)
-  b28(%205 v: word, %206 p: ptr, %207 i: i64):
-    drop %205
+  b28(%205 v: unit, %206 p: ptr, %207 i: i64):
     jump b27(%206, %207)
   b29(%208 p: ptr, %209 i: i64):
     call bump#2(%208, %209) -> b31(%209)
@@ -288,30 +287,27 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %214 lit: i64 = const 1
     %215 t: i64 = intadd %213, %214
     %216 lit: unit = const ()
-    %217 box: word = box %216
-    jump b28(%217, %212, %215)
-  b32(%219 p: ptr, %220 i: i64):
-    %221 lit: i64 = const 10
-    %222 t: bool = lt.int %220, %221
-    if %222 then b34(%219, %220) else b35(%219, %220)
-  b33(%223 v: word, %224 p: ptr, %225 i: i64):
-    drop %223
-    jump b32(%224, %225)
-  b34(%226 p: ptr, %227 i: i64):
-    %230 vars: word = proj %226.0 main::owned_record_retained::Planner
-    %231 box: word = box %227
-    %232 r: ptr = $list_push(%230, %231)
-    %233 cons: word = proj %226.1 main::owned_record_retained::Planner
-    %234 mark: i64 = proj %226.2 main::owned_record_retained::Planner
-    drop %226
-    %235 rec: ptr = alloc main::owned_record_retained::Planner(%232, %233, %234)
-    %236 lit: i64 = const 1
-    %237 t: i64 = intadd %227, %236
-    %238 lit: unit = const ()
-    %239 box: word = box %238
-    jump b33(%239, %235, %237)
-  b35(%228 p: ptr, %229 i: i64):
-    jump b1(%228, %229)
+    jump b28(%216, %212, %215)
+  b32(%218 p: ptr, %219 i: i64):
+    %220 lit: i64 = const 10
+    %221 t: bool = lt.int %219, %220
+    if %221 then b34(%218, %219) else b35(%218, %219)
+  b33(%222 v: unit, %223 p: ptr, %224 i: i64):
+    jump b32(%223, %224)
+  b34(%225 p: ptr, %226 i: i64):
+    %229 vars: word = proj %225.0 main::owned_record_retained::Planner
+    %230 box: word = box %226
+    %231 r: ptr = $list_push(%229, %230)
+    %232 cons: word = proj %225.1 main::owned_record_retained::Planner
+    %233 mark: i64 = proj %225.2 main::owned_record_retained::Planner
+    drop %225
+    %234 rec: ptr = alloc main::owned_record_retained::Planner(%231, %232, %233)
+    %235 lit: i64 = const 1
+    %236 t: i64 = intadd %226, %235
+    %237 lit: unit = const ()
+    jump b33(%237, %234, %236)
+  b35(%227 p: ptr, %228 i: i64):
+    jump b1(%227, %228)
 
 fn $entry#1 top -> unit ; main::owned_record_retained, frame 1 slots [%1 bool]
   b0():
@@ -396,8 +392,7 @@ fn put_then_fail#5 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 w
     %7 lit: i64 = const 42
     %8 t: bool = eq.int %5, %7
     if %8 then b4(%6) else b5(%6)
-  b3(%9 v: word, %10 r: ptr):
-    drop %9
+  b3(%9 v: unit, %10 r: ptr):
     ret %10
   b4(%11 r: ptr):
     drop %11
@@ -406,8 +401,7 @@ fn put_then_fail#5 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 w
     fail %14
   b5(%12 r: ptr):
     %15 lit: unit = const ()
-    %16 box: word = box %15
-    jump b3(%16, %12)
+    jump b3(%15, %12)
 
 fn nested#7 top -> ptr ; main::owned_record_retained, frame 6 slots [%0 word*, %7 word*, %8 word*, %9 word*, %21 word*, %22 word*]
   b0(%0 o: ptr):

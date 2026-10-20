@@ -865,8 +865,7 @@ fn check#4 top -> i64 ; main::match_wide_dispatch, frame 1 slots [%0 i64]
     %3 lit: i64 = const 3
     %4 t: bool = eq.int %2, %3
     if %4 then b2(%0) else b3(%0)
-  b1(%5 v: word, %6 k: i64):
-    drop %5
+  b1(%5 v: unit, %6 k: i64):
     %7 lit: i64 = const 2
     %8 t: i64 = intmul %6, %7
     ret %8
@@ -875,5 +874,4 @@ fn check#4 top -> i64 ; main::match_wide_dispatch, frame 1 slots [%0 i64]
     fail %11
   b3(%10 k: i64):
     %12 lit: unit = const ()
-    %13 box: word = box %12
-    jump b1(%13, %10)
+    jump b1(%12, %10)

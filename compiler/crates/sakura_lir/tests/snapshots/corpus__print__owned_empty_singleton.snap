@@ -126,11 +126,11 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %102 box: word = box %95
     drop %102
     %103 r: ptr = $map_empty()
-    %246 lit: i64 = const 0
-    jump b12(%96, %97, %98, %99, %100, %101, %103, %246)
+    %244 lit: i64 = const 0
+    jump b12(%96, %97, %98, %99, %100, %101, %103, %244)
   b4(%104 a: ptr, %105 b: ptr, %106 r: ptr, %107 parts: ptr, %108 m1: ptr, %109 m2: ptr, %110 m3: ptr, %111 i: i64):
-    %203 lit: i64 = const 0
-    jump b8(%104, %105, %106, %107, %108, %109, %110, %203)
+    %202 lit: i64 = const 0
+    jump b8(%104, %105, %106, %107, %108, %109, %110, %202)
   b5(%112 a: ptr, %113 b: ptr, %114 r: ptr, %115 parts: ptr, %116 m1: ptr, %117 m2: ptr, %118 m3: ptr, %119 i: i64):
     drop %112
     drop %113
@@ -199,8 +199,7 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %170 lit: i64 = const 80
     %171 t: bool = lt.int %169, %170
     if %171 then b10(%162, %163, %164, %165, %166, %167, %168, %169) else b11(%162, %163, %164, %165, %166, %167, %168, %169)
-  b9(%172 v: word, %173 a: ptr, %174 b: ptr, %175 r: ptr, %176 parts: ptr, %177 m1: ptr, %178 m2: ptr, %179 m3: ptr, %180 i: i64):
-    drop %172
+  b9(%172 v: unit, %173 a: ptr, %174 b: ptr, %175 r: ptr, %176 parts: ptr, %177 m1: ptr, %178 m2: ptr, %179 m3: ptr, %180 i: i64):
     jump b8(%173, %174, %175, %176, %177, %178, %179, %180)
   b10(%181 a: ptr, %182 b: ptr, %183 r: ptr, %184 parts: ptr, %185 m1: ptr, %186 m2: ptr, %187 m3: ptr, %188 i: i64):
     %197 box: word = box %188
@@ -208,28 +207,25 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %199 lit: i64 = const 1
     %200 t: i64 = intadd %188, %199
     %201 lit: unit = const ()
-    %202 box: word = box %201
-    jump b9(%202, %181, %182, %183, %184, %185, %186, %198, %200)
+    jump b9(%201, %181, %182, %183, %184, %185, %186, %198, %200)
   b11(%189 a: ptr, %190 b: ptr, %191 r: ptr, %192 parts: ptr, %193 m1: ptr, %194 m2: ptr, %195 m3: ptr, %196 i: i64):
     jump b5(%189, %190, %191, %192, %193, %194, %195, %196)
-  b12(%204 a: ptr, %205 b: ptr, %206 r: ptr, %207 parts: ptr, %208 m1: ptr, %209 m2: ptr, %210 m3: ptr, %211 i: i64):
-    %212 lit: i64 = const 80
-    %213 t: bool = lt.int %211, %212
-    if %213 then b14(%204, %205, %206, %207, %208, %209, %210, %211) else b15(%204, %205, %206, %207, %208, %209, %210, %211)
-  b13(%214 v: word, %215 a: ptr, %216 b: ptr, %217 r: ptr, %218 parts: ptr, %219 m1: ptr, %220 m2: ptr, %221 m3: ptr, %222 i: i64):
-    drop %214
-    jump b12(%215, %216, %217, %218, %219, %220, %221, %222)
-  b14(%223 a: ptr, %224 b: ptr, %225 r: ptr, %226 parts: ptr, %227 m1: ptr, %228 m2: ptr, %229 m3: ptr, %230 i: i64):
-    %239 box: word = box %230
-    %240 box: word = box %230
-    %241 r: ptr = $map_insert(%229, %239, %240)
-    %242 lit: i64 = const 1
-    %243 t: i64 = intadd %230, %242
-    %244 lit: unit = const ()
-    %245 box: word = box %244
-    jump b13(%245, %223, %224, %225, %226, %227, %228, %241, %243)
-  b15(%231 a: ptr, %232 b: ptr, %233 r: ptr, %234 parts: ptr, %235 m1: ptr, %236 m2: ptr, %237 m3: ptr, %238 i: i64):
-    jump b4(%231, %232, %233, %234, %235, %236, %237, %238)
+  b12(%203 a: ptr, %204 b: ptr, %205 r: ptr, %206 parts: ptr, %207 m1: ptr, %208 m2: ptr, %209 m3: ptr, %210 i: i64):
+    %211 lit: i64 = const 80
+    %212 t: bool = lt.int %210, %211
+    if %212 then b14(%203, %204, %205, %206, %207, %208, %209, %210) else b15(%203, %204, %205, %206, %207, %208, %209, %210)
+  b13(%213 v: unit, %214 a: ptr, %215 b: ptr, %216 r: ptr, %217 parts: ptr, %218 m1: ptr, %219 m2: ptr, %220 m3: ptr, %221 i: i64):
+    jump b12(%214, %215, %216, %217, %218, %219, %220, %221)
+  b14(%222 a: ptr, %223 b: ptr, %224 r: ptr, %225 parts: ptr, %226 m1: ptr, %227 m2: ptr, %228 m3: ptr, %229 i: i64):
+    %238 box: word = box %229
+    %239 box: word = box %229
+    %240 r: ptr = $map_insert(%228, %238, %239)
+    %241 lit: i64 = const 1
+    %242 t: i64 = intadd %229, %241
+    %243 lit: unit = const ()
+    jump b13(%243, %222, %223, %224, %225, %226, %227, %240, %242)
+  b15(%230 a: ptr, %231 b: ptr, %232 r: ptr, %233 parts: ptr, %234 m1: ptr, %235 m2: ptr, %236 m3: ptr, %237 i: i64):
+    jump b4(%230, %231, %232, %233, %234, %235, %236, %237)
 
 fn $entry#1 top -> unit ; main::owned_empty_singleton, frame 1 slots [%1 bool]
   b0():

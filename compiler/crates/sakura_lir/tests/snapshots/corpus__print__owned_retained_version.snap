@@ -7,14 +7,14 @@ layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 2 shape |  32b (word*, word*)
 layout 3 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 word*, %11 word*, %17 word*, %18 word*, %28 i64, %29 word*, %30 word*, %31 word*, %52 bool, %53 word*, %61 i64, %62 word*, %63 word*, %84 bool, %85 word*, %130 bool, %131 word*, %132 word*, %159 bool, %160 word*, %161 word*, %194 bool, %195 word*, %196 word*, %197 word*, %218 bool, %253 word*, %254 word*, %255 i64, %256 word*, %257 word*, %258 word*, %330 word*, %331 i64]
+fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 word*, %11 word*, %17 word*, %18 word*, %28 i64, %29 word*, %30 word*, %31 word*, %52 bool, %53 word*, %61 i64, %62 word*, %63 word*, %84 bool, %85 word*, %130 bool, %131 word*, %132 word*, %159 bool, %160 word*, %161 word*, %194 bool, %195 word*, %196 word*, %197 word*, %218 bool, %253 word*, %254 word*, %255 i64, %256 word*, %257 word*, %258 word*, %327 word*, %328 i64]
   b0():
     %0 xs: ptr = alloc list()
-    %354 lit: i64 = const 0
-    jump b34(%0, %354)
+    %349 lit: i64 = const 0
+    jump b34(%0, %349)
   b1(%1 xs: ptr, %2 i: i64):
-    %336 lit: i64 = const 0
-    jump b29(%1, %336)
+    %332 lit: i64 = const 0
+    jump b29(%1, %332)
   b2(%3 xs: ptr, %4 i: i64):
     %5 lit: i64 = const 1
     %6 t: i64 = intneg %5
@@ -132,8 +132,8 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %86 box: word = box %84
     drop %86
     %87 r: ptr = $map_empty()
-    %314 lit: i64 = const 0
-    jump b25(%85, %314, %87)
+    %311 lit: i64 = const 0
+    jump b25(%85, %311, %87)
   b9(%88 xs: ptr, %89 i: i64, %90 m: ptr):
     %91 lit: i64 = const 7
     %92 t: i64 = intneg %91
@@ -236,8 +236,8 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %162 box: word = box %159
     drop %162
     %163 r: ptr = $set_empty()
-    %291 lit: i64 = const 0
-    jump b21(%160, %291, %161, %163)
+    %289 lit: i64 = const 0
+    jump b21(%160, %289, %161, %163)
   b12(%164 xs: ptr, %165 i: i64, %166 m: ptr, %167 s: ptr):
     %168 lit: i64 = const 999
     %169 box: word = box %168
@@ -288,8 +288,8 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %204 lit: i64 = const 0
     %205 box: word = box %204
     %206 xs: ptr = alloc list(%201, %203, %205)
-    %263 lit: i64 = const 0
-    jump b16(%195, %263, %196, %197, %199, %206)
+    %262 lit: i64 = const 0
+    jump b16(%195, %262, %196, %197, %199, %206)
   b14(%207 xs: ptr, %208 i: i64, %209 m: ptr, %210 s: ptr, %211 versions: ptr, %212 v: ptr):
     drop %207
     drop %209
@@ -313,8 +313,7 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %227 lit: i64 = const 3
     %228 t: bool = lt.int %222, %227
     if %228 then b18(%221, %222, %223, %224, %225, %226) else b19(%221, %222, %223, %224, %225, %226)
-  b17(%229 v: word, %230 xs: ptr, %231 i: i64, %232 m: ptr, %233 s: ptr, %234 versions: ptr, %235 v: ptr):
-    drop %229
+  b17(%229 v: unit, %230 xs: ptr, %231 i: i64, %232 m: ptr, %233 s: ptr, %234 versions: ptr, %235 v: ptr):
     jump b16(%230, %231, %232, %233, %234, %235)
   b18(%236 xs: ptr, %237 i: i64, %238 m: ptr, %239 s: ptr, %240 versions: ptr, %241 v: ptr):
     dup %241
@@ -330,83 +329,74 @@ fn main#0 pub top -> unit ; main::owned_retained_version, frame 34 slots [%10 wo
     %259 lit: i64 = const 1
     %260 t: i64 = intadd %255, %259
     %261 lit: unit = const ()
-    %262 box: word = box %261
-    jump b17(%262, %254, %260, %256, %257, %258, %253)
-  b21(%264 xs: ptr, %265 i: i64, %266 m: ptr, %267 s: ptr):
-    %268 lit: i64 = const 100
-    %269 t: bool = lt.int %265, %268
-    if %269 then b23(%264, %265, %266, %267) else b24(%264, %265, %266, %267)
-  b22(%270 v: word, %271 xs: ptr, %272 i: i64, %273 m: ptr, %274 s: ptr):
-    drop %270
-    jump b21(%271, %272, %273, %274)
-  b23(%275 xs: ptr, %276 i: i64, %277 m: ptr, %278 s: ptr):
-    %283 lit: i64 = const 40
-    %284 t: i64 = intrem %276, %283
-    %285 box: word = box %284
-    %286 r: ptr = $set_insert(%278, %285)
-    %287 lit: i64 = const 1
-    %288 t: i64 = intadd %276, %287
-    %289 lit: unit = const ()
-    %290 box: word = box %289
-    jump b22(%290, %275, %288, %277, %286)
-  b24(%279 xs: ptr, %280 i: i64, %281 m: ptr, %282 s: ptr):
-    jump b12(%279, %280, %281, %282)
-  b25(%292 xs: ptr, %293 i: i64, %294 m: ptr):
-    %295 lit: i64 = const 300
-    %296 t: bool = lt.int %293, %295
-    if %296 then b27(%292, %293, %294) else b28(%292, %293, %294)
-  b26(%297 v: word, %298 xs: ptr, %299 i: i64, %300 m: ptr):
-    drop %297
-    jump b25(%298, %299, %300)
-  b27(%301 xs: ptr, %302 i: i64, %303 m: ptr):
-    %307 box: word = box %302
-    %308 box: word = box %302
-    %309 r: ptr = $map_insert(%303, %307, %308)
-    %310 lit: i64 = const 1
-    %311 t: i64 = intadd %302, %310
-    %312 lit: unit = const ()
-    %313 box: word = box %312
-    jump b26(%313, %301, %311, %309)
-  b28(%304 xs: ptr, %305 i: i64, %306 m: ptr):
-    jump b9(%304, %305, %306)
-  b29(%315 xs: ptr, %316 i: i64):
-    %317 lit: i64 = const 100
-    %318 t: bool = lt.int %316, %317
-    if %318 then b31(%315, %316) else b32(%315, %316)
-  b30(%319 v: word, %320 xs: ptr, %321 i: i64):
-    drop %319
-    jump b29(%320, %321)
-  b31(%322 xs: ptr, %323 i: i64):
-    %326 lit: i64 = const 2
-    %327 t: i64 = intmul %323, %326
-    %328 box: word = box %327
-    %329 $site: i64 = const 5
-    call set#2(%322, %323, %328, %329) -> b33(%323)
-  b32(%324 xs: ptr, %325 i: i64):
-    jump b2(%324, %325)
-  b33(%330 r: ptr, %331 i: i64):
-    %332 lit: i64 = const 1
-    %333 t: i64 = intadd %331, %332
-    %334 lit: unit = const ()
-    %335 box: word = box %334
-    jump b30(%335, %330, %333)
-  b34(%337 xs: ptr, %338 i: i64):
-    %339 lit: i64 = const 100
-    %340 t: bool = lt.int %338, %339
-    if %340 then b36(%337, %338) else b37(%337, %338)
-  b35(%341 v: word, %342 xs: ptr, %343 i: i64):
-    drop %341
-    jump b34(%342, %343)
-  b36(%344 xs: ptr, %345 i: i64):
-    %348 box: word = box %345
-    %349 r: ptr = $list_push(%344, %348)
-    %350 lit: i64 = const 1
-    %351 t: i64 = intadd %345, %350
-    %352 lit: unit = const ()
-    %353 box: word = box %352
-    jump b35(%353, %349, %351)
-  b37(%346 xs: ptr, %347 i: i64):
-    jump b1(%346, %347)
+    jump b17(%261, %254, %260, %256, %257, %258, %253)
+  b21(%263 xs: ptr, %264 i: i64, %265 m: ptr, %266 s: ptr):
+    %267 lit: i64 = const 100
+    %268 t: bool = lt.int %264, %267
+    if %268 then b23(%263, %264, %265, %266) else b24(%263, %264, %265, %266)
+  b22(%269 v: unit, %270 xs: ptr, %271 i: i64, %272 m: ptr, %273 s: ptr):
+    jump b21(%270, %271, %272, %273)
+  b23(%274 xs: ptr, %275 i: i64, %276 m: ptr, %277 s: ptr):
+    %282 lit: i64 = const 40
+    %283 t: i64 = intrem %275, %282
+    %284 box: word = box %283
+    %285 r: ptr = $set_insert(%277, %284)
+    %286 lit: i64 = const 1
+    %287 t: i64 = intadd %275, %286
+    %288 lit: unit = const ()
+    jump b22(%288, %274, %287, %276, %285)
+  b24(%278 xs: ptr, %279 i: i64, %280 m: ptr, %281 s: ptr):
+    jump b12(%278, %279, %280, %281)
+  b25(%290 xs: ptr, %291 i: i64, %292 m: ptr):
+    %293 lit: i64 = const 300
+    %294 t: bool = lt.int %291, %293
+    if %294 then b27(%290, %291, %292) else b28(%290, %291, %292)
+  b26(%295 v: unit, %296 xs: ptr, %297 i: i64, %298 m: ptr):
+    jump b25(%296, %297, %298)
+  b27(%299 xs: ptr, %300 i: i64, %301 m: ptr):
+    %305 box: word = box %300
+    %306 box: word = box %300
+    %307 r: ptr = $map_insert(%301, %305, %306)
+    %308 lit: i64 = const 1
+    %309 t: i64 = intadd %300, %308
+    %310 lit: unit = const ()
+    jump b26(%310, %299, %309, %307)
+  b28(%302 xs: ptr, %303 i: i64, %304 m: ptr):
+    jump b9(%302, %303, %304)
+  b29(%312 xs: ptr, %313 i: i64):
+    %314 lit: i64 = const 100
+    %315 t: bool = lt.int %313, %314
+    if %315 then b31(%312, %313) else b32(%312, %313)
+  b30(%316 v: unit, %317 xs: ptr, %318 i: i64):
+    jump b29(%317, %318)
+  b31(%319 xs: ptr, %320 i: i64):
+    %323 lit: i64 = const 2
+    %324 t: i64 = intmul %320, %323
+    %325 box: word = box %324
+    %326 $site: i64 = const 5
+    call set#2(%319, %320, %325, %326) -> b33(%320)
+  b32(%321 xs: ptr, %322 i: i64):
+    jump b2(%321, %322)
+  b33(%327 r: ptr, %328 i: i64):
+    %329 lit: i64 = const 1
+    %330 t: i64 = intadd %328, %329
+    %331 lit: unit = const ()
+    jump b30(%331, %327, %330)
+  b34(%333 xs: ptr, %334 i: i64):
+    %335 lit: i64 = const 100
+    %336 t: bool = lt.int %334, %335
+    if %336 then b36(%333, %334) else b37(%333, %334)
+  b35(%337 v: unit, %338 xs: ptr, %339 i: i64):
+    jump b34(%338, %339)
+  b36(%340 xs: ptr, %341 i: i64):
+    %344 box: word = box %341
+    %345 r: ptr = $list_push(%340, %344)
+    %346 lit: i64 = const 1
+    %347 t: i64 = intadd %341, %346
+    %348 lit: unit = const ()
+    jump b35(%348, %345, %347)
+  b37(%342 xs: ptr, %343 i: i64):
+    jump b1(%342, %343)
 
 fn $entry#1 top -> unit ; main::owned_retained_version, frame 1 slots [%1 bool]
   b0():

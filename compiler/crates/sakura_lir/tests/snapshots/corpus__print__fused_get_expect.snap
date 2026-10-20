@@ -14,9 +14,9 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     %1 lit: i64 = const 100
     call range#2(%0, %1) -> b1()
   b1(%2 r: ptr):
+    %100 lit: i64 = const 0
     %101 lit: i64 = const 0
-    %102 lit: i64 = const 0
-    jump b13(%101, %102, %2)
+    jump b13(%100, %101, %2)
   b2(%3 sum: i64, %4 i: i64, %5 r: ptr):
     %6 r: ptr = $map_empty()
     %7 lit: ptr = const str 0
@@ -104,8 +104,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     %80 lit: i64 = const 100
     %81 t: bool = lt.int %78, %80
     if %81 then b15(%79, %77, %78) else b16(%79, %77, %78)
-  b14(%82 v: word, %83 sum: i64, %84 i: i64, %85 r: ptr):
-    drop %82
+  b14(%82 v: unit, %83 sum: i64, %84 i: i64, %85 r: ptr):
     jump b13(%83, %84, %85)
   b15(%86 r: ptr, %87 sum: i64, %88 i: i64):
     dup.candidate %86
@@ -117,8 +116,7 @@ fn main#0 pub top -> unit ; main::fused_get_expect, frame 33 slots [%2 word*, %1
     %97 lit: i64 = const 1
     %98 t: i64 = intadd %95, %97
     %99 lit: unit = const ()
-    %100 box: word = box %99
-    jump b14(%100, %96, %98, %93)
+    jump b14(%99, %96, %98, %93)
 
 fn $entry#1 top -> unit ; main::fused_get_expect, frame 1 slots [%1 bool]
   b0():

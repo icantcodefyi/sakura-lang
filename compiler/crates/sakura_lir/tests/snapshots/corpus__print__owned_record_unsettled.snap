@@ -59,8 +59,7 @@ fn f#2 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 wo
     %3 lit: i64 = const 0
     %4 t: bool = le.int %2, %3
     if %4 then b5(%0, %1, %2) else b6(%0, %1, %2)
-  b1(%5 v: word, %6 x: ptr, %7 y: ptr, %8 n: i64):
-    drop %5
+  b1(%5 v: unit, %6 x: ptr, %7 y: ptr, %8 n: i64):
     %9 box: word = box %8
     %10 r: ptr = $list_push(%7, %9)
     %11 lit: i64 = const 1
@@ -88,8 +87,7 @@ fn f#2 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 wo
     ret %29
   b6(%25 x: ptr, %26 y: ptr, %27 n: i64):
     %30 lit: unit = const ()
-    %31 box: word = box %30
-    jump b1(%31, %25, %26, %27)
+    jump b1(%30, %25, %26, %27)
 
 fn g#3 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 word*, %2 i64, %5 word*]
   b0(%0 x: ptr, %1 y: ptr, %2 n: i64):

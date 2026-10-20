@@ -136,8 +136,7 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
   b1(%6 r: bool, %7 inst: id, %8 k: ptr, %9 v: i64, %10 body: ptr):
     %11 t: bool = not %6
     if %11 then b5(%7, %8, %9, %10) else b6(%7, %8, %9, %10)
-  b2(%12 v: word, %13 inst: id, %14 k: ptr, %15 body: ptr):
-    drop %12
+  b2(%12 v: unit, %13 inst: id, %14 k: ptr, %15 body: ptr):
     call %15() -> b3(%13, %14)
   b3(%16 r: word, %17 inst: id, %18 k: ptr):
     %19 s: ptr = show %18
@@ -167,9 +166,7 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
     state_set %33[0] row 4 = %43
     %44 set: unit = const ()
     %45 lit: unit = const ()
-    %46 box: word = box %45
-    jump b2(%46, %33, %34, %36)
+    jump b2(%45, %33, %34, %36)
   b6(%37 inst: id, %38 k: ptr, %39 v: i64, %40 body: ptr):
-    %47 lit: unit = const ()
-    %48 box: word = box %47
-    jump b2(%48, %37, %38, %40)
+    %46 lit: unit = const ()
+    jump b2(%46, %37, %38, %40)

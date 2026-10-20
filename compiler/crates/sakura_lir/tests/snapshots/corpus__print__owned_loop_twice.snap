@@ -89,8 +89,8 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %53 box: word = box %52
     drop %53
     %54 xs: ptr = alloc list()
-    %85 lit: i64 = const 0
-    jump b15(%54, %85)
+    %84 lit: i64 = const 0
+    jump b15(%54, %84)
   b13(%55 runs: ptr, %56 k: i64):
     %57 s: ptr = show %55
     drop %55
@@ -104,8 +104,7 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %63 lit: i64 = const 2
     %64 t: bool = lt.int %62, %63
     if %64 then b17(%61, %62) else b18(%61, %62)
-  b16(%65 v: word, %66 runs: ptr, %67 k: i64):
-    drop %65
+  b16(%65 v: unit, %66 runs: ptr, %67 k: i64):
     jump b15(%66, %67)
   b17(%68 runs: ptr, %69 k: i64):
     %72 lit: i64 = const 33
@@ -120,8 +119,7 @@ fn main#0 pub top -> unit ; main::owned_loop_twice, frame 29 slots [%1 word*, %3
     %81 lit: i64 = const 1
     %82 t: i64 = intadd %78, %81
     %83 lit: unit = const ()
-    %84 box: word = box %83
-    jump b16(%84, %80, %82)
+    jump b16(%83, %80, %82)
 
 fn $entry#1 top -> unit ; main::owned_loop_twice, frame 1 slots [%1 bool]
   b0():
@@ -135,16 +133,15 @@ fn $entry#1 top -> unit ; main::owned_loop_twice, frame 1 slots [%1 bool]
 fn squares#2 top -> ptr ; main::owned_loop_twice, frame 4 slots [%0 i64, %22 word*, %23 i64, %24 i64]
   b0(%0 n: i64):
     %1 xs: ptr = alloc list()
-    %50 lit: i64 = const 0
-    jump b7(%1, %50, %0)
+    %48 lit: i64 = const 0
+    jump b7(%1, %48, %0)
   b1(%2 xs: ptr, %3 i: i64, %4 n: i64):
-    %29 lit: i64 = const 0
-    jump b2(%2, %29, %4)
+    %28 lit: i64 = const 0
+    jump b2(%2, %28, %4)
   b2(%5 xs: ptr, %6 i: i64, %7 n: i64):
     %8 t: bool = lt.int %6, %7
     if %8 then b4(%7, %5, %6) else b5(%7, %5, %6)
-  b3(%9 v: word, %10 xs: ptr, %11 i: i64, %12 n: i64):
-    drop %9
+  b3(%9 v: unit, %10 xs: ptr, %11 i: i64, %12 n: i64):
     jump b2(%10, %11, %12)
   b4(%13 n: i64, %14 xs: ptr, %15 i: i64):
     %19 t: i64 = intmul %15, %15
@@ -157,38 +154,34 @@ fn squares#2 top -> ptr ; main::owned_loop_twice, frame 4 slots [%0 i64, %22 wor
     %25 lit: i64 = const 1
     %26 t: i64 = intadd %24, %25
     %27 lit: unit = const ()
-    %28 box: word = box %27
-    jump b3(%28, %22, %26, %23)
-  b7(%30 xs: ptr, %31 i: i64, %32 n: i64):
-    %33 t: bool = lt.int %31, %32
-    if %33 then b9(%32, %30, %31) else b10(%32, %30, %31)
-  b8(%34 v: word, %35 xs: ptr, %36 i: i64, %37 n: i64):
-    drop %34
-    jump b7(%35, %36, %37)
-  b9(%38 n: i64, %39 xs: ptr, %40 i: i64):
-    %44 box: word = box %40
-    %45 r: ptr = $list_push(%39, %44)
-    %46 lit: i64 = const 1
-    %47 t: i64 = intadd %40, %46
-    %48 lit: unit = const ()
-    %49 box: word = box %48
-    jump b8(%49, %45, %47, %38)
-  b10(%41 n: i64, %42 xs: ptr, %43 i: i64):
-    jump b1(%42, %43, %41)
+    jump b3(%27, %22, %26, %23)
+  b7(%29 xs: ptr, %30 i: i64, %31 n: i64):
+    %32 t: bool = lt.int %30, %31
+    if %32 then b9(%31, %29, %30) else b10(%31, %29, %30)
+  b8(%33 v: unit, %34 xs: ptr, %35 i: i64, %36 n: i64):
+    jump b7(%34, %35, %36)
+  b9(%37 n: i64, %38 xs: ptr, %39 i: i64):
+    %43 box: word = box %39
+    %44 r: ptr = $list_push(%38, %43)
+    %45 lit: i64 = const 1
+    %46 t: i64 = intadd %39, %45
+    %47 lit: unit = const ()
+    jump b8(%47, %44, %46, %37)
+  b10(%40 n: i64, %41 xs: ptr, %42 i: i64):
+    jump b1(%41, %42, %40)
 
 fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 word*, %16 word*, %17 i64, %23 word*, %24 i64]
   b0():
     call base#5() -> b1()
   b1(%0 c: ptr):
-    %29 lit: i64 = const 0
-    jump b2(%0, %29)
+    %28 lit: i64 = const 0
+    jump b2(%0, %28)
   b2(%1 xs: ptr, %2 i: i64):
     dup.candidate %1
     %3 r: i64 = $list_len(%1)
     %4 t: bool = lt.int %2, %3
     if %4 then b4(%1, %2) else b5(%1, %2)
-  b3(%5 v: word, %6 xs: ptr, %7 i: i64):
-    drop %5
+  b3(%5 v: unit, %6 xs: ptr, %7 i: i64):
     jump b2(%6, %7)
   b4(%8 xs: ptr, %9 i: i64):
     dup.candidate %8
@@ -210,8 +203,7 @@ fn bumped#4 top -> ptr ; main::owned_loop_twice, frame 6 slots [%0 word*, %15 wo
     %25 lit: i64 = const 1
     %26 t: i64 = intadd %24, %25
     %27 lit: unit = const ()
-    %28 box: word = box %27
-    jump b3(%28, %23, %26)
+    jump b3(%27, %23, %26)
 
 fn base#5 const -> ptr ; main::owned_loop_twice, frame 0 slots []
   b0():

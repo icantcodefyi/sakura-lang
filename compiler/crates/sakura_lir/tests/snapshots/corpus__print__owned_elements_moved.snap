@@ -85,11 +85,11 @@ fn $entry#1 top -> unit ; main::owned_elements_moved, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1 i64, %28 word*, %29 i64, %30 word*, %31 i64, %32 i64, %39 word*, %40 i64, %41 word*, %42 i64, %43 i64, %44 word*, %48 word*, %49 i64, %50 i64, %51 i64, %86 word*, %87 i64, %88 word*, %89 i64, %90 i64, %91 word*, %92 i64, %93 i64, %94 i64]
+fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1 i64, %28 word*, %29 i64, %30 word*, %31 i64, %32 i64, %39 word*, %40 i64, %41 word*, %42 i64, %43 i64, %44 word*, %48 word*, %49 i64, %50 i64, %51 i64, %85 word*, %86 i64, %87 word*, %88 i64, %89 i64, %90 word*, %91 i64, %92 i64, %93 i64]
   b0(%0 start: ptr, %1 steps: i64):
-    %104 lit: i64 = const 0
-    %105 lit: i64 = const 0
-    jump b2(%0, %104, %105, %1)
+    %102 lit: i64 = const 0
+    %103 lit: i64 = const 0
+    jump b2(%0, %102, %103, %1)
   b1(%2 bs: ptr, %3 i: i64, %4 seen: i64):
     %5 lit: i64 = const 0
     %6 lit: ptr = const str 6
@@ -101,8 +101,7 @@ fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1
     %13 r: i64 = $list_len(%9)
     %14 t: bool = lt.int %10, %13
     if %14 then b4(%12, %9, %10, %11) else b5(%12, %9, %10, %11)
-  b3(%15 v: word, %16 bs: ptr, %17 i: i64, %18 seen: i64, %19 steps: i64):
-    drop %15
+  b3(%15 v: unit, %16 bs: ptr, %17 i: i64, %18 seen: i64, %19 steps: i64):
     jump b2(%16, %17, %18, %19)
   b4(%20 steps: i64, %21 bs: ptr, %22 i: i64, %23 seen: i64):
     dup.candidate %21
@@ -110,8 +109,8 @@ fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1
   b5(%24 steps: i64, %25 bs: ptr, %26 i: i64, %27 seen: i64):
     jump b1(%25, %26, %27)
   b6(%28 r: ptr, %29 steps: i64, %30 bs: ptr, %31 i: i64, %32 seen: i64):
-    %103 lit: i64 = const 0
-    jump b10(%30, %31, %32, %28, %103, %29)
+    %101 lit: i64 = const 0
+    jump b10(%30, %31, %32, %28, %101, %29)
   b7(%33 bs: ptr, %34 i: i64, %35 seen: i64, %36 b: ptr, %37 k: i64, %38 steps: i64):
     dup.candidate %33
     call at#3(%33, %34) -> b8(%38, %33, %34, %35, %36)
@@ -125,35 +124,32 @@ fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1
     %52 lit: i64 = const 1
     %53 t: i64 = intadd %50, %52
     %54 lit: unit = const ()
-    %55 box: word = box %54
-    jump b3(%55, %48, %53, %51, %49)
-  b10(%56 bs: ptr, %57 i: i64, %58 seen: i64, %59 b: ptr, %60 k: i64, %61 steps: i64):
-    %62 t: bool = lt.int %60, %61
-    if %62 then b12(%61, %56, %57, %58, %59, %60) else b13(%61, %56, %57, %58, %59, %60)
-  b11(%63 v: word, %64 bs: ptr, %65 i: i64, %66 seen: i64, %67 b: ptr, %68 k: i64, %69 steps: i64):
-    drop %63
-    jump b10(%64, %65, %66, %67, %68, %69)
-  b12(%70 steps: i64, %71 bs: ptr, %72 i: i64, %73 seen: i64, %74 b: ptr, %75 k: i64):
-    %82 x: i64 = proj %74.0 main::owned_elements_moved::Body
-    %83 lit: i64 = const 1
-    %84 t: i64 = intadd %82, %83
-    %85 v: i64 = proj %74.1 main::owned_elements_moved::Body
-    dup.candidate %71
-    call at#3(%71, %72) -> b14(%70, %71, %72, %73, %74, %75, %84, %85)
-  b13(%76 steps: i64, %77 bs: ptr, %78 i: i64, %79 seen: i64, %80 b: ptr, %81 k: i64):
-    jump b7(%77, %78, %79, %80, %81, %76)
-  b14(%86 r: ptr, %87 steps: i64, %88 bs: ptr, %89 i: i64, %90 seen: i64, %91 b: ptr, %92 k: i64, %93 t: i64, %94 v: i64):
-    %95 x: i64 = proj %86.0 main::owned_elements_moved::Body
-    drop %86
-    %96 t: i64 = intadd %94, %95
-    %97 tag: word = proj %91.2 main::owned_elements_moved::Body
-    drop %91
-    %98 rec: ptr = alloc main::owned_elements_moved::Body(%93, %96, %97)
-    %99 lit: i64 = const 1
-    %100 t: i64 = intadd %92, %99
-    %101 lit: unit = const ()
-    %102 box: word = box %101
-    jump b11(%102, %88, %89, %90, %98, %100, %87)
+    jump b3(%54, %48, %53, %51, %49)
+  b10(%55 bs: ptr, %56 i: i64, %57 seen: i64, %58 b: ptr, %59 k: i64, %60 steps: i64):
+    %61 t: bool = lt.int %59, %60
+    if %61 then b12(%60, %55, %56, %57, %58, %59) else b13(%60, %55, %56, %57, %58, %59)
+  b11(%62 v: unit, %63 bs: ptr, %64 i: i64, %65 seen: i64, %66 b: ptr, %67 k: i64, %68 steps: i64):
+    jump b10(%63, %64, %65, %66, %67, %68)
+  b12(%69 steps: i64, %70 bs: ptr, %71 i: i64, %72 seen: i64, %73 b: ptr, %74 k: i64):
+    %81 x: i64 = proj %73.0 main::owned_elements_moved::Body
+    %82 lit: i64 = const 1
+    %83 t: i64 = intadd %81, %82
+    %84 v: i64 = proj %73.1 main::owned_elements_moved::Body
+    dup.candidate %70
+    call at#3(%70, %71) -> b14(%69, %70, %71, %72, %73, %74, %83, %84)
+  b13(%75 steps: i64, %76 bs: ptr, %77 i: i64, %78 seen: i64, %79 b: ptr, %80 k: i64):
+    jump b7(%76, %77, %78, %79, %80, %75)
+  b14(%85 r: ptr, %86 steps: i64, %87 bs: ptr, %88 i: i64, %89 seen: i64, %90 b: ptr, %91 k: i64, %92 t: i64, %93 v: i64):
+    %94 x: i64 = proj %85.0 main::owned_elements_moved::Body
+    drop %85
+    %95 t: i64 = intadd %93, %94
+    %96 tag: word = proj %90.2 main::owned_elements_moved::Body
+    drop %90
+    %97 rec: ptr = alloc main::owned_elements_moved::Body(%92, %95, %96)
+    %98 lit: i64 = const 1
+    %99 t: i64 = intadd %91, %98
+    %100 lit: unit = const ()
+    jump b11(%100, %87, %88, %89, %97, %99, %86)
 
 fn at#3 top -> ptr ; main::owned_elements_moved, frame 2 slots [%0 word*, %1 i64]
   b0(%0 bs: ptr, %1 i: i64):

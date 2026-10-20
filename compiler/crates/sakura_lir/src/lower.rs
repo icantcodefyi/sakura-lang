@@ -2084,36 +2084,66 @@ fn blocks(body: &CBlock) -> Vec<&CBlock> {
 
 /// The representation of each local of `def`: that of its declared type, except that Core types
 /// some compiler temporaries `Unit` although they hold a value (the `ok`/`err` of a `try`), so a
-/// `Unit` local bound to a reference, and every `Unit` join parameter, is a generic word
-/// (ABI.md errata L8). A block only uses locals bound in it or in blocks enclosing it, which
-/// [`blocks`] visits first.
+/// `Unit` local bound to a reference, a `Unit` join parameter that some jump feeds a word and a
+/// `try`'s catch parameter (the runtime feeds it the failure) are generic words (ABI.md errata
+/// L8, design §17.287 (2)). Optimistic: every other `Unit` join parameter stays `Unit`, and a
+/// demotion can make another jump's argument a word, so it iterates to a fixpoint.
 fn local_reprs(cx: &Cx, def: &core::Def) -> Vec<Repr> {
     let mut reprs: Vec<Repr> = def.locals.iter().map(|l| repr_of(&l.ty)).collect();
-    for b in blocks(&def.body) {
+    let bs = blocks(&def.body);
+    let mut params: HashMap<Label, &[Local]> = HashMap::new();
+    for b in &bs {
         for s in &b.stmts {
-            match s {
-                Stmt::Let { local, bind, .. } => {
-                    let l = *local as usize;
-                    if l < reprs.len()
-                        && reprs[l] == Repr::Unit
-                        && natural_repr(cx, &reprs, bind).is_managed()
-                    {
-                        reprs[l] = Repr::Word;
-                    }
+            if let Stmt::Join {
+                label, params: ps, ..
+            } = s
+            {
+                params.insert(*label, ps);
+            }
+        }
+    }
+    let widen = |reprs: &mut Vec<Repr>, l: Local| -> bool {
+        match reprs.get_mut(l as usize) {
+            Some(r) if *r == Repr::Unit => {
+                *r = Repr::Word;
+                true
+            }
+            _ => false,
+        }
+    };
+    for b in &bs {
+        if let Terminator::Try { on_fail, .. } = &b.term {
+            for &p in params.get(on_fail).copied().unwrap_or_default() {
+                widen(&mut reprs, p);
+            }
+        }
+    }
+    loop {
+        let mut changed = false;
+        for b in &bs {
+            for s in &b.stmts {
+                if let Stmt::Let { local, bind, .. } = s
+                    && reprs.get(*local as usize) == Some(&Repr::Unit)
+                    && natural_repr(cx, &reprs, bind).is_managed()
+                {
+                    changed |= widen(&mut reprs, *local);
                 }
-                Stmt::Join { params, .. } => {
-                    for &p in params {
-                        if let Some(r) = reprs.get_mut(p as usize)
-                            && *r == Repr::Unit
-                        {
-                            *r = Repr::Word;
-                        }
+            }
+            if let Terminator::Jump(label, args) = &b.term {
+                for (a, &p) in args
+                    .iter()
+                    .zip(params.get(label).copied().unwrap_or_default())
+                {
+                    if atom_repr(&reprs, a) != Repr::Unit {
+                        changed |= widen(&mut reprs, p);
                     }
                 }
             }
         }
+        if !changed {
+            return reprs;
+        }
     }
-    reprs
 }
 
 /// The representation a binding produces before any coercion to its local.

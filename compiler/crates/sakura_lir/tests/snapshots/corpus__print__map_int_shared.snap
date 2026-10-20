@@ -10,12 +10,12 @@ layout 3 shape |  32b (i64, word*)
 fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 word*, %37 word*, %38 word*, %39 word*, %64 bool, %65 word*, %66 word*, %67 word*, %75 i64, %76 word*, %77 word*, %78 word*, %79 word*, %104 bool, %105 word*, %106 word*, %114 i64, %115 word*, %116 word*, %117 word*, %142 bool, %143 word*, %144 word*, %191 bool, %192 word*, %234 bool]
   b0():
     %0 r: ptr = $map_empty()
-    %357 lit: i64 = const 0
-    jump b30(%0, %357)
+    %352 lit: i64 = const 0
+    jump b30(%0, %352)
   b1(%1 m: ptr, %2 i: i64):
-    %338 lit: i64 = const 0
+    %334 lit: i64 = const 0
     dup %1
-    jump b26(%1, %338, %1)
+    jump b26(%1, %334, %1)
   b2(%3 m: ptr, %4 i: i64, %5 m: ptr):
     %6 lit: i64 = const 40000000000
     %7 box: word = box %6
@@ -28,8 +28,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %14 lit: i64 = const 2
     %15 box: word = box %14
     %16 r: ptr = $map_insert(%10, %13, %15)
-    %314 lit: i64 = const 0
-    jump b22(%16, %314, %5)
+    %311 lit: i64 = const 0
+    jump b22(%16, %311, %5)
   b3(%17 m: ptr, %18 i: i64, %19 m: ptr):
     %20 lit: i64 = const 6
     %21 t: i64 = intneg %20
@@ -266,12 +266,12 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %193 box: word = box %191
     drop %193
     %194 r: ptr = $set_empty()
-    %292 lit: i64 = const 0
-    jump b18(%192, %292, %194)
+    %290 lit: i64 = const 0
+    jump b18(%192, %290, %194)
   b11(%195 m: ptr, %196 i: i64, %197 s: ptr):
-    %266 lit: i64 = const 0
+    %265 lit: i64 = const 0
     dup %197
-    jump b14(%195, %266, %197, %197)
+    jump b14(%195, %265, %197, %197)
   b12(%198 m: ptr, %199 i: i64, %200 s: ptr, %201 s: ptr):
     drop %198
     dup.candidate %201
@@ -328,8 +328,7 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %241 lit: i64 = const 200
     %242 t: bool = lt.int %238, %241
     if %242 then b16(%240, %237, %238, %239) else b17(%240, %237, %238, %239)
-  b15(%243 v: word, %244 m: ptr, %245 i: i64, %246 s: ptr, %247 s: ptr):
-    drop %243
+  b15(%243 v: unit, %244 m: ptr, %245 i: i64, %246 s: ptr, %247 s: ptr):
     jump b14(%244, %245, %246, %247)
   b16(%248 s: ptr, %249 m: ptr, %250 i: i64, %251 s: ptr):
     %256 lit: i64 = const 5
@@ -341,85 +340,76 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %262 lit: i64 = const 1
     %263 t: i64 = intadd %250, %262
     %264 lit: unit = const ()
-    %265 box: word = box %264
-    jump b15(%265, %249, %263, %261, %248)
+    jump b15(%264, %249, %263, %261, %248)
   b17(%252 s: ptr, %253 m: ptr, %254 i: i64, %255 s: ptr):
     jump b12(%253, %254, %255, %252)
-  b18(%267 m: ptr, %268 i: i64, %269 s: ptr):
-    %270 lit: i64 = const 200
-    %271 t: bool = lt.int %268, %270
-    if %271 then b20(%267, %268, %269) else b21(%267, %268, %269)
-  b19(%272 v: word, %273 m: ptr, %274 i: i64, %275 s: ptr):
-    drop %272
-    jump b18(%273, %274, %275)
-  b20(%276 m: ptr, %277 i: i64, %278 s: ptr):
-    %282 lit: i64 = const 3
-    %283 t: i64 = intmul %277, %282
-    %284 lit: i64 = const 300
-    %285 t: i64 = intsub %283, %284
-    %286 box: word = box %285
-    %287 r: ptr = $set_insert(%278, %286)
-    %288 lit: i64 = const 1
-    %289 t: i64 = intadd %277, %288
-    %290 lit: unit = const ()
-    %291 box: word = box %290
-    jump b19(%291, %276, %289, %287)
-  b21(%279 m: ptr, %280 i: i64, %281 s: ptr):
-    jump b11(%279, %280, %281)
-  b22(%293 m: ptr, %294 i: i64, %295 m: ptr):
-    %296 lit: i64 = const 1000
-    %297 t: bool = lt.int %294, %296
-    if %297 then b24(%295, %293, %294) else b25(%295, %293, %294)
-  b23(%298 v: word, %299 m: ptr, %300 i: i64, %301 m: ptr):
-    drop %298
-    jump b22(%299, %300, %301)
-  b24(%302 m: ptr, %303 m: ptr, %304 i: i64):
-    %308 box: word = box %304
-    %309 r: ptr = $map_remove(%303, %308)
-    %310 lit: i64 = const 3
-    %311 t: i64 = intadd %304, %310
-    %312 lit: unit = const ()
-    %313 box: word = box %312
-    jump b23(%313, %309, %311, %302)
-  b25(%305 m: ptr, %306 m: ptr, %307 i: i64):
-    jump b3(%306, %307, %305)
-  b26(%315 m: ptr, %316 i: i64, %317 m: ptr):
-    %318 lit: i64 = const 1000
-    %319 t: bool = lt.int %316, %318
-    if %319 then b28(%317, %315, %316) else b29(%317, %315, %316)
-  b27(%320 v: word, %321 m: ptr, %322 i: i64, %323 m: ptr):
-    drop %320
-    jump b26(%321, %322, %323)
-  b28(%324 m: ptr, %325 m: ptr, %326 i: i64):
-    %330 t: i64 = intneg %326
-    %331 box: word = box %326
-    %332 box: word = box %330
-    %333 r: ptr = $map_insert(%325, %331, %332)
-    %334 lit: i64 = const 2
-    %335 t: i64 = intadd %326, %334
-    %336 lit: unit = const ()
-    %337 box: word = box %336
-    jump b27(%337, %333, %335, %324)
-  b29(%327 m: ptr, %328 m: ptr, %329 i: i64):
-    jump b2(%328, %329, %327)
-  b30(%339 m: ptr, %340 i: i64):
-    %341 lit: i64 = const 1000
-    %342 t: bool = lt.int %340, %341
-    if %342 then b32(%339, %340) else b33(%339, %340)
-  b31(%343 v: word, %344 m: ptr, %345 i: i64):
-    drop %343
-    jump b30(%344, %345)
-  b32(%346 m: ptr, %347 i: i64):
-    %350 box: word = box %347
-    %351 box: word = box %347
-    %352 r: ptr = $map_insert(%346, %350, %351)
-    %353 lit: i64 = const 1
-    %354 t: i64 = intadd %347, %353
-    %355 lit: unit = const ()
-    %356 box: word = box %355
-    jump b31(%356, %352, %354)
-  b33(%348 m: ptr, %349 i: i64):
-    jump b1(%348, %349)
+  b18(%266 m: ptr, %267 i: i64, %268 s: ptr):
+    %269 lit: i64 = const 200
+    %270 t: bool = lt.int %267, %269
+    if %270 then b20(%266, %267, %268) else b21(%266, %267, %268)
+  b19(%271 v: unit, %272 m: ptr, %273 i: i64, %274 s: ptr):
+    jump b18(%272, %273, %274)
+  b20(%275 m: ptr, %276 i: i64, %277 s: ptr):
+    %281 lit: i64 = const 3
+    %282 t: i64 = intmul %276, %281
+    %283 lit: i64 = const 300
+    %284 t: i64 = intsub %282, %283
+    %285 box: word = box %284
+    %286 r: ptr = $set_insert(%277, %285)
+    %287 lit: i64 = const 1
+    %288 t: i64 = intadd %276, %287
+    %289 lit: unit = const ()
+    jump b19(%289, %275, %288, %286)
+  b21(%278 m: ptr, %279 i: i64, %280 s: ptr):
+    jump b11(%278, %279, %280)
+  b22(%291 m: ptr, %292 i: i64, %293 m: ptr):
+    %294 lit: i64 = const 1000
+    %295 t: bool = lt.int %292, %294
+    if %295 then b24(%293, %291, %292) else b25(%293, %291, %292)
+  b23(%296 v: unit, %297 m: ptr, %298 i: i64, %299 m: ptr):
+    jump b22(%297, %298, %299)
+  b24(%300 m: ptr, %301 m: ptr, %302 i: i64):
+    %306 box: word = box %302
+    %307 r: ptr = $map_remove(%301, %306)
+    %308 lit: i64 = const 3
+    %309 t: i64 = intadd %302, %308
+    %310 lit: unit = const ()
+    jump b23(%310, %307, %309, %300)
+  b25(%303 m: ptr, %304 m: ptr, %305 i: i64):
+    jump b3(%304, %305, %303)
+  b26(%312 m: ptr, %313 i: i64, %314 m: ptr):
+    %315 lit: i64 = const 1000
+    %316 t: bool = lt.int %313, %315
+    if %316 then b28(%314, %312, %313) else b29(%314, %312, %313)
+  b27(%317 v: unit, %318 m: ptr, %319 i: i64, %320 m: ptr):
+    jump b26(%318, %319, %320)
+  b28(%321 m: ptr, %322 m: ptr, %323 i: i64):
+    %327 t: i64 = intneg %323
+    %328 box: word = box %323
+    %329 box: word = box %327
+    %330 r: ptr = $map_insert(%322, %328, %329)
+    %331 lit: i64 = const 2
+    %332 t: i64 = intadd %323, %331
+    %333 lit: unit = const ()
+    jump b27(%333, %330, %332, %321)
+  b29(%324 m: ptr, %325 m: ptr, %326 i: i64):
+    jump b2(%325, %326, %324)
+  b30(%335 m: ptr, %336 i: i64):
+    %337 lit: i64 = const 1000
+    %338 t: bool = lt.int %336, %337
+    if %338 then b32(%335, %336) else b33(%335, %336)
+  b31(%339 v: unit, %340 m: ptr, %341 i: i64):
+    jump b30(%340, %341)
+  b32(%342 m: ptr, %343 i: i64):
+    %346 box: word = box %343
+    %347 box: word = box %343
+    %348 r: ptr = $map_insert(%342, %346, %347)
+    %349 lit: i64 = const 1
+    %350 t: i64 = intadd %343, %349
+    %351 lit: unit = const ()
+    jump b31(%351, %348, %350)
+  b33(%344 m: ptr, %345 i: i64):
+    jump b1(%344, %345)
 
 fn $entry#1 top -> unit ; main::map_int_shared, frame 1 slots [%1 bool]
   b0():

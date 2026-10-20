@@ -246,8 +246,8 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %178 box: word = box %177
     drop %178
     %179 v: ptr = const static main::tag_eq::Dir.Forward
-    %216 lit: i64 = const 0
-    jump b34(%179, %216)
+    %215 lit: i64 = const 0
+    jump b34(%179, %215)
   b32(%180 d: ptr, %181 flips: i64):
     %182 v: ptr = const static main::tag_eq::Dir.Backward
     %183 tag: i64 = tag %180 ctor main::tag_eq::Dir
@@ -278,8 +278,7 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %201 lit: i64 = const 1001
     %202 t: bool = lt.int %200, %201
     if %202 then b36(%199, %200) else b37(%199, %200)
-  b35(%203 v: word, %204 d: ptr, %205 flips: i64):
-    drop %203
+  b35(%203 v: unit, %204 d: ptr, %205 flips: i64):
     jump b34(%204, %205)
   b36(%206 d: ptr, %207 flips: i64):
     call flip#12(%206) -> b38(%207)
@@ -289,8 +288,7 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %212 lit: i64 = const 1
     %213 t: i64 = intadd %211, %212
     %214 lit: unit = const ()
-    %215 box: word = box %214
-    jump b35(%215, %210, %213)
+    jump b35(%214, %210, %213)
 
 fn $entry#1 top -> unit ; main::tag_eq, frame 1 slots [%1 bool]
   b0():

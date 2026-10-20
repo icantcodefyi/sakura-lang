@@ -33,7 +33,7 @@ layout 27 shape |  32b (i64, word*)
 layout 28 shape |  16b ()
 layout 29 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [%3 word*, %19 word*, %20 word*, %21 word*, %22 word*, %25 word*, %26 word*, %29 word*, %30 word*, %35 word*, %39 word*, %73 word*, %74 word*, %75 word*, %76 i64, %77 i64, %78 word*, %79 word*, %80 word*, %81 word*, %82 word*, %83 i64, %84 i64, %85 word*, %86 word*, %87 word*, %88 word*, %89 i64, %90 i64, %91 word*, %95 bool, %96 word*, %97 word*, %98 i64, %99 i64, %140 word*, %141 word*, %142 word*, %143 i64, %144 i64, %145 word*, %148 bool, %149 word*, %150 word*, %151 i64, %152 i64, %154 word*, %155 word*, %156 word*, %157 i64, %158 i64, %159 word*, %163 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 word*, %169 word*, %170 word*, %171 word*, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 i64, %179 i64, %180 word*]
+fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [%3 word*, %19 word*, %20 word*, %21 word*, %22 word*, %25 word*, %26 word*, %29 word*, %30 word*, %35 word*, %39 word*, %73 word*, %74 word*, %75 word*, %76 i64, %77 i64, %78 word*, %79 word*, %80 word*, %81 word*, %82 word*, %83 i64, %84 i64, %85 word*, %86 word*, %87 word*, %88 word*, %89 i64, %90 i64, %91 word*, %95 bool, %96 word*, %97 word*, %98 i64, %99 i64, %139 word*, %140 word*, %141 word*, %142 i64, %143 i64, %144 word*, %147 bool, %148 word*, %149 word*, %150 i64, %151 i64, %153 word*, %154 word*, %155 word*, %156 i64, %157 i64, %158 word*, %162 word*, %163 word*, %164 word*, %165 i64, %166 i64, %167 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 word*, %174 word*, %175 word*, %176 word*, %177 i64, %178 i64, %179 word*]
   b0():
     %0 lit: i64 = const 204
     %1 lit: ptr = const str 0
@@ -70,10 +70,9 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %105 xs: ptr = alloc list(%102, %103, %104)
     dup.candidate %105
     %106 n: i64 = $list_len(%105)
-    %182 lit: i64 = const 0
-    jump b18(%182, %26, %105, %106)
-  b4(%27 v: word, %28 rec: ptr):
-    drop %27
+    %181 lit: i64 = const 0
+    jump b18(%181, %26, %105, %106)
+  b4(%27 v: unit, %28 rec: ptr):
     call new#11() -> b5(%28)
   b5(%29 r: ptr, %30 rec: ptr):
     %31 v: ptr = const static std::request::Method.Options
@@ -140,59 +139,58 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     jump b12(%96, %97, %98, %99)
   b17(%107 rec: ptr) [handle]:
     %108 lit: unit = const ()
-    %109 box: word = box %108
     handle_pop
-    jump b4(%109, %107)
-  b18(%110 i: i64, %111 rec: ptr, %112 xs: ptr, %113 n: i64) [handle]:
-    %114 more: bool = lt.int %110, %113
-    if %114 then b19(%111, %112, %113, %110) else b20(%111, %112, %113, %110)
-  b19(%115 rec: ptr, %116 xs: ptr, %117 n: i64, %118 i: i64) [handle]:
-    dup.candidate %116
-    %123 x: word = $list_at(%116, %118)
+    jump b4(%108, %107)
+  b18(%109 i: i64, %110 rec: ptr, %111 xs: ptr, %112 n: i64) [handle]:
+    %113 more: bool = lt.int %109, %112
+    if %113 then b19(%110, %111, %112, %109) else b20(%110, %111, %112, %109)
+  b19(%114 rec: ptr, %115 xs: ptr, %116 n: i64, %117 i: i64) [handle]:
+    dup.candidate %115
+    %122 x: word = $list_at(%115, %117)
+    dup %114
     dup %115
-    dup %116
-    dup %123
-    try_push -> b25(err, %115, %116, %117, %118, %123)
-    %161 lit: ptr = const str 6
-    %162 $site: i64 = const 14
-    call Url$from#7(%161, %162) -> b26(%115, %116, %117, %118, %123)
-  b20(%119 rec: ptr, %120 xs: ptr, %121 n: i64, %122 i: i64) [handle]:
-    drop %120
-    jump b17(%119)
-  b21(%124 rec: ptr, %125 xs: ptr, %126 n: i64, %127 i: i64) [handle]:
-    %128 lit: i64 = const 1
-    %129 i: i64 = intadd %127, %128
-    jump b18(%129, %124, %125, %126)
-  b22(%130 v: ptr, %131 rec: ptr, %132 xs: ptr, %133 n: i64, %134 i: i64, %135 x: ptr) [handle]:
-    %136 s: ptr = show %135
-    drop %135
-    %137 lit: ptr = const str 5
-    %138 s: ptr = concat %136, %137
-    drop %137
-    %139 f: ptr = closure main$1#9[]
-    call map#10(%130, %139) -> b23(%131, %132, %133, %134, %138)
-  b23(%140 r: ptr, %141 rec: ptr, %142 xs: ptr, %143 n: i64, %144 i: i64, %145 s: ptr) [handle]:
-    %146 s: ptr = show %140
-    drop %140
-    %147 s: ptr = concat %145, %146
-    drop %146
-    perform std::console::Console.print(%147) -> b24(%141, %142, %143, %144)
-  b24(%148 r: unit, %149 rec: ptr, %150 xs: ptr, %151 n: i64, %152 i: i64) [handle]:
-    %153 box: word = box %148
-    drop %153
-    jump b21(%149, %150, %151, %152)
-  b25(%154 e: word, %155 rec: ptr, %156 xs: ptr, %157 n: i64, %158 i: i64, %159 x: ptr) [handle]:
-    %160 err: ptr = alloc std::result::Result.Err(%154)
-    jump b22(%160, %155, %156, %157, %158, %159)
-  b26(%163 r: ptr, %164 rec: ptr, %165 xs: ptr, %166 n: i64, %167 i: i64, %168 x: ptr) [handle, try]:
-    dup %168
-    call of#8(%168, %163) -> b27(%164, %165, %166, %167, %168)
-  b27(%169 r: ptr, %170 rec: ptr, %171 xs: ptr, %172 n: i64, %173 i: i64, %174 x: ptr) [handle, try]:
-    perform std::http::Http.send(%169) -> b28(%170, %171, %172, %173, %174)
-  b28(%175 r: ptr, %176 rec: ptr, %177 xs: ptr, %178 n: i64, %179 i: i64, %180 x: ptr) [handle, try]:
-    %181 ok: ptr = alloc std::result::Result.Ok(%175)
+    dup %122
+    try_push -> b25(err, %114, %115, %116, %117, %122)
+    %160 lit: ptr = const str 6
+    %161 $site: i64 = const 14
+    call Url$from#7(%160, %161) -> b26(%114, %115, %116, %117, %122)
+  b20(%118 rec: ptr, %119 xs: ptr, %120 n: i64, %121 i: i64) [handle]:
+    drop %119
+    jump b17(%118)
+  b21(%123 rec: ptr, %124 xs: ptr, %125 n: i64, %126 i: i64) [handle]:
+    %127 lit: i64 = const 1
+    %128 i: i64 = intadd %126, %127
+    jump b18(%128, %123, %124, %125)
+  b22(%129 v: ptr, %130 rec: ptr, %131 xs: ptr, %132 n: i64, %133 i: i64, %134 x: ptr) [handle]:
+    %135 s: ptr = show %134
+    drop %134
+    %136 lit: ptr = const str 5
+    %137 s: ptr = concat %135, %136
+    drop %136
+    %138 f: ptr = closure main$1#9[]
+    call map#10(%129, %138) -> b23(%130, %131, %132, %133, %137)
+  b23(%139 r: ptr, %140 rec: ptr, %141 xs: ptr, %142 n: i64, %143 i: i64, %144 s: ptr) [handle]:
+    %145 s: ptr = show %139
+    drop %139
+    %146 s: ptr = concat %144, %145
+    drop %145
+    perform std::console::Console.print(%146) -> b24(%140, %141, %142, %143)
+  b24(%147 r: unit, %148 rec: ptr, %149 xs: ptr, %150 n: i64, %151 i: i64) [handle]:
+    %152 box: word = box %147
+    drop %152
+    jump b21(%148, %149, %150, %151)
+  b25(%153 e: word, %154 rec: ptr, %155 xs: ptr, %156 n: i64, %157 i: i64, %158 x: ptr) [handle]:
+    %159 err: ptr = alloc std::result::Result.Err(%153)
+    jump b22(%159, %154, %155, %156, %157, %158)
+  b26(%162 r: ptr, %163 rec: ptr, %164 xs: ptr, %165 n: i64, %166 i: i64, %167 x: ptr) [handle, try]:
+    dup %167
+    call of#8(%167, %162) -> b27(%163, %164, %165, %166, %167)
+  b27(%168 r: ptr, %169 rec: ptr, %170 xs: ptr, %171 n: i64, %172 i: i64, %173 x: ptr) [handle, try]:
+    perform std::http::Http.send(%168) -> b28(%169, %170, %171, %172, %173)
+  b28(%174 r: ptr, %175 rec: ptr, %176 xs: ptr, %177 n: i64, %178 i: i64, %179 x: ptr) [handle, try]:
+    %180 ok: ptr = alloc std::result::Result.Ok(%174)
     try_pop
-    jump b22(%181, %176, %177, %178, %179, %180)
+    jump b22(%180, %175, %176, %177, %178, %179)
 
 fn $entry#1 top -> unit ; main::request_method_options_trace, frame 1 slots [%1 bool]
   b0():

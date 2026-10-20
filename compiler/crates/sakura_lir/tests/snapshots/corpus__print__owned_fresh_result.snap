@@ -8,11 +8,11 @@ layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 3 shape |  32b (word*, word*)
 layout 4 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, %4 word*, %11 i64, %12 word*, %13 word*, %14 word*, %29 bool, %30 word*, %31 word*, %39 i64, %40 word*, %41 word*, %42 word*, %57 bool, %58 word*, %65 word*, %66 word*, %67 word*, %68 word*, %73 word*, %74 word*, %75 word*, %76 word*, %82 i64, %83 word*, %84 word*, %85 word*, %86 word*, %103 i64, %104 word*, %105 word*, %106 word*, %107 word*, %122 bool, %123 word*, %124 word*, %125 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %171 bool, %172 word*, %173 word*, %184 word*, %185 word*, %186 i64, %187 word*, %192 word*, %193 word*, %194 i64, %195 word*, %196 word*, %244 bool, %384 word*, %385 word*, %386 word*, %387 word*, %388 i64]
+fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, %4 word*, %11 i64, %12 word*, %13 word*, %14 word*, %29 bool, %30 word*, %31 word*, %39 i64, %40 word*, %41 word*, %42 word*, %57 bool, %58 word*, %65 word*, %66 word*, %67 word*, %68 word*, %73 word*, %74 word*, %75 word*, %76 word*, %82 i64, %83 word*, %84 word*, %85 word*, %86 word*, %103 i64, %104 word*, %105 word*, %106 word*, %107 word*, %122 bool, %123 word*, %124 word*, %125 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %171 bool, %172 word*, %173 word*, %184 word*, %185 word*, %186 i64, %187 word*, %192 word*, %193 word*, %194 i64, %195 word*, %196 word*, %244 bool, %381 word*, %382 word*, %383 word*, %384 word*, %385 i64]
   b0():
     %0 xs: ptr = alloc list()
-    %437 lit: i64 = const 0
-    jump b41(%0, %437)
+    %431 lit: i64 = const 0
+    jump b41(%0, %431)
   b1(%1 xs: ptr, %2 i: i64):
     dup %1
     call bump_all#2(%1) -> b2(%1)
@@ -95,9 +95,9 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %59 box: word = box %57
     drop %59
     %60 xs: ptr = alloc list()
-    %419 lit: i64 = const 0
+    %414 lit: i64 = const 0
     dup %58
-    jump b37(%58, %419, %60, %58)
+    jump b37(%58, %414, %60, %58)
   b7(%61 xs: ptr, %62 i: i64, %63 ws: ptr, %64 xs: ptr):
     dup.candidate %63
     call shifted#4(%63) -> b8(%64, %61, %63)
@@ -108,8 +108,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %72 $site: i64 = const 2
     call set#5(%68, %69, %71, %72) -> b9(%66, %67, %65)
   b9(%73 r: ptr, %74 xs: ptr, %75 xs: ptr, %76 r: ptr):
-    %393 lit: i64 = const 0
-    jump b32(%75, %393, %73, %74, %76)
+    %389 lit: i64 = const 0
+    jump b32(%75, %389, %73, %74, %76)
   b10(%77 xs: ptr, %78 i: i64, %79 ws: ptr, %80 xs: ptr, %81 r: ptr):
     dup.candidate %81
     call sum#3(%81) -> b11(%80, %81, %77, %79)
@@ -233,8 +233,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %174 box: word = box %171
     drop %174
     %175 xs: ptr = alloc list()
-    %360 lit: i64 = const 0
-    jump b28(%172, %360, %173, %175)
+    %357 lit: i64 = const 0
+    jump b28(%172, %357, %173, %175)
   b16(%176 xs: ptr, %177 i: i64, %178 ws: ptr, %179 flags: ptr):
     %180 lit: i64 = const 1
     %181 lit: bool = const true
@@ -255,10 +255,10 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %199 r: ptr = $list_push(%196, %198)
     dup.candidate %196
     %200 n: i64 = $list_len(%196)
-    %329 lit: i64 = const 0
-    %330 lit: i64 = const 0
+    %327 lit: i64 = const 0
+    %328 lit: i64 = const 0
     dup %196
-    jump b21(%329, %193, %194, %195, %196, %330, %196, %192, %199, %200)
+    jump b21(%327, %193, %194, %195, %196, %328, %196, %192, %199, %200)
   b19(%201 xs: ptr, %202 i: i64, %203 ws: ptr, %204 flags: ptr, %205 count: i64, %206 r: ptr, %207 r: ptr, %208 r: ptr):
     drop %201
     drop %203
@@ -338,91 +338,80 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %290 lit: i64 = const 1
     %291 i: i64 = intadd %289, %290
     jump b21(%291, %280, %281, %282, %283, %284, %285, %286, %287, %288)
-  b25(%292 v: word, %293 xs: ptr, %294 i: i64, %295 ws: ptr, %296 flags: ptr, %297 count: i64, %298 r: ptr, %299 r: ptr, %300 r: ptr, %301 n: i64, %302 i: i64):
-    drop %292
+  b25(%292 v: unit, %293 xs: ptr, %294 i: i64, %295 ws: ptr, %296 flags: ptr, %297 count: i64, %298 r: ptr, %299 r: ptr, %300 r: ptr, %301 n: i64, %302 i: i64):
     jump b24(%293, %294, %295, %296, %297, %298, %299, %300, %301, %302)
   b26(%303 r: ptr, %304 r: ptr, %305 r: ptr, %306 n: i64, %307 i: i64, %308 xs: ptr, %309 i: i64, %310 ws: ptr, %311 flags: ptr, %312 count: i64):
     %323 lit: i64 = const 1
     %324 t: i64 = intadd %312, %323
     %325 lit: unit = const ()
-    %326 box: word = box %325
-    jump b25(%326, %308, %309, %310, %311, %324, %303, %304, %305, %306, %307)
+    jump b25(%325, %308, %309, %310, %311, %324, %303, %304, %305, %306, %307)
   b27(%313 r: ptr, %314 r: ptr, %315 r: ptr, %316 n: i64, %317 i: i64, %318 xs: ptr, %319 i: i64, %320 ws: ptr, %321 flags: ptr, %322 count: i64):
-    %327 lit: unit = const ()
-    %328 box: word = box %327
-    jump b25(%328, %318, %319, %320, %321, %322, %313, %314, %315, %316, %317)
-  b28(%331 xs: ptr, %332 i: i64, %333 ws: ptr, %334 flags: ptr):
-    %335 lit: i64 = const 40
-    %336 t: bool = lt.int %332, %335
-    if %336 then b30(%331, %332, %333, %334) else b31(%331, %332, %333, %334)
-  b29(%337 v: word, %338 xs: ptr, %339 i: i64, %340 ws: ptr, %341 flags: ptr):
-    drop %337
-    jump b28(%338, %339, %340, %341)
-  b30(%342 xs: ptr, %343 i: i64, %344 ws: ptr, %345 flags: ptr):
-    %350 lit: i64 = const 2
-    %351 t: i64 = intrem %343, %350
-    %352 lit: i64 = const 0
-    %353 t: bool = eq.int %351, %352
-    %354 box: word = box %353
-    %355 r: ptr = $list_push(%345, %354)
-    %356 lit: i64 = const 1
-    %357 t: i64 = intadd %343, %356
-    %358 lit: unit = const ()
-    %359 box: word = box %358
-    jump b29(%359, %342, %357, %344, %355)
-  b31(%346 xs: ptr, %347 i: i64, %348 ws: ptr, %349 flags: ptr):
-    jump b16(%346, %347, %348, %349)
-  b32(%361 xs: ptr, %362 i: i64, %363 ws: ptr, %364 xs: ptr, %365 r: ptr):
-    %366 lit: i64 = const 3
-    %367 t: bool = lt.int %362, %366
-    if %367 then b34(%364, %365, %361, %362, %363) else b35(%364, %365, %361, %362, %363)
-  b33(%368 v: word, %369 xs: ptr, %370 i: i64, %371 ws: ptr, %372 xs: ptr, %373 r: ptr):
-    drop %368
-    jump b32(%369, %370, %371, %372, %373)
-  b34(%374 xs: ptr, %375 r: ptr, %376 xs: ptr, %377 i: i64, %378 ws: ptr):
-    call bump_all#2(%378) -> b36(%374, %375, %376, %377)
-  b35(%379 xs: ptr, %380 r: ptr, %381 xs: ptr, %382 i: i64, %383 ws: ptr):
-    jump b10(%381, %382, %383, %379, %380)
-  b36(%384 r: ptr, %385 xs: ptr, %386 r: ptr, %387 xs: ptr, %388 i: i64):
-    %389 lit: i64 = const 1
-    %390 t: i64 = intadd %388, %389
-    %391 lit: unit = const ()
-    %392 box: word = box %391
-    jump b33(%392, %387, %390, %384, %385, %386)
-  b37(%394 xs: ptr, %395 i: i64, %396 ws: ptr, %397 xs: ptr):
-    %398 lit: i64 = const 50
-    %399 t: bool = lt.int %395, %398
-    if %399 then b39(%397, %394, %395, %396) else b40(%397, %394, %395, %396)
-  b38(%400 v: word, %401 xs: ptr, %402 i: i64, %403 ws: ptr, %404 xs: ptr):
-    drop %400
-    jump b37(%401, %402, %403, %404)
-  b39(%405 xs: ptr, %406 xs: ptr, %407 i: i64, %408 ws: ptr):
-    %413 box: word = box %407
-    %414 r: ptr = $list_push(%408, %413)
-    %415 lit: i64 = const 1
-    %416 t: i64 = intadd %407, %415
-    %417 lit: unit = const ()
-    %418 box: word = box %417
-    jump b38(%418, %406, %416, %414, %405)
-  b40(%409 xs: ptr, %410 xs: ptr, %411 i: i64, %412 ws: ptr):
-    jump b7(%410, %411, %412, %409)
-  b41(%420 xs: ptr, %421 i: i64):
-    %422 lit: i64 = const 40
-    %423 t: bool = lt.int %421, %422
-    if %423 then b43(%420, %421) else b44(%420, %421)
-  b42(%424 v: word, %425 xs: ptr, %426 i: i64):
-    drop %424
-    jump b41(%425, %426)
-  b43(%427 xs: ptr, %428 i: i64):
-    %431 box: word = box %428
-    %432 r: ptr = $list_push(%427, %431)
-    %433 lit: i64 = const 1
-    %434 t: i64 = intadd %428, %433
-    %435 lit: unit = const ()
-    %436 box: word = box %435
-    jump b42(%436, %432, %434)
-  b44(%429 xs: ptr, %430 i: i64):
-    jump b1(%429, %430)
+    %326 lit: unit = const ()
+    jump b25(%326, %318, %319, %320, %321, %322, %313, %314, %315, %316, %317)
+  b28(%329 xs: ptr, %330 i: i64, %331 ws: ptr, %332 flags: ptr):
+    %333 lit: i64 = const 40
+    %334 t: bool = lt.int %330, %333
+    if %334 then b30(%329, %330, %331, %332) else b31(%329, %330, %331, %332)
+  b29(%335 v: unit, %336 xs: ptr, %337 i: i64, %338 ws: ptr, %339 flags: ptr):
+    jump b28(%336, %337, %338, %339)
+  b30(%340 xs: ptr, %341 i: i64, %342 ws: ptr, %343 flags: ptr):
+    %348 lit: i64 = const 2
+    %349 t: i64 = intrem %341, %348
+    %350 lit: i64 = const 0
+    %351 t: bool = eq.int %349, %350
+    %352 box: word = box %351
+    %353 r: ptr = $list_push(%343, %352)
+    %354 lit: i64 = const 1
+    %355 t: i64 = intadd %341, %354
+    %356 lit: unit = const ()
+    jump b29(%356, %340, %355, %342, %353)
+  b31(%344 xs: ptr, %345 i: i64, %346 ws: ptr, %347 flags: ptr):
+    jump b16(%344, %345, %346, %347)
+  b32(%358 xs: ptr, %359 i: i64, %360 ws: ptr, %361 xs: ptr, %362 r: ptr):
+    %363 lit: i64 = const 3
+    %364 t: bool = lt.int %359, %363
+    if %364 then b34(%361, %362, %358, %359, %360) else b35(%361, %362, %358, %359, %360)
+  b33(%365 v: unit, %366 xs: ptr, %367 i: i64, %368 ws: ptr, %369 xs: ptr, %370 r: ptr):
+    jump b32(%366, %367, %368, %369, %370)
+  b34(%371 xs: ptr, %372 r: ptr, %373 xs: ptr, %374 i: i64, %375 ws: ptr):
+    call bump_all#2(%375) -> b36(%371, %372, %373, %374)
+  b35(%376 xs: ptr, %377 r: ptr, %378 xs: ptr, %379 i: i64, %380 ws: ptr):
+    jump b10(%378, %379, %380, %376, %377)
+  b36(%381 r: ptr, %382 xs: ptr, %383 r: ptr, %384 xs: ptr, %385 i: i64):
+    %386 lit: i64 = const 1
+    %387 t: i64 = intadd %385, %386
+    %388 lit: unit = const ()
+    jump b33(%388, %384, %387, %381, %382, %383)
+  b37(%390 xs: ptr, %391 i: i64, %392 ws: ptr, %393 xs: ptr):
+    %394 lit: i64 = const 50
+    %395 t: bool = lt.int %391, %394
+    if %395 then b39(%393, %390, %391, %392) else b40(%393, %390, %391, %392)
+  b38(%396 v: unit, %397 xs: ptr, %398 i: i64, %399 ws: ptr, %400 xs: ptr):
+    jump b37(%397, %398, %399, %400)
+  b39(%401 xs: ptr, %402 xs: ptr, %403 i: i64, %404 ws: ptr):
+    %409 box: word = box %403
+    %410 r: ptr = $list_push(%404, %409)
+    %411 lit: i64 = const 1
+    %412 t: i64 = intadd %403, %411
+    %413 lit: unit = const ()
+    jump b38(%413, %402, %412, %410, %401)
+  b40(%405 xs: ptr, %406 xs: ptr, %407 i: i64, %408 ws: ptr):
+    jump b7(%406, %407, %408, %405)
+  b41(%415 xs: ptr, %416 i: i64):
+    %417 lit: i64 = const 40
+    %418 t: bool = lt.int %416, %417
+    if %418 then b43(%415, %416) else b44(%415, %416)
+  b42(%419 v: unit, %420 xs: ptr, %421 i: i64):
+    jump b41(%420, %421)
+  b43(%422 xs: ptr, %423 i: i64):
+    %426 box: word = box %423
+    %427 r: ptr = $list_push(%422, %426)
+    %428 lit: i64 = const 1
+    %429 t: i64 = intadd %423, %428
+    %430 lit: unit = const ()
+    jump b42(%430, %427, %429)
+  b44(%424 xs: ptr, %425 i: i64):
+    jump b1(%424, %425)
 
 fn $entry#1 top -> unit ; main::owned_fresh_result, frame 1 slots [%1 bool]
   b0():
@@ -435,8 +424,8 @@ fn $entry#1 top -> unit ; main::owned_fresh_result, frame 1 slots [%1 bool]
 
 fn bump_all#2 top -> ptr ; main::owned_fresh_result, frame 7 slots [%0 word*, %4 word*, %19 word*, %20 word*, %21 i64, %27 word*, %28 i64]
   b0(%0 start: ptr):
-    %33 lit: i64 = const 0
-    jump b3(%0, %33)
+    %32 lit: i64 = const 0
+    jump b3(%0, %32)
   b1(%1 xs: ptr, %2 i: i64):
     %3 f: ptr = closure bump_all$1#11[]
     call map#7(%1, %3) -> b2()
@@ -447,8 +436,7 @@ fn bump_all#2 top -> ptr ; main::owned_fresh_result, frame 7 slots [%0 word*, %4
     %7 r: i64 = $list_len(%5)
     %8 t: bool = lt.int %6, %7
     if %8 then b5(%5, %6) else b6(%5, %6)
-  b4(%9 v: word, %10 xs: ptr, %11 i: i64):
-    drop %9
+  b4(%9 v: unit, %10 xs: ptr, %11 i: i64):
     jump b3(%10, %11)
   b5(%12 xs: ptr, %13 i: i64):
     dup.candidate %12
@@ -470,8 +458,7 @@ fn bump_all#2 top -> ptr ; main::owned_fresh_result, frame 7 slots [%0 word*, %4
     %29 lit: i64 = const 1
     %30 t: i64 = intadd %28, %29
     %31 lit: unit = const ()
-    %32 box: word = box %31
-    jump b4(%32, %27, %30)
+    jump b4(%31, %27, %30)
 
 fn shifted#4 top -> ptr ; main::owned_fresh_result, frame 2 slots [%0 word*, %2 word*]
   b0(%0 start: ptr):

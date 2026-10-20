@@ -8,7 +8,7 @@ layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 3 shape |  32b (word*, word*)
 layout 4 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 word*, %47 word*, %48 i64, %49 word*, %52 bool, %53 word*, %54 word*, %55 i64, %97 bool, %98 word*, %99 word*, %100 i64, %101 i64, %126 bool, %127 word*, %128 i64, %129 i64, %130 word*, %151 bool, %152 word*, %153 i64, %154 i64, %155 word*, %206 word*, %207 word*, %208 word*, %209 i64, %210 i64, %211 i64, %212 word*, %213 i64, %214 word*, %220 bool, %221 word*, %222 word*, %223 i64, %224 i64, %225 i64, %226 word*, %227 i64, %269 bool, %570 bool, %571 word*, %572 word*, %573 i64, %574 i64, %575 word*, %576 i64, %577 i64, %578 i64]
+fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 word*, %47 word*, %48 i64, %49 word*, %52 bool, %53 word*, %54 word*, %55 i64, %97 bool, %98 word*, %99 word*, %100 i64, %101 i64, %126 bool, %127 word*, %128 i64, %129 i64, %130 word*, %151 bool, %152 word*, %153 i64, %154 i64, %155 word*, %206 word*, %207 word*, %208 word*, %209 i64, %210 i64, %211 i64, %212 word*, %213 i64, %214 word*, %220 bool, %221 word*, %222 word*, %223 i64, %224 i64, %225 i64, %226 word*, %227 i64, %269 bool, %566 bool, %567 word*, %568 word*, %569 i64, %570 i64, %571 word*, %572 i64, %573 i64, %574 i64]
   b0():
     %0 lit: i64 = const 1
     %1 t: i64 = intneg %0
@@ -49,9 +49,9 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %36 r: ptr = $map_empty()
     dup.candidate %35
     %37 n: i64 = $list_len(%35)
-    %680 lit: i64 = const 0
-    %681 lit: i64 = const 0
-    jump b53(%680, %36, %681, %35, %37)
+    %674 lit: i64 = const 0
+    %675 lit: i64 = const 0
+    jump b53(%674, %36, %675, %35, %37)
   b1(%38 m: ptr, %39 i: i64, %40 xs: ptr):
     dup.candidate %38
     %41 r: i64 = $map_len(%38)
@@ -72,9 +72,9 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     drop %56
     dup.candidate %53
     %57 n: i64 = $list_len(%53)
-    %648 lit: i64 = const 0
-    %649 lit: i64 = const 0
-    jump b49(%648, %54, %55, %649, %53, %57)
+    %642 lit: i64 = const 0
+    %643 lit: i64 = const 0
+    jump b49(%642, %54, %55, %643, %53, %57)
   b4(%58 m: ptr, %59 i: i64, %60 found: i64, %61 xs: ptr):
     %62 lit: i64 = const 2
     %63 t: i64 = intneg %62
@@ -100,9 +100,9 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %83 xs: ptr = alloc list(%69, %70, %72, %73, %75, %77, %79, %80, %82)
     dup.candidate %83
     %84 n: i64 = $list_len(%83)
-    %610 lit: i64 = const 0
-    %611 lit: i64 = const 0
-    jump b41(%610, %58, %59, %60, %611, %61, %83, %84)
+    %604 lit: i64 = const 0
+    %605 lit: i64 = const 0
+    jump b41(%604, %58, %59, %60, %605, %61, %83, %84)
   b5(%85 m: ptr, %86 i: i64, %87 found: i64, %88 hits: i64, %89 xs: ptr):
     %90 s: ptr = show %87
     %91 lit: ptr = const str 1
@@ -179,11 +179,11 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %156 box: word = box %151
     drop %156
     %157 r: ptr = $map_empty()
-    %531 lit: i64 = const 0
-    jump b37(%155, %531, %153, %154, %157, %152)
+    %527 lit: i64 = const 0
+    jump b37(%155, %527, %153, %154, %157, %152)
   b9(%158 m: ptr, %159 i: i64, %160 found: i64, %161 hits: i64, %162 big: ptr, %163 xs: ptr):
-    %492 lit: i64 = const 0
-    jump b30(%158, %492, %160, %161, %162, %163)
+    %489 lit: i64 = const 0
+    jump b30(%158, %489, %160, %161, %162, %163)
   b10(%164 m: ptr, %165 i: i64, %166 found: i64, %167 hits: i64, %168 big: ptr, %169 xs: ptr):
     dup %168
     %170 r: ptr = $map_entries(%168)
@@ -357,8 +357,7 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %434 lit: i64 = const 2000
     %435 t: bool = lt.int %429, %434
     if %435 then b32(%433, %428, %429, %430, %431, %432) else b33(%433, %428, %429, %430, %431, %432)
-  b31(%436 v: word, %437 m: ptr, %438 i: i64, %439 found: i64, %440 hits: i64, %441 big: ptr, %442 xs: ptr):
-    drop %436
+  b31(%436 v: unit, %437 m: ptr, %438 i: i64, %439 found: i64, %440 hits: i64, %441 big: ptr, %442 xs: ptr):
     jump b30(%437, %438, %439, %440, %441, %442)
   b32(%443 xs: ptr, %444 m: ptr, %445 i: i64, %446 found: i64, %447 hits: i64, %448 big: ptr):
     %455 lit: i64 = const 4
@@ -368,126 +367,117 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     if %458 then b35(%443, %444, %445, %446, %447, %448) else b36(%443, %444, %445, %446, %447, %448)
   b33(%449 xs: ptr, %450 m: ptr, %451 i: i64, %452 found: i64, %453 hits: i64, %454 big: ptr):
     jump b10(%450, %451, %452, %453, %454, %449)
-  b34(%459 v: word, %460 m: ptr, %461 i: i64, %462 found: i64, %463 hits: i64, %464 big: ptr, %465 xs: ptr):
-    drop %459
+  b34(%459 v: unit, %460 m: ptr, %461 i: i64, %462 found: i64, %463 hits: i64, %464 big: ptr, %465 xs: ptr):
     %466 lit: i64 = const 1
     %467 t: i64 = intadd %461, %466
     %468 lit: unit = const ()
-    %469 box: word = box %468
-    jump b31(%469, %460, %467, %462, %463, %464, %465)
-  b35(%470 xs: ptr, %471 m: ptr, %472 i: i64, %473 found: i64, %474 hits: i64, %475 big: ptr):
-    %482 lit: i64 = const 7919
-    %483 t: i64 = intmul %472, %482
-    %484 lit: i64 = const 5000000
-    %485 t: i64 = intsub %483, %484
-    %486 box: word = box %485
-    %487 r: ptr = $map_remove(%475, %486)
+    jump b31(%468, %460, %467, %462, %463, %464, %465)
+  b35(%469 xs: ptr, %470 m: ptr, %471 i: i64, %472 found: i64, %473 hits: i64, %474 big: ptr):
+    %481 lit: i64 = const 7919
+    %482 t: i64 = intmul %471, %481
+    %483 lit: i64 = const 5000000
+    %484 t: i64 = intsub %482, %483
+    %485 box: word = box %484
+    %486 r: ptr = $map_remove(%474, %485)
+    %487 lit: unit = const ()
+    jump b34(%487, %470, %471, %472, %473, %486, %469)
+  b36(%475 xs: ptr, %476 m: ptr, %477 i: i64, %478 found: i64, %479 hits: i64, %480 big: ptr):
     %488 lit: unit = const ()
-    %489 box: word = box %488
-    jump b34(%489, %471, %472, %473, %474, %487, %470)
-  b36(%476 xs: ptr, %477 m: ptr, %478 i: i64, %479 found: i64, %480 hits: i64, %481 big: ptr):
-    %490 lit: unit = const ()
-    %491 box: word = box %490
-    jump b34(%491, %477, %478, %479, %480, %481, %476)
-  b37(%493 m: ptr, %494 i: i64, %495 found: i64, %496 hits: i64, %497 big: ptr, %498 xs: ptr):
-    %499 lit: i64 = const 2000
-    %500 t: bool = lt.int %494, %499
-    if %500 then b39(%498, %493, %494, %495, %496, %497) else b40(%498, %493, %494, %495, %496, %497)
-  b38(%501 v: word, %502 m: ptr, %503 i: i64, %504 found: i64, %505 hits: i64, %506 big: ptr, %507 xs: ptr):
-    drop %501
-    jump b37(%502, %503, %504, %505, %506, %507)
-  b39(%508 xs: ptr, %509 m: ptr, %510 i: i64, %511 found: i64, %512 hits: i64, %513 big: ptr):
-    %520 lit: i64 = const 7919
-    %521 t: i64 = intmul %510, %520
-    %522 lit: i64 = const 5000000
-    %523 t: i64 = intsub %521, %522
-    %524 box: word = box %523
-    %525 box: word = box %510
-    %526 r: ptr = $map_insert(%513, %524, %525)
-    %527 lit: i64 = const 1
-    %528 t: i64 = intadd %510, %527
-    %529 lit: unit = const ()
-    %530 box: word = box %529
-    jump b38(%530, %509, %528, %511, %512, %526, %508)
-  b40(%514 xs: ptr, %515 m: ptr, %516 i: i64, %517 found: i64, %518 hits: i64, %519 big: ptr):
-    jump b9(%515, %516, %517, %518, %519, %514)
-  b41(%532 i: i64, %533 m: ptr, %534 i: i64, %535 found: i64, %536 hits: i64, %537 xs: ptr, %538 xs: ptr, %539 n: i64):
-    %540 more: bool = lt.int %532, %539
-    if %540 then b42(%537, %538, %539, %532, %533, %534, %535, %536) else b43(%537, %538, %539, %532, %533, %534, %535, %536)
-  b42(%541 xs: ptr, %542 xs: ptr, %543 n: i64, %544 i: i64, %545 m: ptr, %546 i: i64, %547 found: i64, %548 hits: i64):
-    dup.candidate %542
-    %557 x: word = $list_at(%542, %544)
-    %558 unbox: i64 = unbox %557
-    drop %557
-    %569 box: word = box %558
-    dup.candidate %545
-    call contains#4(%545, %569) -> b45(%541, %542, %543, %544, %545, %546, %547, %548)
-  b43(%549 xs: ptr, %550 xs: ptr, %551 n: i64, %552 i: i64, %553 m: ptr, %554 i: i64, %555 found: i64, %556 hits: i64):
-    drop %550
-    jump b5(%553, %554, %555, %556, %549)
-  b44(%559 m: ptr, %560 i: i64, %561 found: i64, %562 hits: i64, %563 xs: ptr, %564 xs: ptr, %565 n: i64, %566 i: i64):
-    %567 lit: i64 = const 1
-    %568 i: i64 = intadd %566, %567
-    jump b41(%568, %559, %560, %561, %562, %563, %564, %565)
-  b45(%570 r: bool, %571 xs: ptr, %572 xs: ptr, %573 n: i64, %574 i: i64, %575 m: ptr, %576 i: i64, %577 found: i64, %578 hits: i64):
-    if %570 then b47(%571, %572, %573, %574, %575, %576, %577, %578) else b48(%571, %572, %573, %574, %575, %576, %577, %578)
-  b46(%579 v: word, %580 m: ptr, %581 i: i64, %582 found: i64, %583 hits: i64, %584 xs: ptr, %585 xs: ptr, %586 n: i64, %587 i: i64):
-    drop %579
-    jump b44(%580, %581, %582, %583, %584, %585, %586, %587)
-  b47(%588 xs: ptr, %589 xs: ptr, %590 n: i64, %591 i: i64, %592 m: ptr, %593 i: i64, %594 found: i64, %595 hits: i64):
-    %604 lit: i64 = const 1
-    %605 t: i64 = intadd %595, %604
-    %606 lit: unit = const ()
-    %607 box: word = box %606
-    jump b46(%607, %592, %593, %594, %605, %588, %589, %590, %591)
-  b48(%596 xs: ptr, %597 xs: ptr, %598 n: i64, %599 i: i64, %600 m: ptr, %601 i: i64, %602 found: i64, %603 hits: i64):
-    %608 lit: unit = const ()
-    %609 box: word = box %608
-    jump b46(%609, %600, %601, %602, %603, %596, %597, %598, %599)
-  b49(%612 i: i64, %613 m: ptr, %614 i: i64, %615 found: i64, %616 xs: ptr, %617 n: i64):
-    %618 more: bool = lt.int %612, %617
-    if %618 then b50(%616, %617, %612, %613, %614, %615) else b51(%616, %617, %612, %613, %614, %615)
-  b50(%619 xs: ptr, %620 n: i64, %621 i: i64, %622 m: ptr, %623 i: i64, %624 found: i64):
-    dup.candidate %619
-    %631 x: word = $list_at(%619, %621)
-    %632 unbox: i64 = unbox %631
-    drop %631
-    %641 lit: i64 = const 100
-    %642 t: i64 = intneg %641
-    %643 box: word = box %632
-    %644 box: word = box %642
-    dup.candidate %622
-    %645 r: word = $map_get_or(%622, %643, %644)
-    %646 unbox: i64 = unbox %645
-    drop %645
-    %647 t: i64 = intadd %624, %646
-    jump b52(%622, %623, %647, %619, %620, %621)
-  b51(%625 xs: ptr, %626 n: i64, %627 i: i64, %628 m: ptr, %629 i: i64, %630 found: i64):
-    jump b4(%628, %629, %630, %625)
-  b52(%633 m: ptr, %634 i: i64, %635 found: i64, %636 xs: ptr, %637 n: i64, %638 i: i64):
-    %639 lit: i64 = const 1
-    %640 i: i64 = intadd %638, %639
-    jump b49(%640, %633, %634, %635, %636, %637)
-  b53(%650 i: i64, %651 m: ptr, %652 i: i64, %653 xs: ptr, %654 n: i64):
-    %655 more: bool = lt.int %650, %654
-    if %655 then b54(%653, %654, %650, %651, %652) else b55(%653, %654, %650, %651, %652)
-  b54(%656 xs: ptr, %657 n: i64, %658 i: i64, %659 m: ptr, %660 i: i64):
-    dup.candidate %656
-    %666 x: word = $list_at(%656, %658)
-    %667 unbox: i64 = unbox %666
-    drop %666
-    %675 box: word = box %667
-    %676 box: word = box %660
-    %677 r: ptr = $map_insert(%659, %675, %676)
-    %678 lit: i64 = const 1
-    %679 t: i64 = intadd %660, %678
-    jump b56(%677, %679, %656, %657, %658)
-  b55(%661 xs: ptr, %662 n: i64, %663 i: i64, %664 m: ptr, %665 i: i64):
-    jump b1(%664, %665, %661)
-  b56(%668 m: ptr, %669 i: i64, %670 xs: ptr, %671 n: i64, %672 i: i64):
-    %673 lit: i64 = const 1
-    %674 i: i64 = intadd %672, %673
-    jump b53(%674, %668, %669, %670, %671)
+    jump b34(%488, %476, %477, %478, %479, %480, %475)
+  b37(%490 m: ptr, %491 i: i64, %492 found: i64, %493 hits: i64, %494 big: ptr, %495 xs: ptr):
+    %496 lit: i64 = const 2000
+    %497 t: bool = lt.int %491, %496
+    if %497 then b39(%495, %490, %491, %492, %493, %494) else b40(%495, %490, %491, %492, %493, %494)
+  b38(%498 v: unit, %499 m: ptr, %500 i: i64, %501 found: i64, %502 hits: i64, %503 big: ptr, %504 xs: ptr):
+    jump b37(%499, %500, %501, %502, %503, %504)
+  b39(%505 xs: ptr, %506 m: ptr, %507 i: i64, %508 found: i64, %509 hits: i64, %510 big: ptr):
+    %517 lit: i64 = const 7919
+    %518 t: i64 = intmul %507, %517
+    %519 lit: i64 = const 5000000
+    %520 t: i64 = intsub %518, %519
+    %521 box: word = box %520
+    %522 box: word = box %507
+    %523 r: ptr = $map_insert(%510, %521, %522)
+    %524 lit: i64 = const 1
+    %525 t: i64 = intadd %507, %524
+    %526 lit: unit = const ()
+    jump b38(%526, %506, %525, %508, %509, %523, %505)
+  b40(%511 xs: ptr, %512 m: ptr, %513 i: i64, %514 found: i64, %515 hits: i64, %516 big: ptr):
+    jump b9(%512, %513, %514, %515, %516, %511)
+  b41(%528 i: i64, %529 m: ptr, %530 i: i64, %531 found: i64, %532 hits: i64, %533 xs: ptr, %534 xs: ptr, %535 n: i64):
+    %536 more: bool = lt.int %528, %535
+    if %536 then b42(%533, %534, %535, %528, %529, %530, %531, %532) else b43(%533, %534, %535, %528, %529, %530, %531, %532)
+  b42(%537 xs: ptr, %538 xs: ptr, %539 n: i64, %540 i: i64, %541 m: ptr, %542 i: i64, %543 found: i64, %544 hits: i64):
+    dup.candidate %538
+    %553 x: word = $list_at(%538, %540)
+    %554 unbox: i64 = unbox %553
+    drop %553
+    %565 box: word = box %554
+    dup.candidate %541
+    call contains#4(%541, %565) -> b45(%537, %538, %539, %540, %541, %542, %543, %544)
+  b43(%545 xs: ptr, %546 xs: ptr, %547 n: i64, %548 i: i64, %549 m: ptr, %550 i: i64, %551 found: i64, %552 hits: i64):
+    drop %546
+    jump b5(%549, %550, %551, %552, %545)
+  b44(%555 m: ptr, %556 i: i64, %557 found: i64, %558 hits: i64, %559 xs: ptr, %560 xs: ptr, %561 n: i64, %562 i: i64):
+    %563 lit: i64 = const 1
+    %564 i: i64 = intadd %562, %563
+    jump b41(%564, %555, %556, %557, %558, %559, %560, %561)
+  b45(%566 r: bool, %567 xs: ptr, %568 xs: ptr, %569 n: i64, %570 i: i64, %571 m: ptr, %572 i: i64, %573 found: i64, %574 hits: i64):
+    if %566 then b47(%567, %568, %569, %570, %571, %572, %573, %574) else b48(%567, %568, %569, %570, %571, %572, %573, %574)
+  b46(%575 v: unit, %576 m: ptr, %577 i: i64, %578 found: i64, %579 hits: i64, %580 xs: ptr, %581 xs: ptr, %582 n: i64, %583 i: i64):
+    jump b44(%576, %577, %578, %579, %580, %581, %582, %583)
+  b47(%584 xs: ptr, %585 xs: ptr, %586 n: i64, %587 i: i64, %588 m: ptr, %589 i: i64, %590 found: i64, %591 hits: i64):
+    %600 lit: i64 = const 1
+    %601 t: i64 = intadd %591, %600
+    %602 lit: unit = const ()
+    jump b46(%602, %588, %589, %590, %601, %584, %585, %586, %587)
+  b48(%592 xs: ptr, %593 xs: ptr, %594 n: i64, %595 i: i64, %596 m: ptr, %597 i: i64, %598 found: i64, %599 hits: i64):
+    %603 lit: unit = const ()
+    jump b46(%603, %596, %597, %598, %599, %592, %593, %594, %595)
+  b49(%606 i: i64, %607 m: ptr, %608 i: i64, %609 found: i64, %610 xs: ptr, %611 n: i64):
+    %612 more: bool = lt.int %606, %611
+    if %612 then b50(%610, %611, %606, %607, %608, %609) else b51(%610, %611, %606, %607, %608, %609)
+  b50(%613 xs: ptr, %614 n: i64, %615 i: i64, %616 m: ptr, %617 i: i64, %618 found: i64):
+    dup.candidate %613
+    %625 x: word = $list_at(%613, %615)
+    %626 unbox: i64 = unbox %625
+    drop %625
+    %635 lit: i64 = const 100
+    %636 t: i64 = intneg %635
+    %637 box: word = box %626
+    %638 box: word = box %636
+    dup.candidate %616
+    %639 r: word = $map_get_or(%616, %637, %638)
+    %640 unbox: i64 = unbox %639
+    drop %639
+    %641 t: i64 = intadd %618, %640
+    jump b52(%616, %617, %641, %613, %614, %615)
+  b51(%619 xs: ptr, %620 n: i64, %621 i: i64, %622 m: ptr, %623 i: i64, %624 found: i64):
+    jump b4(%622, %623, %624, %619)
+  b52(%627 m: ptr, %628 i: i64, %629 found: i64, %630 xs: ptr, %631 n: i64, %632 i: i64):
+    %633 lit: i64 = const 1
+    %634 i: i64 = intadd %632, %633
+    jump b49(%634, %627, %628, %629, %630, %631)
+  b53(%644 i: i64, %645 m: ptr, %646 i: i64, %647 xs: ptr, %648 n: i64):
+    %649 more: bool = lt.int %644, %648
+    if %649 then b54(%647, %648, %644, %645, %646) else b55(%647, %648, %644, %645, %646)
+  b54(%650 xs: ptr, %651 n: i64, %652 i: i64, %653 m: ptr, %654 i: i64):
+    dup.candidate %650
+    %660 x: word = $list_at(%650, %652)
+    %661 unbox: i64 = unbox %660
+    drop %660
+    %669 box: word = box %661
+    %670 box: word = box %654
+    %671 r: ptr = $map_insert(%653, %669, %670)
+    %672 lit: i64 = const 1
+    %673 t: i64 = intadd %654, %672
+    jump b56(%671, %673, %650, %651, %652)
+  b55(%655 xs: ptr, %656 n: i64, %657 i: i64, %658 m: ptr, %659 i: i64):
+    jump b1(%658, %659, %655)
+  b56(%662 m: ptr, %663 i: i64, %664 xs: ptr, %665 n: i64, %666 i: i64):
+    %667 lit: i64 = const 1
+    %668 i: i64 = intadd %666, %667
+    jump b53(%668, %662, %663, %664, %665)
 
 fn $entry#1 top -> unit ; main::map_int_keys, frame 1 slots [%1 bool]
   b0():

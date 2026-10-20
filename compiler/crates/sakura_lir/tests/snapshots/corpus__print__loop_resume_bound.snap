@@ -70,17 +70,16 @@ fn counter#3 top -> ptr ; main::loop_resume_bound, frame 0 slots []
     %2 handler: ptr = handler main::loop_resume_bound::Counter row 6 state(%1) clauses(%0)
     ret %2
 
-fn nine#4 top -> i64 ; main::loop_resume_bound, frame 79 slots [%0 word*, %16 i64, %17 word*, %18 i64, %19 i64, %20 i64, %21 word*, %22 i64, %23 i64, %24 i64, %26 word*, %27 word*, %28 i64, %29 i64, %30 i64, %31 i64, %32 bool, %33 word*, %34 i64, %35 i64, %36 i64, %37 i64, %39 i64, %40 word*, %41 i64, %42 i64, %43 i64, %44 i64, %56 i64, %57 word*, %58 i64, %59 i64, %60 i64, %61 i64, %62 i64, %64 word*, %65 word*, %66 i64, %67 i64, %68 i64, %69 i64, %70 i64, %71 i64, %72 bool, %73 word*, %74 i64, %75 i64, %76 i64, %77 i64, %78 i64, %79 i64, %96 word*, %97 word*, %98 i64, %99 i64, %100 word*, %101 i64, %102 word*, %103 i64, %104 i64, %105 word*, %108 bool, %109 word*, %110 i64, %111 i64, %130 word*, %131 word*, %132 i64, %133 i64, %134 i64, %135 i64, %136 i64, %137 bool, %138 word*, %139 i64, %140 i64, %141 i64, %142 i64, %143 i64]
+fn nine#4 top -> i64 ; main::loop_resume_bound, frame 79 slots [%0 word*, %16 i64, %17 word*, %18 i64, %19 i64, %20 i64, %21 word*, %22 i64, %23 i64, %24 i64, %26 word*, %27 word*, %28 i64, %29 i64, %30 i64, %31 i64, %32 bool, %33 word*, %34 i64, %35 i64, %36 i64, %37 i64, %39 i64, %40 word*, %41 i64, %42 i64, %43 i64, %44 i64, %56 i64, %57 word*, %58 i64, %59 i64, %60 i64, %61 i64, %62 i64, %64 word*, %65 word*, %66 i64, %67 i64, %68 i64, %69 i64, %70 i64, %71 i64, %72 bool, %73 word*, %74 i64, %75 i64, %76 i64, %77 i64, %78 i64, %79 i64, %96 word*, %97 word*, %98 i64, %99 i64, %100 word*, %101 i64, %102 word*, %103 i64, %104 i64, %105 word*, %108 bool, %109 word*, %110 i64, %111 i64, %129 word*, %130 word*, %131 i64, %132 i64, %133 i64, %134 i64, %135 i64, %136 bool, %137 word*, %138 i64, %139 i64, %140 i64, %141 i64, %142 i64]
   b0(%0 tag: ptr):
+    %146 lit: i64 = const 0
     %147 lit: i64 = const 0
-    %148 lit: i64 = const 0
-    jump b1(%147, %148, %0)
+    jump b1(%146, %147, %0)
   b1(%1 acc: i64, %2 i: i64, %3 tag: ptr):
     %4 lit: i64 = const 3
     %5 t: bool = lt.int %2, %4
     if %5 then b3(%3, %1, %2) else b4(%3, %1, %2)
-  b2(%6 v: word, %7 acc: i64, %8 i: i64, %9 tag: ptr):
-    drop %6
+  b2(%6 v: unit, %7 acc: i64, %8 i: i64, %9 tag: ptr):
     jump b1(%7, %8, %9)
   b3(%10 tag: ptr, %11 acc: i64, %12 i: i64):
     perform main::loop_resume_bound::Counter.next() -> b5(%10, %11, %12)
@@ -149,32 +148,30 @@ fn nine#4 top -> i64 ; main::loop_resume_bound, frame 79 slots [%0 word*, %16 i6
     %113 lit: i64 = const 1
     %114 t: i64 = intadd %110, %113
     %115 lit: unit = const ()
-    %116 box: word = box %115
-    jump b2(%116, %111, %114, %109)
-  b17(%117 tag: ptr, %118 acc: i64, %119 i: i64, %120 r: i64, %121 r: i64, %122 r: i64):
-    %129 lit: i64 = const 2
-    call millis#6(%129) -> b19(%117, %118, %119, %120, %121, %122)
-  b18(%123 tag: ptr, %124 acc: i64, %125 i: i64, %126 r: i64, %127 r: i64, %128 r: i64):
-    %145 lit: unit = const ()
-    %146 box: word = box %145
-    jump b10(%146, %124, %125, %123, %126, %127, %128)
-  b19(%130 r: ptr, %131 tag: ptr, %132 acc: i64, %133 i: i64, %134 r: i64, %135 r: i64, %136 r: i64):
-    perform std::clock::Clock.sleep(%130) -> b20(%131, %132, %133, %134, %135, %136)
-  b20(%137 r: unit, %138 tag: ptr, %139 acc: i64, %140 i: i64, %141 r: i64, %142 r: i64, %143 r: i64):
-    %144 box: word = box %137
-    jump b10(%144, %139, %140, %138, %141, %142, %143)
+    jump b2(%115, %111, %114, %109)
+  b17(%116 tag: ptr, %117 acc: i64, %118 i: i64, %119 r: i64, %120 r: i64, %121 r: i64):
+    %128 lit: i64 = const 2
+    call millis#6(%128) -> b19(%116, %117, %118, %119, %120, %121)
+  b18(%122 tag: ptr, %123 acc: i64, %124 i: i64, %125 r: i64, %126 r: i64, %127 r: i64):
+    %144 lit: unit = const ()
+    %145 box: word = box %144
+    jump b10(%145, %123, %124, %122, %125, %126, %127)
+  b19(%129 r: ptr, %130 tag: ptr, %131 acc: i64, %132 i: i64, %133 r: i64, %134 r: i64, %135 r: i64):
+    perform std::clock::Clock.sleep(%129) -> b20(%130, %131, %132, %133, %134, %135)
+  b20(%136 r: unit, %137 tag: ptr, %138 acc: i64, %139 i: i64, %140 r: i64, %141 r: i64, %142 r: i64):
+    %143 box: word = box %136
+    jump b10(%143, %138, %139, %137, %140, %141, %142)
 
-fn eight#5 top -> i64 ; main::loop_resume_bound, frame 70 slots [%0 word*, %16 i64, %17 word*, %18 i64, %19 i64, %20 i64, %21 word*, %22 i64, %23 i64, %24 i64, %26 word*, %27 word*, %28 i64, %29 i64, %30 i64, %31 i64, %32 bool, %33 word*, %34 i64, %35 i64, %36 i64, %37 i64, %39 i64, %40 word*, %41 i64, %42 i64, %43 i64, %44 i64, %57 word*, %58 word*, %59 i64, %60 i64, %61 i64, %62 i64, %63 i64, %64 bool, %65 word*, %66 i64, %67 i64, %68 i64, %69 i64, %70 i64, %86 word*, %87 word*, %88 i64, %89 i64, %90 word*, %91 i64, %92 word*, %93 i64, %94 i64, %95 word*, %98 bool, %99 word*, %100 i64, %101 i64, %120 word*, %121 word*, %122 i64, %123 i64, %124 i64, %125 i64, %126 i64, %127 bool, %128 word*, %129 i64, %130 i64, %131 i64, %132 i64, %133 i64]
+fn eight#5 top -> i64 ; main::loop_resume_bound, frame 70 slots [%0 word*, %16 i64, %17 word*, %18 i64, %19 i64, %20 i64, %21 word*, %22 i64, %23 i64, %24 i64, %26 word*, %27 word*, %28 i64, %29 i64, %30 i64, %31 i64, %32 bool, %33 word*, %34 i64, %35 i64, %36 i64, %37 i64, %39 i64, %40 word*, %41 i64, %42 i64, %43 i64, %44 i64, %57 word*, %58 word*, %59 i64, %60 i64, %61 i64, %62 i64, %63 i64, %64 bool, %65 word*, %66 i64, %67 i64, %68 i64, %69 i64, %70 i64, %86 word*, %87 word*, %88 i64, %89 i64, %90 word*, %91 i64, %92 word*, %93 i64, %94 i64, %95 word*, %98 bool, %99 word*, %100 i64, %101 i64, %119 word*, %120 word*, %121 i64, %122 i64, %123 i64, %124 i64, %125 i64, %126 bool, %127 word*, %128 i64, %129 i64, %130 i64, %131 i64, %132 i64]
   b0(%0 tag: ptr):
+    %136 lit: i64 = const 0
     %137 lit: i64 = const 0
-    %138 lit: i64 = const 0
-    jump b1(%137, %138, %0)
+    jump b1(%136, %137, %0)
   b1(%1 acc: i64, %2 i: i64, %3 tag: ptr):
     %4 lit: i64 = const 3
     %5 t: bool = lt.int %2, %4
     if %5 then b3(%3, %1, %2) else b4(%3, %1, %2)
-  b2(%6 v: word, %7 acc: i64, %8 i: i64, %9 tag: ptr):
-    drop %6
+  b2(%6 v: unit, %7 acc: i64, %8 i: i64, %9 tag: ptr):
     jump b1(%7, %8, %9)
   b3(%10 tag: ptr, %11 acc: i64, %12 i: i64):
     perform main::loop_resume_bound::Counter.next() -> b5(%10, %11, %12)
@@ -240,20 +237,19 @@ fn eight#5 top -> i64 ; main::loop_resume_bound, frame 70 slots [%0 word*, %16 i
     %103 lit: i64 = const 1
     %104 t: i64 = intadd %100, %103
     %105 lit: unit = const ()
-    %106 box: word = box %105
-    jump b2(%106, %101, %104, %99)
-  b16(%107 tag: ptr, %108 acc: i64, %109 i: i64, %110 r: i64, %111 r: i64, %112 r: i64):
-    %119 lit: i64 = const 2
-    call millis#6(%119) -> b18(%107, %108, %109, %110, %111, %112)
-  b17(%113 tag: ptr, %114 acc: i64, %115 i: i64, %116 r: i64, %117 r: i64, %118 r: i64):
-    %135 lit: unit = const ()
-    %136 box: word = box %135
-    jump b10(%136, %114, %115, %113, %116, %117, %118)
-  b18(%120 r: ptr, %121 tag: ptr, %122 acc: i64, %123 i: i64, %124 r: i64, %125 r: i64, %126 r: i64):
-    perform std::clock::Clock.sleep(%120) -> b19(%121, %122, %123, %124, %125, %126)
-  b19(%127 r: unit, %128 tag: ptr, %129 acc: i64, %130 i: i64, %131 r: i64, %132 r: i64, %133 r: i64):
-    %134 box: word = box %127
-    jump b10(%134, %129, %130, %128, %131, %132, %133)
+    jump b2(%105, %101, %104, %99)
+  b16(%106 tag: ptr, %107 acc: i64, %108 i: i64, %109 r: i64, %110 r: i64, %111 r: i64):
+    %118 lit: i64 = const 2
+    call millis#6(%118) -> b18(%106, %107, %108, %109, %110, %111)
+  b17(%112 tag: ptr, %113 acc: i64, %114 i: i64, %115 r: i64, %116 r: i64, %117 r: i64):
+    %134 lit: unit = const ()
+    %135 box: word = box %134
+    jump b10(%135, %113, %114, %112, %115, %116, %117)
+  b18(%119 r: ptr, %120 tag: ptr, %121 acc: i64, %122 i: i64, %123 r: i64, %124 r: i64, %125 r: i64):
+    perform std::clock::Clock.sleep(%119) -> b19(%120, %121, %122, %123, %124, %125)
+  b19(%126 r: unit, %127 tag: ptr, %128 acc: i64, %129 i: i64, %130 r: i64, %131 r: i64, %132 r: i64):
+    %133 box: word = box %126
+    jump b10(%133, %128, %129, %127, %130, %131, %132)
 
 fn counter$Counter_next#8 clause main::loop_resume_bound::Counter.next -> i64 ; main::loop_resume_bound, captures [], frame 2 slots [%0 word*, %1 i64]
   b0(%0 env: ptr, %1 inst: id):

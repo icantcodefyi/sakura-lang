@@ -80,17 +80,16 @@ fn $entry#1 top -> unit ; main::owned_elements_guard, frame 1 slots [%1 bool]
     handle_pop
     ret %1
 
-fn spread#2 top -> ptr ; main::owned_elements_guard, frame 13 slots [%0 word*, %12 word*, %13 word*, %14 i64, %41 word*, %42 word*, %43 word*, %44 i64, %45 i64, %54 word*, %55 word*, %56 i64, %57 i64]
+fn spread#2 top -> ptr ; main::owned_elements_guard, frame 13 slots [%0 word*, %12 word*, %13 word*, %14 i64, %40 word*, %41 word*, %42 word*, %43 i64, %44 i64, %53 word*, %54 word*, %55 i64, %56 i64]
   b0(%0 start: ptr):
-    %63 lit: i64 = const 0
-    jump b1(%0, %63)
+    %61 lit: i64 = const 0
+    jump b1(%0, %61)
   b1(%1 bs: ptr, %2 i: i64):
     dup.candidate %1
     %3 r: i64 = $list_len(%1)
     %4 t: bool = lt.int %2, %3
     if %4 then b3(%1, %2) else b4(%1, %2)
-  b2(%5 v: word, %6 bs: ptr, %7 i: i64):
-    drop %5
+  b2(%5 v: unit, %6 bs: ptr, %7 i: i64):
     jump b1(%6, %7)
   b3(%8 bs: ptr, %9 i: i64):
     dup.candidate %8
@@ -98,45 +97,42 @@ fn spread#2 top -> ptr ; main::owned_elements_guard, frame 13 slots [%0 word*, %
   b4(%10 bs: ptr, %11 i: i64):
     ret %10
   b5(%12 r: ptr, %13 bs: ptr, %14 i: i64):
-    %62 lit: i64 = const 0
-    jump b7(%13, %14, %62, %12)
+    %60 lit: i64 = const 0
+    jump b7(%13, %14, %60, %12)
   b6(%15 bs: ptr, %16 i: i64, %17 j: i64):
     %18 lit: i64 = const 1
     %19 t: i64 = intadd %16, %18
     %20 lit: unit = const ()
-    %21 box: word = box %20
-    jump b2(%21, %15, %19)
-  b7(%22 bs: ptr, %23 i: i64, %24 j: i64, %25 r: ptr):
-    dup.candidate %22
-    %26 r: i64 = $list_len(%22)
-    %27 t: bool = lt.int %24, %26
-    if %27 then b9(%25, %22, %23, %24) else b10(%25, %22, %23, %24)
-  b8(%28 v: word, %29 bs: ptr, %30 i: i64, %31 j: i64, %32 r: ptr):
-    drop %28
-    jump b7(%29, %30, %31, %32)
-  b9(%33 r: ptr, %34 bs: ptr, %35 i: i64, %36 j: i64):
-    dup.candidate %34
-    call at#3(%34, %36) -> b11(%33, %34, %35, %36)
-  b10(%37 r: ptr, %38 bs: ptr, %39 i: i64, %40 j: i64):
-    drop %37
-    jump b6(%38, %39, %40)
-  b11(%41 r: ptr, %42 r: ptr, %43 bs: ptr, %44 i: i64, %45 j: i64):
+    jump b2(%20, %15, %19)
+  b7(%21 bs: ptr, %22 i: i64, %23 j: i64, %24 r: ptr):
+    dup.candidate %21
+    %25 r: i64 = $list_len(%21)
+    %26 t: bool = lt.int %23, %25
+    if %26 then b9(%24, %21, %22, %23) else b10(%24, %21, %22, %23)
+  b8(%27 v: unit, %28 bs: ptr, %29 i: i64, %30 j: i64, %31 r: ptr):
+    jump b7(%28, %29, %30, %31)
+  b9(%32 r: ptr, %33 bs: ptr, %34 i: i64, %35 j: i64):
+    dup.candidate %33
+    call at#3(%33, %35) -> b11(%32, %33, %34, %35)
+  b10(%36 r: ptr, %37 bs: ptr, %38 i: i64, %39 j: i64):
+    drop %36
+    jump b6(%37, %38, %39)
+  b11(%40 r: ptr, %41 r: ptr, %42 bs: ptr, %43 i: i64, %44 j: i64):
+    %45 x: i64 = proj %40.0 main::owned_elements_guard::Body
     %46 x: i64 = proj %41.0 main::owned_elements_guard::Body
-    %47 x: i64 = proj %42.0 main::owned_elements_guard::Body
-    %48 t: i64 = intadd %46, %47
-    %49 v: i64 = proj %41.1 main::owned_elements_guard::Body
-    drop %41
-    %50 lit: i64 = const 1
-    %51 t: i64 = intadd %49, %50
-    %52 rec: ptr = alloc main::owned_elements_guard::Body(%48, %51)
-    %53 $site: i64 = const 2
-    call set#4(%43, %45, %52, %53) -> b12(%42, %44, %45)
-  b12(%54 r: ptr, %55 r: ptr, %56 i: i64, %57 j: i64):
-    %58 lit: i64 = const 1
-    %59 t: i64 = intadd %57, %58
-    %60 lit: unit = const ()
-    %61 box: word = box %60
-    jump b8(%61, %54, %56, %59, %55)
+    %47 t: i64 = intadd %45, %46
+    %48 v: i64 = proj %40.1 main::owned_elements_guard::Body
+    drop %40
+    %49 lit: i64 = const 1
+    %50 t: i64 = intadd %48, %49
+    %51 rec: ptr = alloc main::owned_elements_guard::Body(%47, %50)
+    %52 $site: i64 = const 2
+    call set#4(%42, %44, %51, %52) -> b12(%41, %43, %44)
+  b12(%53 r: ptr, %54 r: ptr, %55 i: i64, %56 j: i64):
+    %57 lit: i64 = const 1
+    %58 t: i64 = intadd %56, %57
+    %59 lit: unit = const ()
+    jump b8(%59, %53, %55, %58, %54)
 
 fn at#3 top -> ptr ; main::owned_elements_guard, frame 2 slots [%0 word*, %1 i64]
   b0(%0 bs: ptr, %1 i: i64):
