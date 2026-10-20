@@ -137,8 +137,8 @@ signature. The compiler rejects anything else.
 | --- | --- | --- |
 | `v0.1.0-alpha.1` | The language, std, LSP, MCP, the skill, WASM and the verify preview, on npm, Homebrew and install.sh | **shipped** 2026-10-18 |
 | `v0.1.0` | The first non-alpha preview: WASM complete; the web platform's bytes, encoding, URL, headers, forms and crypto in std; a blessed instruction-count baseline; adds Linux ARM64, Windows x64 and Intel Mac | **shipped** 2026-10-20 |
-| `v0.2.0` | The stability guarantees of [RFC 0001](docs/rfcs/0001-stability-guarantees.md), one `--json` summary kind per record shape, binary HTTP bodies (the last two on `main`) | planned |
-| `v1.0.0` | A release candidate, a seven-day soak with no P1 defect, then 1.0; packages follow in 1.x | planned |
+| `v1.0.0-beta.1` | A beta of 1.0, not production: it may have bugs and may change before 1.0.0, every breaking change listed in the CHANGELOG with a migration; one `--json` summary kind per record shape, binary HTTP bodies, the web APIs (on `main`) | planned |
+| `v1.0.0` | Production: seven consecutive clean fuzz nights and seven days after the last beta with no P1 defect, then 1.0; packages follow in 1.x | planned |
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is
 **experimental**, exists only in source builds with the `native` feature, and under the current

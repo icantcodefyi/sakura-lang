@@ -107,7 +107,7 @@ validation and HTTP translation. Opus uses the installed binary, its setup skill
 and the website only. Start on alpha.1; record unavailable features rather than
 using a source build. All acceptance tests must pass in CI on `js` and `wasm`
 against installed `v0.1.0`. Record the first migration from the published change
-notes. For 0.2.0, Astra supplies `MIGRATION.md` from release notes before Opus edits;
+notes. For 1.0.0-beta.1, Astra supplies `MIGRATION.md` from release notes before Opus edits;
 every resulting hunk must be listed. Astra later reviews without editing code.
 
 ## Non-goals and open friction

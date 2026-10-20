@@ -132,7 +132,7 @@ padding or inventing hardware features. Opus uses installed alpha.1, its setup
 skill and the website only. Record unavailable proof prerequisites or release
 features. CI acceptance is installed `v0.1.0` on `js` and `wasm`, with the proof
 records above and ordinary tests; a source-built compiler is not a substitute.
-Record alpha.1 → 0.1.0 changes from the notes. For 0.2.0, Astra writes `MIGRATION.md`
+Record alpha.1 → 0.1.0 changes from the notes. For 1.0.0-beta.1, Astra writes `MIGRATION.md`
 from release notes before Opus edits; every hunk must be listed. Later reader review
 by Astra edits no code.
 

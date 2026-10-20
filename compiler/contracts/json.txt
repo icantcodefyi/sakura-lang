@@ -8,6 +8,7 @@
 # §17.257 (1)); the one reset it records is spent.
 
 baseline 0.2.0
+# The release this baseline anticipated ships as 1.0.0-beta.1 (design §17.291 (2)).
 audit 1.0 schema_version string required
 audit 1.0 kind string required
 audit 1.0 site string required

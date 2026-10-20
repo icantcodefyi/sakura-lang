@@ -100,7 +100,7 @@ reporting and CLI separation, not padding. The fresh author may use only the
 installed binary, its `sakura setup` skill and the website. Start on alpha.1 and
 record failures honestly; do not substitute a source build. Acceptance requires CI
 runs on both `js` and `wasm` against installed `v0.1.0`. Capture the alpha.1 → 0.1.0
-changes against the published notes. After 0.2.0 tags, Astra writes `MIGRATION.md`
+changes against the published notes. After 1.0.0-beta.1 tags, Astra writes `MIGRATION.md`
 from release notes alone before Opus changes the program; every migration hunk
 must be accounted for. Astra's later reader review edits no program code.
 

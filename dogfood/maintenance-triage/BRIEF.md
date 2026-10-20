@@ -115,7 +115,7 @@ per-run state, answer checks, budgets and CLI reporting provide the scope. Opus
 uses only installed alpha.1, its setup skill and the website. Acceptance requires
 installed `v0.1.0` CI on `js` and `wasm`, with a cassette for the provider service.
 Record first-migration changes against the notes and alpha.1 failures as friction.
-After 0.2.0 tags, Astra writes `MIGRATION.md` from notes alone before Opus edits;
+After 1.0.0-beta.1 tags, Astra writes `MIGRATION.md` from notes alone before Opus edits;
 every migration hunk must be on the list. Later Astra review edits no code.
 
 ## Non-goals and open friction

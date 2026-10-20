@@ -110,7 +110,7 @@ reconciliation, reporting and error translation should supply substantive scope.
 Opus starts from the installed alpha.1, its setup skill and the website only.
 Installed `v0.1.0` CI must pass on `js` and `wasm`, replaying every supplier cassette.
 Record alpha.1 failures and note-backed migration changes; never substitute a
-source build. After 0.2.0 tags, Astra writes `MIGRATION.md` from notes alone before
+source build. After 1.0.0-beta.1 tags, Astra writes `MIGRATION.md` from notes alone before
 Opus edits, and every diff hunk must be on that list. Later Astra review edits no code.
 
 ## Non-goals and open friction

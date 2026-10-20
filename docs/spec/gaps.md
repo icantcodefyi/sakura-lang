@@ -1,6 +1,6 @@
 # Fixture gaps and draft limitations
 
-**Draft (normative at v0.2.0). Informative.**
+**Draft (normative at v1.0.0-beta.1). Informative.**
 
 This records conformance evidence still missing after the fixture pass that followed the draft.
 No entry changes language behavior or claims a release gate is closed.

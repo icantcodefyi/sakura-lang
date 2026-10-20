@@ -14,7 +14,8 @@ verified soundness, production readiness, or measured efficiency.
 The first preview was `0.1.0-alpha.1`; the current release is `0.1.0`.
 Preview behavior may change between prereleases.
 [Draft RFC 0001](docs/rfcs/0001-stability-guarantees.md) proposes stronger guarantees
-for owner acceptance at v0.2.0; it does not change this policy until accepted.
+for owner acceptance after its final comment period, which does not gate `v1.0.0-beta.1`;
+it does not change this policy until accepted.
 Once numbered non-prerelease versions exist, reserve **minor releases** for
 deliberate breaking language/API changes and **patch releases** for compatible
 fixes. Describe affected programs, rationale, and migration steps in release notes.
@@ -44,12 +45,13 @@ foreign file only costs the analysis it would have saved.
 
 ## Draft public-interface inventory
 
-**Draft until RFC 0001 is accepted at v0.2.0.** These are proposed classifications,
+**Draft until RFC 0001 is accepted.** These are proposed classifications,
 not stability guarantees for the current preview. `stable` means intended for the
 RFC's compatibility contract; `experimental` means no compatibility promise;
 `internal` means an implementation or development interface. The first-honouring
-column is conditional on acceptance: `0.2.0` starts the machine-contract rules and
-compatibility within a 0.x minor line; `1.0.0` starts full source/std compatibility
+column is conditional on acceptance: `1.0.0-beta.1` starts the machine-contract rules, which
+may still change during the beta with a CHANGELOG migration (owner, 2026-10-21), and a
+listed-migration promise for source and std; `1.0.0` starts full source/std compatibility
 within a major. `—` makes no stabilization commitment.
 
 This inventory follows design §17.232 and the actual parser, emitters and hosts.
@@ -62,46 +64,46 @@ and built-in help commands are also captured in the baseline.
 
 | Surface | Item (implemented unless explicitly qualified) | Draft level | First honouring version |
 | --- | --- | --- | --- |
-| CLI | Root `-h`/`--help`, `-V`/`--version`; `help [COMMAND]`; per-command `-h`/`--help` | stable | 0.2.0 |
-| CLI | `check [PATHS]`: `--json`, `--frozen-specs`, `--since` | stable | 0.2.0 |
-| CLI | `fix [PATHS]`: `--preview`, `--apply`, `--frozen-specs`, `--since`, `--json` | stable | 0.2.0 |
-| CLI | `build [PATHS]`: `--json`, `--target js\|wasm`, `--out-dir`, `--manifest` | stable | 0.2.0 |
+| CLI | Root `-h`/`--help`, `-V`/`--version`; `help [COMMAND]`; per-command `-h`/`--help` | stable | 1.0.0-beta.1 |
+| CLI | `check [PATHS]`: `--json`, `--frozen-specs`, `--since` | stable | 1.0.0-beta.1 |
+| CLI | `fix [PATHS]`: `--preview`, `--apply`, `--frozen-specs`, `--since`, `--json` | stable | 1.0.0-beta.1 |
+| CLI | `build [PATHS]`: `--json`, `--target js\|wasm`, `--out-dir`, `--manifest` | stable | 1.0.0-beta.1 |
 | CLI | `build --emit js\|lir`, `--layout tagged\|niche` (`niche` accepted by clap but unimplemented) | experimental | — |
 | CLI | `build --dump direct\|core\|owned`; hidden `build --no-direct`, `--wasi` | internal | — |
-| CLI | `run [PATH] [-- ARGS]`: `--target js\|wasm`, `--out-dir` | stable | 0.2.0 |
-| CLI | `verify [PATHS]`: `--json`, `--target js\|wasm`, `--rlimit`, `--solver` | stable | 0.2.0 |
-| CLI | `test [PATHS]`: `--json`, `--seed`, `--filter`, `--update-snapshots`, `--record`, `--contracts`, `--std`, `--target js\|wasm`, `--out-dir` | stable | 0.2.0 |
+| CLI | `run [PATH] [-- ARGS]`: `--target js\|wasm`, `--out-dir` | stable | 1.0.0-beta.1 |
+| CLI | `verify [PATHS]`: `--json`, `--target js\|wasm`, `--rlimit`, `--solver` | stable | 1.0.0-beta.1 |
+| CLI | `test [PATHS]`: `--json`, `--seed`, `--filter`, `--update-snapshots`, `--record`, `--contracts`, `--std`, `--target js\|wasm`, `--out-dir` | stable | 1.0.0-beta.1 |
 | CLI | Hidden `run --no-direct`, `test --no-direct` | internal | — |
-| CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 0.2.0 |
-| CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 0.2.0 |
-| CLI | `lsp`; `mcp serve --root` | stable | 0.2.0 |
+| CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 1.0.0-beta.1 |
+| CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 1.0.0-beta.1 |
+| CLI | `lsp`; `mcp serve --root` | stable | 1.0.0-beta.1 |
 | Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature, and release binaries are built without it; a native `main` that declares `Http`, `Serve`, `WebSocket` or `Llm` exits 75 at startup (RFC 0002 §7) | experimental | — |
-| JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix, pre-verification errors and a `test` run that does not compile; one `kind` per closing shape, every `summary` field required (design §17.242 (1)) | stable | 0.2.0 |
-| JSON Lines | `audit`, `audit_summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic`: `1.1`; `verify_summary`: `1.0` | stable | 0.2.0 |
-| JSON Lines | Test `test`, `test_summary`: `1.0` on JS and WASM; `regression` `1.0`, the record `test --contracts` stores as `tests/regressions/<fn>.json` and replays | stable | 0.2.0 |
-| JSON Lines | `doc --json`: one `symbol_query` record, `1.0`; `build --manifest`/verify's manifest file: `manifest`, `1.1`. Usage failures are human stderr with exit 2 even with `--json` (design §17.242 (3)); `fix --preview --json` prints a human preview | stable (`symbol_query`, `manifest`); usage text is not a contract | 0.2.0 |
-| Runtime JSON | `defect` on stderr at exit 70: `1.0`, with `code`, `message` and, when the runtime knows the site, `spans` of `uri`, `start_byte`, `end_byte`, `role` (no `content_hash`) | stable | 0.2.0 |
+| JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix, pre-verification errors and a `test` run that does not compile; one `kind` per closing shape, every `summary` field required (design §17.242 (1)) | stable | 1.0.0-beta.1 |
+| JSON Lines | `audit`, `audit_summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic`: `1.1`; `verify_summary`: `1.0` | stable | 1.0.0-beta.1 |
+| JSON Lines | Test `test`, `test_summary`: `1.0` on JS and WASM; `regression` `1.0`, the record `test --contracts` stores as `tests/regressions/<fn>.json` and replays | stable | 1.0.0-beta.1 |
+| JSON Lines | `doc --json`: one `symbol_query` record, `1.0`; `build --manifest`/verify's manifest file: `manifest`, `1.1`. Usage failures are human stderr with exit 2 even with `--json` (design §17.242 (3)); `fix --preview --json` prints a human preview | stable (`symbol_query`, `manifest`); usage text is not a contract | 1.0.0-beta.1 |
+| Runtime JSON | `defect` on stderr at exit 70: `1.0`, with `code`, `message` and, when the runtime knows the site, `spans` of `uri`, `start_byte`, `end_byte`, `role` (no `content_hash`) | stable | 1.0.0-beta.1 |
 | Runtime instrumentation | Effect trace and WASM statistics/coverage output formats, separate from CLI `--json` | internal | — |
-| `sakura.toml` | `[package]` with `name`, `version`, `edition`; `[permissions]` with `fs.read`, `fs.write`, `net`, `env`; `[verify]` with `rlimit` | stable | 0.2.0 |
-| `sakura.toml` | `[permissions] process` reserved: `process = []` is accepted and grants nothing, the same as leaving the key out; no std effect starts processes. Any other list is `V8006` with the message "`process` grants nothing in this version: no std effect starts processes; the key is reserved" (design §17.253 (3)); a `Process` effect needs an RFC | stable (`[]` only) | 0.2.0 |
-| `sakura.toml` | `[dependencies]` reserved: any form (empty, populated, inline, dotted) is refused with `V8005 dependencies_not_supported` before anything runs (RFC 0001, design §17.232); packages arrive additively in 1.x | stable | 0.2.0 |
-| `sakura.toml` | Any other table or key, a value of the wrong type, a missing `[package] name` or malformed TOML is `V8006 manifest_invalid` from `check`, `build`, `run`, `test`, `verify` and the LSP: `--json` as any `V`, exit 1, primary span at the parser's place in `sakura.toml` (design §17.239); the message is the parser's text and is not promised | stable | 0.2.0 |
-| Std modules | `std/{agent,blob,budget,bytes,cli,clock,compress,console,core,crypto,decimal,duration,encoding,env,float,form,fs,gen,graph,headers,html,http,instant,int,json,list,llm,log,map,option,path,prompt,random,request,response,result,retry,router,searchparams,secret,serve,set,sql,string,task,test,tool,unit,untrusted,url,urlpart,urlpattern,stream,uuid,websocket}`: public source signatures in the [generated std index](compiler/std/INDEX.md); target support remains as documented there | stable | 0.2.0 within minor; 1.0.0 within major |
-| Diagnostic identity | Allocated `V0xxx` lex/parse, `V1xxx` resolution, `V2xxx` types, `V3xxx` effects, `V4xxx` patterns, `V5xxx` contracts/refinements, `V6xxx` capabilities, `V8xxx` package/ABI/frozen specs, `V9xxx` compiler failures | stable | 0.2.0 (non-reuse) |
-| Diagnostic identity | Allocated `W1xxx`, `W4xxx`, `W5xxx`, `W7xxx`, `W8xxx` warnings; `D001`–`D004`, `D010`–`D011`, `D020`–`D021`, `D030`–`D031`, `D090`–`D096` runtime defects; retired `V5002` remains reserved. Family labels do not allocate absent codes; the [registry](compiler/crates/sakura_diagnostics/src/codes.rs) lists exact identities | stable | 0.2.0 (non-reuse) |
-| ABI | WASM runtime [ABI 1.10.0](compiler/runtime/rt/ABI.md): version negotiation, layouts/tags, imports/exports, outcomes, ownership and optional-export rules | stable | 0.2.0 (RFC enforcement; existing ABI revision rules apply) |
+| `sakura.toml` | `[package]` with `name`, `version`, `edition`; `[permissions]` with `fs.read`, `fs.write`, `net`, `env`; `[verify]` with `rlimit` | stable | 1.0.0-beta.1 |
+| `sakura.toml` | `[permissions] process` reserved: `process = []` is accepted and grants nothing, the same as leaving the key out; no std effect starts processes. Any other list is `V8006` with the message "`process` grants nothing in this version: no std effect starts processes; the key is reserved" (design §17.253 (3)); a `Process` effect needs an RFC | stable (`[]` only) | 1.0.0-beta.1 |
+| `sakura.toml` | `[dependencies]` reserved: any form (empty, populated, inline, dotted) is refused with `V8005 dependencies_not_supported` before anything runs (RFC 0001, design §17.232); packages arrive additively in 1.x | stable | 1.0.0-beta.1 |
+| `sakura.toml` | Any other table or key, a value of the wrong type, a missing `[package] name` or malformed TOML is `V8006 manifest_invalid` from `check`, `build`, `run`, `test`, `verify` and the LSP: `--json` as any `V`, exit 1, primary span at the parser's place in `sakura.toml` (design §17.239); the message is the parser's text and is not promised | stable | 1.0.0-beta.1 |
+| Std modules | `std/{agent,blob,budget,bytes,cli,clock,compress,console,core,crypto,decimal,duration,encoding,env,float,form,fs,gen,graph,headers,html,http,instant,int,json,list,llm,log,map,option,path,prompt,random,request,response,result,retry,router,searchparams,secret,serve,set,sql,string,task,test,tool,unit,untrusted,url,urlpart,urlpattern,stream,uuid,websocket}`: public source signatures in the [generated std index](compiler/std/INDEX.md); target support remains as documented there | stable | 1.0.0-beta.1 (listed migration); 1.0.0 within major |
+| Diagnostic identity | Allocated `V0xxx` lex/parse, `V1xxx` resolution, `V2xxx` types, `V3xxx` effects, `V4xxx` patterns, `V5xxx` contracts/refinements, `V6xxx` capabilities, `V8xxx` package/ABI/frozen specs, `V9xxx` compiler failures | stable | 1.0.0-beta.1 (non-reuse) |
+| Diagnostic identity | Allocated `W1xxx`, `W4xxx`, `W5xxx`, `W7xxx`, `W8xxx` warnings; `D001`–`D004`, `D010`–`D011`, `D020`–`D021`, `D030`–`D031`, `D090`–`D096` runtime defects; retired `V5002` remains reserved. Family labels do not allocate absent codes; the [registry](compiler/crates/sakura_diagnostics/src/codes.rs) lists exact identities | stable | 1.0.0-beta.1 (non-reuse) |
+| ABI | WASM runtime [ABI 1.10.0](compiler/runtime/rt/ABI.md): version negotiation, layouts/tags, imports/exports, outcomes, ownership and optional-export rules | stable | 1.0.0-beta.1 (RFC enforcement; existing ABI revision rules apply) |
 | ABI | JS [ABI v0](compiler/runtime/js/ABI.md), generated JS/LIR/Core representations, Rust compiler crate APIs and per-build caches | internal | — |
 | ABI | Native runtime `offset32-v1` and native embedding/host interfaces | experimental | — |
-| LSP | Stdio initialization/shutdown/exit; full document sync (`didOpen`, `didChange`, `didClose`, `didSave`), watched-file notifications, `publishDiagnostics`, hover, definition, completion, formatting, code actions; negotiated UTF-8/UTF-16 positions and versioned workspace edits | stable | 0.2.0 |
+| LSP | Stdio initialization/shutdown/exit; full document sync (`didOpen`, `didChange`, `didClose`, `didSave`), watched-file notifications, `publishDiagnostics`, hover, definition, completion, formatting, code actions; negotiated UTF-8/UTF-16 positions and versioned workspace edits | stable | 1.0.0-beta.1 |
 | LSP extension | `sakura/holeContext` and Sakura diagnostic/fix data, implemented in [the server](compiler/crates/sakura_lsp/src/lib.rs) | experimental | — (extension schema decision pending) |
-| MCP | Stdio tools `compiler_info`, `check`, `symbol_query`, `hole_context`, `docs_query`, `explain_diagnostic`, `format`, `check_patch`, `apply_patch`, `test`; snapshot/content-hash and patch-id protocol in [MCP documentation](docs/mcp.md); the tool results are the `--json` records of the same name (design §17.242 (5c)) | stable | 0.2.0 |
-| Environment | `SAKURA_CACHE_DIR`, `SAKURA_NO_CACHE` (cache disabled for any nonempty value other than `0`, not only `1`); `SAKURA_NODE` (Node executable override) | stable | 0.2.0 |
-| Environment | `SAKURA_MAX_COPY_BYTES` (JS/WASM host copy budget); `SAKURA_TRACE` (trace destination) | stable | 0.2.0 |
+| MCP | Stdio tools `compiler_info`, `check`, `symbol_query`, `hole_context`, `docs_query`, `explain_diagnostic`, `format`, `check_patch`, `apply_patch`, `test`; snapshot/content-hash and patch-id protocol in [MCP documentation](docs/mcp.md); the tool results are the `--json` records of the same name (design §17.242 (5c)) | stable | 1.0.0-beta.1 |
+| Environment | `SAKURA_CACHE_DIR`, `SAKURA_NO_CACHE` (cache disabled for any nonempty value other than `0`, not only `1`); `SAKURA_NODE` (Node executable override) | stable | 1.0.0-beta.1 |
+| Environment | `SAKURA_MAX_COPY_BYTES` (JS/WASM host copy budget); `SAKURA_TRACE` (trace destination) | stable | 1.0.0-beta.1 |
 | Environment | Native host reads `SAKURA_MAX_COPY_BYTES`, `SAKURA_TRACE`, `SAKURA_PERMISSIONS`; native-host behavior remains experimental | experimental | — |
 | Environment | `SAKURA_PERMISSIONS`, `SAKURA_RECORD` (driver-to-host controls); `SAKURA_WASM_STATS`, `SAKURA_WASM_COVERAGE`; `SAKURA_BLESS` (snapshot development helper) | internal | — |
 | Build environment | `SAKURA_GIT_COMMIT`, `SAKURA_BUILD_ID`, `SAKURA_STD_HASH` (compile-time reads, last two generated by the build script) | internal | — |
 | Runtime limits | `SAKURA_MAX_HEAP`, `SAKURA_MAX_REQUESTS` are names used in ABI prose. The JS and WASM hosts do not read these from the environment (the WASM memory maximum is fixed at build); the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS`. Host/runtime option fields and defaults must not be mistaken for implemented env switches | experimental | — |
-| Exit codes | `0` success; `1` diagnostics/errors, disproved verification, formatting differences, or failed `main`; `2` usage/setup/I/O invocation failures; `3` test failures; `70` runtime defect; `75` startup permission denial. `run` forwards the child program's status; these are driver meanings, not an exhaustive set of possible program exit values | stable | 0.2.0 |
+| Exit codes | `0` success; `1` diagnostics/errors, disproved verification, formatting differences, or failed `main`; `2` usage/setup/I/O invocation failures; `3` test failures; `70` runtime defect; `75` startup permission denial. `run` forwards the child program's status; these are driver meanings, not an exhaustive set of possible program exit values | stable | 1.0.0-beta.1 |
 
 The table deliberately records current gaps: verify's diagnostic schema differs; native
 help labels and the history gate are separate work. Acceptance must settle the
@@ -112,7 +114,8 @@ is promised merely because it appears in a design document.
 ## Contracts to define at 1.0
 
 [RFC 0001](docs/rfcs/0001-stability-guarantees.md) drafts these guarantees for
-owner acceptance at `v0.2.0`. It remains Draft and does not change this policy.
+owner acceptance after its final comment period, which does not gate `v1.0.0-beta.1`. It
+remains Draft and does not change this policy.
 
 Before 1.0, enumerate guarantees for source semantics, standard-library APIs,
 CLI flags and exit codes, configuration formats, structured diagnostic schemas,

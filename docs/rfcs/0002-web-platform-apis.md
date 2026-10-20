@@ -42,7 +42,7 @@ the reason recorded. The implementation order is
   §Security and §Tests. Phases and owners are
   in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
-  for the `v0.2.0` contract and which stay experimental.
+  for the `v1.0.0-beta.1` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
   [RFC process](README.md) before acceptance.
 - Decision date/owner: Not decided; @icantcodefyi.
@@ -220,7 +220,7 @@ Rejected uses, each a diagnostic or a typed error rather than a surprise:
 - `Bytes.from_base64("ab=c", Standard)` is `Err(Base64Error(...))`; the lenient decoder
   (`atob` semantics) is a different function, `Bytes.from_base64_lenient`.
 - `crypto.digest(Sha1, b)` is `V1002 unresolved_name` at check time, because
-  `Sha1` is not a `Digest` variant in 0.2.0; `crypto.hmac(key, b)` with a key whose
+  `Sha1` is not a `Digest` variant in 1.0.0-beta.1; `crypto.hmac(key, b)` with a key whose
   `usages` lack `Sign` is a caller defect, `D020` (`requires permits(key, Sign)`; design
   §17.266 (2)): which key a call passes is a fact about the program, so `permits(key,
   usage)` is the test to make first.
@@ -259,7 +259,7 @@ the program at startup (rule §7), `gap` means deliberately not provided, with t
 | Web API | Today | Shape | Row | Perm | JS | WASM | native |
 |---|---|---|---|---|---|---|---|
 | `fetch` | `Http.send/get/post_json/stream` | `std/http` unchanged; redirect policy §2.4 | `Http` | `net` | ✓ | host | refuse until N1b |
-| `Request` | `std/request` (text body, 6 methods) | `Request` gains `Payload`, `Options`/`Trace`, `redirect` (0.2.0) | pure | — | ✓ | ✓ | ✓ |
+| `Request` | `std/request` (text body, 6 methods) | `Request` gains `Payload`, `Options`/`Trace`, `redirect` (1.0.0-beta.1) | pure | — | ✓ | ✓ | ✓ |
 | `Response` | `std/response` (text body) | `Response.body: Payload`; `bytes(r, limit)` | pure | — | ✓ | ✓ | ✓ |
 | `Headers` | `List<(String, String)>` fields | `std/headers.Headers` validated view | pure | — | ✓ | ✓ | ✓ |
 | `AbortController` | scope cancellation only | `Task.cancel(f: Fiber<T>)` | `Task` | — | ✓ | ✓ | ✓ |
@@ -296,10 +296,10 @@ the program at startup (rule §7), `gap` means deliberately not provided, with t
 | `queueMicrotask` | `Task.yield_now` (different) | idiom: `Task.spawn` in the current scope | `Task` | — | ✓ | ✓ | ✓ |
 | `crypto.getRandomValues` | `Random.bytes` | unchanged | `Random` | — | ✓ | ✓ | ✓ |
 | `crypto.randomUUID` | `Random.uuid` | unchanged | `Random` | — | ✓ | ✓ | ✓ |
-| `SubtleCrypto` | none | `std/crypto`: digest, hmac, aead, kdf, sign/verify, ecdh | pure; `Random` for keys and signing | — | ✓ | host (0.2.0), rt later | rt |
+| `SubtleCrypto` | none | `std/crypto`: digest, hmac, aead, kdf, sign/verify, ecdh | pure; `Random` for keys and signing | — | ✓ | host (1.0.0-beta.1), rt later | rt |
 | `CryptoKey` | none | `std/crypto.CryptoKey` opaque value over `Secret<Bytes>` | pure | — | ✓ | ✓ | ✓ |
 | `console` | `Console`, `Log` | unchanged; `console.error` is `Log.event(Error, …)` | `Console`, `Log` | — | ✓ | ✓ | ✓ |
-| `performance` | `Clock.monotonic` (ms) | `Clock.monotonic_micros()` (0.2.0) | `Clock` | — | ✓ | ✓ | ✓ |
+| `performance` | `Clock.monotonic` (ms) | `Clock.monotonic_micros()` (1.0.0-beta.1) | `Clock` | — | ✓ | ✓ | ✓ |
 | `reportError` | `Log.event` | idiom; no new API | `Log` | — | ✓ | ✓ | ✓ |
 | `alert` | `Console.print/read_line` | `Console.alert(msg)` | `Console` | — | ✓ | ✓ | ✓ |
 | `confirm` | same | `Console.confirm(msg) -> Bool` | `Console` | — | ✓ | ✓ | ✓ |
@@ -375,7 +375,7 @@ capability, the Sakura form that covers the need, and the reason.
   opaque-path URL is `Err(UrlError(OpaquePath))`) return `Result<UrlParts, UrlError>`;
   `with_query`, `with_fragment` and `with_search` return the value (design §17.268 (3)).
   Hosts are ASCII-lowercased; a host that needs IDNA, a non-ASCII host or any ASCII
-  `xn--` label, is `Err(UrlError(Idna))` in 0.2.0, never mangled and never passed through
+  `xn--` label, is `Err(UrlError(Idna))` in 1.0.0-beta.1, never mangled and never passed through
   unvalidated; punycode is a later additive change that decodes and re-validates such
   labels (design §17.268 (2)). `Url` itself and `Url.is_valid` are unchanged, so the
   `url"…"` template and `Http.host()` still accept those hosts. A URL value grants nothing:
@@ -448,7 +448,7 @@ capability, the Sakura form that covers the need, and the reason.
   and `last_modified` the epoch (a pure function has no clock); `filename*` is not read
   (RFC 7578 §4.2). A part's filename is data; nothing is read from disk.
 
-#### 2.4 HTTP in 0.2.0 (`std/request`, `std/response`, `std/http`)
+#### 2.4 HTTP in 1.0.0-beta.1 (`std/request`, `std/response`, `std/http`)
 
 Built as phase 4a (PR #7, `1f7f0ea9`, ABI 1.7.0, held for the tag); the readings below are
 design §17.271.
@@ -562,7 +562,7 @@ hold a cursor (`V2041`, design §8.1).
   a hardware boundary, and the docs say so.
 - Tier 1, every backend: `Digest = Sha256 | Sha384 | Sha512`; `Hmac(Digest)`;
   `AesGcm(128 | 256)`; `Hkdf(Digest)`; `Pbkdf2(Digest)`; `Ecdsa(P256)`; `Ecdh(P256)`;
-  `Ed25519`; `X25519`. Tier 2, JS and WASM-on-JS-host only in 0.2.0, native
+  `Ed25519`; `X25519`. Tier 2, JS and WASM-on-JS-host only in 1.0.0-beta.1, native
   `Err(Unsupported)`: `RsaOaep`, `RsaPss`, `RsassaPkcs1`, `P384`, `P521`, `AesCbc`,
   `AesCtr`, `AesKw`. SHA-1 and MD5 are not offered.
 - Operations: `digest(alg, b) -> Bytes` and `verify(key, signature, b) -> Bool` are pure.
@@ -822,7 +822,7 @@ once and may run where the service exists later. Built as plan row B right after
 merges (design §17.271 (9)); `WebSocket` joins the set in phase 8. Pure modules
 run everywhere by construction: std is Sakura source, and their externals live in the JS
 runtime and in `runtime/rt`, which WASM and native share. `hosted` WASM imports (crypto,
-ABI 1.6.0 in 0.2.0, design §17.266 (1)) are a stated interim: a non-JS WASM embedder gets
+ABI 1.6.0 in 1.0.0-beta.1, design §17.266 (1)) are a stated interim: a non-JS WASM embedder gets
 a link-time `V8003`-class refusal, never a silent fallback. In 0.1.0 `std/crypto` runs on
 JS and native and is `D090` at first use on WASM, a stated limitation of a module that
 precedes the contract.
@@ -862,7 +862,7 @@ MINOR revision per phase that adds imports.
   phase.
 - Two Rust codec implementations (JS host, `runtime/rt`) must agree; the shared fixture
   vectors are the only guard.
-- `Request`/`Response` body shape changes once, at 0.2.0, and every program constructing a
+- `Request`/`Response` body shape changes once, at 1.0.0-beta.1, and every program constructing a
   record literal with `body: "…"` must change to `body: Text("…")` (helpers keep working).
 - Workers add a second entry point to the emitted module and a thread to the native host:
   the largest runtime change since M4, which is why they are experimental.
@@ -884,8 +884,9 @@ MINOR revision per phase that adds imports.
   test on every backend lands on `main` before the tag as its own commit (`ff66cded`, design
   §17.267 (2); the zeroing of every freed copy of a kind-`secret` import's arguments,
   §17.270 (1)).
-- **`v0.2.0`** is the one breaking window before 1.0 (RFC 0001 starts within-minor
-  compatibility at 0.2.0, and the roadmap goes from 0.2.0 to `1.0.0-rc.1`). Everything that
+- **`v1.0.0-beta.1`** closes the one breaking window before 1.0 at its preparation commit (design
+  §17.291 folds the planned `v0.2.0` into the beta; the roadmap goes from the beta to
+  `v1.0.0`). Everything that
   changes an existing record, variant or effect lands there: `Payload` bodies, `Method`
   variants, `Request.redirect`, `Clock.monotonic_micros`, `Task.cancel`/`cancelled`.
   Migration: `body: "s"` becomes `body: Text("s")` and `r.body` reads become a `match` or
@@ -894,12 +895,12 @@ MINOR revision per phase that adds imports.
   `KeyFormat`, `KeyReason`, `CryptoReason`; design §17.288 (6)) are in this window too: an
   exhaustive `match` written against 0.1.0 gains arms. Astra's migration list for the
   dogfood corpus (§17.255 (3)) carries these; Opus applies them. A variant added to a `pub`
-  std sum after 0.2.0 is not an additive function, so tier 2 (phase 7c) lands before the
-  0.2.0 preparation commit or its variants are not in 1.0.
-- **After `v0.2.0`, before the rc:** only additive modules (`std/stream`, `std/compress`,
+  std sum after the beta's preparation commit is not an additive function, so tier 2
+  (phase 7c) lands before the `v1.0.0-beta.1` preparation commit or its variants are not in 1.0.
+- **After the `v1.0.0-beta.1` preparation commit, before `v1.0.0`:** only additive modules (`std/stream`, `std/compress`,
   `std/crypto`, `std/websocket`, `std/urlpattern`, `std/channel`) and additive functions.
   Each enters the STABILITY inventory as `stable`, first honouring `1.0.0`, when it lands
-  with its fixtures; the rc's "no contract change" rule then applies.
+  with its fixtures; a change after the last beta is a new beta (design §17.291 (1)).
 - **Experimental:** `std/worker` (and `@worker`) is labelled experimental in the inventory
   and the stdlib page, outside the 1.0 contract, stabilized by a separate owner decision
   (§Unresolved 1).
@@ -976,7 +977,7 @@ MINOR revision per phase that adds imports.
 
 The order, files, owners and acceptance criteria are in
 [docs/plans/web-apis.md](../plans/web-apis.md): phase 0 the redirect fix; phases 1–4 the
-0.2.0 set (bytes/base64/encoding, URL/search params, headers/blob/form, the HTTP record
+breaking set of `v1.0.0-beta.1` (bytes/base64/encoding, URL/search params, headers/blob/form, the HTTP record
 changes and effect additions); phases 5–10 additive modules before the rc (streams,
 compression, crypto, WebSocket client and server (8 and 8s), URL patterns, channels); phase
 11 workers (experimental);

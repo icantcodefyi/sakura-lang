@@ -34,7 +34,7 @@ Start against installed `v0.1.0-alpha.1`, which the install page offers for Linu
 x64 and Apple silicon macOS. This Windows research worktree is not evidence of an
 alpha.1 Windows installation: the site explicitly says there is none. Record each
 implementation's actual release/build and platform. Acceptance is against installed
-`v0.1.0` on both JS and WASM. After 0.2.0 tags, Astra writes each release-notes-only
+`v0.1.0` on both JS and WASM. After 1.0.0-beta.1 tags, Astra writes each release-notes-only
 `MIGRATION.md` before Opus edits. The corpus is six Opus-authored programs with
 Astra's briefs, reader reviews and migration lists; it is not two-family program
 authorship. The human contributor/lead owns the result and review.

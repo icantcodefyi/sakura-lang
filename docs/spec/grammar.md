@@ -1,6 +1,6 @@
 # Grammar
 
-**Draft (normative at v0.2.0).**
+**Draft (normative at v1.0.0-beta.1).**
 
 Informative scope: this is the compiler's accepted syntax, before name resolution and type
 checking, derived from [items](../../compiler/crates/sakura_syntax/src/grammar.rs),

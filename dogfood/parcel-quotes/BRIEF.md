@@ -131,7 +131,7 @@ provide the program scope. Opus works from installed alpha.1, its setup skill an
 the website only. Record the embedding blocker and any alpha.1 limitation; do not
 use a source build as acceptance. CI must eventually pass on `js` and `wasm` with
 installed `v0.1.0`, plus the Node consumption checks. Keep module and host together.
-After 0.2.0 tags, Astra writes the release-notes-only `MIGRATION.md` before Opus
+After 1.0.0-beta.1 tags, Astra writes the release-notes-only `MIGRATION.md` before Opus
 edits; every diff hunk must be listed. Later Astra review edits no code.
 
 ## Non-goals and open friction

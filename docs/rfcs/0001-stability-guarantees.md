@@ -1,7 +1,7 @@
 # RFC 0001: Stability guarantees
 
-This draft defines the compatibility contract to accept at `v0.2.0` and enforce
-for 1.0. It does not stabilize today's implementation. [STABILITY.md](../../STABILITY.md)
+This draft defines the compatibility contract that begins at `v1.0.0-beta.1` and is enforced
+for 1.0 (design §17.291, which folds the planned `v0.2.0` into the beta). It does not stabilize today's implementation. [STABILITY.md](../../STABILITY.md)
 remains the current policy until the owner records acceptance and updates it.
 
 ## Metadata
@@ -16,8 +16,9 @@ remains the current policy until the owner records acceptance and updates it.
 - Implementation status: Partial existing checks; enforcement gaps below remain open.
 - Stabilization status: Not stabilized.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
-  [RFC process](README.md) before acceptance.
-- Decision date/owner: Not decided; @icantcodefyi accepts at the `v0.2.0` tag.
+  [RFC process](README.md) before acceptance. The FCP does not gate the beta.
+- Decision date/owner: Not decided; @icantcodefyi accepts after the FCP, at a beta or at
+  `v1.0.0`, whichever release follows its close.
 
 ## Motivation
 
@@ -69,22 +70,23 @@ break within a compiler major.
 
 ### Release scope and first honoring versions
 
-`v0.2.0` is the proposed first 0.x release to honor diagnostic non-reuse, additive
+`v1.0.0-beta.1` is the proposed first release to honor diagnostic non-reuse, additive
 JSON evolution, the ABI rules, the explicit dependency refusal, and the CI-tested
-MSRV policy. It also starts recording deprecations and source migration notes.
+MSRV policy; during the beta these may still change, each change a CHANGELOG entry with a
+migration (owner, 2026-10-21). It also starts recording deprecations and source migration notes.
 These dates are release requirements, not assertions that the checks exist.
 
-Source compatibility in 0.x applies within a minor line, beginning with 0.2.0
-and its patches. A later 0.x minor may make a documented source change, as
-STABILITY.md permits. Full source compatibility within a major starts at 1.0.0.
+Source and std compatibility during the beta is a listed-migration promise: a change that
+breaks a program valid on one beta is a CHANGELOG `Breaking` entry with its migration.
+Full source compatibility within a major starts at 1.0.0.
 The two-minor/six-month removal rule applies to features stabilized at 1.0 or
 later; 0.x previews do not acquire that removal delay merely by accepting this
-RFC. The installed 0.1.0-to-0.2.0 dogfood migration remains a separate evidence
+RFC. The installed 0.1.0-to-1.0.0-beta.1 dogfood migration remains a separate evidence
 gate under design §17.225 (2), not an unconditional 0.x compatibility promise.
 
 The ABI already has its own revision contract in
 [ABI §0](../../compiler/runtime/rt/ABI.md#0-versioning-of-this-document).
-This RFC requires its enforcement from 0.2.0 without resetting that history.
+This RFC requires its enforcement from 1.0.0-beta.1 without resetting that history.
 
 ### Source compatibility
 
@@ -127,8 +129,8 @@ Machine fields and span units follow the JSON contract. The existing retired
 Every public `--json` output MUST have a documented, versioned contract, including
 success, diagnostic, summary, and failure records for each command. During a
 compiler major, changes to these contracts MUST be additive. The guarantee also
-holds across 0.x minors from 0.2.0 until 1.0; 1.0 must explicitly record any
-transition from the preview contract.
+holds from 1.0.0-beta.1 until 1.0, except for a beta change listed in the CHANGELOG with a
+migration; 1.0 must explicitly record any transition from the beta contract.
 
 Existing field names, types, requiredness, meanings, units, framing, and documented
 ordering MUST remain valid. A producer may add optional fields that old consumers
@@ -191,7 +193,7 @@ and mitigation process above; codes remain reserved even after removal.
 The MSRV is exactly `workspace.package.rust-version` in
 [`compiler/Cargo.toml`](../../compiler/Cargo.toml), currently `1.99`.
 The development toolchain pin is not evidence of MSRV support. Starting with
-0.2.0, a required job in [ci.yml](../../.github/workflows/ci.yml) MUST read that
+1.0.0-beta.1, a required job in [ci.yml](../../.github/workflows/ci.yml) MUST read that
 value, install it, and run `cargo +<msrv> check --workspace --all-targets --locked`
 in `compiler/`. CI MUST fail when the declared compiler cannot check the locked
 workspace, including its test targets. The regular development-toolchain tests
@@ -206,7 +208,7 @@ the workspace; failures must not be bypassed by checking only an easy crate.
 
 ### Reserved packages and exclusions at 1.0
 
-At 0.2.0 and 1.0, programs are single packages over std. `[dependencies]` and the
+At 1.0.0-beta.1 and 1.0, programs are single packages over std. `[dependencies]` and the
 existing lockfile name are reserved for milestone P. Any syntactically valid
 manifest declaring the table, even empty or in inline-table form, MUST fail with
 `V8005 dependencies_not_supported` before resolution, build, or execution. The
@@ -340,12 +342,13 @@ run having passed.
 
 1. Owner reviews the draft under the RFC process, records objections and FCP,
    and resolves the questions below. Merging Draft does not accept it.
-2. Opus and Sol implement the enforcement rows required for 0.2.0, including the
+2. Opus and Sol implement the enforcement rows required for 1.0.0-beta.1, including the
    named dependency refusal and MSRV CI job. Record exact fixture and job links.
-3. At `v0.2.0`, the owner records acceptance, the first honoring release for each
+3. After the FCP, at the next beta or at `v1.0.0`, the owner records acceptance, the first
+   honoring release for each
    guarantee, and any unfinished item as a release blocker. Update STABILITY.md
    separately. Acceptance is not blanket language stabilization.
-4. Before `v1.0.0-rc.1`, complete the stable-interface inventory, fixture-indexed
+4. Before `v1.0.0`, complete the stable-interface inventory, fixture-indexed
    spec and historical compatibility checks. The ABI annex is promoted by
    reference under §17.225 (9). Native and packages retain their exclusions.
 5. At 1.0, record stabilization separately after the roadmap's release gates.
@@ -354,9 +357,8 @@ run having passed.
 
 ## Unresolved questions
 
-- The owner must confirm the proposed boundary: 0.2.x source compatibility now,
-  full-major source compatibility from 1.0. This preserves STABILITY.md's explicit
-  0.x-minor breaking-change allowance while naming the first honoring 0.x.
+- The owner must confirm the proposed boundary: listed-migration source compatibility
+  during the beta, full-major source compatibility from 1.0 (design §17.291 (1b)).
 - Opus must confirm V8005 is still free when implementing, allocate it in the
   registry and design, and update this draft if concurrent allocation took it.
   `dependencies_not_supported` is the proposed diagnostic name, not existing code.
@@ -368,7 +370,8 @@ run having passed.
 ### Round-25 design decisions (2026-10-19)
 
 Design §17.232 settles the enforcement details so implementation can start; this RFC's
-text above is unchanged and the owner still accepts at `v0.2.0`:
+text above is unchanged and the owner then planned to accept at `v0.2.0`, which design
+§17.291 folds into `v1.0.0-beta.1`:
 
 - `V8005 dependencies_not_supported` (PACKAGE) is confirmed free and allocated by Opus with
   a project-shaped `tests/ui` fixture directory.
@@ -381,18 +384,19 @@ text above is unchanged and the owner still accepts at `v0.2.0`:
 - Cross-version ABI fixtures are one committed module per shipped ABI version under
   `compiler/runtime/rt/tests/fixtures/abi/`, loaded by the host tests; the refusal case is a
   fixture with its version global rewritten.
-- Deprecation metadata is `compiler/deprecations.toml` (empty at 0.2.0), checked against
+- Deprecation metadata is `compiler/deprecations.toml` (empty at 1.0.0-beta.1), checked against
   `codes.rs` and by `release.py prepare`, which also refuses a patch release whose
   `rust-version` changed.
 - The historical corpus is the previous tag's `tests/semantics`, `tests/ui` and `examples`,
   run by a `compat` CI job with an allow-list that cites a CHANGELOG anchor.
 - The stable-interface inventory is a table in STABILITY.md pinned by a generated
   `compiler/contracts/cli.txt`; experimental items carry `experimental` in `--help`.
-- The 0.2.x-within-a-minor, full-within-a-major-from-1.0 boundary is the designer's reading,
-  pending the owner's acceptance at the tag.
+- The round-25 boundary (0.2.x within a minor, full within a major from 1.0) is superseded by
+  §17.291 (1b): listed migration during the beta, full within a major from 1.0.
 
 ## Decision record
 
 Draft requested for roadmap stage 5. No FCP or acceptance has been recorded.
 The owner will record disposition, rationale, objections, and implementation and
-stabilization references here. The planned acceptance point is the `v0.2.0` tag.
+stabilization references here. The planned acceptance point is the first release after the
+FCP closes; the FCP does not gate `v1.0.0-beta.1` (owner, 2026-10-21).

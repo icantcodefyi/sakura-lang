@@ -1,6 +1,6 @@
 # Diagnostics
 
-**Draft (normative at v0.2.0).**
+**Draft (normative at v1.0.0-beta.1).**
 
 Informative scope: this chapter describes compile-time diagnostic records and the diagnostic
 identity inventory, including runtime defect codes.

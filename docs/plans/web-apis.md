@@ -19,8 +19,8 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   assertion, §17.270 (2)), merged right after the `v0.1.0` tag in the order #5 (4b,
   1.5.0), #6 (7a-W, 1.6.0, stacked on #5), #4, then 4a (PR #7, stacked on #6, 1.7.0; §17.270 (3),
   §17.271),
-  and on `main` before the `v0.2.0` preparation commit; phases 5–10 are additive and land before
-  `v1.0.0-rc.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
+  and on `main` before the `v1.0.0-beta.1` preparation commit (design §17.291 folds `v0.2.0` into the
+  beta); phases 5–10 are additive and land before `v1.0.0-beta.1`; phase 11 is experimental; phase 12 closes each phase's docs and the
   STABILITY inventory rows.
 - Gates per phase, from `compiler/`: `cargo fmt --all -- --check`, `cargo clippy
   --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`
@@ -61,16 +61,16 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 1 | `std/bytes` growth and Base64; `std/encoding` | 0.1.0 (`d0222605`) | Opus | landed |
 | 2 | `std/url` parser, `std/searchparams` | 0.1.0 (`3481039f`) | Opus | landed |
 | 3 | `std/headers`, `std/blob`, `std/form` | 0.1.0 (`d506e2b1`; §17.269) | Opus | landed |
-| 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 0.2.0; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
+| 4a | HTTP 1.0.0-beta.1 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 1.0.0-beta.1; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
 | B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (`796e553e`; §17.271 (9)) | Opus | landed |
-| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
+| 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 1.0.0-beta.1; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
 | 5 | `std/stream` (`Step`/`Source`/`Sink` as values, §17.280), `Encoding.decode_source`/`encode_source`, `Blob.source`, the `Http`/`Fs` views | pre-rc (`9139a178`; ratified §17.284 with one `fix(std)` commit to follow: `to_list`'s `requires`, the `Done`-arm `MaxLine` check) | Opus | landed |
 | 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc (no ABI MINOR; `miniz_oxide` 0.9.1 in `rt`; §17.286 (12); readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
-| 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
+| 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 1.0.0-beta.1; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK | pre-rc (`d401d073` vectors, `2a12eee4`; ratified §17.288; `rt`'s key copies zeroed `94ac097d`, THIRD_PARTY.md with its test `56aabd32`) | Opus | landed |
 | 7b-W | tier 1b on WASM: the seven new `crypto_*` hosted imports, ABI 1.9.0 (§17.288 (10)), `KNOWN` emptied | pre-rc (ABI 1.9.0) | Opus | landed |
-| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the 0.2.0 preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
+| 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | before the `v1.0.0-beta.1` preparation commit, or its variants are not in 1.0 (§17.288 (6)) | Opus | 7b-W |
 | 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
@@ -114,8 +114,8 @@ entry orders first (`fix(rt)`: every key copy `rt::crypto` makes is zeroed befor
 freed; `docs(native)`: THIRD_PARTY.md's nine crypto rows with their notice files and the
 test that keeps the table complete); phase 10 takes 1.10.0 after 7b-W lands. **7b-W
 landed (ABI 1.9.0)**, after `94ac097d` and `56aabd32`. Phase 7c is no
-longer optional-before-the-rc: a variant added to a `pub` std sum after 0.2.0 breaks
-exhaustive matches, so 7c lands before the 0.2.0 preparation commit or its variants are not
+longer optional-before-the-rc: a variant added to a `pub` std sum after the beta's preparation
+commit breaks exhaustive matches, so 7c lands before the `v1.0.0-beta.1` preparation commit or its variants are not
 in 1.0 (§17.288 (6)). **Round 43 (design §17.289, the owner's request of 2026-10-21):** the
 WebSocket server is in the RFC and in 1.0 as **phase 8s** (`WebSocket.accept` inside a `Serve`
 handler). Its files (`websocket.sak`, `serve.sak`'s comments, the WebSocket section and
@@ -240,7 +240,7 @@ its deadline, its lock hunk by the shared append-only rule.
   strict and `parse_multipart` substituting, `----SakuraFormBoundary` + 96 bits.
   `Blob.source` waits for phase 5; a binary file in an HTTP body waits for 4a.
 
-### Phase 4a: HTTP 0.2.0 shape
+### Phase 4a: HTTP 1.0.0-beta.1 shape
 
 - **Scope.** `Payload`, `Request.body: Payload`, `Response.body: Payload`, `Method.Options`,
   `Method.Trace`, `Request.redirect: Redirect`, `Request.{with_payload, with_header,
@@ -505,7 +505,7 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   JS; compared through `verify` only); a 12-byte nonce; `kind: KeyKind`, `KeyPair`,
   `generate_key_pair`, `EcdhWith`, `Format`/`Malformed`, `Nonce`/`Tag`/`ZeroSecret`; the
   private material layout std-private; imports read only the DER forms `export_key` writes.
-  The new variants are 0.2.0's. Two small commits follow in the web lane before 7b-W:
+  The new variants are 1.0.0-beta.1's. Two small commits follow in the web lane before 7b-W:
   `fix(rt)`, every `Vec` `take_bytes` and `rt::crypto` make zeroed before it is freed
   (§17.288 (7)); `docs(native)`, THIRD_PARTY.md's nine crypto rows (7a's four, 7b's four,
   `curve25519-dalek`) with unmodified notice files and a `sakura_host_native` test that every
@@ -520,7 +520,7 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   three "waits" sentences deleted; one commit, green on its own base. **Landed** (ABI 1.9.0;
   the Node host also zeroes `crypto_aes_gcm_open`'s `Some` plaintext once encoded).
 
-### Phase 7c: tier 2 on JS and WASM-on-JS (before the 0.2.0 preparation commit)
+### Phase 7c: tier 2 on JS and WASM-on-JS (before the `v1.0.0-beta.1` preparation commit)
 
 - **Scope.** `RsaOaep`, `RsaPss`, `RsassaPkcs1`, `P384`, `P521`, `AesCbc`, `AesCtr`,
   `AesKw` through `crypto.subtle`; native answers `Err(CryptoError(Unsupported(name)))`.
@@ -530,8 +530,8 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   header and the fixture skipped on native with the reason printed by the harness.
 - **Who.** Opus. **Acceptance.** Typed `Unsupported` on native is a fixture, not a gap.
 - **Deadline (design §17.288 (6)).** Its variants (`Algorithm`, `Curve`, `CryptoReason`'s
-  `Unsupported`) grow `pub` std sums, which after 0.2.0 is not an additive change (an
-  exhaustive `match` stops compiling), so 7c is on `main` before the 0.2.0 preparation commit
+  `Unsupported`) grow `pub` std sums, which after the beta's preparation commit is not an additive change (an
+  exhaustive `match` stops compiling), so 7c is on `main` before the `v1.0.0-beta.1` preparation commit
   or tier 2 is not in 1.0; its variants are not declared ahead of its implementation.
 
 ### Phase 8: `std/websocket` client
@@ -739,7 +739,7 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
 - No new manifest key, no new diagnostic code is expected through phase 10. A phase that
   needs one files a `design-question` in `compiler/REQUESTS.md` before using it.
 - Breaking changes are phases 4a and 4b only. They do not touch `main` before the
-  `v0.1.0` tag (held as PR branches, like PR #4) and must be on `main` before the 0.2.0
+  `v0.1.0` tag (held as PR branches, like PR #4) and must be on `main` before the `v1.0.0-beta.1`
   preparation commit; if that window closes first, they wait for the owner's decision, they
   do not land after the tag. Additive phases never wait for a tag (design §17.263 (2)).
 - `.wasm.stdout` is a declared difference, never a convenience.

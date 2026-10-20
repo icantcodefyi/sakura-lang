@@ -1,11 +1,11 @@
 # Sakura language specification
 
-**Draft (normative at v0.2.0).**
+**Draft (normative at v1.0.0-beta.1).**
 
 This directory contains the stage 6 grammar and diagnostic chapters of the
 [road to 1.0](../plans/road-to-1.0.md), following design §17.225–226.
-It does not declare v0.2.0 released or replace today's [stability policy](../../STABILITY.md).
-Static and dynamic semantics remain due at `v1.0.0-rc.1`.
+It does not declare v1.0.0-beta.1 released or replace today's [stability policy](../../STABILITY.md).
+Static and dynamic semantics remain due at `v1.0.0` (design §17.291 (3e)).
 
 - [Grammar](grammar.md) covers lexing, statement termination, and syntax.
 - [Diagnostics](diagnostics.md) covers diagnostic records and code identities.
