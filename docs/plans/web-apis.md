@@ -283,6 +283,13 @@ WebSocket server (`Serve` upgrade) stays outside the RFC.
   and one installing `Serve.host()` and records the code each stops with in the native CLI
   parity note; `changes.mdx` and `roadmap.mdx` then name that code instead of "`D090` or
   `D091`".
+- **Read (2026-10-20, aarch64-apple-darwin, release CLI with `native`).** A `main` whose row
+  is `{Console}` and that runs `with Http.host() { Http.send(…) }`, and one that runs
+  `with Serve.host() { Serve.serve(…) }`, both build and stop at the first operation with
+  `{"schema_version":"1.0","kind":"defect","code":"D090","message":"a host operation the
+  native host does not provide yet"}` on stderr and exit 70: the runtime's
+  `rt_code_unsupported`, not the `Host` defaults' `D091`. `changes.mdx`, `roadmap.mdx`,
+  `tour/memory.mdx`, the rt `ABI.md` §1 and the driver's comment now say `D090`.
 
 ### Phase 4b: effect additions and small functions
 

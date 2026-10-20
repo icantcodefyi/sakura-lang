@@ -4,7 +4,8 @@
 //! `Cli.args`) and Sql with the JS host's semantics, keeps the instance's handle and file
 //! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
 //! instance's thread; each database runs on its own worker thread (`sql`). Http, serve and Llm
-//! answer `D091` through the `Host` defaults until N1b reaches them.
+//! have no host service until N1b reaches them: their host handlers' operations are `D090`
+//! (the runtime's `rt_code_unsupported`).
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.

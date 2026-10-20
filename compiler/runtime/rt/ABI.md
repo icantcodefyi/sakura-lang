@@ -328,7 +328,9 @@ driver's entry, `sakura_native_main_v4`. After the record's check, the driver re
 effect whose service the native host does not implement (`Http`, `Serve`, `Llm`): one stderr
 line naming it, "`Http` is not available on target `native`", and exit 75, before the
 instance exists or any user code runs. A handler for one that the program installs itself is
-`D090` or `D091` at first use. It is a startup check, not a build-time diagnostic, and no
+`D090` at first use ("a host operation the native host does not provide yet", exit 70;
+`rt_code_unsupported`), read from native runs of `Http.host()` and `Serve.host()`
+(design §17.277). It is a startup check, not a build-time diagnostic, and no
 diagnostic code.
 
 ## 2. Scalar representation
