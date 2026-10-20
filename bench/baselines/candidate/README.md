@@ -1,4 +1,32 @@
-# Candidate first reference baseline — NOT BLESSED
+# Candidate baselines — NOT BLESSED
+
+## The §17.282 flag-commit candidate (2026-10-20, `3bf2343f`)
+
+`2026-10-20-d88970189598-3bf2343f-js.json` and `…-wasm.json` are counted (`--instructions`)
+runs of the `js` and `wasm` suites at the flag commit `3bf2343fa8c1199a163b87e92886c41ae34025ca`,
+host `d88970189598`, Node 26.11.0, Bun 1.4.3, from a clean detached worktree of that commit
+(`meta.dirty: false`; `meta.paths` names it), all sizes, five pairs a cell. `meta.flags.node`
+is `--predictable --min-semi-space-size=16 --max-semi-space-size=16`. Every oracle and
+checksum is green; `meta.failures` and `meta.missing` are empty; the wasm file's one
+`meta.absent` is the impure program's Wasmtime cell (§17.191 (2)). Tables:
+[js](../../results/2026-10-20-3bf2343f-js.md), [wasm](../../results/2026-10-20-3bf2343f-wasm.md)
+(the js table was regenerated from the JSON with `bench.summary`, its run output having been
+deleted from `/tmp`; the same regeneration reproduces the wasm run's output byte for byte).
+The host was loaded by other agents' builds and counts (load 6–10); counts are read regardless.
+
+Spread (release.md §2): Node's JS cells a median 0.35% (15 of 198 over 1%), its WASM lane
+0.29% (13 of 198), Wasmtime 0.16% (1 of 95), Bun 1.56% (121 of 198), against 0.14%, 0.30%,
+0.11% and 1.35% at `320c9980`. The Node cells over 1% are almost all allocation-heavy
+programs at their largest sizes (`shapes`, `map_set*`, `rbtree`, `deltablue`, up to 2.47% on
+`shapes` n = 100,000), where a 16 MB young generation scavenges more often than the default
+and a pair's count follows its collections; the rest are sub-0.2 M-instruction cells at the
+call cap (`countdown`, `handled_d4`, `sieve` n = 1,000). Wasmtime's one is `countdown`
+n = 1,000 (29.8%): one pair at 113 k instructions per call, the other four 87.3–87.5 k, a
+65,536-call cell at the cap; the median is the four.
+
+Bless (the owner, release.md §2): archive the `320c9980` files, then bless these two.
+
+## The first reference candidate (2026-10-18, `a843e60`)
 
 Only the human owner, @icantcodefyi, may adopt this candidate. GPT-6-Astra prepared
 measurement evidence and has **not** run `bench/bench bless`. CI never blesses results.

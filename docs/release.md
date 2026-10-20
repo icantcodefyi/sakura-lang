@@ -259,8 +259,8 @@ runs from `../sakura-counted` at the flag commit):
 mkdir -p bench/baselines/archive/320c9980/wasm
 git mv bench/baselines/d88970189598.json bench/baselines/archive/320c9980/d88970189598.json
 git mv bench/baselines/wasm/d88970189598.json bench/baselines/archive/320c9980/wasm/d88970189598.json
-bench/bench bless bench/baselines/candidate/<D>-<C>-counted-js.json
-bench/bench bless bench/baselines/candidate/<D>-<C>-counted-wasm.json
+bench/bench bless bench/baselines/candidate/2026-10-20-d88970189598-3bf2343f-js.json
+bench/bench bless bench/baselines/candidate/2026-10-20-d88970189598-3bf2343f-wasm.json
 ```
 
 The checklist line names the new `meta.commit` and the flags. Until then, a compare against
