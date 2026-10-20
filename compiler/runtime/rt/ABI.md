@@ -208,6 +208,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   boxes `()` and calls `drop` on it. Which locals are words is internal to a module; no byte,
   import, export or counter changes (`drops` falls by the calls no longer made), so
   `sakura_abi_version` stays `0x010800`.
+- 1.8.2 is an erratum (design §17.287 (3), plan WS-W9): §3.1 permits compiled code to
+  decrement a counted object's `rc` in place while it is above 1, and §10 redefines `drops`
+  as the reference-count decrements compiled code asked for (in place or through the `drop`
+  export) and the host's calls of the export, so its value for a fixed execution is unchanged:
+  the module counts its in-place decrements in an internal `i64` global that the `stats`
+  export adds to `drops`. No byte layout, import, export signature or counter changes, so
+  `sakura_abi_version` stays `0x010800`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -383,6 +390,10 @@ and is the only null (research/09 §3 recommendation; needed by the §17.83 nich
 Rationale: the 8-byte `{tag, rc}` pair matches Koka's and Grain's prefix size (research/09 §3)
 and the §17.82 wording `{tag, rc}`; the two spare bytes hold the size class so `free` does
 not need a size lookup, and flags so `Dup`/`Drop` on a static literal is one branch.
+
+Compiled code may decrement a counted object's `rc` in place while it is above 1; the `drop`
+export performs the last decrement and the release (1.8.2, design §17.287 (3)). A counted
+object is a pointer word (§4) whose `static` flag is clear.
 
 ### 3.2 Tags
 
@@ -1111,8 +1122,9 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   (small free lists plus free page runs), and since 1.1.0 (design §17.118) `frames`
   (continuation frames allocated), `boxes` (`IntBox`/`FloatBox` objects compiled code
   allocated, the LIR's `Box`), `dups` (reference-count increments compiled code asked for:
-  `Dup` and the increments of projections, captures and state reads) and `drops` (calls of the
-  `drop` export, compiled code's and the host's), each a cumulative `u64` in that order after
+  `Dup` and the increments of projections, captures and state reads) and `drops` (reference-count
+  decrements compiled code asked for, a `Drop` of a word made in place (§3.1) or through the
+  `drop` export, and the host's calls of the export; 1.8.2, design §17.287 (3)), each a cumulative `u64` in that order after
   the first six, and since 1.2.0 (design §17.160 (2)) `restarts` (direct-region calls run again
   through frames after their twin ran out of gauge or, since 1.2.5, was abandoned at a closure
   without a twin, §5) after `drops`, and since 1.3.0 (design §17.176 (1)) four after

@@ -284,6 +284,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         may_abort,
         gauge: g + 3,
         state: g + 4,
+        drops_in_place: g + 5,
         twin_of: twin_of_off,
         closure_type: rt.added_type(0),
     };
@@ -444,10 +445,18 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     s.i32_const(tests_bytes.len() as i32).end();
     funcs.push(added(FIXED[6], vec![], i32s(2), f));
 
-    // stats() -> (ptr, len)
-    let mut f = Function::new([]);
+    // stats() -> (ptr, len): the runtime's counters, `drops` (the tenth) plus the decrements
+    // compiled code made in place (ABI §10, design §17.287 (3)).
+    let mut f = Function::new([(1, ValType::I32)]);
     f.instructions()
         .call(rtf("rt_stats")?)
+        .local_tee(0)
+        .local_get(0)
+        .i64_load(mem(72, 3))
+        .global_get(g + 5)
+        .i64_add()
+        .i64_store(mem(72, 3))
+        .local_get(0)
         .i32_const(8 * STATS as i32)
         .end();
     funcs.push(added(FIXED[7], vec![], i32s(2), f));
@@ -520,6 +529,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 // The twins' gauge and state (`func::compile_twin`).
                 (ValType::I32, true, 0),
                 (ValType::I32, true, 0),
+                // `Drop`'s in-place decrements (`func::Gen::drop_word`).
+                (ValType::I64, true, 0),
             ],
             data: statics.bytes.clone(),
             exports,

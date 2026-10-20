@@ -46,6 +46,9 @@ const UNIT: i32 = 0b0001;
 const FALSE: i32 = 0b0101;
 const TRUE: i32 = 0b1101;
 
+/// The header's `static` flag (ABI §3.1).
+const STATIC: i32 = 1;
+
 /// Object tags (ABI §3.2).
 const TUPLE: i32 = 5;
 const RECORD: i32 = 6;
@@ -78,6 +81,9 @@ pub struct Env<'a> {
     /// ([`OK`], [`DEFECTED`], [`ABORTED`], [`CANCELLED`]).
     pub gauge: u32,
     pub state: u32,
+    /// The `i64` global counting the decrements `Drop` made in place, which `stats()` adds to
+    /// `drops` (ABI §10, design §17.287 (3)).
+    pub drops_in_place: u32,
     /// The static-block offset of the twin table: per closure `code`, the funcref table index
     /// of the code's closure-convention twin, or 0 (design §17.211 (2)).
     pub twin_of: u32,
@@ -911,6 +917,43 @@ impl Gen<'_, '_> {
         Ok(())
     }
 
+    /// `Drop` of the word in local `l` (ABI §3.1, design §17.287 (3)): a counted object
+    /// (`is_ptr`, not `static`) with `rc > 1` is decremented in place and counted in
+    /// [`Env::drops_in_place`]; anything else goes to the `drop` export, which performs the last
+    /// decrement and the release.
+    fn drop_word(&self, s: &mut InstructionSink<'_>, l: u32) -> Result<(), String> {
+        s.block(BlockType::Empty);
+        s.block(BlockType::Empty);
+        s.local_get(l).i32_const(3).i32_and();
+        s.local_get(l).i32_eqz().i32_or().br_if(0);
+        s.local_get(l)
+            .i32_load8_u(mem(3, 0))
+            .i32_const(STATIC)
+            .i32_and()
+            .br_if(0);
+        s.local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_le_u()
+            .br_if(0);
+        s.local_get(l)
+            .local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_sub()
+            .i32_store(mem(4, 2));
+        s.global_get(self.env.drops_in_place)
+            .i64_const(1)
+            .i64_add()
+            .global_set(self.env.drops_in_place);
+        s.br(1);
+        s.end();
+        s.local_get(l);
+        self.call_rt(s, "drop")?;
+        s.end();
+        Ok(())
+    }
+
     /// `rt_dup(v)`, with a landing pad on `D092`.
     fn dup(&mut self, s: &mut InstructionSink<'_>, l: u32, live: &Live) -> Result<(), String> {
         s.local_get(l);
@@ -1309,8 +1352,7 @@ impl Gen<'_, '_> {
                 *live.entry(*v).or_default() += 1;
             }
             Inst::Drop(v) => {
-                s.local_get(self.local(*v));
-                self.call_rt(s, "drop")?;
+                self.drop_word(s, self.local(*v))?;
                 self.consume(live, *v);
             }
             Inst::Hole { id } => {
