@@ -611,14 +611,18 @@ hold a cursor (`V2041`, design §8.1).
   included; Web Crypto imports those two non-extractable, and the doc comment says so
   (design §17.266 (8)).
 - Backends: JS calls `node:crypto`'s synchronous functions (`createHash`, `createHmac`,
-  `timingSafeEqual`, `hkdfSync`, `pbkdf2Sync`), not `crypto.subtle`; WASM and native share
-  `runtime/rt`'s RustCrypto implementation, which the wasm32 object reaches through
-  `hosted` imports (ABI 1.6.0, design §17.266 (1), (9), (10); §7 below).
+  `timingSafeEqual`, `hkdfSync`, `pbkdf2Sync`), not `crypto.subtle`; WASM-on-Node reaches
+  the same `node:crypto` functions through the `crypto_*` `hosted` imports, which the Node
+  host runs as the JS runtime's (ABI 1.6.0 and 1.9.0, design §17.266 (1), (9), (10),
+  §17.288 (10); §7 below); the wasm32 runtime has no cryptography, so the WASI command
+  reaches `crypto_*` as `D090`; native runs `runtime/rt`'s RustCrypto implementation
+  (corrected by design §17.292: the earlier text said WASM shared `rt`'s).
 - Entropy authority is `Random`: `Random.host()` is the OS CSPRNG on every backend;
   `Random.seeded` is for tests and the docs state that keys made under it are not secret.
   No `Crypto` effect and no manifest key: nothing here touches the network or disk.
-- Signatures are not canonical bytes: ECDSA on JS is randomized (OpenSSL's nonce through
-  `node:crypto`), on WASM and native deterministic (RFC 6979). `sign` declares `Random`
+- Signatures are not canonical bytes: ECDSA on JS and on WASM-on-Node is randomized
+  (OpenSSL's nonce through `node:crypto`, which the Node host's `crypto_sign` import calls),
+  on native deterministic (RFC 6979; design §17.288 (2), §17.292). `sign` declares `Random`
   because its output is not a function of its inputs, although no backend draws from it
   today; a hedged nonce (RFC 6979 §3.6) may later, without a signature change. Parity
   compares `verify` round trips, never signature bytes; nothing prints a signature. Key
