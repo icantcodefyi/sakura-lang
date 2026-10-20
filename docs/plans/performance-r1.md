@@ -369,6 +369,12 @@ WS-P13a's, each arm hand-edited and counted first. Tests: a key-range fixture (0
 ±(2^53 − 1), 2^31, 2^32 ± 1), insertion order after removes and compaction, a shared map's
 persistence (`snapshot`), `Set<Int>`, the runtime tests. Delta: `map_set:int` (at least 35%
 on Node counts at n = 100,000); `map_set`, `map_set:string`, `map_set:tuple` not regressed.
+**Landed** (`bench/deltas.md` row WS-P15): `map_set:int` Node 839.7 M → 522.5 M (−37.8%), Bun
+−19.0%; `map_set:string` and `map_set:tuple` within 1% at one location. Every key kind is
+fused (`map_get_or`; `is_some` is `map_contains`, so std's `Map.contains` too). The compare is
+blocked on three confirmed Node peak RSS crossings, none a count: one is the doubled call count,
+two are the fusion's fewer allocations moving V8's mark-compacts (lower post-GC heap); open for
+the design lead under §17.136.
 
 **WS-P21 — list-element ownership (Opus, after WS-P15; design §17.273).** Paths:
 `opt/owned.rs` (the *owned elements* fact on an owned list local; the builtin column

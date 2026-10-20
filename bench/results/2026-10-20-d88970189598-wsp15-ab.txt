@@ -1,0 +1,44 @@
+WS-P15 (design §17.275) same-location readings, 2026-10-20, host d88970189598, Node 26.11.0 --predictable.
+Instructions per call: median over interleaved pairs (one-call and 1 + k-call processes, as `bench run
+--instructions`); peak RSS of the many-call processes. "base" is the 0216e570 artefact (emitter and
+runtime), "head" the WS-P15 tree's; both copied side by side under bench/target/ab/.
+
+Arms, hand-edited runtime into the base artefact (WS-P13a protocol), map_set:int n=100000, k=8, 3 pairs,
+under /tmp (one location for all arms):
+  base                         840.6 M
+  (1) integer index            564.4 M  -32.9%   (string +2.8%, tuple +5.0%: keyOf hashed twice; fixed below)
+  (1) + hash once per op       564.6 M  -33.1%   (string -5.2%, tuple +0.5% against base, same location)
+  (1) + (2) map_get_or fusion  555.8 M  -34.3%
+  (1) + (2) + owned one-walk   518.0 M  -38.7%
+Buckets, run_int n=100000 phases (hand JS driver over the runtime, k=8): build 373.5 -> 123.4 M,
+200,000 gets 86.8 -> 56.8 M, 50,000 updates 203.1 -> 162.9 M, 33,333 removes 86.3 -> 87.8 M,
+iteration 77.3 -> 86.5 M. Gets bucket alone (200,000 gets on a shared 100,000-entry map):
+Int 95.5 -> 77.7 M (-18.6%) with the fusion, String 245.3 -> 227.5 M (-7.3%).
+
+Emitted head against base, under bench/target/ab, 5 pairs:
+  map_set:int    n=100000 k=8   843.1 -> 518.6 M  -38.5%
+  map_set:string n=100000 k=8   985.1 -> 989.5 M  +0.4%
+  map_set:string n=10000  k=64   67.3 ->  67.8 M  +0.9%
+  map_set:tuple  n=100000 k=8  1006.2 -> 1013.3 M +0.7%
+  map_set        n=100000 k=2  3193.5 -> 2668.7 M -16.4%
+
+Peak RSS at equal call counts (the compare's crossings), 5 pairs:
+  map_set:int    n=100000 k=8    264 -> 264 MB median     (the compare's 264 -> 377 MB is k 8 -> 16:
+  map_set:int    n=100000 k=16   385 -> 374 MB median      head's fewer instructions double the calls)
+  map_set        n=10000  k=16   187 -> 222 MB
+  map_set        n=10000  k=32   208 -> 268 MB
+  map_set:string n=50000  k=16   223 -> 291 MB; head without the fusion 223 MB; head runtime on base's
+                                 emitted code 223 MB: the fusion moves it
+  with --min/max-semi-space-size=16: map_set:string n=50000 195 -> 240 MB, map_set n=10000 197 -> 168 MB
+  map_set:string n=100000 k=8   318 -> 312 MB; n=10000 k=64 125 -> 125 MB
+
+--trace-gc, one process each (k=16 map_set:string n=50000; k=32 map_set n=10000):
+  map_set:string base  22 scavenges, mark-compacts 71.3 -> 13.3 MB, 124.8 -> 29.2 MB
+                 head  20 scavenges, mark-compacts 78.2 -> 30.6 MB, 183.0 -> 22.4 MB
+                 head without the fusion: as base (71.3 -> 13.3, 125.0 -> 29.4)
+  map_set        base  38 scavenges, 3 mark-compacts, last 104.1 -> 22.5 MB
+                 head  33 scavenges, 2 mark-compacts: 48.0 -> 26.2 MB, 157.3 -> 16.4 MB
+Reading: no more is retained (the last post-GC heap is lower); with no Some per get the young
+generation fills later, the first mark-compact runs mid-call with more live data, V8 raises the
+old-generation limit and the next one runs at a larger heap. A GC-phase effect of fewer
+allocations, the class of bench/README.md "Location and the A/A recount".
