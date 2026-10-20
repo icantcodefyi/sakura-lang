@@ -113,6 +113,7 @@ Console.print read_line   Clock.now monotonic sleep   Random.int float bytes uui
 Fs.root read read_text write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate parse resolve to_string to_url with_path with_search host path query_param encode_component   SearchParams.parse get get_all set append to_string   UrlPart.from to_string
 Headers.of get get_all get_set_cookie has append set remove entries to_list   Blob.of size slice text   Form.encode_urlencoded parse_urlencoded encode_multipart parse_multipart boundary
 Http.get post_json send stream read_chunk bearer scoped scripted recording   Request.of post post_json with_payload with_header with_headers json param header   Response.status ok_json html json text bytes
+WebSocket.connect send receive close messages options protocol host scripted (Received = Data(Text | Binary) | Closed(CloseInfo); SocketReason = Connect | MessageTooLarge | NotOpen | Failed)
 Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
 Llm.request generate generate_text stream step scripted anthropic recording replay (LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded)
 Prompt.of text   Model.of default   Untrusted.of trust check len   Secret.of expose map
