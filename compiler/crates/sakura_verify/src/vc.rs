@@ -776,11 +776,57 @@ impl<'m> Gen<'m> {
                 _ => unreachable!(),
             };
         }
+        if let Val::Variant(t, ..) = &vs[0]
+            && vs
+                .iter()
+                .all(|v| matches!(v, Val::Variant(t2, ..) if t2 == t))
+        {
+            return self.merge_variants(name, guards, vs);
+        }
         self.havoc(
             name,
             &Ty::Var(0),
             "a merge of values the encoder does not model",
         )
+    }
+
+    /// A join of constructors of one variant type (`Ok(v)` and `Err(e)` from `T.validate`,
+    /// design §17.294 WP-8): an opaque value whose tag is the `ite` of each path's constructor
+    /// and whose payload of constructor `k` merges the paths that built `k`. A `switch` arm that
+    /// assumes `tag == k` therefore assumes one of those paths' guards, so the `Ok` arm of a
+    /// `validate` knows the predicate held; a payload is read only under its constructor's arm.
+    fn merge_variants(&mut self, name: &str, guards: &[Term], vs: Vec<Val>) -> Val {
+        let id = self.opaque_names.len() as u32;
+        self.opaque_names.push(name.to_owned());
+        let mut tag = None;
+        let mut ctors: Vec<(u32, Vec<Term>, Vec<Vec<Val>>)> = vec![];
+        for (i, v) in vs.into_iter().enumerate().rev() {
+            let Val::Variant(_, k, xs) = v else {
+                unreachable!("checked by the caller")
+            };
+            let t = Term::Int(k as i128);
+            tag = Some(match tag {
+                None => t,
+                Some(acc) => Term::app(Op::Ite, vec![guards[i].clone(), t, acc]),
+            });
+            match ctors.iter_mut().find(|c| c.0 == k) {
+                Some(c) => {
+                    c.1.insert(0, guards[i].clone());
+                    c.2.insert(0, xs);
+                }
+                None => ctors.push((k, vec![guards[i].clone()], vec![xs])),
+            }
+        }
+        let tag = self.define(&format!("{name}.tag"), Sort::Int, tag.expect("nonempty"));
+        self.memo.insert(Key::Tag(id), Val::Int(tag));
+        for (k, gs, rows) in ctors {
+            for i in 0..rows[0].len() {
+                let col = rows.iter().map(|r| r[i].clone()).collect();
+                let v = self.merge_val(&format!("{name}.{k}.{i}"), &gs, col);
+                self.memo.insert(Key::Proj(id, k, i as u32), v);
+            }
+        }
+        Val::Opaque(id, None)
     }
 
     fn term(&mut self, f: &mut Frame, t: &Terminator, mut path: Path) -> Vec<Exit> {

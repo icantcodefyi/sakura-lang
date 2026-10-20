@@ -385,6 +385,12 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `o.inner.x` satisfy `W`'s predicate, as does a refined constructor payload, so a true
   obligation on them is `proved` where it was `disproved` with a counterexample outside `W`.
   Fixture: `compiler/tests/verify/refined_field.sak`.
+- `sakura verify` (preview) decides a `match` on a refined type's `validate` (design §17.294
+  WP-8): the encoder joins `Ok(v)`, on the paths where the `where` held, with `Err(Violation)`,
+  whose payload stays opaque, where any join of a variant type's different constructors was
+  `unsupported: a merge of values the encoder does not model`. The `Ok` arm assumes the
+  predicate; the same join from an `if` (`Some(3)` or `None`) is decided too. Fixture:
+  `compiler/tests/verify/validate_join.sak`.
 
 ### Security
 

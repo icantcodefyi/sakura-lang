@@ -1,0 +1,73 @@
+// Design §17.294 WP-8 (dogfood/workshop-power FRICTION item 8): `match T.validate(v)` joins
+// `Ok(v)`, on the paths where the predicate held, with `Err(Violation)`, whose payload stays
+// opaque. The encoder builds that join, so the dogfood's `watts ensures unchanged` is decided.
+type Watts = Int where it >= 0 && it <= 100_000
+
+error OutOfRange(value: Int)
+
+fn need(w: Int) -> Int
+  requires bounded: w <= 100_000
+{ w }
+
+// The dogfood's `input.watts`: proved.
+fn watts(value: Int) -> Watts
+  ! {Fail<OutOfRange>}
+  ensures unchanged: result == value
+{
+  match Watts.validate(value) {
+    Ok(w) => w,
+    Err(_) => fail OutOfRange { value },
+  }
+}
+
+// The `Ok` arm assumes the predicate: the call's `requires` is proved.
+fn bounded(value: Int) -> Int {
+  match Watts.validate(value) {
+    Ok(w) => need(w),
+    Err(_) => 0,
+  }
+}
+
+// The `Err` arm does not: `value` can be any `Int` there, so this is disproved.
+fn err_arm(value: Int) -> Int {
+  match Watts.validate(value) {
+    Ok(_) => 0,
+    Err(_) => need(value),
+  }
+}
+
+// The predicate is no tighter than `Watts`: disproved with `value = 0`.
+fn wrong(value: Int) -> Int
+  ensures positive: result >= 1
+{
+  match Watts.validate(value) {
+    Ok(w) => w,
+    Err(_) => 1,
+  }
+}
+
+// The same join from an `if`: `Some(3)` on one path, `None` on the other.
+fn pick(b: Bool) -> Int
+  ensures small: result <= 3
+{
+  let o = if b { Some(3) } else { None }
+  match o {
+    Some(x) => x,
+    None => 0,
+  }
+}
+
+// The `Some` payload is 3 on its path: disproved with `b = true`.
+fn pick_wrong(b: Bool) -> Int
+  ensures smaller: result <= 2
+{
+  let o = if b { Some(3) } else { None }
+  match o {
+    Some(x) => x,
+    None => 0,
+  }
+}
+
+pub fn main() -> Unit {
+  let _a = bounded(1)
+}

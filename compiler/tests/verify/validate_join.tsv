@@ -1,0 +1,13 @@
+# profile	symbol	site	status	clause
+i64	main::main::bounded	r%4	proved	requires bounded
+i64	main::main::err_arm	r%3	disproved	requires bounded
+i64	main::main::pick	post%5	proved	ensures small
+i64	main::main::pick_wrong	post%5	disproved	ensures smaller
+i64	main::main::watts	post%5	proved	ensures unchanged
+i64	main::main::wrong	post%5	disproved	ensures positive
+js	main::main::bounded	r%4	proved	requires bounded
+js	main::main::err_arm	r%3	disproved	requires bounded
+js	main::main::pick	post%5	proved	ensures small
+js	main::main::pick_wrong	post%5	disproved	ensures smaller
+js	main::main::watts	post%5	proved	ensures unchanged
+js	main::main::wrong	post%5	disproved	ensures positive
