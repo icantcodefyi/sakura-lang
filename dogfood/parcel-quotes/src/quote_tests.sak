@@ -1,0 +1,500 @@
+// Acceptance tests for the parcel-quote library (BRIEF.md cases 1-27).
+// Every test runs offline: scripted or replayed HTTP, virtual time, fixed seeds.
+
+import std/fs.{Fs}
+import std/http.{Http, Matcher}
+import std/json.{Json}
+import std/path.{Path}
+import std/request.{Method, Request}
+import std/response.{HttpError, Response}
+import std/task.{Timeout}
+import std/url.{Url}
+
+import parcel_quotes/carrier
+import parcel_quotes/carrier.{BadJson, BadUtf8, CarrierStatus, CarrierUnreachable, ResponseTooLarge}
+import parcel_quotes/main.{QuoteError, quote}
+import parcel_quotes/policy
+import parcel_quotes/policy.{
+  Exclusion,
+  InvalidSnapshot,
+  InvalidWeight,
+  Outcome,
+  ParcelInput,
+  Quote,
+  RawService,
+  RawSnapshot,
+  RawZone,
+  UnknownZone,
+}
+
+// ---- fixtures -------------------------------------------------------------
+
+fn zone(id: String, surcharge: Option<Int>) -> RawZone { RawZone { zone: id, surcharge } }
+
+fn service(
+  id: String,
+  max_weight_g: Int,
+  base: Int,
+  per_kg: Int,
+  zones: List<RawZone>,
+) -> RawService
+{ RawService { id, name: "Service {id}", available: true, max_weight_g, base, per_kg, zones } }
+
+/// The synthetic carrier snapshot also stored in tests/fixtures/carrier_rates.jsonl.
+fn fixture_raw() -> RawSnapshot {
+  RawSnapshot {
+    currency: "EUR",
+    services: [
+      service(
+        "standard",
+        30_000,
+        450,
+        120,
+        [zone("domestic", Some(0)), zone("eu", Some(300)), zone("world", Some(900))],
+      ),
+      service("express", 10_000, 900, 200, [zone("domestic", None), zone("eu", Some(500))]),
+      service("economy", 20_000, 300, 100, [zone("domestic", Some(0))]),
+      RawService {
+        ..service("freight", 30_000, 2_000, 50, [zone("domestic", Some(0))]),
+        available: false,
+      },
+    ],
+  }
+}
+
+fn parcel(weight_g: Int, zone: String, service: Option<String>) -> Untrusted<ParcelInput> {
+  Untrusted.of(ParcelInput { weight_g, zone, service })
+}
+
+/// The clock for tests whose fetch reads a response body. It should be
+/// `Clock.virtual()`, but on 0.1.0 `--target wasm` a `timeout` around
+/// `Http.stream` + `Http.read_chunk` fires at once under the virtual clock
+/// (JS does not), so these tests use the host clock: the 5 s limit is never
+/// approached by an in-memory fetch. See FRICTION.md. The timeout case
+/// itself (test 24) runs in virtual time.
+fn body_clock() -> Handler<Clock> { Clock.host() }
+
+fn ok_body(text: String) -> Handler<Http> {
+  Http.scripted([(Matcher.Any, Response.status(200, text))])
+}
+
+/// Quotes `input` against `raw` served by a scripted carrier.
+fn quote_with(raw: RawSnapshot, input: Untrusted<ParcelInput>) -> Outcome ! {Fail<QuoteError>} {
+  with body_clock(), Task.deterministic(7), ok_body(Json.encode(raw)) { quote(input) }
+}
+
+/// Quotes directly against an in-memory snapshot, with no HTTP at all.
+fn quote_direct(raw: RawSnapshot, input: Untrusted<ParcelInput>) -> Outcome ! {Fail<QuoteError>} {
+  let p = policy.validate_parcel(input)
+  policy.quote_snapshot(p, policy.validate_snapshot(raw))
+}
+
+fn totals(o: Outcome) -> List<(String, Int)> {
+  match o {
+    Outcome.Quoted(qs, _) => List.map(qs, fn(q) { (q.service, q.total) }),
+    Outcome.NoQuote(_, _) => [],
+  }
+}
+
+fn exclusions(o: Outcome) -> List<Exclusion> {
+  match o {
+    Outcome.Quoted(_, xs) => xs,
+    Outcome.NoQuote(_, xs) => xs,
+  }
+}
+
+fn one_service(base: Int, per_kg: Int, surcharge: Int, max_weight_g: Int) -> RawSnapshot {
+  RawSnapshot {
+    currency: "EUR",
+    services: [service("solo", max_weight_g, base, per_kg, [zone("domestic", Some(surcharge))])],
+  }
+}
+
+// ---- weight units and pricing (cases 1-4, 11) ----------------------------
+
+test "01 a 1,000 g parcel pays one unit plus base and zone surcharge" {
+  let o = quote_with(fixture_raw(), parcel(1_000, "eu", Some("standard")))
+  match o {
+    Outcome.Quoted([q], _) => {
+      expect_eq(q.units, 1)
+      expect_eq(q.total, 450 + 120 + 300)
+      expect_eq(q.surcharge, 300)
+    },
+    _ => expect(false),
+  }
+}
+
+test "02 a 1,001 g parcel pays two weight units" {
+  expect_eq(
+    totals(quote_with(fixture_raw(), parcel(1_001, "eu", Some("standard")))),
+    [("standard", 450 + 240 + 300)],
+  )
+}
+
+test "03 a one-gram parcel receives the minimum one-unit quote" {
+  expect_eq(
+    totals(quote_with(fixture_raw(), parcel(1, "domestic", Some("economy")))),
+    [("economy", 400)],
+  )
+}
+
+test "04 a 30,000 g parcel is admitted when the limit allows it" {
+  let o = quote_with(fixture_raw(), parcel(30_000, "domestic", None))
+  expect_eq(totals(o), [("standard", 450 + 30 * 120)])
+}
+
+test "11 zero base charge and zero surcharge remain valid" {
+  expect_eq(
+    totals(quote_with(one_service(0, 100, 0, 5_000), parcel(2_500, "domestic", None))),
+    [("solo", 300)],
+  )
+}
+
+// ---- input validation (cases 5-7) ----------------------------------------
+
+test "05 zero weight is invalid input, not a defect" {
+  expect_fail(
+    fn() { quote_with(fixture_raw(), parcel(0, "domestic", None)) },
+    InvalidWeight { grams: 0 },
+  )
+}
+
+test "06 a weight above 30,000 g is rejected before any HTTP call" {
+  // `Http.scripted([])` fails every request: reaching HTTP would be CarrierUnreachable.
+  with body_clock(), Task.deterministic(7), Http.scripted([]) {
+    expect_fail(fn() { quote(parcel(30_001, "domestic", None)) }, InvalidWeight { grams: 30_001 })
+  }
+}
+
+test "07 an unknown zone is invalid input, a known unserved zone is not" {
+  expect_fail(
+    fn() { quote_with(fixture_raw(), parcel(500, "mars", None)) },
+    UnknownZone { zone: "mars" },
+  )
+  let o = quote_with(fixture_raw(), parcel(500, "world", Some("economy")))
+  expect_eq(
+    o,
+    Outcome.NoQuote(
+      policy.NoEligibleService,
+      [Exclusion { service: "economy", reason: policy.ZoneNotServed("world") }],
+    ),
+  )
+}
+
+// ---- requested services and exclusions (cases 8-10, 12) ------------------
+
+test "08 a requested known service filters the result to that service" {
+  let o = quote_with(fixture_raw(), parcel(1_500, "domestic", Some("express")))
+  expect_eq(totals(o), [("express", 900 + 400)])
+  expect_eq(exclusions(o), [])
+}
+
+test "09 a requested absent service is an explicit no-quote" {
+  let o = quote_with(fixture_raw(), parcel(1_500, "domestic", Some("overnight")))
+  expect_eq(o, Outcome.NoQuote(policy.RequestedServiceAbsent("overnight"), []))
+}
+
+test "10 a service below the parcel's weight is excluded with its limit" {
+  let o = quote_with(fixture_raw(), parcel(25_000, "domestic", None))
+  expect_eq(totals(o), [("standard", 450 + 25 * 120)])
+  expect_eq(
+    exclusions(o),
+    [
+      Exclusion { service: "economy", reason: policy.OverWeight(20_000) },
+      Exclusion { service: "express", reason: policy.OverWeight(10_000) },
+      Exclusion { service: "freight", reason: policy.Unavailable },
+    ],
+  )
+}
+
+test "12 equal prices sort by service id regardless of snapshot order" {
+  let zs = [zone("domestic", Some(0))]
+  let raw = RawSnapshot {
+    currency: "EUR",
+    services: [
+      service("zulu", 5_000, 100, 100, zs),
+      service("alpha", 5_000, 150, 50, zs),
+      service("mike", 5_000, 50, 10, zs),
+    ],
+  }
+  expect_eq(
+    totals(quote_with(raw, parcel(1_000, "domestic", None))),
+    [("mike", 60), ("alpha", 200), ("zulu", 200)],
+  )
+}
+
+// ---- snapshot validation (cases 13-18) -----------------------------------
+
+test "13 negative or over-limit prices reject the snapshot" {
+  expect_fail(
+    fn() { quote_with(one_service(-1, 0, 0, 5_000), parcel(10, "domestic", None)) },
+    InvalidSnapshot { problem: policy.ChargeOutOfRange("solo", "base", -1) },
+  )
+  expect_fail(
+    fn() { quote_with(one_service(0, 1_000_001, 0, 5_000), parcel(10, "domestic", None)) },
+    InvalidSnapshot { problem: policy.ChargeOutOfRange("solo", "per_kg", 1_000_001) },
+  )
+  expect_fail(
+    fn() { quote_with(one_service(0, 0, 1_000_001, 5_000), parcel(10, "domestic", None)) },
+    InvalidSnapshot { problem: policy.ChargeOutOfRange("solo", "surcharge:domestic", 1_000_001) },
+  )
+}
+
+test "14 duplicate service ids reject the snapshot" {
+  let zs = [zone("domestic", Some(0))]
+  let raw = RawSnapshot {
+    currency: "EUR",
+    services: [service("dup", 5_000, 1, 1, zs), service("dup", 5_000, 2, 2, zs)],
+  }
+  expect_fail(
+    fn() { quote_with(raw, parcel(10, "domestic", None)) },
+    InvalidSnapshot { problem: policy.DuplicateService("dup") },
+  )
+}
+
+test "15 duplicate zone entries in one service reject the snapshot" {
+  let raw = RawSnapshot {
+    currency: "EUR",
+    services: [service("twice", 5_000, 1, 1, [zone("eu", Some(1)), zone("eu", Some(2))])],
+  }
+  expect_fail(
+    fn() { quote_with(raw, parcel(10, "eu", None)) },
+    InvalidSnapshot { problem: policy.DuplicateZone("twice", "eu") },
+  )
+}
+
+test "16 a currency mismatch rejects the snapshot" {
+  let raw = RawSnapshot { ..fixture_raw(), currency: "USD" }
+  expect_fail(
+    fn() { quote_with(raw, parcel(10, "eu", None)) },
+    InvalidSnapshot { problem: policy.WrongCurrency("USD") },
+  )
+}
+
+test "17 an empty valid snapshot is a no-quote, not a decode failure" {
+  let o = quote_with(RawSnapshot { currency: "EUR", services: [] }, parcel(10, "eu", None))
+  expect_eq(o, Outcome.NoQuote(policy.NoEligibleService, []))
+}
+
+test "18 eleven services exceed the bound and ten are accepted" {
+  let zs = [zone("domestic", Some(0))]
+  let ten = List.map(List.range(0, 10), fn(i) { service("s{i}", 5_000, 100 + i, 0, zs) })
+  expect_eq(
+    List.len(
+      totals(
+        quote_with(RawSnapshot { currency: "EUR", services: ten }, parcel(10, "domestic", None)),
+      ),
+    ),
+    10,
+  )
+  let eleven = List.push(ten, service("s10", 5_000, 1, 0, zs))
+  expect_fail(
+    fn() {
+      quote_with(RawSnapshot { currency: "EUR", services: eleven }, parcel(10, "domestic", None))
+    },
+    InvalidSnapshot { problem: policy.TooManyServices(11) },
+  )
+}
+
+// ---- decoding and the response cap (cases 19-20) -------------------------
+
+test "19 invalid UTF-8 and malformed JSON are distinct recoverable failures" {
+  with body_clock(),
+      Task.deterministic(7),
+      ok_body(""),
+      raw_body(Bytes.from_list([123, 255, 125])) {
+    expect_fail(fn() { quote(parcel(10, "eu", None)) }, BadUtf8 { offset: 1 })
+  }
+  let r = try { quote_with_text("\{\"currency\": \"EUR\", ", parcel(10, "eu", None)) }
+  match r {
+    Err(BadJson { .. }) => expect(true),
+    _ => expect(false),
+  }
+}
+
+fn quote_with_text(text: String, input: Untrusted<ParcelInput>) -> Outcome ! {Fail<QuoteError>} {
+  with body_clock(), Task.deterministic(7), ok_body(text) { quote(input) }
+}
+
+test "20 the byte cap is enforced while reading, before parsing" {
+  let cap = carrier.max_response_bytes()
+  // Exactly at the cap: read in full, then parsed (and rejected as JSON).
+  expect_fails_with(
+    fn() { quote_with_text(String.repeat("x", cap), parcel(10, "eu", None)) },
+    fn(e) {
+      match e {
+        BadJson { .. } => true,
+        _ => false,
+      }
+    },
+  )
+  // One byte over: fails while reading; the parser never sees it.
+  expect_fail(
+    fn() { quote_with_text(String.repeat("x", cap + 1), parcel(10, "eu", None)) },
+    ResponseTooLarge { limit: cap },
+  )
+}
+
+// ---- cassettes, status, timeout and narrowing (cases 21-25) --------------
+
+test "21 the carrier cassette yields the same quote as a direct snapshot" {
+  let input = parcel(1_000, "domestic", None)
+  let replayed = with Fs.rooted(Test.fixtures()),
+      Http.scripted([]),
+      Http.recording(Path.of("carrier_rates.jsonl")),
+      body_clock(),
+      Task.deterministic(7) { quote(input) }
+  expect_eq(replayed, quote_direct(fixture_raw(), input))
+  expect_eq(totals(replayed), [("economy", 400), ("standard", 570), ("express", 1_100)])
+}
+
+test "22 a cassette miss fails offline with no host fallback" {
+  // The outer handler would answer anything; a fallback would produce a quote.
+  with Fs.rooted(Test.fixtures()),
+      ok_body(Json.encode(fixture_raw())),
+      Http.recording(Path.of("carrier_miss.jsonl")),
+      body_clock(),
+      Task.deterministic(7) {
+    expect_fails_with(fn() { quote(parcel(10, "eu", None)) }, fn(e) {
+      match e {
+        CarrierUnreachable { reason } => String.contains(reason, "sakura test --record"),
+        _ => false,
+      }
+    })
+  }
+}
+
+test "23 a non-200 response fails explicitly and is not parsed" {
+  let unavailable = Response.status(503, Json.encode(fixture_raw()))
+  with body_clock(), Task.deterministic(7), Http.scripted([(Matcher.Any, unavailable)]) {
+    expect_fail(fn() { quote(parcel(10, "eu", None)) }, CarrierStatus { status: 503 })
+  }
+}
+
+/// Serves `bytes` as the body of whatever the outer handler answers. In 0.1.0 a
+/// scripted `Response.body` is a `String`, so invalid UTF-8 cannot be scripted.
+fn raw_body(bytes: Bytes) -> Handler<Http, {Http}> {
+  handler Http {
+    var sent = false
+    fn send(req) { Http.send(req) }
+    fn stream(req, body) { Http.stream(req, body) }
+    fn read_chunk(b, max) {
+      let _ = Http.read_chunk(b, max)
+      if sent {
+        Bytes.from_list([])
+      } else {
+        sent = true
+        bytes
+      }
+    }
+  }
+}
+
+fn slow_carrier(delay: Duration) -> Handler<Http, {Clock, Http}> {
+  handler Http {
+    fn send(req) {
+      Clock.sleep(delay)
+      Http.send(req)
+    }
+    fn stream(req, body) {
+      Clock.sleep(delay)
+      Http.stream(req, body)
+    }
+    fn read_chunk(b, max) { Http.read_chunk(b, max) }
+  }
+}
+
+test "24 a delayed fetch times out in virtual time with a typed Timeout" {
+  with Clock.virtual(),
+      Task.deterministic(7),
+      ok_body(Json.encode(fixture_raw())),
+      slow_carrier(Duration.seconds(60)) {
+    let start = Clock.now()
+    expect_fail(fn() { quote(parcel(10, "eu", None)) }, Timeout { limit: Duration.seconds(5) })
+    expect_eq(Instant.diff(Clock.now(), start), Duration.seconds(5))
+  }
+}
+
+test "25 the narrowed carrier handler refuses a different host" {
+  with ok_body(Json.encode(fixture_raw())), Http.scoped([carrier.carrier_host()]) {
+    let other = Request.of(Method.Get, Url.from("https://rates.example/rates"))
+    let r: Result<Response, HttpError> = try { Http.send(other) }
+    expect_eq(
+      r,
+      Err(HttpError { status: None, reason: "rates.example:443 is outside Http.scoped" }),
+    )
+    expect_eq(Http.send(Request.of(Method.Get, carrier.rates_url())).status, 200)
+  }
+}
+
+test "25b a carrier redirect is an explicit failure, never followed" {
+  // In 0.1.0 `std/http` returns a 3xx to the caller (the website documents
+  // redirect following on main only), so the library sees a non-200 status.
+  let moved = Response {
+    ..Response.status(302, ""),
+    headers: [("location", "https://rates.example/rates")],
+  }
+  with body_clock(), Task.deterministic(7), Http.scripted([(Matcher.Any, moved)]) {
+    expect_fail(fn() { quote(parcel(10, "eu", None)) }, CarrierStatus { status: 302 })
+  }
+}
+
+// ---- arithmetic parity and isolation (cases 26-27) -----------------------
+
+test "26 maximal charges and weight produce the exact maximal price" {
+  let o = quote_with(
+    one_service(1_000_000, 1_000_000, 1_000_000, 30_000),
+    parcel(30_000, "domestic", None),
+  )
+  expect_eq(totals(o), [("solo", 32_000_000)])
+  expect_eq(
+    o,
+    quote_direct(
+      one_service(1_000_000, 1_000_000, 1_000_000, 30_000),
+      parcel(30_000, "domestic", None),
+    ),
+  )
+}
+
+test "27 repeated calls with fresh handlers do not share rate data" {
+  let first = quote_with(one_service(100, 10, 0, 5_000), parcel(1_000, "domestic", None))
+  let second = quote_with(one_service(200, 20, 0, 5_000), parcel(1_000, "domestic", None))
+  expect_eq(totals(first), [("solo", 110)])
+  expect_eq(totals(second), [("solo", 220)])
+  with body_clock(),
+      Task.deterministic(7),
+      Http.scripted([(Matcher.Any, Response.status(500, ""))]) {
+    expect_fail(fn() { quote(parcel(1_000, "domestic", None)) }, CarrierStatus { status: 500 })
+  }
+}
+
+// ---- pure policy units ----------------------------------------------------
+
+test "weight units round up to started kilograms" {
+  expect_eq(
+    List.map(
+      [1, 999, 1_000, 1_001, 2_000, 2_001, 30_000],
+      fn(g) { policy.weight_units(policy.Weight.from(g)) },
+    ),
+    [1, 1, 1, 2, 2, 3, 30],
+  )
+}
+
+test "an over-long or uppercase service id is invalid input" {
+  expect_fail(
+    fn() { quote_with(fixture_raw(), parcel(10, "eu", Some("Express"))) },
+    policy.InvalidServiceId { service: "Express" },
+  )
+}
+
+test "a snapshot zone outside the configured three rejects the snapshot" {
+  let raw = one_service(1, 1, 1, 100)
+  let bad = RawSnapshot {
+    ..raw,
+    services: [RawService { ..service("solo", 100, 1, 1, [zone("moon", Some(1))]) }],
+  }
+  expect_fail(
+    fn() { quote_with(bad, parcel(10, "domestic", None)) },
+    InvalidSnapshot { problem: policy.ZoneNotConfigured("solo", "moon") },
+  )
+}

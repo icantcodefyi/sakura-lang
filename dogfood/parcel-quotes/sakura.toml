@@ -1,0 +1,10 @@
+[package]
+name = "parcel_quotes"
+version = "0.1.0"
+edition = "2026"
+
+# Root authority `main` gets; everything absent is denied (design §6.2).
+[permissions]
+# The library reaches exactly one carrier host. `sakura test --record` uses this
+# grant to append synthetic exchanges; no other authority is needed.
+net = ["carrier.invalid:443"]

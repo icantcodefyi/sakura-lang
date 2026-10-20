@@ -1,0 +1,194 @@
+// Parcel Quotes: shipping-policy quotes for a Node storefront.
+//
+// Author: Claude Opus 5.5 (Anthropic), as a dogfood user of Sakura Lang.
+// Provenance: written in one fresh session with no repository checkout and no
+// path to one; sources were the installed CLI (`sakura prompt`, `sakura doc`),
+// the public website https://www.sakuralang.com and BRIEF.md.
+// Release built against: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+//
+// `quote` is the library entry. It validates the parcel before any HTTP work,
+// fetches the carrier snapshot under a handler narrowed to the one carrier
+// host, validates the snapshot and prices it. The Node embedding of the WASM
+// artifact (the pull boundary) is not implemented: see FRICTION.md (G02).
+//
+// `main` is an offline sample runner, not the Node consumer: it reads a rate
+// document on stdin and serves it as the carrier's 200 response through a
+// scripted `Http` handler, so the whole fetch/decode/validate/price path runs
+// with no network and no filesystem authority.
+//
+//   sakura run -- <weight_g> <zone> [service] < rates.json
+//
+// Exit codes: 0 quoted, 2 invalid input, 3 valid parcel but no quote,
+// 4 carrier or rate-document failure, 64 usage.
+
+import std/cli.{Cli}
+import std/http.{Http, Matcher}
+import std/response.{Response}
+import std/task.{Timeout}
+
+import parcel_quotes/carrier
+import parcel_quotes/carrier.{
+  BadJson,
+  BadUtf8,
+  CarrierStatus,
+  CarrierUnreachable,
+  DecodeFailure,
+  FetchError,
+  ResponseTooLarge,
+}
+import parcel_quotes/policy
+import parcel_quotes/policy.{
+  Exclusion,
+  ExclusionReason,
+  InputError,
+  InvalidServiceId,
+  InvalidSnapshot,
+  InvalidWeight,
+  NoQuoteReason,
+  Outcome,
+  ParcelInput,
+  Quote,
+  SnapshotProblem,
+  UnknownZone,
+}
+
+/// Every failure `quote` can report. Input errors are raised before any HTTP
+/// work; a valid but unserviceable parcel is an `Outcome`, not a failure.
+pub type QuoteError = InputError | FetchError | DecodeFailure | InvalidSnapshot
+
+/// The library entry: quote a parcel against the carrier's current rates.
+pub fn quote(input: Untrusted<ParcelInput>) -> Outcome ! {Clock, Http, Task, Fail<QuoteError>} {
+  let parcel = policy.validate_parcel(input)
+  let bytes = with Http.scoped([carrier.carrier_host()]) { carrier.fetch_rates() }
+  let raw = carrier.decode_rates(bytes)
+  let snapshot = policy.validate_snapshot(raw)
+  policy.quote_snapshot(parcel, snapshot)
+}
+
+// ---- offline sample runner --------------------------------------------------
+
+pub fn main() -> Unit ! {Cli, Clock, Console, Task} {
+  let input = match parse_args(Cli.args()) {
+    Ok(i) => i,
+    Err((message, code)) => {
+      Console.print(message)
+      Cli.exit(code)
+    },
+  }
+  let rates = read_stdin(carrier.max_response_bytes() + 1)
+  let code = with Http.scripted([(Matcher.Any, Response.status(200, rates))]) {
+    try {
+      let outcome = quote(Untrusted.of(input))
+      for line in render_outcome(outcome) { Console.print(line) }
+      outcome_code(outcome)
+    } catch {
+      InvalidWeight { grams } => report("invalid input: weight {grams} g is outside 1..30000", 2),
+      UnknownZone { zone } => report("invalid input: unknown zone {zone}", 2),
+      InvalidServiceId { service } => report("invalid input: bad service id {service}", 2),
+      CarrierStatus { status } => report("carrier failure: HTTP status {status}", 4),
+      CarrierUnreachable { reason } => report("carrier failure: {reason}", 4),
+      ResponseTooLarge { limit } => report("carrier failure: response over {limit} bytes", 4),
+      Timeout { limit } => report("carrier failure: no answer within {limit.to_millis()} ms", 4),
+      BadUtf8 { offset } => report("rate document: invalid UTF-8 at byte {offset}", 4),
+      BadJson { path, message } =>
+        report("rate document: malformed JSON{at_path(path)}: {message}", 4),
+      InvalidSnapshot { problem } =>
+        report("rate document rejected: {describe_problem(problem)}", 4),
+    }
+  }
+  if code != 0 { Cli.exit(code) }
+}
+
+fn usage() -> String {
+  "usage: parcel_quotes <weight_g> <domestic|eu|world> [service] < rates.json"
+}
+
+fn report(line: String, code: Int) -> Int ! {Console} {
+  Console.print(line)
+  code
+}
+
+/// Parses `<weight_g> <zone> [service]`. A weight that is not an integer is
+/// invalid input (2); a wrong argument count is a usage error (64).
+fn parse_args(args: List<String>) -> Result<ParcelInput, (String, Int)> {
+  let n = List.len(args)
+  if n < 2 || n > 3 { return Err((usage(), 64)) }
+  let text = args[0].unwrap_or("")
+  let zone = args[1].unwrap_or("")
+  match String.parse_int(text) {
+    None => Err(("invalid input: weight {text} is not a whole number of grams", 2)),
+    Some(w) => Ok(ParcelInput { weight_g: w, zone, service: args[2] }),
+  }
+}
+
+/// Reads stdin until EOF, stopping once more than `limit` bytes are held so
+/// that the library's own byte cap still sees an oversized document.
+fn read_stdin(limit: Int) -> String ! {Console} {
+  var lines: List<String> = []
+  var held = 0
+  var done = false
+  while !done && held <= limit {
+    match Console.read_line() {
+      None => { done = true },
+      Some(line) => {
+        held = held + Bytes.len(String.to_bytes(line)) + 1
+        lines = List.push(lines, line)
+      },
+    }
+  }
+  List.join(lines, "\n")
+}
+
+fn at_path(path: String) -> String { if path == "" { "" } else { " at {path}" } }
+
+fn outcome_code(o: Outcome) -> Int {
+  match o {
+    Outcome.Quoted(_, _) => 0,
+    Outcome.NoQuote(_, _) => 3,
+  }
+}
+
+/// One line per quote (cheapest first), then one per exclusion.
+pub fn render_outcome(o: Outcome) -> List<String> {
+  match o {
+    Outcome.Quoted(quotes, excluded) =>
+      List.concat(List.map(quotes, render_quote), List.map(excluded, render_exclusion)),
+    Outcome.NoQuote(reason, excluded) =>
+      List.concat([render_no_quote(reason)], List.map(excluded, render_exclusion)),
+  }
+}
+
+fn render_quote(q: Quote) -> String {
+  "quote {q.service} {q.total} {q.currency} ({q.name}: base {q.base} + {q.units} kg x {q.weight_charge / q.units} + zone {q.surcharge})"
+}
+
+fn render_exclusion(x: Exclusion) -> String {
+  let why = match x.reason {
+    ExclusionReason.ZoneNotServed(zone) => "does not serve zone {zone}",
+    ExclusionReason.OverWeight(limit) => "weight limit {limit} g",
+    ExclusionReason.Unavailable => "unavailable",
+  }
+  "excluded {x.service}: {why}"
+}
+
+fn render_no_quote(reason: NoQuoteReason) -> String {
+  match reason {
+    NoQuoteReason.RequestedServiceAbsent(id) => "no quote: service {id} is not offered",
+    NoQuoteReason.NoEligibleService => "no quote: no service can carry this parcel",
+  }
+}
+
+pub fn describe_problem(p: SnapshotProblem) -> String {
+  match p {
+    SnapshotProblem.WrongCurrency(c) => "currency {c} is not {policy.currency()}",
+    SnapshotProblem.TooManyServices(n) => "{n} services, at most {policy.max_services()}",
+    SnapshotProblem.DuplicateService(id) => "duplicate service {id}",
+    SnapshotProblem.DuplicateZone(id, zone) => "service {id} lists zone {zone} twice",
+    SnapshotProblem.BadIdent(id) => "bad service id {id}",
+    SnapshotProblem.BadName(id) => "service {id} has a bad name",
+    SnapshotProblem.BadWeightLimit(id, g) => "service {id} has weight limit {g}",
+    SnapshotProblem.ChargeOutOfRange(id, part, amount) =>
+      "service {id} {part} charge {amount} is outside 0..1000000",
+    SnapshotProblem.ZoneNotConfigured(id, zone) => "service {id} names unconfigured zone {zone}",
+  }
+}

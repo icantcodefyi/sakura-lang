@@ -1,0 +1,109 @@
+// The effectful rate lookup: one bounded, timed, streamed GET to the single
+// configured carrier endpoint, then UTF-8 and JSON decoding with recoverable
+// errors. Validation and pricing stay in `policy`.
+
+import std/encoding.{Encoding, EncodingError, EncodingReason, Errors}
+import std/http.{Body, Http}
+import std/json.{DecodeError, Json}
+import std/request.{Method, Request}
+import std/response.{HttpError}
+import std/task.{Timeout, timeout}
+import std/url.{Url}
+
+import parcel_quotes/policy.{RawSnapshot}
+
+/// The carrier answered with something other than 200; the body is not read.
+pub error CarrierStatus(status: Int)
+
+/// No response arrived, the connection dropped, or a narrowed handler refused the host.
+pub error CarrierUnreachable(reason: String)
+
+/// The response body is larger than the cap; detected while reading.
+pub error ResponseTooLarge(limit: Int)
+
+/// The response body is not valid UTF-8.
+pub error BadUtf8(offset: Int)
+
+/// The response body is UTF-8 but not a rate document.
+pub error BadJson(path: String, message: String)
+
+pub type FetchError = CarrierStatus | CarrierUnreachable | ResponseTooLarge | Timeout
+
+pub type DecodeFailure = BadUtf8 | BadJson
+
+/// The fixture endpoint. A deployment replaces this one value and grants
+/// exactly `carrier_host()` in `[permissions] net`.
+pub fn rates_url() -> Url { Url.from("https://carrier.invalid/rates") }
+
+/// The `host:port` the library may reach, for `Http.scoped`.
+pub fn carrier_host() -> String { "carrier.invalid:443" }
+
+/// Response bytes read at most.
+pub fn max_response_bytes() -> Int { 65_536 }
+
+/// The cooperative timeout for the whole fetch.
+pub fn fetch_timeout() -> Duration { Duration.seconds(5) }
+
+/// Fetches the raw rate document bytes, bounded in size and time. Any
+/// non-200 status fails before the body is read.
+pub fn fetch_rates() -> Bytes ! {Clock, Http, Task, Fail<FetchError>} {
+  let req = Request.of(Method.Get, rates_url())
+  timeout(fetch_timeout(), fn() { stream_capped(req, max_response_bytes()) })
+}
+
+fn stream_capped(req: Request, cap: Int) -> Bytes
+  ! {Http, Fail<CarrierStatus | CarrierUnreachable | ResponseTooLarge>}
+{
+  try {
+    Http.stream(req, fn(incoming) {
+      if incoming.status != 200 { fail CarrierStatus { status: incoming.status } }
+      read_capped(incoming.body, cap)
+    })
+  } catch {
+    HttpError { reason, .. } => fail CarrierUnreachable { reason },
+  }
+}
+
+/// Reads the whole body, failing as soon as more than `cap` bytes arrive.
+/// Each read asks for at most one byte past the remaining allowance, so a
+/// cap-plus-one body fails without buffering anything beyond it.
+pub fn read_capped(body: Body, cap: Int) -> Bytes
+  ! {Http, Fail<HttpError | ResponseTooLarge>}
+  requires cap > 0
+{
+  var parts: List<Bytes> = []
+  var total = 0
+  var done = false
+  while !done {
+    let chunk = Http.read_chunk(body, cap - total + 1)
+    let n = Bytes.len(chunk)
+    if n == 0 {
+      done = true
+    } else {
+      total = total + n
+      if total > cap { fail ResponseTooLarge { limit: cap } }
+      parts = List.push(parts, chunk)
+    }
+  }
+  Bytes.concat(parts)
+}
+
+/// Decodes bytes as strict UTF-8 and then as a rate document. Invalid UTF-8
+/// and malformed JSON are distinct, recoverable failures.
+pub fn decode_rates(bytes: Bytes) -> RawSnapshot ! {Fail<DecodeFailure>} {
+  let text = match Encoding.decode(bytes, Encoding.Utf8, Errors.Fatal) {
+    Ok(t) => t,
+    Err(EncodingError { reason }) => fail BadUtf8 { offset: malformed_offset(reason) },
+  }
+  match Json.decode(text) {
+    Ok(raw) => raw,
+    Err(DecodeError { path, message }) => fail BadJson { path, message },
+  }
+}
+
+fn malformed_offset(reason: EncodingReason) -> Int {
+  match reason {
+    EncodingReason.Malformed(at) => at,
+    EncodingReason.Unsupported(_) => 0,
+  }
+}

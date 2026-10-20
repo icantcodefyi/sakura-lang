@@ -1,0 +1,263 @@
+// Pure shipping policy: parcel validation, carrier-snapshot validation and
+// pricing. Nothing in this module performs an effect other than `Fail`.
+
+/// Parcel weight in grams accepted at the input boundary.
+pub type Weight = Int where it >= 1 && it <= 30_000
+
+/// One charge component of a carrier rate, in minor currency units.
+pub type Charge = Int where it >= 0 && it <= 1_000_000
+
+/// A service's weight limit in grams. Positive and bounded so that
+/// weight arithmetic stays inside the shared JS/WASM integer range.
+pub type WeightLimit = Int where it >= 1 && it <= 1_000_000
+
+/// A quote total. The largest reachable total is
+/// 1,000,000 + 30 * 1,000,000 + 1,000,000 = 32,000,000.
+pub type Total = Int where it >= 0 && it <= 32_000_000
+
+/// A service or zone identifier: 1 to 32 lowercase ASCII letters, digits, `-` or `_`.
+pub type Ident = String where is_ident(it)
+
+/// A human-readable service name: 1 to 64 bytes.
+pub type ServiceName = String where String.len(it) >= 1 && String.len(it) <= 64
+
+/// The configured destination zones.
+pub type ZoneId = String where is_zone(it)
+
+/// The caller's request, before validation. `weight_g` crosses the boundary as
+/// an `Int` in the JS safe range; the refinement below narrows it further.
+pub type ParcelInput = { weight_g: Int, zone: String, service: Option<String> }
+
+/// A validated parcel.
+pub type Parcel = { weight_g: Weight, zone: ZoneId, service: Option<Ident> }
+
+/// Raw rate document shapes, as decoded from JSON. Only structure is checked
+/// here; `validate_snapshot` enforces every bound.
+pub type RawZone = { zone: String, surcharge: Option<Int> }
+
+pub type RawService = {
+  id: String,
+  name: String,
+  available: Bool,
+  max_weight_g: Int,
+  base: Int,
+  per_kg: Int,
+  zones: List<RawZone>,
+}
+
+pub type RawSnapshot = { currency: String, services: List<RawService> }
+
+/// Validated snapshot shapes.
+pub type ZoneRate = { zone: ZoneId, surcharge: Charge }
+
+pub type Service = {
+  id: Ident,
+  name: ServiceName,
+  available: Bool,
+  max_weight_g: WeightLimit,
+  base: Charge,
+  per_kg: Charge,
+  zones: List<ZoneRate>,
+}
+
+pub type Snapshot = { currency: String, services: List<Service> }
+
+/// One eligible service's price, broken down.
+pub type Quote = {
+  service: String,
+  name: String,
+  units: Int,
+  base: Int,
+  weight_charge: Int,
+  surcharge: Int,
+  total: Int,
+  currency: String,
+}
+
+pub type ExclusionReason = ZoneNotServed(String) | OverWeight(Int) | Unavailable
+
+pub type Exclusion = { service: String, reason: ExclusionReason }
+
+pub type NoQuoteReason = RequestedServiceAbsent(String) | NoEligibleService
+
+/// The library's answer for a valid parcel. A valid but unserviceable parcel
+/// is `NoQuote`, never a failure.
+pub type Outcome = Quoted(List<Quote>, List<Exclusion>) | NoQuote(NoQuoteReason, List<Exclusion>)
+
+/// Input problems: the caller sent something the policy cannot price.
+pub error InvalidWeight(grams: Int)
+
+pub error UnknownZone(zone: String)
+pub error InvalidServiceId(service: String)
+
+pub type InputError = InvalidWeight | UnknownZone | InvalidServiceId
+
+/// Why a rate document was rejected before any calculation.
+pub type SnapshotProblem = WrongCurrency(String)
+  | TooManyServices(Int)
+  | DuplicateService(String)
+  | DuplicateZone(String, String)
+  | BadIdent(String)
+  | BadName(String)
+  | BadWeightLimit(String, Int)
+  | ChargeOutOfRange(String, String, Int)
+  | ZoneNotConfigured(String, String)
+
+pub error InvalidSnapshot(problem: SnapshotProblem)
+
+/// The single application currency.
+pub fn currency() -> String { "EUR" }
+
+/// The three configured destination zones.
+pub fn zones() -> List<String> { ["domestic", "eu", "world"] }
+
+/// At most this many distinct services in one snapshot.
+pub fn max_services() -> Int { 10 }
+
+pub fn is_zone(s: String) -> Bool { s == "domestic" || s == "eu" || s == "world" }
+
+pub fn is_ident(s: String) -> Bool {
+  let n = String.len(s)
+  n >= 1 && n <= 32 && List.all(String.chars(s), fn(c) { is_ident_char(c) })
+}
+
+fn is_ident_char(c: String) -> Bool { String.contains("abcdefghijklmnopqrstuvwxyz0123456789-_", c) }
+
+/// Started kilograms: 1–1,000 g is one unit, 1,001–2,000 g two.
+pub fn weight_units(grams: Weight) -> Int
+  ensures result >= 1 && result <= 30
+{ (grams + 999) / 1000 }
+
+/// Validates the caller's parcel. The first failing field is reported.
+pub fn validate_parcel(raw: Untrusted<ParcelInput>) -> Parcel ! {Fail<InputError>} {
+  let input = match raw.check("weight 1..30000 g", fn(p) {
+    p.weight_g >= 1 && p.weight_g <= 30_000
+  }) {
+    Ok(p) => p,
+    Err(_) => fail InvalidWeight { grams: weight_of(raw) },
+  }
+  let weight: Weight = match Weight.validate(input.weight_g) {
+    Ok(w) => w,
+    Err(_) => fail InvalidWeight { grams: input.weight_g },
+  }
+  let zone: ZoneId = match ZoneId.validate(input.zone) {
+    Ok(z) => z,
+    Err(_) => fail UnknownZone { zone: input.zone },
+  }
+  let service: Option<Ident> = match input.service {
+    None => None,
+    Some(s) => match Ident.validate(s) {
+      Ok(id) => Some(id),
+      Err(_) => fail InvalidServiceId { service: s },
+    },
+  }
+  Parcel { weight_g: weight, zone, service }
+}
+
+// The rejected weight is echoed back in the error so the caller can show it.
+fn weight_of(raw: Untrusted<ParcelInput>) -> Int {
+  raw.trust(@trust("the weight is only echoed back in InvalidWeight, never used for pricing"))
+    .weight_g
+}
+
+/// Validates a decoded rate document. Every bound is enforced and a duplicate
+/// or a foreign currency rejects the whole snapshot rather than picking one.
+pub fn validate_snapshot(raw: RawSnapshot) -> Snapshot ! {Fail<InvalidSnapshot>} {
+  if raw.currency != currency() { fail InvalidSnapshot { problem: WrongCurrency(raw.currency) } }
+  let count = List.len(raw.services)
+  if count > max_services() { fail InvalidSnapshot { problem: TooManyServices(count) } }
+  var seen: Set<String> = Set.empty()
+  var services: List<Service> = []
+  for s in raw.services {
+    if Set.contains(seen, s.id) { fail InvalidSnapshot { problem: DuplicateService(s.id) } }
+    seen = Set.insert(seen, s.id)
+    services = List.push(services, validate_service(s))
+  }
+  Snapshot { currency: raw.currency, services }
+}
+
+fn validate_service(s: RawService) -> Service ! {Fail<InvalidSnapshot>} {
+  let id: Ident = match Ident.validate(s.id) {
+    Ok(i) => i,
+    Err(_) => fail InvalidSnapshot { problem: BadIdent(s.id) },
+  }
+  let name: ServiceName = match ServiceName.validate(s.name) {
+    Ok(n) => n,
+    Err(_) => fail InvalidSnapshot { problem: BadName(s.id) },
+  }
+  let limit: WeightLimit = match WeightLimit.validate(s.max_weight_g) {
+    Ok(l) => l,
+    Err(_) => fail InvalidSnapshot { problem: BadWeightLimit(s.id, s.max_weight_g) },
+  }
+  let base = charge(s.id, "base", s.base)
+  let per_kg = charge(s.id, "per_kg", s.per_kg)
+  var seen: Set<String> = Set.empty()
+  var rates: List<ZoneRate> = []
+  for z in s.zones {
+    if Set.contains(seen, z.zone) { fail InvalidSnapshot { problem: DuplicateZone(s.id, z.zone) } }
+    seen = Set.insert(seen, z.zone)
+    let zone: ZoneId = match ZoneId.validate(z.zone) {
+      Ok(v) => v,
+      Err(_) => fail InvalidSnapshot { problem: ZoneNotConfigured(s.id, z.zone) },
+    }
+    let surcharge = charge(s.id, "surcharge:{z.zone}", z.surcharge.unwrap_or(0))
+    rates = List.push(rates, ZoneRate { zone, surcharge })
+  }
+  Service { id, name, available: s.available, max_weight_g: limit, base, per_kg, zones: rates }
+}
+
+fn charge(service: String, component: String, amount: Int) -> Charge ! {Fail<InvalidSnapshot>} {
+  match Charge.validate(amount) {
+    Ok(c) => c,
+    Err(_) => fail InvalidSnapshot { problem: ChargeOutOfRange(service, component, amount) },
+  }
+}
+
+/// Prices one service for a parcel, or says why it is excluded.
+pub fn price(service: Service, parcel: Parcel, currency: String) -> Result<Quote, Exclusion> {
+  if !service.available { return Err(Exclusion { service: service.id, reason: Unavailable }) }
+  if parcel.weight_g > service.max_weight_g {
+    return Err(Exclusion { service: service.id, reason: OverWeight(service.max_weight_g) })
+  }
+  match List.find(service.zones, fn(z) { z.zone == parcel.zone }) {
+    None => Err(Exclusion { service: service.id, reason: ZoneNotServed(parcel.zone) }),
+    Some(rate) => {
+      let units = weight_units(parcel.weight_g)
+      let weight_charge = service.per_kg * units
+      let total: Total = Total.from(service.base + weight_charge + rate.surcharge)
+      Ok(Quote {
+        service: service.id,
+        name: service.name,
+        units,
+        base: service.base,
+        weight_charge,
+        surcharge: rate.surcharge,
+        total,
+        currency,
+      })
+    },
+  }
+}
+
+/// Computes the outcome for a valid parcel against a validated snapshot:
+/// eligible quotes by total then service ID, plus every exclusion by service ID.
+pub fn quote_snapshot(parcel: Parcel, snapshot: Snapshot) -> Outcome {
+  let candidates = match parcel.service {
+    None => snapshot.services,
+    Some(wanted) => List.filter(snapshot.services, fn(s) { s.id == wanted }),
+  }
+  var quotes: List<Quote> = []
+  var excluded: List<Exclusion> = []
+  for s in candidates {
+    match price(s, parcel, snapshot.currency) {
+      Ok(q) => { quotes = List.push(quotes, q) },
+      Err(x) => { excluded = List.push(excluded, x) },
+    }
+  }
+  let excluded_sorted = List.sort_by(excluded, fn(x) { x.service })
+  match (parcel.service, List.len(candidates), List.len(quotes)) {
+    (Some(wanted), 0, _) => NoQuote(RequestedServiceAbsent(wanted), excluded_sorted),
+    (_, _, 0) => NoQuote(NoEligibleService, excluded_sorted),
+    _ => Quoted(List.sort_by(quotes, fn(q) { (q.total, q.service) }), excluded_sorted),
+  }
+}
