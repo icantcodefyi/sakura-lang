@@ -124,9 +124,8 @@ export function Install() {
               </tbody>
             </table>
             <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-              No platform is called <span className="font-medium text-foreground">Supported</span>{" "}
-              until a release&apos;s published-install smoke passes on a hosted runner of that OS
-              and CPU.{" "}
+              Every row is <span className="font-medium text-foreground">Supported</span> in v0.1.0:
+              its published-install smoke passed on a hosted runner of that OS and CPU.{" "}
               <Link
                 href="/docs/install#platform-claims"
                 className="font-medium text-foreground underline decoration-sakura underline-offset-4"

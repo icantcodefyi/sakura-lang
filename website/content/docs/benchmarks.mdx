@@ -4,14 +4,24 @@ description: Instructions retired per call for every benchmark program on the re
 ---
 
 <Callout type="info" title="The blessed baseline">
-  These are instruction counts from one run of the benchmark suite on the reference Mac (an
-  Apple silicon MacBook, host `d88970189598`) at commit `320c9980`, 2026-10-19. They are
-  blessed as the baseline (2026-10-20,
-  [`bench/baselines/d88970189598.json`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/d88970189598.json)),
-  and a counted check of the `v0.1.0` candidate on `fib` and `shapes` passed against it on every Node cell. Later releases are compared with these
-  counts. They are counts, not times: no speed claim follows from them. The cross-language envelope in design §17.109 is not met by these counts, and Sakura
-  Lang makes no cross-language speed claim at 0.1.0 (design §17.265).
+  These are instruction counts from one run of the JavaScript and WebAssembly suites on the
+  reference Mac (an Apple silicon MacBook, host `d88970189598`) at commit `3bf2343f`, 2026-10-20,
+  blessed as the baseline the same day
+  ([`bench/baselines/d88970189598.json`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/d88970189598.json)
+  and its [`wasm`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/wasm/d88970189598.json)
+  twin). Later changes are compared with these counts. They are counts, not times: no speed
+  claim follows from them. The cross-language envelope in design §17.109 is not met, and
+  Sakura Lang makes no cross-language speed claim at 0.1.0 (design §17.265).
 </Callout>
+
+`3bf2343f` is a commit on main after `v0.1.0`. It carries JavaScript-backend work that is not
+in the `0.1.0` packages ([changes on main](/docs/changes#faster-on-main)): owned updates of
+fresh lists and flat `List<Bool>` (`nbody`, `sieve`) and the `Int`-key path of `Map`
+(`map_set`). It also fixes the size of V8's young generation on every measured Node process,
+which changes every Node count once. The counts for the released `v0.1.0` are those of the
+earlier baseline at `320c9980`, kept in
+[`bench/baselines/archive/320c9980/`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines/archive/320c9980);
+a counted check of the `v0.1.0` candidate on `fib` and `shapes` passed against it.
 
 The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs the
 same workloads written in Sakura Lang and by hand in JavaScript, Rust, Go, OCaml and Koka.
@@ -42,40 +52,42 @@ ratio of times differed by half. A ratio below is a ratio of counts, never of ti
 ## Results
 
 Every value is instructions retired per call (or per process, for the compiler) on the
-reference Mac at commit `320c9980`, at each program's largest size. A ratio is Sakura's count
-over hand JavaScript's on the engine named. `K`, `M` and `G` are thousands, millions and
-billions. Node runs with V8's `--predictable` flag, which keeps its garbage collector and
-compiler on the main thread so that their counts do not depend on scheduling.
+reference Mac, at each program's largest size. A ratio is Sakura's count over hand
+JavaScript's on the engine named. `K`, `M` and `G` are thousands, millions and billions. Node
+runs with `--predictable --min-semi-space-size=16 --max-semi-space-size=16`: V8's garbage
+collector and compiler stay on the main thread, and the young generation has a fixed size, so
+that a count depends neither on scheduling nor on where the program's files sit on disk
+(design §17.282).
 
 ### JavaScript backend
 
 | Program | n | Sakura, Node | hand JS, Node | ratio | Sakura, Bun | hand JS, Bun | ratio |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| `binary_trees` | 14 | 957 M | 680 M | 1.41× | 1.28 G | 503 M | 2.54× |
-| `contracts` | 1,000,000 | 119 M | 44.3 M | 2.69× | 97.5 M | 54 M | 1.81× |
-| `contracts_plain` | 1,000,000 | 72.4 M | 24.2 M | 2.99× | 47.4 M | 32 M | 1.48× |
-| `countdown` | 300,000 | 16 M | 10.2 M | 1.57× | 5.43 M | 5.15 M | 1.05× |
-| `deltablue` | 10,000 | 1.92 G | 317 M | 6.06× | 2.74 G | 441 M | 6.23× |
-| `fib` | 30 | 191 M | 137 M | 1.39× | 212 M | 91.5 M | 2.31× |
-| `handled_d1` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.4 M | 1.14× |
-| `handled_d16` | 1,000,000 | 50.3 M | 57.1 M | 0.88× | 21.1 M | 18.4 M | 1.14× |
-| `handled_d4` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
-| `handled_fwd` | 1,000,000 | 373 M | 76.2 M | 4.90× | 452 M | 38.8 M | 11.63× |
-| `handled_reentry` | 1,000,000 | 548 M | 782 M | 0.70× | 627 M | 87 M | 7.21× |
-| `handled_suspend` | 1,000,000 | 93 M | 86.1 M | 1.08× | 26.3 M | 124 M | 0.21× |
-| `json_validate` | 30,000 | 791 M | 569 M | 1.39× | 613 M | 204 M | 3.01× |
-| `map_set` | 100,000 | 3.18 G | 968 M | 3.28× | 2.86 G | 744 M | 3.85× |
-| `map_set:int` | 100,000 | 840 M | 135 M | 6.20× | 865 M | 65.4 M | 13.23× |
-| `map_set:string` | 100,000 | 980 M | 433 M | 2.26× | 927 M | 428 M | 2.17× |
-| `map_set:tuple` | 100,000 | 1 G | 366 M | 2.75× | 1.1 G | 238 M | 4.63× |
-| `nbody` | 100,000 | 1.34 G | 113 M | 11.90× | 1.24 G | 140 M | 8.89× |
-| `pipeline` | 300,000 | 87.2 M | 302 M | 0.29× | 73.2 M | 27.7 M | 2.65× |
-| `rbtree` | 100,000 | 2.63 G | 1.05 G | 2.52× | 1.53 G | 619 M | 2.47× |
-| `shapes` | 100,000 | 1.21 G | 540 M | 2.24× | 869 M | 379 M | 2.29× |
-| `sieve` | 200,000 | 80.5 M | 17.4 M | 4.62× | 87.6 M | 12.5 M | 6.98× |
-| `spectral_norm` | 400 | 755 M | 168 M | 4.49× | 485 M | 203 M | 2.39× |
-| `tail_clique` | 10,000,000 | 293 M | 334 M | 0.88× | 141 M | 176 M | 0.81× |
-| `tokenizer` | 100,000 | 159 M | 526 M | 0.30× | 222 M | 190 M | 1.17× |
+| `binary_trees` | 14 | 1.02 G | 682 M | 1.49× | 1.3 G | 506 M | 2.57× |
+| `contracts` | 1,000,000 | 119 M | 44.3 M | 2.69× | 97.4 M | 54.1 M | 1.80× |
+| `contracts_plain` | 1,000,000 | 72.5 M | 24.2 M | 3.00× | 47.7 M | 32.1 M | 1.49× |
+| `countdown` | 300,000 | 15 M | 10.2 M | 1.48× | 5.43 M | 5.15 M | 1.06× |
+| `deltablue` | 10,000 | 1.97 G | 321 M | 6.14× | 2.74 G | 448 M | 6.12× |
+| `fib` | 30 | 191 M | 138 M | 1.39× | 211 M | 91.4 M | 2.31× |
+| `handled_d1` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
+| `handled_d16` | 1,000,000 | 50.4 M | 57.2 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
+| `handled_d4` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
+| `handled_fwd` | 1,000,000 | 356 M | 76.2 M | 4.67× | 450 M | 38.8 M | 11.59× |
+| `handled_reentry` | 1,000,000 | 549 M | 783 M | 0.70× | 638 M | 87 M | 7.34× |
+| `handled_suspend` | 1,000,000 | 93 M | 86.4 M | 1.08× | 26.3 M | 124 M | 0.21× |
+| `json_validate` | 30,000 | 796 M | 574 M | 1.39× | 606 M | 207 M | 2.93× |
+| `map_set` | 100,000 | 2.79 G | 992 M | 2.82× | 2.73 G | 744 M | 3.67× |
+| `map_set:int` | 100,000 | 618 M | 139 M | 4.45× | 699 M | 65.7 M | 10.64× |
+| `map_set:string` | 100,000 | 1.02 G | 441 M | 2.31× | 907 M | 429 M | 2.12× |
+| `map_set:tuple` | 100,000 | 1.1 G | 365 M | 3.00× | 1.05 G | 239 M | 4.41× |
+| `nbody` | 100,000 | 731 M | 113 M | 6.46× | 585 M | 140 M | 4.19× |
+| `pipeline` | 300,000 | 87.5 M | 304 M | 0.29× | 78.9 M | 27.6 M | 2.86× |
+| `rbtree` | 100,000 | 2.64 G | 1.04 G | 2.54× | 1.51 G | 636 M | 2.38× |
+| `shapes` | 100,000 | 1.65 G | 653 M | 2.52× | 846 M | 382 M | 2.21× |
+| `sieve` | 200,000 | 53 M | 17.4 M | 3.04× | 43 M | 12.6 M | 3.41× |
+| `spectral_norm` | 400 | 737 M | 168 M | 4.38× | 505 M | 203 M | 2.48× |
+| `tail_clique` | 10,000,000 | 292 M | 333 M | 0.88× | 141 M | 175 M | 0.81× |
+| `tokenizer` | 100,000 | 187 M | 531 M | 0.35× | 224 M | 191 M | 1.17× |
 
 ### WebAssembly backend
 
@@ -85,36 +97,38 @@ decoding, which only the Node host implements.
 
 | Program | n | Sakura WASM, Node | Sakura WASM, Wasmtime | hand JS, Node | ratio, Node | ratio, Wasmtime |
 |---|---:|---:|---:|---:|---:|---:|
-| `binary_trees` | 14 | 4.1 G | 4.82 G | 680 M | 6.03× | 7.09× |
-| `contracts` | 1,000,000 | 3.02 G | 4 G | 44.2 M | 68.29× | 90.47× |
-| `contracts_plain` | 1,000,000 | 1.66 G | 2.04 G | 24.2 M | 68.77× | 84.29× |
-| `countdown` | 300,000 | 19.7 M | 19.2 M | 10.2 M | 1.94× | 1.89× |
-| `deltablue` | 10,000 | 33.6 G | 39.5 G | 318 M | 105.70× | 124.48× |
-| `fib` | 30 | 270 M | 259 M | 137 M | 1.96× | 1.88× |
-| `handled_d1` | 1,000,000 | 1.27 G | 1.6 G | 57.1 M | 22.30× | 28.11× |
-| `handled_d16` | 1,000,000 | 1.25 G | 1.6 G | 57.1 M | 21.95× | 28.11× |
-| `handled_d4` | 1,000,000 | 1.27 G | 1.61 G | 57.1 M | 22.30× | 28.13× |
-| `handled_fwd` | 1,000,000 | 6.16 G | 7.5 G | 76.3 M | 80.83× | 98.42× |
-| `handled_reentry` | 1,000,000 | 8.77 G | 10.6 G | 782 M | 11.21× | 13.57× |
-| `handled_suspend` | 1,000,000 | 1.43 G | 1.84 G | 86.3 M | 16.58× | 21.33× |
-| `json_validate` | 30,000 | 13.6 G | absent | 570 M | 23.94× | — |
-| `map_set` | 100,000 | 7.36 G | 8.33 G | 972 M | 7.57× | 8.57× |
-| `map_set:int` | 100,000 | 2.25 G | 2.57 G | 136 M | 16.52× | 18.87× |
-| `map_set:string` | 100,000 | 2.56 G | 2.98 G | 434 M | 5.91× | 6.87× |
-| `map_set:tuple` | 100,000 | 2.66 G | 2.94 G | 366 M | 7.26× | 8.03× |
-| `nbody` | 100,000 | 5.38 G | 6.68 G | 113 M | 47.58× | 59.15× |
-| `pipeline` | 300,000 | 1.85 G | 2.3 G | 302 M | 6.13× | 7.61× |
-| `rbtree` | 100,000 | 7.84 G | 10.1 G | 1.05 G | 7.48× | 9.60× |
-| `shapes` | 100,000 | 3.61 G | 4.33 G | 542 M | 6.66× | 7.99× |
-| `sieve` | 200,000 | 894 M | 1.13 G | 17.4 M | 51.28× | 64.69× |
-| `spectral_norm` | 400 | 5.58 G | 7.18 G | 168 M | 33.17× | 42.66× |
-| `tail_clique` | 10,000,000 | 1.22 G | 1.16 G | 333 M | 3.67× | 3.49× |
-| `tokenizer` | 100,000 | 18.1 G | 18.5 G | 526 M | 34.51× | 35.27× |
+| `binary_trees` | 14 | 4.09 G | 4.82 G | 682 M | 6.00× | 7.06× |
+| `contracts` | 1,000,000 | 3.02 G | 4 G | 44.3 M | 68.08× | 90.30× |
+| `contracts_plain` | 1,000,000 | 1.66 G | 2.04 G | 24.2 M | 68.64× | 84.26× |
+| `countdown` | 300,000 | 19.7 M | 19.2 M | 10.2 M | 1.94× | 1.89× |
+| `deltablue` | 10,000 | 33.6 G | 39.5 G | 321 M | 104.69× | 123.21× |
+| `fib` | 30 | 270 M | 259 M | 137 M | 1.97× | 1.89× |
+| `handled_d1` | 1,000,000 | 1.27 G | 1.6 G | 57 M | 22.34× | 28.16× |
+| `handled_d16` | 1,000,000 | 1.25 G | 1.6 G | 57 M | 21.95× | 28.13× |
+| `handled_d4` | 1,000,000 | 1.27 G | 1.6 G | 57 M | 22.35× | 28.16× |
+| `handled_fwd` | 1,000,000 | 6.16 G | 7.5 G | 76 M | 80.98× | 98.63× |
+| `handled_reentry` | 1,000,000 | 8.78 G | 10.6 G | 783 M | 11.21× | 13.56× |
+| `handled_suspend` | 1,000,000 | 1.43 G | 1.84 G | 86.3 M | 16.61× | 21.38× |
+| `json_validate` | 30,000 | 13.6 G | absent | 573 M | 23.66× | — |
+| `map_set` | 100,000 | 6.99 G | 7.9 G | 992 M | 7.04× | 7.96× |
+| `map_set:int` | 100,000 | 2.12 G | 2.42 G | 138 M | 15.30× | 17.50× |
+| `map_set:string` | 100,000 | 2.45 G | 2.84 G | 441 M | 5.55× | 6.43× |
+| `map_set:tuple` | 100,000 | 2.53 G | 2.79 G | 364 M | 6.97× | 7.68× |
+| `nbody` | 100,000 | 5.37 G | 6.68 G | 113 M | 47.65× | 59.20× |
+| `pipeline` | 300,000 | 1.85 G | 2.3 G | 303 M | 6.12× | 7.60× |
+| `rbtree` | 100,000 | 7.84 G | 10 G | 1.04 G | 7.53× | 9.66× |
+| `shapes` | 100,000 | 3.61 G | 4.34 G | 655 M | 5.52× | 6.62× |
+| `sieve` | 200,000 | 895 M | 1.13 G | 17.4 M | 51.38× | 64.77× |
+| `spectral_norm` | 400 | 5.58 G | 7.18 G | 168 M | 33.12× | 42.60× |
+| `tail_clique` | 10,000,000 | 1.23 G | 1.16 G | 334 M | 3.67× | 3.48× |
+| `tokenizer` | 100,000 | 18.2 G | 18.5 G | 530 M | 34.28× | 34.94× |
 
 ### Native controls
 
 The same workloads in Rust (with overflow checks, the matched lane), Go, OCaml and Koka. A
-dash means the program has no port in that language.
+dash means the program has no port in that language. These counts are from the earlier run at
+commit `320c9980` (2026-10-19): native and compiler runs are evidence, not baselines, and the
+bless re-counted only the JavaScript and WebAssembly suites.
 
 | Program | n | Rust | Go | OCaml | Koka | Koka, no reuse |
 |---|---:|---:|---:|---:|---:|---:|
@@ -143,7 +157,7 @@ dash means the program has no port in that language.
 
 ### Compiler
 
-One `sakura` process per run, after a warm-up: `check` and `build` of generated packages and
+One `sakura` process per run, after a warm-up, from the same `320c9980` run: `check` and `build` of generated packages and
 of a new project. `test_hello` counts the CLI's own process, not the Node process it starts.
 
 | Case | Lines | Instructions per process | Spread |
@@ -161,67 +175,55 @@ Design §17.109 set a ceiling per program on the ratio of Sakura to hand-written
 the same engine, and asked for a median of at most 1.5 over the fifteen programs. Those are
 same-engine ratios, so a ratio of counts can be read against them
 ([design §17.265](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). At
-the largest size, six of the fifteen meet their ceiling on Node and five on Bun; the median is
-2.24 on Node and 2.47 on Bun.
+the largest size, seven of the fifteen meet their ceiling on Node and five on Bun; the median
+is 2.52 on Node and 2.48 on Bun.
 
 | Program | Ceiling | Node | | Bun | |
 |---|---:|---:|---|---:|---|
 | `fib` | 1.5 | 1.39× | met | 2.31× | miss |
-| `countdown` | 1.3 | 1.57× | miss | 1.05× | met |
-| `sieve` | 1.5 | 4.62× | miss | 6.98× | miss |
-| `nbody` | 1.3 | 11.90× | miss | 8.89× | miss |
-| `spectral_norm` | 1.3 | 4.49× | miss | 2.39× | miss |
-| `binary_trees` | 1.5 | 1.41× | met | 2.54× | miss |
-| `pipeline` | 2.0 | 0.29× | met | 2.65× | miss |
-| `rbtree` | 1.5 | 2.52× | miss | 2.47× | miss |
-| `map_set` | 3.0 (Bun 5.0) | 3.28× | miss | 3.85× | met |
-| `shapes` | 1.5 | 2.24× | miss | 2.29× | miss |
-| `tokenizer` | 1.5 | 0.30× | met | 1.17× | met |
-| `json_validate` | 2.0 | 1.39× | met | 3.01× | miss |
-| `deltablue` | 2.0 | 6.06× | miss | 6.23× | miss |
+| `countdown` | 1.3 | 1.48× | miss | 1.06× | met |
+| `sieve` | 1.5 | 3.04× | miss | 3.41× | miss |
+| `nbody` | 1.3 | 6.46× | miss | 4.19× | miss |
+| `spectral_norm` | 1.3 | 4.38× | miss | 2.48× | miss |
+| `binary_trees` | 1.5 | 1.49× | met | 2.57× | miss |
+| `pipeline` | 2.0 | 0.29× | met | 2.86× | miss |
+| `rbtree` | 1.5 | 2.54× | miss | 2.38× | miss |
+| `map_set` | 3.0 (Bun 5.0) | 2.82× | met | 3.67× | met |
+| `shapes` | 1.5 | 2.52× | miss | 2.21× | miss |
+| `tokenizer` | 1.5 | 0.35× | met | 1.17× | met |
+| `json_validate` | 2.0 | 1.39× | met | 2.93× | miss |
+| `deltablue` | 2.0 | 6.14× | miss | 6.12× | miss |
 | `handled` (depth 1) | 2.0 | 0.88× | met | 1.14× | met |
-| `contracts` | 2.0 | 2.69× | miss | 1.81× | met |
+| `contracts` | 2.0 | 2.69× | miss | 1.80× | met |
 
-Read plainly: on the JavaScript backend, most of the suite runs within 1.5–3× of hand-written
-JavaScript, and five programs are 4.5–12× behind: `nbody`, `deltablue`, `map_set:int`,
-`handled_fwd` and `sieve`. Where Sakura is ahead (`pipeline`, `tokenizer`, `handled` on Node)
-the cause is a specific mechanism, fusion of the pipeline, ownership of the consumed string, or
-a handler compiled to a direct call, and it says nothing about other programs. The WebAssembly
-backend is first-release code: 2–124× behind hand JavaScript by count on this suite, far from
-native, with its worst cells on contracts, handlers and scalar loops. The native backend is
-experimental, left out of release binaries, and not measured here.
+Read plainly: on the JavaScript backend, most of the suite runs within 3× of hand-written
+JavaScript (twelve programs under 1.5×, eight from 1.5× to 3.04×), and five programs are
+4.4–6.5× behind: `nbody`, `deltablue`, `handled_fwd`, `map_set:int` and `spectral_norm`.
+Where Sakura is ahead (`pipeline` 0.29×, `tokenizer` 0.35×, `handled` 0.88× on Node) the
+cause is a specific mechanism, fusion of the pipeline, ownership of the consumed string, or a
+handler compiled to a direct call, and it says nothing about other programs. The WebAssembly
+backend is first-release code: 1.9–123× behind hand JavaScript by count on this suite, far
+from native, with its worst cells on contracts, handlers and scalar loops. The native backend
+is experimental, left out of release binaries, and not measured here.
 
 Design §17.109 also set an envelope against Rust, Go, OCaml and Koka. Those ceilings were
 set on wall time, and a count across different engines is not a time, so the envelope is
-reported as information and not as a release gate (design §17.265). On these counts it is not
-met: Sakura WebAssembly on Node is a geometric mean of about 27× Rust and 25× Go on the numeric
-kernels, 11× OCaml and 12× Koka on the allocation kernels, with `tokenizer` the one kernel
-inside its ceiling. The native backend, experimental today, is where that comparison will be made again.
+reported as information and not as a release gate (design §17.265). It is not met, and Sakura
+Lang makes no cross-language speed claim. The native backend, experimental today, is where
+that comparison will be made again.
 
-What comes next, in order, each landing with a counted before and after against the blessed
-baseline: flat `Float`, `Bool` and `Int` lists and in-place `Float` records (`nbody`,
-`spectral_norm`, `sieve`); the `Int`-key path of `Map` (`map_set:int`); what remains in
-`deltablue`; forwarding handlers (`handled_fwd`); then the WebAssembly cliffs, starting with
-contracts and the superlinear `tokenizer` cost (design §17.265 (6)).
+What comes next, each landing with a counted before and after against this baseline: the
+elements of a list updated in place (`nbody`); what remains in `deltablue`, `shapes` and
+`rbtree`; forwarding handlers resolved when they are installed (`handled_fwd`); a sweep of
+every ceiling; and, beside them, the WebAssembly cliffs (design §17.285).
 
 ### Since the baseline
 
-These counts come from a counted run of the JavaScript suite after the change, on the same
-Mac, and are not a blessed baseline; the tables above stay the baseline until the next one is
-blessed.
-
-- **Lists a function returns fresh.** A function that returns a fresh list may now update the
-  list it is given in place when its caller is done with it. `nbody`'s step updates its bodies'
-  list that way: 1.35 G → 817 M instructions per call on Node (11.90× → 7.23× hand-written
-  JavaScript) and 1.22 G → 584 M on Bun (8.89× → 4.18×).
-- **Flat `List<Bool>`.** A `List<Bool>` built by an owned push loop is one array, so an owned
-  `List.set` on it is one store, until a persistent update rebuilds it as a tree with the same
-  elements. `sieve`: 80.5 M → 53.9 M on Node (4.62× → 3.08×), 87.6 M → 43.0 M on Bun
-  (6.98× → 3.42×). Flat `Float` and `Int` lists were measured and made `spectral_norm` slower,
-  so they are not built.
-- `spectral_norm` is unchanged (4.49× on Node). What it pays for is the checked arithmetic and
-  bounds checks in its inner loop, whose failure paths cost time even when they never run; that
-  is the next item measured for it.
+- **Cold-path raising.** A defect on a path that is never taken (an `Int` overflow, an
+  `expect` on a missing element) is thrown where it is detected. It is on main after
+  `3bf2343f` and not released. Counted against the earlier `320c9980` baseline, before the
+  fixed young generation, `spectral_norm` dropped 26% on Node (4.49× → 3.31× hand-written
+  JavaScript); it has not been re-counted against this baseline.
 
 ## Spread
 
@@ -229,17 +231,14 @@ The spread is (max − min) / median over a cell's five pairs.
 
 | Engine | Cells | Median spread | Cells over 1% |
 |---|---:|---:|---:|
-| Node, JavaScript backend | 198 | 0.14% | 4 |
-| Node, WebAssembly backend and its hand JS | 198 | 0.30% | 12 |
-| Wasmtime | 95 | 0.11% | 1 |
-| Native (Rust, Go, OCaml, Koka) | 282 | 0.09% | 26 |
-| Bun | 198 | 1.35% | 116 |
-| Compiler processes | 6 | 0.28% | 1 |
+| Node, JavaScript backend | 198 | 0.35% | 15 |
+| Node, WebAssembly backend and its hand JS | 198 | 0.29% | 13 |
+| Wasmtime | 95 | 0.16% | 1 |
+| Bun | 198 | 1.56% | 121 |
 
-On Node and Wasmtime every cell over 1% is one pair out of five; the middle three agree within
-1%, so the median holds. Most native cells over 1% are Go, whose garbage collector runs
-concurrently. Bun is noisier: 48 of its cells spread over 1% even in their middle three, and
-JavaScriptCore's concurrency switches did not narrow them. Read a Bun count with its spread.
+On Node and Wasmtime, in every cell over 1% the middle three pairs agree within 1%, so the
+median holds. Bun is noisier: 48 of its cells spread over 1% even in their middle three. Read a
+Bun count with its spread; a Bun row is advisory in a counted compare (design §17.265).
 
 ## Reproduce
 
@@ -247,16 +246,15 @@ On a Mac with the toolchains pinned in
 [`bench/toolchains.toml`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/toolchains.toml):
 
 ```sh
-git checkout 320c9980
+git checkout 3bf2343f
 bench/bench run --suite js --instructions --json js.json
 bench/bench run --suite wasm --instructions --json wasm.json
-bench/bench run --suite native --lane matched --instructions --json native.json
-bench/bench compile --instructions --json compile.json
 ```
 
 Counts from another machine are not comparable with these: a different CPU, OS or engine
-build retires different instructions. The full result files, with every size, every raw
-count and the wall time beside it, are in
+build retires different instructions. The baseline files hold every size, every raw count and
+the wall time beside it; the tables for every size are in
 [`bench/results`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/results)
-(`2026-10-19-320c9980-*`). The procedure that turns a run into a baseline is
+(`2026-10-20-3bf2343f-*`), and the native and compiler runs are there as
+`2026-10-19-320c9980-*`. The procedure that turns a run into a baseline is
 [`docs/release.md` §2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/release.md#2-instruction-count-baseline-and-bless).

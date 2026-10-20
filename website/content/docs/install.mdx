@@ -25,16 +25,39 @@ We use three claim levels, tied to a named release:
   the complete acceptance list passing, recorded as
   `confirmed on <device>, <OS build>, <version> (#issue)`.
 
-The published-install acceptance for v0.1.0 is pending. These commands describe the
-published channels; they do not assign **Supported** to a platform before that evidence
-exists. See the
+For v0.1.0, every inventory target is **Supported**. The published-install acceptance
+([run 39375162895](https://github.com/icantcodefyi/sakuralang/actions/runs/39375162895),
+2026-10-20) installed `0.1.0` from the public channels on fresh GitHub-hosted runners and
+passed the whole acceptance list on all six rows:
+
+| Target | Runner | Channels | Claim |
+|---|---|---|---|
+| `aarch64-apple-darwin` | `macos-15` | npm, Homebrew, installer | **Supported** |
+| `x86_64-apple-darwin` | `macos-15-intel` | npm, Homebrew, installer | **Supported** |
+| `x86_64-unknown-linux-gnu` | `ubuntu-22.04` | npm, Homebrew, installer | **Supported** |
+| `aarch64-unknown-linux-gnu` | `ubuntu-22.04-arm` | npm, installer | **Supported** |
+| `aarch64-unknown-linux-gnu` | Debian bookworm container on `ubuntu-24.04-arm`, 1,800 MB memory limit | npm, installer | **Supported** |
+| `x86_64-pc-windows-msvc` | `windows-2025` | npm, installer | **Supported** |
+
+A Raspberry Pi is **expected to work**, not supported: see [below](#raspberry-pi-4-and-5).
+The claim is for v0.1.0; a later release earns it again with its own run. See the
 [platform plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md#6-platforms-b-and-c-design-17180-acceptance-17227).
+
+## Floors
+
+The oldest systems a v0.1.0 binary is meant for. The smoke runs on newer hosts (the runners
+above), so a floor is what the binary is built to need, not an OS the project ran:
+
+- **Linux, both CPUs:** glibc 2.35 or later, the glibc of Ubuntu 22.04, where both
+  Linux archives are built and smoke-tested.
+- **macOS, both CPUs:** macOS 12.0 or later.
+- **Windows x64:** Windows 10 x64 or later; the MSVC runtime is statically linked.
 
 ## macOS: Apple silicon
 
-Target: `aarch64-apple-darwin`. The 0.1.0 archive, npm package and Homebrew formula exist.
-Release smoke runs on GitHub's macOS ARM64 runner. A minimum macOS version is not
-claimed here until the release floor smoke evidence is in place.
+Target: `aarch64-apple-darwin`. **Supported** in v0.1.0, with an archive, an npm package
+and the Homebrew formula, smoke-tested from the published channels on GitHub's macOS 15
+ARM64 runner. Use macOS 12.0 or later.
 
 With Node 26 and npm installed:
 
@@ -56,8 +79,8 @@ a version-pinned install. Check the printed version before reporting a result.
 
 ## Linux: x64, glibc
 
-Target: `x86_64-unknown-linux-gnu`. The archive is built and smoke-tested on
-Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
+Target: `x86_64-unknown-linux-gnu`. **Supported** in v0.1.0. The archive is built and
+smoke-tested on Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
 
 With Node 26 and npm installed:
 
@@ -76,10 +99,10 @@ sakura --version
 
 ## Linux: ARM64, glibc
 
-Target: `aarch64-unknown-linux-gnu`. Packaging and dry-run smoke exist on
-Ubuntu 22.04 ARM64 (glibc 2.35 or later), with CI suites and parity on Ubuntu 24.04
-ARM64. It is new in v0.1.0, with an archive and the `sakuralang-linux-arm64-gnu` npm
-platform package. With Node 26 and npm installed:
+Target: `aarch64-unknown-linux-gnu`. **Supported** in v0.1.0, new in that release, with an
+archive and the `sakuralang-linux-arm64-gnu` npm platform package. It is built and
+smoke-tested on Ubuntu 22.04 ARM64 and in a Debian bookworm container, with CI suites and
+parity on Ubuntu 24.04 ARM64; use glibc 2.35 or later. With Node 26 and npm installed:
 
 ```bash title="npm"
 npm install --global sakuralang@0.1.0
@@ -92,16 +115,17 @@ not serve Linux ARM64; use npm or the installer.
 
 ### Raspberry Pi 4 and 5
 
-**Expected to work** with the v0.1.0 Linux ARM64 release. The design's
-acceptance wording is reproduced verbatim below. Its Debian container check is
-still pending; this is not a report of a completed run:
+**Expected to work** with the v0.1.0 Linux ARM64 release.
 
-> Linux ARM64 is tested on GitHub's Ubuntu ARM64 runners and in a Debian bookworm arm64 container; Raspberry Pi 4 and 5 with 64-bit Raspberry Pi OS (bookworm, glibc 2.36) are expected to work and have not been run on Pi hardware by the project
+Tested on GitHub's Ubuntu ARM64 runners and in a Debian bookworm arm64 container; Raspberry
+Pi 4 and 5 with 64-bit Raspberry Pi OS are expected to work and have not been run on Pi
+hardware by the project.
 
-The planned Debian bookworm ARM64 container has a 1,800 MB memory limit as a
-stand-in for a Pi 4 with 2 GB. Until that run passes, there is no measured memory
-claim. A container is not Pi hardware evidence. Use a 64-bit OS (`uname -m` should
-print `aarch64`), not 32-bit Raspberry Pi OS.
+The Debian bookworm container ran the whole acceptance list with a 1,800 MB memory limit, a
+stand-in for a Pi 4 with 2 GB, and passed
+([run 39375162895](https://github.com/icantcodefyi/sakuralang/actions/runs/39375162895)).
+Peak memory was not measured. A container is not Pi hardware evidence. Use a 64-bit OS
+(`uname -m` should print `aarch64`), not 32-bit Raspberry Pi OS.
 
 Node's ARM64 build needs `libatomic1`. Raspberry Pi OS ships it; a minimal Debian
 image needs `sudo apt install libatomic1` first.
@@ -151,8 +175,9 @@ absolute; use `--prefix /absolute/path` to override the default.
 
 ## Windows x64
 
-Target: `x86_64-pc-windows-msvc`. New in v0.1.0; supported once its published-install
-check is green. No Windows OS floor is advertised yet. The release has a ZIP, the
+Target: `x86_64-pc-windows-msvc`. New in v0.1.0 and **Supported** in it, smoke-tested from
+the published channels on GitHub's Windows Server 2025 runner. Use Windows 10 x64 or later.
+The release has a ZIP, the
 `sakuralang-win32-x64-msvc` npm package and the checksum-verifying `install.ps1`, and CI runs
 the compiler suites and JS/WASM parity on hosted Windows runners. With Node 26 and npm
 installed:
@@ -177,13 +202,14 @@ is not an inventory target. Proof caching on Windows is not implemented.
 
 ## macOS: Intel
 
-Target: `x86_64-apple-darwin`. New in v0.1.0; supported once its published-install check
-is green. The release has a signed archive, the `sakuralang-darwin-x64` npm package and the
+Target: `x86_64-apple-darwin`. New in v0.1.0 and **Supported** in it, smoke-tested from the
+published channels on GitHub's macOS 15 Intel runner. The release has a signed archive, the
+`sakuralang-darwin-x64` npm package and the
 Homebrew formula, and CI runs the parity suites on hosted Intel macOS runners. Use
 `npm install --global sakuralang@0.1.0`, the
 [release installer](#release-installer) with `version=0.1.0`, or the Homebrew tap as
-for Apple silicon. No Intel macOS floor is advertised yet. A Rosetta archive smoke
-alone cannot confirm Intel npm or Homebrew installs.
+for Apple silicon. Use macOS 12.0 or later. A Rosetta archive smoke alone cannot confirm
+Intel npm or Homebrew installs.
 
 ## Check the installation and report a platform
 

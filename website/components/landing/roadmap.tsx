@@ -12,12 +12,12 @@ const STAGES: { id: Version; name: string; body: string }[] = [
   {
     id: "0.1.0",
     name: "WASM and verification",
-    body: "WASM complete, the web's bytes, URL, headers, forms and crypto in std, a blessed benchmark baseline, and Linux ARM64, Windows x64 and Intel Mac.",
+    body: "WASM complete, the web's bytes, URL, headers, forms and crypto in std, and Linux ARM64, Windows x64 and Intel Mac, each smoke-tested from the published channels.",
   },
   {
     id: "0.2.0",
     name: "Native and stability",
-    body: "The stability guarantees of RFC 0001, binary HTTP bodies and web timers. Native stays experimental.",
+    body: "The stability guarantees of RFC 0001, binary HTTP bodies, web timers, streams and URL patterns. Native stays experimental.",
   },
   {
     id: "1.0.0",

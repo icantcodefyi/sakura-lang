@@ -3,8 +3,10 @@ title: Changes since 0.1.0
 description: What main changes after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
 ---
 
-`0.1.0` is the published release (2026-10-20), on npm, Homebrew and GitHub. These docs track
-**main**, which already holds changes planned for `v0.2.0`: the
+`v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
+published-install check passed on every platform ([Install](/docs/install#platform-claims)).
+The next release is `v0.2.0`, when the [stability guarantees](/docs/stability) of RFC 0001
+take effect. These docs track **main**, which already holds changes planned for it: the
 [Unreleased section of the changelog](https://github.com/icantcodefyi/sakuralang/blob/main/CHANGELOG.md#unreleased).
 They are not in the `0.1.0` packages; use a [source build](/docs/quickstart#install-from-source)
 for them. Neither release has a compatibility promise; see [Stability](/docs/stability).
@@ -37,11 +39,20 @@ Each of these can change what a program that works on `0.1.0` does.
   (`schema_version` `"1.0"`). `check`, `fix` and `build` still end with `summary`, now with all
   eight fields. A consumer that waits for `kind == "summary"` from those three commands
   matches the new kind. See [Diagnostics](/docs/agents/diagnostics#record-kinds).
+- **`Router` routes are URL patterns.** A route `UrlPattern.compile` rejects (a `(…)`, `{…}`,
+  `?`, `+` or `\` in a segment, a `:` or `*` inside one) is the caller defect `D020` at
+  `Router.route`, `get`, `post`, `put` or `delete`; in `0.1.0` it was a literal segment.
+  `*` and `**` routes now match, their segments in `Request.param(req, "0")`, `"1"`, ….
 - **WASM runtime ABI 1.7.0.** A host built for `0.1.0`'s ABI 1.4 refuses a module from main
   with `V8003`. The Node host in the same compiler always matches.
 
 ### Added on main
 
+- `std/urlpattern`: `UrlPattern.compile(pattern)` and `UrlPattern.exec(p, url)`, the web's
+  `URLPattern` without regular expressions, alike on every backend.
+- `std/stream`: `ReadableStream` and `WritableStream` as values, a `Source` you pull and a
+  `Sink` you write, with bounded `lines`, `chunks` and `to_list`, adapters for text encoding,
+  `Blob`, HTTP bodies and files, and the [line-counting recipe](/docs/cookbook/stream_lines).
 - `std/crypto` runs on `--target wasm` through the Node host. In `0.1.0` a crypto primitive on
   WASM is the defect `D090`; use `--target js` there.
 - Web timers and dialogs: `std/task.every(period, body)` (`setInterval`), `Console.alert`,
@@ -55,6 +66,15 @@ Each of these can change what a program that works on `0.1.0` does.
 - Experimental `--target native`: a `main` that declares `Http`, `Serve` or `Llm` exits 75 at
   startup with "`Http` is not available on target `native`" instead of the defect `D091` at
   first use.
+
+### Faster on main
+
+Performance work after `0.1.0`, mostly on the JavaScript backend, is not in the `0.1.0`
+packages: owned updates through functions that return a fresh list and flat `List<Bool>`
+(`nbody`, `sieve`), `Map<Int, _>` and `Set<Int>` indexed by the key's bits and a `Map.get`
+consumed at once that builds no `Option` (`map_set`), and defects raised inline on cold paths
+(`spectral_norm`). No program's
+output changes. The [benchmarks page](/docs/benchmarks) has the instruction counts.
 
 ## 0.1.0, from alpha.1
 
