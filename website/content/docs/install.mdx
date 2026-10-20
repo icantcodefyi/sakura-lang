@@ -1,13 +1,12 @@
 ---
 title: Install
-description: Install the Sakura Lang preview on macOS or Linux, with release-specific platform evidence.
+description: Install the Sakura Lang preview on macOS, Linux or Windows, with release-specific platform evidence.
 ---
 
-Sakura Lang's published alpha preview is `0.1.0-alpha.1`, on npm, Homebrew and GitHub
-Releases for Apple silicon macOS and Linux x64; `v0.1.0` is next and adds Linux ARM64,
-Windows x64 and Intel macOS. The npm `latest` tag
-points to this preview, which has no stable language or API compatibility promise
-([Stability](/docs/stability)). These docs also describe [changes on main](/docs/changes),
+Sakura Lang's published release is `0.1.0`, on npm, Homebrew and GitHub Releases for
+Apple silicon and Intel macOS, Linux x64 and ARM64, and Windows x64 (Homebrew serves macOS
+and Linux x64). The npm `latest` tag points to it. It is a preview with no stable language or
+API compatibility promise ([Stability](/docs/stability)). These docs also describe [changes on main](/docs/changes),
 which require a source build until the next release. Install Node 26 before using npm, `sakura run`, or `sakura test`.
 The standalone compiler can check and build without Node; the installer does not
 install Node for you.
@@ -26,26 +25,26 @@ We use three claim levels, tied to a named release:
   the complete acceptance list passing, recorded as
   `confirmed on <device>, <OS build>, <version> (#issue)`.
 
-The published-install acceptance for v0.1.0 is pending. These commands describe
-available preview channels and planned additions; they do not assign **Supported**
-to a release before that evidence exists. See the
+The published-install acceptance for v0.1.0 is pending. These commands describe the
+published channels; they do not assign **Supported** to a platform before that evidence
+exists. See the
 [platform plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md#6-platforms-b-and-c-design-17180-acceptance-17227).
 
 ## macOS: Apple silicon
 
-Target: `aarch64-apple-darwin`. The alpha.1 archive and npm package exist.
+Target: `aarch64-apple-darwin`. The 0.1.0 archive, npm package and Homebrew formula exist.
 Release smoke runs on GitHub's macOS ARM64 runner. A minimum macOS version is not
 claimed here until the release floor smoke evidence is in place.
 
 With Node 26 and npm installed:
 
 ```bash title="npm"
-npm install --global sakuralang@0.1.0-alpha.1
+npm install --global sakuralang@0.1.0
 sakura --version
 ```
 
 Alternatively, use the [release installer](#release-installer) with
-`version=0.1.0-alpha.1`, or the Homebrew tap:
+`version=0.1.0`, or the Homebrew tap:
 
 ```bash title="Homebrew"
 brew tap icantcodefyi/sakuralang && brew install sakuralang
@@ -63,12 +62,12 @@ Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
 With Node 26 and npm installed:
 
 ```bash title="npm"
-npm install --global sakuralang@0.1.0-alpha.1
+npm install --global sakuralang@0.1.0
 sakura --version
 ```
 
 Alternatively, use the [release installer](#release-installer) with
-`version=0.1.0-alpha.1`, or the Homebrew tap:
+`version=0.1.0`, or the Homebrew tap:
 
 ```bash title="Homebrew"
 brew tap icantcodefyi/sakuralang && brew install sakuralang
@@ -79,21 +78,21 @@ sakura --version
 
 Target: `aarch64-unknown-linux-gnu`. Packaging and dry-run smoke exist on
 Ubuntu 22.04 ARM64 (glibc 2.35 or later), with CI suites and parity on Ubuntu 24.04
-ARM64. This target is coming in v0.1.0: alpha.1 does not contain its archive or npm
-platform package. After v0.1.0 publishes, use Node 26 and:
+ARM64. It is new in v0.1.0, with an archive and the `sakuralang-linux-arm64-gnu` npm
+platform package. With Node 26 and npm installed:
 
 ```bash title="npm"
 npm install --global sakuralang@0.1.0
 sakura --version
 ```
 
-The [release installer](#release-installer) will use `version=0.1.0` after
-publication. Homebrew does not serve Linux ARM64; use npm or the installer.
+Or use the [release installer](#release-installer) with `version=0.1.0`. Homebrew does
+not serve Linux ARM64; use npm or the installer.
 32-bit ARM (`armv7`) has no release artifact.
 
 ### Raspberry Pi 4 and 5
 
-**Expected to work**, once the Linux ARM64 release is published. The design's
+**Expected to work** with the v0.1.0 Linux ARM64 release. The design's
 acceptance wording is reproduced verbatim below. Its Debian container check is
 still pending; this is not a report of a completed run:
 
@@ -119,16 +118,15 @@ node --version
 npm --version
 ```
 
-Check that Node prints `v26.x.x`. Then use the Linux ARM64 commands above once
-v0.1.0 is published. Run npm as your normal user with nvm. The Sakura Lang installer
+Check that Node prints `v26.x.x`. Then use the Linux ARM64 commands above. Run npm as your normal user with nvm. The Sakura Lang installer
 never installs Node or edits your shell profile.
 
 ## Release installer
 
-For Apple silicon macOS or Linux x64 today:
+For macOS or Linux:
 
 ```bash title="Release installer"
-version=0.1.0-alpha.1
+version=0.1.0
 curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
 less install.sh
 sh install.sh --version "$version"
@@ -136,27 +134,25 @@ export PATH="$HOME/.local/bin:$PATH"
 sakura --version
 ```
 
-For Linux ARM64 or Intel macOS, change the version to `0.1.0` only after that release
-publishes; Windows uses [`install.ps1`](#windows-x64).
+Windows uses [`install.ps1`](#windows-x64).
 The installer selects the host's CPU and ABI, checks the archive against
 `SHA256SUMS`, and installs to `~/.local/bin`. If GitHub CLI (`gh`) is installed,
 attestation verification must also pass. Without `gh`, it reports
 `integrity verified, not attested`. To keep the command available in new shells,
 add the PATH line to your shell profile yourself.
 
-New macOS tag releases require Developer ID signing (team `P62B65A837`) and Apple
-notarization before packaging. This requirement does not retroactively sign alpha.1.
+macOS binaries from v0.1.0 on are signed with a Developer ID (team `P62B65A837`) and
+notarized by Apple; `0.1.0-alpha.1` was not signed.
 Bare Mach-O executables cannot carry stapled tickets. Installer prefixes must be
 absolute; use `--prefix /absolute/path` to override the default.
 
 ## Windows x64
 
-Target: `x86_64-pc-windows-msvc`. Published for 0.1.0; supported once its
-published-install check is green. alpha.1 has no Windows archive, and no Windows
-OS floor is advertised yet. The ZIP, the `sakuralang-win32-x64-msvc` npm package and
-the checksum-verifying `install.ps1` are built and dry-run tested on main, with the
-compiler suites and JS/WASM parity on hosted Windows runners. After v0.1.0 publishes,
-use Node 26 and:
+Target: `x86_64-pc-windows-msvc`. New in v0.1.0; supported once its published-install
+check is green. No Windows OS floor is advertised yet. The release has a ZIP, the
+`sakuralang-win32-x64-msvc` npm package and the checksum-verifying `install.ps1`, and CI runs
+the compiler suites and JS/WASM parity on hosted Windows runners. With Node 26 and npm
+installed:
 
 ```powershell title="npm"
 npm install --global sakuralang@0.1.0
@@ -178,11 +174,10 @@ is not an inventory target. Proof caching on Windows is not implemented.
 
 ## macOS: Intel
 
-Target: `x86_64-apple-darwin`. Published for 0.1.0; supported once its
-published-install check is green. alpha.1 has no Intel archive. The archive, the
-`sakuralang-darwin-x64` npm package and the Homebrew formula are built and dry-run
-tested on main, with the parity suites on hosted Intel macOS runners. After v0.1.0
-publishes, use `npm install --global sakuralang@0.1.0`, the
+Target: `x86_64-apple-darwin`. New in v0.1.0; supported once its published-install check
+is green. The release has a signed archive, the `sakuralang-darwin-x64` npm package and the
+Homebrew formula, and CI runs the parity suites on hosted Intel macOS runners. Use
+`npm install --global sakuralang@0.1.0`, the
 [release installer](#release-installer) with `version=0.1.0`, or the Homebrew tap as
 for Apple silicon. No Intel macOS floor is advertised yet. A Rosetta archive smoke
 alone cannot confirm Intel npm or Homebrew installs.

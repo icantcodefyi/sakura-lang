@@ -86,7 +86,7 @@ const HOLE = sample("checkout");
 const HOLE_REPLY =
   "hole ?receipt: expected Receipt, effects {Payments, Fail<Declined | Expired>}; locals [cart: Cart, card: Card, total: Int]; candidates [charge(?card, ?amount)]";
 
-// What ships in v0.1.0-alpha.1 for an agent, each with the page that documents it.
+// What ships in v0.1.0 for an agent, each with the page that documents it.
 const SHIPPED: { name: ReactNode; what: string; href: string }[] = [
   {
     name: "Skill",

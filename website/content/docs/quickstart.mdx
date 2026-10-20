@@ -3,8 +3,8 @@ title: Quickstart
 description: Install the Sakura Lang compiler, then check, test and run a first program.
 ---
 
-<Callout type="warn" title="Alpha preview">
-  The published preview is `0.1.0-alpha.1`, for Apple silicon macOS and Linux x64, with no compatibility promise. These docs track main; [changes since alpha.1](/docs/changes) need a source build until the next release. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what becomes stable at v0.2.0.
+<Callout type="warn" title="Preview">
+  The published release is `0.1.0`, for macOS (Apple silicon and Intel), Linux (x64 and ARM64) and Windows x64, with no compatibility promise. These docs track main; [changes since 0.1.0](/docs/changes) need a source build until the next release. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what becomes stable at v0.2.0.
 </Callout>
 
 ## Install
@@ -17,14 +17,14 @@ sakura --version
 ```
 
 ```text
-sakura 0.1.0-alpha.1
+sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
 ```
 
 Homebrew (`brew tap icantcodefyi/sakuralang && brew install sakuralang`) and a checksum-verifying installer are also available; see [Install](/docs/install). The standard library is embedded in the binary, so `sakura` works from any directory.
 
 ## Install from source
 
-To use the features listed in [changes since alpha.1](/docs/changes), build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+To use the features listed in [changes since 0.1.0](/docs/changes), build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
 
 ```bash
 git clone https://github.com/icantcodefyi/sakuralang

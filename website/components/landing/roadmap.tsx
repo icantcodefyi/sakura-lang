@@ -12,12 +12,12 @@ const STAGES: { id: Version; name: string; body: string }[] = [
   {
     id: "0.1.0",
     name: "WASM and verification",
-    body: "The first non-alpha preview, after a blessed benchmark baseline. Adds Linux ARM64, Windows x64 and Intel Mac.",
+    body: "WASM complete, the web's bytes, URL, headers, forms and crypto in std, a blessed benchmark baseline, and Linux ARM64, Windows x64 and Intel Mac.",
   },
   {
     id: "0.2.0",
     name: "Native and stability",
-    body: "Native backend behind an experimental flag and the stability guarantees of RFC 0001.",
+    body: "The stability guarantees of RFC 0001, binary HTTP bodies and web timers. Native stays experimental.",
   },
   {
     id: "1.0.0",

@@ -3,8 +3,8 @@ title: Memory model
 description: Value semantics, var rebinding, compiler-inserted reference counting with Perceus reuse, cycles through Graph, scope-bound resources, and backends in Sakura Lang.
 ---
 
-<Callout type="warn" title="Alpha preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Preview">
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 The compiler owns memory. There are no lifetimes, no borrow annotations, no `Rc`/`Arc`, no pointers, and no reference cells in user code. The price is a restricted data model: no aliasable mutation, no cycles in the heap, and explicit scopes for resources.

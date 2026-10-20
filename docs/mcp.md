@@ -132,4 +132,4 @@ errors suppress diagnostics by their location in a broken body, not all diagnost
 raised while checking that body; an error at a signature in another module remains
 visible. Rechecks include refinement dependencies reached through contracts.
 See the [current-main guide](../website/content/docs/changes.mdx) for migration
-notes and the distinction from the published alpha.1 package.
+notes and the distinction from the published 0.1.0 package.

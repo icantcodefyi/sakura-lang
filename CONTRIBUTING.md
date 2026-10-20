@@ -2,7 +2,7 @@
 
 Sakura Lang is in **pre-alpha / design phase**. Research, design discussion, documentation,
 and the website are useful contributions today. The Rust compiler workspace in `compiler/` builds from source and executes on JavaScript.
-The `0.1.0-alpha.1` preview is published; there is no stable compatibility guarantee yet.
+The `0.1.0` preview is published; there is no stable compatibility guarantee yet.
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 

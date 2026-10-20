@@ -18,6 +18,7 @@ export function Pillars() {
           </p>
           <Latency />
           <Backends />
+          <WebStd />
         </div>
         <div className="border-t border-border pt-14 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-14">
           <Heading href="/docs/agents">One binary for the whole loop.</Heading>
@@ -51,8 +52,8 @@ function Heading({ href, children }: { href: string; children: string }) {
 
 // `bench/bench compile` workloads: `check_hello` on the `sakura new cli` project and
 // `check_cold_10k` on its generated 10,084-line package; medians of repeated runs on the
-// owner's reference machine. Runtime ratios stay off this page; instruction counts live on
-// /docs/benchmarks, pending the owner's bless (docs/release.md §2, design §17.264).
+// owner's reference machine. Runtime ratios stay off this page; the blessed instruction-count
+// baseline lives on /docs/benchmarks (docs/release.md §2, design §17.264).
 const LATENCY = [
   { ms: "7", what: "sakura check", on: "a new project" },
   { ms: "35", what: "sakura check", on: "a cold 10k-line package" },
@@ -124,7 +125,35 @@ function Backends() {
   );
 }
 
-// `sakura --help` on main; every one ships in v0.1.0-alpha.1.
+// The web-platform modules of CHANGELOG [0.1.0], Added (RFC 0002). Crypto on WASM is on main,
+// not in v0.1.0, so its row says where it runs.
+const WEB_STD = [
+  ["bytes, encoding", "Base64, atob, TextEncoder, TextDecoder"],
+  ["url, searchparams", "WHATWG URL and URLSearchParams"],
+  ["headers, blob, form", "Headers, Blob, File, FormData, multipart"],
+  ["crypto", "SHA-2, HMAC, HKDF, PBKDF2 on JavaScript"],
+] as const;
+
+function WebStd() {
+  return (
+    <div className="mt-8">
+      <h3 className="font-mono text-[11.5px] text-faint">the web platform, as typed values</h3>
+      <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 border-t border-border text-[13.5px]">
+        {WEB_STD.map(([mods, what]) => (
+          <div key={mods} className="col-span-2 grid grid-cols-subgrid border-b border-border py-2">
+            <dt className="font-mono text-[13px] whitespace-nowrap">
+              <span className="text-faint">std/</span>
+              {mods}
+            </dt>
+            <dd className="text-muted-foreground">{what}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+// `sakura --help` on main; every one ships in v0.1.0.
 const COMMANDS = [
   ["check", "types, effects, exhaustiveness, holes"],
   ["fix", "applies fixes by impact class, never authority"],

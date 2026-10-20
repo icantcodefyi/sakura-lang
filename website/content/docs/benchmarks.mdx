@@ -3,11 +3,13 @@ title: Benchmarks
 description: Instructions retired per call for every benchmark program on the reference Mac, how they are counted, and what they do and do not say.
 ---
 
-<Callout type="warn" title="Pending owner bless">
+<Callout type="info" title="The blessed baseline">
   These are instruction counts from one run of the benchmark suite on the reference Mac (an
-  Apple silicon MacBook, host `d88970189598`) at commit `320c9980`, 2026-10-19. The owner has
-  not blessed them as a baseline yet. They are counts, not times: no speed claim follows from
-  them. The cross-language envelope in design §17.109 is not met by these counts, and Sakura
+  Apple silicon MacBook, host `d88970189598`) at commit `320c9980`, 2026-10-19. They are
+  blessed as the baseline (2026-10-20,
+  [`bench/baselines/d88970189598.json`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/d88970189598.json)),
+  and a counted check of the `v0.1.0` candidate on `fib` and `shapes` passed against it on every Node cell. Later releases are compared with these
+  counts. They are counts, not times: no speed claim follows from them. The cross-language envelope in design §17.109 is not met by these counts, and Sakura
   Lang makes no cross-language speed claim at 0.1.0 (design §17.265).
 </Callout>
 

@@ -3,8 +3,8 @@ title: Diagnostics
 description: Reference for the JSON Lines diagnostics produced by sakura check --json, including record kinds, error codes, and fix impact classes.
 ---
 
-<Callout type="warn" title="Alpha preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Preview">
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library; CLI JSON Lines, MCP result objects and LSP messages wrap that data differently.
@@ -95,8 +95,8 @@ fn greet(name: String) -> Unit {
 
 For `V3001`, the compiler offers two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). The local handler edit is `incomplete`: the agent must supply a suitable handler.
 
-For the `V1002`, `V2002` and `V4004` changes since alpha.1 and syntax-error suppression by
-source location, see [changes since alpha.1](/docs/changes#diagnostics-and-json).
+For the `V1002`, `V2002` and `V4004` changes in 0.1.0 and syntax-error suppression by
+source location, see [0.1.0's changes](/docs/changes#diagnostics-and-json).
 
 ## Fields
 

@@ -3,8 +3,8 @@ title: Concurrency
 description: Structured concurrency with the Task effect, cooperative cancellation, timeouts, retries, budgets, and deterministic scheduling in Sakura Lang.
 ---
 
-<Callout type="warn" title="Alpha preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Preview">
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Sakura Lang has no `async`/`await` keywords and no `Async` effect. Every Sakura Lang function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).

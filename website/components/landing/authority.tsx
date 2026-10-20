@@ -63,7 +63,7 @@ const REFUSED: { code: string; why: string; tag: string }[] = [
   },
 ];
 
-// Security fixes since alpha.1 (CHANGELOG [0.1.0], Security); they ship in v0.1.0.
+// Security fixes since alpha.1 (CHANGELOG [0.1.0], Security); they shipped in v0.1.0.
 const HARDENED: ReactNode[] = [
   <>
     A write through a dangling symlink inside an <code className="font-mono">fs.write</code> grant
@@ -76,7 +76,7 @@ const HARDENED: ReactNode[] = [
   <>
     <code className="font-mono">install.sh</code> checks{" "}
     <code className="font-mono">SHA256SUMS</code> and, with <code className="font-mono">gh</code>{" "}
-    installed, GitHub attestations. macOS releases are signed and notarized from v0.1.0.
+    installed, GitHub attestations. macOS binaries are signed and notarized.
   </>,
 ];
 
@@ -141,7 +141,7 @@ export function Authority() {
               </li>
             ))}
           </ul>
-          <h3 className="mt-10 font-mono text-[11.5px] text-faint">hardened since alpha.1</h3>
+          <h3 className="mt-10 font-mono text-[11.5px] text-faint">hardened in v0.1.0</h3>
           <ul className="mt-3 grid max-w-[30rem] gap-2.5 text-[13.5px] leading-snug text-muted-foreground">
             {HARDENED.map((h, i) => (
               <li key={i} className="flex gap-3">

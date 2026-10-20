@@ -3,8 +3,8 @@ title: Capabilities and security
 description: How Sakura Lang separates effects from authority, limits root handlers with sakura.toml, narrows authority for dependencies, and blocks injection and secret leaks.
 ---
 
-<Callout type="warn" title="Alpha preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published preview, `0.1.0-alpha.1`, has no compatibility promise yet, and these docs track main ([changes since alpha.1](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+<Callout type="warn" title="Preview">
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet, and these docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Sakura Lang uses effect checking, scoped handlers and explicit trust boundaries to make authority reviewable. These are language-level checks, not an OS sandbox for trusted FFI.
@@ -289,7 +289,7 @@ test "only the signed body is authentic" {
 
 `generate_key` draws its material from `Random`, the one source of entropy. `Random.host()` is the operating system's generator. Under `Random.seeded`, the test default, the same seed makes the same key on every backend, which is why seeded randomness is for tests only: a key made under it is not secret.
 
-The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm`, and the RustCrypto crates on `--target native`. The official NIST and RFC vectors hold the three equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
+The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto crates on `--target native`. The official NIST and RFC vectors hold the three equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
 
 ## The trusted computing base
 
