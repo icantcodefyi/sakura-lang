@@ -5266,9 +5266,11 @@ export function serveHttp(addr, run) {
  * A response written on the raw connection of an upgrade request that was not upgraded: the
  * status line, the handler's headers (Node's validation; its own `connection`,
  * `content-length` and `transfer-encoding` dropped), `content-length`, `connection: close`, the
- * body, then the end. Throws on an invalid header, before anything is written.
+ * body, then the end. Throws on a status that is not an integer in 100..=999, as Node's
+ * `writeHead` does, or on an invalid header, before anything is written (design §17.295 F2).
  */
 function rawResponse(http, socket, status, headers, body) {
+  if (!Number.isInteger(status) || status < 100 || status > 999) throw new RangeError(`Invalid status code: ${status}`);
   let head = `HTTP/1.1 ${status} ${http.STATUS_CODES[status] ?? ""}\r\n`;
   for (const [name, value] of Object.entries(headers)) {
     if (["connection", "content-length", "transfer-encoding"].includes(name.toLowerCase())) continue;

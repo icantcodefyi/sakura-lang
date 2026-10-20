@@ -1195,6 +1195,27 @@ test("serveHttp refuses a body over 1 MiB or a too large request with 413 and an
   }
 });
 
+test("serveHttp answers an invalid status on an upgrade request that was not upgraded with 500 (design §17.295 F2)", async () => {
+  const net = await import("node:net");
+  const { raw } = await import("./ws_peer.mjs");
+  const port = await new Promise((resolve) => {
+    const probe = net.createServer().listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+  const s = rt.serveHttp({ host: "127.0.0.1", port }, (_req, reply) =>
+    reply({ kind: "ok", value: { status: 99, headers: rt.list([]), body: txt("no") } }),
+  );
+  try {
+    const upgrade = { upgrade: "websocket", connection: "Upgrade", "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==", "sec-websocket-version": "13" };
+    const r = await raw(port, "/", upgrade);
+    assert.deepEqual([r.status, r.headers.connection, r.body], [500, "close", "internal error"]);
+  } finally {
+    s.close();
+  }
+});
+
 test("http_send whose body is cut short is Err, not a defect", async () => {
   const http = await import("node:http");
   rt.def(

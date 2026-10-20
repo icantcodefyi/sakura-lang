@@ -412,6 +412,9 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   and the `verify_summary` counts for them are gone; functions in a test file that are not
   `test` blocks are still verified. `sakura test --contracts` is how a test checks contracts.
   Fixture: `compiler/tests/verify/tests_skipped.sak`.
+- A handler that answers a served WebSocket upgrade request without upgrading it, with a status
+  outside `100..=999`, gets the `D091` defect and a 500, as a plain request does, where the raw
+  path wrote the status line as given (design §17.295 F2).
 
 ### Security
 
