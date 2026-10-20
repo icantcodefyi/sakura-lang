@@ -69,9 +69,9 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
 | 7b | `std/crypto` tier 1b on JS and native: AES-GCM, ECDSA/ECDH P-256, Ed25519, X25519, JWK; `D090` on WASM under `KNOWN` rows until 7b-W (§17.285 (2d)) | pre-rc, **now** | Opus | 7a (landed) |
-| 7b-W | tier 1b on WASM: the hosted imports, ABI 1.9.0, `KNOWN` emptied | pre-rc | Opus | 7b, 8 |
+| 7b-W | tier 1b on WASM: the hosted imports, the next free MINOR (1.9.0 or 1.10.0, §17.286 (12)), `KNOWN` emptied | pre-rc | Opus | 7b |
 | 7c | `std/crypto` tier 2 on JS and WASM-on-JS (RSA, P-384/521, AES-CBC/CTR/KW) | pre-rc, optional | Opus | 7b |
-| 8 | `std/websocket` client | pre-rc (landed, ABI 1.8.0; readings in `compiler/REQUESTS.md`) | Opus | landed |
+| 8 | `std/websocket` client | pre-rc (`6b633a99`, ABI 1.8.0; §17.286) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
 | 10 | `std/channel`, and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc | Opus | 4b, 5 |
 | 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
@@ -97,7 +97,17 @@ after phase 8 is on `main`, at ABI 1.9.0. Phase 6 follows phase 8 (the scheduler
 lock; phase 10 follows 6 at the next MINOR; 11 after 10; 7c after 7b-W, optional; 12 beside
 each. A phase that must touch a running lane's file files the change in `REQUESTS.md` for
 that lane or waits for it and rebases; a shared append-only file keeps both hunks.
-Phase 8 then landed (ABI 1.8.0, after WS-P20 `fe236029`), so 7b-W and 6 may start.
+**Phase 8 landed (`6b633a99`, ABI 1.8.0, after WS-P20 `fe236029`; ratified §17.286).** Its
+triggers have fired: the scheduler is free, so **phase 6 starts now** in the web lane, after
+three small commits the entry orders first (`http_body_of` natively, operation `requires`
+checked at the perform site, the receive queue's byte bound with the pong rule); phase 6 needs
+no ABI MINOR (its codec is `miniz_oxide` in `rt`) and its `Cargo.toml`/`Cargo.lock` hunk is the
+lane's last commit, rebased over whatever lock `main` has, adding only its own crate
+(`cargo update -p <crate> --precise <pin>`, every other line unchanged, `--locked` green), so
+it no longer waits for 7b's lock. MINOR 1.9.0 is free: the first of 7b-W (after 7b is on
+`main`) or phase 10 (after 6) to be ready takes it, the other 1.10.0 after it lands
+(§17.266 (1)). N1b's remainder may take the next free line (`m5-native.md` §2). The rest of the
+order stands.
 
 ## 3. Phases
 
@@ -380,7 +390,9 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   (`node:zlib` sync for whole-buffer, streaming via the zlib stream classes behind the
   scheduler); `runtime/rt` (`miniz_oxide` with `no_std`; a streaming state handle in the
   guest heap, no host import); `compiler/Cargo.toml`/`Cargo.lock` (workspace dependency,
-  latest stable, exact pin as the native crates do); native: nothing beyond `rt`.
+  latest stable, exact pin as the native crates do); native: nothing beyond `rt`. Starts now
+  (§17.286 (12)): no ABI MINOR; the `Cargo.toml`/`Cargo.lock` hunk is the lane's last commit,
+  rebased over `main`'s lock and adding only its own crate.
 - **Tests.** `compress_roundtrip_formats.sak` (prints decompressed text and lengths only),
   `decompress_rejects_output_limit.sak`, `decompress_rejects_truncated.sak`,
   `decompress_rejects_malformed.sak`, `compress_source_roundtrip.sak` (through
@@ -500,7 +512,9 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   JS and through the WASM host; native refuses at startup with the message; the exit-75
   rule for `Http`/`Serve`/`Llm` on native replaces today's `D091` at first use and the
   native CLI parity count notes it.
-- **Landed (ABI 1.8.0; readings filed as a `design-question` in `compiler/REQUESTS.md`).**
+- **Landed (`6b633a99`, ABI 1.8.0; readings ratified in design §17.286, which also adds the
+  receive queue's byte bound and the pong rule, moves operation `requires` to the perform site
+  and lists the owner's review items for the new `net` path).**
   `std/websocket` with `connect`/`send`/`receive`/`close`, `messages` (a view), `scripted` and
   `host()`; `Received = Data(Message) | Closed(CloseInfo)` (one module cannot declare `Text`
   twice); `connect` takes a `String` (the `Url` refinement admits only `http(s)`); `Options`

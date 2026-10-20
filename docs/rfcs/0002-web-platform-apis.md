@@ -31,7 +31,10 @@ the reason recorded. The implementation order is
   for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271); the held series is
   merged after the `v0.1.0` tag. Phase 9 (`std/urlpattern`, `b2fde35d`) is on `main`
   (design §17.281). Phase 5 (`std/stream`, `9139a178`) is on `main` as design §17.280
-  specifies it, which amended §2.5 below; its readings are ratified in design §17.284. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  specifies it, which amended §2.5 below; its readings are ratified in design §17.284. Phase 8
+  (`std/websocket`, `6b633a99`, ABI 1.8.0) is on `main`; its readings are ratified in design
+  §17.286, which amended §1's example, the first-use list, §6's `WebSocket` row and the
+  security bullet. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the
@@ -116,12 +119,12 @@ A WebSocket client under the manifest's `net` grant, with a scripted peer in the
 ```sakura fragment
 import std/websocket.{WebSocket, Message, Received, CloseInfo}
 
-fn echo_once(url: Url) -> String ! {WebSocket, Fail<SocketError>} {
+fn echo_once(url: String) -> String ! {WebSocket, Fail<SocketError>} {
   WebSocket.connect(url, WebSocket.options(), fn(sock) {
     WebSocket.send(sock, Text("ping"))
     match WebSocket.receive(sock) {
-      Text(s) -> s,
-      Binary(_) -> "binary",
+      Data(Text(s)) -> s,
+      Data(Binary(_)) -> "binary",
       Closed(info) -> "closed " ++ show(info.code),
     }
   })
@@ -129,7 +132,7 @@ fn echo_once(url: Url) -> String ! {WebSocket, Fail<SocketError>} {
 
 test "echo" {
   with WebSocket.scripted([Reply(Text("ping"), Text("pong"))]) {
-    expect_eq(echo_once(url"wss://example.test/echo"), "pong")
+    expect_eq(echo_once("wss://example.test/echo"), "pong")
   }
 }
 ```
@@ -181,8 +184,11 @@ Rejected uses, each a diagnostic or a typed error rather than a surprise:
   `usages` lack `Sign` is a caller defect, `D020` (`requires permits(key, Sign)`; design
   §17.266 (2)): which key a call passes is a fact about the program, so `permits(key,
   usage)` is the test to make first.
-- A `WebSocket.connect` to a host outside `net` is `Err(SocketError("… is not in the
-  manifest's net list"))`, exactly as `Http.host()` answers today.
+- A `WebSocket.connect` to a host outside `net` is `Err(SocketError(Connect("host:port is
+  not in the manifest's net list")))`, the same check `Http.host()` runs today (design
+  §17.286 (3)). `connect` takes a `String` (the `Url` refinement admits only `http(s)`),
+  parsed before anything opens; `receive` returns `Received = Data(Message) |
+  Closed(CloseInfo)`, so a dropped connection is `Closed(1006, "", false)`, not an error.
 - `Compress.gunzip(b, max_out)` whose output would exceed `max_out` is
   `Err(CompressionError(OutputLimit))`; there is no unbounded form.
 - A program whose `main` declares `WebSocket` run with `--target native` before the native
@@ -651,7 +657,7 @@ effect has a scripted or captured handler: `WebSocket.scripted`, `Worker.inline`
 | `Stream.to_list`, `lines` | `max_items`, `max_line` required | `StreamError(MaxItems \| MaxLine)` |
 | `Stream.buffer`, `tee` (phase 10, over `Channel`) | `capacity`/`max_lag` required | producer waits (backpressure) |
 | `Http` bodies | unchanged: `SAKURA_MAX_COPY_BYTES`, 16 MiB cassettes | unchanged |
-| `WebSocket` | `max_message` (default 16 MiB), `max_frame`, receive queue 64 messages then TCP backpressure, close handshake timeout 5 s | `SocketError(MessageTooLarge)`, `Closed(1009)` |
+| `WebSocket` | `max_message` (default 16 MiB) per message and per receive queue (a frame is bounded by it before its payload is held; no `max_frame`), 64 queued messages, then TCP backpressure; a pong only while the socket is writable; close handshake timeout 5 s (design §17.286 (4)) | `SocketError(MessageTooLarge)`, `Closed(1009)` |
 | Redirects | 20 hops | `HttpError("too many redirects")` |
 | `Channel`, `Worker` queues | `capacity` per channel | `SendError(Full)` only on `try_send`; `send` waits |
 | Workers | 16 live per instance; heap per worker `SAKURA_MAX_HEAP` | `WorkerError(Limit)`, worker `D096` reported as `Failed` |
@@ -777,7 +783,8 @@ MINOR revision per phase that adds imports.
   decoded external text (`Response.text`, `Blob.text` of received data) is unchanged.
 - The redirect gap (§2.4) is fixed first.
 - Denial of service: every decoder with an expansion factor takes a required bound;
-  every queue has a capacity; workers are capped; WebSocket messages and frames are capped;
+  every queue has a capacity; workers are capped; WebSocket messages, frames and the receive
+  queue are capped by `max_message` (§17.286 (4));
   multipart parts are capped. Heap exhaustion stays `D096`.
 - Unsafe code: none new in `sakura_rt` is expected; codec crates are pure Rust
   (`miniz_oxide`, RustCrypto) and `no_std`-capable. Any `unsafe` added must be listed in
