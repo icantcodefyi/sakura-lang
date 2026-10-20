@@ -2,6 +2,8 @@
 // `TextEncoder` as values. `String.from_bytes` and `String.to_bytes` stay the strict UTF-8
 // path; this module adds UTF-16, Windows-1252, U+FFFD replacement and incremental decoding.
 
+import std/stream.{Done, Next, Source, Step}
+
 /// The encodings Sakura decodes. `Encoding.parse` maps the standard's labels to them.
 pub type Encoding = Utf8 | Utf16Le | Utf16Be | Windows1252
 
@@ -124,6 +126,54 @@ pub fn finish(d: Decoder) -> Result<String, EncodingError> {
     if d.started { s } else { strip_bom(s, d.encoding) }
   })
 }
+
+/// The text of a byte source (`TextDecoderStream`), decoded with `push` as items arrive and
+/// `finish` at the end. A chunk that completes no character yields nothing, and a malformed
+/// sequence fails the pull that reaches it.
+pub fn decode_source<e>(
+  src: Source<Bytes, e>,
+  enc: Encoding,
+  errors: Errors,
+) -> Source<String, {Fail<EncodingError> | e}>
+{ decoding(new(enc, errors), src) }
+
+fn decoding<e>(d: Decoder, src: Source<Bytes, e>) -> Source<String, {Fail<EncodingError> | e}> {
+  Source { pull: fn() { decode_step(d, src) } }
+}
+
+fn decode_step<e>(d0: Decoder, src: Source<Bytes, e>) -> Step<String, {Fail<EncodingError> | e}>
+  ! {Fail<EncodingError> | e}
+{
+  var d = d0
+  var s = src
+  var out: Step<String, {Fail<EncodingError> | e}> = Done
+  var more = true
+  while more {
+    let p = s.pull
+    match p() {
+      Done => {
+        let tail = finish(d).raise()
+        if String.len(tail) > 0 { out = Next(tail, Source.empty()) }
+        more = false
+      },
+      Next(chunk, rest) => {
+        let r = push(d, chunk).raise()
+        d = r.0
+        s = rest
+        if String.len(r.1) > 0 {
+          out = Next(r.1, decoding(d, s))
+          more = false
+        }
+      },
+    }
+  }
+  out
+}
+
+/// The bytes of a text source in `enc` (`TextEncoderStream`), one item per item.
+pub fn encode_source<e>(src: Source<String, e>, enc: Encoding) -> Source<Bytes, e>
+  requires encodable(enc)
+{ Source.map(src, fn(s) { encode(s, enc) }) }
 
 /// `s` as UTF-16LE or UTF-16BE bytes, no byte order mark (`Utf8` is `String.to_bytes`).
 /// Windows-1252 cannot encode every string, so it is not an encoder here.

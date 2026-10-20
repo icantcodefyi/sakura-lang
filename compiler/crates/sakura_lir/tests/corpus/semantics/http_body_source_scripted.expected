@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+Ok((9, ["one", "two", "t"]))
+Ok([7, 7, 5])

@@ -64,7 +64,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 4a | HTTP 0.2.0 shape: `Payload`, `Method`, `redirect`, `Response.bytes`, `Request.bytes`/`text`; the redirect loop moves into `std/http` | 0.2.0; PR #7 (`hold/webapis-4a`, `1f7f0ea9`) stacked on #6, ABI 1.7.0, merged last (§17.270 (3)); ratified §17.271 with two additions before merge | Opus | 3, #6, tag |
 | B | Backend coverage refusal (RFC §7): a native `main` whose row leaves `Http`, `Serve` or `Llm` to the runtime exits 75 at startup | pre-rc (`796e553e`; §17.271 (9)) | Opus | landed |
 | 4b | Effect additions: `Clock.monotonic_micros`, `Task.cancel`/`cancelled`, `Task.every`, console dialogs, `Json.render` | 0.2.0; PR #5 (ABI 1.5.0) until the `v0.1.0` tag; its scope fix `ff66cded` moves to `main` first (§17.267) | Opus | 0, tag |
-| 5 | `std/stream` (`Step`/`Source`/`Sink` as values, §17.280), `Encoding.decode_source`/`encode_source`, `Blob.source`, the `Http`/`Fs` views | pre-rc; unblocked by §17.280 after the `17d3b20d` question | Opus | 4a, B (both landed) |
+| 5 | `std/stream` (`Step`/`Source`/`Sink` as values, §17.280), `Encoding.decode_source`/`encode_source`, `Blob.source`, the `Http`/`Fs` views | pre-rc (§17.280; the escape check reaches a view, no new question) | Opus | landed |
 | 6 | `std/compress` (streaming forms callback-shaped, §17.280 (4)) | pre-rc | Opus | 5 |
 | 7a | `std/crypto` tier 1a: `CryptoKey`, digests, HMAC, HKDF, PBKDF2, import/export | 0.1.0 on JS and native (`3eab0003`); WASM `D090` | Opus | landed |
 | 7a-W | `std/crypto` on WASM: the `crypto_*` `hosted` imports, `KNOWN` emptied, `cookbook/sign_webhook` | 0.2.0; PR #6 stacked on #5, ABI 1.6.0, merged right after #5 (§17.266 (1)); its zeroing of every freed copy of a kind-`secret` import's arguments moves to `main` first (§17.270 (1)) | Opus | 7a, #5, tag |
@@ -85,7 +85,8 @@ worktree beside the perf lane's WS-P20 and WS-P15 (§17.276); phase 8 starts whe
 `main` and rebases over WS-P15, since both edit `sakura_runtime.js`; 6 and 10 follow 8. A
 WebSocket server (`Serve` upgrade) stays outside the RFC. **Round 41:** phase 9 landed
 first (`b2fde35d`, §17.281) while phase 5 waited on its design question; §17.280 answers it
-(a stream is a value), so phase 5 is next and pure Sakura as before, then 8 as ordered.
+(a stream is a value), so phase 5 is next and pure Sakura as before, then 8 as ordered. Phase 5
+then landed as specified; 8 is next.
 
 ## 3. Phases
 

@@ -1,0 +1,37 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (2), (3)
+// Spec: https://fetch.spec.whatwg.org/#dom-body-body
+
+// `Http.body_source` is `response.body`: a view over the `Body` of `Http.stream`'s callback
+// that reads chunks of up to `chunk` bytes and ends at the first empty read. It composes with
+// the pure combinators (decode, split into lines, count) inside the callback; pulling the view
+// advances the body, so a second use continues where the first stopped.
+import std/encoding.{Encoding, EncodingError, Errors}
+import std/http.{Any, Http}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/stream.{StreamError}
+import std/url.{Url}
+
+fn req() -> Request { Request.of(Get, Url.from("https://a.example/log")) }
+
+pub fn main() -> Unit ! {Console} {
+  with Http.scripted([(Any, Response.status(200, "one\ntwo\r\nthree\nfour"))]) {
+    let r: Result<(Int, List<String>), EncodingError | HttpError | StreamError> = try {
+      Http.stream(req(), fn(incoming) {
+        let bytes = Http.body_source(incoming.body, 5)
+        let text = Encoding.decode_source(bytes.take(2), Encoding.Utf8, Errors.Fatal)
+        let first = text.lines(64).to_list(10)
+        let rest = Http.body_source(incoming.body, 5).fold(0, fn(n, b) { n + Bytes.len(b) })
+        (rest, first)
+      })
+    }
+    Console.print("{r}")
+    let sizes: Result<List<Int>, HttpError> = try {
+      Http.stream(req(), fn(incoming) {
+        Http.body_source(incoming.body, 7).fold([], fn(acc, b) { acc.push(Bytes.len(b)) })
+      })
+    }
+    Console.print("{sizes}")
+  }
+}

@@ -1,0 +1,18 @@
+ending: ok
+--- stdout
+3 items, max 3:
+  pulled 0
+  pulled 1
+  pulled 2
+  ok [0, 1, 2]
+5 items, max 3:
+  pulled 0
+  pulled 1
+  pulled 2
+  pulled 3
+  failed MaxItems
+0 items, max 0:
+  ok []
+1 items, max 0:
+  pulled 0
+  failed MaxItems

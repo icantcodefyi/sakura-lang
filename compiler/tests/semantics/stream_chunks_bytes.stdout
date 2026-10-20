@@ -1,0 +1,6 @@
+items:    Bytes.of([1, 2, 3]) Bytes.of([]) Bytes.of([4]) Bytes.of([5, 6, 7, 8, 9])
+chunks 2: Bytes.of([1, 2]) Bytes.of([3, 4]) Bytes.of([5, 6]) Bytes.of([7, 8]) Bytes.of([9])
+chunks 4: Bytes.of([1, 2, 3, 4]) Bytes.of([5, 6, 7, 8]) Bytes.of([9])
+chunks 9: Bytes.of([1, 2, 3, 4, 5, 6, 7, 8, 9])
+chunks 50: Bytes.of([1, 2, 3, 4, 5, 6, 7, 8, 9])
+only empty: []

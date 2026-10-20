@@ -6,6 +6,12 @@
 // more segments). Empty segments are ignored on both sides, so `/a/` and `/a` match alike, and
 // a pattern ignores the query and fragment. `std/router` matches its routes through this
 // module, so a route and a pattern never disagree.
+//
+// Two divergences from the standard (design §17.281 (4)). The standard's `*` is `.*` and
+// crosses `/`; Sakura's `*` is exactly one segment and `**` is any number, because `**`
+// already covers a tree and a route author does not expect `/files/*` to match one. The
+// standard is exact about a trailing slash; `UrlPattern` ignores empty segments on both sides,
+// so `/users/7/` matches `/users/:id`, because that is the contract `Router` routes already had.
 
 import std/url.{Url, UrlParts}
 

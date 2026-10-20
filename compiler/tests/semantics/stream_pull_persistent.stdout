@@ -1,0 +1,8 @@
+first:  Next(a)
+again:  Next(a)
+rest:   Next(b)
+rest:   Next(b)
+last:   Done
+last:   Done
+twice:  abab
+empty:  Done Done

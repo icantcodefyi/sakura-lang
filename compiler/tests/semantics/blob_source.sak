@@ -1,0 +1,26 @@
+// milestone: M3
+// spec: RFC 0002 §2.3, §2.5, design §17.280 (3)
+// Spec: https://w3c.github.io/FileAPI/#dom-blob-stream
+
+// `Blob.source(b, chunk)` is `blob.stream()`: the bytes in items of `chunk` bytes, the last
+// shorter, and no items for an empty blob. It is a pure source, so reading it twice reads the
+// same bytes, and it composes with `Encoding.decode_source` and `lines`.
+import std/blob.{Blob}
+import std/encoding.{Encoding, EncodingError, Errors}
+import std/stream.{Source, StreamError}
+
+fn sizes(src: Source<Bytes, {}>) -> List<Int> {
+  src.fold([], fn(acc, b) { acc.push(Bytes.len(b)) })
+}
+
+pub fn main() -> Unit ! {Console} {
+  let b = Blob.of(String.to_bytes("héllo\nwörld\n"), "text/plain")
+  let src: Source<Bytes, {}> = b.source(4)
+  Console.print("size {b.size()}, chunks {sizes(src)}, again {sizes(src)}")
+  Console.print("chunk 100: {sizes(b.source(100))}")
+  Console.print("empty: {sizes(Blob.of(Bytes.from_list([]), "").source(4))}")
+  let r: Result<List<String>, EncodingError | StreamError> = try {
+    Encoding.decode_source(b.source(3), Encoding.Utf8, Errors.Fatal).lines(16).to_list(10)
+  }
+  Console.print("{r}")
+}

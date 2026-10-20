@@ -1261,3 +1261,104 @@ test "the receiving key can verify but not sign" {
   }
 }
 ```
+
+## Read a file line by line with a stream
+
+Count the lines of a log file in fixed-size reads, with every bound stated.
+
+`Fs.file_source(file, 4_096)` is a view over the open `File`: each pull reads up to 4 KiB.
+`Encoding.decode_source` turns those bytes into text, holding a UTF-8 sequence that a read
+split until the next chunk completes it, and `lines(1_024)` splits the text on LF wherever
+the chunks break, dropping a CR before an LF. `fold` walks the lines once. Memory is bounded
+by the chunk and the line limit, not the file: a line over 1,024 bytes fails
+`StreamError(MaxLine)` instead of growing, and a malformed byte fails `EncodingError`.
+
+A source is a value. `summarize_text` takes any `Source<String, e>`, so a test hands it a
+pure source built with `Source.from_list`, which reads the same items every time it is
+pulled. The file view advances the file and is valid only inside the `Fs.with_file`
+callback: returning it from the callback is `V6003`. The tests use `Fs.memory`, so they
+need no permissions.
+
+[Source project](https://github.com/icantcodefyi/sakuralang/tree/main/compiler/examples/stream_lines) · harness mode: `test`.
+
+From the repository root, with this checkout's `sakura` on `PATH`:
+
+```sh
+cd compiler/examples/stream_lines
+sakura check --json
+sakura test --json
+```
+
+### Manifest and permissions
+
+```toml
+[package]
+name = "stream_lines"
+version = "0.1.0"
+edition = "2026"
+
+[permissions]
+```
+
+### Source and tests
+
+`src/main.sak` includes all required imports and tests.
+
+```sakura test id=cookbook-stream_lines project=stream_lines
+import std/encoding.{Encoding, EncodingError, Errors, Malformed}
+import std/fs.{Fs, FsError, Read}
+import std/path.{Path}
+import std/stream.{MaxLine, Source, StreamError}
+
+pub type Summary = { lines: Int, errors: Int, longest: Int }
+
+/// Counts the lines of a UTF-8 log and those that start with `ERROR`, reading the file in
+/// 4 KiB chunks. A line over 1,024 bytes fails `StreamError(MaxLine)`; a malformed byte fails
+/// `EncodingError`.
+pub fn summarize(path: Path) -> Summary ! {Fs, Fail<EncodingError | FsError | StreamError>} {
+  Fs.with_file(path, Read, fn(file) {
+    summarize_text(Encoding.decode_source(Fs.file_source(file, 4_096), Encoding.Utf8, Errors.Fatal))
+  })
+}
+
+fn count(s: Summary, line: String) -> Summary {
+  Summary {
+    lines: s.lines + 1,
+    errors: s.errors + (if String.starts_with(line, "ERROR") { 1 } else { 0 }),
+    longest: Int.max(s.longest, String.len(line)),
+  }
+}
+
+/// The same count over any source of text: a pure source in a test, a view in `summarize`.
+pub fn summarize_text<e>(text: Source<String, e>) -> Summary ! {Fail<StreamError> | e} {
+  text.lines(1_024).fold(Summary { lines: 0, errors: 0, longest: 0 }, count)
+}
+
+test "counts lines and errors across chunk boundaries" {
+  let log = Path.of("app.log")
+  let body = "INFO start\r\nERROR disk full\nINFO retry\nERROR gave up"
+  with Fs.memory([(log, String.to_bytes(body))]) {
+    expect_eq(try { summarize(log) }, Ok(Summary { lines: 4, errors: 2, longest: 15 }))
+  }
+}
+
+test "a pure source gives the same answer without a file" {
+  let text: Source<String, {}> = Source.from_list(["INFO a\nERR", "OR b\n", "INFO c"])
+  expect_eq(try { summarize_text(text) }, Ok(Summary { lines: 3, errors: 1, longest: 7 }))
+}
+
+test "a line over the bound fails instead of growing" {
+  let text: Source<String, {}> = Source.from_list([
+    String.repeat("x", 600),
+    String.repeat("y", 600),
+  ])
+  expect_eq(try { summarize_text(text) }, Err(StreamError(MaxLine)))
+}
+
+test "a malformed byte fails the read" {
+  let log = Path.of("bad.log")
+  with Fs.memory([(log, Bytes.from_list([0x6F, 0x6B, 0x0A, 0xFF]))]) {
+    expect_eq(try { summarize(log) }, Err(EncodingError(Malformed(3))))
+  }
+}
+```

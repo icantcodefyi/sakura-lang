@@ -1,0 +1,43 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (2)
+
+// A pure source is a value: pulling the same source twice returns the same step, so a
+// source used in two places reads the same items from the same place, and `Done` is stable.
+// Nothing is consumed by reading; only the `rest` a pull returns moves on.
+import std/stream.{Done, Next, Source, Step}
+
+fn describe(s: Step<String, {}>) -> String {
+  match s {
+    Done => "Done",
+    Next(x, _rest) => "Next({x})",
+  }
+}
+
+fn pull(src: Source<String, {}>) -> Step<String, {}> {
+  let p = src.pull
+  p()
+}
+
+pub fn main() -> Unit ! {Console} {
+  let src: Source<String, {}> = Source.from_list(["a", "b"])
+  Console.print("first:  {describe(pull(src))}")
+  Console.print("again:  {describe(pull(src))}")
+  match pull(src) {
+    Done => Console.print("unexpected end"),
+    Next(_a, rest) => {
+      Console.print("rest:   {describe(pull(rest))}")
+      Console.print("rest:   {describe(pull(rest))}")
+      match pull(rest) {
+        Done => Console.print("unexpected end"),
+        Next(_b, last) => {
+          Console.print("last:   {describe(pull(last))}")
+          Console.print("last:   {describe(pull(last))}")
+        },
+      }
+    },
+  }
+  let twice = src.fold("", fn(acc, x) { acc + x }) + src.fold("", fn(acc, x) { acc + x })
+  Console.print("twice:  {twice}")
+  let none: Source<String, {}> = Source.empty()
+  Console.print("empty:  {describe(pull(none))} {describe(pull(none))}")
+}

@@ -1,0 +1,14 @@
+// milestone: M3
+// expect: V6003
+// spec: RFC 0002 §2.5, design §17.280 (2), (5), §8.4
+import std/http.{Http}
+import std/request.{Get, Request}
+import std/response.{HttpError}
+import std/stream.{Source}
+import std/url.{Url}
+
+// A view over a `Body` is scoped like the body: `Http.body_source` captures it, so returning
+// the source from `Http.stream`'s callback would pull a closed connection later.
+fn open(url: Url) -> Source<Bytes, {Http, Fail<HttpError>}> ! {Http, Fail<HttpError>} {
+  Http.stream(Request.of(Get, url), fn(incoming) { Http.body_source(incoming.body, 1_024) })
+}

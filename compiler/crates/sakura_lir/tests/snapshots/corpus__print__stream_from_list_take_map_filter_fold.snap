@@ -1,0 +1,212 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 record std::stream::Source | Source 24b (pull: word*)
+layout 3 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::stream_from_list_take_map_filter_fold, frame 30 slots [%17 word*, %19 bool, %20 word*, %22 word*, %23 word*, %25 word*, %26 word*, %28 word*, %29 word*, %32 word*, %33 word*, %37 word*, %38 word*, %43 bool, %44 word*, %47 bool, %48 word*, %50 word*, %51 word*, %54 word*, %55 word*, %59 word*, %60 word*, %65 bool, %66 word*, %69 bool, %70 word*, %74 word*, %76 word*, %78 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 lit: i64 = const 3
+    %5 box: word = box %4
+    %6 lit: i64 = const 4
+    %7 box: word = box %6
+    %8 lit: i64 = const 5
+    %9 box: word = box %8
+    %10 lit: i64 = const 6
+    %11 box: word = box %10
+    %12 lit: i64 = const 7
+    %13 box: word = box %12
+    %14 lit: i64 = const 8
+    %15 box: word = box %14
+    %16 xs: ptr = alloc list(%1, %3, %5, %7, %9, %11, %13, %15)
+    call from_list#2(%16) -> b1()
+  b1(%17 r: ptr):
+    %18 lit: ptr = const str 0
+    perform std::console::Console.print(%18) -> b2(%17)
+  b2(%19 r: unit, %20 r: ptr):
+    %21 box: word = box %19
+    drop %21
+    dup %20
+    call noisy#3(%20) -> b3(%20)
+  b3(%22 r: ptr, %23 r: ptr):
+    %24 f: ptr = closure main$1#4[]
+    call filter#5(%22, %24) -> b4(%23)
+  b4(%25 r: ptr, %26 r: ptr):
+    %27 f: ptr = closure main$2#6[]
+    call map#7(%25, %27) -> b5(%26)
+  b5(%28 r: ptr, %29 r: ptr):
+    %30 lit: i64 = const 3
+    %31 $site: i64 = const 2
+    call take#8(%28, %30, %31) -> b6(%29)
+  b6(%32 r: ptr, %33 r: ptr):
+    %34 f: ptr = closure main$3#9[]
+    %35 lit: i64 = const 0
+    %36 box: word = box %35
+    call fold#10(%32, %36, %34) -> b7(%33)
+  b7(%37 r: word, %38 r: ptr):
+    %39 unbox: i64 = unbox %37
+    drop %37
+    %40 s: ptr = show %39
+    %41 lit: ptr = const str 1
+    %42 s: ptr = concat %41, %40
+    drop %40
+    drop %41
+    perform std::console::Console.print(%42) -> b8(%38)
+  b8(%43 r: unit, %44 r: ptr):
+    %45 box: word = box %43
+    drop %45
+    %46 lit: ptr = const str 2
+    perform std::console::Console.print(%46) -> b9(%44)
+  b9(%47 r: unit, %48 r: ptr):
+    %49 box: word = box %47
+    drop %49
+    dup %48
+    call noisy#3(%48) -> b10(%48)
+  b10(%50 r: ptr, %51 r: ptr):
+    %52 lit: i64 = const 0
+    %53 $site: i64 = const 3
+    call take#8(%50, %52, %53) -> b11(%51)
+  b11(%54 r: ptr, %55 r: ptr):
+    %56 f: ptr = closure main$4#11[]
+    %57 lit: i64 = const 0
+    %58 box: word = box %57
+    call fold#10(%54, %58, %56) -> b12(%55)
+  b12(%59 r: word, %60 r: ptr):
+    %61 unbox: i64 = unbox %59
+    drop %59
+    %62 s: ptr = show %61
+    %63 lit: ptr = const str 1
+    %64 s: ptr = concat %63, %62
+    drop %62
+    drop %63
+    perform std::console::Console.print(%64) -> b13(%60)
+  b13(%65 r: unit, %66 r: ptr):
+    %67 box: word = box %65
+    drop %67
+    %68 lit: ptr = const str 3
+    perform std::console::Console.print(%68) -> b14(%66)
+  b14(%69 r: unit, %70 r: ptr):
+    %71 box: word = box %69
+    drop %71
+    %72 lit: i64 = const 20
+    %73 $site: i64 = const 4
+    call take#8(%70, %72, %73) -> b15()
+  b15(%74 r: ptr):
+    %75 f: ptr = closure main$5#12[]
+    call filter#5(%74, %75) -> b16()
+  b16(%76 r: ptr):
+    %77 f: ptr = closure main$6#13[]
+    call each#14(%76, %77) -> b17()
+  b17(%78 r: unit):
+    ret %78
+
+fn $entry#1 top -> unit ; main::stream_from_list_take_map_filter_fold, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn noisy#3 top -> ptr ; main::stream_from_list_take_map_filter_fold, frame 2 slots [%0 word*, %2 word*]
+  b0(%0 src: ptr):
+    %1 f: ptr = closure noisy$1#21[]
+    call map#7(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    ret %2
+
+fn main$1#4 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 2
+    %4 t: i64 = intrem %2, %3
+    %5 lit: i64 = const 0
+    %6 t: bool = eq.int %4, %5
+    %7 box: word = box %6
+    ret %7
+
+fn main$2#6 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 10
+    %4 t: i64 = intmul %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$3#9 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 x: word):
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 unbox: i64 = unbox %2
+    drop %2
+    %5 t: i64 = intadd %3, %4
+    %6 box: word = box %5
+    ret %6
+
+fn main$4#11 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 x: word):
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 unbox: i64 = unbox %2
+    drop %2
+    %5 t: i64 = intadd %3, %4
+    %6 box: word = box %5
+    ret %6
+
+fn main$5#12 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 6
+    %4 t: bool = gt.int %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$6#13 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 3 slots [%0 word*, %1 word*, %6 bool]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1()
+  b1(%6 r: unit):
+    %7 box: word = box %6
+    ret %7
+
+fn noisy$1#21 lambda -> word ; main::stream_from_list_take_map_filter_fold, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 5
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1(%2)
+  b1(%6 r: unit, %7 x: i64):
+    %8 box: word = box %6
+    drop %8
+    %9 box: word = box %7
+    ret %9

@@ -30,8 +30,8 @@ the reason recorded. The implementation order is
   (PR #6, ABI 1.6.0, stacked on #5) and 4a (PR #7, `1f7f0ea9`, stacked on #6, ABI 1.7.0, ratified in design §17.271) are held
   for the tag (design §17.263, §17.266, §17.267, §17.270, §17.271); the held series is
   merged after the `v0.1.0` tag. Phase 9 (`std/urlpattern`, `b2fde35d`) is on `main`
-  (design §17.281). Phase 5 (`std/stream`) is specified by design §17.280, which amended
-  §2.5 below. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
+  (design §17.281). Phase 5 (`std/stream`) is on `main` as design §17.280 specifies
+  it, which amended §2.5 below. Phases and owners are in [docs/plans/web-apis.md](../plans/web-apis.md).
 - Stabilization status: Not stabilized. §Compatibility states which parts are intended
   for the `v0.2.0` contract and which stay experimental.
 - FCP start/end: Not started; the maintainer records seven calendar days under the

@@ -1,0 +1,16 @@
+max 4, ["abc\n", "abcd\n"]:
+  line abc
+  line abcd
+  ok
+max 4, ["abc\n", "abcde\n", "x\n"]:
+  line abc
+  failed MaxLine
+max 4, ["ok\n", "abc", "de"]:
+  line ok
+  failed MaxLine
+max 4, ["abcd\r", "\n"]:
+  line abcd
+  ok
+max 4, ["éé\n", "ééa\n"]:
+  line éé
+  failed MaxLine

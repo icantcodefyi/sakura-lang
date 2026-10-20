@@ -1,0 +1,131 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 record std::stream::Source | Source 24b (pull: word*)
+layout 4 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 5 error std::stream::StreamError | StreamError 24b (reason: word*)
+layout 6 variant std::stream::StreamReason | MaxItems 16b () | MaxLine 16b ()
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::stream_to_list_rejects_max_items, frame 4 slots [%2 bool, %5 bool, %8 bool, %11 bool]
+  b0():
+    %0 lit: i64 = const 3
+    %1 lit: i64 = const 3
+    call collect#2(%0, %1) -> b1()
+  b1(%2 r: unit):
+    %3 lit: i64 = const 5
+    %4 lit: i64 = const 3
+    call collect#2(%3, %4) -> b2()
+  b2(%5 r: unit):
+    %6 lit: i64 = const 0
+    %7 lit: i64 = const 0
+    call collect#2(%6, %7) -> b3()
+  b3(%8 r: unit):
+    %9 lit: i64 = const 1
+    %10 lit: i64 = const 0
+    call collect#2(%9, %10) -> b4()
+  b4(%11 r: unit):
+    ret %11
+
+fn $entry#1 top -> unit ; main::stream_to_list_rejects_max_items, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn collect#2 top -> unit ; main::stream_to_list_rejects_max_items, frame 18 slots [%0 i64, %1 i64, %3 word*, %4 i64, %5 i64, %6 word*, %7 i64, %8 i64, %10 word*, %11 i64, %12 i64, %20 bool, %21 i64, %22 word*, %32 bool, %40 bool, %43 word*, %45 word*]
+  b0(%0 n: i64, %1 max_items: i64):
+    %2 lit: i64 = const 0
+    call range#3(%2, %0) -> b1(%0, %1)
+  b1(%3 r: ptr, %4 n: i64, %5 max_items: i64):
+    call from_list#4(%3) -> b2(%4, %5)
+  b2(%6 r: ptr, %7 n: i64, %8 max_items: i64):
+    %9 f: ptr = closure collect$1#5[]
+    call map#6(%6, %9) -> b3(%7, %8)
+  b3(%10 r: ptr, %11 n: i64, %12 max_items: i64):
+    %13 s: ptr = show %11
+    %14 lit: ptr = const str 0
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    %16 s: ptr = show %12
+    %17 s: ptr = concat %15, %16
+    drop %15
+    drop %16
+    %18 lit: ptr = const str 1
+    %19 s: ptr = concat %17, %18
+    drop %17
+    drop %18
+    perform std::console::Console.print(%19) -> b4(%12, %10)
+  b4(%20 r: unit, %21 max_items: i64, %22 r: ptr):
+    %23 box: word = box %20
+    drop %23
+    try_push -> b10(err, )
+    call to_list#7(%22, %21) -> b11()
+  b5(%24 v: ptr):
+    %25 tag: i64 = tag %24 ctor std::result::Result
+    switch %25 0 => b6(%24) 1 => b7(%24)
+  b6(%26 v: ptr):
+    %28 p: word = proj %26.0 std::result::Result.Ok
+    drop %26
+    %29 s: ptr = show %28
+    drop %28
+    %30 lit: ptr = const str 2
+    %31 s: ptr = concat %30, %29
+    drop %29
+    drop %30
+    perform std::console::Console.print(%31) -> b8()
+  b7(%27 v: ptr):
+    %35 p: word = proj %27.0 std::result::Result.Err
+    drop %27
+    %36 p: word = proj %35.0 std::stream::StreamError
+    drop %35
+    %37 s: ptr = show %36
+    drop %36
+    %38 lit: ptr = const str 3
+    %39 s: ptr = concat %38, %37
+    drop %37
+    drop %38
+    perform std::console::Console.print(%39) -> b9()
+  b8(%32 r: unit):
+    %33 box: word = box %32
+    %34 unbox: unit = unbox %33
+    drop %33
+    ret %34
+  b9(%40 r: unit):
+    %41 box: word = box %40
+    %42 unbox: unit = unbox %41
+    drop %41
+    ret %42
+  b10(%43 e: word):
+    %44 err: ptr = alloc std::result::Result.Err(%43)
+    jump b5(%44)
+  b11(%45 r: ptr) [try]:
+    %46 ok: ptr = alloc std::result::Result.Ok(%45)
+    try_pop
+    jump b5(%46)
+
+fn collect$1#5 lambda -> word ; main::stream_to_list_rejects_max_items, captures [], frame 4 slots [%0 word*, %1 word*, %6 bool, %7 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %4, %3
+    drop %3
+    drop %4
+    perform std::console::Console.print(%5) -> b1(%2)
+  b1(%6 r: unit, %7 x: i64):
+    %8 box: word = box %6
+    drop %8
+    %9 box: word = box %7
+    ret %9

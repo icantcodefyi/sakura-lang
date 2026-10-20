@@ -1,0 +1,32 @@
+// milestone: M3
+// spec: RFC 0002 §2.1, §2.5, design §17.280 (3)
+// Spec: https://encoding.spec.whatwg.org/#interface-textdecoderstream
+
+// `Encoding.decode_source` is `TextDecoderStream`: a multi-byte sequence split across items is
+// held until it is complete, an item that completes no character yields nothing, a byte order
+// mark split across items is still stripped, and a sequence left unfinished at the end is
+// malformed at its stream offset (`Fatal`) or one U+FFFD (`Replace`). `encode_source` is
+// `TextEncoderStream`, one item per item.
+import std/encoding.{Encoding, EncodingError, Errors}
+import std/stream.{Source}
+
+fn decode(chunks: List<List<Int>>, enc: Encoding, errors: Errors) -> Unit ! {Console} {
+  let src: Source<Bytes, {}> = Source.from_list(List.map(chunks, Bytes.from_list))
+  match try { Encoding.decode_source(src, enc, errors).fold([], fn(acc, s) { acc.push(s) }) } {
+    Ok(items) => Console.print("{items}"),
+    Err(EncodingError(reason)) => Console.print("failed {reason}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  decode([[0x61, 0xF0], [0x9F], [0x98], [0x80, 0x62]], Encoding.Utf8, Errors.Fatal)
+  decode([[0xEF], [0xBB], [0xBF, 0x63]], Encoding.Utf8, Errors.Fatal)
+  decode([[0x61], [0xE2, 0x82]], Encoding.Utf8, Errors.Fatal)
+  decode([[0x61], [0xE2, 0x82]], Encoding.Utf8, Errors.Replace)
+  decode([[0x3D], [0xD8, 0x00], [0xDE, 0x21, 0x00]], Encoding.Utf16Le, Errors.Fatal)
+  decode([], Encoding.Utf8, Errors.Fatal)
+  let text: Source<String, {}> = Source.from_list(["a", "😀"])
+  Console.print(
+    "{Encoding.encode_source(text, Encoding.Utf16Be).fold([], fn(acc, b) { acc.push(b) })}",
+  )
+}

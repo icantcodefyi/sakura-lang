@@ -1,0 +1,160 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::blob::Blob | Blob 32b (bytes: word*, media_type: word*)
+layout 1 record std::encoding::Decoder | Decoder 56b (encoding: word*, errors: word*, pending: word*, offset: i64, started: bool)
+layout 2 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 3 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 4 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 5 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 6 variant std::list::Builder
+layout 7 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 8 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 9 record std::stream::Source | Source 24b (pull: word*)
+layout 10 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 11 error std::stream::StreamError | StreamError 24b (reason: word*)
+layout 12 variant std::stream::StreamReason | MaxItems 16b () | MaxLine 16b ()
+layout 13 shape |  32b (word*, word*)
+layout 14 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word*, %7 word*, %8 i64, %9 word*, %10 word*, %16 word*, %17 word*, %18 word*, %19 word*, %24 word*, %25 word*, %26 word*, %29 bool, %30 word*, %34 word*, %35 word*, %36 word*, %37 word*, %41 bool, %42 word*, %47 word*, %48 word*, %51 word*, %52 word*, %53 word*, %54 word*, %58 bool, %59 word*, %63 bool, %66 word*, %70 word*, %73 word*, %75 word*, %77 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 r: ptr = $string_to_bytes(%0)
+    %2 lit: ptr = const str 1
+    call of#2(%1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 lit: i64 = const 4
+    %5 $site: i64 = const 2
+    dup %3
+    call source#3(%3, %4, %5) -> b2(%3)
+  b2(%6 r: ptr, %7 r: ptr):
+    dup %7
+    call size#4(%7) -> b3(%7, %6)
+  b3(%8 r: i64, %9 r: ptr, %10 r: ptr):
+    %11 s: ptr = show %8
+    %12 lit: ptr = const str 2
+    %13 s: ptr = concat %12, %11
+    drop %11
+    drop %12
+    %14 lit: ptr = const str 3
+    %15 s: ptr = concat %13, %14
+    drop %13
+    drop %14
+    dup %10
+    call sizes#5(%10) -> b4(%9, %10, %15)
+  b4(%16 r: ptr, %17 r: ptr, %18 r: ptr, %19 s: ptr):
+    %20 s: ptr = show %16
+    drop %16
+    %21 s: ptr = concat %19, %20
+    drop %19
+    drop %20
+    %22 lit: ptr = const str 4
+    %23 s: ptr = concat %21, %22
+    drop %21
+    drop %22
+    call sizes#5(%18) -> b5(%17, %23)
+  b5(%24 r: ptr, %25 r: ptr, %26 s: ptr):
+    %27 s: ptr = show %24
+    drop %24
+    %28 s: ptr = concat %26, %27
+    drop %26
+    drop %27
+    perform std::console::Console.print(%28) -> b6(%25)
+  b6(%29 r: unit, %30 r: ptr):
+    %31 box: word = box %29
+    drop %31
+    %32 lit: i64 = const 100
+    %33 $site: i64 = const 3
+    dup %30
+    call source#3(%30, %32, %33) -> b7(%30)
+  b7(%34 r: ptr, %35 r: ptr):
+    call sizes#5(%34) -> b8(%35)
+  b8(%36 r: ptr, %37 r: ptr):
+    %38 s: ptr = show %36
+    drop %36
+    %39 lit: ptr = const str 5
+    %40 s: ptr = concat %39, %38
+    drop %38
+    drop %39
+    perform std::console::Console.print(%40) -> b9(%37)
+  b9(%41 r: unit, %42 r: ptr):
+    %43 box: word = box %41
+    drop %43
+    %44 xs: ptr = alloc list()
+    %45 r: ptr = $bytes_from_list(%44)
+    %46 lit: ptr = const str 6
+    call of#2(%45, %46) -> b10(%42)
+  b10(%47 r: ptr, %48 r: ptr):
+    %49 lit: i64 = const 4
+    %50 $site: i64 = const 4
+    call source#3(%47, %49, %50) -> b11(%48)
+  b11(%51 r: ptr, %52 r: ptr):
+    call sizes#5(%51) -> b12(%52)
+  b12(%53 r: ptr, %54 r: ptr):
+    %55 s: ptr = show %53
+    drop %53
+    %56 lit: ptr = const str 7
+    %57 s: ptr = concat %56, %55
+    drop %55
+    drop %56
+    perform std::console::Console.print(%57) -> b13(%54)
+  b13(%58 r: unit, %59 r: ptr):
+    %60 box: word = box %58
+    drop %60
+    try_push -> b16(err, )
+    %68 lit: i64 = const 3
+    %69 $site: i64 = const 5
+    call source#3(%59, %68, %69) -> b17()
+  b14(%61 v: ptr):
+    %62 s: ptr = show %61
+    drop %61
+    perform std::console::Console.print(%62) -> b15()
+  b15(%63 r: unit):
+    %64 box: word = box %63
+    %65 unbox: unit = unbox %64
+    drop %64
+    ret %65
+  b16(%66 e: word):
+    %67 err: ptr = alloc std::result::Result.Err(%66)
+    jump b14(%67)
+  b17(%70 r: ptr) [try]:
+    %71 v: ptr = const static std::encoding::Encoding.Utf8
+    %72 v: ptr = const static std::encoding::Errors.Fatal
+    call decode_source#6(%70, %71, %72) -> b18()
+  b18(%73 r: ptr) [try]:
+    %74 lit: i64 = const 16
+    call lines#7(%73, %74) -> b19()
+  b19(%75 r: ptr) [try]:
+    %76 lit: i64 = const 10
+    call to_list#8(%75, %76) -> b20()
+  b20(%77 r: ptr) [try]:
+    %78 ok: ptr = alloc std::result::Result.Ok(%77)
+    try_pop
+    jump b14(%78)
+
+fn $entry#1 top -> unit ; main::blob_source, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn sizes#5 top -> ptr ; main::blob_source, frame 2 slots [%0 word*, %3 word*]
+  b0(%0 src: ptr):
+    %1 xs: ptr = alloc list()
+    %2 f: ptr = closure sizes$1#33[]
+    call fold#34(%0, %1, %2) -> b1()
+  b1(%3 r: word):
+    ret %3
+
+fn sizes$1#33 lambda -> word ; main::blob_source, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 b: word):
+    drop %0
+    %3 r: i64 = $bytes_len(%2)
+    %4 box: word = box %3
+    %5 r: ptr = $list_push(%1, %4)
+    ret %5

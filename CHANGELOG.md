@@ -140,6 +140,19 @@ retains earlier implementation history.
   or `\` in a segment, a `:` or `*` inside one, a name that is not an identifier) is now the
   caller defect `D020` at `Router.route`/`get`/`post`/`put`/`delete`, where it was a literal
   segment before.
+- `std/stream` (RFC 0002 §2.5; design §17.280; plan `web-apis.md` phase 5): `ReadableStream`
+  and `WritableStream` as values. A `Source<T, e>` is `{ pull }`, and pulling returns `Done`
+  or `Next(item, rest)`; a `Sink<T, e>` is `{ write, close }`, `write` returning the next
+  sink. A pure source reads the same items every time it is pulled. Combinators `empty`,
+  `from_list`, `map`, `filter`, `take`, `fold`, `each`, `pipe`, `chunks(src, size)` (bytes
+  re-cut to exactly `size`), `lines(src, max_line)` (LF, a CR before it dropped) and
+  `to_list(src, max_items)`; past a bound, `StreamError(MaxItems | MaxLine)`. Adapters:
+  `Encoding.decode_source`/`encode_source` (`TextDecoderStream`/`TextEncoderStream`),
+  `Blob.source(b, chunk)` (`blob.stream()`), and the views `Http.body_source(body, chunk)`,
+  `Fs.file_source(file, chunk)` and `Fs.file_sink(file)`, which advance their body or file
+  and, like it, cannot leave the callback that received it (`V6003`). `buffer` and `tee`
+  arrive with `std/channel`. A cookbook recipe, `stream_lines`, counts a file's lines in
+  bounded reads.
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.

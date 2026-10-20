@@ -1,0 +1,31 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (2), (3)
+
+// An empty `Bytes` item from a pure source is data: `to_list` keeps it. `chunks` re-sizes the
+// bytes across item boundaries to exactly `size`, the last chunk shorter, and an empty item
+// adds nothing; a size larger than the whole input yields one chunk.
+import std/stream.{Source, StreamError}
+
+fn show_items(items: List<Bytes>) -> String { List.join(List.map(items, fn(b) { "{b}" }), " ") }
+
+pub fn main() -> Unit ! {Console} {
+  let src: Source<Bytes, {}> = Source.from_list([
+    Bytes.from_list([1, 2, 3]),
+    Bytes.from_list([]),
+    Bytes.from_list([4]),
+    Bytes.from_list([5, 6, 7, 8, 9]),
+  ])
+  let shown = fn(s: Source<Bytes, {}>) -> String {
+    match try { s.to_list(10) } {
+      Ok(items) => show_items(items),
+      Err(StreamError(reason)) => "failed {reason}",
+    }
+  }
+  Console.print("items:    {shown(src)}")
+  Console.print("chunks 2: {shown(src.chunks(2))}")
+  Console.print("chunks 4: {shown(src.chunks(4))}")
+  Console.print("chunks 9: {shown(src.chunks(9))}")
+  Console.print("chunks 50: {shown(src.chunks(50))}")
+  let none: Source<Bytes, {}> = Source.from_list([Bytes.from_list([])])
+  Console.print("only empty: [{shown(none.chunks(3))}]")
+}

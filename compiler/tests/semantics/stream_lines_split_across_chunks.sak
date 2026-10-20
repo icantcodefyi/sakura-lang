@@ -1,0 +1,24 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (3)
+
+// `lines` splits the text of a source on LF wherever the items break: a line split across two
+// items comes out whole, a CR before an LF is removed (also when the CR and the LF arrive in
+// different items), an empty line is a line, and a final line without an LF is yielded.
+import std/stream.{Source, StreamError}
+
+fn show_lines(items: List<String>) -> Unit ! {Console} {
+  let src: Source<String, {}> = Source.from_list(items)
+  match try { src.lines(80).to_list(100) } {
+    Ok(ls) => Console.print("{ls}"),
+    Err(StreamError(reason)) => Console.print("failed {reason}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  show_lines(["alp", "ha\nbeta\n", "gam", "ma"])
+  show_lines(["one\r\ntwo\r", "\nthree\r\n"])
+  show_lines(["a\n\nb\n", "", "\n"])
+  show_lines(["no newline at all"])
+  show_lines([])
+  show_lines(["", ""])
+}

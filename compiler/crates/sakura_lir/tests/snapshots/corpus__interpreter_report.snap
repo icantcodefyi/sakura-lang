@@ -8,6 +8,7 @@ semantics/arith_ranges_proved: ok, 30 allocated, 0 dup, 30 drop, peak 4, live 0/
 semantics/arith_ranges_requires_seeded: ok, 23 allocated, 0 dup, 23 drop, peak 4, live 0/0
 semantics/arith_ranges_requires_violated: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/blob_slice_and_text: unsupported (builtin string_to_bytes)
+semantics/blob_source: unsupported (builtin string_to_bytes)
 semantics/blob_text_rejects_invalid_utf8: unsupported (builtin bytes_from_list)
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/bytes_base64_lenient_whitespace: unsupported (builtin bytes_from_base64_lenient)
@@ -62,6 +63,7 @@ semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, 
 semantics/direct_region_restart: ok, 1154 allocated, 99 dup, 1253 drop, peak 16, live 0/0
 semantics/early_return: ok, 16 allocated, 6 dup, 22 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 39 dup, 69 drop, peak 13, live 0/0
+semantics/encoding_decode_source_split_sequence: unsupported (builtin bytes_from_list)
 semantics/encoding_decode_utf16: unsupported (builtin bytes_from_list)
 semantics/encoding_decode_windows1252: unsupported (builtin bytes_from_list)
 semantics/encoding_decoder_split_sequence: unsupported (builtin bytes_from_list)
@@ -97,6 +99,7 @@ semantics/headers_validate_and_combine: unsupported (builtin string_to_bytes)
 semantics/hello: ok, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/host_fs_env: unsupported (builtin string_to_bytes)
 semantics/host_root_handlers: unsupported (builtin clock_host)
+semantics/http_body_source_scripted: unsupported (builtin string_to_bytes)
 semantics/http_redirect_21_hops: unsupported (builtin string_to_bytes)
 semantics/http_redirect_drops_secrets_cross_origin: unsupported (builtin secret_wrap)
 semantics/http_redirect_error_fails: ok, 272 allocated, 381 dup, 653 drop, peak 48, live 0/0
@@ -175,6 +178,13 @@ semantics/sql_cancel_committed: unsupported (builtin clock_host)
 semantics/sql_rows: unsupported (builtin sql_memory)
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
 semantics/std_collections: ok, 191 allocated, 350 dup, 541 drop, peak 17, live 0/0
+semantics/stream_chunks_bytes: unsupported (builtin bytes_from_list)
+semantics/stream_from_list_take_map_filter_fold: ok, 202 allocated, 298 dup, 500 drop, peak 39, live 0/0
+semantics/stream_lines_rejects_max_line: ok, 249 allocated, 355 dup, 604 drop, peak 20, live 0/0
+semantics/stream_lines_split_across_chunks: ok, 250 allocated, 490 dup, 740 drop, peak 22, live 0/0
+semantics/stream_pipe_to_file_sink: unsupported (builtin fs_memory_root)
+semantics/stream_pull_persistent: ok, 84 allocated, 72 dup, 156 drop, peak 11, live 0/0
+semantics/stream_to_list_rejects_max_items: ok, 167 allocated, 176 dup, 343 drop, peak 22, live 0/0
 semantics/strings_and_interpolation: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/tag_eq: ok, 72 allocated, 1 dup, 73 drop, peak 4, live 0/0
 semantics/tag_eq_defect: D030, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0

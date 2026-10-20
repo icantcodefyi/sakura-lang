@@ -3,6 +3,7 @@
 // symlinks that escape it (design §6.1).
 
 import std/path.{Path}
+import std/stream.{Done, Next, Sink, Source}
 import std/untrusted
 
 /// A directory capability. External: only `Fs.root()` and `Dir.subdir` produce one.
@@ -110,6 +111,32 @@ pub fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>} {
     chunk = Fs.read_chunk(file, 65_536)
   }
   Bytes.from_list(out)
+}
+
+/// The file from its current position as a source of chunks of up to `chunk` bytes, ending
+/// at the first empty read. A view: pulling it reads the file, so it is valid only inside the
+/// `with_file` body that received the file (`V6003`).
+pub fn file_source(file: File, chunk: Int) -> Source<Bytes, {Fs, Fail<FsError>}>
+  requires chunk > 0
+{
+  Source {
+    pull: fn() {
+      let b = Fs.read_chunk(file, chunk)
+      if Bytes.len(b) == 0 { Done } else { Next(b, file_source(file, chunk)) }
+    },
+  }
+}
+
+/// A sink writing each item at the end of the file (`Fs.write_chunk`). `close` writes
+/// nothing: `with_file` closes the file. A view, scoped like `file_source`.
+pub fn file_sink(file: File) -> Sink<Bytes, {Fs, Fail<FsError>}> {
+  Sink {
+    write: fn(b) {
+      Fs.write_chunk(file, b)
+      file_sink(file)
+    },
+    close: fn() { () },
+  }
 }
 
 fn to_list(b: Bytes) -> List<Int> {

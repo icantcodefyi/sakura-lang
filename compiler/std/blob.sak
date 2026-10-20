@@ -2,6 +2,7 @@
 // A `FileData` names no file on disk: reading one in is `Fs` work under the manifest's grant,
 // and a received file's `name` is data, never a path to open.
 
+import std/stream.{Done, Next, Source}
 import std/string.{Utf8Error}
 
 /// Bytes and their media type, `""` when unknown (`Blob`).
@@ -38,6 +39,25 @@ pub fn text(b: Blob) -> Result<String, Utf8Error> {
   let skip = if bom { 3 } else { 0 }
   String.from_bytes(Bytes.slice(b.bytes, skip, size(b)))
     .map_err(fn(e) { Utf8Error { offset: e.offset + skip } })
+}
+
+/// The bytes in items of `chunk` bytes, the last one shorter (`stream()`). A pure source: no
+/// items for an empty blob.
+pub fn source<e>(b: Blob, chunk: Int) -> Source<Bytes, e>
+  requires chunk > 0
+{ source_from(b.bytes, 0, chunk) }
+
+fn source_from<e>(bytes: Bytes, at: Int, chunk: Int) -> Source<Bytes, e> {
+  Source {
+    pull: fn() {
+      if at >= Bytes.len(bytes) {
+        Done
+      } else {
+        let end = Int.min(at + chunk, Bytes.len(bytes))
+        Next(Bytes.slice(bytes, at, end), source_from(bytes, end, chunk))
+      }
+    },
+  }
 }
 
 fn relative(i: Int, n: Int) -> Int { if i < 0 { Int.max(n + i, 0) } else { Int.min(i, n) } }

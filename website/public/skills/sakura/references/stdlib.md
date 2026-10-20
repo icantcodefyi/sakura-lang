@@ -66,6 +66,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Parse text and validate data | `String.parse_int`, `Json.decode`, `Untrusted.validate`, `Result` |
 | Read CLI arguments and files | `Cli.parse`, `Path`, `Dir`, `Fs.rooted`; test with `Cli.of`, `Fs.memory` |
 | Call HTTP or dispatch a route | `Request`, `Response`, `Http`; `Router.handle` for server-free tests; `UrlPattern.compile`, `exec` for route patterns |
+| Stream a body, a file or text in bounded pieces | `Source.from_list`, `map`, `lines`, `chunks`, `fold`, `to_list`; `Http.body_source`, `Fs.file_source`, `Fs.file_sink`, `Blob.source`, `Encoding.decode_source` |
 | Read headers, build or parse a form | `Headers.of`, `get`, `entries`; `Form.encode_multipart`, `parse_multipart` with `FormLimits`; `Blob`, `FileData` |
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
@@ -89,6 +90,11 @@ checked skill reference; they are not additional APIs.
 - `Untrusted.validate` is compiler-known (§17.71); validation checks the target
   refinement. `trust` requires an explicit `Trust` argument and does not validate.
 - `File` is a resource (§17.70); use `Fs.with_file` to bound its lifetime.
+- A `Source` is a value (§17.280): `pull` returns `Done` or `Next(item, rest)`. A pure source
+  (`from_list`, `Blob.source`, and combinators over them) reads the same items each time it
+  is pulled; a view (`Http.body_source`, `Fs.file_source`, `Fs.file_sink`) advances its
+  resource and is `V6003` outside the callback that received it. Every bound is an argument:
+  `to_list`'s `max_items`, `chunks`'s `size`, `lines`'s `max_line`.
 - Each non-`UrlPart` interpolation in `url"…"` goes through `UrlPart.from`, which
   percent-encodes `show(value)` (§17.124). `Url.template` assembles those parts.
 - Each non-`Html` interpolation in `html"…"` goes through `Html.from` and is escaped
@@ -142,9 +148,9 @@ Acyclic. Test blocks additionally use `std/test`, which depends on `std/core` an
 ```text
 core  unit  option  result  set  int  float  duration       (no std dependencies)
 list → set              map → list            string → list       bytes → list
-encoding → bytes, string, list                searchparams → encoding, string, list, bytes
+encoding → bytes, string, list, stream         searchparams → encoding, string, list, bytes
 crypto → bytes, list, secret   (+ Random for `generate_key`)
-headers → string, list, bytes                 blob → bytes, string, int
+headers → string, list, bytes                 blob → bytes, string, int, stream
 form → blob, bytes, encoding, searchparams, string, list, instant   (+ Random for `boundary`)
 json → map, string, list, int                 uuid → string, list   instant → duration, string, list, int
 test → core, fs         console → test, string, list                  clock → duration, instant, int
@@ -154,12 +160,12 @@ retry → duration, int   (+ Clock, Random)     task → duration, list, int (+ 
 graph → map, list       untrusted → core        path → string, list
 secret → core           decimal → string, list, int                 cli
 url → string, list, int, bytes, secret, urlpart, searchparams      urlpart → string, list, bytes
-urlpattern → url, string, list, bytes
-fs → path, untrusted, map
+urlpattern → url, string, list, bytes        stream → list, bytes, string
+fs → path, untrusted, map, stream
 request → url, json, encoding, headers         response → request, encoding, html, json, untrusted
 html → core             router → request, response, url, urlpattern
 serve → request, response, router, url, encoding
-http → request, response, url, duration, fs, path       budget           prompt
+http → request, response, url, duration, fs, path, stream          budget   prompt
 llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
 tool → llm              agent → budget, core, llm, prompt, tool
 ```
@@ -188,6 +194,7 @@ fn of(bytes: Bytes, media_type: String) -> Blob
 fn size(b: Blob) -> Int
 fn slice(b: Blob, start: Int, end: Int, media_type: String) -> Blob
 fn text(b: Blob) -> Result<String, Utf8Error>
+fn source<e>(b: Blob, chunk: Int) -> Source<Bytes, e> requires chunk > 0
 ```
 
 ### `std/budget`
@@ -345,6 +352,8 @@ fn decode_with(b: Bytes, enc: Encoding, errors: Errors, bom: Bom) -> Result<Stri
 fn new(enc: Encoding, errors: Errors) -> Decoder
 fn push(d: Decoder, chunk: Bytes) -> Result<(Decoder, String), EncodingError>
 fn finish(d: Decoder) -> Result<String, EncodingError>
+fn decode_source<e>(src: Source<Bytes, e>, enc: Encoding, errors: Errors) -> Source<String, {Fail<EncodingError> | e}>
+fn encode_source<e>(src: Source<String, e>, enc: Encoding) -> Source<Bytes, e> requires encodable(enc)
 fn encode(s: String, enc: Encoding) -> Bytes requires encodable(enc)
 fn encodable(enc: Encoding) -> Bool    // @total
 ```
@@ -412,6 +421,8 @@ fn rooted(dir: Dir) -> Handler<Fs>
 fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
 fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
 fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>}
+fn file_source(file: File, chunk: Int) -> Source<Bytes, {Fs, Fail<FsError>}> requires chunk > 0
+fn file_sink(file: File) -> Sink<Bytes, {Fs, Fail<FsError>}>
 ```
 
 ### `std/gen`
@@ -484,6 +495,7 @@ effect Http {
   fn stream<T, e>(req: Request, body: fn(Incoming) -> T ! e) -> T ! {Fail<HttpError> | e}
   fn read_chunk(body: Body, max: Int) -> Bytes ! {Fail<HttpError>} requires max > 0
 }
+fn body_source(body: Body, chunk: Int) -> Source<Bytes, {Http, Fail<HttpError>}> requires chunk > 0
 fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn bearer(req: Request, token: Secret<String>) -> Request
@@ -807,6 +819,27 @@ fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R>
 fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>}
 fn sqlite(path: Path) -> Handler<Sql, {Fs}>    // @external
 fn memory() -> Handler<Sql>    // @external
+```
+
+### `std/stream`
+
+```sakura fragment
+type Step<T, e> = Done | Next(T, Source<T, e>)
+type Source<T, e> = { pull: fn() -> Step<T, e> ! e }
+type Sink<T, e> = { write: fn(T) -> Sink<T, e> ! e, close: fn() -> Unit ! e }
+type StreamReason = MaxItems | MaxLine
+error StreamError(reason: StreamReason)
+fn empty<T, e>() -> Source<T, e>
+fn from_list<T, e>(xs: List<T>) -> Source<T, e>
+fn map<A, B, e>(src: Source<A, e>, f: fn(A) -> B ! e) -> Source<B, e>
+fn filter<T, e>(src: Source<T, e>, keep: fn(T) -> Bool ! e) -> Source<T, e>
+fn take<T, e>(src: Source<T, e>, n: Int) -> Source<T, e> requires n >= 0
+fn fold<T, A, e>(src: Source<T, e>, init: A, f: fn(A, T) -> A ! e) -> A ! e
+fn each<T, e>(src: Source<T, e>, f: fn(T) -> Unit ! e) -> Unit ! e
+fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e}
+fn chunks<e>(src: Source<Bytes, e>, size: Int) -> Source<Bytes, e> requires size > 0
+fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}>
+fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e
 ```
 
 ### `std/string`

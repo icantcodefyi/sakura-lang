@@ -1,0 +1,256 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 record std::stream::Source | Source 24b (pull: word*)
+layout 3 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::stream_pull_persistent, frame 69 slots [%3 word*, %4 word*, %5 word*, %6 word*, %7 word*, %11 bool, %12 word*, %14 word*, %15 word*, %16 word*, %17 word*, %21 bool, %22 word*, %24 word*, %25 word*, %30 word*, %31 word*, %34 word*, %35 word*, %40 bool, %42 word*, %43 word*, %44 word*, %45 word*, %46 word*, %52 word*, %53 word*, %54 word*, %55 word*, %58 bool, %67 bool, %68 word*, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %81 bool, %82 word*, %83 word*, %85 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %94 bool, %95 word*, %96 word*, %98 word*, %99 word*, %108 bool, %109 word*, %113 word*, %114 word*, %115 word*, %116 word*, %117 word*, %118 word*, %122 bool, %123 word*, %124 word*, %126 word*, %127 word*, %128 word*, %129 word*, %133 bool, %134 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 xs: ptr = alloc list(%0, %1)
+    call from_list#2(%2) -> b1()
+  b1(%3 r: ptr):
+    dup %3
+    call pull#3(%3) -> b2(%3)
+  b2(%4 r: ptr, %5 r: ptr):
+    call describe#4(%4) -> b3(%5)
+  b3(%6 r: ptr, %7 r: ptr):
+    %8 s: ptr = show %6
+    drop %6
+    %9 lit: ptr = const str 2
+    %10 s: ptr = concat %9, %8
+    drop %8
+    drop %9
+    perform std::console::Console.print(%10) -> b4(%7)
+  b4(%11 r: unit, %12 r: ptr):
+    %13 box: word = box %11
+    drop %13
+    dup %12
+    call pull#3(%12) -> b5(%12)
+  b5(%14 r: ptr, %15 r: ptr):
+    call describe#4(%14) -> b6(%15)
+  b6(%16 r: ptr, %17 r: ptr):
+    %18 s: ptr = show %16
+    drop %16
+    %19 lit: ptr = const str 3
+    %20 s: ptr = concat %19, %18
+    drop %18
+    drop %19
+    perform std::console::Console.print(%20) -> b7(%17)
+  b7(%21 r: unit, %22 r: ptr):
+    %23 box: word = box %21
+    drop %23
+    dup %22
+    call pull#3(%22) -> b8(%22)
+  b8(%24 r: ptr, %25 r: ptr):
+    %61 tag: i64 = tag %24 ctor std::stream::Step
+    switch %61 0 => b19(%25, %24) 1 => b20(%25, %24)
+  b9(%26 v: word, %27 r: ptr):
+    drop %26
+    %28 f: ptr = closure main$1#5[]
+    %29 lit: ptr = const str 4
+    dup %27
+    call fold#6(%27, %29, %28) -> b10(%27)
+  b10(%30 r: word, %31 r: ptr):
+    %32 f: ptr = closure main$2#7[]
+    %33 lit: ptr = const str 4
+    call fold#6(%31, %33, %32) -> b11(%30)
+  b11(%34 r: word, %35 r: ptr):
+    %36 t: ptr = concat %35, %34
+    drop %34
+    drop %35
+    %37 s: ptr = show %36
+    drop %36
+    %38 lit: ptr = const str 5
+    %39 s: ptr = concat %38, %37
+    drop %37
+    drop %38
+    perform std::console::Console.print(%39) -> b12()
+  b12(%40 r: unit):
+    %41 box: word = box %40
+    drop %41
+    call empty#8() -> b13()
+  b13(%42 r: ptr):
+    dup %42
+    call pull#3(%42) -> b14(%42)
+  b14(%43 r: ptr, %44 r: ptr):
+    call describe#4(%43) -> b15(%44)
+  b15(%45 r: ptr, %46 r: ptr):
+    %47 s: ptr = show %45
+    drop %45
+    %48 lit: ptr = const str 6
+    %49 s: ptr = concat %48, %47
+    drop %47
+    drop %48
+    %50 lit: ptr = const str 7
+    %51 s: ptr = concat %49, %50
+    drop %49
+    drop %50
+    call pull#3(%46) -> b16(%51)
+  b16(%52 r: ptr, %53 s: ptr):
+    call describe#4(%52) -> b17(%53)
+  b17(%54 r: ptr, %55 s: ptr):
+    %56 s: ptr = show %54
+    drop %54
+    %57 s: ptr = concat %55, %56
+    drop %55
+    drop %56
+    perform std::console::Console.print(%57) -> b18()
+  b18(%58 r: unit):
+    %59 box: word = box %58
+    %60 unbox: unit = unbox %59
+    drop %59
+    ret %60
+  b19(%62 r: ptr, %63 r: ptr):
+    drop %63
+    %66 lit: ptr = const str 8
+    perform std::console::Console.print(%66) -> b21(%62)
+  b20(%64 r: ptr, %65 r: ptr):
+    %70 p: word = proj %65.0 std::stream::Step.Next
+    drop %70
+    %71 p: word = proj %65.1 std::stream::Step.Next
+    drop %65
+    dup %71
+    call pull#3(%71) -> b22(%64, %71)
+  b21(%67 r: unit, %68 r: ptr):
+    %69 box: word = box %67
+    jump b9(%69, %68)
+  b22(%72 r: ptr, %73 r: ptr, %74 rest: ptr):
+    call describe#4(%72) -> b23(%73, %74)
+  b23(%75 r: ptr, %76 r: ptr, %77 rest: ptr):
+    %78 s: ptr = show %75
+    drop %75
+    %79 lit: ptr = const str 9
+    %80 s: ptr = concat %79, %78
+    drop %78
+    drop %79
+    perform std::console::Console.print(%80) -> b24(%76, %77)
+  b24(%81 r: unit, %82 r: ptr, %83 rest: ptr):
+    %84 box: word = box %81
+    drop %84
+    dup %83
+    call pull#3(%83) -> b25(%82, %83)
+  b25(%85 r: ptr, %86 r: ptr, %87 rest: ptr):
+    call describe#4(%85) -> b26(%86, %87)
+  b26(%88 r: ptr, %89 r: ptr, %90 rest: ptr):
+    %91 s: ptr = show %88
+    drop %88
+    %92 lit: ptr = const str 9
+    %93 s: ptr = concat %92, %91
+    drop %91
+    drop %92
+    perform std::console::Console.print(%93) -> b27(%89, %90)
+  b27(%94 r: unit, %95 r: ptr, %96 rest: ptr):
+    %97 box: word = box %94
+    drop %97
+    call pull#3(%96) -> b28(%95)
+  b28(%98 r: ptr, %99 r: ptr):
+    %102 tag: i64 = tag %98 ctor std::stream::Step
+    switch %102 0 => b30(%99, %98) 1 => b31(%99, %98)
+  b29(%100 v: word, %101 r: ptr):
+    jump b9(%100, %101)
+  b30(%103 r: ptr, %104 r: ptr):
+    drop %104
+    %107 lit: ptr = const str 8
+    perform std::console::Console.print(%107) -> b32(%103)
+  b31(%105 r: ptr, %106 r: ptr):
+    %111 p: word = proj %106.0 std::stream::Step.Next
+    drop %111
+    %112 p: word = proj %106.1 std::stream::Step.Next
+    drop %106
+    dup %112
+    call pull#3(%112) -> b33(%105, %112)
+  b32(%108 r: unit, %109 r: ptr):
+    %110 box: word = box %108
+    jump b29(%110, %109)
+  b33(%113 r: ptr, %114 r: ptr, %115 last: ptr):
+    call describe#4(%113) -> b34(%114, %115)
+  b34(%116 r: ptr, %117 r: ptr, %118 last: ptr):
+    %119 s: ptr = show %116
+    drop %116
+    %120 lit: ptr = const str 10
+    %121 s: ptr = concat %120, %119
+    drop %119
+    drop %120
+    perform std::console::Console.print(%121) -> b35(%117, %118)
+  b35(%122 r: unit, %123 r: ptr, %124 last: ptr):
+    %125 box: word = box %122
+    drop %125
+    call pull#3(%124) -> b36(%123)
+  b36(%126 r: ptr, %127 r: ptr):
+    call describe#4(%126) -> b37(%127)
+  b37(%128 r: ptr, %129 r: ptr):
+    %130 s: ptr = show %128
+    drop %128
+    %131 lit: ptr = const str 10
+    %132 s: ptr = concat %131, %130
+    drop %130
+    drop %131
+    perform std::console::Console.print(%132) -> b38(%129)
+  b38(%133 r: unit, %134 r: ptr):
+    %135 box: word = box %133
+    jump b29(%135, %134)
+
+fn $entry#1 top -> unit ; main::stream_pull_persistent, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn pull#3 top -> ptr ; main::stream_pull_persistent, frame 2 slots [%0 word*, %2 word*]
+  b0(%0 src: ptr):
+    %1 pull: word = proj %0.0 std::stream::Source
+    drop %0
+    call %1() -> b1()
+  b1(%2 r: word):
+    ret %2
+
+fn describe#4 top -> ptr ; main::stream_pull_persistent, frame 1 slots [%0 word*]
+  b0(%0 s: ptr):
+    %1 tag: i64 = tag %0 ctor std::stream::Step
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 s: ptr):
+    drop %2
+    %4 lit: ptr = const str 11
+    ret %4
+  b2(%3 s: ptr):
+    %5 p: word = proj %3.0 std::stream::Step.Next
+    %6 p: word = proj %3.1 std::stream::Step.Next
+    drop %3
+    drop %6
+    %7 s: ptr = show %5
+    drop %5
+    %8 lit: ptr = const str 12
+    %9 s: ptr = concat %8, %7
+    drop %7
+    drop %8
+    %10 lit: ptr = const str 13
+    %11 s: ptr = concat %9, %10
+    drop %9
+    drop %10
+    ret %11
+
+fn main$1#5 lambda -> word ; main::stream_pull_persistent, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 x: word):
+    drop %0
+    %3 t: ptr = concat %1, %2
+    drop %1
+    drop %2
+    ret %3
+
+fn main$2#7 lambda -> word ; main::stream_pull_persistent, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 x: word):
+    drop %0
+    %3 t: ptr = concat %1, %2
+    drop %1
+    drop %2
+    ret %3

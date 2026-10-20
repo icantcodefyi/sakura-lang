@@ -1,0 +1,25 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (3)
+
+// `from_list`, `map`, `filter`, `take`, `fold` and `each` compose lazily: an item is pulled
+// only when the result is pulled, so the `Console` effect in `map`'s function shows exactly
+// which items `take` read, and `take(_, 0)` reads none. `fold` and `each` run in item order.
+import std/stream.{Source}
+
+fn noisy(src: Source<Int, {Console}>) -> Source<Int, {Console}> {
+  src.map(fn(x) {
+    Console.print("  pulled {x}")
+    x
+  })
+}
+
+pub fn main() -> Unit ! {Console} {
+  let nums: Source<Int, {Console}> = Source.from_list([1, 2, 3, 4, 5, 6, 7, 8])
+  Console.print("evens times ten, first three:")
+  let firsts = noisy(nums).filter(fn(x) { x % 2 == 0 }).map(fn(x) { x * 10 }).take(3)
+  Console.print("sum {firsts.fold(0, fn(acc, x) { acc + x })}")
+  Console.print("take 0:")
+  Console.print("sum {noisy(nums).take(0).fold(0, fn(acc, x) { acc + x })}")
+  Console.print("each over a take past the end:")
+  nums.take(20).filter(fn(x) { x > 6 }).each(fn(x) { Console.print("  item {x}") })
+}

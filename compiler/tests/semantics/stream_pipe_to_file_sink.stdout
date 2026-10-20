@@ -1,0 +1,3 @@
+read 3, then chunks of 4: (3, [4, 4, 4, 2])
+Ok("alpha\nbeta\ngamma\n")
+Ok(())

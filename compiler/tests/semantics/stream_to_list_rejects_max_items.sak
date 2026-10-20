@@ -1,0 +1,28 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §6, design §17.280 (3)
+
+// `to_list(src, max_items)` collects up to `max_items` items and fails
+// `StreamError(MaxItems)` at the first item after them, as `Response.bytes` fails past its
+// limit; it pulls that one item to know, and no further. Exactly `max_items` items pass, and
+// `max_items = 0` accepts only an empty source.
+import std/stream.{Source, StreamError}
+
+fn collect(n: Int, max_items: Int) -> Unit ! {Console} {
+  let src: Source<Int, {Console}> = Source.from_list(List.range(0, n))
+    .map(fn(x) {
+      Console.print("  pulled {x}")
+      x
+    })
+  Console.print("{n} items, max {max_items}:")
+  match try { src.to_list(max_items) } {
+    Ok(xs) => Console.print("  ok {xs}"),
+    Err(StreamError(reason)) => Console.print("  failed {reason}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  collect(3, 3)
+  collect(5, 3)
+  collect(0, 0)
+  collect(1, 0)
+}

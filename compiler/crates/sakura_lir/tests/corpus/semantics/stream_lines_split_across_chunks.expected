@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+["alpha", "beta", "gamma"]
+["one", "two", "three"]
+["a", "", "b", ""]
+["no newline at all"]
+[]
+[]

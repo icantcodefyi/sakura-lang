@@ -1,0 +1,207 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::encoding::Decoder | Decoder 56b (encoding: word*, errors: word*, pending: word*, offset: i64, started: bool)
+layout 1 variant std::encoding::Encoding | Utf8 16b () | Utf16Le 16b () | Utf16Be 16b () | Windows1252 16b ()
+layout 2 error std::encoding::EncodingError | EncodingError 24b (reason: word*)
+layout 3 variant std::encoding::EncodingReason | Unsupported 24b (word*) | Malformed 24b (i64)
+layout 4 variant std::encoding::Errors | Fatal 16b () | Replace 16b ()
+layout 5 variant std::list::Builder
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 record std::stream::Source | Source 24b (pull: word*)
+layout 9 variant std::stream::Step | Done 16b () | Next 32b (word*, word*)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::encoding_decode_source_split_sequence, frame 10 slots [%19 bool, %34 bool, %46 bool, %58 bool, %77 bool, %81 bool, %85 word*, %88 word*, %91 word*, %93 bool]
+  b0():
+    %0 lit: i64 = const 97
+    %1 box: word = box %0
+    %2 lit: i64 = const 240
+    %3 box: word = box %2
+    %4 xs: ptr = alloc list(%1, %3)
+    %5 lit: i64 = const 159
+    %6 box: word = box %5
+    %7 xs: ptr = alloc list(%6)
+    %8 lit: i64 = const 152
+    %9 box: word = box %8
+    %10 xs: ptr = alloc list(%9)
+    %11 lit: i64 = const 128
+    %12 box: word = box %11
+    %13 lit: i64 = const 98
+    %14 box: word = box %13
+    %15 xs: ptr = alloc list(%12, %14)
+    %16 xs: ptr = alloc list(%4, %7, %10, %15)
+    %17 v: ptr = const static std::encoding::Encoding.Utf8
+    %18 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%16, %17, %18) -> b1()
+  b1(%19 r: unit):
+    %20 lit: i64 = const 239
+    %21 box: word = box %20
+    %22 xs: ptr = alloc list(%21)
+    %23 lit: i64 = const 187
+    %24 box: word = box %23
+    %25 xs: ptr = alloc list(%24)
+    %26 lit: i64 = const 191
+    %27 box: word = box %26
+    %28 lit: i64 = const 99
+    %29 box: word = box %28
+    %30 xs: ptr = alloc list(%27, %29)
+    %31 xs: ptr = alloc list(%22, %25, %30)
+    %32 v: ptr = const static std::encoding::Encoding.Utf8
+    %33 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%31, %32, %33) -> b2()
+  b2(%34 r: unit):
+    %35 lit: i64 = const 97
+    %36 box: word = box %35
+    %37 xs: ptr = alloc list(%36)
+    %38 lit: i64 = const 226
+    %39 box: word = box %38
+    %40 lit: i64 = const 130
+    %41 box: word = box %40
+    %42 xs: ptr = alloc list(%39, %41)
+    %43 xs: ptr = alloc list(%37, %42)
+    %44 v: ptr = const static std::encoding::Encoding.Utf8
+    %45 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%43, %44, %45) -> b3()
+  b3(%46 r: unit):
+    %47 lit: i64 = const 97
+    %48 box: word = box %47
+    %49 xs: ptr = alloc list(%48)
+    %50 lit: i64 = const 226
+    %51 box: word = box %50
+    %52 lit: i64 = const 130
+    %53 box: word = box %52
+    %54 xs: ptr = alloc list(%51, %53)
+    %55 xs: ptr = alloc list(%49, %54)
+    %56 v: ptr = const static std::encoding::Encoding.Utf8
+    %57 v: ptr = const static std::encoding::Errors.Replace
+    call decode#2(%55, %56, %57) -> b4()
+  b4(%58 r: unit):
+    %59 lit: i64 = const 61
+    %60 box: word = box %59
+    %61 xs: ptr = alloc list(%60)
+    %62 lit: i64 = const 216
+    %63 box: word = box %62
+    %64 lit: i64 = const 0
+    %65 box: word = box %64
+    %66 xs: ptr = alloc list(%63, %65)
+    %67 lit: i64 = const 222
+    %68 box: word = box %67
+    %69 lit: i64 = const 33
+    %70 box: word = box %69
+    %71 lit: i64 = const 0
+    %72 box: word = box %71
+    %73 xs: ptr = alloc list(%68, %70, %72)
+    %74 xs: ptr = alloc list(%61, %66, %73)
+    %75 v: ptr = const static std::encoding::Encoding.Utf16Le
+    %76 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%74, %75, %76) -> b5()
+  b5(%77 r: unit):
+    %78 xs: ptr = alloc list()
+    %79 v: ptr = const static std::encoding::Encoding.Utf8
+    %80 v: ptr = const static std::encoding::Errors.Fatal
+    call decode#2(%78, %79, %80) -> b6()
+  b6(%81 r: unit):
+    %82 lit: ptr = const str 0
+    %83 lit: ptr = const str 1
+    %84 xs: ptr = alloc list(%82, %83)
+    call from_list#3(%84) -> b7()
+  b7(%85 r: ptr):
+    %86 v: ptr = const static std::encoding::Encoding.Utf16Be
+    %87 $site: i64 = const 3
+    call encode_source#4(%85, %86, %87) -> b8()
+  b8(%88 r: ptr):
+    %89 xs: ptr = alloc list()
+    %90 f: ptr = closure main$1#5[]
+    call fold#6(%88, %89, %90) -> b9()
+  b9(%91 r: word):
+    %92 s: ptr = show %91
+    drop %91
+    perform std::console::Console.print(%92) -> b10()
+  b10(%93 r: unit):
+    %94 box: word = box %93
+    %95 unbox: unit = unbox %94
+    drop %94
+    ret %95
+
+fn $entry#1 top -> unit ; main::encoding_decode_source_split_sequence, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn decode#2 top -> unit ; main::encoding_decode_source_split_sequence, frame 14 slots [%0 word*, %1 word*, %2 word*, %4 word*, %5 word*, %6 word*, %7 word*, %8 word*, %9 word*, %16 bool, %24 bool, %27 word*, %29 word*, %32 word*]
+  b0(%0 chunks: ptr, %1 enc: ptr, %2 errors: ptr):
+    %3 fn: ptr = const static closure $bytes_from_list$value#36
+    call map#16(%0, %3) -> b1(%1, %2)
+  b1(%4 r: ptr, %5 enc: ptr, %6 errors: ptr):
+    call from_list#3(%4) -> b2(%5, %6)
+  b2(%7 r: ptr, %8 enc: ptr, %9 errors: ptr):
+    try_push -> b8(err, )
+    call decode_source#17(%7, %8, %9) -> b9()
+  b3(%10 v: ptr):
+    %11 tag: i64 = tag %10 ctor std::result::Result
+    switch %11 0 => b4(%10) 1 => b5(%10)
+  b4(%12 v: ptr):
+    %14 p: word = proj %12.0 std::result::Result.Ok
+    drop %12
+    %15 s: ptr = show %14
+    drop %14
+    perform std::console::Console.print(%15) -> b6()
+  b5(%13 v: ptr):
+    %19 p: word = proj %13.0 std::result::Result.Err
+    drop %13
+    %20 p: word = proj %19.0 std::encoding::EncodingError
+    drop %19
+    %21 s: ptr = show %20
+    drop %20
+    %22 lit: ptr = const str 2
+    %23 s: ptr = concat %22, %21
+    drop %21
+    drop %22
+    perform std::console::Console.print(%23) -> b7()
+  b6(%16 r: unit):
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    ret %18
+  b7(%24 r: unit):
+    %25 box: word = box %24
+    %26 unbox: unit = unbox %25
+    drop %25
+    ret %26
+  b8(%27 e: word):
+    %28 err: ptr = alloc std::result::Result.Err(%27)
+    jump b3(%28)
+  b9(%29 r: ptr) [try]:
+    %30 xs: ptr = alloc list()
+    %31 f: ptr = closure decode$1#18[]
+    call fold#6(%29, %30, %31) -> b10()
+  b10(%32 r: word) [try]:
+    %33 ok: ptr = alloc std::result::Result.Ok(%32)
+    try_pop
+    jump b3(%33)
+
+fn main$1#5 lambda -> word ; main::encoding_decode_source_split_sequence, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 b: word):
+    drop %0
+    %3 r: ptr = $list_push(%1, %2)
+    ret %3
+
+fn decode$1#18 lambda -> word ; main::encoding_decode_source_split_sequence, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 s: word):
+    drop %0
+    %3 r: ptr = $list_push(%1, %2)
+    ret %3
+
+fn $bytes_from_list$value#36 adapter of $bytes_from_list -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 arg: word):
+    drop %0
+    %2 r: ptr = $bytes_from_list(%1)
+    ret %2

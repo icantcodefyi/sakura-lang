@@ -129,6 +129,20 @@ effect Fs {
 
 The excerpt above is from the std `Fs` declaration ([design §10.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). `Sql.transaction(fn() { … })` follows the same pattern. The closure's result may not contain the resource (`V6003`, the same escape check that keeps capabilities in scope). Resources are released on normal exit, `fail`, defect, and cancellation, in reverse order of acquisition. A failed release is logged as a defect, never ignored.
 
+## Streams are values
+
+A closure cannot hold a cursor, so a `std/stream` `Source` is an unfold: `pull` returns `Done`, or `Next(item, rest)` with the source that continues after the item. A **pure source** (`Source.from_list`, `Blob.source`, and `map`, `filter`, `lines` or `chunks` over them) closes over values only, so pulling the same source twice reads the same items, and one source used in two places reads them twice. A **view** is a resource's position: `Http.body_source(body, chunk)` and `Fs.file_source(file, chunk)` read the body or file on each pull, so two uses advance the same resource, and the view is scoped like the resource it captured. Returning one from the `Http.stream` or `Fs.with_file` callback is `V6003`.
+
+```sakura
+import std/stream.{Source}
+
+test "a pure source reads the same items every time" {
+  let src: Source<Int, {}> = Source.from_list([1, 2, 3])
+  expect_eq(src.fold(0, fn(a, x) { a + x }), 6)
+  expect_eq(src.fold(0, fn(a, x) { a + x }), 6)
+}
+```
+
 ## Regions
 
 Not in v0. The `region` keyword is reserved. Request-scoped arenas may arrive with the native backend as an internal optimization first, and become user-visible only if measurements justify it.

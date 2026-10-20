@@ -1,0 +1,26 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, §6, design §17.280 (3)
+
+// A line longer than `max_line` bytes (`String.len`, so `é` counts 2) fails
+// `StreamError(MaxLine)`, whether it ends in an LF or is still pending when more than
+// `max_line` bytes of it have arrived; the lines before it are yielded first. A line of
+// exactly `max_line` bytes passes, and so does one whose CR arrives before its LF.
+import std/stream.{Source, StreamError}
+
+fn show_lines(items: List<String>, max_line: Int) -> Unit ! {Console} {
+  Console.print("max {max_line}, {items}:")
+  let src: Source<String, {Console}> = Source.from_list(items)
+  let r = try { src.lines(max_line).each(fn(line) { Console.print("  line {line}") }) }
+  match r {
+    Ok(()) => Console.print("  ok"),
+    Err(StreamError(reason)) => Console.print("  failed {reason}"),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  show_lines(["abc\n", "abcd\n"], 4)
+  show_lines(["abc\n", "abcde\n", "x\n"], 4)
+  show_lines(["ok\n", "abc", "de"], 4)
+  show_lines(["abcd\r", "\n"], 4)
+  show_lines(["éé\n", "ééa\n"], 4)
+}

@@ -19,6 +19,7 @@ pub fn new<e>() -> Router<e> { Router { routes: [] } }
 /// available to the handler as `Request.param(req, "name")`; `*` matches one segment and `**`
 /// any number, available as `Request.param(req, "0")`, `"1"`, … in order. A pattern
 /// `UrlPattern.compile` rejects is the caller's defect (`D020`): a route is part of the program.
+/// The `D020` names the predicate; call `UrlPattern.compile(pattern)` in a test to read why.
 pub fn route<e>(
   r: Router<e>,
   method: Method,

@@ -12,6 +12,7 @@
     "indexed_update",
     "url_build",
     "form_upload",
-    "sign_webhook"
+    "sign_webhook",
+    "stream_lines"
   ]
 }

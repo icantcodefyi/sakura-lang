@@ -115,6 +115,16 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Fs.list`'s `Entry` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
     ),
     (
+        "semantics/stream_pipe_to_file_sink",
+        None,
+        "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
+    ),
+    (
+        "semantics/http_body_source_scripted",
+        Some(Host::Wasi),
+        "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
+    ),
+    (
         "semantics/host_root_handlers",
         Some(Host::Wasi),
         "the root Clock, Random and Console imports are impure, which a WASI command traps (W1 note 8)",

@@ -1,0 +1,315 @@
+// Streams (RFC 0002 §2.5, design §17.280): `ReadableStream` and `WritableStream` as values.
+// A Sakura closure captures by value and cannot assign a variable outside it (`V2041`,
+// design §8.1), so a source cannot hide a cursor: it is an unfold. Pulling a source performs
+// its row and returns `Done`, or one item with the source that continues after it.
+//
+// A pure source closes over values only and is persistent: pulling the same source twice
+// returns the same `Step`, so one source used in two places reads the same items from the
+// same place, and `Done` is stable. A view closes over a resource (`Http.body_source` over a
+// `Body`, `Fs.file_source` over a `File`): pulling it advances the resource, its `rest` is an
+// equivalent view, two uses interleave on the resource, and it cannot leave the callback that
+// received the resource (`V6003`). There are no locks: one instance runs on one thread.
+// Every bound is an argument; no combinator holds more than its arguments name.
+
+/// What pulling a source returns: the end, or one item and the source after it.
+pub type Step<T, e> = Done | Next(T, Source<T, e>)
+
+/// A source of items (`ReadableStream`): `pull` performs `e` and returns the next `Step`.
+pub type Source<T, e> = { pull: fn() -> Step<T, e> ! e }
+
+/// A sink of items (`WritableStream`): `write` returns the sink for the next item, `close`
+/// ends it. A failure travels in `e`.
+pub type Sink<T, e> = { write: fn(T) -> Sink<T, e> ! e, close: fn() -> Unit ! e }
+
+/// `MaxItems`: `to_list` saw an item after `max_items`. `MaxLine`: `lines` saw a line longer
+/// than `max_line` bytes.
+pub type StreamReason = MaxItems | MaxLine
+
+pub error StreamError(reason: StreamReason)
+
+/// The source with no items.
+pub fn empty<T, e>() -> Source<T, e> { Source { pull: fn() { Done } } }
+
+/// The items of `xs` in order.
+pub fn from_list<T, e>(xs: List<T>) -> Source<T, e> { list_from(xs, 0) }
+
+fn list_from<T, e>(xs: List<T>, i: Int) -> Source<T, e> {
+  Source {
+    pull: fn() {
+      match xs[i] {
+        Some(x) => Next(x, list_from(xs, i + 1)),
+        None => Done,
+      }
+    },
+  }
+}
+
+/// Each item through `f`, applied as the result is pulled.
+pub fn map<A, B, e>(src: Source<A, e>, f: fn(A) -> B ! e) -> Source<B, e> {
+  Source {
+    pull: fn() {
+      match pull(src) {
+        Done => Done,
+        Next(x, rest) => Next(f(x), map(rest, f)),
+      }
+    },
+  }
+}
+
+/// The items `keep` accepts.
+pub fn filter<T, e>(src: Source<T, e>, keep: fn(T) -> Bool ! e) -> Source<T, e> {
+  Source { pull: fn() { filter_step(src, keep) } }
+}
+
+fn filter_step<T, e>(src: Source<T, e>, keep: fn(T) -> Bool ! e) -> Step<T, e> ! e {
+  var s = src
+  var out: Step<T, e> = Done
+  var more = true
+  while more {
+    match pull(s) {
+      Done => { more = false },
+      Next(x, rest) => {
+        if keep(x) {
+          out = Next(x, filter(rest, keep))
+          more = false
+        } else {
+          s = rest
+        }
+      },
+    }
+  }
+  out
+}
+
+/// The first `n` items; `src` is not pulled after the `n`th.
+pub fn take<T, e>(src: Source<T, e>, n: Int) -> Source<T, e>
+  requires n >= 0
+{
+  Source {
+    pull: fn() {
+      if n == 0 {
+        Done
+      } else {
+        match pull(src) {
+          Done => Done,
+          Next(x, rest) => Next(x, take(rest, n - 1)),
+        }
+      }
+    },
+  }
+}
+
+/// `f` over the items from the first, starting from `init`.
+pub fn fold<T, A, e>(src: Source<T, e>, init: A, f: fn(A, T) -> A ! e) -> A ! e {
+  var s = src
+  var acc = init
+  var more = true
+  while more {
+    match pull(s) {
+      Done => { more = false },
+      Next(x, rest) => {
+        acc = f(acc, x)
+        s = rest
+      },
+    }
+  }
+  acc
+}
+
+/// Runs `f` on each item in order.
+pub fn each<T, e>(src: Source<T, e>, f: fn(T) -> Unit ! e) -> Unit ! e {
+  fold(src, (), fn(_u, x) { f(x) })
+}
+
+/// Every item, failing `MaxItems` at an item after the first `max_items`, as
+/// `Response.bytes` fails past its limit.
+pub fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e} {
+  var s = src
+  var out: List<T> = []
+  var more = true
+  while more {
+    match pull(s) {
+      Done => { more = false },
+      Next(x, rest) => {
+        if List.len(out) >= max_items { fail StreamError(MaxItems) }
+        out = out.push(x)
+        s = rest
+      },
+    }
+  }
+  out
+}
+
+/// The bytes of `src` re-chunked to exactly `size` bytes each, the last one shorter. An empty
+/// item adds nothing; at most `size` bytes are held besides the item being cut.
+pub fn chunks<e>(src: Source<Bytes, e>, size: Int) -> Source<Bytes, e>
+  requires size > 0
+{ chunks_from(Bytes.from_list([]), Bytes.from_list([]), 0, src, size) }
+
+fn chunks_from<e>(
+  carry: Bytes,
+  item: Bytes,
+  at: Int,
+  src: Source<Bytes, e>,
+  size: Int,
+) -> Source<Bytes, e>
+{ Source { pull: fn() { chunk_step(carry, item, at, src, size) } } }
+
+// `carry` (shorter than `size`) is followed by `item` from `at`, then by `src`.
+fn chunk_step<e>(
+  carry0: Bytes,
+  item0: Bytes,
+  at0: Int,
+  src: Source<Bytes, e>,
+  size: Int,
+) -> Step<Bytes, e>
+  ! e
+{
+  var carry = carry0
+  var item = item0
+  var at = at0
+  var s = src
+  var out: Step<Bytes, e> = Done
+  var more = true
+  while more {
+    let need = size - Bytes.len(carry)
+    if Bytes.len(item) - at >= need {
+      let full = Bytes.concat([carry, Bytes.slice(item, at, at + need)])
+      out = Next(full, chunks_from(Bytes.from_list([]), item, at + need, s, size))
+      more = false
+    } else {
+      carry = Bytes.concat([carry, Bytes.slice(item, at, Bytes.len(item))])
+      match pull(s) {
+        Done => {
+          if Bytes.len(carry) > 0 { out = Next(carry, empty()) }
+          more = false
+        },
+        Next(b, rest) => {
+          item = b
+          at = 0
+          s = rest
+        },
+      }
+    }
+  }
+  out
+}
+
+/// The lines of the text of `src`: split on LF with a CR before it removed, a final line
+/// without an LF included. A line longer than `max_line` bytes (`String.len`) fails
+/// `MaxLine` at the item that makes it so, finished or not, so at most `max_line` bytes and
+/// one item are held.
+pub fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}> {
+  lines_from([], 0, "", src, max_line)
+}
+
+fn lines_from<e>(
+  ready: List<String>,
+  i: Int,
+  pending: String,
+  src: Source<String, e>,
+  max_line: Int,
+) -> Source<String, {Fail<StreamError> | e}>
+{ Source { pull: fn() { line_step(ready, i, pending, src, max_line) } } }
+
+// `ready[i..]` are complete lines not yet yielded, `pending` the text after the last LF.
+fn line_step<e>(
+  ready0: List<String>,
+  i0: Int,
+  pending0: String,
+  src: Source<String, e>,
+  max_line: Int,
+) -> Step<String, {Fail<StreamError> | e}>
+  ! {Fail<StreamError> | e}
+{
+  var ready = ready0
+  var i = i0
+  var pending = pending0
+  var s = src
+  var out: Step<String, {Fail<StreamError> | e}> = Done
+  var more = true
+  while more {
+    match ready[i] {
+      Some(line) => {
+        out = Next(line, lines_from(ready, i + 1, pending, s, max_line))
+        more = false
+      },
+      None => {
+        match pull(s) {
+          Done => {
+            if String.len(pending) > 0 { out = Next(pending, empty()) }
+            more = false
+          },
+          Next(text, rest) => {
+            let parts = String.split(pending + text, "\n")
+            let last = List.len(parts) - 1
+            ready = List.map(List.slice(parts, 0, last), strip_cr)
+            pending = parts[last].unwrap_or("")
+            for line in ready { if String.len(line) > max_line { fail StreamError(MaxLine) } }
+            if String.len(strip_cr(pending)) > max_line { fail StreamError(MaxLine) }
+            i = 0
+            s = rest
+          },
+        }
+      },
+    }
+  }
+  out
+}
+
+fn strip_cr(line: String) -> String {
+  if String.ends_with(line, "\r") { String.slice(line, 0, String.len(line) - 1) } else { line }
+}
+
+/// Writes each item of `src` to `sink` in order, then closes it.
+pub fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e {
+  var s = src
+  var k = sink
+  var more = true
+  while more {
+    match pull(s) {
+      Done => { more = false },
+      Next(x, rest) => {
+        let write = k.write
+        k = write(x)
+        s = rest
+      },
+    }
+  }
+  let close = k.close
+  close()
+}
+
+fn pull<T, e>(src: Source<T, e>) -> Step<T, e> ! e {
+  let p = src.pull
+  p()
+}
+
+test "a pure source is persistent" {
+  let src: Source<Int, {}> = from_list([1, 2])
+  expect_eq(all(src), [1, 2])
+  expect_eq(all(src), [1, 2])
+  expect_eq(all(take(src, 1)), [1])
+  expect_eq(all(map(filter(src, fn(x) { x > 1 }), fn(x) { x * 10 })), [20])
+}
+
+test "chunks re-sizes across items" {
+  let src: Source<Bytes, {}> = from_list([
+    Bytes.from_list([1, 2, 3]),
+    Bytes.from_list([]),
+    Bytes.from_list([4, 5]),
+  ])
+  expect_eq(
+    all(chunks(src, 2)),
+    [Bytes.from_list([1, 2]), Bytes.from_list([3, 4]), Bytes.from_list([5])],
+  )
+}
+
+test "lines split on LF and drop a CR before it" {
+  let src: Source<String, {}> = from_list(["a\r\nb", "c\n", "d"])
+  expect_eq(try { to_list(lines(src, 10), 10) }, Ok(["a", "bc", "d"]))
+  expect_eq(try { to_list(lines(src, 1), 10) }, Err(StreamError(MaxLine)))
+  expect_eq(try { to_list(src, 2) }, Err(StreamError(MaxItems)))
+}
+
+fn all<T>(src: Source<T, {}>) -> List<T> { fold(src, [], fn(xs, x) { xs.push(x) }) }

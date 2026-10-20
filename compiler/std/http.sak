@@ -23,6 +23,7 @@ import std/request.{
   Text,
 }
 import std/response.{HttpError, Response, Status}
+import std/stream.{Done, Next, Source}
 import std/url.{Url}
 
 /// For `Http.scripted`: `Any`, a request path (`Path("/search")`), or a method.
@@ -52,6 +53,20 @@ pub effect Http {
   fn read_chunk(body: Body, max: Int) -> Bytes
     ! {Fail<HttpError>}
     requires max > 0
+}
+
+/// The body as a source of chunks of up to `chunk` bytes (`response.body`), ending at the
+/// first empty read. A view: pulling it reads the body, so it is valid only inside the
+/// `Http.stream` callback that received the body (`V6003`).
+pub fn body_source(body: Body, chunk: Int) -> Source<Bytes, {Http, Fail<HttpError>}>
+  requires chunk > 0
+{
+  Source {
+    pull: fn() {
+      let b = Http.read_chunk(body, chunk)
+      if Bytes.len(b) == 0 { Done } else { Next(b, body_source(body, chunk)) }
+    },
+  }
 }
 
 pub fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>} {
@@ -126,7 +141,7 @@ let max_redirects = 20
 let body_headers = ["content-encoding", "content-language", "content-location", "content-type"]
 
 /// What one hop of `follow_stream` ends with: the callback's value, or the next hop.
-type Step<T> = Done(T) | Hop(Request)
+type Leg<T> = Answered(T) | Hop(Request)
 
 /// `send(at)` with `redirect: Manual`, then the hops `req.redirect` asks for, each through
 /// `send`; `hops` is the number followed before `at` (design §17.263 (4), §17.271).
@@ -151,19 +166,19 @@ fn follow_stream<T, e>(
   req: Request,
   at: Request,
   hops: Int,
-  open: fn(Request, fn(Incoming) -> Step<T> ! {Fail<HttpError> | e}) -> Step<T> ! {Fail<HttpError> | e},
+  open: fn(Request, fn(Incoming) -> Leg<T> ! {Fail<HttpError> | e}) -> Leg<T> ! {Fail<HttpError> | e},
   body: fn(Incoming) -> T ! e,
 ) -> T
   ! {Fail<HttpError> | e}
 {
   let step = open(Request { ..at, redirect: Manual }, fn(i) {
     match next_hop(req.redirect, at, hops, i.status, i.headers) {
-      None => Done(body(i)),
+      None => Answered(body(i)),
       Some(next) => Hop(next),
     }
   })
   match step {
-    Done(value) => value,
+    Answered(value) => value,
     Hop(next) => follow_stream(req, next, hops + 1, open, body),
   }
 }

@@ -1,0 +1,32 @@
+// milestone: M3
+// spec: RFC 0002 §2.5, design §17.280 (2), (3)
+
+// `pipe` writes each item of a source to a sink in order, then closes it. `Fs.file_sink` is a
+// view over a `File`: each write is `Fs.write_chunk`, and `with_file` closes the file.
+// `Fs.file_source` reads it back in chunks from the current position, ending at the first
+// empty read; a view advances the file, so a second read from it starts where the first ended.
+import std/fs.{Append, Fs, FsError, Read, Write}
+import std/path.{Path}
+import std/stream.{Source}
+
+pub fn main() -> Unit ! {Console} {
+  let log = Path.of("log.txt")
+  with Fs.memory([]) {
+    let r: Result<Unit, FsError> = try {
+      let src: Source<Bytes, {Fs, Fail<FsError>}> = Source.from_list(["alpha\n", "", "beta\n"])
+        .map(String.to_bytes)
+      Fs.with_file(log, Write, fn(f) { src.pipe(Fs.file_sink(f)) })
+      Fs.with_file(log, Append, fn(f) {
+        Source.from_list([String.to_bytes("gamma\n")]).pipe(Fs.file_sink(f))
+      })
+      let sizes = Fs.with_file(log, Read, fn(f) {
+        let first = Fs.read_chunk(f, 3)
+        let rest = Fs.file_source(f, 4).fold([], fn(acc, b) { acc.push(Bytes.len(b)) })
+        (Bytes.len(first), rest)
+      })
+      Console.print("read 3, then chunks of 4: {sizes}")
+      Console.print("{String.from_bytes(Fs.read(log))}")
+    }
+    Console.print("{r}")
+  }
+}

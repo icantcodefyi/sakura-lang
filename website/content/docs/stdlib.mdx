@@ -25,8 +25,9 @@ The [capabilities tour](/docs/tour/capabilities), [contracts tour](/docs/tour/co
 - Web byte and text APIs (RFC 0002): `Uint8Array` is `Bytes`, immutable, so an in-place write is `Bytes.from_list(List.set(...))`; `TextEncoder.encodeInto` has no counterpart because there is no caller-owned buffer; `btoa` takes bytes, so text goes through `String.to_bytes` first; `Encoding.encode` writes UTF-8 and UTF-16 only, since Windows-1252 cannot encode every string.
 - Web URL APIs (RFC 0002): `URL` is `Url.parse` and `Url.resolve` giving a `UrlParts` value, and `URLSearchParams` is `SearchParams`; the setters are `with_*` functions returning a new value, so there is no live `url.searchParams` (read `Url.search`, write `Url.with_search`); a host that needs IDNA (non-ASCII, or an `xn--` label) is `UrlError(Idna)` until punycode lands; the password is a `Secret` that `to_string` leaves out. `Url` stays the prefix check `url"…"` and `Request.url` use.
 - Web Crypto (RFC 0002): `crypto.subtle` is `std/crypto`, synchronous and pure; `importKey` takes the material as `Secret<Bytes>` and a `CryptoKey` is never `Show`. `verify` is reserved as a bare name, so call it `crypto.verify(key, tag, data)` or `key.verify(tag, data)`. A key without the operation's usage is `D020`, not an error value. On `--target wasm` they run in the Node host.
-- Web headers, blobs and forms (RFC 0002): `Headers` is a validated value over the `List<(String, String)>` that `Request.headers` and `Response.headers` keep (`Headers.of` to read, `to_list` to write back); `get` on `set-cookie` is `None`, since cookies are never joined, so read `get_set_cookie`; credentials stay in `Request.secret_headers`. `Blob` and `File` are the values `Blob` and `FileData`, which name no file on disk; `Blob.text` is strict UTF-8 (`Utf8Error`) where the web substitutes U+FFFD; `Blob.stream()` waits for `std/stream`. `FormData` is `Form`, and `Response.formData()` is `Form.parse_multipart` with a required `FormLimits`.
+- Web headers, blobs and forms (RFC 0002): `Headers` is a validated value over the `List<(String, String)>` that `Request.headers` and `Response.headers` keep (`Headers.of` to read, `to_list` to write back); `get` on `set-cookie` is `None`, since cookies are never joined, so read `get_set_cookie`; credentials stay in `Request.secret_headers`. `Blob` and `File` are the values `Blob` and `FileData`, which name no file on disk; `Blob.text` is strict UTF-8 (`Utf8Error`) where the web substitutes U+FFFD; `Blob.stream()` is `Blob.source(b, chunk)`. `FormData` is `Form`, and `Response.formData()` is `Form.parse_multipart` with a required `FormLimits`.
 - Web URL patterns (RFC 0002): `URLPattern` is `UrlPattern`, a subset with no regular expressions so a pattern matches alike on every target: whole-segment `:name` groups, `*` for one segment and `**` for any number, on a path or behind a literal scheme, host and port. The standard's `*` is `.*` and crosses `/`; Sakura's `*` is exactly one segment and `**` is any number, because `**` already covers a tree and a route author does not expect `/files/*` to match one. The standard is exact about a trailing slash; `UrlPattern` ignores empty segments on both sides, so `/users/7/` matches `/users/:id`, because that is the contract `Router` routes already had. Regexp groups, `{…}` groups, modifiers and a group inside a segment are `PatternError(Unsupported)`; a pattern has at most 4,096 bytes and 64 groups. `exec` returns the groups only, in pattern order, unnamed ones as `"0"`, `"1"`, …. `Router` routes are these patterns, and a route pattern `UrlPattern.compile` rejects is `D020`.
+- Web streams (RFC 0002): `ReadableStream` is `std/stream`'s `Source<T, e>`, a value whose `pull` returns `Done` or `Next(item, rest)`, and `WritableStream` is `Sink<T, e>`; there are no locks or readers. A pure source (`Source.from_list`, `Blob.source`) reads the same items each time it is pulled; `Http.body_source`, `Fs.file_source` and `Fs.file_sink` are views over a body or file, valid only inside the callback that opened it (`V6003`). A transform is a function from source to source; `TextDecoderStream` and `TextEncoderStream` are `Encoding.decode_source` and `encode_source`. `to_list` and `lines` take a required bound and fail `StreamError` past it. `tee` and queuing strategies arrive with `std/channel`; BYOB readers are not provided.
 - Static verification is implemented for a restricted fragment; see the [roadmap](/docs/roadmap).
 - Prefer `List` for dense integer IDs, as in DeltaBlue; use `Map` for sparse keys. Collection updates return new values: assign the result back. See the source index for complexity and behavior notes.
 
@@ -69,6 +70,7 @@ fn of(bytes: Bytes, media_type: String) -> Blob
 fn size(b: Blob) -> Int
 fn slice(b: Blob, start: Int, end: Int, media_type: String) -> Blob
 fn text(b: Blob) -> Result<String, Utf8Error>
+fn source<e>(b: Blob, chunk: Int) -> Source<Bytes, e> requires chunk > 0
 ```
 
 ### `std/budget`
@@ -226,6 +228,8 @@ fn decode_with(b: Bytes, enc: Encoding, errors: Errors, bom: Bom) -> Result<Stri
 fn new(enc: Encoding, errors: Errors) -> Decoder
 fn push(d: Decoder, chunk: Bytes) -> Result<(Decoder, String), EncodingError>
 fn finish(d: Decoder) -> Result<String, EncodingError>
+fn decode_source<e>(src: Source<Bytes, e>, enc: Encoding, errors: Errors) -> Source<String, {Fail<EncodingError> | e}>
+fn encode_source<e>(src: Source<String, e>, enc: Encoding) -> Source<Bytes, e> requires encodable(enc)
 fn encode(s: String, enc: Encoding) -> Bytes requires encodable(enc)
 fn encodable(enc: Encoding) -> Bool    // @total
 ```
@@ -293,6 +297,8 @@ fn rooted(dir: Dir) -> Handler<Fs>
 fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
 fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
 fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>}
+fn file_source(file: File, chunk: Int) -> Source<Bytes, {Fs, Fail<FsError>}> requires chunk > 0
+fn file_sink(file: File) -> Sink<Bytes, {Fs, Fail<FsError>}>
 ```
 
 ### `std/gen`
@@ -365,6 +371,7 @@ effect Http {
   fn stream<T, e>(req: Request, body: fn(Incoming) -> T ! e) -> T ! {Fail<HttpError> | e}
   fn read_chunk(body: Body, max: Int) -> Bytes ! {Fail<HttpError>} requires max > 0
 }
+fn body_source(body: Body, chunk: Int) -> Source<Bytes, {Http, Fail<HttpError>}> requires chunk > 0
 fn get(url: Url) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn post_json<T: Schema>(url: Url, body: T) -> Response ! {Http, Fail<HttpError | RateLimited>}
 fn bearer(req: Request, token: Secret<String>) -> Request
@@ -688,6 +695,27 @@ fn template<R>(parts: List<String>, args: List<SqlValue>) -> Query<R>
 fn migrate(statements: List<Query<Unit>>) -> Unit ! {Sql, Fail<SqlError>}
 fn sqlite(path: Path) -> Handler<Sql, {Fs}>    // @external
 fn memory() -> Handler<Sql>    // @external
+```
+
+### `std/stream`
+
+```sakura fragment
+type Step<T, e> = Done | Next(T, Source<T, e>)
+type Source<T, e> = { pull: fn() -> Step<T, e> ! e }
+type Sink<T, e> = { write: fn(T) -> Sink<T, e> ! e, close: fn() -> Unit ! e }
+type StreamReason = MaxItems | MaxLine
+error StreamError(reason: StreamReason)
+fn empty<T, e>() -> Source<T, e>
+fn from_list<T, e>(xs: List<T>) -> Source<T, e>
+fn map<A, B, e>(src: Source<A, e>, f: fn(A) -> B ! e) -> Source<B, e>
+fn filter<T, e>(src: Source<T, e>, keep: fn(T) -> Bool ! e) -> Source<T, e>
+fn take<T, e>(src: Source<T, e>, n: Int) -> Source<T, e> requires n >= 0
+fn fold<T, A, e>(src: Source<T, e>, init: A, f: fn(A, T) -> A ! e) -> A ! e
+fn each<T, e>(src: Source<T, e>, f: fn(T) -> Unit ! e) -> Unit ! e
+fn to_list<T, e>(src: Source<T, e>, max_items: Int) -> List<T> ! {Fail<StreamError> | e}
+fn chunks<e>(src: Source<Bytes, e>, size: Int) -> Source<Bytes, e> requires size > 0
+fn lines<e>(src: Source<String, e>, max_line: Int) -> Source<String, {Fail<StreamError> | e}>
+fn pipe<T, e>(src: Source<T, e>, sink: Sink<T, e>) -> Unit ! e
 ```
 
 ### `std/string`

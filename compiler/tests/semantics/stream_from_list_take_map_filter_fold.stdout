@@ -1,0 +1,13 @@
+evens times ten, first three:
+  pulled 1
+  pulled 2
+  pulled 3
+  pulled 4
+  pulled 5
+  pulled 6
+sum 120
+take 0:
+sum 0
+each over a take past the end:
+  item 7
+  item 8
