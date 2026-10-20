@@ -41,6 +41,11 @@ CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` o
 for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a
 stale `fuzz/Cargo.lock` fails CI the same day instead of the next nightly. It does not fuzz.
 
+Last green dispatched run (design §17.285 (2)(a) exit, 600 s per target, `main` at
+`e136ead2`): https://github.com/icantcodefyi/sakuralang/actions/runs/39463804654, every
+target green after 03292867, 8d6acf2a, 0d1c6538 and fa84c422. The minimized `exec` and
+`fmt_idempotent` crashes of run 39403672252 no longer reproduce on `main`.
+
 `exec` needs node on `PATH` (or `SAKURA_NODE`) and the `wasm32-unknown-unknown` target. Its
 limits: the reference evaluator stops at 50,000 steps and depth 10,000 (such a program is
 skipped), the LIR evaluator at 20,000,000 steps, 2,000,000 objects and 1,000,000 arena slots,
