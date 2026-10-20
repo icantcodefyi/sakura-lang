@@ -173,7 +173,8 @@ authorized by the owner's proposal.
 ## 2. Instruction-count baseline and bless
 
 **The owner's decision of 2026-10-19 (design §17.264):** the quiet window is dropped. Every
-baseline release (the M4 exit for `v0.1.0`, then `v0.2.0` and `v1.0.0-rc.1`, §17.225 (5))
+baseline release (the M4 exit for `v0.1.0`, then `v1.0.0-beta.1`, each later beta and
+`v1.0.0`, §17.225 (5) as re-cut by §17.291 (2))
 needs **a blessed instruction-count baseline from the reference Mac** (host id
 `d88970189598`, Apple M4 Pro). The primary metric is instructions retired per call, read
 from macOS's `/usr/bin/time -l`; it barely moves with background load, so the runs go while
@@ -434,6 +435,17 @@ and npm. Acceptance includes a fresh project's `fmt --check` after a Git checkou
 Proof-key storage remains unavailable on Windows; its Unix-only tests stay gated.
 
 ## 5. Owner approval and tag
+
+**The beta (design §17.291).** The next tag is `v1.0.0-beta.1`, then `v1.0.0-beta.N`, then
+`v1.0.0`; `v0.2.0` and `v1.0.0-rc.1` are not tagged. A beta is a GitHub prerelease under the
+npm dist-tag `beta` (`latest` stays on `v0.1.0` until `v1.0.0`); `release.py`'s `dist_tag`
+must accept `beta` beside `alpha` and `rc` before the preparation commit. The beta's
+preparation commit closes the breaking window: after it, a `pub` std shape, an effect's
+operation set or a diagnostic record changes only to fix a soundness, security or
+specification defect, each a `Breaking` CHANGELOG line with its migration. The beta waits
+for neither the seven clean fuzz nights nor a soak; `v1.0.0` waits for both (§17.291 (4)),
+and is cut from a commit whose only difference from the last beta is its preparation commit.
+Every beta's notes say "beta: feature-complete for 1.0, not production".
 
 Present candidate SHA, version, run ID, final digest inventory, platforms/floors,
 checks, channel artifacts, signing and limitations. Record explicit approval for
