@@ -1,0 +1,162 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_elements_moved::Body | Body 40b (x: i64, v: i64, tag: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_elements_moved, frame 2 slots [%10 word*, %16 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: i64 = const 0
+    %2 lit: ptr = const str 0
+    %3 rec: ptr = alloc main::owned_elements_moved::Body(%0, %1, %2)
+    %4 lit: i64 = const 10
+    %5 lit: i64 = const 0
+    %6 lit: ptr = const str 1
+    %7 rec: ptr = alloc main::owned_elements_moved::Body(%4, %5, %6)
+    %8 xs: ptr = alloc list(%3, %7)
+    %9 lit: i64 = const 3
+    call drift#2(%8, %9) -> b1()
+  b1(%10 r: ptr):
+    dup.candidate %10
+    %11 n: i64 = $list_len(%10)
+    %53 lit: i64 = const 0
+    %54 lit: ptr = const str 5
+    jump b4(%53, %54, %10, %11)
+  b2(%12 out: ptr):
+    %13 s: ptr = show %12
+    drop %12
+    %14 lit: ptr = const str 2
+    %15 s: ptr = concat %14, %13
+    drop %13
+    perform std::console::Console.print(%15) -> b3()
+  b3(%16 r: unit):
+    %17 box: word = box %16
+    %18 unbox: unit = unbox %17
+    drop %17
+    ret %18
+  b4(%19 i: i64, %20 out: ptr, %21 r: ptr, %22 n: i64):
+    %23 more: bool = lt.int %19, %22
+    if %23 then b5(%21, %22, %19, %20) else b6(%21, %22, %19, %20)
+  b5(%24 r: ptr, %25 n: i64, %26 i: i64, %27 out: ptr):
+    dup.candidate %24
+    %32 x: word = $list_at(%24, %26)
+    %39 s: ptr = show %27
+    drop %27
+    %40 lit: ptr = const str 3
+    %41 s: ptr = concat %39, %40
+    drop %40
+    %42 tag: word = proj %32.2 main::owned_elements_moved::Body
+    %43 s: ptr = show %42
+    drop %42
+    %44 s: ptr = concat %41, %43
+    drop %43
+    %45 x: i64 = proj %32.0 main::owned_elements_moved::Body
+    %46 s: ptr = show %45
+    %47 s: ptr = concat %44, %46
+    drop %46
+    %48 lit: ptr = const str 4
+    %49 s: ptr = concat %47, %48
+    drop %48
+    %50 v: i64 = proj %32.1 main::owned_elements_moved::Body
+    drop %32
+    %51 s: ptr = show %50
+    %52 s: ptr = concat %49, %51
+    drop %51
+    jump b7(%52, %24, %25, %26)
+  b6(%28 r: ptr, %29 n: i64, %30 i: i64, %31 out: ptr):
+    drop %28
+    jump b2(%31)
+  b7(%33 out: ptr, %34 r: ptr, %35 n: i64, %36 i: i64):
+    %37 lit: i64 = const 1
+    %38 i: i64 = intadd %36, %37
+    jump b4(%38, %33, %34, %35)
+
+fn $entry#1 top -> unit ; main::owned_elements_moved, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1 i64, %28 word*, %29 i64, %30 word*, %31 i64, %32 i64, %39 word*, %40 i64, %41 word*, %42 i64, %43 i64, %44 word*, %48 word*, %49 i64, %50 i64, %51 i64, %86 word*, %87 i64, %88 word*, %89 i64, %90 i64, %91 word*, %92 i64, %93 i64, %94 i64]
+  b0(%0 start: ptr, %1 steps: i64):
+    %104 lit: i64 = const 0
+    %105 lit: i64 = const 0
+    jump b2(%0, %104, %105, %1)
+  b1(%2 bs: ptr, %3 i: i64, %4 seen: i64):
+    %5 lit: i64 = const 0
+    %6 lit: ptr = const str 6
+    %7 rec: ptr = alloc main::owned_elements_moved::Body(%4, %5, %6)
+    %8 r: ptr = $list_push(%2, %7)
+    ret %8
+  b2(%9 bs: ptr, %10 i: i64, %11 seen: i64, %12 steps: i64):
+    dup.candidate %9
+    %13 r: i64 = $list_len(%9)
+    %14 t: bool = lt.int %10, %13
+    if %14 then b4(%12, %9, %10, %11) else b5(%12, %9, %10, %11)
+  b3(%15 v: word, %16 bs: ptr, %17 i: i64, %18 seen: i64, %19 steps: i64):
+    drop %15
+    jump b2(%16, %17, %18, %19)
+  b4(%20 steps: i64, %21 bs: ptr, %22 i: i64, %23 seen: i64):
+    dup.candidate %21
+    call at#3(%21, %22) -> b6(%20, %21, %22, %23)
+  b5(%24 steps: i64, %25 bs: ptr, %26 i: i64, %27 seen: i64):
+    jump b1(%25, %26, %27)
+  b6(%28 r: ptr, %29 steps: i64, %30 bs: ptr, %31 i: i64, %32 seen: i64):
+    %103 lit: i64 = const 0
+    jump b10(%30, %31, %32, %28, %103, %29)
+  b7(%33 bs: ptr, %34 i: i64, %35 seen: i64, %36 b: ptr, %37 k: i64, %38 steps: i64):
+    dup.candidate %33
+    call at#3(%33, %34) -> b8(%38, %33, %34, %35, %36)
+  b8(%39 r: ptr, %40 steps: i64, %41 bs: ptr, %42 i: i64, %43 seen: i64, %44 b: ptr):
+    %45 x: i64 = proj %39.0 main::owned_elements_moved::Body
+    drop %39
+    %46 t: i64 = intadd %43, %45
+    %47 $site: i64 = const 2
+    call set#4(%41, %42, %44, %47) -> b9(%40, %42, %46)
+  b9(%48 r: ptr, %49 steps: i64, %50 i: i64, %51 t: i64):
+    %52 lit: i64 = const 1
+    %53 t: i64 = intadd %50, %52
+    %54 lit: unit = const ()
+    %55 box: word = box %54
+    jump b3(%55, %48, %53, %51, %49)
+  b10(%56 bs: ptr, %57 i: i64, %58 seen: i64, %59 b: ptr, %60 k: i64, %61 steps: i64):
+    %62 t: bool = lt.int %60, %61
+    if %62 then b12(%61, %56, %57, %58, %59, %60) else b13(%61, %56, %57, %58, %59, %60)
+  b11(%63 v: word, %64 bs: ptr, %65 i: i64, %66 seen: i64, %67 b: ptr, %68 k: i64, %69 steps: i64):
+    drop %63
+    jump b10(%64, %65, %66, %67, %68, %69)
+  b12(%70 steps: i64, %71 bs: ptr, %72 i: i64, %73 seen: i64, %74 b: ptr, %75 k: i64):
+    %82 x: i64 = proj %74.0 main::owned_elements_moved::Body
+    %83 lit: i64 = const 1
+    %84 t: i64 = intadd %82, %83
+    %85 v: i64 = proj %74.1 main::owned_elements_moved::Body
+    dup.candidate %71
+    call at#3(%71, %72) -> b14(%70, %71, %72, %73, %74, %75, %84, %85)
+  b13(%76 steps: i64, %77 bs: ptr, %78 i: i64, %79 seen: i64, %80 b: ptr, %81 k: i64):
+    jump b7(%77, %78, %79, %80, %81, %76)
+  b14(%86 r: ptr, %87 steps: i64, %88 bs: ptr, %89 i: i64, %90 seen: i64, %91 b: ptr, %92 k: i64, %93 t: i64, %94 v: i64):
+    %95 x: i64 = proj %86.0 main::owned_elements_moved::Body
+    drop %86
+    %96 t: i64 = intadd %94, %95
+    %97 tag: word = proj %91.2 main::owned_elements_moved::Body
+    drop %91
+    %98 rec: ptr = alloc main::owned_elements_moved::Body(%93, %96, %97)
+    %99 lit: i64 = const 1
+    %100 t: i64 = intadd %92, %99
+    %101 lit: unit = const ()
+    %102 box: word = box %101
+    jump b11(%102, %88, %89, %90, %98, %100, %87)
+
+fn at#3 top -> ptr ; main::owned_elements_moved, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 7
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3

@@ -160,6 +160,7 @@ semantics/owned_argument_used_after_call: ok, 498 allocated, 4030 dup, 4528 drop
 semantics/owned_captured_and_stored: ok, 514 allocated, 3258 dup, 3772 drop, peak 48, live 0/0
 semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0/0
 semantics/owned_elements_guard: ok, 58 allocated, 95 dup, 153 drop, peak 8, live 0/0
+semantics/owned_elements_moved: ok, 53 allocated, 49 dup, 102 drop, peak 8, live 0/0
 semantics/owned_elements_shared: ok, 73 allocated, 40 dup, 113 drop, peak 7, live 0/0
 semantics/owned_empty_set_defect: D020, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
 semantics/owned_empty_singleton: unsupported (builtin map_remove)

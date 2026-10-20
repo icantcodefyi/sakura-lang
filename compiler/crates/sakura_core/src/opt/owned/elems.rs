@@ -910,9 +910,11 @@ impl<'a> Elems<'a> {
             Expr::Let {
                 local, bind, body, ..
             } => {
-                if let Bind::Alloc(Alloc::Record(t), _) = bind
+                if let Bind::Alloc(Alloc::Record(t), args) = bind
                     && self.class[local.index()] == Val::Fresh
-                    && let Some(site) = self.site(*local, *t, body, scope)
+                    && let Some(site) = self
+                        .site(*local, *t, body, scope)
+                        .or_else(|| self.moved_site(*local, *t, args, scope))
                 {
                     self.in_place.insert(*local, site);
                 }
@@ -1018,6 +1020,82 @@ impl<'a> Elems<'a> {
             .filter(|z| *z != bj && *z != x && self.chain_of(*z) == Some(root))
             .collect();
         (guards.len() <= 2).then_some((bj, guards))
+    }
+
+    /// The second site (a reading of §17.273 (2) for the review): `x = T {..bj, …}` with `bj`
+    /// dead after it, where `bj` holds either a moved fresh record or an element read (its class
+    /// `Elem`: `var b = at(bs, i)` updated round a loop). An identity test against each element
+    /// read that can reach `bj` (`bj !== r`) excludes the element; a record that passes it came
+    /// only through moves, so `bj` is its one reference and the update is unobservable. No list
+    /// fact is needed. Each such read must be bound before `bj` (lexically enclosing it), so
+    /// the value it holds at `x` is the one that may have reached `bj`.
+    fn moved_site(
+        &self,
+        x: Local,
+        t: TypeId,
+        args: &[Atom],
+        scope: &[Local],
+    ) -> Option<(Local, Vec<Local>)> {
+        let after = self.after.get(&x)?;
+        let projected = |z: Local| {
+            args.iter().any(|a| {
+                matches!(a, Atom::Local(l) if matches!(
+                    self.binds.get(l),
+                    Some(Bind::Proj(Atom::Local(o), Proj::Field(..))) if *o == z
+                ))
+            })
+        };
+        let (at, bj) = scope.iter().enumerate().rev().find(|(_, z)| {
+            **z != x
+                && record(self.m, &self.def.local(**z).ty) == Some(t)
+                && matches!(self.class[z.index()], Val::Elem(..))
+                && !after.contains(*z)
+                && projected(**z)
+        })?;
+        let mut reads = BTreeSet::new();
+        if !self.origins(*bj, &mut HashSet::new(), &mut reads) || reads.contains(bj) {
+            return None;
+        }
+        (reads.len() <= 2 && reads.iter().all(|r| scope[..at].contains(r)))
+            .then(|| (*bj, reads.into_iter().collect()))
+    }
+
+    /// The element reads whose value can reach `z` through aliases and join parameters; false
+    /// when some value reaching it is neither such a read nor a moved fresh record.
+    fn origins(&self, z: Local, seen: &mut HashSet<Local>, out: &mut BTreeSet<Local>) -> bool {
+        if !seen.insert(z) {
+            return true;
+        }
+        match self.class[z.index()] {
+            Val::Fresh => return true,
+            Val::Elem(..) => {}
+            _ => return false,
+        }
+        match self.binds.get(&z) {
+            Some(b) if read_of(b, self.sums).is_some() => {
+                out.insert(z);
+                true
+            }
+            Some(Bind::Atom(Atom::Local(y))) => self.origins(*y, seen, out),
+            Some(_) => false,
+            None => {
+                let Some((l, i)) = self
+                    .params
+                    .iter()
+                    .find_map(|(l, ps)| ps.iter().position(|p| *p == z).map(|i| (*l, i)))
+                else {
+                    return false;
+                };
+                self.jumps
+                    .get(&l)
+                    .into_iter()
+                    .flatten()
+                    .all(|args| match args.get(i) {
+                        Some(Atom::Local(a)) => self.origins(*a, seen, out),
+                        _ => false,
+                    })
+            }
+        }
     }
 
     /// Every return returns a version of a chain that owns its elements.

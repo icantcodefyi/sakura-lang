@@ -2452,6 +2452,18 @@ fn spread consumes start with elements
   r%30 = set(bs%14) shared(join), owned entry owned
 ",
         ),
+        // `b` starts as the element `bs[i]` and is rebuilt round a loop: once it is a moved
+        // fresh record (`b !== r`) the rebuild reuses it, in either entry.
+        (
+            "owned_elements_moved",
+            "fn main
+  r%3 = drift(xs%2) owned
+fn drift consumes start
+  r%47 = list_push(bs%2) shared(join), owned entry owned
+  r%44 = set(bs%15) shared(join), owned entry owned
+  rec%39 = Body {..b%23} in place unless b%23 is r%14, owned entry in place unless b%23 is r%14
+",
+        ),
     ] {
         let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
         assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
@@ -2460,8 +2472,8 @@ fn spread consumes start with elements
 }
 
 /// Design §17.273: on the `nbody` benchmark `advance$o` reuses `bs[j]`'s record in place with no
-/// guard (the `b` it pairs with is a fresh record by then), and `run` proves the elements at
-/// both calls.
+/// guard (the `b` it pairs with is a fresh record by then), and `b`'s own rebuild once it is no
+/// longer the element `r`; `run` proves the elements at both calls.
 #[test]
 fn build_dump_owned_reuses_the_nbody_bodies() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../bench/programs/nbody/sakura");
@@ -2477,6 +2489,7 @@ fn offset_momentum consumes bs with elements
   r%42 = set(bs%0) shared(param), owned entry owned
 fn advance consumes start with elements
   r%87 = set(bs%13) shared(join), owned entry owned
+  rec%64 = Body {..b%19} in place unless b%19 is r%11, owned entry in place unless b%19 is r%11
   rec%84 = Body {..r%27} allocates, owned entry in place
   r%85 = set(bs%17) shared(join), owned entry owned
 fn set consumes bs
