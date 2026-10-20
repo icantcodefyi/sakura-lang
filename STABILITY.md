@@ -76,11 +76,11 @@ and built-in help commands are also captured in the baseline.
 | CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 0.2.0 |
 | CLI | `lsp`; `mcp serve --root` | stable | 0.2.0 |
 | Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature, and release binaries are built without it | experimental | — |
-| JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix and pre-verification errors | stable | 0.2.0 |
-| JSON Lines | `audit`, audit `summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic` and `summary`: `1.1` | stable | 0.2.0 |
-| JSON Lines | Test `test`, `regression`, `summary`: `1.0` on JS and WASM; summary fields differ from check/audit/verify despite the shared kind | stable | 0.2.0 |
+| JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix, pre-verification errors and a `test` run that does not compile; one `kind` per closing shape, every `summary` field required (design §17.242 (1)) | stable | 0.2.0 |
+| JSON Lines | `audit`, `audit_summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic`: `1.1`; `verify_summary`: `1.0` | stable | 0.2.0 |
+| JSON Lines | Test `test`, `test_summary`: `1.0` on JS and WASM; `regression` `1.0`, the record `test --contracts` stores as `tests/regressions/<fn>.json` and replays | stable | 0.2.0 |
 | JSON Lines | `doc --json`: one `symbol_query` record, `1.0`; `build --manifest`/verify's manifest file: `manifest`, `1.1`. Usage failures are human stderr with exit 2 even with `--json` (design §17.242 (3)); `fix --preview --json` prints a human preview | stable (`symbol_query`, `manifest`); usage text is not a contract | 0.2.0 |
-| Runtime JSON | `defect` on stderr: `1.0` | stable | 0.2.0 |
+| Runtime JSON | `defect` on stderr at exit 70: `1.0`, with `code`, `message` and, when the runtime knows the site, `spans` of `uri`, `start_byte`, `end_byte`, `role` (no `content_hash`) | stable | 0.2.0 |
 | Runtime instrumentation | Effect trace and WASM statistics/coverage output formats, separate from CLI `--json` | internal | — |
 | `sakura.toml` | `[package]` with `name`, `version`, `edition`; `[permissions]` with `fs.read`, `fs.write`, `net`, `env`; `[verify]` with `rlimit` | stable | 0.2.0 |
 | `sakura.toml` | `[permissions] process` reserved: `process = []` is accepted and grants nothing, the same as leaving the key out; no std effect starts processes. Any other list is `V8006` with the message "`process` grants nothing in this version: no std effect starts processes; the key is reserved" (design §17.253 (3)); a `Process` effect needs an RFC | stable (`[]` only) | 0.2.0 |
@@ -94,7 +94,7 @@ and built-in help commands are also captured in the baseline.
 | ABI | Native runtime `offset32-v1` and native embedding/host interfaces | experimental | — |
 | LSP | Stdio initialization/shutdown/exit; full document sync (`didOpen`, `didChange`, `didClose`, `didSave`), watched-file notifications, `publishDiagnostics`, hover, definition, completion, formatting, code actions; negotiated UTF-8/UTF-16 positions and versioned workspace edits | stable | 0.2.0 |
 | LSP extension | `sakura/holeContext` and Sakura diagnostic/fix data, implemented in [the server](compiler/crates/sakura_lsp/src/lib.rs) | experimental | — (extension schema decision pending) |
-| MCP | Stdio tools `compiler_info`, `check`, `symbol_query`, `hole_context`, `docs_query`, `explain_diagnostic`, `format`, `check_patch`, `apply_patch`, `test`; snapshot/content-hash and patch-id protocol in [MCP documentation](docs/mcp.md) | stable | 0.2.0 |
+| MCP | Stdio tools `compiler_info`, `check`, `symbol_query`, `hole_context`, `docs_query`, `explain_diagnostic`, `format`, `check_patch`, `apply_patch`, `test`; snapshot/content-hash and patch-id protocol in [MCP documentation](docs/mcp.md); the tool results are the `--json` records of the same name (design §17.242 (5c)) | stable | 0.2.0 |
 | Environment | `SAKURA_CACHE_DIR`, `SAKURA_NO_CACHE` (cache disabled for any nonempty value other than `0`, not only `1`); `SAKURA_NODE` (Node executable override) | stable | 0.2.0 |
 | Environment | `SAKURA_MAX_COPY_BYTES` (JS/WASM host copy budget); `SAKURA_TRACE` (trace destination) | stable | 0.2.0 |
 | Environment | Native host reads `SAKURA_MAX_COPY_BYTES`, `SAKURA_TRACE`, `SAKURA_PERMISSIONS`; native-host behavior remains experimental | experimental | — |
@@ -103,8 +103,7 @@ and built-in help commands are also captured in the baseline.
 | Runtime limits | `SAKURA_MAX_HEAP`, `SAKURA_MAX_REQUESTS` are names used in ABI prose. The JS and WASM hosts do not read these from the environment (the WASM memory maximum is fixed at build); the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS`. Host/runtime option fields and defaults must not be mistaken for implemented env switches | experimental | — |
 | Exit codes | `0` success; `1` diagnostics/errors, disproved verification, formatting differences, or failed `main`; `2` usage/setup/I/O invocation failures; `3` test failures; `70` runtime defect; `75` startup permission denial. `run` forwards the child program's status; these are driver meanings, not an exhaustive set of possible program exit values | stable | 0.2.0 |
 
-The table deliberately records current gaps: per-command `summary` variants and
-verify's diagnostic schema differ; doc/manifest need record identities; native
+The table deliberately records current gaps: verify's diagnostic schema differs; native
 help labels and the history gate are separate work. Acceptance must settle the
 experimental LSP extension and unconsumed manifest keys before claiming that
 these are stable. No package resolution, native CLI target, or environment switch

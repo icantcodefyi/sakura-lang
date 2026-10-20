@@ -98,10 +98,11 @@ def run(args, cwd, timeout=30):
     return process.returncode, stdout, stderr
 
 
-def records(result):
+def records(result, closing='summary'):
+    """`check --json` ends with `summary`, `test --json` with `test_summary` (design §17.242)."""
     code, stdout, stderr = result
     rows = [json.loads(line) for line in stdout.splitlines()]
-    require(rows and rows[-1].get('kind') == 'summary', f'no summary: {code}, {stdout}, {stderr}')
+    require(rows and rows[-1].get('kind') == closing, f'no {closing}: {code}, {stdout}, {stderr}')
     require(all(row.get('schema_version') == '1.0' for row in rows), 'unknown diagnostic schema')
     return rows
 
@@ -155,7 +156,7 @@ def oracle(binary, directory, task, name, candidate):
     require(check[0] == 0 and records(check)[-1].get('holes') == 0,
             f'oracle must compile before behavioral acceptance: {check}')
     result = run([binary, 'test', '--json', '--filter', 'oracle/'], directory)
-    rows = records(result)
+    rows = records(result, 'test_summary')
     tests = [row for row in rows if row['kind'] == 'test']
     require(len(tests) == 1 and rows[-1]['total'] >= 2
             and rows[-1]['skipped'] == rows[-1]['total'] - 1
@@ -220,7 +221,7 @@ def exercise(task, metadata, binary, scratch):
         checked(binary, directory, commit)
         if variant == 'gold':
             visible = run([binary, 'test', '--json'], directory)
-            require(visible[0] == 0 and records(visible)[-1]['passed'] >= 1,
+            require(visible[0] == 0 and records(visible, 'test_summary')[-1]['passed'] >= 1,
                     f'gold visible tests failed: {visible}')
         results[variant] = [oracle(binary, directory, task, name, candidate)
                             for name in metadata['oracle']['files']]

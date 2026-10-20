@@ -4,6 +4,10 @@
 //! A field path is `a`, `a.b` for an object's field and `a[]` for an array's elements; the test
 //! descends into an object or array only where the baseline lists its children, so a map with
 //! open keys is one `object` line. An addition is a new baseline line in the same commit.
+//! Design §17.242: each command's closing record has its own kind (`summary` for check, fix and
+//! build, `test_summary`, `audit_summary`, `verify_summary`), pinned per case; the `defect`
+//! record a program writes to stderr at exit 70 and the `tests/regressions/<fn>.json` file the
+//! test runner writes and replays are checked as records too.
 
 mod common;
 
@@ -43,11 +47,29 @@ const DISPROVED: &str = "fn scale(p: Int, total: Int) -> Int\n  \
     ensures result <= total\n{ total * p / 50 }\n\n\
     pub fn main() -> Unit { let _a = scale(50, 10) }\n";
 
+/// A precondition broken at run time: a `defect` record with spans on stderr, exit 70.
+const DEFECTS: &str = "fn half(x: Int) -> Int\n  requires x >= 0\n{ x / 2 }\n\n\
+    fn down(x: Int) -> Int { x - 5 }\n\n\
+    pub fn main() -> Unit ! {Console} { Console.print(\"{half(down(1))}\") }\n";
+
+/// A contracted `pub fn` whose `ensures` fails: `test --contracts` stores a `regression`.
+const REGRESSES: &str = "type Percent = Int where it >= 0 && it <= 100\n\n\
+    pub fn wrong(p: Percent, total: Int) -> Int\n  \
+    requires total >= 0 && total <= 1000000\n  ensures result <= total\n{ total * p / 50 }\n";
+
+/// A stored regression in the 1.0 shape, replayed before the generated cases.
+const STORED: &str = "{\"schema_version\":\"1.0\",\"kind\":\"regression\",\"function\":\"wrong\",\
+    \"seed\":0,\"inputs\":{\"p\":100,\"total\":1},\"failure\":\"stored\"}\n";
+
 struct Case {
     name: &'static str,
     args: &'static [&'static str],
     source: Option<&'static str>,
     exit: i32,
+    /// The kind of the last record on stdout; `None` when stdout has no records.
+    closing: Option<&'static str>,
+    /// Files written under the case's directory before the run.
+    files: &'static [(&'static str, &'static str)],
 }
 
 const fn case(
@@ -55,138 +77,220 @@ const fn case(
     args: &'static [&'static str],
     source: Option<&'static str>,
     exit: i32,
+    closing: Option<&'static str>,
 ) -> Case {
     Case {
         name,
         args,
         source,
         exit,
+        closing,
+        files: &[],
     }
 }
 
+const SUMMARY: Option<&str> = Some("summary");
+const TEST_SUMMARY: Option<&str> = Some("test_summary");
+const AUDIT_SUMMARY: Option<&str> = Some("audit_summary");
+const VERIFY_SUMMARY: Option<&str> = Some("verify_summary");
+const SYMBOL_QUERY: Option<&str> = Some("symbol_query");
+
 /// One success, one diagnostic and one failure per `--json` command; `main.sak` holds `source`.
 const CASES: &[Case] = &[
-    case("check_ok", &["check", "--json", "main.sak"], Some(OK), 0),
+    case(
+        "check_ok",
+        &["check", "--json", "main.sak"],
+        Some(OK),
+        0,
+        SUMMARY,
+    ),
     case(
         "check_diagnostic",
         &["check", "--json", "main.sak"],
         Some(DIAGNOSED),
         1,
+        SUMMARY,
     ),
     case(
         "check_missing_path",
         &["check", "--json", "missing.sak"],
         None,
         2,
+        None,
     ),
     case(
         "fix_applied",
         &["fix", "--json", "main.sak"],
         Some(FIXABLE),
         0,
+        SUMMARY,
     ),
     case(
         "fix_preview_diagnostic",
         &["fix", "--preview", "--json", "main.sak"],
         Some(DIAGNOSED),
         0,
+        SUMMARY,
     ),
     case(
         "fix_unknown_id",
         &["fix", "--json", "--apply", "f:nope", "main.sak"],
         Some(FIXABLE),
         2,
+        None,
     ),
     case(
         "build_ok_manifest",
         &["build", "--json", "--manifest", "main.sak"],
         Some(OK),
         0,
+        SUMMARY,
     ),
     case(
         "build_diagnostic",
         &["build", "--json", "main.sak"],
         Some(DIAGNOSED),
         1,
+        SUMMARY,
     ),
     case(
         "build_missing_path",
         &["build", "--json", "missing.sak"],
         None,
         2,
+        None,
     ),
-    case("test_ok", &["test", "--json", "main.sak"], Some(OK), 0),
+    case(
+        "test_ok",
+        &["test", "--json", "main.sak"],
+        Some(OK),
+        0,
+        TEST_SUMMARY,
+    ),
     case(
         "test_ok_wasm",
         &["test", "--json", "--target", "wasm", "main.sak"],
         Some(OK),
         0,
+        TEST_SUMMARY,
     ),
+    // A test run that does not compile ends with the build's `summary`.
     case(
         "test_diagnostic",
         &["test", "--json", "main.sak"],
         Some(DIAGNOSED),
         1,
+        SUMMARY,
     ),
     case(
         "test_failing",
         &["test", "--json", "main.sak"],
         Some(FAILING_TEST),
         3,
+        TEST_SUMMARY,
     ),
+    case(
+        "test_contracts_regression",
+        &["test", "--contracts", "--json", "main.sak"],
+        Some(REGRESSES),
+        3,
+        TEST_SUMMARY,
+    ),
+    case(
+        "test_contracts_regression_wasm",
+        &[
+            "test",
+            "--contracts",
+            "--json",
+            "--target",
+            "wasm",
+            "main.sak",
+        ],
+        Some(REGRESSES),
+        3,
+        TEST_SUMMARY,
+    ),
+    Case {
+        files: &[("tests/regressions/wrong.json", STORED)],
+        ..case(
+            "test_contracts_replayed",
+            &["test", "--contracts", "--json", "main.sak"],
+            Some(REGRESSES),
+            3,
+            TEST_SUMMARY,
+        )
+    },
     case(
         "audit_ok",
         &["audit", "--json", "main.sak"],
         Some(AUDITED),
         0,
+        AUDIT_SUMMARY,
     ),
     case(
         "audit_diagnostic",
         &["audit", "--json", "main.sak"],
         Some(DIAGNOSED),
         0,
+        AUDIT_SUMMARY,
     ),
     case(
         "audit_missing_path",
         &["audit", "--json", "missing.sak"],
         None,
         2,
+        None,
     ),
     case(
         "doc_symbol",
         &["doc", "--json", "std::list::len"],
         Some(OK),
         0,
+        SYMBOL_QUERY,
     ),
     case(
         "doc_diagnostic",
         &["doc", "--json", "count"],
         Some(DIAGNOSED),
         0,
+        SYMBOL_QUERY,
     ),
     case(
         "doc_no_match",
         &["doc", "--json", "no_such_symbol"],
         Some(OK),
         0,
+        SYMBOL_QUERY,
     ),
     case(
         "verify_proved",
         &["verify", "--json", "main.sak"],
         Some(PROVED),
         0,
+        VERIFY_SUMMARY,
     ),
     case(
         "verify_diagnostic",
         &["verify", "--json", "main.sak"],
         Some(DIAGNOSED),
         1,
+        VERIFY_SUMMARY,
     ),
     case(
         "verify_disproved",
         &["verify", "--json", "main.sak"],
         Some(DISPROVED),
         1,
+        VERIFY_SUMMARY,
+    ),
+    // Design §12.1: a defect is a record on stderr whatever the flags.
+    case("run_defect", &["run", "main.sak"], Some(DEFECTS), 70, None),
+    case(
+        "run_defect_wasm",
+        &["run", "--target", "wasm", "main.sak"],
+        Some(DEFECTS),
+        70,
+        None,
     ),
 ];
 
@@ -208,7 +312,8 @@ fn baseline() -> Baseline {
     let text = std::fs::read_to_string(&path).unwrap();
     let mut out = Baseline::new();
     for (n, line) in text.lines().enumerate() {
-        if line.trim().is_empty() || line.starts_with('#') {
+        // `baseline 0.2.0` is the history's start, read by `check_json.py` (§17.257 (1)).
+        if line.trim().is_empty() || line.starts_with('#') || line.starts_with("baseline ") {
             continue;
         }
         let f: Vec<&str> = line.split_whitespace().collect();
@@ -338,14 +443,33 @@ fn every_json_record_matches_the_baseline() {
         if let Some(source) = c.source {
             std::fs::write(dir.join("main.sak"), source).unwrap();
         }
+        for (path, text) in c.files {
+            let path = dir.join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        }
         let state = root.join(format!("{}-state", c.name));
         let out = common::sakura_env(c.args, &dir, &[("XDG_STATE_HOME", &state)]);
-        let manifest = std::fs::read_to_string(dir.join("target/sakura/manifest.json")).ok();
-        (out, manifest)
+        let mut files = Vec::new();
+        let manifest = dir.join("target/sakura/manifest.json");
+        if let Ok(text) = std::fs::read_to_string(&manifest) {
+            files.push(("manifest.json".to_owned(), text));
+        }
+        let mut stored: Vec<_> = std::fs::read_dir(dir.join("tests/regressions"))
+            .into_iter()
+            .flatten()
+            .map(|e| e.unwrap().path())
+            .collect();
+        stored.sort();
+        for path in stored {
+            let name = format!("tests/regressions/{}", path.file_name().unwrap().display());
+            files.push((name, std::fs::read_to_string(&path).unwrap()));
+        }
+        (out, files)
     });
     let mut errors = Vec::new();
     let mut seen = BTreeSet::new();
-    for (c, (out, manifest)) in cases.iter().zip(runs) {
+    for (c, (out, files)) in cases.iter().zip(runs) {
         let at = |e: String| format!("{}: {e}", c.name);
         if out.code != Some(c.exit) {
             errors.push(at(format!(
@@ -353,8 +477,45 @@ fn every_json_record_matches_the_baseline() {
                 out.code, c.exit, out.stderr
             )));
         }
-        let lines = out.stdout.lines().map(|l| (l, "stdout"));
-        for (text, source) in lines.chain(manifest.as_deref().map(|m| (m, "manifest.json"))) {
+        let closing = out
+            .stdout
+            .lines()
+            .last()
+            .and_then(|l| serde_json::from_str::<Value>(l).ok())
+            .and_then(|r| r["kind"].as_str().map(str::to_owned));
+        if closing.as_deref() != c.closing {
+            errors.push(at(format!(
+                "the closing record is {closing:?}, want {:?}",
+                c.closing
+            )));
+        }
+        let stored = files
+            .iter()
+            .any(|(n, _)| n.starts_with("tests/regressions/"));
+        if c.args.contains(&"--contracts") && !stored {
+            errors.push(at("no tests/regressions file was written".into()));
+        }
+        if c.exit == 70 && !out.stderr.contains(r#""kind":"defect""#) {
+            errors.push(at(format!("no defect record on stderr: {}", out.stderr)));
+        }
+        // A stored regression in the contract's shape is the one the runner replays.
+        if !c.files.is_empty() && !out.stdout.contains("(stored regression replayed)") {
+            errors.push(at(format!(
+                "the stored regression was not replayed: {}",
+                out.stdout
+            )));
+        }
+        // Every stdout line is a record; on stderr, the lines that are JSON objects are.
+        let stdout = out.stdout.lines().map(|l| (l, "stdout"));
+        let stderr = out
+            .stderr
+            .lines()
+            .filter(|l| l.starts_with('{'))
+            .map(|l| (l, "stderr"));
+        let files = files
+            .iter()
+            .map(|(name, text)| (text.as_str(), name.as_str()));
+        for (text, source) in stdout.chain(stderr).chain(files) {
             let record: Value = match serde_json::from_str(text) {
                 Ok(v) => v,
                 Err(e) => {

@@ -280,7 +280,7 @@ fn test_json_has_exactly_one_summary_at_the_end() {
     assert_eq!(out.code, Some(3), "{}{}", out.stdout, out.stderr);
     let recs = common::json_lines(&out.stdout).unwrap();
     let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
-    assert_eq!(kinds, ["test", "test", "summary"]);
+    assert_eq!(kinds, ["test", "test", "test_summary"]);
     assert_eq!(recs[0]["status"], "passed");
     assert_eq!(recs[1]["status"], "failed");
     assert_eq!(recs[1]["seed"], 3);
@@ -610,7 +610,7 @@ fn audit_json_lists_user_sites_then_a_summary() {
     assert_eq!(sites[2]["sink"], "std::untrusted::trust");
     assert_eq!(sites[3]["reason"], "derived key");
     assert_eq!(sites[3]["sink"], "std::secret::map");
-    assert_eq!(summary["kind"], "summary");
+    assert_eq!(summary["kind"], "audit_summary");
     assert_eq!(summary["sites"], 4);
     assert_eq!(summary["by_site"]["trust"], 2);
     // A report, not a check: errors elsewhere do not change the exit code.
@@ -1170,7 +1170,7 @@ pub fn exact(x: Int) -> Int
     let kinds: Vec<&str> = recs.iter().map(|r| r["kind"].as_str().unwrap()).collect();
     assert_eq!(
         kinds,
-        ["test", "test", "diagnostic", "summary"],
+        ["test", "test", "diagnostic", "test_summary"],
         "{}",
         out.stdout
     );
@@ -1619,7 +1619,7 @@ fn verify_reports_the_scale_acceptance() {
     };
     let (p, total) = (input("p"), input("total"));
     assert!((0..=100).contains(&p) && total >= 0 && total * p / 50 > total);
-    assert_eq!(recs.last().unwrap()["kind"], "summary");
+    assert_eq!(recs.last().unwrap()["kind"], "verify_summary");
     // Both overflows and the wrong `ensures`.
     assert_eq!(recs.last().unwrap()["disproved"], 3);
 
@@ -1851,8 +1851,8 @@ fn verify_reuses_only_authenticated_unchanged_records() {
         assert_eq!(out.status.code(), Some(1), "{out:?}");
         let mut recs = common::json_lines(&String::from_utf8(out.stdout).unwrap()).unwrap();
         let summary = recs.pop().unwrap();
-        assert_eq!(summary["kind"], "summary");
-        assert_eq!(summary["schema_version"], "1.1");
+        assert_eq!(summary["kind"], "verify_summary");
+        assert_eq!(summary["schema_version"], "1.0");
         (recs, summary["reused"].as_u64().unwrap())
     };
     let (first, reused) = verify();

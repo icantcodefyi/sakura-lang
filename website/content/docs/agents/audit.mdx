@@ -27,7 +27,7 @@ pub fn main() -> Unit ! {Console} {
 }
 ```
 
-JSON output is JSON Lines: each site has `schema_version: "1.0"`, `kind: "audit"`, `site`, `symbol_id`, `span` and `reason` (nullable). `trust` and `from` records also identify the resolved `sink`. A final `summary` has the snapshot hash, site count and counts by site kind. Spans identify the source URI, content hash and byte range.
+JSON output is JSON Lines: each site has `schema_version: "1.0"`, `kind: "audit"`, `site`, `symbol_id`, `span` and `reason` (nullable). `trust` and `from` records also identify the resolved `sink`. A final `audit_summary` has the snapshot hash (`snapshot`), the site count (`sites`) and counts by site kind (`by_site`). Spans identify the source URI, content hash and byte range.
 
 An audit is an inventory, not a successful type check or a security certification. It exits 0 regardless of the sites found; loading and usage errors can still fail. Run `sakura check` separately.
 

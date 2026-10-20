@@ -336,7 +336,8 @@ impl SakuraServer {
 
     /// Find definitions by name, id, type shape or kind, in the workspace and std. Each result
     /// has its id, one-line declared signature, checked type, effect row, contracts, docs and
-    /// location. Use it to learn what exists before writing a call.
+    /// location. Use it to learn what exists before writing a call. The result is the
+    /// `symbol_query` record `sakura doc --json` prints.
     #[tool(annotations(read_only_hint = true))]
     async fn symbol_query(&self, Parameters(p): Parameters<SymbolQueryParams>) -> CallToolResult {
         self.run(|| {
@@ -349,19 +350,9 @@ impl SakuraServer {
                 kind: p.kind,
                 include_std: p.include_std.unwrap_or(true),
             };
+            // `sakura doc --json`'s record (design §17.242 (5c)).
             let limit = p.limit.unwrap_or(20);
-            let hits = a.search(&q);
-            let symbols: Vec<Value> = hits
-                .iter()
-                .take(limit)
-                .map(|s| symbol_json(&a, s))
-                .collect();
-            Ok(CallToolResult::structured(json!({
-                "snapshot": snapshot.hash(),
-                "symbols": symbols,
-                "total": hits.len(),
-                "truncated": hits.len() > limit,
-            })))
+            Ok(CallToolResult::structured(a.symbol_query_record(&q, limit)))
         })
     }
 
@@ -610,8 +601,7 @@ impl SakuraServer {
             };
             self.remember(&new);
             let a = Analysis::analyze(&new);
-            let mut summary = summary_record(&a.check.diagnostics, new.hash());
-            summary.insert("holes".into(), a.check.holes.len().into());
+            let summary = summary_record(&a.check.diagnostics, a.check.holes.len(), new.hash());
             Ok(CallToolResult::structured(json!({
                 "snapshot": new.hash(),
                 "previous_snapshot": base.hash(),
@@ -623,8 +613,9 @@ impl SakuraServer {
 
     /// Build and run `test`/`property` blocks under deterministic default handlers (captured
     /// console, fixed clock, seeded random, empty environment) with the network denied and a
-    /// time limit. Returns one record per test (status, failures, captured output, seed) and a
-    /// summary, or the build's diagnostics if it does not compile.
+    /// time limit. Returns `sakura test --json`'s records: one `test` per test (status, failures,
+    /// captured output, seed) and the `test_summary`, or the build's diagnostics and `summary`
+    /// if it does not compile.
     #[tool(annotations(read_only_hint = true, open_world_hint = false))]
     async fn test(&self, Parameters(p): Parameters<TestParams>) -> CallToolResult {
         let Some(runner) = self.run_tests else {
@@ -670,7 +661,11 @@ impl SakuraServer {
             "snapshot": snapshot.hash(),
             "tests": pick("test"),
             "diagnostics": pick("diagnostic"),
-            "summary": records.iter().rev().find(|r| r["kind"] == "summary"),
+            // The runner's `test_summary`, or the build's `summary` when it does not compile.
+            "summary": records
+                .iter()
+                .rev()
+                .find(|r| r["kind"] == "test_summary" || r["kind"] == "summary"),
             "timed_out": run.timed_out,
         }))
     }
@@ -857,8 +852,7 @@ fn report(a: &Analyzed, only: &Option<Vec<String>>) -> Value {
         .into_iter()
         .filter(in_scope)
         .collect();
-    let mut summary = summary_record(&a.check.diagnostics, s.hash());
-    summary.insert("holes".into(), a.check.holes.len().into());
+    let summary = summary_record(&a.check.diagnostics, a.check.holes.len(), s.hash());
     json!({
         "snapshot": s.hash(),
         "diagnostics": diagnostics,

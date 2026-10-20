@@ -18,8 +18,8 @@ use std::process::ExitCode;
 use sakura_analysis::{Analysis, Analyzed, BuildOptions, BuildResult, Snapshot};
 use sakura_core_snapshot as snap;
 use sakura_diagnostics::{
-    Diagnostic, FileId, Phase, SourceFile, Span, codes, diagnostic_records, render_human,
-    span_json, summary_record,
+    Diagnostic, FileId, Phase, SourceFile, Span, codes, diagnostic_counts, diagnostic_records,
+    render_human, span_json,
 };
 use sakura_verify::cache::{self, Cache, Entry, ProofKey};
 use sakura_verify::record::{Record, Replay, Status};
@@ -31,7 +31,8 @@ use serde_json::{Value, json};
 const PROOFS: &str = "target/sakura/proofs";
 /// The trust policy every cache key names (§17.86): std contracts serve as summaries.
 const TRUST: &str = "sakura-trust-v1";
-/// The JSON Lines schema of every record `sakura verify` writes (§12.2, §17.164).
+/// The JSON Lines schema of the `obligation` and `diagnostic` records `sakura verify` writes
+/// (§12.2, §17.164); its `verify_summary` is a kind of its own at 1.0 (§17.242 (1)).
 const SCHEMA: &str = "1.1";
 
 pub(crate) fn profile(target: &str) -> Profile {
@@ -186,8 +187,9 @@ pub(crate) fn verify(opts: &Options, paths: &[PathBuf]) -> ExitCode {
     }
 }
 
-/// The JSON Lines output: one record per obligation, the diagnostics, then the summary, every
-/// one at [`SCHEMA`], also when the program does not compile.
+/// The JSON Lines output: one record per obligation and the diagnostics, every one at
+/// [`SCHEMA`], then the closing `verify_summary` 1.0 (design §17.242 (1)), also when the
+/// program does not compile.
 fn print_json(
     snapshot: &Snapshot,
     results: &[(Record, Option<String>)],
@@ -202,8 +204,7 @@ fn print_json(
         d["schema_version"] = json!(SCHEMA);
         println!("{d}");
     }
-    let mut summary = summary_record(diags, snapshot.hash());
-    summary.insert("schema_version".into(), json!(SCHEMA));
+    let mut summary = diagnostic_counts("verify_summary", diags, snapshot.hash());
     for s in [
         Status::Proved,
         Status::Disproved,

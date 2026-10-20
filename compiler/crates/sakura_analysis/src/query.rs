@@ -1,7 +1,7 @@
 //! Agent queries shared by MCP and LSP: symbol search by name or type shape, and the context of a
 //! typed hole. Both protocols return exactly this JSON.
 
-use sakura_diagnostics::hole_records;
+use sakura_diagnostics::{SCHEMA_VERSION, hole_records};
 use serde_json::{Value, json};
 
 use crate::{Analyzed, Symbol};
@@ -83,6 +83,30 @@ impl Analyzed {
             .collect();
         hits.sort_by(|a, b| (a.0, &a.1.id).cmp(&(b.0, &b.1.id)));
         hits.into_iter().map(|(_, s)| s).collect()
+    }
+
+    /// The `symbol_query` 1.0 record of the first `limit` hits of `q`: `sakura doc --json` prints
+    /// it and the MCP `symbol_query` tool returns it, so both are one record (design §17.242
+    /// (5c)).
+    pub fn symbol_query_record(&self, q: &SymbolQuery, limit: usize) -> Value {
+        let hits = self.search(q);
+        let symbols: Vec<Value> = hits
+            .iter()
+            .take(limit)
+            .map(|s| {
+                let mut value = json!(s);
+                value["type"] = json!(self.symbol_type(s));
+                value
+            })
+            .collect();
+        json!({
+            "schema_version": SCHEMA_VERSION,
+            "kind": "symbol_query",
+            "snapshot": self.snapshot.hash(),
+            "total": hits.len(),
+            "symbols": symbols,
+            "truncated": hits.len() > limit,
+        })
     }
 
     /// The `hole` record with id `hole_id` (§12.2) plus what an agent needs to fill it: the

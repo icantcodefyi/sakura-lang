@@ -28,6 +28,29 @@ retains earlier implementation history.
   as `Bytes`; the guest zeroes every copy of the argument tuple and the answer before freeing
   them, and the host zeroes its copies. A 1.5 host refuses a 1.6 module (`V8003`); a WASI command does not have the imports.
 
+- **`--json` closing records have one `kind` per shape** (design §17.242). `check`, `fix`
+  and `build` still end with `summary` 1.0, now with all eight fields always present
+  (`snapshot`, `errors`, `warnings`, `notes`, `total`, `emitted`, `truncated`, `holes`).
+  Three kinds are renamed: `sakura test --json` ends with `test_summary` 1.0 (`passed`,
+  `failed`, `skipped`, `total`, `seed`); `sakura audit --json` with `audit_summary` 1.0
+  (`snapshot`, `sites`, `by_site`); `sakura verify --json` with `verify_summary` 1.0 (the
+  same fields as the old `summary` 1.1, but `schema_version` is `"1.0"`; verify's
+  `obligation` and `diagnostic` records stay 1.1). A `sakura test --json` run that does not
+  compile still ends with the build's `summary`. **To migrate**, a consumer that finds the
+  end of a run by `kind == "summary"` matches `test_summary`, `audit_summary` or
+  `verify_summary` for those three commands, and one that checks verify's
+  `schema_version == "1.1"` reads `"1.0"` on `verify_summary`. Field names and meanings
+  are unchanged.
+- **The `defect` record and the regression file join the `--json` contract.** `defect` 1.0
+  on stderr at exit 70 (`schema_version`, `kind`, `code`, `message`, optional `spans`) is
+  unchanged on the wire. A file `sakura test --contracts` writes to
+  `tests/regressions/<fn>.json` is now a `regression` 1.0 record: it gains
+  `"kind": "regression"` beside `schema_version`, `function`, `seed`, `inputs` and
+  `failure`. Files written by earlier versions, without `kind`, still replay.
+- **MCP results are the CLI's records.** `symbol_query` returns the `symbol_query` record
+  `sakura doc --json` prints, gaining `schema_version` and `kind`; `test`'s `summary` field
+  holds the `test_summary` record; both are built by the same code as the CLI's.
+
 ### Added
 
 - Web timer and dialog idioms (RFC 0002 §1, §2.8; plan `web-apis.md` phase 4b):

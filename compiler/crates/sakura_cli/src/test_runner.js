@@ -1,6 +1,6 @@
 // `sakura test` driver, written next to the emitted modules as `__sakura_test__.js`.
 // Usage: node __sakura_test__.js <seed> <filter-or-empty> <snapshot-dir> <update: 0|1>
-// Prints one JSON `test` record per test, then a `summary` record; exits 3 if any test failed.
+// Prints one JSON `test` record per test, then a `test_summary` record; exits 3 if any test failed.
 // The `std::test::Test` handler is installed here as the outermost frame (runtime/js/ABI.md §2,
 // §3); everything else (Console.captured, Clock.fixed, Random.seeded, …) is installed by the
 // compiled test wrapper itself.
@@ -28,7 +28,8 @@ export const OPS = ["record_failure", "failures", "output", "output_lines", "sna
 // `SAKURA_RECORD=1` (`sakura test --record`, design §17.73).
 const fixtures = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "fixtures");
 // `sakura test --contracts` (design §7.4): `tests/regressions/<fn>.json` is replayed first; a new
-// shrunk failure goes to the CLI as a `regression` record, and the CLI writes the file.
+// shrunk failure goes to the CLI as its `regression` record, and the CLI writes that record as
+// the file (design §17.242 (5b)).
 const regressions = snapshotDir === "" ? "" : path.join(snapshotDir, "..", "regressions");
 $rt.regressions.load = (name) => {
   try {
@@ -37,7 +38,7 @@ $rt.regressions.load = (name) => {
     return null;
   }
 };
-$rt.regressions.save = (name, text) => emit({ kind: "regression", name, text });
+$rt.regressions.save = (_name, text) => emit(JSON.parse(text));
 
 /**
  * `tests/__snapshots__/<module>/<name>.snap` holds `rendered` plus a newline; `<module>` is the
@@ -134,5 +135,5 @@ for (const t of tests) {
     defect,
   });
 }
-emit({ kind: "summary", passed, failed, skipped, total: tests.length, seed });
+emit({ kind: "test_summary", passed, failed, skipped, total: tests.length, seed });
 process.exitCode = failed > 0 ? 3 : 0;

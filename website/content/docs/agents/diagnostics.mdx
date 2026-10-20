@@ -26,21 +26,27 @@ sakura test --json
 | `test` | A test result from `sakura test --json`. |
 | `audit` | A trust, totality, refinement or external site from `sakura audit --json`. See [Trust audit](/docs/agents/audit). |
 | `symbol_query` | The single record `sakura doc --json` writes. See [Offline API search](/docs/agents/doc). |
-| `summary` | End of run. `summary.truncated` is `true` if output hit the cap. Its fields differ by command; see below. |
+| `summary` | End of `check`, `fix` and `build` (and of a `test` run that does not compile). `summary.truncated` is `true` if output hit the cap. |
+| `test_summary` | End of `sakura test --json`. |
+| `audit_summary` | End of `sakura audit --json`. |
+| `verify_summary` | End of `sakura verify --json`. |
 
-Two more records are not on stdout: `target/sakura/manifest.json` (`kind: "manifest"`, from
-`sakura build --manifest` and `sakura verify`) and the runtime `defect` record on stderr
-(below). Every record carries `kind` and `schema_version`; the fields of each kind and
+Three more records are not on stdout: `target/sakura/manifest.json` (`kind: "manifest"`, from
+`sakura build --manifest` and `sakura verify`), the runtime `defect` record on stderr
+(below) and the `regression` record that `sakura test --contracts` stores in
+`tests/regressions/<fn>.json` ([Testing](/docs/tour/testing#catching-an-ensures-bug)). Every
+record carries `kind` and `schema_version`; the fields of each kind and
 version are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt),
 which a test checks every command's output against. A usage error (a wrong flag, a missing
 file) is text on stderr with exit `2`, even with `--json`.
 
-Today one `summary` kind has different shapes: `check`, `fix` and `build` report `errors`,
-`warnings`, `notes`, `holes`, `total`, `emitted` and `truncated`; `test` reports `passed`,
-`failed`, `skipped`, `total` and `seed`; `audit` reports `sites` and `by_site`; and `verify`
-writes `summary` 1.1 with its obligation counts. **Planned before v0.2.0:** these become four
-kinds, `summary`, `test_summary`, `audit_summary` and `verify_summary` (design §17.242). Match
-on the command you ran, not only on `kind`, until then.
+Each closing record has one shape, every field present: `summary` has `snapshot`, `errors`,
+`warnings`, `notes`, `total`, `emitted`, `truncated` and `holes`; `test_summary` has
+`passed`, `failed`, `skipped`, `total` and `seed`; `audit_summary` has `snapshot`, `sites`
+and `by_site`; `verify_summary` (1.0, while verify's other records are 1.1) has the
+`summary` counts without `holes`, plus `proved`, `disproved`, `unknown`, `unsupported` and
+`reused`. Up to 0.1.0, all four were `kind: "summary"` (verify's at 1.1); match the new kinds
+on main.
 
 ## The diagnostic record
 

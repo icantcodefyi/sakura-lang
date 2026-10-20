@@ -44,11 +44,6 @@ contracts. A diagnostic's code, fields and fixes are.
 These decisions are made (design §17.239–§17.243, §17.253) but not yet built. They land before the
 first version that honours the guarantees, so they are not breaking changes under the RFC:
 
-- **One `kind` per summary shape.** Today `check`, `fix`, `build`, `test` and `audit` all end
-  with a `summary` record of different shapes, and `verify` ends with `summary` 1.1. They
-  become `summary` (check, fix, build), `test_summary`, `audit_summary` and
-  `verify_summary`. The runtime `defect` record and the test runner's regression files join
-  the contract.
 - **Lexical rules.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
   A digit separator `_` goes only between two digits.
 - **A source file that is not UTF-8** becomes a diagnostic,

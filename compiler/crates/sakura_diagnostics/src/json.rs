@@ -242,13 +242,22 @@ pub fn hole_records(holes: &[HoleReport], files: &[SourceFile], snapshot: &str) 
         .collect()
 }
 
-/// The `summary` record fields shared by every command: counts per severity, `total`, `emitted`
-/// and `truncated`. Commands add their own fields (e.g. `holes`, `tests`) before printing.
-pub fn summary_record(diags: &[Diagnostic], snapshot: &str) -> Map<String, Value> {
+/// The closing record of `check`, `fix` and `build` (and of a run that does not compile): a
+/// `summary` 1.0 with the diagnostic counts and `holes` (design §17.242 (1)).
+pub fn summary_record(diags: &[Diagnostic], holes: usize, snapshot: &str) -> Map<String, Value> {
+    let mut map = diagnostic_counts("summary", diags, snapshot);
+    map.insert("holes".into(), holes.into());
+    map
+}
+
+/// A `kind` record at 1.0 with the counts every closing record over diagnostics carries:
+/// `snapshot`, counts per severity, `total`, `emitted` and `truncated`. `summary_record` and
+/// `verify`'s `verify_summary` add their own fields after these.
+pub fn diagnostic_counts(kind: &str, diags: &[Diagnostic], snapshot: &str) -> Map<String, Value> {
     let count = |s: Severity| diags.iter().filter(|d| d.severity == s).count();
     let Value::Object(map) = json!({
         "schema_version": SCHEMA_VERSION,
-        "kind": "summary",
+        "kind": kind,
         "snapshot": snapshot,
         "errors": count(Severity::Error),
         "warnings": count(Severity::Warning),
@@ -262,14 +271,14 @@ pub fn summary_record(diags: &[Diagnostic], snapshot: &str) -> Map<String, Value
     map
 }
 
-/// Diagnostic records followed by the summary record, one JSON object per line.
+/// Diagnostic records followed by the summary record (no holes), one JSON object per line.
 pub fn render_json_lines(diags: &[Diagnostic], files: &[SourceFile], snapshot: &str) -> String {
     let mut out = String::new();
     for record in diagnostic_records(diags, files, snapshot) {
         out.push_str(&record.to_string());
         out.push('\n');
     }
-    out.push_str(&Value::Object(summary_record(diags, snapshot)).to_string());
+    out.push_str(&Value::Object(summary_record(diags, 0, snapshot)).to_string());
     out.push('\n');
     out
 }

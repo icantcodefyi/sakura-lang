@@ -79,7 +79,7 @@ The verifier first checks whether an obligation's assumptions are feasible. An i
 
 ## JSON Lines
 
-`sakura verify --json main.sak` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `summary`. These are separate JSON objects, one per line, with `schema_version: "1.1"`. Version 1.1 added the summary's `reused` count; a consumer checks the major version and ignores fields it does not know. Other commands still write `1.0`.
+`sakura verify --json main.sak` writes one `obligation` record per obligation, any `W7002` `diagnostic` records, then a final `verify_summary`. These are separate JSON objects, one per line. The `obligation` and `diagnostic` records have `schema_version: "1.1"`; the `verify_summary` is its own kind at `1.0` (up to 0.1.0 it was a `summary` at 1.1). A consumer checks each kind's major version and ignores fields it does not know.
 
 Obligation records include:
 
@@ -89,7 +89,7 @@ Obligation records include:
 - `reason` with `kind` and `detail`, or `counterexample` with `failed`, `inputs` and summary values, plus `replay`; fields without a result can be null. Counterexample integers are decimal strings to preserve i64 precision.
 - `snapshot` and `manifest_id`: the latter identifies the contract clause updated in the manifest and is null for arithmetic obligations.
 
-Spans carry the source URI, content hash and byte range. The summary includes `proved`, `disproved`, `unknown` and `unsupported` counts, `reused` (how many of those records were rebuilt from an authenticated cache entry instead of being solved), and diagnostic counts. Consume records by `kind`; a stream can contain both proof results and diagnostics.
+Spans carry the source URI, content hash and byte range. The `verify_summary` includes `proved`, `disproved`, `unknown` and `unsupported` counts, `reused` (how many of those records were rebuilt from an authenticated cache entry instead of being solved), and diagnostic counts. Consume records by `kind`; a stream can contain both proof results and diagnostics.
 
 ## Proof cache and build behavior
 

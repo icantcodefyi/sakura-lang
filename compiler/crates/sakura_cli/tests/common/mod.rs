@@ -226,24 +226,32 @@ pub fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec
 }
 
 /// Parses JSON Lines output; every line must be an object with `schema_version` and `kind`, and
-/// the last record must be the `summary`.
+/// the last record must be a closing one: `summary`, `test_summary`, `audit_summary` or
+/// `verify_summary` (design §17.242 (1)).
 pub fn json_lines(stdout: &str) -> Result<Vec<serde_json::Value>, String> {
     let mut recs = Vec::new();
     for line in stdout.lines() {
         let v: serde_json::Value =
             serde_json::from_str(line).map_err(|e| format!("bad JSON line {line:?}: {e}"))?;
-        // Major 1, the same MINOR on every line of one command's output (§12.2, §17.164).
+        // Major 1, the same MINOR on every record of one kind in one command's output (§12.2,
+        // §17.164); each kind has its own version (§17.242 (1)).
         let version = v["schema_version"].as_str().unwrap_or("");
         let same = recs
-            .first()
-            .is_none_or(|r: &serde_json::Value| r["schema_version"] == version);
+            .iter()
+            .find(|r: &&serde_json::Value| r["kind"] == v["kind"])
+            .is_none_or(|r| r["schema_version"] == version);
         if !version.starts_with("1.") || !same || !v["kind"].is_string() {
             return Err(format!("record without schema_version/kind: {line}"));
         }
         recs.push(v);
     }
     match recs.last() {
-        Some(last) if last["kind"] == "summary" => Ok(recs),
+        Some(last)
+            if ["summary", "test_summary", "audit_summary", "verify_summary"]
+                .contains(&last["kind"].as_str().unwrap_or("")) =>
+        {
+            Ok(recs)
+        }
         _ => Err("output does not end with a summary record".into()),
     }
 }
