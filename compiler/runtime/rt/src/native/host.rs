@@ -119,6 +119,18 @@ pub trait Host {
     /// Closes file `id`; a second close does nothing.
     fn file_close(&mut self, _id: i64) {}
 
+    /// `http_body_of(bytes)`: a `Body` handle (kind `vt::BODY`) that delivers `bytes`, for
+    /// handlers without a connection (`Http.scripted`, cassettes).
+    fn http_body_of(&mut self, _bytes: &[u8]) -> Hosted<HandleId> {
+        Err(unsupported())
+    }
+    /// `http_stream_read(body, max)`: up to `max` bytes, empty at the end, `Err` once closed.
+    fn http_body_read(&mut self, _body: HandleId, _max: i64) -> Hosted<Vec<u8>> {
+        Err(unsupported())
+    }
+    /// Closes `body` (`http_stream_closing`'s finalizer); a second close does nothing.
+    fn http_body_close(&mut self, _body: HandleId) {}
+
     /// `Sql.memory()` (`path` `None`) or `Sql.sqlite(path)`: a new database's id. Its handle
     /// (kind `vt::SQL`, slot the id) retires with the handler. A file opens at `sql_root`.
     fn sql_open(&mut self, _path: Option<&str>) -> Hosted<u32> {

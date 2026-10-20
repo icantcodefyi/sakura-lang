@@ -5,7 +5,8 @@
 //! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
 //! instance's thread; each database runs on its own worker thread (`sql`). Http, serve and Llm
 //! have no host service until N1b reaches them: their host handlers' operations are `D090`
-//! (the runtime's `rt_code_unsupported`).
+//! (the runtime's `rt_code_unsupported`). `Http.scripted`'s buffered `Body` (`http_body_of`)
+//! is the one Http table here.
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.
@@ -22,7 +23,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sakura_rt::exec::outcome;
 use sakura_rt::native::{FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome, SqlValue};
-use sakura_rt::vt::{DIR, SQL};
+use sakura_rt::vt::{BODY, DIR, SQL};
 use tokio::sync::mpsc;
 
 /// `[permissions]` of the manifest (`SAKURA_PERMISSIONS`): `None` lists are no limit.
@@ -177,6 +178,15 @@ impl<T> Table<T> {
             .ok_or_else(|| HostError::Fault("a released or unknown handle".into()))
     }
 
+    fn get_mut(&mut self, h: HandleId) -> Hosted<&mut T> {
+        let kind = self.kind;
+        self.slots
+            .get_mut((h.slot as usize).wrapping_sub(1))
+            .filter(|e| h.kind == kind && e.generation == h.generation)
+            .and_then(|e| e.value.as_mut())
+            .ok_or_else(|| HostError::Fault("a released or unknown handle".into()))
+    }
+
     fn retire(&mut self, h: HandleId) {
         if let Some(e) = self.slots.get_mut((h.slot as usize).wrapping_sub(1))
             && e.generation == h.generation
@@ -229,6 +239,8 @@ pub struct NativeHost {
     urandom: Option<std::fs::File>,
     trace: Option<std::fs::File>,
     dirs: Table<fs::Dir>,
+    /// `http_body_of`'s buffered bodies: the bytes not read yet, `None` once closed.
+    bodies: Table<Option<VecDeque<u8>>>,
     files: fs::Files,
     executor: tokio::runtime::Runtime,
     tx: mpsc::UnboundedSender<Completion>,
@@ -267,6 +279,7 @@ impl NativeHost {
             urandom: None,
             trace,
             dirs: Table::new(DIR),
+            bodies: Table::new(BODY),
             files: fs::Files::default(),
             executor,
             tx,
@@ -344,7 +357,9 @@ impl NativeHost {
     pub fn close(&mut self) -> Ledger {
         let mut ledger = Ledger {
             aborted_requests: self.inflight.len(),
-            closed_handles: self.dirs.live() + self.dbs.iter().flatten().count(),
+            closed_handles: self.dirs.live()
+                + self.bodies.live()
+                + self.dbs.iter().flatten().count(),
             closed_files: self.files.len(),
             ..Ledger::default()
         };
@@ -359,6 +374,7 @@ impl NativeHost {
             ledger.dropped_completions += 1;
         }
         self.dirs.clear();
+        self.bodies.clear();
         self.files.close_all();
         self.flush_out();
         ledger
@@ -518,6 +534,7 @@ impl Host for NativeHost {
     fn retire_handle(&mut self, handle: HandleId) {
         match handle.kind {
             DIR => self.dirs.retire(handle),
+            BODY => self.bodies.retire(handle),
             // The worker finishes what it was given and closes the connection.
             SQL => {
                 if let Some(db) = self.dbs.get_mut(handle.slot as usize) {
@@ -593,6 +610,24 @@ impl Host for NativeHost {
 
     fn file_close(&mut self, id: i64) {
         self.files.close(id);
+    }
+
+    fn http_body_of(&mut self, bytes: &[u8]) -> Hosted<HandleId> {
+        Ok(self.bodies.insert(Some(bytes.iter().copied().collect())))
+    }
+
+    fn http_body_read(&mut self, body: HandleId, max: i64) -> Hosted<Vec<u8>> {
+        let Some(buf) = self.bodies.get_mut(body)? else {
+            return Err(HostError::Err("the response body is closed".into()));
+        };
+        let n = buf.len().min(usize::try_from(max).unwrap_or(0));
+        Ok(buf.drain(..n).collect())
+    }
+
+    fn http_body_close(&mut self, body: HandleId) {
+        if let Ok(b) = self.bodies.get_mut(body) {
+            *b = None;
+        }
     }
 
     fn sql_open(&mut self, path: Option<&str>) -> Hosted<u32> {

@@ -13,8 +13,12 @@ use alloc::vec::Vec;
 use super::Ctx;
 use super::host::{FileMode, HandleId, Host, HostError, Hosted};
 use crate::cx::{Cx, TOO_LARGE};
+use crate::exec::step;
+use crate::exports::ret;
 use crate::json;
+use crate::object::UNIT;
 use crate::vt::{DIR, t};
+use crate::{Defect, Res, Rt, tag};
 
 /// The hosted builtins by index, the order of the compiler's `HOSTED` table (`sakura_lir::image`;
 /// a test in `sakura_host_native` keeps the two equal). The ones past N1a's services answer
@@ -249,6 +253,13 @@ fn call(host: &mut dyn Host, ids: &Ids, name: Option<&str>, args: &[u8]) -> Host
             result(&mut w, ids, host.file_write(id, data), |w, ()| {
                 w.unit();
             })?;
+        }
+        Some("http_body_of") => {
+            arity(1)?;
+            let bytes = r.bytes()?;
+            r.end()?;
+            let b = host.http_body_of(bytes)?;
+            w.handle(b);
         }
         Some(_) => {
             return Err(HostError::Failure(
@@ -586,4 +597,111 @@ pub(crate) fn sql_error(cx: &mut Cx<'_>, message: &str) -> crate::Res<Vec<u8>> {
     let mut types = Native { cx, index: &index };
     json::sql_error(message.as_bytes(), &mut types, &mut out)?;
     Ok(out)
+}
+
+// ---- Http bodies: `http_body_of`'s buffered `Body` (`Http.scripted`, cassettes) -------------
+
+/// The host handle a `Body` object (borrowed) names; another object is an internal defect.
+fn body_handle(rt: &Rt, body: u32) -> Res<HandleId> {
+    if rt.tag(body) != tag::HANDLE {
+        return Err(Defect::INTERNAL);
+    }
+    Ok(HandleId {
+        kind: rt.heap.mem.u32(body + 8),
+        slot: rt.heap.mem.u32(body + 12),
+        generation: rt.heap.mem.u32(body + 16),
+    })
+}
+
+/// Close `body` (borrowed) on the host.
+fn body_close(cx: &mut Cx<'_>, body: u32) -> Res<()> {
+    let h = body_handle(cx.rt(), body)?;
+    cx.hosted_parts().1.http_body_close(h);
+    Ok(())
+}
+
+/// `http_stream_read(body, max)` (cps, as JS and wasm32): up to `max` bytes, empty at the end,
+/// `Err` after the body closed. A buffered body answers at once.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_read(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
+    let mut cx = Cx::native(ctx);
+    let rt = cx.rt();
+    let body = rt.take_fslot(frame, 0) as u32;
+    let max = rt.fslot(frame, 1) as i64;
+    let read = body_handle(rt, body).map(|h| cx.hosted_parts().1.http_body_read(h, max));
+    let rt = cx.rt();
+    rt.drop(body);
+    let r = read.and_then(|read| match read {
+        Ok(b) => {
+            let n = u32::try_from(b.len()).map_err(|_| Defect::HEAP_EXHAUSTED)?;
+            let p = rt.new_bytes(n)?;
+            rt.heap.mem.bytes_mut(p + 12, n).copy_from_slice(&b);
+            rt.ok(p)
+        }
+        Err(HostError::Err(m)) => {
+            let s = rt.new_string(m.as_bytes())?;
+            rt.err(s)
+        }
+        Err(e) => Err(super::sql::host_defect(rt, e)),
+    });
+    match r {
+        Ok(v) => ret(rt, u64::from(v)),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// `http_stream_closing(body, k)` (cps, as wasm32's): a finalizer closing `body`
+/// (`rt_code_http_body_close`, run on `fail`, defect or cancellation), `k()`, then on its
+/// return the finalizer popped and the body closed.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_closing(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
+    let mut cx = Cx::native(ctx);
+    let rt = cx.rt();
+    if rt.block(frame) == 1 {
+        let result = rt.take_ret();
+        let closer = rt.fin_pop();
+        let body = rt.slot(closer, 0) as u32;
+        let closed = body_close(&mut cx, body);
+        let rt = cx.rt();
+        rt.drop(closer);
+        return match closed {
+            Ok(()) => ret(rt, result),
+            Err(d) => rt.raise(d),
+        };
+    }
+    let body = rt.take_fslot(frame, 0) as u32;
+    let k = rt.take_fslot(frame, 1) as u32;
+    let closer = rt
+        .new_object(tag::CLOSURE, 24)
+        .inspect(|&c| {
+            rt.heap.mem.set_u32(c + 8, rt.sched.body_close_code);
+            rt.heap.mem.set_u32(c + 12, 1);
+            rt.set_slot(c, 0, u64::from(body));
+        })
+        .inspect_err(|_| rt.drop(body))
+        .and_then(|c| rt.fin_push(c));
+    if let Err(d) = closer {
+        rt.drop(k);
+        return rt.raise(d);
+    }
+    match rt.call_value(k, 0) {
+        Ok(_) => {
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// The finalizer `http_stream_closing` registers: closes the body in its capture.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_http_body_close(ctx: Ctx<'_>, env: u32, _frame: u32) -> u32 {
+    let mut cx = Cx::native(ctx);
+    let body = cx.rt().slot(env, 0) as u32;
+    let closed = body_close(&mut cx, body);
+    let rt = cx.rt();
+    match closed {
+        Ok(()) => ret(rt, UNIT as u64),
+        Err(d) => rt.raise(d),
+    }
 }

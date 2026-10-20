@@ -28,7 +28,7 @@ const ANSWERED: u32 = 1;
 
 /// A host error as the defect it is: `D090` for what the guest could not have passed, else
 /// `D091` with the host's text.
-fn host_defect(rt: &mut Rt, e: HostError) -> Defect {
+pub(super) fn host_defect(rt: &mut Rt, e: HostError) -> Defect {
     let (d, m) = match e {
         HostError::Fault(m) => (
             Defect {

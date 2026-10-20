@@ -186,6 +186,9 @@ retains earlier implementation history.
 - `std/stream` (design §17.284): `to_list` requires `max_items >= 0` (a negative bound is
   `D020`), and `lines` fails `MaxLine` on a final line without an LF longer than `max_line`
   (its CR counted), so no yielded line exceeds the bound.
+- Native target (experimental): `Http.stream` under `Http.scripted`, and `Http.body_source`
+  over its `Body`, run natively as on JS instead of stopping with the defect `D091`; the
+  native host keeps the scripted body's bytes and the runtime reads and closes it.
 - `sakura fmt` no longer refuses (`V9001`) a line comment that ends in a bare `\r` followed by
   spaces or tabs, such as `//\r `: the trailing `\r` is trimmed with the spaces, where it
   would otherwise end the line before the comment's text and change it.

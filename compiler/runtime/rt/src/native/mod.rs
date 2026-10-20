@@ -394,8 +394,9 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
 /// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
-/// not reached yet (Http, serve, JS handlers, the test runner) resolve to `rt_code_unsupported`,
-/// a `D090` when performed.
+/// not reached yet (Http's host side, serve, JS handlers, the test runner) resolve to
+/// `rt_code_unsupported`, a `D090` when performed; a buffered `Body`'s read and close
+/// (`Http.scripted`) are `hosted`'s.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
@@ -410,7 +411,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_console_print", e::rt_code_console_print),
         ("rt_code_console_read_line", e::rt_code_console_read_line),
         ("rt_code_file_close", e::rt_code_file_close),
-        ("rt_code_http_body_close", e::rt_code_unsupported),
+        ("rt_code_http_body_close", hosted::rt_code_http_body_close),
         ("rt_code_js_callback", e::rt_code_unsupported),
         ("rt_code_js_clause", e::rt_code_unsupported),
         ("rt_code_log_stderr_event", e::rt_code_log_stderr_event),
@@ -445,9 +446,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_clock_virtual_sleep", e::rt_k_clock_virtual_sleep),
         ("rt_k_file_closing", e::rt_k_file_closing),
         ("rt_k_http_send", e::rt_code_unsupported),
-        ("rt_k_http_stream_closing", e::rt_code_unsupported),
+        ("rt_k_http_stream_closing", hosted::rt_k_http_stream_closing),
         ("rt_k_http_stream_open", e::rt_code_unsupported),
-        ("rt_k_http_stream_read", e::rt_code_unsupported),
+        ("rt_k_http_stream_read", hosted::rt_k_http_stream_read),
         ("rt_k_property_run", e::rt_code_unsupported),
         ("rt_k_serve_listen", e::rt_code_unsupported),
         ("rt_k_test_expect_defect", e::rt_k_test_expect_defect),
