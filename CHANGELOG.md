@@ -115,6 +115,12 @@ retains earlier implementation history.
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.
 
+### Fixed
+
+- `sakura fmt` no longer refuses (`V9001`) a line comment that ends in a bare `\r` followed by
+  spaces or tabs, such as `//\r `: the trailing `\r` is trimmed with the spaces, where it
+  would otherwise end the line before the comment's text and change it.
+
 ### Security
 
 - `Http.scoped(hosts)` checks every redirect hop against its list, not only the first URL

@@ -221,9 +221,10 @@ fn protect_raw(s: &str) -> String {
     s.replace(RAW_NL, "\u{fdd0}e").replace('\n', "\u{fdd0}n")
 }
 
-/// Other whitespace-like characters, including CR, belong to a line comment until LF.
+/// Other whitespace-like characters, including CR, belong to a line comment until LF; a CR left
+/// at the end once spaces go would join the LF after it (§2), so it is layout too.
 fn trim_layout_space(s: &str) -> &str {
-    s.trim_end_matches([' ', '\t'])
+    s.trim_end_matches([' ', '\t', '\r'])
 }
 
 fn nl() -> Doc {
@@ -2028,5 +2029,28 @@ mod tests {
         assert_eq!((d.spans[0].start, d.spans[0].end), (28, 33));
         let d = at_original(d, &lf, &original);
         assert_eq!((d.spans[0].start, d.spans[0].end), (29, 33));
+    }
+
+    #[test]
+    fn a_bare_cr_before_trailing_space_in_a_comment_is_layout() {
+        // Fuzz (fmt_idempotent): trimming the space put the `\r` before the LF, where it ends
+        // the line instead of the comment, and the guard saw the comment change.
+        for (input, want) in [
+            ("//\r ", "//\n"),
+            ("// c\r \n", "// c\n"),
+            ("// a\rb \r\t\n", "// a\rb\n"),
+            (
+                "fn f() -> Int { 1 } // c\r \n",
+                "fn f() -> Int { 1 } // c\n",
+            ),
+            (
+                "/// d\r \r\nfn f() -> Int { 1 }\r\n",
+                "/// d\nfn f() -> Int { 1 }\n",
+            ),
+        ] {
+            let out = format(input).unwrap();
+            assert_eq!(out, want, "{input:?}");
+            assert_eq!(format(&out).unwrap(), out);
+        }
     }
 }
