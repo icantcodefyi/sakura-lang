@@ -12,7 +12,10 @@ remains the current policy until the owner records acceptance and updates it.
   The human contributor owns acceptance and the resulting guarantees.
 - Discussion and PR: not opened. The owner requested this draft directly on main.
   The pitch is design §17.225–226, round 23, commit `a7d9e205`.
-- Decision status: Draft.
+- Decision status: Draft. The owner decided on 2026-10-21 that this RFC does not gate
+  `v1.0.0-beta.1`: the beta ships first with a looser promise, "it may have bugs and may
+  change before 1.0.0", every breaking change listed in the CHANGELOG with a migration
+  (STABILITY.md "Today", design §17.291's addendum).
 - Implementation status: Partial existing checks; enforcement gaps below remain open.
 - Stabilization status: Not stabilized.
 - FCP start/end: Not started; the maintainer records seven calendar days under the

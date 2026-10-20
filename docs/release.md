@@ -452,6 +452,14 @@ for neither the seven clean fuzz nights nor a soak; `v1.0.0` waits for both (§1
 and is cut from a commit whose only difference from the last beta is its preparation commit.
 Every beta's notes say "beta: feature-complete for 1.0, not production".
 
+Owner decision, 2026-10-21 (overrides part of design §17.291; its addendum): the beta is
+released as soon as its set is on `main`, and its promise is loosened. `v1.0.0-beta.1` says
+plainly that it may have bugs and may change before 1.0.0; every breaking change is listed in
+the CHANGELOG with a migration. RFC 0001's seven-day FCP does not gate the beta. It is
+published to GitHub releases (prerelease), npm (dist-tag `beta`; `latest` stays `0.1.0`) and
+Homebrew (`sakuralang-beta`). `release.py` writes that wording into a beta's notes and
+archive READMEs.
+
 Present candidate SHA, version, run ID, final digest inventory, platforms/floors,
 checks, channel artifacts, signing and limitations. Record explicit approval for
 the tag and channels. Changed source/binary/packaging bytes invalidate the
@@ -487,8 +495,9 @@ and summary before approving, not only the dry run's.
 1. **GitHub first.** Approve `release-github` for the tagged run/inventory. Create
    release `v<version>`, marked latest or prerelease by the version string as above.
    Publish tested bytes, final hashes, notices, skill assets, provenance and approved
-   signatures/attestations. Notes call the version a pre-1.0 preview with no stability promise yet
-   (RFC 0001, STABILITY.md) and state tested platforms/floors, Node 26,
+   signatures/attestations. Notes call a 0.x version a pre-1.0 preview with no stability promise
+   yet (RFC 0001, STABILITY.md), and a `-beta.N` a beta of 1.0 that may have bugs and may change
+   before 1.0.0, not for production, and state tested platforms/floors, Node 26,
    solver scope and signing/notarization status. Verify downloaded assets. Run
    `gh attestation verify <downloaded-file> --repo icantcodefyi/sakuralang` and
    inspect expected source/workflow identity.

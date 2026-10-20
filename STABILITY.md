@@ -3,7 +3,14 @@
 ## Today: pre-alpha / design phase
 
 Sakura Lang has a published `0.1.0` preview and a source-buildable compiler,
-but no stable language/API contract. Release-specific platform evidence is listed
+but no stable language/API contract.
+
+The next release is **`v1.0.0-beta.1`**, a beta of 1.0 and not for production (design
+§17.291 and its 2026-10-21 addendum). Its promise is deliberately loose: **it may have bugs
+and it may change before 1.0.0**, including the contracts the inventory below lists; every
+breaking change between the beta and 1.0.0 is listed in the [CHANGELOG](CHANGELOG.md) with a
+migration. RFC 0001's final comment period does not gate the beta; its guarantees bind from
+the release at which the owner accepts it, and in full from `v1.0.0`. Release-specific platform evidence is listed
 on the [install page](website/content/docs/install.mdx).
 [The design](docs/design.md) is provisional; examples are illustrative unless
 explicitly backed by a runnable test. Research and performance goals do not imply
