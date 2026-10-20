@@ -1,0 +1,13 @@
+// milestone: M3
+// expect: V0004
+// expect-span: V0004 9:14
+// §17.294 WP-5: the `\` inside the hole `{` opened is one V0004 for the whole literal, and the
+// lexer resumes after the literal's closing `"`, so the quotes below still pair up and nothing
+// else is reported (the dogfood report was 83 diagnostics). The message says to write `\{`.
+pub fn stock() -> String {
+  let tail = "\"reserved\": 3}"
+  let head = "{\"available\": 10,"
+  head + tail
+}
+
+pub fn label() -> String { "units: {1 + 2}" }

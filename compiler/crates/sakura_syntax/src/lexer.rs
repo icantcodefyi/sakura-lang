@@ -388,6 +388,51 @@ impl Lexer<'_> {
         self.push(kind, start);
     }
 
+    /// An invalid character inside an interpolation hole ends the string literal around it
+    /// (design §17.294 WP-5): the literal, from its `"` to its closing `"` on this line (an
+    /// escaped `\"` does not close it) or the line's end, becomes one `ERROR_TOKEN` with one
+    /// `V0004`, and lexing resumes outside it, so the rest of the file's quotes still pair up.
+    fn hole_error(&mut self) -> bool {
+        let Some(i) = self.stack.iter().rposition(|c| *c == Ctx::Interp) else {
+            return false;
+        };
+        let Some(&Ctx::Str(start)) = i.checked_sub(1).and_then(|j| self.stack.get(j)) else {
+            return false;
+        };
+        let bad = self.src[self.pos..].chars().next().unwrap_or('?');
+        while let Some(b) = self.peek(0) {
+            match b {
+                b'\n' => break,
+                b'"' => {
+                    self.pos += 1;
+                    break;
+                }
+                b'\\' => {
+                    self.pos += 1;
+                    if self.peek(0).is_some_and(|b| b != b'\n') {
+                        self.pos += self.char_len();
+                    }
+                }
+                _ => self.pos += self.char_len(),
+            }
+        }
+        self.stack.truncate(i - 1);
+        while self.tokens.last().is_some_and(|t| t.start >= start) {
+            self.tokens.pop();
+        }
+        self.errors.retain(|e| e.start < start);
+        self.error(
+            codes::INVALID_CHAR,
+            format!(
+                "unexpected character `{bad}` in an interpolation; `{{` opens an interpolation; write `\\{{`"
+            ),
+            start as usize,
+            self.pos,
+        );
+        self.push(ERROR_TOKEN, start as usize);
+        true
+    }
+
     fn punct_or_error(&mut self) {
         let start = self.pos;
         let two = match (self.peek(0), self.peek(1)) {
@@ -430,6 +475,7 @@ impl Lexer<'_> {
             b'%' => PERCENT,
             b'<' => LT,
             b'>' => GT,
+            _ if self.hole_error() => return,
             _ => {
                 while self.pos < self.src.len() && !starts_token(&self.src[self.pos..]) {
                     self.pos += self.char_len();
@@ -522,6 +568,7 @@ fn ends_statement(kind: SyntaxKind) -> bool {
             | BREAK_KW
             | CONTINUE_KW
             | RETURN_KW
+            | ERROR_TOKEN
     )
 }
 

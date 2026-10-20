@@ -14,7 +14,9 @@
 //! ```
 //!
 //! - An invalid character (`V0004`) ends its statement without further diagnostics: the rest
-//!   of the statement becomes an `ERROR` node so later phases see no cascade.
+//!   of the statement becomes an `ERROR` node so later phases see no cascade. Inside an
+//!   interpolation hole it ends the string literal around it, which becomes one `ERROR_TOKEN`
+//!   up to its closing `"` on that line (design §17.294 WP-5).
 //! - [`parse`] / [`parse_file`] never panic and always terminate; every byte of the input is in
 //!   the tree (`root.to_string() == text`). Problems are reported in [`Parse::errors`] as
 //!   [`Diagnostic`]s with `V0xxx` codes from [`codes`], and unplaceable tokens are wrapped in

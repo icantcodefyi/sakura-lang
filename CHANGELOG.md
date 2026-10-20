@@ -421,6 +421,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - A handler that answers a served WebSocket upgrade request without upgrading it, with a status
   outside `100..=999`, gets the `D091` defect and a 500, as a plain request does, where the raw
   path wrote the status line as given (design §17.295 F2).
+- An invalid character inside a string's interpolation hole, as in `"{\"available\": 10,"`,
+  is one `V0004` for the whole literal, whose message says that `{` opens an interpolation
+  and to write `\{` (design §17.294 WP-5); the lexer resumes after the literal's closing `"`
+  on that line, where the quotes of the rest of the file paired up wrongly and one byte gave
+  83 diagnostics. An invalid character at a line's end now ends its statement there.
 
 ### Security
 
