@@ -15,7 +15,17 @@ publish.workspace = true
 default = []
 # The crypto crates are native-only: the wasm32 object is built by `rustc` with no dependencies
 # (`sakura_codegen_wasm/build.rs`), so `std/crypto` on WASM is the host's (RFC 0002 §7).
-native = ["dep:libc", "dep:sha2", "dep:hmac", "dep:hkdf", "dep:pbkdf2"]
+native = [
+  "dep:libc",
+  "dep:sha2",
+  "dep:hmac",
+  "dep:hkdf",
+  "dep:pbkdf2",
+  "dep:aes-gcm",
+  "dep:p256",
+  "dep:ed25519-dalek",
+  "dep:x25519-dalek",
+]
 # Allocator annotations for the sanitizer lanes (design §17.173 (2), (3); `mem.rs`): `asan`
 # links only under `-Zsanitizer=address`, `valgrind` reports only under Memcheck.
 asan = ["native"]
@@ -28,6 +38,10 @@ sha2 = { workspace = true, optional = true }
 hmac = { workspace = true, optional = true }
 hkdf = { workspace = true, optional = true }
 pbkdf2 = { workspace = true, optional = true }
+aes-gcm = { workspace = true, optional = true }
+p256 = { workspace = true, optional = true }
+ed25519-dalek = { workspace = true, optional = true }
+x25519-dalek = { workspace = true, optional = true }
 
 [dev-dependencies]
 wasmparser.workspace = true

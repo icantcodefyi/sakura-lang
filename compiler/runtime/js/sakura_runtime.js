@@ -2660,6 +2660,92 @@ export function crypto_pbkdf2(alg, password, salt, iterations, len) {
   return new Uint8Array(nodeCrypto().pbkdf2Sync(password, salt, iterations, len, HASHES[alg]));
 }
 
+// Tier 1b. `curve` is `std/crypto`'s `curve(alg)`: 0 P-256, 1 Ed25519, 2 X25519. A private key is
+// the 32-byte scalar or seed, a public key the point (65-byte uncompressed SEC1 on P-256, 32
+// bytes otherwise); Node takes them wrapped in the fixed DER prefixes below.
+const PKCS8 = [
+  "3041020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420",
+  "302e020100300506032b657004220420",
+  "302e020100300506032b656e04220420",
+].map((h) => Buffer.from(h, "hex"));
+const SPKI = [
+  "3059301306072a8648ce3d020106082a8648ce3d030107034200",
+  "302a300506032b6570032100",
+  "302a300506032b656e032100",
+].map((h) => Buffer.from(h, "hex"));
+const privateKeyOf = (curve, d) =>
+  nodeCrypto().createPrivateKey({ key: Buffer.concat([PKCS8[curve], d]), format: "der", type: "pkcs8" });
+const publicKeyOf = (curve, p) =>
+  nodeCrypto().createPublicKey({ key: Buffer.concat([SPKI[curve], p]), format: "der", type: "spki" });
+/** ECDSA P-256 signs SHA-256 digests; signatures are `r || s` (IEEE P1363), as Web Crypto's. */
+const signing = (curve, key) => (curve === 0 ? ["sha256", { key, dsaEncoding: "ieee-p1363" }] : [null, key]);
+const p256 = (d) => {
+  const e = nodeCrypto().createECDH("prime256v1");
+  e.setPrivateKey(d);
+  return e;
+};
+
+/** The public key, or no bytes for a P-256 scalar of zero or at least the order (Node refuses those). */
+export function crypto_public_of(curve, d) {
+  try {
+    if (curve === 0) return new Uint8Array(p256(d).getPublicKey());
+    const spki = nodeCrypto().createPublicKey(privateKeyOf(curve, d)).export({ format: "der", type: "spki" });
+    return new Uint8Array(spki.subarray(SPKI[curve].length));
+  } catch {
+    return new Uint8Array(0);
+  }
+}
+/** A P-256 point must decode on the curve; Ed25519 and X25519 take any 32 bytes. */
+export function crypto_public_valid(curve, p) {
+  if (curve !== 0) return p.length === 32;
+  try {
+    publicKeyOf(0, p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** ECDSA here is randomized (OpenSSL), so signatures are not canonical bytes; Ed25519's are. */
+export function crypto_sign(curve, d, data) {
+  const [hash, key] = signing(curve, privateKeyOf(curve, d));
+  return new Uint8Array(nodeCrypto().sign(hash, data, key));
+}
+export function crypto_sign_verify(curve, p, sig, data) {
+  try {
+    const [hash, key] = signing(curve, publicKeyOf(curve, p));
+    return nodeCrypto().verify(hash, data, key, sig);
+  } catch {
+    return false;
+  }
+}
+/** X25519 with a small-order point would be all zeros: Node refuses it, and this answers no bytes. */
+export function crypto_ecdh(curve, d, p) {
+  if (curve === 0) return new Uint8Array(p256(d).computeSecret(p));
+  try {
+    const privateKey = privateKeyOf(curve, d);
+    return new Uint8Array(nodeCrypto().diffieHellman({ privateKey, publicKey: publicKeyOf(curve, p) }));
+  } catch {
+    return new Uint8Array(0);
+  }
+}
+/** AES-GCM with a 96-bit nonce and a 128-bit tag: ciphertext `||` tag. */
+export function crypto_aes_gcm_seal(key, nonce, aad, pt) {
+  const c = nodeCrypto().createCipheriv(`aes-${key.length * 8}-gcm`, key, nonce, { authTagLength: 16 });
+  c.setAAD(aad);
+  return new Uint8Array(Buffer.concat([c.update(pt), c.final(), c.getAuthTag()]));
+}
+/** `Some(plaintext)`, or `None` when the tag does not verify. */
+export function crypto_aes_gcm_open(key, nonce, aad, ct) {
+  const d = nodeCrypto().createDecipheriv(`aes-${key.length * 8}-gcm`, key, nonce, { authTagLength: 16 });
+  d.setAuthTag(ct.subarray(ct.length - 16));
+  d.setAAD(aad);
+  try {
+    return Some(new Uint8Array(Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()])));
+  } catch {
+    return None;
+  }
+}
+
 // ---------------------------------------------------------------------------------------------
 // Option
 

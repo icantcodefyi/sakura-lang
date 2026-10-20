@@ -9,7 +9,9 @@ the `sakura` skill's `references/stdlib.md`. The design reference is `docs/desig
 Status: every module checks clean and its `test` blocks pass under `sakura test --std`.
 Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s primitives are
 `node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0) and
-RustCrypto on native.
+RustCrypto on native. Tier 1b (AES-GCM, ECDSA and ECDH over P-256, Ed25519, X25519, and the
+`Pkcs8`, `Spki` and `Jwk` key formats) runs on JavaScript and native; on WebAssembly its
+primitives wait for their host imports (ABI 1.9.0), so a call is `D090` until then.
 
 ## Prelude
 
@@ -285,18 +287,23 @@ type Trust
 
 ```sakura fragment
 type Digest = Sha256 | Sha384 | Sha512
-type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest)
-type Usage = Sign | Verify | DeriveBits
-type KeyFormat = Raw
-type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
+type Curve = P256
+type AesLength = Aes128 | Aes256
+type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest) | AesGcm(AesLength) | Ecdsa(Curve) | Ecdh(Curve) | Ed25519 | X25519
+type Usage = Sign | Verify | DeriveBits | Encrypt | Decrypt
+type KeyFormat = Raw | Pkcs8 | Spki | Jwk
+type KeyKind = SecretKey | PublicKey | PrivateKey
+type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty | Format(KeyFormat) | Malformed
 error KeyError(reason: KeyReason)
-type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
+type CryptoReason = Length(Int) | Iterations(Int) | Info(Int) | Nonce(Int) | Tag | ZeroSecret
 error CryptoError(reason: CryptoReason)
-opaque type CryptoKey = { algorithm: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes> }
+opaque type CryptoKey = { algorithm: Algorithm, kind: KeyKind, usages: List<Usage>, extractable: Bool, material: Secret<Bytes> }
+type KeyPair = { public: CryptoKey, private: CryptoKey }
 type HkdfParams = { salt: Bytes, info: Bytes }
 type Pbkdf2Params = { salt: Bytes, iterations: Int }
-type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params)
+type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params) | EcdhWith(CryptoKey)
 fn algorithm(key: CryptoKey) -> Algorithm
+fn kind(key: CryptoKey) -> KeyKind
 fn usages(key: CryptoKey) -> List<Usage>
 fn extractable(key: CryptoKey) -> Bool
 fn allows(alg: Algorithm, usage: Usage) -> Bool    // @total
@@ -304,10 +311,14 @@ fn permits(key: CryptoKey, usage: Usage) -> Bool    // @total
 fn digest(alg: Digest, data: Bytes) -> Bytes
 fn import_key(format: KeyFormat, alg: Algorithm, usages: List<Usage>, extractable: Bool, material: Secret<Bytes>) -> Result<CryptoKey, KeyError>
 fn export_key(key: CryptoKey, format: KeyFormat) -> Result<Bytes, KeyError>
-fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey ! {Random} requires is_hmac(alg) && usages_error(alg, usages) == None
+fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey ! {Random} requires (is_hmac(alg) || is_aes(alg)) && usages_error(alg, SecretKey, usages) == None
+fn generate_key_pair(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> KeyPair ! {Random} requires curve_of(alg) != None && List.all(usages, fn(u) { allows(alg, u) }) && List.any(usages, fn(u) { u != Verify })
 fn hmac(key: CryptoKey, data: Bytes) -> Bytes requires is_hmac(key.algorithm) && permits(key, Sign)
-fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool requires is_hmac(key.algorithm) && permits(key, Verify)
-fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError> requires permits(key, DeriveBits) && fits(key.algorithm, params)
+fn sign(key: CryptoKey, data: Bytes) -> Bytes ! {Random} requires signs(key.algorithm) && permits(key, Sign)
+fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool requires signs(key.algorithm) && permits(key, Verify)
+fn encrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, plaintext: Bytes) -> Result<Bytes, CryptoError> requires is_aes(key.algorithm) && permits(key, Encrypt)
+fn decrypt(key: CryptoKey, nonce: Bytes, aad: Bytes, ciphertext: Bytes) -> Result<Bytes, CryptoError> requires is_aes(key.algorithm) && permits(key, Decrypt)
+fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError> requires permits(key, DeriveBits) && fits(key, params)
 ```
 
 ### `std/decimal`

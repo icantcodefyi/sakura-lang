@@ -1569,3 +1569,79 @@ test("crypto_hkdf matches RFC 5869 and crypto_pbkdf2 matches RFC 7914 §11", () 
     assert.equal(hex(rt.crypto_pbkdf2(HASH_CODE[alg], enc(password), enc(salt), Number(iterations), Number(len))), dk);
   }
 });
+
+// Tier 1b. A failing check names the row, never a key or a signature.
+const [P256, ED25519, X25519] = [0, 1, 2];
+const same = (a, b) => Buffer.from(a).equals(Buffer.from(b));
+
+test("crypto_aes_gcm_seal and crypto_aes_gcm_open match NIST CAVP GCM", () => {
+  let [sealed, refused] = [0, 0];
+  for (const [kind, bits, key, iv, pt, aad, ct, tag] of vectorRows("aes_gcm.txt")) {
+    const [k, n, a, c] = [unhex(key), unhex(iv), unhex(aad), unhex(ct + tag)];
+    const row = `${kind} ${bits} iv ${iv}`;
+    if (kind === "encrypt") {
+      assert.ok(same(rt.crypto_aes_gcm_seal(k, n, a, unhex(pt)), c), row);
+      assert.ok(same(rt.crypto_aes_gcm_open(k, n, a, c).fields[0], unhex(pt)), row);
+      sealed++;
+    } else {
+      assert.equal(rt.crypto_aes_gcm_open(k, n, a, c), rt.None, row);
+      refused++;
+    }
+  }
+  assert.deepEqual([sealed, refused], [50, 50]);
+});
+
+test("Ed25519 matches RFC 8032 §7.1", () => {
+  const rows = vectorRows("ed25519.txt");
+  assert.equal(rows.length, 5);
+  for (const [t, sk, pk, msg, sig] of rows) {
+    assert.ok(same(rt.crypto_public_of(ED25519, unhex(sk)), unhex(pk)), `test ${t}`);
+    assert.ok(same(rt.crypto_sign(ED25519, unhex(sk), unhex(msg)), unhex(sig)), `test ${t}`);
+    assert.ok(rt.crypto_sign_verify(ED25519, unhex(pk), unhex(sig), unhex(msg)), `test ${t}`);
+    const flipped = unhex(sig);
+    flipped[63] ^= 1;
+    assert.ok(!rt.crypto_sign_verify(ED25519, unhex(pk), flipped, unhex(msg)), `test ${t}`);
+    assert.ok(!rt.crypto_sign_verify(ED25519, unhex(pk), unhex(sig).subarray(0, 63), unhex(msg)), `test ${t}`);
+  }
+});
+
+test("X25519 matches RFC 7748 and a small-order point gives no bytes", () => {
+  const rows = vectorRows("x25519.txt");
+  assert.equal(rows.length, 6);
+  for (const [c, k, u, out] of rows) {
+    assert.ok(same(rt.crypto_ecdh(X25519, unhex(k), unhex(u)), unhex(out)), `case ${c}`);
+    if (c.endsWith("-public")) assert.ok(same(rt.crypto_public_of(X25519, unhex(k)), unhex(out)), `case ${c}`);
+  }
+  assert.equal(rt.crypto_ecdh(X25519, new Uint8Array(32).fill(7), new Uint8Array(32)).length, 0);
+});
+
+test("P-256 ECDH matches RFC 5903 §8.1 and refuses non-keys", () => {
+  const [i, gix, giy, r, grx, gry, girx] = vectorRows("ecdh_p256.txt")[0];
+  const [gi, gr] = [unhex("04" + gix + giy), unhex("04" + grx + gry)];
+  assert.ok(same(rt.crypto_public_of(P256, unhex(i)), gi) && same(rt.crypto_public_of(P256, unhex(r)), gr));
+  assert.ok(rt.crypto_public_valid(P256, gi) && rt.crypto_public_valid(P256, gr));
+  assert.ok(same(rt.crypto_ecdh(P256, unhex(i), gr), unhex(girx)));
+  assert.ok(same(rt.crypto_ecdh(P256, unhex(r), gi), unhex(girx)));
+  const order = unhex("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
+  assert.equal(rt.crypto_public_of(P256, new Uint8Array(32)).length, 0);
+  assert.equal(rt.crypto_public_of(P256, order).length, 0);
+  const off = gi.slice();
+  off[64] ^= 1;
+  assert.ok(!rt.crypto_public_valid(P256, off));
+});
+
+test("ECDSA P-256 verifies RFC 6979 §A.2.5 and its own signatures", () => {
+  const rows = vectorRows("ecdsa_p256.txt");
+  assert.equal(rows.length, 2);
+  for (const [m, x, ux, uy, msg, , r, s] of rows) {
+    const pub = unhex("04" + ux + uy);
+    assert.ok(same(rt.crypto_public_of(P256, unhex(x)), pub), `message ${m}`);
+    assert.ok(rt.crypto_sign_verify(P256, pub, unhex(r + s), unhex(msg)), `message ${m}`);
+    // OpenSSL signs with a random nonce, so the bytes differ from the table's; it still verifies.
+    const mine = rt.crypto_sign(P256, unhex(x), unhex(msg));
+    assert.equal(mine.length, 64);
+    assert.ok(rt.crypto_sign_verify(P256, pub, mine, unhex(msg)), `message ${m}`);
+    assert.ok(!rt.crypto_sign_verify(P256, pub, mine, new TextEncoder().encode("other")), `message ${m}`);
+    assert.ok(!rt.crypto_sign_verify(P256, pub, new Uint8Array(64), unhex(msg)), `message ${m}`);
+  }
+});

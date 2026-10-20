@@ -1,0 +1,455 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::core::Trust
+layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
+layout 6 variant std::crypto::Curve | P256 16b ()
+layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
+layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
+layout 11 record std::crypto::KeyPair | KeyPair 32b (public: word*, private: word*)
+layout 12 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 13 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
+layout 14 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 15 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 16 variant std::list::Builder
+layout 17 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 18 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 19 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 20 shape |  32b (word*, word*)
+layout 21 shape |  32b (i64, word*)
+layout 22 shape |  24b (i64)
+layout 23 shape |  56b (word*, word*, word*, word*, word*)
+layout 24 shape |  40b (word*, word*, word*)
+
+fn main#0 pub top -> unit ; main::crypto_spki_import_rejects_garbage, frame 197 slots [%3 word*, %4 word*, %9 word*, %10 word*, %13 word*, %14 word*, %21 word*, %22 word*, %23 word*, %24 i64, %40 word*, %41 word*, %42 word*, %43 i64, %44 word*, %52 word*, %53 word*, %54 word*, %55 i64, %56 word*, %59 word*, %60 word*, %61 word*, %62 i64, %63 word*, %70 word*, %71 word*, %72 word*, %73 i64, %74 word*, %75 word*, %76 word*, %167 word*, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %173 word*, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %201 word*, %202 word*, %203 word*, %204 word*, %205 word*, %206 word*, %215 word*, %216 word*, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %224 word*, %225 word*, %226 word*, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 word*, %234 word*, %247 word*, %248 word*, %249 word*, %250 word*, %251 word*, %252 word*, %253 word*, %254 word*, %255 word*, %256 word*, %257 word*, %258 word*, %259 word*, %260 word*, %261 word*, %262 word*, %263 word*, %264 word*, %265 word*, %266 word*, %267 word*, %270 word*, %271 word*, %272 word*, %273 word*, %274 word*, %275 word*, %276 word*, %277 word*, %278 word*, %279 word*, %280 word*, %281 word*, %282 word*, %283 word*, %284 word*, %285 word*, %286 word*, %287 word*, %288 word*, %289 word*, %290 word*, %299 word*, %300 word*, %301 word*, %302 word*, %303 word*, %304 word*, %305 word*, %306 word*, %307 word*, %308 word*, %309 word*, %310 word*, %311 word*, %312 word*, %313 word*, %314 word*, %315 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 word*, %325 word*, %326 word*, %327 word*, %328 word*, %329 word*, %330 word*, %331 word*, %332 word*, %333 word*, %334 word*, %335 word*, %336 word*, %337 word*, %338 word*, %339 word*, %340 word*, %341 word*, %342 word*, %343 word*, %344 word*, %345 word*, %346 word*, %378 word*, %379 word*, %380 i64, %381 i64, %382 word*, %387 word*, %388 word*, %389 i64, %390 i64, %391 word*, %394 bool, %395 word*, %396 i64, %397 i64, %410 word*, %411 word*, %412 word*, %413 i64, %414 word*, %420 word*, %421 word*]
+  b0():
+    %0 v: ptr = const static std::crypto::Curve.P256
+    %1 r: ptr = alloc std::crypto::Algorithm.Ecdsa(%0)
+    %2 lit: i64 = const 2
+    call seeded#2(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 r: ptr):
+    handle_push %3
+    %415 v: ptr = const static std::crypto::Usage.Sign
+    %416 v: ptr = const static std::crypto::Usage.Verify
+    %417 xs: ptr = alloc list(%415, %416)
+    %418 lit: bool = const true
+    %419 $site: i64 = const 10
+    dup %4
+    call generate_key_pair#3(%4, %417, %418, %419) -> b28(%4)
+  b2(%5 v: ptr, %6 r: ptr):
+    %7 public: word = proj %5.0 std::crypto::KeyPair
+    drop %5
+    %8 v: ptr = const static std::crypto::KeyFormat.Spki
+    call export_key#4(%7, %8) -> b3(%6)
+  b3(%9 r: ptr, %10 r: ptr):
+    %11 xs: ptr = alloc list()
+    %12 r: ptr = $bytes_from_list(%11)
+    call unwrap_or#5(%9, %12) -> b4(%10)
+  b4(%13 r: word, %14 r: ptr):
+    dup %13
+    %15 r: i64 = $bytes_len(%13)
+    %16 lit: i64 = const 1
+    %17 t: i64 = intsub %15, %16
+    dup %13
+    %18 r: ptr = $bytes_get(%13, %17)
+    %19 lit: i64 = const 0
+    %20 box: word = box %19
+    call unwrap_or#6(%18, %20) -> b5(%14, %13, %15)
+  b5(%21 r: word, %22 r: ptr, %23 r: ptr, %24 r: i64):
+    %25 unbox: i64 = unbox %21
+    drop %21
+    %26 lit: i64 = const 1
+    %27 t: i64 = intsub %24, %26
+    %28 lit: i64 = const 0
+    dup %23
+    %29 r: ptr = $bytes_slice(%23, %28, %27)
+    %30 lit: i64 = const 1
+    %31 t: i64 = intadd %25, %30
+    %32 lit: i64 = const 256
+    %33 t: i64 = intrem %31, %32
+    %34 box: word = box %33
+    %35 xs: ptr = alloc list(%34)
+    %36 r: ptr = $bytes_from_list(%35)
+    %37 xs: ptr = alloc list(%29, %36)
+    %38 r: ptr = $bytes_concat(%37)
+    %39 lit: i64 = const 2
+    call seeded#2(%39) -> b6(%22, %23, %24, %38)
+  b6(%40 r: ptr, %41 r: ptr, %42 r: ptr, %43 r: i64, %44 r: ptr):
+    handle_push %40
+    %405 v: ptr = const static std::crypto::Algorithm.Ed25519
+    %406 v: ptr = const static std::crypto::Usage.Sign
+    %407 xs: ptr = alloc list(%406)
+    %408 lit: bool = const true
+    %409 $site: i64 = const 9
+    call generate_key_pair#3(%405, %407, %408, %409) -> b27(%41, %42, %43, %44)
+  b7(%45 v: ptr, %46 r: ptr, %47 r: ptr, %48 r: i64, %49 r: ptr):
+    %50 public: word = proj %45.0 std::crypto::KeyPair
+    drop %45
+    %51 v: ptr = const static std::crypto::KeyFormat.Spki
+    call export_key#4(%50, %51) -> b8(%46, %47, %48, %49)
+  b8(%52 r: ptr, %53 r: ptr, %54 r: ptr, %55 r: i64, %56 r: ptr):
+    %57 xs: ptr = alloc list()
+    %58 r: ptr = $bytes_from_list(%57)
+    call unwrap_or#5(%52, %58) -> b9(%53, %54, %55, %56)
+  b9(%59 r: word, %60 r: ptr, %61 r: ptr, %62 r: i64, %63 r: ptr):
+    %64 lit: i64 = const 26
+    dup %61
+    %65 r: ptr = $bytes_slice(%61, %64, %62)
+    %66 lit: i64 = const 64
+    dup %65
+    %67 r: ptr = $bytes_get(%65, %66)
+    %68 lit: i64 = const 0
+    %69 box: word = box %68
+    call unwrap_or#6(%67, %69) -> b10(%60, %61, %62, %63, %59, %65)
+  b10(%70 r: word, %71 r: ptr, %72 r: ptr, %73 r: i64, %74 r: ptr, %75 r: ptr, %76 r: ptr):
+    %77 unbox: i64 = unbox %70
+    drop %70
+    %78 lit: i64 = const 2
+    %79 t: i64 = intrem %77, %78
+    %80 lit: i64 = const 2
+    %81 t: i64 = intadd %80, %79
+    %82 box: word = box %81
+    %83 xs: ptr = alloc list(%82)
+    %84 r: ptr = $bytes_from_list(%83)
+    %85 lit: i64 = const 1
+    %86 lit: i64 = const 33
+    dup %76
+    %87 r: ptr = $bytes_slice(%76, %85, %86)
+    %88 xs: ptr = alloc list(%84, %87)
+    %89 r: ptr = $bytes_concat(%88)
+    %90 v: ptr = const static std::crypto::Usage.Verify
+    %91 xs: ptr = alloc list(%90)
+    %92 v: ptr = const static std::crypto::KeyFormat.Spki
+    %93 lit: ptr = const str 0
+    dup %71
+    dup %72
+    dup %91
+    %94 tup: ptr = alloc tuple#23(word, word, word, word, word)(%93, %92, %71, %91, %72)
+    %95 v: ptr = const static std::crypto::KeyFormat.Spki
+    %96 xs: ptr = alloc list()
+    %97 r: ptr = $bytes_from_list(%96)
+    %98 lit: ptr = const str 1
+    dup %71
+    dup %91
+    %99 tup: ptr = alloc tuple#23(word, word, word, word, word)(%98, %95, %71, %91, %97)
+    %100 v: ptr = const static std::crypto::KeyFormat.Spki
+    %101 lit: ptr = const str 2
+    %102 r: ptr = $string_to_bytes(%101)
+    %103 lit: ptr = const str 3
+    dup %71
+    dup %91
+    %104 tup: ptr = alloc tuple#23(word, word, word, word, word)(%103, %100, %71, %91, %102)
+    %105 v: ptr = const static std::crypto::KeyFormat.Spki
+    %106 lit: i64 = const 1
+    %107 t: i64 = intsub %73, %106
+    %108 lit: i64 = const 0
+    dup %72
+    %109 r: ptr = $bytes_slice(%72, %108, %107)
+    %110 lit: ptr = const str 4
+    dup %71
+    dup %91
+    %111 tup: ptr = alloc tuple#23(word, word, word, word, word)(%110, %105, %71, %91, %109)
+    %112 v: ptr = const static std::crypto::KeyFormat.Spki
+    %113 lit: i64 = const 0
+    %114 box: word = box %113
+    %115 xs: ptr = alloc list(%114)
+    %116 r: ptr = $bytes_from_list(%115)
+    dup %72
+    %117 xs: ptr = alloc list(%72, %116)
+    %118 r: ptr = $bytes_concat(%117)
+    %119 lit: ptr = const str 5
+    dup %71
+    dup %91
+    %120 tup: ptr = alloc tuple#23(word, word, word, word, word)(%119, %112, %71, %91, %118)
+    %121 v: ptr = const static std::crypto::KeyFormat.Spki
+    %122 lit: ptr = const str 6
+    dup %71
+    dup %91
+    %123 tup: ptr = alloc tuple#23(word, word, word, word, word)(%122, %121, %71, %91, %74)
+    %124 v: ptr = const static std::crypto::KeyFormat.Spki
+    %125 lit: ptr = const str 7
+    dup %71
+    dup %75
+    dup %91
+    %126 tup: ptr = alloc tuple#23(word, word, word, word, word)(%125, %124, %71, %91, %75)
+    %127 v: ptr = const static std::crypto::KeyFormat.Spki
+    %128 v: ptr = const static std::crypto::Algorithm.X25519
+    %129 xs: ptr = alloc list()
+    %130 lit: ptr = const str 8
+    %131 tup: ptr = alloc tuple#23(word, word, word, word, word)(%130, %127, %128, %129, %75)
+    %132 v: ptr = const static std::crypto::KeyFormat.Spki
+    %133 v: ptr = const static std::crypto::Algorithm.Ed25519
+    %134 lit: ptr = const str 9
+    dup %72
+    dup %91
+    %135 tup: ptr = alloc tuple#23(word, word, word, word, word)(%134, %132, %133, %91, %72)
+    %136 v: ptr = const static std::crypto::KeyFormat.Spki
+    %137 v: ptr = const static std::crypto::Digest.Sha256
+    %138 r: ptr = alloc std::crypto::Algorithm.Hmac(%137)
+    %139 v: ptr = const static std::crypto::Usage.Sign
+    %140 xs: ptr = alloc list(%139)
+    %141 lit: ptr = const str 10
+    dup %72
+    %142 tup: ptr = alloc tuple#23(word, word, word, word, word)(%141, %136, %138, %140, %72)
+    %143 v: ptr = const static std::crypto::KeyFormat.Raw
+    %144 lit: ptr = const str 11
+    dup %71
+    dup %76
+    dup %91
+    %145 tup: ptr = alloc tuple#23(word, word, word, word, word)(%144, %143, %71, %91, %76)
+    %146 v: ptr = const static std::crypto::KeyFormat.Raw
+    %147 lit: ptr = const str 12
+    dup %71
+    %148 tup: ptr = alloc tuple#23(word, word, word, word, word)(%147, %146, %71, %91, %89)
+    %149 v: ptr = const static std::crypto::KeyFormat.Raw
+    %150 v: ptr = const static std::crypto::Usage.Sign
+    %151 xs: ptr = alloc list(%150)
+    %152 lit: ptr = const str 13
+    dup %71
+    dup %76
+    %153 tup: ptr = alloc tuple#23(word, word, word, word, word)(%152, %149, %71, %151, %76)
+    %154 v: ptr = const static std::crypto::KeyFormat.Raw
+    %155 v: ptr = const static std::crypto::Curve.P256
+    %156 r: ptr = alloc std::crypto::Algorithm.Ecdh(%155)
+    %157 v: ptr = const static std::crypto::Usage.DeriveBits
+    %158 xs: ptr = alloc list(%157)
+    %159 lit: ptr = const str 14
+    %160 tup: ptr = alloc tuple#23(word, word, word, word, word)(%159, %154, %156, %158, %76)
+    %161 v: ptr = const static std::crypto::KeyFormat.Pkcs8
+    %162 v: ptr = const static std::crypto::Usage.Sign
+    %163 xs: ptr = alloc list(%162)
+    %164 lit: ptr = const str 15
+    %165 lit: i64 = const 32
+    %166 $site: i64 = const 6
+    call repeat#7(%164, %165, %166) -> b11(%71, %72, %94, %99, %104, %111, %120, %123, %126, %131, %135, %142, %145, %148, %153, %160, %161, %163)
+  b11(%167 r: ptr, %168 r: ptr, %169 r: ptr, %170 tup: ptr, %171 tup: ptr, %172 tup: ptr, %173 tup: ptr, %174 tup: ptr, %175 tup: ptr, %176 tup: ptr, %177 tup: ptr, %178 tup: ptr, %179 tup: ptr, %180 tup: ptr, %181 tup: ptr, %182 tup: ptr, %183 tup: ptr, %184 v: ptr, %185 xs: ptr):
+    %186 lit: ptr = const str 16
+    %187 t: ptr = concat %186, %167
+    drop %167
+    call unhex#8(%187) -> b12(%168, %169, %170, %171, %172, %173, %174, %175, %176, %177, %178, %179, %180, %181, %182, %183, %184, %185)
+  b12(%188 r: ptr, %189 r: ptr, %190 r: ptr, %191 tup: ptr, %192 tup: ptr, %193 tup: ptr, %194 tup: ptr, %195 tup: ptr, %196 tup: ptr, %197 tup: ptr, %198 tup: ptr, %199 tup: ptr, %200 tup: ptr, %201 tup: ptr, %202 tup: ptr, %203 tup: ptr, %204 tup: ptr, %205 v: ptr, %206 xs: ptr):
+    %207 lit: ptr = const str 17
+    dup %189
+    %208 tup: ptr = alloc tuple#23(word, word, word, word, word)(%207, %205, %189, %206, %188)
+    %209 v: ptr = const static std::crypto::KeyFormat.Pkcs8
+    %210 v: ptr = const static std::crypto::Usage.Sign
+    %211 xs: ptr = alloc list(%210)
+    %212 lit: ptr = const str 16
+    %213 lit: ptr = const str 18
+    %214 t: ptr = concat %212, %213
+    drop %213
+    call unhex#8(%214) -> b13(%189, %190, %191, %192, %193, %194, %195, %196, %197, %198, %199, %200, %201, %202, %203, %204, %208, %209, %211)
+  b13(%215 r: ptr, %216 r: ptr, %217 r: ptr, %218 tup: ptr, %219 tup: ptr, %220 tup: ptr, %221 tup: ptr, %222 tup: ptr, %223 tup: ptr, %224 tup: ptr, %225 tup: ptr, %226 tup: ptr, %227 tup: ptr, %228 tup: ptr, %229 tup: ptr, %230 tup: ptr, %231 tup: ptr, %232 tup: ptr, %233 v: ptr, %234 xs: ptr):
+    %235 lit: ptr = const str 19
+    dup %216
+    %236 tup: ptr = alloc tuple#23(word, word, word, word, word)(%235, %233, %216, %234, %215)
+    %237 v: ptr = const static std::crypto::KeyFormat.Pkcs8
+    %238 v: ptr = const static std::crypto::Usage.Sign
+    %239 xs: ptr = alloc list(%238)
+    %240 lit: ptr = const str 20
+    dup %216
+    %241 tup: ptr = alloc tuple#23(word, word, word, word, word)(%240, %237, %216, %239, %217)
+    %242 v: ptr = const static std::crypto::KeyFormat.Pkcs8
+    %243 xs: ptr = alloc list()
+    %244 lit: ptr = const str 21
+    %245 lit: i64 = const 32
+    %246 $site: i64 = const 7
+    call repeat#7(%244, %245, %246) -> b14(%216, %218, %219, %220, %221, %222, %223, %224, %225, %226, %227, %228, %229, %230, %231, %232, %236, %241, %242, %243)
+  b14(%247 r: ptr, %248 r: ptr, %249 tup: ptr, %250 tup: ptr, %251 tup: ptr, %252 tup: ptr, %253 tup: ptr, %254 tup: ptr, %255 tup: ptr, %256 tup: ptr, %257 tup: ptr, %258 tup: ptr, %259 tup: ptr, %260 tup: ptr, %261 tup: ptr, %262 tup: ptr, %263 tup: ptr, %264 tup: ptr, %265 tup: ptr, %266 v: ptr, %267 xs: ptr):
+    %268 lit: ptr = const str 16
+    %269 t: ptr = concat %268, %247
+    drop %247
+    call unhex#8(%269) -> b15(%248, %249, %250, %251, %252, %253, %254, %255, %256, %257, %258, %259, %260, %261, %262, %263, %264, %265, %266, %267)
+  b15(%270 r: ptr, %271 r: ptr, %272 tup: ptr, %273 tup: ptr, %274 tup: ptr, %275 tup: ptr, %276 tup: ptr, %277 tup: ptr, %278 tup: ptr, %279 tup: ptr, %280 tup: ptr, %281 tup: ptr, %282 tup: ptr, %283 tup: ptr, %284 tup: ptr, %285 tup: ptr, %286 tup: ptr, %287 tup: ptr, %288 tup: ptr, %289 v: ptr, %290 xs: ptr):
+    %291 lit: ptr = const str 22
+    dup %271
+    %292 tup: ptr = alloc tuple#23(word, word, word, word, word)(%291, %289, %271, %290, %270)
+    %293 v: ptr = const static std::crypto::KeyFormat.Pkcs8
+    %294 v: ptr = const static std::crypto::Usage.Sign
+    %295 xs: ptr = alloc list(%294)
+    %296 lit: ptr = const str 15
+    %297 lit: i64 = const 31
+    %298 $site: i64 = const 8
+    call repeat#7(%296, %297, %298) -> b16(%271, %272, %273, %274, %275, %276, %277, %278, %279, %280, %281, %282, %283, %284, %285, %286, %287, %288, %292, %293, %295)
+  b16(%299 r: ptr, %300 r: ptr, %301 tup: ptr, %302 tup: ptr, %303 tup: ptr, %304 tup: ptr, %305 tup: ptr, %306 tup: ptr, %307 tup: ptr, %308 tup: ptr, %309 tup: ptr, %310 tup: ptr, %311 tup: ptr, %312 tup: ptr, %313 tup: ptr, %314 tup: ptr, %315 tup: ptr, %316 tup: ptr, %317 tup: ptr, %318 tup: ptr, %319 v: ptr, %320 xs: ptr):
+    %321 lit: ptr = const str 16
+    %322 t: ptr = concat %321, %299
+    drop %299
+    %323 lit: ptr = const str 21
+    %324 t: ptr = concat %322, %323
+    drop %323
+    call unhex#8(%324) -> b17(%300, %301, %302, %303, %304, %305, %306, %307, %308, %309, %310, %311, %312, %313, %314, %315, %316, %317, %318, %319, %320)
+  b17(%325 r: ptr, %326 r: ptr, %327 tup: ptr, %328 tup: ptr, %329 tup: ptr, %330 tup: ptr, %331 tup: ptr, %332 tup: ptr, %333 tup: ptr, %334 tup: ptr, %335 tup: ptr, %336 tup: ptr, %337 tup: ptr, %338 tup: ptr, %339 tup: ptr, %340 tup: ptr, %341 tup: ptr, %342 tup: ptr, %343 tup: ptr, %344 tup: ptr, %345 v: ptr, %346 xs: ptr):
+    %347 lit: ptr = const str 23
+    %348 tup: ptr = alloc tuple#23(word, word, word, word, word)(%347, %345, %326, %346, %325)
+    %349 xs: ptr = alloc list(%327, %328, %329, %330, %331, %332, %333, %334, %335, %336, %337, %338, %339, %340, %341, %342, %343, %344, %348)
+    dup.candidate %349
+    %350 n: i64 = $list_len(%349)
+    %404 lit: i64 = const 0
+    jump b19(%404, %349, %350)
+  b18():
+    %351 lit: unit = const ()
+    ret %351
+  b19(%352 i: i64, %353 xs: ptr, %354 n: i64):
+    %355 more: bool = lt.int %352, %354
+    if %355 then b20(%353, %354, %352) else b21(%353, %354, %352)
+  b20(%356 xs: ptr, %357 n: i64, %358 i: i64):
+    dup.candidate %356
+    %362 x: word = $list_at(%356, %358)
+    %399 p: ptr = tuple_get %362.0
+    %400 p: ptr = tuple_get %362.1
+    %401 p: ptr = tuple_get %362.2
+    %402 p: ptr = tuple_get %362.3
+    %403 p: ptr = tuple_get %362.4
+    drop %362
+    jump b23(%399, %400, %401, %402, %403, %356, %357, %358)
+  b21(%359 xs: ptr, %360 n: i64, %361 i: i64):
+    drop %359
+    jump b18()
+  b22(%363 xs: ptr, %364 n: i64, %365 i: i64):
+    %366 lit: i64 = const 1
+    %367 i: i64 = intadd %365, %366
+    jump b19(%367, %363, %364)
+  b23(%368 label: ptr, %369 format: ptr, %370 alg: ptr, %371 usages: ptr, %372 material: ptr, %373 xs: ptr, %374 n: i64, %375 i: i64):
+    %376 r: ptr = $secret_wrap(%372)
+    %377 lit: bool = const true
+    call import_key#9(%369, %370, %371, %377, %376) -> b24(%373, %374, %375, %368)
+  b24(%378 r: ptr, %379 xs: ptr, %380 n: i64, %381 i: i64, %382 label: ptr):
+    %383 s: ptr = show %382
+    drop %382
+    %384 lit: ptr = const str 24
+    %385 s: ptr = concat %383, %384
+    drop %384
+    %386 f: ptr = closure main$1#10[]
+    call map#13(%378, %386) -> b25(%379, %380, %381, %385)
+  b25(%387 r: ptr, %388 xs: ptr, %389 n: i64, %390 i: i64, %391 s: ptr):
+    %392 s: ptr = show %387
+    drop %387
+    %393 s: ptr = concat %391, %392
+    drop %392
+    perform std::console::Console.print(%393) -> b26(%388, %389, %390)
+  b26(%394 r: unit, %395 xs: ptr, %396 n: i64, %397 i: i64):
+    %398 box: word = box %394
+    drop %398
+    jump b22(%395, %396, %397)
+  b27(%410 r: ptr, %411 r: ptr, %412 r: ptr, %413 r: i64, %414 r: ptr) [handle]:
+    handle_pop
+    jump b7(%410, %411, %412, %413, %414)
+  b28(%420 r: ptr, %421 r: ptr) [handle]:
+    handle_pop
+    jump b2(%420, %421)
+
+fn $entry#1 top -> unit ; main::crypto_spki_import_rejects_garbage, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn unhex#8 top -> ptr ; main::crypto_spki_import_rejects_garbage, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
+  b0(%0 s: ptr):
+    %1 xs: ptr = alloc list()
+    dup %0
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 2
+    %4 t: i64 = intdiv %2, %3
+    %58 lit: i64 = const 0
+    jump b2(%58, %1, %0, %4)
+  b1(%5 out: ptr):
+    %6 r: ptr = $bytes_from_list(%5)
+    ret %6
+  b2(%7 i: i64, %8 out: ptr, %9 s: ptr, %10 t: i64):
+    %11 more: bool = lt.int %7, %10
+    if %11 then b3(%9, %10, %7, %8) else b4(%9, %10, %7, %8)
+  b3(%12 s: ptr, %13 t: i64, %14 i: i64, %15 out: ptr):
+    %26 lit: i64 = const 2
+    %27 t: i64 = intmul %26, %14
+    %28 lit: i64 = const 2
+    %29 t: i64 = intmul %28, %14
+    %30 lit: i64 = const 1
+    %31 t: i64 = intadd %29, %30
+    dup %12
+    %32 r: ptr = $string_slice(%12, %27, %31)
+    call nibble#56(%32) -> b6(%12, %13, %14, %15)
+  b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
+    drop %16
+    jump b1(%19)
+  b5(%20 out: ptr, %21 s: ptr, %22 t: i64, %23 i: i64):
+    %24 lit: i64 = const 1
+    %25 i: i64 = intadd %23, %24
+    jump b2(%25, %20, %21, %22)
+  b6(%33 r: i64, %34 s: ptr, %35 t: i64, %36 i: i64, %37 out: ptr):
+    %38 lit: i64 = const 16
+    %39 t: i64 = intmul %33, %38
+    %40 lit: i64 = const 2
+    %41 t: i64 = intmul %40, %36
+    %42 lit: i64 = const 1
+    %43 t: i64 = intadd %41, %42
+    %44 lit: i64 = const 2
+    %45 t: i64 = intmul %44, %36
+    %46 lit: i64 = const 2
+    %47 t: i64 = intadd %45, %46
+    dup %34
+    %48 r: ptr = $string_slice(%34, %43, %47)
+    call nibble#56(%48) -> b7(%34, %35, %36, %37, %39)
+  b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
+    %55 t: i64 = intadd %54, %49
+    %56 box: word = box %55
+    %57 r: ptr = $list_push(%53, %56)
+    jump b5(%57, %50, %51, %52)
+
+fn main$1#10 lambda -> word ; main::crypto_spki_import_rejects_garbage, captures [], frame 6 slots [%0 word*, %1 word*, %2 word*, %3 word*, %4 word*, %5 word*]
+  b0(%0 env: ptr, %1 k: word):
+    drop %0
+    dup.candidate %1
+    call kind#11(%1) -> b1(%1)
+  b1(%2 r: ptr, %3 k: ptr):
+    call usages#12(%3) -> b2(%2)
+  b2(%4 r: ptr, %5 r: ptr):
+    %6 tup: ptr = alloc tuple#20(word, word)(%5, %4)
+    ret %6
+
+fn nibble#56 top -> i64 ; main::crypto_spki_import_rejects_garbage, frame 1 slots [%0 word*]
+  b0(%0 c: ptr):
+    %36 lit: i64 = const 0
+    %37 lit: i64 = const 0
+    jump b1(%36, %37, %0)
+  b1(%1 i: i64, %2 v: i64, %3 c: ptr):
+    %4 lit: i64 = const 16
+    %5 more: bool = lt.int %1, %4
+    if %5 then b2(%3, %1, %2) else b3(%3, %1, %2)
+  b2(%6 c: ptr, %7 i: i64, %8 v: i64):
+    %17 lit: i64 = const 1
+    %18 t: i64 = intadd %7, %17
+    %19 lit: ptr = const str 63
+    %20 r: ptr = $string_slice(%19, %7, %18)
+    %21 t: bool = eq.string %20, %6
+    drop %20
+    if %21 then b6(%6, %7, %8) else b7(%6, %7, %8)
+  b3(%9 c: ptr, %10 i: i64, %11 v: i64):
+    drop %9
+    ret %11
+  b4(%12 v: i64, %13 c: ptr, %14 i: i64):
+    %15 lit: i64 = const 1
+    %16 i: i64 = intadd %14, %15
+    jump b1(%16, %12, %13)
+  b5(%22 v: word, %23 v: i64, %24 c: ptr, %25 i: i64):
+    drop %22
+    jump b4(%23, %24, %25)
+  b6(%26 c: ptr, %27 i: i64, %28 v: i64):
+    %32 lit: unit = const ()
+    %33 box: word = box %32
+    jump b5(%33, %27, %26, %27)
+  b7(%29 c: ptr, %30 i: i64, %31 v: i64):
+    %34 lit: unit = const ()
+    %35 box: word = box %34
+    jump b5(%35, %31, %29, %30)

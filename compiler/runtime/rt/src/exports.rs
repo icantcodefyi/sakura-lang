@@ -1767,4 +1767,32 @@ builtins! {
     rt_b_crypto_pbkdf2(alg: i64, pw: u32, salt: u32, rounds: i64, len: i64) -> u32 = ptr |rt| {
         rt.crypto_pbkdf2(alg, pw, salt, rounds, len)
     };
+    #[cfg(feature = "native")]
+    rt_b_crypto_public_of(curve: i64, private: u32) -> u32 = ptr |rt| {
+        rt.crypto_public_of(curve, private)
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_public_valid(curve: i64, public: u32) -> u32 = plain |rt| {
+        u32::from(rt.crypto_public_valid(curve, public))
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_sign(curve: i64, private: u32, data: u32) -> u32 = ptr |rt| {
+        rt.crypto_sign(curve, private, data)
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_sign_verify(curve: i64, public: u32, sig: u32, data: u32) -> u32 = plain |rt| {
+        u32::from(rt.crypto_sign_verify(curve, public, sig, data))
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_ecdh(curve: i64, private: u32, public: u32) -> u32 = ptr |rt| {
+        rt.crypto_ecdh(curve, private, public)
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_aes_gcm_seal(key: u32, nonce: u32, aad: u32, pt: u32) -> u32 = ptr |rt| {
+        rt.crypto_aes_gcm_seal(key, nonce, aad, pt)
+    };
+    #[cfg(feature = "native")]
+    rt_b_crypto_aes_gcm_open(key: u32, nonce: u32, aad: u32, ct: u32) -> u32 = ptr |rt| {
+        rt.crypto_aes_gcm_open(key, nonce, aad, ct)
+    };
 }

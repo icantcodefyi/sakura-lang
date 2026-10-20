@@ -1,34 +1,71 @@
-// Cryptography (RFC 0002 §2.7): the Web Crypto API's digests, HMAC, HKDF and PBKDF2 as pure
-// functions over an opaque `CryptoKey`. There is no `Crypto` effect and no manifest key: nothing
-// here touches the network or disk. Generating a key performs `Random`, the one entropy
-// authority: `Random.host()` is the OS generator, and a key made under `Random.seeded` is
-// predictable, which is why `seeded` is for tests only. The primitives are externals:
-// `node:crypto` on JS and the RustCrypto crates in `runtime/rt` on native.
+// Cryptography (RFC 0002 §2.7): the Web Crypto API's digests, HMAC, HKDF, PBKDF2, AES-GCM, ECDSA
+// and ECDH over P-256, Ed25519 and X25519 as pure functions over an opaque `CryptoKey`. There is
+// no `Crypto` effect and no manifest key: nothing here touches the network or disk. Generating a
+// key and signing perform `Random`, the one entropy authority: `Random.host()` is the OS
+// generator, and a key made under `Random.seeded` is predictable, which is why `seeded` is for
+// tests only. The primitives are externals: `node:crypto` on JS and the RustCrypto and dalek
+// crates in `runtime/rt` on native. The key formats (`Pkcs8`, `Spki`, `Jwk`) are written and read
+// here, so they are the same bytes on every backend.
+
+import std/bytes.{Alphabet}
 
 /// SHA-2 (FIPS 180-4). SHA-1 and MD5 are not offered.
 pub type Digest = Sha256 | Sha384 | Sha512
 
-/// The algorithm a key belongs to, with the hash it uses.
-pub type Algorithm = Hmac(Digest) | Hkdf(Digest) | Pbkdf2(Digest)
+/// The curve of ECDSA and ECDH keys: NIST P-256 (secp256r1).
+pub type Curve = P256
 
-/// What a key may be used for (Web Crypto's `KeyUsage`): HMAC keys `Sign` and `Verify`, HKDF
-/// and PBKDF2 keys `DeriveBits`.
-pub type Usage = Sign | Verify | DeriveBits
+/// The length of an AES key: 128 or 256 bits.
+pub type AesLength = Aes128 | Aes256
 
-/// How key material is written: `Raw` bytes.
-pub type KeyFormat = Raw
+/// The algorithm a key belongs to, with its parameters. ECDSA hashes with SHA-256 (JOSE's
+/// `ES256`).
+pub type Algorithm = Hmac(Digest)
+  | Hkdf(Digest)
+  | Pbkdf2(Digest)
+  | AesGcm(AesLength)
+  | Ecdsa(Curve)
+  | Ecdh(Curve)
+  | Ed25519
+  | X25519
 
-/// `NotExtractable` from `export_key`; from `import_key`, `NoUsages`, `NotAllowed(u)` for a
-/// usage the algorithm does not have, and `Empty` for empty HMAC material.
-pub type KeyReason = NotExtractable | NoUsages | NotAllowed(Usage) | Empty
+/// What a key may be used for (Web Crypto's `KeyUsage`): HMAC keys `Sign` and `Verify`, HKDF and
+/// PBKDF2 keys `DeriveBits`, AES-GCM keys `Encrypt` and `Decrypt`; of a pair, the ECDSA and
+/// Ed25519 private key `Sign` and the public key `Verify`, the ECDH and X25519 private key
+/// `DeriveBits` and the public key nothing.
+pub type Usage = Sign | Verify | DeriveBits | Encrypt | Decrypt
+
+/// How key material is written: `Raw` bytes (a secret key, or a public key as its point:
+/// uncompressed SEC1 for P-256, 32 bytes for Ed25519 and X25519); `Spki` (a public key, DER);
+/// `Pkcs8` (a private key, DER); `Jwk` (JSON Web Key text, RFC 7517, UTF-8).
+pub type KeyFormat = Raw | Pkcs8 | Spki | Jwk
+
+/// Web Crypto's `CryptoKey.type`: the one key of a symmetric algorithm, or a half of a pair.
+pub type KeyKind = SecretKey | PublicKey | PrivateKey
+
+/// `NotExtractable` and `Format(f)` from `export_key`; from `import_key`, `NoUsages` (a secret or
+/// private key needs one), `NotAllowed(u)` for a usage the key cannot have, `Empty` for empty
+/// HMAC material, `Format(f)` for a format the algorithm or key kind is not written in, and
+/// `Malformed` for material that does not decode: the wrong length, DER other than the forms
+/// `export_key` writes, a point not on the curve, a scalar out of range, a JWK of another key
+/// type, or one whose `key_ops`, `ext` or `alg` contradicts the call.
+pub type KeyReason = NotExtractable
+  | NoUsages
+  | NotAllowed(Usage)
+  | Empty
+  | Format(KeyFormat)
+  | Malformed
 
 pub error KeyError(reason: KeyReason)
 
 /// From `derive_bits`: `Length(bits)`, not a positive multiple of 8, over HKDF's 255 hash
-/// lengths or over PBKDF2's 1 MiB (8,388,608 bits); `Iterations(n)`, outside
-/// `1..=2_147_483_647`; `Info(bytes)`, HKDF `info` over 1,024 bytes. Each is the lowest host's
-/// bound, checked before the primitive, so it is the same error on every backend.
-pub type CryptoReason = Length(Int) | Iterations(Int) | Info(Int)
+/// lengths, over PBKDF2's 1 MiB (8,388,608 bits) or over ECDH's 256; `Iterations(n)`, outside
+/// `1..=2_147_483_647`; `Info(bytes)`, HKDF `info` over 1,024 bytes; `ZeroSecret`, an X25519
+/// peer of small order (the shared secret would be all zeros, RFC 7748 §6.1). From `encrypt` and
+/// `decrypt`: `Nonce(bytes)`, a nonce that is not 12 bytes; `Tag`, a ciphertext that does not
+/// authenticate (its key, nonce, data or tag differ). Each is the lowest host's bound, checked
+/// before the primitive, so it is the same error on every backend.
+pub type CryptoReason = Length(Int) | Iterations(Int) | Info(Int) | Nonce(Int) | Tag | ZeroSecret
 
 pub error CryptoError(reason: CryptoReason)
 
@@ -37,10 +74,14 @@ pub error CryptoError(reason: CryptoReason)
 /// fails: a policy this module enforces, not a hardware boundary.
 pub opaque type CryptoKey = {
   algorithm: Algorithm,
+  kind: KeyKind,
   usages: List<Usage>,
   extractable: Bool,
   material: Secret<Bytes>,
 }
+
+/// The two keys `generate_key_pair` makes (Web Crypto's `CryptoKeyPair`).
+pub type KeyPair = { public: CryptoKey, private: CryptoKey }
 
 /// HKDF's inputs besides the key (RFC 5869 §2): an empty `salt` is HashLen zero bytes.
 pub type HkdfParams = { salt: Bytes, info: Bytes }
@@ -49,11 +90,15 @@ pub type HkdfParams = { salt: Bytes, info: Bytes }
 /// the caller.
 pub type Pbkdf2Params = { salt: Bytes, iterations: Int }
 
-/// The parameters of `derive_bits`, matching the key's algorithm.
-pub type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params)
+/// The parameters of `derive_bits`, matching the key's algorithm: ECDH and X25519 take the
+/// peer's public key of the same algorithm.
+pub type DeriveParams = HkdfWith(HkdfParams) | Pbkdf2With(Pbkdf2Params) | EcdhWith(CryptoKey)
 
 /// The algorithm of `key` (`CryptoKey.algorithm`).
 pub fn algorithm(key: CryptoKey) -> Algorithm { key.algorithm }
+
+/// Whether `key` is a secret key or the public or private half of a pair (`CryptoKey.type`).
+pub fn kind(key: CryptoKey) -> KeyKind { key.kind }
 
 /// The usages of `key` (`CryptoKey.usages`).
 pub fn usages(key: CryptoKey) -> List<Usage> { key.usages }
@@ -61,13 +106,18 @@ pub fn usages(key: CryptoKey) -> List<Usage> { key.usages }
 /// Whether `export_key` may write `key` (`CryptoKey.extractable`).
 pub fn extractable(key: CryptoKey) -> Bool { key.extractable }
 
-/// Whether keys of `alg` can have `usage`.
+/// Whether some key of `alg` can have `usage`.
 @total
 pub fn allows(alg: Algorithm, usage: Usage) -> Bool {
   match alg {
     Hmac(_) => usage == Sign || usage == Verify,
     Hkdf(_) => usage == DeriveBits,
     Pbkdf2(_) => usage == DeriveBits,
+    AesGcm(_) => usage == Encrypt || usage == Decrypt,
+    Ecdsa(_) => usage == Sign || usage == Verify,
+    Ed25519 => usage == Sign || usage == Verify,
+    Ecdh(_) => usage == DeriveBits,
+    X25519 => usage == DeriveBits,
   }
 }
 
@@ -78,10 +128,13 @@ pub fn permits(key: CryptoKey, usage: Usage) -> Bool { List.contains(key.usages,
 /// The hash of `data` (`crypto.subtle.digest`).
 pub fn digest(alg: Digest, data: Bytes) -> Bytes { crypto_digest(code(alg), data) }
 
-/// A key of `alg` from `material` (`importKey`). Fails with `NoUsages`, `NotAllowed(u)` for a
-/// usage `alg` does not allow, or `Empty` for empty HMAC material; HKDF and PBKDF2 accept any
-/// bytes. `extractable` is the caller's choice for every algorithm: Web Crypto imports HKDF and
-/// PBKDF2 keys non-extractable, here they are extractable when imported so.
+/// A key of `alg` from `material` (`importKey`). `Raw` reads a secret key or a public key,
+/// `Spki` a public key, `Pkcs8` a private key, and `Jwk` either half or a secret key (a JWK with
+/// `d` is private). `Spki` and `Pkcs8` read the DER forms `export_key` and Web Crypto write. Fails
+/// with `NoUsages`, `NotAllowed(u)`, `Empty`, `Format(format)` or `Malformed` (`KeyReason`); HKDF
+/// and PBKDF2 accept any bytes. `extractable` is the caller's choice for every algorithm: Web
+/// Crypto imports HKDF and PBKDF2 keys non-extractable, here they are extractable when imported
+/// so.
 pub fn import_key(
   format: KeyFormat,
   alg: Algorithm,
@@ -90,43 +143,92 @@ pub fn import_key(
   material: Secret<Bytes>,
 ) -> Result<CryptoKey, KeyError>
 {
-  match format {
-    Raw => {
-      let empty = match alg {
-        Hmac(_) => Bytes.len(reveal(material)) == 0,
-        _ => false,
-      }
-      match usages_error(alg, usages) {
-        Some(reason) => Err(KeyError { reason }),
-        None if empty => Err(KeyError { reason: Empty }),
-        None => Ok(CryptoKey { algorithm: alg, usages, extractable, material }),
-      }
+  match try { decode(format, alg, usages, extractable, reveal(material)) } {
+    Err(e) => Err(e),
+    Ok((kind, bytes)) => match usages_error(alg, kind, usages) {
+      Some(reason) => Err(KeyError { reason }),
+      None if is_hmac(alg) && Bytes.len(bytes) == 0 => Err(KeyError { reason: Empty }),
+      None =>
+        Ok(CryptoKey { algorithm: alg, kind, usages, extractable, material: Secret.of(bytes) }),
     },
   }
 }
 
-/// The material of `key` (`exportKey`), or `NotExtractable`.
+/// `key` written in `format` (`exportKey`), or `NotExtractable`, or `Format(format)` when the
+/// key is not written so: `Raw` is a secret or public key, `Spki` a public key, `Pkcs8` a private
+/// key, and `Jwk` any key but HKDF's and PBKDF2's. A JWK lists its members in name order with
+/// `ext` and `key_ops`, so the text is the same on every backend.
 pub fn export_key(key: CryptoKey, format: KeyFormat) -> Result<Bytes, KeyError> {
-  match format {
-    Raw => if key.extractable {
-      Ok(reveal(key.material))
-    } else {
-      Err(KeyError { reason: NotExtractable })
-    },
+  let m = reveal(key.material)
+  let written = match (format, curve_of(key.algorithm), key.kind) {
+    (Raw, None, _) => Some(m),
+    (Raw, Some(_), PublicKey) => Some(m),
+    (Spki, Some(c), PublicKey) => Some(Bytes.concat([spki_prefix(c), m])),
+    (Pkcs8, Some(c), PrivateKey) => Some(pkcs8_of(c, m)),
+    (Jwk, None, _) => jwk_secret_of(key, m),
+    (Jwk, Some(c), _) => Some(jwk_pair_of(key, c, m)),
+    _ => None,
+  }
+  match written {
+    None => Err(KeyError { reason: Format(format) }),
+    Some(_) if !key.extractable => Err(KeyError { reason: NotExtractable }),
+    Some(b) => Ok(b),
   }
 }
 
-/// A fresh HMAC key (`generateKey`) of the hash's block size, 64 bytes for SHA-256 and 128 for
-/// SHA-384 and SHA-512, drawn from `Random`.
+/// A fresh secret key (`generateKey`) drawn from `Random`: an HMAC key of the hash's block size
+/// (64 bytes for SHA-256, 128 for SHA-384 and SHA-512) or an AES-GCM key of its length. A pair's
+/// algorithm is `generate_key_pair`'s.
 pub fn generate_key(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> CryptoKey
   ! {Random}
-  requires is_hmac(alg) && usages_error(alg, usages) == None
+  requires (is_hmac(alg) || is_aes(alg)) && usages_error(alg, SecretKey, usages) == None
 {
   let n = match alg {
     Hmac(Sha256) => 64,
-    _ => 128,
+    Hmac(_) => 128,
+    AesGcm(Aes128) => 16,
+    _ => 32,
   }
-  CryptoKey { algorithm: alg, usages, extractable, material: Secret.of(Random.bytes(n)) }
+  CryptoKey {
+    algorithm: alg,
+    kind: SecretKey,
+    usages,
+    extractable,
+    material: Secret.of(Random.bytes(n)),
+  }
+}
+
+/// A fresh ECDSA, ECDH, Ed25519 or X25519 pair (`generateKey`) drawn from `Random`. The private
+/// key takes the usages a private key can have (`Sign`, or `DeriveBits`) and `extractable`; the
+/// public key takes `Verify` if asked and is always extractable, as in Web Crypto. Usages the
+/// algorithm does not allow, or none for the private key, are `D020`.
+pub fn generate_key_pair(alg: Algorithm, usages: List<Usage>, extractable: Bool) -> KeyPair
+  ! {Random}
+  requires curve_of(alg) != None
+    && List.all(usages, fn(u) { allows(alg, u) })
+    && List.any(usages, fn(u) { u != Verify })
+{
+  let c = curve_of(alg).unwrap_or(0)
+  let d = private_scalar(c)
+  let public = crypto_public_of(c, d)
+  let mine = List.filter(usages, fn(u) { u != Verify })
+  let theirs = List.filter(usages, fn(u) { u == Verify })
+  KeyPair {
+    public: CryptoKey {
+      algorithm: alg,
+      kind: PublicKey,
+      usages: theirs,
+      extractable: true,
+      material: Secret.of(public),
+    },
+    private: CryptoKey {
+      algorithm: alg,
+      kind: PrivateKey,
+      usages: mine,
+      extractable,
+      material: Secret.of(Bytes.concat([d, public])),
+    },
+  }
 }
 
 /// The HMAC of `data` (RFC 2104; `sign` with an HMAC key). Another algorithm's key, or one
@@ -136,39 +238,126 @@ pub fn hmac(key: CryptoKey, data: Bytes) -> Bytes
   requires is_hmac(key.algorithm) && permits(key, Sign)
 { crypto_hmac(code(hash_of(key.algorithm)), reveal(key.material), data) }
 
-/// Whether `signature` is the HMAC of `data`, compared in constant time. Another
-/// algorithm's key, or one without `Verify`, is `D020`: a caller with a runtime-chosen key
-/// tests `permits(key, Verify)` first.
+/// The signature of `data` (`sign`): HMAC; ECDSA P-256 with SHA-256 as `r || s` (64 bytes, IEEE
+/// P1363, as Web Crypto writes it); Ed25519 (RFC 8032, 64 bytes). ECDSA signatures are not
+/// canonical bytes: deterministic (RFC 6979) on native, randomized by OpenSSL on JS, so compare
+/// them with `verify`, never by value; HMAC and Ed25519 signatures are canonical. A key that
+/// cannot sign, or lacks `Sign`, is `D020`.
+pub fn sign(key: CryptoKey, data: Bytes) -> Bytes
+  ! {Random}
+  requires signs(key.algorithm) && permits(key, Sign)
+{
+  match curve_of(key.algorithm) {
+    Some(c) => crypto_sign(c, private_part(key), data),
+    None => hmac(key, data),
+  }
+}
+
+/// Whether `signature` is the signature of `data` under `key`: an HMAC compared in constant
+/// time, or an ECDSA or Ed25519 signature under a public key (a signature of another length is
+/// `false`). Another algorithm's key, or one without `Verify`, is `D020`: a caller with a
+/// runtime-chosen key tests `permits(key, Verify)` first.
 pub fn verify(key: CryptoKey, signature: Bytes, data: Bytes) -> Bool
-  requires is_hmac(key.algorithm) && permits(key, Verify)
-{ crypto_hmac_verify(code(hash_of(key.algorithm)), reveal(key.material), signature, data) }
+  requires signs(key.algorithm) && permits(key, Verify)
+{
+  match curve_of(key.algorithm) {
+    Some(c) =>
+      Bytes.len(signature) == 64 && crypto_sign_verify(c, reveal(key.material), signature, data),
+    None => crypto_hmac_verify(code(hash_of(key.algorithm)), reveal(key.material), signature, data),
+  }
+}
+
+/// `plaintext` sealed with AES-GCM (NIST SP 800-38D) under `key`, `nonce` and the additional
+/// data `aad`: the ciphertext followed by the 16-byte tag. `nonce` is 12 bytes, and a key must
+/// never seal two messages under one nonce; `Random.bytes(12)` is the usual source. Another
+/// nonce length is `Nonce(n)`; a key that is not AES-GCM or lacks `Encrypt` is `D020`.
+pub fn encrypt(
+  key: CryptoKey,
+  nonce: Bytes,
+  aad: Bytes,
+  plaintext: Bytes,
+) -> Result<Bytes, CryptoError>
+  requires is_aes(key.algorithm) && permits(key, Encrypt)
+{
+  if Bytes.len(nonce) != 12 {
+    Err(CryptoError { reason: Nonce(Bytes.len(nonce)) })
+  } else {
+    Ok(crypto_aes_gcm_seal(reveal(key.material), nonce, aad, plaintext))
+  }
+}
+
+/// The plaintext of `ciphertext` (ciphertext and tag, as `encrypt` writes it), or `Tag` when it
+/// does not authenticate under `key`, `nonce` and `aad`; no plaintext is returned then. Another
+/// nonce length is `Nonce(n)`; a key that is not AES-GCM or lacks `Decrypt` is `D020`.
+pub fn decrypt(
+  key: CryptoKey,
+  nonce: Bytes,
+  aad: Bytes,
+  ciphertext: Bytes,
+) -> Result<Bytes, CryptoError>
+  requires is_aes(key.algorithm) && permits(key, Decrypt)
+{
+  if Bytes.len(nonce) != 12 {
+    Err(CryptoError { reason: Nonce(Bytes.len(nonce)) })
+  } else if Bytes.len(ciphertext) < 16 {
+    Err(CryptoError { reason: Tag })
+  } else {
+    match crypto_aes_gcm_open(reveal(key.material), nonce, aad, ciphertext) {
+      Some(plaintext) => Ok(plaintext),
+      None => Err(CryptoError { reason: Tag }),
+    }
+  }
+}
 
 /// `bits` bits derived from `key` (`deriveBits`): HKDF (RFC 5869) with `HkdfWith`, PBKDF2
-/// (RFC 8018 §5.2) with `Pbkdf2With`. Every bound is an argument: `bits`, and PBKDF2's
-/// `iterations`, whose cost grows with it. A key without `DeriveBits`, or params of another
-/// algorithm, is `D020`: test `permits(key, DeriveBits)` first.
+/// (RFC 8018 §5.2) with `Pbkdf2With`, and with `EcdhWith(peer)` the first bits of the ECDH
+/// (P-256's x-coordinate) or X25519 shared secret of a private key and the peer's public key.
+/// Every bound is an argument: `bits`, and PBKDF2's `iterations`, whose cost grows with it. A key
+/// without `DeriveBits`, params of another algorithm, or a peer that is not a public key of the
+/// same algorithm is `D020`: test `permits(key, DeriveBits)` first.
 pub fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<Bytes, CryptoError>
-  requires permits(key, DeriveBits) && fits(key.algorithm, params)
+  requires permits(key, DeriveBits) && fits(key, params)
 {
-  let alg = hash_of(key.algorithm)
   let len = bits / 8
   if bits <= 0 || bits % 8 != 0 {
     Err(CryptoError { reason: Length(bits) })
   } else {
     match params {
-      HkdfWith(p) => if len > 255 * hash_len(alg) {
-        Err(CryptoError { reason: Length(bits) })
-      } else if Bytes.len(p.info) > 1024 {
-        Err(CryptoError { reason: Info(Bytes.len(p.info)) })
-      } else {
-        Ok(crypto_hkdf(code(alg), reveal(key.material), p.salt, p.info, len))
+      HkdfWith(p) => {
+        let alg = hash_of(key.algorithm)
+        if len > 255 * hash_len(alg) {
+          Err(CryptoError { reason: Length(bits) })
+        } else if Bytes.len(p.info) > 1024 {
+          Err(CryptoError { reason: Info(Bytes.len(p.info)) })
+        } else {
+          Ok(crypto_hkdf(code(alg), reveal(key.material), p.salt, p.info, len))
+        }
       },
       Pbkdf2With(p) => if len > 1_048_576 {
         Err(CryptoError { reason: Length(bits) })
       } else if p.iterations < 1 || p.iterations > 2_147_483_647 {
         Err(CryptoError { reason: Iterations(p.iterations) })
       } else {
-        Ok(crypto_pbkdf2(code(alg), reveal(key.material), p.salt, p.iterations, len))
+        Ok(
+          crypto_pbkdf2(
+            code(hash_of(key.algorithm)),
+            reveal(key.material),
+            p.salt,
+            p.iterations,
+            len,
+          ),
+        )
+      },
+      EcdhWith(peer) => if len > 32 {
+        Err(CryptoError { reason: Length(bits) })
+      } else {
+        let c = curve_of(key.algorithm).unwrap_or(0)
+        let secret = crypto_ecdh(c, private_part(key), reveal(peer.material))
+        if Bytes.len(secret) == 0 {
+          Err(CryptoError { reason: ZeroSecret })
+        } else {
+          Ok(Bytes.slice(secret, 0, len))
+        }
       },
     }
   }
@@ -183,18 +372,50 @@ fn is_hmac(alg: Algorithm) -> Bool {
 }
 
 @total
-fn fits(alg: Algorithm, params: DeriveParams) -> Bool {
-  match (alg, params) {
-    (Hkdf(_), HkdfWith(_)) => true,
-    (Pbkdf2(_), Pbkdf2With(_)) => true,
+fn is_aes(alg: Algorithm) -> Bool {
+  match alg {
+    AesGcm(_) => true,
     _ => false,
   }
 }
 
-fn usages_error(alg: Algorithm, usages: List<Usage>) -> Option<KeyReason> {
-  match List.find(usages, fn(u) { !allows(alg, u) }) {
+/// HMAC, ECDSA and Ed25519 keys sign and verify.
+@total
+fn signs(alg: Algorithm) -> Bool {
+  match alg {
+    Hmac(_) => true,
+    Ecdsa(_) => true,
+    Ed25519 => true,
+    _ => false,
+  }
+}
+
+@total
+fn fits(key: CryptoKey, params: DeriveParams) -> Bool {
+  match (key.algorithm, params) {
+    (Hkdf(_), HkdfWith(_)) => true,
+    (Pbkdf2(_), Pbkdf2With(_)) => true,
+    (Ecdh(_), EcdhWith(peer)) => peer.algorithm == key.algorithm && peer.kind == PublicKey,
+    (X25519, EcdhWith(peer)) => peer.algorithm == key.algorithm && peer.kind == PublicKey,
+    _ => false,
+  }
+}
+
+/// Whether a key of `alg` and `kind` can have `usage`: a public key only `Verify` (ECDH and X25519
+/// public keys have no usage), a private key the rest of its algorithm's.
+@total
+fn allows_kind(alg: Algorithm, kind: KeyKind, usage: Usage) -> Bool {
+  match kind {
+    SecretKey => allows(alg, usage),
+    PublicKey => usage == Verify && allows(alg, usage),
+    PrivateKey => usage != Verify && allows(alg, usage),
+  }
+}
+
+fn usages_error(alg: Algorithm, kind: KeyKind, usages: List<Usage>) -> Option<KeyReason> {
+  match List.find(usages, fn(u) { !allows_kind(alg, kind, u) }) {
     Some(u) => Some(NotAllowed(u)),
-    None if List.len(usages) == 0 => Some(NoUsages),
+    None if List.len(usages) == 0 && kind != PublicKey => Some(NoUsages),
     None => None,
   }
 }
@@ -204,6 +425,7 @@ fn hash_of(alg: Algorithm) -> Digest {
     Hmac(d) => d,
     Hkdf(d) => d,
     Pbkdf2(d) => d,
+    _ => Sha256,
   }
 }
 
@@ -220,6 +442,299 @@ fn code(d: Digest) -> Int {
     Sha256 => 0,
     Sha384 => 1,
     Sha512 => 2,
+  }
+}
+
+// --- Pairs. A public key's material is its point; a private key's is its 32-byte scalar or seed
+// followed by the point, so the public half is never recomputed. `curve` codes the primitives'
+// curve: 0 P-256, 1 Ed25519, 2 X25519.
+
+fn curve_of(alg: Algorithm) -> Option<Int> {
+  match alg {
+    Ecdsa(_) => Some(0),
+    Ecdh(_) => Some(0),
+    Ed25519 => Some(1),
+    X25519 => Some(2),
+    _ => None,
+  }
+}
+
+fn point_len(c: Int) -> Int { if c == 0 { 65 } else { 32 } }
+
+fn private_part(key: CryptoKey) -> Bytes { Bytes.slice(reveal(key.material), 0, 32) }
+
+/// A private scalar or seed from `Random`: any 32 bytes on Ed25519 and X25519; on P-256 a draw
+/// is retried while it is not below the group order (one draw in about 2^32).
+fn private_scalar(c: Int) -> Bytes ! {Random} {
+  let d = Random.bytes(32)
+  if c != 0 || Bytes.len(crypto_public_of(c, d)) > 0 { d } else { private_scalar(c) }
+}
+
+fn bad() -> KeyError { KeyError { reason: Malformed } }
+
+fn decode(
+  format: KeyFormat,
+  alg: Algorithm,
+  usages: List<Usage>,
+  extractable: Bool,
+  b: Bytes,
+) -> (KeyKind, Bytes)
+  ! {Fail<KeyError>}
+{
+  match (format, curve_of(alg)) {
+    (Raw, None) => (SecretKey, sized(alg, b)),
+    (Jwk, None) => if is_hmac(alg) || is_aes(alg) {
+      jwk_secret(alg, usages, extractable, b)
+    } else {
+      fail KeyError { reason: Format(Jwk) }
+    },
+    (_, None) => fail KeyError { reason: Format(format) },
+    (Raw, Some(c)) => (PublicKey, point(c, b)),
+    (Spki, Some(c)) => (PublicKey, point(c, strip(b, spki_prefix(c)).or_fail(bad()))),
+    (Pkcs8, Some(c)) => (PrivateKey, pkcs8(c, b)),
+    (Jwk, Some(c)) => jwk_pair(alg, c, usages, extractable, b),
+  }
+}
+
+/// AES keys are 16 or 32 bytes, as their algorithm says.
+fn sized(alg: Algorithm, b: Bytes) -> Bytes ! {Fail<KeyError>} {
+  let ok = match alg {
+    AesGcm(Aes128) => Bytes.len(b) == 16,
+    AesGcm(Aes256) => Bytes.len(b) == 32,
+    _ => true,
+  }
+  if ok { b } else { fail bad() }
+}
+
+fn point(c: Int, p: Bytes) -> Bytes ! {Fail<KeyError>} {
+  if Bytes.len(p) == point_len(c) && crypto_public_valid(c, p) { p } else { fail bad() }
+}
+
+/// A private key's material from its scalar or seed, checked against the point it came with.
+fn private_of(c: Int, d: Bytes, given: Option<Bytes>) -> Bytes ! {Fail<KeyError>} {
+  let public = if Bytes.len(d) == 32 { crypto_public_of(c, d) } else { Bytes.from_list([]) }
+  match given {
+    _ if Bytes.len(public) == 0 => fail bad(),
+    Some(p) if p != public => fail bad(),
+    _ => Bytes.concat([d, public]),
+  }
+}
+
+fn strip(b: Bytes, prefix: Bytes) -> Option<Bytes> {
+  let n = Bytes.len(prefix)
+  if Bytes.len(b) >= n && Bytes.slice(b, 0, n) == prefix {
+    Some(Bytes.slice(b, n, Bytes.len(b)))
+  } else {
+    None
+  }
+}
+
+// DER. SPKI is the algorithm identifier and the point (RFC 5480, RFC 8410); PKCS #8 (RFC 5208)
+// wraps an RFC 5915 `ECPrivateKey` with its public key on P-256, as Web Crypto writes it (the
+// form without the public key is read too), and the 32-byte seed on Ed25519 and X25519 (RFC 8410).
+// Each prefix is written in Base64, the PEM text it begins.
+
+fn der(base64: String) -> Bytes {
+  Bytes.from_base64(base64, Alphabet.Standard).unwrap_or(Bytes.from_list([]))
+}
+
+fn spki_prefix(c: Int) -> Bytes {
+  match c {
+    0 => der("MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgA="),
+    1 => der("MCowBQYDK2VwAyEA"),
+    _ => der("MCowBQYDK2VuAyEA"),
+  }
+}
+
+/// Up to the scalar.
+fn p256_pkcs8_head() -> Bytes { der("MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg") }
+
+/// Between the scalar and the point: `[1] BIT STRING`.
+fn p256_pkcs8_mid() -> Bytes { der("oUQDQgA=") }
+
+/// The form without the public key, up to the scalar.
+fn p256_pkcs8_bare() -> Bytes { der("MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCA=") }
+
+fn pkcs8_25519(c: Int) -> Bytes {
+  if c == 1 { der("MC4CAQAwBQYDK2VwBCIEIA==") } else { der("MC4CAQAwBQYDK2VuBCIEIA==") }
+}
+
+fn pkcs8_of(c: Int, m: Bytes) -> Bytes {
+  let d = Bytes.slice(m, 0, 32)
+  if c == 0 {
+    Bytes.concat([p256_pkcs8_head(), d, p256_pkcs8_mid(), Bytes.slice(m, 32, Bytes.len(m))])
+  } else {
+    Bytes.concat([pkcs8_25519(c), d])
+  }
+}
+
+fn pkcs8(c: Int, b: Bytes) -> Bytes ! {Fail<KeyError>} {
+  if c != 0 {
+    private_of(c, strip(b, pkcs8_25519(c)).or_fail(bad()), None)
+  } else {
+    match strip(b, p256_pkcs8_head()) {
+      Some(rest) if Bytes.len(rest) == 102 && Bytes.slice(rest, 32, 37) == p256_pkcs8_mid() =>
+        private_of(0, Bytes.slice(rest, 0, 32), Some(Bytes.slice(rest, 37, 102))),
+      _ => private_of(0, strip(b, p256_pkcs8_bare()).or_fail(bad()), None),
+    }
+  }
+}
+
+// JWK (RFC 7517, RFC 7518 §6, RFC 8037). Written with its members in name order and no
+// whitespace; read with any order, checking `kty`, `crv`, `alg` for secret keys, `key_ops` (it
+// must list every usage asked for) and `ext` (`false` refuses an extractable import).
+
+fn quote(s: String) -> String { "\"" + s + "\"" }
+
+fn b64(b: Bytes) -> String { quote(Bytes.to_base64(b, Alphabet.Url, false)) }
+
+fn usage_name(u: Usage) -> String {
+  match u {
+    Sign => "sign",
+    Verify => "verify",
+    DeriveBits => "deriveBits",
+    Encrypt => "encrypt",
+    Decrypt => "decrypt",
+  }
+}
+
+fn jwk_alg(alg: Algorithm) -> String {
+  match alg {
+    Hmac(Sha256) => "HS256",
+    Hmac(Sha384) => "HS384",
+    Hmac(Sha512) => "HS512",
+    AesGcm(Aes128) => "A128GCM",
+    _ => "A256GCM",
+  }
+}
+
+fn jwk_crv(c: Int) -> String {
+  match c {
+    0 => "P-256",
+    1 => "Ed25519",
+    _ => "X25519",
+  }
+}
+
+fn jwk_text(members: List<(String, String)>) -> Bytes {
+  let parts = List.map(members, fn(m) {
+    match m {
+      (name, value) => quote(name) + ":" + value,
+    }
+  })
+  String.to_bytes("\{" + List.join(parts, ",") + "\}")
+}
+
+/// `ext` and `key_ops`, the members every key writes.
+fn jwk_policy(key: CryptoKey) -> ((String, String), (String, String)) {
+  let ops = List.map(key.usages, fn(u) { quote(usage_name(u)) })
+  (
+    ("ext", if key.extractable { "true" } else { "false" }),
+    ("key_ops", "[" + List.join(ops, ",") + "]"),
+  )
+}
+
+fn jwk_secret_of(key: CryptoKey, m: Bytes) -> Option<Bytes> {
+  let (ext, ops) = jwk_policy(key)
+  if is_hmac(key.algorithm) || is_aes(key.algorithm) {
+    Some(
+      jwk_text([
+        ("alg", quote(jwk_alg(key.algorithm))),
+        ext,
+        ("k", b64(m)),
+        ops,
+        ("kty", quote("oct")),
+      ]),
+    )
+  } else {
+    None
+  }
+}
+
+fn jwk_pair_of(key: CryptoKey, c: Int, m: Bytes) -> Bytes {
+  let (ext, ops) = jwk_policy(key)
+  let private = key.kind == PrivateKey
+  let public = if private { Bytes.slice(m, 32, Bytes.len(m)) } else { m }
+  let crv = ("crv", quote(jwk_crv(c)))
+  let head = if private { [crv, ("d", b64(Bytes.slice(m, 0, 32)))] } else { [crv] }
+  let tail = if c == 0 {
+    [
+      ext,
+      ops,
+      ("kty", quote("EC")),
+      ("x", b64(Bytes.slice(public, 1, 33))),
+      ("y", b64(Bytes.slice(public, 33, 65))),
+    ]
+  } else {
+    [ext, ops, ("kty", quote("OKP")), ("x", b64(public))]
+  }
+  jwk_text(List.concat(head, tail))
+}
+
+/// The JWK object of `b`, checked against `kty` and the call's usages and `extractable`.
+fn jwk_object(b: Bytes, kty: String, usages: List<Usage>, extractable: Bool) -> Json
+  ! {Fail<KeyError>}
+{
+  let text = match String.from_bytes(b) {
+    Ok(t) => t,
+    Err(_) => fail bad(),
+  }
+  let j = match Json.parse(text) {
+    Ok(j) => j,
+    Err(_) => fail bad(),
+  }
+  let listed = match Json.get(j, "key_ops") {
+    None => true,
+    Some(Json.Array(ops)) =>
+      List.all(usages, fn(u) { List.contains(ops, Json.String(usage_name(u))) }),
+    Some(_) => false,
+  }
+  let ext = match Json.get(j, "ext") {
+    None => true,
+    Some(Json.Bool(e)) => e || !extractable,
+    Some(_) => false,
+  }
+  if Json.get_string(j, "kty") == Some(kty) && listed && ext { j } else { fail bad() }
+}
+
+/// A base64url member of `j`, `n` bytes long.
+fn jwk_bytes(j: Json, name: String, n: Int) -> Bytes ! {Fail<KeyError>} {
+  let text = Json.get_string(j, name).or_fail(bad())
+  match Bytes.from_base64(text, Alphabet.Url) {
+    Ok(b) if n < 0 || Bytes.len(b) == n => b,
+    _ => fail bad(),
+  }
+}
+
+fn jwk_secret(alg: Algorithm, usages: List<Usage>, extractable: Bool, b: Bytes) -> (KeyKind, Bytes)
+  ! {Fail<KeyError>}
+{
+  let j = jwk_object(b, "oct", usages, extractable)
+  match Json.get_string(j, "alg") {
+    Some(a) if a != jwk_alg(alg) => fail bad(),
+    _ => (SecretKey, sized(alg, jwk_bytes(j, "k", -1))),
+  }
+}
+
+fn jwk_pair(
+  alg: Algorithm,
+  c: Int,
+  usages: List<Usage>,
+  extractable: Bool,
+  b: Bytes,
+) -> (KeyKind, Bytes)
+  ! {Fail<KeyError>}
+{
+  let j = jwk_object(b, if c == 0 { "EC" } else { "OKP" }, usages, extractable)
+  if Json.get_string(j, "crv") != Some(jwk_crv(c)) { fail bad() }
+  let public = if c == 0 {
+    Bytes.concat([Bytes.from_list([0x04]), jwk_bytes(j, "x", 32), jwk_bytes(j, "y", 32)])
+  } else {
+    jwk_bytes(j, "x", 32)
+  }
+  match Json.get(j, "d") {
+    None => (PublicKey, point(c, public)),
+    Some(_) => (PrivateKey, private_of(c, jwk_bytes(j, "d", 32), Some(point(c, public)))),
   }
 }
 
@@ -241,6 +756,30 @@ fn crypto_hkdf(alg: Int, ikm: Bytes, salt: Bytes, info: Bytes, len: Int) -> Byte
 @external(js, "sakura_runtime", "crypto_pbkdf2")
 fn crypto_pbkdf2(alg: Int, password: Bytes, salt: Bytes, iterations: Int, len: Int) -> Bytes
 
+/// The point of a private scalar or seed, or no bytes when it is not one (a P-256 scalar of zero
+/// or at least the order).
+@external(js, "sakura_runtime", "crypto_public_of")
+fn crypto_public_of(curve: Int, private: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_public_valid")
+fn crypto_public_valid(curve: Int, public: Bytes) -> Bool
+
+@external(js, "sakura_runtime", "crypto_sign")
+fn crypto_sign(curve: Int, private: Bytes, data: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_sign_verify")
+fn crypto_sign_verify(curve: Int, public: Bytes, signature: Bytes, data: Bytes) -> Bool
+
+/// The shared secret, or no bytes for X25519's all-zero one.
+@external(js, "sakura_runtime", "crypto_ecdh")
+fn crypto_ecdh(curve: Int, private: Bytes, public: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_aes_gcm_seal")
+fn crypto_aes_gcm_seal(key: Bytes, nonce: Bytes, aad: Bytes, plaintext: Bytes) -> Bytes
+
+@external(js, "sakura_runtime", "crypto_aes_gcm_open")
+fn crypto_aes_gcm_open(key: Bytes, nonce: Bytes, aad: Bytes, ciphertext: Bytes) -> Option<Bytes>
+
 fn hex(b: Bytes) -> String {
   let digits = "0123456789abcdef"
   var out = ""
@@ -252,7 +791,13 @@ fn hex(b: Bytes) -> String {
 }
 
 fn key(alg: Algorithm, usages: List<Usage>, material: Bytes) -> CryptoKey {
-  CryptoKey { algorithm: alg, usages, extractable: true, material: Secret.of(material) }
+  CryptoKey {
+    algorithm: alg,
+    kind: SecretKey,
+    usages,
+    extractable: true,
+    material: Secret.of(material),
+  }
 }
 
 test "digest is SHA-2" {
@@ -286,6 +831,14 @@ test "import_key checks usages and material" {
     import_key(Raw, Hmac(Sha512), [Sign], false, Secret.of(Bytes.from_list([]))).map(fn(_) { () }),
     Err(KeyError { reason: Empty }),
   )
+  expect_eq(
+    import_key(Raw, AesGcm(Aes256), [Encrypt], false, m).map(fn(_) { () }),
+    Err(KeyError { reason: Malformed }),
+  )
+  expect_eq(
+    import_key(Spki, Hmac(Sha256), [Sign], false, m).map(fn(_) { () }),
+    Err(KeyError { reason: Format(Spki) }),
+  )
 }
 
 test "export_key honours extractable" {
@@ -315,4 +868,34 @@ test "derive_bits bounds its arguments" {
 test "generate_key draws from Random" {
   let k = with Random.seeded(7) { generate_key(Hmac(Sha512), [Sign], true) }
   expect_eq(Result.map(export_key(k, Raw), Bytes.len), Ok(128))
+  let a = with Random.seeded(7) { generate_key(AesGcm(Aes128), [Encrypt], true) }
+  expect_eq(Result.map(export_key(a, Raw), Bytes.len), Ok(16))
+}
+
+test "a pair splits its usages and its private half signs" {
+  let pair = with Random.seeded(3) { generate_key_pair(Ed25519, [Sign, Verify], false) }
+  expect_eq((pair.public.usages, pair.private.usages), ([Verify], [Sign]))
+  expect_eq((pair.public.kind, pair.private.kind), (PublicKey, PrivateKey))
+  let msg = String.to_bytes("m")
+  let sig = with Random.seeded(3) { sign(pair.private, msg) }
+  expect(pair.public.verify(sig, msg))
+  expect(!pair.public.verify(sig, String.to_bytes("n")))
+  expect_eq(export_key(pair.private, Pkcs8), Err(KeyError { reason: NotExtractable }))
+  expect_eq(Result.map(export_key(pair.public, Spki), Bytes.len), Ok(44))
+}
+
+test "aes-gcm seals and refuses a changed tag" {
+  let k = key(
+    AesGcm(Aes128),
+    [Encrypt, Decrypt],
+    Bytes.from_list(List.map(List.range(0, 16), fn(i) { i })),
+  )
+  let n = Bytes.from_list(List.map(List.range(0, 12), fn(i) { i }))
+  let aad = String.to_bytes("a")
+  let ct = encrypt(k, n, aad, String.to_bytes("hello")).unwrap_or(Bytes.from_list([]))
+  expect_eq(Bytes.len(ct), 21)
+  expect_eq(decrypt(k, n, aad, ct), Ok(String.to_bytes("hello")))
+  expect_eq(decrypt(k, n, String.to_bytes("b"), ct), Err(CryptoError { reason: Tag }))
+  expect_eq(decrypt(k, n, aad, Bytes.slice(ct, 0, 15)), Err(CryptoError { reason: Tag }))
+  expect_eq(encrypt(k, Bytes.slice(n, 0, 8), aad, ct), Err(CryptoError { reason: Nonce(8) }))
 }

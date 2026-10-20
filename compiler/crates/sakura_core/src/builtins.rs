@@ -129,7 +129,9 @@ table! {
     Direct encoding_encode/2,
     // Cryptography (RFC 0002 §2.7)
     Direct crypto_digest/2, Direct crypto_hmac/3, Direct crypto_hmac_verify/4,
-    Direct crypto_hkdf/5, Direct crypto_pbkdf2/5,
+    Direct crypto_hkdf/5, Direct crypto_pbkdf2/5, Direct crypto_public_of/2,
+    Direct crypto_public_valid/2, Direct crypto_sign/3, Direct crypto_sign_verify/4,
+    Direct crypto_ecdh/3, Direct crypto_aes_gcm_seal/4, Direct crypto_aes_gcm_open/4,
     // Tasks and tests
     Cps defect_catch/1, Cps test_expect_defect/1, Cps property_run/8, Direct test_env/2,
     // Secret, Json

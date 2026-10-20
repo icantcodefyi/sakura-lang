@@ -1,0 +1,5 @@
+5.2 true true Err(CryptoError { reason: Length(264) })
+5.2 true true Err(CryptoError { reason: Length(264) })
+6.1-alice-shared true true Err(CryptoError { reason: Length(264) })
+6.1-bob-shared true true Err(CryptoError { reason: Length(264) })
+small order Err(CryptoError { reason: ZeroSecret })

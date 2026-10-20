@@ -1,0 +1,105 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#aes-gcm-operations-decrypt
+
+// `decrypt` gives no plaintext for a ciphertext that does not authenticate: NIST's FAIL rows
+// (`tests/vectors/aes_gcm.txt`), a flipped tag bit, other data, a ciphertext shorter than its
+// tag are `Tag`; a nonce that is not 12 bytes is `Nonce(n)` in both directions, and a key of the
+// wrong length does not import.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  for (bits, key, iv, aad, ct, tag) in [
+    (
+      128,
+      "d1f6af919cde85661208bdce0c27cb22",
+      "898c6929b435017bf031c3c5",
+      "7c5faa40e636bbc91107e68010c92b9f",
+      "",
+      "ae45f11777540a2caeb128be8092468a",
+    ),
+    (
+      256,
+      "eb49e7065fd7f9b49d198b43d40653a20656fc44b304a716f4c5f9fb586ef073",
+      "1301a9d18481ba7841d9ccce",
+      "71693a9e655ea0dc084a7bc9ae91a98743adcd77fa9185bd0adcb4c18e67ff752b6a476e8100bded46c7ac2327cf3e804cda520e535bc62ffe19f5f46b866d70cf99e8ce3dbbfd9f40c755859b48bdf2d967a501a58f1c739974",
+      "",
+      "5be6d5030b8afb923e3f8ef2767f4e93",
+    ),
+  ] {
+    let alg = Algorithm.AesGcm(if bits == 128 { AesLength.Aes128 } else { AesLength.Aes256 })
+    match crypto.import_key(KeyFormat.Raw, alg, usages, false, Secret.of(unhex(key))) {
+      Ok(k) => Console.print("{bits} {crypto.decrypt(k, unhex(iv), unhex(aad), unhex(ct + tag))}"),
+      Err(e) => Console.print("{bits} {e}"),
+    }
+  }
+  let alg = Algorithm.AesGcm(AesLength.Aes256)
+  let material = Secret.of(Bytes.from_list(List.map(List.range(0, 32), fn(i) { i })))
+  match crypto.import_key(KeyFormat.Raw, alg, usages, false, material) {
+    Ok(k) => {
+      let nonce = Bytes.from_list(List.map(List.range(0, 12), fn(i) { 100 + i }))
+      let aad = String.to_bytes("header")
+      match crypto.encrypt(k, nonce, aad, String.to_bytes("attack at dawn")) {
+        Ok(ct) => {
+          let n = Bytes.len(ct)
+          let last = Bytes.get(ct, n - 1).unwrap_or(0)
+          let flipped = Bytes.concat([
+            Bytes.slice(ct, 0, n - 1),
+            Bytes.from_list([if last % 2 == 0 { last + 1 } else { last - 1 }]),
+          ])
+          Console.print("length {n}")
+          Console.print(
+            "same {crypto.decrypt(k, nonce, aad, ct) == Ok(String.to_bytes("attack at dawn"))}",
+          )
+          Console.print("flipped tag {crypto.decrypt(k, nonce, aad, flipped)}")
+          Console.print("other data {crypto.decrypt(k, nonce, String.to_bytes("footer"), ct)}")
+          Console.print("other nonce {crypto.decrypt(k, Bytes.slice(ct, 0, 12), aad, ct)}")
+          Console.print("short {crypto.decrypt(k, nonce, aad, Bytes.slice(ct, 0, 15))}")
+          Console.print("nonce 8 {crypto.decrypt(k, Bytes.slice(nonce, 0, 8), aad, ct)}")
+          Console.print(
+            "nonce 24 {crypto.encrypt(k, Bytes.concat([nonce, nonce]), aad, ct).map(Bytes.len)}",
+          )
+        },
+        Err(e) => Console.print("{e}"),
+      }
+    },
+    Err(e) => Console.print("{e}"),
+  }
+  let short = crypto.import_key(
+    KeyFormat.Raw,
+    alg,
+    usages,
+    false,
+    Secret.of(Bytes.from_list([1, 2])),
+  )
+  Console.print("short key {short.map(fn(_) { () })}")
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

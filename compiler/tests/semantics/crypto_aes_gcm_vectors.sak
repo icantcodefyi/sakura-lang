@@ -1,0 +1,133 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://csrc.nist.gov/pubs/sp/800/38/d/final
+
+// NIST CAVP GCM vectors (`tests/vectors/aes_gcm.txt`, 96-bit IVs and 128-bit tags): six (PT,
+// AAD) length groups of each key length, empty plaintext and empty data included. `encrypt`
+// writes the ciphertext and then the tag, which the expected output holds as the table's CT and
+// Tag; `decrypt` gives the plaintext back. Generated from the table.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  for (bits, key, iv, pt, aad) in [
+    (128, "11754cd72aec309bf52f7687212e8957", "3c819d9a9bed087615030b65", "", ""),
+    (
+      128,
+      "77be63708971c4e240d1cb79e8d77feb",
+      "e0e00f19fed7ba0136a797f3",
+      "",
+      "7a43ec1d9c0a5a78a0b16533a6213cab",
+    ),
+    (
+      128,
+      "7fddb57453c241d03efbed3ac44e371c",
+      "ee283a3fc75575e33efd4887",
+      "d5de42b461646c255c87bd2962d3b9a2",
+      "",
+    ),
+    (
+      128,
+      "c939cc13397c1d37de6ae0e1cb7c423c",
+      "b3d8cc017cbb89b39e0f67e2",
+      "c3b3c41f113a31b73d9a5cd432103069",
+      "24825602bd12a984e0092d3e448eda5f",
+    ),
+    (
+      128,
+      "fe0121f42e599f88ff02a985403e19bb",
+      "3bb9eb7724cbe1943d43de21",
+      "fd331ca8646091c29f21e5f0a1",
+      "2662d895035b6519f3510eae0faa3900ad23cfdf",
+    ),
+    (
+      128,
+      "2c1f21cf0f6fb3661943155c3e3d8492",
+      "23cb5ff362e22426984d1907",
+      "42f758836986954db44bf37c6ef5e4ac0adaf38f27252a1b82d02ea949c8a1a2dbc0d68b5615ba7c1220ff6510e259f06655d8",
+      "5d3624879d35e46849953e45a32a624d6a6c536ed9857c613b572b0333e701557a713e3f010ecdf9a6bd6c9e3e44b065208645aff4aabee611b391528514170084ccf587177f4488f33cfb5e979e42b6e1cfc0a60238982a7aec",
+    ),
+    (
+      256,
+      "b52c505a37d78eda5dd34f20c22540ea1b58963cf8e5bf8ffa85f9f2492505b4",
+      "516c33929df5a3284ff463d7",
+      "",
+      "",
+    ),
+    (
+      256,
+      "78dc4e0aaf52d935c3c01eea57428f00ca1fd475f5da86a49c8dd73d68c8e223",
+      "d79cf22d504cc793c3fb6c8a",
+      "",
+      "b96baa8c1c75a671bfb2d08d06be5f36",
+    ),
+    (
+      256,
+      "31bdadd96698c204aa9ce1448ea94ae1fb4a9a0b3c9d773b51bb1822666b8f22",
+      "0d18e06c7c725ac9e362e1ce",
+      "2db5168e932556f8089a0622981d017d",
+      "",
+    ),
+    (
+      256,
+      "92e11dcdaa866f5ce790fd24501f92509aacf4cb8b1339d50c9c1240935dd08b",
+      "ac93a1a6145299bde902f21a",
+      "2d71bcfa914e4ac045b2aa60955fad24",
+      "1e0889016f67601c8ebea4943bc23ad6",
+    ),
+    (
+      256,
+      "69b458f2644af9020463b40ee503cdf083d693815e2659051ae0d039e606a970",
+      "8d1da8ab5f91ccd09205944b",
+      "f3e0e09224256bf21a83a5de8d",
+      "036ad5e5494ef817a8af2f5828784a4bfedd1653",
+    ),
+    (
+      256,
+      "148579a3cbca86d5520d66c0ec71ca5f7e41ba78e56dc6eebd566fed547fe691",
+      "b08a5ea1927499c6ecbfd4e0",
+      "9d0b15fdf1bd595f91f8b3abc0f7dec927dfd4799935a1795d9ce00c9b879434420fe42c275a7cd7b39d638fb81ca52b49dc41",
+      "e4f963f015ffbb99ee3349bbaf7e8e8e6c2a71c230a48f9d59860a29091d2747e01a5ca572347e247d25f56ba7ae8e05cde2be3c97931292c02370208ecd097ef692687fecf2f419d3200162a6480a57dad408a0dfeb492e2c5d",
+    ),
+  ] {
+    let alg = Algorithm.AesGcm(if bits == 128 { AesLength.Aes128 } else { AesLength.Aes256 })
+    match crypto.import_key(KeyFormat.Raw, alg, usages, false, Secret.of(unhex(key))) {
+      Ok(k) => match crypto.encrypt(k, unhex(iv), unhex(aad), unhex(pt)) {
+        Ok(ct) => {
+          let back = crypto.decrypt(k, unhex(iv), unhex(aad), ct) == Ok(unhex(pt))
+          Console.print("{bits} {hex(ct)} {back}")
+        },
+        Err(e) => Console.print("{bits} {e}"),
+      },
+      Err(e) => Console.print("{bits} {e}"),
+    }
+  }
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

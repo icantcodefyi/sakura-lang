@@ -1,0 +1,27 @@
+ending: ok
+--- stdout
+Hmac(Sha384) SecretKey Some(String("oct")) ["alg", "ext", "k", "key_ops", "kty"] true
+AesGcm(Aes128) SecretKey Some(String("oct")) ["alg", "ext", "k", "key_ops", "kty"] true
+AesGcm(Aes256) SecretKey Some(String("oct")) ["alg", "ext", "k", "key_ops", "kty"] true
+Ecdsa(P256) PublicKey Some(String("EC")) ["crv", "ext", "key_ops", "kty", "x", "y"] true
+Ecdsa(P256) PrivateKey Some(String("EC")) ["crv", "d", "ext", "key_ops", "kty", "x", "y"] true
+Ecdh(P256) PublicKey Some(String("EC")) ["crv", "ext", "key_ops", "kty", "x", "y"] true
+Ecdh(P256) PrivateKey Some(String("EC")) ["crv", "d", "ext", "key_ops", "kty", "x", "y"] true
+Ed25519 PublicKey Some(String("OKP")) ["crv", "ext", "key_ops", "kty", "x"] true
+Ed25519 PrivateKey Some(String("OKP")) ["crv", "d", "ext", "key_ops", "kty", "x"] true
+X25519 PublicKey Some(String("OKP")) ["crv", "ext", "key_ops", "kty", "x"] true
+X25519 PrivateKey Some(String("OKP")) ["crv", "d", "ext", "key_ops", "kty", "x"] true
+as written: Ok(PrivateKey)
+bare: Ok(PrivateKey)
+key_ops lacks sign: Err(KeyError { reason: Malformed })
+ext false, extractable: Err(KeyError { reason: Malformed })
+ext false, not extractable: Ok(PrivateKey)
+kty OKP: Err(KeyError { reason: Malformed })
+crv P-384: Err(KeyError { reason: Malformed })
+d of another key: Err(KeyError { reason: Malformed })
+x missing: Err(KeyError { reason: Malformed })
+HS384 as HMAC-SHA-256: Err(KeyError { reason: Malformed })
+not JSON: Err(KeyError { reason: Malformed })
+HKDF: Ok(Err(KeyError { reason: Format(Jwk) }))
+sealed private: Err(KeyError { reason: NotExtractable })
+its public: Ok(())

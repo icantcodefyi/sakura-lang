@@ -2,19 +2,27 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 variant std::core::Trust
-layout 1 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*)
-layout 2 record std::crypto::CryptoKey | CryptoKey 48b (algorithm: word*, usages: word*, extractable: bool, material: word*)
-layout 3 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
-layout 4 error std::crypto::KeyError | KeyError 24b (reason: word*)
-layout 5 variant std::crypto::KeyFormat | Raw 16b ()
-layout 6 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b ()
-layout 7 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b ()
-layout 8 variant std::option::Option | None 16b () | Some 24b (word*)
-layout 9 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
-layout 10 shape |  32b (word*, word*)
-layout 11 shape |  32b (i64, word*)
-layout 12 shape |  40b (word*, word*, word*)
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::core::Trust
+layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b ()
+layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
+layout 6 variant std::crypto::Curve | P256 16b ()
+layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
+layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
+layout 11 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b ()
+layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
+layout 13 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 14 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 15 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 16 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 17 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 18 shape |  32b (word*, word*)
+layout 19 shape |  32b (i64, word*)
+layout 20 shape |  40b (word*, word*, word*)
 
 fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%64 word*, %65 word*, %66 i64, %67 i64, %82 word*, %83 word*, %84 i64, %85 i64, %86 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 word*, %99 bool, %100 word*, %101 i64, %102 i64, %106 bool, %107 word*, %108 i64, %109 i64]
   b0():
@@ -31,38 +39,38 @@ fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%
     %10 xs: ptr = alloc list()
     dup %2
     dup %7
-    %11 tup: ptr = alloc tuple#12(word, word, word)(%7, %10, %2)
+    %11 tup: ptr = alloc tuple#20(word, word, word)(%7, %10, %2)
     %12 v: ptr = const static std::crypto::Usage.Sign
     %13 v: ptr = const static std::crypto::Usage.DeriveBits
     %14 xs: ptr = alloc list(%12, %13)
     dup %2
     dup %7
-    %15 tup: ptr = alloc tuple#12(word, word, word)(%7, %14, %2)
+    %15 tup: ptr = alloc tuple#20(word, word, word)(%7, %14, %2)
     %16 v: ptr = const static std::crypto::Usage.DeriveBits
     %17 v: ptr = const static std::crypto::Usage.Verify
     %18 xs: ptr = alloc list(%16, %17)
     dup %2
     dup %9
-    %19 tup: ptr = alloc tuple#12(word, word, word)(%9, %18, %2)
+    %19 tup: ptr = alloc tuple#20(word, word, word)(%9, %18, %2)
     %20 v: ptr = const static std::crypto::Digest.Sha256
     %21 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%20)
     %22 v: ptr = const static std::crypto::Usage.Sign
     %23 xs: ptr = alloc list(%22)
     dup %2
-    %24 tup: ptr = alloc tuple#12(word, word, word)(%21, %23, %2)
+    %24 tup: ptr = alloc tuple#20(word, word, word)(%21, %23, %2)
     %25 v: ptr = const static std::crypto::Digest.Sha512
     %26 r: ptr = alloc std::crypto::Algorithm.Hmac(%25)
     %27 v: ptr = const static std::crypto::Usage.Verify
     %28 xs: ptr = alloc list(%27)
     dup %5
-    %29 tup: ptr = alloc tuple#12(word, word, word)(%26, %28, %5)
+    %29 tup: ptr = alloc tuple#20(word, word, word)(%26, %28, %5)
     %30 v: ptr = const static std::crypto::Usage.DeriveBits
     %31 xs: ptr = alloc list(%30)
-    %32 tup: ptr = alloc tuple#12(word, word, word)(%9, %31, %5)
+    %32 tup: ptr = alloc tuple#20(word, word, word)(%9, %31, %5)
     %33 v: ptr = const static std::crypto::Usage.Verify
     %34 v: ptr = const static std::crypto::Usage.Sign
     %35 xs: ptr = alloc list(%33, %34)
-    %36 tup: ptr = alloc tuple#12(word, word, word)(%7, %35, %2)
+    %36 tup: ptr = alloc tuple#20(word, word, word)(%7, %35, %2)
     %37 xs: ptr = alloc list(%11, %15, %19, %24, %29, %32, %36)
     dup.candidate %37
     %38 n: i64 = $list_len(%37)

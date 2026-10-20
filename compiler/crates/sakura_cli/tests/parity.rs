@@ -28,7 +28,19 @@ use std::path::{Path, PathBuf};
 
 /// Fixtures that do not agree yet, and why. Empty since W2 (plan §3.7 row 3); a fixture
 /// that WASM cannot run yet goes here with the reason.
-const KNOWN: &[(&str, &str)] = &[];
+const KNOWN: &[(&str, &str)] = &[
+    // `std/crypto` tier 1b on WASM is the host's through `hosted` imports, ABI 1.9.0, after
+    // phase 8 (plan web-apis 7b-W, design §17.285 (2d)); until then each new primitive is `D090`.
+    ("crypto_aes_gcm_rejects_tag.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_aes_gcm_vectors.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_ecdh_shared_secret.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_ecdsa_sign_verify_roundtrip.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_ed25519_rfc8032.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_jwk_roundtrip.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_spki_import_rejects_garbage.sak", CRYPTO_1B_ON_WASM),
+    ("crypto_x25519_rfc7748.sak", CRYPTO_1B_ON_WASM),
+];
+const CRYPTO_1B_ON_WASM: &str = "std/crypto tier 1b's hosted imports wait for 7b-W (ABI 1.9.0)";
 
 struct Run {
     code: Option<i32>,

@@ -242,7 +242,7 @@ Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"
 
 ### Keys
 
-[`std/crypto`](/docs/stdlib#stdcrypto) gives the Web Crypto API's SHA-2 digests, HMAC, HKDF and PBKDF2 as pure functions. It has no effect and no manifest key, because nothing in it touches the network or the disk. A `CryptoKey` holds its material as a `Secret<Bytes>`, so a key is not `Show` either (`V2031`) and is never logged or recorded. Each key carries its algorithm, the usages it permits and whether `export_key` may write it. "Not extractable" is a rule the module enforces, not a hardware boundary. The usual source of a key is a secret from `Env`, imported with only the usages the code needs:
+[`std/crypto`](/docs/stdlib#stdcrypto) gives the Web Crypto API's SHA-2 digests, HMAC, HKDF, PBKDF2, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519 as pure functions. It has no effect and no manifest key, because nothing in it touches the network or the disk. A `CryptoKey` holds its material as a `Secret<Bytes>`, so a key is not `Show` either (`V2031`) and is never logged or recorded. Each key carries its algorithm, the usages it permits and whether `export_key` may write it. "Not extractable" is a rule the module enforces, not a hardware boundary. The usual source of a key is a secret from `Env`, imported with only the usages the code needs:
 
 ```sakura
 import std/bytes.{Alphabet}
@@ -289,7 +289,48 @@ test "only the signed body is authentic" {
 
 `generate_key` draws its material from `Random`, the one source of entropy. `Random.host()` is the operating system's generator. Under `Random.seeded`, the test default, the same seed makes the same key on every backend, which is why seeded randomness is for tests only: a key made under it is not secret.
 
-The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto crates on `--target native`. The official NIST and RFC vectors hold the three equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
+AES-GCM keys encrypt and decrypt with a 12-byte nonce the caller supplies; a key must never seal two messages under one nonce, so draw it from `Random` and send it with the ciphertext. A ciphertext that was changed does not decrypt: `decrypt` returns a `CryptoError` with reason `Tag` and no plaintext. `generate_key_pair` makes an ECDSA, ECDH, Ed25519 or X25519 pair; the private key signs or derives, and the public key verifies or is the peer in `derive_bits`:
+
+```sakura
+import std/crypto
+import std/crypto.{AesLength, Algorithm, CryptoError, CryptoKey, Usage}
+
+/// `note` sealed under `key`, with its fresh nonce in front of the ciphertext.
+fn seal(key: CryptoKey, note: String) -> Result<Bytes, CryptoError> ! {Random} {
+  let nonce = Random.bytes(12)
+  let sealed = crypto.encrypt(key, nonce, Bytes.from_list([]), String.to_bytes(note))
+  sealed.map(fn(ciphertext) { Bytes.concat([nonce, ciphertext]) })
+}
+
+fn unseal(key: CryptoKey, sealed: Bytes) -> Result<Bytes, CryptoError> {
+  let ciphertext = Bytes.slice(sealed, 12, Bytes.len(sealed))
+  crypto.decrypt(key, Bytes.slice(sealed, 0, 12), Bytes.from_list([]), ciphertext)
+}
+
+test "a sealed note opens only unchanged" {
+  let usages = [Usage.Encrypt, Usage.Decrypt]
+  let key = crypto.generate_key(Algorithm.AesGcm(AesLength.Aes256), usages, false)
+  match seal(key, "meet at noon") {
+    Ok(sealed) => {
+      expect_eq(unseal(key, sealed), Ok(String.to_bytes("meet at noon")))
+      expect(unseal(key, Bytes.slice(sealed, 0, Bytes.len(sealed) - 1)).is_err())
+    },
+    Err(_) => expect(false),
+  }
+}
+
+test "an Ed25519 signature verifies under its public key" {
+  let pair = crypto.generate_key_pair(Algorithm.Ed25519, [Usage.Sign, Usage.Verify], false)
+  let release = String.to_bytes("v0.2.0")
+  let signature = crypto.sign(pair.private, release)
+  expect(pair.public.verify(signature, release))
+  expect(!pair.public.verify(signature, String.to_bytes("v0.2.1")))
+}
+```
+
+`export_key` writes a pair's halves as `Spki`, `Pkcs8` or `Jwk`, and `import_key` reads them back, refusing material that does not decode with `KeyError(Malformed)`. Ed25519 and HMAC signatures are the same bytes on every backend. ECDSA signatures are not: native signs deterministically (RFC 6979) and JavaScript with a random nonce, so compare them with `verify`, never by value.
+
+The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto and dalek crates on `--target native`. AES-GCM, ECDSA, ECDH, Ed25519, X25519 and the `Pkcs8`, `Spki` and `Jwk` formats run on `--target js` and `--target native` only for now: on `--target wasm` their primitives are `D090` until their host imports land (ABI 1.9.0). The official NIST and RFC vectors hold the backends equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
 
 ## The trusted computing base
 

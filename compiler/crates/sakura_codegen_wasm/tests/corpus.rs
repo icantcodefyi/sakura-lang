@@ -16,9 +16,29 @@ use sakura_lir::snapshot;
 /// has no JS host and the wasm32 runtime no cryptography (design §17.266 (1)).
 const CRYPTO_ON_WASI: &str = "std/crypto is Node host imports, which WASI lacks";
 
+/// Tier 1b's primitives have no host imports on either runner until 7b-W (ABI 1.9.0, design
+/// §17.285 (2d)); each is `D090` until then.
+const CRYPTO_1B: &str = "std/crypto tier 1b's hosted imports wait for 7b-W (ABI 1.9.0)";
+
 /// Programs that cannot run as a bare corpus module, on one runner (`Some`) or both, with
 /// the reason. `sakura_cli/tests/parity.rs` runs them all through `sakura build --target wasm`.
 const KNOWN: &[(&str, Option<Host>, &str)] = &[
+    ("semantics/crypto_aes_gcm_rejects_tag", None, CRYPTO_1B),
+    ("semantics/crypto_aes_gcm_vectors", None, CRYPTO_1B),
+    ("semantics/crypto_ecdh_shared_secret", None, CRYPTO_1B),
+    (
+        "semantics/crypto_ecdsa_sign_verify_roundtrip",
+        None,
+        CRYPTO_1B,
+    ),
+    ("semantics/crypto_ed25519_rfc8032", None, CRYPTO_1B),
+    ("semantics/crypto_jwk_roundtrip", None, CRYPTO_1B),
+    (
+        "semantics/crypto_spki_import_rejects_garbage",
+        None,
+        CRYPTO_1B,
+    ),
+    ("semantics/crypto_x25519_rfc7748", None, CRYPTO_1B),
     (
         "semantics/crypto_derive_rejects_bounds",
         Some(Host::Wasi),

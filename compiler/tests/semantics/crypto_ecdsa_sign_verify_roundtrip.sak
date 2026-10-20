@@ -1,0 +1,98 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc6979#appendix-A.2.5
+
+// ECDSA P-256 with SHA-256. The RFC 6979 §A.2.5 key (`tests/vectors/ecdsa_p256.txt`) verifies
+// the RFC's signatures; a signature `sign` writes is 64 bytes and verifies, but its bytes are not
+// compared or printed: native signs deterministically (RFC 6979) and JS with OpenSSL's random
+// nonce. Other data, a flipped bit and a short signature do not verify. A pair generated under a
+// seed signs and verifies the same way.
+import std/crypto
+import std/crypto.{Algorithm, CryptoKey, Curve, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let alg = Algorithm.Ecdsa(Curve.P256)
+  for (message, x, ux, uy, data, r, s) in [
+    (
+      "sample",
+      "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+      "60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6",
+      "7903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299",
+      "73616d706c65",
+      "efd48b2aacb6a8fd1140dd9cd45e81d69d2c877b56aaf991c34d0ea84eaf3716",
+      "f7cb1c942d657c41d436c7a1b6e29f65f3e900dbb9aff4064dc4ab2f843acda8",
+    ),
+    (
+      "test",
+      "c9afa9d845ba75166b5c215767b1d6934e50c3db36e89b127b8a622b120f6721",
+      "60fed4ba255a9d31c961eb74c6356d68c049b8923b61fa6ce669622e60f29fb6",
+      "7903fe1008b8bc99a41ae9e95628bc64f2f1b20c2d7e9f5177a3c294d4462299",
+      "74657374",
+      "f1abb023518351cd71d881567b1ea663ed3efcf6c5132b354f28d3b0b7d38367",
+      "019f4113742a2b14bd25926b49c649155f267e60d3814b4c0cc84250e46f0083",
+    ),
+  ] {
+    let bare = "3041020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420"
+    let private = crypto.import_key(
+      KeyFormat.Pkcs8,
+      alg,
+      [Usage.Sign],
+      false,
+      Secret.of(unhex(bare + x)),
+    )
+    let public = crypto.import_key(
+      KeyFormat.Raw,
+      alg,
+      [Usage.Verify],
+      true,
+      Secret.of(unhex("04" + ux + uy)),
+    )
+    match (private, public) {
+      (Ok(k), Ok(p)) => {
+        let msg = unhex(data)
+        let mine = with Random.seeded(0) { crypto.sign(k, msg) }
+        Console.print(
+          "{message} rfc {p.verify(unhex(r + s), msg)} own {Bytes.len(mine)} {p.verify(mine, msg)} refused {refused(p, mine, msg)}",
+        )
+      },
+      _ => Console.print("{message} does not import"),
+    }
+  }
+  let pair = with Random.seeded(9) {
+    crypto.generate_key_pair(alg, [Usage.Sign, Usage.Verify], false)
+  }
+  let msg = String.to_bytes("generated")
+  let mine = with Random.seeded(1) { crypto.sign(pair.private, msg) }
+  Console.print(
+    "generated {pair.public.verify(mine, msg)} refused {refused(pair.public, mine, msg)}",
+  )
+}
+
+/// Other data, a flipped bit and a truncated signature are all refused.
+fn refused(p: CryptoKey, sig: Bytes, msg: Bytes) -> Bool {
+  let first = Bytes.get(sig, 0).unwrap_or(0)
+  let flipped = Bytes.concat([
+    Bytes.from_list([if first % 2 == 0 { first + 1 } else { first - 1 }]),
+    Bytes.slice(sig, 1, Bytes.len(sig)),
+  ])
+  !p.verify(sig, String.to_bytes("other"))
+    && !p.verify(flipped, msg)
+    && !p.verify(Bytes.slice(sig, 0, 63), msg)
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

@@ -185,6 +185,24 @@ retains earlier implementation history.
   and, like it, cannot leave the callback that received it (`V6003`). `buffer` and `tee`
   arrive with `std/channel`. A cookbook recipe, `stream_lines`, counts a file's lines in
   bounded reads.
+- `std/crypto` tier 1b (RFC 0002 §2.7; plan `web-apis.md` phase 7b; design §17.285 (2d)):
+  AES-GCM (`Algorithm.AesGcm(Aes128 | Aes256)`, `encrypt`/`decrypt` with a caller's 12-byte
+  nonce and additional data, `CryptoError` `Nonce(n)` or `Tag`, no plaintext from a ciphertext
+  that does not authenticate), ECDSA P-256 with SHA-256 (`sign`, which performs `Random`, and
+  `verify`; signatures are `r || s`, deterministic RFC 6979 on native and randomized on JS, so
+  they are compared with `verify`, never by value), ECDH P-256 and X25519 (`derive_bits` with
+  `EcdhWith(peer)`; an X25519 peer of small order is `ZeroSecret`), Ed25519, and
+  `generate_key_pair` (`KeyPair`, Web Crypto's `CryptoKeyPair`). `CryptoKey` gains `kind`
+  (`SecretKey | PublicKey | PrivateKey`); `KeyFormat` gains `Pkcs8`, `Spki` and `Jwk`, written
+  and read in std, so each is the same bytes on every backend; `KeyReason` gains `Format(f)`
+  and `Malformed`. The primitives are `node:crypto` on JS and, on native, `aes-gcm` 0.11.1,
+  `p256` 0.14.0, `ed25519-dalek` 3.0.0 and `x25519-dalek` 3.0.0 at exact pins. NIST CAVP GCM,
+  RFC 8032, RFC 7748, RFC 5903 and RFC 6979 vectors in `compiler/tests/vectors` hold the two
+  equal. On `--target wasm` a tier 1b primitive is the defect `D090` until its host imports
+  (ABI 1.9.0) follow phase 8. No ABI change. The new variants of `Algorithm`, `Usage`,
+  `KeyFormat`, `KeyReason` and `CryptoReason`, which RFC 0002 §2.7 reserved for this tier,
+  make an exhaustive `match` over one of them in a program written against `v0.1.0`
+  non-exhaustive; std signatures are stable from 0.2.0 (STABILITY.md).
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.

@@ -1,0 +1,124 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://www.rfc-editor.org/rfc/rfc7517
+
+// `export_key(key, Jwk)` writes JSON Web Key text (RFC 7517, RFC 7518 §6, RFC 8037) that
+// `import_key` reads back to the same key: HMAC and AES-GCM secret keys, and both halves of
+// ECDSA, ECDH, Ed25519 and X25519 pairs. The text holds the key, so it is never printed: its
+// member names are, and each round trip is compared through `Raw`, `Spki` or `Pkcs8`. A JWK whose
+// `key_ops` lacks a usage asked for, whose `ext` is false for an extractable import, of another
+// `kty` or `alg`, whose `d` does not match its `x`, or that is not JSON does not import; one
+// without `key_ops` and `ext` does. A private key made non-extractable writes no JWK; its
+// public half does.
+import std/crypto
+import std/crypto.{AesLength, Algorithm, CryptoKey, Curve, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  with Random.seeded(11) {
+    let hmac = crypto.generate_key(Algorithm.Hmac(Digest.Sha384), [Usage.Sign, Usage.Verify], true)
+    roundtrip(hmac, KeyFormat.Raw)
+    roundtrip(
+      crypto.generate_key(Algorithm.AesGcm(AesLength.Aes128), [Usage.Encrypt], true),
+      KeyFormat.Raw,
+    )
+    roundtrip(
+      crypto.generate_key(Algorithm.AesGcm(AesLength.Aes256), [Usage.Decrypt], true),
+      KeyFormat.Raw,
+    )
+    for (alg, usages) in [
+      (Algorithm.Ecdsa(Curve.P256), [Usage.Sign, Usage.Verify]),
+      (Algorithm.Ecdh(Curve.P256), [Usage.DeriveBits]),
+      (Algorithm.Ed25519, [Usage.Sign, Usage.Verify]),
+      (Algorithm.X25519, [Usage.DeriveBits]),
+    ] {
+      let pair = crypto.generate_key_pair(alg, usages, true)
+      roundtrip(pair.public, KeyFormat.Spki)
+      roundtrip(pair.private, KeyFormat.Pkcs8)
+    }
+    let ecdsa = Algorithm.Ecdsa(Curve.P256)
+    let one = crypto.generate_key_pair(ecdsa, [Usage.Sign], true)
+    let two = crypto.generate_key_pair(ecdsa, [Usage.Sign], true)
+    let jwk = members(one.private)
+    let other_d = members(two.private).get("d").unwrap_or(Json.Null)
+    let attempts = [
+      ("as written", jwk, [Usage.Sign], true),
+      ("bare", jwk.remove("key_ops").remove("ext"), [Usage.Sign], true),
+      (
+        "key_ops lacks sign",
+        jwk.insert("key_ops", Json.Array([Json.String("verify")])),
+        [Usage.Sign],
+        true,
+      ),
+      ("ext false, extractable", jwk.insert("ext", Json.Bool(false)), [Usage.Sign], true),
+      ("ext false, not extractable", jwk.insert("ext", Json.Bool(false)), [Usage.Sign], false),
+      ("kty OKP", jwk.insert("kty", Json.String("OKP")), [Usage.Sign], true),
+      ("crv P-384", jwk.insert("crv", Json.String("P-384")), [Usage.Sign], true),
+      ("d of another key", jwk.insert("d", other_d), [Usage.Sign], true),
+      ("x missing", jwk.remove("x"), [Usage.Sign], true),
+    ]
+    for (label, m, usages, extractable) in attempts {
+      let text = Secret.of(String.to_bytes(Json.render(Json.Object(m), None)))
+      let got = crypto.import_key(KeyFormat.Jwk, ecdsa, usages, extractable, text)
+      Console.print("{label}: {got.map(crypto.kind)}")
+    }
+    let hs384 = Secret.of(crypto.export_key(hmac, KeyFormat.Jwk).unwrap_or(Bytes.from_list([])))
+    let as256 = crypto.import_key(
+      KeyFormat.Jwk,
+      Algorithm.Hmac(Digest.Sha256),
+      [Usage.Sign],
+      true,
+      hs384,
+    )
+    Console.print("HS384 as HMAC-SHA-256: {as256.map(crypto.kind)}")
+    let garbage = Secret.of(String.to_bytes("not json"))
+    Console.print(
+      "not JSON: {crypto.import_key(KeyFormat.Jwk, ecdsa, [Usage.Sign], true, garbage).map(crypto.kind)}",
+    )
+    let hkdf = crypto.import_key(
+      KeyFormat.Raw,
+      Algorithm.Hkdf(Digest.Sha256),
+      [Usage.DeriveBits],
+      true,
+      hs384,
+    )
+    Console.print("HKDF: {hkdf.map(fn(k) { crypto.export_key(k, KeyFormat.Jwk).map(Bytes.len) })}")
+    let sealed = crypto.generate_key_pair(Algorithm.Ed25519, [Usage.Sign, Usage.Verify], false)
+    Console.print(
+      "sealed private: {crypto.export_key(sealed.private, KeyFormat.Jwk).map(Bytes.len)}",
+    )
+    Console.print("its public: {crypto.export_key(sealed.public, KeyFormat.Jwk).map(fn(_) { () })}")
+  }
+}
+
+/// The key's JWK members, read back as JSON.
+fn members(key: CryptoKey) -> Map<String, Json> {
+  let text = crypto.export_key(key, KeyFormat.Jwk).unwrap_or(Bytes.from_list([]))
+  match Json.parse(String.from_bytes(text).unwrap_or("")) {
+    Ok(Json.Object(m)) => m,
+    _ => Map.empty(),
+  }
+}
+
+fn roundtrip(key: CryptoKey, via: KeyFormat) -> Unit ! {Console} {
+  match crypto.export_key(key, KeyFormat.Jwk) {
+    Ok(jwk) => {
+      let names = List.sort(Map.keys(members(key)))
+      let kty = members(key).get("kty")
+      let back = crypto.import_key(
+        KeyFormat.Jwk,
+        crypto.algorithm(key),
+        crypto.usages(key),
+        true,
+        Secret.of(jwk),
+      )
+      let same = match back {
+        Ok(k) =>
+          crypto.kind(k) == crypto.kind(key)
+            && crypto.export_key(k, via) == crypto.export_key(key, via),
+        Err(_) => false,
+      }
+      Console.print("{crypto.algorithm(key)} {crypto.kind(key)} {kty} {names} {same}")
+    },
+    Err(e) => Console.print("{crypto.algorithm(key)} {e}"),
+  }
+}

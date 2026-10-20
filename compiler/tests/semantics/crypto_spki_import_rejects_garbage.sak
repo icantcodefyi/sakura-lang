@@ -1,0 +1,91 @@
+// milestone: M3
+// spec: RFC 0002 §2.7
+// Spec: https://w3c.github.io/webcrypto/#ecdsa-operations-import-key
+
+// `import_key` reads `Spki`, `Pkcs8` and `Raw` key material only in the forms `export_key` and
+// Web Crypto write, and refuses the rest with `Malformed`: no bytes, bytes that are not DER, the
+// prefix of another algorithm, a cut point, a point off the curve, a compressed point, a scalar
+// of zero or of the group order. A format the algorithm is not written in is `Format(f)`, and a
+// usage the key's half cannot have is `NotAllowed(u)` (`NoUsages` for a private key with none).
+import std/crypto
+import std/crypto.{Algorithm, Curve, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let ecdsa = Algorithm.Ecdsa(Curve.P256)
+  let pair = with Random.seeded(2) {
+    crypto.generate_key_pair(ecdsa, [Usage.Sign, Usage.Verify], true)
+  }
+  let spki = crypto.export_key(pair.public, KeyFormat.Spki).unwrap_or(Bytes.from_list([]))
+  let n = Bytes.len(spki)
+  let last = Bytes.get(spki, n - 1).unwrap_or(0)
+  let off_curve = Bytes.concat([Bytes.slice(spki, 0, n - 1), Bytes.from_list([(last + 1) % 256])])
+  let ed = with Random.seeded(2) { crypto.generate_key_pair(Algorithm.Ed25519, [Usage.Sign], true) }
+  let ed_spki = crypto.export_key(ed.public, KeyFormat.Spki).unwrap_or(Bytes.from_list([]))
+  let point = Bytes.slice(spki, 26, n)
+  let compressed = Bytes.concat([
+    Bytes.from_list([2 + Bytes.get(point, 64).unwrap_or(0) % 2]),
+    Bytes.slice(point, 1, 33),
+  ])
+  let order = "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"
+  let bare = "3041020100301306072a8648ce3d020106082a8648ce3d030107042730250201010420"
+  let checks = [Usage.Verify]
+  for (label, format, alg, usages, material) in [
+    ("spki as written", KeyFormat.Spki, ecdsa, checks, spki),
+    ("spki empty", KeyFormat.Spki, ecdsa, checks, Bytes.from_list([])),
+    ("spki not DER", KeyFormat.Spki, ecdsa, checks, String.to_bytes("-----BEGIN PUBLIC KEY-----")),
+    ("spki cut", KeyFormat.Spki, ecdsa, checks, Bytes.slice(spki, 0, n - 1)),
+    ("spki extended", KeyFormat.Spki, ecdsa, checks, Bytes.concat([spki, Bytes.from_list([0])])),
+    ("spki off the curve", KeyFormat.Spki, ecdsa, checks, off_curve),
+    ("spki of Ed25519 as P-256", KeyFormat.Spki, ecdsa, checks, ed_spki),
+    ("spki of Ed25519 as X25519", KeyFormat.Spki, Algorithm.X25519, [], ed_spki),
+    ("spki of P-256 as Ed25519", KeyFormat.Spki, Algorithm.Ed25519, checks, spki),
+    ("spki for HMAC", KeyFormat.Spki, Algorithm.Hmac(Digest.Sha256), [Usage.Sign], spki),
+    ("raw point", KeyFormat.Raw, ecdsa, checks, point),
+    ("raw compressed point", KeyFormat.Raw, ecdsa, checks, compressed),
+    ("raw public that signs", KeyFormat.Raw, ecdsa, [Usage.Sign], point),
+    (
+      "raw ECDH public that derives",
+      KeyFormat.Raw,
+      Algorithm.Ecdh(Curve.P256),
+      [Usage.DeriveBits],
+      point,
+    ),
+    (
+      "pkcs8 zero scalar",
+      KeyFormat.Pkcs8,
+      ecdsa,
+      [Usage.Sign],
+      unhex(bare + String.repeat("00", 32)),
+    ),
+    ("pkcs8 the order", KeyFormat.Pkcs8, ecdsa, [Usage.Sign], unhex(bare + order)),
+    ("pkcs8 of a public key", KeyFormat.Pkcs8, ecdsa, [Usage.Sign], spki),
+    ("pkcs8 without usages", KeyFormat.Pkcs8, ecdsa, [], unhex(bare + String.repeat("01", 32))),
+    (
+      "pkcs8 one",
+      KeyFormat.Pkcs8,
+      ecdsa,
+      [Usage.Sign],
+      unhex(bare + String.repeat("00", 31) + "01"),
+    ),
+  ] {
+    let got = crypto.import_key(format, alg, usages, true, Secret.of(material))
+    Console.print("{label}: {got.map(fn(k) { (crypto.kind(k), crypto.usages(k)) })}")
+  }
+}
+
+fn unhex(s: String) -> Bytes {
+  var out: List<Int> = []
+  for i in 0..String.len(s) / 2 {
+    out = out.push(
+      nibble(String.slice(s, 2 * i, 2 * i + 1)) * 16
+        + nibble(String.slice(s, 2 * i + 1, 2 * i + 2)),
+    )
+  }
+  Bytes.from_list(out)
+}
+
+fn nibble(c: String) -> Int {
+  var v = 0
+  for d in 0..16 { if String.slice("0123456789abcdef", d, d + 1) == c { v = d } }
+  v
+}

@@ -1,0 +1,13 @@
+ending: ok
+--- stdout
+128 Err(CryptoError { reason: Tag })
+256 Err(CryptoError { reason: Tag })
+length 30
+same true
+flipped tag Err(CryptoError { reason: Tag })
+other data Err(CryptoError { reason: Tag })
+other nonce Err(CryptoError { reason: Tag })
+short Err(CryptoError { reason: Tag })
+nonce 8 Err(CryptoError { reason: Nonce(8) })
+nonce 24 Err(CryptoError { reason: Nonce(24) })
+short key Err(KeyError { reason: Malformed })
