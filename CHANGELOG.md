@@ -5,7 +5,50 @@ All notable changes to Sakura Lang are recorded here, following
 Releases follow the [stability policy](STABILITY.md). The `0.1.0-alpha.1` section also
 retains earlier implementation history.
 
-## [Unreleased]
+## [1.0.0-beta.1] - Unreleased
+
+A beta of 1.0, not for production (design §17.291 and the owner's decision of 2026-10-21): it
+may have bugs and may change before 1.0.0, and every breaking change until then is listed here
+with a migration. This section collects everything since `v0.1.0`; it is dated at the
+preparation commit.
+
+### Migration from v0.1.0
+
+Every breaking entry below, in the order a program meets it; the entries carry the details.
+
+1. **Request and response bodies are a `Payload`** (Changed, RFC 0002 §2.4). `body: "s"` in a
+   `Request` or `Response` record becomes `body: Text("s")` (or `.with_payload(Text("s"))`); a
+   read of `r.body` becomes a `match` on `Empty | Text(s) | Bytes(b)`, or `Response.text`,
+   `Response.json`, `Response.bytes(r, limit)`, `Request.text`, `Request.json` or
+   `Request.bytes(req, limit)`. A test that compared a replayed `response.body` with a string
+   compares `Response.bytes` or `Response.text`. `Request.of`, `post`, `post_json`,
+   `Response.status`, `ok_json` and `html` are unchanged.
+2. **`Method` gains `Options` and `Trace`** (Changed): an exhaustive `match` on `Method` adds two
+   arms.
+3. **`Request` gains `redirect: Redirect`, and redirects are followed in `std/http`** (Changed,
+   design §17.263 (4)): every builder sets `Follow`. `Http.scripted` answering a 3xx is now
+   followed like a host's response, `Http.recording` records each hop as its own exchange, and
+   `Http.scoped` checks every hop against its list; choose `Manual` to receive the 3xx itself.
+4. **`Clock` and `Task` gain operations** (Changed, RFC 0002 §2.8): a user `handler Clock` adds
+   `monotonic_micros() -> Int`, and a user `handler Task` adds `cancel<T>(f: Fiber<T>) -> Unit`
+   and `cancelled(s: Scope) -> Bool`. The std handlers implement them. `Console.alert`,
+   `confirm` and `prompt` are written over `print` and `read_line`, so a `Console` handler
+   needs no change.
+5. **`std/crypto`'s sums gain tier 1b's variants** (Added, design §17.288 (6)): an exhaustive
+   `match` on `Algorithm`, `Usage`, `KeyFormat`, `KeyReason` or `CryptoReason` written against
+   `v0.1.0` adds arms for the new variants.
+6. **`--json` closing records have one `kind` per shape** (Changed, design §17.242): a consumer
+   that finds the end of a run by `kind == "summary"` matches `test_summary`, `audit_summary`
+   or `verify_summary` for `test`, `audit` and `verify`, and one that checks verify's
+   `schema_version == "1.1"` reads `"1.0"` on `verify_summary`.
+7. **`Router` routes are `UrlPattern` patterns** (Added): a route segment `*` or `**` is now a
+   wildcard, not a literal, and a route `UrlPattern.compile` rejects (a `(…)`, `{…}`, `?`, `+`
+   or `\` in a segment, a `:` or `*` inside one, a name that is not an identifier) is the
+   defect `D020` at `Router.route`/`get`/`post`/`put`/`delete`; rename such a route to literal
+   segments or `:name` groups.
+
+Phase 7c's `std/crypto` tier 2 variants (design §17.288 (6)) are not on `main` yet; they join
+this list when they land, before the beta's preparation commit.
 
 ### Changed
 
@@ -52,7 +95,7 @@ retains earlier implementation history.
   `try` whose catch reports `D011`. `spectral_norm` drops 26% by instructions retired per
   call on the reference Mac (Node, n = 400; 4.49× → 3.31× hand-written JavaScript). Every
   defect's code, message, spans, `--json` record, stderr line and exit status are unchanged.
-- **Breaking for user handlers (0.2.0, RFC 0002 §2.8, design §17.262 (3)).** The `Clock`
+- **Breaking for user handlers since 0.1.0 (RFC 0002 §2.8, design §17.262 (3)).** The `Clock`
   effect gains `monotonic_micros() -> Int` and the `Task` effect gains `cancel<T>(f: Fiber<T>)
   -> Unit` and `cancelled(s: Scope) -> Bool`, so a user `handler Clock` or `handler Task` must
   add them; `Clock.host`, `Clock.fixed` (`0`), `Clock.virtual` (its milliseconds × 1000),
@@ -100,7 +143,7 @@ retains earlier implementation history.
 - **MCP results are the CLI's records.** `symbol_query` returns the `symbol_query` record
   `sakura doc --json` prints, gaining `schema_version` and `kind`; `test`'s `summary` field
   holds the `test_summary` record; both are built by the same code as the CLI's.
-- **Breaking (0.2.0, RFC 0002 §2.4, design §17.262 (3), §17.263 (4)).** `Request.body` and
+- **Breaking since 0.1.0 (RFC 0002 §2.4, design §17.262 (3), §17.263 (4)).** `Request.body` and
   `Response.body` are a `Payload` (`Empty | Text(String) | Bytes(Bytes)`, in `std/request`),
   so a body may be binary on JS and WASM. Migration: `body: "s"` in a record becomes
   `body: Text("s")` (or `.with_payload(Text("s"))`), and a read of `r.body` becomes a `match`,
@@ -260,7 +303,7 @@ retains earlier implementation history.
   equal; on `--target wasm` they are the Node host's (ABI 1.9.0, above). The new variants of `Algorithm`, `Usage`,
   `KeyFormat`, `KeyReason` and `CryptoReason`, which RFC 0002 §2.7 reserved for this tier,
   make an exhaustive `match` over one of them in a program written against `v0.1.0`
-  non-exhaustive; std signatures are stable from 0.2.0 (STABILITY.md).
+  non-exhaustive; std signatures are stable from 1.0.0-beta.1 (STABILITY.md).
 - `Request.bytes(req, limit)` and `Request.text(req, limit)` (design §17.271): a server's
   readers of a request body, `BadRequest` past `limit`; `text` is strict UTF-8
   (`BadRequest("body is not UTF-8")`) and `Request.json` decodes `text`.
