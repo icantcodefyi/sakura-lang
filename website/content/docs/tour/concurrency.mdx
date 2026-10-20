@@ -159,7 +159,7 @@ fn sum_of_squares(n: Int) -> Int ! {Task} {
 }
 ```
 
-The producer runs at most four items ahead of the consumer. Under `Task.deterministic(seed)` the interleaving is the same on every run and every backend. A program in which every task waits, such as a `recv` that no `send` or `close` will answer, ends with the defect `D090` instead of hanging. `Source.buffer(src, capacity, body)` and `Source.tee(src, max_lag, body)` from `std/stream` are built on channels.
+The producer runs at most four items ahead of the consumer. Under `Task.deterministic(seed)` the interleaving is the same on every run and every backend. A program in which every task waits, such as a `recv` that no `send` or `close` will answer, ends with the defect `D090` instead of hanging. `Source.buffer(src, capacity, body)` and `Source.tee(src, max_lag, body)` from `std/stream` are built on channels. The source their `body` receives, like the one `decompress_source` hands its body, is `Done` once that callback returns, so read it inside the callback.
 
 Logical races with the outside world, such as two tasks reading and then writing the same database row, are still possible. The type system does not prove their absence.
 
