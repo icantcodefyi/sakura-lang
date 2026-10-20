@@ -1,0 +1,3 @@
+ending: ok
+--- stdout
+boxes 0 1 2

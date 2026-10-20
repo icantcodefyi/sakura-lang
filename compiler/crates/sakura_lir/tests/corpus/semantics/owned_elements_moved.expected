@@ -1,0 +1,3 @@
+ending: ok
+--- stdout
+bs a4:3 b13:30 seen11:0

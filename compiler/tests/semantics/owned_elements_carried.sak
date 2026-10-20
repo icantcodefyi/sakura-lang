@@ -1,0 +1,36 @@
+// milestone: M4
+// covers: performance-r1 WS-P21; design §17.290 (6) (ii) (a rebuild carried round an outer loop while the read it is tested against is bound inside that loop: the read's current value is not the one that reached `b`, so the rebuild allocates)
+
+type Body = { x: Int, v: Int }
+
+type Box = { body: Body }
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
+
+// At the third step `b` still holds the second step's `r` (the inner loop ran zero times and
+// `b` rode the outer loop round), which `boxes[1]` holds too, while `r` is the third step's
+// read: testing `b !== r` does not exclude it.
+fn carry(start: List<Body>, m: List<Int>) -> List<Box> {
+  var bs = start
+  var b = at(bs, 1)
+  var boxes: List<Box> = []
+  var i = 0
+  while i < 3 {
+    let r = at(bs, 1)
+    boxes = List.push(boxes, Box { body: r })
+    if i == 1 { b = r }
+    var k = 0
+    while k < Option.expect(m[i], "m index") {
+      b = Body { ..b, v: b.v + 1 }
+      k = k + 1
+    }
+    bs = List.set(bs, 1, Body { x: i, v: 0 })
+    i = i + 1
+  }
+  boxes
+}
+
+pub fn main() -> Unit ! {Console} {
+  let boxes = carry([Body { x: 3, v: 0 }, Body { x: 4, v: 0 }], [2, 0, 3])
+  Console.print("box1 {Option.expect(boxes[1], "box").body.v}")
+}

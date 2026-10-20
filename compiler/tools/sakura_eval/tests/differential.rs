@@ -146,6 +146,21 @@ fn spread_p(start: List<P>, k: Int) -> List<P> {
   }
   ps
 }
+fn drift_p(start: List<P>, k: Int) -> List<P> {
+  var ps = start
+  var i = 0
+  while i < List.len(ps) {
+    var b = at_p(ps, i)
+    var n = 0
+    while n < k {
+      b = P { ..b, a: b.a % 1000 + at_p(ps, i).a % 1000 + n }
+      n = n + 1
+    }
+    ps = List.set(ps, i, b)
+    i = i + 1
+  }
+  ps
+}
 fn show_ps(ps: List<P>) -> String {
   var out = \"\"
   for p in ps { out = \"{out} {p.a}{p.s}\" }
@@ -1301,8 +1316,9 @@ fn elements(seed: u64) -> String {
         ),
     };
     format!(
-        "  Console.print(\"elements{{show_ps(spread_p({list}, {}))}}\")\n",
-        rng.below(7)
+        "  Console.print(\"elements{{show_ps(drift_p(spread_p({list}, {}), {}))}}\")\n",
+        rng.below(7),
+        rng.below(4)
     )
 }
 

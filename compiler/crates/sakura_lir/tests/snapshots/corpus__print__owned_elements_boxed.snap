@@ -1,0 +1,109 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_elements_boxed::Body | Body 32b (x: i64, v: i64)
+layout 1 record main::owned_elements_boxed::Box | Box 24b (body: word*)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_elements_boxed, frame 2 slots [%5 word*, %11 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: i64 = const 0
+    %2 rec: ptr = alloc main::owned_elements_boxed::Body(%0, %1)
+    %3 xs: ptr = alloc list(%2)
+    %4 lit: i64 = const 3
+    call fill#2(%3, %4) -> b1()
+  b1(%5 r: ptr):
+    dup.candidate %5
+    %6 n: i64 = $list_len(%5)
+    %41 lit: i64 = const 0
+    %42 lit: ptr = const str 2
+    jump b4(%41, %42, %5, %6)
+  b2(%7 out: ptr):
+    %8 s: ptr = show %7
+    drop %7
+    %9 lit: ptr = const str 0
+    %10 s: ptr = concat %9, %8
+    drop %8
+    perform std::console::Console.print(%10) -> b3()
+  b3(%11 r: unit):
+    %12 box: word = box %11
+    %13 unbox: unit = unbox %12
+    drop %12
+    ret %13
+  b4(%14 i: i64, %15 out: ptr, %16 r: ptr, %17 n: i64):
+    %18 more: bool = lt.int %14, %17
+    if %18 then b5(%16, %17, %14, %15) else b6(%16, %17, %14, %15)
+  b5(%19 r: ptr, %20 n: i64, %21 i: i64, %22 out: ptr):
+    dup.candidate %19
+    %27 x: word = $list_at(%19, %21)
+    %34 s: ptr = show %22
+    drop %22
+    %35 lit: ptr = const str 1
+    %36 s: ptr = concat %34, %35
+    drop %35
+    %37 body: word = proj %27.0 main::owned_elements_boxed::Box
+    drop %27
+    %38 v: i64 = proj %37.1 main::owned_elements_boxed::Body
+    drop %37
+    %39 s: ptr = show %38
+    %40 s: ptr = concat %36, %39
+    drop %39
+    jump b7(%40, %19, %20, %21)
+  b6(%23 r: ptr, %24 n: i64, %25 i: i64, %26 out: ptr):
+    drop %23
+    jump b2(%26)
+  b7(%28 out: ptr, %29 r: ptr, %30 n: i64, %31 i: i64):
+    %32 lit: i64 = const 1
+    %33 i: i64 = intadd %31, %32
+    jump b4(%33, %28, %29, %30)
+
+fn $entry#1 top -> unit ; main::owned_elements_boxed, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn fill#2 top -> ptr ; main::owned_elements_boxed, frame 4 slots [%0 word*, %1 i64, %3 word*, %4 i64]
+  b0(%0 start: ptr, %1 steps: i64):
+    %2 lit: i64 = const 0
+    call at#3(%0, %2) -> b1(%1)
+  b1(%3 r: ptr, %4 steps: i64):
+    %5 xs: ptr = alloc list()
+    %34 lit: i64 = const 0
+    jump b2(%3, %5, %34, %4)
+  b2(%6 b: ptr, %7 boxes: ptr, %8 k: i64, %9 steps: i64):
+    %10 t: bool = lt.int %8, %9
+    if %10 then b4(%9, %6, %7, %8) else b5(%9, %6, %7, %8)
+  b3(%11 v: unit, %12 b: ptr, %13 boxes: ptr, %14 k: i64, %15 steps: i64):
+    jump b2(%12, %13, %14, %15)
+  b4(%16 steps: i64, %17 b: ptr, %18 boxes: ptr, %19 k: i64):
+    dup %17
+    %24 rec: ptr = alloc main::owned_elements_boxed::Box(%17)
+    %25 v: i64 = proj %17.1 main::owned_elements_boxed::Body
+    %26 lit: i64 = const 1
+    %27 t: i64 = intadd %25, %26
+    %28 x: i64 = proj %17.0 main::owned_elements_boxed::Body
+    drop %17
+    %29 rec: ptr = alloc main::owned_elements_boxed::Body(%28, %27)
+    %30 r: ptr = $list_push(%18, %24)
+    %31 lit: i64 = const 1
+    %32 t: i64 = intadd %19, %31
+    %33 lit: unit = const ()
+    jump b3(%33, %29, %30, %32, %16)
+  b5(%20 steps: i64, %21 b: ptr, %22 boxes: ptr, %23 k: i64):
+    drop %21
+    ret %22
+
+fn at#3 top -> ptr ; main::owned_elements_boxed, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 3
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3

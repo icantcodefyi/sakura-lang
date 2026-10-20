@@ -30,6 +30,17 @@
 //! A call of a def whose owned entry assumes owned elements is proved only when its chain owns
 //! them and no element local of it is live after the call or passed to it but as a store; else
 //! it calls the plain entry (`shared(elements)`).
+//!
+//! A second site (design §17.290 (6)) needs no list fact: `b = T {..b, …}` with `b` dead after
+//! it, where `b` holds either an element read `r` or a moved fresh record (`var b = at(bs, i)`
+//! rebuilt round a loop). It reuses `b` when `b !== r` for every read `r` that can reach it,
+//! provided (i) every alias and join parameter on the way from those reads and fresh records
+//! to `b` is linear, so a fresh record reaching `b` was only ever moved and `b` is its one
+//! reference, and (ii) every such read is bound outside every join whose parameter is on the
+//! way, so the object a read holds at the rebuild is the one that may have reached `b`. Then
+//! `b` holds a read's current object, which its guard excludes, or a fresh object nothing else
+//! references, and the mutation is unobservable. (i) and (ii) are what the chain fact gives
+//! the first site: no other holder, and no stale read.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -162,6 +173,22 @@ pub(super) struct Elems<'a> {
     pub in_place: BTreeMap<Local, (Local, Vec<Local>)>,
     /// Calls of defs whose owned entry assumes owned elements, proved or not.
     proofs: BTreeMap<Local, bool>,
+    /// Each let-bound local's preorder position and the last position of its scope.
+    span: HashMap<Local, (usize, usize)>,
+    /// Each join's preorder position.
+    jpos: HashMap<Label, usize>,
+}
+
+/// What [`Elems::origins`] walks through to reach a site's `bj`.
+#[derive(Default)]
+struct Path {
+    seen: HashSet<Local>,
+    /// The element reads that can reach `bj`: the guards.
+    reads: BTreeSet<Local>,
+    /// The aliases and join parameters on the way.
+    holders: Vec<Local>,
+    /// The joins of those parameters.
+    joins: BTreeSet<Label>,
 }
 
 impl<'a> Elems<'a> {
@@ -202,6 +229,8 @@ impl<'a> Elems<'a> {
             requires: BTreeSet::new(),
             in_place: BTreeMap::new(),
             proofs: BTreeMap::new(),
+            span: HashMap::new(),
+            jpos: HashMap::new(),
         };
         e.collect(&def.body);
         let mut settled = false;
@@ -220,6 +249,7 @@ impl<'a> Elems<'a> {
         e.classes();
         e.poison();
         e.prove();
+        e.number(&def.body, &mut 0);
         e.sites(&def.body, &mut Vec::new());
         Some(e)
     }
@@ -920,9 +950,11 @@ impl<'a> Elems<'a> {
             Expr::Let {
                 local, bind, body, ..
             } => {
-                if let Bind::Alloc(Alloc::Record(t), _) = bind
+                if let Bind::Alloc(Alloc::Record(t), args) = bind
                     && self.class[local.index()] == Val::Fresh
-                    && let Some(site) = self.site(*local, *t, body, scope)
+                    && let Some(site) = self
+                        .site(*local, *t, body, scope)
+                        .or_else(|| self.moved_site(*local, *t, args, scope))
                 {
                     self.in_place.insert(*local, site);
                 }
@@ -1028,6 +1060,155 @@ impl<'a> Elems<'a> {
             .filter(|z| *z != bj && *z != x && self.chain_of(*z) == Some(root))
             .collect();
         (guards.len() <= 2).then_some((bj, guards))
+    }
+
+    /// The second site (design §17.290 (6)): `x = T {..bj, …}` with `bj` dead after it, where
+    /// `bj` holds either a moved fresh record or an element read (its class `Elem`: `var b =
+    /// at(bs, i)` rebuilt round a loop), guarded by an identity test against each element read
+    /// `r` whose value can reach `bj` through aliases and join parameters (`bj !== r`, at most
+    /// two). No list fact is needed, so the plain entry gets it too. Two conditions:
+    ///
+    /// (i) every alias and join parameter on a path to `bj` (`bj` included) is [`linear`]
+    ///     (every use a read, or a store, jump or return after which it is dead), so a fresh
+    ///     record reaching `bj` was only ever moved, and a fresh record is linear by its class;
+    /// (ii) every guard read is bound lexically outside every `LetJoin` whose parameter is on
+    ///     such a path, so the value a read holds at `x` is the one that may have reached `bj`:
+    ///     a value carried across a loop's back edge rides a parameter of that loop or of an
+    ///     enclosing one, which (ii) forces the read outside.
+    ///
+    /// Soundness: at `x`, `bj` holds either the current object of some guard read, which its
+    /// guard excludes, or a fresh object that came to `bj` by moves alone, whose one reference
+    /// is `bj`, dead after `x`; writing the new fields into it is then unobservable, and when a
+    /// guard fails the allocation runs as before.
+    ///
+    /// [`linear`]: Self::linear
+    fn moved_site(
+        &self,
+        x: Local,
+        t: TypeId,
+        args: &[Atom],
+        scope: &[Local],
+    ) -> Option<(Local, Vec<Local>)> {
+        let after = self.after.get(&x)?;
+        let projected = |z: Local| {
+            args.iter().any(|a| {
+                matches!(a, Atom::Local(l) if matches!(
+                    self.binds.get(l),
+                    Some(Bind::Proj(Atom::Local(o), Proj::Field(..))) if *o == z
+                ))
+            })
+        };
+        let (at, bj) = scope.iter().enumerate().rev().find(|(_, z)| {
+            **z != x
+                && record(self.m, &self.def.local(**z).ty) == Some(t)
+                && matches!(self.class[z.index()], Val::Elem(..))
+                && !after.contains(*z)
+                && projected(**z)
+        })?;
+        let mut path = Path::default();
+        if !self.origins(*bj, &mut path) || path.reads.contains(bj) {
+            return None;
+        }
+        // (i): every holder on the path is linear.
+        if !path.holders.iter().all(|h| self.linear(*h)) {
+            return None;
+        }
+        // (ii): every read is bound outside every join whose parameter is on the path.
+        let outside = |r: &Local| {
+            self.span.get(r).is_some_and(|(from, to)| {
+                path.joins
+                    .iter()
+                    .all(|l| self.jpos.get(l).is_some_and(|j| from < j && j <= to))
+            })
+        };
+        (path.reads.len() <= 2
+            && path
+                .reads
+                .iter()
+                .all(|r| scope[..at].contains(r) && outside(r)))
+        .then(|| (*bj, path.reads.into_iter().collect()))
+    }
+
+    /// The element reads whose value can reach `z` through aliases and join parameters, with
+    /// the aliases and parameters on the way and the joins of those parameters; false when
+    /// some value reaching it is neither such a read nor a moved fresh record.
+    fn origins(&self, z: Local, path: &mut Path) -> bool {
+        if !path.seen.insert(z) {
+            return true;
+        }
+        match self.class[z.index()] {
+            Val::Fresh => return true,
+            Val::Elem(..) => {}
+            _ => return false,
+        }
+        match self.binds.get(&z) {
+            Some(b) if read_of(b, self.sums).is_some() => {
+                path.reads.insert(z);
+                true
+            }
+            Some(Bind::Atom(Atom::Local(y))) => {
+                path.holders.push(z);
+                self.origins(*y, path)
+            }
+            Some(_) => false,
+            None => {
+                let Some((l, i)) = self
+                    .params
+                    .iter()
+                    .find_map(|(l, ps)| ps.iter().position(|p| *p == z).map(|i| (*l, i)))
+                else {
+                    return false;
+                };
+                path.holders.push(z);
+                path.joins.insert(l);
+                self.jumps
+                    .get(&l)
+                    .into_iter()
+                    .flatten()
+                    .all(|args| match args.get(i) {
+                        Some(Atom::Local(a)) => self.origins(*a, path),
+                        _ => false,
+                    })
+            }
+        }
+    }
+
+    /// Preorder positions: each let-bound local's binding and the last position of its scope,
+    /// each join's `LetJoin`.
+    fn number(&mut self, e: &Expr, n: &mut usize) {
+        crate::ensure_stack(|| self.number_inner(e, n))
+    }
+
+    fn number_inner(&mut self, e: &Expr, n: &mut usize) {
+        *n += 1;
+        let at = *n;
+        match e {
+            Expr::Let { local, body, .. } => {
+                self.number(body, n);
+                self.span.insert(*local, (at, *n));
+            }
+            Expr::LetJoin {
+                label, join, body, ..
+            } => {
+                self.jpos.insert(*label, at);
+                self.number(join, n);
+                self.number(body, n);
+            }
+            Expr::Switch { arms, default, .. } => {
+                for (_, a) in arms {
+                    self.number(a, n);
+                }
+                if let Some(d) = default {
+                    self.number(d, n);
+                }
+            }
+            Expr::If { then, els, .. } => {
+                self.number(then, n);
+                self.number(els, n);
+            }
+            Expr::Handle { body, .. } | Expr::Try { body, .. } => self.number(body, n),
+            Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+        }
     }
 
     /// Every return returns a version of a chain that owns its elements.
