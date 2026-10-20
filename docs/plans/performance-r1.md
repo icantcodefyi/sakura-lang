@@ -417,7 +417,11 @@ WS-P20. `Map.update`'s two index walks are an arm of WS-P18's sweep, not a row (
 `emit.rs` (the in-place element update guarded by an identity test against each live element
 local, at most two), `--dump owned`. Packet: the soundness argument, the two-indices fixture,
 the `i == j` guard fixture, the differential eval run with the fact off. Delta: `nbody` (at
-least 25% on Node counts at n = 100,000). **Landed below its exit; for the design lead**
+least 25% on Node counts at n = 100,000). **Landed below its exit; ruled in design §17.290
+(round 43): the fact and the ruled site stand with one hole closed (`bs[i]`'s `Option` is a
+retaining use); the second shape is reverted and re-landed with two conditions; the exit is
+re-read as the bucket reachable without `j > i`; WS-P16 starts once the revert and the fix
+are on `main`.** The count before the ruling
 (`bench/deltas.md` row WS-P21): the ruled site (`2dfdcd58`, `opt/owned/elems.rs`) takes
 `nbody` n = 100,000 from 687.4 M to 623.6 M on Node (−9.3%), and a second reuse shape §17.273
 does not rule (`555a2d84`: `b = {..b, …}` reuses `b` once it is a moved fresh record, guarded
