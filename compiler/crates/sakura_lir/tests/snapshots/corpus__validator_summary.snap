@@ -156,6 +156,7 @@ semantics/nested_options: 21 funcs, 140 blocks, 41 dup, 130 drop, valid
 semantics/nested_options_json: 2 funcs, 5 blocks, 0 dup, 13 drop, valid
 semantics/newline_rule: 9 funcs, 43 blocks, 10 dup, 29 drop, valid
 semantics/operation_ensures_blames_handler: 5 funcs, 10 blocks, 0 dup, 3 drop, valid
+semantics/operation_value_rejects_reversed_range: 20 funcs, 101 blocks, 8 dup, 25 drop, valid
 semantics/owned_argument_used_after_call: 10 funcs, 49 blocks, 21 dup, 49 drop, valid
 semantics/owned_captured_and_stored: 8 funcs, 41 blocks, 10 dup, 37 drop, valid
 semantics/owned_effects: 11 funcs, 86 blocks, 14 dup, 52 drop, valid

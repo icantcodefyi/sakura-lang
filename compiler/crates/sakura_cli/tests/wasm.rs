@@ -908,7 +908,13 @@ fn log_json_writes_what_js_writes() {
 /// `--no-direct` count none. Design §17.211 (2): `List.map`'s twin calling its callback's
 /// twin, aborting at element two, or abandoned there at a closure with no twin, frees the
 /// list it built: the heap holds as many live objects at the end as under `--no-direct` (objects,
-/// not bytes: the static code table is a run rounded to 4 KiB, and twins make it larger).
+/// not bytes: under the host tests the data segment (the layout and code tables, the twin table
+/// and the twin statics) is held as heap blocks rounded up to 4 KiB runs, and twins make it
+/// larger. Confirmed (design §17.286 (9), §17.288 (11)): on `applied` the code table is 3,208
+/// bytes in both runs and the whole segment is 4,192 bytes in direct style against 3,888 under
+/// `--no-direct`, so direct style crosses one more run; `live` reads 9,152 against 5,056, the
+/// bytes above the runs are 960 in both (9,152 − 8,192 = 5,056 − 4,096) and `live_objects` is 8
+/// in both; on `mapped` the segment stays under 4 KiB both ways and `live` matches at 1,056,960.)
 #[test]
 fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
     if !available() {

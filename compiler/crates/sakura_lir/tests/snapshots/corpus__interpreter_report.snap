@@ -156,6 +156,7 @@ semantics/nested_options: ok, 280 allocated, 474 dup, 754 drop, peak 47, live 0/
 semantics/nested_options_json: unsupported (builtin json_encode)
 semantics/newline_rule: ok, 34 allocated, 41 dup, 75 drop, peak 11, live 0/0
 semantics/operation_ensures_blames_handler: D021, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
+semantics/operation_value_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, peak 7, live 0/0
 semantics/owned_argument_used_after_call: ok, 498 allocated, 4030 dup, 4528 drop, peak 126, live 0/0
 semantics/owned_captured_and_stored: ok, 514 allocated, 3258 dup, 3772 drop, peak 48, live 0/0
 semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0/0
