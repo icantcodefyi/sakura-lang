@@ -85,6 +85,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.encode` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/map_int_json",
+        Some(Host::Wasi),
+        "`Json.encode` is a builtin of the Node host, which a WASI command lacks (D090)",
+    ),
+    (
         "semantics/json_codec",
         None,
         "`Json.encode`, `Json.decode` and `Json.schema` need the program's JS type descriptors, which a bare corpus module lacks",

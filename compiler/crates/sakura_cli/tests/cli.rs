@@ -2482,6 +2482,36 @@ fn build_dump_core_fuses_get_expect() {
     );
 }
 
+/// `--dump core` shows the `Map.get` fusions of design §17.275 (4): `Option.unwrap_or` is
+/// `map_get_or`, with the get sunk past the default's computation, and `Option.is_some` (and so
+/// std's `Map.contains`) is `map_contains`; an `Option` used twice keeps both calls.
+#[test]
+fn build_dump_core_fuses_get_or() {
+    let dir = tmp(
+        "dump-core-fuse-or",
+        "fn f(m: Map<Int, Int>, k: Int) -> Int { Map.get(m, k).unwrap_or(-1) }\n\
+         fn g(m: Map<String, Int>, k: String) -> Bool { Option.is_some(Map.get(m, k)) }\n\
+         fn h(m: Map<Int, Int>, k: Int) -> Int \
+         { let o = Map.get(m, k)\n if Option.is_some(o) { o.unwrap_or(0) } else { 1 } }\n\
+         pub fn main() -> Unit ! {Console} \
+         { Console.print(\"{f(Map.empty(), 1)} {g(Map.empty(), \"x\")} {h(Map.empty(), 0)}\") }\n",
+    );
+    let out = sakura(&["build", "--dump", "core", "main.sak"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let lines: Vec<&str> = out.stdout.lines().map(str::trim).collect();
+    let has = |s: &str| lines.contains(&s);
+    let any = |s: &str| lines.iter().any(|l| l.contains(s));
+    assert!(any("= call $map_get_or(m%0, k%1, t%"), "{lines:#?}");
+    assert!(
+        has("let r%3: Bool = call $map_contains(m%0, k%1)"),
+        "{lines:#?}"
+    );
+    assert!(
+        has("let r%2: Option<Int> = call $map_get(m%0, k%1)"),
+        "{lines:#?}"
+    );
+}
+
 /// `--dump core` shows `opt`'s tag compare (design §17.183): `==`/`!=` on a type whose
 /// constructors have no fields, or against a field-less constructor, is `tag_eq`; payloads on
 /// both sides, records and generic code keep `eq(any)`.

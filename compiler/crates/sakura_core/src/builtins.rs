@@ -107,6 +107,8 @@ table! {
     Direct option_expect/2,
     // `get` + an immediately consumed `option_expect`, fused by `opt` (design §17.151)
     Direct list_get_expect/3, Direct map_get_expect/3,
+    // `map_get` + an immediately consumed `Option.unwrap_or`, fused by `opt` (design §17.275 (4))
+    Direct map_get_or/3,
     // Equality that only constructor tags decide, rewritten by `opt` (design §17.183)
     Direct tag_eq/2,
     // Host primitives behind the std effects (design §10.2) and deterministic generators

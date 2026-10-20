@@ -74,15 +74,12 @@ fn lookup#4 top -> i64 ; main::defect_D030_joined_fiber, frame 3 slots [%0 word*
     %4 xs: ptr = alloc list(%3)
     call of#5(%4) -> b1(%0)
   b1(%5 r: ptr, %6 key: ptr):
-    dup.candidate %6
-    %7 r: ptr = $map_get(%5, %6)
-    %8 s: ptr = show %6
-    drop %6
-    %9 lit: ptr = const str 3
-    %10 s: ptr = concat %8, %9
+    %7 s: ptr = show %6
+    %8 lit: ptr = const str 3
+    %9 s: ptr = concat %7, %8
+    drop %7
     drop %8
-    drop %9
-    %11 r: word = $option_expect(%7, %10)
-    %12 unbox: i64 = unbox %11
-    drop %11
-    ret %12
+    %10 r: word = $map_get_expect(%5, %6, %9)
+    %11 unbox: i64 = unbox %10
+    drop %10
+    ret %11

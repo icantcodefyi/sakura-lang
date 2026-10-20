@@ -2128,6 +2128,41 @@ impl<'m> Vm<'m> {
                 }
                 W(self.option(got)?)
             }
+            // `opt`'s fusions with `Option.unwrap_or` and `Option.is_some` (design §17.275 (4)):
+            // the compositions they replace.
+            ("map_get_or", [m, k, d]) => {
+                let o = self.builtin("map_get", &[*m, *k])?;
+                let W(o) = o else {
+                    return internal("map_get without an Option");
+                };
+                let payload = match &self.obj(o)?.body {
+                    Body::Slots(_, 1, ss) => ss.first().copied(),
+                    _ => None,
+                };
+                let r = match payload {
+                    Some(Sv::W(w)) => {
+                        self.dup(w)?;
+                        W(w)
+                    }
+                    _ => {
+                        if let W(d) = d {
+                            self.dup(*d)?;
+                        }
+                        *d
+                    }
+                };
+                self.drop_word(o)?;
+                r
+            }
+            ("map_contains", [m, k]) => {
+                let o = self.builtin("map_get", &[*m, *k])?;
+                let W(o) = o else {
+                    return internal("map_get without an Option");
+                };
+                let some = matches!(&self.obj(o)?.body, Body::Slots(_, 1, _));
+                self.drop_word(o)?;
+                B(some)
+            }
             ("map_insert", [W(m), k, v]) => {
                 let (k, v) = (self.box_val(*k)?, self.box_val(*v)?);
                 let mut es = self.map_entries(*m)?;

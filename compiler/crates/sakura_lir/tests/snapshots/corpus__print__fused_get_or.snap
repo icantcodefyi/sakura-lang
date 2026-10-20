@@ -1,0 +1,292 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::fused_get_or::Point | Point 32b (x: i64, y: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (word*, i64)
+layout 6 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 word*, %34 word*, %35 word*, %36 word*, %43 word*, %44 word*, %45 word*, %46 word*, %48 word*, %49 word*, %50 word*, %51 word*, %52 word*, %58 word*, %59 word*, %60 word*, %61 word*, %62 word*, %63 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %76 bool, %77 word*, %78 word*, %79 word*, %82 i64, %83 word*, %84 word*, %85 word*, %90 i64, %91 word*, %92 word*, %93 word*, %94 word*, %100 i64, %101 word*, %102 word*, %103 word*, %104 word*, %107 bool, %108 word*, %109 word*, %110 word*, %115 word*, %116 word*, %117 word*, %118 word*, %125 word*, %126 word*, %127 word*, %128 word*, %129 word*, %137 word*, %138 word*, %139 word*, %140 word*, %143 bool, %144 word*, %145 word*, %150 bool, %151 word*, %152 word*, %159 bool, %160 word*, %161 word*, %167 bool, %168 word*, %171 bool, %177 word*, %179 i64, %185 i64, %186 word*, %189 bool]
+  b0():
+    %0 r: ptr = $map_empty()
+    %1 lit: i64 = const 1
+    %2 box: word = box %1
+    %3 lit: ptr = const str 0
+    %4 r: ptr = $map_insert(%0, %2, %3)
+    %5 lit: i64 = const 2
+    %6 t: i64 = intneg %5
+    %7 box: word = box %6
+    %8 lit: ptr = const str 1
+    %9 r: ptr = $map_insert(%4, %7, %8)
+    %10 lit: ptr = const str 2
+    %11 lit: i64 = const 3
+    %12 tup: ptr = alloc tuple#5(word, i64)(%10, %11)
+    %13 lit: ptr = const str 3
+    %14 lit: i64 = const 0
+    %15 tup: ptr = alloc tuple#5(word, i64)(%13, %14)
+    %16 xs: ptr = alloc list(%12, %15)
+    call of#2(%16) -> b1(%9)
+  b1(%17 r: ptr, %18 r: ptr):
+    %19 lit: i64 = const 1
+    %20 lit: ptr = const str 4
+    %21 tup: ptr = alloc tuple#4(i64, word)(%19, %20)
+    %22 lit: i64 = const 1
+    %23 box: word = box %22
+    %24 lit: i64 = const 2
+    %25 box: word = box %24
+    %26 xs: ptr = alloc list(%23, %25)
+    %27 tup: ptr = alloc tuple#3(word, word)(%21, %26)
+    %28 lit: i64 = const 2
+    %29 lit: ptr = const str 5
+    %30 tup: ptr = alloc tuple#4(i64, word)(%28, %29)
+    %31 xs: ptr = alloc list()
+    %32 tup: ptr = alloc tuple#3(word, word)(%30, %31)
+    %33 xs: ptr = alloc list(%27, %32)
+    call of#2(%33) -> b2(%18, %17)
+  b2(%34 r: ptr, %35 r: ptr, %36 r: ptr):
+    %37 lit: i64 = const 1
+    %38 lit: i64 = const 2
+    %39 rec: ptr = alloc main::fused_get_or::Point(%37, %38)
+    %40 lit: i64 = const 12
+    %41 tup: ptr = alloc tuple#5(word, i64)(%39, %40)
+    %42 xs: ptr = alloc list(%41)
+    call of#2(%42) -> b3(%35, %36, %34)
+  b3(%43 r: ptr, %44 r: ptr, %45 r: ptr, %46 r: ptr):
+    %47 lit: i64 = const 1
+    dup.candidate %44
+    call get_int#3(%44, %47) -> b4(%44, %45, %46, %43)
+  b4(%48 r: ptr, %49 r: ptr, %50 r: ptr, %51 r: ptr, %52 r: ptr):
+    %53 s: ptr = show %48
+    drop %48
+    %54 lit: ptr = const str 6
+    %55 s: ptr = concat %53, %54
+    drop %53
+    drop %54
+    %56 lit: i64 = const 2
+    %57 t: i64 = intneg %56
+    dup.candidate %49
+    call get_int#3(%49, %57) -> b5(%49, %50, %51, %52, %55)
+  b5(%58 r: ptr, %59 r: ptr, %60 r: ptr, %61 r: ptr, %62 r: ptr, %63 s: ptr):
+    %64 s: ptr = show %58
+    drop %58
+    %65 s: ptr = concat %63, %64
+    drop %63
+    drop %64
+    %66 lit: ptr = const str 6
+    %67 s: ptr = concat %65, %66
+    drop %65
+    drop %66
+    %68 lit: i64 = const 3
+    call get_int#3(%59, %68) -> b6(%60, %61, %62, %67)
+  b6(%69 r: ptr, %70 r: ptr, %71 r: ptr, %72 r: ptr, %73 s: ptr):
+    %74 s: ptr = show %69
+    drop %69
+    %75 s: ptr = concat %73, %74
+    drop %73
+    drop %74
+    perform std::console::Console.print(%75) -> b7(%70, %71, %72)
+  b7(%76 r: unit, %77 r: ptr, %78 r: ptr, %79 r: ptr):
+    %80 box: word = box %76
+    drop %80
+    %81 lit: ptr = const str 2
+    dup.candidate %77
+    call get_str#4(%77, %81) -> b8(%77, %78, %79)
+  b8(%82 r: i64, %83 r: ptr, %84 r: ptr, %85 r: ptr):
+    %86 s: ptr = show %82
+    %87 lit: ptr = const str 6
+    %88 s: ptr = concat %86, %87
+    drop %86
+    drop %87
+    %89 lit: ptr = const str 3
+    dup.candidate %83
+    call get_str#4(%83, %89) -> b9(%83, %84, %85, %88)
+  b9(%90 r: i64, %91 r: ptr, %92 r: ptr, %93 r: ptr, %94 s: ptr):
+    %95 s: ptr = show %90
+    %96 s: ptr = concat %94, %95
+    drop %94
+    drop %95
+    %97 lit: ptr = const str 6
+    %98 s: ptr = concat %96, %97
+    drop %96
+    drop %97
+    %99 lit: ptr = const str 7
+    dup.candidate %91
+    call get_str#4(%91, %99) -> b10(%91, %92, %93, %98)
+  b10(%100 r: i64, %101 r: ptr, %102 r: ptr, %103 r: ptr, %104 s: ptr):
+    %105 s: ptr = show %100
+    %106 s: ptr = concat %104, %105
+    drop %104
+    drop %105
+    perform std::console::Console.print(%106) -> b11(%101, %102, %103)
+  b11(%107 r: unit, %108 r: ptr, %109 r: ptr, %110 r: ptr):
+    %111 box: word = box %107
+    drop %111
+    %112 lit: i64 = const 1
+    %113 lit: ptr = const str 4
+    %114 tup: ptr = alloc tuple#4(i64, word)(%112, %113)
+    dup.candidate %109
+    call get_pair#5(%109, %114) -> b12(%108, %109, %110)
+  b12(%115 r: ptr, %116 r: ptr, %117 r: ptr, %118 r: ptr):
+    %119 s: ptr = show %115
+    drop %115
+    %120 lit: ptr = const str 6
+    %121 s: ptr = concat %119, %120
+    drop %119
+    drop %120
+    %122 lit: i64 = const 2
+    %123 lit: ptr = const str 5
+    %124 tup: ptr = alloc tuple#4(i64, word)(%122, %123)
+    dup.candidate %117
+    call get_pair#5(%117, %124) -> b13(%116, %117, %118, %121)
+  b13(%125 r: ptr, %126 r: ptr, %127 r: ptr, %128 r: ptr, %129 s: ptr):
+    %130 s: ptr = show %125
+    drop %125
+    %131 s: ptr = concat %129, %130
+    drop %129
+    drop %130
+    %132 lit: ptr = const str 6
+    %133 s: ptr = concat %131, %132
+    drop %131
+    drop %132
+    %134 lit: i64 = const 1
+    %135 lit: ptr = const str 5
+    %136 tup: ptr = alloc tuple#4(i64, word)(%134, %135)
+    call get_pair#5(%127, %136) -> b14(%126, %128, %133)
+  b14(%137 r: ptr, %138 r: ptr, %139 r: ptr, %140 s: ptr):
+    %141 s: ptr = show %137
+    drop %137
+    %142 s: ptr = concat %140, %141
+    drop %140
+    drop %141
+    perform std::console::Console.print(%142) -> b15(%138, %139)
+  b15(%143 r: unit, %144 r: ptr, %145 r: ptr):
+    %146 box: word = box %143
+    drop %146
+    %147 lit: i64 = const 1
+    %148 lit: i64 = const 2
+    %149 rec: ptr = alloc main::fused_get_or::Point(%147, %148)
+    dup.candidate %145
+    call has_point#6(%145, %149) -> b16(%144, %145)
+  b16(%150 r: bool, %151 r: ptr, %152 r: ptr):
+    %153 s: ptr = show %150
+    %154 lit: ptr = const str 6
+    %155 s: ptr = concat %153, %154
+    drop %153
+    drop %154
+    %156 lit: i64 = const 2
+    %157 lit: i64 = const 1
+    %158 rec: ptr = alloc main::fused_get_or::Point(%156, %157)
+    call has_point#6(%152, %158) -> b17(%151, %155)
+  b17(%159 r: bool, %160 r: ptr, %161 s: ptr):
+    %162 s: ptr = show %159
+    %163 s: ptr = concat %161, %162
+    drop %161
+    drop %162
+    %164 lit: ptr = const str 6
+    %165 s: ptr = concat %163, %164
+    drop %163
+    drop %164
+    %166 lit: ptr = const str 3
+    call contains#7(%160, %166) -> b18(%165)
+  b18(%167 r: bool, %168 s: ptr):
+    %169 s: ptr = show %167
+    %170 s: ptr = concat %168, %169
+    drop %168
+    drop %169
+    perform std::console::Console.print(%170) -> b19()
+  b19(%171 r: unit):
+    %172 box: word = box %171
+    drop %172
+    %173 lit: i64 = const 5
+    %174 lit: i64 = const 21
+    %175 tup: ptr = alloc tuple#6(i64, i64)(%173, %174)
+    %176 xs: ptr = alloc list(%175)
+    call of#2(%176) -> b20()
+  b20(%177 r: ptr):
+    %178 lit: i64 = const 5
+    call twice#8(%177, %178) -> b21()
+  b21(%179 r: i64):
+    %180 s: ptr = show %179
+    %181 lit: ptr = const str 6
+    %182 s: ptr = concat %180, %181
+    drop %180
+    drop %181
+    %183 r: ptr = $map_empty()
+    %184 lit: i64 = const 5
+    call twice#8(%183, %184) -> b22(%182)
+  b22(%185 r: i64, %186 s: ptr):
+    %187 s: ptr = show %185
+    %188 s: ptr = concat %186, %187
+    drop %186
+    drop %187
+    perform std::console::Console.print(%188) -> b23()
+  b23(%189 r: unit):
+    %190 box: word = box %189
+    %191 unbox: unit = unbox %190
+    drop %190
+    ret %191
+
+fn $entry#1 top -> unit ; main::fused_get_or, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn get_int#3 top -> ptr ; main::fused_get_or, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 m: ptr, %1 k: i64):
+    %2 box: word = box %1
+    %3 lit: ptr = const str 8
+    %4 r: word = $map_get_or(%0, %2, %3)
+    ret %4
+
+fn get_str#4 top -> i64 ; main::fused_get_or, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 m: ptr, %1 k: ptr):
+    %2 lit: i64 = const 1
+    %3 t: i64 = intneg %2
+    %4 box: word = box %3
+    %5 r: word = $map_get_or(%0, %1, %4)
+    %6 unbox: i64 = unbox %5
+    drop %5
+    ret %6
+
+fn get_pair#5 top -> ptr ; main::fused_get_or, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 m: ptr, %1 k: ptr):
+    %2 xs: ptr = alloc list()
+    %3 r: word = $map_get_or(%0, %1, %2)
+    ret %3
+
+fn has_point#6 top -> bool ; main::fused_get_or, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 m: ptr, %1 p: ptr):
+    %2 r: bool = $map_contains(%0, %1)
+    ret %2
+
+fn twice#8 top -> i64 ; main::fused_get_or, frame 5 slots [%0 word*, %1 i64, %4 bool, %5 word*, %10 word*]
+  b0(%0 m: ptr, %1 k: i64):
+    %2 box: word = box %1
+    %3 r: ptr = $map_get(%0, %2)
+    dup %3
+    call is_some#9(%3) -> b1(%3)
+  b1(%4 r: bool, %5 r: ptr):
+    if %4 then b2(%5) else b3(%5)
+  b2(%6 r: ptr):
+    %8 lit: i64 = const 0
+    %9 box: word = box %8
+    call unwrap_or#10(%6, %9) -> b4()
+  b3(%7 r: ptr):
+    drop %7
+    %14 lit: i64 = const 1
+    %15 t: i64 = intneg %14
+    ret %15
+  b4(%10 r: word):
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 lit: i64 = const 2
+    %13 t: i64 = intmul %11, %12
+    ret %13

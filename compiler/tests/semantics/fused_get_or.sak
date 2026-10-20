@@ -1,0 +1,37 @@
+// milestone: M4
+// covers: performance-r1 WS-P15; design §17.275 (4) (`Map.get` consumed by `unwrap_or` or `is_some` is one builtin, every key kind)
+// spec: §17.275
+
+// `opt` fuses `Map.get` whose `Option` only feeds the next `Option.unwrap_or` into
+// `map_get_or`, and one feeding `Option.is_some` into `map_contains`, for Int, String, tuple and
+// record keys; an `Option` used again is left alone. Same output either way.
+type Point = { x: Int, y: Int }
+
+fn get_int(m: Map<Int, String>, k: Int) -> String { Option.unwrap_or(Map.get(m, k), "none") }
+
+fn get_str(m: Map<String, Int>, k: String) -> Int { Map.get(m, k).unwrap_or(-1) }
+
+fn get_pair(m: Map<(Int, String), List<Int>>, k: (Int, String)) -> List<Int> {
+  Option.unwrap_or(Map.get(m, k), [])
+}
+
+fn has_point(m: Map<Point, Int>, p: Point) -> Bool { Option.is_some(Map.get(m, p)) }
+
+fn twice(m: Map<Int, Int>, k: Int) -> Int {
+  let o = Map.get(m, k)
+  if Option.is_some(o) { Option.unwrap_or(o, 0) * 2 } else { -1 }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let mi = Map.insert(Map.insert(Map.empty(), 1, "one"), -2, "minus two")
+  let ms = Map.of([("tea", 3), ("cake", 0)])
+  let mt = Map.of([((1, "a"), [1, 2]), ((2, "b"), [])])
+  let mp = Map.of([(Point { x: 1, y: 2 }, 12)])
+  Console.print("{get_int(mi, 1)} {get_int(mi, -2)} {get_int(mi, 3)}")
+  Console.print("{get_str(ms, "tea")} {get_str(ms, "cake")} {get_str(ms, "milk")}")
+  Console.print("{get_pair(mt, (1, "a"))} {get_pair(mt, (2, "b"))} {get_pair(mt, (1, "b"))}")
+  Console.print(
+    "{has_point(mp, Point { x: 1, y: 2 })} {has_point(mp, Point { x: 2, y: 1 })} {Map.contains(ms, "cake")}",
+  )
+  Console.print("{twice(Map.of([(5, 21)]), 5)} {twice(Map.empty(), 5)}")
+}

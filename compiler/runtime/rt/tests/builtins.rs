@@ -263,3 +263,29 @@ fn fused_get_expect() {
         assert_eq!(rt.map_get_expect(map, k, m).unwrap_err().code, 30);
     });
 }
+
+/// `map_get_or` (design §17.275 (4)) is `unwrap_or(map_get(m, k), d)` without the `Option`: a
+/// hit releases the default, a miss returns it; `map_contains` is `is_some(map_get(m, k))`.
+#[test]
+fn fused_get_or() {
+    balanced(|rt| {
+        let (k, v) = (s(rt, "tea"), s(rt, "3"));
+        let e = rt.map_empty();
+        let map = rt.map_insert(e, k, v).unwrap();
+        rt.dup(map).unwrap();
+        let (k, d) = (s(rt, "tea"), s(rt, "none"));
+        let before = rt.stats().requested;
+        let v = rt.map_get_or(map, k, d).unwrap();
+        assert_eq!(rt.stats().requested, before, "no Option is built");
+        assert_eq!(text(rt, v), "3");
+        rt.dup(map).unwrap();
+        let (k, d) = (s(rt, "coffee"), s(rt, "none"));
+        let v = rt.map_get_or(map, k, d).unwrap();
+        assert_eq!(text(rt, v), "none");
+        rt.dup(map).unwrap();
+        let k = s(rt, "tea");
+        assert!(rt.map_contains(map, k).unwrap());
+        let k = s(rt, "coffee");
+        assert!(!rt.map_contains(map, k).unwrap());
+    });
+}

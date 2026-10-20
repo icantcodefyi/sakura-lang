@@ -5,6 +5,8 @@
 @external(js, "sakura_runtime", "map_empty")
 pub fn empty<K: Hash, V>() -> Map<K, V>
 
+/// The value under `k`, or `None`. Consumed at once by `expect`, `unwrap_or` or `is_some`, it
+/// builds no `Option`; `Int` keys are indexed by their own bits, without hashing.
 @external(js, "sakura_runtime", "map_get")
 @total
 pub fn get<K: Hash, V>(m: Map<K, V>, k: K) -> Option<V>

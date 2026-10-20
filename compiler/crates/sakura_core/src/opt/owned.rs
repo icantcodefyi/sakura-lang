@@ -105,6 +105,7 @@ pub const BORROWS: &[&str] = &[
     "list_contains",
     "map_get",
     "map_get_expect",
+    "map_get_or",
     "map_contains",
     "map_len",
     "set_contains",

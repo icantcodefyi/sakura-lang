@@ -15,7 +15,8 @@
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
 //!   found by [`handlers::bind`] (design §17.113).
 //! - `list_get`/`map_get` whose `Option` only feeds the next binding's `option_expect` become
-//!   one checked read, `list_get_expect`/`map_get_expect` (design §17.151).
+//!   one checked read, `list_get_expect`/`map_get_expect` (design §17.151); a `map_get` feeding
+//!   `Option.unwrap_or` or `Option.is_some` becomes `map_get_or` or `map_contains` (§17.275 (4)).
 //! - Equality that only constructor tags decide becomes `tag_eq` ([`tags`], design §17.183).
 //!
 //! [`ranges`] is not a rewrite: backends run it at emission for their `Int` range, and
@@ -34,8 +35,9 @@ pub mod tags;
 
 pub fn optimize(m: &mut Module) {
     handlers::inline_constructors(m);
+    let consumers = Consumers::of(m);
     for i in 0..m.defs.len() {
-        fuse_expect(&mut m.defs[i]);
+        fuse_expect(&mut m.defs[i], &consumers);
         tags::rewrite(&m.types, &mut m.defs[i]);
         let mut returns = HashMap::new();
         return_joins(&m.defs[i].body, &mut returns);
@@ -91,21 +93,87 @@ fn blames_caller_inner(m: &Module, e: &Expr) -> bool {
 /// jump, at the call's position: the next iteration's checks blame that call (design §17.115).
 pub const SITE_MARK: &str = "$site";
 
+/// The std defs besides `option_expect` that consume a `map_get` in a fusion (design §17.275
+/// (4)): `Option.unwrap_or` and `Option.is_some`, when the program has them.
+struct Consumers {
+    unwrap_or: Option<DefId>,
+    is_some: Option<DefId>,
+}
+
+impl Consumers {
+    fn of(m: &Module) -> Self {
+        let find = |name: &str| {
+            m.defs
+                .iter()
+                .position(|d| {
+                    d.module == "std::option"
+                        && d.name == name
+                        && matches!(d.kind, FnKind::Top { .. })
+                })
+                .map(|i| DefId(i as u32))
+        };
+        Consumers {
+            unwrap_or: find("unwrap_or"),
+            is_some: find("is_some"),
+        }
+    }
+
+    /// The fused builtin for `get` whose `Option` is the first argument of a call of `f`.
+    fn fused(&self, get: &str, f: &Atom) -> Option<&'static str> {
+        match (get, f) {
+            ("list_get", Atom::Builtin(b)) if b == "option_expect" => Some("list_get_expect"),
+            ("map_get", Atom::Builtin(b)) if b == "option_expect" => Some("map_get_expect"),
+            ("map_get", Atom::Global(d)) if Some(*d) == self.unwrap_or => Some("map_get_or"),
+            ("map_get", Atom::Global(d)) if Some(*d) == self.is_some => Some("map_contains"),
+            _ => None,
+        }
+    }
+}
+
 /// `let o = list_get(xs, i); let r = option_expect(o, msg)` with `o` used nowhere else becomes
 /// `let r = list_get_expect(xs, i, msg)`, keeping the `option_expect`'s position; likewise
-/// `map_get`. Both runtimes define the fused builtin as the composition, so the order of
-/// evaluation, the `D030` and its message are unchanged.
-fn fuse_expect(def: &mut FnDef) {
+/// `map_get`, and `map_get` with `Option.unwrap_or(o, d)` (`map_get_or(m, k, d)`) or
+/// `Option.is_some(o)` (`map_contains(m, k)`); the get sinks past at most [`MAX_SINK`] lets to
+/// reach its consumer. Every runtime defines the fused builtin as the composition, so the
+/// `D030`, its message and every effect are unchanged.
+fn fuse_expect(def: &mut FnDef, consumers: &Consumers) {
     let mut uses = vec![0; def.locals.len()];
     local_uses(&def.body, &mut uses);
-    fuse(&mut def.body, &uses);
+    fuse(&mut def.body, &uses, consumers);
 }
 
-fn fuse(e: &mut Expr, uses: &[usize]) {
-    crate::ensure_stack(|| fuse_inner(e, uses))
+fn fuse(e: &mut Expr, uses: &[usize], consumers: &Consumers) {
+    crate::ensure_stack(|| fuse_inner(e, uses, consumers))
 }
 
-fn fuse_inner(mut e: &mut Expr, uses: &[usize]) {
+/// How far a get may sink to its consumer: the lets computing the consumer's other arguments
+/// (`unwrap_or(Map.get(m, k), -1)` negates first). A get neither fails nor performs and its
+/// arguments are locals, so evaluating it later is unobservable.
+const MAX_SINK: usize = 4;
+
+/// The let within [`MAX_SINK`] of `e` whose call consumes `o` as its first argument, with the
+/// builtin fusing `get` into it.
+fn consumer(
+    mut e: &Expr,
+    o: Local,
+    get: &str,
+    consumers: &Consumers,
+) -> Option<(usize, &'static str)> {
+    for depth in 0..=MAX_SINK {
+        let Expr::Let { bind, body, .. } = e else {
+            return None;
+        };
+        if let Bind::Call(f, args) = bind
+            && args.first() == Some(&Atom::Local(o))
+        {
+            return consumers.fused(get, f).map(|b| (depth, b));
+        }
+        e = body;
+    }
+    None
+}
+
+fn fuse_inner(mut e: &mut Expr, uses: &[usize], consumers: &Consumers) {
     loop {
         if let Expr::Let {
             local: o,
@@ -113,60 +181,56 @@ fn fuse_inner(mut e: &mut Expr, uses: &[usize]) {
             body,
             ..
         } = e
-            && let Some(fused) = match get.as_str() {
-                "list_get" => Some("list_get_expect"),
-                "map_get" => Some("map_get_expect"),
-                _ => None,
-            }
             && uses[o.index()] == 1
-            && let Expr::Let {
-                bind: Bind::Call(Atom::Builtin(expect), eargs),
-                ..
-            } = &**body
-            && expect == "option_expect"
-            && eargs.first() == Some(&Atom::Local(*o))
+            && let Some((depth, fused)) = consumer(body, *o, get, consumers)
         {
             let Expr::Let {
-                local,
-                bind: Bind::Call(f, args),
-                pos,
+                bind: Bind::Call(_, gets),
                 body,
+                ..
             } = e
             else {
                 unreachable!()
             };
+            let mut gets = std::mem::take(gets);
+            let rest = std::mem::replace(&mut **body, Expr::Ret(Atom::Lit(Lit::Unit)));
+            *e = rest;
+            let mut c = &mut *e;
+            for _ in 0..depth {
+                let Expr::Let { body, .. } = c else {
+                    unreachable!()
+                };
+                c = body;
+            }
             let Expr::Let {
-                local: r,
-                bind: Bind::Call(_, eargs),
-                pos: at,
-                body: rest,
-            } = &mut **body
+                bind: Bind::Call(f, args),
+                ..
+            } = c
             else {
                 unreachable!()
             };
-            (*local, *pos) = (*r, *at);
             *f = Atom::Builtin(fused.to_owned());
-            args.push(eargs.pop().expect("option_expect has a message"));
-            let rest = std::mem::replace(&mut **rest, Expr::Ret(Atom::Lit(Lit::Unit)));
-            **body = rest;
+            gets.extend(args.drain(1..));
+            *args = gets;
+            continue;
         }
         match e {
             Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => e = body,
             Expr::LetJoin { join, body, .. } => {
-                fuse(join, uses);
+                fuse(join, uses, consumers);
                 e = body;
             }
             Expr::Switch { arms, default, .. } => {
                 for (_, a) in arms {
-                    fuse(a, uses);
+                    fuse(a, uses, consumers);
                 }
                 if let Some(d) = default {
-                    fuse(d, uses);
+                    fuse(d, uses, consumers);
                 }
                 return;
             }
             Expr::If { then, els, .. } => {
-                fuse(then, uses);
+                fuse(then, uses, consumers);
                 e = els;
             }
             Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => return,

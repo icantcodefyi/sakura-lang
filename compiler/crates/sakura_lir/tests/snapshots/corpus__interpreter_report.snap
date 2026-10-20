@@ -81,6 +81,7 @@ semantics/fused_get_expect: ok, 331 allocated, 5373 dup, 5704 drop, peak 108, li
 semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, live 0/0
 semantics/fused_get_expect_out_of_range: D030, 84 allocated, 824 dup, 908 drop, peak 43, live 0/0
 semantics/fused_get_expect_owned_push: ok, 269 allocated, 2230 dup, 2499 drop, peak 41, live 0/0
+semantics/fused_get_or: ok, 97 allocated, 61 dup, 158 drop, peak 20, live 0/0
 semantics/generic_refinement: ok, 31 allocated, 21 dup, 52 drop, peak 7, live 0/0
 semantics/generics: ok, 81 allocated, 158 dup, 239 drop, peak 12, live 0/0
 semantics/handler_callback_context: ok, 34 allocated, 29 dup, 63 drop, peak 16, live 0/0
@@ -122,6 +123,9 @@ semantics/loop_resume_bound: ok, 93 allocated, 40 dup, 133 drop, peak 11, live 0
 semantics/loop_resume_edges: ok, 72 allocated, 49 dup, 121 drop, peak 13, live 0/0
 semantics/loop_resume_twice: ok, 202 allocated, 56 dup, 258 drop, peak 13, live 0/0
 semantics/loops: ok, 44 allocated, 38 dup, 82 drop, peak 12, live 0/0
+semantics/map_int_json: unsupported (builtin map_remove)
+semantics/map_int_keys: unsupported (builtin map_remove)
+semantics/map_int_shared: unsupported (builtin map_remove)
 semantics/match_guard_run_regions: ok, 73 allocated, 13 dup, 86 drop, peak 6, live 0/0
 semantics/match_literal_switch: ok, 53 allocated, 0 dup, 53 drop, peak 4, live 0/0
 semantics/match_wide_dispatch: ok, 75 allocated, 28 dup, 103 drop, peak 14, live 0/0
@@ -140,8 +144,8 @@ semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0
 semantics/owned_empty_set_defect: D020, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
 semantics/owned_empty_singleton: unsupported (builtin map_remove)
 semantics/owned_fresh_result: ok, 1760 allocated, 19556 dup, 21316 drop, peak 197, live 0/0
-semantics/owned_generic: ok, 301 allocated, 4292 dup, 4593 drop, peak 12, live 0/0
-semantics/owned_loop_twice: ok, 854 allocated, 8908 dup, 9762 drop, peak 86, live 0/0
+semantics/owned_generic: ok, 301 allocated, 4296 dup, 4597 drop, peak 12, live 0/0
+semantics/owned_loop_twice: ok, 854 allocated, 8914 dup, 9768 drop, peak 86, live 0/0
 semantics/owned_record_captured: ok, 161 allocated, 235 dup, 396 drop, peak 21, live 0/0
 semantics/owned_record_loop_twice: ok, 301 allocated, 550 dup, 851 drop, peak 43, live 0/0
 semantics/owned_record_recursive: ok, 279 allocated, 881 dup, 1160 drop, peak 33, live 0/0

@@ -127,7 +127,7 @@ fn memory$Store_put#10 clause main::handler_callback_context::Store.put -> unit 
     %8 lit: unit = const ()
     ret %8
 
-fn memory$Store_with_default#11 clause main::handler_callback_context::Store.with_default -> word ; main::handler_callback_context, captures [], frame 18 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*, %6 bool, %7 i64, %8 word*, %9 i64, %10 word*, %16 word*, %17 i64, %18 word*, %27 word*, %28 word*, %29 word*, %33 bool, %34 word*]
+fn memory$Store_with_default#11 clause main::handler_callback_context::Store.with_default -> word ; main::handler_callback_context, captures [], frame 15 slots [%0 word*, %1 i64, %2 word*, %3 i64, %4 word*, %6 bool, %7 i64, %8 word*, %9 i64, %10 word*, %16 word*, %17 i64, %18 word*, %30 bool, %31 word*]
   b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64, %4 body: ptr):
     drop %0
     %5 m: word = state_get %1[0] row 4
@@ -135,7 +135,7 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
     call contains#12(%5, %2) -> b1(%1, %2, %3, %4)
   b1(%6 r: bool, %7 inst: id, %8 k: ptr, %9 v: i64, %10 body: ptr):
     %11 t: bool = not %6
-    if %11 then b6(%7, %8, %9, %10) else b7(%7, %8, %9, %10)
+    if %11 then b5(%7, %8, %9, %10) else b6(%7, %8, %9, %10)
   b2(%12 v: word, %13 inst: id, %14 k: ptr, %15 body: ptr):
     drop %12
     call %15() -> b3(%13, %14)
@@ -146,34 +146,32 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
     drop %19
     drop %20
     %22 m: word = state_get %17[0] row 4
-    %23 r: ptr = $map_get(%22, %18)
-    %24 lit: i64 = const 1
-    %25 t: i64 = intneg %24
-    %26 box: word = box %25
-    call unwrap_or#13(%23, %26) -> b4(%16, %21)
-  b4(%27 r: word, %28 r: word, %29 s: ptr):
-    %30 unbox: i64 = unbox %27
-    drop %27
-    %31 s: ptr = show %30
-    %32 s: ptr = concat %29, %31
-    drop %29
-    drop %31
-    perform std::console::Console.print(%32) -> b5(%28)
-  b5(%33 r: unit, %34 r: word):
-    %35 box: word = box %33
-    drop %35
-    ret %34
-  b6(%36 inst: id, %37 k: ptr, %38 v: i64, %39 body: ptr):
-    %44 m: word = state_get %36[0] row 4
-    %45 box: word = box %38
-    dup %37
-    %46 r: ptr = $map_insert(%44, %37, %45)
-    state_set %36[0] row 4 = %46
-    %47 set: unit = const ()
-    %48 lit: unit = const ()
-    %49 box: word = box %48
-    jump b2(%49, %36, %37, %39)
-  b7(%40 inst: id, %41 k: ptr, %42 v: i64, %43 body: ptr):
-    %50 lit: unit = const ()
-    %51 box: word = box %50
-    jump b2(%51, %40, %41, %43)
+    %23 lit: i64 = const 1
+    %24 t: i64 = intneg %23
+    %25 box: word = box %24
+    %26 r: word = $map_get_or(%22, %18, %25)
+    %27 unbox: i64 = unbox %26
+    drop %26
+    %28 s: ptr = show %27
+    %29 s: ptr = concat %21, %28
+    drop %21
+    drop %28
+    perform std::console::Console.print(%29) -> b4(%16)
+  b4(%30 r: unit, %31 r: word):
+    %32 box: word = box %30
+    drop %32
+    ret %31
+  b5(%33 inst: id, %34 k: ptr, %35 v: i64, %36 body: ptr):
+    %41 m: word = state_get %33[0] row 4
+    %42 box: word = box %35
+    dup %34
+    %43 r: ptr = $map_insert(%41, %34, %42)
+    state_set %33[0] row 4 = %43
+    %44 set: unit = const ()
+    %45 lit: unit = const ()
+    %46 box: word = box %45
+    jump b2(%46, %33, %34, %36)
+  b6(%37 inst: id, %38 k: ptr, %39 v: i64, %40 body: ptr):
+    %47 lit: unit = const ()
+    %48 box: word = box %47
+    jump b2(%48, %37, %38, %40)

@@ -234,25 +234,31 @@ fn base#5 const -> ptr ; main::owned_loop_twice, frame 0 slots []
     %6 xs: ptr = alloc list(%1, %3, %5)
     ret %6
 
-fn counts#6 top -> ptr ; main::owned_loop_twice, frame 7 slots [%0 word*, %26 word*, %27 word*, %28 i64, %29 i64, %30 word*, %31 word*]
+fn counts#6 top -> ptr ; main::owned_loop_twice, frame 1 slots [%0 word*]
   b0(%0 words: ptr):
     %1 r: ptr = $map_empty()
     dup.candidate %0
     %2 n: i64 = $list_len(%0)
-    %37 lit: i64 = const 0
-    jump b1(%37, %1, %0, %2)
+    %31 lit: i64 = const 0
+    jump b1(%31, %1, %0, %2)
   b1(%3 i: i64, %4 m: ptr, %5 words: ptr, %6 n: i64):
     %7 more: bool = lt.int %3, %6
     if %7 then b2(%5, %6, %3, %4) else b3(%5, %6, %3, %4)
   b2(%8 words: ptr, %9 n: i64, %10 i: i64, %11 m: ptr):
     dup.candidate %8
     %16 x: word = $list_at(%8, %10)
+    %23 lit: i64 = const 0
+    %24 box: word = box %23
     dup.candidate %11
     dup.candidate %16
-    %23 r: ptr = $map_get(%11, %16)
-    %24 lit: i64 = const 0
-    %25 box: word = box %24
-    call unwrap_or#7(%23, %25) -> b5(%8, %9, %10, %11, %16)
+    %25 r: word = $map_get_or(%11, %16, %24)
+    %26 unbox: i64 = unbox %25
+    drop %25
+    %27 lit: i64 = const 1
+    %28 t: i64 = intadd %26, %27
+    %29 box: word = box %28
+    %30 r: ptr = $map_insert(%11, %16, %29)
+    jump b4(%30, %8, %9, %10)
   b3(%12 words: ptr, %13 n: i64, %14 i: i64, %15 m: ptr):
     drop %12
     ret %15
@@ -260,11 +266,3 @@ fn counts#6 top -> ptr ; main::owned_loop_twice, frame 7 slots [%0 word*, %26 wo
     %21 lit: i64 = const 1
     %22 i: i64 = intadd %20, %21
     jump b1(%22, %17, %18, %19)
-  b5(%26 r: word, %27 words: ptr, %28 n: i64, %29 i: i64, %30 m: ptr, %31 x: ptr):
-    %32 unbox: i64 = unbox %26
-    drop %26
-    %33 lit: i64 = const 1
-    %34 t: i64 = intadd %32, %33
-    %35 box: word = box %34
-    %36 r: ptr = $map_insert(%30, %31, %35)
-    jump b4(%36, %27, %28, %29)

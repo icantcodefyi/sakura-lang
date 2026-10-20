@@ -444,6 +444,20 @@ impl Rt {
         self.expected(v, msg)
     }
 
+    /// `Option.unwrap_or(map_get(m, k), d)`, fused by `opt` (design §17.275 (4)): no `Option`
+    /// is built, and `d` is returned or released.
+    pub fn map_get_or(&mut self, m: u32, k: u32, d: u32) -> Res<u32> {
+        let v = self.map_value(m, k);
+        self.drop2(m, k);
+        match v {
+            Ok(None) => Ok(d),
+            r => {
+                self.drop(d);
+                r.map(|v| v.expect("a present entry"))
+            }
+        }
+    }
+
     /// A fused read's value, or `option_expect`'s `D030` with the program's message; consumes
     /// `msg`.
     fn expected(&mut self, v: Res<Option<u32>>, msg: u32) -> Res<u32> {

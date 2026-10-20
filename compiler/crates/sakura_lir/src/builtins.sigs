@@ -70,10 +70,12 @@ list_slice: (ptr, i64, i64) -> ptr
 llm_anthropic: (ptr, ptr) -> ptr
 log_json: () -> ptr
 log_stderr: () -> ptr
+map_contains: (ptr, word) -> bool
 map_empty: () -> ptr
 map_entries: (ptr) -> ptr
 map_get: (ptr, word) -> ptr
 map_get_expect: (ptr, word, ptr) -> word
+map_get_or: (ptr, word, word) -> word
 map_insert: (ptr, word, word) -> ptr
 map_len: (ptr) -> i64
 map_remove: (ptr, word) -> ptr

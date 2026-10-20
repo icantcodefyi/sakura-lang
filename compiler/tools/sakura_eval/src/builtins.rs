@@ -314,6 +314,11 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             es.iter().filter(|(k2, _)| !equal(k, k2)).cloned().collect(),
         )),
         ("map_contains", [Map(es), k]) => Bool(es.iter().any(|(k2, _)| equal(k, k2))),
+        // `opt`'s fusion with `Option.unwrap_or` (design §17.275 (4)): the composition.
+        ("map_get_or", [Map(es), k, d]) => es
+            .iter()
+            .find(|(k2, _)| equal(k, k2))
+            .map_or_else(|| d.clone(), |(_, v)| v.clone()),
         ("map_len", [Map(es)]) => Int(es.len() as i64),
         ("map_keys", [Map(es)]) => list(es.iter().map(|(k, _)| k.clone()).collect()),
         ("map_values", [Map(es)]) => list(es.iter().map(|(_, v)| v.clone()).collect()),

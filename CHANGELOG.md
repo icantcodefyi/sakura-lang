@@ -9,6 +9,12 @@ retains earlier implementation history.
 
 ### Changed
 
+- Map performance (design §17.275): on the JS backend a `Map<Int, _>` or `Set<Int>` indexes
+  its keys by their own bits instead of a hash, and on every backend `Map.get` consumed at once
+  by `unwrap_or`, `is_some` or `expect` (and `Map.contains`) builds no `Option`. By
+  instructions retired per call on the reference Mac (Node, n = 100,000), `map_set`'s `Int`
+  case drops 38% (6.21× → 3.84× hand-written JavaScript); insertion order, `Show` and JSON are
+  unchanged.
 - JS backend performance (design §17.265 (6)): a function that returns a fresh list may now
   update the list it is given in place when the caller is done with it, and a `List<Bool>`
   built by an owned push loop is one array until a persistent update rebuilds it. By
