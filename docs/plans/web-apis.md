@@ -79,6 +79,12 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 
 "After" names what must be on `main`. 4b and 7a can run beside 1–3 in separate worktrees.
 
+**Order of the remaining phases (design §17.279).** 5, 9, 8, 6, 10, 7b, 11, 7c (optional,
+last), with 12 beside each. Phases 5 and 9 are pure Sakura and start now in the web lane's
+worktree beside the perf lane's WS-P20 and WS-P15 (§17.276); phase 8 starts when WS-P20 is on
+`main` and rebases over WS-P15, since both edit `sakura_runtime.js`; 6 and 10 follow 8. A
+WebSocket server (`Serve` upgrade) stays outside the RFC.
+
 ## 3. Phases
 
 ### Phase 0: redirect authority fix
@@ -272,6 +278,11 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
   `main`), and `sakura_host_native`'s `the_driver_refuses_a_root_effect_native_lacks`
   holds the driver to the line and code. `Llm` in `main`'s row is `V9002` at build on every
   backend (no parameterless `Llm.host()`), so the driver's `Llm` entry is unreachable today.
+- **Readings (design §17.277).** The example as the fixture, the unprefixed one-effect line
+  and the unreachable `Llm` entry stand. Opus runs a native binary installing `Http.host()`
+  and one installing `Serve.host()` and records the code each stops with in the native CLI
+  parity note; `changes.mdx` and `roadmap.mdx` then name that code instead of "`D090` or
+  `D091`".
 
 ### Phase 4b: effect additions and small functions
 

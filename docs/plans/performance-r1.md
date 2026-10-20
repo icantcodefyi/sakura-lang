@@ -320,6 +320,50 @@ same emitted directory counts 454 M in this worktree with the old runtime and 38
 elsewhere with either runtime; unexplained). `map_set:int` and `map_set:string` flag 6%, the
 same count with the old runtime.
 
+**Readings of the WS-P14 compare (design §17.272, §17.276).** WS-P14 is closed. The
+`handled_reentry` n = 1,000 cell is carried under §17.272 (1) (an inlining boundary, larger
+sizes unchanged) with one bounded `list_at` attempt inside WS-P20; the `shapes` n = 50,000
+cell is `environment` (§17.272 (2): the count depends on the artefact's location, and the
+blessed cell is the outlier); `map_set`'s 6% is the same reading; `sieve`'s peak RSS gets
+§17.136's confirmation group inside WS-P20. Harness items before WS-P15's compare:
+`meta.paths` (artefact realpath, cwd), the same-location A/A recount of every blocked Node
+cell against the baseline commit's artefact built once into `bench/target/baseline/<sha>/`,
+a `location` mark when the recount itself is off the blessed number, one time-boxed session
+on the cause, and the bless path named in `release.md` §2.
+
+**The JS lane's order from here (design §17.276):** WS-P20, WS-P15, WS-P21, WS-P16, WS-P17,
+WS-P18 (WS-P19 inside its sweep); wave 2 after WS-P16.
+
+**WS-P20 — cold-path raising (Opus, next; design §17.274).** Paths: `sakura_runtime.js`
+(`add`/`sub`/`mul`, `list_get_expect`, `map_get_expect`, `Defect`), `emit.rs` (the contract
+bracket as a `try` whose catch rewraps as `D011`; `contract_enter`/`contract_exit` and
+`contractDepth` removed), `ABI.md` §5. Rule: a defect on a never-taken arm is thrown inline
+as a `Defect` instance, one frozen module-level instance when its message is static, `new`
+when it carries a value; every observable unchanged (code, message, spans, the `--json`
+`defect` record, exit status, stderr). Rides along: the `list_at` attempt of §17.272 (1), the
+`sieve` RSS group of §17.272 (4), the ownership fixture of §17.278. Tests: every
+`expect-defect` fixture, `json_contracts.rs`, a `D011`-inside-predicate fixture, the runtime
+tests. Delta: `spectral_norm` (at least 20% on Node counts), `nbody`, `sieve`, `countdown`,
+`contracts_plain`.
+
+**WS-P15 — `Map<Int, _>` (Opus, after WS-P20; design §17.275).** Paths: `sakura_runtime.js`
+§Map (an integer index: a persistent radix trie on the key's bits, chosen at the first
+insert, positions in a 32-slot array at the bottom level, a second trie for negative keys;
+the log unchanged), `emit.rs` (the `map_get_or` fusion of `Map.get` consumed by
+`unwrap_or`/`is_some`/`expect`, every key kind), `ABI.md` §7, `std/map.sak` docs. Protocol:
+WS-P13a's, each arm hand-edited and counted first. Tests: a key-range fixture (0, −1,
+±(2^53 − 1), 2^31, 2^32 ± 1), insertion order after removes and compaction, a shared map's
+persistence (`snapshot`), `Set<Int>`, the runtime tests. Delta: `map_set:int` (at least 35%
+on Node counts at n = 100,000); `map_set`, `map_set:string`, `map_set:tuple` not regressed.
+
+**WS-P21 — list-element ownership (Opus, after WS-P15; design §17.273).** Paths:
+`opt/owned.rs` (the *owned elements* fact on an owned list local; the builtin column
+"elements fresh when the callback is fresh"; the consuming summary's element assumption),
+`emit.rs` (the in-place element update guarded by an identity test against each live element
+local, at most two), `--dump owned`. Packet: the soundness argument, the two-indices fixture,
+the `i == j` guard fixture, the differential eval run with the fact off. Delta: `nbody` (at
+least 25% on Node counts at n = 100,000).
+
 ### 4.2 File ownership
 
 | Paths | Owner |
