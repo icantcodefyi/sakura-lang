@@ -176,9 +176,20 @@ header overwritten by the image) is bounded by the image; a stray access aborts 
 compiles moves (the WASM runtime embeds panic locations). The corpus runs clean
 under it both ways (179 of 179) on both A targets in the native job, and `native_detect.rs`
 seeds a generated out-of-bounds load and a freed-object read, which it catches. Poison on
-reuse-token consumption waits for N3's reuse (the LIR has no tokens yet). **Left of N2:** the
-other three `native_detect.rs` controls (Miri's invalid slot kind, ASan's double drop and stale
-callback) with the ASan and Memcheck lanes and the `crabgrind` annotations; N2f the compile
+reuse-token consumption waits for N3's reuse (the LIR has no tokens yet). **The sanitizer lanes
+and their controls (landed `f1c3b8f0`, §17.285 (4)):** `asan` and `valgrind` builds of
+`sakura_rt` annotate the allocator, so a freed block is poisoned (ASan) or unaddressable
+(Memcheck, `crabgrind` client requests) until it is handed out again; the hooks sit on existing
+lines of `heap.rs` and at the end of `mem.rs`, and the wasm32 runtime is byte-identical.
+`runtime/rt/tests/native_detect.rs` seeds an invalid slot kind (Miri: the heap's bounds check
+must stop it with no UB first), a double drop and a stale request (ASan, each in a child
+process); the host's `native_detect.rs` adds the freed-object read under Memcheck. Each control
+was checked red without the annotations. `.github/workflows/native-sanitizers.yml` runs them on
+native changes, nightly and on demand, and `ci.yml`'s scheduled Miri and Valgrind smoke moved
+there. The first dispatched run, 39472738215, is green: Miri on both A hosts; ASan + LSan over
+the runtime, the native host and the in-process corpus; Memcheck over the compiled corpus (270 of
+270 both with twins and with `--no-direct`). The lanes are not branch-protection required
+(that is a remote setting). **Left of N2:** N2f the compile
 report's numbers at a quiet window on the reference host (`bench/bench compile-native` landed:
 per program, frontend, lowering, codegen, object and link p95 from `SAKURA_NATIVE_TIMINGS`;
 on a loaded laptop codegen is at most 49 ms (`deltablue`), object emission under 1 ms and the
@@ -249,13 +260,15 @@ table. The WASI command does not call the codec yet (no Wasmtime `json_validate`
 | Lane | Where | Covers | Detection control |
 |---|---|---|---|
 | Miri | both A targets, host tests | runtime: allocator, objects, arenas, collections, scheduler, codecs, provenance cases | invalid slot kind |
-| ASan + LSan (pinned nightly) | `x86_64-unknown-linux-gnu` | runtime, `sakura_host_native`, bundled C (SQLite where its build allows); uninstrumented libs listed | double drop; stale callback/request |
+| ASan + LSan (pinned nightly) | `x86_64-unknown-linux-gnu` | runtime, `sakura_host_native` and the in-process corpus, bundled C (SQLite and ring's C under clang's ASan); uninstrumented libs listed (prebuilt std, ring's assembly, libc/libm/libgcc_s) | double drop; stale request |
 | Memcheck + allocator client requests (`crabgrind`, `valgrind` feature) | `x86_64-unknown-linux-gnu`, nightly schedule + on demand | emitted native executables over the parity corpus | freed-object read |
 | Checked lowering `--native-checks` | both A targets | every generated load/store/bulk copy against the allocator's shadow; frame slots, globals; poison on free and token consumption | generated out-of-bounds load/store |
 
 Plus the `m5-stress` fixture set (research/12 §7 item 5) under direct/reuse/borrow toggles with the
 live-object baseline asserted. The exit wording is "runtime: Miri and ASan/LSan; generated code:
-Memcheck with allocator annotations and the checked lowering", never "full ASan".
+Memcheck with allocator annotations and the checked lowering", never "full ASan". The first
+three lanes and their controls run in `native-sanitizers.yml` (green on run 39472738215); the
+checked lowering runs in `ci.yml`'s native job.
 
 ## 5. Platform matrix (§17.175 (7); §17.157 (2); ADR 0003)
 
