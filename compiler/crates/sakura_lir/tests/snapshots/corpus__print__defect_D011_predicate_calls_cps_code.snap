@@ -1,0 +1,103 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::defect_D011_predicate_calls_cps_code::Odd | Odd 24b (n: i64)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::defect_D011_predicate_calls_cps_code, frame 5 slots [%2 i64, %4 bool, %8 i64, %10 bool, %13 bool]
+  b0():
+    %0 lit: i64 = const 4
+    %1 $site: i64 = const 2
+    call Even$from#2(%0, %1) -> b1()
+  b1(%2 r: i64):
+    %3 s: ptr = show %2
+    perform std::console::Console.print(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    drop %5
+    %6 lit: i64 = const 2
+    %7 $site: i64 = const 3
+    call Even$from#2(%6, %7) -> b3()
+  b3(%8 r: i64):
+    %9 s: ptr = show %8
+    perform std::console::Console.print(%9) -> b4()
+  b4(%10 r: unit):
+    %11 box: word = box %10
+    drop %11
+    %12 lit: ptr = const str 0
+    perform std::console::Console.print(%12) -> b5()
+  b5(%13 r: unit):
+    %14 box: word = box %13
+    %15 unbox: unit = unbox %14
+    drop %14
+    ret %15
+
+fn $entry#1 top -> unit ; main::defect_D011_predicate_calls_cps_code, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn Even$from#2 top -> i64 ; main::defect_D011_predicate_calls_cps_code, frame 5 slots [%0 i64, %1 i64, %3 bool, %4 i64, %5 i64]
+  b0(%0 it: i64, %1 $site: i64):
+    %2 enter: unit = $contract_enter()
+    call even#3(%0) -> b1(%0, %1)
+  b1(%3 r: bool, %4 it: i64, %5 $site: i64):
+    %6 exit: unit = $contract_exit()
+    check D010 %3 blame %5+0 ; Even
+    %7 ok: unit = const ()
+    ret %4
+
+fn even#3 top -> bool ; main::defect_D011_predicate_calls_cps_code, frame 3 slots [%0 i64, %1 word*, %7 word*]
+  b0(%0 n: i64):
+    try_push -> b1(err, )
+    %4 box: word = box %0
+    %5 xs: ptr = alloc list(%4)
+    %6 f: ptr = closure even$1#4[]
+    call map#6(%5, %6) -> b2()
+  b1(%1 e: word):
+    %2 p: i64 = proj %1.0 main::defect_D011_predicate_calls_cps_code::Odd
+    drop %1
+    %3 lit: bool = const false
+    ret %3
+  b2(%7 r: ptr) [try]:
+    %8 r: i64 = $list_len(%7)
+    %9 lit: i64 = const 1
+    %10 t: bool = eq.int %8, %9
+    try_pop
+    ret %10
+
+fn even$1#4 lambda -> word ; main::defect_D011_predicate_calls_cps_code, captures [], frame 3 slots [%0 word*, %1 word*, %3 i64]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    call half#5(%2) -> b1()
+  b1(%3 r: i64):
+    %4 box: word = box %3
+    ret %4
+
+fn half#5 top -> i64 ; main::defect_D011_predicate_calls_cps_code, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 2
+    %2 t: i64 = intrem %0, %1
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0) else b2(%0)
+  b1(%5 n: i64):
+    %7 lit: i64 = const 2
+    %8 t: i64 = intsub %5, %7
+    %9 lit: i64 = const 100
+    %10 t: i64 = intdiv %9, %8
+    ret %10
+  b2(%6 n: i64):
+    %11 rec: ptr = alloc main::defect_D011_predicate_calls_cps_code::Odd(%6)
+    fail %11

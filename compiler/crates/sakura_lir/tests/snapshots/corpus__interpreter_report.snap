@@ -40,6 +40,7 @@ semantics/crypto_verify_rejects_tampered: unsupported (builtin string_to_bytes)
 semantics/deep_countdown: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deep_recursion_defect: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D001_after_a_kept_bracket: D001, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D001_int_overflow: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D002_division_by_zero: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D004_float_round_nan: unsupported (builtin float_round)
@@ -48,6 +49,7 @@ semantics/defect_D010_refinement_from: D010, 1 allocated, 0 dup, 1 drop, peak 1,
 semantics/defect_D011_contract_evaluation_failed: D011, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D011_inner_message: D011, 2 allocated, 1 dup, 3 drop, peak 2, live 0/0
 semantics/defect_D011_nested_requires: D011, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D011_predicate_calls_cps_code: D011, 12 allocated, 10 dup, 22 drop, peak 7, live 0/0
 semantics/defect_D020_external_precondition: D020, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D020_requires_blames_caller: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D020_std_preconditions: D020, 3 allocated, 0 dup, 3 drop, peak 2, live 0/0
@@ -142,6 +144,7 @@ semantics/native_coverage_handled_http_runs: ok, 47 allocated, 56 dup, 103 drop,
 semantics/nested_options: ok, 280 allocated, 474 dup, 754 drop, peak 47, live 0/0
 semantics/nested_options_json: unsupported (builtin json_encode)
 semantics/newline_rule: ok, 34 allocated, 41 dup, 75 drop, peak 11, live 0/0
+semantics/owned_argument_used_after_call: ok, 498 allocated, 4030 dup, 4528 drop, peak 126, live 0/0
 semantics/owned_captured_and_stored: ok, 514 allocated, 3258 dup, 3772 drop, peak 48, live 0/0
 semantics/owned_effects: ok, 693 allocated, 5096 dup, 5789 drop, peak 46, live 0/0
 semantics/owned_empty_set_defect: D020, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0

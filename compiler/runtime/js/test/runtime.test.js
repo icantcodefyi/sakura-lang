@@ -244,6 +244,43 @@ test("Int arithmetic is checked", () => {
   assert.equal(rt.float_round(-2.5), -3);
 });
 
+test("cold-path defects are Defect instances; static ones are frozen and shared (design §17.274)", () => {
+  for (const [d, code, message] of [
+    [rt.D001, "D001", "integer overflow"],
+    [rt.D002, "D002", "division by zero"],
+  ]) {
+    assert.ok(d instanceof rt.Defect && Object.isFrozen(d) && Object.isFrozen(d.spans));
+    assert.deepEqual([d.code, d.detail, d.message, d.spans], [code, message, `${code}: ${message}`, []]);
+  }
+  assert.throws(() => rt.div(1, 0), (e) => e === rt.D002);
+  assert.throws(() => rt.mul(2 ** 40, 2 ** 40), (e) => e === rt.D001);
+  // The emitted fast path's `throw $rt.add_defect(a, b)` (and `sub_`, `mul_`) returns the defect.
+  assert.equal(rt.mul_defect(2 ** 40, 2 ** 40), rt.D001);
+  const d3 = rt.add_defect(2 ** 53 - 1, 1);
+  assert.ok(d3 instanceof rt.Defect && d3 !== rt.add_defect(2 ** 53 - 1, 1));
+  assert.equal(d3.message, "D003: integer 9007199254740992 is beyond the JS backend's safe range ±(2^53-1)");
+  assert.equal(rt.sub_defect(-(2 ** 53) + 1, 2 ** 53 - 1).code, "D003");
+  const o = rt.runTask((ctx, k) => rt.list_get_expect(rt.list([1]), 1, "no second"));
+  assert.deepEqual([o.kind, o.code, o.message], ["defect", "D030", "no second"]);
+  assert.equal(rt.contract_enter, undefined);
+});
+
+test("a contract predicate's catch makes a defect D011 and passes the rest through (design §17.274 (3))", () => {
+  const spans = [{ uri: "u", start_byte: 1, end_byte: 2, role: "primary" }];
+  const d = rt.contract_failed(new rt.Defect("D020", "precondition `even` of half violated", spans));
+  assert.deepEqual(
+    [d.code, d.detail, d.spans],
+    ["D011", "contract evaluation failed: D020: precondition `even` of half violated", spans],
+  );
+  const shared = rt.contract_failed(rt.D001);
+  assert.deepEqual([shared.code, shared.detail], ["D011", "contract evaluation failed: D001: integer overflow"]);
+  assert.ok(Object.isFrozen(rt.D001) && rt.D001.code === "D001");
+  // An inner predicate's D011 and anything that is not a Defect are unchanged.
+  assert.equal(rt.contract_failed(d), d);
+  const foreign = new RangeError("Maximum call stack size exceeded");
+  assert.equal(rt.contract_failed(foreign), foreign);
+});
+
 class User {
   constructor(id, score) {
     this.id = id;

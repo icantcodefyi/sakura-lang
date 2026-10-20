@@ -420,6 +420,11 @@ struct FnEmit<'a> {
     twin: &'static str,
     /// The `contract_enter`/`contract_exit` binds around predicates that cannot defect.
     unbracketed: HashSet<Local>,
+    /// Every other bracket's `contract_exit`s, each with its `contract_enter` (ABI.md §5).
+    exits: HashMap<Local, Local>,
+    /// Calls inside a kept bracket that take a continuation elsewhere: they run to their value
+    /// under `$rt.runSync`, so the bracket's `try` covers all of the predicate (design §17.274).
+    sync_calls: HashSet<Local>,
     /// Join-point loops emitted with a resumable entry (design §17.156 (2)), and every join's
     /// body, which their slow path splices or redefines.
     resumable: HashSet<Label>,
@@ -526,11 +531,26 @@ impl<'a> FnEmit<'a> {
             owned: owned::analyze(cx.m, def, &cx.summaries, &[]),
             twin: "$d",
             unbracketed: HashSet::new(),
+            exits: HashMap::new(),
+            sync_calls: HashSet::new(),
             resumable: HashSet::new(),
             joins: HashMap::new(),
             rl: None,
         };
         collect_joins(&def.body, &mut e.joins);
+        let mut calls = Vec::new();
+        brackets(
+            &def.body,
+            &e.proved,
+            &mut e.unbracketed,
+            &mut e.exits,
+            &mut calls,
+        );
+        e.sync_calls = calls
+            .into_iter()
+            .filter(|(x, b)| e.is_cps(*x, b))
+            .map(|(x, _)| x)
+            .collect();
         e.analyze_labels();
         if mode == Mode::Cps && cx.direct.enabled {
             e.resumable = e
@@ -540,7 +560,6 @@ impl<'a> FnEmit<'a> {
                 .map(|(l, _)| l)
                 .collect();
         }
-        brackets(&def.body, &e.proved, &mut e.unbracketed);
         if mode == Mode::Direct {
             count_uses(&def.body, &mut e.uses);
         }
@@ -833,6 +852,7 @@ impl<'a> FnEmit<'a> {
     /// Does this binding (of `x`) transfer control through a continuation?
     fn is_cps(&self, x: Local, b: &Bind) -> bool {
         match b {
+            Bind::Call(..) if self.sync_calls.contains(&x) => false,
             Bind::Perform(..) => self.bound_clause(x, b).is_none(),
             // The CPS body of a recursive def may run under `runSync`: it calls every recursive
             // def through its CPS body, so no nested driver starts (design §17.112).
@@ -1109,8 +1129,26 @@ impl<'a> FnEmit<'a> {
                 w.at(*pos);
                 if self.is_cps(*local, bind) {
                     self.cps_call(w, *local, bind, *pos, body, ctx);
+                } else if is_builtin_call(bind, "contract_enter")
+                    && !self.unbracketed.contains(local)
+                {
+                    // A predicate that can defect (ABI.md §5, design §17.274 (3)): the rest of
+                    // the block runs in a `try` whose catch makes a defect raised before the
+                    // bracket's exit `D011`.
+                    let p = format!("$p{}", local.0);
+                    w.line(&format!("let {p} = true;"));
+                    w.line("try {");
+                    w.depth += 1;
+                    self.expr(w, body, ctx);
+                    w.depth -= 1;
+                    w.line("} catch ($e) {");
+                    w.line(&format!("  throw {p} ? $rt.contract_failed($e) : $e;"));
+                    w.line("}");
+                } else if let Some(enter) = self.exits.get(local) {
+                    w.line(&format!("$p{} = false;", enter.0));
+                    self.expr(w, body, ctx);
                 } else {
-                    self.simple_bind(w, *local, bind, *pos, body);
+                    self.simple_bind(w, *local, bind, *pos, body, ctx);
                     self.expr(w, body, ctx);
                 }
             }
@@ -1328,19 +1366,7 @@ impl<'a> FnEmit<'a> {
                 site = self.site_arg(callee, pos);
                 let mut a: Vec<String> = args.iter().map(|x| self.atom(x)).collect();
                 a.push(ctx.to_owned());
-                let f = match callee {
-                    Atom::Builtin(name) => format!("$rt.{name}"),
-                    // An owned argument goes to the callee's CPS owned entry.
-                    Atom::Global(d)
-                        if self.owned.owned(x)
-                            && !self.cx.direct.direct(*d)
-                            && self.cx.summaries[d.index()].consumes.is_some() =>
-                    {
-                        format!("{}$o", self.def_ref(*d))
-                    }
-                    other => self.atom(other),
-                };
-                format!("{f}({}, ", a.join(", "))
+                format!("{}({}, ", self.cps_callee(x, callee), a.join(", "))
             }
             _ => unreachable!("not a CPS binding"),
         };
@@ -1358,6 +1384,22 @@ impl<'a> FnEmit<'a> {
                 w.depth -= 1;
                 w.line(&format!("}}{site});"));
             }
+        }
+    }
+
+    /// The CPS function a call of `x` to `callee` enters.
+    fn cps_callee(&self, x: Local, callee: &Atom) -> String {
+        match callee {
+            Atom::Builtin(name) => format!("$rt.{name}"),
+            // An owned argument goes to the callee's CPS owned entry.
+            Atom::Global(d)
+                if self.owned.owned(x)
+                    && !self.cx.direct.direct(*d)
+                    && self.cx.summaries[d.index()].consumes.is_some() =>
+            {
+                format!("{}$o", self.def_ref(*d))
+            }
+            other => self.atom(other),
         }
     }
 
@@ -1388,9 +1430,30 @@ impl<'a> FnEmit<'a> {
             && self.uses.get(&x) == Some(&1)
     }
 
-    fn simple_bind(&mut self, w: &mut W, x: Local, bind: &Bind, pos: Option<Pos>, body: &Expr) {
+    fn simple_bind(
+        &mut self,
+        w: &mut W,
+        x: Local,
+        bind: &Bind,
+        pos: Option<Pos>,
+        body: &Expr,
+        ctx: &str,
+    ) {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
+            // A predicate's call into CPS code runs to its value here, inside the bracket's
+            // `try`: a pure call performs nothing and cannot suspend (design §7.1).
+            Bind::Call(callee, args) if self.sync_calls.contains(&x) => {
+                let site = match self.site_arg(callee, pos) {
+                    s if s.is_empty() => "undefined".to_owned(),
+                    s => s[2..].to_owned(),
+                };
+                format!(
+                    "$rt.runSync({}, [{}], {site}, {ctx})",
+                    self.cps_callee(x, callee),
+                    self.atoms(args)
+                )
+            }
             // A self tail call's position: the next iteration's checks blame it (design §17.115).
             Bind::Atom(_)
                 if self.cx.takes_site[self.id.index()]
@@ -1403,14 +1466,22 @@ impl<'a> FnEmit<'a> {
             Bind::Call(Atom::Builtin(_), _) if self.unbracketed.contains(&x) => return,
             Bind::Atom(a) => self.atom(a),
             // The inline fast path (design §17.114): an unsafe result means the checked
-            // operation defects, so `$rt.add`/`sub`/`mul` run only to raise it.
+            // operation defects. The arm throws (design §17.274): `$rt.add_defect` and its
+            // siblings return `D001` or `D003` from the exact result.
             Bind::Prim(op @ (PrimOp::IntAdd | PrimOp::IntSub | PrimOp::IntMul), args)
                 if !self.proved[x.index()] =>
             {
                 let raw = self.prim(op, args, true);
-                let slow = self.prim(op, args, false);
+                let f = match op {
+                    PrimOp::IntAdd => "add",
+                    PrimOp::IntSub => "sub",
+                    _ => "mul",
+                };
                 w.line(&format!("const {xs} = {raw};"));
-                w.line(&format!("if (!Number.isSafeInteger({xs})) {slow};"));
+                w.line(&format!(
+                    "if (!Number.isSafeInteger({xs})) throw $rt.{f}_defect({});",
+                    self.atoms(args)
+                ));
                 return;
             }
             Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
@@ -2096,40 +2167,58 @@ fn jumps(e: &Expr, out: &mut HashSet<Label>) {
 }
 
 /// Every `contract_enter` whose predicate cannot defect, and the `contract_exit`s that close
-/// it, into `out`: such a bracket can never turn a defect into `D011` (design §17.115).
-fn brackets(e: &Expr, proved: &[bool], out: &mut HashSet<Local>) {
+/// it, into `out`: such a bracket can never turn a defect into `D011` (design §17.115). Every
+/// other bracket's exits go into `exits` (each with its enter), and the calls between its enter
+/// and its exits into `calls`.
+fn brackets<'e>(
+    e: &'e Expr,
+    proved: &[bool],
+    out: &mut HashSet<Local>,
+    exits: &mut HashMap<Local, Local>,
+    calls: &mut Vec<(Local, &'e Bind)>,
+) {
     sakura_core::ensure_stack(|| match e {
         Expr::Let {
             local, bind, body, ..
         } => {
-            if *bind == Bind::Call(Atom::Builtin("contract_enter".into()), vec![]) {
-                let mut exits = Vec::new();
-                if total_until_exit(body, proved, &mut exits) {
+            if is_builtin_call(bind, "contract_enter") {
+                let mut ex = Vec::new();
+                let mut inner = Vec::new();
+                if total_until_exit(body, proved, &mut ex, &mut inner) {
                     out.insert(*local);
-                    out.extend(exits);
+                    out.extend(ex);
+                } else {
+                    exits.extend(ex.into_iter().map(|x| (x, *local)));
+                    calls.extend(inner);
                 }
             }
-            brackets(body, proved, out)
+            brackets(body, proved, out, exits, calls)
         }
         Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
         Expr::LetJoin { join, body, .. } => {
-            brackets(join, proved, out);
-            brackets(body, proved, out);
+            brackets(join, proved, out, exits, calls);
+            brackets(body, proved, out, exits, calls);
         }
         Expr::Switch { arms, default, .. } => {
             for (_, a) in arms {
-                brackets(a, proved, out);
+                brackets(a, proved, out, exits, calls);
             }
             if let Some(d) = default {
-                brackets(d, proved, out);
+                brackets(d, proved, out, exits, calls);
             }
         }
         Expr::If { then, els, .. } => {
-            brackets(then, proved, out);
-            brackets(els, proved, out);
+            brackets(then, proved, out, exits, calls);
+            brackets(els, proved, out, exits, calls);
         }
-        Expr::Handle { body, .. } | Expr::Try { body, .. } => brackets(body, proved, out),
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+            brackets(body, proved, out, exits, calls)
+        }
     })
+}
+
+fn is_builtin_call(bind: &Bind, name: &str) -> bool {
+    matches!(bind, Bind::Call(Atom::Builtin(n), args) if n == name && args.is_empty())
 }
 
 /// Builtins that return for every argument of their type.
@@ -2157,13 +2246,19 @@ const TOTAL: &[&str] = &[
 
 /// Does every path from `e` reach a `contract_exit` (collected in `exits`) without a bind that
 /// may defect: a call other than a [`TOTAL`] builtin, unproved checked `Int` arithmetic, an
-/// `Int` literal beyond ±(2^53−1), or anything but plain binds and branches?
-fn total_until_exit(e: &Expr, proved: &[bool], exits: &mut Vec<Local>) -> bool {
+/// `Int` literal beyond ±(2^53−1), or anything but plain binds and branches? Every path is
+/// walked either way, and the calls on them are collected in `calls`.
+fn total_until_exit<'e>(
+    e: &'e Expr,
+    proved: &[bool],
+    exits: &mut Vec<Local>,
+    calls: &mut Vec<(Local, &'e Bind)>,
+) -> bool {
     sakura_core::ensure_stack(|| match e {
         Expr::Let {
             local, bind, body, ..
         } => {
-            if *bind == Bind::Call(Atom::Builtin("contract_exit".into()), vec![]) {
+            if is_builtin_call(bind, "contract_exit") {
                 exits.push(*local);
                 return true;
             }
@@ -2188,22 +2283,35 @@ fn total_until_exit(e: &Expr, proved: &[bool], exits: &mut Vec<Local>) -> bool {
                 }
                 _ => false,
             };
-            ok && total_until_exit(body, proved, exits)
+            if matches!(bind, Bind::Call(..)) {
+                calls.push((*local, bind));
+            }
+            total_until_exit(body, proved, exits, calls) && ok
         }
         Expr::Jump(..) => true,
         Expr::LetJoin { join, body, .. } => {
-            total_until_exit(join, proved, exits) && total_until_exit(body, proved, exits)
+            let j = total_until_exit(join, proved, exits, calls);
+            total_until_exit(body, proved, exits, calls) && j
         }
         Expr::Switch { arms, default, .. } => {
-            arms.iter().all(|(_, a)| total_until_exit(a, proved, exits))
-                && default
-                    .as_ref()
-                    .is_none_or(|d| total_until_exit(d, proved, exits))
+            let mut ok = true;
+            for (_, a) in arms {
+                ok &= total_until_exit(a, proved, exits, calls);
+            }
+            if let Some(d) = default {
+                ok &= total_until_exit(d, proved, exits, calls);
+            }
+            ok
         }
         Expr::If { then, els, .. } => {
-            total_until_exit(then, proved, exits) && total_until_exit(els, proved, exits)
+            let t = total_until_exit(then, proved, exits, calls);
+            total_until_exit(els, proved, exits, calls) && t
         }
-        Expr::Ret(_) | Expr::Fail(_) | Expr::Handle { .. } | Expr::Try { .. } => false,
+        Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+            total_until_exit(body, proved, exits, calls);
+            false
+        }
+        Expr::Ret(_) | Expr::Fail(_) => false,
     })
 }
 

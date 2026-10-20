@@ -1,24 +1,23 @@
 ---
 source: crates/sakura_codegen_js/tests/source.rs
-assertion_line: 150
 expression: run
 ---
 function run$d(n) {
   const t = (n + 1);
-  if (!Number.isSafeInteger(t)) $rt.add(n, 1);
+  if (!Number.isSafeInteger(t)) throw $rt.add_defect(n, 1);
   const r_1 = size$d(make$d(t));
   const r_2 = make$d(n);
   const r_3 = make$d(1);
   const r_4 = size$d(r_2);
   const t_1 = (r_1 + r_4);
-  if (!Number.isSafeInteger(t_1)) $rt.add(r_1, r_4);
+  if (!Number.isSafeInteger(t_1)) throw $rt.add_defect(r_1, r_4);
   const r_5 = size$d(r_3);
   const t_2 = (t_1 + r_5);
-  if (!Number.isSafeInteger(t_2)) $rt.add(t_1, r_5);
+  if (!Number.isSafeInteger(t_2)) throw $rt.add_defect(t_1, r_5);
   const r_6 = size$d(r_3);
   const t_3 = (t_2 + r_6);
-  if (!Number.isSafeInteger(t_3)) $rt.add(t_2, r_6);
+  if (!Number.isSafeInteger(t_3)) throw $rt.add_defect(t_2, r_6);
   const r_8 = nonempty$d(make$d(2), 0);
   const t_4 = (t_3 + r_8);
-  if (!Number.isSafeInteger(t_4)) $rt.add(t_3, r_8);
+  if (!Number.isSafeInteger(t_4)) throw $rt.add_defect(t_3, r_8);
   return t_4;

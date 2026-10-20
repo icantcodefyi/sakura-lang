@@ -20,7 +20,7 @@ export function run(n, $ctx, $k) {
     const r_5 = $std_clock.virtual$Clock_now$d($i1);
     const r_6 = $std_instant.to_unix_millis$d(r_5);
     const t_6 = (acc + r_6);
-    if (!Number.isSafeInteger(t_6)) $rt.add(acc, r_6);
+    if (!Number.isSafeInteger(t_6)) throw $rt.add_defect(acc, r_6);
     return $ret($k, t_6);
   };
   const j3 = (acc_1, i_1) => {
@@ -34,7 +34,7 @@ export function run(n, $ctx, $k) {
           const r_2 = counter$Tick_next$d($i2);
           const t_1 = (r_2 % 7 + 0);
           const t_2 = (acc_1 + t_1);
-          if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+          if (!Number.isSafeInteger(t_2)) throw $rt.add_defect(acc_1, t_1);
           const t_3 = ((n - n % 2) / 2 + 0);
           const t_4 = (i_1 === t_3);
           let v_3, acc_3, i_3;

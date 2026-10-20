@@ -1,0 +1,23 @@
+// milestone: M4
+// needs: contract checks; a refinement's predicate calls a function with a `try` inside, which divides by zero
+// expect-exit: 70
+// expect-defect: D011
+// covers: Defect; design §17.274 (3) (the predicate's catch makes a defect raised inside a call into CPS code `D011`)
+
+error Odd(n: Int)
+
+fn half(n: Int) -> Int ! {Fail<Odd>} { if n % 2 == 0 { 100 / (n - 2) } else { fail Odd { n: n } } }
+
+fn even(n: Int) -> Bool {
+  try { List.len(List.map([n], fn(x) { half(x) })) == 1 } catch {
+    Odd { n: _ } => false,
+  }
+}
+
+type Even = Int where even(it)
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{Even.from(4)}")
+  Console.print("{Even.from(2)}")
+  Console.print("never printed")
+}

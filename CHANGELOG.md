@@ -30,6 +30,12 @@ retains earlier implementation history.
   instructions retired per call on the reference Mac (Node, largest size), `nbody` drops 40%
   (11.90× → 7.23× hand-written JavaScript) and `sieve` 33% (4.62× → 3.08×); no program's
   output changes.
+- JS backend performance (design §17.274): a defect on a path that is never taken (an `Int`
+  overflow, an `expect` on a missing element, a division by zero) is thrown where it is
+  detected rather than by calling a function that throws, and a contract predicate that can defect is a
+  `try` whose catch reports `D011`. `spectral_norm` drops 26% by instructions retired per
+  call on the reference Mac (Node, n = 400; 4.49× → 3.31× hand-written JavaScript). Every
+  defect's code, message, spans, `--json` record, stderr line and exit status are unchanged.
 - **Breaking for user handlers (0.2.0, RFC 0002 §2.8, design §17.262 (3)).** The `Clock`
   effect gains `monotonic_micros() -> Int` and the `Task` effect gains `cancel<T>(f: Fiber<T>)
   -> Unit` and `cancelled(s: Scope) -> Bool`, so a user `handler Clock` or `handler Task` must

@@ -24,10 +24,14 @@ fn node_conformance_suite_passes() {
     );
 }
 
+/// Builtins the JS emitter writes as statements, never as runtime calls: the contract bracket is
+/// a `try` (ABI.md §5, design §17.274 (3)).
+const EMITTED: &[&str] = &["contract_enter", "contract_exit"];
+
 #[test]
 fn builtin_table_matches_runtime_exports() {
-    let expected: Vec<String> = BUILTINS
-        .iter()
+    let called = || BUILTINS.iter().filter(|b| !EMITTED.contains(&b.name));
+    let expected: Vec<String> = called()
         .map(|b| {
             format!(
                 "{}/{}",
@@ -36,7 +40,7 @@ fn builtin_table_matches_runtime_exports() {
             )
         })
         .collect();
-    let names: Vec<&str> = BUILTINS.iter().map(|b| b.name).collect();
+    let names: Vec<&str> = called().map(|b| b.name).collect();
     // Each owned-capable builtin has an in-place entry of the same arity (design §17.149).
     let owned: Vec<String> = BUILTINS
         .iter()

@@ -206,8 +206,14 @@ constructor builds its clause closures in the caller's module.
 
 ## 5. Defects (design §5.4)
 
-A defect is `throw new $rt.Defect(code, message)` (`$rt.defect(code, message)`). Defects are not
-Sakura Lang control flow: nothing in Sakura Lang can catch them. The driver catches them at the **task
+A defect is a thrown `Defect` instance; `$rt.defect(code, message)` is one way to raise it
+(design §17.274). Code on a never-taken path throws it inline rather than calling a function
+that throws: a defect with a static message is one frozen module-level instance thrown as is
+(`$rt.D001` "integer overflow", `$rt.D002` "division by zero"), one carrying a value is
+`throw new $rt.Defect(code, message)` (`D030`'s message), and an emitted checked `+`, `-` or
+`*` whose result is unsafe is `throw $rt.add_defect(a, b)` (`sub_defect`, `mul_defect`), which
+returns `D001` or a new `D003` for the exact result. Spans are never attached to a shared instance. Defects are
+not Sakura Lang control flow: nothing in Sakura Lang can catch them. The driver catches them at the **task
 boundary**, runs the task's pending finalizers, and ends the task with
 `{ kind: "defect", code, message }`. Any other JS exception (a runtime bug, an exhausted stack)
 becomes defect `D090`; a rejected host promise becomes `D091`.
@@ -239,8 +245,14 @@ A defect carries `spans` (`{ uri, start_byte, end_byte, role }`, `uri` being the
   re-runs the checks; it is preceded by a `$site` marker bind at the call's position, emitted
   as `$site = <n>;`, so a violating iteration blames the self call, not the outer call.
 - `ensures` (`D021`) blames the callee: the clause is the primary span (`violated(…, -1, …)`).
-- A predicate is bracketed by `$rt.contract_enter()`/`$rt.contract_exit()` so a defect inside
-  it becomes `D011`. The emitter drops the bracket when no path from the enter to its exits
+- A predicate that can defect is bracketed so a defect raised while evaluating it becomes
+  `D011` (design §17.274 (3)): at Core's `contract_enter` the emitter writes `let $pN = true;`
+  and puts the rest of the block in a `try` whose catch throws `$pN ? $rt.contract_failed($e)
+  : $e`; each of the bracket's `contract_exit`s is `$pN = false;`. `contract_failed` rewraps a
+  `Defect` as `D011` (`contract evaluation failed: <code>: <message>`, the inner spans) and
+  passes an inner predicate's `D011` and anything that is not a `Defect` through. A call inside
+  the bracket into CPS code runs to its value under `$rt.runSync(f, args, site, $ctx)`, so the
+  `try` covers all of the predicate (pure code cannot suspend). The emitter drops the bracket when no path from the enter to its exits
   can defect: only plain binds and branches, builtins that return for every argument
   (`list_len`, `string_len`, `list_contains`, `int_min`, … in `emit.rs`'s `TOTAL`), and
   checked `Int` arithmetic the interval pass proves (design §17.114). Any other call keeps it.
@@ -262,8 +274,9 @@ caller. `std/test`'s `expect_defect` is built on it.
   and resume and restores the outer value on exit, so it equals `$ctx.t` wherever compiled code
   runs. It carries task identity only (cancellation and trace numbering); handlers are never
   found through it (design §17.113, R01 §4.5).
-- `$rt.runSync(f, args)` (design §17.112) runs the CPS body `f(...args, null, k)` of a
-  recursive direct def on the current JS stack under its own trampoline (the gauge starts at 0
+- `$rt.runSync(f, args, site, ctx = null)` (design §17.112) runs the CPS body
+  `f(...args, ctx, k, site)` of a recursive direct def (or, with the predicate's context, a
+  contract predicate's call into CPS code, section 5) on the current JS stack under its own trampoline (the gauge starts at 0
   and each `Bounce` resets it to 0), returns the value, lets defects propagate and restores the
   gauge in `finally`. A suspension inside it is `D090`; pure code performs nothing, so none
   occurs.

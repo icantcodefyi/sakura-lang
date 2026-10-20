@@ -361,7 +361,17 @@ when it carries a value; every observable unchanged (code, message, spans, the `
 `sieve` RSS group of §17.272 (4), the ownership fixture of §17.278. Tests: every
 `expect-defect` fixture, `json_contracts.rs`, a `D011`-inside-predicate fixture, the runtime
 tests. Delta: `spectral_norm` (at least 20% on Node counts), `nbody`, `sieve`, `countdown`,
-`contracts_plain`.
+`contracts_plain`. **Landed** (`bench/deltas.md`): `spectral_norm` 754.5 M → 556.8 M per call
+at n = 400 on Node (−26.2%, 4.49× → 3.31× hand JS), `nbody` −5.5%, `sieve`, `countdown`,
+`contracts_plain` and `contracts` within 0.2%; the compare blocks only on the carried
+`handled_reentry` n = 1,000 and flags only `map_set`'s named 6%. The emitted arithmetic arm is
+`throw $rt.add_defect(a, b)` (`BigInt` code inline in the arm cost `handled_fwd` +27%); a
+predicate's call into CPS code runs under `runSync` inside the bracket's `try`. The `list_at`
+attempt did not land (two shapes; each costs `contracts_plain` 20–25%), so §17.272 (1)'s carry
+stands. The `sieve` RSS group (§17.272 (4)) reads no crossing under §17.283's one-call gate
+(56.3 → 58.1 MB at n = 200,000; the many-call 89 → 147 MB ran at twice the baseline's calls).
+The §17.278 fixture loses no site (before WS-P14 the same `set` was `escapes-call`), so the
+call-site rule is unchanged.
 
 **WS-P15 — `Map<Int, _>` (Opus, after WS-P20; design §17.275).** Paths: `sakura_runtime.js`
 §Map (an integer index: a persistent radix trie on the key's bits, chosen at the first

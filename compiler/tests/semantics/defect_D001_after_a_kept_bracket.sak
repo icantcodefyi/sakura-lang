@@ -1,0 +1,17 @@
+// milestone: M4
+// needs: contract checks; a predicate that can defect holds, then the body overflows
+// expect-exit: 70
+// expect-defect: D001
+// covers: Defect; design §17.274 (3) (a defect after the bracket's exit keeps its own code)
+
+fn positive(x: Int) -> Bool { x > 0 }
+
+fn square(x: Int) -> Int
+  requires positive(x)
+{ x * x }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{square(3)}")
+  Console.print("{square(3037000500)}")
+  Console.print("never printed")
+}

@@ -1746,7 +1746,7 @@ fn build_deletes_a_proved_checks_predicate_unless_it_calls_a_function() {
     );
     let echo = body("echo");
     assert!(
-        echo.contains("same$d(result)") && echo.contains("contract_enter"),
+        echo.contains("same$d(result)") && echo.contains("contract_failed"),
         "{echo}"
     );
 }
@@ -2382,6 +2382,20 @@ fn g
   r%71 = bump_all(ws%65) owned
   r%56 = list_push(ws%50) owned
   r%9 = list_push(xs%3) owned
+fn bump_all consumes start
+  r%13 = set(xs%3) shared(join), owned entry owned
+",
+        ),
+        // Design §17.278: the argument is read after the call, so the call is the plain entry
+        // and the later `set` is shared; under the rule before WS-P14 it was `shared(escapes-call
+        // bump_all)` (the plain entry does not borrow `start`), so no site is lost.
+        (
+            "owned_argument_used_after_call",
+            "fn main
+  r%11 = bump_all(zs%1) shared(borrowed-after)
+  r%44 = set(zs%1) shared(borrowed-after)
+  r%45 = list_push(r%44) shared(origin)
+  r%9 = list_push(zs%3) owned
 fn bump_all consumes start
   r%13 = set(xs%3) shared(join), owned entry owned
 ",

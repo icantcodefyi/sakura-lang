@@ -1,0 +1,33 @@
+// milestone: M4
+// covers: performance-r1 WS-P20; design §17.278 (an argument used after a call at the consumed position of a fresh-result def, then updated in place)
+
+// `bump_all` updates its parameter, then returns `List.map`'s fresh list, so it consumes
+// `start` and has an owned entry.
+fn bump_all(start: List<Int>) -> List<Int> {
+  var xs = start
+  var i = 0
+  while i < List.len(xs) {
+    xs = List.set(xs, i, Option.unwrap_or(xs[i], 0) + 1)
+    i = i + 1
+  }
+  List.map(xs, fn(x) { x * 10 })
+}
+
+pub fn main() -> Unit ! {Console} {
+  var zs: List<Int> = []
+  var i = 0
+  while i < 40 {
+    zs = List.push(zs, i)
+    i = i + 1
+  }
+  // `zs` is read after the call, so the plain entry runs and `zs` is unchanged by it ...
+  let ys = bump_all(zs)
+  Console.print("ys {List.len(ys)} {List.sum(ys)} {ys[0]} {ys[39]}")
+  Console.print("zs {List.len(zs)} {List.sum(zs)} {zs[0]} {zs[39]}")
+  // ... and then updated. The plain entry does not borrow `start` (it flows into `List.set`), so
+  // before WS-P14 the call was `escapes-call` and this `set` was shared too: no site is lost
+  // (design §17.278). `--dump owned` is pinned in `sakura_cli`'s `cli.rs`.
+  zs = List.set(zs, 0, 100)
+  zs = List.push(zs, 40)
+  Console.print("zs {List.len(zs)} {List.sum(zs)} {zs[0]} {zs[40]}; ys {ys[0]}")
+}

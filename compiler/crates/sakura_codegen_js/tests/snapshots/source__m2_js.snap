@@ -84,7 +84,7 @@ export function twice$d(f) {
   const r = f.$d();
   const r_1 = f.$d();
   const t = (r + r_1);
-  if (!Number.isSafeInteger(t)) $rt.add(r, r_1);
+  if (!Number.isSafeInteger(t)) throw $rt.add_defect(r, r_1);
   return t;
 }
 
@@ -94,7 +94,7 @@ export function twice(f, $ctx, $k) {
   return f($ctx, (r) => {
     return f($ctx, (r_1) => {
       const t = (r + r_1);
-      if (!Number.isSafeInteger(t)) $rt.add(r, r_1);
+      if (!Number.isSafeInteger(t)) throw $rt.add_defect(r, r_1);
       return $ret($k, t);
     });
   });
@@ -103,7 +103,7 @@ export function twice(f, $ctx, $k) {
 export function counter$Counter_next$d(inst) {
   const n = inst.s0;
   const t = (n + 1);
-  if (!Number.isSafeInteger(t)) $rt.add(n, 1);
+  if (!Number.isSafeInteger(t)) throw $rt.add_defect(n, 1);
   inst.s0 = t;
   const set = undefined;
   const n_1 = inst.s0;

@@ -23,7 +23,7 @@ export function run(n, $ctx, $k) {
           const r_2 = $cl13.$d($f13.i);
           const t_1 = (r_2 % 7 + 0);
           const t_2 = (acc_1 + t_1);
-          if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+          if (!Number.isSafeInteger(t_2)) throw $rt.add_defect(acc_1, t_1);
           const t_3 = (i_1 + 1);
           v_2 = undefined;
           acc_2 = t_2;
@@ -40,7 +40,7 @@ export function run(n, $ctx, $k) {
   const $s13 = (acc_1, i_1) => (r_2) => {
     const t_1 = (r_2 % 7 + 0);
     const t_2 = (acc_1 + t_1);
-    if (!Number.isSafeInteger(t_2)) $rt.add(acc_1, t_1);
+    if (!Number.isSafeInteger(t_2)) throw $rt.add_defect(acc_1, t_1);
     const t_3 = (i_1 + 1);
     {
       let v_2 = undefined, acc_2 = t_2, i_2 = t_3;

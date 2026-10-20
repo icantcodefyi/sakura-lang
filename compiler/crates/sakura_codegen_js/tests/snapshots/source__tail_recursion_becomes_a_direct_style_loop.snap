@@ -1,6 +1,5 @@
 ---
 source: crates/sakura_codegen_js/tests/source.rs
-assertion_line: 83
 expression: sum
 ---
 function sum_to$d(n_1, acc_1) {
@@ -13,9 +12,9 @@ function sum_to$d(n_1, acc_1) {
       return acc;
     }
     const t_1 = (n - 1);
-    if (!Number.isSafeInteger(t_1)) $rt.sub(n, 1);
+    if (!Number.isSafeInteger(t_1)) throw $rt.sub_defect(n, 1);
     const t_2 = (acc + n);
-    if (!Number.isSafeInteger(t_2)) $rt.add(acc, n);
+    if (!Number.isSafeInteger(t_2)) throw $rt.add_defect(acc, n);
     n = t_1;
     acc = t_2;
     continue j0;

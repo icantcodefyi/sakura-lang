@@ -65,15 +65,27 @@ export class Defect extends Error {
   }
 }
 
-let contractDepth = 0;
-
-/** A defect while evaluating a contract predicate is `D011` (design §7.1). */
+/** Raise a defect. Hot code throws a `Defect` inline instead (ABI.md §5, design §17.274). */
 export function defect(code, message, spans = []) {
-  if (contractDepth > 0) {
-    contractDepth = 0;
-    throw new Defect("D011", `contract evaluation failed: ${code}: ${message}`, spans);
-  }
   throw new Defect(code, message, spans);
+}
+
+/** A defect with a static message: one frozen instance, thrown as is (design §17.274 (4)). */
+function fixed(code, message) {
+  const d = new Defect(code, message, Object.freeze([]));
+  return Object.freeze(d);
+}
+export const D001 = fixed("D001", "integer overflow");
+export const D002 = fixed("D002", "division by zero");
+
+/**
+ * The catch of a contract predicate's bracket (design §7.1, §17.274 (3)): a defect raised while
+ * evaluating it is `D011`. An inner predicate's `D011` and anything that is not a `Defect`
+ * (cancellation, exit, a foreign error) pass through unchanged.
+ */
+export function contract_failed(e) {
+  if (!(e instanceof Defect) || e.code === "D011") return e;
+  return new Defect("D011", `contract evaluation failed: ${e.code}: ${e.detail}`, e.spans);
 }
 
 /**
@@ -94,14 +106,6 @@ export function violated(code, message, site, clause) {
   if (at !== undefined) spans.push({ ...at, role: "primary" });
   if (clause !== null) spans.push({ ...clause, role: at === undefined ? "primary" : "definition" });
   defect(code, message, spans);
-}
-
-/** Bracket the evaluation of a `requires`/`ensures`/`where` predicate. */
-export function contract_enter() {
-  contractDepth++;
-}
-export function contract_exit() {
-  contractDepth--;
 }
 
 function internal(message) {
@@ -321,7 +325,6 @@ function drive(t, start) {
       }
     }
   } catch (err) {
-    contractDepth = 0;
     runFins(t, 0);
     if (err instanceof Exit) throw err;
     if (err === CANCEL) return { kind: "cancelled" };
@@ -339,13 +342,14 @@ const syncDone = (v) => new Done(v);
  * The deep remainder of a direct recursion (design §17.112): run the CPS body `f(...args)` to
  * its value on the current JS stack, under a trampoline of its own, and restore the gauge on
  * every exit. Defects propagate. Nothing it runs can suspend (pure code performs nothing).
- * `site` is the def's blame site, if it takes one (ABI.md §5).
+ * `site` is the def's blame site, if it takes one (ABI.md §5). A contract predicate's call into
+ * CPS code passes its context `ctx` (a pure callee's own `try` makes catchers in it).
  */
-export function runSync(f, args, site) {
+export function runSync(f, args, site, ctx = null) {
   const saved = G.d;
   try {
     G.d = 0;
-    let step = f(...args, null, syncDone, site);
+    let step = f(...args, ctx, syncDone, site);
     while (step instanceof Bounce) {
       G.d = 0;
       step = step.f(...step.a);
@@ -451,9 +455,29 @@ export function defect_catch(body, ctx, k) {
 const I64_MAX = 2n ** 63n - 1n;
 const I64_MIN = -(2n ** 63n);
 
+/** The defect of an `Int` result `big` beyond ±(2^53−1): `D001` beyond i64, else `D003`. */
+function intDefect(big) {
+  if (big > I64_MAX || big < I64_MIN) return D001;
+  return new Defect("D003", `integer ${big} is beyond the JS backend's safe range ±(2^53-1)`);
+}
+
 function intResult(big) {
-  if (big > I64_MAX || big < I64_MIN) defect("D001", "integer overflow");
-  return defect("D003", `integer ${big} is beyond the JS backend's safe range ±(2^53-1)`);
+  throw intDefect(big);
+}
+
+/**
+ * The defect of a checked `+`, `-` or `*` whose result is unsafe, returned for the emitted fast
+ * path's `throw` (design §17.274): the arm then holds no `BigInt` code, which V8 counts
+ * against its callers' inlining (`handled_fwd` +27% with it inline).
+ */
+export function add_defect(a, b) {
+  return intDefect(BigInt(a) + BigInt(b));
+}
+export function sub_defect(a, b) {
+  return intDefect(BigInt(a) - BigInt(b));
+}
+export function mul_defect(a, b) {
+  return intDefect(BigInt(a) * BigInt(b));
 }
 
 export function add(a, b) {
@@ -473,12 +497,12 @@ export function mul(a, b) {
 
 /** Truncating division; exact for safe integers because `a - a % b` is a multiple of `b`. */
 export function div(a, b) {
-  if (b === 0) defect("D002", "division by zero");
+  if (b === 0) throw D002;
   return (a - (a % b)) / b + 0;
 }
 
 export function rem(a, b) {
-  if (b === 0) defect("D002", "division by zero");
+  if (b === 0) throw D002;
   return (a % b) + 0;
 }
 
@@ -2645,16 +2669,19 @@ export function match_failure() {
 }
 
 export function option_expect(o, msg) {
-  return o.tag === 1 ? o.fields[0] : defect("D030", msg);
+  if (o.tag === 1) return o.fields[0];
+  throw new Defect("D030", msg);
 }
 /** `option_expect(list_get(xs, i), msg)` with no `Option`, through the leaf cache (§17.151). */
 export function list_get_expect(xs, i, msg) {
-  return i >= 0 && i < xs.n ? list_at(xs, i) : defect("D030", msg);
+  if (i >= 0 && i < xs.n) return list_at(xs, i);
+  throw new Defect("D030", msg);
 }
 /** `option_expect(map_get(m, k), msg)` with no `Option` (design §17.151). */
 export function map_get_expect(m, k, msg) {
   const e = mapFind(m, k);
-  return e === undefined ? defect("D030", msg) : e[1];
+  if (e === undefined) throw new Defect("D030", msg);
+  return e[1];
 }
 
 // ---------------------------------------------------------------------------------------------

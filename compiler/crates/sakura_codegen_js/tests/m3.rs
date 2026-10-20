@@ -179,8 +179,8 @@ pub fn main() -> Unit ! {Console} {
     }
 }
 
-/// Design §17.115: the `D011` bracket is elided around a predicate that cannot defect, and
-/// kept (with its `D011`) around one that can: an unproved checked `+` or a user call.
+/// Design §17.115, §17.274 (3): the `D011` bracket is elided around a predicate that cannot
+/// defect, and kept (with its `D011`) around one that can: an unproved checked `+` or a user call.
 #[test]
 fn contract_brackets_only_where_the_predicate_can_defect() {
     let src = r#"fn total(x: Int, xs: List<Int>) -> Int
@@ -208,10 +208,15 @@ pub fn main() -> Unit ! {Console} {
         let at = js.find(&format!("function {f}$d(")).unwrap();
         js[at..at + js[at..].find("\n}\n").unwrap()].to_owned()
     };
-    assert!(!body("total").contains("contract_enter"), "{js}");
-    assert!(body("bumped").contains("$rt.contract_enter()"), "{js}");
-    assert!(body("bumped").contains("$rt.contract_exit()"), "{js}");
-    assert!(body("called").contains("$rt.contract_enter()"), "{js}");
+    // Design §17.274 (3): a kept bracket is a `try` whose catch makes the defect `D011`.
+    assert!(!body("total").contains("try {"), "{js}");
+    assert!(body("bumped").contains("$rt.contract_failed($e)"), "{js}");
+    assert!(body("bumped").contains("$p1 = false;"), "{js}");
+    assert!(body("called").contains("$rt.contract_failed($e)"), "{js}");
+    assert!(
+        !js.contains("contract_enter") && !js.contains("contract_exit"),
+        "{js}"
+    );
     for direct in [true, false] {
         let r = run_abi("brackets", src, direct);
         assert_eq!((r.stdout.as_str(), r.code), ("1 1 1\n", 70), "{}", r.stderr);
