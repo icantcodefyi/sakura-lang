@@ -33,9 +33,25 @@ cargo +nightly fuzz run parse target/fuzz-corpus/parse -- \
 `tests/semantics` program (`exec`: `tests/semantics` only; `row_unify`: neither), runs each
 target for 600 seconds, uploads the corpus again as `fuzz-corpus-<target>`, and minimizes
 failing inputs for 60 seconds and uploads them as artifacts. A manual run (`workflow_dispatch`)
-takes `max_total_time`, the seconds per target (default 600; the job allows up to six hours),
-for the campaign of design §17.225 (4a): at least 24 CPU-hours per target on GitHub-hosted
-runners. Mutated inputs go to `target/fuzz-corpus` and the artifacts, never into git.
+takes `max_total_time`, the seconds per target (default 600; the job allows up to six hours).
+Mutated inputs go to `target/fuzz-corpus` and the artifacts, never into git.
+
+## Campaign ledger (design §17.225 (4a), §17.306)
+
+`v1.0.0`'s soundness gate is this table: every target at **≥ 24 CPU-hours** (workers × wall
+seconds, summed over rows at or after `611dae4f`, beta.2's preparation commit) with zero findings
+that are soundness bugs, and zero open `soundness` issues at the tag. The hours run on the
+owner's Windows machine under WSL2 from [`docs/plans/windows-compute.md`](../../docs/plans/windows-compute.md);
+hosted-runner dispatches may add rows in the same format. The nightly's colour is a regression
+check, not a gate. A target with a fixed finding needs ≥ 4 further clean CPU-hours at or after
+the fix's commit. "Findings" is `none`, an issue number per reproducing `crash-`/`timeout-`/
+`oom-`/`leak-` artefact, or `limit-hit` for an `exec` `timeout-`/`oom-` the paragraph above
+explains (a program allocating without bound within the reference evaluator's step bound).
+
+| Date (UTC) | Commit | Target | Host | Workers | Wall s | CPU-h | Corpus after | Findings |
+|---|---|---|---|---|---|---|---|---|
+
+Totals (CPU-h, rows at or after `611dae4f`): parse 0 · check 0 · fmt_idempotent 0 · row_unify 0 · lir 0 · vc 0 · exec 0.
 
 CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` on this crate
 for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a

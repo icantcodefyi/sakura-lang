@@ -454,8 +454,10 @@ npm dist-tag `beta` (`latest` stays on `v0.1.0` until `v1.0.0`) and the Homebrew
 beside `alpha` and `rc`. The beta's
 preparation commit closes the breaking window: after it, a `pub` std shape, an effect's
 operation set or a diagnostic record changes only to fix a soundness, security or
-specification defect, each a `Breaking` CHANGELOG line with its migration. The beta waits
-for neither the seven clean fuzz nights nor a soak; `v1.0.0` waits for both (§17.291 (4)),
+specification defect, each a `Breaking` CHANGELOG line with its migration. No tag waits for
+fuzz nights or a soak (§17.291 (4) as re-cut by §17.306): `v1.0.0` waits for the campaign's
+≥ 24 CPU-hours per target with zero `soundness` findings in `compiler/fuzz/README.md`'s ledger
+(run from `docs/plans/windows-compute.md`), zero open `soundness` issues and no P1 defect,
 and is cut from a commit whose only difference from the last beta is its preparation commit.
 Every beta's notes say "beta: feature-complete for 1.0, not production".
 
