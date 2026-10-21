@@ -153,28 +153,30 @@ pub fn sakura(args: &[&str], cwd: &Path) -> Output {
 
 /// [`sakura`] with extra environment variables.
 pub fn sakura_env(args: &[&str], cwd: &Path, env: &[(&str, &Path)]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_sakura"))
-        .args(args)
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_sakura"));
+    cmd.args(args)
         .envs(env.iter().copied())
         .current_dir(cwd)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("spawn sakura");
-    // Drain pipes on threads so a chatty child cannot deadlock on a full pipe.
-    let mut out = child.stdout.take().unwrap();
-    let mut err = child.stderr.take().unwrap();
-    let t_out = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = out.read_to_string(&mut s);
-        s
-    });
-    let t_err = std::thread::spawn(move || {
-        let mut s = String::new();
-        let _ = err.read_to_string(&mut s);
-        s
-    });
+        .stderr(Stdio::piped());
+    // Its own process group, so the limit kills the `node` or `main` it started too (§17.302 (6)).
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let mut child = cmd.spawn().expect("spawn sakura");
+    // Drain pipes on threads so a chatty child cannot deadlock on a full pipe; the results come
+    // back over channels, so an orphan still holding a pipe fails the test instead of hanging it.
+    let drain = |mut pipe: Box<dyn Read + Send>| {
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut s = String::new();
+            let _ = pipe.read_to_string(&mut s);
+            let _ = tx.send(s);
+        });
+        rx
+    };
+    let r_out = drain(Box::new(child.stdout.take().unwrap()));
+    let r_err = drain(Box::new(child.stderr.take().unwrap()));
     let (start, limit) = (Instant::now(), time_limit());
     let mut timed_out = false;
     let status = loop {
@@ -183,17 +185,41 @@ pub fn sakura_env(args: &[&str], cwd: &Path, env: &[(&str, &Path)]) -> Output {
         }
         if start.elapsed() > limit {
             timed_out = true;
+            kill_tree(child.id());
             let _ = child.kill();
             break child.wait().expect("wait sakura");
         }
         std::thread::sleep(Duration::from_millis(5));
     };
+    let grace = limit.saturating_sub(start.elapsed()) + Duration::from_secs(2);
+    let mut read = |rx: std::sync::mpsc::Receiver<String>| {
+        rx.recv_timeout(grace).unwrap_or_else(|_| {
+            timed_out = true;
+            String::new()
+        })
+    };
+    let stdout = read(r_out);
+    let stderr = read(r_err);
     Output {
         code: status.code(),
-        stdout: t_out.join().unwrap(),
-        stderr: t_err.join().unwrap(),
+        stdout,
+        stderr,
         timed_out,
     }
+}
+
+/// Kills the process group `pid` leads (Unix) or its process tree (Windows).
+fn kill_tree(pid: u32) {
+    let mut kill = if cfg!(windows) {
+        let mut c = Command::new("taskkill");
+        c.args(["/T", "/F", "/PID", &pid.to_string()]);
+        c
+    } else {
+        let mut c = Command::new("kill");
+        c.args(["-KILL", "--", &format!("-{pid}")]);
+        c
+    };
+    let _ = kill.stdout(Stdio::null()).stderr(Stdio::null()).status();
 }
 
 /// `f` over every item, on one thread per core taking the next item as it finishes the last, so
