@@ -788,7 +788,9 @@ backend, runtime and host share one ABI revision.";
     V8004 "target_unsupported_external" PACKAGE,
 "A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript
 to call: the WASM backend runs std's host operations through the runtime's own
-imports only. Build with `--target js`, or write the function in Sakura Lang.";
+imports only. `--target native` (experimental) refuses it the same way: the native host is
+Rust with no JavaScript engine, and it never bridges to Node. Build with `--target js`, or
+write the function in Sakura Lang.";
 
     V8005 "dependencies_not_supported" PACKAGE,
 "Packages are not supported yet: `sakura.toml` declares `[dependencies]` (RFC

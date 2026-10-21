@@ -995,8 +995,8 @@ impl<'p, 'c> Run<'p, 'c> {
                 "sql_sqlite" => {
                     sakura_rt::native::sql::rt_b_sql_sqlite(ctx, effect, codes, n, bits[0] as u32)
                 }
-                "log_json" | "llm_anthropic" => {
-                    // Their builders are N1b's: the arguments were consumed by the call that
+                "llm_anthropic" => {
+                    // Its builder is N1b's: the arguments were consumed by the call that
                     // cannot be made.
                     for &a in args {
                         if self.repr(a).is_managed() {

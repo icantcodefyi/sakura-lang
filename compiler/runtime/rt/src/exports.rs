@@ -1629,6 +1629,45 @@ pub extern "C" fn rt_code_log_stderr_event(
     }
 }
 
+/// `Log.event(level, message, fields)` of `Log.json()` natively (WASM's is the JS runtime's,
+/// `rt_code_js_clause`): one stderr line, JS `log_json`'s `{"level","message","fields"}`.
+#[cfg(not(target_arch = "wasm32"))]
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_log_json_event(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    clause_args(rt, frame);
+    let (level, message, fields) = (
+        rt.take_fslot(frame, 2) as u32,
+        rt.take_fslot(frame, 3) as u32,
+        rt.take_fslot(frame, 4) as u32,
+    );
+    let line = (|| {
+        let shown = rt.show(level)?;
+        let mut b = rt.strbuf().inspect_err(|_| rt.drop(shown))?;
+        let r = rt.json_log_line(&mut b, shown, message, fields);
+        rt.drop(shown);
+        match r {
+            Ok(()) => Ok(rt.finish(b)),
+            Err(d) => {
+                rt.strbuf_free(b);
+                Err(d)
+            }
+        }
+    })();
+    rt.drop2(message, fields);
+    match line {
+        Ok(s) => {
+            let (len, at) = rt.data(s);
+            cx.log_write(at, len);
+            let rt = cx.rt();
+            rt.drop(s);
+            ret(rt, UNIT as u64)
+        }
+        Err(d) => rt.raise(d),
+    }
+}
+
 /// `show(level) message key=json…` (`level` and `message` consumed, `fields` borrowed).
 fn log_line(rt: &mut Rt, level: u32, message: u32, fields: u32) -> Res<u32> {
     let shown = rt.show(level).inspect_err(|_| rt.drop(message))?;

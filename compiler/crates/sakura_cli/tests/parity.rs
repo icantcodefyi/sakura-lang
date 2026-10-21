@@ -863,6 +863,17 @@ fn native_agrees_with_js_on_run_mode_programs() {
             }
             continue;
         }
+        // A fixture's `expect-stderr` (`semantics.rs` checks it on JS) holds natively too.
+        if let Some((_, d)) = expect
+            && let Some(want) = d.get("expect-stderr")
+            && !twins.stderr.contains(want.as_str())
+        {
+            failures.push(format!(
+                "{label}: native stderr {:?} lacks {want:?}",
+                twins.stderr
+            ));
+            continue;
+        }
         let why = compare(expect, "run", &js, &twins)
             .map(|w| format!("twins: {w}"))
             .or_else(|| {

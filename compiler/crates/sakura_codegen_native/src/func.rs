@@ -1410,8 +1410,8 @@ impl Gen<'_, '_, '_> {
                 "sql_sqlite" => {
                     self.call1("rt_b_sql_sqlite", &[ef, cs, nv, vals[0]], types::I32)?
                 }
-                "log_json" | "llm_anthropic" => {
-                    // Their builders are N1b's.
+                "llm_anthropic" => {
+                    // Its builder is N1b's.
                     self.pad(&held, Some((90, &image::unsupported_builtin(name))))?;
                     return Ok(Flow::Stop);
                 }

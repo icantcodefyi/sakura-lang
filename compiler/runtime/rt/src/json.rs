@@ -2022,6 +2022,26 @@ impl Rt {
     pub fn json_text(&mut self, b: &mut StrBuf, j: u32) -> Res<()> {
         heap_json(&mut HeapOut { rt: self, b }, WORD, u64::from(j), 0)
     }
+
+    /// Append `Log.json()`'s line for one event (JS `log_json`): `JSON.stringify({level,
+    /// message, fields})` with `level` (the level's `Show` text) and `message` `String`s and
+    /// `fields` a `List<(String, Json)>`, all borrowed.
+    pub fn json_log_line(
+        &mut self,
+        b: &mut StrBuf,
+        level: u32,
+        message: u32,
+        fields: u32,
+    ) -> Res<()> {
+        let o = &mut HeapOut { rt: self, b };
+        o.put(b"{\"level\":")?;
+        heap_string(o, level)?;
+        o.put(b",\"message\":")?;
+        heap_string(o, message)?;
+        o.put(b",\"fields\":")?;
+        heap_object(o, fields, 0, true)?;
+        o.put(b"}")
+    }
 }
 
 fn heap_json(o: &mut HeapOut<'_>, kind: u32, bits: u64, depth: u32) -> Res<()> {
@@ -2061,7 +2081,7 @@ fn heap_json(o: &mut HeapOut<'_>, kind: u32, bits: u64, depth: u32) -> Res<()> {
         tag::MAP_ROOT => {
             o.rt.dup(w)?;
             let es = o.rt.map_entries(w)?;
-            let r = heap_object(o, es, depth);
+            let r = heap_object(o, es, depth, false);
             o.rt.drop(es);
             r
         }
@@ -2092,23 +2112,39 @@ fn heap_string(o: &mut HeapOut<'_>, s: u32) -> Res<()> {
 }
 
 /// The members of a `Json` object's entry list `es` in JS's order: array-index keys ascending,
-/// then the rest as the map holds them.
-fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32) -> Res<()> {
+/// then the rest as the map holds them. With `assigned`, `es` may repeat keys and reads as the
+/// JS assignments `f[key] = value` (`log_json`'s fields): a key keeps its first position and
+/// its last value, and `__proto__` (a prototype, never a member) is dropped.
+fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32, assigned: bool) -> Res<()> {
     let n = o.rt.list_n(es);
-    let index = |rt: &Rt, i: u32| {
+    fn key(rt: &Rt, es: u32, i: u32) -> &[u8] {
         let (len, at) = rt.data(rt.slot(rt.at(es, i), 0) as u32);
-        (len <= 10)
-            .then(|| array_index(rt.heap.mem.bytes(at, len)))
-            .flatten()
+        rt.heap.mem.bytes(at, len)
+    }
+    let index = |rt: &Rt, i: u32| {
+        let k = key(rt, es, i);
+        (k.len() <= 10).then(|| array_index(k)).flatten()
+    };
+    // ponytail: repeated keys are found by pairwise scans, O(n^2) in one event's fields.
+    let shown = |rt: &Rt, i: u32| {
+        let k = key(rt, es, i);
+        !assigned || (k != b"__proto__" && !(0..i).any(|j| key(rt, es, j) == k))
     };
     let mut first = true;
     let mut member = |o: &mut HeapOut<'_>, i: u32| -> Res<()> {
         if !core::mem::take(&mut first) {
             o.put(b",")?;
         }
-        let pair = o.rt.at(es, i);
-        heap_string(o, o.rt.slot(pair, 0) as u32)?;
+        let last = match assigned {
+            true => (i..n)
+                .rev()
+                .find(|&j| key(o.rt, es, j) == key(o.rt, es, i))
+                .unwrap_or(i),
+            false => i,
+        };
+        heap_string(o, o.rt.slot(o.rt.at(es, i), 0) as u32)?;
         o.put(b":")?;
+        let pair = o.rt.at(es, last);
         let kind = o.rt.kind(&o.rt.obj_row(pair), 1);
         heap_json(o, kind, o.rt.slot(pair, 1), depth + 1)
     };
@@ -2116,6 +2152,7 @@ fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32) -> Res<()> {
     // ponytail: one scan per index key, O(n·k); sort indices if logged objects grow many.
     let mut last = None;
     while let Some((v, i)) = (0..n)
+        .filter(|&i| shown(o.rt, i))
         .filter_map(|i| index(o.rt, i).map(|v| (v, i)))
         .filter(|&(v, _)| last.is_none_or(|l| v > l))
         .min()
@@ -2124,7 +2161,7 @@ fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32) -> Res<()> {
         member(o, i)?;
     }
     for i in 0..n {
-        if index(o.rt, i).is_none() {
+        if index(o.rt, i).is_none() && shown(o.rt, i) {
             member(o, i)?;
         }
     }

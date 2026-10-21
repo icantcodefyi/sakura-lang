@@ -111,7 +111,7 @@ fn example_tests_pass_on_wasm() {
 }
 
 #[test]
-fn a_user_js_external_is_refused_on_wasm() {
+fn a_user_js_external_is_refused_on_wasm_and_native() {
     let dir = std::env::temp_dir().join(format!("sakura-wasm-external-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
@@ -120,21 +120,33 @@ fn a_user_js_external_is_refused_on_wasm() {
          pub fn main() -> Unit ! {Console} { Console.print(pad(\"x\")) }\n",
     )
     .unwrap();
-    let out = sakura(&["build", "--target", "wasm", "--json"], &dir);
-    assert_eq!(out.code, Some(1), "{}{}", out.stdout, out.stderr);
-    let records = json_lines(&out.stdout).unwrap();
-    let d = records
-        .iter()
-        .find(|r| r["kind"] == "diagnostic")
-        .expect("a diagnostic record");
-    assert_eq!(d["code"], "V8004", "{d}");
-    let span = &d["spans"][0];
-    let text = std::fs::read_to_string(dir.join("src/main.sak")).unwrap();
-    let (a, b) = (
-        span["start_byte"].as_u64().unwrap() as usize,
-        span["end_byte"].as_u64().unwrap() as usize,
-    );
-    assert_eq!(&text[a..b], "external", "the span is the attribute");
+    // Design §17.170 (3): `--target native` refuses it with the same code, before linking.
+    let targets: &[&str] = if cfg!(feature = "native") {
+        &["wasm", "native"]
+    } else {
+        &["wasm"]
+    };
+    for target in targets {
+        let out = sakura(&["build", "--target", target, "--json"], &dir);
+        assert_eq!(out.code, Some(1), "{target}: {}{}", out.stdout, out.stderr);
+        let records = json_lines(&out.stdout).unwrap();
+        let d = records
+            .iter()
+            .find(|r| r["kind"] == "diagnostic")
+            .expect("a diagnostic record");
+        assert_eq!(d["code"], "V8004", "{target}: {d}");
+        let span = &d["spans"][0];
+        let text = std::fs::read_to_string(dir.join("src/main.sak")).unwrap();
+        let (a, b) = (
+            span["start_byte"].as_u64().unwrap() as usize,
+            span["end_byte"].as_u64().unwrap() as usize,
+        );
+        assert_eq!(
+            &text[a..b],
+            "external",
+            "{target}: the span is the attribute"
+        );
+    }
     let _ = std::fs::remove_dir_all(&dir);
 }
 

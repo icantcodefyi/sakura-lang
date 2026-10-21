@@ -504,13 +504,18 @@ pub fn handlers(m: &Module, s: &mut Statics, n: u32, natives: &[&str]) -> Handle
     let native_table_off = s.bytes(&native_table);
     // The native code of each operation of `effect` (`rt_code_<prefix>_<op>`, or
     // `rt_code_unsupported`), as `u32`s in the static block: (effect id, offset, count).
-    let clause_codes = |statics: &mut Statics, effect: &str, prefix: &str| {
+    // A `js` handler's clause is the runtime's own `rt_code_<builtin>_<op>` where it has one
+    // (`log_json` natively, where nothing runs JS).
+    let clause_codes = |statics: &mut Statics, effect: &str, prefix: &str, builtin: &str| {
         let e = m.effects.iter().position(|x| x.name == effect)?;
         let ops = &m.effects[e].ops;
         let mut codes: Vec<u32> = ops
             .iter()
             .map(|op| {
-                let native = if prefix == "js" {
+                let own = format!("rt_code_{builtin}_{}", op.name);
+                let native = if prefix == "js" && natives.contains(&own.as_str()) {
+                    own
+                } else if prefix == "js" {
                     // The bridge passes at most four owned arguments and one owned result
                     // (or none).
                     let owned = |r: &Repr| matches!(r, Repr::Ptr | Repr::Word);
@@ -539,11 +544,11 @@ pub fn handlers(m: &Module, s: &mut Statics, n: u32, natives: &[&str]) -> Handle
     };
     let mut host = HashMap::new();
     for (builtin, effect, prefix) in HOST_HANDLERS {
-        if let Some(h) = clause_codes(s, effect, prefix) {
+        if let Some(h) = clause_codes(s, effect, prefix, builtin) {
             host.insert(builtin.to_string(), h);
         }
     }
-    let test = clause_codes(s, "std::test::Test", "test");
+    let test = clause_codes(s, "std::test::Test", "test", "test");
     Handlers {
         natives: native_table_off,
         host,

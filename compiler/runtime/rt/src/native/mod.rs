@@ -436,6 +436,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_http_body_close", hosted::rt_code_http_body_close),
         ("rt_code_js_callback", e::rt_code_unsupported),
         ("rt_code_js_clause", e::rt_code_unsupported),
+        ("rt_code_log_json_event", e::rt_code_log_json_event),
         ("rt_code_log_stderr_event", e::rt_code_log_stderr_event),
         ("rt_code_prop_failures", e::rt_code_unsupported),
         ("rt_code_prop_forward", e::rt_code_unsupported),

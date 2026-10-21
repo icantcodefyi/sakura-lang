@@ -1,0 +1,27 @@
+// milestone: M5
+// covers: WithExpr
+// spec: design §17.170 (2); plan m5-native N1b
+// expect-stderr: {"level":"Warn","message":"say \"hi\"","fields":{"1":true,"2":null,"b":2,"a":"x\ny\u0001"}}
+
+// `Log.json()` writes one JSON line per event on stderr, JS `log_json`'s
+// `JSON.stringify({level, message, fields})` byte for byte on every backend (natively the
+// runtime's own clause): array-index keys first in numeric order, a repeated key in its first
+// place with its last value, `__proto__` dropped (JS assigns it as the prototype), and JSON
+// escapes as `JSON.stringify` writes them.
+pub fn main() -> Unit ! {Console} {
+  with Log.json() {
+    Log.event(
+      Level.Warn,
+      "say \"hi\"",
+      [
+        ("b", Json.Number(1.0)),
+        ("2", Json.Null),
+        ("a", Json.String("x\ny\u{1}")),
+        ("__proto__", Json.Number(5.0)),
+        ("b", Json.Number(2.0)),
+        ("1", Json.Bool(true)),
+      ],
+    )
+  }
+  Console.print("logged")
+}

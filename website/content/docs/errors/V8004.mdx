@@ -8,7 +8,9 @@ An error from the `package` phase. `sakura explain V8004` prints this explanatio
 
 A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript
 to call: the WASM backend runs std's host operations through the runtime's own
-imports only. Build with `--target js`, or write the function in Sakura Lang.
+imports only. `--target native` (experimental) refuses it the same way: the native host is
+Rust with no JavaScript engine, and it never bridges to Node. Build with `--target js`, or
+write the function in Sakura Lang.
 
 ## Wrong program
 
