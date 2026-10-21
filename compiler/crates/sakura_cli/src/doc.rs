@@ -6,8 +6,16 @@ use sakura_analysis::{Analysis, Analyzed, Snapshot, SymbolQuery};
 use serde_json::Value;
 
 pub(crate) fn doc(json: bool, search: Option<&str>, symbol: Option<&str>) -> ExitCode {
-    // Std needs no project (design §17.292 (11)): with no sources here, std is the snapshot.
-    let snapshot = match crate::load(&[]) {
+    // Std needs no project (design §17.292 (11)): with no sources here, std is the snapshot,
+    // and a symbol named under std (`std::fs::rooted`, `std/http`) never loads the directory's
+    // tree (§17.294 SS-1, WP-2).
+    let std_only = symbol.is_some_and(|s| s.starts_with("std::") || s.starts_with("std/"));
+    let loaded = if std_only {
+        Ok(Snapshot::with_std([]))
+    } else {
+        crate::load(&[])
+    };
+    let snapshot = match loaded {
         Ok(snapshot) => snapshot,
         Err(error) if error == "no .sak files found" => Snapshot::with_std([]),
         Err(error) => return crate::usage_error(error),

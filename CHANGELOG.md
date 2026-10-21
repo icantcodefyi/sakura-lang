@@ -536,6 +536,9 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   where it read "expected an integer, found a undefined"; model text that is not JSON gives
   `malformed JSON` (design §17.293 MT-2). `anthropic`'s doc says the model's text is
   `{"value": T}`, and `Llm.scripted`'s that it takes `T` itself.
+- `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
+  and never the current directory's tree, so stray `.sak` or `.sakura` files there no longer
+  refuse or join the lookup (design §17.294 SS-1, WP-2).
 
 ### Security
 

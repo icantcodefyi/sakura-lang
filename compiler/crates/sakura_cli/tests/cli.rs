@@ -723,6 +723,19 @@ fn doc_reads_std_outside_a_project() {
         "{}",
         out.stdout
     );
+    // Design §17.294 SS-1 (WP-2): a symbol named under std never loads the directory's tree,
+    // so a stray file there (here an old `.sakura` one, which loading refuses) changes nothing.
+    std::fs::write(dir.join("stray.sakura"), "pub fn rooted() -> Int { 1 }\n").unwrap();
+    for symbol in ["std::fs::rooted", "std/fs"] {
+        let out = sakura(&["doc", symbol], &dir);
+        assert_eq!(out.code, Some(0), "{symbol}: {}", out.stderr);
+        assert!(
+            out.stdout.contains("std::fs::rooted\npub fn rooted("),
+            "{symbol}: {}",
+            out.stdout
+        );
+    }
+    std::fs::remove_dir_all(&dir).ok();
 }
 
 /// Plan §3.5 L3: `sakura build --emit lir` writes the validated LIR as text; `--layout=niche` is
