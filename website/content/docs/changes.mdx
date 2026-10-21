@@ -1,28 +1,74 @@
 ---
 title: Changes since 0.1.0
-description: What main changes after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
+description: What main and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
 ---
 
 `v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
 published-install check passed on every platform ([Install](/docs/install#platform-claims)).
 `v1.0.0-beta.1` is published (2026-10-21), a beta of 1.0 that is not for production: it may
 have bugs and may change before 1.0.0, and the [stability guarantees](/docs/stability) of RFC 0001
-are intended from it. The changes below are in it, and not in the `0.1.0` packages: the
-[1.0.0-beta.1 section of the changelog](/changelog#v1.0.0-beta.1) opens with the migration list
-from `v0.1.0`. These docs track **main**, which may hold later changes before the next beta. Neither release has a compatibility promise; see [Stability](/docs/stability).
+are intended from it. These docs track **main**, which holds later changes that no package
+has yet: [On main since 1.0.0-beta.1](#on-main-since-100-beta1) lists them. The changes in
+[1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the beta and not in the `0.1.0`
+packages: the [1.0.0-beta.1 section of the changelog](/changelog#v1.0.0-beta.1) opens with the
+migration list from `v0.1.0`. Neither release has a compatibility promise; see [Stability](/docs/stability).
 The [changelog](/changelog) is the complete list; this page covers what a program or an agent
 notices. Upgrading from `0.1.0-alpha.1`? Read [0.1.0, from alpha.1](#010-from-alpha1) too.
 
-## On main since 0.1.0
+## On main since 1.0.0-beta.1
 
-### Breaking on main
+None of these is breaking for a program that works on `1.0.0-beta.1`.
+
+### Added on main
+
+- **`std/worker`, experimental**: a function declared `@worker` runs as a second instance of
+  the program with its own heap and handlers, started by `Worker.spawn(entry, grants, body)`
+  and reached with `send` and `recv`; `Worker.topic` is `BroadcastChannel`. Live workers run
+  on the JavaScript target; on WebAssembly and native a `main` that declares `Worker` exits 75
+  at startup. It is outside the 1.0 contract and may change in any release. See
+  [Workers](/docs/tour/concurrency#workers-experimental).
+- **Refined types state their bounds in JSON Schema.** `Json.schema` and a `Tool`'s parameters
+  carry `minLength`/`maxLength`, `minItems`/`maxItems` and `minimum`/`maximum` for the `where`
+  clauses that can say them. See [Schema keywords of a refinement](/docs/tour/types#schema-keywords-of-a-refinement).
+- `Result.ok(r)` and `Result.err(r)` give one side of a `Result` as an `Option`.
+- `Gen.flat_map(g, f)` in `std/gen` generates a value that depends on another.
+- `Fs.read_up_to(path, limit)` reads a whole file but fails `FsError` past `limit` bytes,
+  having read at most `limit + 1`.
+- `Http.sequence(script)` is an in-order test handler: each entry answers once. It records a
+  multi-turn cassette with no hand-written handler; see
+  [Multi-turn synthetic cassettes](/docs/agents/cassettes#multi-turn-synthetic-cassettes).
+- [`V7001`](/docs/errors/V7001): `sakura check` reports a literal `expect_snapshot` name the
+  test runner would refuse. [`V0016`](/docs/errors/V0016): a binding named `error` is reported
+  where it is declared.
+- **WASM runtime ABI 1.14.0.** A host built for `1.0.0-beta.1`'s ABI 1.13 refuses a module
+  from main with `V8003`. The Node host in the same compiler always matches.
+
+### Fixed and changed on main
+
+- `sakura test --record` runs when `[permissions] net` lists no host: requests to hosts fail
+  closed, and `Http.recording` captures what in-process handlers answer.
+- A `type` item's `where` may start the next line.
+- `sakura doc` given a std name reads std alone, and a bare name reads the current directory's
+  `.sak` files only inside a project.
+- `sakura verify --json` (a preview) reports a different set of obligations than `0.1.0` did
+  for the same program: a `match` on a refined type's `validate` is decided, and each
+  effect operation's `requires` is a new obligation at the perform site (such as
+  `main requires Cli.exit`), `unsupported` when its arguments are not modelled. A gate that
+  pins the obligation count, or requires no `unsupported`, can change result with no source
+  change.
+
+## 1.0.0-beta.1, since 0.1.0
+
+### Breaking in 1.0.0-beta.1
 
 Each of these can change what a program that works on `0.1.0` does.
 
 - **Request and response bodies are a `Payload`.** `Request.body` and `Response.body` are
-  `Empty | Text(String) | Bytes(Bytes)` (in `std/request`), so a body can be binary. Write
-  `body: Text("s")` (or `.with_payload(Text("s"))`) where a record set `body: "s"`, and read a
-  body with a `match`, `Response.text`, `Response.json` or `Response.bytes(r, limit)`. The
+  `Payload.Empty | Payload.Text(String) | Payload.Bytes(Bytes)` (import
+  `std/request.{Payload}`), so a body can be binary. Write `body: Payload.Text("s")` (or
+  `.with_payload(Payload.Text("s"))`) where a record set `body: "s"`; a bare `Text("s")` is
+  `V1002`. Read a body with a `match`, `Response.text`, `Response.json` or
+  `Response.bytes(r, limit)`, each with a byte limit. The
   builders (`Request.of`, `post`, `post_json`, `Response.status`, `ok_json`, `html`) keep
   their signatures. A replayed cassette delivers its body as `Bytes`.
 - **`Method` gains `Options` and `Trace`**, so a `match` on `Method` needs two more arms.
@@ -43,10 +89,23 @@ Each of these can change what a program that works on `0.1.0` does.
   `?`, `+` or `\` in a segment, a `:` or `*` inside one) is the caller defect `D020` at
   `Router.route`, `get`, `post`, `put` or `delete`; in `0.1.0` it was a literal segment.
   `*` and `**` routes now match, their segments in `Request.param(req, "0")`, `"1"`, ….
-- **WASM runtime ABI 1.7.0.** A host built for `0.1.0`'s ABI 1.4 refuses a module from main
-  with `V8003`. The Node host in the same compiler always matches.
+- **`std/crypto`'s sums gain variants** (`Algorithm`, `Curve`, `Usage`, `KeyFormat`,
+  `KeyReason`, `CryptoReason`), so an exhaustive `match` on one adds arms.
+- **A `Path` with `\` or `:` is refused** by `Path.validate`, `Path.from`, a `Path` literal
+  ([`V5004`](/docs/errors/V5004)), `Cli.parse` and `Json.decode`: write `/`, no drive.
+- **`ANTHROPIC_BASE_URL` is no longer read.** Pass the endpoint with
+  `Llm.anthropic_at(base, key, model)`.
+- **Log fields render as compact JSON**: `hits=3`, not `hits=Number(3.0)`.
+- **`Console` gains `eprint(line)`**, which writes to standard error; a user
+  `handler Console` must add it.
+- **A refinement failure names the failing clause**: a `Violation`'s clause is the first false
+  top-level conjunct, such as `it <= 100`, not the whole `where`.
+- **[`W1003`](/docs/errors/W1003) `unused_import`** warns on an import nothing uses, with a fix
+  that removes it.
+- **WASM runtime ABI 1.13.0.** A host built for `0.1.0`'s ABI 1.4 refuses a module from
+  `1.0.0-beta.1` with `V8003`. The Node host in the same compiler always matches.
 
-### Added on main
+### Added in 1.0.0-beta.1
 
 - `std/urlpattern`: `UrlPattern.compile(pattern)` and `UrlPattern.exec(p, url)`, the web's
   `URLPattern` without regular expressions, alike on every backend.
@@ -67,7 +126,7 @@ Each of these can change what a program that works on `0.1.0` does.
   startup with "`Http` is not available on target `native`" instead of the defect `D091` at
   first use.
 
-### Faster on main
+### Faster in 1.0.0-beta.1
 
 Performance work after `0.1.0`, mostly on the JavaScript backend, is not in the `0.1.0`
 packages: owned updates through functions that return a fresh list and flat `List<Bool>`
