@@ -832,6 +832,33 @@ fn native_agrees_with_js_on_run_mode_programs() {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
+/// Plan M5 N1b: the `secrets` example's token travels to the native `Http` host as a secret
+/// header and appears in none of stdout, stderr, the effect trace or the cassette, while the
+/// cassette replays the charge.
+#[cfg(feature = "native")]
+#[test]
+fn a_native_secret_never_reaches_output_trace_or_cassette() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let example = manifest.join("../../examples/secrets");
+    let trace = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-secret-trace.jsonl");
+    let _ = std::fs::remove_file(&trace);
+    let env = [
+        ("SAKURA_NATIVE_LIB_DIR", lib.as_path()),
+        ("SAKURA_TRACE", trace.as_path()),
+    ];
+    let ran = sakura_env(&["run", "--target", "native"], &example, &env);
+    assert_eq!(ran.code, Some(0), "{}", ran.stderr);
+    assert_eq!(ran.stdout, "charged 12.34\n");
+    let trace = std::fs::read_to_string(&trace).unwrap();
+    assert!(trace.contains("\"op\":\"send\""), "{trace}");
+    let cassette = std::fs::read_to_string(example.join("tests/fixtures/billing.jsonl")).unwrap();
+    for text in [&ran.stdout, &ran.stderr, &trace, &cassette] {
+        assert!(!text.contains("demo-token"), "the secret leaked: {text}");
+    }
+}
+
 /// Design §17.173 (4): `sakura build --target native --native-checks` builds the checked
 /// lowering, which runs a correct program unchanged; the flag needs `--target native`.
 #[cfg(feature = "native")]

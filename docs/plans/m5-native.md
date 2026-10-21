@@ -219,9 +219,23 @@ the corpus has no scratch directory for a database file. The native corpus agree
 programs, from the evaluator, with twins and under `--no-direct`. `KNOWN_NATIVE` there is empty.
 **Round 27 (§17.240, §17.241, §17.245).** Native gates no tag: `--target native` ships as an experimental flag in the first minor whose matrix and §17.173 lanes are green (owner-confirmed 2026-10-19, §17.245 (2)); N1b's remainder, N2's controls and N2f stay on one Opus line at the queue's lowest priority; N5 joins N3 and N4 in M5b (N0b landed `86262eff`..`4ee9e954`, §17.247: `E` widens to every managed type in N4a's first commit with the baseline re-recorded; miss reasons are N3's and never in `stats()`; recomputation by reading the snapshot back as Core is confirmed; a remove's untested copies become attempts at N3; the allocation-bound WASM cells read within noise at the 0.2.0 window). N1b's four readings (§17.241): `begin`, `release` and `rollback` become worker requests (a host test with a slow statement under `timeout` beside a transaction); an `INTEGER` beyond ±(2^53 − 1) is a decode `Err` on the JS hosts and exact natively (documented beside `D003`; the exact-i64 lane is native's); one statement per query is `Err` on every host (Node scans the literal for a second statement), the malformed-cell message follows the JS text, a `__proto__` key is kept; the decode depth counts value nodes, never refinement layers, and the JS runtime enforces the same 64. N2f (§17.240 (3)) also records the compile phases at 4,096, 8,192, 16,384 and 32,768 guarded rows in one function (30 s at 16,384 and 115 s at 32,768 today): ours is a fix inside N2f, Cranelift's is a stated limit and an M5b split.
 
-**Left of N1b:** Http and cassettes (`KNOWN_NATIVE` in `parity.rs` keeps the `secrets`
-example), serve, Llm, `secret_*`, `log_json`, the test runner's codes, `V8004` and the exclusion
-table. The WASI command does not call the codec yet (no Wasmtime `json_validate` cell).
+**N1b progress (2026-10-21): Http and cassettes landed (`5b1f9430`).** `http_send` and
+`http_stream_open` are native requests the host completes over `reqwest` + `rustls` (ring,
+platform roots, no proxy and no redirects, as Node's `fetch` with `std/http`'s `follow`), so the
+manifest's `net` list is checked on every hop; the refusal answers at once with no request, as
+JS. A body is bounded by `SAKURA_MAX_COPY_BYTES` (`response too large`), a streamed one read chunk
+by chunk with the rest of a chunk buffered, and cancelling aborts the request or read.
+`secret_headers` cross only to those two imports and the runtime zeroes its copy.
+`Http.recording`'s open, lookup and append port the JS runtime's validation, keys and messages
+(a non-JSON line names its line with the parser's own text). `Http` left the driver's unavailable
+list: the `secrets` example runs natively, its token in none of stdout, stderr, trace or
+cassette (`parity.rs`), and native parity is 297 of 297. `secret_wrap`/`secret_expose` were
+already native builtins.
+
+**Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
+natively; see `compiler/REQUESTS.md` 2026-10-21 N1b), serve, `log_json`, the test runner's codes
+and `sakura test --target native`, `V8004` and the exclusion table. The WASI command does not
+call the codec yet (no Wasmtime `json_validate` cell).
 
 ### Start conditions in one view
 
