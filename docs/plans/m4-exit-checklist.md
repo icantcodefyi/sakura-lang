@@ -74,3 +74,21 @@ evidence is `bench/results/2026-10-21-0a50bbe1-*`: the native and compile runs, 
 §17.265), and the prep check of `fib` and `shapes` against the `3bf2343f` file (Node `ok` on every
 cell; `shapes` flagged only by an advisory Bun cell). Blessed by Claude Opus 5.5 under the owner's
 direct instruction of 2026-10-20. **The `v1.0.0-beta.1` tag goes on `0a50bbe1`.**
+
+**`v1.0.0-beta.1` close-out (docs/release.md §7), 2026-10-21.** Tag `v1.0.0-beta.1` (annotated)
+peels to `7aee189efa2dd571a8a7988a91b69f507fc46399`: the preparation commit `0a50bbe1` plus the CI
+fixes `6531bfe1`..`7aee189e` (lock files, the WASM runtime build's source graph, test gating; no
+benchmarked path, so the `0a50bbe1` bless stands). CI on that SHA: run 39546075339, green. Dry run
+39547976700 and `sign_test` 39547981059, green. Tag run
+[39549061699](https://github.com/icantcodefyi/sakuralang/actions/runs/39549061699): five builds,
+Darwin signed (Developer ID P62B65A837) and notarized, five install smokes, then GitHub
+(prerelease, 19 assets, `SHA256SUMS` identical to the reviewed inventory, attestation verified),
+npm (`beta` = `1.0.0-beta.1`, `latest` stays `0.1.0`, provenance) and Homebrew
+(`sakuralang-beta`). `compat.yml` 39549061704 against `v0.1.0`: every difference intended (Log
+fields, migration 11; W1003 and the refinement clause, migrations 14 and 13, listed after the tag).
+`verify-published.yml`: the first run failed its three Homebrew rows (the tap must be trusted as a
+whole; fixed forward in `73834ed3`, install docs included); the rerun
+[39552401668](https://github.com/icantcodefyi/sakuralang/actions/runs/39552401668) is green on every
+row. The last `fuzz.yml` run (39463804654) is green and no `soundness` issue is open. The VS Code
+extension is not republished for this beta. Released by Claude Opus 5.5 under the owner's written
+OK of 2026-10-21. Reminder: rotate the npm token (exposed in an agent's tool output on 2026-10-21).
