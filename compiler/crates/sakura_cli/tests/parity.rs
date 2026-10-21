@@ -941,12 +941,9 @@ const KNOWN_NATIVE_TESTS: &[(&str, &str)] = &[
     ("llm_stream_anthropic.sak", "`Llm.anthropic` (N1b's Llm)"),
     ("example agent_loop", "`Llm.anthropic` (N1b's Llm)"),
     ("example budgeted_agent", "`Llm.anthropic` (N1b's Llm)"),
-    ("example form_upload", "cassettes (N1b's Http)"),
-    ("example http_retry", "cassettes (N1b's Http)"),
     ("example llm_extract", "`Llm.anthropic` (N1b's Llm)"),
     ("example property", "property search (`property_run`)"),
     ("example scripted_tool", "`Llm.anthropic` (N1b's Llm)"),
-    ("example secrets", "cassettes (N1b's Http)"),
 ];
 
 /// `sakura test --target native` agrees with JS on every test-mode fixture (with `--contracts`
