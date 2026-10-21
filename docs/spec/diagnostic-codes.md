@@ -101,9 +101,10 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V8001` | error | `missing_entry_point` | [V8001_missing_entry_point.sak](../../compiler/tests/ui/V8001_missing_entry_point.sak) | active |
 | `V8002` | error | `reserved_package_name` | [reserved_package_names_are_v8002](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
 | `V8003` | error | `abi_version_mismatch` | [runMain and runTests report V8003 for another ABI and exit 2](../../compiler/runtime/js/test/wasm_host.test.js) | active |
-| `V8004` | error | `target_unsupported_external` | [a_user_js_external_is_refused_on_wasm](../../compiler/crates/sakura_cli/tests/wasm.rs) | active |
+| `V8004` | error | `target_unsupported_external` | [a_user_js_external_is_refused_on_wasm_and_native](../../compiler/crates/sakura_cli/tests/wasm.rs) | active |
 | `V8005` | error | `dependencies_not_supported` | [main.sak](../../compiler/tests/ui/V8005_dependencies_table/main.sak) | active |
 | `V8006` | error | `manifest_invalid` | [main.sak](../../compiler/tests/ui/V8006_manifest_has_targets_table/main.sak) | active |
+| `V8007` | error | `native_linker_missing` | [native_missing_linker_is_v8007](../../compiler/crates/sakura_cli/tests/parity.rs) | active |
 | `V8020` | error | `spec_frozen` | [frozen_specs_compare_with_git_head](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
 | `V9001` | error | `internal_error` | [guard_reports_a_dropped_comment_or_broken_output](../../compiler/crates/sakura_fmt/src/lib.rs) | active |
 | `V9002` | error | `phase_unavailable` | [V9002_contract_test_handler_unsupported.sak](../../compiler/tests/ui/V9002_contract_test_handler_unsupported.sak) | active |
