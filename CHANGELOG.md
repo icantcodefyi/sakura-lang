@@ -119,6 +119,12 @@ Every breaking entry below, in the order a program meets it; the entries carry t
     `hits=Number(3.0)` matches `hits=3`, and `id=String("x")` becomes `id="x"`.
 12. **`Console` gains `eprint`** (Changed, design §17.292 (9)): a user `handler Console` adds
     `fn eprint(line) { … }`, e.g. the same body as its `print`.
+13. **A refinement failure names the failing clause** (Changed, design §17.292 (4)): output that
+    printed a `Violation`'s clause shows the first false top-level conjunct, e.g. `it <= 100`, not the
+    whole `where` text. Listed after the tag: the `v0.1.0` compat run found it.
+14. **`W1003 unused_import` is new** (Added, design §17.294 RQ-5): an import nothing uses now warns,
+    with a fix that removes the name; a `ui` expectation listing a file's codes gains it. Listed
+    after the tag, as 13.
 
 ### Changed
 

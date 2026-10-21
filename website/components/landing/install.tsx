@@ -13,7 +13,11 @@ const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   },
   {
     name: "Homebrew",
-    lines: ["brew tap icantcodefyi/sakuralang", "brew install sakuralang-beta"],
+    lines: [
+      "brew tap icantcodefyi/sakuralang",
+      "brew trust --tap icantcodefyi/sakuralang",
+      "brew install sakuralang-beta",
+    ],
     note: "installs Node with it",
   },
   {

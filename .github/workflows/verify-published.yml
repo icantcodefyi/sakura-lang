@@ -161,6 +161,6 @@ jobs:
           fi
           formula=$(python3 -I published/tools/release/release.py formula)
           brew tap icantcodefyi/sakuralang
-          brew trust --formula "icantcodefyi/sakuralang/$formula"
+          brew trust --tap icantcodefyi/sakuralang
           brew install "icantcodefyi/sakuralang/$formula"
           python3 -I published/tools/release/release.py accept --sakura "$(brew --prefix "$formula")/bin/sakura" --commit "$COMMIT"
