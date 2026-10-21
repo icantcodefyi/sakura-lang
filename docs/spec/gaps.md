@@ -146,6 +146,16 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **Source-level finalizer order.** EF19's reverse order is pinned in the Rust runtime
   (`exec.rs`); no `.sak` fixture opens two resources and observes the order they close in.
 
+### Errors, `Result` and defects
+
+- **A failing `main`.** STABILITY.md gives exit 1 for a failed `main`; beta.1 prints
+  `error: main failed with <tag>` and exits 1. No fixture pins it (`cli_exit_runs_finalizers.sak`
+  only says so in a comment).
+- **`try` and defects.** Design §5.4 says `try` cannot catch a defect; beta.1 agrees, but no
+  fixture puts a defect inside a `try`.
+- **Contract spans.** Design §17.115 gives a call through a function value the clause's span
+  only; the `contract_site_blame_*` fixtures check the defect code, not the spans.
+
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,

@@ -12,6 +12,7 @@ It does not declare v1.0.0-beta.1 released or replace today's [stability policy]
 - [Evaluation and values](evaluation.md) covers evaluation order, values, and control flow.
 - [Types and refinements](types.md) covers type identity, generics, and refined types.
 - [Effects and handlers](effects.md) covers rows, operations, handlers, and finalizers.
+- [Errors, `Result` and defects](errors.md) covers `Fail`, `try`, `?`, contracts, and defects.
 - [Generated code table](diagnostic-codes.md) indexes the identity baseline by fixture.
 - [Coverage gaps](gaps.md) records missing evidence and unresolved differences.
 
