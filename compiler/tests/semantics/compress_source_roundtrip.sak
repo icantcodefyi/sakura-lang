@@ -4,11 +4,13 @@
 
 // `compress_source` is `CompressionStream` and `decompress_source` `DecompressionStream`, both
 // callback-shaped: the body receives a source valid inside the call. Text compressed item by
-// item decompresses to the same text whole and streamed, with the compressed bytes cut into
-// 7-byte items so the header and trailer span items. `compress_source` re-chunks its input to
-// 65,536 bytes, so its items are the header, one per 64 KiB, and the end with the trailer;
-// the decompressed items are as the codec yields them, so they are re-chunked with
-// `Stream.chunks` before their sizes are printed.
+// item decompresses to the same text whole and streamed, with the compressed bytes cut 7 bytes
+// in and 3 bytes before the end, so the gzip header and the gzip and zlib trailers span items,
+// and into 1,009-byte items between. (Not 7-byte items throughout: each item is a `node:zlib`
+// thread-pool round trip on JS, and ~1,100 of them a pass took over 30 s on a CPU-saturated
+// Windows runner.) `compress_source` re-chunks its input to 65,536 bytes, so its items are the
+// header, one per 64 KiB, and the end with the trailer; the decompressed items are as the codec
+// yields them, so they are re-chunked with `Stream.chunks` before their sizes are printed.
 import std/compress
 import std/compress.{CompressionError, Format}
 import std/encoding.{Encoding, EncodingError, Errors}
@@ -26,7 +28,12 @@ pub fn main() -> Unit ! {Console} {
     })
     let z = Bytes.concat(items)
     let whole = compress.decompress(z, f, 1_000_000).map(fn(b) { b == String.to_bytes(text) })
-    let cut: Source<Bytes, {}> = Source.from_list([z]).chunks(7)
+    let n = Bytes.len(z)
+    let body: Source<Bytes, {}> = Source.from_list([Bytes.slice(z, 7, n - 3)]).chunks(1_009)
+    let middle = body.fold([], fn(acc, b) { acc.push(b) })
+    let cut: Source<Bytes, {}> = Source.from_list(
+      List.concat([Bytes.slice(z, 0, 7)], middle).push(Bytes.slice(z, n - 3, n)),
+    )
     let sizes: Result<List<Int>, CompressionError> = try {
       compress.decompress_source(cut, f, 1_000_000, fn(plain) {
         plain.chunks(40_000).fold([], fn(acc, b) { acc.push(Bytes.len(b)) })
