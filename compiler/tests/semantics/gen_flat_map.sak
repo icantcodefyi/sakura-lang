@@ -1,0 +1,18 @@
+// milestone: M3
+// spec: design §17.294 WP-14; §10.6
+
+// `Gen.flat_map(g, f)` samples `g`, then `f(a)`, at the same size, so the second value can
+// depend on the first: here a list and an index bounded by its length. Under one
+// seed the samples are the same on every backend.
+import std/gen
+
+pub fn main() -> Unit ! {Console} {
+  let g = gen.flat_map(gen.list(gen.int(0, 9), 5), fn(xs) {
+    let n = Int.max(List.len(xs), 1)
+    gen.map(gen.int(0, n - 1), fn(i) { (xs, i) })
+  })
+  let samples = with Random.seeded(7) { List.map(List.range(1, 6), fn(size) { g.sample(size) }) }
+  for s in samples { Console.print("{s.0} {s.1} {s.1 < Int.max(List.len(s.0), 1)}") }
+  let again = with Random.seeded(7) { List.map(List.range(1, 6), fn(size) { g.sample(size) }) }
+  Console.print("{samples == again}")
+}

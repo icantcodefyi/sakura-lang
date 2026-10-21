@@ -49,6 +49,12 @@ pub fn map<A, B>(g: Gen<A>, f: fn(A) -> B) -> Gen<B> {
   Gen { sample: fn(size) { f(g.sample(size)) } }
 }
 
+/// Samples `g`, then the generator `f` builds from that value, at the same size: a value
+/// that depends on another, such as a list and an index into it.
+pub fn flat_map<A, B>(g: Gen<A>, f: fn(A) -> Gen<B>) -> Gen<B> {
+  Gen { sample: fn(size) { f(g.sample(size)).sample(size) } }
+}
+
 pub fn pair<A, B>(a: Gen<A>, b: Gen<B>) -> Gen<(A, B)> {
   Gen { sample: fn(size) { (a.sample(size), b.sample(size)) } }
 }
@@ -85,6 +91,11 @@ test "lists respect max_len and strings use the alphabet" {
 test "pair and map compose" {
   let sums = map(pair(int(0, 5), int(10, 15)), fn(p) { p.0 + p.1 })
   for_all(sums, 50, fn(s) { expect(s >= 10 && s <= 20) })
+}
+
+test "flat_map draws the second value from the first" {
+  let g = flat_map(int(1, 5), fn(n) { map(int(0, n), fn(i) { (n, i) }) })
+  for_all(g, 50, fn(p) { expect(p.1 >= 0 && p.1 <= p.0) })
 }
 
 test "same seed, same samples" {

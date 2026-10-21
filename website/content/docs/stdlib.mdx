@@ -349,6 +349,7 @@ fn one_of<A>(choices: List<A>) -> Gen<A> requires List.len(choices) > 0
 fn list<A>(item: Gen<A>, max_len: Int) -> Gen<List<A>> requires max_len >= 0
 fn string(max_len: Int) -> Gen<String> requires max_len >= 0
 fn map<A, B>(g: Gen<A>, f: fn(A) -> B) -> Gen<B>
+fn flat_map<A, B>(g: Gen<A>, f: fn(A) -> Gen<B>) -> Gen<B>
 fn pair<A, B>(a: Gen<A>, b: Gen<B>) -> Gen<(A, B)>
 fn for_all<A: Show, e>(g: Gen<A>, runs: Int, prop: fn(A) -> Unit ! {Test | e}) -> Unit ! {Random, Test | e}
 ```

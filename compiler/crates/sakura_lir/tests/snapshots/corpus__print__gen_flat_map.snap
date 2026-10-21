@@ -1,0 +1,175 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record std::gen::Gen | Gen 24b (sample: word*)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  24b (i64)
+layout 7 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::gen_flat_map, frame 30 slots [%3 word*, %6 word*, %8 word*, %10 word*, %11 word*, %18 word*, %19 word*, %20 word*, %25 bool, %30 word*, %31 word*, %32 word*, %34 word*, %35 word*, %69 i64, %70 word*, %71 word*, %72 i64, %73 i64, %74 word*, %75 i64, %79 bool, %80 word*, %81 word*, %82 i64, %83 i64, %88 word*, %89 word*, %91 word*, %92 word*]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 9
+    %2 $site: i64 = const 6
+    call int#2(%0, %1, %2) -> b1()
+  b1(%3 r: ptr):
+    %4 lit: i64 = const 5
+    %5 $site: i64 = const 7
+    call list#3(%3, %4, %5) -> b2()
+  b2(%6 r: ptr):
+    %7 f: ptr = closure main$1#4[]
+    call flat_map#8(%6, %7) -> b3()
+  b3(%8 r: ptr):
+    %9 lit: i64 = const 7
+    call seeded#9(%9) -> b4(%8)
+  b4(%10 r: ptr, %11 r: ptr):
+    handle_push %10
+    %86 lit: i64 = const 1
+    %87 lit: i64 = const 6
+    call range#10(%86, %87) -> b18(%11)
+  b5(%12 v: ptr, %13 r: ptr):
+    dup.candidate %12
+    %14 n: i64 = $list_len(%12)
+    %85 lit: i64 = const 0
+    jump b12(%85, %13, %12, %14)
+  b6(%15 r: ptr, %16 v: ptr):
+    %17 lit: i64 = const 7
+    call seeded#9(%17) -> b7(%15, %16)
+  b7(%18 r: ptr, %19 r: ptr, %20 v: ptr):
+    handle_push %18
+    %28 lit: i64 = const 1
+    %29 lit: i64 = const 6
+    call range#10(%28, %29) -> b10(%19, %20)
+  b8(%21 v: ptr, %22 v: ptr):
+    %23 t: bool = eq.any %22, %21
+    drop %21
+    drop %22
+    %24 s: ptr = show %23
+    perform std::console::Console.print(%24) -> b9()
+  b9(%25 r: unit):
+    %26 box: word = box %25
+    %27 unbox: unit = unbox %26
+    drop %26
+    ret %27
+  b10(%30 r: ptr, %31 r: ptr, %32 v: ptr) [handle]:
+    %33 f: ptr = closure main$3#13[%31]
+    call map#12(%30, %33) -> b11(%32)
+  b11(%34 r: ptr, %35 v: ptr) [handle]:
+    handle_pop
+    jump b8(%34, %35)
+  b12(%36 i: i64, %37 r: ptr, %38 v: ptr, %39 n: i64):
+    %40 more: bool = lt.int %36, %39
+    if %40 then b13(%37, %38, %39, %36) else b14(%37, %38, %39, %36)
+  b13(%41 r: ptr, %42 v: ptr, %43 n: i64, %44 i: i64):
+    dup.candidate %42
+    %49 x: word = $list_at(%42, %44)
+    %56 t: ptr = tuple_get %49.0
+    %57 s: ptr = show %56
+    drop %56
+    %58 lit: ptr = const str 0
+    %59 s: ptr = concat %57, %58
+    drop %58
+    %60 t: i64 = tuple_get %49.1
+    %61 s: ptr = show %60
+    %62 s: ptr = concat %59, %61
+    drop %61
+    %63 lit: ptr = const str 0
+    %64 s: ptr = concat %62, %63
+    drop %63
+    %65 t: i64 = tuple_get %49.1
+    %66 t: ptr = tuple_get %49.0
+    drop %49
+    %67 r: i64 = $list_len(%66)
+    %68 lit: i64 = const 1
+    call max#5(%67, %68) -> b16(%41, %42, %43, %44, %64, %65)
+  b14(%45 r: ptr, %46 v: ptr, %47 n: i64, %48 i: i64):
+    jump b6(%45, %46)
+  b15(%50 r: ptr, %51 v: ptr, %52 n: i64, %53 i: i64):
+    %54 lit: i64 = const 1
+    %55 i: i64 = intadd %53, %54
+    jump b12(%55, %50, %51, %52)
+  b16(%69 r: i64, %70 r: ptr, %71 v: ptr, %72 n: i64, %73 i: i64, %74 s: ptr, %75 t: i64):
+    %76 t: bool = lt.int %75, %69
+    %77 s: ptr = show %76
+    %78 s: ptr = concat %74, %77
+    drop %77
+    perform std::console::Console.print(%78) -> b17(%70, %71, %72, %73)
+  b17(%79 r: unit, %80 r: ptr, %81 v: ptr, %82 n: i64, %83 i: i64):
+    %84 box: word = box %79
+    drop %84
+    jump b15(%80, %81, %82, %83)
+  b18(%88 r: ptr, %89 r: ptr) [handle]:
+    dup %89
+    %90 f: ptr = closure main$2#11[%89]
+    call map#12(%88, %90) -> b19(%89)
+  b19(%91 r: ptr, %92 r: ptr) [handle]:
+    handle_pop
+    jump b5(%91, %92)
+
+fn $entry#1 top -> unit ; main::gen_flat_map, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#4 lambda -> word ; main::gen_flat_map, captures [], frame 7 slots [%0 word*, %1 word*, %4 i64, %5 word*, %10 word*, %11 word*, %13 word*]
+  b0(%0 env: ptr, %1 xs: word):
+    drop %0
+    dup.candidate %1
+    %2 r: i64 = $list_len(%1)
+    %3 lit: i64 = const 1
+    call max#5(%2, %3) -> b1(%1)
+  b1(%4 r: i64, %5 xs: ptr):
+    %6 lit: i64 = const 1
+    %7 t: i64 = intsub %4, %6
+    %8 lit: i64 = const 0
+    %9 $site: i64 = const 8
+    call int#2(%8, %7, %9) -> b2(%5)
+  b2(%10 r: ptr, %11 xs: ptr):
+    %12 f: ptr = closure main$1$1#6[%11]
+    call map#7(%10, %12) -> b3()
+  b3(%13 r: ptr):
+    ret %13
+
+fn main$1$1#6 lambda -> word ; main::gen_flat_map, captures [word*], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 i: word):
+    %2 xs: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 tup: ptr = alloc tuple#7(word, i64)(%2, %3)
+    ret %4
+
+fn main$2#11 lambda -> word ; main::gen_flat_map, captures [word*], frame 3 slots [%0 word*, %1 word*, %6 word*]
+  b0(%0 env: ptr, %1 size: word):
+    %2 g: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 sample: word = proj %2.0 std::gen::Gen
+    drop %2
+    %5 box: word = box %3
+    call %4(%5) -> b1()
+  b1(%6 r: word):
+    ret %6
+
+fn main$3#13 lambda -> word ; main::gen_flat_map, captures [word*], frame 3 slots [%0 word*, %1 word*, %6 word*]
+  b0(%0 env: ptr, %1 size: word):
+    %2 g: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 sample: word = proj %2.0 std::gen::Gen
+    drop %2
+    %5 box: word = box %3
+    call %4(%5) -> b1()
+  b1(%6 r: word):
+    ret %6

@@ -12,6 +12,9 @@ retains earlier implementation history.
 - `Result.ok(r) -> Option<A>` and `Result.err(r) -> Option<E>` (design §17.293 MT-11a), both
   `@total`: one side of a `Result` as an `Option`, the other side `None`. Fixture
   `compiler/tests/semantics/result_ok_err.sak`.
+- `Gen.flat_map(g, f) -> Gen<B>` in `std/gen` (design §17.294 WP-14): samples `g`, then
+  `f(a)`, at the same size, for a value that depends on another; `pair`, `map` and a direct
+  `Gen { sample: … }` stay. Fixture `compiler/tests/semantics/gen_flat_map.sak`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 
