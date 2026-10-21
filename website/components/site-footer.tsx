@@ -88,8 +88,9 @@ export function SiteFooter() {
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-muted-foreground">
-            The language agents write. In beta: v{RELEASE} is published, not for production, and
-            nothing is stable before 1.0.
+            The language agents write. In beta:{" "}
+            <span className="whitespace-nowrap">v{RELEASE}</span> is published, not for production,
+            and nothing is stable before 1.0.
           </p>
         </div>
         {COLUMNS.map((c) => (
@@ -172,18 +173,31 @@ export function SiteFooter() {
           ))}
         </svg>
       </div>
-      <div className="footer-fall" aria-hidden="true">
-        {FALLING.map(([x, dx, t, d, s]) => (
-          <i
-            key={x}
-            style={{ "--x": x, "--dx": dx, "--t": t, "--d": d, "--s": s } as CSSProperties}
-          >
-            <svg viewBox="-.55 -.55 1.1 1.1">
-              <use href="#ft-petal" fill="url(#ft-petal-fall)" />
-            </svg>
-          </i>
-        ))}
-      </div>
+      <FallingPetals petals={FALLING} />
     </footer>
+  );
+}
+
+/**
+ * Petals falling through their box (`.petal-fall` in globals.css), only without reduced motion.
+ * They draw the footer's #ft-petal, so they need the footer on the page, as the landing hero has.
+ */
+export function FallingPetals({
+  petals,
+  className,
+}: {
+  petals: readonly (readonly [string, string, string, string, number])[];
+  className?: string;
+}) {
+  return (
+    <div className={`petal-fall ${className ?? ""}`} aria-hidden="true">
+      {petals.map(([x, dx, t, d, s]) => (
+        <i key={x} style={{ "--x": x, "--dx": dx, "--t": t, "--d": d, "--s": s } as CSSProperties}>
+          <svg viewBox="-.55 -.55 1.1 1.1">
+            <use href="#ft-petal" fill="url(#ft-petal-fall)" />
+          </svg>
+        </i>
+      ))}
+    </div>
   );
 }

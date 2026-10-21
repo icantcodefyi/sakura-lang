@@ -176,16 +176,28 @@ function McpFigure() {
     { cls: "mcp-out", x: 408, y: 44, d: -118, delay: 1.4, fill: "var(--ok)" },
     { cls: "mcp-out", x: 150, y: 44, d: -118, delay: 2.1, fill: "var(--ok)" },
   ];
-  const label = { fontSize: 13, fontWeight: 600, fill: "var(--foreground)" } as const;
-  const sub = { fontSize: 11, fill: "var(--muted-foreground)" } as const;
+  // Phones scale the figure to ~75%: the labels grow to stay readable, and the two rows of tool
+  // names, too long to grow, give way to the wrapping list under it.
+  const label = {
+    fontSize: 13,
+    fontWeight: 600,
+    fill: "var(--foreground)",
+    className: "max-sm:[font-size:15px]",
+  } as const;
+  const sub = {
+    fontSize: 11,
+    fill: "var(--muted-foreground)",
+    className: "max-sm:[font-size:13.5px]",
+  } as const;
   return (
     <Play>
       <svg
         viewBox="0 0 440 146"
+        preserveAspectRatio="xMidYMin slice"
         // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline, animated SVG figure
         role="img"
         aria-label="Your agent, Claude Code, Codex or Cursor, calls sakura mcp serve over stdio; the server runs the compiler and returns diagnostics, fixes and test results. Its ten tools: compiler_info, check, symbol_query, hole_context, docs_query, explain_diagnostic, format, check_patch, apply_patch and test."
-        className="w-full"
+        className="w-full max-sm:aspect-[440/104]"
       >
         <line x1="32" y1="40" x2="150" y2="40" stroke="var(--border-strong)" />
         <line x1="290" y1="40" x2="408" y2="40" stroke="var(--border-strong)" />
@@ -257,6 +269,12 @@ function McpFigure() {
           {TOOLS.slice(5).join(" · ")}
         </text>
       </svg>
+      <p
+        aria-hidden
+        className="mt-1 text-center font-mono text-[11.5px] leading-relaxed text-faint sm:hidden"
+      >
+        {TOOLS.join(" · ")}
+      </p>
     </Play>
   );
 }

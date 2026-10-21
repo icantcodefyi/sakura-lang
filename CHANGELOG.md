@@ -43,6 +43,10 @@ retains earlier implementation history.
   the hero. Its posters are the live scene rendered once (`website/scripts/hero-posters.ts`),
   about 75 KB of webp per theme, replacing the generated SVG posters; the tree no longer turns
   toward the pointer.
+- On phones and tablets (below 1024 px) the landing tree grows from the hero's bottom right
+  under the copy and fades into the page, instead of sitting in a hard-edged box; it sways and
+  petals fall across the hero without three.js, and both stop under reduced motion. The tab bars
+  are 44 px tall there, and the MCP figure's labels and tool names are readable at 360 px.
 
 ### Fixed
 

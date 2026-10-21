@@ -17,13 +17,14 @@ export function Tabs({
 }) {
   const [value, setValue] = useState(items[0].label);
   const { bar, pill, ready } = useSlidingPill(value);
+  // shadcn's horizontal list height (h-8) outranks h-11; below lg the taller bar is the tap target.
   return (
     <TabsRoot value={value} onValueChange={setValue} className="gap-4">
       <TabsList
         ref={bar}
         data-pill={ready || undefined}
         aria-label={label}
-        className="group/pill relative grid h-11 w-full rounded-lg border border-border bg-muted p-1"
+        className="group/pill relative grid h-11 w-full rounded-lg border border-border bg-muted p-1 max-lg:group-data-horizontal/tabs:h-11"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
         <span

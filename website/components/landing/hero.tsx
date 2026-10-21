@@ -5,7 +5,18 @@ import { GitHubIcon } from "@/components/github-icon";
 import { Button } from "@/components/ui/button";
 import { releaseLabel } from "@/lib/release";
 import { site } from "@/lib/site";
+import { FallingPetals } from "@/components/site-footer";
 import { Tree } from "./tree";
+
+/** The hero's falling petals below lg: left edge, drift, fall time, phase and size. */
+const PETALS = [
+  ["8%", "-40px", "19s", "-3s", 0.9],
+  ["27%", "-70px", "23s", "-15s", 1.05],
+  ["46%", "-55px", "21s", "-8s", 0.95],
+  ["63%", "-90px", "24s", "-19s", 1.1],
+  ["78%", "-60px", "18s", "-11s", 0.9],
+  ["92%", "-80px", "22s", "-5s", 1],
+] as const;
 
 export function Hero() {
   return (
@@ -14,15 +25,26 @@ export function Hero() {
       <div className="absolute inset-0 hidden lg:block">
         <Tree className="size-full" />
       </div>
+      {/* Below lg, the poster's right-hand half, the trunk and the limb, grows from the bottom
+          right under the copy and fades into the page; petals fall through the whole hero. */}
+      <div
+        className="hero-tree absolute inset-x-0 bottom-0 h-[min(97vw,30rem)] lg:hidden"
+        aria-hidden
+      >
+        <div className="tree-poster size-full" />
+      </div>
+      <div className="[--fall:1100px] lg:hidden">
+        <FallingPetals petals={PETALS} />
+      </div>
       <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-x-6 px-5 pt-12 sm:px-8 md:pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="pb-4 lg:pb-24">
           <HeroCopy />
         </div>
-        {/* Below lg, the poster under the copy: its right-hand side, the trunk and the canopy.
-            From lg up the box stays, empty, so the hero keeps its height. */}
-        <div className="-mx-5 aspect-[25/21] sm:mx-0 xl:-mr-10" aria-hidden>
-          <div className="tree-poster size-full lg:hidden" />
-        </div>
+        {/* Room for the trunk under the copy; from lg up the box keeps the hero's height. */}
+        <div
+          className="-mx-5 h-[min(84vw,26rem)] sm:mx-0 lg:aspect-[25/21] lg:h-auto xl:-mr-10"
+          aria-hidden
+        />
       </div>
     </section>
   );

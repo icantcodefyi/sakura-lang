@@ -481,38 +481,38 @@ figure.shiki figcaption {
   color: var(--footer-name);
   user-select: none;
 }
-.footer-fall {
+.petal-fall {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
   display: none;
 }
-.footer-fall i {
+.petal-fall i {
   position: absolute;
   top: -28px;
   left: var(--x);
 }
-.footer-fall svg {
+.petal-fall svg {
   display: block;
   width: calc(13px * var(--s));
   height: calc(13px * var(--s));
 }
 @media (prefers-reduced-motion: no-preference) {
   .footer-branch {
-    animation: footer-sway 10s ease-in-out infinite alternate;
+    animation: tree-sway 10s ease-in-out infinite alternate;
   }
-  .footer-fall {
+  .petal-fall {
     display: block;
   }
-  .footer-fall i {
-    animation: footer-drop var(--t) linear var(--d) infinite;
+  .petal-fall i {
+    animation: petal-drop var(--t) linear var(--d) infinite;
   }
-  .footer-fall svg {
-    animation: footer-tumble calc(var(--t) / 3.2) ease-in-out var(--d) infinite alternate;
+  .petal-fall svg {
+    animation: petal-tumble calc(var(--t) / 3.2) ease-in-out var(--d) infinite alternate;
   }
 }
-@keyframes footer-sway {
+@keyframes tree-sway {
   from {
     transform: rotate(-0.45deg);
   }
@@ -520,7 +520,7 @@ figure.shiki figcaption {
     transform: rotate(0.55deg);
   }
 }
-@keyframes footer-drop {
+@keyframes petal-drop {
   0% {
     transform: translate3d(0, 0, 0);
     opacity: 0;
@@ -529,20 +529,20 @@ figure.shiki figcaption {
     opacity: 0.95;
   }
   35% {
-    transform: translate3d(calc(var(--dx) * 0.25), 224px, 0);
+    transform: translate3d(calc(var(--dx) * 0.25), calc(var(--fall, 640px) * 0.35), 0);
   }
   70% {
-    transform: translate3d(calc(var(--dx) * 0.7), 448px, 0);
+    transform: translate3d(calc(var(--dx) * 0.7), calc(var(--fall, 640px) * 0.7), 0);
   }
   90% {
     opacity: 0.9;
   }
   100% {
-    transform: translate3d(var(--dx), 640px, 0);
+    transform: translate3d(var(--dx), var(--fall, 640px), 0);
     opacity: 0;
   }
 }
-@keyframes footer-tumble {
+@keyframes petal-tumble {
   from {
     transform: translateX(-10px) rotate(-20deg) rotateX(15deg);
   }
@@ -563,6 +563,25 @@ figure.shiki figcaption {
 }
 .dark .tree-poster {
   background-image: url("/hero-dark.webp");
+}
+/*
+ * Below lg the poster is the hero's backdrop (components/landing/hero.tsx): it grows from the
+ * bottom right under the copy, the trunk at the edge, and fades into the page at its top and left
+ * so no box edge shows. It sways from the trunk's foot, as the footer's branch does.
+ */
+.hero-tree {
+  mask-image:
+    linear-gradient(to bottom, transparent, #000 45%),
+    linear-gradient(to right, transparent, #000 30%);
+  mask-composite: intersect;
+}
+.hero-tree > * {
+  transform-origin: 90% 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-tree > * {
+    animation: tree-sway 10s ease-in-out infinite alternate;
+  }
 }
 
 /*
