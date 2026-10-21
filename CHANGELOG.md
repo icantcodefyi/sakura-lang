@@ -103,6 +103,9 @@ retains earlier implementation history.
   defect `D001` there. Only `MIN / -1` is `D001`; JS reaches `D003` before either operator, so
   it is unchanged. A remainder that `sakura verify` proves defined no longer defects at run
   time. Fixtures `compiler/tests/semantics/int_min_rem.sak` and `defect_D001_int_min_div.sak`.
+  Runtime ABI 1.15.1 is the erratum to §2's `Int` row (`sakura_abi_version` unchanged); not a
+  breaking change, since no program that ran to completion computes a different value
+  (design §17.303).
 - `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
   and never the current directory's tree, and a bare name (`Fs.rooted`, `rooted`) loads the
   tree only under a project (a `sakura.toml` or a `src/` directory here), so stray `.sak` or

@@ -78,12 +78,11 @@ disagree (`an_int_beyond_the_js_safe_range_is_undecidable`,
 
 ### JSON Schema keywords
 
-**TY22** `Json.schema` of a refined type adds `maxLength`, `maxItems`, `minimum` and `maximum` for top-level `&&` conjuncts of the forms `String.len(it) <= n`, `List.len(it) <= n`, and `it >= n` or `<= n` over `Int` or `Float`, keeps the tighter of two bounds, states nothing for any other conjunct, and leaves every conjunct checked on decode. [json_schema_refinement_keywords](../../compiler/tests/semantics/json_schema_refinement_keywords.sak).
+**TY22** `Json.schema` of a refined type adds `maxLength`, `minLength`, `maxItems`, `minimum` and `maximum` for top-level `&&` conjuncts of the forms `String.len(it) <= n` or `>= n`, `List.len(it) <= n`, and `it >= n` or `<= n` over `Int` or `Float`, where `maxLength` is the byte bound `n` and `minLength` is ⌈n/4⌉ (omitted when that is `0`), keeps the tighter of two bounds, states nothing for a length bound below zero or for any other conjunct, and leaves every conjunct checked on decode. [json_schema_refinement_keywords](../../compiler/tests/semantics/json_schema_refinement_keywords.sak).
 
 Informative: `sakuralang@1.0.0-beta.1` predates TY22 (ABI 1.14.0) and states no keyword.
-For `String.len(it) >= n` the fixture prints `minLength: n`, while design §17.300 rules that it
-becomes ⌈n/4⌉ and that a negative length bound states nothing; the amendment is not built and
-the fixture only uses `n = 1`. `minItems` from `List.len(it) >= n` is described in §17.300
-but no fixture states it. Listed in [gaps](gaps.md).
+`String.len` counts UTF-8 bytes where JSON Schema's length keywords count characters, which is
+why `minLength` is widened (design §17.300). `minItems` from `List.len(it) >= n` is described
+in §17.300 but no fixture states it. Listed in [gaps](gaps.md).
 
 Opaque types and their `Schema` boundary (`V1006`, `V2033`) are in the modules chapter.

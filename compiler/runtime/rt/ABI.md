@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.15.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.15.1**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -25,7 +25,7 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§3.2, §3.5, §7.4; RFC 0002 §2.9) 1.13.0 `Console.eprint`'s import (§8.2; design §17.292
 (9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)) and
 1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
-§2.9). Owned by
+§2.9), and 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -300,6 +300,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   them, so an older host refuses a 1.15 module by the MINOR rule; a WASI command answers
   `worker_start` with -4 (no live workers) and ignores the topic imports. `sakura_abi_version`
   is `0x010f00`.
+- 1.15.1 is an erratum (design §17.260 (G05), the "1.4.2" that entry named and never landed;
+  §17.303; commit `ee71ec7a`): §2's `Int` row says `MIN / -1` is `D001` and `MIN % -1` is `0`,
+  where it said both were `D001`. Compiled code on WASM and native drops the `MIN`/`-1` test
+  from `IntRem` (`i64.rem_s` and Cranelift's `srem` define the pair as `0`); no byte layout,
+  import, export, outcome code or counter changes, so `sakura_abi_version` stays `0x010f00`.
+  Until `v1.0.0-beta.1` inclusive a module gave `D001` for the remainder on those backends.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen

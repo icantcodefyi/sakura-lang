@@ -114,14 +114,16 @@ order with arguments before the callee (EV28), and short-circuit `&&` and `||` (
 
 ### Types and refinements
 
-- **Design and compiler disagree: `minLength`.** Design §17.300 (round 52) makes
-  `String.len(it) >= n` state `minLength` ⌈n/4⌉ and a negative length bound state nothing; the
-  compiler at this revision states `n`, and
-  [the fixture](../../compiler/tests/semantics/json_schema_refinement_keywords.sak) uses only
-  `n = 1`, where both agree. `sakuralang@1.0.0-beta.1` states no refinement keyword at all
-  (TY22 arrived with ABI 1.14.0 after the tag). No fixture states `minItems`.
+- **`minItems`.** Design §17.300 lowers `List.len(it) >= n` to `minItems`;
+  [the fixture](../../compiler/tests/semantics/json_schema_refinement_keywords.sak) states no
+  `minItems`, so TY22 does not claim it.
 
 Pinned since: distinct refined types (TY23) and field refinements at construction (TY24).
+Resolved: the `minLength` disagreement (design §17.300 (2)–(3) landed in `17a77175`; the
+fixture's `handle` field states `minLength: 2` for `>= 8` and `loose` states nothing for
+`>= -1 && >= 0`, so TY22 now says ⌈n/4⌉ and the negative-bound rule; design §17.303).
+`sakuralang@1.0.0-beta.1` states no refinement keyword at all (TY22 arrived with ABI 1.14.0
+after the tag).
 
 ### Effects and handlers
 
