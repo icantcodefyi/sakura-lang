@@ -695,10 +695,33 @@ fn wasm_twins_agree_with_wasm_frames() {
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
-/// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
-/// the test until it is removed (as [`KNOWN`]).
+/// The native exclusion table (`runtime/rt/ABI.md` §1b, design §17.308 (2a)): the programs of
+/// `mode` the native backend cannot run yet, by label (`x.sak`, `example x`). Each row carries
+/// its reason there; one that starts agreeing fails the test until its row is removed (as
+/// [`KNOWN`]).
 #[cfg(feature = "native")]
-const KNOWN_NATIVE: &[(&str, &str)] = &[];
+fn native_exclusions(mode: &str) -> Vec<String> {
+    let abi = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/rt/ABI.md");
+    let abi = std::fs::read_to_string(abi).unwrap();
+    let table = abi
+        .split_once("**Native exclusions**")
+        .expect("ABI.md §1b has the native exclusion table")
+        .1;
+    let rows = table
+        .lines()
+        .skip_while(|l| !l.starts_with('|'))
+        .take_while(|l| l.starts_with('|'))
+        .skip(2);
+    rows.filter_map(|row| {
+        let cells: Vec<&str> = row.trim_matches('|').split(" | ").map(str::trim).collect();
+        let [program, m, why] = cells[..] else {
+            panic!("an exclusion row is `| program | mode | why |`: {row}")
+        };
+        assert!(!why.is_empty(), "an exclusion without its reason: {row}");
+        (m == mode).then(|| program.replace('`', ""))
+    })
+    .collect()
+}
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and
@@ -746,6 +769,7 @@ fn native_agrees_with_js_on_run_mode_programs() {
             jobs.push(Job::Example(dir, d, "run".into()));
         }
     }
+    let excluded = native_exclusions("run");
     let runs = par_map(&jobs, |job| {
         let (name, dir, args): (String, &Path, Vec<&str>) = match job {
             Job::Fixture(path, _, _) => (
@@ -785,6 +809,7 @@ fn native_agrees_with_js_on_run_mode_programs() {
         )
     });
     let (mut agree, mut failures, mut exact) = (0, vec![], 0);
+    let mut seen = vec![];
     for (job, (js, mut twins, frames, wasm)) in jobs.iter().zip(runs) {
         if let (Job::Fixture(path, d, _), Some(wasm)) = (job, &wasm) {
             let mut runs = vec![("js", &js), ("wasm", wasm), ("native", &twins)];
@@ -880,21 +905,28 @@ fn native_agrees_with_js_on_run_mode_programs() {
                 let w = compare(expect, "run", &js, frames.as_ref()?)?;
                 Some(format!("--no-direct: {w}"))
             });
-        let known = KNOWN_NATIVE.iter().any(|(n, _)| *n == label);
+        seen.push(label.clone());
+        let known = excluded.contains(&label);
         match (why, known) {
             (None, false) => agree += 1,
-            (None, true) => {
-                failures.push(format!("{label}: agrees now; drop it from KNOWN_NATIVE"))
-            }
+            (None, true) => failures.push(format!(
+                "{label}: agrees now; remove its row from the native exclusion table"
+            )),
             (Some(_), true) => {}
             (Some(why), false) => failures.push(format!("{label}: {why}")),
         }
     }
+    failures.extend(
+        excluded
+            .iter()
+            .filter(|e| !seen.contains(e))
+            .map(|e| format!("{e}: a native exclusion row that names no program")),
+    );
     eprintln!(
         "native parity: {agree} of {} run-mode fixtures and examples agree with JS; {exact} \
          held to their exact-i64 expectation; {} known; {} failures",
         jobs.len(),
-        KNOWN_NATIVE.len(),
+        excluded.len(),
         failures.len()
     );
     assert!(!jobs.is_empty(), "the corpus must not be empty");
@@ -928,17 +960,6 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
         assert!(!text.contains("demo-token"), "the secret leaked: {text}");
     }
 }
-
-/// Test-mode fixtures and examples whose tests the native backend cannot run yet, and why; one
-/// that starts agreeing fails the test until it is removed (as [`KNOWN`]).
-#[cfg(feature = "native")]
-const KNOWN_NATIVE_TESTS: &[(&str, &str)] = &[
-    ("llm_stream_anthropic.sak", "`Llm.anthropic` (N1b's Llm)"),
-    ("example agent_loop", "`Llm.anthropic` (N1b's Llm)"),
-    ("example budgeted_agent", "`Llm.anthropic` (N1b's Llm)"),
-    ("example llm_extract", "`Llm.anthropic` (N1b's Llm)"),
-    ("example scripted_tool", "`Llm.anthropic` (N1b's Llm)"),
-];
 
 /// `sakura test --target native` agrees with JS on every test-mode fixture (with `--contracts`
 /// where it asks) and on every example's tests: the same `test` records (timing aside), exit
@@ -976,6 +997,7 @@ fn native_agrees_with_js_on_test_mode_programs() {
         let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
         jobs.push(Job::Example(dir, d, "test".into()));
     }
+    let excluded = native_exclusions("test");
     let runs = par_map(&jobs, |job| {
         let (name, dir, flags): (String, &Path, Vec<&str>) = match job {
             Job::Fixture(path, d, _) => (
@@ -999,6 +1021,7 @@ fn native_agrees_with_js_on_test_mode_programs() {
         )
     });
     let (mut agree, mut failures) = (0, vec![]);
+    let mut seen = vec![];
     for (job, (js, twins, frames)) in jobs.iter().zip(runs) {
         let (label, expect) = match job {
             Job::Fixture(path, d, _) => (
@@ -1016,21 +1039,28 @@ fn native_agrees_with_js_on_test_mode_programs() {
                 let w = compare(expect, "test", &js, frames.as_ref()?)?;
                 Some(format!("--no-direct: {w}"))
             });
-        let known = KNOWN_NATIVE_TESTS.iter().any(|(n, _)| *n == label);
+        seen.push(label.clone());
+        let known = excluded.contains(&label);
         match (why, known) {
             (None, false) => agree += 1,
             (None, true) => failures.push(format!(
-                "{label}: agrees now; drop it from KNOWN_NATIVE_TESTS"
+                "{label}: agrees now; remove its row from the native exclusion table"
             )),
             (Some(_), true) => {}
             (Some(why), false) => failures.push(format!("{label}: {why}")),
         }
     }
+    failures.extend(
+        excluded
+            .iter()
+            .filter(|e| !seen.contains(e))
+            .map(|e| format!("{e}: a native exclusion row that names no program")),
+    );
     eprintln!(
         "native test parity: {agree} of {} test-mode fixtures and examples agree with JS; {} \
          known; {} failures",
         jobs.len(),
-        KNOWN_NATIVE_TESTS.len(),
+        excluded.len(),
         failures.len()
     );
     assert!(!jobs.is_empty(), "the corpus must not be empty");

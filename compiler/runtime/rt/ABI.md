@@ -493,6 +493,21 @@ types as `Response` or `Incoming`; their `secret_headers` cross with their value
 request, as JS. It is a startup check, not a build-time diagnostic, and no
 diagnostic code.
 
+**Native exclusions** (design §17.170 (2), §17.308 (2a)): the fixtures of
+`compiler/tests/semantics` and the examples that `--target native` does not run yet, each with
+its reason, by its run or test mode. `sakura_cli/tests/parity.rs` reads this table: a listed
+program is not compared with JS, and one that starts agreeing fails its test until its row is
+removed. A declared difference (`expect-exit@native`, `<name>.native.stdout`) is a fixture
+directive, not a row. An empty table means every program agrees natively.
+
+| Program | Mode | Why |
+|---|---|---|
+| `llm_stream_anthropic.sak` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
+| example `agent_loop` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
+| example `budgeted_agent` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
+| example `llm_extract` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
+| example `scripted_tool` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
+
 ## 2. Scalar representation
 
 | Sakura type | Known-type representation (locals, params, results, fields) | Boxed form (§4) | Source |
