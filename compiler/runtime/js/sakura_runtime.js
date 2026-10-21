@@ -3781,7 +3781,7 @@ function permissionsOf(raw) {
 
 /** The working directory, limited to the manifest's `fs.read`/`fs.write` directories. */
 export function fs_root() {
-  const root = nodeFs().realpathSync(proc.cwd());
+  const root = realpath(proc.cwd());
   const p = granted();
   const abs = (dirs) => (dirs ?? []).map((d) => nodePath().resolve(root, d));
   const grants = p === null ? null : { read: abs(p.fs?.read), write: abs(p.fs?.write) };
@@ -3820,9 +3820,25 @@ export function fixtures_dir(dir, writable) {
   if (writable) fs.mkdirSync(dir, { recursive: true });
   let root = nodePath().resolve(dir);
   try {
-    root = fs.realpathSync(root);
+    root = realpath(root);
   } catch {}
   return new Dir(DIR_BRAND, root, { read: [root], write: writable ? [root] : [] });
+}
+
+/**
+ * `realpathSync(p)`. Since Node 26.12.1 the permission model checks `realpath` too, so a path
+ * outside `--allow-fs-read` throws `ERR_ACCESS_DENIED` where it used to resolve: then the nearest
+ * ancestor Node lets resolve does, and the rest is joined as written (a missing ancestor is still
+ * `ENOENT`). Nothing below a denied component can be opened, so no link there can lead out.
+ */
+function realpath(p) {
+  try {
+    return nodeFs().realpathSync(p);
+  } catch (e) {
+    const parent = nodePath().dirname(p);
+    if (e.code !== "ERR_ACCESS_DENIED") throw e;
+    return parent === p ? p : nodePath().join(realpath(parent), nodePath().basename(p));
+  }
 }
 
 /** The host path of `rel` inside `d`, or an error message; `forWrite` allows a missing file. */
@@ -3835,7 +3851,7 @@ function inside(d, rel, forWrite) {
   const full = path.join(root, rel);
   let real;
   try {
-    real = fs.realpathSync(full);
+    real = realpath(full);
   } catch (e) {
     if (!forWrite || e.code !== "ENOENT") return { err: hostMessage(e) };
     // A dangling symlink names a target this check never sees: writing through it would create
@@ -3845,7 +3861,7 @@ function inside(d, rel, forWrite) {
       return { err: "escapes the directory" };
     } catch {}
     try {
-      real = path.join(fs.realpathSync(path.dirname(full)), path.basename(full));
+      real = path.join(realpath(path.dirname(full)), path.basename(full));
     } catch (e2) {
       return { err: hostMessage(e2) };
     }

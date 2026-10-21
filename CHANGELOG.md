@@ -25,6 +25,14 @@ retains earlier implementation history.
   about 75 KB of webp per theme, replacing the generated SVG posters; the tree no longer turns
   toward the pointer.
 
+### Fixed
+
+- **`Fs.host()`, `Test.fixtures()` and cassettes under Node 26.12.1** (JS and WASM backends):
+  Node 26.12.1's permission model also checks `realpath`, so a directory outside the granted
+  paths (the working directory under `sakura test`, a missing `tests/fixtures`) was a `D090`
+  `ERR_ACCESS_DENIED` instead of the runtime's own refusal or `not found`. The runtime now
+  resolves the nearest ancestor Node allows and keeps its messages on every Node 26 release.
+
 ## [1.0.0-beta.3] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
