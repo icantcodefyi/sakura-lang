@@ -46,6 +46,8 @@ pub struct Tables {
     schemas: u32,
     /// Host-built root handlers by builtin.
     pub host_handlers: HashMap<String, Clauses>,
+    /// The test runner's `std::test::Test` clauses, when the module has the effect.
+    pub test: Option<Clauses>,
     /// The code of each `cps` builtin the runtime implements (`rt_k_<name>`).
     pub cps: HashMap<String, u32>,
 }
@@ -64,6 +66,7 @@ impl Tables {
             natives: handlers.natives,
             schemas,
             host_handlers: handlers.host,
+            test: handlers.test,
             cps: shared::cps(n, &names),
         }
     }

@@ -708,7 +708,7 @@ const KNOWN_NATIVE: &[(&str, &str)] = &[];
 /// with `expect-exit@native` is the declared difference
 /// of RFC 0002 §7 (design §17.271 (9)): `main` leaves an effect the native host lacks to the
 /// runtime, so native exits with that code and prints exactly `expect-stderr@native` on stderr
-/// while JS runs it. Test mode waits for `sakura test --target native` (after N1b).
+/// while JS runs it. Test mode is `native_agrees_with_js_on_test_mode_programs`.
 #[cfg(feature = "native")]
 #[test]
 fn native_agrees_with_js_on_run_mode_programs() {
@@ -927,6 +927,123 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
     for text in [&ran.stdout, &ran.stderr, &trace, &cassette] {
         assert!(!text.contains("demo-token"), "the secret leaked: {text}");
     }
+}
+
+/// Test-mode fixtures and examples whose tests the native backend cannot run yet, and why; one
+/// that starts agreeing fails the test until it is removed (as [`KNOWN`]).
+#[cfg(feature = "native")]
+const KNOWN_NATIVE_TESTS: &[(&str, &str)] = &[
+    (
+        "contract_tests_on_both_backends.sak",
+        "property search (`property_run`)",
+    ),
+    ("properties.sak", "property search (`property_run`)"),
+    ("llm_stream_anthropic.sak", "`Llm.anthropic` (N1b's Llm)"),
+    ("example agent_loop", "`Llm.anthropic` (N1b's Llm)"),
+    ("example budgeted_agent", "`Llm.anthropic` (N1b's Llm)"),
+    ("example form_upload", "cassettes (N1b's Http)"),
+    ("example http_retry", "cassettes (N1b's Http)"),
+    ("example llm_extract", "`Llm.anthropic` (N1b's Llm)"),
+    ("example property", "property search (`property_run`)"),
+    ("example scripted_tool", "`Llm.anthropic` (N1b's Llm)"),
+    ("example secrets", "cassettes (N1b's Http)"),
+];
+
+/// `sakura test --target native` agrees with JS on every test-mode fixture (with `--contracts`
+/// where it asks) and on every example's tests: the same `test` records (timing aside), exit
+/// code and effect trace, with direct twins and, for fixtures, under `--no-direct`.
+#[cfg(feature = "native")]
+#[test]
+fn native_agrees_with_js_on_test_mode_programs() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(std::env::var_os("CI").is_none(), "node is missing");
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    let mut jobs: Vec<Job> = vec![];
+    for path in fixtures("semantics") {
+        let d = directives(&std::fs::read_to_string(&path).unwrap());
+        if d.get("mode").is_some_and(|m| m == "test")
+            && skip_reason(&d, SEMANTICS_MILESTONE).is_none()
+        {
+            jobs.push(Job::Fixture(path, d, "test".into()));
+        }
+    }
+    let root = manifest.join("../../examples");
+    let mut dirs: Vec<_> = std::fs::read_dir(&root)
+        .unwrap()
+        .filter_map(|e| Some(e.ok()?.path()))
+        .filter(|p| p.join("sakura.toml").exists())
+        .collect();
+    dirs.sort();
+    for dir in dirs {
+        let d = directives(&std::fs::read_to_string(dir.join("src/main.sak")).unwrap());
+        jobs.push(Job::Example(dir, d, "test".into()));
+    }
+    let runs = par_map(&jobs, |job| {
+        let (name, dir, flags): (String, &Path, Vec<&str>) = match job {
+            Job::Fixture(path, d, _) => (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                path.parent().unwrap(),
+                match d.get("contracts").map(String::as_str) {
+                    Some("true") => vec!["--contracts"],
+                    _ => vec![],
+                },
+            ),
+            Job::Example(dir, _, _) => (String::new(), dir, vec![]),
+        };
+        let frames = (!name.is_empty()).then(|| {
+            let f = [&flags[..], &["--no-direct"]].concat();
+            run_env("native-test", "test", "native", &name, dir, &f, &env)
+        });
+        (
+            run_env("native-test", "test", "js", &name, dir, &flags, &[]),
+            run_env("native-test", "test", "native", &name, dir, &flags, &env),
+            frames,
+        )
+    });
+    let (mut agree, mut failures) = (0, vec![]);
+    for (job, (js, twins, frames)) in jobs.iter().zip(runs) {
+        let (label, expect) = match job {
+            Job::Fixture(path, d, _) => (
+                path.file_name().unwrap().to_string_lossy().into_owned(),
+                Some((path.as_path(), d)),
+            ),
+            Job::Example(dir, _, _) => (
+                format!("example {}", dir.file_name().unwrap().to_string_lossy()),
+                None,
+            ),
+        };
+        let why = compare(expect, "test", &js, &twins)
+            .map(|w| format!("twins: {w}"))
+            .or_else(|| {
+                let w = compare(expect, "test", &js, frames.as_ref()?)?;
+                Some(format!("--no-direct: {w}"))
+            });
+        let known = KNOWN_NATIVE_TESTS.iter().any(|(n, _)| *n == label);
+        match (why, known) {
+            (None, false) => agree += 1,
+            (None, true) => failures.push(format!(
+                "{label}: agrees now; drop it from KNOWN_NATIVE_TESTS"
+            )),
+            (Some(_), true) => {}
+            (Some(why), false) => failures.push(format!("{label}: {why}")),
+        }
+    }
+    eprintln!(
+        "native test parity: {agree} of {} test-mode fixtures and examples agree with JS; {} \
+         known; {} failures",
+        jobs.len(),
+        KNOWN_NATIVE_TESTS.len(),
+        failures.len()
+    );
+    assert!(!jobs.is_empty(), "the corpus must not be empty");
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
 /// Design §17.308 (2b) (ii): the gauge set on native. `deep_recursion_gauge.sak`'s recursions as

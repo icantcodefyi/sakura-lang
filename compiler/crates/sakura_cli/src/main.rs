@@ -204,8 +204,9 @@ enum Command {
         /// Run the embedded std library's own tests instead of a project's.
         #[arg(long, conflicts_with = "paths")]
         std: bool,
-        /// `js`, or `wasm` (the module's tests on node through `sakura_wasm_host.js`).
-        #[arg(long, default_value = "js", value_parser = TARGETS)]
+        /// `js`, or `wasm` (the module's tests on node through `sakura_wasm_host.js`); with the
+        /// `native` feature, `native` (experimental: a test executable runs them).
+        #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
         #[arg(long)]
@@ -582,7 +583,15 @@ fn dispatch(command: Command) -> ExitCode {
                     ));
                 }
                 let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura/native").into());
-                native::build(json, &snapshot, &out_dir, &opts, false, native_checks)?;
+                native::build(
+                    json,
+                    &snapshot,
+                    &out_dir,
+                    &opts,
+                    false,
+                    native_checks,
+                    false,
+                )?;
                 return Ok(());
             }
             if target == "wasm" && emit == "js" {
@@ -648,9 +657,8 @@ fn dispatch(command: Command) -> ExitCode {
                 load(&paths)
             };
             let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&target));
-            let wasm = target == "wasm";
             match snapshot {
-                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std, !no_direct, wasm),
+                Ok(snapshot) => test(json, &flags, &out_dir, &snapshot, std, !no_direct, &target),
                 Err(e) => usage_error(e),
             }
         }
@@ -935,7 +943,7 @@ fn run(
     } else if target == "native" {
         #[cfg(feature = "native")]
         {
-            native::build(false, &snapshot, out_dir, &opts, true, false)
+            native::build(false, &snapshot, out_dir, &opts, true, false, false)
         }
         #[cfg(not(feature = "native"))]
         unreachable!("`--target native` needs the `native` feature")
@@ -1009,8 +1017,9 @@ fn test(
     snapshot: &Snapshot,
     std_tests: bool,
     direct: bool,
-    wasm: bool,
+    target: &str,
 ) -> ExitCode {
+    let wasm = target == "wasm";
     // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts (none when
     // it lists none), and its default `Env` reads exactly the manifest's `env` keys.
     let TestFlags {
@@ -1021,7 +1030,7 @@ fn test(
         contracts,
     } = *flags;
     let filter = filter.as_deref().unwrap_or("");
-    if wasm && record {
+    if target != "js" && record {
         return usage_error("`--record` needs `--target js`");
     }
     let granted = if record {
@@ -1050,6 +1059,13 @@ fn test(
     };
     let built = if wasm {
         wasm::build(json, snapshot, out_dir, &opts, true, Default::default())
+    } else if target == "native" {
+        #[cfg(feature = "native")]
+        {
+            native::build(json, snapshot, out_dir, &opts, true, false, true)
+        }
+        #[cfg(not(feature = "native"))]
+        unreachable!("`--target native` needs the `native` feature")
     } else {
         build(json, snapshot, out_dir, opts, true)
     };
@@ -1059,6 +1075,8 @@ fn test(
     };
     let has_tests = if wasm {
         dir.join(wasm::TESTS).exists()
+    } else if target == "native" {
+        dir.join("tests").exists()
     } else {
         dir.join("__tests__.js").exists()
     };

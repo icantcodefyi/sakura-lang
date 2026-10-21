@@ -276,6 +276,22 @@ pub trait Host {
     fn sql_end(&mut self, _db: u32, _token: i64, _commit: bool) -> Hosted<()> {
         Ok(())
     }
+
+    /// The test runner's `std::test::Test` operations (`sakura test --target native`, as the
+    /// WASM host's `test_*` imports): the running test's failures and captured output, its
+    /// snapshot check and `tests/fixtures` (a read-only `Dir`).
+    fn test_record_failure(&mut self, _message: &str) {}
+    fn test_failures(&mut self) -> i64 {
+        0
+    }
+    fn test_output(&mut self, _line: &str) {}
+    fn test_output_lines(&mut self) -> Vec<String> {
+        Vec::new()
+    }
+    fn test_snapshot(&mut self, _name: &str, _rendered: &str) {}
+    fn test_fixtures(&mut self) -> Hosted<HandleId> {
+        Err(unsupported())
+    }
 }
 
 fn unsupported() -> HostError {

@@ -591,51 +591,51 @@ impl<'a> Reader<'a> {
 }
 
 /// A `sakura-vt1` writer for answers, after their status byte.
-struct W(Vec<u8>);
+pub(super) struct W(pub(super) Vec<u8>);
 
 impl W {
-    fn u32(&mut self, v: u32) -> &mut W {
+    pub(super) fn u32(&mut self, v: u32) -> &mut W {
         self.0.extend_from_slice(&v.to_le_bytes());
         self
     }
-    fn unit(&mut self) -> &mut W {
+    pub(super) fn unit(&mut self) -> &mut W {
         self.0.push(t::UNIT);
         self
     }
-    fn bool(&mut self, v: bool) -> &mut W {
+    pub(super) fn bool(&mut self, v: bool) -> &mut W {
         self.0.extend_from_slice(&[t::BOOL, u8::from(v)]);
         self
     }
-    fn int(&mut self, v: i64) -> &mut W {
+    pub(super) fn int(&mut self, v: i64) -> &mut W {
         self.0.push(t::INT);
         self.0.extend_from_slice(&v.to_le_bytes());
         self
     }
-    fn string(&mut self, s: &str) -> &mut W {
+    pub(super) fn string(&mut self, s: &str) -> &mut W {
         self.0.push(t::STRING);
         self.u32(s.len() as u32);
         self.0.extend_from_slice(s.as_bytes());
         self
     }
-    fn bytes(&mut self, b: &[u8]) -> &mut W {
+    pub(super) fn bytes(&mut self, b: &[u8]) -> &mut W {
         self.0.push(t::BYTES);
         self.u32(b.len() as u32);
         self.0.extend_from_slice(b);
         self
     }
-    fn list(&mut self, n: usize) -> &mut W {
+    pub(super) fn list(&mut self, n: usize) -> &mut W {
         self.0.push(t::LIST);
         self.u32(n as u32)
     }
-    fn record(&mut self, id: u32, n: u32) -> &mut W {
+    pub(super) fn record(&mut self, id: u32, n: u32) -> &mut W {
         self.0.push(t::RECORD);
         self.u32(id).u32(n)
     }
-    fn variant(&mut self, id: u32, ctor: u32, n: u32) -> &mut W {
+    pub(super) fn variant(&mut self, id: u32, ctor: u32, n: u32) -> &mut W {
         self.0.push(t::VARIANT);
         self.u32(id).u32(ctor).u32(n)
     }
-    fn handle(&mut self, h: HandleId) -> &mut W {
+    pub(super) fn handle(&mut self, h: HandleId) -> &mut W {
         self.0.push(t::HANDLE);
         self.u32(h.kind).u32(h.slot).u32(h.generation)
     }

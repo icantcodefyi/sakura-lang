@@ -12,6 +12,7 @@
 pub mod host;
 pub(crate) mod hosted;
 pub mod sql;
+pub mod test;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -224,6 +225,28 @@ impl<H: Host + 'static> Instance<H> {
     /// A root task running top-level function `code` (wasm's `rt_start`).
     pub fn start(&mut self, code: u32) -> Result<u32, Defect> {
         self.cx().rt().start_value(code)
+    }
+
+    /// A root task running test wrapper `code` with `seed` under the runner's `Test` handler,
+    /// whose clauses are the `n` codes at offset `codes` of the static block for effect
+    /// `effect` (wasm's `start` with `rt_b_host_handler` and `rt_start_test`).
+    pub fn start_test(
+        &mut self,
+        code: u32,
+        seed: i64,
+        effect: u32,
+        codes: u32,
+        n: u32,
+    ) -> Result<u32, Defect> {
+        let ctx = Ctx(self.p, PhantomData);
+        let h = crate::exports::rt_b_host_handler(ctx, effect, ctx.statics() + codes, n);
+        let mut cx = self.cx();
+        let rt = cx.rt();
+        if h == 0 {
+            rt.sched.raised = false;
+            return Err(Defect::HEAP_EXHAUSTED);
+        }
+        rt.start_test(code, seed, h)
     }
 
     /// Drive tasks until `task` has an outcome or nothing can run; returns its outcome kind
@@ -459,12 +482,15 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_task_scope", e::rt_code_task_scope),
         ("rt_code_task_spawn", e::rt_code_task_spawn),
         ("rt_code_task_yield_now", e::rt_code_task_yield_now),
-        ("rt_code_test_failures", e::rt_code_unsupported),
-        ("rt_code_test_fixtures", e::rt_code_unsupported),
-        ("rt_code_test_output", e::rt_code_unsupported),
-        ("rt_code_test_output_lines", e::rt_code_unsupported),
-        ("rt_code_test_record_failure", e::rt_code_unsupported),
-        ("rt_code_test_snapshot", e::rt_code_unsupported),
+        ("rt_code_test_failures", test::rt_code_test_failures),
+        ("rt_code_test_fixtures", test::rt_code_test_fixtures),
+        ("rt_code_test_output", test::rt_code_test_output),
+        ("rt_code_test_output_lines", test::rt_code_test_output_lines),
+        (
+            "rt_code_test_record_failure",
+            test::rt_code_test_record_failure,
+        ),
+        ("rt_code_test_snapshot", test::rt_code_test_snapshot),
         ("rt_code_unsupported", e::rt_code_unsupported),
         ("rt_code_worker_stop", crate::worker::rt_code_worker_stop),
         ("rt_k_channel_recv", e::rt_k_channel_recv),

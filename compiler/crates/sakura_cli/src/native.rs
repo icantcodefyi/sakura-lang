@@ -17,6 +17,9 @@ use crate::{EXIT_ERRORS, report, usage_error};
 
 pub const OBJECT: &str = "main.o";
 pub const EXECUTABLE: &str = "main";
+/// A test build's executable (`sakura test --target native`), written only when the module has
+/// tests; it runs them with `<seed> <filter> <snapshot-dir> <update>`.
+pub const TESTS: &str = "tests";
 
 /// Where the driver staticlib is (`sakura_codegen_native::DRIVER_LIB`): `SAKURA_NATIVE_LIB_DIR`,
 /// else `lib/sakura/native` beside an installed `bin/`, else beside the binary itself, as in an
@@ -82,7 +85,7 @@ fn stop_after(phase: &str) -> bool {
 
 /// Checks, lowers, compiles and links `snapshot` into `out_dir/main`. On failure the
 /// diagnostics are already reported. `then` is the command that continues (`run`); `checks`
-/// is `--native-checks`.
+/// is `--native-checks`; `tests` builds [`TESTS`] instead of `main`.
 pub fn build(
     json: bool,
     snapshot: &Snapshot,
@@ -90,6 +93,7 @@ pub fn build(
     opts: &BuildOptions,
     then: bool,
     checks: bool,
+    tests: bool,
 ) -> Result<PathBuf, ExitCode> {
     let start = Instant::now();
     let refused = crate::wasm::js_externals(snapshot, "native");
@@ -148,6 +152,17 @@ pub fn build(
             .main_effects()
             .unwrap_or_default(),
         codegen_only: stop_after("codegen"),
+        tests,
+    };
+    let exe = if tests {
+        // A marker of the module's tests, as WASM's `__tests__.wasm`: none from an earlier build.
+        let _ = std::fs::remove_file(out_dir.join(TESTS));
+        if lir.tests.is_empty() {
+            return Ok(out_dir.to_path_buf());
+        }
+        TESTS
+    } else {
+        EXECUTABLE
     };
     let (object, [codegen, emission]) =
         sakura_codegen_native::emit_timed(&lir, &native).map_err(usage_error)?;
@@ -163,7 +178,7 @@ pub fn build(
         return Ok(out_dir.to_path_buf());
     }
     let linking = Instant::now();
-    match sakura_codegen_native::link(&o, &driver, &out_dir.join(EXECUTABLE)) {
+    match sakura_codegen_native::link(&o, &driver, &out_dir.join(exe)) {
         Ok(()) => {}
         Err(LinkError::Missing) => {
             report(json, snapshot, &[linker_missing(snapshot)], &[], true);

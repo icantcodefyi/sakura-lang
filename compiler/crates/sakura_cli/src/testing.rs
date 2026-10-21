@@ -112,6 +112,16 @@ pub fn run_node_tests(
     limit: Duration,
 ) -> Result<NodeRun, String> {
     let dir = grant_root(dir);
+    // A `--target native` build runs its test executable, under the same empty grants (its
+    // `Test.fixtures()` and snapshots are the runner's own; there is no `--record`).
+    let native = dir.join("tests");
+    if native.is_file() {
+        let mut cmd = std::process::Command::new(native);
+        let permissions =
+            serde_json::json!({"fs": {"read": [], "write": []}, "net": [], "env": []});
+        cmd.env("SAKURA_PERMISSIONS", permissions.to_string());
+        return wait_tests(cmd, seed, filter, snapshots, update, limit);
+    }
     let mut cmd = node();
     cmd.arg("--permission")
         .arg(format!("--allow-fs-read={}", dir.display()))
@@ -165,13 +175,28 @@ pub fn run_node_tests(
     } else {
         cmd.arg(dir.join("__sakura_test__.js"));
     }
+    wait_tests(cmd, seed, filter, snapshots, update, limit)
+}
+
+/// Run the test runner `cmd` with `<seed> <filter> <snapshot-dir> <update>`, its stdout
+/// collected, killed past `limit`.
+fn wait_tests(
+    mut cmd: std::process::Command,
+    seed: u64,
+    filter: &str,
+    snapshots: &Path,
+    update: bool,
+    limit: Duration,
+) -> Result<NodeRun, String> {
     cmd.arg(seed.to_string())
         .arg(filter)
         .arg(snapshots)
         .arg(if update { "1" } else { "0" })
         .stdin(Stdio::null())
         .stdout(Stdio::piped());
-    let mut child = cmd.spawn().map_err(|e| format!("cannot start node: {e}"))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("cannot start the test runner: {e}"))?;
     let mut stdout = child.stdout.take().expect("piped stdout");
     let reader = std::thread::spawn(move || {
         let mut s = String::new();
@@ -188,7 +213,7 @@ pub fn run_node_tests(
                 break None;
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(10)),
-            Err(e) => return Err(format!("waiting for node: {e}")),
+            Err(e) => return Err(format!("waiting for the test runner: {e}")),
         }
     };
     Ok(NodeRun {

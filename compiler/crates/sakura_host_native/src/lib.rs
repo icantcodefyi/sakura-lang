@@ -16,6 +16,7 @@
 pub mod fs;
 mod http;
 mod sql;
+pub mod test;
 pub mod worker;
 
 use std::collections::{HashMap, VecDeque};
@@ -277,6 +278,8 @@ pub struct NativeHost {
     signal_tx: mpsc::UnboundedSender<worker::Signal>,
     signals: mpsc::UnboundedReceiver<worker::Signal>,
     instance: u64,
+    /// `sakura test --target native`'s runner and the running test.
+    pub(crate) runner: test::Runner,
 }
 
 impl NativeHost {
@@ -327,6 +330,7 @@ impl NativeHost {
             signal_tx,
             signals,
             instance: worker::instance_id(),
+            runner: test::Runner::default(),
         })
     }
 
@@ -879,6 +883,30 @@ impl Host for NativeHost {
 
     fn sql_end(&mut self, db: u32, token: i64, commit: bool) -> Hosted<()> {
         self.db(db)?.end(token, commit).map_err(HostError::Failure)
+    }
+
+    fn test_record_failure(&mut self, message: &str) {
+        self.runner.failures.push(message.to_string());
+    }
+
+    fn test_failures(&mut self) -> i64 {
+        self.runner.failures.len() as i64
+    }
+
+    fn test_output(&mut self, line: &str) {
+        self.runner.output.push(line.to_string());
+    }
+
+    fn test_output_lines(&mut self) -> Vec<String> {
+        self.runner.output.clone()
+    }
+
+    fn test_snapshot(&mut self, name: &str, rendered: &str) {
+        self.runner.snapshot(name, rendered);
+    }
+
+    fn test_fixtures(&mut self) -> Hosted<HandleId> {
+        self.test_fixtures_handle()
     }
 }
 

@@ -2,7 +2,7 @@
 //! relocatable object. Each LIR function is a frame-protocol function `(ctx, env, frame) ->
 //! step` ([`func`]); the object also carries the module's static block ([`image`]), the table
 //! of its functions, the descriptor `sakura_native_driver` reads, the `sakura.native` record
-//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v5`. [`link`]
+//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v6`. [`link`]
 //! links it with the driver's staticlib into an executable with the system C linker.
 
 #![cfg(feature = "native")]
@@ -25,7 +25,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
-const DESCRIPTOR: usize = 112;
+const DESCRIPTOR: usize = 128;
 
 /// The Cranelift release the backend is built with: the workspace pin (design §17.175 (1)).
 pub const CRANELIFT: &str = "0.136.3";
@@ -57,6 +57,9 @@ pub struct Options {
     /// Stop after code generation and return no object (the compile report's counted runs,
     /// `SAKURA_NATIVE_STOP_AFTER=codegen`, design §17.308 (2b) (iii)).
     pub codegen_only: bool,
+    /// Run the module's tests instead of `main` (`sakura test --target native`): the
+    /// descriptor carries the test table ([`tests_table`]).
+    pub tests: bool,
 }
 
 impl Default for Options {
@@ -69,8 +72,29 @@ impl Default for Options {
             checks: false,
             root_effects: vec![],
             codegen_only: false,
+            tests: false,
         }
     }
+}
+
+/// The test table of a test build (descriptor +112/+120): the runner's `Test` handler as `u32`
+/// effect id (`u32::MAX` when the module has no `Test`), clause codes' static-block offset and
+/// operation count; then WASM's `tests()` payload, `u32 n` and per test `u32 code`, its name
+/// and module (each `u32 len`, UTF-8).
+fn tests_table(m: &Module, test: Option<sakura_lir::image::Clauses>) -> Vec<u8> {
+    let (effect, codes, n) = test.unwrap_or((u32::MAX, 0, 0));
+    let mut out: Vec<u8> = [effect, codes, n, m.tests.len() as u32]
+        .iter()
+        .flat_map(|v| v.to_le_bytes())
+        .collect();
+    for (name, f) in &m.tests {
+        out.extend_from_slice(&f.0.to_le_bytes());
+        for text in [name.as_str(), m.func(*f).module.as_str()] {
+            out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+            out.extend_from_slice(text.as_bytes());
+        }
+    }
+    out
 }
 
 /// Compile `m` for the host target to a relocatable object (ELF or Mach-O).
@@ -289,6 +313,18 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     d.set_align(8);
     obj.define_data(workers_id, &d).map_err(|e| e.to_string())?;
 
+    // The test table, for `sakura test --target native` builds only.
+    let tests = if opts.tests {
+        tests_table(m, tables.test)
+    } else {
+        vec![]
+    };
+    let tests_id = data(&mut obj, "sakura$tests", false)?;
+    let mut d = DataDescription::new();
+    d.define(tests.iter().copied().chain([0]).collect());
+    d.set_align(8);
+    obj.define_data(tests_id, &d).map_err(|e| e.to_string())?;
+
     let module_id = data(&mut obj, "sakura$module", true)?;
     let mut bytes = vec![0u8; DESCRIPTOR];
     let mut put = |at: usize, v: u32| bytes[at..at + 4].copy_from_slice(&v.to_le_bytes());
@@ -307,6 +343,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     put(80, record.len() as u32);
     put(84, roots.len() as u32);
     put(96, workers.len() as u32);
+    put(112, tests.len() as u32);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);
@@ -322,9 +359,11 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     d.write_data_addr(88, roots_gv, 0);
     let workers_gv = obj.declare_data_in_data(workers_id, &mut d);
     d.write_data_addr(104, workers_gv, 0);
+    let tests_gv = obj.declare_data_in_data(tests_id, &mut d);
+    d.write_data_addr(120, tests_gv, 0);
     obj.define_data(module_id, &d).map_err(|e| e.to_string())?;
 
-    // `main(argc, argv)`: `return sakura_native_main_v5(&sakura$module);`
+    // `main(argc, argv)`: `return sakura_native_main_v6(&sakura$module);`
     let ptr = obj.target_config().pointer_type();
     let mut msig = obj.make_signature();
     msig.params.push(AbiParam::new(types::I32));
@@ -337,7 +376,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     nsig.params.push(AbiParam::new(ptr));
     nsig.returns.push(AbiParam::new(types::I32));
     let native_main = obj
-        .declare_function("sakura_native_main_v5", Linkage::Import, &nsig)
+        .declare_function("sakura_native_main_v6", Linkage::Import, &nsig)
         .map_err(|e| e.to_string())?;
     ctx.func.signature = msig;
     {

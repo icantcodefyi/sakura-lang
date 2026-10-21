@@ -1,5 +1,5 @@
 //! The entry of a native Sakura program (plan M5 N2; ABI §1b). The object `sakura_codegen_native`
-//! emits defines `main`, which calls [`sakura_native_main_v5`] with the module's descriptor; this
+//! emits defines `main`, which calls [`sakura_native_main_v6`] with the module's descriptor; this
 //! crate, built as a staticlib with `panic = "abort"`, brings the runtime and the native host.
 //! It runs `main` as the Node host does: one instance on one thread, the outcome reported on
 //! stderr and as the exit code. A live worker (`std/worker`, ABI 1.15.0) is another instance
@@ -62,9 +62,13 @@ pub struct SakuraModule {
     /// (`sakura_lir::image::workers_table`, ABI 1.15.0).
     workers_len: u32,
     workers: *const u8,
+    /// The length (+112) and bytes (+120) of a test build's test table
+    /// (`sakura_codegen_native::tests_table`); 0 for a program, which runs `main`.
+    tests_len: u32,
+    tests: *const u8,
 }
 
-const _: () = assert!(size_of::<SakuraModule>() == 112);
+const _: () = assert!(size_of::<SakuraModule>() == 128);
 
 /// The std effects whose host service the native host does not implement: a `main` (or a
 /// live worker's entry) that leaves one to the runtime is refused at startup, exit 75, before
@@ -365,9 +369,20 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
             CODES.len()
         ));
     }
-    // SAFETY: the compiler emits `roots` as `roots_len` immutable bytes.
-    let roots = unsafe { std::slice::from_raw_parts(m.roots, m.roots_len as usize) };
-    if let Some(effect) = unavailable(roots) {
+    // SAFETY: the compiler emits `roots` and `tests` as `roots_len` and `tests_len` immutable
+    // bytes.
+    let (roots, tests) = unsafe {
+        (
+            std::slice::from_raw_parts(m.roots, m.roots_len as usize),
+            std::slice::from_raw_parts(m.tests, m.tests_len as usize),
+        )
+    };
+    // A test build runs its tests, never `main`, so `main`'s root effects are not checked.
+    let tests = match tests {
+        [] => None,
+        t => Some(sakura_host_native::test::parse_table(t).ok_or("the test table is malformed")?),
+    };
+    if let Some(effect) = unavailable(roots).filter(|_| tests.is_none()) {
         eprintln!("`{effect}` is not available on target `native`");
         return Ok(EXIT_UNAVAILABLE);
     }
@@ -400,6 +415,12 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
     host.set_workers(table.clone(), launcher(Desc(m), limits, table));
     let mut inst = Instance::new(module, host, limits)
         .map_err(|d| format!("D{:03}: {}", d.code, d.message))?;
+    if let Some(table) = tests {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        let code = sakura_host_native::test::run_tests(&mut inst, &table, &args);
+        inst.close().close();
+        return Ok(code);
+    }
     if m.entry == u32::MAX {
         return Err("the program has no main".into());
     }
@@ -464,7 +485,7 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
 /// bytes. The suffix is the descriptor layout's version: a layout change renames the entry, so
 /// an object from another layout fails to link instead of misreading this one.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sakura_native_main_v5(m: *const SakuraModule) -> i32 {
+pub unsafe extern "C" fn sakura_native_main_v6(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()
