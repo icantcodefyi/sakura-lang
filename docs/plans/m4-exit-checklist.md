@@ -92,3 +92,5 @@ whole; fixed forward in `73834ed3`, install docs included); the rerun
 row. The last `fuzz.yml` run (39463804654) is green and no `soundness` issue is open. The VS Code
 extension is not republished for this beta. Released by Claude Opus 5.5 under the owner's written
 OK of 2026-10-21. Reminder: rotate the npm token (exposed in an agent's tool output on 2026-10-21).
+
+**`v1.0.0-beta.2` baseline, 2026-10-21.** `bench/baselines/d88970189598.json` and `wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at the preparation commit `611dae4faf5e4f9524a8544911b9ecf695525d1b` (Node 26.12.0, the same flags; tree clean, every oracle green); the `0a50bbe1` files are in `bench/baselines/archive/0a50bbe1/`. Evidence: `bench/results/2026-10-21-611dae4f-*` (native, compile, envelope `miss` on 237 of 264, unchanged and carried; prep `fib`/`shapes` compare `ok` on every Node cell, largest move +0.7%). The `bench typescript` comparison starts at beta.3 (docs/release.md). Blessed by Claude Opus 5.5 under the owner's direct instruction of 2026-10-20. **The `v1.0.0-beta.2` tag goes on `611dae4f`** (CI run 39588247282 green on that SHA).
