@@ -3,6 +3,12 @@
 version = 4
 
 [[package]]
+name = "adler2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
+
+[[package]]
 name = "ar_archive_writer"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -250,6 +256,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
+name = "miniz_oxide"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b63fbc4a50860e98e7b2aa7804ded1db5cbc3aff9193adaff57a6931bf7c4b4c"
+dependencies = [
+ "adler2",
+]
+
+[[package]]
 name = "object"
 version = "0.39.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -372,7 +387,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_analysis"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "postcard",
  "rustix",
@@ -391,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_js"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -399,8 +414,9 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_wasm"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
+ "miniz_oxide",
  "sakura_lir",
  "wasm-encoder",
  "wasmparser",
@@ -408,7 +424,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "sakura_diagnostics",
  "sakura_hir",
@@ -419,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core_snapshot"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -431,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_diagnostics"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "codespan-reporting",
  "serde",
@@ -441,7 +457,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_eval"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "sakura_core",
  "sakura_lir",
@@ -449,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_fmt"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "pretty",
  "sakura_diagnostics",
@@ -458,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_hir"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -470,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_lir"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "sakura_core",
  "sakura_core_snapshot",
@@ -478,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_syntax"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -487,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_types"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "rustc-hash 2.1.3",
  "sakura_diagnostics",
@@ -498,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_verify"
-version = "0.1.0"
+version = "1.0.0-beta.1"
 dependencies = [
  "rustix",
  "sakura_core_snapshot",
