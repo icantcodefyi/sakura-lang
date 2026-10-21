@@ -9,6 +9,19 @@ retains earlier implementation history.
 
 ### Added
 
+- **Release binaries for macOS arm64 and Linux x64 carry `--target native`** (experimental,
+  design §17.175 (6), §17.308 (2d)): those two archives, their npm platform packages and the
+  Homebrew formula install the native driver at `lib/sakura/native/` beside `bin/`
+  (`libsakura_native_driver.a` and `native-static-libs.txt`; an extracted archive keeps it
+  beside `sakura`, where it is found too), so an installed `sakura` builds native executables
+  with no environment variable; `install.sh` installs it too. The flag and
+  the driver may change or be absent in a later release without a migration. A native build
+  links with the system C linker `cc`; when none is on `PATH` (on macOS, also when the Command
+  Line Tools are missing), the build is one new error, **`V8007 native_linker_missing`**, that
+  names `cc` and the package that provides it on this host, exit 1. `sakura` finds the driver
+  through a symlinked binary (Homebrew's) by resolving its own path. `release.py smoke` and
+  `accept` build and run a native `fib` on these rows and compare it with the JS run; the
+  archives grow by the driver's size, stated in the dry run's summary.
 - **`--target native` names itself experimental and is refused where it is not built** (design
   §17.175 (6), §17.308 (1d)): `sakura build --target native` prints one line on stderr naming
   the target experimental with its layout profile and ABI (`note: \`--target native\` is

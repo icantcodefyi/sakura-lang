@@ -143,7 +143,8 @@ else
 	echo "integrity verified, not attested"
 fi
 
-# Only regular files and directories, all directly under the archive's top directory.
+# Only regular files and directories, all directly under the archive's top directory but the
+# native driver's files in lib/sakura/native/.
 tar -tvzf "$tmp/$archive" >"$tmp/listing" || die "cannot read $archive"
 if cut -c 1 "$tmp/listing" | grep -qv '[-d]'; then
 	die "$archive contains links or special files; refusing it"
@@ -152,7 +153,10 @@ tar -tzf "$tmp/$archive" >"$tmp/names"
 while IFS= read -r entry; do
 	case $entry in
 	"$top" | "$top/") ;;
-	*..* | "$top"/*/*) die "unsafe path in $archive: $entry" ;;
+	*..*) die "unsafe path in $archive: $entry" ;;
+	"$top"/lib/sakura/native/*/*) die "unsafe path in $archive: $entry" ;;
+	"$top"/lib/ | "$top"/lib/sakura/ | "$top"/lib/sakura/native/ | "$top"/lib/sakura/native/*) ;;
+	"$top"/*/*) die "unsafe path in $archive: $entry" ;;
 	"$top"/*) ;;
 	*) die "unexpected path in $archive: $entry" ;;
 	esac
@@ -174,6 +178,14 @@ cp "$binary" "$staged"
 chmod 755 "$staged"
 mv -f "$staged" "$prefix/bin/sakura"
 staged=""
+# The `--target native` driver (experimental), where `sakura` looks for it: lib/ beside bin/.
+if [ -d "$tmp/unpacked/$top/lib/sakura/native" ]; then
+	mkdir -p "$prefix/lib/sakura/native"
+	for file in "$tmp/unpacked/$top/lib/sakura/native"/*; do
+		cp "$file" "$prefix/lib/sakura/native/"
+		chmod 644 "$prefix/lib/sakura/native/${file##*/}"
+	done
+fi
 
 echo "installed $reported to $prefix/bin/sakura"
 case ":$PATH:" in

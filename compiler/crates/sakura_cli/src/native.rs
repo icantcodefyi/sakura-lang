@@ -1,7 +1,8 @@
 //! `--target native` (plan M5 N2, experimental, behind the `native` feature): Core → LIR → one
 //! object (`sakura_codegen_native`), linked with the driver staticlib into the executable
 //! `main` (ABI §1b). The driver comes from `SAKURA_NATIVE_LIB_DIR`, else `lib/sakura/native`
-//! beside the `sakura` binary's directory.
+//! beside the `sakura` binary's directory, where an install puts it, or beside the binary, as in a
+//! release archive (design §17.308 (2d)).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -9,31 +10,66 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 use sakura_analysis::{Analysis, BuildOptions, Snapshot};
+use sakura_codegen_native::LinkError;
+use sakura_diagnostics::{Diagnostic, Phase, Span, codes};
 
 use crate::{EXIT_ERRORS, report, usage_error};
 
 pub const OBJECT: &str = "main.o";
 pub const EXECUTABLE: &str = "main";
 
-/// Where the driver staticlib is (`sakura_codegen_native::DRIVER_LIB`).
+/// Where the driver staticlib is (`sakura_codegen_native::DRIVER_LIB`): `SAKURA_NATIVE_LIB_DIR`,
+/// else `lib/sakura/native` beside an installed `bin/`, else beside the binary itself, as in an
+/// extracted release archive.
 fn driver_dir() -> Result<PathBuf, String> {
-    let dir = match std::env::var_os("SAKURA_NATIVE_LIB_DIR") {
-        Some(d) => PathBuf::from(d),
-        None => std::env::current_exe()
-            .map_err(|e| e.to_string())?
-            .parent()
-            .and_then(Path::parent)
-            .map(|p| p.join("lib/sakura/native"))
-            .ok_or("the sakura binary has no parent directory")?,
+    let dirs = match std::env::var_os("SAKURA_NATIVE_LIB_DIR") {
+        Some(d) => vec![PathBuf::from(d)],
+        None => {
+            // Canonical, so a symlinked `bin/sakura` (Homebrew's) finds its own install's `lib`.
+            let exe = std::env::current_exe()
+                .and_then(std::fs::canonicalize)
+                .map_err(|e| e.to_string())?;
+            let bin = exe
+                .parent()
+                .ok_or("the sakura binary has no parent directory")?;
+            let installed = bin.parent().map(|p| p.join("lib/sakura/native"));
+            installed
+                .into_iter()
+                .chain([bin.join("lib/sakura/native")])
+                .collect()
+        }
     };
-    if dir.join(sakura_codegen_native::DRIVER_LIB).is_file() {
-        Ok(dir)
-    } else {
-        Err(format!(
+    match dirs
+        .iter()
+        .find(|d| d.join(sakura_codegen_native::DRIVER_LIB).is_file())
+    {
+        Some(d) => Ok(d.clone()),
+        None => Err(format!(
             "`--target native` needs the native driver ({}) in {}; set SAKURA_NATIVE_LIB_DIR",
             sakura_codegen_native::DRIVER_LIB,
-            dir.display()
-        ))
+            dirs[0].display()
+        )),
+    }
+}
+
+/// `V8007` (design §17.308 (2d)): no system C linker, with the package that provides one here.
+fn linker_missing(snapshot: &Snapshot) -> Diagnostic {
+    let provide = if cfg!(target_os = "macos") {
+        "`xcode-select --install` installs the Command Line Tools, which provide it"
+    } else {
+        "install a C compiler: `sudo apt install gcc` on Debian or Ubuntu, `sudo dnf install gcc` on Fedora"
+    };
+    let d = Diagnostic::error(
+        codes::V8007,
+        Phase::Package,
+        format!(
+            "`--target native` links with the system C linker `{}`, which is not on PATH; {provide}",
+            sakura_codegen_native::LINKER
+        ),
+    );
+    match snapshot.user_files().next() {
+        Some(file) => d.with_span(Span::primary(file, 0, 0)),
+        None => d,
     }
 }
 
@@ -107,7 +143,14 @@ pub fn build(
         .and_then(|()| std::fs::write(&o, object))
         .map_err(|e| usage_error(format!("{}: {e}", o.display())))?;
     let linking = Instant::now();
-    sakura_codegen_native::link(&o, &driver, &out_dir.join(EXECUTABLE)).map_err(usage_error)?;
+    match sakura_codegen_native::link(&o, &driver, &out_dir.join(EXECUTABLE)) {
+        Ok(()) => {}
+        Err(LinkError::Missing) => {
+            report(json, snapshot, &[linker_missing(snapshot)], &[], true);
+            return Err(ExitCode::from(EXIT_ERRORS));
+        }
+        Err(e) => return Err(usage_error(e)),
+    }
     // The compile report's phases (plan N2, design §17.175 (4)), one JSON line per build.
     if let Some(path) = std::env::var_os("SAKURA_NATIVE_TIMINGS") {
         let ms = |d: Duration| d.as_secs_f64() * 1000.0;

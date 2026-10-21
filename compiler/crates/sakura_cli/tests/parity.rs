@@ -987,3 +987,38 @@ fn native_checks_builds_a_checked_executable() {
             .contains("`--native-checks` needs `--target native`")
     );
 }
+
+/// Design §17.308 (2d): with no system C linker on `PATH`, a native build is one `V8007` that
+/// names `cc`, exit 1.
+#[cfg(feature = "native")]
+#[test]
+fn native_missing_linker_is_v8007() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let empty = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-no-linker");
+    std::fs::create_dir_all(&empty).unwrap();
+    let out = empty.join("out");
+    let env = [
+        ("SAKURA_NATIVE_LIB_DIR", lib.as_path()),
+        ("PATH", empty.as_path()),
+    ];
+    let fixtures = manifest.join("../../tests/semantics");
+    let args = [
+        "build",
+        "--target",
+        "native",
+        "--out-dir",
+        out.to_str().unwrap(),
+    ];
+    let built = sakura_env(&[&args[..], &["hello.sak"]].concat(), &fixtures, &env);
+    assert_eq!(built.code, Some(1), "{}", built.stderr);
+    assert_eq!(
+        built.stderr.matches("error[").count(),
+        1,
+        "{}",
+        built.stderr
+    );
+    assert!(built.stderr.contains("error[V8007]"), "{}", built.stderr);
+    assert!(built.stderr.contains("`cc`"), "{}", built.stderr);
+}

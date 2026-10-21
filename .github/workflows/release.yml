@@ -132,15 +132,26 @@ jobs:
         working-directory: compiler
         env:
           SAKURA_GIT_COMMIT: ${{ needs.plan.outputs.commit }}
+          # `--target native` (experimental) ships on the targets.json rows marked native (§17.308 (2d)).
+          NATIVE: ${{ matrix.native && 'native' || '' }}
         run: |
           if [ "$RUNNER_OS" = Windows ]; then export RUSTFLAGS='-C target-feature=+crt-static'; fi
-          cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET"
+          cargo build --locked --release -p sakura_cli --bin sakura --target "$TARGET" ${NATIVE:+--features "$NATIVE"}
+      - name: Build the native driver
+        if: matrix.native
+        run: python3 -I tools/release/release.py driver --target "$TARGET" --out native
       - name: Explain unsigned dry-run artifacts
         if: runner.os == 'macOS' && needs.plan.outputs.publish != 'true'
         run: |
           echo 'Dry run: macOS signing and notarization skipped; no Apple secrets or environment approval needed.' >> "$GITHUB_STEP_SUMMARY"
       - name: Archive
-        run: python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura$EXE_SUFFIX" --out dist
+        env:
+          NATIVE_DIR: ${{ matrix.native && 'native' || '' }}
+        run: |
+          python3 -I tools/release/release.py archive --target "$TARGET" --binary "compiler/target/$TARGET/release/sakura$EXE_SUFFIX" ${NATIVE_DIR:+--native-dir "$NATIVE_DIR"} --out dist
+          # The dry-run notes state the archive's size and the driver's share (stated, not capped).
+          size=$(wc -c < "dist/sakuralang-$VERSION-$TARGET$ARCHIVE_SUFFIX")
+          echo "$TARGET: archive $size bytes${NATIVE_DIR:+, native driver $(wc -c < native/libsakura_native_driver.a) bytes uncompressed}" >> "$GITHUB_STEP_SUMMARY"
       - name: Smoke test the extracted archive
         run: python3 -I tools/release/release.py smoke --archive "dist/sakuralang-$VERSION-$TARGET$ARCHIVE_SUFFIX" --commit "$COMMIT"
       - name: Record the host floor
@@ -198,8 +209,14 @@ jobs:
           rustup target add wasm32-unknown-unknown
           while IFS= read -r target; do
             rustup target add "$target"
-            cargo build --locked --release -p sakura_cli --bin sakura --target "$target"
-            python3 -I ../tools/release/release.py archive --target "$target" --binary "target/$target/release/sakura" --out ../unsigned
+            if python3 -I -c 'import json, sys; sys.exit(not any(t["target"] == sys.argv[1] and t.get("native") for t in json.load(open("../packaging/targets.json"))))' "$target"; then
+              cargo build --locked --release -p sakura_cli --bin sakura --target "$target" --features native
+              python3 -I ../tools/release/release.py driver --target "$target" --out "../native-$target"
+              python3 -I ../tools/release/release.py archive --target "$target" --binary "target/$target/release/sakura" --native-dir "../native-$target" --out ../unsigned
+            else
+              cargo build --locked --release -p sakura_cli --bin sakura --target "$target"
+              python3 -I ../tools/release/release.py archive --target "$target" --binary "target/$target/release/sakura" --out ../unsigned
+            fi
           done < "$RUNNER_TEMP/darwin-targets"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         if: github.event_name == 'push'
@@ -241,7 +258,9 @@ jobs:
           VERSION: ${{ steps.context.outputs.version }}
         run: |
           while IFS= read -r target; do
-            python3 -I tools/release/release.py archive --target "$target" --binary "stage/sakuralang-$VERSION-$target/sakura" --macos-signed --out signed
+            native="stage/sakuralang-$VERSION-$target/lib/sakura/native"
+            if [ -d "$native" ]; then set -- --native-dir "$native"; else set --; fi
+            python3 -I tools/release/release.py archive --target "$target" --binary "stage/sakuralang-$VERSION-$target/sakura" "$@" --macos-signed --out signed
             python3 -I tools/release/release.py smoke --archive "signed/sakuralang-$VERSION-$target.tar.gz" --commit "$COMMIT"
           done < "$RUNNER_TEMP/darwin-targets"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

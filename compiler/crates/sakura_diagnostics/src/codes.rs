@@ -822,6 +822,12 @@ Fixed:
     [package]
     name = \"billing\"";
 
+    V8007 "native_linker_missing" PACKAGE,
+"`sakura build --target native` (experimental) links the program with the system C linker, `cc`,
+and none is on `PATH`. Sakura Lang bundles no linker. On macOS, `xcode-select --install` installs
+the Command Line Tools, which provide `cc`; on Debian or Ubuntu, `sudo apt install gcc`; on Fedora,
+`sudo dnf install gcc`. Then build again. `--target js` and `--target wasm` need no linker.";
+
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";

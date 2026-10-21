@@ -2,7 +2,8 @@
 # Tests install.sh against stub releases (research/13 §4): a good install into a prefix with
 # spaces, a repeat install, and every refusal (bad hash, missing entry, empty sums, no
 # verifier, links, path traversal, wrong version, http://, failed download). Each refusal must
-# leave the prefix without a `sakura`. Run on an inventory host: `sh tools/install/test.sh`.
+# leave the prefix without a `sakura`; the native driver lands in lib/sakura/native. Run on an
+# inventory host: `sh tools/install/test.sh`.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -27,6 +28,8 @@ release() {
 		mkdir -p "$work/stage/$top"
 		printf '#!/bin/sh\necho "sakura %s (0000000000000000000000000000000000000000) %s"\n' "${2:-$version}" "$target" >"$work/stage/$top/sakura"
 		chmod 755 "$work/stage/$top/sakura"
+		mkdir -p "$work/stage/$top/lib/sakura/native"
+		echo driver >"$work/stage/$top/lib/sakura/native/libsakura_native_driver.a"
 		tar -czf "$1/$top.tar.gz" -C "$work/stage" "$top"
 		rm -rf "$work/stage"
 		echo "$(sha "$1/$top.tar.gz")  $top.tar.gz" >>"$1/SHA256SUMS"
@@ -62,6 +65,10 @@ export PATH
 expect "install into a prefix with spaces" ok "$work/prefix one" --base-url "$good"
 if ! grep -q '^integrity verified, not attested$' "$work/out"; then
 	echo "FAIL no gh: missing attestation notice"
+	failures=$((failures + 1))
+fi
+if [ "$(cat "$work/prefix one/lib/sakura/native/libsakura_native_driver.a")" != driver ]; then
+	echo "FAIL the native driver was not installed beside bin/"
 	failures=$((failures + 1))
 fi
 expect "repeat install" ok "$work/prefix one" --base-url "$good"
@@ -158,10 +165,11 @@ for target in $targets; do
 done
 expect "symlink entry" fail "$work/p7" --base-url "$links"
 
-traversal="$work/traversal"
-"$python" -I - "$traversal" "$version" "$targets_file" <<'EOF'
+# unsafe DIR ENTRY: archives whose second entry is ENTRY under the top directory.
+unsafe() {
+"$python" -I - "$1" "$version" "$targets_file" "$2" <<'EOF'
 import hashlib, io, json, os, sys, tarfile
-out, version = sys.argv[1], sys.argv[2]
+out, version, extra = sys.argv[1], sys.argv[2], sys.argv[4]
 os.makedirs(out)
 with open(os.path.join(out, "SHA256SUMS"), "w") as sums:
     for entry in json.load(open(sys.argv[3])):
@@ -171,14 +179,18 @@ with open(os.path.join(out, "SHA256SUMS"), "w") as sums:
         top = f"sakuralang-{version}-{target}"
         path = os.path.join(out, f"{top}.tar.gz")
         with tarfile.open(path, "w:gz") as tar:
-            for name in (f"{top}/sakura", f"{top}/../escaped"):
+            for name in (f"{top}/sakura", f"{top}/{extra}"):
                 data = b"#!/bin/sh\necho sakura " + version.encode() + b"\n"
                 info = tarfile.TarInfo(name)
                 info.size, info.mode = len(data), 0o755
                 tar.addfile(info, io.BytesIO(data))
         sums.write(f"{hashlib.sha256(open(path, 'rb').read()).hexdigest()}  {top}.tar.gz\n")
 EOF
-expect "path traversal entry" fail "$work/p8" --base-url "$traversal"
+}
+unsafe "$work/traversal" ../escaped
+expect "path traversal entry" fail "$work/p8" --base-url "$work/traversal"
+unsafe "$work/nested" lib/sakura/native/deeper/file
+expect "nested entry under lib/sakura/native" fail "$work/p8b" --base-url "$work/nested"
 [ ! -e "$work/escaped" ] || { echo "FAIL traversal wrote outside"; failures=$((failures + 1)); }
 
 wrong="$work/wrong version"

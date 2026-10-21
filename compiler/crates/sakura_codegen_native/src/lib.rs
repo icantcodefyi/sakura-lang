@@ -388,26 +388,56 @@ pub const DRIVER_LIB: &str = "libsakura_native_driver.a";
 /// one line in this file beside it.
 pub const DRIVER_LIBS: &str = "native-static-libs.txt";
 
+/// The system C linker [`link`] runs; nothing is bundled (design §17.308 (2d)).
+pub const LINKER: &str = "cc";
+
+/// Why [`link`] failed.
+#[derive(Debug)]
+pub enum LinkError {
+    /// [`LINKER`] is not on `PATH` (`V8007`).
+    Missing,
+    Failed(String),
+}
+
+impl std::fmt::Display for LinkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LinkError::Missing => write!(f, "the system C linker `{LINKER}` is not on PATH"),
+            LinkError::Failed(why) => f.write_str(why),
+        }
+    }
+}
+
+impl From<LinkError> for String {
+    fn from(e: LinkError) -> String {
+        e.to_string()
+    }
+}
+
 /// Link `object` with the driver in directory `driver` ([`DRIVER_LIB`] and [`DRIVER_LIBS`])
 /// into the executable `out`, with the system C linker.
-pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), String> {
+pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), LinkError> {
     let libs = std::fs::read_to_string(driver.join(DRIVER_LIBS))
-        .map_err(|e| format!("{}: {e}", driver.join(DRIVER_LIBS).display()))?;
-    let output = Command::new("cc")
+        .map_err(|e| LinkError::Failed(format!("{}: {e}", driver.join(DRIVER_LIBS).display())))?;
+    let output = Command::new(LINKER)
         .arg(object)
         .arg(driver.join(DRIVER_LIB))
         .args(libs.split_whitespace())
         .arg("-o")
         .arg(out)
         .output()
-        .map_err(|e| format!("the system C linker `cc`: {e}"))?;
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::NotFound => LinkError::Missing,
+            _ => LinkError::Failed(format!("the system C linker `{LINKER}`: {e}")),
+        })?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
     if output.status.success() {
         Ok(())
+    } else if stderr.contains("xcrun: error: invalid active developer path") {
+        // macOS's `/usr/bin/cc` without the Command Line Tools.
+        Err(LinkError::Missing)
     } else {
-        Err(format!(
-            "linking failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
+        Err(LinkError::Failed(format!("linking failed: {stderr}")))
     }
 }
 

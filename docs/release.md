@@ -371,12 +371,15 @@ Run **Actions → Release → Run workflow** on the candidate ref, or
 the commit, smoke-tests each extracted archive on its native runner (`release.py smoke`:
 version and commit, `new`/`check`/`test`/`build`, generated JS on Node 26, a WASM run,
 a bounded MCP session with `compiler_info`, `setup --apply` twice against the canonical
-skill, no writes to `HOME`, the missing-Node error), runs the installer tests, assembles the
+skill, no writes to `HOME`, the missing-Node error, and on the targets `packaging/targets.json`
+marks `native` a `fib` built with `--target native` whose output equals the JS run's), runs the installer tests, assembles the
 set and installs it from the assembled directory with `install.sh` and offline npm.
 The publish jobs are skipped: they require a tag push. Download the results with
 `gh run download <run-id> --repo icantcodefyi/sakuralang -n release-<version>`
 (`archive-<target>` holds each target's archive alone). The run summary lists the
-SHA-256 inventory and each target's host floor (glibc or macOS minimum).
+SHA-256 inventory, each target's host floor (glibc or macOS minimum) and each archive's size,
+with the native driver's on the native targets (stated, not capped; design §17.308 (2d)). The
+first dry run that carries the driver is the owner's to approve.
 
 Download from that **specific run ID and SHA**. Review the full active matrix's
 archives, notices/Node requirements, shell/manual installer, canonical skill ZIP/

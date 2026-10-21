@@ -6,13 +6,17 @@
     release.py dist-tag                      print its npm dist-tag (latest, alpha, beta or rc)
     release.py formula                       print its Homebrew formula name
     release.py compat-base                   print the release tag the compat job runs
-    release.py archive  --target T --binary B --out DIR
+    release.py driver   --target T --out DIR    build the native driver into DIR (native targets)
+    release.py archive  --target T --binary B [--native-dir DIR] --out DIR
     release.py smoke    --archive A --commit C
-    release.py accept   --sakura INSTALLED --commit C
+    release.py accept   --sakura INSTALLED --commit C [--native]
     release.py assemble --commit C --archives DIR --out DIR
 
 `packaging/targets.json` is the one target inventory: the workflow matrix, the archives,
-the npm platform packages and the Homebrew formula all come from it. Standard library only;
+the npm platform packages and the Homebrew formula all come from it. A target with
+`"native": true` ships `--target native` (experimental, design §17.308 (2d)): its binary is
+built with the `native` feature and its archive carries the driver staticlib at
+`lib/sakura/native/`, beside `bin/` once installed. Standard library only;
 run with `python3 -I`. Nothing here publishes anything.
 """
 
@@ -40,6 +44,12 @@ COMPILER = ROOT / "compiler"
 TARGETS = json.loads((ROOT / "packaging/targets.json").read_text())
 LICENSES = ["LICENSE-MIT", "LICENSE-APACHE"]
 NOTICES = "THIRD-PARTY-NOTICES.md"
+# `sakura_codegen_native::DRIVER_LIB` and `DRIVER_LIBS`, where `sakura` looks for them.
+NATIVE_DIR = "lib/sakura/native"
+NATIVE_FILES = ["libsakura_native_driver.a", "native-static-libs.txt"]
+FIB = """fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }
+pub fn main() -> Unit ! {Console} { Console.print("{fib(25)}") }
+"""
 NODE_MAJOR = 26
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$")
 REPO_URL = "https://github.com/icantcodefyi/sakuralang"
@@ -274,6 +284,15 @@ def target_info(target):
     fail(f"{target} is not in packaging/targets.json")
 
 
+def native(target):
+    return bool(target_info(target).get("native"))
+
+
+def native_members(target):
+    """The archive paths of the native driver, for a native target."""
+    return [f"{NATIVE_DIR}/{n}" for n in NATIVE_FILES] if native(target) else []
+
+
 def binary_name(target):
     return "sakura.exe" if target_info(target)["os"] == "win32" else "sakura"
 
@@ -363,6 +382,12 @@ def readme(ver, target, macos_signed=False):
         "Install: put `sakura` on your PATH (for example `install -m 755 sakura ~/.local/bin/`),\n"
         "or use `install.sh` from the release, which verifies `SHA256SUMS` first."
     )
+    if native(target):
+        installation += (
+            "\n`sakura build --target native` (experimental) needs the system C linker `cc` and the\n"
+            "driver in `lib/sakura/native/`, found beside `sakura` or beside its `bin/` directory:\n"
+            "copy `lib/` too (to `~/.local/lib/` for `~/.local/bin/sakura`); `install.sh` does."
+        )
     return f"""# Sakura Lang {ver} ({target})
 
 Sakura Lang {ver} is {promise(ver)} See STABILITY.md in the
@@ -448,9 +473,34 @@ def write_zip(out, top, members, mtime):
             archive.writestr(info, data, compress_type=zipfile.ZIP_DEFLATED)
 
 
+def driver(args):
+    """Build `sakura_native_driver`'s release staticlib for `--target` into `--out` with the
+    system libraries it links against, as `sakura_codegen_native::build_driver` does."""
+    if not native(args.target):
+        fail(f"{args.target} has no native codegen")
+    p = subprocess.run(
+        ["cargo", "rustc", "--locked", "--release", "-p", "sakura_native_driver", "--features", "native",
+         "--lib", "--crate-type", "staticlib", "--target", args.target,
+         "--", "-Cpanic=abort", "--print", "native-static-libs"],
+        cwd=COMPILER, capture_output=True, text=True)
+    if p.returncode != 0:
+        fail(f"building the native driver:\n{p.stderr}")
+    libs = next((line.split("native-static-libs: ", 1)[1] for line in p.stderr.splitlines()
+                 if "native-static-libs: " in line), None)
+    if libs is None:
+        fail("rustc printed no native-static-libs: was the driver already built?")
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    shutil.copy(COMPILER / "target" / args.target / "release" / NATIVE_FILES[0], out / NATIVE_FILES[0])
+    (out / NATIVE_FILES[1]).write_text(libs.strip() + "\n")
+    print(out)
+
+
 def archive(args):
     ver = version()
     target_info(args.target)
+    if native(args.target) != bool(args.native_dir):
+        fail(f"{args.target}: --native-dir is {'required' if native(args.target) else 'only for native targets'}")
     if args.macos_signed and not args.target.endswith("-apple-darwin"):
         fail("--macos-signed requires a Darwin target")
     top = f"sakuralang-{ver}-{args.target}"
@@ -458,6 +508,8 @@ def archive(args):
     members += [(name, (ROOT / name).read_bytes(), 0o644) for name in LICENSES]
     members.append((NOTICES, notices(args.target).encode(), 0o644))
     members.append(("README.md", readme(ver, args.target, args.macos_signed).encode(), 0o644))
+    members += [(f"{NATIVE_DIR}/{n}", (Path(args.native_dir) / n).read_bytes(), 0o644)
+                for n in NATIVE_FILES if args.native_dir]
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     path = out / archive_name(ver, args.target)
@@ -476,7 +528,7 @@ def run(cmd, cwd, env, want=0, stdin=None):
     return p.stdout
 
 
-def mcp_smoke(sakura, cwd, env, ver, commit):
+def mcp_smoke(sakura, cwd, env, ver, commit, native=False):
     """Bounded stdio MCP session: initialize, list tools, `compiler_info`, EOF, clean exit."""
     msgs = [
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {
@@ -513,6 +565,8 @@ def mcp_smoke(sakura, cwd, env, ver, commit):
         fail(f"unexpected MCP replies: tools={tools} info={info}")
     if "wasm" not in info["features"]["backends"]:
         fail(f"the WASM backend is missing: {info['features']}")
+    if ("native" in info["features"]["backends"]) != native:
+        fail(f"the native backend is {'missing' if native else 'unexpected'}: {info['features']}")
 
 
 def lsp_smoke(sakura, cwd, env):
@@ -584,27 +638,45 @@ def smoke(args):
         top = archive_path.name.removesuffix(".zip" if windows else ".tar.gz")
         binary = "sakura.exe" if windows else "sakura"
         entries = read_archive(archive_path)
-        want = {f"{top}/{n}" for n in [binary, "README.md", NOTICES] + LICENSES}
+        target = top.removeprefix(f"sakuralang-{ver}-")
+        want = {f"{top}/{n}" for n in [binary, "README.md", NOTICES] + LICENSES + native_members(target)}
         if set(entries) - {top} != want:
             fail(f"archive layout {sorted(entries)}, wanted {sorted(want)}")
         unpacked = tmp / "unpacked" / top
-        unpacked.mkdir(parents=True)
         for name in want:
-            (unpacked / Path(name).name).write_bytes(entries[name])
+            dest = unpacked / Path(name).relative_to(top)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(entries[name])
         sakura = str(unpacked / binary)
         Path(sakura).chmod(0o755)
-        accept_installed(sakura, ver, commit, tmp)
+        accept_installed(sakura, ver, commit, tmp, native(target))
     print(f"smoke ok: {archive_path.name}")
 
 
 def accept(args):
     sakura = os.path.abspath(args.sakura)
     with tempfile.TemporaryDirectory(prefix="sakura accept ") as tmp:
-        accept_installed(sakura, version(), args.commit, Path(tmp))
+        accept_installed(sakura, version(), args.commit, Path(tmp), args.native)
     print(f"accept ok: {sakura}")
 
 
-def accept_installed(sakura, ver, commit, tmp):
+def native_smoke(sakura, tmp, env):
+    """Design §17.308 (2d): `fib` built with `--target native` prints what the JS run prints, and
+    the build says once that the target is experimental."""
+    fib = tmp / "fib"
+    fib.mkdir()
+    (fib / "fib.sak").write_text(FIB)
+    js = run([sakura, "run", "fib.sak"], fib, env)
+    p = subprocess.run([sakura, "build", "--target", "native", "fib.sak"], cwd=fib, env=env,
+                       capture_output=True, text=True, timeout=300)
+    if p.returncode != 0 or p.stderr.count("`--target native` is experimental") != 1:
+        fail(f"the native build exited {p.returncode}:\n{p.stderr}")
+    got = run([str(fib / "target/sakura/native/main")], fib, env)
+    if got != js or js != "75025\n":
+        fail(f"native fib printed {got!r}, JS {js!r}")
+
+
+def accept_installed(sakura, ver, commit, tmp, native=False):
     home = tmp / "home"
     home.mkdir()
     # A clean environment: no checkout, an empty HOME, Node from PATH.
@@ -630,7 +702,9 @@ def accept_installed(sakura, ver, commit, tmp):
         fail("the WASM build printed the wrong greeting")
     if run([sakura, "run", "--", "Ann"], demo, env) != "hello, Ann\n":
         fail("the default run printed the wrong greeting")
-    mcp_smoke(sakura, demo, env, ver, commit)
+    mcp_smoke(sakura, demo, env, ver, commit, native)
+    if native:
+        native_smoke(sakura, tmp, env)
     if os.name == "nt":
         run(["git", "init"], demo, env)
         run(["git", "config", "core.autocrlf", "true"], demo, env)
@@ -741,8 +815,9 @@ def assemble(args):
             top = f"sakuralang-{ver}-{t['target']}"
             binary = binary_name(t["target"])
             entries = read_archive(out / archive_name(ver, t["target"]))
-            for name in [binary, NOTICES] + LICENSES:
+            for name in [binary, NOTICES] + LICENSES + native_members(t["target"]):
                 dest = stage / (f"bin/{binary}" if name == binary else name)
+                dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(entries[f"{top}/{name}"])
             (stage / f"bin/{binary}").chmod(0o755)
             pkg = {
@@ -756,7 +831,7 @@ def assemble(args):
                 "cpu": [t["cpu"]],
                 **({"libc": [t["libc"]]} if "libc" in t else {}),
                 "keywords": ["sakuralang"],
-                "files": [f"bin/{binary}", "README.md", NOTICES] + LICENSES,
+                "files": [f"bin/{binary}", "README.md", NOTICES] + LICENSES + native_members(t["target"]),
                 "preferUnplugged": True,
             }
             (stage / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
@@ -799,9 +874,13 @@ def main():
     p = sub.add_parser("prepare")
     p.add_argument("--previous-tag")
     p.add_argument("--date", help="candidate release date in UTC (YYYY-MM-DD)")
+    d = sub.add_parser("driver")
+    d.add_argument("--target", required=True)
+    d.add_argument("--out", required=True)
     a = sub.add_parser("archive")
     a.add_argument("--target", required=True)
     a.add_argument("--binary", required=True)
+    a.add_argument("--native-dir")
     a.add_argument("--out", required=True)
     a.add_argument("--macos-signed", action="store_true")
     s = sub.add_parser("smoke")
@@ -810,6 +889,7 @@ def main():
     a = sub.add_parser("accept")
     a.add_argument("--sakura", required=True)
     a.add_argument("--commit", required=True)
+    a.add_argument("--native", action="store_true", help="the target ships --target native")
     m = sub.add_parser("assemble")
     m.add_argument("--commit", required=True)
     m.add_argument("--archives", required=True)
@@ -830,7 +910,7 @@ def main():
             fail("no earlier release tag is an ancestor of HEAD; compat has nothing to compare")
         print(base)
     else:
-        {"archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble, "prepare": prepare}[args.cmd](args)
+        {"driver": driver, "archive": archive, "smoke": smoke, "accept": accept, "assemble": assemble, "prepare": prepare}[args.cmd](args)
 
 
 if __name__ == "__main__":

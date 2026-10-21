@@ -59,7 +59,9 @@ jobs:
           targets = {t['target'] for t in published}
           if targets - {r['target'] for r in rows}:
               raise SystemExit('published tag has targets without verification rows')
-          selected = [r for r in rows if r['target'] in targets]
+          # The tag's inventory says which rows ship `--target native` (§17.308 (2d)).
+          native = {t['target'] for t in published if t.get('native')}
+          selected = [{**r, 'native': r['target'] in native} for r in rows if r['target'] in targets]
           if not selected:
               raise SystemExit('published tag has no verification rows')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
@@ -83,6 +85,8 @@ jobs:
       VERSION: ${{ inputs.version }}
       COMMIT: ${{ needs.plan.outputs.commit }}
       GH_TOKEN: ${{ github.token }}
+      # `accept`'s native fib step, on the rows whose release carries the native driver.
+      NATIVE: ${{ matrix.native && '--native' || '' }}
     steps:
       - name: Prepare Debian userland without gh
         if: matrix.container != null
@@ -125,12 +129,12 @@ jobs:
           curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${VERSION}/install.sh" -o install.sh
           if [ -z '${{ matrix.container.image }}' ]; then command -v gh; fi
           sh install.sh --version "$VERSION"
-          python3 -I published/tools/release/release.py accept --sakura "$HOME/.local/bin/sakura" --commit "$COMMIT"
+          python3 -I published/tools/release/release.py accept --sakura "$HOME/.local/bin/sakura" --commit "$COMMIT" ${NATIVE:+"$NATIVE"}
       - name: Install from npm and accept
         if: runner.os != 'Windows'
         run: |
           npm install --global --ignore-scripts "sakuralang@$VERSION"
-          python3 -I published/tools/release/release.py accept --sakura "$(npm prefix --global)/bin/sakura" --commit "$COMMIT"
+          python3 -I published/tools/release/release.py accept --sakura "$(npm prefix --global)/bin/sakura" --commit "$COMMIT" ${NATIVE:+"$NATIVE"}
       - name: Install Windows from the release URL and accept
         if: runner.os == 'Windows'
         shell: pwsh
@@ -163,4 +167,4 @@ jobs:
           brew tap icantcodefyi/sakuralang
           brew trust --tap icantcodefyi/sakuralang
           brew install "icantcodefyi/sakuralang/$formula"
-          python3 -I published/tools/release/release.py accept --sakura "$(brew --prefix "$formula")/bin/sakura" --commit "$COMMIT"
+          python3 -I published/tools/release/release.py accept --sakura "$(brew --prefix "$formula")/bin/sakura" --commit "$COMMIT" ${NATIVE:+"$NATIVE"}

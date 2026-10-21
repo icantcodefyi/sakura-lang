@@ -37,6 +37,9 @@ class Sakuralang < Formula
 
   def install
     bin.install "sakura"
+    # The `--target native` driver (experimental) on the targets that ship it, beside `bin/`.
+    native = Dir["lib/sakura/native/*"]
+    (lib/"sakura/native").install native unless native.empty?
     doc.install "README.md", "THIRD-PARTY-NOTICES.md"
   end
 

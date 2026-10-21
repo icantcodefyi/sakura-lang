@@ -91,6 +91,7 @@ V8003 active abi_version_mismatch
 V8004 active target_unsupported_external
 V8005 active dependencies_not_supported
 V8006 active manifest_invalid
+V8007 active native_linker_missing
 V8020 active spec_frozen
 V9001 active internal_error
 V9002 active phase_unavailable

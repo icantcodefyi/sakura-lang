@@ -18,7 +18,7 @@ class ReleasePackaging(unittest.TestCase):
                        "sakura " + release.version() + " (" + "1" * 40 + ")\n"):
             with self.subTest(output=output), patch.object(release, "run", return_value=output):
                 with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-                    release.accept(argparse.Namespace(sakura="/installed path/sakura", commit="0" * 40))
+                    release.accept(argparse.Namespace(sakura="/installed path/sakura", commit="0" * 40, native=False))
 
     def test_npm_pack_refuses_install_lifecycle_scripts(self):
         for hook in release.INSTALL_HOOKS:
@@ -34,6 +34,32 @@ class ReleasePackaging(unittest.TestCase):
         self.assertIn("sakura.exe", readme)
         self.assertIn("powershell -ExecutionPolicy Bypass -File .\\install.ps1 -Version 1.2.3", readme)
         self.assertNotIn("install -m", readme)
+
+    def test_archive_carries_the_native_driver_only_for_native_targets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            binary, driver = tmp / "sakura", tmp / "driver"
+            binary.write_bytes(b"binary")
+            driver.mkdir()
+            for name in release.NATIVE_FILES:
+                (driver / name).write_bytes(name.encode())
+            with patch.object(release, "notices", return_value="notices"), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                for target in release.TARGETS:
+                    name = target["target"]
+                    args = argparse.Namespace(target=name, binary=binary, out=tmp / "out", macos_signed=False,
+                                              native_dir=driver if target.get("native") else None)
+                    release.archive(args)
+                    entries = release.read_archive(tmp / "out" / release.archive_name(release.version(), name))
+                    top = f"sakuralang-{release.version()}-{name}"
+                    for member in release.native_members(name):
+                        self.assertEqual(entries[f"{top}/{member}"], Path(member).name.encode())
+                    self.assertEqual(any("lib/sakura/native" in e for e in entries), bool(target.get("native")))
+                    with self.subTest(target=name), contextlib.redirect_stderr(io.StringIO()), \
+                            self.assertRaises(SystemExit):
+                        release.archive(argparse.Namespace(**{**vars(args), "native_dir": None if args.native_dir else driver}))
+        self.assertEqual({t["target"] for t in release.TARGETS if t.get("native")},
+                         {"aarch64-apple-darwin", "x86_64-unknown-linux-gnu"})
 
     def test_dist_tag_follows_the_version_string(self):
         for ver, tag, formula in (("0.1.0", "latest", "sakuralang"), ("1.2.3", "latest", "sakuralang"),
@@ -109,6 +135,7 @@ class ReleasePackaging(unittest.TestCase):
                 top = f"sakuralang-{version}-{target['target']}"
                 members = [(release.binary_name(target["target"]), binary, 0o755), (release.NOTICES, b"notices", 0o644)]
                 members += [(name, (release.ROOT / name).read_bytes(), 0o644) for name in release.LICENSES]
+                members += [(name, name.encode(), 0o644) for name in release.native_members(target["target"])]
                 writer = release.write_zip if target["os"] == "win32" else release.write_tar
                 writer(archives / release.archive_name(version, target["target"]), top, members, 0)
             args = argparse.Namespace(commit="0" * 40, archives=archives, out=tmp / "out", macos_signed=True)
@@ -127,6 +154,8 @@ class ReleasePackaging(unittest.TestCase):
                 with tarfile.open(output / f"{target['npm']}-{version}.tgz") as package:
                     self.assertEqual(package.extractfile("package/bin/" + release.binary_name(target["target"])).read(), binaries[target["target"]])
                     self.assertIn("npm i -g sakuralang", package.extractfile("package/README.md").read().decode())
+                    for name in release.native_members(target["target"]):
+                        self.assertEqual(package.extractfile("package/" + name).read(), name.encode())
             with tarfile.open(output / f"sakuralang-{version}.tgz") as wrapper:
                 self.assertIn("# Sakura Lang", wrapper.extractfile("package/README.md").read().decode())
             record = json.loads((output / "release.json").read_text())
