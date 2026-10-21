@@ -118,3 +118,9 @@ The M4 envelope still needs the owner's quiet window after WS-W1 and WS-W2.
 Its 2× all-frame `fib` acceptance, twins unchanged, is M5 work and gates nothing; the WS-W3 row above reads 1.44× on counts after three fixes.
 
 AI assistance: GPT-6-Astra prepared this ledger; GPT-6.1-Sol added the WS-S10 boundaries; the human contributor owns review.
+
+## `v1.0.0-beta.1` envelope (`0a50bbe1`, 2026-10-21)
+
+Counted, host loaded (advisory, direction only); every miss carried under §17.265.
+Source: `bench/results/2026-10-21-0a50bbe1-envelope.md`.
+

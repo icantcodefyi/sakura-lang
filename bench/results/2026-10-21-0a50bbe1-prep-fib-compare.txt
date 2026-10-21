@@ -1,0 +1,12 @@
+| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| fib | js | bun | 20 | 2.309 | 2.309 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 3.15%, 1.11% → 3.21%, 0.73% |
+| fib | js | bun | 24 | 2.312 | 2.313 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 3.19%, 0.76% → 3.20%, 0.06% |
+| fib | js | bun | 27 | 2.313 | 2.314 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 3.21%, 0.86% → 3.22%, 0.01% |
+| fib | js | bun | 30 | 2.313 | 2.313 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 3.34%, 0.05% → 3.29%, 0.07% |
+| fib | js | node | 20 | 1.393 | 1.395 | +0.1% | ok |
+| fib | js | node | 24 | 1.394 | 1.394 | +0.0% | ok |
+| fib | js | node | 27 | 1.392 | 1.393 | +0.0% | ok |
+| fib | js | node | 30 | 1.389 | 1.393 | +0.3% | ok |
+
+verdict: ok (instructions per call, §17.264)

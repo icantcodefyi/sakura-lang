@@ -64,3 +64,13 @@ and 4a merge in queue order (§17.263 (2)), and the performance push of §17.265
 `3bf2343f`, Node flags `--predictable --min-semi-space-size=16 --max-semi-space-size=16`; the
 `320c9980` files are in `bench/baselines/archive/320c9980/`. Blessed by Claude Opus 5.5 on the
 owner's direct instruction of 2026-10-20.
+
+**`v1.0.0-beta.1` baseline (§17.291 (2)), 2026-10-21.** `bench/baselines/d88970189598.json` and
+`bench/baselines/wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at the
+preparation commit `0a50bbe1d7e7f166a21ff9f97f7e1e82dff98dcd` (Node 26.12.0, the same flags; tree
+clean, every oracle green); the `3bf2343f` files are in `bench/baselines/archive/3bf2343f/`. The
+evidence is `bench/results/2026-10-21-0a50bbe1-*`: the native and compile runs, the envelope
+(advisory under load, `miss` on 237 of 264 gating cells against 241 at `320c9980`, carried under
+§17.265), and the prep check of `fib` and `shapes` against the `3bf2343f` file (Node `ok` on every
+cell; `shapes` flagged only by an advisory Bun cell). Blessed by Claude Opus 5.5 under the owner's
+direct instruction of 2026-10-20. **The `v1.0.0-beta.1` tag goes on `0a50bbe1`.**
