@@ -116,6 +116,8 @@ semantics/form_parse_rejects_limits: unsupported (builtin string_to_bytes)
 semantics/form_parse_rejects_malformed: unsupported (builtin string_to_bytes)
 semantics/form_urlencoded_roundtrip: unsupported (builtin bytes_from_list)
 semantics/fs_read_chunk_rejects_zero: unsupported (builtin string_to_bytes)
+semantics/fs_read_up_to: unsupported (builtin bytes_from_list)
+semantics/fs_read_up_to_rejects_limit: unsupported (builtin string_to_bytes)
 semantics/function_values: ok, 20 allocated, 7 dup, 27 drop, peak 9, live 0/0
 semantics/fused_get_expect: ok, 331 allocated, 5373 dup, 5704 drop, peak 108, live 0/0
 semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, live 0/0

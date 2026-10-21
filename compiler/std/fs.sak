@@ -117,6 +117,29 @@ pub fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>} {
   Bytes.from_list(out)
 }
 
+/// The file at `path`, failing `FsError` with reason `"larger than <limit> bytes"` once it holds
+/// more than `limit` bytes; it reads at most `limit + 1` of them. Text goes through
+/// `String.from_bytes`.
+pub fn read_up_to(path: Path, limit: Int) -> Bytes
+  ! {Fs, Fail<FsError>}
+  requires limit >= 0
+{
+  Fs.with_file(path, Read, fn(file) {
+    var parts: List<Bytes> = []
+    var n = 0
+    var chunk = Fs.read_chunk(file, Int.min(65_535, limit) + 1)
+    while Bytes.len(chunk) > 0 {
+      n = n + Bytes.len(chunk)
+      if n > limit {
+        fail FsError { path: Path.to_string(path), reason: "larger than {limit} bytes" }
+      }
+      parts = List.push(parts, chunk)
+      chunk = Fs.read_chunk(file, Int.min(65_535, limit - n) + 1)
+    }
+    Bytes.concat(parts)
+  })
+}
+
 /// The file from its current position as a source of chunks of up to `chunk` bytes, ending
 /// at the first empty read. A view: pulling it reads the file, so it is valid only inside the
 /// `with_file` body that received the file (`V6003`).

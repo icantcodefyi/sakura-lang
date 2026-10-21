@@ -1,0 +1,27 @@
+// milestone: M3
+// spec: design §17.293 MT-8; §10.2
+
+// `Fs.read_up_to(path, limit)` reads a whole file of at most `limit` bytes and fails `FsError`
+// with reason "larger than <limit> bytes" past it, across chunk boundaries too; a missing file
+// is the handler's own `FsError`. Text goes through `String.from_bytes`.
+import std/fs.{Fs}
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console} {
+  let big = Bytes.from_list(List.map(List.range(0, 70_000), fn(i) { i % 256 }))
+  let files = [
+    (Path.of("a.txt"), String.to_bytes("hello")),
+    (Path.of("empty"), Bytes.from_list([])),
+    (Path.of("big.bin"), big),
+  ]
+  with Fs.memory(files) {
+    let text = try { String.from_bytes(Fs.read_up_to(Path.of("a.txt"), 5)) }
+    Console.print("{text}")
+    Console.print("{try { Fs.read_up_to(Path.of("a.txt"), 4) }}")
+    Console.print("{try { Bytes.len(Fs.read_up_to(Path.of("empty"), 0)) }}")
+    Console.print("{try { Fs.read_up_to(Path.of("a.txt"), 0) }}")
+    Console.print("{try { Fs.read_up_to(Path.of("big.bin"), 70_000) == big }}")
+    Console.print("{try { Fs.read_up_to(Path.of("big.bin"), 69_999) }}")
+    Console.print("{try { Fs.read_up_to(Path.of("missing"), 10) }}")
+  }
+}

@@ -1,0 +1,17 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §17.293 MT-8; §7.2
+
+// `read_up_to` requires a limit of at least 0: `-1` is the caller's defect (`D020`, blaming
+// this call), before any file is opened.
+import std/fs.{Fs}
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  with Fs.memory([(Path.of("a.txt"), String.to_bytes("hi"))]) {
+    let r = try { Fs.read_up_to(Path.of("a.txt"), -1) }
+    Console.print("never {r}")
+  }
+}

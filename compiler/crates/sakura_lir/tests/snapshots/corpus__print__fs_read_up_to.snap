@@ -1,0 +1,238 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::fs::Dir
+layout 1 record std::fs::Entry | Entry 32b (name: word*, is_dir: bool)
+layout 2 record std::fs::File | File 40b (id: i64, path: word*, mode: word*)
+layout 3 error std::fs::FsError | FsError 32b (path: word*, reason: word*)
+layout 4 variant std::fs::Mode | Read 16b () | Write 16b () | Append 16b ()
+layout 5 variant std::list::Builder
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 9 shape |  32b (word*, word*)
+layout 10 shape |  32b (i64, word*)
+layout 11 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::fs_read_up_to, frame 59 slots [%2 word*, %4 word*, %8 word*, %9 word*, %15 word*, %16 word*, %17 word*, %23 word*, %24 word*, %25 word*, %26 word*, %29 word*, %30 word*, %34 bool, %35 word*, %40 bool, %41 word*, %46 bool, %47 word*, %52 bool, %53 word*, %57 bool, %61 bool, %65 bool, %68 word*, %72 word*, %75 word*, %77 word*, %81 word*, %84 word*, %86 word*, %90 word*, %91 word*, %94 word*, %95 word*, %99 word*, %100 word*, %104 word*, %105 word*, %108 word*, %109 word*, %111 word*, %112 word*, %116 word*, %117 word*, %120 word*, %121 word*, %125 word*, %126 word*, %130 word*, %131 word*, %134 word*, %135 word*, %137 word*, %138 word*, %142 word*, %143 word*, %146 word*, %147 word*]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 70000
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 f: ptr = closure main$1#3[]
+    call map#4(%2, %3) -> b2()
+  b2(%4 r: ptr):
+    %5 r: ptr = $bytes_from_list(%4)
+    %6 lit: ptr = const str 0
+    %7 $site: i64 = const 5
+    call of#5(%6, %7) -> b3(%5)
+  b3(%8 r: ptr, %9 r: ptr):
+    %10 lit: ptr = const str 1
+    %11 r: ptr = $string_to_bytes(%10)
+    %12 tup: ptr = alloc tuple#9(word, word)(%8, %11)
+    %13 lit: ptr = const str 2
+    %14 $site: i64 = const 6
+    call of#5(%13, %14) -> b4(%9, %12)
+  b4(%15 r: ptr, %16 r: ptr, %17 tup: ptr):
+    %18 xs: ptr = alloc list()
+    %19 r: ptr = $bytes_from_list(%18)
+    %20 tup: ptr = alloc tuple#9(word, word)(%15, %19)
+    %21 lit: ptr = const str 3
+    %22 $site: i64 = const 7
+    call of#5(%21, %22) -> b5(%16, %17, %20)
+  b5(%23 r: ptr, %24 r: ptr, %25 tup: ptr, %26 tup: ptr):
+    dup %24
+    %27 tup: ptr = alloc tuple#9(word, word)(%23, %24)
+    %28 xs: ptr = alloc list(%25, %26, %27)
+    call memory#8(%28) -> b6(%24)
+  b6(%29 r: ptr, %30 r: ptr):
+    handle_push %29
+    dup %30
+    try_push -> b39(err, %30)
+    %140 lit: ptr = const str 0
+    %141 $site: i64 = const 20
+    call of#5(%140, %141) -> b40(%30)
+  b7(%31 v: ptr, %32 r: ptr) [handle]:
+    %33 s: ptr = show %31
+    drop %31
+    perform std::console::Console.print(%33) -> b8(%32)
+  b8(%34 r: unit, %35 r: ptr) [handle]:
+    %36 box: word = box %34
+    drop %36
+    dup %35
+    try_push -> b36(err, %35)
+    %128 lit: ptr = const str 0
+    %129 $site: i64 = const 18
+    call of#5(%128, %129) -> b37(%35)
+  b9(%37 v: ptr, %38 r: ptr) [handle]:
+    %39 s: ptr = show %37
+    drop %37
+    perform std::console::Console.print(%39) -> b10(%38)
+  b10(%40 r: unit, %41 r: ptr) [handle]:
+    %42 box: word = box %40
+    drop %42
+    dup %41
+    try_push -> b33(err, %41)
+    %114 lit: ptr = const str 2
+    %115 $site: i64 = const 16
+    call of#5(%114, %115) -> b34(%41)
+  b11(%43 v: ptr, %44 r: ptr) [handle]:
+    %45 s: ptr = show %43
+    drop %43
+    perform std::console::Console.print(%45) -> b12(%44)
+  b12(%46 r: unit, %47 r: ptr) [handle]:
+    %48 box: word = box %46
+    drop %48
+    dup %47
+    try_push -> b30(err, %47)
+    %102 lit: ptr = const str 0
+    %103 $site: i64 = const 14
+    call of#5(%102, %103) -> b31(%47)
+  b13(%49 v: ptr, %50 r: ptr) [handle]:
+    %51 s: ptr = show %49
+    drop %49
+    perform std::console::Console.print(%51) -> b14(%50)
+  b14(%52 r: unit, %53 r: ptr) [handle]:
+    %54 box: word = box %52
+    drop %54
+    try_push -> b27(err, )
+    %88 lit: ptr = const str 3
+    %89 $site: i64 = const 12
+    call of#5(%88, %89) -> b28(%53)
+  b15(%55 v: ptr) [handle]:
+    %56 s: ptr = show %55
+    drop %55
+    perform std::console::Console.print(%56) -> b16()
+  b16(%57 r: unit) [handle]:
+    %58 box: word = box %57
+    drop %58
+    try_push -> b24(err, )
+    %79 lit: ptr = const str 3
+    %80 $site: i64 = const 10
+    call of#5(%79, %80) -> b25()
+  b17(%59 v: ptr) [handle]:
+    %60 s: ptr = show %59
+    drop %59
+    perform std::console::Console.print(%60) -> b18()
+  b18(%61 r: unit) [handle]:
+    %62 box: word = box %61
+    drop %62
+    try_push -> b21(err, )
+    %70 lit: ptr = const str 4
+    %71 $site: i64 = const 8
+    call of#5(%70, %71) -> b22()
+  b19(%63 v: ptr) [handle]:
+    %64 s: ptr = show %63
+    drop %63
+    perform std::console::Console.print(%64) -> b20()
+  b20(%65 r: unit) [handle]:
+    %66 box: word = box %65
+    %67 unbox: unit = unbox %66
+    drop %66
+    handle_pop
+    ret %67
+  b21(%68 e: word) [handle]:
+    %69 err: ptr = alloc std::result::Result.Err(%68)
+    jump b19(%69)
+  b22(%72 r: ptr) [handle, try]:
+    %73 lit: i64 = const 10
+    %74 $site: i64 = const 9
+    call read_up_to#9(%72, %73, %74) -> b23()
+  b23(%75 r: ptr) [handle, try]:
+    %76 ok: ptr = alloc std::result::Result.Ok(%75)
+    try_pop
+    jump b19(%76)
+  b24(%77 e: word) [handle]:
+    %78 err: ptr = alloc std::result::Result.Err(%77)
+    jump b17(%78)
+  b25(%81 r: ptr) [handle, try]:
+    %82 lit: i64 = const 69999
+    %83 $site: i64 = const 11
+    call read_up_to#9(%81, %82, %83) -> b26()
+  b26(%84 r: ptr) [handle, try]:
+    %85 ok: ptr = alloc std::result::Result.Ok(%84)
+    try_pop
+    jump b17(%85)
+  b27(%86 e: word) [handle]:
+    %87 err: ptr = alloc std::result::Result.Err(%86)
+    jump b15(%87)
+  b28(%90 r: ptr, %91 r: ptr) [handle, try]:
+    %92 lit: i64 = const 70000
+    %93 $site: i64 = const 13
+    call read_up_to#9(%90, %92, %93) -> b29(%91)
+  b29(%94 r: ptr, %95 r: ptr) [handle, try]:
+    %96 t: bool = eq.any %94, %95
+    drop %94
+    drop %95
+    %97 box: word = box %96
+    %98 ok: ptr = alloc std::result::Result.Ok(%97)
+    try_pop
+    jump b15(%98)
+  b30(%99 e: word, %100 r: ptr) [handle]:
+    %101 err: ptr = alloc std::result::Result.Err(%99)
+    jump b13(%101, %100)
+  b31(%104 r: ptr, %105 r: ptr) [handle, try]:
+    %106 lit: i64 = const 0
+    %107 $site: i64 = const 15
+    call read_up_to#9(%104, %106, %107) -> b32(%105)
+  b32(%108 r: ptr, %109 r: ptr) [handle, try]:
+    %110 ok: ptr = alloc std::result::Result.Ok(%108)
+    try_pop
+    jump b13(%110, %109)
+  b33(%111 e: word, %112 r: ptr) [handle]:
+    %113 err: ptr = alloc std::result::Result.Err(%111)
+    jump b11(%113, %112)
+  b34(%116 r: ptr, %117 r: ptr) [handle, try]:
+    %118 lit: i64 = const 0
+    %119 $site: i64 = const 17
+    call read_up_to#9(%116, %118, %119) -> b35(%117)
+  b35(%120 r: ptr, %121 r: ptr) [handle, try]:
+    %122 r: i64 = $bytes_len(%120)
+    %123 box: word = box %122
+    %124 ok: ptr = alloc std::result::Result.Ok(%123)
+    try_pop
+    jump b11(%124, %121)
+  b36(%125 e: word, %126 r: ptr) [handle]:
+    %127 err: ptr = alloc std::result::Result.Err(%125)
+    jump b9(%127, %126)
+  b37(%130 r: ptr, %131 r: ptr) [handle, try]:
+    %132 lit: i64 = const 4
+    %133 $site: i64 = const 19
+    call read_up_to#9(%130, %132, %133) -> b38(%131)
+  b38(%134 r: ptr, %135 r: ptr) [handle, try]:
+    %136 ok: ptr = alloc std::result::Result.Ok(%134)
+    try_pop
+    jump b9(%136, %135)
+  b39(%137 e: word, %138 r: ptr) [handle]:
+    %139 err: ptr = alloc std::result::Result.Err(%137)
+    jump b7(%139, %138)
+  b40(%142 r: ptr, %143 r: ptr) [handle, try]:
+    %144 lit: i64 = const 5
+    %145 $site: i64 = const 21
+    call read_up_to#9(%142, %144, %145) -> b41(%143)
+  b41(%146 r: ptr, %147 r: ptr) [handle, try]:
+    %148 r: ptr = $string_from_bytes(%146)
+    %149 ok: ptr = alloc std::result::Result.Ok(%148)
+    try_pop
+    jump b7(%149, %147)
+
+fn $entry#1 top -> unit ; main::fs_read_up_to, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::fs_read_up_to, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 i: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 256
+    %4 t: i64 = intrem %2, %3
+    %5 box: word = box %4
+    ret %5

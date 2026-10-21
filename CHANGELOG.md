@@ -15,6 +15,12 @@ retains earlier implementation history.
 - `Gen.flat_map(g, f) -> Gen<B>` in `std/gen` (design §17.294 WP-14): samples `g`, then
   `f(a)`, at the same size, for a value that depends on another; `pair`, `map` and a direct
   `Gen { sample: … }` stay. Fixture `compiler/tests/semantics/gen_flat_map.sak`.
+- `Fs.read_up_to(path, limit) -> Bytes ! {Fs, Fail<FsError>}` in `std/fs` (design §17.293
+  MT-8), a bounded whole-file read over `with_file` and `read_chunk` on every backend: past
+  `limit` bytes it fails `FsError` with reason `"larger than <limit> bytes"`, having read at
+  most `limit + 1`; a negative `limit` is `D020`. Text goes through `String.from_bytes`;
+  `Fs.read` and `read_text` keep their shape. Fixtures
+  `compiler/tests/semantics/fs_read_up_to.sak` and `fs_read_up_to_rejects_limit.sak`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

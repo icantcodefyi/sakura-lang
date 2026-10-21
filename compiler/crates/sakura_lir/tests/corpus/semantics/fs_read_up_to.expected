@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+Ok(Ok("hello"))
+Err(FsError { path: "a.txt", reason: "larger than 4 bytes" })
+Ok(0)
+Err(FsError { path: "a.txt", reason: "larger than 0 bytes" })
+Ok(true)
+Err(FsError { path: "big.bin", reason: "larger than 69999 bytes" })
+Err(FsError { path: "missing", reason: "not found" })

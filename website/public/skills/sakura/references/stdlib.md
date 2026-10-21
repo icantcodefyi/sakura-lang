@@ -460,6 +460,7 @@ fn rooted(dir: Dir) -> Handler<Fs>
 fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>}
 fn memory(files: List<(Path, Bytes)>) -> Handler<Fs>
 fn read_all(file: File) -> Bytes ! {Fs, Fail<FsError>}
+fn read_up_to(path: Path, limit: Int) -> Bytes ! {Fs, Fail<FsError>} requires limit >= 0
 fn file_source(file: File, chunk: Int) -> Source<Bytes, {Fs, Fail<FsError>}> requires chunk > 0
 fn file_sink(file: File) -> Sink<Bytes, {Fs, Fail<FsError>}>
 ```

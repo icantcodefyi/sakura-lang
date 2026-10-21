@@ -116,6 +116,8 @@ semantics/form_parse_rejects_limits: 37 funcs, 441 blocks, 96 dup, 222 drop, val
 semantics/form_parse_rejects_malformed: 35 funcs, 429 blocks, 92 dup, 193 drop, valid
 semantics/form_urlencoded_roundtrip: 31 funcs, 212 blocks, 39 dup, 73 drop, valid
 semantics/fs_read_chunk_rejects_zero: 32 funcs, 131 blocks, 33 dup, 55 drop, valid
+semantics/fs_read_up_to: 36 funcs, 191 blocks, 44 dup, 77 drop, valid
+semantics/fs_read_up_to_rejects_limit: 33 funcs, 144 blocks, 36 dup, 61 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 13 drop, valid
 semantics/fused_get_expect: 7 funcs, 35 blocks, 7 dup, 20 drop, valid
 semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid

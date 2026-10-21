@@ -231,6 +231,16 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
     ),
     (
+        "semantics/fs_read_up_to",
+        None,
+        "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
+    ),
+    (
+        "semantics/fs_read_up_to_rejects_limit",
+        Some(Host::Wasi),
+        "`Fs.memory`'s root is the Node host's `fs_memory_root` import, which a WASI command lacks",
+    ),
+    (
         "semantics/http_body_source_scripted",
         Some(Host::Wasi),
         "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
