@@ -691,6 +691,7 @@ fn serve_host_answers_on_wasm_as_on_js() {
 
 /// A served program for `websocket_accept_on_wasm_as_on_js`: `/echo` and `/room` upgrade through
 /// a `handshake` then `accept`, answering 426, 403 and 503 themselves; `PORT` is replaced.
+#[cfg(unix)]
 const WS_SERVER: &str = r#"import std/request.{Request}
 import std/response.{Response}
 import std/router.{Router}
