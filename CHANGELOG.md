@@ -67,6 +67,18 @@ retains earlier implementation history.
   `…`", and topics are `D090`, until phase 11b. `Worker.spawn` of a function not declared
   `@worker` is `V1010`. No ABI change.
 
+### Changed
+
+- `sakura verify --json` (preview) reports a different obligation set since 0.1.0 for an
+  unchanged program (design §17.301 (4) (iii)): a `match` on a refined type's `validate`, or a
+  join of a variant's constructors, is decided where it was `unsupported` (Fixed in
+  1.0.0-beta.1, §17.294 WP-8), and an effect operation's `requires` is a new obligation at
+  each perform site (Fixed in 1.0.0-beta.1, "checked at every perform site"), for example
+  `main requires Cli.exit`, reported `unsupported` when the encoder does not model its
+  arguments. The obligation set is not a stable contract (`verify` is a preview;
+  `verify_summary`'s `kind` and `schema_version` did not move), but a gate that pins the count
+  of obligations or requires zero `unsupported` can change result with no source change.
+
 ### Fixed
 
 - `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
