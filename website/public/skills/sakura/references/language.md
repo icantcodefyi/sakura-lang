@@ -106,21 +106,22 @@ Primitives `Unit Bool Int(i64) Float(f64) String(UTF-8) Bytes Never`. Data `List
 List.map filter filter_map fold find all any len get push set concat sort sort_by zip enumerate slice reverse join sum first last contains unique flat_map range
 Map.empty of get insert remove contains update entries keys values len      Set.empty of insert contains len to_list
 String.len chars graphemes split trim starts_with ends_with contains replace to_lower to_upper parse_int parse_float slice repeat pad_left
-Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or raise is_ok is_err
+Option.map unwrap_or or_fail expect is_some      Result.map map_err unwrap_or raise is_ok is_err ok err
 Int.to_float to_string abs min max clamp pow checked_add    Float.round to_int_checked sqrt is_nan format
 Json.encode decode parse get get_string      Instant.from_unix_millis to_unix_millis parse add diff format_iso   Duration.millis seconds minutes to_millis
 Console.print read_line eprint   Clock.now monotonic sleep   Random.int float bytes uuid   Env.get secret   Log.event
-Fs.root read read_text write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate parse resolve to_string to_url with_path with_search host path query_param encode_component   SearchParams.parse get get_all set append to_string   UrlPart.from to_string
+Fs.root read read_text read_up_to write list exists with_file read_chunk write_chunk read_all rooted memory   Dir.subdir   Path.of join to_string validate   Url.from validate parse resolve to_string to_url with_path with_search host path query_param encode_component   SearchParams.parse get get_all set append to_string   UrlPart.from to_string
 Headers.of get get_all get_set_cookie has append set remove entries to_list   Blob.of size slice text   Form.encode_urlencoded parse_urlencoded encode_multipart parse_multipart boundary
-Http.get post_json send stream read_chunk bearer scoped scripted recording   Request.of post post_json with_payload with_header with_headers json param header   Response.status ok_json html json text bytes
+Http.get post_json send stream read_chunk bearer scoped scripted sequence recording   Request.of post post_json with_payload with_header with_headers json param header   Response.status ok_json html json text bytes
 WebSocket.connect send receive close messages options protocol accept handshake upgrade subscribe unsubscribe publish host scripted upgrade_request (Received = Data(Text | Binary) | Closed(CloseInfo); SocketReason = Connect | MessageTooLarge | NotOpen | Failed | Accept)
+channel.with_channel send try_send recv close   (Sender/Receiver stay inside the callback; SendError = Full | Closed)
 Worker.spawn send recv topic publish subscribe inline host   Grants.none of (experimental; entry declared @worker; Received = Message | Finished | Failed(WorkerError); live workers JS-only)
 Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
 Llm.request generate generate_text stream step scripted anthropic recording replay (LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded)
 Prompt.of text   Model.of default   Untrusted.of trust check len   Secret.of expose map
 Tool.from of call name   Agent.run(Agent { request, tools, max_steps, stop })   Router.new get post put delete route handle   Serve.listen scripted   Address.of
 Html.text untrusted from raw(markup, @trust("…")) concat to_string   Decimal.parse from_int add sub neg mul div_checked round to_string
-expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair for_all
+expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot   gen.int bool one_of list string map pair flat_map for_all
 ```
 Type-directed results are named by annotation: `let rows: List<User> = Sql.query(q)`, `let args: Args = Cli.parse(Cli.args())`, `let req: Request<Answer> = Llm.request(system, Prompt.text("..."))`.
 
