@@ -370,11 +370,23 @@ native, and `tests/wasm.rs` refuses a user `@external(js)` on both. `Serve.host(
 `native_serve_answers_as_wasm_does` reads WASM's answers and records. `Serve` left the driver's
 unavailable list, which now holds `Llm` and `WebSocket`.
 
+**N1 progress (2026-10-22): property tests and the exclusion table landed.** `prop_*` run
+natively: `runtime/rt/src/native/prop.rs` ports the JS runtime's `propertySteps`, `arbitrary`,
+`shrinks` and `caseResult` (the WASM host drives the JS ones through its imports), builds inputs
+from the parameters' schemas and the image's type descriptors, runs a refinement's `where` as a
+nested call, shows values with the guest's `Show`, and stores and replays contract regressions
+through the JSON codec (the host reads `tests/regressions/<fn>.json`, `Host::test_regression`).
+`parity.rs`'s `native_properties_shrink_and_report_as_js_does` holds 19 properties (every
+generated kind, a defect, two recorded failures, a give-up and a contract test) to JS's test
+records, regression file and replay at four seeds. The **native exclusion table** is ABI §1b's
+(design §17.170 (2), §17.308 (2a)): program, mode and reason per row; `parity.rs` reads it in
+place of `KNOWN_NATIVE` and `KNOWN_NATIVE_TESTS`, and a row whose program agrees, or that names
+no program, fails. Its rows are the five `Llm.anthropic` test programs; run mode has none.
+
 **Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
-natively; §17.308 (3) picks the port with its two protocol additions), property tests natively
-(`prop_*` are still `rt_code_unsupported`; `KNOWN_NATIVE_TESTS` lists them) and the exclusion
-table; Http is ratified as built (§17.308 (3)). The WASI command does not call the codec yet (no Wasmtime
-`json_validate` cell).
+natively; §17.308 (3) picks the port with its two protocol additions; its landing removes the
+table's five rows); Http is ratified as built (§17.308 (3)). The WASI command does not call the
+codec yet (no Wasmtime `json_validate` cell).
 
 ### Round 60 (§17.308, 2026-10-21): the lanes that finish M5
 
