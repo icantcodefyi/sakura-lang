@@ -215,3 +215,23 @@ and BRIEF.md.
 - Triage (2026-10-21, Fable, design §17.293 PQ-11): `init`'s files are by design (§17.292's
   small item); printing the derived package name is cosmetic, beta.N; the Node warning is
   MT-11f of the maintenance-triage log, a one-line `--disable-warning` in lane C.
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- Item 3 (redirects followed) was the one required change, and it is a behaviour change
+  that compiles: without the list, test 25b's failure (`CarrierUnreachable { reason:
+  "rates.example:443 is outside Http.scoped" }`) is the only signal. A library with no
+  redirect test would silently start following redirects. The list told me exactly what to do,
+  but it says "choose `Manual`" without naming `std/request.{Redirect}` or the record-update
+  form, since every builder sets `Follow` and none takes a `redirect` argument:
+  `Request { ..Request.of(Method.Get, url), redirect: Redirect.Manual }`. One example line
+  in item 3 would save the `sakura doc` lookup.
+- The sample runner's malformed-JSON line now reads `rate document: malformed JSON: malformed
+  JSON`: the runner prefixes "malformed JSON" and the decoder's message is now the same words
+  (Fixed: "`Json.parse` and `Json.decode` fail any syntax error with … `malformed JSON`").
+  No test pins it, so no hunk was needed; it is output drift that a Fixed entry caused and the
+  migration list cannot mention. Left as is.
+- The WASM virtual-clock fix works: `body_clock()` is `Clock.virtual()` again and all 31 tests
+  pass on `--target wasm`. `Cli.exit` codes are right on WASM too (2, 4, 64).
+- `W1003` found an unused import (`Quote`) that I missed when reading for item 14; the warning's
+  help says exactly what to remove.

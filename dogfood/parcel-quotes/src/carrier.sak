@@ -5,7 +5,7 @@
 import std/encoding.{Encoding, EncodingError, EncodingReason, Errors}
 import std/http.{Body, Http}
 import std/json.{DecodeError, Json}
-import std/request.{Method, Request}
+import std/request.{Method, Redirect, Request}
 import std/response.{HttpError}
 import std/task.{Timeout, timeout}
 import std/url.{Url}
@@ -45,9 +45,10 @@ pub fn max_response_bytes() -> Int { 65_536 }
 pub fn fetch_timeout() -> Duration { Duration.seconds(5) }
 
 /// Fetches the raw rate document bytes, bounded in size and time. Any
-/// non-200 status fails before the body is read.
+/// non-200 status fails before the body is read; a 3xx is returned, not
+/// followed (`Redirect.Manual`), so a redirect is `CarrierStatus` too.
 pub fn fetch_rates() -> Bytes ! {Clock, Http, Task, Fail<FetchError>} {
-  let req = Request.of(Method.Get, rates_url())
+  let req = Request { ..Request.of(Method.Get, rates_url()), redirect: Redirect.Manual }
   timeout(fetch_timeout(), fn() { stream_capped(req, max_response_bytes()) })
 }
 

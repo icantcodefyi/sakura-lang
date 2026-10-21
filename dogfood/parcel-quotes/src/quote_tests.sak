@@ -20,7 +20,6 @@ import parcel_quotes/policy.{
   InvalidWeight,
   Outcome,
   ParcelInput,
-  Quote,
   RawService,
   RawSnapshot,
   RawZone,
@@ -66,13 +65,11 @@ fn parcel(weight_g: Int, zone: String, service: Option<String>) -> Untrusted<Par
   Untrusted.of(ParcelInput { weight_g, zone, service })
 }
 
-/// The clock for tests whose fetch reads a response body. It should be
-/// `Clock.virtual()`, but on 0.1.0 `--target wasm` a `timeout` around
-/// `Http.stream` + `Http.read_chunk` fires at once under the virtual clock
-/// (JS does not), so these tests use the host clock: the 5 s limit is never
-/// approached by an in-memory fetch. See FRICTION.md. The timeout case
-/// itself (test 24) runs in virtual time.
-fn body_clock() -> Handler<Clock> { Clock.host() }
+/// The clock for tests whose fetch reads a response body: virtual time. On
+/// 0.1.0 `--target wasm` a `timeout` around `Http.stream` + `Http.read_chunk`
+/// fired at once under it, so this was `Clock.host()` until 1.0.0-beta.1 fixed
+/// the scheduler (FRICTION.md).
+fn body_clock() -> Handler<Clock> { Clock.virtual() }
 
 fn ok_body(text: String) -> Handler<Http> {
   Http.scripted([(Matcher.Any, Response.status(200, text))])
@@ -371,8 +368,9 @@ test "23 a non-200 response fails explicitly and is not parsed" {
   }
 }
 
-/// Serves `bytes` as the body of whatever the outer handler answers. In 0.1.0 a
-/// scripted `Response.body` is a `String`, so invalid UTF-8 cannot be scripted.
+/// Serves `bytes` as the body of whatever the outer handler answers. Written for
+/// 0.1.0, where a scripted `Response.body` was a `String`, so invalid UTF-8 could not
+/// be scripted; since 1.0.0-beta.1 it is a `Payload` and could carry `Bytes(b)`.
 fn raw_body(bytes: Bytes) -> Handler<Http, {Http}> {
   handler Http {
     var sent = false
@@ -428,8 +426,8 @@ test "25 the narrowed carrier handler refuses a different host" {
 }
 
 test "25b a carrier redirect is an explicit failure, never followed" {
-  // In 0.1.0 `std/http` returns a 3xx to the caller (the website documents
-  // redirect following on main only), so the library sees a non-200 status.
+  // `std/http` follows a 3xx by default since 1.0.0-beta.1; `fetch_rates` asks
+  // for `Redirect.Manual`, so the library sees the 302 as a non-200 status.
   let moved = Response {
     ..Response.status(302, ""),
     headers: [("location", "https://rates.example/rates")],
