@@ -1,0 +1,189 @@
+---
+title: Build and deploy a server
+description: Scaffold an HTTP service, test its routes without a socket, run it under its manifest's grants, then ship it in a container.
+---
+
+This guide goes from an empty directory to a running HTTP service. It assumes `sakura` and
+Node 26 are installed ([Install](/docs/install)) and that you have read the
+[Quickstart](/docs/quickstart). Every command and output below was run with the published
+`0.1.0` and with `main`.
+
+## Scaffold the service
+
+```bash
+sakura new api greeter
+cd greeter
+```
+
+The `api` template writes a manifest that grants one address, a `src/main.sak` with a
+`/health` route and a test, and the `AGENTS.md` and `CLAUDE.md` files every template writes:
+
+```toml title="greeter/sakura.toml"
+[package]
+name = "greeter"
+version = "0.1.0"
+edition = "2026"
+
+# Root authority `main` gets; everything absent is denied (design §6.2).
+[permissions]
+net = ["127.0.0.1:8080"]
+```
+
+`net` is the ceiling on the network: `Serve` may listen, and `Http` may connect, only on the
+`host:port` pairs it lists. See [sakura.toml](/docs/manifest).
+
+## Write the routes
+
+Replace `src/main.sak` with a second route that reads a JSON body:
+
+```sakura title="greeter/src/main.sak"
+import std/request.{BadRequest, Get, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/url.{Url}
+
+type Greeting = { name: String where String.len(it) > 0 && String.len(it) <= 40 }
+
+/// `POST /greet` with a JSON body of at most 1 KiB and a name of 1 to 40 characters.
+fn greet(req: Request) -> Response {
+  try {
+    let input: Greeting = Request.json(req, 1024)
+    Response.status(200, "Hello, {input.name}!")
+  } catch {
+    BadRequest { .. } => Response.status(400, "expected a name of 1 to 40 characters"),
+  }
+}
+
+/// The routes of this service; `{}`: its handlers perform no effects.
+pub fn routes() -> Router<{}> {
+  Router.new().get("/health", fn(_req) { Response.status(200, "ok") }).post("/greet", greet)
+}
+
+pub fn main() -> Unit ! {Serve, Fail<ServeError>} {
+  Serve.listen(routes(), Address.of("127.0.0.1", 8080))
+}
+
+test "health answers 200" {
+  expect_eq(Router.handle(routes(), Request.of(Get, Url.from("/health"))).status, Status.from(200))
+}
+
+test "greet checks its body" {
+  let ok = Router.handle(routes(), Request.post("/greet", Json.encode(Greeting { name: "Mina" })))
+  expect_eq(ok.status, Status.from(200))
+  let bad = Router.handle(routes(), Request.post("/greet", "not json"))
+  expect_eq(bad.status, Status.from(400))
+}
+```
+
+- `Router<{}>` says the handlers perform no effects. A route that read a file or called
+  another service would show it in that row, and `main` would have to declare it.
+- `Request.json(req, 1024)` reads at most 1,024 bytes, decodes the JSON and checks the
+  refinement on `name`. Malformed JSON, a missing field, an empty or a long name and an
+  oversized body are all `BadRequest`, answered here with a 400.
+- `main` declares `Serve` and `Fail<ServeError>`: it listens, and it can fail to start.
+- The router answers an unknown path with 404 and a wrong method with 405.
+
+## Test without a socket
+
+```bash
+sakura test
+```
+
+```text
+test health answers 200 ... ok
+test greet checks its body ... ok
+
+2 passed, 0 failed, 0 skipped (seed 0)
+```
+
+The tests call the router as a function. No port opens and no permission is needed; this is
+how an agent checks a route change. The [router recipe](/docs/cookbook/router_endpoint) adds
+path parameters and more rejection cases.
+
+## Run it
+
+```bash
+sakura run
+```
+
+`sakura run` builds the program to JavaScript and runs it with Node under the manifest's
+grants. From a second terminal:
+
+```bash
+curl localhost:8080/health
+curl -X POST localhost:8080/greet -d '{"name": "Mina"}'
+curl -X POST localhost:8080/greet -d '{"name": ""}'
+```
+
+```text
+ok
+Hello, Mina!
+expected a name of 1 to 40 characters
+```
+
+The host runs each request in its own task. A request body over 1 MiB is answered 413 before
+any route sees it, and a failure or defect inside a handler is answered 500 while the server
+keeps running. Stop it with Ctrl-C.
+
+The grant is checked before anything listens. With an empty `[permissions]` table, `sakura run`
+refuses to start and exits with 75:
+
+```text
+error: permission denied: `main` declares `Serve`, but sakura.toml grants no `net` permission
+```
+
+and an address that is not in `net` fails `main` with exit code 1:
+
+```text
+error: main failed with ServeError { reason: "127.0.0.1:8080 is not in the manifest's net list" }
+```
+
+## Deploy it in a container
+
+In a container the service must listen on every interface, so change the address in both
+places, the code and the grant:
+
+```diff title="sakura.toml and src/main.sak"
+-net = ["127.0.0.1:8080"]
++net = ["0.0.0.0:8080"]
+-  Serve.listen(routes(), Address.of("127.0.0.1", 8080))
++  Serve.listen(routes(), Address.of("0.0.0.0", 8080))
+```
+
+A `Dockerfile` beside `sakura.toml`. It pins the compiler, runs the tests during the image
+build, and starts the service with `sakura run`:
+
+```dockerfile title="greeter/Dockerfile"
+FROM node:26-slim
+RUN npm install --global sakuralang@0.1.0
+WORKDIR /app
+COPY sakura.toml sakura.lock ./
+COPY src ./src
+RUN sakura test && sakura build
+EXPOSE 8080
+CMD ["sakura", "run"]
+```
+
+```bash
+docker build -t greeter .
+docker run --rm --init -p 8080:8080 greeter
+```
+
+Start it with `sakura run`, not `node` on the built files: `sakura run` passes the manifest's
+grants to the host handlers as `SAKURA_PERMISSIONS`, and the emitted JavaScript run on its own
+does not enforce that ceiling ([Capabilities](/docs/tour/capabilities)).
+
+`--init` puts an init process in front of the server so the container's stop signal ends it.
+Without one, `docker stop` waits out its 10-second timeout and then kills the process. On a
+hosting platform, look for its equivalent setting, or run the image under an init such as
+`tini`.
+
+Any platform that runs a container image can run this one: give it the image and route its
+traffic to port 8080. The project has no platform-specific integration and has not tested one.
+
+## Next
+
+- [Capabilities](/docs/tour/capabilities): what the manifest grants and how the hosts enforce it.
+- [WebSocket server](/docs/cookbook/websocket_server): upgrade a `Serve` connection.
+- [Testing](/docs/tour/testing): deterministic handlers, properties and snapshots.
