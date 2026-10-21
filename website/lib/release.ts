@@ -16,7 +16,7 @@ export type Version = (typeof LINE)[number];
  * once the tag is published (docs/release.md); the hero, install rows, release strip, footer
  * and llms.txt follow.
  */
-export const RELEASE: Version = "1.0.0-beta.2";
+export const RELEASE: Version = "1.0.0-beta.3";
 
 /** Short display name: `alpha.1` for a prerelease, `v0.1.0` otherwise. */
 export const releaseLabel = (v: Version = RELEASE) =>

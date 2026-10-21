@@ -5,7 +5,7 @@
 Sakura Lang has a published `0.1.0` preview and a source-buildable compiler,
 but no stable language/API contract.
 
-The latest release is **`v1.0.0-beta.2`** (after `v1.0.0-beta.1`), a beta of 1.0 and not for production (design
+The latest release is **`v1.0.0-beta.3`** (after `v1.0.0-beta.2` and `v1.0.0-beta.1`), a beta of 1.0 and not for production (design
 §17.291 and its 2026-10-21 addendum). Its promise is deliberately loose: **it may have bugs
 and it may change before 1.0.0**, including the contracts the inventory below lists; every
 breaking change between the beta and 1.0.0 is listed in the [CHANGELOG](CHANGELOG.md) with a

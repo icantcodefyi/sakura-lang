@@ -1,21 +1,51 @@
 ---
 title: Changes since 0.1.0
-description: What main, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
+description: What main, 1.0.0-beta.3, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
 ---
 
 `v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
 published-install check passed on every platform ([Install](/docs/install#platform-claims)).
-`v1.0.0-beta.2` is published (2026-10-21), a beta of 1.0 that is not for production: it may
+`v1.0.0-beta.3` is published (2026-10-21), a beta of 1.0 that is not for production: it may
 have bugs and may change before 1.0.0, and the [stability guarantees](/docs/stability) of RFC 0001
-are intended from the betas. `v1.0.0-beta.1` (2026-10-21) came before it. These docs track
-**main**, which may hold later changes that no package has yet; the [changelog](/changelog) lists
-them under Unreleased. [1.0.0-beta.2, since 1.0.0-beta.1](#100-beta2-since-100-beta1) and
+are intended from the betas. `v1.0.0-beta.2` and `v1.0.0-beta.1` (both 2026-10-21) came before
+it. These docs track **main**, which may hold later changes that no package has yet; the
+[changelog](/changelog) lists them under Unreleased.
+[1.0.0-beta.3, since 1.0.0-beta.2](#100-beta3-since-100-beta2),
+[1.0.0-beta.2, since 1.0.0-beta.1](#100-beta2-since-100-beta1) and
 [1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the betas and not in the `0.1.0`
-packages: the [1.0.0-beta.2](/changelog#v1.0.0-beta.2) and
-[1.0.0-beta.1](/changelog#v1.0.0-beta.1) sections of the changelog open with their migration
+packages: the [1.0.0-beta.3](/changelog#v1.0.0-beta.3), [1.0.0-beta.2](/changelog#v1.0.0-beta.2)
+and [1.0.0-beta.1](/changelog#v1.0.0-beta.1) sections of the changelog open with their migration
 lists. No release has a compatibility promise; see [Stability](/docs/stability).
 The [changelog](/changelog) is the complete list; this page covers what a program or an agent
 notices. Upgrading from `0.1.0-alpha.1`? Read [0.1.0, from alpha.1](#010-from-alpha1) too.
+
+## 1.0.0-beta.3, since 1.0.0-beta.2
+
+A program that works on `1.0.0-beta.2` needs no source change; the
+[migration list](/changelog#v1.0.0-beta.3) names what a host or a tool notices.
+
+### Added in 1.0.0-beta.3
+
+- **Library entries.** A `pub fn` of the package's root module, other than `main` and a
+  `@worker` function, that is not generic, whose parameters and result have runtime schemas
+  and whose row holds only `Fail` of `error` types and std effects, is an entry a Node program
+  can call: `callEntry(host, name, args)` in `sakura_wasm_host.js` on WebAssembly, and the
+  build's new `__entries__.js` on JavaScript. Each call answers `ok`, `fail`, `defect`, `exit`
+  or `cancelled`. A `pub fn` that fails a clause is silently not an entry. See
+  [Embedding](/docs/tour/embedding).
+
+### Fixed and changed in 1.0.0-beta.3
+
+- **WASM runtime ABI 1.16.0.** A host built for `1.0.0-beta.2`'s ABI 1.15 refuses a module
+  from beta.3 with `V8003`; a 1.16 host still loads older modules. Ship the host and the module
+  from the same release.
+- `sakura verify` no longer builds verification conditions that grow exponentially with the
+  inlining depth (the `std/crypto` AES-CBC vectors went from 0.85 s to 4 ms before any solver
+  ran). A record's `path_conditions` name a compound guard `|<name>.path|` instead of
+  expanding it; proof statuses do not change, and beta.2 proof-cache entries are solved again
+  once.
+- `sakura` runs its pipeline on a 256 MiB thread, so a deeply nested program no longer
+  overflows the host's main-thread stack (1 MiB on Windows). `MAX_DEPTH` stays 128.
 
 ## 1.0.0-beta.2, since 1.0.0-beta.1
 
@@ -43,8 +73,8 @@ A program that works on `1.0.0-beta.1` may need a change: the
 - [`V7001`](/docs/errors/V7001): `sakura check` reports a literal `expect_snapshot` name the
   test runner would refuse. [`V0016`](/docs/errors/V0016): a binding named `error` is reported
   where it is declared.
-- **WASM runtime ABI 1.14.0.** A host built for `1.0.0-beta.1`'s ABI 1.13 refuses a module
-  from main with `V8003`. The Node host in the same compiler always matches.
+- **WASM runtime ABI 1.15.0.** A host built for `1.0.0-beta.1`'s ABI 1.13 refuses a module
+  from beta.2 with `V8003`. The Node host in the same compiler always matches.
 
 ### Fixed and changed in 1.0.0-beta.2
 

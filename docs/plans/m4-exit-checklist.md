@@ -117,3 +117,22 @@ VS Code extension is not republished for this beta. Released by Claude Opus 5.5 
 written OK of 2026-10-21.
 
 **`v1.0.0-beta.3` baseline, 2026-10-21.** `bench/baselines/d88970189598.json` and `wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at the preparation commit `472dea56e094017df4c9313170a1bf249c3878b8` (Node 26.12.0, the same flags; tree clean, every oracle green); the `611dae4f` files are in `bench/baselines/archive/611dae4f/`. The first `bench typescript` run, at the same commit, is blessed to `bench/baselines/typescript/d88970189598.json` (docs/release.md §2). Evidence: `bench/results/2026-10-21-472dea56-*` (native, compile, typescript, envelope `miss` on 236 of 264, against 237 at beta.2, carried; prep `fib`/`shapes` compare `ok` on every Node cell, largest move +0.2%). Blessed by Claude Opus 5.5 under the owner's direct instruction of 2026-10-20. **The `v1.0.0-beta.3` tag goes on `472dea56`** (CI run 39618104898 green on that SHA).
+
+**`v1.0.0-beta.3` close-out (docs/release.md §7), 2026-10-21.** Tag `v1.0.0-beta.3` (annotated)
+peels to `472dea56e094017df4c9313170a1bf249c3878b8`, the preparation commit, so the `472dea56`
+bless (`4fccc74e`) stands. CI on that SHA: run 39618104898, green. Tag run
+[39626591463](https://github.com/icantcodefyi/sakuralang/actions/runs/39626591463), green
+throughout: five builds, Darwin signed (Developer ID) and notarized, five install smokes, then
+GitHub (prerelease, 19 assets), npm (`beta` = `1.0.0-beta.3` with all five companion packages,
+`latest` stays `0.1.0`) and Homebrew (`sakuralang-beta`); the published binary prints
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)` and `spctl` accepts it as
+Notarized Developer ID. `compat.yml`
+[39626591524](https://github.com/icantcodefyi/sakuralang/actions/runs/39626591524) on the tag:
+success. `verify-published.yml`
+[39634994904](https://github.com/icantcodefyi/sakuralang/actions/runs/39634994904): green on all
+six rows. `dogfood.yml`
+[39635001196](https://github.com/icantcodefyi/sakuralang/actions/runs/39635001196): green,
+including the Parcel Quotes library-entries consumer (§17.301 (3d)) for the first time; the
+beta.2 `maintenance-triage` failure is closed. **Next:** `v1.0.0` is gated on the Windows fuzz
+campaign's CPU-hours ledger (design §17.306, `docs/plans/windows-compute.md`), which the owner
+runs. Close-out recorded by Claude Opus 5.5.
