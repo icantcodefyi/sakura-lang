@@ -1,0 +1,18 @@
+// milestone: M3
+// spec: §4.3; design §17.294 SS-4
+// fmt: exempt covers a type item's where clause after a newline (fmt joins it to the type line)
+// A `type` item continues past newlines to its `where`, as a signature does to `requires`, so
+// the refinement below is one item: no `V0001` for the `where` line and no `V5003` at the
+// `validate` sites that the cascade used to report.
+import std/core.{Violation}
+
+pub type Percent = Int
+  where it >= 0 && it <= 100
+
+pub type Name = String
+
+  where String.len(it) >= 1
+
+pub fn percent(n: Int) -> Result<Percent, Violation> { Percent.validate(n) }
+
+pub fn name(s: String) -> Result<Name, Violation> { Name.validate(s) }

@@ -262,7 +262,9 @@ fn type_decl(p: &mut Parser<'_>) -> bool {
     } else if !matches!(p.current(), NEWLINE | SEMICOLON | EOF) {
         p.error_expected("`=`");
     }
-    if p.at(WHERE_KW) {
+    // A `where` on the next line continues the item, as `requires` a signature (§17.294 SS-4).
+    if p.past_newlines() == WHERE_KW {
+        p.skip_newlines();
         where_clause(p);
     }
     true

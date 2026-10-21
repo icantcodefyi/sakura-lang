@@ -539,6 +539,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
   and never the current directory's tree, so stray `.sak` or `.sakura` files there no longer
   refuse or join the lookup (design §17.294 SS-1, WP-2).
+- A `type` item's `where` may start the next line (`type Percent = Int` then
+  `  where it >= 0`), as `requires` and `ensures` continue a signature; it was a `V0001` and a
+  `V5003` at every `validate` of the type (design §17.294 SS-4). `sakura fmt` still writes the
+  `where` on the type line.
 
 ### Security
 

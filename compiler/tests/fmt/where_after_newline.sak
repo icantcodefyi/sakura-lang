@@ -1,0 +1,10 @@
+// A `where` on the line after its type joins the type line (design §17.294 SS-4).
+type Percent = Int
+  where it >= 0 && it <= 100
+
+type Name = String
+
+where String.len(it) >= 1 // the name is never empty
+
+type Label = String
+  where String.len(it) >= 1 && String.len(it) <= 200 && String.contains(it, ":") == false && String.len(it) != 7
