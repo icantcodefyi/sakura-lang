@@ -123,6 +123,19 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **Strictness.** That arguments finish before the callee starts is design §8.7's rule; no
   fixture separates it from evaluation order.
 
+### Types and refinements
+
+- **Design and compiler disagree: `minLength`.** Design §17.300 (round 52) makes
+  `String.len(it) >= n` state `minLength` ⌈n/4⌉ and a negative length bound state nothing; the
+  compiler at this revision states `n`, and
+  [the fixture](../../compiler/tests/semantics/json_schema_refinement_keywords.sak) uses only
+  `n = 1`, where both agree. `sakuralang@1.0.0-beta.1` states no refinement keyword at all
+  (TY22 arrived with ABI 1.14.0 after the tag). No fixture states `minItems`.
+- **Field refinement at construction.** beta.1 reports `D010` for a record built with a field
+  that fails its `where` (design §7.2); only assignment and decode are pinned (TY16).
+- **Distinct refined types.** Design §4.6 makes two refined types with the same predicate
+  different types; beta.1 agrees (`V2001`, expected `B`, found `A`), but no fixture checks it.
+
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,
