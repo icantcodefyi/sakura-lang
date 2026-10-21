@@ -65,7 +65,7 @@ Informative: the agent-DX harness exemption that §17.297 refused is not a compi
 
 **MO15** `sakura run` needs a `pub fn main`, its absence being `V8001`, and `main`'s row may hold only std effects (`V6010`), for each of which the host installs a root handler. [V8001](../../compiler/tests/ui/V8001_missing_entry_point.sak), [V6010](../../compiler/tests/ui/V6010_non_std_effect_in_main.sak), [host_root_handlers](../../compiler/tests/semantics/host_root_handlers.sak).
 
-**MO16** A `main` that declares a std effect its manifest's `[permissions]` grant nothing for, or that its target cannot provide, exits 75 at startup before `main` runs. [run_exits_75_when_permissions_do_not_cover_main](../../compiler/crates/sakura_cli/tests/cli.rs), [run_exits_75_for_websocket_without_net](../../compiler/crates/sakura_cli/tests/cli.rs), [worker_host_refused_off_js](../../compiler/tests/semantics/worker_host_refused_off_js.sak).
+**MO16** A `main` that declares a std effect its manifest's `[permissions]` grant nothing for, or that its target cannot provide, exits 75 at startup before `main` runs. [run_exits_75_when_permissions_do_not_cover_main](../../compiler/crates/sakura_cli/tests/cli.rs), [run_exits_75_for_websocket_without_net](../../compiler/crates/sakura_cli/tests/cli.rs).
 
 Informative: what each root handler may reach under `[permissions]` is design §6.2
 ([root_handlers_apply_manifest_permissions](../../compiler/crates/sakura_codegen_js/tests/m3.rs)).

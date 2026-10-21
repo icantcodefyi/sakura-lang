@@ -80,5 +80,5 @@ at most 16 workers are live per instance
 ([worker_limit_16](../../compiler/tests/semantics/worker_limit_16.sak));
 a worker's grants must be a subset of its parent's
 ([worker_grants_subset_rejected](../../compiler/tests/semantics/worker_grants_subset_rejected.sak));
-and on WASM and native a `main` that declares `Worker` exits 75 at startup
-([worker_host_refused_off_js](../../compiler/tests/semantics/worker_host_refused_off_js.sak)).
+and since web-APIs phase 11b a `main` that declares `Worker` starts on JS, WASM and native
+([worker_host_root_installed](../../compiler/tests/semantics/worker_host_root_installed.sak)).
