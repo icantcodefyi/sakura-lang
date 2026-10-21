@@ -577,8 +577,8 @@ if (typescript?.results.some((c) => !c.checksum_ok)) throw new Error("a TypeScri
 const tsPrograms = typescript
   ? [...new Set(typescript.results.filter((c) => c.engine === "check").map((c) => c.program))]
   : [];
-export const NEXT_RELEASE =
-  "Measured at the next release (v1.0.0-beta.3): shown here once that run is blessed.";
+export const TYPESCRIPT_UNAVAILABLE =
+  "TypeScript measurements are shown once a baseline matching the JavaScript run is blessed.";
 
 function typescriptTable(): Table {
   const v = (p: string, variant: string, engine: string) =>
@@ -605,7 +605,7 @@ function typescriptTable(): Table {
     }),
     summary: typescript
       ? `Instructions per process of a clean check, the median of ${typescript.meta.flags.processes} fresh processes. TypeScript ${typescript.meta.engines.typescript}'s native compiler checks on several threads, and the count is their sum.`
-      : NEXT_RELEASE,
+      : TYPESCRIPT_UNAVAILABLE,
   };
 }
 

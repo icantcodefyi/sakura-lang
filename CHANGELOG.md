@@ -45,6 +45,11 @@ retains earlier implementation history.
 - **`sakura fmt` sorts imports idempotently** (#8): imports were ordered by their source text,
   whitespace or comments inside the path included (`import m/ t`), but printed without them, so
   a second run could reorder them. The order and the `std` group now follow the printed path.
+- Website benchmark fallback text no longer names beta.3 as an upcoming release, and the
+  server guide pins beta.3 after rechecking its displayed outputs with the published beta.3.
+- Standard library docs describe native worker shutdown limits, exact grant-path matching
+  and the exit-75 end of a native worker requiring an effect native does not serve (`Http`
+  among them through beta.3; design §17.302 rider (b)).
 
 ## [1.0.0-beta.3] - 2026-10-21
 

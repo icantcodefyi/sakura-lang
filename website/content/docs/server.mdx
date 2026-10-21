@@ -5,8 +5,8 @@ description: Scaffold an HTTP service, test its routes without a socket, run it 
 
 This guide goes from an empty directory to a running HTTP service. It assumes `sakura` and
 Node 26 are installed ([Install](/docs/install)) and that you have read the
-[Quickstart](/docs/quickstart). Every command and output below was run with the published
-`v1.0.0-beta.1` and `0.1.0`.
+[Quickstart](/docs/quickstart). The scaffold, tests, HTTP responses and permission-failure
+outputs below were rechecked with the published `v1.0.0-beta.3` on 2026-10-21.
 
 ## Scaffold the service
 
@@ -156,7 +156,7 @@ build, and starts the service with `sakura run`:
 
 ```dockerfile title="greeter/Dockerfile"
 FROM node:26-slim
-RUN npm install --global sakuralang@1.0.0-beta.1
+RUN npm install --global sakuralang@1.0.0-beta.3
 WORKDIR /app
 COPY sakura.toml sakura.lock ./
 COPY src ./src
