@@ -52,7 +52,11 @@ fn check_patch_apply_and_test_over_stdio() {
         .and_then(|l| l.split("[possible values: ").nth(1))
         .and_then(|rest| rest.split(']').next())
         .expect("`build --help` lists the targets");
-    let targets: Vec<&str> = targets.split(", ").collect();
+    let mut targets: Vec<&str> = targets.split(", ").collect();
+    // `--target native` is listed everywhere and built only with the `native` feature.
+    if !cfg!(feature = "native") {
+        targets.retain(|t| *t != "native");
+    }
     assert!(targets.contains(&"wasm"), "{help}");
     let features = &info["features"];
     assert_eq!(features["backends"], json!(targets), "{info}");

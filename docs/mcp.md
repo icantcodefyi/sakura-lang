@@ -85,7 +85,8 @@ Kinds include `conflict`, `unknown_snapshot`, `unknown_patch`, `spec_frozen`,
 `compiler_info` returns `compiler`, `version`, `commit` (the source commit a release build
 was stamped with, else `null`), `schema_version`, `edition`, `tools`, `features`,
 `workspace_root`, `manifest` and `lock_digest`. Capabilities describe the
-running build: `backends` includes `wasm` when compiled in, `verify: true` reports
+running build: `backends` includes `wasm` when compiled in and the experimental `native`
+where this build can make it, `verify: true` reports
 CLI verification support; the separate `features.solver` object reports `name`,
 `pinned`, `available`, and either `version`/`path` or a failure `detail`.
 `features.test_execution` reports whether the server has a test runner. A missing solver

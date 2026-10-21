@@ -859,6 +859,23 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
     }
 }
 
+/// Design §17.175 (6): a compiler without the native backend refuses `--target native` with exit
+/// 2, naming the release targets that carry it.
+#[cfg(not(feature = "native"))]
+#[test]
+fn without_the_native_feature_target_native_is_refused() {
+    let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    for cmd in ["build", "run"] {
+        let out = sakura(&[cmd, "--target", "native", "hello.sak"], &fixtures);
+        assert_eq!(out.code, Some(2), "{cmd}: {}", out.stderr);
+        assert!(
+            out.stderr.contains("is not in this build of sakura"),
+            "{cmd}: {}",
+            out.stderr
+        );
+    }
+}
+
 /// Design §17.173 (4): `sakura build --target native --native-checks` builds the checked
 /// lowering, which runs a correct program unchanged; the flag needs `--target native`.
 #[cfg(feature = "native")]

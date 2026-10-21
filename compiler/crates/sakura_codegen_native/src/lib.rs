@@ -30,6 +30,9 @@ const DESCRIPTOR: usize = 112;
 /// The Cranelift release the backend is built with: the workspace pin (design §17.175 (1)).
 pub const CRANELIFT: &str = "0.136.3";
 
+/// The runtime ABI and layout profile the backend emits for (ABI §0, §1b).
+pub use sakura_rt::{ABI_VERSION, native::PROFILE};
+
 /// How [`emit`] compiles.
 #[derive(Clone, Debug)]
 pub struct Options {

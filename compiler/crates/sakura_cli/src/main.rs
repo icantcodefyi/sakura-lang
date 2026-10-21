@@ -103,8 +103,8 @@ enum Command {
         #[arg(long)]
         json: bool,
         /// `js`, or `wasm`: one module linked with the `sakura_rt` runtime (`main.wasm`, with
-        /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default; with the
-        /// `native` feature, `native` (experimental): an executable `main`.
+        /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default; or
+        /// `native` (experimental; macOS arm64 and Linux x64 builds): an executable `main`.
         #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
@@ -160,8 +160,8 @@ enum Command {
     Run {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
-        /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`); with the `native`
-        /// feature, `native` (experimental: the executable runs directly).
+        /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`); or `native`
+        /// (experimental; macOS arm64 and Linux x64 builds: the executable runs directly).
         #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
@@ -325,12 +325,27 @@ enum McpAction {
 /// The backends `--target` accepts; `compiler_info` reports the same list.
 const TARGETS: [&str; 2] = ["js", "wasm"];
 
-/// The targets `build` and `run` accept: [`TARGETS`], and `native` (experimental, plan M5 N2)
-/// in a compiler built with the `native` feature.
-#[cfg(feature = "native")]
+/// The targets `build` and `run` accept: [`TARGETS`], and `native` (experimental, plan M5 N2),
+/// which [`native_refusal`] refuses where it is not built.
 const RUN_TARGETS: [&str; 3] = ["js", "wasm", "native"];
-#[cfg(not(feature = "native"))]
-const RUN_TARGETS: [&str; 2] = TARGETS;
+
+/// Why this `sakura` cannot build `--target native`, if it cannot: the backend is built only
+/// with the `native` feature, which the platform-A release binaries carry (design §17.175 (6)).
+fn native_refusal() -> Option<String> {
+    let platform_a = cfg!(any(
+        all(target_arch = "aarch64", target_os = "macos"),
+        all(
+            target_arch = "x86_64",
+            target_os = "linux",
+            target_env = "gnu"
+        )
+    ));
+    (!cfg!(feature = "native") || !platform_a).then(|| {
+        "`--target native` (experimental) is not in this build of sakura: it is built for \
+         aarch64-apple-darwin and x86_64-unknown-linux-gnu only; use `--target js` or `wasm`"
+            .to_owned()
+    })
+}
 
 const LLMS_TXT: &str = include_str!("../../../../docs/llms.txt");
 
@@ -553,6 +568,12 @@ fn dispatch(command: Command) -> ExitCode {
             if native_checks && (target != "native" || emit != "js") {
                 return Err(usage_error("`--native-checks` needs `--target native`"));
             }
+            if target == "native"
+                && emit == "js"
+                && let Some(why) = native_refusal()
+            {
+                return Err(usage_error(why));
+            }
             #[cfg(feature = "native")]
             if target == "native" && emit == "js" {
                 if manifest {
@@ -604,6 +625,11 @@ fn dispatch(command: Command) -> ExitCode {
             no_direct,
             args,
         } => {
+            if target == "native"
+                && let Some(why) = native_refusal()
+            {
+                return usage_error(why);
+            }
             let out_dir = out_dir.unwrap_or_else(|| Path::new("target/sakura").join(&target));
             run(path, &target, &out_dir, !no_direct, &args)
         }
@@ -678,7 +704,12 @@ fn dispatch(command: Command) -> ExitCode {
             let config = sakura_mcp::Config {
                 root,
                 run_tests: Some(testing::mcp_run_tests),
-                backends: &TARGETS,
+                // `native` only where this binary builds it (experimental).
+                backends: if native_refusal().is_none() {
+                    &RUN_TARGETS
+                } else {
+                    &TARGETS
+                },
                 solver_status: Some(verify::solver_status),
             };
             match sakura_mcp::serve(config) {

@@ -9,6 +9,15 @@ retains earlier implementation history.
 
 ### Added
 
+- **`--target native` names itself experimental and is refused where it is not built** (design
+  §17.175 (6), §17.308 (1d)): `sakura build --target native` prints one line on stderr naming
+  the target experimental with its layout profile and ABI (`note: \`--target native\` is
+  experimental (profile offset32-v1, ABI 1.16.0)`). A compiler without the `native` feature, or
+  built for a target other than `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`, accepts
+  the value and refuses it with exit 2 and one line naming those two targets (it was clap's
+  "invalid value"; `compiler/contracts/cli.txt` gains the value). MCP `compiler_info` lists
+  `native` in `features.backends` only where the binary builds it. `bench compile-native` also reports the wide-function curve (one function
+  of 4,096 to 32,768 guarded rows) and names each phase that grows more than 2× per doubling.
 - **`Http` on `--target native`** (experimental, plan M5 N1b): `Http.host()` sends with
   `reqwest` over `rustls` (no proxy, no automatic redirects: `std/http` follows each hop, so the
   manifest's `net` list is checked on every hop), bodies bounded by `SAKURA_MAX_COPY_BYTES`,

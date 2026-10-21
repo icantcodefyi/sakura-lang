@@ -127,6 +127,17 @@ pub fn build(
             eprintln!("warning: SAKURA_NATIVE_TIMINGS: {e}");
         }
     }
+    if !then {
+        // Design §17.175 (6): the one line a native build prints.
+        let v = sakura_codegen_native::ABI_VERSION;
+        eprintln!(
+            "note: `--target native` is experimental (profile {}, ABI {}.{}.{})",
+            sakura_codegen_native::PROFILE,
+            v >> 16,
+            v >> 8 & 0xff,
+            v & 0xff
+        );
+    }
     if (json && !then) || !diags.is_empty() {
         report(json, snapshot, &diags, &[], !then);
     }
