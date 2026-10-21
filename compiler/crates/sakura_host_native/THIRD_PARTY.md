@@ -26,6 +26,8 @@ locked in `compiler/Cargo.lock`; full source archives retain their own licence f
 | [rustls](https://crates.io/crates/rustls/0.23.46) | 0.23.46 | Apache-2.0 OR ISC OR MIT | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-ISC](third-party/rustls/LICENSE-ISC), [LICENSE-MIT](third-party/rustls/LICENSE-MIT) |
 | [rusqlite](https://crates.io/crates/rusqlite/0.40.2) | 0.40.2 | MIT | [LICENSE](third-party/libsqlite3-sys/LICENSE) |
 | [hyper](https://crates.io/crates/hyper/1.12.0) | 1.12.0 | MIT | [LICENSE](third-party/hyper/LICENSE) |
+| [hyper-util](https://crates.io/crates/hyper-util/0.1.21) | 0.1.21 | MIT | [LICENSE](third-party/hyper-util/LICENSE) |
+| [http-body-util](https://crates.io/crates/http-body-util/0.1.5) | 0.1.5 | MIT | [LICENSE](third-party/http-body-util/LICENSE) |
 | [cap-std](https://crates.io/crates/cap-std/4.0.3) | 4.0.3 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-Apache-2.0_WITH_LLVM-exception](third-party/cap-std/LICENSE-Apache-2.0_WITH_LLVM-exception), [LICENSE-MIT](third-party/cap-std/LICENSE-MIT) |
 | [crabgrind](https://crates.io/crates/crabgrind/0.4.0) | 0.4.0 | MIT; bundled Valgrind headers: BSD-style | [MIT](third-party/crabgrind/MIT.LICENSE), [header notices](third-party/crabgrind/) |
 | [ring](https://crates.io/crates/ring/0.17.14) | 0.17.14 | Apache-2.0 AND ISC | [LICENSE](third-party/ring/LICENSE), [LICENSE-BoringSSL](third-party/ring/LICENSE-BoringSSL), [LICENSE-other-bits](third-party/ring/LICENSE-other-bits) |

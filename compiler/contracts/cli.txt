@@ -66,7 +66,7 @@ arg sakura test paths short=None long=None aliases=None short_aliases=None actio
 arg sakura test record short=None long=Some("record") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
 arg sakura test seed short=None long=Some("seed") aliases=None short_aliases=None action=Set arity=Some(1) required=false hidden=false values=[] defaults=["0"]
 arg sakura test std short=None long=Some("std") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
-arg sakura test target short=None long=Some("target") aliases=None short_aliases=None action=Set arity=Some(1) required=false hidden=false values=["js", "wasm"] defaults=["js"]
+arg sakura test target short=None long=Some("target") aliases=None short_aliases=None action=Set arity=Some(1) required=false hidden=false values=["js", "wasm", "native"] defaults=["js"]
 arg sakura test update_snapshots short=None long=Some("update-snapshots") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
 arg sakura verify help short=Some('h') long=Some("help") aliases=None short_aliases=None action=Help arity=Some(0) required=false hidden=false values=[] defaults=[]
 arg sakura verify json short=None long=Some("json") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
