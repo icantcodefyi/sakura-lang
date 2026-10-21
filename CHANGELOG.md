@@ -14,9 +14,10 @@ retains earlier implementation history.
   become `maxLength`/`minLength`, `List.len(it)` `maxItems`/`minItems`, and `it <= n`/`>= n` on
   `Int` and `Float` `maximum`/`minimum`, beside the base's schema, the same on JS, WASM and
   native; any other conjunct states nothing, and every `where` is still checked on decode.
-  `String.len` counts UTF-8 bytes where `maxLength` counts characters, so the two agree on
-  ASCII. Structured outputs (`Llm`) drop the keywords the API rejects. `pattern` waits for a
-  `String.matches` in std. Fixture
+  `String.len` counts UTF-8 bytes where JSON Schema counts characters: `maxLength` is the byte
+  bound, `minLength` ⌈n/4⌉; both admit every string the `where` admits (design §17.300); a
+  length bound below zero states nothing. Structured outputs (`Llm`) drop the keywords the API
+  rejects. `pattern` waits for a `String.matches` in std. Fixture
   `compiler/tests/semantics/json_schema_refinement_keywords.sak`.
 - `Result.ok(r) -> Option<A>` and `Result.err(r) -> Option<E>` (design §17.293 MT-11a), both
   `@total`: one side of a `Result` as an `Option`, the other side `None`. Fixture

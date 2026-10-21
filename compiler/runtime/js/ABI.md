@@ -484,8 +484,10 @@ keywords (design §17.298 (c)): `String.len(it) <= n`/`>= n` to `maxLength`/`min
 `List.len(it) <= n`/`>= n` to `maxItems`/`minItems`, and `it <= n`/`>= n` on `Int` and `Float`
 to `maximum`/`minimum`, a bound stated twice keeping the tighter; any other conjunct states
 nothing. They are the fifth argument of `$rt.refined(id, name, base, check, keywords)`,
-omitted when there are none and read as `{}` then. (`String.len` counts UTF-8 bytes and
-`maxLength` characters; the two agree on ASCII.)
+omitted when there are none and read as `{}` then. (`String.len` counts UTF-8 bytes and JSON
+Schema characters: `maxLength` is the byte bound, `minLength` ⌈n/4⌉; both admit every string
+the `where` admits (design §17.300). A length bound below zero, or a widened `minLength: 0`,
+states nothing.)
 
 **Permissions.** The driver passes the manifest's `[permissions]` as JSON in
 `SAKURA_PERMISSIONS`: `{"fs": {"read": […], "write": […]}, "net": ["host:port", …], "env": […]}`

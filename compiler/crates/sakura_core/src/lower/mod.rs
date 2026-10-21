@@ -1189,8 +1189,10 @@ impl<'p> Lower<'p> {
     /// (design §17.298 (c)): `String.len(it) <= n`/`>= n` → `maxLength`/`minLength`,
     /// `List.len(it)` → `maxItems`/`minItems`, `it <= n`/`>= n` on `Int` and `Float` →
     /// `maximum`/`minimum`. A keyword stated twice keeps the tighter bound; any other conjunct
-    /// states nothing. `String.len` counts UTF-8 bytes and `maxLength` characters, so the two
-    /// agree on ASCII and the decode check stays the rule.
+    /// states nothing. `String.len` counts UTF-8 bytes and JSON Schema characters, so
+    /// `maxLength` is the byte bound, `minLength` ⌈n/4⌉; both admit every string the `where`
+    /// admits (design §17.300). A length bound below zero, or a widened `minLength: 0`, states
+    /// nothing; the decode check stays the rule.
     fn schema_keywords(
         &self,
         module: hir::ModuleId,
@@ -1239,7 +1241,7 @@ impl<'p> Lower<'p> {
                 BinaryOp::Ge => false,
                 _ => continue,
             };
-            let Some((value, text, integer)) = number(rhs) else {
+            let Some((mut value, mut text, integer)) = number(rhs) else {
                 continue;
             };
             let name = if is_it(lhs) && matches!(base, Ty::Int | Ty::Float) {
@@ -1251,8 +1253,20 @@ impl<'p> Lower<'p> {
                 && let Expr::Path(Res::Def(f)) = body.exprs[*callee]
                 && self.p.def(f).name == "len"
             {
+                if value < 0.0 {
+                    continue;
+                }
                 match (self.module_name(f.module).as_str(), base) {
-                    ("std::string", Ty::String) => ["minLength", "maxLength"][upper as usize],
+                    ("std::string", Ty::String) if upper => "maxLength",
+                    ("std::string", Ty::String) => {
+                        let Ok(i) = text.parse::<u64>() else { continue };
+                        let i = i.div_ceil(4);
+                        if i == 0 {
+                            continue;
+                        }
+                        (value, text) = (i as f64, i.to_string());
+                        "minLength"
+                    }
                     ("std::list", Ty::List(_)) => ["minItems", "maxItems"][upper as usize],
                     _ => continue,
                 }

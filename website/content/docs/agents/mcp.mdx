@@ -78,7 +78,7 @@ pub fn main() -> Unit {
 }
 ```
 
-`Tool.of(greet)` builds a `Tool` value. Its JSON Schema comes from the parameter types, with the refinement bounds the compiler can state (`minimum`, `maxLength`, …); every refinement is still checked when the arguments are decoded. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run`, which takes them in the `tools` field of its `Agent` configuration record (see the [standard library](/docs/stdlib)).
+`Tool.of(greet)` builds a `Tool` value. Its JSON Schema comes from the parameter types, with the refinement bounds the compiler can state (`minimum`, `maxLength`, …): `maxLength` is the byte bound, `minLength` ⌈n/4⌉; both admit every string the `where` admits. Every refinement is still checked when the arguments are decoded. When called, it validates the JSON arguments, runs the function under the caller's current handlers, and maps failures to a public `ToolError` with the tag name and payload. The same `Tool` values are used in-process by `Agent.run`, which takes them in the `tools` field of its `Agent` configuration record (see the [standard library](/docs/stdlib)).
 
 In the planned MCP export, the model never supplies authority. The handlers installed by the serving program decide what `Http` can reach, and the manifest's `[permissions]` table is the ceiling.
 
