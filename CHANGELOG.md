@@ -56,6 +56,12 @@ retains earlier implementation history.
   continue a statement nor begin one (`:`, `requires`, `in`, `as`, `?`) is one `V0004`, the
   next line taken as its cascade, where it also reported a `V0001` and a `V0009` for that line
   (design §17.297 (3), the edge of §17.294 WP-5). ui case `V0004_line_end_cascade`.
+- Native target (experimental): `Instance::task_free` on a root task still pending after a
+  `D090` "every task is waiting" releases it and its blocked fibers (frames, activations,
+  unrun finalizers, a scope's group, arena slots) without running user code, so the arena
+  keeps nothing of that run; no cancel, finalizer or trace record is added, so the run ends
+  as on JS and WASM (design §17.298 (d), amending §17.296 (5)). The native corpus no longer
+  exempts that run from its leak check.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

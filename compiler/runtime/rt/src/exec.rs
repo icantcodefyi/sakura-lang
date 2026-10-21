@@ -1113,6 +1113,59 @@ impl Rt {
         self.heap.free(t);
     }
 
+    /// Release a task that can never run again (the run ended `D090`, every task waiting)
+    /// without running user code (design §17.298 (d)): no cancel, no finalizer, no trace. Its
+    /// children go first; its pending request is aborted, its frames popped (their values
+    /// dropped by reference count, as [`Self::task_free`] drops a finished task's), its
+    /// finalizers discarded unrun (a `Task.scope` closer's group released with it), then it is
+    /// freed as a finished task.
+    pub fn task_abandon(&mut self, id: u32) {
+        let Some(t) = self.arena_obj(id, tag::TASK) else {
+            return;
+        };
+        if self.u(t, T_STATE) != DONE {
+            while let Some(k) = self.tpop(t, T_KIDS) {
+                self.task_abandon(k);
+            }
+            let req = self.u(t, T_REQUEST);
+            if self.arena_obj(req, tag::REQUEST).is_some() {
+                self.free_request(req);
+                self.host_abort(req);
+            }
+            self.set(t, T_REQUEST, 0);
+            let mut fid = self.u(t, T_FRAME);
+            while fid != 0 {
+                let parent = self
+                    .arena_obj(fid, tag::FRAME)
+                    .map_or(0, |f| self.u(f, F_PARENT));
+                self.pop_frame(t, fid);
+                fid = parent;
+            }
+            self.set(t, T_FRAME, 0);
+            while let Some(a) = self.tpop(t, T_ACTS) {
+                if self.arena_obj(a, tag::ACTIVATION).is_some() {
+                    self.release_activation(a);
+                }
+            }
+            while let Some(e) = self.tpop(t, T_FINS) {
+                let c = self.take_fin(e);
+                if self.u(c, 8) == self.sched.cancel_all_code {
+                    let gid = self.slot(c, 0) as u32;
+                    self.group_free(gid);
+                }
+                self.drop(c);
+            }
+            while self.tpop(t, T_WAITERS).is_some() {}
+            let mut c = self.tstack(t, T_CATCHES);
+            c.len = 0;
+            self.tstack_put(t, T_CATCHES, c);
+            self.set(t, T_BLOCKED, 0);
+            self.set(t, T_OUTCOME, outcome::CANCELLED);
+            self.set(t, T_STATE, DONE);
+        }
+        self.task_free(id);
+    }
+
     /// `cancel(task)`: mark it and its descendants, bump their epochs, abort their pending
     /// requests and make each unwind at its suspension point (ABI §7.4, §8.5). A canceller
     /// that must see the finalizers done joins the task.

@@ -130,10 +130,7 @@ fn run_with_stats(core: &snapshot::Module) -> (String, String, String, Stats) {
     let base = (stats.live_objects, inst.exec_counts());
     let again = main_once(&mut inst, entry);
     let after = (inst.stats().live_objects, inst.exec_counts());
-    // A run that ends with every task waiting (`D090`, a channel nobody answers) leaves those
-    // tasks blocked for good, as the hosts do: nothing unwinds them, so they are not a leak.
-    let stuck = matches!(&o, Outcome::Defect { code: 90, message, .. } if message == "every task is waiting");
-    if ending(&again) != ending(&o) || (after != base && !stuck) {
+    if ending(&again) != ending(&o) || after != base {
         end = format!(
             "{end}; a second run ended {} with (objects, (slots, requests)) {after:?}, not {base:?}",
             ending(&again)

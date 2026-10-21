@@ -291,14 +291,13 @@ impl<H: Host + 'static> Instance<H> {
         }
     }
 
-    /// Release a finished root task. One still pending (the run ended `D090`, every task
-    /// waiting) is left, as the Node host leaves it: its tasks wait on each other for good.
+    /// Release a root task. One still pending (the run ended `D090`, every task waiting) is
+    /// released with its blocked fibers without running user code: no cancel, no finalizer,
+    /// no trace (design §17.298 (d)), so the arena keeps nothing of it and the run's
+    /// observable end is the one JS and WASM have.
     pub fn task_free(&mut self, task: u32) {
         let mut cx = self.cx();
-        if !cx.rt().task_done(task) {
-            return;
-        }
-        cx.rt().task_free(task);
+        cx.rt().task_abandon(task);
         cx.flush();
     }
 
