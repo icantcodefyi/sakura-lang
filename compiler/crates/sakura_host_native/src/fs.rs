@@ -289,7 +289,13 @@ impl Dir {
         let Dir::Host { root, grants, .. } = self else {
             return Err("this directory has no host access".into());
         };
-        if rel.starts_with('/') || rel.split(['/', '\\']).any(|s| s == "..") {
+        // A root or, on Windows, a drive (`\x`, `C:\x`, `C:x`) is not relative either: `join`
+        // would leave `root`.
+        let rooted = matches!(
+            Path::new(rel).components().next(),
+            Some(std::path::Component::Prefix(_) | std::path::Component::RootDir)
+        );
+        if rooted || rel.split(['/', '\\']).any(|s| s == "..") {
             return Err("not a relative path".into());
         }
         let full = root.join(rel);
@@ -609,6 +615,15 @@ mod tests {
             d.read("../secret", u64::MAX),
             Err("not a relative path".into())
         );
+        let absolute = tmp.join("secret").display().to_string();
+        assert_eq!(
+            d.read(&absolute, u64::MAX),
+            Err("not a relative path".into())
+        );
+        #[cfg(windows)]
+        for rooted in ["\\secret", "C:secret"] {
+            assert_eq!(d.read(rooted, u64::MAX), Err("not a relative path".into()));
+        }
         #[cfg(unix)]
         assert_eq!(
             d.read("link", u64::MAX),
