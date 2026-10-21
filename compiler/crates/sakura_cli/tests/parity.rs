@@ -718,6 +718,8 @@ fn native_agrees_with_js_on_run_mode_programs() {
         eprintln!("skipped: node is missing");
         return;
     }
+    // The exact-i64 lane's fixtures run on WASM too.
+    assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
     let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
