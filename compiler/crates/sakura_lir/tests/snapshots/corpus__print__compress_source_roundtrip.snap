@@ -25,20 +25,20 @@ layout 19 shape |  32b (word*, word*)
 layout 20 shape |  32b (i64, word*)
 layout 21 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 100 slots [%2 word*, %4 word*, %6 word*, %7 word*, %9 word*, %10 word*, %11 word*, %12 word*, %18 word*, %23 word*, %27 bool, %57 word*, %58 word*, %59 word*, %60 word*, %61 i64, %62 i64, %63 word*, %67 word*, %68 word*, %69 word*, %70 word*, %71 i64, %72 i64, %73 word*, %74 word*, %75 word*, %77 word*, %78 word*, %79 word*, %80 word*, %81 i64, %82 i64, %83 word*, %84 word*, %85 word*, %87 word*, %88 word*, %89 word*, %90 word*, %91 i64, %92 i64, %93 word*, %94 word*, %95 word*, %98 word*, %99 word*, %100 word*, %101 word*, %102 i64, %103 i64, %104 word*, %105 word*, %106 word*, %145 bool, %146 word*, %147 word*, %148 word*, %149 i64, %150 i64, %152 word*, %153 word*, %154 word*, %155 word*, %156 i64, %157 i64, %158 word*, %159 word*, %160 word*, %161 word*, %166 word*, %167 word*, %168 word*, %169 word*, %170 i64, %171 i64, %172 word*, %173 word*, %174 word*, %175 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 i64, %184 i64, %185 word*, %186 word*, %187 word*, %188 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 i64, %198 i64, %199 word*, %200 word*, %201 word*, %202 word*]
+fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2 word*, %4 word*, %6 word*, %7 word*, %9 word*, %10 word*, %11 word*, %12 word*, %18 word*, %23 word*, %27 bool, %57 word*, %58 word*, %59 word*, %60 word*, %61 i64, %62 i64, %63 word*, %67 word*, %68 word*, %69 word*, %70 word*, %71 i64, %72 i64, %73 word*, %74 word*, %75 word*, %77 word*, %78 word*, %79 word*, %80 word*, %81 i64, %82 i64, %83 word*, %84 word*, %85 word*, %92 word*, %93 word*, %94 word*, %95 word*, %96 i64, %97 i64, %98 word*, %99 word*, %100 word*, %101 word*, %102 i64, %105 word*, %106 word*, %107 word*, %108 word*, %109 i64, %110 i64, %111 word*, %112 word*, %113 word*, %114 word*, %115 i64, %118 word*, %119 word*, %120 word*, %121 word*, %122 i64, %123 i64, %124 word*, %125 word*, %126 word*, %127 word*, %128 i64, %133 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 word*, %140 word*, %141 word*, %142 word*, %143 i64, %148 word*, %149 word*, %150 word*, %151 word*, %152 i64, %153 i64, %154 word*, %155 word*, %156 word*, %195 bool, %196 word*, %197 word*, %198 word*, %199 i64, %200 i64, %202 word*, %203 word*, %204 word*, %205 word*, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %216 word*, %217 word*, %218 word*, %219 word*, %220 i64, %221 i64, %222 word*, %223 word*, %224 word*, %225 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 i64, %234 i64, %235 word*, %236 word*, %237 word*, %238 word*, %243 word*, %244 word*, %245 word*, %246 word*, %247 i64, %248 i64, %249 word*, %250 word*, %251 word*, %252 word*]
   b0():
     %0 lit: i64 = const 0
     %1 lit: i64 = const 3000
     call range#2(%0, %1) -> b1()
   b1(%2 r: ptr):
-    %3 fn: ptr = const static closure line$value#72
+    %3 fn: ptr = const static closure line$value#74
     call map#4(%2, %3) -> b2()
   b2(%4 r: ptr):
     %5 lit: ptr = const str 0
     dup.candidate %4
     call join#5(%4, %5) -> b3(%4)
   b3(%6 r: ptr, %7 r: ptr):
-    %8 fn: ptr = const static closure $string_to_bytes$value#73
+    %8 fn: ptr = const static closure $string_to_bytes$value#75
     call map#4(%7, %8) -> b4(%6)
   b4(%9 r: ptr, %10 r: ptr):
     call from_list#6(%9) -> b5(%10)
@@ -49,13 +49,13 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 100 slots [%2
     %16 xs: ptr = alloc list(%13, %14, %15)
     dup.candidate %16
     %17 n: i64 = $list_len(%16)
-    %204 lit: i64 = const 0
-    jump b10(%204, %12, %11, %16, %17)
+    %254 lit: i64 = const 0
+    jump b10(%254, %12, %11, %16, %17)
   b6():
-    call empty#22() -> b7()
+    call empty#24() -> b7()
   b7(%18 r: ptr):
     %19 v: ptr = const static std::compress::Format.Gzip
-    %20 f: ptr = closure main$5#23[]
+    %20 f: ptr = closure main$6#25[]
     %21 lit: i64 = const 6
     %22 $site: i64 = const 5
     call compress_source#10(%18, %19, %21, %20, %22) -> b8()
@@ -105,94 +105,118 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 100 slots [%2
     %76 f: ptr = closure main$2#12[%68]
     call map#13(%67, %76) -> b16(%68, %69, %70, %71, %72, %73, %74, %75)
   b16(%77 r: ptr, %78 r: ptr, %79 r: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64, %83 x: ptr, %84 r: ptr, %85 r: ptr):
-    %86 xs: ptr = alloc list(%85)
-    call from_list#6(%86) -> b17(%78, %79, %80, %81, %82, %83, %84, %77)
-  b17(%87 r: ptr, %88 r: ptr, %89 r: ptr, %90 xs: ptr, %91 n: i64, %92 i: i64, %93 x: ptr, %94 r: ptr, %95 r: ptr):
-    %96 lit: i64 = const 7
-    %97 $site: i64 = const 8
-    call chunks#14(%87, %96, %97) -> b18(%88, %89, %90, %91, %92, %93, %94, %95)
-  b18(%98 r: ptr, %99 r: ptr, %100 r: ptr, %101 xs: ptr, %102 n: i64, %103 i: i64, %104 x: ptr, %105 r: ptr, %106 r: ptr):
-    dup %98
-    dup %99
-    dup %100
-    dup %101
-    dup %104
-    dup %105
-    dup %106
-    try_push -> b24(err, %99, %100, %101, %102, %103, %104, %105, %106, %98)
-    %190 f: ptr = closure main$3#15[]
-    %191 lit: i64 = const 1000000
-    %192 $site: i64 = const 10
-    dup %98
-    dup %104
-    call decompress_source#17(%98, %104, %191, %190, %192) -> b25(%99, %100, %101, %102, %103, %104, %105, %106, %98)
-  b19(%107 v: ptr, %108 r: ptr, %109 r: ptr, %110 xs: ptr, %111 n: i64, %112 i: i64, %113 x: ptr, %114 r: ptr, %115 r: ptr, %116 r: ptr):
-    dup %107
-    dup %108
-    dup %109
-    dup %110
-    dup %113
-    dup %114
-    dup %115
-    try_push -> b22(err, %108, %109, %110, %111, %112, %113, %114, %115, %107)
-    %163 f: ptr = closure main$4#18[]
-    %164 lit: i64 = const 1000000
-    %165 $site: i64 = const 9
-    dup %113
-    call decompress_source#17(%116, %113, %164, %163, %165) -> b23(%108, %109, %110, %111, %112, %113, %114, %115, %107)
-  b20(%117 v: ptr, %118 r: ptr, %119 r: ptr, %120 xs: ptr, %121 n: i64, %122 i: i64, %123 x: ptr, %124 r: ptr, %125 r: ptr, %126 v: ptr):
-    %127 s: ptr = show %123
-    drop %123
-    %128 lit: ptr = const str 2
-    %129 s: ptr = concat %127, %128
-    drop %128
-    %130 r: i64 = $list_len(%124)
-    %131 s: ptr = show %130
-    %132 s: ptr = concat %129, %131
-    drop %131
-    %133 lit: ptr = const str 3
-    %134 s: ptr = concat %132, %133
-    drop %133
-    %135 s: ptr = show %125
-    drop %125
-    %136 s: ptr = concat %134, %135
-    drop %135
-    %137 lit: ptr = const str 4
-    %138 s: ptr = concat %136, %137
-    drop %137
-    %139 s: ptr = show %126
-    drop %126
-    %140 s: ptr = concat %138, %139
-    drop %139
-    %141 lit: ptr = const str 5
-    %142 s: ptr = concat %140, %141
-    drop %141
-    %143 s: ptr = show %117
-    drop %117
-    %144 s: ptr = concat %142, %143
-    drop %143
-    perform std::console::Console.print(%144) -> b21(%118, %119, %120, %121, %122)
-  b21(%145 r: unit, %146 r: ptr, %147 r: ptr, %148 xs: ptr, %149 n: i64, %150 i: i64):
-    %151 box: word = box %145
-    drop %151
-    jump b13(%146, %147, %148, %149, %150)
-  b22(%152 e: word, %153 r: ptr, %154 r: ptr, %155 xs: ptr, %156 n: i64, %157 i: i64, %158 x: ptr, %159 r: ptr, %160 r: ptr, %161 v: ptr):
-    %162 err: ptr = alloc std::result::Result.Err(%152)
-    jump b20(%162, %153, %154, %155, %156, %157, %158, %159, %160, %161)
-  b23(%166 r: word, %167 r: ptr, %168 r: ptr, %169 xs: ptr, %170 n: i64, %171 i: i64, %172 x: ptr, %173 r: ptr, %174 r: ptr, %175 v: ptr) [try]:
-    %176 unbox: i64 = unbox %166
-    drop %166
-    %177 box: word = box %176
-    %178 ok: ptr = alloc std::result::Result.Ok(%177)
+    dup %85
+    %86 r: i64 = $bytes_len(%85)
+    %87 lit: i64 = const 3
+    %88 t: i64 = intsub %86, %87
+    %89 lit: i64 = const 7
+    dup %85
+    %90 r: ptr = $bytes_slice(%85, %89, %88)
+    %91 xs: ptr = alloc list(%90)
+    call from_list#6(%91) -> b17(%78, %79, %80, %81, %82, %83, %84, %85, %77, %86)
+  b17(%92 r: ptr, %93 r: ptr, %94 r: ptr, %95 xs: ptr, %96 n: i64, %97 i: i64, %98 x: ptr, %99 r: ptr, %100 r: ptr, %101 r: ptr, %102 r: i64):
+    %103 lit: i64 = const 1009
+    %104 $site: i64 = const 8
+    call chunks#14(%92, %103, %104) -> b18(%93, %94, %95, %96, %97, %98, %99, %100, %101, %102)
+  b18(%105 r: ptr, %106 r: ptr, %107 r: ptr, %108 xs: ptr, %109 n: i64, %110 i: i64, %111 x: ptr, %112 r: ptr, %113 r: ptr, %114 r: ptr, %115 r: i64):
+    %116 xs: ptr = alloc list()
+    %117 f: ptr = closure main$3#15[]
+    call fold#9(%105, %116, %117) -> b19(%106, %107, %108, %109, %110, %111, %112, %113, %114, %115)
+  b19(%118 r: word, %119 r: ptr, %120 r: ptr, %121 xs: ptr, %122 n: i64, %123 i: i64, %124 x: ptr, %125 r: ptr, %126 r: ptr, %127 r: ptr, %128 r: i64):
+    %129 lit: i64 = const 0
+    %130 lit: i64 = const 7
+    dup %126
+    %131 r: ptr = $bytes_slice(%126, %129, %130)
+    %132 xs: ptr = alloc list(%131)
+    call concat#16(%132, %118) -> b20(%119, %120, %121, %122, %123, %124, %125, %126, %127, %128)
+  b20(%133 r: ptr, %134 r: ptr, %135 r: ptr, %136 xs: ptr, %137 n: i64, %138 i: i64, %139 x: ptr, %140 r: ptr, %141 r: ptr, %142 r: ptr, %143 r: i64):
+    %144 lit: i64 = const 3
+    %145 t: i64 = intsub %143, %144
+    %146 r: ptr = $bytes_slice(%141, %145, %143)
+    %147 r: ptr = $list_push(%133, %146)
+    call from_list#6(%147) -> b21(%134, %135, %136, %137, %138, %139, %140, %142)
+  b21(%148 r: ptr, %149 r: ptr, %150 r: ptr, %151 xs: ptr, %152 n: i64, %153 i: i64, %154 x: ptr, %155 r: ptr, %156 r: ptr):
+    dup %148
+    dup %149
+    dup %150
+    dup %151
+    dup %154
+    dup %155
+    dup %156
+    try_push -> b27(err, %149, %150, %151, %152, %153, %154, %155, %156, %148)
+    %240 f: ptr = closure main$4#17[]
+    %241 lit: i64 = const 1000000
+    %242 $site: i64 = const 10
+    dup %148
+    dup %154
+    call decompress_source#19(%148, %154, %241, %240, %242) -> b28(%149, %150, %151, %152, %153, %154, %155, %156, %148)
+  b22(%157 v: ptr, %158 r: ptr, %159 r: ptr, %160 xs: ptr, %161 n: i64, %162 i: i64, %163 x: ptr, %164 r: ptr, %165 r: ptr, %166 r: ptr):
+    dup %157
+    dup %158
+    dup %159
+    dup %160
+    dup %163
+    dup %164
+    dup %165
+    try_push -> b25(err, %158, %159, %160, %161, %162, %163, %164, %165, %157)
+    %213 f: ptr = closure main$5#20[]
+    %214 lit: i64 = const 1000000
+    %215 $site: i64 = const 9
+    dup %163
+    call decompress_source#19(%166, %163, %214, %213, %215) -> b26(%158, %159, %160, %161, %162, %163, %164, %165, %157)
+  b23(%167 v: ptr, %168 r: ptr, %169 r: ptr, %170 xs: ptr, %171 n: i64, %172 i: i64, %173 x: ptr, %174 r: ptr, %175 r: ptr, %176 v: ptr):
+    %177 s: ptr = show %173
+    drop %173
+    %178 lit: ptr = const str 2
+    %179 s: ptr = concat %177, %178
+    drop %178
+    %180 r: i64 = $list_len(%174)
+    %181 s: ptr = show %180
+    %182 s: ptr = concat %179, %181
+    drop %181
+    %183 lit: ptr = const str 3
+    %184 s: ptr = concat %182, %183
+    drop %183
+    %185 s: ptr = show %175
+    drop %175
+    %186 s: ptr = concat %184, %185
+    drop %185
+    %187 lit: ptr = const str 4
+    %188 s: ptr = concat %186, %187
+    drop %187
+    %189 s: ptr = show %176
+    drop %176
+    %190 s: ptr = concat %188, %189
+    drop %189
+    %191 lit: ptr = const str 5
+    %192 s: ptr = concat %190, %191
+    drop %191
+    %193 s: ptr = show %167
+    drop %167
+    %194 s: ptr = concat %192, %193
+    drop %193
+    perform std::console::Console.print(%194) -> b24(%168, %169, %170, %171, %172)
+  b24(%195 r: unit, %196 r: ptr, %197 r: ptr, %198 xs: ptr, %199 n: i64, %200 i: i64):
+    %201 box: word = box %195
+    drop %201
+    jump b13(%196, %197, %198, %199, %200)
+  b25(%202 e: word, %203 r: ptr, %204 r: ptr, %205 xs: ptr, %206 n: i64, %207 i: i64, %208 x: ptr, %209 r: ptr, %210 r: ptr, %211 v: ptr):
+    %212 err: ptr = alloc std::result::Result.Err(%202)
+    jump b23(%212, %203, %204, %205, %206, %207, %208, %209, %210, %211)
+  b26(%216 r: word, %217 r: ptr, %218 r: ptr, %219 xs: ptr, %220 n: i64, %221 i: i64, %222 x: ptr, %223 r: ptr, %224 r: ptr, %225 v: ptr) [try]:
+    %226 unbox: i64 = unbox %216
+    drop %216
+    %227 box: word = box %226
+    %228 ok: ptr = alloc std::result::Result.Ok(%227)
     try_pop
-    jump b20(%178, %167, %168, %169, %170, %171, %172, %173, %174, %175)
-  b24(%179 e: word, %180 r: ptr, %181 r: ptr, %182 xs: ptr, %183 n: i64, %184 i: i64, %185 x: ptr, %186 r: ptr, %187 r: ptr, %188 r: ptr):
-    %189 err: ptr = alloc std::result::Result.Err(%179)
-    jump b19(%189, %180, %181, %182, %183, %184, %185, %186, %187, %188)
-  b25(%193 r: word, %194 r: ptr, %195 r: ptr, %196 xs: ptr, %197 n: i64, %198 i: i64, %199 x: ptr, %200 r: ptr, %201 r: ptr, %202 r: ptr) [try]:
-    %203 ok: ptr = alloc std::result::Result.Ok(%193)
+    jump b23(%228, %217, %218, %219, %220, %221, %222, %223, %224, %225)
+  b27(%229 e: word, %230 r: ptr, %231 r: ptr, %232 xs: ptr, %233 n: i64, %234 i: i64, %235 x: ptr, %236 r: ptr, %237 r: ptr, %238 r: ptr):
+    %239 err: ptr = alloc std::result::Result.Err(%229)
+    jump b22(%239, %230, %231, %232, %233, %234, %235, %236, %237, %238)
+  b28(%243 r: word, %244 r: ptr, %245 r: ptr, %246 xs: ptr, %247 n: i64, %248 i: i64, %249 x: ptr, %250 r: ptr, %251 r: ptr, %252 r: ptr) [try]:
+    %253 ok: ptr = alloc std::result::Result.Ok(%243)
     try_pop
-    jump b19(%203, %194, %195, %196, %197, %198, %199, %200, %201, %202)
+    jump b22(%253, %244, %245, %246, %247, %248, %249, %250, %251, %252)
 
 fn $entry#1 top -> unit ; main::compress_source_roundtrip, frame 1 slots [%1 bool]
   b0():
@@ -240,7 +264,13 @@ fn main$2#12 lambda -> word ; main::compress_source_roundtrip, captures [word*],
     %5 box: word = box %4
     ret %5
 
-fn main$3#15 lambda -> word ; main::compress_source_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %4 word*, %7 word*]
+fn main$3#15 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+  b0(%0 env: ptr, %1 acc: word, %2 b: word):
+    drop %0
+    %3 r: ptr = $list_push(%1, %2)
+    ret %3
+
+fn main$4#17 lambda -> word ; main::compress_source_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %4 word*, %7 word*]
   b0(%0 env: ptr, %1 plain: word):
     drop %0
     %2 lit: i64 = const 40000
@@ -248,12 +278,12 @@ fn main$3#15 lambda -> word ; main::compress_source_roundtrip, captures [], fram
     call chunks#14(%1, %2, %3) -> b1()
   b1(%4 r: ptr):
     %5 xs: ptr = alloc list()
-    %6 f: ptr = closure main$3$1#16[]
+    %6 f: ptr = closure main$4$1#18[]
     call fold#9(%4, %5, %6) -> b2()
   b2(%7 r: word):
     ret %7
 
-fn main$3$1#16 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$4$1#18 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 acc: word, %2 b: word):
     drop %0
     %3 r: i64 = $bytes_len(%2)
@@ -261,17 +291,17 @@ fn main$3$1#16 lambda -> word ; main::compress_source_roundtrip, captures [], fr
     %5 r: ptr = $list_push(%1, %4)
     ret %5
 
-fn main$4#18 lambda -> word ; main::compress_source_roundtrip, captures [], frame 5 slots [%0 word*, %1 word*, %4 word*, %6 word*, %10 word*]
+fn main$5#20 lambda -> word ; main::compress_source_roundtrip, captures [], frame 5 slots [%0 word*, %1 word*, %4 word*, %6 word*, %10 word*]
   b0(%0 env: ptr, %1 plain: word):
     drop %0
     %2 v: ptr = const static std::encoding::Encoding.Utf8
     %3 v: ptr = const static std::encoding::Errors.Fatal
-    call decode_source#19(%1, %2, %3) -> b1()
+    call decode_source#21(%1, %2, %3) -> b1()
   b1(%4 r: ptr):
     %5 lit: i64 = const 1024
-    call lines#20(%4, %5) -> b2()
+    call lines#22(%4, %5) -> b2()
   b2(%6 r: ptr):
-    %7 f: ptr = closure main$4$1#21[]
+    %7 f: ptr = closure main$5$1#23[]
     %8 lit: i64 = const 0
     %9 box: word = box %8
     call fold#9(%6, %9, %7) -> b3()
@@ -281,7 +311,7 @@ fn main$4#18 lambda -> word ; main::compress_source_roundtrip, captures [], fram
     %12 box: word = box %11
     ret %12
 
-fn main$4$1#21 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$5$1#23 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 n: word, %2 _l: word):
     drop %0
     drop %2
@@ -292,11 +322,11 @@ fn main$4$1#21 lambda -> word ; main::compress_source_roundtrip, captures [], fr
     %6 box: word = box %5
     ret %6
 
-fn main$5#23 lambda -> word ; main::compress_source_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %4 word*, %9 word*]
+fn main$6#25 lambda -> word ; main::compress_source_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %4 word*, %9 word*]
   b0(%0 env: ptr, %1 packed: word):
     drop %0
     %2 xs: ptr = alloc list()
-    %3 f: ptr = closure main$5$1#24[]
+    %3 f: ptr = closure main$6$1#26[]
     call fold#9(%1, %2, %3) -> b1()
   b1(%4 r: word):
     %5 r: ptr = $bytes_concat(%4)
@@ -307,13 +337,13 @@ fn main$5#23 lambda -> word ; main::compress_source_roundtrip, captures [], fram
   b2(%9 r: ptr):
     ret %9
 
-fn main$5$1#24 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn main$6$1#26 lambda -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 acc: word, %2 b: word):
     drop %0
     %3 r: ptr = $list_push(%1, %2)
     ret %3
 
-fn line$value#72 adapter of line#3 -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %3 word*]
+fn line$value#74 adapter of line#3 -> word ; main::compress_source_roundtrip, captures [], frame 3 slots [%0 word*, %1 word*, %3 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 unbox: i64 = unbox %1
@@ -322,7 +352,7 @@ fn line$value#72 adapter of line#3 -> word ; main::compress_source_roundtrip, ca
   b1(%3 r: ptr):
     ret %3
 
-fn $string_to_bytes$value#73 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $string_to_bytes$value#75 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: ptr = $string_to_bytes(%1)
