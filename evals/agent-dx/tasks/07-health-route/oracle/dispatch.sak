@@ -1,3 +1,8 @@
+import std/request.{Get, Request, Text}
+import std/response.{Status}
+import std/router.{Router}
+import std/url.{Url}
+
 test "oracle/dispatch" {
   expect_eq(Router.handle(app(), Request.of(Get, Url.from("/version"))).body, Text("v1"))
   expect_eq(Router.handle(app(), Request.post("/health", "")).status, Status.from(405))

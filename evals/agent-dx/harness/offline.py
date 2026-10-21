@@ -16,10 +16,6 @@ ROOT = Path(__file__).resolve().parents[3]
 SUITE = ROOT / 'evals/agent-dx'
 CATEGORIES = {'syntax-data', 'diagnose-repair', 'holes-retrieval',
               'application-change', 'deterministic-effects', 'preserve-assurance'}
-# `W1003 unused_import` (design §17.294 RQ-5) is not held against a starter or a candidate: the
-# oracles are appended to the candidate and use its imports (07's `Status`), so an import the
-# candidate leaves unused may be the oracle's.
-ORACLE_SHARED = {'W1003'}
 
 
 def require(condition, message):
@@ -150,8 +146,7 @@ def checked(binary, directory, commit):
     rows = records(result)
     require(result[0] == 0 and rows[-1].get('holes') == 0,
             f'candidate check/frozen/holes rejected: {result}')
-    require(not any(row.get('code') not in (None, *ORACLE_SHARED) for row in rows),
-            f'candidate diagnostics: {rows}')
+    require(not any(row.get('code') for row in rows), f'candidate diagnostics: {rows}')
 
 
 def oracle(binary, directory, task, name, candidate):
@@ -215,7 +210,7 @@ def exercise(task, metadata, binary, scratch):
     commit = baseline(task, directory)
     initial = run([binary, 'check', '--json'], directory)
     rows = records(initial)
-    codes = sorted({row['code'] for row in rows if row.get('code') not in (None, *ORACLE_SHARED)})
+    codes = sorted({row['code'] for row in rows if 'code' in row})
     require(codes == sorted(metadata['expected_diagnostics']), f'initial codes: {codes}')
     require(initial[0] == (1 if codes else 0), f'initial check exit: {initial}')
     require(rows[-1].get('holes') == metadata['expected_holes'], f'initial holes: {rows[-1]}')

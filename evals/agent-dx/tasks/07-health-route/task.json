@@ -13,10 +13,10 @@
     "revision": "d64323e7bc75a94c83cd77199a042b71af3d352f",
     "backend": "js"
   },
-  "starter_sha256": "ac57b5cce3d7cc42c2725bfaa662491892f02503f1068db43f9e7aef351ba04e",
+  "starter_sha256": "7efabdb94fe1990a0a7bd01c34f30dde4a0e2fa265f0afb5a98874521b919e60",
   "starter_files": {
     "sakura.toml": "a9af8096b5d0e135579f5a3f7488a81277fa21252b5fa4ee569c0a842b80510b",
-    "src/main.sak": "7f366699196e3282615275061effb1195fdc044f5a2537167bc358150379cbe4"
+    "src/main.sak": "ce29a162ee5757fa79fe998911e359d69f28a0fca8fc68a37c42162641f07c61"
   },
   "editable_files": [
     "src/main.sak"

@@ -1,5 +1,5 @@
 import std/request.{Get, Request, Text}
-import std/response.{Response, Status}
+import std/response.{Response}
 import std/router.{Router}
 import std/url.{Url}
 

@@ -1,5 +1,6 @@
-import std/http.{Matcher}
+import std/http.{Any, Http, Matcher}
 import std/request.{Get}
+import std/response.{Response}
 
 test "oracle/valid" {
   with Http.scripted([(Matcher.Path("/count"), Response.status(200, "\{\"value\":23\}"))]),

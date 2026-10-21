@@ -1,3 +1,8 @@
+import std/request.{Get, Request, Text}
+import std/response.{Status}
+import std/router.{Router}
+import std/url.{Url}
+
 test "oracle/health" {
   let r = Router.handle(app(), Request.of(Get, Url.from("/health")))
   expect_eq(r.status, Status.from(200))
