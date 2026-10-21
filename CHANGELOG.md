@@ -105,19 +105,26 @@ preparation commit. The Rust MSRV is unchanged (1.99).
 
 Every breaking entry below, in the order a program meets it; the entries carry the details.
 
-1. **Request and response bodies are a `Payload`** (Changed, RFC 0002 §2.4). `body: "s"` in a
-   `Request` or `Response` record becomes `body: Text("s")` (or `.with_payload(Text("s"))`); a
-   read of `r.body` becomes a `match` on `Empty | Text(s) | Bytes(b)`, or `Response.text`,
-   `Response.json`, `Response.bytes(r, limit)`, `Request.text`, `Request.json` or
+1. **Request and response bodies are a `Payload`** (Changed, RFC 0002 §2.4). Add
+   `import std/request.{Payload}`: the variants are written `Payload.Text`, `Payload.Empty` and
+   `Payload.Bytes` (a bare `Text("s")` is `V1002`, a bare `Bytes(b)` is `V1007`). `body: "s"` in a
+   `Request` or `Response` record becomes `body: Payload.Text("s")` (or
+   `.with_payload(Payload.Text("s"))`); a read of `r.body` becomes a `match` on
+   `Payload.Empty | Payload.Text(s) | Payload.Bytes(b)`, or one of the accessors, each of which
+   takes a byte `limit`: `Response.text(r, limit) -> Untrusted<String>`, `Response.json(r, limit)`,
+   `Response.bytes(r, limit)`, `Request.text(req, limit)`, `Request.json(req, limit)`,
    `Request.bytes(req, limit)`. A test that compared a replayed `response.body` with a string
    compares `Response.bytes` or `Response.text`. `Request.of`, `post`, `post_json`,
-   `Response.status`, `ok_json` and `html` are unchanged.
+   `Response.status`, `ok_json` and `html` are unchanged. (Wording corrected after the tag from
+   the dogfood upgrade's evidence.)
 2. **`Method` gains `Options` and `Trace`** (Changed): an exhaustive `match` on `Method` adds two
    arms.
 3. **`Request` gains `redirect: Redirect`, and redirects are followed in `std/http`** (Changed,
    design §17.263 (4)): every builder sets `Follow`. `Http.scripted` answering a 3xx is now
    followed like a host's response, `Http.recording` records each hop as its own exchange, and
-   `Http.scoped` checks every hop against its list; choose `Manual` to receive the 3xx itself.
+   `Http.scoped` checks every hop against its list. To receive the 3xx itself, import
+   `std/request.{Redirect}` and update the record: `Request { ..req, redirect: Redirect.Manual }`
+   (no builder takes a `redirect` argument).
 4. **`Clock` and `Task` gain operations** (Changed, RFC 0002 §2.8): a user `handler Clock` adds
    `monotonic_micros() -> Int`, and a user `handler Task` adds `cancel<T>(f: Fiber<T>) -> Unit`
    and `cancelled(s: Scope) -> Bool`. The std handlers implement them. `Console.alert`,
