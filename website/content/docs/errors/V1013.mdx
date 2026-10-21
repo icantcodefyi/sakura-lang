@@ -68,11 +68,11 @@ pub fn main() -> Unit { let _ = Job { id: 1 } }
 {
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:331ce0cd3650456c",
+  "id": "d:f0bed5a5af693094",
   "code": "V1013",
   "severity": "error",
   "phase": "resolve",
-  "message": "`@worker` goes on a non-generic `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker}`: a worker is started by name with its two ports",
+  "message": "`@worker` goes on a non-generic `fn(Inbox<I>, Outbox<O>) -> Unit`, any row: a worker is started by name with its two ports",
   "snapshot": "sha256:$SNAPSHOT",
   "symbol_id": "main::V1013_worker_signature::double",
   "spans": [

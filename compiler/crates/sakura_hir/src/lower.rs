@@ -1420,7 +1420,7 @@ impl Cx {
                 codes::V1013,
                 self.file(m),
                 range,
-                "`@worker` goes on a non-generic `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker}`: a worker is started by name with its two ports".to_string(),
+                "`@worker` goes on a non-generic `fn(Inbox<I>, Outbox<O>) -> Unit`, any row: a worker is started by name with its two ports".to_string(),
             );
             self.report(d);
         }

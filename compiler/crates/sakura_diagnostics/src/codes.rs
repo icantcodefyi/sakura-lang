@@ -169,6 +169,19 @@ Wrong:
 Fixed:
     fn describe(reason: String) -> String { \"failed: {reason}\" }";
 
+    V0017 "field_outside_record" PARSE,
+"A block statement is headed `name: …`, an anonymous record literal's field (design §17.297 (6),
+§17.305 (3)). `{ request: 0, cap: 0 }` in expression position is a block, not a record: Sakura
+Lang has no anonymous records, so a record literal names its type. Each `name: …` is one record
+at the name, whether or not `name` is in scope, and the value up to the next `,` or the line's
+end is skipped. Declare a record type and name it in the literal.
+
+Wrong:
+    let c = { request: 0, cap: 0 }
+Fixed:
+    type Budget = { request: Int, cap: Int }
+    let c = Budget { request: 0, cap: 0 }";
+
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
 "Two items in the same module and namespace have the same name (design §9). Rename or remove one;

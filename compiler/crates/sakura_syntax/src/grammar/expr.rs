@@ -648,7 +648,7 @@ pub(crate) fn block(p: &mut Parser<'_>) -> CompletedMarker {
 }
 
 /// `name: …` as a block statement is an anonymous record literal's field (design §17.297 (6)).
-/// `name` (just bumped) is reported (`V1002`); the `:` and the value up to the next `,` (taken)
+/// `name` (just bumped) is reported (`V0017`); the `:` and the value up to the next `,` (taken)
 /// or the line's or block's end are one `ERROR` node, so a k-field literal is k records and no
 /// `V0009` cascade. Out of line so `block`'s frame, on the parser's recursion, does not grow.
 #[inline(never)]

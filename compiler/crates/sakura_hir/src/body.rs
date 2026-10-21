@@ -912,7 +912,7 @@ impl<'a> BodyCx<'a> {
             return Res::Err;
         };
         if segs.len() == 1 && heads_field_stmt(&last) {
-            // `{ request: 0, … }` is a block: the parser reported `request` (`V1002`, design
+            // `{ request: 0, … }` is a block: the parser reported `request` (`V0017`, design
             // §17.297 (6)), so no import is offered (§17.294 WP-6) and nothing else is said.
             return Res::Err;
         }

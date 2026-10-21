@@ -192,13 +192,14 @@ retains earlier implementation history.
   as a suggested one, in a call or a pattern. A name several std types share is resolved by
   the module the file already imports, else the message lists every owner and offers no fix.
   ui case `V1002_std_constructor_hint`.
-- An anonymous record literal (`let c = { request: 0, cap: 0 }`, a block in expression
-  position) is one `V1002` per field, at the field's name, and nothing else: the parser takes
-  each `name: …` up to the next `,` or the line's end, where it reported a `V0009` cascade
-  after every name (seven records for two fields). The message is "`request: …` is not a
-  statement; a record literal names its type: `Type { request: …, … }`", now also when
-  `request` names a value in scope, and the record's phase is `parse` (design §17.297 (6)).
-  ui case `V1002_anonymous_record_literal`.
+- `V0017 field_outside_record`: an anonymous record literal (`let c = { request: 0, cap: 0 }`,
+  a block in expression position) is one `V0017` per field, at the field's name, and nothing
+  else: the parser takes each `name: …` up to the next `,` or the line's end, where it reported
+  a `V0009` cascade after every name and the resolver a `V1002` (seven records for two fields).
+  The message is "`request: …` is not a statement; a record literal names its type:
+  `Type { request: …, … }`", also when `request` names a value in scope (design §17.297 (6),
+  §17.305 (3)).
+  ui case `V0017_anonymous_record_literal`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

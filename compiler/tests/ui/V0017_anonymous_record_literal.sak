@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V0017 V0017 V0017 V0017
+// §17.294 WP-6, §17.297 (6), §17.305 (3): `{ request: 0, cap: 0 }` in expression position is a
+// block, so each `name: …` is reported once at its name and the parser takes the value up to the
+// next `,` or the line's end with it: a k-field literal is k `V0017`, with no `V0009` cascade. The
+// message says a record literal names its type, no `import std/llm.{request}` is offered though
+// std/llm exports a `request`, and a name that resolves (`cap` below) is reported all the same.
+pub fn budget() -> Int {
+  let c = { request: 0, cap: 0 }
+  let cap = 1
+  let d = {
+    request: List.len([1, 2])
+    cap: cap
+  }
+  0
+}

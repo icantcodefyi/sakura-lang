@@ -31,9 +31,8 @@ pub const KEYWORD_EXPR_OPERAND: Code = codes::V0012;
 pub const INVALID_ASSIGN_TARGET: Code = codes::V0013;
 /// `name: value` in a call's argument list; only attributes take named arguments (§3.2 rule 13).
 pub const NAMED_ARGUMENT: Code = codes::V0014;
-/// `name: …` heading a block statement, an anonymous record literal's field (§17.297 (6)): the
-/// one parser record outside `V0xxx`, so the shape is reported as the unresolved name it was
-/// before the recovery, whether or not `name` resolves.
-pub const FIELD_OUTSIDE_RECORD: Code = codes::V1002;
 /// A parameter, `let`/`var` name or pattern binding named `error`, a keyword (§17.297 (2)).
 pub const KEYWORD_BINDER: Code = codes::V0016;
+/// `name: …` heading a block statement, an anonymous record literal's field (§17.297 (6),
+/// §17.305 (3)), whether or not `name` resolves.
+pub const FIELD_OUTSIDE_RECORD: Code = codes::V0017;

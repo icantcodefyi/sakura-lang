@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-98 codes; 68 pages show a fixed program that the compiler's test suite checks.
+99 codes; 68 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -28,6 +28,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V0014](/docs/errors/V0014) | `named_argument` | Calls take positional arguments only (design §3.2 rule 13); `name: value` exists only inside attribute arguments. |
 | [V0015](/docs/errors/V0015) | `source_not_utf8` | The source file is not UTF-8. |
 | [V0016](/docs/errors/V0016) | `keyword_binder` | A parameter, a lambda parameter, a `let` or `var` name or a pattern binding is named `error` (design §17.297 (2)). |
+| [V0017](/docs/errors/V0017) | `field_outside_record` | A block statement is headed `name: …`, an anonymous record literal's field (design §17.297 (6), §17.305 (3)). |
 
 ## Names and modules
 
