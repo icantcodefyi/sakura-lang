@@ -210,7 +210,7 @@ table! {
     // Sql
     Direct sql_memory/0, Direct sql_sqlite/1,
     // Llm
-    Direct llm_anthropic/2,
+    Direct llm_anthropic/3,
     // Serve
     Cps serve_listen/2,
     // WebSocket (RFC 0002 §1, plan `web-apis.md` phase 8)

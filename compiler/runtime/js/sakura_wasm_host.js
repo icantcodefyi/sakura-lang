@@ -435,7 +435,7 @@ export const HOSTED = {
  */
 const JS_HANDLERS = {
   llm_anthropic: {
-    build: (key, model) => rt.llm_anthropic(key, model),
+    build: (key, model, base) => rt.llm_anthropic(key, model, base),
     schemaArg: [1, -1, 2, 3],
     results: [(a) => a[1], () => null, (a) => a[2], (a) => ["A", "std::llm::Step", [a[3]]]],
     // Per operation, the positions of closure arguments (they stay in the guest) and whether

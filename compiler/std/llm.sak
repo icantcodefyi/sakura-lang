@@ -7,11 +7,14 @@
 import std/budget.{Budget, BudgetExceeded}
 import std/core.{Violation}
 import std/fs.{Fs}
+import std/http
 import std/http.{Cassette, Http, RateLimited}
 import std/path.{Path}
 import std/prompt.{Prompt}
+import std/response.{Response}
 import std/task.{Timeout}
 import std/untrusted
+import std/url.{Url}
 
 /// A provider model name; `Model.default()` lets the handler choose.
 pub type Model = Model(String)
@@ -89,10 +92,26 @@ pub fn of(name: String) -> Model { Model(name) }
 
 pub fn default() -> Model { Model("default") }
 
-/// Anthropic's Messages API with `T`'s JSON Schema as the output format. Each call reserves
-/// against the installed `Budget` first and settles the reported usage after.
+/// Anthropic's Messages API at `https://api.anthropic.com`, with `T`'s JSON Schema as the output
+/// format: `anthropic_at("https://api.anthropic.com", key, model)`. Each call reserves
+/// `ceil(bytes of the request body / 4) + max_tokens` tokens at the model's price against the
+/// installed `Budget` first and settles the reported usage after.
+pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}> {
+  anthropic_at("https://api.anthropic.com", key, model)
+}
+
+/// `anthropic` against the endpoint `base`: every call is `POST <base>/v1/messages` on the
+/// enclosing `Http`, so the manifest's `net` list and any `Http.scoped` apply to `base`. No
+/// process variable is read; a program that takes the endpoint from its environment reads it
+/// under its own `Env` handler and passes it:
+/// `anthropic_at(Url.from(Option.unwrap_or(Env.get("ANTHROPIC_BASE_URL"), "https://api.anthropic.com")), key, model)`.
+pub fn anthropic_at(base: Url, key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}> {
+  llm_anthropic(key, model, base)
+}
+
+// The JS runtime's handler; `base` is last so a host built before it still accepts the call.
 @external(js, "sakura_runtime", "llm_anthropic")
-pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}>
+fn llm_anthropic(key: Secret<String>, model: Model, base: Url) -> Handler<Llm, {Budget, Http}>
 
 /// `provider` under `Budget.unlimited()` and `Http.recording(path)` (design §17.102): a call
 /// whose Messages API exchange is in the cassette replays it; a miss reaches the enclosing
@@ -305,6 +324,28 @@ test "recording a missing exchange without --record is a ProviderError naming it
         expect(String.contains(reason, "Llm.recording"))
       },
       other => expect_eq("{other}", "a ProviderError"),
+    }
+  }
+}
+
+test "anthropic_at sends to the given base" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  let answer = "\{\"content\":[\{\"type\":\"text\",\"text\":\"\{\\\"value\\\":4\}\"\}],\"stop_reason\":\"end_turn\",\"usage\":\{\"input_tokens\":1,\"output_tokens\":1\}\}"
+  // `Http.scoped` admits only the given base's host, so the request went there.
+  with Http.scripted([(http.Path("/v1/messages"), Response.status(200, answer))]),
+      Http.scoped(["llm.example.test:8443"]),
+      Budget.unlimited() {
+    with anthropic_at(Url.from("https://llm.example.test:8443"), Secret.of("k"), default()) {
+      expect_eq(try { Llm.generate(req) }, Ok(4))
+    }
+    with anthropic(Secret.of("k"), default()) {
+      match try { Llm.generate(req) } {
+        Err(ProviderError { status, reason }) => {
+          expect_eq(status, 0)
+          expect_eq(reason, "api.anthropic.com:443 is outside Http.scoped")
+        },
+        other => expect_eq("{other}", "a ProviderError"),
+      }
     }
   }
 }

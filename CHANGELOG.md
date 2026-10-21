@@ -54,9 +54,22 @@ Every breaking entry below, in the order a program meets it; the entries carry t
    exhaustive `match` on `Algorithm` adds `AesCbc`, `AesCtr`, `AesKw`, `RsassaPkcs1`, `RsaPss`
    and `RsaOaep`; on `Curve`, `P384` and `P521`; on `KeyReason`, `Unavailable(name)`; on
    `CryptoReason`, `Padding` and `Unsupported(name)`.
+10. **`ANTHROPIC_BASE_URL` is no longer read** (Changed, design §17.293 MT-1): pass the
+    endpoint with `Llm.anthropic_at(base, key, model)`; read it under your own `Env` handler if
+    it comes from the environment.
 
 ### Changed
 
+- **Breaking since 0.1.0 (design §17.293 MT-1).** `Llm.anthropic` no longer reads the process
+  variable `ANTHROPIC_BASE_URL`: it always sends to `https://api.anthropic.com`, and the new
+  `Llm.anthropic_at(base: Url, key, model)` sends to `<base>/v1/messages`, where the manifest's
+  `net` list and any `Http.scoped` apply to `base`. The variable was read outside `Env`, the
+  manifest's `env` grant and the test's empty environment, and a cassette recorded under it
+  keyed on a URL no other machine sent, so a recording under `anthropic` now keys on the
+  canonical URL everywhere. `anthropic`'s doc states its reservation:
+  `ceil(bytes of the request body / 4) + max_tokens` tokens at the model's price (§17.293
+  MT-7). Migration: `ANTHROPIC_BASE_URL` is no longer read; pass the endpoint with
+  `Llm.anthropic_at`, e.g. `Llm.anthropic_at(Url.from(Option.unwrap_or(Env.get("ANTHROPIC_BASE_URL"), "https://api.anthropic.com")), key, model)`.
 - **Breaking since 0.1.0 (design §17.292 (5)).** `Path`'s refinement `is_relative` also refuses
   `\` and `:`, so `a\..\b`, `C:\x`, `\\server\share` and `C:x` are no longer a `Path` on any
   OS: `/` is its only separator and it names no drive, so the promise that a handler rooted at
@@ -708,7 +721,8 @@ Entries marked **Breaking** can change what a program that worked on `v0.1.0-alp
   refusing. The manifest is schema 1.1 and gains `target` (`js` or `wasm`); a WASM manifest
   lists `sakura_rt.wasm`, `sakura_wasm_host.js` and `sakura_runtime.js` as its runtime, and
   every clause stays `runtime_checked` because WASM builds drop no checks yet
-  (design §17.163 (3)).
+  (design §17.163 (3)) (superseded within this release by §17.163 (4) below: WASM builds drop
+  proved checks; note added 2026-10-21, design §17.294 WP-13).
 
 - Release candidate checks enforce deprecation notice periods, major-only removals
   and unchanged Rust MSRV in patch releases; the deprecation registry starts empty.

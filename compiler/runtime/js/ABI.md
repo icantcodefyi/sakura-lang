@@ -597,9 +597,11 @@ other types from the first column (`Bool` from 0/1, `Option` from NULL, refineme
 other structured types from JSON text). `transaction` is a savepoint (nests), released when
 the body returns and rolled back when it fails, defects or is cancelled.
 
-**Llm.** `llm_anthropic(key, model)` is a `std::llm::Llm` handler over Anthropic's Messages
-API that performs `Http.send` and `Budget.reserve`/`settle` on the handlers outside it
-(`ANTHROPIC_BASE_URL` overrides the endpoint, for tests). `Model("default")` is
+**Llm.** `llm_anthropic(key, model, base)` is a `std::llm::Llm` handler over Anthropic's
+Messages API at `<base>/v1/messages` that performs `Http.send` and `Budget.reserve`/`settle` on
+the handlers outside it; `Llm.anthropic_at` passes `base` and `Llm.anthropic` passes
+`https://api.anthropic.com`, the default when a guest built before `base` passes two
+arguments. No process variable is read (design §17.293 MT-1). `Model("default")` is
 `claude-opus-5-5`; no `temperature` is sent (current models reject sampling parameters).
 Requests carry `x-api-key` (in `secret_headers`), `anthropic-version: 2023-06-01`, server-side refusal fallbacks
 (`fallbacks: "default"`, `anthropic-beta: server-side-fallback-2026-07-01`) and structured

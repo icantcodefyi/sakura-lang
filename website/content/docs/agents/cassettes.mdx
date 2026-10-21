@@ -71,6 +71,35 @@ A cassette miss can then forward through the outer `Http` handler and append the
 
 For provider recording, install `Llm.recording(path, Llm.anthropic(key, model))` inside an outer `Http` and `Fs` handler. It replays cassette hits and records misses through the supplied provider under `--record`; a miss without recording mode fails as `ProviderError`. Use `Http.host()` and a real secret key for live calls. `Llm.replay` keeps its empty scripted outer handler even with `--record`, so it cannot fetch a missing provider exchange itself. Review cassette diffs before committing them. The examples below were executed with synthetic responses, without a live provider or real credentials.
 
+`Llm.anthropic` always sends to `https://api.anthropic.com`, so a cassette's request keys are the same on every machine. To point the adapter at another endpoint, such as a local proxy, pass it as a value with `Llm.anthropic_at(base, key, model)`, which sends to `<base>/v1/messages`; the manifest's `net` list applies to `base` like any request. No process variable is read: `ANTHROPIC_BASE_URL` is ignored since `v1.0.0-beta.1`. A program that takes the endpoint from its environment reads it under its own `Env` handler and passes it:
+
+```sakura
+import std/budget.{Budget}
+import std/http.{Http}
+import std/llm.{Llm, Model}
+import std/url.{Url}
+
+/// The adapter for the endpoint the environment names, else Anthropic's API.
+fn provider(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}> ! {Env} {
+  let base = Option.unwrap_or(Env.get("ANTHROPIC_BASE_URL"), "https://api.anthropic.com")
+  Llm.anthropic_at(Url.from(base), key, model)
+}
+```
+
+Each call reserves `ceil(bytes of the request body / 4) + max_tokens` tokens at the model's price against the installed `Budget` before it is sent, then settles the usage the response reports. A `Budget` handler that logs each reservation and forwards to the one outside it shows what a test spends:
+
+```sakura
+import std/budget.{Budget}
+
+/// Prints each reservation, then forwards it to the `Budget` outside.
+fn logged() -> Handler<Budget, {Budget, Console}> {
+  handler Budget {
+    fn reserve(c) { Console.print("reserve {c.tokens} tokens"); Budget.reserve(c) }
+    fn settle(r, actual) { Budget.settle(r, actual) }
+  }
+}
+```
+
 ### A synthetic record-then-replay example
 
 In a scratch package, set `[permissions]` in `sakura.toml` to include `net = ["api.anthropic.com:443"]`, then put this in `src/main.sak`. The outer HTTP handler supplies an invented response; it makes no network request:

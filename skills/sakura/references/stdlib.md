@@ -645,7 +645,8 @@ effect Llm {
 fn request<T: Schema>(system: String, user: Prompt) -> Request<T>
 fn of(name: String) -> Model
 fn default() -> Model
-fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}>    // @external
+fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}>
+fn anthropic_at(base: Url, key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}>
 fn recording(path: Path, provider: Handler<Llm, {Budget, Http}>) -> Handler<Llm, {Fs, Http}>
 fn replay(path: Path) -> Handler<Llm, {Fs}>
 fn scripted(responses: List<String>) -> Handler<Llm>

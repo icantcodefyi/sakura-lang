@@ -745,11 +745,19 @@ pub extern "C" fn rt_code_serve_request(_env: u32, frame: u32) -> u32 {
 
 // ---- JS-built handlers (`Llm.anthropic`): clauses the host runs with the JS runtime ---------
 
-/// `Llm.anthropic(key, model)`: the JS runtime's handler, built on the host (`key` crosses to
-/// this import of kind `secret`, ABI §8.1).
+/// `Llm.anthropic_at(base, key, model)`: the JS runtime's handler, built on the host (`key`
+/// crosses to this import of kind `secret`, ABI §8.1). `base` crosses last, so a host that
+/// takes two arguments still builds it (design §17.293 MT-1).
 #[unsafe(no_mangle)]
-pub extern "C" fn rt_b_llm_anthropic(effect: u32, codes: u32, n: u32, key: u32, model: u32) -> u32 {
-    js_handler("llm_anthropic", effect, codes, n, &[key, model])
+pub extern "C" fn rt_b_llm_anthropic(
+    effect: u32,
+    codes: u32,
+    n: u32,
+    key: u32,
+    model: u32,
+    base: u32,
+) -> u32 {
+    js_handler("llm_anthropic", effect, codes, n, &[key, model, base])
 }
 
 /// `Log.json()`: the JS runtime's handler (its JSON lines are the JS backend's byte for byte).

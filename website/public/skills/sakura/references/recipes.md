@@ -648,7 +648,8 @@ internally. The placeholder `Secret` is not an API key, and no host HTTP handler
 network permission is installed.
 
 The cassette's two turns report synthetic usage of 140 tokens each. The provider
-reserves an estimate and settles that usage; the agent also holds a temporary
+reserves an estimate, `ceil(bytes of the request body / 4) + max_tokens` tokens at the
+model's price, and settles that usage; the agent also holds a temporary
 one-call reservation while a turn is in progress. Consequently the two-call run
 needs a call limit of three for its overlapping reservations. A limit of two
 rejects the second provider call. The tests exercise both cases, a token limit that
@@ -1667,6 +1668,10 @@ is the typed failure `InvalidOutput`, never a crash. The first two tests script 
 `Llm.scripted`, which takes the answer itself. The other two replay
 `tests/fixtures/extract_ticket.jsonl`, a synthetic Messages API exchange, through
 `Llm.replay` and through `Llm.recording`, whose test `sakura test --record` would fetch once.
+
+`Llm.anthropic` always sends to `https://api.anthropic.com`, so the cassette's keys are the
+same on every machine; for another endpoint pass it with `Llm.anthropic_at(base, key, model)`
+(no process variable is read).
 
 `main` calls a real model, so the harness runs the tests only. The fixture's bodies, IDs and
 token counts were invented (see its README); this is not live-provider validation.

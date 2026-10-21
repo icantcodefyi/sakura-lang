@@ -947,10 +947,11 @@ import std/llm.{Llm}
 import std/prompt.{Prompt}
 import std/budget.{Budget}
 import std/http.{Http}
+import std/url.{Url}
 type Ticket = { title: String, priority: Int }
 pub fn main() -> Unit ! {Console, Env, Http} {
   let key = Option.expect(Env.secret("TEST_KEY"), "no key")
-  with Budget.unlimited(), Llm.anthropic(key, Llm.default()) {
+  with Budget.unlimited(), Llm.anthropic_at(Url.from("BASE"), key, Llm.default()) {
     let req: llm.Request<Ticket> = Llm.request("Extract a ticket.", Prompt.text("login is broken"))
     let a = try { Llm.generate(req) }
     Console.print("{a}")
@@ -963,12 +964,15 @@ pub fn main() -> Unit ! {Console, Env, Http} {
   }
 }
 "#;
-    let (m, sources) = common::build("llm_anthropic", src, false).unwrap();
+    // The endpoint is a value in the program (design §17.293 MT-1).
+    let src = src.replace("BASE", &format!("http://127.0.0.1:{port}"));
+    let (m, sources) = common::build("llm_anthropic", &src, false).unwrap();
     let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("llm-anthropic");
     common::write(&m, sources, &dir);
     let out = std::process::Command::new("node")
         .arg(dir.join("__main__.js"))
-        .env("ANTHROPIC_BASE_URL", format!("http://127.0.0.1:{port}"))
+        // Never read: were it, the calls would go to a closed port.
+        .env("ANTHROPIC_BASE_URL", "http://127.0.0.1:9")
         .env("TEST_KEY", "sk-test")
         .output()
         .unwrap();

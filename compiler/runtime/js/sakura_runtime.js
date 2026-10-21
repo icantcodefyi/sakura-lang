@@ -5038,7 +5038,16 @@ function promptContent(prompt) {
   return { blocks, untrusted };
 }
 
-export function llm_anthropic(key, handlerModel) {
+/** Anthropic's API, where `Llm.anthropic` sends. */
+const ANTHROPIC_API = "https://api.anthropic.com";
+
+/**
+ * `Llm.anthropic_at(base, key, model)` (design §17.293 MT-1): every call is a `POST
+ * <base>/v1/messages` performed on the enclosing `Http`. `base` is the trailing argument, so a
+ * guest built before it passes two and gets `ANTHROPIC_API`; no process variable is read.
+ */
+export function llm_anthropic(key, handlerModel, base) {
+  base ??= ANTHROPIC_API;
   const modelOf = (req) => {
     const m = req.model.fields[0] === "default" ? handlerModel.fields[0] : req.model.fields[0];
     return m === "default" ? DEFAULT_MODEL : m;
@@ -5087,7 +5096,6 @@ export function llm_anthropic(key, handlerModel) {
     const Request = std("std::request::Request");
     const Method = std("std::request::Method");
     const post = new Method(Method.prototype.$t.ctors.findIndex((c) => c.name === "Post"), []);
-    const base = proc?.env?.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com";
     const headers = list([
       ["content-type", "application/json"],
       ["anthropic-version", "2023-06-01"],

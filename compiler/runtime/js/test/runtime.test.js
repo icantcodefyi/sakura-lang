@@ -703,6 +703,40 @@ test("Secret never prints; Json.parse builds std values", () => {
   assert.equal(intMessage("1.5"), "expected an integer, found a number");
 });
 
+test("llm_anthropic posts to api.anthropic.com with ANTHROPIC_BASE_URL set, and to base when given (§17.293 MT-1)", async () => {
+  class Method extends rt.Variant {}
+  Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);
+  rt.def("std::request::Method", Method);
+  const record = (...names) =>
+    class {
+      constructor(...xs) {
+        names.forEach((n, i) => (this[n] = xs[i]));
+      }
+    };
+  rt.def("std::request::Request", record("method", "url", "headers", "body", "redirect", "secret_headers", "trailers"));
+  rt.def("std::budget::Cost", record("tokens", "usd", "calls"));
+  rt.def("std::llm::ProviderError", record("status", "reason"));
+  const urls = [];
+  const http = new rt.Handler("std::http::Http", [(_i, req, _ctx, k) => (urls.push(req.url), ret(k, { status: 500, headers: rt.list([]), body: EMPTY }))], []);
+  const budget = new rt.Handler("std::budget::Budget", [(_i, c, _ctx, k) => ret(k, c), (_i, _r, _a, _ctx, k) => ret(k, undefined)], []);
+  const model = { fields: ["default"] };
+  const req = { system: "", user: { fields: [rt.list([{ tag: 0, fields: ["hi"] }])] }, model, max_tokens: 8, temperature: 0 };
+  const generateText = (llm) => (ctx, k) => {
+    const inner = rt.install(rt.install(rt.install(ctx, http), budget), llm);
+    return rt.perform(inner, "std::llm::Llm", 1, [req], k);
+  };
+  process.env.ANTHROPIC_BASE_URL = "http://127.0.0.1:9";
+  try {
+    for (const llm of [rt.llm_anthropic(rt.secret_wrap("k"), model), rt.llm_anthropic(rt.secret_wrap("k"), model, "https://llm.example.test")]) {
+      const o = await rt.runTask(generateText(llm));
+      assert.equal(o.kind, "fail");
+    }
+  } finally {
+    delete process.env.ANTHROPIC_BASE_URL;
+  }
+  assert.deepEqual(urls, ["https://api.anthropic.com/v1/messages", "https://llm.example.test/v1/messages"]);
+});
+
 test("a race cancels the loser, whose finalizer runs before the race returns", async () => {
   const log = [];
   const frames = rt.install({ h: null, c: null, t: null }, rt.task_host()).h;
