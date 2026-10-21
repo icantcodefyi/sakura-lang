@@ -332,14 +332,23 @@ const RUN_TARGETS: [&str; 3] = ["js", "wasm", "native"];
 
 /// Why this `sakura` cannot build `--target native`, if it cannot: the backend is built only
 /// with the `native` feature, which the platform-A and B release binaries carry (design §17.175
-/// (6), plan m5-native.md §5).
+/// (6), plan m5-native.md §5), and only for platforms A to C; C's (Intel macOS, Windows x64)
+/// come from a source build.
 fn native_refusal() -> Option<String> {
     let platform = cfg!(any(
-        all(target_arch = "aarch64", target_os = "macos"),
+        all(
+            any(target_arch = "aarch64", target_arch = "x86_64"),
+            target_os = "macos"
+        ),
         all(
             any(target_arch = "x86_64", target_arch = "aarch64"),
             target_os = "linux",
             target_env = "gnu"
+        ),
+        all(
+            target_arch = "x86_64",
+            target_os = "windows",
+            target_env = "msvc"
         )
     ));
     (!cfg!(feature = "native") || !platform).then(|| {

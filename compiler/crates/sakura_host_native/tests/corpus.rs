@@ -708,9 +708,14 @@ fn hosted_builtins_follow_the_compiler_table() {
 /// name, a direct twin (Cranelift's `tail` convention) and its frame-protocol caller included,
 /// from the `.eh_frame` the object carries, each at its `file:line` from the DWARF line table:
 /// `lldb` on macOS, `gdb` elsewhere. Skipped where
-/// neither is installed, except in CI.
+/// neither is installed, except in CI, and on Windows, whose debuggers read CodeView, which the
+/// backend does not emit (a stated limitation, design §17.175 (7)).
 #[test]
 fn a_debugger_backtraces_through_native_frames() {
+    if cfg!(windows) {
+        eprintln!("skipped: no CodeView on Windows");
+        return;
+    }
     let (debugger, args): (&str, &[&str]) = if cfg!(target_os = "macos") {
         (
             "lldb",
@@ -831,6 +836,67 @@ fn every_compiled_function_has_unwind_information() {
             f.name().unwrap_or("?")
         );
     }
+}
+
+/// Plan m5-native.md row C, checked on every host: each corpus program compiles for Windows x64
+/// (COFF) and Intel macOS (Mach-O x86_64), twins included, and on Windows every function it
+/// defines has a `.pdata` entry (start, end and `UNWIND_INFO`, each relocated) the system
+/// unwinder walks frames with; `.xdata` holds the `UNWIND_INFO`s and no DWARF is emitted there.
+/// Cranelift builds only the host's ISA, so this runs on x86-64 hosts (the Linux x64 job).
+#[test]
+fn the_corpus_compiles_for_platform_c() {
+    if !cfg!(target_arch = "x86_64") {
+        eprintln!("skipped: Cranelift's x86-64 backend is not in this build");
+        return;
+    }
+    use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget, SymbolKind};
+    let programs = programs();
+    let failures: Vec<String> = big_stack_map(&programs, |p| {
+        let m = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
+        for triple in ["x86_64-pc-windows-msvc", "x86_64-apple-darwin"] {
+            let opts = sakura_codegen_native::Options {
+                target: triple.parse().unwrap(),
+                ..Default::default()
+            };
+            let bytes = match sakura_codegen_native::emit(&m, &opts) {
+                Ok(bytes) => bytes,
+                Err(e) => return Some(format!("{} ({triple}): {e}", p.name)),
+            };
+            let file = object::File::parse(bytes.as_slice()).unwrap();
+            if file.format() != object::BinaryFormat::Coff {
+                continue;
+            }
+            let section = |name| file.sections().find(|s| s.name() == Ok(name));
+            let pdata = section(".pdata").expect("a .pdata section");
+            assert!(section(".xdata").is_some() && section(".debug_info").is_none());
+            let relocs: Vec<_> = pdata.relocations().collect();
+            assert_eq!(relocs.len() as u64 * 4, pdata.size(), "{}", p.name);
+            let covered: std::collections::BTreeSet<_> = relocs
+                .iter()
+                .filter_map(|(_, r)| match r.target() {
+                    RelocationTarget::Symbol(i) => Some(i.0),
+                    _ => None,
+                })
+                .collect();
+            for f in file
+                .symbols()
+                .filter(|s| s.kind() == SymbolKind::Text && s.is_definition())
+            {
+                if !covered.contains(&f.index().0) {
+                    return Some(format!(
+                        "{}: {} has no .pdata entry",
+                        p.name,
+                        f.name().unwrap()
+                    ));
+                }
+            }
+        }
+        None
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    assert!(failures.is_empty(), "{failures:#?}");
 }
 
 /// ABI §1b: the object carries the `sakura.native` record in a section of its own, and the

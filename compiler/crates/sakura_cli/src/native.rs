@@ -16,10 +16,10 @@ use sakura_diagnostics::{Diagnostic, Phase, Span, codes};
 use crate::{EXIT_ERRORS, report, usage_error};
 
 pub const OBJECT: &str = "main.o";
-pub const EXECUTABLE: &str = "main";
+pub const EXECUTABLE: &str = if cfg!(windows) { "main.exe" } else { "main" };
 /// A test build's executable (`sakura test --target native`), written only when the module has
 /// tests; it runs them with `<seed> <filter> <snapshot-dir> <update>`.
-pub const TESTS: &str = "tests";
+pub const TESTS: &str = if cfg!(windows) { "tests.exe" } else { "tests" };
 
 /// Where the driver staticlib is (`sakura_codegen_native::DRIVER_LIB`): `SAKURA_NATIVE_LIB_DIR`,
 /// else `lib/sakura/native` beside an installed `bin/`, else beside the binary itself, as in an
@@ -59,6 +59,8 @@ fn driver_dir() -> Result<PathBuf, String> {
 fn linker_missing(snapshot: &Snapshot) -> Diagnostic {
     let provide = if cfg!(target_os = "macos") {
         "`xcode-select --install` installs the Command Line Tools, which provide it"
+    } else if cfg!(windows) {
+        "install the Visual Studio Build Tools with the \"Desktop development with C++\" workload"
     } else {
         "install a C compiler: `sudo apt install gcc` on Debian or Ubuntu, `sudo dnf install gcc` on Fedora"
     };
@@ -66,8 +68,13 @@ fn linker_missing(snapshot: &Snapshot) -> Diagnostic {
         codes::V8007,
         Phase::Package,
         format!(
-            "`--target native` links with the system C linker `{}`, which is not on PATH; {provide}",
-            sakura_codegen_native::LINKER
+            "`--target native` links with the system C linker `{}`, which {}; {provide}",
+            sakura_codegen_native::LINKER,
+            if cfg!(windows) {
+                "is in no Visual Studio installation"
+            } else {
+                "is not on PATH"
+            }
         ),
     );
     match snapshot.user_files().next() {
@@ -155,6 +162,7 @@ pub fn build(
         codegen_only: stop_after("codegen"),
         tests,
         split: sakura_lir::split::PIECE,
+        ..Default::default()
     };
     let exe = if tests {
         // A marker of the module's tests, as WASM's `__tests__.wasm`: none from an earlier build.

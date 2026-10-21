@@ -39,6 +39,21 @@ fn constant_object_links_and_runs() {
     let object = dir.join("constant.o");
     let program = dir.join("constant");
     std::fs::write(&object, module.finish().emit().unwrap()).unwrap();
+    // MSVC's `link.exe` on Windows, with the C runtime's `mainCRTStartup` (plan m5-native.md
+    // row C); `cc` elsewhere.
+    #[cfg(windows)]
+    let link = {
+        let mut out = std::ffi::OsString::from("/OUT:");
+        out.push(program.with_extension("exe"));
+        find_msvc_tools::find(&target_lexicon::HOST.to_string(), "link.exe")
+            .expect("MSVC link.exe required")
+            .args(["/NOLOGO", "msvcrt.lib"])
+            .arg(out)
+            .arg(&object)
+            .output()
+            .unwrap()
+    };
+    #[cfg(not(windows))]
     let link = Command::new("cc")
         .arg(&object)
         .arg("-o")

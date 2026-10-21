@@ -2516,6 +2516,7 @@ dependencies = [
  "cranelift-module",
  "cranelift-native",
  "cranelift-object",
+ "find-msvc-tools",
  "gimli 0.34.0",
  "object 0.40.0",
  "sakura_lir",

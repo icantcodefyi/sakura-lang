@@ -442,8 +442,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Platform A, then B (ARM Linux, plan m5-native.md §5).
-        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
+        # Platform A, then B (ARM Linux) and C (Windows x64, Intel macOS), plan m5-native.md §5.
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm, windows-2025, macos-15-intel]
     runs-on: ${{ matrix.os }}
     # ubuntu-latest needs about 30 minutes since N4a runs the corpus both ways (cb0056fb).
     timeout-minutes: 45
@@ -468,11 +468,11 @@ jobs:
           workspaces: compiler
           cache-workspace-crates: true
           shared-key: native
-      - name: Verify platform A or B host
+      - name: Verify platform A, B or C host
         shell: bash
         run: |
           case "$RUNNER_OS-$RUNNER_ARCH" in
-            Linux-X64|macOS-ARM64|Linux-ARM64) ;;
+            Linux-X64|macOS-ARM64|Linux-ARM64|Windows-X64|macOS-X64) ;;
             *) echo "Unsupported native host: $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
           esac
       - name: Build opt-in native toolchain
@@ -491,6 +491,8 @@ jobs:
       - name: A 32,768-row function compiles natively in pieces (N2g)
         run: cargo test -p sakura_eval --features native --locked --test deep_ir native_ -- --nocapture
       - name: Profiler symbolises compiled Sakura frames (perf on Linux, sample on macOS)
+        # Windows profilers read CodeView, which the backend does not emit (design §17.175 (7)).
+        if: runner.os != 'Windows'
         env:
           SAKURA_NATIVE_LIB_DIR: ${{ github.workspace }}/compiler/target/tmp/native-driver/debug
         run: |

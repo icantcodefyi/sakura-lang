@@ -114,7 +114,7 @@ pub fn run_node_tests(
     let dir = grant_root(dir);
     // A `--target native` build runs its test executable, under the same empty grants (its
     // `Test.fixtures()` and snapshots are the runner's own; there is no `--record`).
-    let native = dir.join("tests");
+    let native = dir.join(if cfg!(windows) { "tests.exe" } else { "tests" });
     if native.is_file() {
         let mut cmd = std::process::Command::new(native);
         let permissions =

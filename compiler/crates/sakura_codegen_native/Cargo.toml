@@ -10,7 +10,7 @@ publish.workspace = true
 
 [features]
 default = []
-native = ["dep:sakura_lir", "dep:sakura_rt", "sakura_rt/native", "dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-module", "dep:cranelift-object", "dep:cranelift-native", "dep:target-lexicon", "dep:gimli", "dep:object"]
+native = ["dep:sakura_lir", "dep:sakura_rt", "sakura_rt/native", "dep:cranelift-codegen", "dep:cranelift-frontend", "dep:cranelift-module", "dep:cranelift-object", "dep:cranelift-native", "dep:target-lexicon", "dep:gimli", "dep:object", "dep:find-msvc-tools"]
 
 [dependencies]
 sakura_lir = { workspace = true, optional = true }
@@ -23,6 +23,10 @@ cranelift-native = { workspace = true, optional = true }
 target-lexicon = { workspace = true, optional = true }
 gimli = { workspace = true, optional = true }
 object = { workspace = true, optional = true }
+
+# `link.exe` from the Visual Studio installation (plan m5-native.md row C).
+[target.'cfg(windows)'.dependencies]
+find-msvc-tools = { workspace = true, optional = true }
 
 [[test]]
 name = "smoke"

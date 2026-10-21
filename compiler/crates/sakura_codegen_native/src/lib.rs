@@ -63,6 +63,9 @@ pub struct Options {
     /// Cut a top-level function past this many blocks into frame-called pieces
     /// (`sakura_lir::split`, design §17.308 (2c)); 0 compiles every function whole.
     pub split: usize,
+    /// The triple to emit for: the host's, except in tests that check another platform's
+    /// object (plan m5-native.md §5).
+    pub target: target_lexicon::Triple,
 }
 
 impl Default for Options {
@@ -77,6 +80,7 @@ impl Default for Options {
             codegen_only: false,
             tests: false,
             split: sakura_lir::split::PIECE,
+            target: target_lexicon::HOST,
         }
     }
 }
@@ -101,7 +105,7 @@ fn tests_table(m: &Module, test: Option<sakura_lir::image::Clauses>) -> Vec<u8> 
     out
 }
 
-/// Compile `m` for the host target to a relocatable object (ELF or Mach-O).
+/// Compile `m` for `opts.target` to a relocatable object (ELF, Mach-O or COFF).
 pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     emit_timed(m, opts).map(|(object, _)| object)
 }
@@ -113,17 +117,29 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     let start = Instant::now();
     let split = sakura_lir::split::split(m, opts.split);
     let m = split.as_ref().unwrap_or(m);
+    let coff = opts.target.binary_format == target_lexicon::BinaryFormat::Coff;
     let mut flags = settings::builder();
     for (k, v) in [
-        ("is_pic", "true"),
+        // COFF has no GOT: a call into the driver is an absolute address `link.exe` relocates.
+        ("is_pic", if coff { "false" } else { "true" }),
         ("opt_level", "speed"),
         // Debuggers and profilers walk native frames by their frame pointers.
         ("preserve_frame_pointers", "true"),
     ] {
         flags.set(k, v).map_err(|e| e.to_string())?;
     }
+    if coff {
+        // Windows commits a thread's stack one guard page at a time, so a frame larger than a
+        // page touches each page on the way down (plan m5-native.md row C).
+        flags
+            .enable("enable_probestack")
+            .map_err(|e| e.to_string())?;
+        flags
+            .set("probestack_strategy", "inline")
+            .map_err(|e| e.to_string())?;
+    }
     // The baseline of the target triple, never the build machine's CPU (design §17.175).
-    let isa = cranelift_codegen::isa::lookup(target_lexicon::HOST)
+    let isa = cranelift_codegen::isa::lookup(opts.target.clone())
         .map_err(|e| e.to_string())?
         .finish(settings::Flags::new(flags))
         .map_err(|e| e.to_string())?;
@@ -149,7 +165,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     // implement; without it every call runs through frames (plan N2: a fallback, never a
     // prerequisite).
     let tail = matches!(
-        target_lexicon::HOST.architecture,
+        opts.target.architecture,
         target_lexicon::Architecture::X86_64 | target_lexicon::Architecture::Aarch64(_)
     );
     let regions = if opts.direct && tail {
@@ -408,7 +424,11 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     }
     let mut product = obj.finish();
     unwind.write(&mut product)?;
-    lines.write(&mut product, &opts.sources, &opts.texts)?;
+    // Windows debuggers read CodeView, not DWARF: no line table there until a CodeView decision
+    // (design §17.175 (7)); traces still carry Sakura's own sites (`sakura$debug`).
+    if !coff {
+        lines.write(&mut product, &opts.sources, &opts.texts)?;
+    }
     let object = product.emit().map_err(|e| e.to_string())?;
     Ok((object, [codegen, start.elapsed() - codegen]))
 }
@@ -435,13 +455,19 @@ pub fn record(isa: &dyn cranelift_codegen::isa::TargetIsa, module_hash: &[u8; 32
 }
 
 /// The driver staticlib's file name in a driver directory (`SAKURA_NATIVE_LIB_DIR`).
-pub const DRIVER_LIB: &str = "libsakura_native_driver.a";
+pub const DRIVER_LIB: &str = if cfg!(windows) {
+    "sakura_native_driver.lib"
+} else {
+    "libsakura_native_driver.a"
+};
 /// The system libraries it links against, as `rustc --print native-static-libs` gives them,
 /// one line in this file beside it.
 pub const DRIVER_LIBS: &str = "native-static-libs.txt";
 
-/// The system C linker [`link`] runs; nothing is bundled (design §17.308 (2d)).
-pub const LINKER: &str = "cc";
+/// The system C linker [`link`] runs; nothing is bundled (design §17.308 (2d)). On Windows it
+/// is MSVC's `link.exe`, found in the Visual Studio installation as `cc` finds it (plan
+/// m5-native.md row C).
+pub const LINKER: &str = if cfg!(windows) { "link.exe" } else { "cc" };
 
 /// Why [`link`] failed.
 #[derive(Debug)]
@@ -467,16 +493,34 @@ impl From<LinkError> for String {
 }
 
 /// Link `object` with the driver in directory `driver` ([`DRIVER_LIB`] and [`DRIVER_LIBS`])
-/// into the executable `out`, with the system C linker.
+/// into the executable `out` (`out.exe` on Windows when `out` has no extension), with the
+/// system C linker.
 pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), LinkError> {
     let libs = std::fs::read_to_string(driver.join(DRIVER_LIBS))
         .map_err(|e| LinkError::Failed(format!("{}: {e}", driver.join(DRIVER_LIBS).display())))?;
-    let output = Command::new(LINKER)
+    #[cfg(windows)]
+    let mut cmd = {
+        let mut cmd = find_msvc_tools::find(&target_lexicon::HOST.to_string(), LINKER)
+            .ok_or(LinkError::Missing)?;
+        let out = match out.extension() {
+            Some(_) => out.to_path_buf(),
+            None => out.with_extension("exe"),
+        };
+        let mut to = std::ffi::OsString::from("/OUT:");
+        to.push(out);
+        cmd.arg("/NOLOGO").arg(to);
+        cmd
+    };
+    #[cfg(not(windows))]
+    let mut cmd = {
+        let mut cmd = Command::new(LINKER);
+        cmd.arg("-o").arg(out);
+        cmd
+    };
+    let output = cmd
         .arg(object)
         .arg(driver.join(DRIVER_LIB))
         .args(libs.split_whitespace())
-        .arg("-o")
-        .arg(out)
         .output()
         .map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => LinkError::Missing,

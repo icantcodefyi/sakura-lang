@@ -37,7 +37,12 @@ fn runtime_staticlib_links_with_abort_and_reads_the_context_prefix() {
         .arg(&target)
         .args(["--", "-Cpanic=abort"]));
     let lib = target.join("debug");
-    assert!(lib.join("libsakura_rt.a").is_file());
+    let staticlib = if cfg!(windows) {
+        "sakura_rt.lib"
+    } else {
+        "libsakura_rt.a"
+    };
+    assert!(lib.join(staticlib).is_file());
     let source = dir.join("abi_test.rs");
     std::fs::write(
         &source,
@@ -59,7 +64,7 @@ fn reads_the_version_at_offset_12() {{
         ),
     )
     .unwrap();
-    let test = dir.join("abi_test");
+    let test = dir.join(format!("abi_test{}", std::env::consts::EXE_SUFFIX));
     let rustc = std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
     run(Command::new(&rustc)
         .args(["--edition=2024", "--test"])
