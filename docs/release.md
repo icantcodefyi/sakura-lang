@@ -543,6 +543,13 @@ and `examples` under the tagged compiler (design §17.232 (e)); record its run U
 release ships a WASM ABI version that `compiler/runtime/rt/tests/fixtures/abi/` lacks, capture
 its module with the published binary as that directory's README says (§17.232 (c)).
 
+`compat.yml` reads `compiler/tests/compat/allow.txt` **at the tag**, so every intended difference
+from the previous release (each migration-list item that changes a fixture's outcome) needs its
+line there in the preparation commit; after the tag the base moves and the line cannot be added
+(v1.0.0-beta.1's run lacked them). After the Release workflow succeeds on a tag, `dogfood.yml`
+installs that version from npm and runs `dogfood/round.sh` over the six dogfood programs; record
+its run URL beside `compat.yml`'s.
+
 This draft was researched and written with GPT-6-Astra. It claims no existing
 release, credential, account, App installation or native release test.
 
