@@ -16,6 +16,12 @@ sakura_lir.workspace = true
 sakura_analysis.workspace = true
 sakura_codegen_js.workspace = true
 sakura_codegen_wasm.workspace = true
+# `deep_ir.rs`'s native case (plan N2g), in `ci.yml`'s native job.
+sakura_codegen_native.workspace = true
+
+[features]
+default = []
+native = ["sakura_codegen_native/native"]
 
 [lints]
 workspace = true

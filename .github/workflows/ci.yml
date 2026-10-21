@@ -475,8 +475,8 @@ jobs:
           esac
       - name: Build opt-in native toolchain
         run: cargo build --features native --locked
-      - name: Clippy native runtime, host, backend, driver and CLI
-        run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver -p sakura_cli --all-targets --features native --locked -- -D warnings
+      - name: Clippy native runtime, host, backend, driver, CLI and the deep-IR case
+        run: cargo clippy -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver -p sakura_cli -p sakura_eval --all-targets --features native --locked -- -D warnings
       - name: Install gdb and perf (debugger and profiler smoke, N2d)
         if: runner.os == 'Linux'
         run: |
@@ -486,6 +486,8 @@ jobs:
           perf --version
       - name: Native runtime, host, compiled corpus, staticlib and debugger tests
         run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --features native --locked -- --nocapture
+      - name: A 32,768-row function compiles natively in pieces (N2g)
+        run: cargo test -p sakura_eval --features native --locked --test deep_ir native_ -- --nocapture
       - name: Profiler symbolises compiled Sakura frames (perf on Linux, sample on macOS)
         env:
           SAKURA_NATIVE_LIB_DIR: ${{ github.workspace }}/compiler/target/tmp/native-driver/debug

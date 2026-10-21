@@ -78,6 +78,12 @@ retains earlier implementation history.
   changes. A host built for ABI 1.16 refuses a 1.17 module with `V8003`; rebuild with the
   matching compiler. A 1.17 host still runs older modules.
 
+- **`--target native` compiles a very wide function in pieces** (experimental, plan
+  `m5-native.md` N2g): a top-level function of more than 1,024 LIR blocks is cut into functions
+  of about that many, called through frames, so Cranelift's superlinear register allocation sees
+  small functions. A 32,768-row guarded `match` now takes 2.2 s of code generation instead of
+  11.6 s (release CLI, Apple silicon). Output is unchanged; a cut function runs on frames, not
+  direct twins. No corpus or benchmark function is that wide, and `--target wasm` is unchanged.
 - The website's landing hero is a close-up of a Somei-Yoshino: a trunk on the right in a CC0
   scanned sakura bark (Poly Haven), one limb arching over the copy, and petals falling through
   the hero. Its posters are the live scene rendered once (`website/scripts/hero-posters.ts`),

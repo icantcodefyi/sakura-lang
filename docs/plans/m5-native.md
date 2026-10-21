@@ -300,7 +300,29 @@ the CLI, install and memory pages say so. A local release-path trial (archive sm
 `accept --native`) is green on Apple silicon. **Left of N2f:** (iii)'s counted run on the reference
 Mac at the next beta's preparation commit, blessed by the owner. **Left of F:** the dry run with the
 native step on both A rows (the owner approves the first), then `verify-published.yml` for the
-beta that carries it.
+beta that carries it. **N2g (§17.308 (2c), 2026-10-22; numbers advisory, never blessed):**
+`sakura_lir/src/split.rs` cuts a top-level function of more than `PIECE` = 1,024 blocks, native
+backend only (`sakura_codegen_native::Options::split`, inside the codegen phase; WASM never calls
+it). Blocks are placed in a topological order of the loops (strongly connected components),
+fewest successors first, so a guarded `match`'s returning arms follow their guards; a cut falls
+only between components where at most `ENTRIES` = 4 blocks are entered from the blocks placed so
+far, none with an open `with`/`try` region or an `Id` parameter. Each entered block starts a
+function (`<name>$piece<k>`, its variables renumbered to its own), and an edge into it becomes a
+frame call whose result the caller returns, so the cut function and its pieces run on frames (a
+function with no such place stays whole). The first form, pieces in block-index order and a
+function per crossing target, failed on the real layout: the lowering puts each row's `&&` arms
+mirrored at the end of the block list, so `and_4096` had 9,802 crossing targets. Checks:
+`sakura_lir/tests/split.rs` (every corpus program cut at four blocks validates, 320 programs cut;
+no piece or cut function is a direct region), `sakura_host_native`'s corpus cut at four blocks
+agrees and ends with the evaluator's live objects, and `deep_ir.rs`'s
+`native_32768_guarded_rows_compile_in_pieces_and_run` (in `ci.yml`'s native job). Counted curve
+(`bench compile-native --instructions`, release CLI, Apple-silicon laptop): codegen 3.84, 7.74,
+15.9 and 31.9 G instructions at 4,096–32,768 rows (2.02×, 2.05×, 2.01× per doubling; p95 2.19 s at
+32,768, was 11.6 s); frontend 1.96×, lowering 2.02×, object 2.04×, link 1.04× from 16,384 to
+32,768. **The ≤ 2× bar is missed by 0.5% in codegen** and by as much in lowering and object, which
+the split does not touch (REQUESTS 2026-10-22, N2g). `PIECE` is from the curve at 512–4,096
+(1,024 compiled the 32,768-row function fastest) and is above every corpus function (417 blocks)
+and every bench program's (119), so neither is cut.
 
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
 error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any
@@ -421,7 +443,7 @@ commit contains N3 and row M; "second" is the first after it that also contains 
 | WASM allocation-bound set: `nbody`, `sieve`, `spectral_norm`, `rbtree`, `binary_trees`, `deltablue` (§17.211 (5)) | first window after N0b (owned facts on the LIR, `List.set` on its owned path), then N3/N4's windows, WASM and native lanes | carried with their JS carries; no WASM-only representation work |
 | WASM frame cliffs after WS-W1/WS-W2 (§17.230 (2): an aborting clause, a performing lambda, `deltablue`'s closure-calling entries) | WS-W3's attribution, then WS-W4 (`performance-r1.md` §9), M5 | frames stay; the programs read at the windows with their carries |
 | Fan-in into the WASM dispatch loop (§17.236; plan `m3-completion-and-m4.md` §3.8 row 31): past about 16,000 guarded rows in one function V8's optimising tier aborts on the loop header's input count | M5, before `v0.2.0`, beside N2 (`sakura_codegen_native` reads the same LIR and is checked on the same fixture); never before the M4 window | the 0.1.0 notes state the limit; jumps grouped through one stub per 256-block chunk |
-| Native compile of one wide function (§17.240 (3)): superlinear, 30 s at 16,384 guarded rows, 115 s at 32,768 (a debug build) | N2f's per-phase report at 4,096–32,768 rows: **measured, Cranelift's** (release: 3.3 s at 16,384, 11.6 s at 32,768; ours linear; advisory) | N2g, the split (§17.308 (2c)), may start |
+| Native compile of one wide function (§17.240 (3)): superlinear, 30 s at 16,384 guarded rows, 115 s at 32,768 (a debug build) | N2f's per-phase report at 4,096–32,768 rows: **measured, Cranelift's** (release: 3.3 s at 16,384, 11.6 s at 32,768; ours linear; advisory) | N2g's split landed: codegen 2.19 s at 32,768 rows (2.01× per doubling; advisory) |
 | `ptr64-v1` pointer profile (§17.169 (4)) | after N2's `offset32-v1` baseline is measured | `offset32-v1` only |
 
 ## 4. Sanitizer lanes (§17.173)

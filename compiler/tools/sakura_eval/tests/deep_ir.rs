@@ -378,3 +378,29 @@ fn a_match_in_a_guard_past_the_budget_is_reported_once() {
     assert_eq!(found[0].2, "match");
     assert_eq!(found[0].1, src.find("match x").unwrap());
 }
+
+/// Plan N2g: the 32,768-row function is cut into pieces (`sakura_lir::split`), compiles
+/// natively and runs, beside the 16,384-arm sparse `match`.
+#[cfg(feature = "native")]
+#[test]
+fn native_32768_guarded_rows_compile_in_pieces_and_run() {
+    use std::path::Path;
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-fan-in");
+    std::fs::create_dir_all(&dir).unwrap();
+    let (source, expected) = fan_in(&FAN_IN[1..]);
+    let lir =
+        sakura_lir::from_core(&lower(source), sakura_lir::Layout::Tagged).expect("lowers to LIR");
+    assert!(sakura_lir::split::split(&lir, sakura_lir::split::PIECE).is_some());
+    let object = sakura_codegen_native::emit(&lir, &Default::default()).expect("compiles");
+    let driver = dir.join("driver");
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let driver = sakura_codegen_native::build_driver(&workspace, &driver).unwrap();
+    let (o, exe) = (dir.join("main.o"), dir.join("main"));
+    std::fs::write(&o, object).unwrap();
+    sakura_codegen_native::link(&o, &driver, &exe)
+        .map_err(String::from)
+        .unwrap();
+    let out = Command::new(&exe).output().unwrap();
+    assert!(out.status.success(), "{out:?}");
+    assert_eq!(String::from_utf8_lossy(&out.stdout), expected);
+}

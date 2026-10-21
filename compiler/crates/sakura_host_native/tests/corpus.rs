@@ -418,6 +418,44 @@ fn the_corpus_runs_clean_under_native_checks() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// Plan N2g: with every top-level function of more than four blocks cut into frame-called pieces
+/// (`sakura_lir::split`), every corpus program still agrees and ends with the evaluator's live
+/// objects. The frames differ by design: each cut edge is one more.
+#[test]
+fn the_corpus_runs_natively_cut_into_pieces_of_four_blocks() {
+    let programs = programs();
+    driver();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-split");
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = big_stack_map(&programs, |p| {
+        let opts = sakura_codegen_native::Options {
+            split: 4,
+            ..Default::default()
+        };
+        let (_, _, _, want) = run_with_stats(&p.core);
+        (
+            run_compiled(&p.name, opts, &p.core, &dir),
+            want.live_objects,
+        )
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut failures = vec![];
+    for (p, ((got, stdout, stderr, stats), live)) in programs.iter().zip(results) {
+        if KNOWN_NATIVE.iter().any(|(n, _)| *n == p.name) {
+            continue;
+        }
+        if got != p.ending || stdout != p.stdout {
+            failures.push(format!(
+                "{}: expected {} got {got}\n--- stdout\n{stdout}--- stderr\n{stderr}",
+                p.name, p.ending
+            ));
+        } else if ownership(&stats).first() != Some(&("live_objects".into(), live)) {
+            failures.push(format!("{}: live objects differ: {stats}", p.name));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// Two compilations of the same program are the same object bytes (AGENTS.md: deterministic
 /// output).
 #[test]

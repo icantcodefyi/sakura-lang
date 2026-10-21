@@ -15,6 +15,7 @@ pub mod owned;
 pub mod print;
 pub mod reuse;
 pub mod schema;
+pub mod split;
 pub mod validate;
 
 use std::collections::BTreeMap;

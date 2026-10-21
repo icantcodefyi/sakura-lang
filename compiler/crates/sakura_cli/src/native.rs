@@ -140,9 +140,10 @@ pub fn build(
         module_hash: {
             use sha2::Digest;
             let inputs = format!(
-                "{} {opts:?} drop_proved={} checks={checks}",
+                "{} {opts:?} drop_proved={} checks={checks} split={}",
                 snapshot.hash(),
-                !then
+                !then,
+                sakura_lir::split::PIECE
             );
             sha2::Sha256::digest(inputs).into()
         },
@@ -153,6 +154,7 @@ pub fn build(
             .unwrap_or_default(),
         codegen_only: stop_after("codegen"),
         tests,
+        split: sakura_lir::split::PIECE,
     };
     let exe = if tests {
         // A marker of the module's tests, as WASM's `__tests__.wasm`: none from an earlier build.

@@ -60,6 +60,9 @@ pub struct Options {
     /// Run the module's tests instead of `main` (`sakura test --target native`): the
     /// descriptor carries the test table ([`tests_table`]).
     pub tests: bool,
+    /// Cut a top-level function past this many blocks into frame-called pieces
+    /// (`sakura_lir::split`, design §17.308 (2c)); 0 compiles every function whole.
+    pub split: usize,
 }
 
 impl Default for Options {
@@ -73,6 +76,7 @@ impl Default for Options {
             root_effects: vec![],
             codegen_only: false,
             tests: false,
+            split: sakura_lir::split::PIECE,
         }
     }
 }
@@ -107,6 +111,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
 /// design §17.175 (4)).
 pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2]), String> {
     let start = Instant::now();
+    let split = sakura_lir::split::split(m, opts.split);
+    let m = split.as_ref().unwrap_or(m);
     let mut flags = settings::builder();
     for (k, v) in [
         ("is_pic", "true"),
