@@ -94,6 +94,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V6002` | error | `scoped_value_escape` | [V6002_scoped_value_escape.sak](../../compiler/tests/ui/V6002_scoped_value_escape.sak) | active |
 | `V6003` | error | `resource_escape` | [V6003_resource_escape.sak](../../compiler/tests/ui/V6003_resource_escape.sak) | active |
 | `V6010` | error | `non_std_effect_in_main` | [V6010_non_std_effect_in_main.sak](../../compiler/tests/ui/V6010_non_std_effect_in_main.sak) | active |
+| `V7001` | error | `invalid_snapshot_name` | [V7001_invalid_snapshot_name.sak](../../compiler/tests/ui/V7001_invalid_snapshot_name.sak) | active |
 | `V8001` | error | `missing_entry_point` | [V8001_missing_entry_point.sak](../../compiler/tests/ui/V8001_missing_entry_point.sak) | active |
 | `V8002` | error | `reserved_package_name` | [reserved_package_names_are_v8002](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
 | `V8003` | error | `abi_version_mismatch` | [runMain and runTests report V8003 for another ABI and exit 2](../../compiler/runtime/js/test/wasm_host.test.js) | active |

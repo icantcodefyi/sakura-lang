@@ -707,7 +707,18 @@ Fixed:
       with empty_db() { Console.print(\"{Db.count()} rows\") }
     }";
 
-    // 7: tests / verification (none yet)
+    // 7: tests / verification
+    V7001 "invalid_snapshot_name" VERIFY,
+"The literal name given to `expect_snapshot` cannot name a snapshot file (design §17.294 SS-13).
+A snapshot is stored at `tests/__snapshots__/<module>/<name>.snap`, so its name must be
+letters, digits, `_`, `-` or `.`, and must not start with `.`. The test runner refuses such a
+name when the test runs; a literal name is reported by `sakura check` before then. A computed
+name is still checked only when the test runs.
+
+Wrong:
+    test \"renders\" { expect_snapshot(\"front page\", 42) }
+Fixed:
+    test \"renders\" { expect_snapshot(\"front_page\", 42) }";
 
     // 8: packages / build / frozen specs
     V8001 "missing_entry_point" PACKAGE,

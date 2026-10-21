@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-95 codes; 66 pages show a fixed program that the compiler's test suite checks.
+96 codes; 67 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -104,6 +104,12 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V6002](/docs/errors/V6002) | `scoped_value_escape` | A scoped value escapes the `with` that bounds it (design §6.3). |
 | [V6003](/docs/errors/V6003) | `resource_escape` | A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the callback returns a type containing it (directly, or inside a record, list or closure), or the value is stored in handler `var` state (design §8.4). |
 | [V6010](/docs/errors/V6010) | `non_std_effect_in_main` | `main`'s effect row may contain only std effects, because only they have host root handlers (design §9). |
+
+## Tests and verification
+
+| Code | Title | Summary |
+| --- | --- | --- |
+| [V7001](/docs/errors/V7001) | `invalid_snapshot_name` | The literal name given to `expect_snapshot` cannot name a snapshot file (design §17.294 SS-13). |
 
 ## Packages and build
 

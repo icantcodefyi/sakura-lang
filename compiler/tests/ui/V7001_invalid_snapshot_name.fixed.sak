@@ -1,0 +1,13 @@
+test "front page" {
+  expect_snapshot("front_page", 1)
+  expect_snapshot("front-page", 1)
+}
+
+test "hidden" { expect_snapshot("page", 2) }
+
+test "unnamed" { expect_snapshot("unnamed.v1", 3) }
+
+test "computed" {
+  let n = 4
+  expect_snapshot("page-{n}.v2", n)
+}

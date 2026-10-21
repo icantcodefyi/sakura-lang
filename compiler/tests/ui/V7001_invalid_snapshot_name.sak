@@ -1,0 +1,20 @@
+// milestone: M3
+// expect: V7001 V7001 V7001
+// expect-span: V7001 10:19
+// spec: design §17.294 SS-13
+// A literal snapshot name names a file under `tests/__snapshots__`, so the checker refuses one
+// the test runner would refuse: a space, a leading `.` and the empty name. A computed name is
+// checked when the test runs.
+test "front page" {
+  expect_snapshot("front_page", 1)
+  expect_snapshot("front page", 1)
+}
+
+test "hidden" { expect_snapshot(".page", 2) }
+
+test "unnamed" { expect_snapshot("", 3) }
+
+test "computed" {
+  let n = 4
+  expect_snapshot("page-{n}.v2", n)
+}

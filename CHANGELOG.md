@@ -426,6 +426,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - `Response.status_json(code, value)` (design §17.294 RQ-6): `ok_json`'s JSON body and
   content type at status `code` (`requires code >= 100 && code <= 599`); `ok_json(value)` is
   its short form at 200, and `Response { ..Response.ok_json(value), status: … }` stays valid.
+- `V7001 invalid_snapshot_name` (design §17.294 SS-13): `sakura check` reports a literal
+  `expect_snapshot` name the test runner would refuse (outside letters, digits, `_`, `-` and
+  `.`, empty, or starting with `.`), in the runner's words; a computed name is still checked
+  when the test runs.
 
 ### Fixed
 

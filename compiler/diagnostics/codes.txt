@@ -81,6 +81,7 @@ V6001 active capability_construction
 V6002 active scoped_value_escape
 V6003 active resource_escape
 V6010 active non_std_effect_in_main
+V7001 active invalid_snapshot_name
 V8001 active missing_entry_point
 V8002 active reserved_package_name
 V8003 active abi_version_mismatch

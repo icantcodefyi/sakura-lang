@@ -2,6 +2,7 @@
 
 use sakura_diagnostics::codes::{
     V2001, V2002, V2003, V2004, V2005, V2010, V2015, V2041, V3002, V3003, V3011, V3012, V6001,
+    V7001,
 };
 use sakura_diagnostics::{Diagnostic, Phase, Rendered};
 use sakura_hir::{
@@ -230,6 +231,9 @@ impl Checker<'_> {
                 {
                     self.b.validate_callees.insert(*callee);
                     self.b.validates.push((e, *callee));
+                }
+                if let Expr::Path(Res::Def(d)) = &body.exprs[*callee] {
+                    self.snapshot_name(*d, args);
                 }
                 let (mut ft, fr) = self.synth(*callee);
                 // Calling a clause's callback adds only its tail (and failures), not the
@@ -985,6 +989,31 @@ impl Checker<'_> {
             rows.push(self.synth(a).1);
         }
         (self.inf.interner.error(), self.seq(&rows, e))
+    }
+
+    /// `V7001` for a literal `expect_snapshot` name the test runner would refuse (§17.294
+    /// SS-13), in the runner's words; a computed name is left to the runner.
+    fn snapshot_name(&mut self, callee: DefId, args: &[ExprId]) {
+        let program = self.program;
+        if program.def(callee).name != "expect_snapshot"
+            || program.find_module("std", "test") != Some(callee.module)
+        {
+            return;
+        }
+        let Some(&arg) = args.first() else { return };
+        let Expr::Lit(Literal::String(name)) = &self.hir_body().exprs[arg] else {
+            return;
+        };
+        let allowed = |b: u8| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'-');
+        if name.is_empty() || name.starts_with('.') || !name.bytes().all(allowed) {
+            let range = self.expr_range(arg);
+            self.error(
+                V7001,
+                Phase::Verify,
+                range,
+                format!("snapshot name {name:?} must be letters, digits, '_', '-' or '.'"),
+            );
+        }
     }
 
     fn allow_trust_args(&mut self, args: &[ExprId]) {
