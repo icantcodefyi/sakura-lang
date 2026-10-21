@@ -597,8 +597,25 @@
           "type": "CHOICE",
           "members": [
             {
-              "type": "SYMBOL",
-              "name": "where_clause"
+              "type": "SEQ",
+              "members": [
+                {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "_newline"
+                    },
+                    {
+                      "type": "BLANK"
+                    }
+                  ]
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "where_clause"
+                }
+              ]
             },
             {
               "type": "BLANK"
@@ -4611,6 +4628,9 @@
     ],
     [
       "_signature"
+    ],
+    [
+      "type_declaration"
     ],
     [
       "_primary_expression",

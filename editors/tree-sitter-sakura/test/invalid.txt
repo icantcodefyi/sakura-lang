@@ -25,6 +25,7 @@ compiler/tests/ui/V0001_effect_violation_in_broken_body.sak
 compiler/tests/ui/V0001_unterminated_call.sak
 compiler/tests/ui/V0004_interpolation_hole.sak
 compiler/tests/ui/V0004_invalid_character.sak
+compiler/tests/ui/V0004_line_end_cascade.sak
 compiler/tests/ui/V0006_malformed_number.sak
 compiler/tests/ui/V0009_expected_terminator.sak
 compiler/tests/ui/V0011_call_site_type_arguments.sak

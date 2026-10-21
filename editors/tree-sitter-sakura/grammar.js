@@ -75,6 +75,8 @@ export default grammar({
     // `fn … -> T` then a line break: the item ends, or `!`, a contract or the body follows.
     [$.function_declaration],
     [$._signature],
+    // `type … = T` then a line break: the item ends, or its `where` follows (§17.294 SS-4).
+    [$.type_declaration],
     // In an `if`/`while`/`for`/`match`/`with` header or a contract, `Name {` opens the body,
     // never a record (§3.2 item 2); elsewhere it is a record literal.
     [$._primary_expression, $.record_expression],
@@ -157,7 +159,8 @@ export default grammar({
             ),
           ),
         ),
-        optional($.where_clause),
+        // A `where` on the next line continues the item (design §17.294 SS-4).
+        optional(seq(optional($._newline), $.where_clause)),
       ),
 
     type_parameters: ($) => seq("<", commaSep($.type_parameter), ">"),

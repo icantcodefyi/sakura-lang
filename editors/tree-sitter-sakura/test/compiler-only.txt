@@ -19,3 +19,4 @@ compiler/tests/ui/V0011_type_arguments_at_call.sak
 compiler/tests/ui/V0013_invalid_assign_target.sak
 compiler/tests/ui/V0014_named_argument.sak
 compiler/tests/ui/V0015_source_not_utf8/names.sak
+compiler/tests/ui/V0016_keyword_binder.sak
