@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { AgentView } from "@/components/landing/agent-view";
 import { Anatomy } from "@/components/landing/anatomy";
 import { Authority } from "@/components/landing/authority";
+import { Benchmarks } from "@/components/landing/benchmarks";
 import { Closing } from "@/components/landing/closing";
 import { Compare } from "@/components/landing/compare";
 import { Effects } from "@/components/landing/effects";
@@ -79,6 +80,7 @@ export default function Home() {
         <AgentView />
         <Pillars />
         <Compare />
+        <Benchmarks />
         <Roadmap />
         <Closing />
       </main>

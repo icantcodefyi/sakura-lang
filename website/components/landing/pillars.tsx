@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { compileMs } from "@/lib/bench";
 import { ArrowUpRight } from "lucide-react";
 
 /** Speed and the toolchain, side by side: what an agent waits on, and what it calls. */
@@ -50,13 +51,20 @@ function Heading({ href, children }: { href: string; children: string }) {
   );
 }
 
-// `bench/bench compile` workloads: `check_hello` on the `sakura new cli` project and
-// `check_cold_10k` on its generated 10,084-line package; medians of repeated runs on the
-// owner's reference machine. Runtime ratios stay off this page; the blessed instruction-count
-// baseline lives on /docs/benchmarks (docs/release.md §2, design §17.264).
+// `bench/bench compile` workloads at the blessed baseline (lib/bench.ts): `check_hello` on the
+// `sakura new cli` project and `check_cold_10k` on its generated 10,084-line package. Runtime
+// ratios have their own section and page (/docs/benchmarks).
 const LATENCY = [
-  { ms: "7", what: "sakura check", on: "a new project" },
-  { ms: "35", what: "sakura check", on: "a cold 10k-line package" },
+  {
+    ms: Math.round(compileMs("check_hello")).toString(),
+    what: "sakura check",
+    on: "a new project",
+  },
+  {
+    ms: Math.round(compileMs("check_cold_10k")).toString(),
+    what: "sakura check",
+    on: "a cold 10k-line package",
+  },
 ];
 
 function Latency() {
@@ -84,9 +92,15 @@ function Latency() {
         ))}
       </dl>
       <figcaption className="border-t border-border pt-3 text-[12.5px] leading-relaxed text-faint">
-        Measured on an Apple M4 Pro: release build, medians of repeated runs on the{" "}
-        <code className="font-mono">bench/bench compile</code> workloads. Other machines will
-        differ.
+        Medians of the <code className="font-mono">bench/bench compile</code> workloads on an Apple
+        M4 Pro at the{" "}
+        <Link
+          href="/docs/benchmarks#compile-time"
+          className="underline decoration-sakura underline-offset-2"
+        >
+          blessed baseline
+        </Link>
+        , a release build measured while other work ran. Other machines will differ.
       </figcaption>
     </figure>
   );
