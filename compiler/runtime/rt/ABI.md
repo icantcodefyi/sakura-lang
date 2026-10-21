@@ -328,14 +328,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   native descriptor is unchanged. `sakura_abi_version` is `0x011000`.
 - 1.17.0 (MINOR, design §17.176 (3), §17.308; plan M5 N3) adds constructor-site reuse. A match
   arm that takes a record or a constructor apart and builds one of the same row and constructor
-  in the same block turns the `Drop` of the old object into `rt_b_reuse_reset(x) -> word`: when
+  in the same block, or in a block every path from it reaches through branches and calls of
+  direct top-level defs, turns the `Drop` of the old object into `rt_b_reuse_reset(x) -> word`: when
   no other reference reaches `x` (not static, `rc = 1`) it releases `x`'s children, zeroes its
   slots and returns `x` itself as the token, else it drops `x` and returns `Unit`. The `Alloc`
   then calls `rt_reuse(token, tag, size)`, which returns the token's storage or allocates as
   `rt_alloc` does when the token is `Unit`, and writes the header and slots as before. Each
   `reuse_reset` is one `reuse_attempts` and each object returned as a token one `reuses` (§10);
-  `stats()` gains no field. A token is an ordinary owned word that never leaves its block, so a
-  landing pad frees an unused one as any other object. Both functions are internal to the
+  `stats()` gains no field. A token is an ordinary owned word: one carried to another block
+  rides each edge as a block parameter, and across a call in the frame as any owned slot, so a
+  landing pad, a twin that unwinds and a cancelled task free an unused one as any other object.
+  A direct def neither performs nor calls a closure, so no token is held across a suspension. Both functions are internal to the
   linked module (as `rt_dup_candidate`); no byte layout, import, export or outcome changes.
   It is a MINOR because the counters a module writes are part of what it requires of its host
   (1.3.0's rule): a 1.16 host refuses a 1.17 module. On native, `--native-checks` makes the

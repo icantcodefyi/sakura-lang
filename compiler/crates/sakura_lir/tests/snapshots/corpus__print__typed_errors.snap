@@ -74,17 +74,17 @@ fn main#0 pub top -> unit ; main::typed_errors, frame 14 slots [%1 word*, %2 boo
   b13(%28 e: word):
     %29 err: ptr = alloc std::result::Result.Err(%28)
     jump b11(%29)
-  b14(%30 v: i64) [try]:
+  b14(%30 v: i64, %54 token: word) [try]:
     %31 box: word = box %30
-    %32 ok: ptr = alloc std::result::Result.Ok(%31)
+    %32 ok: ptr = alloc std::result::Result.Ok(%31) reuse %54
     try_pop
     jump b11(%32)
   b15(%34 r: ptr) [try]:
     %36 v: word = proj %34.0 std::result::Result.Ok
-    drop %34
+    %53 token: word = $reuse_reset(%34)
     %37 unbox: i64 = unbox %36
     drop %36
-    jump b14(%37)
+    jump b14(%37, %53)
   b16(%35 r: ptr) [try]:
     %38 e: word = proj %35.0 std::result::Result.Err
     drop %35

@@ -160,7 +160,7 @@ fn largest#5 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 
     drop %8
     ret %10
 
-fn insert#6 top -> ptr ; main::generics, frame 8 slots [%0 word*, %1 word*, %22 word*, %23 word*, %24 word*, %26 word*, %27 word*, %28 word*]
+fn insert#6 top -> ptr ; main::generics, frame 10 slots [%0 word*, %1 word*, %22 word*, %23 word*, %24 word*, %32 word*, %26 word*, %27 word*, %28 word*, %34 word*]
   b0(%0 t: ptr, %1 x: word):
     %2 tag: i64 = tag %0 ctor main::generics::Tree
     switch %2 0 => b1(%0, %1) 1 => b2(%0, %1)
@@ -174,18 +174,18 @@ fn insert#6 top -> ptr ; main::generics, frame 8 slots [%0 word*, %1 word*, %22 
     %10 p: word = proj %5.0 main::generics::Tree.Node
     %11 p: word = proj %5.1 main::generics::Tree.Node
     %12 p: word = proj %5.2 main::generics::Tree.Node
-    drop %5
+    %30 token: word = $reuse_reset(%5)
     %13 t: bool = lt.any %6, %11
-    if %13 then b3(%6, %10, %11, %12) else b4(%6, %10, %11, %12)
-  b3(%14 x: word, %15 l: ptr, %16 v: word, %17 r: ptr):
-    call insert#6(%15, %14) -> b5(%16, %17)
-  b4(%18 x: word, %19 l: ptr, %20 v: word, %21 r: ptr):
-    call insert#6(%21, %18) -> b6(%19, %20)
-  b5(%22 r: ptr, %23 v: word, %24 r: ptr):
-    %25 r: ptr = alloc main::generics::Tree.Node(%22, %23, %24)
+    if %13 then b3(%6, %10, %11, %12, %30) else b4(%6, %10, %11, %12, %30)
+  b3(%14 x: word, %15 l: ptr, %16 v: word, %17 r: ptr, %31 token: word):
+    call insert#6(%15, %14) -> b5(%16, %17, %31)
+  b4(%18 x: word, %19 l: ptr, %20 v: word, %21 r: ptr, %33 token: word):
+    call insert#6(%21, %18) -> b6(%19, %20, %33)
+  b5(%22 r: ptr, %23 v: word, %24 r: ptr, %32 token: word):
+    %25 r: ptr = alloc main::generics::Tree.Node(%22, %23, %24) reuse %32
     ret %25
-  b6(%26 r: ptr, %27 l: ptr, %28 v: word):
-    %29 r: ptr = alloc main::generics::Tree.Node(%27, %28, %26)
+  b6(%26 r: ptr, %27 l: ptr, %28 v: word, %34 token: word):
+    %29 r: ptr = alloc main::generics::Tree.Node(%27, %28, %26) reuse %34
     ret %29
 
 fn to_list#8 top -> ptr ; main::generics, frame 7 slots [%0 word*, %8 word*, %9 word*, %10 word*, %12 word*, %13 word*, %14 word*]

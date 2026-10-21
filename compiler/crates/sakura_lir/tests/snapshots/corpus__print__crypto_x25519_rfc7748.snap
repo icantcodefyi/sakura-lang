@@ -32,7 +32,7 @@ layout 26 shape |  48b (word*, word*, word*, word*)
 layout 27 shape |  32b (bool, word*)
 layout 28 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 word*, %26 word*, %30 word*, %31 word*, %32 word*, %33 word*, %36 bool, %56 word*, %58 word*, %62 bool, %88 word*, %89 word*, %90 i64, %91 i64, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 i64, %98 i64, %99 word*, %100 word*, %101 word*, %114 bool, %115 word*, %116 i64, %117 i64, %156 word*, %157 word*, %158 i64, %159 i64, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 word*, %182 word*, %183 word*, %184 word*, %185 bool, %186 word*, %187 word*, %188 i64, %189 i64, %190 word*, %191 word*, %192 word*, %193 bool, %194 word*, %213 word*, %214 word*, %215 i64, %216 i64, %217 word*, %219 word*, %220 word*, %221 i64, %222 i64, %223 word*, %226 bool, %227 word*, %228 i64, %229 i64]
+fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 word*, %26 word*, %30 word*, %31 word*, %32 word*, %33 word*, %36 bool, %56 word*, %58 word*, %62 bool, %88 word*, %89 word*, %90 i64, %91 i64, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 i64, %98 i64, %99 word*, %100 word*, %101 word*, %114 bool, %115 word*, %116 i64, %117 i64, %156 word*, %157 word*, %158 i64, %159 i64, %160 word*, %161 word*, %162 word*, %163 word*, %237 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %238 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 word*, %182 word*, %183 word*, %184 word*, %185 bool, %186 word*, %187 word*, %188 i64, %189 i64, %190 word*, %191 word*, %192 word*, %193 bool, %194 word*, %213 word*, %214 word*, %215 i64, %216 i64, %217 word*, %219 word*, %220 word*, %221 i64, %222 i64, %223 word*, %226 bool, %227 word*, %228 i64, %229 i64]
   b0():
     %0 lit: ptr = const str 0
     %1 lit: ptr = const str 1
@@ -178,23 +178,23 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 77 slots [%25 wor
     jump b23(%129, %130, %131, %132)
   b27(%138 xs: ptr, %139 n: i64, %140 i: i64, %141 case: ptr, %142 out: ptr, %143 p: ptr, %144 p: ptr):
     %152 p: word = proj %143.0 std::result::Result.Ok
-    drop %143
+    %236 token: word = $reuse_reset(%143)
     %153 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%152)
     %154 lit: i64 = const 256
     %155 $site: i64 = const 6
     dup.candidate %144
     dup %153
-    call derive_bits#4(%144, %153, %154, %155) -> b29(%138, %139, %140, %141, %142, %144, %153)
+    call derive_bits#4(%144, %153, %154, %155) -> b29(%138, %139, %140, %141, %142, %144, %153, %236)
   b28(%145 xs: ptr, %146 n: i64, %147 i: i64, %148 case: ptr, %149 out: ptr, %150 p: ptr, %151 p: ptr):
     drop %149
     drop %150
     drop %151
     jump b23(%145, %146, %147, %148)
-  b29(%156 r: ptr, %157 xs: ptr, %158 n: i64, %159 i: i64, %160 case: ptr, %161 out: ptr, %162 s: ptr, %163 r: ptr):
+  b29(%156 r: ptr, %157 xs: ptr, %158 n: i64, %159 i: i64, %160 case: ptr, %161 out: ptr, %162 s: ptr, %163 r: ptr, %237 token: word):
     dup %161
-    call unhex#5(%161) -> b30(%157, %158, %159, %160, %161, %162, %163, %156)
-  b30(%164 r: ptr, %165 xs: ptr, %166 n: i64, %167 i: i64, %168 case: ptr, %169 out: ptr, %170 s: ptr, %171 r: ptr, %172 r: ptr):
-    %173 r: ptr = alloc std::result::Result.Ok(%164)
+    call unhex#5(%161) -> b30(%157, %158, %159, %160, %161, %162, %163, %156, %237)
+  b30(%164 r: ptr, %165 xs: ptr, %166 n: i64, %167 i: i64, %168 case: ptr, %169 out: ptr, %170 s: ptr, %171 r: ptr, %172 r: ptr, %238 token: word):
+    %173 r: ptr = alloc std::result::Result.Ok(%164) reuse %238
     %174 t: bool = eq.any %172, %173
     drop %172
     drop %173

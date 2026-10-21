@@ -287,7 +287,7 @@ fn a_clause_follows_its_operations_signature() {
 }
 
 #[test]
-fn reuse_tokens_are_linear_and_stay_in_their_block() {
+fn reuse_tokens_are_linear_and_cross_only_direct_calls() {
     big_stack(|| {
         // Plan M5 N3: `reuse_constructor` lowers with constructor-site reuse.
         let m = lowered("reuse_constructor");
@@ -319,5 +319,33 @@ fn reuse_tokens_are_linear_and_stay_in_their_block() {
             };
         }
         rejected(&bad, "is not a reuse token of this block for this shape");
+
+        // `ins`'s recursive arm carries its token across the call of `ins` to the `Alloc` in
+        // the call's continuation; across a call that may suspend it is rejected.
+        let (fi, bi) = m
+            .funcs
+            .iter()
+            .enumerate()
+            .find_map(|(fi, f)| {
+                f.blocks
+                    .iter()
+                    .position(|b| {
+                        matches!(&b.term, Term::Call { cont, .. }
+                        if f.blocks[cont.block.index()].insts.iter().any(|i| {
+                            matches!(i, Inst::Alloc { reuse: Some(t), .. }
+                                if f.blocks[cont.block.index()].params.contains(t))
+                        }))
+                    })
+                    .map(|bi| (fi, bi))
+            })
+            .expect("a token across a call");
+        assert_eq!(m.funcs[fi].name, "ins");
+        // `main` performs `Console.print`, so it is not direct.
+        let main = m.funcs.iter().position(|f| f.name == "main").unwrap();
+        let mut bad = m.clone();
+        if let Term::Call { callee, .. } = &mut bad.funcs[fi].blocks[bi].term {
+            *callee = Callee::Direct(FuncId(main as u32));
+        }
+        rejected(&bad, "crosses a call that may suspend");
     });
 }

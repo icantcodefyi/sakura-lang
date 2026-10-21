@@ -29,7 +29,7 @@ layout 23 shape |  56b (i64, word*, word*, word*, word*)
 layout 24 shape |  32b (bool, word*)
 layout 25 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 121 slots [%121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 i64, %127 word*, %128 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 i64, %140 word*, %141 word*, %142 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 i64, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 i64, %193 i64, %194 i64, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %239 word*, %240 word*, %241 word*, %242 i64, %243 i64, %244 i64, %245 word*, %246 word*, %247 word*, %248 word*, %249 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 word*, %258 word*, %260 word*, %261 word*, %262 word*, %263 i64, %264 i64, %265 i64, %266 word*, %267 word*, %268 word*, %269 word*, %270 word*, %271 i64, %272 i64, %273 i64, %274 word*, %275 word*, %281 word*, %282 word*, %283 word*, %284 i64, %285 i64, %286 bool, %287 word*, %294 bool, %295 word*, %296 word*, %297 i64, %298 i64, %306 bool, %307 word*, %308 word*, %309 i64, %310 i64, %318 bool, %319 word*, %320 word*, %321 i64, %322 i64]
+fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 i64, %127 word*, %128 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 i64, %140 word*, %141 word*, %142 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 i64, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 i64, %193 i64, %194 i64, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %239 word*, %240 word*, %241 word*, %242 i64, %243 i64, %244 i64, %245 word*, %246 word*, %247 word*, %248 word*, %351 word*, %249 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 word*, %258 word*, %352 word*, %260 word*, %261 word*, %262 word*, %263 i64, %264 i64, %265 i64, %266 word*, %267 word*, %353 word*, %268 word*, %269 word*, %270 word*, %271 i64, %272 i64, %273 i64, %274 word*, %275 word*, %354 word*, %281 word*, %282 word*, %283 word*, %284 i64, %285 i64, %286 bool, %287 word*, %294 bool, %295 word*, %296 word*, %297 i64, %298 i64, %306 bool, %307 word*, %308 word*, %309 i64, %310 i64, %318 bool, %319 word*, %320 word*, %321 i64, %322 i64]
   b0():
     %0 v: ptr = const static std::crypto::Usage.Encrypt
     %1 v: ptr = const static std::crypto::Usage.Decrypt
@@ -191,8 +191,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 121 slots [%121 
     jump b10(%212, %213, %214, %215, %216)
   b18(%218 xs: ptr, %219 xs: ptr, %220 n: i64, %221 i: i64, %222 bits: i64, %223 iv: ptr, %224 pt: ptr, %225 aad: ptr, %226 k: ptr, %227 r: ptr):
     %238 p: word = proj %227.0 std::result::Result.Ok
-    drop %227
-    call unhex#2(%223) -> b20(%218, %219, %220, %221, %222, %224, %225, %226, %238)
+    %350 token: word = $reuse_reset(%227)
+    call unhex#2(%223) -> b20(%218, %219, %220, %221, %222, %224, %225, %226, %238, %350)
   b19(%228 xs: ptr, %229 xs: ptr, %230 n: i64, %231 i: i64, %232 bits: i64, %233 iv: ptr, %234 pt: ptr, %235 aad: ptr, %236 k: ptr, %237 r: ptr):
     drop %233
     drop %234
@@ -209,16 +209,16 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 121 slots [%121 
     %305 s: ptr = concat %303, %304
     drop %304
     perform std::console::Console.print(%305) -> b26(%228, %229, %230, %231)
-  b20(%239 r: ptr, %240 xs: ptr, %241 xs: ptr, %242 n: i64, %243 i: i64, %244 bits: i64, %245 pt: ptr, %246 aad: ptr, %247 k: ptr, %248 ct: ptr):
-    call unhex#2(%246) -> b21(%240, %241, %242, %243, %244, %245, %247, %248, %239)
-  b21(%249 r: ptr, %250 xs: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 pt: ptr, %256 k: ptr, %257 ct: ptr, %258 r: ptr):
+  b20(%239 r: ptr, %240 xs: ptr, %241 xs: ptr, %242 n: i64, %243 i: i64, %244 bits: i64, %245 pt: ptr, %246 aad: ptr, %247 k: ptr, %248 ct: ptr, %351 token: word):
+    call unhex#2(%246) -> b21(%240, %241, %242, %243, %244, %245, %247, %248, %239, %351)
+  b21(%249 r: ptr, %250 xs: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 pt: ptr, %256 k: ptr, %257 ct: ptr, %258 r: ptr, %352 token: word):
     %259 $site: i64 = const 4
     dup %257
-    call decrypt#5(%256, %258, %249, %257, %259) -> b22(%250, %251, %252, %253, %254, %255, %257)
-  b22(%260 r: ptr, %261 xs: ptr, %262 xs: ptr, %263 n: i64, %264 i: i64, %265 bits: i64, %266 pt: ptr, %267 ct: ptr):
-    call unhex#2(%266) -> b23(%261, %262, %263, %264, %265, %267, %260)
-  b23(%268 r: ptr, %269 xs: ptr, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 bits: i64, %274 ct: ptr, %275 r: ptr):
-    %276 r: ptr = alloc std::result::Result.Ok(%268)
+    call decrypt#5(%256, %258, %249, %257, %259) -> b22(%250, %251, %252, %253, %254, %255, %257, %352)
+  b22(%260 r: ptr, %261 xs: ptr, %262 xs: ptr, %263 n: i64, %264 i: i64, %265 bits: i64, %266 pt: ptr, %267 ct: ptr, %353 token: word):
+    call unhex#2(%266) -> b23(%261, %262, %263, %264, %265, %267, %260, %353)
+  b23(%268 r: ptr, %269 xs: ptr, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 bits: i64, %274 ct: ptr, %275 r: ptr, %354 token: word):
+    %276 r: ptr = alloc std::result::Result.Ok(%268) reuse %354
     %277 t: bool = eq.any %275, %276
     drop %275
     drop %276

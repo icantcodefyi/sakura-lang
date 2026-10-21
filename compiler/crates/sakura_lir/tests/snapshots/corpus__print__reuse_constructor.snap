@@ -182,7 +182,7 @@ fn shift#2 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]
     %5 rec: ptr = alloc main::reuse_constructor::P(%3, %4) reuse %6
     ret %5
 
-fn ins#3 top -> ptr ; main::reuse_constructor, frame 10 slots [%0 word*, %1 i64, %26 word*, %27 word*, %28 i64, %29 word*, %31 word*, %32 word*, %33 word*, %34 i64]
+fn ins#3 top -> ptr ; main::reuse_constructor, frame 12 slots [%0 word*, %1 i64, %26 word*, %27 word*, %28 i64, %29 word*, %38 word*, %31 word*, %32 word*, %33 word*, %34 i64, %40 word*]
   b0(%0 t: ptr, %1 k: i64):
     %2 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
     switch %2 0 => b1(%0, %1) 1 => b2(%0, %1)
@@ -198,18 +198,18 @@ fn ins#3 top -> ptr ; main::reuse_constructor, frame 10 slots [%0 word*, %1 i64,
     %12 p: word = proj %5.1 main::reuse_constructor::Tree.T
     %13 p: i64 = proj %5.2 main::reuse_constructor::Tree.T
     %14 p: word = proj %5.3 main::reuse_constructor::Tree.T
-    drop %5
+    %36 token: word = $reuse_reset(%5)
     %15 t: bool = lt.int %6, %13
-    if %15 then b3(%6, %11, %12, %13, %14) else b4(%6, %11, %12, %13, %14)
-  b3(%16 k: i64, %17 c: ptr, %18 l: ptr, %19 y: i64, %20 r: ptr):
-    call ins#3(%18, %16) -> b5(%17, %19, %20)
-  b4(%21 k: i64, %22 c: ptr, %23 l: ptr, %24 y: i64, %25 r: ptr):
-    call ins#3(%25, %21) -> b6(%22, %23, %24)
-  b5(%26 r: ptr, %27 c: ptr, %28 y: i64, %29 r: ptr):
-    %30 r: ptr = alloc main::reuse_constructor::Tree.T(%27, %26, %28, %29)
+    if %15 then b3(%6, %11, %12, %13, %14, %36) else b4(%6, %11, %12, %13, %14, %36)
+  b3(%16 k: i64, %17 c: ptr, %18 l: ptr, %19 y: i64, %20 r: ptr, %37 token: word):
+    call ins#3(%18, %16) -> b5(%17, %19, %20, %37)
+  b4(%21 k: i64, %22 c: ptr, %23 l: ptr, %24 y: i64, %25 r: ptr, %39 token: word):
+    call ins#3(%25, %21) -> b6(%22, %23, %24, %39)
+  b5(%26 r: ptr, %27 c: ptr, %28 y: i64, %29 r: ptr, %38 token: word):
+    %30 r: ptr = alloc main::reuse_constructor::Tree.T(%27, %26, %28, %29) reuse %38
     ret %30
-  b6(%31 r: ptr, %32 c: ptr, %33 l: ptr, %34 y: i64):
-    %35 r: ptr = alloc main::reuse_constructor::Tree.T(%32, %33, %34, %31)
+  b6(%31 r: ptr, %32 c: ptr, %33 l: ptr, %34 y: i64, %40 token: word):
+    %35 r: ptr = alloc main::reuse_constructor::Tree.T(%32, %33, %34, %31) reuse %40
     ret %35
 
 fn blacken#4 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]

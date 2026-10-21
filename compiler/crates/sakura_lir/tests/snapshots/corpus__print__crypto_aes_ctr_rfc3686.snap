@@ -29,7 +29,7 @@ layout 23 shape |  48b (i64, word*, word*, word*)
 layout 24 shape |  32b (bool, word*)
 layout 25 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 158 slots [%41 word*, %42 word*, %43 word*, %44 word*, %46 word*, %47 word*, %48 word*, %49 word*, %50 word*, %53 word*, %54 word*, %62 word*, %63 word*, %64 word*, %66 word*, %67 word*, %68 word*, %69 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %79 word*, %80 word*, %81 word*, %82 word*, %83 word*, %85 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %95 bool, %96 word*, %97 word*, %98 word*, %99 word*, %105 word*, %109 bool, %114 bool, %151 word*, %152 word*, %153 word*, %154 word*, %155 i64, %156 i64, %157 i64, %158 word*, %159 word*, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 i64, %169 word*, %170 word*, %171 word*, %172 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 i64, %182 word*, %183 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 i64, %215 i64, %216 i64, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %224 i64, %225 i64, %226 i64, %227 word*, %228 word*, %229 word*, %230 word*, %232 word*, %233 word*, %234 word*, %235 word*, %236 i64, %237 i64, %238 i64, %239 word*, %240 word*, %241 word*, %270 word*, %271 word*, %272 word*, %273 word*, %274 i64, %275 i64, %276 i64, %277 word*, %278 word*, %279 word*, %281 word*, %282 word*, %283 word*, %284 word*, %285 i64, %286 i64, %287 i64, %288 word*, %289 word*, %290 word*, %291 word*, %292 word*, %293 word*, %294 i64, %295 i64, %296 i64, %297 word*, %298 word*, %304 word*, %305 word*, %306 word*, %307 word*, %308 i64, %309 i64, %310 bool, %311 word*, %318 bool, %319 word*, %320 word*, %321 word*, %322 i64, %323 i64, %331 bool, %332 word*, %333 word*, %334 word*, %335 i64, %336 i64, %344 bool, %345 word*, %346 word*, %347 word*, %348 i64, %349 i64]
+fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 161 slots [%41 word*, %42 word*, %43 word*, %44 word*, %46 word*, %47 word*, %48 word*, %49 word*, %50 word*, %53 word*, %54 word*, %62 word*, %63 word*, %64 word*, %66 word*, %67 word*, %68 word*, %69 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %79 word*, %80 word*, %81 word*, %82 word*, %83 word*, %85 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %95 bool, %96 word*, %97 word*, %98 word*, %99 word*, %105 word*, %109 bool, %114 bool, %151 word*, %152 word*, %153 word*, %154 word*, %155 i64, %156 i64, %157 i64, %158 word*, %159 word*, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 i64, %169 word*, %170 word*, %171 word*, %172 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 i64, %182 word*, %183 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 i64, %215 i64, %216 i64, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %224 i64, %225 i64, %226 i64, %227 word*, %228 word*, %229 word*, %230 word*, %232 word*, %233 word*, %234 word*, %235 word*, %236 i64, %237 i64, %238 i64, %239 word*, %240 word*, %241 word*, %270 word*, %271 word*, %272 word*, %273 word*, %274 i64, %275 i64, %276 i64, %277 word*, %278 word*, %279 word*, %357 word*, %281 word*, %282 word*, %283 word*, %284 word*, %285 i64, %286 i64, %287 i64, %288 word*, %289 word*, %358 word*, %290 word*, %291 word*, %292 word*, %293 word*, %294 i64, %295 i64, %296 i64, %297 word*, %298 word*, %359 word*, %304 word*, %305 word*, %306 word*, %307 word*, %308 i64, %309 i64, %310 bool, %311 word*, %318 bool, %319 word*, %320 word*, %321 word*, %322 i64, %323 i64, %331 bool, %332 word*, %333 word*, %334 word*, %335 i64, %336 i64, %344 bool, %345 word*, %346 word*, %347 word*, %348 i64, %349 i64]
   b0():
     %0 v: ptr = const static std::crypto::Usage.Encrypt
     %1 v: ptr = const static std::crypto::Usage.Decrypt
@@ -223,8 +223,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 158 slots [%41 w
     jump b24(%242, %243, %244, %245, %246, %247)
   b31(%249 xs: ptr, %250 r: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 block: ptr, %256 pt: ptr, %257 k: ptr, %258 r: ptr):
     %269 p: word = proj %258.0 std::result::Result.Ok
-    drop %258
-    call unhex#3(%255) -> b33(%249, %250, %251, %252, %253, %254, %256, %257, %269)
+    %356 token: word = $reuse_reset(%258)
+    call unhex#3(%255) -> b33(%249, %250, %251, %252, %253, %254, %256, %257, %269, %356)
   b32(%259 xs: ptr, %260 r: ptr, %261 xs: ptr, %262 n: i64, %263 i: i64, %264 bits: i64, %265 block: ptr, %266 pt: ptr, %267 k: ptr, %268 r: ptr):
     drop %265
     drop %266
@@ -240,15 +240,15 @@ fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 158 slots [%41 w
     %330 s: ptr = concat %328, %329
     drop %329
     perform std::console::Console.print(%330) -> b38(%259, %260, %261, %262, %263)
-  b33(%270 r: ptr, %271 xs: ptr, %272 r: ptr, %273 xs: ptr, %274 n: i64, %275 i: i64, %276 bits: i64, %277 pt: ptr, %278 k: ptr, %279 ct: ptr):
+  b33(%270 r: ptr, %271 xs: ptr, %272 r: ptr, %273 xs: ptr, %274 n: i64, %275 i: i64, %276 bits: i64, %277 pt: ptr, %278 k: ptr, %279 ct: ptr, %357 token: word):
     %280 $site: i64 = const 7
     dup %272
     dup %279
-    call decrypt#6(%278, %270, %272, %279, %280) -> b34(%271, %272, %273, %274, %275, %276, %277, %279)
-  b34(%281 r: ptr, %282 xs: ptr, %283 r: ptr, %284 xs: ptr, %285 n: i64, %286 i: i64, %287 bits: i64, %288 pt: ptr, %289 ct: ptr):
-    call unhex#3(%288) -> b35(%282, %283, %284, %285, %286, %287, %289, %281)
-  b35(%290 r: ptr, %291 xs: ptr, %292 r: ptr, %293 xs: ptr, %294 n: i64, %295 i: i64, %296 bits: i64, %297 ct: ptr, %298 r: ptr):
-    %299 r: ptr = alloc std::result::Result.Ok(%290)
+    call decrypt#6(%278, %270, %272, %279, %280) -> b34(%271, %272, %273, %274, %275, %276, %277, %279, %357)
+  b34(%281 r: ptr, %282 xs: ptr, %283 r: ptr, %284 xs: ptr, %285 n: i64, %286 i: i64, %287 bits: i64, %288 pt: ptr, %289 ct: ptr, %358 token: word):
+    call unhex#3(%288) -> b35(%282, %283, %284, %285, %286, %287, %289, %281, %358)
+  b35(%290 r: ptr, %291 xs: ptr, %292 r: ptr, %293 xs: ptr, %294 n: i64, %295 i: i64, %296 bits: i64, %297 ct: ptr, %298 r: ptr, %359 token: word):
+    %299 r: ptr = alloc std::result::Result.Ok(%290) reuse %359
     %300 t: bool = eq.any %298, %299
     drop %298
     drop %299

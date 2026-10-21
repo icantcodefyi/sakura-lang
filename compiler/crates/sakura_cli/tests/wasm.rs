@@ -1378,9 +1378,11 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
 }
 
 /// Plan M5 N3 (ABI 1.17.0): each constructor rebuilt in the arm that took it apart is a reuse
-/// attempt, a hit when unique. `reuse_constructor`: 26 resets (2 records, 20 `blacken`s, 1
-/// `bump`, then the retained record, `blacken` of the retained tree and `bump` of its fresh
-/// result); the retained record and tree are the 3 misses (`String.split` counts nothing).
+/// attempt, a hit when unique. `reuse_constructor`: 26 resets in their blocks (2 records, 20
+/// `blacken`s, 1 `bump`, then the retained record, `blacken` of the retained tree and `bump` of
+/// its fresh result), and 190 across the recursive call of `ins` (the ascending keys make a
+/// right spine, so insertion `i` rebuilds `i` nodes: 0 + 1 + … + 19), all unique; the retained
+/// record and tree are the 3 misses (`String.split` counts nothing).
 #[test]
 fn constructor_reuse_counts_its_hits() {
     if !available() {
@@ -1410,7 +1412,7 @@ fn constructor_reuse_counts_its_hits() {
     let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
     assert_eq!(
         (v["reuse_attempts"].as_u64(), v["reuses"].as_u64()),
-        (Some(26), Some(23)),
+        (Some(216), Some(213)),
         "{v}"
     );
     let _ = std::fs::remove_dir_all(&dir);

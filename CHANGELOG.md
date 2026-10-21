@@ -67,8 +67,10 @@ retains earlier implementation history.
   lowercased, as `hyper` gives them.
 - **Constructor-site reuse** (design §17.176 (3), plan `m5-native.md` N3; WASM and native):
   a `match` arm or function that takes a record or a constructor apart and builds one of the
-  same type and constructor in the same block writes the new value into the old object's
-  storage when nothing else holds it (Perceus `reset`/`reuse`). A version still held elsewhere
+  same type and constructor writes the new value into the old object's storage when nothing
+  else holds it (Perceus `reset`/`reuse`), also when the rebuild follows a branch or a call of
+  a function that performs no effect (a tree insertion's `T(c, ins(l, k), y, r)`), and when a
+  nested pattern took the object apart in an earlier test. A version still held elsewhere
   is copied as before and stays intact. Each such site counts in `reuse_attempts` and, when it
   reuses, in `reuses`, so `bench_counters.txt` changes for `deltablue`, `nbody`, `rbtree` and
   `shapes`. `--native-checks` checks each reuse token before it is used. JS output and every

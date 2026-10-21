@@ -262,9 +262,16 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         }
         Callee::Closure(_) => false,
     };
+    // A token may ride the continuation of a call of a direct top-level def (`reuse`).
+    let direct = |g: FuncId| {
+        core.defs
+            .get(g.index())
+            .is_some_and(|d| matches!(d.kind, core::FnKind::Top { .. }))
+            && cx.facts.direct(g.0)
+    };
     for f in &mut funcs {
         ownership(f, &borrows)?;
-        if crate::reuse::reuse(f) {
+        if crate::reuse::reuse(f, &direct) {
             cx.used_builtins.insert(crate::reuse::RESET.to_owned());
         }
     }

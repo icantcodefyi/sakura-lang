@@ -19,11 +19,15 @@
 //!   nothing is used after it was consumed. Because blocks pass every live value explicitly,
 //!   checking each block's edges is checking every path;
 //! - **reuse tokens** (plan M5 N3, design §17.176 (3)): a `reuse_reset` takes an object whose
-//!   shape a `Proj` of this block names, and its token is consumed by exactly one `Alloc` of that
-//!   shape in the same block, or dropped; it is never another instruction's operand, an edge
-//!   argument, a call's or a `try`'s value, returned or failed with. A block has no suspension,
-//!   call or `perform` before its terminator, and a defect's landing pad drops the token as the
-//!   reference it is (the emptied object, or `Unit`), so every exit frees it.
+//!   shape a `Proj` of this block names, or one a block entered only from it projected
+//!   (`reuse::entry_shapes`), and its token is consumed by exactly one `Alloc` of that
+//!   shape, or dropped; it is never another instruction's operand, a call's or a `try`'s value,
+//!   returned or failed with. A token live at a terminator rides every edge, to a parameter that
+//!   every edge into its block fills with a token of the same shape, and only through `Jump`,
+//!   `If`, `Switch` or the continuation of a call of a direct top-level def, which neither
+//!   performs nor calls a closure, so no token is held across a suspension, a `perform` or an
+//!   unknown callee. A defect's landing pad drops the token as the reference it is (the emptied
+//!   object, or `Unit`), so every exit frees it.
 //!
 //! Under `--layout=niche` (not enabled in M4) a payload projection of `Option` is rejected
 //! (ABI §4.3); the flag is [`crate::lir::Module`]'s `niche` field.
@@ -66,6 +70,8 @@ pub fn validate(m: &Module, opts: Options) -> Vec<Error> {
             name: &name,
             opts,
             errors: &mut errors,
+            token_params: HashMap::new(),
+            entry_shapes: Vec::new(),
         }
         .func();
     }
@@ -98,6 +104,10 @@ struct Checker<'a> {
     name: &'a str,
     opts: Options,
     errors: &'a mut Vec<Error>,
+    /// The block parameters an edge passes a reuse token to, with its shape.
+    token_params: HashMap<Var, Shape>,
+    /// Per block, the shapes its parameters have on entry (`reuse::entry_shapes`).
+    entry_shapes: Vec<HashMap<Var, Shape>>,
 }
 
 type R = Result<(), String>;
@@ -140,6 +150,8 @@ impl<'a> Checker<'a> {
             self.error(None, e);
             return;
         }
+        self.token_params = crate::reuse::token_params(f);
+        self.entry_shapes = crate::reuse::entry_shapes(f);
         for b in 0..f.blocks.len() {
             if let Err(e) = self.block(b) {
                 self.error(Some(b), e);
@@ -235,11 +247,14 @@ impl<'a> Checker<'a> {
             count: HashMap::new(),
             regions: block.regions.clone(),
             bound: None,
-            shapes: HashMap::new(),
+            shapes: self.entry_shapes.get(b).cloned().unwrap_or_default(),
             tokens: HashMap::new(),
         };
         for &p in &block.params {
             self.define(&mut st, p)?;
+            if let Some(shape) = self.token_params.get(&p) {
+                st.tokens.insert(p, shape.clone());
+            }
         }
         for (k, inst) in block.insts.iter().enumerate() {
             self.inst(&mut st, inst)
@@ -745,7 +760,7 @@ impl<'a> Checker<'a> {
             }
             Inst::Builtin { dst, name, args } if name == RESET => {
                 let shape = args.first().and_then(|x| st.shapes.get(x));
-                let shape = shape.ok_or("`reuse_reset` of an object no `Proj` here shapes")?;
+                let shape = shape.ok_or("`reuse_reset` of an object of no known shape")?;
                 ensure(!matches!(shape, Shape::List), || {
                     "`reuse_reset` of a list".into()
                 })?;
@@ -792,7 +807,31 @@ impl<'a> Checker<'a> {
 
     fn term(&self, st: &mut State, term: &Term) -> R {
         if let Some(t) = st.tokens.keys().min() {
-            return Err(format!("reuse token %{} outlives its block", t.0));
+            let rides = match term {
+                Term::Jump(_) | Term::If { .. } | Term::Switch { .. } => true,
+                Term::Call {
+                    callee: Callee::Direct(g),
+                    ..
+                } => {
+                    self.m
+                        .funcs
+                        .get(g.index())
+                        .is_some_and(|g| matches!(g.kind, FuncKind::Top { .. }))
+                        && self.m.direct.direct(g.0)
+                }
+                _ => false,
+            };
+            ensure(rides, || match term {
+                Term::Return(_) | Term::Fail(_) => {
+                    format!("reuse token %{} outlives its block", t.0)
+                }
+                _ => format!("reuse token %{} crosses a call that may suspend", t.0),
+            })?;
+        }
+        for (v, _) in term.uses() {
+            ensure(!st.tokens.contains_key(&v), || {
+                format!("reuse token %{} is an operand", v.0)
+            })?;
         }
         for (v, u) in term.uses() {
             self.use_var(st, v, u)?;
@@ -922,6 +961,20 @@ impl<'a> Checker<'a> {
             for (&a, &p) in edge.args.iter().zip(&target.params[lead..]) {
                 self.use_var(&mut edge_st, a, Use::Consume)?;
                 self.expect(a, self.repr(p)?)?;
+                ensure(st.tokens.get(&a) == self.token_params.get(&p), || {
+                    format!(
+                        "%{} and b{}'s %{} disagree on being a reuse token",
+                        a.0, edge.block.0, p.0
+                    )
+                })?;
+            }
+            for t in st.tokens.keys() {
+                ensure(edge.args.contains(t), || {
+                    format!(
+                        "reuse token %{} is not passed on the edge to b{}",
+                        t.0, edge.block.0
+                    )
+                })?;
             }
             self.balanced(&edge_st.count, &format!("on the edge to b{}", edge.block.0))?;
         }

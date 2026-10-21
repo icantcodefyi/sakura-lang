@@ -14,7 +14,7 @@
 //! [`ENTRIES`] blocks are entered from the blocks placed so far (so no loop is cut and no code
 //! is copied more than that many times), and none of them has an open `with` or `try` region (a
 //! new function starts with none) or an execution-state id parameter (ABI §7: never a call
-//! argument). A function with no such place stays whole.
+//! argument) or a reuse token. A function with no such place stays whole.
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
@@ -113,9 +113,14 @@ fn parts(f: &Func, piece: usize) -> Option<(Vec<usize>, Vec<BlockId>)> {
             }
         }
     }
+    // A reuse token is never a call argument either (`crate::reuse`).
+    let tokens = crate::reuse::token_params(f);
     let enterable = |b: usize| {
         let b = &f.blocks[b];
-        b.regions.is_empty() && b.params.iter().all(|&v| f.repr(v) != Repr::Id)
+        b.regions.is_empty()
+            && b.params
+                .iter()
+                .all(|&v| f.repr(v) != Repr::Id && !tokens.contains_key(&v))
     };
     let mut part = vec![usize::MAX; n];
     let mut entered = BTreeSet::new();

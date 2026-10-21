@@ -11,7 +11,7 @@ layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 6 shape |  32b (word*, word*)
 layout 7 shape |  32b (i64, word*)
 
-fn main#0 pub top -> unit ; main::refined_var_rebuild, frame 20 slots [%3 word*, %7 bool, %12 word*, %15 bool, %16 word*, %19 word*, %20 word*, %25 word*, %26 bool, %32 word*, %34 bool, %55 word*, %56 i64, %57 word*, %58 word*, %59 word*, %60 i64, %61 word*, %76 word*, %77 i64]
+fn main#0 pub top -> unit ; main::refined_var_rebuild, frame 22 slots [%3 word*, %7 bool, %12 word*, %15 bool, %16 word*, %19 word*, %20 word*, %25 word*, %26 bool, %32 word*, %34 bool, %55 word*, %56 i64, %57 word*, %58 word*, %80 word*, %59 word*, %60 i64, %61 word*, %81 word*, %76 word*, %77 i64]
   b0():
     %0 lit: i64 = const 1
     %1 rec: ptr = alloc main::refined_var_rebuild::PosRepr(%0)
@@ -75,19 +75,19 @@ fn main#0 pub top -> unit ; main::refined_var_rebuild, frame 20 slots [%3 word*,
     if %41 then b13(%37, %38, %39) else b14(%37, %38, %39)
   b13(%42 i: i64, %43 x: ptr, %44 r: ptr):
     %53 total: word = proj %44.0 main::refined_var_rebuild::Receipt
-    drop %44
+    %79 token: word = $reuse_reset(%44)
     %54 lit: i64 = const 2
-    call from_int#6(%54) -> b16(%42, %43, %53)
+    call from_int#6(%54) -> b16(%42, %43, %53, %79)
   b14(%45 i: i64, %46 x: ptr, %47 r: ptr):
     jump b7(%46, %47)
   b15(%48 x: ptr, %49 r: ptr, %50 i: i64):
     %51 lit: i64 = const 1
     %52 i: i64 = intadd %50, %51
     jump b12(%52, %48, %49)
-  b16(%55 r: ptr, %56 i: i64, %57 x: ptr, %58 total: ptr):
-    call add#7(%58, %55) -> b17(%56, %57)
-  b17(%59 r: ptr, %60 i: i64, %61 x: ptr):
-    %62 rec: ptr = alloc main::refined_var_rebuild::Receipt(%59)
+  b16(%55 r: ptr, %56 i: i64, %57 x: ptr, %58 total: ptr, %80 token: word):
+    call add#7(%58, %55) -> b17(%56, %57, %80)
+  b17(%59 r: ptr, %60 i: i64, %61 x: ptr, %81 token: word):
+    %62 rec: ptr = alloc main::refined_var_rebuild::Receipt(%59) reuse %81
     jump b15(%61, %62, %60)
   b18(%64 i: i64, %65 x: ptr):
     %66 lit: i64 = const 3
