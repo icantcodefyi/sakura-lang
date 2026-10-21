@@ -85,6 +85,9 @@
   --ok-wash: color-mix(in oklab, #1f9e7f 11%, transparent);
   --code: #f8f6f6;
   --shadow-color: 350 30% 30%;
+  /* Benchmark chart series (components/bench.tsx), validated for CVD separation on paper. */
+  --chart-node: #b4245f;
+  --chart-bun: #2f6fb0;
 
   /* Sakura Seal (components/seal.tsx) */
   --seal-disc: #fce7ee;
@@ -137,6 +140,8 @@
   --ok-wash: color-mix(in oklab, #7fd3b8 11%, transparent);
   --code: #161616;
   --shadow-color: 0 0% 0%;
+  --chart-node: #e0608a;
+  --chart-bun: #4a8fd6;
 
   --seal-disc: color-mix(in oklab, #f386a1 16%, #1e1e1e);
   --seal-line: color-mix(in oklab, #f386a1 45%, transparent);

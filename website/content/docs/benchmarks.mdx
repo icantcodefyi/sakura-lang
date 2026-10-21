@@ -1,260 +1,146 @@
 ---
 title: Benchmarks
-description: Instructions retired per call for every benchmark program on the reference Mac, how they are counted, and what they do and do not say.
+description: Instructions retired per call for every benchmark program on the reference Apple M4 Pro, against hand-written JavaScript on the same engine, with the compile-time budgets and the cross-language envelope.
 ---
 
-<Callout type="info" title="The blessed baseline">
-  These are instruction counts from one run of the JavaScript and WebAssembly suites on the
-  reference Mac (an Apple silicon MacBook, host `d88970189598`) at commit `3bf2343f`, 2026-10-20,
-  blessed as the baseline the same day
-  ([`bench/baselines/d88970189598.json`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/d88970189598.json)
-  and its [`wasm`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/wasm/d88970189598.json)
-  twin). Later changes are compared with these counts. They are counts, not times: no speed
-  claim follows from them. The cross-language envelope in design §17.109 is not met, and
-  Sakura Lang makes no cross-language speed claim at 0.1.0 (design §17.265).
+Every number on this page is read at build time from the blessed counted baseline
+([`bench/baselines`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines)) and
+the evidence files of the same commit
+([`bench/results`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/results)). None is
+copied by hand. They are **instruction counts, not times**, specific to these workloads and
+this one machine: not a language ranking, and not a speed claim.
+
+<BenchRun />
+
+<Callout type="info" title="What the page says, in one paragraph">
+  On the JavaScript backend, Sakura retires more instructions per call than hand-written
+  JavaScript on most programs, fewer on a few, and meets its design ceiling on some of them; the
+  chart shows which. The WebAssembly backend is further behind. The cross-language envelope
+  against Rust, Go, OCaml and Koka is **not met**, is reported as information, and gates no
+  release (design §17.265). Sakura Lang makes no cross-language speed claim.
 </Callout>
 
-`3bf2343f` is a commit on main after `v0.1.0`. It carries JavaScript-backend work that is not
-in the `0.1.0` packages ([changes on main](/docs/changes#faster-on-main)): owned updates of
-fresh lists and flat `List<Bool>` (`nbody`, `sieve`) and the `Int`-key path of `Map`
-(`map_set`). It also fixes the size of V8's young generation on every measured Node process,
-which changes every Node count once. The counts for the released `v0.1.0` are those of the
-earlier baseline at `320c9980`, kept in
-[`bench/baselines/archive/320c9980/`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines/archive/320c9980);
-a counted check of the `v0.1.0` candidate on `fib` and `shapes` passed against it.
+## Sakura against hand-written JavaScript
 
-The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs the
-same workloads written in Sakura Lang and by hand in JavaScript, Rust, Go, OCaml and Koka.
-Every program has an oracle: a cell is measured only after it returns the recorded checksum
-for every input. The numbers are specific to these workloads and this one machine. They are
-not a language ranking.
+The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs each
+workload written in Sakura Lang and written by hand in JavaScript, the same algorithm in the same
+order, and compares the two on one engine, Node or Bun. A ratio is Sakura's count over hand
+JavaScript's: below 1× Sakura retires fewer instructions, above it more. Design §17.109 sets a
+ceiling on that ratio for each program family and asks for a median of at most 1.5× over the
+fifteen.
 
-## What is measured
+<BenchChart />
 
-The primary metric is **instructions retired per call**, read from macOS's
-`/usr/bin/time -l`. As with [rustc-perf](https://perf.rust-lang.org), the reason is
-repeatability: the count barely moves when other programs share the machine, so the suite runs
-while other work goes on and needs no idle night ([design §17.264](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
+<BenchTable table="targets" />
 
-<CountFlow />
+Where Sakura is ahead, the cause is one mechanism and says nothing about other programs: the
+`pipeline` stages fuse into one loop, `tokenizer` owns the string it consumes, and a `handled`
+counter compiles to a direct call. Bun rows are [advisory](#what-advisory-means).
 
-Each cell is one program at one input size `n` on one engine. The harness calibrates a call
-count `k`, then runs five pairs of fresh processes: one calls `run(n)` once, the other `1 + k`
-times. Start-up, module loading and the first call's compilation are in both, so the
-difference over `k` is the cost of a warm call. The cell is the median of the five pairs, and
-its spread is (max − min) / median.
+### Every program
 
-An instruction count is not a time. It does not see cache misses, branch mispredictions or how
-many instructions a core retires per cycle, and two engines can retire the same instructions
-at different speeds: in the first counted runs one Wasmtime cell's ratio of counts and its
-ratio of times differed by half. A ratio below is a ratio of counts, never of times.
+Each program at its largest input size `n`. `K`, `M` and `G` are thousands, millions and
+billions of instructions per call.
 
-## Results
-
-Every value is instructions retired per call (or per process, for the compiler) on the
-reference Mac, at each program's largest size. A ratio is Sakura's count over hand
-JavaScript's on the engine named. `K`, `M` and `G` are thousands, millions and billions. Node
-runs with `--predictable --min-semi-space-size=16 --max-semi-space-size=16`: V8's garbage
-collector and compiler stay on the main thread, and the young generation has a fixed size, so
-that a count depends neither on scheduling nor on where the program's files sit on disk
-(design §17.282).
-
-### JavaScript backend
-
-| Program | n | Sakura, Node | hand JS, Node | ratio | Sakura, Bun | hand JS, Bun | ratio |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| `binary_trees` | 14 | 1.02 G | 682 M | 1.49× | 1.3 G | 506 M | 2.57× |
-| `contracts` | 1,000,000 | 119 M | 44.3 M | 2.69× | 97.4 M | 54.1 M | 1.80× |
-| `contracts_plain` | 1,000,000 | 72.5 M | 24.2 M | 3.00× | 47.7 M | 32.1 M | 1.49× |
-| `countdown` | 300,000 | 15 M | 10.2 M | 1.48× | 5.43 M | 5.15 M | 1.06× |
-| `deltablue` | 10,000 | 1.97 G | 321 M | 6.14× | 2.74 G | 448 M | 6.12× |
-| `fib` | 30 | 191 M | 138 M | 1.39× | 211 M | 91.4 M | 2.31× |
-| `handled_d1` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
-| `handled_d16` | 1,000,000 | 50.4 M | 57.2 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
-| `handled_d4` | 1,000,000 | 50 M | 57.1 M | 0.88× | 21.1 M | 18.5 M | 1.14× |
-| `handled_fwd` | 1,000,000 | 356 M | 76.2 M | 4.67× | 450 M | 38.8 M | 11.59× |
-| `handled_reentry` | 1,000,000 | 549 M | 783 M | 0.70× | 638 M | 87 M | 7.34× |
-| `handled_suspend` | 1,000,000 | 93 M | 86.4 M | 1.08× | 26.3 M | 124 M | 0.21× |
-| `json_validate` | 30,000 | 796 M | 574 M | 1.39× | 606 M | 207 M | 2.93× |
-| `map_set` | 100,000 | 2.79 G | 992 M | 2.82× | 2.73 G | 744 M | 3.67× |
-| `map_set:int` | 100,000 | 618 M | 139 M | 4.45× | 699 M | 65.7 M | 10.64× |
-| `map_set:string` | 100,000 | 1.02 G | 441 M | 2.31× | 907 M | 429 M | 2.12× |
-| `map_set:tuple` | 100,000 | 1.1 G | 365 M | 3.00× | 1.05 G | 239 M | 4.41× |
-| `nbody` | 100,000 | 731 M | 113 M | 6.46× | 585 M | 140 M | 4.19× |
-| `pipeline` | 300,000 | 87.5 M | 304 M | 0.29× | 78.9 M | 27.6 M | 2.86× |
-| `rbtree` | 100,000 | 2.64 G | 1.04 G | 2.54× | 1.51 G | 636 M | 2.38× |
-| `shapes` | 100,000 | 1.65 G | 653 M | 2.52× | 846 M | 382 M | 2.21× |
-| `sieve` | 200,000 | 53 M | 17.4 M | 3.04× | 43 M | 12.6 M | 3.41× |
-| `spectral_norm` | 400 | 737 M | 168 M | 4.38× | 505 M | 203 M | 2.48× |
-| `tail_clique` | 10,000,000 | 292 M | 333 M | 0.88× | 141 M | 175 M | 0.81× |
-| `tokenizer` | 100,000 | 187 M | 531 M | 0.35× | 224 M | 191 M | 1.17× |
+<BenchTable table="js" />
 
 ### WebAssembly backend
 
 Sakura compiled with `--target wasm`, run on Node's WebAssembly engine and on Wasmtime, over
-the same hand JavaScript on Node. `json_validate` has no Wasmtime cell: it needs JSON
-decoding, which only the Node host implements.
+the same hand JavaScript on Node.
 
-| Program | n | Sakura WASM, Node | Sakura WASM, Wasmtime | hand JS, Node | ratio, Node | ratio, Wasmtime |
-|---|---:|---:|---:|---:|---:|---:|
-| `binary_trees` | 14 | 4.09 G | 4.82 G | 682 M | 6.00× | 7.06× |
-| `contracts` | 1,000,000 | 3.02 G | 4 G | 44.3 M | 68.08× | 90.30× |
-| `contracts_plain` | 1,000,000 | 1.66 G | 2.04 G | 24.2 M | 68.64× | 84.26× |
-| `countdown` | 300,000 | 19.7 M | 19.2 M | 10.2 M | 1.94× | 1.89× |
-| `deltablue` | 10,000 | 33.6 G | 39.5 G | 321 M | 104.69× | 123.21× |
-| `fib` | 30 | 270 M | 259 M | 137 M | 1.97× | 1.89× |
-| `handled_d1` | 1,000,000 | 1.27 G | 1.6 G | 57 M | 22.34× | 28.16× |
-| `handled_d16` | 1,000,000 | 1.25 G | 1.6 G | 57 M | 21.95× | 28.13× |
-| `handled_d4` | 1,000,000 | 1.27 G | 1.6 G | 57 M | 22.35× | 28.16× |
-| `handled_fwd` | 1,000,000 | 6.16 G | 7.5 G | 76 M | 80.98× | 98.63× |
-| `handled_reentry` | 1,000,000 | 8.78 G | 10.6 G | 783 M | 11.21× | 13.56× |
-| `handled_suspend` | 1,000,000 | 1.43 G | 1.84 G | 86.3 M | 16.61× | 21.38× |
-| `json_validate` | 30,000 | 13.6 G | absent | 573 M | 23.66× | — |
-| `map_set` | 100,000 | 6.99 G | 7.9 G | 992 M | 7.04× | 7.96× |
-| `map_set:int` | 100,000 | 2.12 G | 2.42 G | 138 M | 15.30× | 17.50× |
-| `map_set:string` | 100,000 | 2.45 G | 2.84 G | 441 M | 5.55× | 6.43× |
-| `map_set:tuple` | 100,000 | 2.53 G | 2.79 G | 364 M | 6.97× | 7.68× |
-| `nbody` | 100,000 | 5.37 G | 6.68 G | 113 M | 47.65× | 59.20× |
-| `pipeline` | 300,000 | 1.85 G | 2.3 G | 303 M | 6.12× | 7.60× |
-| `rbtree` | 100,000 | 7.84 G | 10 G | 1.04 G | 7.53× | 9.66× |
-| `shapes` | 100,000 | 3.61 G | 4.34 G | 655 M | 5.52× | 6.62× |
-| `sieve` | 200,000 | 895 M | 1.13 G | 17.4 M | 51.38× | 64.77× |
-| `spectral_norm` | 400 | 5.58 G | 7.18 G | 168 M | 33.12× | 42.60× |
-| `tail_clique` | 10,000,000 | 1.23 G | 1.16 G | 334 M | 3.67× | 3.48× |
-| `tokenizer` | 100,000 | 18.2 G | 18.5 G | 530 M | 34.28× | 34.94× |
+<BenchTable table="wasm" />
+
+## How it is measured
+
+The metric is **instructions retired per call**, read from macOS's `/usr/bin/time -l` on the
+reference Apple M4 Pro. As with [rustc-perf](https://perf.rust-lang.org), the reason is
+repeatability: a count barely moves when other programs share the machine, so the suite runs
+while other work goes on and needs no idle night (design §17.264).
+
+<CountFlow />
+
+Each cell is one program at one input size on one engine. The harness calibrates a call count
+`k`, then runs five pairs of fresh processes: one calls `run(n)` once, the other `1 + k` times.
+Start-up, module loading and the first call's compilation are in both, so their difference over
+`k` is the cost of one warm call. The cell is the median of the five pairs. Every program has an
+oracle: a cell counts only after it returns the recorded checksum for every input.
+
+Node runs with `--predictable --min-semi-space-size=16 --max-semi-space-size=16`.
+`--predictable` keeps V8's garbage collector and compiler on the main thread, so a count does
+not depend on how threads were scheduled, and the fixed young generation keeps it from depending
+on where the program's files sit on disk (design §17.282).
+
+An instruction count is not a time. It does not see cache misses, branch mispredictions or how
+many instructions a core retires per cycle, and two engines can retire the same instructions at
+different speeds. Every ratio on this page is a ratio of counts.
+
+### What "advisory" means
+
+A reading is **advisory** when it is reported but blocks nothing. Two kinds are:
+
+- **Bun rows.** Bun's counts spread more than Node's (see [Spread](#spread)), so in a counted
+  comparison a Bun row is flagged above 10% and never blocks a change (design §17.265 (5)).
+- **Wall times on a loaded host.** The cross-language ceilings are time quantities, so the
+  envelope reads them on the wall time of the same runs. The machine was busy while they ran,
+  so those times give the direction only (design §17.265 (2)).
+
+The instruction counts themselves are not advisory: they are the baseline every change is
+compared with.
+
+### Spread
+
+A cell's spread is (max − min) / median over its five pairs. One outlying pair widens the spread
+but barely moves the median, so the last column counts the cells whose middle three pairs also
+differ by more than 1%.
+
+<BenchTable table="spread" />
+
+## Compile time
+
+One `sakura` process per run after a warm-up, over generated packages and a new project. The
+budgets are research/10 §6's, on the p95 of fifteen processes; the targets are design §17.195's,
+reported beside the budgets and never an exit. These are wall times on the loaded reference
+machine, with each case's median instruction count beside them. `test_hello` counts the CLI's own
+process, not the Node process it starts.
+
+<BenchTable table="compile" />
+
+## The cross-language envelope
+
+Design §17.109 also set ceilings for Sakura's WebAssembly build, on the Node host and on
+Wasmtime, against native controls: numeric kernels against Rust and Go, allocation kernels
+against OCaml and Koka, handlers against Koka, and the text programs against Rust. Each gating
+cell is one program, size, engine and comparison.
+
+<BenchTable table="envelope" />
+
+The envelope is information, not a release gate (design §17.265), and it is far from met.
+The native backend, experimental today and in no release, is where that comparison will be made
+again.
 
 ### Native controls
 
-The same workloads in Rust (with overflow checks, the matched lane), Go, OCaml and Koka. A
-dash means the program has no port in that language. These counts are from the earlier run at
-commit `320c9980` (2026-10-19): native and compiler runs are evidence, not baselines, and the
-bless re-counted only the JavaScript and WebAssembly suites.
+The same workloads in Rust (with overflow checks, the matched lane), Go, OCaml and Koka, counted
+in the same run. A dash means the program has no port in that language.
 
-| Program | n | Rust | Go | OCaml | Koka | Koka, no reuse |
-|---|---:|---:|---:|---:|---:|---:|
-| `binary_trees` | 14 | 1.29 G | 806 M | 206 M | 306 M | 305 M |
-| `contracts` | 1,000,000 | 5.38 M | 15.8 M | — | — | — |
-| `contracts_plain` | 1,000,000 | 5.13 M | 10.5 M | — | — | — |
-| `countdown` | 300,000 | 1.13 M | 2.4 M | — | — | — |
-| `deltablue` | 10,000 | 171 M | 203 M | — | — | — |
-| `fib` | 30 | 31 M | 41.8 M | — | — | — |
-| `handled_d1` | 1,000,000 | 11 M | 17 M | — | 148 M | 148 M |
-| `handled_d16` | 1,000,000 | 11 M | 17 M | — | 148 M | 148 M |
-| `handled_d4` | 1,000,000 | 11 M | 17 M | — | 148 M | 148 M |
-| `handled_fwd` | 1,000,000 | 11 M | 18 M | — | 256 M | 256 M |
-| `handled_reentry` | 1,000,000 | 14 M | 23.3 M | — | 174 M | 174 M |
-| `handled_suspend` | 1,000,000 | 16 M | 20 M | — | 245 M | 245 M |
-| `json_validate` | 30,000 | 271 M | 689 M | — | — | — |
-| `map_set` | 100,000 | 907 M | 887 M | 1.82 G | 7.16 G | 7.17 G |
-| `nbody` | 100,000 | 40.9 M | 78.7 M | — | — | — |
-| `pipeline` | 300,000 | 7.69 M | 17.8 M | 358 M | 49.4 M | 60 M |
-| `rbtree` | 100,000 | 863 M | 1.19 G | 700 M | 340 M | 340 M |
-| `shapes` | 100,000 | 33.8 M | 270 M | 1.08 G | 339 M | 337 M |
-| `sieve` | 200,000 | 3.58 M | 4.51 M | — | — | — |
-| `spectral_norm` | 400 | 112 M | 125 M | — | — | — |
-| `tail_clique` | 10,000,000 | 150 M | 233 M | — | — | — |
-| `tokenizer` | 100,000 | 6.4 G | 21.3 G | — | — | — |
-
-### Compiler
-
-One `sakura` process per run, after a warm-up, from the same `320c9980` run: `check` and `build` of generated packages and
-of a new project. `test_hello` counts the CLI's own process, not the Node process it starts.
-
-| Case | Lines | Instructions per process | Spread |
-|---|---:|---:|---:|
-| `check_hello` | 11 | 70.9 M | 0.28% |
-| `test_hello` | 11 | 113 M | 1.52% |
-| `check_cold_10k` | 10,084 | 641 M | 0.16% |
-| `build_10k` | 10,084 | 682 M | 0.19% |
-| `check_cold_100k` | 100,804 | 5.78 G | 0.41% |
-| `check_wide_match` | 9,012 | 701 M | 0.24% |
-
-## Against the targets
-
-Design §17.109 set a ceiling per program on the ratio of Sakura to hand-written JavaScript on
-the same engine, and asked for a median of at most 1.5 over the fifteen programs. Those are
-same-engine ratios, so a ratio of counts can be read against them
-([design §17.265](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). At
-the largest size, seven of the fifteen meet their ceiling on Node and five on Bun; the median
-is 2.52 on Node and 2.48 on Bun.
-
-| Program | Ceiling | Node | | Bun | |
-|---|---:|---:|---|---:|---|
-| `fib` | 1.5 | 1.39× | met | 2.31× | miss |
-| `countdown` | 1.3 | 1.48× | miss | 1.06× | met |
-| `sieve` | 1.5 | 3.04× | miss | 3.41× | miss |
-| `nbody` | 1.3 | 6.46× | miss | 4.19× | miss |
-| `spectral_norm` | 1.3 | 4.38× | miss | 2.48× | miss |
-| `binary_trees` | 1.5 | 1.49× | met | 2.57× | miss |
-| `pipeline` | 2.0 | 0.29× | met | 2.86× | miss |
-| `rbtree` | 1.5 | 2.54× | miss | 2.38× | miss |
-| `map_set` | 3.0 (Bun 5.0) | 2.82× | met | 3.67× | met |
-| `shapes` | 1.5 | 2.52× | miss | 2.21× | miss |
-| `tokenizer` | 1.5 | 0.35× | met | 1.17× | met |
-| `json_validate` | 2.0 | 1.39× | met | 2.93× | miss |
-| `deltablue` | 2.0 | 6.14× | miss | 6.12× | miss |
-| `handled` (depth 1) | 2.0 | 0.88× | met | 1.14× | met |
-| `contracts` | 2.0 | 2.69× | miss | 1.80× | met |
-
-Read plainly: on the JavaScript backend, most of the suite runs within 3× of hand-written
-JavaScript (twelve programs under 1.5×, eight from 1.5× to 3.04×), and five programs are
-4.4–6.5× behind: `nbody`, `deltablue`, `handled_fwd`, `map_set:int` and `spectral_norm`.
-Where Sakura is ahead (`pipeline` 0.29×, `tokenizer` 0.35×, `handled` 0.88× on Node) the
-cause is a specific mechanism, fusion of the pipeline, ownership of the consumed string, or a
-handler compiled to a direct call, and it says nothing about other programs. The WebAssembly
-backend is first-release code: 1.9–123× behind hand JavaScript by count on this suite, far
-from native, with its worst cells on contracts, handlers and scalar loops. The native backend
-is experimental, left out of release binaries, and not measured here.
-
-Design §17.109 also set an envelope against Rust, Go, OCaml and Koka. Those ceilings were
-set on wall time, and a count across different engines is not a time, so the envelope is
-reported as information and not as a release gate (design §17.265). It is not met, and Sakura
-Lang makes no cross-language speed claim. The native backend, experimental today, is where
-that comparison will be made again.
-
-What comes next, each landing with a counted before and after against this baseline: the
-elements of a list updated in place (`nbody`); what remains in `deltablue`, `shapes` and
-`rbtree`; forwarding handlers resolved when they are installed (`handled_fwd`); a sweep of
-every ceiling; and, beside them, the WebAssembly cliffs (design §17.285).
-
-### Since the baseline
-
-- **Cold-path raising.** A defect on a path that is never taken (an `Int` overflow, an
-  `expect` on a missing element) is thrown where it is detected. It is on main after
-  `3bf2343f` and not released. Counted against the earlier `320c9980` baseline, before the
-  fixed young generation, `spectral_norm` dropped 26% on Node (4.49× → 3.31× hand-written
-  JavaScript); it has not been re-counted against this baseline.
-
-## Spread
-
-The spread is (max − min) / median over a cell's five pairs.
-
-| Engine | Cells | Median spread | Cells over 1% |
-|---|---:|---:|---:|
-| Node, JavaScript backend | 198 | 0.35% | 15 |
-| Node, WebAssembly backend and its hand JS | 198 | 0.29% | 13 |
-| Wasmtime | 95 | 0.16% | 1 |
-| Bun | 198 | 1.56% | 121 |
-
-On Node and Wasmtime, in every cell over 1% the middle three pairs agree within 1%, so the
-median holds. Bun is noisier: 48 of its cells spread over 1% even in their middle three. Read a
-Bun count with its spread; a Bun row is advisory in a counted compare (design §17.265).
+<BenchTable table="native" />
 
 ## Reproduce
 
 On a Mac with the toolchains pinned in
-[`bench/toolchains.toml`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/toolchains.toml):
+[`bench/toolchains.toml`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/toolchains.toml),
+at the commit above:
 
 ```sh
-git checkout 3bf2343f
 bench/bench run --suite js --instructions --json js.json
 bench/bench run --suite wasm --instructions --json wasm.json
+bench/bench run --suite native --lane matched --instructions --json native.json
+bench/bench compile --instructions --json compile.json
+bench/bench envelope wasm.json native.json --json envelope.json --md envelope.md
 ```
 
-Counts from another machine are not comparable with these: a different CPU, OS or engine
-build retires different instructions. The baseline files hold every size, every raw count and
-the wall time beside it; the tables for every size are in
-[`bench/results`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/results)
-(`2026-10-20-3bf2343f-*`), and the native and compiler runs are there as
-`2026-10-19-320c9980-*`. The procedure that turns a run into a baseline is
+Counts from another machine are not comparable with these: a different CPU, OS or engine build
+retires different instructions. The baseline files hold every size, every raw count and the wall
+time beside it. The procedure that turns a run into a baseline is
 [`docs/release.md` §2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/release.md#2-instruction-count-baseline-and-bless).

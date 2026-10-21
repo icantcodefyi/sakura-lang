@@ -17,6 +17,7 @@ import {
   PipelineFlow,
   VerifyFlow,
 } from "@/components/docs-diagrams";
+import { BenchChart, BenchRun, BenchTable } from "@/components/bench";
 
 /** Callouts are tinted panels in the callout colour, without the default side stripe. */
 function SakuraCallout({ className, ...props }: ComponentProps<typeof Callout>) {
@@ -33,6 +34,9 @@ export function getMDXComponents(components?: MDXComponents) {
     ...defaultMdxComponents,
     AgentLoop,
     AuthorityFlow,
+    BenchChart,
+    BenchRun,
+    BenchTable,
     Callout: SakuraCallout,
     CassetteFlow,
     ContractFlow,
