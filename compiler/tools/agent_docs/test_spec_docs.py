@@ -83,6 +83,23 @@ class SpecDocsTests(unittest.TestCase):
             self.assertEqual(count, 1)
             self.assertEqual(len(errors), 2)
 
+    def test_semantics_labels_need_fixtures(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = root / "docs/spec"
+            spec.mkdir(parents=True)
+            fixture = root / "compiler/tests/semantics/ok.sak"
+            fixture.parent.mkdir(parents=True)
+            fixture.write_text("")
+            (spec / "evaluation.md").write_text(
+                "**EV01** Cited. [ok](../../compiler/tests/semantics/ok.sak)\n"
+                "**MO02** Uncited.\n"
+                "**XY03** Not a rule label.\n"
+            )
+            count, errors = spec_docs.check_links(root)
+            self.assertEqual(count, 2)
+            self.assertEqual(errors, ["evaluation.md:2: rule has no fixture"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,18 +3,20 @@
 **Draft (normative at v1.0.0-beta.1).**
 
 This directory contains the stage 6 grammar and diagnostic chapters of the
-[road to 1.0](../plans/road-to-1.0.md), following design §17.225–226.
+[road to 1.0](../plans/road-to-1.0.md), following design §17.225–226, and the semantics
+chapters due at `v1.0.0` (design §17.291 (3e)).
 It does not declare v1.0.0-beta.1 released or replace today's [stability policy](../../STABILITY.md).
-Static and dynamic semantics remain due at `v1.0.0` (design §17.291 (3e)).
 
 - [Grammar](grammar.md) covers lexing, statement termination, and syntax.
 - [Diagnostics](diagnostics.md) covers diagnostic records and code identities.
+- [Evaluation and values](evaluation.md) covers evaluation order, values, and control flow.
 - [Generated code table](diagnostic-codes.md) indexes the identity baseline by fixture.
 - [Coverage gaps](gaps.md) records missing evidence and unresolved differences.
 
 ## Reading the draft
 
-Only paragraphs labelled **Gnn** or **Dnn**, their attached EBNF blocks, and
+Only paragraphs labelled **Gnn** or **Dnn**, the semantics chapters' **EVnn**, **TYnn**,
+**EFnn**, **ERnn**, **CCnn** and **MOnn**, their attached EBNF blocks, and
 fixture-backed active rows in the code table are candidate normative material.
 All other prose, including this page, is **informative**.
 Each labelled paragraph is one normative sentence with its fixture links on the same line.
@@ -28,6 +30,11 @@ The grammar was transcribed from `sakura_syntax` and compared with tree-sitter's
 `grammar.js` and divergence inventory (introduced in `46281f3c`).
 The diagnostic table is generated from the baseline introduced in `d1060573`.
 No compiler behavior or compatibility promise changes with this draft.
+
+The semantics chapters describe what the compiler does, checked against the published
+`sakuralang@1.0.0-beta.1` where no fixture prints the behaviour.
+A rule without a checked-in fixture is written as informative prose and listed in
+[gaps](gaps.md), as is every place where design and the compiler disagree.
 
 ## Regeneration and checks
 
@@ -67,4 +74,5 @@ Consulted on 2026-10-19, for presentation only.
 These observations concern the cited pages, not an audit of the three projects' test suites.
 
 AI assistance: Codex GPT-6 Astra researched and authored this draft and its generator;
+Claude Opus 5.5 authored the semantics chapters;
 the human contributor remains responsible for review.

@@ -101,10 +101,32 @@ Still not established:
 - The separate stage 5 JSON baseline and cross-version checks remain out of scope.
   No message-text stability or full CLI schema is implied here.
 
+## Semantics chapters
+
+Each item is informative in its chapter until a fixture lands; "beta.1" means the behaviour was
+observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
+
+### Evaluation and values
+
+- **Design and compiler disagree: `MIN % -1`.** Design §4.1 and §17.260 (G05) say
+  `-2^63 % -1` is `0` and only `MIN / -1` is `D001`. On beta.1 with `--target wasm`,
+  `MIN % -1` is `D001` (`integer overflow`). §17.260 names `defect_D001_int_min_div.sak` and
+  `int_min_rem.sak` as the evidence; neither exists. JS reaches `D003` before either operator.
+- **No fixture for argument, operand or record-field order.** Design §5.7 and §8.7 say
+  evaluation is left to right in every position. beta.1 evaluates call arguments and binary
+  operands left to right and record-literal fields in written order, not declaration order;
+  only list, tuple and interpolation order have fixtures (EV16).
+- **No fixture for short-circuit `&&` and `||`.** beta.1 skips the right operand when the left
+  decides; the only fixtures print the values.
+- **NaN and `-0.0` on JS.** EV09 cites the Rust runtime test; no `.sak` fixture compares a
+  NaN or `-0.0`, so JS agreement is unpinned.
+- **Strictness.** That arguments finish before the callee starts is design §8.7's rule; no
+  fixture separates it from evaluation order.
+
 ## Coverage accounting
 
-`python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences and
-requires each to carry a fixture citation.
+`python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,
+grammar, diagnostic and semantics labels alike, and requires each to carry a fixture citation.
 The four EBNF blocks inherit citations from G16, G17, G18, and G21.
 Generated active rows with a fixture are candidate normative identity rows; active rows
 with a gap and retired or reserved rows are informative.

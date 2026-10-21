@@ -10,6 +10,8 @@ sys.path.insert(0, str(ROOT / "compiler/diagnostics"))
 from check_history import parse
 
 OUTPUT = "docs/spec/diagnostic-codes.md"
+# Rule labels: G grammar, D diagnostics, and the semantics chapters' EV, TY, EF, ER, CC, MO.
+RULE = re.compile(r"\*\*(?:G|D|EV|TY|EF|ER|CC|MO)\d+\*\*")
 TEST_FIXTURES = {
     "D090": ("compiler/runtime/rt/tests/vt.rs", "malformed_values_are_d090_and_leak_nothing"),
     "D091": ("compiler/crates/sakura_cli/tests/wasm.rs", "serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving"),
@@ -92,7 +94,7 @@ def check_links(root):
                     target = (path.parent / link.split("#")[0]).resolve()
                     if not target.exists():
                         errors.append(f"{path.name}:{number}: broken link {link}")
-            if re.match(r"\*\*[GD]\d+\*\*", line):
+            if RULE.match(line):
                 rules += 1
                 if not any(
                     "/tests/" in link or "/test/corpus/" in link or "/test_history.py" in link
