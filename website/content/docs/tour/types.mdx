@@ -188,6 +188,10 @@ Constraints come from a fixed set that the compiler derives structurally. There 
 
 An unconstrained type parameter can only be passed around and matched through concrete constructors. Each constraint unlocks a fixed set of operations: `Eq` gives `==` and `!=`; `Ord` gives `<`, `<=`, `>`, `>=` and implies `Eq`; `Hash` makes a type usable as a `Map` key or `Set` element; `Show` allows interpolation and `show`; `Schema` allows `Json.encode` and `Json.decode`. A concrete type that lacks a required constraint is `V2032`.
 
+### Schema keywords of a refinement
+
+`Json.schema(witness)` returns a type's JSON Schema (draft 2020-12), and a `Tool`'s parameters use the same schema. A refinement adds the bounds JSON Schema can state, read from the top-level `&&` conjuncts of its `where`: `String.len(it) <= n` and `>= n` become `maxLength` and `minLength`, `List.len(it) <= n` and `>= n` become `maxItems` and `minItems`, and `it <= n` and `it >= n` on `Int` and `Float` become `maximum` and `minimum`. `type Percent = Int where it >= 0 && it <= 100` states `{"type":"integer","minimum":0,"maximum":100}`. Any other conjunct (`it % 2 == 0`, `it < 10`, an `||`) states nothing. `String.len` counts UTF-8 bytes and JSON Schema counts characters, so `maxLength` is the byte bound and `minLength` is ⌈n/4⌉: both admit every string the `where` admits. The schema is a hint to the producer; decoding still checks every `where`.
+
 ### Show output
 
 Interpolation uses `Show`. Its output is valid Sakura Lang expression syntax, stable across backends, and the format `sakura test` snapshots use ([design §4.8](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):

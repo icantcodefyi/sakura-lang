@@ -61,7 +61,7 @@ cd compiler/examples/llm_extract
 
 ## Recording is opt-in
 
-`--record` is present in `sakura test --help`. It sets recording mode, makes the fixture directory writable and grants only the manifest's network hosts. With no `net` entries it refuses to start (exit 75). Run from the prepared project directory:
+`--record` is present in `sakura test --help`. It sets recording mode, makes the fixture directory writable and grants only the manifest's network hosts. With no `net` entries it still runs: every request to a host fails closed, as under `sakura run`, `Http.recording` appends what in-process handlers answer, and stderr notes "`[permissions] net` lists no host; recording captures in-process handlers only". Run from the prepared project directory:
 
 ```sh
 sakura test --record
@@ -137,50 +137,42 @@ All twelve examples execute in run or test mode; these three replay committed fi
 ### Multi-turn synthetic cassettes
 
 `Http.scripted` answers every request with its first matching entry, and an agent's turns are all
-`POST /v1/messages`, so it cannot return a tool turn and then an answer. To make a multi-turn
-cassette, write an outer handler that answers in order:
+`POST /v1/messages`, so it cannot return a tool turn and then an answer. `Http.sequence` answers
+in order: each entry answers once, the first unused entry that matches the request, and a request
+with no entry left to match fails `HttpError`:
 
 ```sakura
-import std/http.{Http}
+import std/http.{Http, Matcher}
 import std/request.{Method, Request}
-import std/response.{HttpError, Response}
+import std/response.{Response}
 import std/url.{Url}
 
-/// Answers each request with the next body, in order. For regenerating a cassette only.
-fn in_order(bodies: List<String>) -> Handler<Http> {
-  handler Http {
-    var next = 0
-    fn send(req) {
-      let body = Option.unwrap_or(bodies[next], "no more synthetic turns")
-      next = next + 1
-      Response.status(200, body)
-    }
-    fn stream(req, body) { fail HttpError { status: None, reason: "in_order does not stream" } }
-    fn read_chunk(b, max) { fail HttpError { status: None, reason: "in_order does not stream" } }
-  }
-}
-
-test "in_order answers each request once, in order" {
-  with in_order(["first", "second"]) {
+test "Http.sequence answers each request once, in order" {
+  let turns = [
+    (Matcher.Any, Response.status(200, "first")),
+    (Matcher.Any, Response.status(200, "second")),
+  ]
+  with Http.sequence(turns) {
     let req = Request.of(Method.Post, Url.from("https://api.anthropic.com/v1/messages"))
     expect_eq(Response.bytes(Http.send(req), 100), String.to_bytes("first"))
     expect_eq(Response.bytes(Http.send(req), 100), String.to_bytes("second"))
+    expect(Result.is_err(try { Http.send(req) }))
   }
 }
 ```
 
-Put it outermost in a `regenerate` test, `with Budget.unlimited(), in_order([...]), Http.recording(Path.of("turns.jsonl")), Llm.anthropic(...)`,
-with the provider bodies the turns should return, and run that test once with
-`sakura test --record --filter regenerate`. Each miss is forwarded to `in_order` and appended;
-no network is used. In ordinary runs every request hits the cassette and `in_order` is never
-reached. **Delete a cassette before regenerating it**: `in_order` sees only the misses, so
-against an existing cassette its bodies would answer the wrong turns.
+Put it outermost in a `regenerate` test, `with Budget.unlimited(), Http.sequence([...]), Http.recording(Path.of("turns.jsonl")), Llm.anthropic(...)`,
+with one `(Matcher.Any, Response.status(200, body))` entry per turn, each body the provider
+answer that turn should return, and run that test once with
+`sakura test --record --filter regenerate`. Each miss is forwarded to `Http.sequence` and
+appended; no network is used. In ordinary runs every request hits the cassette and
+`Http.sequence` is never reached. **Delete a cassette before regenerating it**: `Http.sequence`
+sees only the misses, so against an existing cassette its entries would answer the wrong turns.
 
 The same recipe records a cassette of your own service with no network: make the outer
 handler route each request to the app in-process (`Router.handle(app(), req)` over
 `Sql.memory()`), record once under `--record --filter`, then delete the throwaway test and keep
-the cassette. Today `--record` still needs a `net` entry in the manifest (see below), even when
-nothing leaves the process.
+the cassette. The manifest needs no `net` entry for this (see above).
 
 ## Streaming responses
 
