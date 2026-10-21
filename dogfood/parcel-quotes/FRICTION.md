@@ -235,3 +235,112 @@ and BRIEF.md.
   pass on `--target wasm`. `Cli.exit` codes are right on WASM too (2, 4, 64).
 - `W1003` found an unused import (`Quote`) that I missed when reading for item 14; the warning's
   help says exactly what to remove.
+
+## 2026-10-21 — Node consumer from the embedding page (Claude Opus 5.5)
+
+I worked from `/docs/tour/embedding` and `/docs/tour/capabilities` alone, with the source
+build of main at `compiler/target/debug/sakura`. The consumer is `consumer/consumer.mjs`
+and it passes on both builds. Items in order of weight:
+
+- **A string or a number passes as `Untrusted<ParcelInput>`, and WASM then reads garbage.**
+  - **Expected:** the page says `callEntry` throws for "an argument that is not a value of
+    its parameter's schema".
+  - **What happened:** `host.entries().quote.params` is `[["input", ["X", "Untrusted"]]]`,
+    and that schema does not name the inner type. `rt.untrusted_of("garbage")` and
+    `rt.untrusted_of(42)` are both accepted.
+    - On WASM, `quote` answers `InvalidWeight { grams: 28542640608928104 }`. The number is
+      outside the JS safe-integer range, and `shown` disagrees with it (`…103`), so it
+      looks like an uninitialised or misread field.
+    - On JS, the answer is `InvalidWeight { grams: undefined }`, shown as `grams: ()`.
+  - **Why it matters:** an `Untrusted` parameter is the exact place where a host passes
+    unchecked data, and here the boundary checks only the wrapper.
+  - **How I got past it:** I didn't; the consumer always passes a real `ParcelInput`. It
+    checks that a bare `ParcelInput` is refused, which works. This looks like a bug that
+    needs named maintainer review for security, not a docs gap.
+  - **Fixed the same day** in the source build (design §17.304 (B1)): an `Untrusted<T>`
+    parameter now crosses as a plain `T`. `quote`'s schema is
+    `["A","parcel_quotes::policy::ParcelInput",[]]` with `untrusted: true`, Node passes the
+    plain record, and the entry wraps it. Both hosts refuse `42`, `"garbage"`, a
+    `ParcelInput` whose weight is a string and an already-wrapped value with "argument 1
+    (input) of entry quote is not a value of schema …". The supervising session updated
+    the consumer to this shape, and it checks all four cases on WASM and JS.
+- **An empty permissions table grants all network authority.**
+  - **Expected:** `{}`, the JSON of a `[permissions]` table with no `net` key, grants
+    nothing. The manifest's own comment says "everything absent is denied".
+  - **What happened:** under `SAKURA_PERMISSIONS='{}'` (and under `{"env":[]}`), `quote`
+    performed a real name lookup for `carrier.invalid` (`getaddrinfo ENOTFOUND`). Only
+    `{"net":[]}` or a list naming another host gave "is not in the manifest's net list".
+  - **Why it matters:** the page says to set the variable "to the JSON of the
+    `[permissions]` table it wants enforced". A consumer that builds that table from a
+    manifest with no `net` key gets no network ceiling at all. The page should say that a
+    missing key means unbounded for that effect, or the host should treat a missing key as
+    empty. The supervising session says this is a known runtime issue, still open and
+    waiting on a design ruling.
+  - **How I got past it:** the consumer always writes the `net` key explicitly.
+  - **Ruled the same day** (design §17.304 (A)): a key left out of a set table is denied on
+    every host, fixed in `1.0.0-beta.2` (`6e0e87d7`). The supervising session updated the
+    consumer to write every key (`fs`, `net`, `env`), as the migration sentence asks, and
+    added an `--empty` child run: under `{}`, `quote` now fails with "carrier.invalid:443 is
+    not in the manifest's net list" and makes no name lookup, on WASM and JS.
+- **There is no documented way to give an entry's root `Http` handler a synthetic
+  response. This blocked the quote round trip through `quote`.**
+  - **Expected:** the brief asks for a quote from a synthetic carrier response, and for a
+    suspended host request that Node fulfils before the call resumes (the pull boundary).
+  - **What happened:** the page's only knobs are the arguments and `SAKURA_PERMISSIONS`.
+    `quote` builds its own request to the fixed `carrier.invalid` URL, so the only possible
+    answer is a live lookup that fails. Node never sees the pending request, so it cannot
+    fulfil it. The library's `main` gets around this inside Sakura with `Http.scripted`, but
+    an entry's handlers are root handlers.
+  - **How I got past it, partly:**
+    - The suspension shown is the host's own name lookup: the call is still pending after a
+      macrotask and then resumes with the typed `CarrierUnreachable`.
+    - The oracle comparison goes through the `render_outcome` entry. Node builds test 01's
+      `Outcome` (870 EUR), and the entry renders the same line as `sakura run`.
+  - **Not done:** I did not patch `fetch`, read the host source, or change the library to
+    add a rates-taking entry. These remain undemonstrated: a quote computed by `quote`, a
+    request fulfilled by Node, and leakage of rate data between calls (no call gets any).
+- **No release step is documented, and `Host` has an undocumented `close`.**
+  - The brief asks how resources are released, and the page says nothing about it.
+  - `typeof host.close` is `"function"` (I found it with `typeof` while checking for
+    `dispose`). I did not call it, because the page does not document it.
+  - The consumer shows only that Node exits on its own after calls (`process.exitCode`, no
+    `exit()`).
+  - The page should either document `close` or say a Host needs no release.
+- **"Read once" means once per process, not once per `Host`.**
+  - The page says "The host reads the process's variable once", and I first read that as
+    once per `Host`. A new `Host` made after I changed the variable still used the first
+    grant.
+  - To show denied authority, the consumer re-runs itself in a child Node process with
+    `--denied`. That child is still an in-process library consumer, not the CLI. One more
+    word on the page ("once per process") would have saved a probe.
+- **The entry schema notation is not documented.** `host.entries()` gives `params`/`result`
+  as `["X","Untrusted",T]` (`["X","Untrusted"]` before the fix above), `["A","parcel_quotes::policy::Outcome",[]]`, `["L","S"]` and
+  `"S"`. The page lists the fields but not what `X`, `A`, `L` and `S` mean. I guessed from
+  the context; the consumer only prints them.
+- **`render_outcome` and `describe_problem` became entries without notice.**
+  - They are `pub` for the tests and the sample runner, and by the entry rule they are now
+    part of the Node surface. The page says "nothing reports it", which is true in both
+    directions.
+  - I used `render_outcome` deliberately. A library author who wants a narrow entry set has
+    no documented way to keep a root `pub fn` out of it other than moving it to another
+    module.
+- **The CLI version does not match the page.** The source build reports
+  `sakura 1.0.0-beta.1`, but the page says entries ship in `1.0.0-beta.3` and that a
+  pre-beta.3 module "has no entries". The module has entries, so the build is newer than
+  its version string. This is expected for an unreleased build, but a consumer that checks
+  versions would be confused.
+- **The page's example paths are relative to the working directory.** The example imports
+  `./out/sakura_wasm_host.js` and reads `./out/main.wasm`. A consumer that takes the
+  output directory as an argument needs `pathToFileURL` for the dynamic imports. This is
+  ordinary Node practice, so it is a small item.
+- **Not friction:**
+  - The value table was enough to build every argument on the first try: an `Untrusted`
+    record, `Option`, a variant with a payload, a `List` of records. Reading `o.shown`,
+    `o.error.reason`, `rt.items` and `instanceof rt.typeClass(...)` worked as documented.
+  - The outcome shapes (`ok`/`fail` with `shown`) and the argument-error messages
+    (`entry quote takes 1 argument, not 0`) matched the page exactly.
+  - Both builds printed the same transcript with only the loading block changed. The only
+    differences were `HostFault` versus `TypeError`, as the page says.
+  - Invalid input failed before any host work, so the library's input-first ordering is
+    visible from Node.
+  - The denied refusal text matched the capabilities page word for word.
