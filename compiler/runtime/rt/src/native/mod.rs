@@ -11,6 +11,7 @@
 
 pub mod host;
 pub(crate) mod hosted;
+pub(crate) mod prop;
 pub mod serve;
 pub mod sql;
 pub mod test;
@@ -53,6 +54,8 @@ pub struct SakuraInstance {
     pub(crate) max_copy: u64,
     /// The JSON codec's type index, built at the first JSON call.
     pub(crate) types: Option<Rc<hosted::TypeIndex>>,
+    /// The property searches in progress, by session (`prop`).
+    pub(crate) props: Vec<Option<Box<prop::Search>>>,
 }
 
 /// A native function's handle on its instance (ABI-identical to `SakuraInstance *`). Only the
@@ -209,6 +212,7 @@ impl<H: Host + 'static> Instance<H> {
             module: module.clone(),
             max_copy: limits.max_copy_bytes,
             types: None,
+            props: Vec::new(),
         })));
         let inst = Instance { p, host };
         let mut cx = Cx::native(Ctx(p, PhantomData));
@@ -464,7 +468,7 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
 /// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
-/// not reached yet (JS-built handlers, property search, WebSocket) resolve to
+/// not reached yet (JS-built handlers, WebSocket) resolve to
 /// `rt_code_unsupported`, a `D090` when performed; Http's operations are `hosted`'s.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
@@ -487,9 +491,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_js_clause", e::rt_code_unsupported),
         ("rt_code_log_json_event", e::rt_code_log_json_event),
         ("rt_code_log_stderr_event", e::rt_code_log_stderr_event),
-        ("rt_code_prop_failures", e::rt_code_unsupported),
-        ("rt_code_prop_forward", e::rt_code_unsupported),
-        ("rt_code_prop_record", e::rt_code_unsupported),
+        ("rt_code_prop_failures", prop::rt_code_prop_failures),
+        ("rt_code_prop_forward", prop::rt_code_prop_forward),
+        ("rt_code_prop_record", prop::rt_code_prop_record),
         ("rt_code_random_bytes", e::rt_code_random_bytes),
         ("rt_code_random_float", e::rt_code_random_float),
         ("rt_code_random_int", e::rt_code_random_int),
@@ -529,7 +533,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_http_stream_closing", hosted::rt_k_http_stream_closing),
         ("rt_k_http_stream_open", hosted::rt_k_http_stream_open),
         ("rt_k_http_stream_read", hosted::rt_k_http_stream_read),
-        ("rt_k_property_run", e::rt_code_unsupported),
+        ("rt_k_property_run", prop::rt_k_property_run),
         ("rt_k_serve_listen", serve::rt_k_serve_listen),
         ("rt_k_test_expect_defect", e::rt_k_test_expect_defect),
         ("rt_k_topic_subscribe", e::rt_k_topic_subscribe),

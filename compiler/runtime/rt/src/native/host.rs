@@ -300,6 +300,11 @@ pub trait Host {
     fn test_fixtures(&mut self) -> Hosted<HandleId> {
         Err(unsupported())
     }
+    /// The text of `tests/regressions/<name>.json` (`sakura test --contracts`), replayed before
+    /// a contract test's generated cases; `None` when there is none.
+    fn test_regression(&mut self, _name: &str) -> Option<String> {
+        None
+    }
 }
 
 fn unsupported() -> HostError {

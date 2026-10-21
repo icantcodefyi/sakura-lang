@@ -933,16 +933,10 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
 /// that starts agreeing fails the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
 const KNOWN_NATIVE_TESTS: &[(&str, &str)] = &[
-    (
-        "contract_tests_on_both_backends.sak",
-        "property search (`property_run`)",
-    ),
-    ("properties.sak", "property search (`property_run`)"),
     ("llm_stream_anthropic.sak", "`Llm.anthropic` (N1b's Llm)"),
     ("example agent_loop", "`Llm.anthropic` (N1b's Llm)"),
     ("example budgeted_agent", "`Llm.anthropic` (N1b's Llm)"),
     ("example llm_extract", "`Llm.anthropic` (N1b's Llm)"),
-    ("example property", "property search (`property_run`)"),
     ("example scripted_tool", "`Llm.anthropic` (N1b's Llm)"),
 ];
 
@@ -1149,6 +1143,142 @@ fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
         .lines()
         .any(|l| l.eq_ignore_ascii_case("connection: close"));
     format!("{status} {close} {body}")
+}
+
+/// Design §7.4 on `--target native`: failing properties over every generated kind (refined,
+/// record, variant and recursive types, generic records, maps, sets, floats, strings, bytes,
+/// tuples, options), a defect, two recorded failures, a give-up and a contract test report what
+/// JS reports for the same seed (the inputs, the shrink and the message), store the same
+/// regression, and replay it alike.
+#[cfg(feature = "native")]
+#[test]
+fn native_properties_shrink_and_report_as_js_does() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(std::env::var_os("CI").is_none(), "node is missing");
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let lib =
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &tmp.join("native-driver"))
+            .unwrap();
+    let src = r#"type Percent = Int where it >= 0 && it <= 100
+type Grade = { score: Percent, name: String }
+type Order = { qty: Int where it > 0 && it <= 10, note: String }
+type Tree = Leaf | Node(Tree, Int, Tree)
+type Shape = Dot | Circle(Float) | Rect(Int, Int)
+type Pair<A, B> = { left: A, right: B }
+type NonEmpty<T> = List<T> where List.len(it) > 0
+
+fn depth(t: Tree) -> Int {
+  match t { Leaf => 0, Node(l, _, r) => 1 + Int.max(depth(l), depth(r)) }
+}
+
+pub fn wrong(p: Percent, total: Int) -> Int
+  requires total >= 0 && total <= 1000000
+  ensures result <= total
+{ total * p / 50 }
+
+property "small"(x: Int) { expect(x < 50) }
+property "short"(xs: List<Int>) { expect(List.len(xs) < 3) }
+property "no zero"(x: Int, s: String) { expect(100 / x != 1000) }
+property "floats"(f: Float) { expect(f < 3.5) }
+property "strings"(s: String) { expect(String.len(s) < 4) }
+property "bytes"(b: Bytes) { expect(Bytes.len(b) < 3) }
+property "low"(g: Grade) { expect(g.score < 50) }
+property "small order"(o: Order) { expect(o.qty < 5) }
+property "shallow"(t: Tree) { expect(depth(t) < 3) }
+property "shapes"(s: Shape) {
+  match s { Rect(w, h) => expect(w + h < 10), Circle(r) => expect(r < 2.0), Dot => expect(true) }
+}
+property "pairs"(p: Pair<Int, String>) { expect(p.left < 20) }
+property "non empty"(xs: NonEmpty<Int>) { expect(List.len(xs) < 4) }
+property "maps"(m: Map<String, Int>) { expect(Map.len(m) < 2) }
+property "sets"(s: Set<Int>) { expect(Set.len(s) < 3) }
+property "options"(o: Option<Int>, t: (Int, Bool)) { expect(o != Some(t.0) || t.1) }
+property "twice"(x: Int) { expect(x < 10); expect(x < 20) }
+property "rare"(x: Int) requires x == 7 { expect(x == 7) }
+property "holds"(xs: List<String>) { expect_eq(List.reverse(List.reverse(xs)), xs) }
+"#;
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    for seed in ["7", "0", "2026", "123456789"] {
+        let run = |target: &str| {
+            let dir = tmp.join(format!("native-props-{target}-{seed}"));
+            let _ = std::fs::remove_dir_all(&dir);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("main.sak"), src).unwrap();
+            let out = dir.join("out");
+            let args = [
+                "test",
+                "--contracts",
+                "--json",
+                "--seed",
+                seed,
+                "--target",
+                target,
+                "--out-dir",
+                out.to_str().unwrap(),
+                "main.sak",
+            ];
+            let first = sakura_env(&args, &dir, &env);
+            let regression = std::fs::read_to_string(dir.join("tests/regressions/wrong.json"));
+            let again = sakura_env(&args, &dir, &env);
+            let _ = std::fs::remove_dir_all(&dir);
+            (
+                first.code,
+                test_records(&first.stdout),
+                regression.ok(),
+                again.code,
+                test_records(&again.stdout),
+            )
+        };
+        let js = run("js");
+        assert_eq!(js.0, Some(3), "{seed}: {}", js.1);
+        assert!(
+            js.1.contains("shrunk in") && js.1.contains("property gave up"),
+            "{}",
+            js.1
+        );
+        assert!(js.2.is_some(), "{seed}: JS stores the shrunk contract case");
+        assert!(js.4.contains("stored regression replayed"), "{}", js.4);
+        let native = run("native");
+        let differ = |a: &str, b: &str| -> String {
+            let lines = |t: &str| t.lines().map(str::to_owned).collect::<Vec<_>>();
+            let (a, b) = (lines(a), lines(b));
+            let only = |x: &[String], y: &[String]| {
+                x.iter()
+                    .filter(|l| !y.contains(l))
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            format!(
+                "--- js only\n{}\n--- native only\n{}",
+                only(&a, &b),
+                only(&b, &a)
+            )
+        };
+        assert_eq!(native.0, js.0, "{seed}: exit");
+        assert!(
+            native.1 == js.1,
+            "{seed}: records\n{}",
+            differ(&js.1, &native.1)
+        );
+        assert!(
+            native.2 == js.2,
+            "{seed}: regression\n{:?}\n{:?}",
+            js.2,
+            native.2
+        );
+        assert_eq!(native.3, js.3, "{seed}: exit on replay");
+        assert!(
+            native.4 == js.4,
+            "{seed}: replay\n{}",
+            differ(&js.4, &native.4)
+        );
+    }
 }
 
 /// `Serve.host()` on native answers as on WASM (`wasm.rs`'s `serve_host_answers_on_wasm_as_on_js`

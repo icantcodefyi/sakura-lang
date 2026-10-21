@@ -1420,6 +1420,10 @@ Research/09 §11; §17.96. One generator protocol shared by the JS runtime (`arb
   (`gen-v1/js-safe`); a `gen-v1/i64` profile exists for WASM-only fixtures (research/09 §11).
 - `std/random.seeded` is **not** part of this protocol: it is std code (Park–Miller) that
   already runs identically on every backend because it is compiled, not hosted. It stays.
+- Property search: the WASM host drives the JS runtime's (`propertySteps`) through the
+  `prop_*` imports; the native runtime runs a port of it (`src/native/prop.rs`: generation,
+  shrinking, the report and contract regressions), so a seed gives every backend the same
+  inputs, shrink and message.
 - Versioning: the protocol id `sakura-gen-v1` is recorded in every property failure message
   and in `sakura test --json`; changing any rule above is `gen-v2`. The old Mulberry sequences
   are not preserved; property fixtures that pin a shrunk counterexample are re-blessed once,

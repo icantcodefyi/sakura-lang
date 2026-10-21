@@ -90,6 +90,15 @@ impl Runner {
         // directory whose every read fails; both answer every read with an `Err`.
         Ok(fs::Dir::root(&dir, Some(&grants)).unwrap_or_else(|_| fs::Dir::memory(vec![])))
     }
+
+    /// `tests/regressions/<name>.json` beside the snapshots (JS `regressions.load`), if any.
+    pub fn regression(&self, name: &str) -> Option<String> {
+        if self.snapshot_dir.is_empty() {
+            return None;
+        }
+        let dir = Path::new(&self.snapshot_dir).with_file_name("regressions");
+        std::fs::read_to_string(dir.join(format!("{name}.json"))).ok()
+    }
 }
 
 /// The test table (`sakura_codegen_native::tests_table`): the `Test` handler's clauses and

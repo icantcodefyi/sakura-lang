@@ -932,6 +932,10 @@ impl Host for NativeHost {
     fn test_fixtures(&mut self) -> Hosted<HandleId> {
         self.test_fixtures_handle()
     }
+
+    fn test_regression(&mut self, name: &str) -> Option<String> {
+        self.runner.regression(name)
+    }
 }
 
 /// Drive `task` to an outcome (the Node host's `runTask`): run until nothing can, then wait on

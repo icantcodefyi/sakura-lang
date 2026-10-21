@@ -1455,7 +1455,7 @@ fn json_number(out: &mut dyn Out, f: f64) -> Res<()> {
 }
 
 /// `JSON.stringify` of a string's UTF-8 bytes.
-fn json_string(out: &mut dyn Out, b: &[u8]) -> Res<()> {
+pub(crate) fn json_string(out: &mut dyn Out, b: &[u8]) -> Res<()> {
     out.put(b"\"")?;
     json_escaped(out, b)?;
     out.put(b"\"")
@@ -3114,4 +3114,25 @@ impl Dec<'_> {
         }
         Ok(())
     }
+}
+
+/// `JSON.parse(text)[path[0]][path[1]]…` as its slice of `text`, or `None` when `text` is not
+/// JSON or a step is missing or not an object (the last of repeated keys, as `JSON.parse`).
+pub fn member<'a>(text: &'a [u8], path: &[&[u8]]) -> Option<&'a [u8]> {
+    validate(text).ok()?;
+    let mut at = ws(text, 0);
+    for key in path {
+        if text.get(at) != Some(&b'{') {
+            return None;
+        }
+        let mut seq = Seq::new(text, at);
+        let mut found = None;
+        while let Some((k, v)) = seq.member().ok()? {
+            if str_is(text, k, key).ok()? {
+                found = Some(v);
+            }
+        }
+        at = found?;
+    }
+    Some(&text[at..skip(text, at).ok()?])
 }

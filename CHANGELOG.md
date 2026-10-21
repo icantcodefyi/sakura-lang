@@ -53,8 +53,12 @@ retains earlier implementation history.
   (about 9 ms more on a 10,000-line program).
 - **`sakura test --target native`** (experimental, plan M5 N1b): the module's tests run in a
   native test executable with the same `test` and `test_summary` records, snapshots and
-  `Test.fixtures()` as `--target wasm`. Property tests and `Llm` are not native yet (they end
-  `D090`). `Log.json()` runs natively with the JS backend's JSON lines.
+  `Test.fixtures()` as `--target wasm`. `Llm` is not native yet (it ends `D090`). `Log.json()`
+  runs natively with the JS backend's JSON lines.
+- **Property tests on `--target native`** (experimental, plan M5 N1): `property` blocks and
+  `sakura test --contracts` run natively with the inputs, shrinking and failure messages of
+  `--target js` for the same `--seed`, and store and replay `tests/regressions/<fn>.json` as JS
+  does.
 - **`Serve.host()` on `--target native`** (experimental, plan M5 N1b): the server runs on
   `hyper` and answers each request from its own task, as on `--target wasm`: a body over 1 MiB
   or over `SAKURA_MAX_COPY_BYTES` is `413`, a reply over the budget or a handler's defect is

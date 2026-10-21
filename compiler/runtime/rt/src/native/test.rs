@@ -20,7 +20,7 @@ fn text(rt: &mut Rt, frame: u32, k: u32) -> String {
 }
 
 /// The `sakura-vt1` value `v` decoded into the heap (owned).
-fn decode(rt: &mut Rt, v: &[u8]) -> Res<u32> {
+pub(super) fn decode(rt: &mut Rt, v: &[u8]) -> Res<u32> {
     let n = u32::try_from(v.len()).map_err(|_| Defect::HEAP_EXHAUSTED)?;
     let b = rt.new_bytes(n)?;
     rt.heap.mem.bytes_mut(b + 12, n).copy_from_slice(v);

@@ -662,7 +662,7 @@ impl W {
 /// A module's type descriptors with the lookups the JSON codec makes, built at an instance's
 /// first JSON call.
 pub(crate) struct TypeIndex {
-    descs: Vec<u8>,
+    pub(crate) descs: Vec<u8>,
     by_name: BTreeMap<Vec<u8>, usize>,
     ids: BTreeMap<Vec<u8>, u32>,
     of_id: Vec<Option<usize>>,
@@ -697,9 +697,9 @@ impl TypeIndex {
 }
 
 /// The codec's view of the instance: the index, and the guest for `where` predicates.
-struct Native<'c, 'x> {
-    cx: &'c mut Cx<'x>,
-    index: &'c TypeIndex,
+pub(crate) struct Native<'c, 'x> {
+    pub(crate) cx: &'c mut Cx<'x>,
+    pub(crate) index: &'c TypeIndex,
 }
 
 impl json::Types for Native<'_, '_> {
