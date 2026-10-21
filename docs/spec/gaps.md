@@ -142,11 +142,8 @@ record through a callback and a direct call (ER22).
 
 - **Pure loops.** Design §8.6 says a loop that performs nothing cannot be cancelled; no fixture
   shows it (one would not terminate under a timeout).
-- **Same seed, two runs.** CC09's "every run" rests on the fixtures' pinned output, which each
-  harness run compares; no test runs one seed twice in one process and compares traces.
-
-Pinned since: a negative channel capacity (CC18) and `D090` through a full `send` and between
-two channels (CC19).
+Pinned since: a negative channel capacity (CC18), `D090` through a full `send` and between
+two channels (CC19), and one seed run twice in one process (CC20).
 
 ### Modules and imports
 

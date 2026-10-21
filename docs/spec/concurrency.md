@@ -39,6 +39,8 @@ Informative: a loop that performs nothing is not interruptible (design §8.6).
 
 **CC09** Under `Task.deterministic(seed)` the interleaving of tasks, and so the program's output and effect trace, is the same on every run with that seed and on every backend. [channel_bounded_backpressure](../../compiler/tests/semantics/channel_bounded_backpressure.sak), [js_and_wasm_agree_on_the_semantics_corpus](../../compiler/crates/sakura_cli/tests/parity.rs), [the task stream matches JS](../../compiler/runtime/rt/tests/generate.rs).
 
+**CC20** Two runs with one seed in the same process make the same scheduling decisions, so no scheduler state outlives a run. [the_same_seed_twice_in_one_process_schedules_the_same](../../compiler/runtime/rt/src/task.rs).
+
 **CC10** Under `Clock.virtual()` time advances only when every live task is waiting on a sleep, and sleepers wake in order of their virtual deadlines. [deterministic_clock_random](../../compiler/tests/semantics/deterministic_clock_random.sak), [virtual_sleeps_wake_in_virtual_time_order](../../compiler/crates/sakura_codegen_js/tests/m3.rs), [a host request in flight](../../compiler/tests/semantics/virtual_timeout_stream_read.sak), [virtual_time_waits_for_a_live_host_request](../../compiler/runtime/rt/tests/exec.rs).
 
 **CC11** `Random.seeded(n)` gives the same sequence of draws on every run and backend. [deterministic_clock_random](../../compiler/tests/semantics/deterministic_clock_random.sak), [js_and_wasm_agree_on_the_semantics_corpus](../../compiler/crates/sakura_cli/tests/parity.rs).

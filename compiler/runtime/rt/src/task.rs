@@ -438,3 +438,35 @@ pub fn yield_now(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
         ret(rt, UNIT as u64)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::vec::Vec;
+
+    /// One run of a `Task.deterministic(seed)` handler's scheduling decisions: the start orders
+    /// of five `all`/`race` groups of growing size, drawn from one generator.
+    fn run(seed: i64) -> Vec<Vec<u32>> {
+        let mut rt = Rt::new(1 << 20).unwrap();
+        let rng = deterministic_rng(&mut rt, seed).unwrap();
+        [2, 3, 5, 8, 13]
+            .map(|n| {
+                let b = start_order(&mut rt, n, Some(rng)).unwrap();
+                (0..n).map(|i| rt.heap.mem.u32(b + 12 + 4 * i)).collect()
+            })
+            .to_vec()
+    }
+
+    /// Design §8.6 (CC09): the same seed run twice in one process makes the same decisions, so
+    /// no state outlives a run; another seed makes others.
+    #[test]
+    fn the_same_seed_twice_in_one_process_schedules_the_same() {
+        let first = run(42);
+        assert_eq!(first, run(42));
+        assert_ne!(first, run(43));
+        assert!(
+            first.iter().any(|o| o.windows(2).any(|w| w[0] > w[1])),
+            "{first:?}"
+        );
+    }
+}
