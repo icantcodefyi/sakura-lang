@@ -51,6 +51,24 @@ pub fn is_err<A, E>(r: Result<A, E>) -> Bool {
   }
 }
 
+/// The `Ok` value as `Some`; `Err` is `None`.
+@total
+pub fn ok<A, E>(r: Result<A, E>) -> Option<A> {
+  match r {
+    Ok(a) => Some(a),
+    Err(_) => None,
+  }
+}
+
+/// The `Err` value as `Some`; `Ok` is `None`.
+@total
+pub fn err<A, E>(r: Result<A, E>) -> Option<E> {
+  match r {
+    Ok(_) => None,
+    Err(e) => Some(e),
+  }
+}
+
 error Bad(code: Int)
 
 test "map and map_err touch one side only" {
@@ -66,6 +84,15 @@ test "unwrap_or, is_ok, is_err" {
   expect_eq(err.unwrap_or(0), 0)
   expect_eq(err.is_err(), true)
   expect_eq(err.is_ok(), false)
+}
+
+test "ok and err keep one side as an Option" {
+  let ok: Result<Int, Bad> = Ok(2)
+  let err: Result<Int, Bad> = Err(Bad { code: 4 })
+  expect_eq(ok.ok(), Some(2))
+  expect_eq(ok.err(), None)
+  expect_eq(err.ok(), None)
+  expect_eq(err.err(), Some(Bad { code: 4 }))
 }
 
 test "raise and ? rethrow the error" {

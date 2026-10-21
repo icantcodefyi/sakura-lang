@@ -5,6 +5,14 @@ All notable changes to Sakura Lang are recorded here, following
 Releases follow the [stability policy](STABILITY.md). The `0.1.0-alpha.1` section also
 retains earlier implementation history.
 
+## [Unreleased]
+
+### Added
+
+- `Result.ok(r) -> Option<A>` and `Result.err(r) -> Option<E>` (design §17.293 MT-11a), both
+  `@total`: one side of a `Result` as an `Option`, the other side `None`. Fixture
+  `compiler/tests/semantics/result_ok_err.sak`.
+
 ## [1.0.0-beta.1] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291 and the owner's decision of 2026-10-21): it

@@ -220,6 +220,7 @@ semantics/request_text_strict_utf8: unsupported (builtin string_to_bytes)
 semantics/response_bytes_limit: unsupported (builtin bytes_from_list)
 semantics/response_status_json: unsupported (builtin json_encode)
 semantics/response_status_json_rejects_code: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
+semantics/result_ok_err: ok, 43 allocated, 51 dup, 94 drop, peak 13, live 0/0
 semantics/router_matches_through_urlpattern: unsupported (builtin string_to_bytes)
 semantics/router_rejects_unsupported_pattern: D020, 37 allocated, 110 dup, 147 drop, peak 13, live 0/0
 semantics/row_param_type: ok, 27 allocated, 12 dup, 39 drop, peak 10, live 0/0

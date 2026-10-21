@@ -772,6 +772,8 @@ fn unwrap_or<A, E>(r: Result<A, E>, default: A) -> A
 fn raise<A, E>(r: Result<A, E>) -> A ! {Fail<E>}
 fn is_ok<A, E>(r: Result<A, E>) -> Bool    // @total
 fn is_err<A, E>(r: Result<A, E>) -> Bool    // @total
+fn ok<A, E>(r: Result<A, E>) -> Option<A>    // @total
+fn err<A, E>(r: Result<A, E>) -> Option<E>    // @total
 ```
 
 ### `std/retry`

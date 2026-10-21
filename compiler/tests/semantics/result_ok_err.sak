@@ -1,0 +1,17 @@
+// milestone: M3
+// spec: design §17.293 MT-11a; §4.4
+
+// `Result.ok(r)` is the `Ok` value as `Some` and `Result.err(r)` the `Err` value; the other
+// side is `None`. Both compose with `Option`'s functions and `List.filter_map`.
+error Bad(code: Int)
+
+pub fn main() -> Unit ! {Console} {
+  let good: Result<Int, Bad> = Ok(2)
+  let bad: Result<Int, Bad> = Err(Bad { code: 7 })
+  Console.print("{good.ok()} {good.err()}")
+  Console.print("{bad.ok()} {bad.err().map(fn(b) { b.code })}")
+  let rs: List<Result<Int, Bad>> = [Ok(1), Err(Bad { code: 2 }), Ok(3)]
+  Console.print("{List.filter_map(rs, fn(r) { r.ok() })}")
+  Console.print("{List.map(List.filter_map(rs, fn(r) { Result.err(r) }), fn(b) { b.code })}")
+  Console.print("{Result.ok(bad).unwrap_or(0)}")
+}
