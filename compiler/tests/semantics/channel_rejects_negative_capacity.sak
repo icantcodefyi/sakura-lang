@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: RFC 0002 §2.9 (`capacity` per channel); design §7.2
+
+// Every capacity below 1 is the caller's defect, a negative one as well as `0`.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+fn minus_one() -> Int { 0 - 1 }
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  channel.with_channel(minus_one(), fn(tx: Sender<Int>, _rx: Receiver<Int>) { tx.close() })
+  Console.print("never")
+}

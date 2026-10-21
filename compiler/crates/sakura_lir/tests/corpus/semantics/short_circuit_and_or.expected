@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+and-left
+and-left
+and-right
+or-left
+or-left
+or-right
+false false true true

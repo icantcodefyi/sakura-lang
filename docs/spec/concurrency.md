@@ -47,8 +47,7 @@ Informative: a loop that performs nothing is not interruptible (design §8.6).
 
 **CC12** `with_channel(capacity, fn(tx, rx) { … })` creates a channel of at most `capacity` queued items for the callback, and `with_channel(0, …)` is the caller's defect `D020`. [Backpressure](../../compiler/tests/semantics/channel_bounded_backpressure.sak), [D020](../../compiler/tests/semantics/channel_rejects_capacity.sak).
 
-Informative: design and RFC 0002 §2.9 make every capacity below 1 a defect; only `0` has a
-fixture.
+**CC18** A negative capacity is the caller's defect `D020` too. [Negative capacity](../../compiler/tests/semantics/channel_rejects_negative_capacity.sak).
 
 **CC13** `send` waits while the channel is full, `recv` waits while it is empty, items are received in the order sent, and `try_send` never waits, answering `Err(Full)` instead of queueing. [Backpressure](../../compiler/tests/semantics/channel_bounded_backpressure.sak), [try_send](../../compiler/tests/semantics/channel_try_send_full.sak).
 
@@ -61,6 +60,8 @@ fixture.
 ## When nothing can run
 
 **CC17** When every task is waiting on a channel and nothing can wake one, the run ends with the defect `D090` instead of hanging. [channel_recv_every_task_waiting](../../compiler/tests/semantics/channel_recv_every_task_waiting.sak).
+
+**CC19** The same holds for a `send` waiting on a full channel that nothing drains and for tasks each waiting in `recv` on a channel only another waiting task would send on. [Full send](../../compiler/tests/semantics/channel_send_full_every_task_waiting.sak), [two channels](../../compiler/tests/semantics/channel_two_tasks_wait_on_each_other.sak).
 
 Informative: `D090` is also the runtime's code for an internal fault, such as a malformed host
 value ([malformed_values_are_d090_and_leak_nothing](../../compiler/runtime/rt/tests/vt.rs)) or

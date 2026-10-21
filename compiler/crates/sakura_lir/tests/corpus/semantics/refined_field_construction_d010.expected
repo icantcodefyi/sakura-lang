@@ -1,0 +1,3 @@
+ending: D010
+--- stdout
+Ticket { title: "a", n: 1 }

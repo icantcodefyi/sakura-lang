@@ -1,0 +1,15 @@
+ending: ok
+--- stdout
+= arguments
+a1
+a2
+a3
+callee
+= operands
+left
+right
+mul
+= record fields
+y
+x
+6 2 Point { x: 1, y: 2 }

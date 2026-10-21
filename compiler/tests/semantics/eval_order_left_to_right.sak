@@ -1,0 +1,27 @@
+// milestone: M3
+// covers: design §5.7, §8.7: strict, left-to-right evaluation in every position
+
+// Each `t` prints its label when it is evaluated. Call arguments and binary operands run left
+// to right, a record literal's fields in the order written (not the declaration's), and every
+// argument finishes before the callee's body starts.
+type Point = { x: Int, y: Int }
+
+fn t(label: String, v: Int) -> Int ! {Console} {
+  Console.print(label)
+  v
+}
+
+fn add3(a: Int, b: Int, c: Int) -> Int ! {Console} {
+  Console.print("callee")
+  a + b + c
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("= arguments")
+  let s = add3(t("a1", 1), t("a2", 2), t("a3", 3))
+  Console.print("= operands")
+  let d = t("left", 10) - t("right", 4) * t("mul", 2)
+  Console.print("= record fields")
+  let p = Point { y: t("y", 2), x: t("x", 1) }
+  Console.print("{s} {d} {p}")
+}

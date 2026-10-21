@@ -1,0 +1,16 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D010
+// expect-stderr: refinement `Ticket.title` violated
+// covers: design §7.2: a field refinement is checked when the record is constructed
+
+type Ticket = { title: String where String.len(it) > 0, n: Int where it >= 0 }
+
+fn empty() -> String { "" }
+
+pub fn main() -> Unit ! {Console} {
+  let ok = Ticket { title: "a", n: 1 }
+  Console.print("{ok}")
+  let bad = Ticket { title: empty(), n: 1 }
+  Console.print("never printed {bad}")
+}

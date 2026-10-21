@@ -1,0 +1,20 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: design §5.4: a defect is not a failure, so `try` cannot catch it
+
+// The `try` around a defect produces no value: neither arm runs, and nothing after it runs.
+error Missing
+
+fn boom(o: Option<Int>) -> Int ! {Fail<Missing>} {
+  if o == Some(0) { fail Missing }
+  o.expect("no value")
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  let r = try { boom(None) } catch {
+    Missing => 0 - 1,
+  }
+  Console.print("never printed {r}")
+}

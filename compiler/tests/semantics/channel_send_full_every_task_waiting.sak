@@ -1,0 +1,20 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D090
+// spec: RFC 0002 §2.9; design §8.6, §17.280 (4)
+
+// A `send` on a full channel that no `recv` will drain: every task waits, and the run ends with
+// the defect `D090` instead of hanging.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  channel.with_channel(1, fn(tx: Sender<Int>, _rx: Receiver<Int>) {
+    let _ = tx.send(1)
+    Console.print("queued one")
+    let _ = tx.send(2)
+    Console.print("never")
+  })
+  Console.print("never")
+}

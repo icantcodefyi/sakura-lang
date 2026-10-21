@@ -1,0 +1,17 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D030
+// covers: design §5.4: a defect is not a failure, so `try` without `catch` gives no `Err`
+
+error Missing
+
+fn boom(o: Option<Int>) -> Int ! {Fail<Missing>} {
+  if o == Some(0) { fail Missing }
+  o.expect("no value")
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  let r = try { boom(None) }
+  Console.print("never printed {r.is_err()}")
+}

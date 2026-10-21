@@ -57,8 +57,9 @@ without an import, as the corpus's programs show throughout.
 
 **MO14** An import that a local binding shadows everywhere it would be used is unused, so it gets `W1003` beside `W1002`. [W1002 with W1003](../../compiler/tests/ui/W1002_shadowed_import.sak), [diag_shadowed_import](../../compiler/crates/sakura_hir/tests/snapshots/lower__diag_shadowed_import.snap).
 
-Informative: std's own modules are not checked for `W1003` (CHANGELOG, design §17.294 RQ-5);
-the agent-DX harness exemption that §17.297 refused is not a compiler rule.
+**MO17** std's own modules are not checked for `W1003`. [std_modules_are_exempt_from_w1003](../../compiler/crates/sakura_hir/tests/lower.rs).
+
+Informative: the agent-DX harness exemption that §17.297 refused is not a compiler rule.
 
 ## Entry point
 

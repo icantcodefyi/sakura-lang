@@ -40,9 +40,7 @@ Rows are in [effects](effects.md); refinement defects (`D010`, `D011`) are also 
 
 **ER12** A test body may let a typed failure escape, and the runner reports it as a failed test, exiting 3. [uncaught_fail_in_a_test_is_a_test_failure](../../compiler/crates/sakura_codegen_js/tests/source.rs), [tests_may_fail_with_typed_errors](../../compiler/crates/sakura_types/tests/acceptance.rs).
 
-Informative, no fixture: a `main` whose row has `Fail<E>` may fail; on
-`sakuralang@1.0.0-beta.1` it prints `error: main failed with <tag>` and exits 1, as STABILITY.md's
-exit-code row says, but no fixture pins it. Listed in [gaps](gaps.md).
+**ER20** A typed failure that escapes `main` prints `error: main failed with` followed by the failure's value on stderr and exits 1. [main_failure_exits_1](../../compiler/tests/semantics/main_failure_exits_1.sak).
 
 ## Contracts
 
@@ -62,10 +60,7 @@ span and no call-site span (§17.115); the fixtures check the code, not the span
 
 **ER17** A defect stops the program with exit status 70 and a JSON `defect` record on stderr, and nothing after it runs. [D030](../../compiler/tests/semantics/defect_D030_option_expect.sak), [defects_exit_70_with_a_json_record](../../compiler/crates/sakura_codegen_js/tests/handbuilt.rs).
 
-Informative, no fixture: design §5.4 says `try` cannot catch a defect. On
-`sakuralang@1.0.0-beta.1`, `try { boom() }` around an `Option.expect` on `None` exits 70 with
-`D030` and the `try` produces no value, but no fixture wraps a defect in `try`. Listed in
-[gaps](gaps.md).
+**ER21** `try` does not catch a defect: a defect in its body runs no `catch` arm, gives no `Err`, and stops the program as ER17 says. [With catch](../../compiler/tests/semantics/try_does_not_catch_defect.sak), [without catch](../../compiler/tests/semantics/try_result_does_not_catch_defect.sak).
 
 **ER18** `Option.expect` on `None` is the defect `D030` carrying the program's message, also through `Task.join`, and `String.slice` at an offset inside a character is the defect `D031`. [D030](../../compiler/tests/semantics/defect_D030_option_expect.sak), [D030 through join](../../compiler/tests/semantics/defect_D030_joined_fiber.sak), [D031](../../compiler/tests/semantics/defect_D031_string_slice_boundary.sak).
 

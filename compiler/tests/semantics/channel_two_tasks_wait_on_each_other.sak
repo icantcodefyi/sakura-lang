@@ -1,0 +1,32 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D090
+// spec: RFC 0002 §2.9; design §8.6, §17.280 (4)
+
+// Two tasks, each waiting in `recv` on the channel only the other would send on: every task
+// waits, and the run ends with the defect `D090` instead of hanging.
+import std/channel
+import std/channel.{Receiver, Sender}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("before")
+  channel.with_channel(1, fn(atx: Sender<Int>, arx: Receiver<Int>) {
+    channel.with_channel(1, fn(btx: Sender<Int>, brx: Receiver<Int>) {
+      Task.scope(fn(s) {
+        let a = Task.spawn(s, fn() {
+          let got = arx.recv()
+          let _ = btx.send(1)
+          got
+        })
+        let b = Task.spawn(s, fn() {
+          let got = brx.recv()
+          let _ = atx.send(2)
+          got
+        })
+        Console.print("both wait")
+        Console.print("never {Task.join(a)} {Task.join(b)}")
+      })
+    })
+  })
+  Console.print("never")
+}

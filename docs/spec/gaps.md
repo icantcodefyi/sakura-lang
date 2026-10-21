@@ -108,20 +108,9 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 
 ### Evaluation and values
 
-- **Design and compiler disagree: `MIN % -1`.** Design §4.1 and §17.260 (G05) say
-  `-2^63 % -1` is `0` and only `MIN / -1` is `D001`. On beta.1 with `--target wasm`,
-  `MIN % -1` is `D001` (`integer overflow`). §17.260 names `defect_D001_int_min_div.sak` and
-  `int_min_rem.sak` as the evidence; neither exists. JS reaches `D003` before either operator.
-- **No fixture for argument, operand or record-field order.** Design §5.7 and §8.7 say
-  evaluation is left to right in every position. beta.1 evaluates call arguments and binary
-  operands left to right and record-literal fields in written order, not declaration order;
-  only list, tuple and interpolation order have fixtures (EV16).
-- **No fixture for short-circuit `&&` and `||`.** beta.1 skips the right operand when the left
-  decides; the only fixtures print the values.
-- **NaN and `-0.0` on JS.** EV09 cites the Rust runtime test; no `.sak` fixture compares a
-  NaN or `-0.0`, so JS agreement is unpinned.
-- **Strictness.** That arguments finish before the callee starts is design §8.7's rule; no
-  fixture separates it from evaluation order.
+Pinned since the chapters were drafted: `MIN / -1` and `MIN % -1` (EV26, after the fix to
+WASM and native), NaN and `-0.0` on every backend (EV27), argument, operand and record-field
+order with arguments before the callee (EV28), and short-circuit `&&` and `||` (EV29).
 
 ### Types and refinements
 
@@ -131,40 +120,36 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
   [the fixture](../../compiler/tests/semantics/json_schema_refinement_keywords.sak) uses only
   `n = 1`, where both agree. `sakuralang@1.0.0-beta.1` states no refinement keyword at all
   (TY22 arrived with ABI 1.14.0 after the tag). No fixture states `minItems`.
-- **Field refinement at construction.** beta.1 reports `D010` for a record built with a field
-  that fails its `where` (design §7.2); only assignment and decode are pinned (TY16).
-- **Distinct refined types.** Design §4.6 makes two refined types with the same predicate
-  different types; beta.1 agrees (`V2001`, expected `B`, found `A`), but no fixture checks it.
+
+Pinned since: distinct refined types (TY23) and field refinements at construction (TY24).
 
 ### Effects and handlers
 
-- **Reinstalling one handler value.** Design §5.5 (§17.259 (G07)) says each `with` installs a
-  fresh copy of the handler value's initial state. beta.1 agrees (a counter advanced twice under
-  `with h` reads `1` under the next `with h`), but every fixture builds a new handler per `with`.
 - **Order-dependent tails.** Design §5.2 rule 9 records that two distinct flexible tails joined
   by equality can still depend on order; no test exercises that edge.
 - **Source-level finalizer order.** EF19's reverse order is pinned in the Rust runtime
-  (`exec.rs`); no `.sak` fixture opens two resources and observes the order they close in.
+  (`exec.rs`). No `.sak` program can observe it: no std resource's finalizer does anything
+  source code can see afterwards (a closed file or channel has left its callback, `V6003`), and
+  the effect trace's `finalizer` event names no resource.
+
+Pinned since: reinstalling one handler value (EF21).
 
 ### Errors, `Result` and defects
 
-- **A failing `main`.** STABILITY.md gives exit 1 for a failed `main`; beta.1 prints
-  `error: main failed with <tag>` and exits 1. No fixture pins it (`cli_exit_runs_finalizers.sak`
-  only says so in a comment).
-- **`try` and defects.** Design §5.4 says `try` cannot catch a defect; beta.1 agrees, but no
-  fixture puts a defect inside a `try`.
 - **Contract spans.** Design §17.115 gives a call through a function value the clause's span
   only; the `contract_site_blame_*` fixtures check the defect code, not the spans.
 
+Pinned since: a failing `main` (ER20) and `try` around a defect (ER21).
+
 ### Concurrency
 
-- **Negative channel capacity.** Only `with_channel(0, …)` is pinned as `D020`.
-- **`D090` beyond channels.** CC17 is pinned for a `recv` nothing can answer; a deadlock through
-  a full `send` or between two channels has no fixture.
 - **Pure loops.** Design §8.6 says a loop that performs nothing cannot be cancelled; no fixture
   shows it (one would not terminate under a timeout).
 - **Same seed, two runs.** CC09's "every run" rests on the fixtures' pinned output, which each
   harness run compares; no test runs one seed twice in one process and compares traces.
+
+Pinned since: a negative channel capacity (CC18) and `D090` through a full `send` and between
+two channels (CC19).
 
 ### Modules and imports
 
@@ -174,8 +159,8 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **The prelude's contents.** Design §9 lists the prelude; programs across the corpus use its
   names, but no fixture enumerates it or shows a non-prelude std name failing without an import
   beyond `diag_explicit_imports`.
-- **std and `W1003`.** std's own modules are exempt from `W1003` (CHANGELOG); no test asserts the
-  exemption.
+
+Pinned since: std's `W1003` exemption (MO17).
 
 ## Coverage accounting
 

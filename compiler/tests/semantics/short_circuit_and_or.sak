@@ -1,0 +1,17 @@
+// milestone: M3
+// covers: design §4.1, §5.7: `&&` and `||` evaluate the right operand only when needed
+
+// `t` prints its label when evaluated: the right operand runs only when the left operand
+// does not decide the result.
+fn t(label: String, v: Bool) -> Bool ! {Console} {
+  Console.print(label)
+  v
+}
+
+pub fn main() -> Unit ! {Console} {
+  let a = t("and-left", false) && t("and-right skipped?", true)
+  let b = t("and-left", true) && t("and-right", false)
+  let c = t("or-left", true) || t("or-right skipped?", false)
+  let d = t("or-left", false) || t("or-right", true)
+  Console.print("{a} {b} {c} {d}")
+}

@@ -43,10 +43,7 @@ joined by equality; the tests above do not cover it.
 
 **EF12** A handler's `var` members are state that its clauses read and assign, persisting from one perform to the next within an installation, and each evaluation of a `handler` expression starts from the initializers. [Handler state](../../compiler/tests/semantics/handler_state.sak), [bounded store](../../compiler/tests/semantics/effects_and_handlers.sak), [counter](../../compiler/tests/semantics/handler_lexical_bind.sak).
 
-Informative, no fixture: design §5.5 (§17.259 (G07)) also says that installing one handler
-value twice starts the second installation from the initial values again; on
-`sakuralang@1.0.0-beta.1` a counter advanced twice in one `with h` reads `1` in the next
-`with h`. Listed in [gaps](gaps.md).
+**EF21** Each `with` that installs a handler value starts from a fresh copy of that value's initial state, so a later or nested installation of the same value does not see an earlier one's assignments. [handler_reinstall_fresh_state](../../compiler/tests/semantics/handler_reinstall_fresh_state.sak).
 
 **EF13** `with h1, h2 { body }` installs `h2` inside `h1`, and the expression's row is the body's row without the handled effects plus each handler's own row. [Forwarding](../../compiler/tests/semantics/handler_forwarding.sak), [m2_nested_handlers_check](../../compiler/crates/sakura_types/tests/acceptance.rs).
 

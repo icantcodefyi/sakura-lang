@@ -1,0 +1,22 @@
+// milestone: M3
+// covers: design §5.5, §17.259 (G07): each `with` installs a fresh copy of the handler's state
+
+// One handler value `h`, installed three times: each installation starts from `n = 0`, so the
+// counts made under one `with h` are not seen by the next.
+effect Counter {
+  fn next() -> Int
+}
+
+pub fn main() -> Unit ! {Console} {
+  let h = handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+  let first = with h { Counter.next() + Counter.next() * 10 }
+  let second = with h { Counter.next() }
+  let third = with h, h { Counter.next() }
+  Console.print("{first} {second} {third}")
+}

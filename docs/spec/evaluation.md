@@ -35,10 +35,10 @@ that retained versions keep their contents (design §8.1–§8.2, §17.149).
 
 **EV06** `Int` division and remainder truncate toward zero, and a zero divisor is the defect `D002` for both. [Truncation](../../compiler/tests/semantics/literals_and_operators.sak), [division by zero](../../compiler/tests/semantics/defect_D002_division_by_zero.sak), [remainder by zero](../../compiler/tests/semantics/arith_range_edges_remainder_zero.sak).
 
-Informative: design §4.1 (§17.260 (G05)) makes `MIN / -1` `D001` and `MIN % -1` equal to `0`.
-On `sakuralang@1.0.0-beta.1` with `--target wasm`, `MIN % -1` is `D001`; the fixtures §17.260
-names (`defect_D001_int_min_div.sak`, `int_min_rem.sak`) do not exist.
-Both are listed in [gaps](gaps.md).
+**EV26** On the 64-bit backends `MIN / -1`, with `MIN` the minimum −2^63, is the defect `D001` and `MIN % -1` is `0`, while the JS backend reaches `D003` before either operator. [MIN / -1](../../compiler/tests/semantics/defect_D001_int_min_div.sak), [MIN % -1](../../compiler/tests/semantics/int_min_rem.sak).
+
+Informative: design §4.1 and §17.260 (G05) decided the remainder; `sakuralang@1.0.0-beta.1`
+gave `D001` for `MIN % -1` on WASM and native, fixed after the tag (CHANGELOG).
 
 **EV07** `Float` arithmetic is IEEE-754 binary64, and `Float % Float` is the remainder of truncating division. [Float operators](../../compiler/tests/semantics/literals_and_operators.sak), [remainder](../../compiler/tests/semantics/float_rem.sak).
 
@@ -46,9 +46,7 @@ Both are listed in [gaps](gaps.md).
 
 **EV09** `==` compares a `Float` as IEEE does, so a value that holds a NaN is not equal to itself. [eq_ord_and_keys_are_structural](../../compiler/runtime/rt/tests/collections.rs).
 
-Informative: EV09 is pinned in the Rust runtime that WASM and native share; no `.sak` fixture
-compares a NaN or `-0.0`, so the JS backend's agreement rests on design §4.1 alone
-(listed in [gaps](gaps.md)).
+**EV27** On every backend a NaN compares unequal to itself, inside a record or list too, `<` and `>` with a NaN operand are `false`, `-0.0 == 0.0` holds, `1.0 / -0.0` is `-Infinity`, and interpolation shows `NaN`, `-0.0` and `-Infinity`. [float_nan_negative_zero](../../compiler/tests/semantics/float_nan_negative_zero.sak).
 
 ## Equality, ordering and display
 
@@ -68,11 +66,9 @@ compares a NaN or `-0.0`, so the JS backend's agreement rests on design §4.1 al
 
 **EV16** The elements of a list literal, the elements of a tuple literal, and the interpolated parts of a string are evaluated left to right. [List literal](../../compiler/tests/semantics/channel_try_send_full.sak), [tuple literal](../../compiler/tests/semantics/std_fs_with_file.sak), [interpolation](../../compiler/tests/semantics/channel_cancel_wakes_waiters.sak).
 
-Informative, no fixture: design §5.7 and §8.7 make evaluation strict and left to right in every
-position, arguments before the call. `sakuralang@1.0.0-beta.1` evaluates call arguments and
-binary operands left to right and record-literal fields in the order written (not declaration
-order), and `&&` and `||` evaluate their right operand only when the left does not decide the
-result, but no checked fixture observes any of these orders. Listed in [gaps](gaps.md).
+**EV28** Call arguments are evaluated left to right and all of them before the callee's body starts, binary operands left to right, and the fields of a record literal in the order written, not the order declared. [eval_order_left_to_right](../../compiler/tests/semantics/eval_order_left_to_right.sak).
+
+**EV29** `&&` evaluates its right operand only when its left operand is `true`, and `||` only when its left operand is `false`. [short_circuit_and_or](../../compiler/tests/semantics/short_circuit_and_or.sak).
 
 **EV17** A module constant (`let` at the top level) is evaluated once, not at each use. [constants_are_evaluated_once](../../compiler/crates/sakura_codegen_js/tests/m3.rs), [constants](../../compiler/tests/semantics/constants.sak).
 

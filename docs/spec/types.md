@@ -18,6 +18,8 @@ the other defects in the errors chapter (both listed in the [README](README.md))
 
 **TY03** Using an expression of one type where another is expected is `V2001`, calling a value that is not a function is `V2003`, and reading a field the record type does not declare is `V2004`. [V2001](../../compiler/tests/ui/V2001_type_mismatch.sak), [V2003](../../compiler/tests/ui/V2003_not_callable.sak), [V2004](../../compiler/tests/ui/V2004_unknown_field.sak).
 
+**TY23** Two refined types are different types even when they refine the same base with the same predicate, so a value of one where the other is expected is `V2001`. [Same predicate](../../compiler/tests/ui/V2001_type_mismatch_same_predicate_refinements.sak).
+
 ## Generics, constraints and inference
 
 **TY04** Functions and types take type parameters, and a constraint written `A: Ord + Show` is the only way to use an operation such as `<` or interpolation on a value of type `A`. [Generics](../../compiler/tests/semantics/generics.sak), [constraint on `==`](../../compiler/tests/semantics/tag_eq.sak).
@@ -29,8 +31,7 @@ the other defects in the errors chapter (both listed in the [README](README.md))
 **TY07** An empty collection whose element type nothing determines is `V2010`, and a type that would have to contain itself is `V2005`. [V2010](../../compiler/tests/ui/V2010_cannot_infer_type.sak), [V2005](../../compiler/tests/ui/V2005_infinite_type.sak).
 
 Informative: top-level signatures are fully annotated and bodies are checked against them;
-local bindings are inferred (design §4.5). Design §4.6 also makes two refined types with the same
-predicate distinct; no fixture checks that (see [gaps](gaps.md)).
+local bindings are inferred (design §4.5).
 
 ## Refined types
 
@@ -54,9 +55,7 @@ predicate distinct; no fixture checks that (see [gaps](gaps.md)).
 
 **TY16** A refinement on a record field is checked when that field of a `var` is assigned, a failure being `D010`, and `Json.decode` checks every nested refinement and reports a failure as a `DecodeError` naming the type, not as a defect. [field_refinements_are_checked_everywhere](../../compiler/crates/sakura_codegen_js/tests/m3.rs), [JSON codec](../../compiler/tests/semantics/json_codec.sak).
 
-Informative, no fixture: design §7.2 also checks a field refinement when the record is
-constructed; on `sakuralang@1.0.0-beta.1`, `Ticket { title: empty(), n: 1 }` with an empty
-title is `D010` naming `Ticket.title`, but only the assignment case is pinned.
+**TY24** A refinement on a record field is also checked when the record is constructed, a failure being the defect `D010` naming the type and field. [refined_field_construction_d010](../../compiler/tests/semantics/refined_field_construction_d010.sak).
 
 **TY17** A field assignment through a `var` whose type, or whose path prefix's type, is refined is `V2034`, while reassigning the whole `var` through `from` or a function returning the refined type is allowed. [V2034](../../compiler/tests/ui/V2034_refined_field_assignment.sak), [V2034 on a prefix](../../compiler/tests/ui/V2034_refined_prefix_assignment.sak), [whole reassignment](../../compiler/tests/semantics/refined_var_rebuild.sak).
 

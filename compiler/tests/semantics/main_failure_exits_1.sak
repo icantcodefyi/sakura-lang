@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-exit: 1
+// expect-stderr: main failed with Rejected
+// covers: STABILITY.md (exit codes): a typed failure escaping `main` exits 1
+
+// `main` may fail: the run prints what came before, then `main failed with <tag>` on stderr,
+// and exits 1 (not 70, which is a defect's).
+error Rejected(reason: String)
+
+fn check(n: Int) -> Int ! {Fail<Rejected>} {
+  if n > 1 { fail Rejected("too big") }
+  n
+}
+
+pub fn main() -> Unit ! {Console, Fail<Rejected>} {
+  Console.print("before {check(1)}")
+  Console.print("never printed {check(2)}")
+}

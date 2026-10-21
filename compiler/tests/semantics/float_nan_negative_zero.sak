@@ -1,0 +1,17 @@
+// milestone: M3
+// covers: design §4.1, §17.259 (G04): `Float` is IEEE under `==` and the operators
+
+// NaN is not equal to itself, a record or list holding one is not equal to itself either, and
+// `-0.0 == 0.0`, while dividing by them keeps the sign of the zero.
+type Reading = { v: Float }
+
+fn zero() -> Float { 0.0 }
+
+pub fn main() -> Unit ! {Console} {
+  let nan = zero() / zero()
+  let neg = -zero()
+  Console.print("{nan == nan} {nan != nan} {nan < 1.0} {nan > 1.0}")
+  Console.print("{Reading { v: nan } == Reading { v: nan }} {[nan] == [nan]}")
+  Console.print("{neg == zero()} {neg < zero()} {1.0 / neg} {1.0 / zero()}")
+  Console.print("{nan} {neg} {-1.0 * zero()} {0.0 - zero()}")
+}

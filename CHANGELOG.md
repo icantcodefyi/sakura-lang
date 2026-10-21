@@ -12,8 +12,12 @@ retains earlier implementation history.
 - Draft semantics chapters in `docs/spec/`: evaluation and values, types and refinements,
   effects and handlers, errors and defects, concurrency, and modules and imports. Each labelled
   rule cites a checked-in fixture; behaviour without a fixture, and every place design and the
-  compiler disagree (such as `MIN % -1`), is informative and listed in `docs/spec/gaps.md`.
-  `spec_docs.py --check` counts the new labels. No compiler behaviour changes.
+  compiler disagree, is informative and listed in `docs/spec/gaps.md`.
+  `spec_docs.py --check` counts the new labels. Fixtures since pin evaluation order,
+  short-circuit `&&`/`||`, NaN and `-0.0`, field refinements at construction, distinct refined
+  types, fresh handler state per `with`, a failing `main`, `try` around a defect, negative
+  channel capacities, two more `D090` deadlocks and std's `W1003` exemption (EV26–EV29,
+  TY23–TY24, EF21, ER20–ER21, CC18–CC19, MO17).
 
 - `Json.schema` (and so a `Tool`'s schema) states the bounds a refined type's `where` can say
   (design §17.293 MT-3, §17.298 (c)): the top-level `&&` conjuncts `String.len(it) <= n`/`>= n`

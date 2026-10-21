@@ -1,0 +1,9 @@
+// milestone: M2
+// expect: V2001
+// Design §4.6: two refined types with the same predicate are different types, so an `A` is
+// not a `B` although both are `Int where it > 0`.
+type A = Int where it > 0
+
+type B = Int where it > 0
+
+fn to_b(a: A) -> B { a }

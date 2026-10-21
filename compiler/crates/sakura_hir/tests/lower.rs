@@ -648,6 +648,37 @@ fn f(s: S) -> Int { match s { A(n) => List.len([n]), B => 0 } }
     assert_eq!(check(&[("main", src)]), check(&[("main", src)]));
 }
 
+/// `W1003` checks user packages only (design §17.294 RQ-5): the same unused import is one
+/// warning in `app` and none in a module of `std`.
+#[test]
+fn std_modules_are_exempt_from_w1003() {
+    let text = "import std/list\npub fn one() -> Int { 1 }\n";
+    let input = |file: u32, path: &str| ModuleInput {
+        file: FileId(file),
+        path: path.to_string(),
+        root: parse_root(FileId(file), text).0,
+    };
+    let program = lower(&[
+        PackageInput {
+            name: "app",
+            deps: vec![],
+            modules: vec![input(0, "main")],
+        },
+        PackageInput {
+            name: "std",
+            deps: vec![],
+            modules: vec![input(1, "probe"), input(2, "list")],
+        },
+    ]);
+    let files: Vec<u32> = program
+        .diagnostics
+        .iter()
+        .filter(|d| d.code.0 == "W1003")
+        .map(|d| d.spans[0].file.0)
+        .collect();
+    assert_eq!(files, [0], "{:?}", program.diagnostics);
+}
+
 /// The real std (`compiler/std/*.sak`) resolves without errors (in files that parse).
 #[test]
 fn real_std_resolves() {
