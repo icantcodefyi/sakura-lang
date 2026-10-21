@@ -4,117 +4,101 @@ import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { GitHubIcon } from "@/components/github-icon";
 import { Button } from "@/components/ui/button";
 import { releaseLabel } from "@/lib/release";
-import { tokenize } from "@/lib/sakura/highlight";
 import { site } from "@/lib/site";
-import { HeroDemo } from "./hero-demo";
-import { sample } from "./samples";
+import { Tree } from "./tree";
 
-export async function Hero() {
-  const lines = await tokenize(sample("signup"));
+export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden border-b border-border">
-      <div aria-hidden className="sakura-sky" />
-      <div className="relative mx-auto max-w-6xl px-5 pt-12 pb-20 sm:px-8 md:pt-20 lg:pb-28">
-        <Link
-          href="/docs/install"
-          className="rise group flex max-w-xl items-center gap-3 font-mono whitespace-nowrap text-[12px] text-foreground sm:text-[12.5px]"
-        >
-          <span className="bg-foreground px-1.5 py-0.5 text-background">{releaseLabel()}</span>
-          <span
-            aria-hidden
-            className="h-px min-w-6 flex-1 translate-y-[0.2em] border-b border-dotted border-foreground/50"
-          />
-          <span>
-            Published on npm<span className="hidden sm:inline">, Homebrew and install.sh</span>
-          </span>
-          <ArrowRight className="size-3.5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
-        </Link>
+    <section className="relative overflow-hidden border-b border-border">
+      <div className="mx-auto grid max-w-6xl items-center gap-x-6 px-5 pt-12 sm:px-8 md:pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="pb-4 lg:pb-24">
+          <Link
+            href="/docs/install"
+            className="rise group flex max-w-md items-center gap-3 font-mono whitespace-nowrap text-[12px] text-foreground sm:text-[12.5px]"
+          >
+            <span className="bg-foreground px-1.5 py-0.5 text-background">{releaseLabel()}</span>
+            <span
+              aria-hidden
+              className="h-px min-w-6 flex-1 translate-y-[0.2em] border-b border-dotted border-foreground/50"
+            />
+            <span>
+              Published on npm<span className="hidden sm:inline">, Homebrew and install.sh</span>
+            </span>
+            <ArrowRight className="size-3.5 shrink-0 transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
+          </Link>
 
-        <p
-          className="rise-text mt-7 font-mono text-[12px] tracking-[0.14em] text-sakura-text uppercase sm:text-[12.5px] md:mt-9"
-          style={{ "--i": 1 } as CSSProperties}
-        >
-          Agent-first
-        </p>
-        <h1
-          className="rise-text mt-3 font-display text-[clamp(2.5rem,7.4vw,5.6rem)] leading-[0.9] text-balance font-semibold tracking-[-0.055em]"
-          style={{ "--i": 1 } as CSSProperties}
-        >
-          The programming <br className="hidden sm:block" />
-          language built for agents.
-        </h1>
-
-        <div className="mt-10 grid grid-cols-1 items-start gap-12 md:mt-14 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1fr)] lg:gap-14">
-          <div className="lg:pt-2">
-            <p
-              className="rise-text max-w-[30rem] text-[clamp(1.05rem,1.35vw,1.2rem)] leading-relaxed text-pretty text-foreground"
-              style={{ "--i": 2 } as CSSProperties}
+          <p
+            className="rise-text mt-8 font-mono text-[12px] tracking-[0.14em] text-sakura-text uppercase sm:text-[12.5px]"
+            style={{ "--i": 1 } as CSSProperties}
+          >
+            Agent-first programming language
+          </p>
+          <h1
+            className="rise-text mt-3 font-display text-[clamp(2.4rem,4.6vw,3.9rem)] leading-[0.92] text-balance font-semibold tracking-[-0.055em]"
+            style={{ "--i": 1 } as CSSProperties}
+          >
+            The programming language built for agents.
+          </h1>
+          <p
+            className="rise-text mt-7 max-w-[31rem] text-[clamp(1.05rem,1.35vw,1.2rem)] leading-relaxed text-pretty"
+            style={{ "--i": 2 } as CSSProperties}
+          >
+            It compiles to JavaScript and WebAssembly. Effects, errors and contracts live in every
+            signature; the compiler checks them, and{" "}
+            <code className="font-mono text-[0.9em]">sakura verify</code> proves contracts with Z3.
+          </p>
+          <div
+            className="rise mt-8 flex flex-wrap items-center gap-3"
+            style={{ "--i": 3 } as CSSProperties}
+          >
+            <Button asChild size="lg" className="group">
+              <Link href="#install">
+                Install
+                <ArrowRight
+                  data-icon="inline-end"
+                  className="transition-transform duration-200 ease-out group-hover:translate-x-0.5"
+                />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-foreground/25 bg-background/60 hover:bg-background"
             >
-              Every signature declares its effects, errors and contracts, and the compiler holds the
-              code to them. Agents get structured diagnostics, typed holes and fixes that state
-              their impact.
-            </p>
-            <div
-              className="rise mt-8 flex flex-wrap items-center gap-3"
-              style={{ "--i": 3 } as CSSProperties}
+              <Link href="/docs">Read the docs</Link>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="ghost"
+              className="group px-3 text-muted-foreground hover:bg-transparent hover:text-foreground max-sm:w-11 max-sm:border max-sm:border-foreground/25 max-sm:px-0"
             >
-              <Button asChild size="lg" className="group">
-                <Link href="/docs/install">
-                  Install
-                  <ArrowRight
-                    data-icon="inline-end"
-                    className="transition-transform duration-200 ease-out group-hover:translate-x-0.5"
-                  />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="border-foreground/25 bg-background/60 hover:bg-background"
-              >
-                <Link href="/docs">Read the docs</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="ghost"
-                className="group px-3 text-muted-foreground hover:bg-transparent hover:text-foreground max-sm:w-11 max-sm:border max-sm:border-foreground/25 max-sm:px-0"
-              >
-                <a href={site.github}>
-                  <GitHubIcon className="size-4" />
-                  <span className="sr-only sm:not-sr-only">GitHub</span>
-                  <ArrowUpRight className="hidden size-3.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5 sm:block" />
-                </a>
-              </Button>
-            </div>
-            <dl
-              className="rise mt-8 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 border-t border-dotted border-foreground/25 pt-4 font-mono text-[12.5px] text-muted-foreground"
-              style={{ "--i": 4 } as CSSProperties}
-            >
-              <dt className="text-foreground">install</dt>
-              <dd>
-                <code className="text-foreground select-all">npm i -g sakuralang@beta</code>
-              </dd>
-              <dt className="text-foreground">agents</dt>
-              <dd>
-                GET{" "}
-                {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
-                <a
-                  href="/llms.txt"
-                  className="text-foreground underline decoration-sakura decoration-[1.5px] underline-offset-4 transition-colors duration-150 hover:text-sakura-text"
-                >
-                  /llms.txt
-                </a>
-                , or any page + <span className="text-foreground">.md</span>
-              </dd>
-            </dl>
+              <a href={site.github}>
+                <GitHubIcon className="size-4" />
+                <span className="sr-only sm:not-sr-only">GitHub</span>
+                <ArrowUpRight className="hidden size-3.5 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:-translate-y-0.5 sm:block" />
+              </a>
+            </Button>
           </div>
-
-          <div className="rise xl:-mr-6" style={{ "--i": 2 } as CSSProperties}>
-            <HeroDemo lines={lines} />
-          </div>
+          <p
+            className="rise mt-7 font-mono text-[12.5px] text-muted-foreground"
+            style={{ "--i": 4 } as CSSProperties}
+          >
+            <span className="text-faint select-none">$ </span>
+            <code className="text-foreground select-all">npm i -g sakuralang@beta</code>
+            <span className="mx-2 text-faint">·</span>
+            agents: GET{" "}
+            {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}
+            <a
+              href="/llms.txt"
+              className="text-foreground underline decoration-sakura decoration-[1.5px] underline-offset-4 transition-colors duration-150 hover:text-sakura-text"
+            >
+              /llms.txt
+            </a>
+          </p>
         </div>
+        <Tree className="-mx-5 aspect-[25/21] sm:mx-0 xl:-mr-10" />
       </div>
     </section>
   );

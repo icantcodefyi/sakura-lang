@@ -1,16 +1,13 @@
-import Link from "next/link";
-import { isReleased, RELEASE as VERSION, releaseLabel, type Version } from "@/lib/release";
+import { Seal } from "@/components/seal";
+import { RELEASE as VERSION } from "@/lib/release";
 import { CopyCommand } from "./copy-command";
+import { Play } from "./play";
+import { Section, TextLink } from "./section";
+import { Tabs } from "./tabs";
 
-// Commands and platform rows from /docs/install (content/docs/install.mdx) and
-// packaging/targets.json. A row's `since` is the release that first ships it.
-
+// Commands from /docs/install (content/docs/install.mdx); platforms and claim levels live there.
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
-  {
-    name: "npm",
-    lines: ["npm i -g sakuralang@beta"],
-    note: "the npm beta tag; needs Node 26",
-  },
+  { name: "npm", lines: ["npm i -g sakuralang@beta"], note: "the npm beta tag; needs Node 26" },
   {
     name: "Homebrew",
     lines: [
@@ -30,117 +27,70 @@ const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   },
 ];
 
-const PLATFORMS: { name: string; target: string; since: Version; note?: string }[] = [
-  { name: "macOS, Apple silicon", target: "aarch64-apple-darwin", since: "0.1.0-alpha.1" },
-  {
-    name: "Linux x64",
-    target: "x86_64-unknown-linux-gnu",
-    since: "0.1.0-alpha.1",
-    note: "glibc 2.35+",
-  },
-  {
-    name: "Linux ARM64",
-    target: "aarch64-unknown-linux-gnu",
-    since: "0.1.0",
-    note: "Raspberry Pi 4 and 5 expected to work",
-  },
-  { name: "Windows x64", target: "x86_64-pc-windows-msvc", since: "0.1.0" },
-  { name: "macOS, Intel", target: "x86_64-apple-darwin", since: "0.1.0" },
+// `sakura new cli hello`, then the three commands, as run on main: each prints the line beside it.
+const FIRST = [
+  ["sakura new cli hello && cd hello", "scaffolds src/main.sak, AGENTS.md, CLAUDE.md"],
+  ["sakura check", "no problems"],
+  ["sakura test", "1 passed, 0 failed, 0 skipped (seed 0)"],
+  ["sakura run", "hello, world"],
 ];
-
-// Published rows, then the next release in sakura, then later ones dashed.
-const next = PLATFORMS.find((p) => !isReleased(p.since))?.since;
-const stage = (since: Version) =>
-  isReleased(since)
-    ? { label: `in ${releaseLabel()}`, className: "border-ok/45 bg-ok-wash text-ok" }
-    : {
-        label: `coming in v${since}`,
-        className:
-          since === next
-            ? "border-sakura/55 bg-sakura-wash text-sakura-text"
-            : "border-dashed border-strong text-muted-foreground",
-      };
 
 export function Install() {
   return (
-    <section id="install" className="border-b border-border">
-      <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 md:py-32">
-        <div className="grid gap-x-16 gap-y-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] lg:items-end">
-          <h2 className="font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            Install it today.
-          </h2>
-          <p className="text-[17px] leading-relaxed text-pretty text-muted-foreground">
-            <code className="font-mono text-[15px] text-foreground">sakuralang@{VERSION}</code> is a
-            beta of 1.0: not for production, it may have bugs and may change before 1.0.0.{" "}
-            <code className="font-mono">0.1.0</code> stays on npm&apos;s latest tag.{" "}
-            <code className="font-mono">check</code> and <code className="font-mono">build</code>{" "}
-            need nothing else; <code className="font-mono">run</code> and{" "}
-            <code className="font-mono">test</code> need Node 26.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-          <ul className="grid min-w-0 grid-cols-[minmax(0,1fr)] border-t border-foreground/80">
-            {CHANNELS.map((c) => (
-              <li
-                key={c.name}
-                className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-b border-border py-5"
-              >
-                <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                  <span className="font-display text-[1.05rem] font-semibold tracking-[-0.01em]">
-                    {c.name}
-                  </span>
-                  <span className="text-[13px] text-muted-foreground">{c.note}</span>
-                </p>
+    <Section
+      id="install"
+      ask="How do I start?"
+      title="Install it, then check a project."
+      lede={
+        <>
+          Binaries for macOS, Linux and Windows. <TextLink href="/docs/install">Platforms</TextLink>{" "}
+          <span className="text-faint">·</span>{" "}
+          <TextLink href="/docs/quickstart">Quickstart</TextLink>{" "}
+          <span className="text-faint">·</span> <TextLink href="/docs/agents">For agents</TextLink>
+        </>
+      }
+    >
+      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-2">
+        <Tabs
+          label="Install channels"
+          items={CHANNELS.map((c) => ({
+            label: c.name,
+            panel: (
+              <div>
                 <CopyCommand commands={c.lines} />
+                <p className="mt-2 text-[13px] text-muted-foreground">{c.note}</p>
+              </div>
+            ),
+          }))}
+        />
+        <div className="relative">
+          <ol className="grid border-t border-foreground/80 font-mono text-[13px]">
+            {FIRST.map(([cmd, out], i) => (
+              <li
+                key={cmd}
+                className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 border-b border-border py-3"
+              >
+                <span className="text-faint tabular-nums">{i + 1}</span>
+                <span className="min-w-0">
+                  <span className="block text-foreground">
+                    <span aria-hidden className="text-faint select-none">
+                      ${" "}
+                    </span>
+                    {cmd}
+                  </span>
+                  <span className="mt-0.5 block font-sans text-[13px] text-muted-foreground">
+                    {out}
+                  </span>
+                </span>
               </li>
             ))}
-          </ul>
-
-          <div>
-            <table className="w-full border-collapse text-left">
-              <caption className="pb-3 text-left font-mono text-[11.5px] text-faint">
-                platforms
-              </caption>
-              <tbody className="border-t border-foreground/80">
-                {PLATFORMS.map((p) => {
-                  const { label, className } = stage(p.since);
-                  return (
-                    <tr key={p.target} className="border-b border-border">
-                      <th scope="row" className="py-3.5 pr-4 align-top font-normal">
-                        <span className="block text-[14.5px] font-medium">{p.name}</span>
-                        <span className="block font-mono text-[11.5px] text-faint">{p.target}</span>
-                        {p.note ? (
-                          <span className="block text-[12.5px] text-muted-foreground">
-                            {p.note}
-                          </span>
-                        ) : null}
-                      </th>
-                      <td className="py-3.5 text-right align-top">
-                        <span
-                          className={`inline-block rounded-full border px-2.5 py-0.5 font-mono text-[11.5px] whitespace-nowrap ${className}`}
-                        >
-                          {label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-              Every row is <span className="font-medium text-foreground">Supported</span> in v0.1.0:
-              its published-install smoke passed on a hosted runner of that OS and CPU.{" "}
-              <Link
-                href="/docs/install#platform-claims"
-                className="font-medium text-foreground underline decoration-sakura underline-offset-4"
-              >
-                Claim levels
-              </Link>
-            </p>
-          </div>
+          </ol>
+          {/* Pressed once, when the steps scroll into view. */}
+          <Play className="pointer-events-none absolute -top-12 right-0 hidden size-28 rotate-[-14deg] sm:block">
+            <Seal bloom className="size-full" />
+          </Play>
         </div>
       </div>
-    </section>
+    </Section>
   );
 }

@@ -2,6 +2,7 @@
 // inline SVG with a fixed viewBox per layout (a container query picks wide or narrow, as in
 // docs-diagrams.tsx), so it reserves its height and nothing shifts.
 import Link from "next/link";
+import { CountUp } from "@/components/count-up";
 import {
   callouts,
   runFacts,
@@ -285,14 +286,23 @@ function WinBars({ bars }: { bars: Win["bars"] }) {
 }
 
 /** One win: the figure, what it says, the measured pair, and a link to its row. */
-export function WinCallout({ win, href = "" }: { win: Win; href?: string }) {
+export function WinCallout({
+  win,
+  href = "",
+  count = false,
+}: {
+  win: Win;
+  href?: string;
+  /** count the figure up from zero when it scrolls into view (the landing page) */
+  count?: boolean;
+}) {
   return (
     <Link
       href={`${href}#${win.id}`}
       className="group flex h-full flex-col rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-sakura-text"
     >
       <span className="font-display text-[clamp(2.2rem,4vw,3rem)] leading-none font-semibold tracking-[-0.03em]">
-        {win.value}
+        {count ? <CountUp value={win.value} /> : win.value}
       </span>
       <span className="mt-3 text-[15px] leading-snug text-balance">{win.label}</span>
       <WinBars bars={win.bars} />

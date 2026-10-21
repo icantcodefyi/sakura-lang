@@ -5,10 +5,13 @@ import { useSlidingPill } from "@/components/sliding-pill";
 import { Tabs as TabsRoot, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /** Segmented tabs over shadcn's Tabs (Radix: roving focus, arrow keys, Home/End), with a pill
- * that slides to the active tab. */
+ * that slides to the active tab. Every panel stays mounted in one grid cell, the inactive ones
+ * invisible, so the box is as tall as the tallest panel and switching never moves the page. */
 export function Tabs({
+  label,
   items,
 }: {
+  label: string;
   /** `short` replaces `label` on phones, where four equal tabs leave ~80px each. */
   items: { label: string; short?: string; panel: ReactNode }[];
 }) {
@@ -19,7 +22,7 @@ export function Tabs({
       <TabsList
         ref={bar}
         data-pill={ready || undefined}
-        aria-label="How an agent sees Sakura Lang"
+        aria-label={label}
         className="group/pill relative grid h-11 w-full rounded-lg border border-border bg-muted p-1"
         style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
       >
@@ -45,15 +48,18 @@ export function Tabs({
           </TabsTrigger>
         ))}
       </TabsList>
-      {items.map((it) => (
-        <TabsContent
-          key={it.label}
-          value={it.label}
-          className="motion-safe:animate-[note-in_250ms_var(--ease-out)_both]"
-        >
-          {it.panel}
-        </TabsContent>
-      ))}
+      <div className="grid">
+        {items.map((it) => (
+          <TabsContent
+            key={it.label}
+            value={it.label}
+            forceMount
+            className="col-start-1 row-start-1 min-w-0 data-[state=active]:motion-safe:animate-[note-in_250ms_var(--ease-out)_both] data-[state=inactive]:invisible"
+          >
+            {it.panel}
+          </TabsContent>
+        ))}
+      </div>
     </TabsRoot>
   );
 }

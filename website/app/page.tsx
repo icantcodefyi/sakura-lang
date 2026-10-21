@@ -2,19 +2,12 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { HeaderControls } from "@/components/header-controls";
 import { SiteHeader } from "@/components/site-header";
-import { AgentView } from "@/components/landing/agent-view";
-import { Anatomy } from "@/components/landing/anatomy";
-import { Authority } from "@/components/landing/authority";
 import { Benchmarks } from "@/components/landing/benchmarks";
-import { Closing } from "@/components/landing/closing";
-import { Compare } from "@/components/landing/compare";
-import { Effects } from "@/components/landing/effects";
-import { Guarantees } from "@/components/landing/guarantees";
+import { CodeSample } from "@/components/landing/code";
 import { Hero } from "@/components/landing/hero";
 import { Install } from "@/components/landing/install";
-import { Pillars } from "@/components/landing/pillars";
-import { Review } from "@/components/landing/review";
-import { Roadmap } from "@/components/landing/roadmap";
+import { Status } from "@/components/landing/status";
+import { Why } from "@/components/landing/why";
 import { homeImageAlt } from "@/lib/og";
 import { absolute, author, ids, JsonLd, pageMetadata } from "@/lib/seo";
 import { RELEASE } from "@/lib/release";
@@ -70,19 +63,14 @@ export default function Home() {
         <HeaderControls />
       </SiteHeader>
       <main id="main" className="flex-1">
+        {/* The questions a curious developer asks, in order: what, why, how it reads, how fast,
+            how ready, how to start. Everything else lives in the docs. */}
         <Hero />
-        <Install />
-        <Anatomy />
-        <Review />
-        <Effects />
-        <Authority />
-        <Guarantees />
-        <AgentView />
-        <Pillars />
-        <Compare />
+        <Why />
+        <CodeSample />
         <Benchmarks />
-        <Roadmap />
-        <Closing />
+        <Status />
+        <Install />
       </main>
       <SiteFooter />
       <JsonLd data={jsonLd} />

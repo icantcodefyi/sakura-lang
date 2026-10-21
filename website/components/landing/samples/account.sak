@@ -1,0 +1,32 @@
+type Cents = Int where it >= 0
+type Account = { id: String, balance: Cents }
+error Overdrawn(balance: Cents)
+
+effect Ledger {
+  fn record(acct: Account) -> Unit
+}
+
+fn withdraw(acct: Account, amount: Cents) -> Account ! {Ledger, Fail<Overdrawn>}
+  requires positive: amount > 0
+  ensures result.balance == acct.balance - amount
+{
+  if amount > acct.balance { fail Overdrawn { balance: acct.balance } }
+  let next = Account { id: acct.id, balance: Cents.from(acct.balance - amount) }
+  Ledger.record(next)
+  next
+}
+
+fn ignore_ledger() -> Handler<Ledger> {
+  handler Ledger {
+    fn record(acct) { () }
+  }
+}
+
+test "withdraw never overdraws" {
+  let acct = Account { id: "a1", balance: 500 }
+  with ignore_ledger() {
+    expect_eq(withdraw(acct, 200).balance, 300)
+    expect_fail(fn() { withdraw(acct, 900) }, Overdrawn { balance: 500 })
+  }
+}
+// @landing-context

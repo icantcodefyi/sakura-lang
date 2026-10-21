@@ -1,0 +1,6 @@
+type Cents = Int where it >= 0
+
+fn pay(amount: Cents) -> Cents { amount }
+
+fn refund() -> Cents { pay(-5) }
+// @landing-context expect=V5004

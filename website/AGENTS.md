@@ -10,14 +10,21 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Landing page
 
+The page answers, in order: what Sakura Lang is, why use it, what the code looks like, whether
+it is fast, whether it is ready and how to start. Detail belongs in the docs, linked from there.
 Every displayed version comes from `RELEASE` in `lib/release.ts`: the hero badge, install
-commands and platform rows, release strip, footer, changelog page and llms.txt. Change it only
-once the tag is published; then check that the copy beside it (`install.tsx` platform `since`,
-`roadmap.tsx` bodies, `agent-view.tsx` list) still shows only what has shipped. `/changelog`
-renders the repository `CHANGELOG.md`, and `vercel.json` redeploys when it changes.
+commands, the status section, footer, changelog page and llms.txt. Change it only once the tag
+is published; then check that `status.tsx` still matches /docs/stability. `/changelog` renders
+the repository `CHANGELOG.md`, and `vercel.json` redeploys when it changes.
 Its Sakura samples live in `components/landing/samples/*.sak` and are checked by
-`scripts/check-doc-sweep.py`; the outputs shown beside them are recorded from the compiler and
-must be re-recorded when they change.
+`scripts/check-doc-sweep.py`; the outputs shown beside them (`code.tsx`, `install.tsx`,
+`tests-figure.tsx`) are recorded from the compiler and must be re-recorded when they change.
+Benchmark figures come only from `lib/bench.ts`.
+
+The hero tree is grown from a fixed seed in `lib/sakura-tree.ts`. `app/tree-*.svg` serve it as a
+poster per theme; `tree-scene.ts` (three.js, loaded by dynamic import only) draws the same tree
+live through the same camera. Keep three.js out of every static import. The figures loop in CSS
+(`globals.css`, Landing), only inside `play.tsx` and only without reduced motion.
 
 ## CI coverage
 

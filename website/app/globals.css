@@ -399,81 +399,285 @@ figure.shiki figcaption {
 
 /* ---------- Landing ---------- */
 
+/* The hero tree's poster: one file per theme (app/tree-*.svg), so only the shown one loads. */
+.tree-poster {
+  background: url("/tree-light.svg") center / contain no-repeat;
+}
+.dark .tree-poster {
+  background-image: url("/tree-dark.svg");
+}
+
 /*
- * The hero sky: sakura, sky and magenta blooms over paper, with a grain tile, fading out before
- * the copy so body text stays on paper. Static: painted once, never animated. On ink the blooms
- * drop to a glow.
+ * The landing figures loop only while on screen: components/landing/play.tsx sets data-play on a
+ * [data-gate] box from an IntersectionObserver, and everything inside it waits without one. Each
+ * loop is declared only without a reduced-motion preference; the static styles are a frame.
  */
-.sakura-sky {
-  --bloom-sakura: var(--sakura);
-  --bloom-deep: color-mix(in oklab, var(--magenta) 72%, transparent);
-  --bloom-sky: var(--sky);
-  --bloom-blush: var(--blush);
-  --grain-opacity: 0.6;
-  position: absolute;
-  inset: 0 0 auto;
-  height: min(100%, 52rem);
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      22% 34% at 6% 8%,
-      var(--bloom-sakura),
-      color-mix(in oklab, var(--bloom-sakura) 80%, transparent) 30%,
-      transparent 72%
-    ),
-    radial-gradient(
-      30% 44% at -4% 34%,
-      var(--bloom-sakura),
-      color-mix(in oklab, var(--bloom-sakura) 66%, transparent) 35%,
-      transparent 72%
-    ),
-    radial-gradient(16% 26% at 24% 2%, var(--bloom-deep), transparent 72%),
-    radial-gradient(
-      30% 34% at 40% -10%,
-      var(--bloom-sky),
-      color-mix(in oklab, var(--bloom-sky) 80%, transparent) 35%,
-      transparent 74%
-    ),
-    radial-gradient(
-      24% 30% at 60% 2%,
-      var(--bloom-sky),
-      color-mix(in oklab, var(--bloom-sky) 66%, transparent) 30%,
-      transparent 72%
-    ),
-    radial-gradient(20% 34% at 80% -2%, var(--bloom-deep), transparent 72%),
-    radial-gradient(
-      30% 50% at 102% 16%,
-      var(--bloom-sakura),
-      color-mix(in oklab, var(--bloom-sakura) 80%, transparent) 35%,
-      transparent 72%
-    ),
-    radial-gradient(
-      22% 30% at 90% 46%,
-      color-mix(in oklab, var(--bloom-sakura) 50%, transparent),
-      transparent 72%
-    ),
-    radial-gradient(70% 50% at 50% 20%, var(--bloom-blush), transparent 80%);
-  mask-image: linear-gradient(to bottom, black 30%, rgb(0 0 0 / 0.55) 55%, transparent 82%);
+[data-gate]:not([data-play]),
+[data-gate]:not([data-play]) * {
+  animation-play-state: paused !important;
 }
-.sakura-sky::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  opacity: var(--grain-opacity);
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .47 0 0 0 0 .12 0 0 0 0 .3 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+
+/* Refinement figure: a value falls onto the clause; a pass drops through, a failure stops. */
+.rf-dot {
+  opacity: 0;
 }
-.dark .sakura-sky {
-  --bloom-sakura: color-mix(in oklab, var(--sakura) 30%, transparent);
-  --bloom-deep: color-mix(in oklab, var(--magenta) 26%, transparent);
-  --bloom-sky: color-mix(in oklab, var(--sky) 7%, transparent);
-  --bloom-blush: transparent;
-  --grain-opacity: 0.5;
-  mask-image: linear-gradient(to bottom, black 8%, rgb(0 0 0 / 0.4) 40%, transparent 66%);
+@media (prefers-reduced-motion: no-preference) {
+  .rf-dot,
+  .rf-flash,
+  .rf-result {
+    animation: 6s var(--rf-delay, 0s) infinite both;
+  }
+  .rf-pass {
+    animation-name: rf-pass;
+    animation-timing-function: var(--ease-in-out);
+  }
+  .rf-stop {
+    animation-name: rf-stop;
+    animation-timing-function: var(--ease-in-out);
+  }
+  .rf-flash {
+    animation-name: rf-flash;
+  }
+  .rf-result.rf-early {
+    animation-name: rf-show-early;
+  }
+  .rf-result.rf-late {
+    animation-name: rf-show-late;
+  }
 }
-.dark .sakura-sky::after {
-  mix-blend-mode: soft-light;
+@keyframes rf-pass {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  6% {
+    opacity: 1;
+  }
+  34% {
+    opacity: 1;
+    transform: translateY(136px);
+  }
+  40%,
+  100% {
+    opacity: 0;
+    transform: translateY(136px);
+  }
+}
+@keyframes rf-stop {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  6% {
+    opacity: 1;
+  }
+  22% {
+    opacity: 1;
+    transform: translateY(58px);
+  }
+  27%,
+  100% {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+}
+@keyframes rf-flash {
+  0%,
+  21% {
+    opacity: 0;
+  }
+  24%,
+  88% {
+    opacity: 1;
+  }
+  96%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes rf-show-early {
+  0%,
+  22% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  28%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+  96%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes rf-show-late {
+  0%,
+  32% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  38%,
+  88% {
+    opacity: 1;
+    transform: none;
+  }
+  96%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Tests figure: the host's answers and the test handlers swap in place, row after row. */
+.det-run {
+  opacity: 0;
+}
+.det-pill {
+  transform: translateX(100%);
+}
+.det-dot {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .det-run,
+  .det-test,
+  .det-dot {
+    animation: 7s var(--ease-smooth-out) calc(var(--det-i, 0) * 60ms) infinite both;
+  }
+  .det-run {
+    animation-name: det-run;
+  }
+  .det-test {
+    animation-name: det-test;
+  }
+  .det-dot {
+    animation-name: det-dot;
+    animation-timing-function: var(--ease-in-out);
+    animation-duration: 3.5s;
+  }
+  .det-pill {
+    animation: det-pill 7s var(--ease-smooth-out) infinite both;
+  }
+}
+@keyframes det-run {
+  0%,
+  44% {
+    opacity: 1;
+    transform: none;
+  }
+  50%,
+  94% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes det-test {
+  0%,
+  44% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  50%,
+  94% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes det-pill {
+  0%,
+  44% {
+    transform: none;
+  }
+  50%,
+  94% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes det-dot {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  85%,
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+/* Pipeline figure: petals carry the build from source through the checker to each backend. */
+.pp {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pp {
+    animation: 5.6s linear var(--pp-delay, 0s) infinite both;
+  }
+  .pp-go {
+    animation-name: pp-go;
+  }
+  .pp-stall {
+    animation-name: pp-stall;
+  }
+}
+@keyframes pp-go {
+  0% {
+    opacity: 0;
+    transform: translate(70px, 104px) rotate(0deg);
+  }
+  6% {
+    opacity: 1;
+  }
+  36% {
+    transform: translate(150px, 104px) rotate(110deg);
+  }
+  56% {
+    transform: translate(206px, 104px) rotate(160deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(282px, calc(104px + var(--pp-y))) rotate(300deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(282px, calc(104px + var(--pp-y))) rotate(320deg);
+  }
+}
+@keyframes pp-stall {
+  0% {
+    opacity: 0;
+    transform: translate(70px, 104px) rotate(0deg);
+  }
+  6% {
+    opacity: 1;
+  }
+  36% {
+    transform: translate(150px, 104px) rotate(110deg);
+  }
+  56% {
+    opacity: 1;
+    transform: translate(206px, 104px) rotate(160deg);
+  }
+  74%,
+  100% {
+    opacity: 0;
+    transform: translate(240px, calc(104px + var(--pp-y) / 2)) rotate(220deg);
+  }
 }
 
 /* ---------- Motion ---------- */
@@ -656,45 +860,5 @@ figure.shiki figcaption {
   from {
     opacity: 0;
     transform: rotate(-36deg);
-  }
-}
-
-@keyframes swap-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.98);
-    filter: blur(3px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-}
-
-/* An effect operation travelling from the function up to its handler (landing diagram). */
-.lane-dot {
-  top: 50%;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .lane-dot {
-    top: auto;
-    bottom: 0;
-    opacity: 0;
-    animation: lane-up 2.1s var(--ease-in-out) infinite;
-  }
-}
-@keyframes lane-up {
-  0% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  15%,
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-5.5rem);
   }
 }

@@ -1,0 +1,6 @@
+type Cents = Int where it >= 0
+
+fn pay(amount: Cents) -> Cents { amount }
+
+fn settle(n: Int) -> Cents { pay(n) }
+// @landing-context expect=V2001
