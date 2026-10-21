@@ -1,0 +1,16 @@
+// milestone: M3
+// needs: 64-bit Int backend (WASM/native); JS reports D003 first (expect-defect@js)
+// expect-exit@js: 70
+// expect-defect@js: D003
+// covers: design §4.1; §17.260 (G05): `MIN % -1` is 0, only `MIN / -1` is D001
+
+fn min() -> Int { -9_223_372_036_854_775_807 - 1 }
+
+fn neg_one() -> Int { 0 - 1 }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{min() % neg_one()}")
+  Console.print("{min() % 1}")
+  Console.print("{min() % -1}")
+  Console.print("{(min() + 1) % neg_one()}")
+}

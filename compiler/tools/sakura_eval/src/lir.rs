@@ -1546,7 +1546,7 @@ impl<'m> Vm<'m> {
             (IntMul, [I(x), I(y)]) => checked(self, x.checked_mul(*y), "*")?,
             (IntDiv | IntRem, [I(_), I(0)]) => return self.defect("D002", "division by zero"),
             (IntDiv, [I(x), I(y)]) => checked(self, x.checked_div(*y), "/")?,
-            (IntRem, [I(x), I(y)]) => checked(self, x.checked_rem(*y), "%")?,
+            (IntRem, [I(x), I(y)]) => I(x.wrapping_rem(*y)), // `MIN % -1` is 0 (§17.260 (G05))
             (IntNeg, [I(x)]) => checked(self, x.checked_neg(), "-")?,
             (FloatAdd, [F(x), F(y)]) => F(x + y),
             (FloatSub, [F(x), F(y)]) => F(x - y),

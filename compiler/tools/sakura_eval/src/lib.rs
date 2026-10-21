@@ -987,7 +987,7 @@ fn prim(module: &Module, op: &PrimOp, args: &[Value]) -> R<Value> {
         (IntMul, [Int(a), Int(b)]) => checked(a.checked_mul(*b), "*")?,
         (IntDiv | IntRem, [Int(_), Int(0)]) => return Err(defect("D002", "division by zero")),
         (IntDiv, [Int(a), Int(b)]) => checked(a.checked_div(*b), "/")?,
-        (IntRem, [Int(a), Int(b)]) => checked(a.checked_rem(*b), "%")?,
+        (IntRem, [Int(a), Int(b)]) => Int(a.wrapping_rem(*b)), // `MIN % -1` is 0 (§17.260 (G05))
         (IntNeg, [Int(a)]) => checked(a.checked_neg(), "-")?,
         (FloatAdd, [Float(a), Float(b)]) => Float(a + b),
         (FloatSub, [Float(a), Float(b)]) => Float(a - b),

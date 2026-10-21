@@ -838,10 +838,14 @@ impl<'p, 'c> Run<'p, 'c> {
                 if j == 0 {
                     return Err(self.pad(false, Some(ZERO)));
                 }
-                if i == i64::MIN && j == -1 {
-                    return Err(self.pad(false, Some(OVERFLOW)));
+                // `MIN / -1` is D001; `MIN % -1` is 0 (§17.260 (G05)).
+                if *op == PrimOp::IntRem {
+                    i.wrapping_rem(j) as u64
+                } else {
+                    i.checked_div(j)
+                        .ok_or(())
+                        .map_err(|_| self.pad(false, Some(OVERFLOW)))? as u64
                 }
-                (if *op == PrimOp::IntDiv { i / j } else { i % j }) as u64
             }
             PrimOp::IntNeg => i
                 .checked_neg()

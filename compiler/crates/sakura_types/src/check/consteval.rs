@@ -298,7 +298,7 @@ fn binary(op: BinaryOp, a: Value, b: Value) -> R<Value> {
         (Mul, Int(x), Int(y)) => int(x.checked_mul(y))?,
         (Div | Rem, Int(_), Int(0)) => return Err(Stop::Defect),
         (Div, Int(x), Int(y)) => int(x.checked_div(y))?,
-        (Rem, Int(x), Int(y)) => int(x.checked_rem(y))?,
+        (Rem, Int(x), Int(y)) => int(Some(x.wrapping_rem(y)))?, // `MIN % -1` is 0 (§17.260 (G05))
         (Add, Float(x), Float(y)) => Float(x + y),
         (Sub, Float(x), Float(y)) => Float(x - y),
         (Mul, Float(x), Float(y)) => Float(x * y),

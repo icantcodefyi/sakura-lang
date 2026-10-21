@@ -119,7 +119,10 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
             ));
             continue;
         }
-        let stdout = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
+        // WASM's stdout, as the ending is WASM's (`<name>.wasm.stdout` overrides, §17.80).
+        let stdout = std::fs::read_to_string(path.with_extension("wasm.stdout"))
+            .or_else(|_| std::fs::read_to_string(path.with_extension("stdout")))
+            .unwrap_or_default();
         let uri = format!("file:///semantics/{name}.sak");
         let out = corpus.join("semantics").join(&name);
         jobs.push(Job {

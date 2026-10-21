@@ -95,6 +95,10 @@ retains earlier implementation history.
 
 ### Fixed
 
+- `MIN % -1` (`-2^63 % -1`) is `0` on WASM and native, as design §4.1 and §17.260 (G05) say; it was the
+  defect `D001` there. Only `MIN / -1` is `D001`; JS reaches `D003` before either operator, so
+  it is unchanged. A remainder that `sakura verify` proves defined no longer defects at run
+  time. Fixtures `compiler/tests/semantics/int_min_rem.sak` and `defect_D001_int_min_div.sak`.
 - `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
   and never the current directory's tree, and a bare name (`Fs.rooted`, `rooted`) loads the
   tree only under a project (a `sakura.toml` or a `src/` directory here), so stray `.sak` or

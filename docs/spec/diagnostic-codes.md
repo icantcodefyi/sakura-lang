@@ -15,7 +15,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 
 | Code | Severity/category | Meaning (identity label) | Fixture | Status |
 |---|---|---|---|---|
-| `D001` | defect | `int_overflow` | [defect_D001_int_overflow.sak](../../compiler/tests/semantics/defect_D001_int_overflow.sak) | active |
+| `D001` | defect | `int_overflow` | [defect_D001_int_min_div.sak](../../compiler/tests/semantics/defect_D001_int_min_div.sak) | active |
 | `D002` | defect | `division_by_zero` | [defect_D002_division_by_zero.sak](../../compiler/tests/semantics/defect_D002_division_by_zero.sak) | active |
 | `D003` | defect | `int_beyond_js_safe_range` | [defect_D003_js_unsafe_integer.sak](../../compiler/tests/semantics/defect_D003_js_unsafe_integer.sak) | active |
 | `D004` | defect | `float_not_finite` | [defect_D004_float_round_nan.sak](../../compiler/tests/semantics/defect_D004_float_round_nan.sak) | active |

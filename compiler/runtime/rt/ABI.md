@@ -448,7 +448,7 @@ diagnostic code.
 
 | Sakura type | Known-type representation (locals, params, results, fields) | Boxed form (§4) | Source |
 |---|---|---|---|
-| `Int` | `i64`; every `+ - * / % neg` is checked, `D001` on overflow, `D002` on zero divisor, including `MIN / -1` and `MIN % -1` (`D001`; research/09 §6 note) | `IntBox`, tag 1, payload `i64` at offset 8 | §17.80, §17.83 |
+| `Int` | `i64`; every `+ - * / % neg` is checked, `D001` on overflow, `D002` on zero divisor; `MIN / -1` is `D001` and `MIN % -1` is `0` (design §17.260 (G05)) | `IntBox`, tag 1, payload `i64` at offset 8 | §17.80, §17.83, §17.260 |
 | `Float` | `f64`, IEEE 754 binary64, NaN payloads not canonicalised; `Show`, `Eq`, `Ord`, `Hash` treat all NaNs as one value and `-0.0 == 0.0` as JS does | `FloatBox`, tag 2, payload `f64` at offset 8 | §17.83 |
 | `Bool` | `i32`, exactly 0 or 1 | immediate word `0`/`1` tagged as §4 | §17.83 |
 | `Unit` | no value; a `Unit`-typed slot in a generic position is the immediate word for `Unit` (§4) | immediate | — |

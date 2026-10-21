@@ -638,9 +638,11 @@ impl Ranges {
                     lo: if a.lo >= 0 { 0 } else { -m },
                     hi: if a.hi <= 0 { 0 } else { m },
                 };
-                // `MIN / -1` overflows an asymmetric range (i64).
-                let overflow =
-                    -self.range.lo > self.range.hi && a.contains(self.range.lo) && b.contains(-1);
+                // `MIN / -1` overflows an asymmetric range (i64); `MIN % -1` is 0 (§17.260 (G05)).
+                let overflow = matches!(op, PrimOp::IntDiv)
+                    && -self.range.lo > self.range.hi
+                    && a.contains(self.range.lo)
+                    && b.contains(-1);
                 return Some((iv, !b.contains(0) && !overflow));
             }
             _ => unreachable!(),
@@ -783,7 +785,7 @@ mod tests {
             [true, true]
         );
         assert_eq!(both(None, IntDiv, |x| vec![x, int(-1)]), [true, false]);
-        assert_eq!(both(None, IntRem, |x| vec![x, int(-1)]), [true, false]);
+        assert_eq!(both(None, IntRem, |x| vec![x, int(-1)]), [true, true]);
         assert_eq!(
             both(None, IntDiv, |_| vec![int(i64::MIN), int(-1)]),
             [true, false]

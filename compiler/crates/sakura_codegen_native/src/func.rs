@@ -1207,11 +1207,12 @@ impl Gen<'_, '_, '_> {
                 let (p, q) = (arg(0)?, arg(1)?);
                 let zero = self.b.ins().icmp_imm_s(IntCC::Equal, q, 0);
                 self.pad_if(zero, live, Some(image::ZERO))?;
-                let min = self.b.ins().icmp_imm_s(IntCC::Equal, p, i64::MIN);
-                let neg1 = self.b.ins().icmp_imm_s(IntCC::Equal, q, -1);
-                let both = self.b.ins().band(min, neg1);
-                self.pad_if(both, live, Some(image::OVERFLOW))?;
+                // `MIN / -1` is D001; `MIN % -1` is 0, which `srem` defines (§17.260 (G05)).
                 if *op == PrimOp::IntDiv {
+                    let min = self.b.ins().icmp_imm_s(IntCC::Equal, p, i64::MIN);
+                    let neg1 = self.b.ins().icmp_imm_s(IntCC::Equal, q, -1);
+                    let both = self.b.ins().band(min, neg1);
+                    self.pad_if(both, live, Some(image::OVERFLOW))?;
                     self.b.ins().sdiv(p, q)
                 } else {
                     self.b.ins().srem(p, q)

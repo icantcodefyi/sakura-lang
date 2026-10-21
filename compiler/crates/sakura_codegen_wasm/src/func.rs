@@ -1464,14 +1464,14 @@ impl Gen<'_, '_> {
             PrimOp::IntDiv | PrimOp::IntRem => {
                 s.local_get(a[1]).i64_eqz();
                 self.pad_if(s, live, Some(ZERO))?;
-                s.local_get(a[0]).i64_const(i64::MIN).i64_eq();
-                s.local_get(a[1]).i64_const(-1).i64_eq().i32_and();
-                self.pad_if(s, live, Some(OVERFLOW))?;
-                s.local_get(a[0]).local_get(a[1]);
+                // `MIN / -1` is D001; `MIN % -1` is 0, which `i64.rem_s` returns (§17.260 (G05)).
                 if *op == PrimOp::IntDiv {
-                    s.i64_div_s();
+                    s.local_get(a[0]).i64_const(i64::MIN).i64_eq();
+                    s.local_get(a[1]).i64_const(-1).i64_eq().i32_and();
+                    self.pad_if(s, live, Some(OVERFLOW))?;
+                    s.local_get(a[0]).local_get(a[1]).i64_div_s();
                 } else {
-                    s.i64_rem_s();
+                    s.local_get(a[0]).local_get(a[1]).i64_rem_s();
                 }
                 s.local_set(d);
             }
