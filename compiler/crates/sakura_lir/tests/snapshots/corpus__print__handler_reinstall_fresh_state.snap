@@ -1,0 +1,86 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::handler_reinstall_fresh_state, frame 13 slots [%20 bool, %24 i64, %25 i64, %26 i64, %29 i64, %30 word*, %31 i64, %34 i64, %35 word*, %36 i64, %38 i64, %39 word*, %40 i64]
+  b0():
+    %0 next: ptr = closure main$Counter_next#2[]
+    %1 lit: i64 = const 0
+    %2 handler: ptr = handler main::handler_reinstall_fresh_state::Counter row 4 state(%1) clauses(%0)
+    dup %2
+    %33 $act: id = handle_push %2
+    %37 clause: ptr = bound %33 main::handler_reinstall_fresh_state::Counter.next
+    call main$Counter_next#2(%37, %33) -> b7(%2, %33)
+  b1(%3 v: i64, %4 handler: ptr):
+    dup %4
+    %28 $act: id = handle_push %4
+    %32 clause: ptr = bound %28 main::handler_reinstall_fresh_state::Counter.next
+    call main$Counter_next#2(%32, %28) -> b6(%4, %3)
+  b2(%5 v: i64, %6 handler: ptr, %7 v: i64):
+    dup %6
+    handle_push %6
+    %23 $act: id = handle_push %6
+    %27 clause: ptr = bound %23 main::handler_reinstall_fresh_state::Counter.next
+    call main$Counter_next#2(%27, %23) -> b5(%7, %5)
+  b3(%8 v: i64, %9 v: i64, %10 v: i64):
+    %11 s: ptr = show %9
+    %12 lit: ptr = const str 0
+    %13 s: ptr = concat %11, %12
+    drop %12
+    %14 s: ptr = show %10
+    %15 s: ptr = concat %13, %14
+    drop %14
+    %16 lit: ptr = const str 0
+    %17 s: ptr = concat %15, %16
+    drop %16
+    %18 s: ptr = show %8
+    %19 s: ptr = concat %17, %18
+    drop %18
+    perform std::console::Console.print(%19) -> b4()
+  b4(%20 r: unit):
+    %21 box: word = box %20
+    %22 unbox: unit = unbox %21
+    drop %21
+    ret %22
+  b5(%24 r: i64, %25 v: i64, %26 v: i64) [handle, handle]:
+    handle_pop
+    handle_pop
+    jump b3(%24, %25, %26)
+  b6(%29 r: i64, %30 handler: ptr, %31 v: i64) [handle]:
+    handle_pop
+    jump b2(%29, %30, %31)
+  b7(%34 r: i64, %35 handler: ptr, %36 $act: id) [handle]:
+    %41 clause: ptr = bound %36 main::handler_reinstall_fresh_state::Counter.next
+    call main$Counter_next#2(%41, %36) -> b8(%35, %34)
+  b8(%38 r: i64, %39 handler: ptr, %40 r: i64) [handle]:
+    %42 lit: i64 = const 10
+    %43 t: i64 = intmul %38, %42
+    %44 t: i64 = intadd %40, %43
+    handle_pop
+    jump b1(%44, %39)
+
+fn $entry#1 top -> unit ; main::handler_reinstall_fresh_state, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$Counter_next#2 clause main::handler_reinstall_fresh_state::Counter.next -> i64 ; main::handler_reinstall_fresh_state, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 4
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 4 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 4
+    ret %6

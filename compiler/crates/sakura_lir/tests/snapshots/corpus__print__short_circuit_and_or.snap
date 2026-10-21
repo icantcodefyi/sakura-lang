@@ -1,0 +1,113 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::short_circuit_and_or, frame 21 slots [%2 bool, %6 bool, %7 bool, %12 bool, %13 bool, %14 bool, %20 bool, %21 bool, %22 bool, %23 bool, %41 bool, %53 bool, %54 bool, %55 bool, %56 bool, %64 bool, %65 bool, %66 bool, %71 bool, %72 bool, %76 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: bool = const false
+    call t#2(%0, %1) -> b1()
+  b1(%2 r: bool):
+    if %2 then b19() else b20()
+  b2(%3 v: bool):
+    %4 lit: ptr = const str 0
+    %5 lit: bool = const true
+    call t#2(%4, %5) -> b3(%3)
+  b3(%6 r: bool, %7 v: bool):
+    if %6 then b16(%7) else b17(%7)
+  b4(%8 v: bool, %9 v: bool):
+    %10 lit: ptr = const str 1
+    %11 lit: bool = const true
+    call t#2(%10, %11) -> b5(%9, %8)
+  b5(%12 r: bool, %13 v: bool, %14 v: bool):
+    if %12 then b13(%13, %14) else b14(%13, %14)
+  b6(%15 v: bool, %16 v: bool, %17 v: bool):
+    %18 lit: ptr = const str 1
+    %19 lit: bool = const false
+    call t#2(%18, %19) -> b7(%16, %17, %15)
+  b7(%20 r: bool, %21 v: bool, %22 v: bool, %23 v: bool):
+    if %20 then b10(%21, %22, %23) else b11(%21, %22, %23)
+  b8(%24 v: bool, %25 v: bool, %26 v: bool, %27 v: bool):
+    %28 s: ptr = show %25
+    %29 lit: ptr = const str 2
+    %30 s: ptr = concat %28, %29
+    drop %29
+    %31 s: ptr = show %26
+    %32 s: ptr = concat %30, %31
+    drop %31
+    %33 lit: ptr = const str 2
+    %34 s: ptr = concat %32, %33
+    drop %33
+    %35 s: ptr = show %27
+    %36 s: ptr = concat %34, %35
+    drop %35
+    %37 lit: ptr = const str 2
+    %38 s: ptr = concat %36, %37
+    drop %37
+    %39 s: ptr = show %24
+    %40 s: ptr = concat %38, %39
+    drop %39
+    perform std::console::Console.print(%40) -> b9()
+  b9(%41 r: unit):
+    %42 box: word = box %41
+    %43 unbox: unit = unbox %42
+    drop %42
+    ret %43
+  b10(%44 v: bool, %45 v: bool, %46 v: bool):
+    %50 lit: bool = const true
+    jump b8(%50, %44, %45, %46)
+  b11(%47 v: bool, %48 v: bool, %49 v: bool):
+    %51 lit: ptr = const str 3
+    %52 lit: bool = const true
+    call t#2(%51, %52) -> b12(%47, %48, %49)
+  b12(%53 r: bool, %54 v: bool, %55 v: bool, %56 v: bool):
+    jump b8(%53, %54, %55, %56)
+  b13(%57 v: bool, %58 v: bool):
+    %61 lit: bool = const true
+    jump b6(%61, %57, %58)
+  b14(%59 v: bool, %60 v: bool):
+    %62 lit: ptr = const str 4
+    %63 lit: bool = const false
+    call t#2(%62, %63) -> b15(%59, %60)
+  b15(%64 r: bool, %65 v: bool, %66 v: bool):
+    jump b6(%64, %65, %66)
+  b16(%67 v: bool):
+    %69 lit: ptr = const str 5
+    %70 lit: bool = const false
+    call t#2(%69, %70) -> b18(%67)
+  b17(%68 v: bool):
+    %73 lit: bool = const false
+    jump b4(%73, %68)
+  b18(%71 r: bool, %72 v: bool):
+    jump b4(%71, %72)
+  b19():
+    %74 lit: ptr = const str 6
+    %75 lit: bool = const true
+    call t#2(%74, %75) -> b21()
+  b20():
+    %77 lit: bool = const false
+    jump b2(%77)
+  b21(%76 r: bool):
+    jump b2(%76)
+
+fn $entry#1 top -> unit ; main::short_circuit_and_or, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn t#2 top -> bool ; main::short_circuit_and_or, frame 4 slots [%0 word*, %1 bool, %2 bool, %3 bool]
+  b0(%0 label: ptr, %1 v: bool):
+    perform std::console::Console.print(%0) -> b1(%1)
+  b1(%2 r: unit, %3 v: bool):
+    %4 box: word = box %2
+    drop %4
+    ret %3

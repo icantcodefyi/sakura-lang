@@ -119,6 +119,13 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
             ));
             continue;
         }
+        // `Exit(n)` is `Cli.exit`'s silent exit; a failed `main` exits 1 with its error on stderr.
+        if ending.starts_with("Exit(") && d.contains_key("expect-stderr") {
+            report.push(format!(
+                "semantics/{name}: left out (a failed `main` is not an `Exit` ending)"
+            ));
+            continue;
+        }
         // WASM's stdout, as the ending is WASM's (`<name>.wasm.stdout` overrides, §17.80).
         let stdout = std::fs::read_to_string(path.with_extension("wasm.stdout"))
             .or_else(|_| std::fs::read_to_string(path.with_extension("stdout")))

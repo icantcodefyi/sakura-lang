@@ -21,7 +21,10 @@ semantics/channel_cancel_wakes_waiters: unsupported (builtin task_host)
 semantics/channel_close_drains_then_none: unsupported (builtin task_host)
 semantics/channel_recv_every_task_waiting: unsupported (builtin task_host)
 semantics/channel_rejects_capacity: unsupported (builtin task_host)
+semantics/channel_rejects_negative_capacity: unsupported (builtin task_host)
+semantics/channel_send_full_every_task_waiting: unsupported (builtin task_host)
 semantics/channel_try_send_full: unsupported (builtin task_host)
+semantics/channel_two_tasks_wait_on_each_other: unsupported (builtin task_host)
 semantics/cli_exit_rejects_code: D020, 5 allocated, 0 dup, 5 drop, peak 5, live 0/0
 semantics/cli_exit_runs_finalizers: unsupported (builtin task_host)
 semantics/cli_parse_messages: unsupported (builtin cli_parse)
@@ -76,6 +79,7 @@ semantics/deep_countdown: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deep_recursion_defect: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D001_after_a_kept_bracket: D001, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D001_int_min_div: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D001_int_overflow: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D002_division_by_zero: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D004_float_round_nan: unsupported (builtin float_round)
@@ -108,6 +112,8 @@ semantics/encoding_fatal_vs_replace: unsupported (builtin bytes_from_list)
 semantics/encoding_rejects_unsupported_label: ok, 562 allocated, 2015 dup, 2577 drop, peak 27, live 0/0
 semantics/error_field_name: unsupported (builtin json_encode)
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
+semantics/eval_order_left_to_right: ok, 9 allocated, 0 dup, 9 drop, peak 5, live 0/0
+semantics/float_nan_negative_zero: ok, 41 allocated, 0 dup, 41 drop, peak 6, live 0/0
 semantics/float_rem: ok, 5 allocated, 0 dup, 5 drop, peak 2, live 0/0
 semantics/form_encode_rejects_boundary: unsupported (builtin string_to_bytes)
 semantics/form_encode_wpt: unsupported (builtin bytes_from_list)
@@ -135,6 +141,7 @@ semantics/handler_cancel_twin: unsupported (builtin task_deterministic)
 semantics/handler_clause_fail: ok, 11 allocated, 2 dup, 13 drop, peak 4, live 0/0
 semantics/handler_forwarding: ok, 13 allocated, 3 dup, 16 drop, peak 7, live 0/0
 semantics/handler_lexical_bind: ok, 20 allocated, 7 dup, 27 drop, peak 7, live 0/0
+semantics/handler_reinstall_fresh_state: ok, 10 allocated, 7 dup, 17 drop, peak 4, live 0/0
 semantics/handler_state: ok, 14 allocated, 5 dup, 19 drop, peak 6, live 0/0
 semantics/headers_rejects_invalid_name: unsupported (builtin string_to_bytes)
 semantics/headers_validate_and_combine: unsupported (builtin string_to_bytes)
@@ -153,6 +160,7 @@ semantics/http_redirect_scoped_rejects_hop: unsupported (builtin string_to_bytes
 semantics/http_sequence_in_order: unsupported (builtin string_to_bytes)
 semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
+semantics/int_min_rem: ok, 5 allocated, 0 dup, 5 drop, peak 2, live 0/0
 semantics/json_codec: unsupported (builtin json_encode)
 semantics/json_decode_int_range: unsupported (builtin json_decode)
 semantics/json_parse_malformed: unsupported (builtin json_decode)
@@ -218,6 +226,7 @@ semantics/random_bytes_rejects_negative: unsupported (builtin bytes_from_list)
 semantics/random_int_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, peak 7, live 0/0
 semantics/record_patterns: ok, 13 allocated, 0 dup, 13 drop, peak 4, live 0/0
 semantics/records: ok, 18 allocated, 1 dup, 19 drop, peak 6, live 0/0
+semantics/refined_field_construction_d010: D010, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/refined_var_rebuild: D010, 53 allocated, 52 dup, 105 drop, peak 8, live 0/0
 semantics/refinement_validate_clause: ok, 23 allocated, 3 dup, 26 drop, peak 5, live 0/0
 semantics/request_bytes_limit: unsupported (builtin bytes_from_list)
@@ -237,6 +246,7 @@ semantics/searchparams_order_and_repeats: unsupported (builtin string_to_bytes)
 semantics/searchparams_plus_and_percent: unsupported (builtin string_to_bytes)
 semantics/searchparams_sort_stable: unsupported (builtin string_to_bytes)
 semantics/secret_map_defect: unsupported (builtin secret_wrap)
+semantics/short_circuit_and_or: ok, 11 allocated, 0 dup, 11 drop, peak 4, live 0/0
 semantics/show_format: ok, 37 allocated, 8 dup, 45 drop, peak 7, live 0/0
 semantics/sql_cancel_committed: unsupported (builtin clock_host)
 semantics/sql_rows: unsupported (builtin sql_memory)
@@ -263,6 +273,8 @@ semantics/task_cancel_then_join_is_d095: unsupported (builtin task_host)
 semantics/task_every_stops_on_scope_cancel: unsupported (builtin task_host)
 semantics/task_every_virtual_clock: unsupported (builtin task_host)
 semantics/trace_decode_then_spawn: unsupported (builtin task_host)
+semantics/try_does_not_catch_defect: D030, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
+semantics/try_result_does_not_catch_defect: D030, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/tuples: ok, 24 allocated, 2 dup, 26 drop, peak 6, live 0/0
 semantics/type_aliases: ok, 7 allocated, 0 dup, 7 drop, peak 4, live 0/0
 semantics/typed_errors: ok, 35 allocated, 9 dup, 44 drop, peak 6, live 0/0

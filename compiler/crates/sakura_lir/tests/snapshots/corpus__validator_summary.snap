@@ -21,7 +21,10 @@ semantics/channel_cancel_wakes_waiters: 12 funcs, 46 blocks, 9 dup, 32 drop, val
 semantics/channel_close_drains_then_none: 12 funcs, 52 blocks, 10 dup, 27 drop, valid
 semantics/channel_recv_every_task_waiting: 6 funcs, 14 blocks, 1 dup, 7 drop, valid
 semantics/channel_rejects_capacity: 6 funcs, 13 blocks, 1 dup, 6 drop, valid
+semantics/channel_rejects_negative_capacity: 7 funcs, 15 blocks, 1 dup, 6 drop, valid
+semantics/channel_send_full_every_task_waiting: 6 funcs, 19 blocks, 2 dup, 9 drop, valid
 semantics/channel_try_send_full: 9 funcs, 45 blocks, 10 dup, 28 drop, valid
+semantics/channel_two_tasks_wait_on_each_other: 11 funcs, 33 blocks, 2 dup, 17 drop, valid
 semantics/cli_exit_rejects_code: 6 funcs, 13 blocks, 0 dup, 7 drop, valid
 semantics/cli_exit_runs_finalizers: 7 funcs, 17 blocks, 0 dup, 8 drop, valid
 semantics/cli_parse_messages: 5 funcs, 41 blocks, 3 dup, 16 drop, valid
@@ -76,6 +79,7 @@ semantics/deep_countdown: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/deep_recursion_defect: 4 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/deep_sum: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/defect_D001_after_a_kept_bracket: 4 funcs, 11 blocks, 0 dup, 3 drop, valid
+semantics/defect_D001_int_min_div: 4 funcs, 10 blocks, 0 dup, 3 drop, valid
 semantics/defect_D001_int_overflow: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D002_division_by_zero: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D004_float_round_nan: 2 funcs, 6 blocks, 0 dup, 3 drop, valid
@@ -108,6 +112,8 @@ semantics/encoding_fatal_vs_replace: 10 funcs, 57 blocks, 9 dup, 27 drop, valid
 semantics/encoding_rejects_unsupported_label: 11 funcs, 80 blocks, 18 dup, 30 drop, valid
 semantics/error_field_name: 3 funcs, 18 blocks, 1 dup, 19 drop, valid
 semantics/error_unions: 5 funcs, 28 blocks, 0 dup, 5 drop, valid
+semantics/eval_order_left_to_right: 4 funcs, 20 blocks, 0 dup, 11 drop, valid
+semantics/float_nan_negative_zero: 3 funcs, 16 blocks, 0 dup, 28 drop, valid
 semantics/float_rem: 3 funcs, 11 blocks, 0 dup, 4 drop, valid
 semantics/form_encode_rejects_boundary: 13 funcs, 105 blocks, 14 dup, 59 drop, valid
 semantics/form_encode_wpt: 37 funcs, 304 blocks, 47 dup, 120 drop, valid
@@ -135,6 +141,7 @@ semantics/handler_cancel_twin: 16 funcs, 39 blocks, 0 dup, 18 drop, valid
 semantics/handler_clause_fail: 6 funcs, 17 blocks, 0 dup, 6 drop, valid
 semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 7 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid
+semantics/handler_reinstall_fresh_state: 3 funcs, 12 blocks, 3 dup, 6 drop, valid
 semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 7 drop, valid
 semantics/headers_rejects_invalid_name: 33 funcs, 276 blocks, 53 dup, 123 drop, valid
 semantics/headers_validate_and_combine: 39 funcs, 315 blocks, 73 dup, 137 drop, valid
@@ -153,6 +160,7 @@ semantics/http_redirect_scoped_rejects_hop: 120 funcs, 1364 blocks, 210 dup, 817
 semantics/http_sequence_in_order: 121 funcs, 1399 blocks, 201 dup, 840 drop, valid
 semantics/if_else: 3 funcs, 20 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 21 blocks, 0 dup, 16 drop, valid
+semantics/int_min_rem: 4 funcs, 15 blocks, 0 dup, 4 drop, valid
 semantics/json_codec: 12 funcs, 100 blocks, 5 dup, 74 drop, valid
 semantics/json_decode_int_range: 2 funcs, 9 blocks, 3 dup, 6 drop, valid
 semantics/json_parse_malformed: 47 funcs, 167 blocks, 19 dup, 68 drop, valid
@@ -218,6 +226,7 @@ semantics/random_bytes_rejects_negative: 19 funcs, 100 blocks, 8 dup, 23 drop, v
 semantics/random_int_rejects_reversed_range: 19 funcs, 100 blocks, 8 dup, 23 drop, valid
 semantics/record_patterns: 3 funcs, 14 blocks, 0 dup, 12 drop, valid
 semantics/records: 3 funcs, 9 blocks, 1 dup, 18 drop, valid
+semantics/refined_field_construction_d010: 6 funcs, 14 blocks, 1 dup, 5 drop, valid
 semantics/refined_var_rebuild: 26 funcs, 131 blocks, 19 dup, 45 drop, valid
 semantics/refinement_validate_clause: 10 funcs, 73 blocks, 7 dup, 19 drop, valid
 semantics/request_bytes_limit: 9 funcs, 43 blocks, 6 dup, 25 drop, valid
@@ -237,6 +246,7 @@ semantics/searchparams_order_and_repeats: 97 funcs, 1324 blocks, 215 dup, 753 dr
 semantics/searchparams_plus_and_percent: 22 funcs, 172 blocks, 32 dup, 63 drop, valid
 semantics/searchparams_sort_stable: 33 funcs, 226 blocks, 50 dup, 82 drop, valid
 semantics/secret_map_defect: 4 funcs, 9 blocks, 0 dup, 5 drop, valid
+semantics/short_circuit_and_or: 3 funcs, 26 blocks, 0 dup, 8 drop, valid
 semantics/show_format: 3 funcs, 13 blocks, 2 dup, 23 drop, valid
 semantics/sql_cancel_committed: 8 funcs, 36 blocks, 4 dup, 11 drop, valid
 semantics/sql_rows: 23 funcs, 231 blocks, 6 dup, 124 drop, valid
@@ -263,6 +273,8 @@ semantics/task_cancel_then_join_is_d095: 4 funcs, 12 blocks, 1 dup, 8 drop, vali
 semantics/task_every_stops_on_scope_cancel: 16 funcs, 61 blocks, 4 dup, 26 drop, valid
 semantics/task_every_virtual_clock: 13 funcs, 50 blocks, 1 dup, 17 drop, valid
 semantics/trace_decode_then_spawn: 7 funcs, 25 blocks, 3 dup, 19 drop, valid
+semantics/try_does_not_catch_defect: 3 funcs, 12 blocks, 0 dup, 7 drop, valid
+semantics/try_result_does_not_catch_defect: 4 funcs, 16 blocks, 0 dup, 10 drop, valid
 semantics/tuples: 3 funcs, 9 blocks, 1 dup, 19 drop, valid
 semantics/type_aliases: 4 funcs, 9 blocks, 0 dup, 5 drop, valid
 semantics/typed_errors: 8 funcs, 47 blocks, 4 dup, 25 drop, valid

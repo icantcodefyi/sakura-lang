@@ -1,0 +1,155 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::float_nan_negative_zero::Reading | Reading 24b (v: f64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::float_nan_negative_zero, frame 31 slots [%0 f64, %1 f64, %2 f64, %4 f64, %5 f64, %26 bool, %27 f64, %28 f64, %43 bool, %44 f64, %45 f64, %47 f64, %48 f64, %49 f64, %54 f64, %55 f64, %56 f64, %57 word*, %69 f64, %70 f64, %71 f64, %72 word*, %77 bool, %78 f64, %79 f64, %90 f64, %91 word*, %92 f64, %98 f64, %99 word*, %104 bool]
+  b0():
+    call zero#2() -> b1()
+  b1(%0 r: f64):
+    call zero#2() -> b2(%0)
+  b2(%1 r: f64, %2 r: f64):
+    %3 t: f64 = floatdiv %2, %1
+    call zero#2() -> b3(%3)
+  b3(%4 r: f64, %5 t: f64):
+    %6 t: f64 = floatneg %4
+    %7 t: bool = eq.float %5, %5
+    %8 s: ptr = show %7
+    %9 lit: ptr = const str 0
+    %10 s: ptr = concat %8, %9
+    drop %9
+    %11 t: bool = ne.float %5, %5
+    %12 s: ptr = show %11
+    %13 s: ptr = concat %10, %12
+    drop %12
+    %14 lit: ptr = const str 0
+    %15 s: ptr = concat %13, %14
+    drop %14
+    %16 lit: f64 = const 1.0
+    %17 t: bool = lt.float %5, %16
+    %18 s: ptr = show %17
+    %19 s: ptr = concat %15, %18
+    drop %18
+    %20 lit: ptr = const str 0
+    %21 s: ptr = concat %19, %20
+    drop %20
+    %22 lit: f64 = const 1.0
+    %23 t: bool = gt.float %5, %22
+    %24 s: ptr = show %23
+    %25 s: ptr = concat %21, %24
+    drop %24
+    perform std::console::Console.print(%25) -> b4(%5, %6)
+  b4(%26 r: unit, %27 t: f64, %28 t: f64):
+    %29 box: word = box %26
+    drop %29
+    %30 rec: ptr = alloc main::float_nan_negative_zero::Reading(%27)
+    %31 rec: ptr = alloc main::float_nan_negative_zero::Reading(%27)
+    %32 t: bool = eq.any %30, %31
+    drop %30
+    drop %31
+    %33 s: ptr = show %32
+    %34 lit: ptr = const str 0
+    %35 s: ptr = concat %33, %34
+    drop %34
+    %36 box: word = box %27
+    %37 xs: ptr = alloc list(%36)
+    %38 box: word = box %27
+    %39 xs: ptr = alloc list(%38)
+    %40 t: bool = eq.any %37, %39
+    drop %37
+    drop %39
+    %41 s: ptr = show %40
+    %42 s: ptr = concat %35, %41
+    drop %41
+    perform std::console::Console.print(%42) -> b5(%27, %28)
+  b5(%43 r: unit, %44 t: f64, %45 t: f64):
+    %46 box: word = box %43
+    drop %46
+    call zero#2() -> b6(%44, %45)
+  b6(%47 r: f64, %48 t: f64, %49 t: f64):
+    %50 t: bool = eq.float %49, %47
+    %51 s: ptr = show %50
+    %52 lit: ptr = const str 0
+    %53 s: ptr = concat %51, %52
+    drop %52
+    call zero#2() -> b7(%48, %49, %53)
+  b7(%54 r: f64, %55 t: f64, %56 t: f64, %57 s: ptr):
+    %58 t: bool = lt.float %56, %54
+    %59 s: ptr = show %58
+    %60 s: ptr = concat %57, %59
+    drop %59
+    %61 lit: ptr = const str 0
+    %62 s: ptr = concat %60, %61
+    drop %61
+    %63 lit: f64 = const 1.0
+    %64 t: f64 = floatdiv %63, %56
+    %65 s: ptr = show %64
+    %66 s: ptr = concat %62, %65
+    drop %65
+    %67 lit: ptr = const str 0
+    %68 s: ptr = concat %66, %67
+    drop %67
+    call zero#2() -> b8(%55, %56, %68)
+  b8(%69 r: f64, %70 t: f64, %71 t: f64, %72 s: ptr):
+    %73 lit: f64 = const 1.0
+    %74 t: f64 = floatdiv %73, %69
+    %75 s: ptr = show %74
+    %76 s: ptr = concat %72, %75
+    drop %75
+    perform std::console::Console.print(%76) -> b9(%70, %71)
+  b9(%77 r: unit, %78 t: f64, %79 t: f64):
+    %80 box: word = box %77
+    drop %80
+    %81 s: ptr = show %78
+    %82 lit: ptr = const str 0
+    %83 s: ptr = concat %81, %82
+    drop %82
+    %84 s: ptr = show %79
+    %85 s: ptr = concat %83, %84
+    drop %84
+    %86 lit: ptr = const str 0
+    %87 s: ptr = concat %85, %86
+    drop %86
+    %88 lit: f64 = const 1.0
+    %89 t: f64 = floatneg %88
+    call zero#2() -> b10(%87, %89)
+  b10(%90 r: f64, %91 s: ptr, %92 t: f64):
+    %93 t: f64 = floatmul %92, %90
+    %94 s: ptr = show %93
+    %95 s: ptr = concat %91, %94
+    drop %94
+    %96 lit: ptr = const str 0
+    %97 s: ptr = concat %95, %96
+    drop %96
+    call zero#2() -> b11(%97)
+  b11(%98 r: f64, %99 s: ptr):
+    %100 lit: f64 = const 0.0
+    %101 t: f64 = floatsub %100, %98
+    %102 s: ptr = show %101
+    %103 s: ptr = concat %99, %102
+    drop %102
+    perform std::console::Console.print(%103) -> b12()
+  b12(%104 r: unit):
+    %105 box: word = box %104
+    %106 unbox: unit = unbox %105
+    drop %105
+    ret %106
+
+fn $entry#1 top -> unit ; main::float_nan_negative_zero, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn zero#2 top -> f64 ; main::float_nan_negative_zero, frame 0 slots []
+  b0():
+    %0 lit: f64 = const 0.0
+    ret %0

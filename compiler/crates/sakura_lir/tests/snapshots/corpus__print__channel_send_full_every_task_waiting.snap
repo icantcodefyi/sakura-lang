@@ -1,0 +1,72 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_send_full_every_task_waiting, frame 3 slots [%1 bool, %6 word*, %8 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 f: ptr = closure main$1#2[]
+    %4 lit: i64 = const 1
+    %5 $site: i64 = const 2
+    call with_channel#4(%4, %3, %5) -> b2()
+  b2(%6 r: word):
+    drop %6
+    %7 lit: ptr = const str 1
+    perform std::console::Console.print(%7) -> b3()
+  b3(%8 r: unit):
+    %9 box: word = box %8
+    %10 unbox: unit = unbox %9
+    drop %9
+    ret %10
+
+fn $entry#1 top -> unit ; main::channel_send_full_every_task_waiting, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_send_full_every_task_waiting, captures [], frame 9 slots [%0 word*, %1 word*, %2 word*, %5 word*, %6 word*, %8 bool, %9 word*, %13 word*, %15 bool]
+  b0(%0 env: ptr, %1 tx: word, %2 _rx: word):
+    drop %0
+    drop %2
+    %3 lit: i64 = const 1
+    %4 box: word = box %3
+    dup %1
+    call send#3(%1, %4) -> b1(%1)
+  b1(%5 r: ptr, %6 tx: ptr):
+    drop %5
+    %7 lit: ptr = const str 2
+    perform std::console::Console.print(%7) -> b2(%6)
+  b2(%8 r: unit, %9 tx: ptr):
+    %10 box: word = box %8
+    drop %10
+    %11 lit: i64 = const 2
+    %12 box: word = box %11
+    call send#3(%9, %12) -> b3()
+  b3(%13 r: ptr):
+    drop %13
+    %14 lit: ptr = const str 1
+    perform std::console::Console.print(%14) -> b4()
+  b4(%15 r: unit):
+    %16 box: word = box %15
+    ret %16

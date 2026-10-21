@@ -1,0 +1,137 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::channel_two_tasks_wait_on_each_other, frame 3 slots [%1 bool, %6 word*, %8 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 f: ptr = closure main$1#2[]
+    %4 lit: i64 = const 1
+    %5 $site: i64 = const 2
+    call with_channel#9(%4, %3, %5) -> b2()
+  b2(%6 r: word):
+    drop %6
+    %7 lit: ptr = const str 1
+    perform std::console::Console.print(%7) -> b3()
+  b3(%8 r: unit):
+    %9 box: word = box %8
+    %10 unbox: unit = unbox %9
+    drop %9
+    ret %10
+
+fn $entry#1 top -> unit ; main::channel_two_tasks_wait_on_each_other, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn main$1#2 lambda -> word ; main::channel_two_tasks_wait_on_each_other, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %6 word*]
+  b0(%0 env: ptr, %1 atx: word, %2 arx: word):
+    drop %0
+    %3 f: ptr = closure main$1$1#3[%1, %2]
+    %4 lit: i64 = const 1
+    %5 $site: i64 = const 3
+    call with_channel#9(%4, %3, %5) -> b1()
+  b1(%6 r: word):
+    ret %6
+
+fn main$1$1#3 lambda -> word ; main::channel_two_tasks_wait_on_each_other, captures [word*, word*], frame 4 slots [%0 word*, %1 word*, %2 word*, %7 word*]
+  b0(%0 env: ptr, %1 btx: word, %2 brx: word):
+    %3 atx: ptr = capture %0.0
+    %4 arx: ptr = capture %0.1
+    drop %0
+    %5 f: ptr = closure main$1$1$1#4[%3, %4, %1, %2]
+    %6 callback: ptr = callback %5
+    perform std::task::Task.scope(%6) -> b1()
+  b1(%7 r: word):
+    ret %7
+
+fn main$1$1$1#4 lambda -> word ; main::channel_two_tasks_wait_on_each_other, captures [word*, word*, word*, word*], frame 16 slots [%0 word*, %1 word*, %8 word*, %9 word*, %10 word*, %11 word*, %14 word*, %15 word*, %17 bool, %18 word*, %19 word*, %21 word*, %22 word*, %28 word*, %29 word*, %32 bool]
+  b0(%0 env: ptr, %1 s: word):
+    %2 atx: ptr = capture %0.0
+    %3 arx: ptr = capture %0.1
+    %4 btx: ptr = capture %0.2
+    %5 brx: ptr = capture %0.3
+    drop %0
+    %6 f: ptr = closure main$1$1$1$1#5[%3, %4]
+    %7 callback: ptr = callback %6
+    dup %1
+    perform std::task::Task.spawn(%1, %7) -> b1(%2, %5, %1)
+  b1(%8 r: ptr, %9 atx: ptr, %10 brx: ptr, %11 s: ptr):
+    %12 f: ptr = closure main$1$1$1$2#8[%9, %10]
+    %13 callback: ptr = callback %12
+    perform std::task::Task.spawn(%11, %13) -> b2(%8)
+  b2(%14 r: ptr, %15 r: ptr):
+    %16 lit: ptr = const str 2
+    perform std::console::Console.print(%16) -> b3(%15, %14)
+  b3(%17 r: unit, %18 r: ptr, %19 r: ptr):
+    %20 box: word = box %17
+    drop %20
+    perform std::task::Task.join(%18) -> b4(%19)
+  b4(%21 r: word, %22 r: ptr):
+    %23 s: ptr = show %21
+    drop %21
+    %24 lit: ptr = const str 3
+    %25 s: ptr = concat %24, %23
+    drop %23
+    %26 lit: ptr = const str 4
+    %27 s: ptr = concat %25, %26
+    drop %26
+    perform std::task::Task.join(%22) -> b5(%27)
+  b5(%28 r: word, %29 s: ptr):
+    %30 s: ptr = show %28
+    drop %28
+    %31 s: ptr = concat %29, %30
+    drop %30
+    perform std::console::Console.print(%31) -> b6()
+  b6(%32 r: unit):
+    %33 box: word = box %32
+    ret %33
+
+fn main$1$1$1$1#5 lambda -> word ; main::channel_two_tasks_wait_on_each_other, captures [word*, word*], frame 5 slots [%0 word*, %3 word*, %4 word*, %7 word*, %8 word*]
+  b0(%0 env: ptr):
+    %1 arx: ptr = capture %0.0
+    %2 btx: ptr = capture %0.1
+    drop %0
+    call recv#6(%1) -> b1(%2)
+  b1(%3 r: ptr, %4 btx: ptr):
+    %5 lit: i64 = const 1
+    %6 box: word = box %5
+    call send#7(%4, %6) -> b2(%3)
+  b2(%7 r: ptr, %8 r: ptr):
+    drop %7
+    ret %8
+
+fn main$1$1$1$2#8 lambda -> word ; main::channel_two_tasks_wait_on_each_other, captures [word*, word*], frame 5 slots [%0 word*, %3 word*, %4 word*, %7 word*, %8 word*]
+  b0(%0 env: ptr):
+    %1 atx: ptr = capture %0.0
+    %2 brx: ptr = capture %0.1
+    drop %0
+    call recv#6(%2) -> b1(%1)
+  b1(%3 r: ptr, %4 atx: ptr):
+    %5 lit: i64 = const 2
+    %6 box: word = box %5
+    call send#7(%4, %6) -> b2(%3)
+  b2(%7 r: ptr, %8 r: ptr):
+    drop %7
+    ret %8

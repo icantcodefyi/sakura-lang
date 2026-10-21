@@ -1,0 +1,85 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::refined_field_construction_d010::Ticket | Ticket 32b (title: word*, n: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::refined_field_construction_d010, frame 5 slots [%3 word*, %5 bool, %7 word*, %10 word*, %14 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: i64 = const 1
+    %2 $site: i64 = const 3
+    call Ticket$new#4(%0, %1, %2) -> b1()
+  b1(%3 rec: ptr):
+    %4 s: ptr = show %3
+    drop %3
+    perform std::console::Console.print(%4) -> b2()
+  b2(%5 r: unit):
+    %6 box: word = box %5
+    drop %6
+    call empty#5() -> b3()
+  b3(%7 r: ptr):
+    %8 lit: i64 = const 1
+    %9 $site: i64 = const 5
+    call Ticket$new#4(%7, %8, %9) -> b4()
+  b4(%10 rec: ptr):
+    %11 s: ptr = show %10
+    drop %10
+    %12 lit: ptr = const str 1
+    %13 s: ptr = concat %12, %11
+    drop %11
+    perform std::console::Console.print(%13) -> b5()
+  b5(%14 r: unit):
+    %15 box: word = box %14
+    %16 unbox: unit = unbox %15
+    drop %15
+    ret %16
+
+fn $entry#1 top -> unit ; main::refined_field_construction_d010, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn Ticket.title$check#2 top -> bool ; main::refined_field_construction_d010, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 0
+    %4 t: bool = gt.int %2, %3
+    %5 exit: unit = $contract_exit()
+    ret %4
+
+fn Ticket.n$check#3 top -> bool ; main::refined_field_construction_d010, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 lit: unit = const ()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    %4 lit: unit = const ()
+    ret %3
+
+fn Ticket$new#4 top -> ptr ; main::refined_field_construction_d010, frame 11 slots [%0 word*, %1 i64, %2 i64, %3 bool, %4 word*, %5 i64, %6 i64, %8 bool, %9 word*, %10 i64, %11 i64]
+  b0(%0 title: ptr, %1 n: i64, %2 $site: i64):
+    dup %0
+    call Ticket.title$check#2(%0) -> b1(%0, %1, %2)
+  b1(%3 ok: bool, %4 title: ptr, %5 n: i64, %6 $site: i64):
+    check D010 %3 blame %6+0 ; Ticket.title
+    %7 checked: unit = const ()
+    call Ticket.n$check#3(%5) -> b2(%4, %5, %6)
+  b2(%8 ok: bool, %9 title: ptr, %10 n: i64, %11 $site: i64):
+    check D010 %8 blame %11+1 ; Ticket.n
+    %12 checked: unit = const ()
+    %13 rec: ptr = alloc main::refined_field_construction_d010::Ticket(%9, %10)
+    ret %13
+
+fn empty#5 top -> ptr ; main::refined_field_construction_d010, frame 0 slots []
+  b0():
+    %0 lit: ptr = const str 2
+    ret %0
