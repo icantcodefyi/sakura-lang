@@ -481,7 +481,9 @@ fn two_instances_close_in_one_process() {
         // Resources the guest would hold mid-run: a directory, an open file, a pending sleep.
         use sakura_rt::native::{FileMode, Host};
         let h = a.host();
-        let d = h.fs_memory_root(vec![("f".into(), b"x".to_vec())]).unwrap();
+        let d = h
+            .fs_memory_root(vec![("f".into(), Some(b"x".to_vec()))])
+            .unwrap();
         h.file_open(d, "f", FileMode::Read).unwrap();
         b.host().clock_sleep_ms(1, 60_000);
         let (mut ha, mut hb) = (a.close(), b.close());

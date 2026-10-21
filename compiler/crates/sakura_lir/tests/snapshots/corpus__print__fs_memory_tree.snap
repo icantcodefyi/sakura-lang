@@ -1,0 +1,244 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::fs::Dir
+layout 1 record std::fs::Entry | Entry 32b (name: word*, is_dir: bool)
+layout 2 record std::fs::File | File 40b (id: i64, path: word*, mode: word*)
+layout 3 error std::fs::FsError | FsError 32b (path: word*, reason: word*)
+layout 4 variant std::fs::MemoryEntry | Contents 24b (word*) | Directory 16b ()
+layout 5 variant std::fs::Mode | Read 16b () | Write 16b () | Append 16b ()
+layout 6 variant std::list::Builder
+layout 7 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 8 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 9 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 10 shape |  32b (word*, word*)
+layout 11 shape |  32b (i64, word*)
+layout 12 shape |  16b ()
+layout 13 shape |  32b (word*, bool)
+
+fn main#0 pub top -> unit ; main::fs_memory_tree, frame 42 slots [%2 word*, %7 word*, %8 word*, %15 word*, %16 word*, %17 word*, %21 word*, %25 word*, %30 word*, %33 bool, %36 word*, %40 word*, %43 bool, %48 bool, %52 bool, %56 word*, %57 bool, %63 word*, %64 word*, %65 bool, %66 word*, %69 bool, %73 bool, %77 bool, %81 bool, %83 word*, %87 word*, %88 word*, %90 word*, %94 word*, %95 word*, %97 word*, %99 word*, %103 word*, %106 bool, %109 word*, %113 word*, %114 word*, %118 word*, %122 word*, %123 word*, %125 word*]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 $site: i64 = const 3
+    call of#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 v: ptr = const static std::fs::MemoryEntry.Directory
+    %4 tup: ptr = alloc tuple#10(word, word)(%2, %3)
+    %5 lit: ptr = const str 1
+    %6 $site: i64 = const 4
+    call of#2(%5, %6) -> b2(%4)
+  b2(%7 r: ptr, %8 tup: ptr):
+    %9 lit: ptr = const str 2
+    %10 r: ptr = $string_to_bytes(%9)
+    %11 r: ptr = alloc std::fs::MemoryEntry.Contents(%10)
+    %12 tup: ptr = alloc tuple#10(word, word)(%7, %11)
+    %13 lit: ptr = const str 3
+    %14 $site: i64 = const 5
+    call of#2(%13, %14) -> b3(%8, %12)
+  b3(%15 r: ptr, %16 tup: ptr, %17 tup: ptr):
+    %18 v: ptr = const static std::fs::MemoryEntry.Directory
+    %19 tup: ptr = alloc tuple#10(word, word)(%15, %18)
+    %20 xs: ptr = alloc list(%16, %17, %19)
+    call memory_tree#5(%20) -> b4()
+  b4(%21 r: ptr):
+    handle_push %21
+    try_push -> b41(err, )
+    %120 lit: ptr = const str 10
+    %121 $site: i64 = const 14
+    call of#2(%120, %121) -> b42()
+  b5(%22 v: word):
+    drop %22
+    %23 lit: ptr = const str 1
+    %24 $site: i64 = const 6
+    call of#2(%23, %24) -> b6()
+  b6(%25 r: ptr):
+    %26 lit: ptr = const str 2
+    %27 r: ptr = $string_to_bytes(%26)
+    %28 tup: ptr = alloc tuple#10(word, word)(%25, %27)
+    %29 xs: ptr = alloc list(%28)
+    call memory#9(%29) -> b7()
+  b7(%30 r: ptr):
+    handle_push %30
+    try_push -> b10(err, )
+    %38 lit: ptr = const str 4
+    %39 $site: i64 = const 7
+    call of#2(%38, %39) -> b11()
+  b8(%31 v: ptr) [handle]:
+    %32 s: ptr = show %31
+    drop %31
+    perform std::console::Console.print(%32) -> b9()
+  b9(%33 r: unit) [handle]:
+    %34 box: word = box %33
+    %35 unbox: unit = unbox %34
+    drop %34
+    handle_pop
+    ret %35
+  b10(%36 e: word) [handle]:
+    %37 err: ptr = alloc std::result::Result.Err(%36)
+    jump b8(%37)
+  b11(%40 r: ptr) [handle, try]:
+    %41 lit: ptr = const str 5
+    %42 r: ptr = $string_to_bytes(%41)
+    perform std::fs::Fs.write(%40, %42) -> b12()
+  b12(%43 r: unit) [handle, try]:
+    %44 box: word = box %43
+    %45 ok: ptr = alloc std::result::Result.Ok(%44)
+    try_pop
+    jump b8(%45)
+  b13(%46 v: ptr) [handle]:
+    %47 s: ptr = show %46
+    drop %46
+    perform std::console::Console.print(%47) -> b14()
+  b14(%48 r: unit) [handle]:
+    %49 box: word = box %48
+    drop %49
+    try_push -> b38(err, )
+    %111 lit: ptr = const str 0
+    %112 $site: i64 = const 13
+    call of#2(%111, %112) -> b39()
+  b15(%50 v: ptr) [handle]:
+    %51 s: ptr = show %50
+    drop %50
+    perform std::console::Console.print(%51) -> b16()
+  b16(%52 r: unit) [handle]:
+    %53 box: word = box %52
+    drop %53
+    %54 lit: ptr = const str 6
+    %55 $site: i64 = const 8
+    call of#2(%54, %55) -> b17()
+  b17(%56 r: ptr) [handle]:
+    perform std::fs::Fs.exists(%56) -> b18()
+  b18(%57 r: bool) [handle]:
+    %58 s: ptr = show %57
+    %59 lit: ptr = const str 7
+    %60 s: ptr = concat %58, %59
+    drop %59
+    %61 lit: ptr = const str 3
+    %62 $site: i64 = const 9
+    call of#2(%61, %62) -> b19(%60)
+  b19(%63 r: ptr, %64 s: ptr) [handle]:
+    perform std::fs::Fs.exists(%63) -> b20(%64)
+  b20(%65 r: bool, %66 s: ptr) [handle]:
+    %67 s: ptr = show %65
+    %68 s: ptr = concat %66, %67
+    drop %67
+    perform std::console::Console.print(%68) -> b21()
+  b21(%69 r: unit) [handle]:
+    %70 box: word = box %69
+    drop %70
+    try_push -> b35(err, )
+    %101 lit: ptr = const str 8
+    %102 $site: i64 = const 12
+    call of#2(%101, %102) -> b36()
+  b22(%71 v: ptr) [handle]:
+    %72 s: ptr = show %71
+    drop %71
+    perform std::console::Console.print(%72) -> b23()
+  b23(%73 r: unit) [handle]:
+    %74 box: word = box %73
+    drop %74
+    try_push -> b31(err, )
+    %92 lit: ptr = const str 0
+    %93 $site: i64 = const 11
+    call of#2(%92, %93) -> b32()
+  b24(%75 v: ptr) [handle]:
+    %76 s: ptr = show %75
+    drop %75
+    perform std::console::Console.print(%76) -> b25()
+  b25(%77 r: unit) [handle]:
+    %78 box: word = box %77
+    drop %78
+    try_push -> b28(err, )
+    %85 lit: ptr = const str 3
+    %86 $site: i64 = const 10
+    call of#2(%85, %86) -> b29()
+  b26(%79 v: ptr) [handle]:
+    %80 s: ptr = show %79
+    drop %79
+    perform std::console::Console.print(%80) -> b27()
+  b27(%81 r: unit) [handle]:
+    %82 box: word = box %81
+    handle_pop
+    jump b5(%82)
+  b28(%83 e: word) [handle]:
+    %84 err: ptr = alloc std::result::Result.Err(%83)
+    jump b26(%84)
+  b29(%87 r: ptr) [handle, try]:
+    perform std::fs::Fs.read(%87) -> b30()
+  b30(%88 r: ptr) [handle, try]:
+    %89 ok: ptr = alloc std::result::Result.Ok(%88)
+    try_pop
+    jump b26(%89)
+  b31(%90 e: word) [handle]:
+    %91 err: ptr = alloc std::result::Result.Err(%90)
+    jump b24(%91)
+  b32(%94 r: ptr) [handle, try]:
+    perform std::fs::Fs.list(%94) -> b33()
+  b33(%95 r: ptr) [handle, try]:
+    %96 f: ptr = closure main$2#8[]
+    call map#7(%95, %96) -> b34()
+  b34(%97 r: ptr) [handle, try]:
+    %98 ok: ptr = alloc std::result::Result.Ok(%97)
+    try_pop
+    jump b24(%98)
+  b35(%99 e: word) [handle]:
+    %100 err: ptr = alloc std::result::Result.Err(%99)
+    jump b22(%100)
+  b36(%103 r: ptr) [handle, try]:
+    %104 lit: ptr = const str 9
+    %105 r: ptr = $string_to_bytes(%104)
+    perform std::fs::Fs.write(%103, %105) -> b37()
+  b37(%106 r: unit) [handle, try]:
+    %107 box: word = box %106
+    %108 ok: ptr = alloc std::result::Result.Ok(%107)
+    try_pop
+    jump b22(%108)
+  b38(%109 e: word) [handle]:
+    %110 err: ptr = alloc std::result::Result.Err(%109)
+    jump b15(%110)
+  b39(%113 r: ptr) [handle, try]:
+    perform std::fs::Fs.list(%113) -> b40()
+  b40(%114 r: ptr) [handle, try]:
+    %115 r: i64 = $list_len(%114)
+    %116 box: word = box %115
+    %117 ok: ptr = alloc std::result::Result.Ok(%116)
+    try_pop
+    jump b15(%117)
+  b41(%118 e: word) [handle]:
+    %119 err: ptr = alloc std::result::Result.Err(%118)
+    jump b13(%119)
+  b42(%122 r: ptr) [handle, try]:
+    perform std::fs::Fs.list(%122) -> b43()
+  b43(%123 r: ptr) [handle, try]:
+    %124 f: ptr = closure main$1#6[]
+    call map#7(%123, %124) -> b44()
+  b44(%125 r: ptr) [handle, try]:
+    %126 ok: ptr = alloc std::result::Result.Ok(%125)
+    try_pop
+    jump b13(%126)
+
+fn $entry#1 top -> unit ; main::fs_memory_tree, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#6 lambda -> word ; main::fs_memory_tree, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 e: word):
+    drop %0
+    %2 name: word = proj %1.0 std::fs::Entry
+    %3 is_dir: bool = proj %1.1 std::fs::Entry
+    drop %1
+    %4 tup: ptr = alloc tuple#13(word, bool)(%2, %3)
+    ret %4
+
+fn main$2#8 lambda -> word ; main::fs_memory_tree, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 e: word):
+    drop %0
+    %2 name: word = proj %1.0 std::fs::Entry
+    drop %1
+    ret %2

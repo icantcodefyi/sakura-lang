@@ -3657,15 +3657,19 @@ export function fs_root() {
   return new Dir(DIR_BRAND, root, grants);
 }
 /**
- * `Fs.memory(files)`'s directory (design §17.119): the root of a fresh store holding `files`,
- * `(Path, Bytes)` pairs. Its directories are the keys' proper prefixes. No grants apply.
+ * `Fs.memory(files)`'s and `Fs.memory_tree`'s directory (design §17.119, §17.292 (7)): the
+ * root of a fresh store holding `(Path, Option<Bytes>)` pairs, a file for `Some`, a directory
+ * for `None`. Its directories are those and the keys' proper prefixes. No grants apply.
  */
 export function fs_memory_root(pairs) {
   const store = { files: new Map(), dirs: new Set([""]) };
   for (const [p, data] of items(pairs)) {
     const key = memKey("", p);
     if (key === null || key === "") continue; // `Path` rules both out
-    store.files.set(key, data);
+    // Bare `Bytes` is a module built before `memory_tree` (same ABI 1.15.0): a file.
+    if (data instanceof Uint8Array) store.files.set(key, data);
+    else if (data.tag === 0) store.dirs.add(key);
+    else store.files.set(key, data.fields[0]);
     for (let i = key.lastIndexOf("/"); i > 0; i = key.lastIndexOf("/", i - 1)) {
       const d = key.slice(0, i);
       if (store.dirs.has(d)) break;
@@ -3848,6 +3852,10 @@ export function fs_list(d, rel) {
         if (slash < 0) {
           if (!isDir.has(k.slice(pre.length))) isDir.set(k.slice(pre.length), false);
         } else isDir.set(k.slice(pre.length, slash), true);
+      }
+      // Directories with no file inside (`Fs.memory_tree`).
+      for (const k of store.dirs) {
+        if (k.startsWith(pre) && k.length > pre.length) isDir.set(k.slice(pre.length).split("/")[0], true);
       }
       const names = [...isDir.keys()].sort(cmpStr);
       return Ok(list(names.map((n) => new Entry(n, isDir.get(n)))));

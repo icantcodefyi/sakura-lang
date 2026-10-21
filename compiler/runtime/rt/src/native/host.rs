@@ -130,7 +130,7 @@ pub trait Host {
     fn fs_root(&mut self) -> Hosted<HandleId> {
         Err(unsupported())
     }
-    fn fs_memory_root(&mut self, _files: Vec<(String, Vec<u8>)>) -> Hosted<HandleId> {
+    fn fs_memory_root(&mut self, _files: Vec<(String, Option<Vec<u8>>)>) -> Hosted<HandleId> {
         Err(unsupported())
     }
     fn fs_subdir(&mut self, _dir: HandleId, _name: &str) -> Hosted<HandleId> {

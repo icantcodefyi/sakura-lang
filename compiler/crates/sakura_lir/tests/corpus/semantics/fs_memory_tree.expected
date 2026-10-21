@@ -1,0 +1,9 @@
+ending: ok
+--- stdout
+Ok([("empty", true), ("in", true), ("out", true)])
+Ok(0)
+true true
+Ok(())
+Ok(["run.txt"])
+Err(FsError { path: "empty", reason: "is a directory" })
+Err(FsError { path: "out/x.txt", reason: "not found" })

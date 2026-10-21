@@ -641,7 +641,7 @@ impl Host for NativeHost {
         Ok(self.dirs.insert(d))
     }
 
-    fn fs_memory_root(&mut self, files: Vec<(String, Vec<u8>)>) -> Hosted<HandleId> {
+    fn fs_memory_root(&mut self, files: Vec<(String, Option<Vec<u8>>)>) -> Hosted<HandleId> {
         Ok(self.dirs.insert(fs::Dir::memory(files)))
     }
 
@@ -1002,7 +1002,7 @@ mod tests {
         assert_eq!(h.next_completion(), Some((8, 0, vec![])));
         assert_eq!(h.next_completion(), None);
         h.clock_sleep_ms(9, 60_000);
-        let d = h.fs_memory_root(vec![("f".into(), vec![1])]).unwrap();
+        let d = h.fs_memory_root(vec![("f".into(), Some(vec![1]))]).unwrap();
         let f = h.file_open(d, "f", FileMode::Read).unwrap();
         assert_eq!(h.file_read(f, 9), Ok(vec![1]));
         assert_eq!(

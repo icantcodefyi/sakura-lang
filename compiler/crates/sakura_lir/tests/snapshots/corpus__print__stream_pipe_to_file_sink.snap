@@ -48,7 +48,7 @@ fn main#0 pub top -> unit ; main::stream_pipe_to_file_sink, frame 19 slots [%2 w
     %12 err: ptr = alloc std::result::Result.Err(%11)
     jump b3(%12)
   b6(%17 r: ptr, %18 r: ptr) [handle, try]:
-    %19 fn: ptr = const static closure $string_to_bytes$value#47
+    %19 fn: ptr = const static closure $string_to_bytes$value#49
     call map#7(%17, %19) -> b7(%18)
   b7(%20 r: ptr, %21 r: ptr) [handle, try]:
     %22 v: ptr = const static std::fs::Mode.Write
@@ -159,7 +159,7 @@ fn main$3$1#15 lambda -> word ; main::stream_pipe_to_file_sink, captures [], fra
     %5 r: ptr = $list_push(%1, %4)
     ret %5
 
-fn $string_to_bytes$value#47 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $string_to_bytes$value#49 adapter of $string_to_bytes -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: ptr = $string_to_bytes(%1)

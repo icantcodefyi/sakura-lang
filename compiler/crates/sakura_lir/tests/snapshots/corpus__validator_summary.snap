@@ -122,9 +122,10 @@ semantics/form_multipart_roundtrip: 44 funcs, 499 blocks, 102 dup, 258 drop, val
 semantics/form_parse_rejects_limits: 37 funcs, 441 blocks, 96 dup, 222 drop, valid
 semantics/form_parse_rejects_malformed: 35 funcs, 429 blocks, 92 dup, 193 drop, valid
 semantics/form_urlencoded_roundtrip: 31 funcs, 212 blocks, 39 dup, 73 drop, valid
-semantics/fs_read_chunk_rejects_zero: 32 funcs, 131 blocks, 33 dup, 55 drop, valid
-semantics/fs_read_up_to: 36 funcs, 191 blocks, 44 dup, 77 drop, valid
-semantics/fs_read_up_to_rejects_limit: 33 funcs, 144 blocks, 36 dup, 61 drop, valid
+semantics/fs_memory_tree: 35 funcs, 175 blocks, 32 dup, 75 drop, valid
+semantics/fs_read_chunk_rejects_zero: 34 funcs, 140 blocks, 36 dup, 59 drop, valid
+semantics/fs_read_up_to: 37 funcs, 193 blocks, 44 dup, 79 drop, valid
+semantics/fs_read_up_to_rejects_limit: 35 funcs, 153 blocks, 39 dup, 65 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 2 dup, 13 drop, valid
 semantics/fused_get_expect: 7 funcs, 35 blocks, 7 dup, 20 drop, valid
 semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
@@ -146,7 +147,7 @@ semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 7 drop, valid
 semantics/headers_rejects_invalid_name: 33 funcs, 276 blocks, 53 dup, 123 drop, valid
 semantics/headers_validate_and_combine: 39 funcs, 315 blocks, 73 dup, 137 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 3 drop, valid
-semantics/host_fs_env: 49 funcs, 252 blocks, 51 dup, 116 drop, valid
+semantics/host_fs_env: 50 funcs, 254 blocks, 51 dup, 118 drop, valid
 semantics/host_root_handlers: 17 funcs, 79 blocks, 6 dup, 36 drop, valid
 semantics/http_body_source_scripted: 141 funcs, 1547 blocks, 230 dup, 884 drop, valid
 semantics/http_read_chunk_rejects_zero: 108 funcs, 1325 blocks, 196 dup, 792 drop, valid
@@ -258,7 +259,7 @@ semantics/stream_chunks_bytes: 19 funcs, 101 blocks, 30 dup, 58 drop, valid
 semantics/stream_from_list_take_map_filter_fold: 24 funcs, 86 blocks, 10 dup, 58 drop, valid
 semantics/stream_lines_rejects_max_line: 21 funcs, 101 blocks, 22 dup, 65 drop, valid
 semantics/stream_lines_split_across_chunks: 18 funcs, 96 blocks, 22 dup, 57 drop, valid
-semantics/stream_pipe_to_file_sink: 48 funcs, 192 blocks, 43 dup, 88 drop, valid
+semantics/stream_pipe_to_file_sink: 50 funcs, 201 blocks, 46 dup, 92 drop, valid
 semantics/stream_pull_persistent: 13 funcs, 69 blocks, 11 dup, 56 drop, valid
 semantics/stream_tee_lag_bound: 39 funcs, 138 blocks, 15 dup, 71 drop, valid
 semantics/stream_tee_rejects_max_lag: 24 funcs, 94 blocks, 14 dup, 43 drop, valid

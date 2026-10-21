@@ -874,7 +874,8 @@ test("a memory Dir answers like a host directory (design §17.119)", () => {
   rt.def("std::fs::Entry", Entry);
   const bytes = (s) => rt.string_to_bytes(s);
   const text = (r) => rt.string_from_bytes(r.fields[0]).fields[0];
-  const root = rt.fs_memory_root(rt.list([["data/a.txt", bytes("a")], ["data/sub/b.txt", bytes("b")], ["top.txt", bytes("t")]]));
+  const file = (p, s) => [p, rt.Some(bytes(s))];
+  const root = rt.fs_memory_root(rt.list([file("data/a.txt", "a"), file("data/sub/b.txt", "b"), file("top.txt", "t")]));
   // Directories are the keys' prefixes; a subdir shares the store, both ways.
   const data = rt.fs_subdir(root, "data").fields[0];
   assert.equal(text(rt.fs_read(data, "a.txt")), "a");
@@ -902,13 +903,19 @@ test("a memory Dir answers like a host directory (design §17.119)", () => {
   assert.deepEqual(names(rt.fs_list(rt.fixtures_dir("", false), ".")), []);
   // Each root is a fresh store.
   assert.deepEqual(rt.fs_read(rt.fs_memory_root(rt.list([])), "data/x.txt"), rt.Err("not found"));
+  // `None` is a directory (`Fs.memory_tree`): listed empty, its parents exist, writable inside.
+  const tree = rt.fs_memory_root(rt.list([["out/logs", rt.None]]));
+  assert.deepEqual(names(rt.fs_list(tree, ".")), ["out/"]);
+  assert.deepEqual(names(rt.fs_list(tree, "out/logs")), []);
+  assert.deepEqual(rt.fs_write(tree, "out/logs/a.txt", bytes("a")), rt.Ok(undefined));
+  assert.deepEqual(rt.fs_read(tree, "out/logs"), rt.Err("is a directory"));
 });
 
 test("memory with_file writes through on every chunk and keeps them when the body fails", () => {
   const [READ, WRITE, APPEND] = [{ tag: 0 }, { tag: 1 }, { tag: 2 }];
   const bytes = (s) => rt.string_to_bytes(s);
   const text = (r) => rt.string_from_bytes(r.fields[0]).fields[0];
-  const root = rt.fs_memory_root(rt.list([["old.txt", bytes("old")]]));
+  const root = rt.fs_memory_root(rt.list([["old.txt", rt.Some(bytes("old"))]]));
   const w = rt.file_open(root, "log.txt", WRITE).fields[0];
   assert.equal(text(rt.fs_read(root, "log.txt")), "");
   const o = rt.runTask(($ctx, $k) =>

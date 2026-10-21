@@ -91,9 +91,32 @@ pub fn subdir(d: Dir, name: String) -> Dir ! {Fail<FsError>} {
 /// Test handler over in-memory `files` (design §17.119): `rooted` over a directory in a store
 /// of its own, so `root()`, `Dir.subdir` and `Fs.rooted` compose exactly as on the host. Every
 /// handler over the store sees each write at once, `with_file` included; installing this value
-/// twice shares the files, evaluating `Fs.memory(…)` again starts afresh. A directory exists
-/// while some file is inside it; no manifest `[permissions]` apply.
-pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> { rooted(fs_memory_root(files)) }
+/// twice shares the files, evaluating `Fs.memory(…)` again starts afresh. The directories are
+/// those some file is inside; `memory_tree` also takes empty ones. No manifest `[permissions]`
+/// apply.
+pub fn memory(files: List<(Path, Bytes)>) -> Handler<Fs> {
+  rooted(fs_memory_root(files.map(fn(f) { (f.0, Some(f.1)) })))
+}
+
+/// What `memory_tree` puts at a path: a file with its bytes, or a directory (empty unless
+/// another entry is inside it).
+pub type MemoryEntry = Contents(Bytes) | Directory
+
+/// `memory` over files and directories (design §17.292 (7)):
+/// `Fs.memory_tree([(Path.of("out"), MemoryEntry.Directory)])` starts with an empty `out` a
+/// test can write into. A directory's parents exist too.
+pub fn memory_tree(entries: List<(Path, MemoryEntry)>) -> Handler<Fs> {
+  rooted(
+    fs_memory_root(
+      entries.map(fn(e) {
+        match e.1 {
+          MemoryEntry.Contents(b) => (e.0, Some(b)),
+          MemoryEntry.Directory => (e.0, None),
+        }
+      }),
+    ),
+  )
+}
 
 fn read_file(file: File, max: Int) -> Bytes ! {Fail<FsError>} {
   ok_or_fail(file.path, file_read(file.id, max))
@@ -180,9 +203,10 @@ fn ok_or_fail<T>(path: Path, r: Result<T, String>) -> T ! {Fail<FsError>} {
 @external(js, "sakura_runtime", "fs_root")
 fn fs_root() -> Dir
 
-/// The root of a fresh in-memory store holding `files`, for `Fs.memory`.
+/// The root of a fresh in-memory store holding `entries`: a file for `Some(bytes)`, a
+/// directory for `None` (`Fs.memory`, `Fs.memory_tree`).
 @external(js, "sakura_runtime", "fs_memory_root")
-fn fs_memory_root(files: List<(Path, Bytes)>) -> Dir
+fn fs_memory_root(entries: List<(Path, Option<Bytes>)>) -> Dir
 
 @external(js, "sakura_runtime", "fs_subdir")
 fn fs_subdir(d: Dir, name: String) -> Result<Dir, String>

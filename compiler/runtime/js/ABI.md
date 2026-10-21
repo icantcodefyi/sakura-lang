@@ -519,8 +519,9 @@ denied`, `EEXIST` → `already exists`, `EISDIR` → `is a directory`, `ENOTDIR`
 directory` (erratum 2026-10-19, design §17.229 (5): until then any code but `ENOENT` and
 `ELOOP` answered Node's message, such as `EACCES: permission denied, open '…'`).
 
-**Memory directories** (design §17.119). `fs_memory_root(files)` is a `Dir` over a fresh store
-(`Map` from normalized path to `Uint8Array`) holding the `(Path, Bytes)` pairs; `Fs.memory` is
+**Memory directories** (design §17.119, §17.292 (7)). `fs_memory_root(entries)` is a `Dir` over a fresh store
+(`Map` from normalized path to `Uint8Array`) holding the `(Path, Option<Bytes>)` pairs (`None` an
+empty directory, which `Fs.memory_tree` passes); `Fs.memory` is
 `Fs.rooted` over it. The `fs_*` and `file_*` externals dispatch on the kind: a key is a file, a
 proper prefix of a key a directory, `fs_subdir` shares the store, a write needs an existing
 parent directory (`not found` otherwise), reading a directory is `is a directory`. No grants

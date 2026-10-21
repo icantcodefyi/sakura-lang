@@ -177,8 +177,13 @@ fn call(host: &mut dyn Host, ids: &Ids, name: Option<&str>, args: &[u8]) -> Host
                 if r.tuple()? != 2 {
                     return Err(fault("a malformed fs_memory_root entry"));
                 }
-                let path = r.string()?;
-                files.push((String::from(path), Vec::from(r.bytes()?)));
+                let path = String::from(r.string()?);
+                let data = if r.some(ids.option)? {
+                    Some(Vec::from(r.bytes()?))
+                } else {
+                    None
+                };
+                files.push((path, data));
             }
             r.end()?;
             let d = host.fs_memory_root(files)?;
@@ -361,6 +366,16 @@ impl<'a> Reader<'a> {
             return Err(fault("argument 0 is not a Dir handle"));
         }
         Ok(h)
+    }
+
+    /// An `Option`'s header: whether it is `Some` (its one payload follows).
+    fn some(&mut self, option: u32) -> Hosted<bool> {
+        self.tag(t::VARIANT)?;
+        match (self.u32()?, self.u32()?, self.u32()?) {
+            (ty, 0, 0) if ty == option => Ok(false),
+            (ty, 1, 1) if ty == option => Ok(true),
+            _ => Err(fault("a hosted argument of the wrong kind")),
+        }
     }
 
     fn mode(&mut self, id: Option<u32>) -> Hosted<FileMode> {

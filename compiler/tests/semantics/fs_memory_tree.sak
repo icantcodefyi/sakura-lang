@@ -1,0 +1,28 @@
+// milestone: M3
+// covers: design §17.119, §17.292 (7)
+// spec: design §17.119
+
+// `Fs.memory_tree` takes files and directories: an empty directory lists, exists and takes
+// writes, and its parents exist; `Fs.memory` keeps meaning files only, so a write into a
+// directory no file implies still fails `not found`.
+import std/fs.{Fs, MemoryEntry}
+import std/path.{Path}
+
+pub fn main() -> Unit ! {Console} {
+  let tree = [
+    (Path.of("out/logs"), MemoryEntry.Directory),
+    (Path.of("in/a.txt"), MemoryEntry.Contents(String.to_bytes("a"))),
+    (Path.of("empty"), MemoryEntry.Directory),
+  ]
+  with Fs.memory_tree(tree) {
+    Console.print("{try { List.map(Fs.list(Path.of(".")), fn(e) { (e.name, e.is_dir) }) }}")
+    Console.print("{try { Fs.list(Path.of("out/logs")).len() }}")
+    Console.print("{Fs.exists(Path.of("out"))} {Fs.exists(Path.of("empty"))}")
+    Console.print("{try { Fs.write(Path.of("out/logs/run.txt"), String.to_bytes("ok")) }}")
+    Console.print("{try { Fs.list(Path.of("out/logs")).map(fn(e) { e.name }) }}")
+    Console.print("{try { Fs.read(Path.of("empty")) }}")
+  }
+  with Fs.memory([(Path.of("in/a.txt"), String.to_bytes("a"))]) {
+    Console.print("{try { Fs.write(Path.of("out/x.txt"), String.to_bytes("x")) }}")
+  }
+}

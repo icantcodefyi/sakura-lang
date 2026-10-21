@@ -61,6 +61,13 @@ retains earlier implementation history.
   `Option` and `List` fields) where it said `<value>`; the same on JS, WASM and native (design
   §17.292 (3)). A refined flag's message does not yet name the failing clause. Fixture
   `compiler/tests/semantics/cli_parse_variant_case.sak`.
+- `Fs.memory_tree(entries: List<(Path, MemoryEntry)>) -> Handler<Fs>` in `std/fs` with
+  `MemoryEntry = Contents(Bytes) | Directory` (design §17.292 (7)): `Fs.memory` over files and
+  directories, so a test can start with an empty directory to write into, its parents
+  included; `Fs.list` lists it, `Fs.exists` sees it, the same on JS, WASM and native.
+  `Fs.memory` is unchanged. The ruling's `Entry = File(Bytes) | Dir` would clash with
+  `std/fs`'s `Entry`, `File` and `Dir` (`V1001`), hence the names. Fixture
+  `compiler/tests/semantics/fs_memory_tree.sak`.
 - **`std/worker`, experimental** (RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b): outside the 1.0
   contract, and it may change in any release. A function declared `@worker` runs as a second
   instance of the program, with its own heap and root handlers, through

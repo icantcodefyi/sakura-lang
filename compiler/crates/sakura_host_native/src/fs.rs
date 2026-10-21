@@ -89,8 +89,9 @@ impl Dir {
         })
     }
 
-    /// `Fs.memory(files)`: a fresh store; a key that is not relative or is empty is skipped.
-    pub fn memory(pairs: Vec<(String, Vec<u8>)>) -> Dir {
+    /// `Fs.memory(files)` and `Fs.memory_tree`: a fresh store, a file for `Some(bytes)` and a
+    /// directory for `None`; a key that is not relative or is empty is skipped.
+    pub fn memory(pairs: Vec<(String, Option<Vec<u8>>)>) -> Dir {
         let mut store = Store::default();
         store.dirs.insert(String::new());
         for (p, data) in pairs {
@@ -104,7 +105,11 @@ impl Dir {
                 }
                 i = slash;
             }
-            store.files.insert(key, data);
+            if let Some(data) = data {
+                store.files.insert(key, data);
+            } else {
+                store.dirs.insert(key);
+            }
         }
         Dir::Memory {
             store: Rc::new(RefCell::new(store)),
@@ -218,6 +223,13 @@ impl Dir {
                         None => {
                             is_dir.entry(rest.to_string()).or_insert(false);
                         }
+                    }
+                }
+                // Directories with no file inside (`Fs.memory_tree`).
+                for k in &s.dirs {
+                    if let Some(rest) = k.strip_prefix(&pre).filter(|r| !r.is_empty()) {
+                        let d = rest.split_once('/').map_or(rest, |(d, _)| d);
+                        is_dir.insert(d.to_string(), true);
                     }
                 }
                 Ok(is_dir.into_iter().collect())
@@ -497,10 +509,19 @@ mod tests {
 
     fn mem() -> Dir {
         Dir::memory(vec![
-            ("a.txt".into(), b"A".to_vec()),
-            ("d/b.txt".into(), b"B".to_vec()),
-            ("d/e/c.txt".into(), b"C".to_vec()),
+            ("a.txt".into(), Some(b"A".to_vec())),
+            ("d/b.txt".into(), Some(b"B".to_vec())),
+            ("d/e/c.txt".into(), Some(b"C".to_vec())),
         ])
+    }
+
+    #[test]
+    fn memory_takes_empty_directories() {
+        let d = Dir::memory(vec![("out/logs".into(), None)]);
+        assert_eq!(d.list(".").unwrap(), vec![("out".to_string(), true)]);
+        assert_eq!(d.list("out/logs").unwrap(), vec![]);
+        assert!(d.write("out/logs/a.txt", b"a").is_ok());
+        assert!(d.read("out/logs", 8).is_err());
     }
 
     #[test]

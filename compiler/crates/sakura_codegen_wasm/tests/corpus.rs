@@ -261,6 +261,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
     ),
     (
+        "semantics/fs_memory_tree",
+        None,
+        "`Fs.list`'s `Entry` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
+    ),
+    (
         "semantics/fs_read_up_to",
         None,
         "`Fs.with_file`'s `Mode` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",
