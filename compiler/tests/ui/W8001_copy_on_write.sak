@@ -1,12 +1,14 @@
-// milestone: M5
-// needs: native backend with Perceus reuse analysis
+// milestone: M3
 // expect: W8001
-fn grow() -> List<Int> {
-  var xs = [1]
+// expect-span: W8001 cause 13:34
+// counters: copies
+// spec: §8.2, §17.172 (`kept` carries the previous version through the loop, so every push copies)
+pub fn main() -> Unit ! {Console} {
+  var xs = String.split("a,b,c", ",")
   var kept = xs
-  for i in 0..100 {
+  for i in 0..3 {
     kept = xs
-    xs = List.push(xs, i)
+    xs = List.push(xs, Int.to_string(i))
   }
-  xs
+  Console.print("{List.len(xs)} {List.len(kept)}")
 }

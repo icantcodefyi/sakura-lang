@@ -113,4 +113,4 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `W5005` | warning | `linear_contract_on_hot_path` | [W5005_linear_contract_on_hot_path.sak](../../compiler/tests/ui/W5005_linear_contract_on_hot_path.sak) | active |
 | `W7001` | warning | `property_discard_budget` | [W7001_property_discard_budget.sak](../../compiler/tests/ui/W7001_property_discard_budget.sak) | active |
 | `W7002` | warning | `vacuous_obligation` | [records_keep_reasons_and_cross_check_disagreements](../../compiler/crates/sakura_verify/tests/worker.rs) | active |
-| `W8001` | warning | `copy_on_write` | Not emitted | reserved |
+| `W8001` | warning | `copy_on_write` | [W8001_borrowed_after.sak](../../compiler/tests/ui/W8001_borrowed_after.sak) | active |

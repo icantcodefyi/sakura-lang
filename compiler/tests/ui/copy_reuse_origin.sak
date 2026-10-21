@@ -1,0 +1,12 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001` for `origin`: a call result may be unique at run time, and here it is)
+fn first_nonempty(a: List<String>, b: List<String>) -> List<String> {
+  if List.len(a) > 0 { a } else { b }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let parts = first_nonempty(String.split("a,b,c", ","), String.split("x", ","))
+  let more = List.push(parts, "d")
+  Console.print("{List.len(more)}")
+}

@@ -862,6 +862,57 @@ impl Analysis {
         )
     }
 
+    /// `W8001` (design §17.172): each persistent update outside std that the ownership facts
+    /// prove copies, with its witness as the `cause` span. Static only: Core is lowered (every
+    /// user function) and analysed, nothing runs. Empty when the program has errors.
+    pub fn copy_warnings(snapshot: &Snapshot) -> Vec<Diagnostic> {
+        let opts = BuildOptions {
+            all_fns: true,
+            ..BuildOptions::default()
+        };
+        let Some(module) = Analysis::lower_core(snapshot, &opts).0 else {
+            return Vec::new();
+        };
+        let analyzed = Analysis::analyze(snapshot);
+        let mut out = Vec::new();
+        for c in sakura_core::opt::owned::copies(&module) {
+            let name = c.var.clone().or_else(|| consumed_name(&analyzed, &c));
+            let holder = match &name {
+                Some(n) => format!("`{n}` still holds"),
+                None => "another reference still holds".to_owned(),
+            };
+            let label = match (&c.reason, &name) {
+                (sakura_core::opt::owned::Reason::Captured, _) => {
+                    "captured here by a closure or handler that is still live".to_owned()
+                }
+                (sakura_core::opt::owned::Reason::Stored, _) => {
+                    "stored here in a value that is still live".to_owned()
+                }
+                (_, Some(n)) => format!("`{n}` is used again here"),
+                (_, None) => "the earlier version is used again here".to_owned(),
+            };
+            let mut d = Diagnostic::warning(
+                codes::W8001,
+                Phase::Package,
+                format!(
+                    "this update copies shared `{}` storage; {holder} the earlier version",
+                    c.collection
+                ),
+            )
+            .with_span(Span::primary(c.at.file, c.at.offset, c.at.end))
+            .with_span(
+                Span::primary(c.witness.file, c.witness.offset, c.witness.end)
+                    .with_role(sakura_diagnostics::SpanRole::Cause)
+                    .with_label(label),
+            );
+            if let Some(sym) = analyzed.enclosing_symbol(c.at.file, c.at.offset) {
+                d = d.with_symbol(sym.id.clone());
+            }
+            out.push(d);
+        }
+        out
+    }
+
     /// Check and lower to validated Core (the input of every backend and of `sakura_eval`). The
     /// module is `None` if there were errors. Holes are rejected with `V2050`; see [`BuildOptions`].
     pub fn lower_core(
@@ -929,6 +980,42 @@ impl Analysis {
         }
         (Some(lowered.module), diagnostics)
     }
+}
+
+/// The name the program gives the consumed argument of copy `c`'s call (`ys` in
+/// `List.push(ys, 4)` or `ys.push(4)`), when it is a plain name.
+fn consumed_name(a: &Analyzed, c: &sakura_core::opt::owned::Copy) -> Option<String> {
+    use sakura_syntax::SyntaxKind::{ARG_LIST, CALL_EXPR, FIELD_EXPR};
+    let root = a.parse(c.at.file)?.syntax();
+    let range = sakura_syntax::TextRange::new(c.at.offset.into(), c.at.end.into());
+    let call = match root.covering_element(range) {
+        sakura_syntax::NodeOrToken::Node(n) => n,
+        sakura_syntax::NodeOrToken::Token(t) => t.parent()?,
+    }
+    .ancestors()
+    .find(|n| n.kind() == CALL_EXPR && n.text_range() == range)?;
+    let args: Vec<_> = call
+        .children()
+        .find(|n| n.kind() == ARG_LIST)?
+        .children()
+        .collect();
+    let node = if args.len() == c.args {
+        args.get(c.arg)?.clone()
+    } else if args.len() + 1 == c.args && c.arg == 0 {
+        let callee = call.first_child().filter(|n| n.kind() == FIELD_EXPR)?;
+        callee.first_child()?
+    } else if args.len() + 1 == c.args {
+        args.get(c.arg - 1)?.clone()
+    } else {
+        return None;
+    };
+    let text = node.text().to_string();
+    let text = text.trim();
+    let plain = text.starts_with(|ch: char| ch.is_ascii_lowercase() || ch == '_')
+        && text
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '_');
+    plain.then(|| text.to_owned())
 }
 
 /// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sak`; user files are

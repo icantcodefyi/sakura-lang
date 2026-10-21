@@ -1365,6 +1365,57 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.172 (3): `W8001` is pinned by the N0b counters. Every `tests/ui` fixture with
+/// `// counters: copies` (each warns, which `ui.rs` checks) runs with no reuse hit and at least
+/// one missed attempt; every one with `// counters: reuses` (none warns) has a hit.
+#[test]
+fn copy_warnings_agree_with_reuse_counters() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("copy_counters");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut seen = (0, 0);
+    for path in fixtures("ui") {
+        let d = directives(&std::fs::read_to_string(&path).unwrap());
+        let Some(kind) = d.get("counters") else {
+            continue;
+        };
+        let name = path.file_stem().unwrap().to_string_lossy().into_owned();
+        let stats = dir.join(format!("{name}.jsonl"));
+        let out_dir = dir.join(&name);
+        let args = [
+            "run",
+            "--target",
+            "wasm",
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+            path.to_str().unwrap(),
+        ];
+        let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+        assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
+        let line = std::fs::read_to_string(&stats).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+        let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
+        let (attempts, reuses) = (n("reuse_attempts"), n("reuses"));
+        match kind.as_str() {
+            "copies" => {
+                assert!(reuses == 0 && attempts > 0, "{name}: {attempts}/{reuses}");
+                seen.0 += 1;
+            }
+            "reuses" => {
+                assert!(reuses > 0, "{name}: {attempts}/{reuses}");
+                seen.1 += 1;
+            }
+            other => panic!("{name}: `counters: {other}`"),
+        }
+    }
+    assert!(seen.0 >= 6 && seen.1 >= 7, "{seen:?}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.212: the Node host releases each finished root task (`task_free`) and a host
 /// handler owns its clauses, so `main` run again on one instance, returning, failing or
 /// defecting, leaves the guest heap's live objects and bytes as the first run left them.

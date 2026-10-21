@@ -1,0 +1,13 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001` for `join`: `ws` may be either list, and the run reuses it)
+fn pick(a: List<String>, b: List<String>) -> List<String> {
+  if List.len(a) > List.len(b) { a } else { b }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let ws = if List.len(parts) > 1 { parts } else { pick(parts, ["x"]) }
+  let more = List.push(ws, "d")
+  Console.print("{List.len(more)}")
+}

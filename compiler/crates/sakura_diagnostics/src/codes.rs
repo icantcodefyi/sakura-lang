@@ -923,10 +923,26 @@ Fixed:
     { x }";
 
     W8001 "copy_on_write" PACKAGE,
-"An update to a shared collection is forced to copy inside a loop because another reference
-retains the old value (design §8.2). Drop the retaining use or restructure the loop. The code is
-registered ahead of its check, which comes with the native backend's reuse analysis; no
-command reports it yet.";
+"A `List`, `Map` or `Set` update is proven to copy because the earlier version is still held
+(design §8.2, §17.172): read again after the update, captured by a closure or handler that is
+still live, or stored in a value that is still live. The primary span is the update; the `cause`
+span is that witness. `sakura check` reports it statically (nothing runs), and only with a
+witness: an update whose value merely might be shared (a parameter, a call result, a join of
+two lists) is never warned about, because it may still be updated in place. Values keep their
+meaning either way; the copy costs time and memory, once per update and so once per iteration
+in a loop. Repair by ending the earlier version's lifetime before the update where the
+program allows it (read what you need from it first, or drop the retaining variable), or keep
+the copy when both versions are wanted. `sakura build --dump owned` prints each update's
+verdict and the witness's byte range.
+Warning:
+    let parts = String.split(\"a,b,c\", \",\")
+    let more = List.push(parts, \"d\")
+    Console.print(\"{List.len(parts)} {List.len(more)}\")
+Fixed (read the earlier version first):
+    let parts = String.split(\"a,b,c\", \",\")
+    let n = List.len(parts)
+    let more = List.push(parts, \"d\")
+    Console.print(\"{n} {List.len(more)}\")";
 
     // Runtime defects
     D001 "int_overflow" RUNTIME,

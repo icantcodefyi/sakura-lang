@@ -1,0 +1,12 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001`: `parts` is read again only on the branch that does not update it)
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  if List.len(parts) > 1 {
+    let more = List.push(parts, "d")
+    Console.print("{List.len(more)}")
+  } else {
+    Console.print("{List.len(parts)}")
+  }
+}

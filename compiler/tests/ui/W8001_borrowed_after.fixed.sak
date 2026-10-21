@@ -1,0 +1,6 @@
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let n = List.len(parts)
+  let more = List.push(parts, "d")
+  Console.print("{n} {List.len(more)}")
+}

@@ -1,0 +1,10 @@
+// milestone: M3
+// expect: W8001
+// expect-span: W8001 cause 9:19
+// counters: copies
+// spec: §17.172 (a `Map` update with the earlier map read after it)
+pub fn main() -> Unit ! {Console} {
+  let before = Map.insert(Map.empty(), "a", 1)
+  let after = Map.insert(before, "b", 2)
+  Console.print("{Map.len(before)} {Map.len(after)}")
+}

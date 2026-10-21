@@ -1,0 +1,9 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001` for the empty singleton: `kept` holds `[]`, and every push to it allocates)
+pub fn main() -> Unit ! {Console} {
+  let empty: List<String> = []
+  let one = List.push(empty, "a")
+  let two = List.push(one, "b")
+  Console.print("{List.len(empty)} {List.len(two)}")
+}

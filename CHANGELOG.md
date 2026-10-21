@@ -16,6 +16,16 @@ retains earlier implementation history.
   validated with the JS runtime's messages. A native `main` that leaves `Http` to the runtime
   now runs instead of exiting 75; the `secrets` example runs natively. A cassette line that is
   not JSON names the line with the parser's own text, which differs from Node's.
+- **`W8001 copy_on_write` is reported** (design §17.172, plan `m5-native.md` N5): `sakura check`
+  warns at a `List`, `Map` or `Set` update that is proven to copy because the earlier version
+  is still held, with the witness as the `cause` span: a later read (`borrowed-after`, through a
+  loop's `var` too), a closure or installed handler that captured it (`captured`), or a value
+  that stored it (`stored`), each live at the update. An update whose value only might be
+  shared (a parameter, a call result, a join, the empty singleton) is never warned about. The
+  check is static and adds no JSON field; the code moves from `reserved` to `active` in
+  `diagnostics/codes.txt`. `sakura build --dump owned` prints each witness's byte range
+  (`shared(borrowed-after at 88..100)`). A program that checked clean may now print warnings;
+  exit codes are unchanged.
 
 ### Changed
 

@@ -1,0 +1,19 @@
+// milestone: M3
+// expect: W8001
+// expect-span: W8001 cause 12:16
+// counters: copies
+// spec: §17.172 (`captured`: the handler installed around the update holds `parts`)
+effect Size {
+  fn size() -> Int
+}
+
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let n = with handler Size {
+        fn size() { List.len(parts) }
+      } {
+    let more = List.push(parts, "d")
+    Size.size() + List.len(more)
+  }
+  Console.print("{n}")
+}

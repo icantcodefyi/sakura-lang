@@ -1,0 +1,10 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001`: the alias `kept` is dead at the update, so the push reuses)
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let kept = parts
+  Console.print("{List.len(kept)}")
+  let more = List.push(parts, "d")
+  Console.print("{List.len(more)}")
+}

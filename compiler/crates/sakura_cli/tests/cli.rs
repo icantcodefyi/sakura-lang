@@ -2291,8 +2291,9 @@ fn build_dump_core_marks_proved_operations() {
 }
 
 /// `--dump owned` lists each consuming site of an owned-capable update as `owned` or
-/// `shared(<reason>)` with the fixed reason set, and each consuming def with its owned entry's
-/// verdicts (design §17.149, §17.201 (3)): `keep` borrows `d`, `hold` keeps `g`.
+/// `shared(<reason>)` with the fixed reason set and a proving witness's byte range (§17.172),
+/// and each consuming def with its owned entry's verdicts (design §17.149, §17.201 (3)):
+/// `keep` borrows `d`, `hold` keeps `g`.
 #[test]
 fn build_dump_owned_gives_each_site_and_reason() {
     let dir = tmp(
@@ -2334,10 +2335,10 @@ fn build_dump_owned_gives_each_site_and_reason() {
         out.stdout,
         "fn main
   r%1 = list_push(xs%0) owned
-  r%4 = list_push(r%2) shared(captured)
-  r%7 = list_push(r%5) shared(stored)
+  r%4 = list_push(r%2) shared(captured at 379..399)
+  r%7 = list_push(r%5) shared(stored at 460..463)
   r%10 = list_push(r%8) owned
-  r%12 = list_push(r%11) shared(borrowed-after)
+  r%12 = list_push(r%11) shared(borrowed-after at 688..774)
   r%15 = list_push(r%13) shared(escapes-call hold)
   r%50 = grow(xs%49) owned
   r%55 = pick(xs%54) owned
@@ -2379,14 +2380,14 @@ fn build_dump_owned_pins_the_record_fixtures() {
         (
             "owned_record_retained",
             "fn main
-  r%32 = put_var(p%17) shared(borrowed-after)
+  r%32 = put_var(p%17) shared(borrowed-after at 1562..1571)
   r%33 = bump(r%32) shared(origin)
   r%44 = put_var(r%33) shared(origin)
-  r%55 = put_var(r%44) shared(stored)
+  r%55 = put_var(r%44) shared(stored at 1798..1801)
   r%97 = list_push(cons%96) shared(join)
-  r%103 = put_var(rec%100) shared(borrowed-after)
-  r%73 = put_var(r%55) shared(borrowed-after)
-  r%75 = put_then_fail(r%55) shared(borrowed-after)
+  r%103 = put_var(rec%100) shared(borrowed-after at 2303..2309)
+  r%73 = put_var(r%55) shared(borrowed-after at 2111..2117)
+  r%75 = put_then_fail(r%55) shared(borrowed-after at 2111..2117)
   r%25 = bump(p%19) owned
   r%12 = list_push(vars%11) owned
 fn bump consumes p
@@ -2402,7 +2403,7 @@ fn nested
         (
             "owned_record_captured",
             "fn main
-  r%2 = put_var(r%0) shared(captured)
+  r%2 = put_var(r%0) shared(captured at 1789..1814)
   r%14 = put_var(r%2) shared(origin)
   r%57 = put_var(r%52) shared(join)
 fn put_var consumes p
@@ -2438,9 +2439,9 @@ fn sorted consumes p
         (
             "owned_record_recursive",
             "fn main
-  r%2 = fill(rec%1) shared(borrowed-after)
-  r%3 = fill(rec%1) shared(borrowed-after)
-  r%16 = fill(rec%1) shared(borrowed-after)
+  r%2 = fill(rec%1) shared(borrowed-after at 1116..1132)
+  r%3 = fill(rec%1) shared(borrowed-after at 1174..1183)
+  r%16 = fill(rec%1) shared(borrowed-after at 1256..1265)
   r%17 = even(r%16) shared(origin)
 fn fill consumes p
   r%6 = put_var(p%0) shared(join), owned entry owned
@@ -2463,9 +2464,9 @@ fn odd consumes p
   r%1 = grow(r%0) owned
   r%3 = grow(r%2) owned
   r%29 = grow(r%28) owned
-  r%30 = grow(r%29) shared(borrowed-after)
-  r%31 = grow(r%29) shared(borrowed-after)
-  r%48 = grow(r%1) shared(borrowed-after)
+  r%30 = grow(r%29) shared(borrowed-after at 1162..1175)
+  r%31 = grow(r%29) shared(borrowed-after at 1201..1210)
+  r%48 = grow(r%1) shared(borrowed-after at 1355..1361)
   r%49 = grow(r%48) shared(origin)
 fn grow consumes start
   r%32 = put_var(p%20) shared(join), owned entry owned
@@ -2486,13 +2487,13 @@ fn g
         (
             "owned_fresh_result",
             "fn main
-  r%11 = bump_all(xs%1) shared(borrowed-after)
+  r%11 = bump_all(xs%1) shared(borrowed-after at 991..1005)
   r%59 = set(ws%47) owned
-  r%97 = list_push(xs%1) shared(borrowed-after)
-  r%99 = set(xs%1) shared(borrowed-after)
+  r%97 = list_push(xs%1) shared(borrowed-after at 1459..1480)
+  r%99 = set(xs%1) shared(borrowed-after at 1499..1513)
   r%142 = set(flags%127) owned
-  r%143 = set(r%142) shared(borrowed-after)
-  r%144 = list_push(r%142) shared(borrowed-after)
+  r%143 = set(r%142) shared(borrowed-after at 1879..1901)
+  r%144 = list_push(r%142) shared(borrowed-after at 1929..1933)
   r%140 = list_push(flags%131) owned
   r%71 = bump_all(ws%65) owned
   r%56 = list_push(ws%50) owned
@@ -2507,7 +2508,7 @@ fn bump_all consumes start
         (
             "owned_argument_used_after_call",
             "fn main
-  r%11 = bump_all(zs%1) shared(borrowed-after)
+  r%11 = bump_all(zs%1) shared(borrowed-after at 845..857)
   r%44 = set(zs%1) shared(borrowed-after)
   r%45 = list_push(r%44) shared(origin)
   r%9 = list_push(zs%3) owned

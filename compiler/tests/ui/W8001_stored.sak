@@ -1,0 +1,11 @@
+// milestone: M3
+// expect: W8001
+// expect-span: W8001 cause 8:14
+// counters: copies
+// spec: §17.172 (`stored`: a tuple holding `parts` is live after the update)
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let pair = (parts, 1)
+  let more = List.push(parts, "d")
+  Console.print("{List.len(pair.0)} {List.len(more)}")
+}

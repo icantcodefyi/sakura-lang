@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-99 codes; 68 pages show a fixed program that the compiler's test suite checks.
+99 codes; 69 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -143,7 +143,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [W5005](/docs/errors/W5005) | `linear_contract_on_hot_path` | A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`, `List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole value (design §7.2). |
 | [W7001](/docs/errors/W7001) | `property_discard_budget` | A property discarded more than 90% of its generated inputs, so it tested almost nothing (design §7.4). |
 | [W7002](/docs/errors/W7002) | `vacuous_obligation` | A contract obligation was proved only because the assumptions on its path are contradictory, so the path can never run and the proof says nothing useful. |
-| [W8001](/docs/errors/W8001) | `copy_on_write` | An update to a shared collection is forced to copy inside a loop because another reference retains the old value (design §8.2). |
+| [W8001](/docs/errors/W8001) | `copy_on_write` | A `List`, `Map` or `Set` update is proven to copy because the earlier version is still held (design §8.2, §17.172): read again after the update, captured by a closure or handler that is still live, or stored in a value that is still live. |
 
 ## Runtime defects
 

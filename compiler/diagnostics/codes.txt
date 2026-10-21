@@ -100,4 +100,4 @@ W4010 active catch_all_on_open_union
 W5005 active linear_contract_on_hot_path
 W7001 active property_discard_budget
 W7002 active vacuous_obligation
-W8001 reserved copy_on_write
+W8001 active copy_on_write

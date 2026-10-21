@@ -1,0 +1,10 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001`: the wrapper's parameter is unique at run time, so its push reuses)
+fn append<A>(xs: List<A>, x: A) -> List<A> { List.push(xs, x) }
+
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let more = append(parts, "d")
+  Console.print("{List.len(more)}")
+}

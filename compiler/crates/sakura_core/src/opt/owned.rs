@@ -47,7 +47,7 @@ use elems::{Assume, Elems, callback, elem_read, elemish, seq};
 
 /// Why a consuming site is not owned: the fixed reason set of `--dump owned`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Shared {
+pub enum Reason {
     /// Not bound by a fresh constructor or an owned update (a call result, a builtin that may
     /// share).
     Origin,
@@ -73,19 +73,51 @@ pub enum Shared {
     Elements,
 }
 
-impl fmt::Display for Shared {
+impl fmt::Display for Reason {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Shared::Origin => f.write_str("origin"),
-            Shared::Param => f.write_str("param"),
-            Shared::BorrowedAfter => f.write_str("borrowed-after"),
-            Shared::Captured => f.write_str("captured"),
-            Shared::Stored => f.write_str("stored"),
-            Shared::EscapesCall(name) => write!(f, "escapes-call {name}"),
-            Shared::Join => f.write_str("join"),
-            Shared::Field => f.write_str("field"),
-            Shared::Tuple => f.write_str("tuple"),
-            Shared::Elements => f.write_str("elements"),
+            Reason::Origin => f.write_str("origin"),
+            Reason::Param => f.write_str("param"),
+            Reason::BorrowedAfter => f.write_str("borrowed-after"),
+            Reason::Captured => f.write_str("captured"),
+            Reason::Stored => f.write_str("stored"),
+            Reason::EscapesCall(name) => write!(f, "escapes-call {name}"),
+            Reason::Join => f.write_str("join"),
+            Reason::Field => f.write_str("field"),
+            Reason::Tuple => f.write_str("tuple"),
+            Reason::Elements => f.write_str("elements"),
+        }
+    }
+}
+
+/// Why a consuming site is not owned, and, for `borrowed-after`, `captured` and `stored`, the
+/// located witness that proves the update copies (design §17.172): a later read of the consumed
+/// value, or the capture or store of it into a value live at the update. `None` when no such
+/// witness exists, which is a loss of proof, never a proven copy.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Shared {
+    pub reason: Reason,
+    pub witness: Option<Pos>,
+    /// The `var` a `borrowed-after` witness reads the earlier version through (a join's
+    /// parameter), when that is not the consumed argument itself.
+    pub var: Option<String>,
+}
+
+impl From<Reason> for Shared {
+    fn from(reason: Reason) -> Self {
+        Shared {
+            reason,
+            witness: None,
+            var: None,
+        }
+    }
+}
+
+impl fmt::Display for Shared {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.witness {
+            Some(p) => write!(f, "{} at {}..{}", self.reason, p.offset, p.end),
+            None => write!(f, "{}", self.reason),
         }
     }
 }
@@ -512,16 +544,44 @@ impl Summaries<'_> {
 /// The ownership facts of `def`, with `owned_params` owned at entry (the consumed parameter of
 /// an owned entry of a consuming def; empty otherwise).
 pub fn analyze(m: &Module, def: &FnDef, summaries: &[Summary], owned_params: &[Local]) -> Facts {
+    facts(m, def, summaries, owned_params, false)
+}
+
+/// [`analyze`] with no parameter owned, each `borrowed-after`, `captured` or `stored` site
+/// carrying its witness when one proves the copy (design §17.172; `--dump owned`, `W8001`).
+pub fn witnessed(m: &Module, def: &FnDef, summaries: &[Summary]) -> Facts {
+    facts(m, def, summaries, &[], true)
+}
+
+fn facts(
+    m: &Module,
+    def: &FnDef,
+    summaries: &[Summary],
+    owned_params: &[Local],
+    witnesses: bool,
+) -> Facts {
     let a = Analysis::run(m, def, summaries, owned_params);
+    let scan = witnesses.then(|| Scan::of(def));
     let sites = a
         .sites
         .iter()
         .map(|(at, arg)| {
             let verdict = match arg {
                 Some(x) if a.owned[x.index()] && a.weak[x.index()].is_empty() => Ok(()),
-                Some(x) if a.owned[x.index()] => Err(Shared::Origin),
-                Some(x) => Err(a.reason[x.index()].clone().unwrap_or(Shared::Origin)),
-                None => Err(Shared::Origin),
+                Some(x) if a.owned[x.index()] => Err(Reason::Origin.into()),
+                Some(x) => {
+                    let reason = a.reason[x.index()].clone().unwrap_or(Reason::Origin);
+                    let proof = scan.as_ref().and_then(|s| a.witness(s, *at, *x, &reason));
+                    Err(match proof {
+                        Some((reason, p, var)) => Shared {
+                            reason,
+                            witness: Some(p),
+                            var,
+                        },
+                        None => reason.into(),
+                    })
+                }
+                None => Err(Reason::Origin.into()),
             };
             (*at, verdict)
         })
@@ -547,13 +607,82 @@ pub fn analyze(m: &Module, def: &FnDef, summaries: &[Summary], owned_params: &[L
             None => false,
         };
         if elems && v.is_ok() && !e.as_ref().is_some_and(|e| e.proven(*at)) {
-            *v = Err(Shared::Elements);
+            *v = Err(Reason::Elements.into());
         }
     }
     if let Some(e) = e {
         facts.in_place = e.in_place;
     }
     facts
+}
+
+/// A persistent update proven to copy (design §17.172), for `W8001`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Copy {
+    /// The update.
+    pub at: Pos,
+    /// `borrowed-after`, `captured` or `stored`, and where.
+    pub reason: Reason,
+    pub witness: Pos,
+    /// [`Shared::var`].
+    pub var: Option<String>,
+    /// `List`, `Map` or `Set`.
+    pub collection: &'static str,
+    /// The consumed argument's index, and the call's argument count.
+    pub arg: usize,
+    pub args: usize,
+}
+
+/// Every update outside std, by a builtin or a std def, whose consumed collection has a
+/// witness ([`witnessed`]); in def order, then binding order.
+pub fn copies(m: &Module) -> Vec<Copy> {
+    let sums = summaries(m);
+    let mut out = Vec::new();
+    for def in m.defs.iter().filter(|d| !d.module.starts_with("std")) {
+        let facts = witnessed(m, def, &sums);
+        each_let_at(&def.body, &mut |local, bind, pos| {
+            let Some(Err(Shared {
+                reason,
+                witness: Some(witness),
+                var,
+            })) = facts.sites.get(&local)
+            else {
+                return;
+            };
+            let Bind::Call(callee, args) = bind else {
+                return;
+            };
+            let persistent = match callee {
+                Atom::Builtin(_) => true,
+                Atom::Global(d) => m.def(*d).module.starts_with("std"),
+                _ => false,
+            };
+            let Some(arg) = consumed(bind, &sums) else {
+                return;
+            };
+            let collection = match args.get(arg) {
+                Some(Atom::Local(x)) => match def.local(*x).ty {
+                    Ty::List(_) => "List",
+                    Ty::Map(..) => "Map",
+                    Ty::Set(_) => "Set",
+                    _ => return,
+                },
+                _ => return,
+            };
+            if let (true, Some(at)) = (persistent, pos) {
+                out.push(Copy {
+                    at,
+                    reason: reason.clone(),
+                    witness: *witness,
+                    var: var.clone(),
+                    collection,
+                    arg,
+                    args: args.len(),
+                });
+            }
+        });
+    }
+    out
 }
 
 /// `--dump owned`: [`display_module`] of every module outside std.
@@ -579,7 +708,7 @@ pub fn display_module(m: &Module, module: &str) -> String {
         if def.module != module {
             continue;
         }
-        let facts = analyze(m, def, &sums, &[]);
+        let facts = witnessed(m, def, &sums);
         let entry = sums[i]
             .consumes
             .map(|p| analyze(m, def, &sums, &[def.params[p]]));
@@ -690,7 +819,7 @@ enum Use {
     /// An argument of the `k`th jump to this label.
     Move(Label, usize),
     Ret,
-    Other(Shared),
+    Other(Reason),
 }
 
 struct Analysis<'a> {
@@ -728,11 +857,13 @@ struct Analysis<'a> {
     /// only where the join's parameter is live: lowering threads every `var` through every join.
     join_live: HashMap<Label, BTreeSet<Local>>,
     owned: Vec<bool>,
-    reason: Vec<Option<Shared>>,
+    reason: Vec<Option<Reason>>,
     /// Every use a borrow, and every local aliasing part of it borrowed too.
     borrowed: Vec<bool>,
     /// Locals bound to `None`.
     nones: HashSet<Local>,
+    /// Locals bound to an empty singleton (`[]`, `Map.empty()`).
+    empties: HashSet<Local>,
     /// Per owned carrier, the components that are not owned (an allocation's shared
     /// argument, a callee's [`Summary::weak`]); a projection of one is not owned, and a
     /// consuming site takes only a carrier with none.
@@ -773,6 +904,7 @@ impl<'a> Analysis<'a> {
             reason: vec![None; n],
             borrowed: vec![false; n],
             nones: HashSet::new(),
+            empties: HashSet::new(),
             weak: vec![BTreeSet::new(); n],
         };
         for p in slots(def) {
@@ -924,7 +1056,7 @@ impl<'a> Analysis<'a> {
                 let k = js.len() - 1;
                 self.use_all(args, Use::Move(*l, k));
             }
-            Expr::Fail(a) => self.use_atom(a, Use::Other(Shared::Stored)),
+            Expr::Fail(a) => self.use_atom(a, Use::Other(Reason::Stored)),
             Expr::LetJoin {
                 label,
                 params,
@@ -958,7 +1090,7 @@ impl<'a> Analysis<'a> {
                 self.collect(els);
             }
             Expr::Handle { handler, body } => {
-                self.use_atom(handler, Use::Other(Shared::Stored));
+                self.use_atom(handler, Use::Other(Reason::Stored));
                 self.collect(body);
             }
             Expr::Try { on_fail, body } => {
@@ -994,7 +1126,7 @@ impl<'a> Analysis<'a> {
                 } else if i != p && Some(a) != args.get(p) && self.borrows(callee, i) {
                     Use::Borrow
                 } else {
-                    Use::Other(Shared::Stored)
+                    Use::Other(Reason::Stored)
                 };
                 self.use_atom(a, u);
             }
@@ -1015,14 +1147,17 @@ impl<'a> Analysis<'a> {
             return;
         }
         match bind {
-            Bind::Atom(a) => self.use_atom(a, Use::Other(Shared::Stored)),
+            Bind::Atom(a) => self.use_atom(a, Use::Other(Reason::Stored)),
             Bind::Prim(_, args) => self.use_all(args, Use::Borrow),
             Bind::Call(Atom::Builtin(n), args) => {
                 let b = builtins::lookup(n);
                 if BORROWS.contains(&n.as_str()) {
                     self.use_all(args, Use::Borrow);
                 } else {
-                    self.use_all(args, Use::Other(Shared::EscapesCall(n.clone())));
+                    self.use_all(args, Use::Other(Reason::EscapesCall(n.clone())));
+                }
+                if SINGLETONS.contains(&n.as_str()) {
+                    self.empties.insert(x);
                 }
                 if b.is_some_and(|b| b.fresh)
                     || SINGLETONS.contains(&n.as_str())
@@ -1043,7 +1178,7 @@ impl<'a> Analysis<'a> {
                     let u = if self.borrows(callee, i) {
                         Use::Borrow
                     } else {
-                        Use::Other(Shared::EscapesCall(name.clone()))
+                        Use::Other(Reason::EscapesCall(name.clone()))
                     };
                     self.use_atom(a, u);
                 }
@@ -1056,7 +1191,7 @@ impl<'a> Analysis<'a> {
             Bind::Closure(lam, caps) => {
                 for (i, c) in caps.iter().enumerate() {
                     if !self.summaries[lam.index()].borrows(i) {
-                        self.use_atom(c, Use::Other(Shared::Captured));
+                        self.use_atom(c, Use::Other(Reason::Captured));
                         continue;
                     }
                     self.use_atom(c, Use::Borrow);
@@ -1082,12 +1217,15 @@ impl<'a> Analysis<'a> {
                     self.origin[x.index()] = Origin::Alloc(x);
                     return;
                 }
-                self.use_all(args, Use::Other(Shared::Stored));
+                self.use_all(args, Use::Other(Reason::Stored));
                 if let Alloc::Variant(t, _) = alloc
                     && args.is_empty()
                     && Some(*t) == self.m.builtin_type("Option")
                 {
                     self.nones.insert(x);
+                }
+                if *alloc == Alloc::List && args.is_empty() {
+                    self.empties.insert(x);
                 }
                 if *alloc == Alloc::List {
                     // `$rt.list([…])` copies its array; `[]` is the empty singleton.
@@ -1115,15 +1253,15 @@ impl<'a> Analysis<'a> {
             Bind::Perform(e, op, args) => {
                 let effect = self.m.effect(*e);
                 let name = format!("{}.{}", effect.name, effect.ops[*op as usize].name);
-                self.use_all(args, Use::Other(Shared::EscapesCall(name)))
+                self.use_all(args, Use::Other(Reason::EscapesCall(name)))
             }
             Bind::MakeHandler { state, clauses, .. } => {
-                self.use_all(state, Use::Other(Shared::Stored));
-                self.use_all(clauses, Use::Other(Shared::Captured));
+                self.use_all(state, Use::Other(Reason::Stored));
+                self.use_all(clauses, Use::Other(Reason::Captured));
             }
             Bind::StateSet(inst, _, v) => {
                 self.use_atom(inst, Use::Borrow);
-                self.use_atom(v, Use::Other(Shared::Stored));
+                self.use_atom(v, Use::Other(Reason::Stored));
             }
             Bind::Hole(_) => {}
         }
@@ -1299,38 +1437,38 @@ impl<'a> Analysis<'a> {
     }
 
     /// Why owned `x` is not owned after all, given the current facts of the others.
-    fn lost(&self, x: Local) -> Option<Shared> {
+    fn lost(&self, x: Local) -> Option<Reason> {
         let inherit = |o: Local| {
             (!self.owned[o.index()])
-                .then(|| self.reason[o.index()].clone().unwrap_or(Shared::Origin))
+                .then(|| self.reason[o.index()].clone().unwrap_or(Reason::Origin))
         };
         let from_origin = match self.origin[x.index()] {
             Origin::Site(at) => match self.consumes.get(&at) {
                 Some(y) if self.owned[y.index()] && self.weak[y.index()].is_empty() => None,
-                _ => Some(Shared::Origin),
+                _ => Some(Reason::Origin),
             },
             Origin::Param(l, i) => {
                 let ok = self.jumps.get(&l).is_none_or(|js| {
                     js.iter()
                         .all(|args| args.get(i).is_some_and(|a| self.owned_atom(a)))
                 });
-                (!ok).then_some(Shared::Join).or_else(|| {
+                (!ok).then_some(Reason::Join).or_else(|| {
                     self.owners[x.index()]
                         .iter()
                         .any(|(o, _)| self.aliased(x, *o, None))
-                        .then_some(Shared::BorrowedAfter)
+                        .then_some(Reason::BorrowedAfter)
                 })
             }
             Origin::Field(o, k, tuple)
                 if self.owned[o.index()] && self.weak[o.index()].contains(&k) =>
             {
-                Some(if tuple { Shared::Tuple } else { Shared::Field })
+                Some(if tuple { Reason::Tuple } else { Reason::Field })
             }
             Origin::Field(o, k, tuple) => inherit(o).or_else(|| {
                 self.aliased(x, o, Some(k)).then_some(if tuple {
-                    Shared::Tuple
+                    Reason::Tuple
                 } else {
-                    Shared::Field
+                    Reason::Field
                 })
             }),
             Origin::Owned | Origin::No | Origin::Arg | Origin::Alloc(_) | Origin::Fresh(_) => None,
@@ -1343,19 +1481,19 @@ impl<'a> Analysis<'a> {
         let desc = self.descendants(x);
         let kind = |z: &Local| {
             if matches!(self.def.local(*z).ty, Ty::Fn(_)) {
-                Shared::Captured
+                Reason::Captured
             } else {
-                Shared::BorrowedAfter
+                Reason::BorrowedAfter
             }
         };
         if let Some(z) = desc
             .iter()
             .find(|z| !self.borrowed[z.index()] && !self.owned[z.index()])
         {
-            return Some(if matches!(kind(z), Shared::Captured) {
-                Shared::Captured
+            return Some(if matches!(kind(z), Reason::Captured) {
+                Reason::Captured
             } else {
-                Shared::Stored
+                Reason::Stored
             });
         }
         for u in &self.uses[x.index()] {
@@ -1491,11 +1629,88 @@ impl<'a> Analysis<'a> {
         }
     }
 
+    /// Design §17.172: the witness that proves the update bound to `at` copies `x`, whose
+    /// verdict is `reason`. Only `borrowed-after`, `captured` and `stored` can have one, never
+    /// the empty singleton (every update allocates there): an alias of `x` read after the update
+    /// (a later use), or a value holding `x` or a holder of it, bound before the update and live
+    /// after it or installed as a handler around it (the capture or the store). Each holds a
+    /// reference at the update, so no execution of it can reuse the storage.
+    fn witness(
+        &self,
+        scan: &Scan,
+        at: Local,
+        x: Local,
+        reason: &Reason,
+    ) -> Option<(Reason, Pos, Option<String>)> {
+        if !matches!(
+            reason,
+            Reason::BorrowedAfter | Reason::Captured | Reason::Stored
+        ) || self.empties.contains(&x)
+        {
+            return None;
+        }
+        let after = self.after.get(&at)?;
+        let (_, _, rest) = scan.lets.get(&at)?;
+        // Aliases (`let k = x`), and holders by the link that stored `x` or an alias of it.
+        let mut aliases = BTreeSet::from([x]);
+        let mut holders: BTreeMap<Local, (Reason, Option<Pos>)> = BTreeMap::new();
+        for _ in 0..MAX_PASSES {
+            let mut changed = false;
+            for (z, (bind, pos, _)) in &scan.lets {
+                if aliases.contains(z) || holders.contains_key(z) {
+                    continue;
+                }
+                let link = |a: &Atom, kind: Reason| match a {
+                    Atom::Local(l) if aliases.contains(l) => Some((kind, *pos)),
+                    Atom::Local(l) => holders.get(l).cloned(),
+                    _ => None,
+                };
+                let first =
+                    |atoms: &[Atom], kind: Reason| atoms.iter().find_map(|a| link(a, kind.clone()));
+                let found = match bind {
+                    Bind::Atom(Atom::Local(l)) if aliases.contains(l) => {
+                        aliases.insert(*z);
+                        changed = true;
+                        continue;
+                    }
+                    Bind::Atom(a) => link(a, Reason::Stored),
+                    Bind::Alloc(_, args) => first(args, Reason::Stored),
+                    Bind::Closure(_, caps) => first(caps, Reason::Captured),
+                    Bind::MakeHandler { state, clauses, .. } => {
+                        first(state, Reason::Stored).or_else(|| first(clauses, Reason::Captured))
+                    }
+                    _ => None,
+                };
+                if let Some(h) = found {
+                    holders.insert(*z, h);
+                    changed = true;
+                }
+            }
+            if !changed {
+                break;
+            }
+        }
+        if aliases.iter().any(|l| self.hits(after, *l))
+            && let Some((p, l)) = scan.read(rest, aliases.clone())
+        {
+            // Read through a join's parameter, which keeps the name of the `var` it carries.
+            let var = (!aliases.contains(&l)).then(|| self.def.local(l).name.clone());
+            return Some((Reason::BorrowedAfter, p, var));
+        }
+        let installed = scan.handlers.get(&at);
+        holders.iter().find_map(|(z, (kind, pos))| {
+            let live = self.tracked[z.index()] && self.hits(after, *z);
+            (live || installed.is_some_and(|hs| hs.contains(z)))
+                .then_some(())
+                .and(pos.map(|p| (kind.clone(), p, None)))
+        })
+    }
+
     /// Owned unless its origin or one of its uses rules it out (before the fixpoint).
-    fn structural(&self, x: usize) -> Result<(), Shared> {
+    fn structural(&self, x: usize) -> Result<(), Reason> {
         match self.origin[x] {
-            Origin::No => return Err(Shared::Origin),
-            Origin::Arg => return Err(Shared::Param),
+            Origin::No => return Err(Reason::Origin),
+            Origin::Arg => return Err(Reason::Param),
             _ => {}
         }
         let l = Local(x as u32);
@@ -1505,13 +1720,13 @@ impl<'a> Analysis<'a> {
                 Use::Borrow | Use::Ret => {}
                 Use::Consume(at) => {
                     if live_after(at) {
-                        return Err(Shared::BorrowedAfter);
+                        return Err(Reason::BorrowedAfter);
                     }
                 }
                 Use::Into(at) => {
                     let twice = self.atoms[at].iter().filter(|a| **a == l).count() > 1;
                     if twice || live_after(at) {
-                        return Err(Shared::Stored);
+                        return Err(Reason::Stored);
                     }
                 }
                 Use::Move(label, k) => {
@@ -1525,7 +1740,7 @@ impl<'a> Analysis<'a> {
                         .filter(|(a, p)| **a == Atom::Local(l) && live(p))
                         .count();
                     if reads > 1 {
-                        return Err(Shared::Stored);
+                        return Err(Reason::Stored);
                     }
                     // Still read in the join: the parameter aliases it (`join_aliases`).
                 }
@@ -1536,15 +1751,158 @@ impl<'a> Analysis<'a> {
     }
 }
 
+/// One walk of a def for [`Analysis::witness`]: each binding with its position and the code
+/// after it, each join's parameters and code, and the handlers installed around each binding.
+struct Scan<'e> {
+    lets: BTreeMap<Local, (&'e Bind, Option<Pos>, &'e Expr)>,
+    joins: HashMap<Label, (&'e [Local], &'e Expr)>,
+    handlers: HashMap<Local, Vec<Local>>,
+}
+
+impl<'e> Scan<'e> {
+    fn of(def: &'e FnDef) -> Self {
+        let mut s = Scan {
+            lets: BTreeMap::new(),
+            joins: HashMap::new(),
+            handlers: HashMap::new(),
+        };
+        let mut work: Vec<(&Expr, Vec<Local>)> = vec![(&def.body, Vec::new())];
+        while let Some((e, hs)) = work.pop() {
+            match e {
+                Expr::Let {
+                    local,
+                    bind,
+                    pos,
+                    body,
+                } => {
+                    s.lets.insert(*local, (bind, *pos, body));
+                    if !hs.is_empty() {
+                        s.handlers.insert(*local, hs.clone());
+                    }
+                    work.push((body, hs));
+                }
+                Expr::LetJoin {
+                    label,
+                    params,
+                    join,
+                    body,
+                } => {
+                    s.joins.insert(*label, (params, join));
+                    work.push((join, hs.clone()));
+                    work.push((body, hs));
+                }
+                Expr::Handle { handler, body } => {
+                    let mut inner = hs;
+                    if let Atom::Local(h) = handler {
+                        inner.push(*h);
+                    }
+                    work.push((body, inner));
+                }
+                Expr::Try { body, .. } => work.push((body, hs)),
+                Expr::If { then, els, .. } => {
+                    work.push((els, hs.clone()));
+                    work.push((then, hs));
+                }
+                Expr::Switch { arms, default, .. } => {
+                    for (_, a) in arms {
+                        work.push((a, hs.clone()));
+                    }
+                    if let Some(d) = default {
+                        work.push((d, hs));
+                    }
+                }
+                Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+            }
+        }
+        s
+    }
+
+    /// The position of the first binding in `start` that reads one of `targets`, following each
+    /// jump that passes one into a join's parameter (the join's other parameters are new
+    /// values there). An unlocated alias joins `targets`.
+    fn read(&self, start: &'e Expr, targets: BTreeSet<Local>) -> Option<(Pos, Local)> {
+        let mut seen: HashSet<(Label, BTreeSet<Local>)> = HashSet::new();
+        let mut work = vec![(start, targets)];
+        while let Some((e, mut targets)) = work.pop() {
+            match e {
+                Expr::Let {
+                    local,
+                    bind,
+                    pos,
+                    body,
+                } => {
+                    let mut reads = None;
+                    each_atom(bind, &mut |a| match a {
+                        Atom::Local(l) if reads.is_none() && targets.contains(l) => {
+                            reads = Some(*l)
+                        }
+                        _ => {}
+                    });
+                    if let Some(l) = reads {
+                        if let Some(p) = pos {
+                            return Some((*p, l));
+                        }
+                        if matches!(bind, Bind::Atom(_)) {
+                            targets.insert(*local);
+                        }
+                    }
+                    work.push((body, targets));
+                }
+                Expr::Jump(l, args) => {
+                    let Some((params, join)) = self.joins.get(l) else {
+                        continue;
+                    };
+                    let passed: Vec<Local> = (args.iter().zip(params.iter()))
+                        .filter(|(a, _)| matches!(a, Atom::Local(x) if targets.contains(x)))
+                        .map(|(_, p)| *p)
+                        .collect();
+                    for p in params.iter() {
+                        targets.remove(p);
+                    }
+                    targets.extend(passed);
+                    if seen.insert((*l, targets.clone())) {
+                        work.push((join, targets));
+                    }
+                }
+                Expr::LetJoin { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+                    work.push((body, targets))
+                }
+                Expr::If { then, els, .. } => {
+                    work.push((els, targets.clone()));
+                    work.push((then, targets));
+                }
+                Expr::Switch { arms, default, .. } => {
+                    if let Some(d) = default {
+                        work.push((d, targets.clone()));
+                    }
+                    for (_, a) in arms.iter().rev() {
+                        work.push((a, targets.clone()));
+                    }
+                }
+                Expr::Ret(_) | Expr::Fail(_) => {}
+            }
+        }
+        None
+    }
+}
+
 /// Every binding of `e`, in order.
 fn each_let(e: &Expr, f: &mut dyn FnMut(Local, &Bind)) {
+    each_let_at(e, &mut |l, b, _| f(l, b));
+}
+
+/// Every binding of `e` with its position, in order.
+fn each_let_at(e: &Expr, f: &mut dyn FnMut(Local, &Bind, Option<Pos>)) {
     let mut work = vec![e];
     while let Some(e) = work.pop() {
         match e {
             Expr::Let {
-                local, bind, body, ..
+                local,
+                bind,
+                pos,
+                body,
             } => {
-                f(*local, bind);
+                f(*local, bind, *pos);
                 work.push(body);
             }
             Expr::LetJoin { join, body, .. } => {

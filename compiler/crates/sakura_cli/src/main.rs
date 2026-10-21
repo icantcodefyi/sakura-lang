@@ -710,6 +710,9 @@ fn check(json: bool, frozen: Option<&str>, since: &str, paths: &[PathBuf]) -> Ex
     };
     let a = Analysis::analyze(&snapshot);
     let mut diags = a.check.diagnostics.clone();
+    if !diags.iter().any(Diagnostic::is_error) && a.check.holes.is_empty() {
+        diags.extend(Analysis::copy_warnings(&snapshot));
+    }
     if let Some(frozen) = frozen {
         let roots = if paths.is_empty() {
             disk::default_roots(Path::new("."))

@@ -93,7 +93,7 @@ fn increment(t: Tree) -> Tree {
 
 If the caller passes its last reference to `t`, native code can rebuild each `Node` in the cell it just took apart. If the tree is still used elsewhere, the update copies and the original stays intact. Either way the program's behavior is identical; reuse is never observable.
 
-When an update in a loop is forced to copy because an older value is still live, the compiler emits warning `W8001 copy_on_write`, pointing at the use that retains it.
+When an update is proven to copy because the earlier version is still held (read again later, captured by a live closure or handler, or stored in a live value), `sakura check` emits warning `W8001 copy_on_write` with that use as its `cause` span. An update whose value only might be shared, such as a parameter, is never warned about.
 
 The JavaScript backend ignores all of this and uses the host's garbage collector. Semantics are the same on every backend.
 
@@ -187,7 +187,7 @@ A compiler built from source with `cargo build --release -p sakura_cli --feature
 ## Costs and limits
 
 - Reference counting costs something on every `dup` and `drop`. Reuse is what makes it competitive; how well it works is unmeasured.
-- Sharing a large value and then updating it copies. `W8001` copy diagnostics are planned with Perceus reuse, after 1.0.
+- Sharing a large value and then updating it copies. `W8001` reports the copies the compiler can prove; one that depends on what a caller passes is not reported.
 - Cyclic data needs `Graph` and `NodeId`s instead of direct references.
 - On the JS backend, `Int` arithmetic and literals beyond ±(2^53−1) are defect `D003` until a wider representation lands. Parsing is the exception: `String.parse_int` returns `None` for such a value, because parsing is where untrusted input enters.
 - In the native design, handler state uses a per-instance lock. Whether that holds up under parallelism is an open question ([design §16](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).

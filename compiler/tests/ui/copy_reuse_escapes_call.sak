@@ -1,0 +1,11 @@
+// milestone: M3
+// counters: reuses
+// spec: §17.172 (no `W8001` for `escapes-call`: the closure called before the update keeps nothing)
+pub fn main() -> Unit ! {Console} {
+  let parts = String.split("a,b,c", ",")
+  let count = fn(xs: List<String>) -> Int { List.len(xs) }
+  let f = if List.len(parts) > 5 { fn(xs: List<String>) -> Int { 0 } } else { count }
+  Console.print("{f(parts)}")
+  let more = List.push(parts, "d")
+  Console.print("{List.len(more)}")
+}
