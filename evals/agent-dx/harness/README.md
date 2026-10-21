@@ -4,7 +4,8 @@ Python 3.11+ standard library only, plus Git, Node and a built `sakura`.
 
 - `offline.py` validates task metadata and executes trusted, checked-in gold and
   negative fixtures (invoked by the Cargo test `agent_dx::offline_task_oracles`).
-- `runner.py` runs agent episodes and replays their transcripts.
+- `runner.py` runs agent episodes, replays their transcripts and judges episodes run
+  outside it (`judge`).
 - `test_runner.py` tests the runner offline (Cargo test `agent_dx::runner_offline`,
   so `cargo test --workspace` in `ci.yml` runs it on Linux and macOS without secrets).
 - `fixtures/` holds a committed canned transcript that CI replays.
@@ -140,6 +141,41 @@ raw messages stay private until redacted). Replay one with
 `agent-eval.yml` from GitHub after creating the `agent-eval` environment with the
 owner as required reviewer and its `ANTHROPIC_API_KEY` secret; it commits the ledger
 back to `main` and uploads only the summary.
+
+## Subscription episodes (`judge`, design §17.301 (3c) (iii))
+
+Episodes run through a coding-agent seat (Claude Code, Codex) instead of the Messages
+API spend nothing under the cap; the runner only judges them. For each task, give a
+delegated agent a fresh copy of the task's `starter/` and its `prompt.md` and nothing
+else from the repository (no gold, hollow or oracle), with the network denied to
+`sakura` and only the tools of step 2 above (read, write, the allowlisted `sakura`
+subcommands, the skill in the `skill` condition). Then lay the results out as
+
+```
+<episodes>/<task-id>/submission/       the project's files as the agent left them
+<episodes>/<task-id>/transcript.jsonl  the client's session transcript
+```
+
+and run, with no key and no network:
+
+```sh
+python3 evals/agent-dx/harness/runner.py judge --sakura compiler/target/release/sakura \
+  --episodes <episodes>
+```
+
+`submission/` must hold exactly the starter's inventory (`sakura.toml`, `src/main.sak`;
+`target/` is ignored): a project the agent ran `sakura setup` in carries `.claude/` or
+`.agents/` and fails the guard, so copy those two files out. Each submission gets
+`verdict()`, the live runner's acceptance (the guard, `check --frozen-specs all
+--since`, no holes or diagnostics, the visible tests, every oracle). From the transcript
+it reads the model family (`claude` or `openai`; anything else, or two families, is
+refused), the condition (`skill` when the transcript lists the `sakura` skill or names
+its `SKILL.md`, else `baseline`) and `skill_loaded` (a tool call invoked the skill or
+read its `SKILL.md`). It prints one record per task and writes `judged.json` with the
+per-family/condition accepted counts and 95% Wilson intervals. Only the final state is
+judged, so there is no pass@1 or iterations-to-green, and the seat's tokens and cost are
+not measured. Label the numbers "subscription episodes, <family> family, judged
+offline".
 
 ## Limits
 

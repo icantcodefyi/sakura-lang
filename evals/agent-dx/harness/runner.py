@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Agent DX episode runner (design §17.146, plan DX5): scripted, replay and live backends.
+"""Agent DX episode runner (design §17.146, plan DX5): scripted, replay and live backends, and
+`judge` for episodes run outside it (design §17.301 (3c)).
 
 Live mode calls the Anthropic Messages API and spends the owner's money; it refuses to start
 without --budget-usd, --approved-by and pinned model prices, and keeps a committed spend ledger.
-Scripted and replay modes make no network calls and run in CI without secrets.
+Scripted, replay and judge make no network calls and run in CI without secrets.
 """
 import argparse
 import datetime
@@ -809,6 +810,119 @@ def command_replay(args):
     return 0
 
 
+SKILL_PATH = re.compile(r'skills/sakura/SKILL\.md')
+SKILL_LISTED = re.compile(r'^- sakura: ', re.M)
+
+
+def nodes(value):
+    """Every dict in a parsed JSON value, depth first."""
+    if isinstance(value, dict):
+        yield value
+        value = list(value.values())
+    if isinstance(value, list):
+        for item in value:
+            yield from nodes(item)
+
+
+def strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings(item)
+
+
+def family_of(model):
+    if model.startswith('claude'):
+        return 'claude'
+    if re.match(r'(gpt|codex|o\d)', model):
+        return 'openai'
+    return None
+
+
+def read_client_transcript(path):
+    """Family, model, condition and skill activation from a Claude Code or Codex JSONL
+    transcript (design §17.301 (3c) (iii)). A tool call is a Claude `tool_use` block or a Codex
+    `function_call`/`custom_tool_call`/`local_shell_call` item. The skill counts as loaded when
+    a tool call invokes the `sakura` skill or names its `SKILL.md`; the condition is `skill`
+    when the transcript lists the skill or names that file anywhere, else `baseline`."""
+    events = []
+    for number, line in enumerate(Path(path).read_text().splitlines(), 1):
+        if line.strip():
+            try:
+                events.append(json.loads(line))
+            except ValueError:
+                raise Refused(f'{path}:{number}: not a JSON line') from None
+    models = sorted({node['model'] for node in nodes(events)
+                     if isinstance(node.get('model'), str) and not node['model'].startswith('<')})
+    families = {family_of(m) for m in models}
+    if len(families) != 1 or None in families:
+        raise Refused(f'{path}: expected one known model family, found models {models}')
+    loaded = False
+    for node in nodes(events):
+        kind = node.get('type')
+        if kind == 'tool_use':
+            call = node.get('input') or {}
+            if node.get('name') == 'Skill' and isinstance(call, dict) and call.get('skill') == 'sakura':
+                loaded = True
+        elif kind in ('function_call', 'custom_tool_call', 'local_shell_call'):
+            call = [node.get('arguments'), node.get('input'), node.get('action')]
+        else:
+            continue
+        loaded = loaded or any(SKILL_PATH.search(s) for s in strings(call))
+    available = loaded or any(SKILL_PATH.search(s) or SKILL_LISTED.search(s)
+                              for s in strings(events))
+    return {'family': families.pop(), 'models': models,
+            'condition': 'skill' if available else 'baseline', 'skill_loaded': loaded}
+
+
+def command_judge(args):
+    """Verdict on submissions produced outside the runner (the subscription episodes):
+    `<episodes>/<task-id>/submission/` holds the project's files as the agent left them and
+    `<episodes>/<task-id>/transcript.jsonl` the client's transcript. No provider call."""
+    binary = str(Path(args.sakura).resolve())
+    root = Path(args.episodes)
+    tasks = {p.name: p for p in (SUITE / 'tasks').iterdir() if p.is_dir()}
+    found = sorted(p for p in root.iterdir() if p.is_dir())
+    unknown = [p.name for p in found if p.name not in tasks]
+    if unknown or not found:
+        raise Refused(f'{root}: expected task directories, found {unknown or "none"}')
+    scratch_root = offline.ROOT / 'target/agent-dx'
+    scratch_root.mkdir(parents=True, exist_ok=True)
+    episodes = []
+    with tempfile.TemporaryDirectory(prefix='judge-', dir=scratch_root) as scratch:
+        for directory in found:
+            task = tasks[directory.name]
+            meta = json.loads((task / 'task.json').read_text())
+            client = read_client_transcript(directory / 'transcript.jsonl')
+            submission = directory / 'submission'
+            if not submission.is_dir():
+                raise Refused(f'{submission} is missing')
+            result = verdict(task, meta, binary, offline.files(submission), scratch)
+            episode = {'task': task.name, 'revision': meta['revision'], **client, **result}
+            episodes.append(episode)
+            print(json.dumps(episode, sort_keys=True), flush=True)
+    cells = {}
+    for e in episodes:
+        cells.setdefault(f"{e['family']}/{e['condition']}", []).append(e)
+    summary = {key: {'episodes': len(rows),
+                     'accepted': [sum(r['accepted'] for r in rows), len(rows),
+                                  wilson(sum(r['accepted'] for r in rows), len(rows))],
+                     'skill_not_loaded': sum(r['condition'] == 'skill' and not r['skill_loaded']
+                                             for r in rows),
+                     'failed': [r['task'] for r in rows if not r['accepted']]}
+               for key, rows in sorted(cells.items())}
+    report = {'kind': 'subscription episodes, judged offline', 'harness': HARNESS_VERSION,
+              'environment': environment(binary), 'summary': summary, 'episodes': episodes}
+    out = Path(args.out or root / 'judged.json')
+    out.write_text(json.dumps(report, indent=1, sort_keys=True) + '\n')
+    print(f'wrote {out}', flush=True)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -837,9 +951,15 @@ def main(argv=None):
     replay.add_argument('--sakura', required=True)
     replay.add_argument('--transcript', required=True)
     replay.add_argument('--out')
+    judge = commands.add_parser('judge', help='verdict on submissions made outside the runner')
+    judge.add_argument('--sakura', required=True)
+    judge.add_argument('--episodes', required=True,
+                       help='directory of <task-id>/{submission/,transcript.jsonl}')
+    judge.add_argument('--out', help='report (default: <episodes>/judged.json)')
     args = parser.parse_args(argv)
+    commands = {'run': command_run, 'replay': command_replay, 'judge': command_judge}
     try:
-        return command_run(args) if args.command == 'run' else command_replay(args)
+        return commands[args.command](args)
     except Refused as refused:
         print(f'refused: {refused}', file=sys.stderr)
         return 2

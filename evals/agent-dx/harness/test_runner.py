@@ -189,6 +189,63 @@ class Runner(Base):
         self.assertEqual(metrics['submissions'], 0)
 
 
+def claude_line(*content, model='claude-opus-5-5'):
+    return json.dumps({'type': 'assistant', 'message': {'model': model, 'content': list(content)}})
+
+
+class Judge(Base):
+    def episode(self, task, source, lines):
+        directory = self.tmp / 'episodes' / task
+        (directory / 'submission/src').mkdir(parents=True)
+        starter = TASKS / task / 'starter'
+        (directory / 'submission/sakura.toml').write_bytes((starter / 'sakura.toml').read_bytes())
+        (directory / 'submission/src/main.sak').write_text(source)
+        (directory / 'transcript.jsonl').write_text('\n'.join(lines) + '\n')
+
+    def test_judges_submissions_from_client_transcripts(self):
+        listing = json.dumps({'type': 'user', 'message': {'content': 'skills:\n- sakura: Sakura'}})
+        skill = tool('Skill', 'a', skill='sakura')
+        self.episode(TASK, GOLD, [listing, claude_line(skill), claude_line(model='<synthetic>')])
+        other = '01-bounded-clamp'
+        codex = [json.dumps({'type': 'turn_context', 'payload': {'model': 'gpt-5-codex'}}),
+                 json.dumps({'type': 'response_item', 'payload': {
+                     'type': 'function_call', 'name': 'shell',
+                     'arguments': json.dumps({'command': ['cat', '.agents/skills/sakura/SKILL.md']})}})]
+        self.episode(other, (TASKS / other / 'hollow/src/main.sak').read_text(), codex)
+        result = self.run_cli('judge', '--sakura', SAKURA, '--episodes', str(self.tmp / 'episodes'))
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+        report = json.loads((self.tmp / 'episodes/judged.json').read_text())
+        episodes = {e['task']: e for e in report['episodes']}
+        self.assertEqual((episodes[TASK]['family'], episodes[TASK]['condition'],
+                          episodes[TASK]['skill_loaded'], episodes[TASK]['accepted']),
+                         ('claude', 'skill', True, True))
+        self.assertEqual(episodes[TASK]['models'], ['claude-opus-5-5'])
+        self.assertEqual((episodes[other]['family'], episodes[other]['condition'],
+                          episodes[other]['skill_loaded'], episodes[other]['accepted']),
+                         ('openai', 'skill', True, False))
+        self.assertEqual(report['summary']['claude/skill']['accepted'][:2], [1, 1])
+        self.assertEqual(report['summary']['openai/skill']['failed'], [other])
+
+    def test_transcript_readings(self):
+        sys.path.insert(0, str(HERE))
+        import runner
+        path = self.tmp / 't.jsonl'
+        # Named only in prose, never by a tool: available, not loaded.
+        path.write_text(claude_line({'type': 'text', 'text': 'see skills/sakura/SKILL.md'}) + '\n')
+        self.assertEqual(runner.read_client_transcript(path)['condition'], 'skill')
+        self.assertFalse(runner.read_client_transcript(path)['skill_loaded'])
+        read = tool('Read', 'r', file_path='/p/.claude/skills/sakura/SKILL.md')
+        path.write_text(claude_line(read) + '\n')
+        self.assertTrue(runner.read_client_transcript(path)['skill_loaded'])
+        path.write_text(claude_line(tool('Read', 'r', file_path='src/main.sak')) + '\n')
+        self.assertEqual(runner.read_client_transcript(path)['condition'], 'baseline')
+        for text in (claude_line() + '\n' + claude_line(model='gpt-5'), claude_line(model='x'),
+                     '{"type": "user"}', 'not json'):
+            path.write_text(text + '\n')
+            with self.assertRaises(runner.Refused):
+                runner.read_client_transcript(path)
+
+
 class Mock(http.server.BaseHTTPRequestHandler):
     responses, seen, fail = [], [], False
 
