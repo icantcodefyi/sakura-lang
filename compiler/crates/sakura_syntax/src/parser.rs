@@ -183,6 +183,11 @@ impl<'t> Parser<'t> {
         self.pos.checked_sub(1).map_or(0, |i| self.sig[i].end)
     }
 
+    /// Text of the last consumed token.
+    pub(crate) fn prev_text(&self) -> &'t str {
+        &self.text[self.prev_start() as usize..self.prev_end() as usize]
+    }
+
     /// Let the next token be a reserved word: `Task.spawn`, `effect Task { fn spawn(…) }`.
     pub(crate) fn allow_reserved_next(&mut self) {
         self.allow_reserved = true;

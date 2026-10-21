@@ -621,9 +621,14 @@ pub(crate) fn block(p: &mut Parser<'_>) -> CompletedMarker {
             FN_KW if p.peek_raw(1) == IDENT => break,
             _ => {
                 let before = p.position();
+                let field = p.at(IDENT) && p.peek_raw(1) == COLON;
                 stmt(p);
                 if p.position() == before {
                     p.err_and_bump("expected a statement");
+                    continue;
+                }
+                if field && p.at(COLON) && p.position() == before + 1 {
+                    field_value(p);
                     continue;
                 }
                 match p.current() {
@@ -640,6 +645,43 @@ pub(crate) fn block(p: &mut Parser<'_>) -> CompletedMarker {
     }
     p.expect(R_BRACE);
     m.complete(p, BLOCK)
+}
+
+/// `name: …` as a block statement is an anonymous record literal's field (design §17.297 (6)).
+/// `name` (just bumped) is reported (`V1002`); the `:` and the value up to the next `,` (taken)
+/// or the line's or block's end are one `ERROR` node, so a k-field literal is k records and no
+/// `V0009` cascade. Out of line so `block`'s frame, on the parser's recursion, does not grow.
+#[inline(never)]
+fn field_value(p: &mut Parser<'_>) {
+    let name = p.prev_text();
+    let (start, end) = (p.prev_start(), p.prev_end());
+    p.error_at(
+        codes::FIELD_OUTSIDE_RECORD,
+        format!(
+            "`{name}: …` is not a statement; a record literal names its type: `Type {{ {name}: …, … }}`"
+        ),
+        start,
+        end,
+    );
+    let m = p.start();
+    let mut balance = 0u32;
+    loop {
+        match p.current() {
+            EOF => break,
+            COMMA if balance == 0 => {
+                p.bump();
+                break;
+            }
+            NEWLINE | SEMICOLON | R_BRACE | R_PAREN | R_BRACKET | INTERP_END if balance == 0 => {
+                break;
+            }
+            L_PAREN | L_BRACKET | L_BRACE | INTERP_START => balance += 1,
+            R_PAREN | R_BRACKET | R_BRACE | INTERP_END => balance -= 1,
+            _ => {}
+        }
+        p.bump();
+    }
+    m.complete(p, ERROR);
 }
 
 fn stmt(p: &mut Parser<'_>) {

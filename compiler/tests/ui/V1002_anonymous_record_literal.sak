@@ -1,10 +1,17 @@
 // milestone: M3
-// expect: V1002 V1002 V0009 V0009 V0009 V0009 V0009
-// §17.294 WP-6: `{ request: 0, cap: 0 }` in expression position is a block whose first statement
-// is `request`, so `request` is unresolved. The message says a record literal names its type and
-// no `import std/llm.{request}` is offered, though std/llm exports a `request`. The V0009s are
-// the parser's cascade after each `name:`.
+// expect: V1002 V1002 V1002 V1002
+// fmt: exempt covers a block statement headed `name: …`, a parse error reported as `V1002`
+// §17.294 WP-6, §17.297 (6): `{ request: 0, cap: 0 }` in expression position is a block, so each
+// `name: …` is reported once at its name and the parser takes the value up to the next `,` or
+// the line's end with it: a k-field literal is k `V1002`, with no `V0009` cascade. The message
+// says a record literal names its type, no `import std/llm.{request}` is offered though std/llm
+// exports a `request`, and a name that resolves (`cap` below) is reported all the same.
 pub fn budget() -> Int {
   let c = { request: 0, cap: 0 }
+  let cap = 1
+  let d = {
+    request: List.len([1, 2])
+    cap: cap
+  }
   0
 }

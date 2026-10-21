@@ -141,6 +141,13 @@ retains earlier implementation history.
   on every target (design §17.295 F6). An internal `V9001` now points at the invalid
   definition instead of the file's first character. Fixture
   `compiler/tests/semantics/lambda_calls_lambda_through_result_map.sak`.
+- An anonymous record literal (`let c = { request: 0, cap: 0 }`, a block in expression
+  position) is one `V1002` per field, at the field's name, and nothing else: the parser takes
+  each `name: …` up to the next `,` or the line's end, where it reported a `V0009` cascade
+  after every name (seven records for two fields). The message is "`request: …` is not a
+  statement; a record literal names its type: `Type { request: …, … }`", now also when
+  `request` names a value in scope, and the record's phase is `parse` (design §17.297 (6)).
+  ui case `V1002_anonymous_record_literal`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 
