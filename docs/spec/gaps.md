@@ -156,6 +156,16 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **Contract spans.** Design §17.115 gives a call through a function value the clause's span
   only; the `contract_site_blame_*` fixtures check the defect code, not the spans.
 
+### Concurrency
+
+- **Negative channel capacity.** Only `with_channel(0, …)` is pinned as `D020`.
+- **`D090` beyond channels.** CC17 is pinned for a `recv` nothing can answer; a deadlock through
+  a full `send` or between two channels has no fixture.
+- **Pure loops.** Design §8.6 says a loop that performs nothing cannot be cancelled; no fixture
+  shows it (one would not terminate under a timeout).
+- **Same seed, two runs.** CC09's "every run" rests on the fixtures' pinned output, which each
+  harness run compares; no test runs one seed twice in one process and compares traces.
+
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,

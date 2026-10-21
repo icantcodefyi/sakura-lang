@@ -13,6 +13,7 @@ It does not declare v1.0.0-beta.1 released or replace today's [stability policy]
 - [Types and refinements](types.md) covers type identity, generics, and refined types.
 - [Effects and handlers](effects.md) covers rows, operations, handlers, and finalizers.
 - [Errors, `Result` and defects](errors.md) covers `Fail`, `try`, `?`, contracts, and defects.
+- [Concurrency](concurrency.md) covers tasks, cancellation, determinism, channels, and `D090`.
 - [Generated code table](diagnostic-codes.md) indexes the identity baseline by fixture.
 - [Coverage gaps](gaps.md) records missing evidence and unresolved differences.
 
