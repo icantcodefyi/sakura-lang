@@ -5,12 +5,12 @@ All notable changes to Sakura Lang are recorded here, following
 Releases follow the [stability policy](STABILITY.md). The `0.1.0-alpha.1` section also
 retains earlier implementation history.
 
-## [1.0.0-beta.1] - Unreleased
+## [1.0.0-beta.1] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291 and the owner's decision of 2026-10-21): it
 may have bugs and may change before 1.0.0, and every breaking change until then is listed here
 with a migration. This section collects everything since `v0.1.0`; it is dated at the
-preparation commit.
+preparation commit. The Rust MSRV is unchanged (1.99).
 
 ### Migration from v0.1.0
 
@@ -1630,6 +1630,7 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...HEAD
+[1.0.0-beta.1]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...v1.0.0-beta.1
 [0.1.0]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0-alpha.1...v0.1.0
 [0.1.0-alpha.1]: https://github.com/icantcodefyi/sakuralang/releases/tag/v0.1.0-alpha.1

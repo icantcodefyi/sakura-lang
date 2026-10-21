@@ -1,6 +1,6 @@
 {
   "name": "sakuralang",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "description": "The Sakura Lang compiler and toolchain: the `sakura` command",
   "keywords": [
     "sakura",
@@ -38,10 +38,10 @@
     "node": ">=26"
   },
   "optionalDependencies": {
-    "sakuralang-darwin-arm64": "0.1.0",
-    "sakuralang-linux-x64-gnu": "0.1.0",
-    "sakuralang-linux-arm64-gnu": "0.1.0",
-    "sakuralang-win32-x64-msvc": "0.1.0",
-    "sakuralang-darwin-x64": "0.1.0"
+    "sakuralang-darwin-arm64": "1.0.0-beta.1",
+    "sakuralang-linux-x64-gnu": "1.0.0-beta.1",
+    "sakuralang-linux-arm64-gnu": "1.0.0-beta.1",
+    "sakuralang-win32-x64-msvc": "1.0.0-beta.1",
+    "sakuralang-darwin-x64": "1.0.0-beta.1"
   }
 }
