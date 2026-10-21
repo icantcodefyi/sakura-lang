@@ -1107,6 +1107,65 @@ fn log_json_writes_what_js_writes() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Design §17.293 MT-9: `Log.stderr()` (the host root handler; on WASM the runtime library's own
+/// code) writes each field as compact JSON, JS's `JSON.stringify` byte for byte: escapes,
+/// numbers, and an object's array-index keys first.
+#[test]
+fn log_stderr_fields_are_what_js_writes() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = std::env::temp_dir().join(format!("sakura-wasm-logstderr-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("main.sak"),
+        r#"pub fn main() -> Unit ! {Log} {
+  let obj = Map.of([("b", Json.Number(1.0)), ("10", Json.Bool(false)), ("2", Json.Null)])
+  Log.event(Level.Info, "manual.search", [
+    ("hits", Json.Number(3.0)),
+    ("id", Json.String("drill-press-belt-slip")),
+    ("tags", Json.Array([Json.String("a"), Json.String("b")])),
+  ])
+  Log.event(Level.Warn, "odd", [
+    ("big", Json.Number(1.0e21)),
+    ("small", Json.Number(-5.0e-7)),
+    ("text", Json.String("q\"\\\n\t\u{1}é")),
+    ("obj", Json.Object(obj)),
+    ("deep", Json.Array([Json.Array([]), Json.Object(Map.of([]))])),
+  ])
+}
+"#,
+    )
+    .unwrap();
+    let run = |target: &str| {
+        let out_dir = dir.join(format!("out-{target}"));
+        let out = sakura_env(
+            &[
+                "run",
+                "--target",
+                target,
+                "--out-dir",
+                out_dir.to_str().unwrap(),
+                "main.sak",
+            ],
+            &dir,
+            &[],
+        );
+        (out.code, out.stdout, out.stderr)
+    };
+    let js = run("js");
+    assert_eq!(js.0, Some(0), "{}", js.2);
+    assert_eq!(
+        js.2,
+        "Info manual.search hits=3 id=\"drill-press-belt-slip\" tags=[\"a\",\"b\"]\n\
+         Warn odd big=1e+21 small=-5e-7 text=\"q\\\"\\\\\\n\\t\\u0001é\" \
+         obj={\"2\":null,\"10\":false,\"b\":1} deep=[[],{}]\n"
+    );
+    assert_eq!(run("wasm"), js);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// ABI 1.2.0 §5, §10 and design §17.160 (2): an entry from frame code into a direct region whose
 /// twin runs out of gauge is run again through frames once, and `stats()` counts it in
 /// `restarts`; the rerun's own call into another region is a new entry, counted on its own. An

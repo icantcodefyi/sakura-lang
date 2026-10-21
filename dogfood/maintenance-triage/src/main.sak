@@ -621,8 +621,8 @@ test "02 the success case records the actual fetch activity" {
   )
   expect_eq(report.retrieved, ["drill-press-belt-slip"])
   expect_output([
-    "Info manual.search hits=Number(5.0)",
-    "Info manual.fetch id=String(\"drill-press-belt-slip\")",
+    "Info manual.search hits=5",
+    "Info manual.fetch id=\"drill-press-belt-slip\"",
   ])
 }
 
@@ -1164,8 +1164,8 @@ test "29 a three-turn provider replay searches, fetches and is escalated by poli
     expect_eq(report.disposition, Disposition.EscalateToSupervisor)
     expect(report.hazard_policy_applied)
     expect_output([
-      "Info manual.search hits=Number(3.0)",
-      "Info manual.fetch id=String(\"table-saw-smoke\")",
+      "Info manual.search hits=3",
+      "Info manual.fetch id=\"table-saw-smoke\"",
     ])
   }
 }

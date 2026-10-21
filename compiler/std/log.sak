@@ -8,7 +8,8 @@ pub effect Log {
   fn event(level: Level, message: String, fields: List<(String, Json)>) -> Unit
 }
 
-/// Root handler: one human-readable line per event on stderr.
+/// Root handler: one line per event on stderr, `Warn message key=json …`, each field's value
+/// as compact JSON text.
 @external(js, "sakura_runtime", "log_stderr")
 pub fn stderr() -> Handler<Log>
 
@@ -19,11 +20,13 @@ pub fn host() -> Handler<Log> { stderr() }
 @external(js, "sakura_runtime", "log_json")
 pub fn json() -> Handler<Log>
 
-/// Test default: each event becomes a captured line `Warn message key=value …`.
+/// Test default: each event becomes a captured line `Warn message key=json …`, each field's
+/// value as compact JSON text (`Json.encode`), as `stderr()` writes it:
+/// `Info manual.search hits=3 id="drill-press-belt-slip" ok=true tags=["a","b"]`.
 pub fn captured() -> Handler<Log, {Test}> {
   handler Log {
     fn event(level, message, fields) {
-      let rendered = List.map(fields, fn(kv) { " {kv.0}={show(kv.1)}" })
+      let rendered = List.map(fields, fn(kv) { " {kv.0}={Json.encode(kv.1)}" })
       Test.output("{level} {message}{List.join(rendered, "")}")
     }
   }

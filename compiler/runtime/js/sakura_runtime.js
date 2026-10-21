@@ -3220,10 +3220,10 @@ export function random_host() {
   );
 }
 
-/** `std::log::Log` to stderr: `Warn message key=value…` per event. */
+/** `std::log::Log` to stderr: `Warn message key=json…` per event (compact JSON, §17.293 MT-9). */
 export function log_stderr() {
   const event = (_i, level, message, fields, _ctx, k) => {
-    const kv = items(fields).map(([key, j]) => ` ${key}=${show(j)}`);
+    const kv = items(fields).map(([key, j]) => ` ${key}=${JSON.stringify(jsonToJs(j))}`);
     writeErr(`${show(level)} ${message}${kv.join("")}`);
     return ret(k, undefined);
   };

@@ -92,7 +92,7 @@ Tests run under deterministic default handlers ([design §5.8](https://github.co
 
 Under `Clock.fixed`, `Clock.sleep` returns at once, so a `timeout` whose action suspends fails at once; install `Clock.virtual()` to test timeouts.
 
-`Console.captured()` and `Log.captured()` send each line to the test's output, which `Test.output_lines()` returns and `expect_output` checks. A `Log.captured()` line looks like `Warn message key=value`:
+`Console.captured()` and `Log.captured()` send each line to the test's output, which `Test.output_lines()` returns and `expect_output` checks. A `Log.captured()` line looks like `Info manual.search hits=3 id="drill-press-belt-slip"`: the level, the message, then each field as `key=` and its value in compact JSON, as `Log.stderr()` writes it. For example:
 
 ```sakura
 fn announce(name: String) -> Unit ! {Console} {

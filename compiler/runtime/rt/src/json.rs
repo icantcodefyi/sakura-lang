@@ -9,9 +9,11 @@
 //! to an [`Out`]. A refinement's `where` runs through [`Types::satisfies`].
 
 use crate::layout::{BOOL, F64, I64, WORD};
+use crate::object::{FALSE, TRUE, is_ptr};
+use crate::scratch::StrBuf;
 use crate::show::{int_text, shortest};
 use crate::vt::{MAX_DEPTH, t};
-use crate::{Defect, Res};
+use crate::{Defect, Res, Rt, tag};
 
 /// Where answers are written.
 pub trait Out {
@@ -1454,8 +1456,14 @@ fn json_number(out: &mut dyn Out, f: f64) -> Res<()> {
 
 /// `JSON.stringify` of a string's UTF-8 bytes.
 fn json_string(out: &mut dyn Out, b: &[u8]) -> Res<()> {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
     out.put(b"\"")?;
+    json_escaped(out, b)?;
+    out.put(b"\"")
+}
+
+/// `json_string` without the quotes (escapes are per byte, so `b` may be any slice of a string).
+fn json_escaped(out: &mut dyn Out, b: &[u8]) -> Res<()> {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
     let mut run = 0;
     for (i, &c) in b.iter().enumerate() {
         let esc: &[u8] = match c {
@@ -1484,8 +1492,7 @@ fn json_string(out: &mut dyn Out, b: &[u8]) -> Res<()> {
             out.put(esc)?;
         }
     }
-    out.put(&b[run..])?;
-    out.put(b"\"")
+    out.put(&b[run..])
 }
 
 /// JS `btoa` of `b`, quoted.
@@ -1976,6 +1983,152 @@ pub fn encode(
     e.out
         .set_u32(n_at, u32::try_from(n).map_err(|_| Defect::HEAP_EXHAUSTED)?);
     Ok(())
+}
+
+// ---- Json values on the heap --------------------------------------------------------------------
+
+/// An [`Out`] appending to a heap string buffer.
+struct HeapOut<'a> {
+    rt: &'a mut Rt,
+    b: &'a mut StrBuf,
+}
+
+impl Out for HeapOut<'_> {
+    fn put(&mut self, b: &[u8]) -> Res<()> {
+        self.rt.put(self.b, b)
+    }
+    fn written(&self) -> usize {
+        self.b.len() as usize
+    }
+    fn truncate(&mut self, n: usize) {
+        self.b.truncate(n as u32);
+    }
+    fn set_u32(&mut self, at: usize, v: u32) {
+        self.rt.heap.mem.set_u32(self.b.obj() + 16 + at as u32, v);
+    }
+    fn bytes_from(&self, at: usize) -> &[u8] {
+        let at = at as u32;
+        self.rt
+            .heap
+            .mem
+            .bytes(self.b.obj() + 16 + at, self.b.len() - at)
+    }
+}
+
+impl Rt {
+    /// Append the borrowed `Json` value `j` as compact JSON text: JS
+    /// `JSON.stringify(jsonToJs(j))`, so a log field reads the same on every backend (design
+    /// §17.293 MT-9).
+    pub fn json_text(&mut self, b: &mut StrBuf, j: u32) -> Res<()> {
+        heap_json(&mut HeapOut { rt: self, b }, WORD, u64::from(j), 0)
+    }
+}
+
+fn heap_json(o: &mut HeapOut<'_>, kind: u32, bits: u64, depth: u32) -> Res<()> {
+    if depth > MAX_DEPTH {
+        return Err(TOO_DEEP);
+    }
+    match kind {
+        F64 => return json_number(o, f64::from_bits(bits)),
+        BOOL => return o.put(if bits != 0 { b"true" } else { b"false" }),
+        _ => {}
+    }
+    let w = bits as u32;
+    if !is_ptr(w) {
+        return o.put(match w {
+            TRUE => b"true",
+            FALSE => b"false",
+            _ => b"null",
+        });
+    }
+    match o.rt.tag(w) {
+        tag::FLOAT_BOX => {
+            let f = o.rt.float_of(w);
+            json_number(o, f)
+        }
+        tag::STRING => heap_string(o, w),
+        tag::LIST_ROOT => {
+            o.put(b"[")?;
+            for i in 0..o.rt.list_n(w) {
+                if i > 0 {
+                    o.put(b",")?;
+                }
+                let x = o.rt.at(w, i);
+                heap_json(o, WORD, u64::from(x), depth + 1)?;
+            }
+            o.put(b"]")
+        }
+        tag::MAP_ROOT => {
+            o.rt.dup(w)?;
+            let es = o.rt.map_entries(w)?;
+            let r = heap_object(o, es, depth);
+            o.rt.drop(es);
+            r
+        }
+        // `Null` has no slot; `Bool`, `Number`, `String`, `Array` and `Object` have one.
+        tag::VARIANT => {
+            let row = o.rt.obj_row(w);
+            if row.n_slots == 0 {
+                return o.put(b"null");
+            }
+            let kind = o.rt.kind(&row, 0);
+            heap_json(o, kind, o.rt.slot(w, 0), depth)
+        }
+        _ => Err(OPAQUE),
+    }
+}
+
+fn heap_string(o: &mut HeapOut<'_>, s: u32) -> Res<()> {
+    let (len, at) = o.rt.data(s);
+    let mut chunk = [0u8; 64];
+    o.put(b"\"")?;
+    for start in (0..len).step_by(chunk.len()) {
+        let n = (len - start).min(chunk.len() as u32);
+        let c = &mut chunk[..n as usize];
+        c.copy_from_slice(o.rt.heap.mem.bytes(at + start, n));
+        json_escaped(o, c)?;
+    }
+    o.put(b"\"")
+}
+
+/// The members of a `Json` object's entry list `es` in JS's order: array-index keys ascending,
+/// then the rest as the map holds them.
+fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32) -> Res<()> {
+    let n = o.rt.list_n(es);
+    let index = |rt: &Rt, i: u32| {
+        let (len, at) = rt.data(rt.slot(rt.at(es, i), 0) as u32);
+        (len <= 10)
+            .then(|| array_index(rt.heap.mem.bytes(at, len)))
+            .flatten()
+    };
+    let mut first = true;
+    let mut member = |o: &mut HeapOut<'_>, i: u32| -> Res<()> {
+        if !core::mem::take(&mut first) {
+            o.put(b",")?;
+        }
+        let pair = o.rt.at(es, i);
+        heap_string(o, o.rt.slot(pair, 0) as u32)?;
+        o.put(b":")?;
+        let kind = o.rt.kind(&o.rt.obj_row(pair), 1);
+        heap_json(o, kind, o.rt.slot(pair, 1), depth + 1)
+    };
+    o.put(b"{")?;
+    // ponytail: one scan per index key, O(n·k); sort indices if logged objects grow many.
+    let mut last = None;
+    while let Some((v, i)) = (0..n)
+        .filter_map(|i| index(o.rt, i).map(|v| (v, i)))
+        .filter(|&(v, _)| last.is_none_or(|l| v > l))
+        .min()
+    {
+        last = Some(v);
+        member(o, i)?;
+    }
+    for i in 0..n {
+        if index(o.rt, i).is_none() {
+            member(o, i)?;
+        }
+    }
+    o.put(b"}")
 }
 
 // ---- JSON Schema --------------------------------------------------------------------------------

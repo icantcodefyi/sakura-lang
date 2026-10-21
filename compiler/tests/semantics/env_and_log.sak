@@ -19,5 +19,5 @@ test "reads USER from the env handler" {
 
 test "logs when USER is missing" {
   expect_eq(greeting(), "hi friend")
-  expect_output(["Warn USER not set fallback=String(\"friend\")"])
+  expect_output(["Warn USER not set fallback=\"friend\""])
 }

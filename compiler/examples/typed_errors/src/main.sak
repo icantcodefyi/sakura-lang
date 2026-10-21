@@ -71,5 +71,5 @@ test "missing user is NotFound" {
 
 test "an unavailable backend is logged and reported as NotFound" {
   with down("maintenance") { expect_fail(fn() { view_user("alice", "u1") }, NotFound { id: "u1" }) }
-  expect_output(["Warn users backend unavailable reason=String(\"maintenance\")"])
+  expect_output(["Warn users backend unavailable reason=\"maintenance\""])
 }

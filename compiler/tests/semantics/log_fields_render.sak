@@ -1,0 +1,38 @@
+// milestone: M3
+// mode: test
+// covers: TestDecl
+// spec: design §17.293 MT-9
+
+// `Log.captured()` writes each field's value as compact JSON text, as `Log.stderr()` does on
+// every backend: `hits=3`, not `hits=Number(3.0)`.
+
+fn search() -> Unit ! {Log} {
+  Log.event(
+    Level.Info,
+    "manual.search",
+    [
+      ("hits", Json.Number(3.0)),
+      ("id", Json.String("drill-press-belt-slip")),
+      ("ok", Json.Bool(true)),
+      ("tags", Json.Array([Json.String("a"), Json.String("b")])),
+    ],
+  )
+}
+
+test "fields render as compact JSON" {
+  search()
+  Log.event(
+    Level.Warn,
+    "odd",
+    [
+      ("ratio", Json.Number(0.5)),
+      ("none", Json.Null),
+      ("quote", Json.String("say \"hi\"\n")),
+      ("obj", Json.Object(Map.of([("b", Json.Number(1.0)), ("2", Json.Null)]))),
+    ],
+  )
+  expect_output([
+    "Info manual.search hits=3 id=\"drill-press-belt-slip\" ok=true tags=[\"a\",\"b\"]",
+    "Warn odd ratio=0.5 none=null quote=\"say \\\"hi\\\"\\n\" obj=\{\"2\":null,\"b\":1\}",
+  ])
+}

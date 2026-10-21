@@ -57,8 +57,16 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 10. **`ANTHROPIC_BASE_URL` is no longer read** (Changed, design §17.293 MT-1): pass the
     endpoint with `Llm.anthropic_at(base, key, model)`; read it under your own `Env` handler if
     it comes from the environment.
+11. **Log fields render as compact JSON** (Changed, design §17.293 MT-9): a test that matched
+    `hits=Number(3.0)` matches `hits=3`, and `id=String("x")` becomes `id="x"`.
 
 ### Changed
+
+- **Breaking since 0.1.0 (design §17.293 MT-9).** `Log.stderr()` and `Log.captured()` write each
+  field as `key=` and its value in compact JSON, the text `Json.encode` gives, the same on JS,
+  WASM and native: `Info manual.search hits=3 id="drill-press-belt-slip"
+  ok=true tags=["a","b"]` where 0.1.0 wrote `hits=Number(3.0) id=String("drill-press-belt-slip")`.
+  `Log.json()` is unchanged. Migration: a test that matched `hits=Number(3.0)` matches `hits=3`.
 
 - **Breaking since 0.1.0 (design §17.293 MT-1).** `Llm.anthropic` no longer reads the process
   variable `ANTHROPIC_BASE_URL`: it always sends to `https://api.anthropic.com`, and the new

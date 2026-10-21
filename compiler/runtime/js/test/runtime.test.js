@@ -703,6 +703,31 @@ test("Secret never prints; Json.parse builds std values", () => {
   assert.equal(intMessage("1.5"), "expected an integer, found a number");
 });
 
+test("log_stderr writes each field as compact JSON (§17.293 MT-9)", () => {
+  class Level extends rt.Variant {}
+  Level.prototype.$t = rt.variantType("Level", "std::log", [["Debug", []], ["Info", []], ["Warn", []], ["Error", []]]);
+  class Json extends rt.Variant {}
+  Json.prototype.$t = rt.variantType("Json", "std::json", [["Null", []], ["Bool", [null]], ["Number", ["F"]], ["String", [null]], ["Array", [null]], ["Object", [null]]]);
+  rt.def("std::json::Json", Json);
+  const json = (text) => rt.json_parse(text).fields[0];
+  const fields = rt.list([
+    ["hits", json("3")],
+    ["id", json('"drill-press-belt-slip"')],
+    ["ok", json("true")],
+    ["tags", json('["a","b"]')],
+    ["obj", json('{"b":1,"2":null}')],
+  ]);
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  try {
+    rt.log_stderr().c[0](0, new Level(1, []), "manual.search", fields, null, () => {});
+  } finally {
+    process.stderr.write = write;
+  }
+  assert.deepEqual(lines, ['Info manual.search hits=3 id="drill-press-belt-slip" ok=true tags=["a","b"] obj={"2":null,"b":1}\n']);
+});
+
 test("llm_anthropic posts to api.anthropic.com with ANTHROPIC_BASE_URL set, and to base when given (§17.293 MT-1)", async () => {
   class Method extends rt.Variant {}
   Method.prototype.$t = rt.variantType("Method", "std::request", [["Get", []], ["Post", []]]);

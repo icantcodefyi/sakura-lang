@@ -1497,7 +1497,7 @@ fn bytes_to_string(rt: &mut Rt, b: u32) -> Res<u32> {
 }
 
 /// `Log.event(level, message, fields)` of `log_stderr`: one stderr line `Level message
-/// key=value…` with `Show` of the level and of each `Json` value, as JS.
+/// key=json…` with `Show` of the level and each `Json` value as compact JSON, as JS.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_log_stderr_event(
     #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
@@ -1526,28 +1526,34 @@ pub extern "C" fn rt_code_log_stderr_event(
     }
 }
 
-/// `show(level) message key=show(json)…` (`level` and `message` consumed, `fields` borrowed).
+/// `show(level) message key=json…` (`level` and `message` consumed, `fields` borrowed).
 fn log_line(rt: &mut Rt, level: u32, message: u32, fields: u32) -> Res<u32> {
     let shown = rt.show(level).inspect_err(|_| rt.drop(message))?;
-    let sp = rt
-        .static_string(b" ")
-        .inspect_err(|_| rt.drop2(shown, message))?;
-    let mut line = rt
-        .string_concat(shown, sp)
-        .inspect_err(|_| rt.drop(message))?;
-    line = rt.string_concat(line, message)?;
-    for i in 0..rt.list_n(fields) {
-        let pair = rt.at(fields, i);
-        let (k, v) = (rt.slot_word(pair, 0)?, rt.slot_word(pair, 1)?);
-        let sp = rt.static_string(b" ")?;
-        line = rt.string_concat(line, sp)?;
-        line = rt.string_concat(line, k)?;
-        let eq = rt.static_string(b"=")?;
-        line = rt.string_concat(line, eq)?;
-        let v = rt.show(v)?;
-        line = rt.string_concat(line, v)?;
+    let mut b = rt.strbuf().inspect_err(|_| rt.drop2(shown, message))?;
+    let r = (|| {
+        let (len, at) = rt.data(shown);
+        rt.put_mem(&mut b, at, len)?;
+        rt.put(&mut b, b" ")?;
+        let (len, at) = rt.data(message);
+        rt.put_mem(&mut b, at, len)?;
+        for i in 0..rt.list_n(fields) {
+            let pair = rt.at(fields, i);
+            rt.put(&mut b, b" ")?;
+            let (len, at) = rt.data(rt.slot(pair, 0) as u32);
+            rt.put_mem(&mut b, at, len)?;
+            rt.put(&mut b, b"=")?;
+            rt.json_text(&mut b, rt.slot(pair, 1) as u32)?;
+        }
+        Ok(())
+    })();
+    rt.drop2(shown, message);
+    match r {
+        Ok(()) => Ok(rt.finish(b)),
+        Err(d) => {
+            rt.strbuf_free(b);
+            Err(d)
+        }
     }
-    Ok(line)
 }
 
 // ---- files ------------------------------------------------------------------------------------
