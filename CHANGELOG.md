@@ -26,6 +26,34 @@ retains earlier implementation history.
   nothing left to match fails `HttpError`. Each redirect hop takes an entry, and a hop's entry
   stays taken when the request then fails (design §17.298 (a)); `stream` takes entries as
   `send` does. `Http.scripted` stays first-match. Fixture `compiler/tests/semantics/http_sequence_in_order.sak`.
+- `V7001 invalid_snapshot_name` (design §17.294 SS-13): `sakura check` reports a literal
+  `expect_snapshot` name the test runner would refuse (outside letters, digits, `_`, `-` and
+  `.`, empty, or starting with `.`), in the runner's words; a computed name is still checked
+  when the test runs.
+- `V0016 keyword_binder` (design §17.297 (2)): a parameter, a lambda parameter, a `let` or
+  `var` name or a pattern binding named `error` is reported where it is declared ("`error` is
+  a keyword: it names a field, not a binding; choose another name"). Since `error` became a
+  field name such a binder parsed but no body could use it. A field named `error` is
+  unaffected.
+
+### Fixed
+
+- `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
+  and never the current directory's tree, so stray `.sak` or `.sakura` files there no longer
+  refuse or join the lookup (design §17.294 SS-1, WP-2).
+- A `type` item's `where` may start the next line (`type Percent = Int` then
+  `  where it >= 0`), as `requires` and `ensures` continue a signature; it was a `V0001` and a
+  `V5003` at every `validate` of the type (design §17.294 SS-4). `sakura fmt` still writes the
+  `where` on the type line.
+- `sakura test --record` with no host in `[permissions] net` runs instead of exiting 75: every
+  host `Http.send` fails closed as under `run`, `Http.recording` appends what in-process
+  handlers answer (a synthetic cassette from `Router.handle` over `Sql.memory()`), and stderr
+  carries one note, "`[permissions] net` lists no host; recording captures in-process handlers
+  only" (design §17.294 RQ-7). An invalid manifest is still `V8006`.
+- An invalid character at a line's end whose next line starts with a token that can neither
+  continue a statement nor begin one (`:`, `requires`, `in`, `as`, `?`) is one `V0004`, the
+  next line taken as its cascade, where it also reported a `V0001` and a `V0009` for that line
+  (design §17.297 (3), the edge of §17.294 WP-5). ui case `V0004_line_end_cascade`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 
@@ -426,15 +454,6 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - `Response.status_json(code, value)` (design §17.294 RQ-6): `ok_json`'s JSON body and
   content type at status `code` (`requires code >= 100 && code <= 599`); `ok_json(value)` is
   its short form at 200, and `Response { ..Response.ok_json(value), status: … }` stays valid.
-- `V7001 invalid_snapshot_name` (design §17.294 SS-13): `sakura check` reports a literal
-  `expect_snapshot` name the test runner would refuse (outside letters, digits, `_`, `-` and
-  `.`, empty, or starting with `.`), in the runner's words; a computed name is still checked
-  when the test runs.
-- `V0016 keyword_binder` (design §17.297 (2)): a parameter, a lambda parameter, a `let` or
-  `var` name or a pattern binding named `error` is reported where it is declared ("`error` is
-  a keyword: it names a field, not a binding; choose another name"). Since `error` became a
-  field name such a binder parsed but no body could use it. A field named `error` is
-  unaffected.
 
 ### Fixed
 
@@ -545,22 +564,6 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   where it read "expected an integer, found a undefined"; model text that is not JSON gives
   `malformed JSON` (design §17.293 MT-2). `anthropic`'s doc says the model's text is
   `{"value": T}`, and `Llm.scripted`'s that it takes `T` itself.
-- `sakura doc` given a symbol named under std (`std::fs::rooted`, `std/fs`) reads std alone
-  and never the current directory's tree, so stray `.sak` or `.sakura` files there no longer
-  refuse or join the lookup (design §17.294 SS-1, WP-2).
-- A `type` item's `where` may start the next line (`type Percent = Int` then
-  `  where it >= 0`), as `requires` and `ensures` continue a signature; it was a `V0001` and a
-  `V5003` at every `validate` of the type (design §17.294 SS-4). `sakura fmt` still writes the
-  `where` on the type line.
-- `sakura test --record` with no host in `[permissions] net` runs instead of exiting 75: every
-  host `Http.send` fails closed as under `run`, `Http.recording` appends what in-process
-  handlers answer (a synthetic cassette from `Router.handle` over `Sql.memory()`), and stderr
-  carries one note, "`[permissions] net` lists no host; recording captures in-process handlers
-  only" (design §17.294 RQ-7). An invalid manifest is still `V8006`.
-- An invalid character at a line's end whose next line starts with a token that can neither
-  continue a statement nor begin one (`:`, `requires`, `in`, `as`, `?`) is one `V0004`, the
-  next line taken as its cascade, where it also reported a `V0001` and a `V0009` for that line
-  (design §17.297 (3), the edge of §17.294 WP-5). ui case `V0004_line_end_cascade`.
 
 ### Security
 
