@@ -13,6 +13,11 @@ sakura_lir.workspace = true
 wasm-encoder.workspace = true
 wasmparser.workspace = true
 
+# Not linked: the build script compiles `runtime/rt` with `miniz_oxide` and `adler2` for wasm32
+# from their sources, and this edge makes every build of this crate download them.
+[build-dependencies]
+miniz_oxide.workspace = true
+
 [dev-dependencies]
 sakura_analysis.workspace = true
 sakura_eval.workspace = true

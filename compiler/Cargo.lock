@@ -2527,6 +2527,7 @@ dependencies = [
 name = "sakura_codegen_wasm"
 version = "1.0.0-beta.1"
 dependencies = [
+ "miniz_oxide",
  "sakura_analysis",
  "sakura_eval",
  "sakura_lir",
