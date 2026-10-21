@@ -13,6 +13,12 @@ Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s pri
 dalek crates on native. `std/worker` is experimental, outside the 1.0 contract: its
 `Worker.inline()`, topics and `Worker.host()`'s live workers run on every backend (threads on
 JavaScript and on WebAssembly under Node, an OS thread with a second instance on native).
+A stopped native worker keeps its thread until its next wait; a pure loop can therefore
+keep `spawn` from returning, and granted `Fs` writes can continue until that wait.
+Worker grant paths must match the manifest's exact strings: `"./data"` and `"data"` do not
+match. A native worker whose entry leaves to the runtime an effect native does not serve
+(`Llm`, `Serve`, `WebSocket`, and `Http` through `v1.0.0-beta.3`) is refused at its start,
+and its parent reads `Failed(WorkerError(Defect("exit 75")))`.
 
 ## Prelude
 
