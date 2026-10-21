@@ -1,0 +1,51 @@
+# The six dogfood programs under the published, installed compiler, never the source build
+# (design §17.225 (2), §17.301 (3d)): `sakura check`, then `sakura test` on js and on wasm, with
+# the committed cassettes and no network (`sakura test` grants no `net`). Runs after a tag's
+# Release workflow succeeds (its npm channel is published by then) and on dispatch for any
+# published version. The corpus is main's: on a new tag it is the previous upgrade round's
+# programs, so a red step there is a hunk the next MIGRATION.md has to explain.
+name: Dogfood
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version without the v prefix
+        required: true
+        type: string
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  dogfood:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      VERSION_INPUT: ${{ inputs.version || github.event.workflow_run.head_branch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: Install the published compiler from npm
+        run: |
+          version=${VERSION_INPUT#v}
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "invalid version" >&2
+            exit 1
+          fi
+          npm install --global --ignore-scripts "sakuralang@$version"
+          echo "Dogfood: \`sakuralang@$version\` on \`$(git rev-parse HEAD)\`'s programs" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check and test the six programs on js and wasm
+        run: dogfood/round.sh "$(npm prefix --global)/bin/sakura"
