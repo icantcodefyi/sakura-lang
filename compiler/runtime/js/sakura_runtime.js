@@ -3637,15 +3637,36 @@ const DIR_BRAND = Symbol("Dir");
 /**
  * `[permissions]` of the manifest, passed by the driver as JSON in `SAKURA_PERMISSIONS`
  * (`{"fs": {"read": […], "write": […]}, "net": […], "env": […]}`); `null` when unset (no
- * limits: plain `node` runs; `sakura test` always sets it).
+ * limits: plain `node` runs; `sakura test` always sets it). A set table is normalized here, at
+ * the one read: a missing key is an empty list, so denied (design §17.304); a table that is not
+ * an object of string lists is `D091`, naming the shape and never the value (it may hold paths).
+ * Unknown keys (`process`) are ignored.
  */
 let permissions;
 function granted() {
   if (permissions === undefined) {
     const raw = proc?.env?.SAKURA_PERMISSIONS;
-    permissions = raw === undefined ? null : JSON.parse(raw);
+    permissions = raw === undefined ? null : permissionsOf(raw);
   }
   return permissions;
+}
+function permissionsOf(raw) {
+  const shape = '{"fs": {"read": [...], "write": [...]}, "net": [...], "env": [...]} with string lists';
+  const bad = () => new Defect("D091", `SAKURA_PERMISSIONS must be a JSON object ${shape}`);
+  const isObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+  const list = (v) => {
+    if (v === undefined) return [];
+    if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad();
+    return v;
+  };
+  let t;
+  try {
+    t = JSON.parse(raw);
+  } catch {
+    throw bad();
+  }
+  if (!isObject(t) || (t.fs !== undefined && !isObject(t.fs))) throw bad();
+  return { fs: { read: list(t.fs?.read), write: list(t.fs?.write) }, net: list(t.net), env: list(t.env) };
 }
 
 /** The working directory, limited to the manifest's `fs.read`/`fs.write` directories. */

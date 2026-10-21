@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.15.1**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.15.2**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -25,7 +25,8 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§3.2, §3.5, §7.4; RFC 0002 §2.9) 1.13.0 `Console.eprint`'s import (§8.2; design §17.292
 (9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)) and
 1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
-§2.9), and 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303). Owned by
+§2.9), 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303) and
+1.15.2 the missing-key permissions erratum (§8.3; design §17.304). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -306,6 +307,12 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   from `IntRem` (`i64.rem_s` and Cranelift's `srem` define the pair as `0`); no byte layout,
   import, export, outcome code or counter changes, so `sakura_abi_version` stays `0x010f00`.
   Until `v1.0.0-beta.1` inclusive a module gave `D001` for the remainder on those backends.
+- 1.15.2 is an erratum (design §17.304): §8.3 says a set `SAKURA_PERMISSIONS` table with a key
+  missing has that key empty (denied), and a table that is not an object of string lists is
+  `D091`. Only the hosts' reading of the variable changes; no byte layout, import, export,
+  outcome code or counter changes, so `sakura_abi_version` stays `0x010f00`. Until
+  `v1.0.0-beta.1` inclusive the WASM host read a missing `net` or `env` as no limit, and the
+  native host a missing `env`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -1088,7 +1095,10 @@ globals (§5). `ptr, len` is a slice (§8.1) and every unannotated parameter an 
 
 ### 8.3 Permissions and capabilities
 
-The driver passes `SAKURA_PERMISSIONS` to the host exactly as for JS; every host operation
+The driver passes `SAKURA_PERMISSIONS` to the host exactly as for JS. A set table with a key
+missing has that key empty (denied, since 1.0.0-beta.2; erratum 1.15.2, design §17.304: until
+then the WASM host read a missing `net` or `env` as no limit, native a missing `env`); a table
+that is not an object of string lists is `D091`. Every host operation
 rechecks grants on each call (research/09 §5 item 5: numeric secrecy is not security). A `Dir`
 is a `Handle` object (§3.2 tag 17) whose host slot records the resolved directory and its
 read/write authority; `fs_subdir` creates a new slot with attenuated authority. `fs_memory_root`

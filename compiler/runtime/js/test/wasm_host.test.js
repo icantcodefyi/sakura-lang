@@ -4,6 +4,7 @@
 // same rules with a stand-in for the module's exports, so no module has to misbehave.
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -295,6 +296,18 @@ test("an http answer past the copy budget is Err(response too large), queued byt
   );
   h.deliver();
   assert.equal(h.queued, 0, "delivered completions leave the budget");
+});
+
+test("a set SAKURA_PERMISSIONS of {} denies env through the Host, as on JS (design §17.304)", () => {
+  // A child process: the table is read once per process, and this file's other cases run unset.
+  const url = (f) => JSON.stringify(new URL(f, import.meta.url).href);
+  const script = `Promise.all([import(${url("../sakura_wasm_host.js")}), import(${url("../sakura_runtime.js")})])
+    .then(([{ Host, HOSTED }, rt]) => console.log(HOSTED.env_get.run(new Host(), "PATH").ok === rt.None));`;
+  const r = spawnSync(process.execPath, ["-e", script], {
+    env: { ...process.env, SAKURA_PERMISSIONS: "{}" },
+    encoding: "utf8",
+  });
+  assert.equal(r.stdout.trim(), "true", r.stderr);
 });
 
 test("an invalid SAKURA_MAX_COPY_BYTES is D091 at the first copy, not at load", () => {

@@ -29,7 +29,8 @@ use sakura_rt::native::{
 use sakura_rt::vt::{BODY, DIR, SQL};
 use tokio::sync::mpsc;
 
-/// `[permissions]` of the manifest (`SAKURA_PERMISSIONS`): `None` lists are no limit.
+/// `[permissions]` of the manifest (`SAKURA_PERMISSIONS`): `None` lists are no limit (an unset
+/// variable); in a parsed table an absent list is empty, so denied (design §17.304).
 #[derive(Clone, Debug, Default)]
 pub struct Permissions {
     pub fs: Option<fs::Grants>,
@@ -40,32 +41,37 @@ pub struct Permissions {
 
 impl Permissions {
     /// `{"fs": {"read": […], "write": […]}, "net": […], "env": […]}` as the driver passes it. As
-    /// JS, a set variable means `Fs.root()` is limited to the `fs` lists, empty when absent.
+    /// JS, a set variable is the whole ceiling: an absent list is empty, and a table that is not
+    /// an object of string lists is an error naming the shape, never the value. Unknown keys are
+    /// ignored.
     pub fn parse(json: &str) -> Result<Permissions, String> {
-        let v: serde_json::Value = serde_json::from_str(json).map_err(|e| e.to_string())?;
-        let strings = |v: Option<&serde_json::Value>| -> Vec<String> {
-            v.and_then(|v| v.as_array())
-                .map(|a| {
-                    a.iter()
-                        .filter_map(|s| s.as_str().map(String::from))
-                        .collect()
-                })
-                .unwrap_or_default()
+        const BAD: &str = r#"SAKURA_PERMISSIONS must be a JSON object {"fs": {"read": [...], "write": [...]}, "net": [...], "env": [...]} with string lists"#;
+        let v: serde_json::Value = serde_json::from_str(json).map_err(|_| BAD)?;
+        let strings = |v: Option<&serde_json::Value>| -> Result<Vec<String>, String> {
+            let Some(v) = v else { return Ok(vec![]) };
+            v.as_array()
+                .ok_or(BAD)?
+                .iter()
+                .map(|s| s.as_str().map(String::from).ok_or_else(|| BAD.to_string()))
+                .collect()
         };
         let fs = v.get("fs");
+        if !v.is_object() || fs.is_some_and(|f| !f.is_object()) {
+            return Err(BAD.to_string());
+        }
+        let paths = |key| -> Result<Vec<PathBuf>, String> {
+            Ok(strings(fs.and_then(|f| f.get(key)))?
+                .into_iter()
+                .map(PathBuf::from)
+                .collect())
+        };
         Ok(Permissions {
             fs: Some(fs::Grants {
-                read: strings(fs.and_then(|f| f.get("read")))
-                    .into_iter()
-                    .map(PathBuf::from)
-                    .collect(),
-                write: strings(fs.and_then(|f| f.get("write")))
-                    .into_iter()
-                    .map(PathBuf::from)
-                    .collect(),
+                read: paths("read")?,
+                write: paths("write")?,
             }),
-            net: Some(strings(v.get("net"))),
-            env: v.get("env").map(|e| strings(Some(e))),
+            net: Some(strings(v.get("net"))?),
+            env: Some(strings(v.get("env"))?),
         })
     }
 }
@@ -898,8 +904,25 @@ mod tests {
         h.config.permissions = Some(Permissions::parse(r#"{"env": ["HOME"]}"#).unwrap());
         assert_eq!(h.env_get("PATH"), Ok(None));
         let p = Permissions::parse(r#"{"fs": {"read": ["a"]}}"#).unwrap();
-        assert_eq!(p.env, None);
+        assert_eq!(
+            p.env,
+            Some(vec![]),
+            "an absent key is denied (design §17.304)"
+        );
         assert_eq!(p.fs.unwrap().write, Vec::<PathBuf>::new());
+        h.config.permissions = Some(Permissions::parse("{}").unwrap());
+        assert_eq!(h.env_get("PATH"), Ok(None));
+        for bad in [
+            r#"{"net": "x-secret"}"#,
+            r#"{"env": [1]}"#,
+            r#"{"fs": []}"#,
+            r#"["x-secret"]"#,
+            "x-secret",
+        ] {
+            let e = Permissions::parse(bad).unwrap_err();
+            assert!(e.starts_with("SAKURA_PERMISSIONS must be"), "{bad}: {e}");
+            assert!(!e.contains("x-secret"), "the error never carries the value");
+        }
     }
 
     #[test]

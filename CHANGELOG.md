@@ -108,6 +108,19 @@ retains earlier implementation history.
   `verify_summary`'s `kind` and `schema_version` did not move), but a gate that pins the count
   of obligations or requires zero `unsupported` can change result with no source change.
 
+### Security
+
+- A set `SAKURA_PERMISSIONS` table that leaves a key out now denies that key on every host
+  (design §17.304): `{}` grants nothing, as the manifest's comment has always said. In
+  `1.0.0-beta.1` the JS and WASM hosts read a missing `net` as every host and a missing `env`
+  as every variable, and the native host a missing `env` the same way, while a missing `fs`
+  was already denied; a list that was not an array matched as a substring on JS. No program
+  run by `sakura run` or `sakura test` was affected — both write every key — only a process
+  that sets the variable itself. A table that is not an object of string lists is now the
+  defect `D091` naming the variable and the accepted shape. Migration for embedders: pass the
+  full table, `{"fs": {"read": [], "write": []}, "net": [], "env": []}` with your lists filled
+  in; a key you leave out is denied. An unset variable still means no host limits.
+
 ### Fixed
 
 - `MIN % -1` (`-2^63 % -1`) is `0` on WASM and native, as design §4.1 and §17.260 (G05) say; it was the

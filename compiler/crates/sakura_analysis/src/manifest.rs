@@ -211,6 +211,16 @@ mod tests {
         assert!(Manifest::parse("[package]\nname = \"x\"\n[permisions]\n").is_err());
     }
 
+    /// `sakura run` passes this serialization as `SAKURA_PERMISSIONS`: every key, always, so no
+    /// driver-run program depends on how a host reads a missing one (design §17.304).
+    #[test]
+    fn the_driver_table_carries_every_key() {
+        assert_eq!(
+            serde_json::to_string(&Permissions::default()).unwrap(),
+            r#"{"fs":{"read":[],"write":[]},"net":[],"env":[],"process":[]}"#
+        );
+    }
+
     #[test]
     fn dependencies_are_refused_in_every_form() {
         for text in [
