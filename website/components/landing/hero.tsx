@@ -94,7 +94,7 @@ export async function Hero() {
             >
               <dt className="text-foreground">install</dt>
               <dd>
-                <code className="text-foreground select-all">npm i -g sakuralang</code>
+                <code className="text-foreground select-all">npm i -g sakuralang@beta</code>
               </dd>
               <dt className="text-foreground">agents</dt>
               <dd>

@@ -3,8 +3,8 @@ title: Quickstart
 description: Install the Sakura Lang compiler, then check, test and run a first program.
 ---
 
-<Callout type="warn" title="Preview">
-  The published release is `0.1.0`, for macOS (Apple silicon and Intel), Linux (x64 and ARM64) and Windows x64, with no compatibility promise. These docs track main; [changes since 0.1.0](/docs/changes) need a source build until the next release. The next release, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what the beta promises.
+<Callout type="warn" title="Beta">
+  The latest release, `v1.0.0-beta.1`, is a beta for macOS (Apple silicon and Intel), Linux (x64 and ARM64) and Windows x64: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on the default channels. These docs track main. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what the beta promises.
 </Callout>
 
 ## Install
@@ -12,19 +12,19 @@ description: Install the Sakura Lang compiler, then check, test and run a first 
 With [Node 26](https://nodejs.org) installed (`sakura run` and `sakura test` execute the generated JavaScript with `node`):
 
 ```bash
-npm install --global sakuralang
+npm install --global sakuralang@beta
 sakura --version
 ```
 
 ```text
-sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)
 ```
 
-Homebrew (`brew tap icantcodefyi/sakuralang && brew install sakuralang`) and a checksum-verifying installer are also available; see [Install](/docs/install). The standard library is embedded in the binary, so `sakura` works from any directory.
+Homebrew (`brew tap icantcodefyi/sakuralang && brew install sakuralang-beta`) and a checksum-verifying installer are also available; see [Install](/docs/install). The standard library is embedded in the binary, so `sakura` works from any directory.
 
 ## Install from source
 
-To use the features listed in [changes since 0.1.0](/docs/changes), build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+To follow main between releases, build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
 
 ```bash
 git clone https://github.com/icantcodefyi/sakuralang

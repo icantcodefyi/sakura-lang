@@ -8,12 +8,12 @@ import { CopyCommand } from "./copy-command";
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
   {
     name: "npm",
-    lines: ["npm i -g sakuralang"],
-    note: "the npm latest tag; needs Node 26",
+    lines: ["npm i -g sakuralang@beta"],
+    note: "the npm beta tag; needs Node 26",
   },
   {
     name: "Homebrew",
-    lines: ["brew tap icantcodefyi/sakuralang", "brew install sakuralang"],
+    lines: ["brew tap icantcodefyi/sakuralang", "brew install sakuralang-beta"],
     note: "installs Node with it",
   },
   {
@@ -67,11 +67,11 @@ export function Install() {
           </h2>
           <p className="text-[17px] leading-relaxed text-pretty text-muted-foreground">
             <code className="font-mono text-[15px] text-foreground">sakuralang@{VERSION}</code> is a
-            preview with no compatibility promise yet; the next release is a beta that may have
-            bugs. <code className="font-mono">check</code> and{" "}
-            <code className="font-mono">build</code> need nothing else;{" "}
-            <code className="font-mono">run</code> and <code className="font-mono">test</code> need
-            Node 26.
+            beta of 1.0: not for production, it may have bugs and may change before 1.0.0.{" "}
+            <code className="font-mono">0.1.0</code> stays on npm&apos;s latest tag.{" "}
+            <code className="font-mono">check</code> and <code className="font-mono">build</code>{" "}
+            need nothing else; <code className="font-mono">run</code> and{" "}
+            <code className="font-mono">test</code> need Node 26.
           </p>
         </div>
 

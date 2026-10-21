@@ -4,7 +4,7 @@ description: Sakura Lang is an agent-first, general-purpose programming language
 ---
 
 <Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The published release, `0.1.0`, is a preview with no compatibility promise yet. The next, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
 </Callout>
 
 Sakura Lang is the programming language built for agents.
@@ -85,8 +85,8 @@ The test installs an in-memory handler for `Users`. `Clock` and `Random` need no
 
 - **Design:** [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
 - **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It checks the whole language and runs it on JavaScript (the default) and WebAssembly, which agree on the test corpus. `sakura verify` proves contracts with Z3. Native code generation through Cranelift is experimental and in no release.
-- **Releases:** `0.1.0` is published on npm, Homebrew and GitHub. It has no compatibility promise. The next release, `v1.0.0-beta.1`, is a beta that may have bugs and may change before 1.0.0; [Stability](/docs/stability) describes what is proposed to become stable from it.
-- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records remaining gates. These docs track main; [changes since 0.1.0](/docs/changes) need a source build until the next release.
+- **Releases:** `v1.0.0-beta.1` is published on npm (the `beta` tag), Homebrew (`sakuralang-beta`) and GitHub (a prerelease). It is a beta that may have bugs and may change before 1.0.0, not for production; [Stability](/docs/stability) describes what is proposed to become stable from it. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`.
+- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records remaining gates. These docs track main; [changes since 0.1.0](/docs/changes) are in the beta.
 
 The [roadmap](/docs/roadmap) says what is complete, what is experimental and which releases lead to 1.0.
 

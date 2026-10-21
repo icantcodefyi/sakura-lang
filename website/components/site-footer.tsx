@@ -51,8 +51,8 @@ export function SiteFooter() {
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-muted-foreground">
-            The language agents write. In preview: v{RELEASE} is published, and nothing is stable
-            before 1.0.
+            The language agents write. In beta: v{RELEASE} is published, not for production, and
+            nothing is stable before 1.0.
           </p>
         </div>
         {COLUMNS.map((c) => (
