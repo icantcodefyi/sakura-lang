@@ -7,6 +7,36 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] - 2026-10-21
+
+A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
+1.0.0, and every breaking change until then is listed here with a migration. This section
+collects everything since `v1.0.0-beta.1` (design §17.305 (1)); it is dated at the preparation
+commit. The Rust MSRV is unchanged (1.99).
+
+### Migration from v1.0.0-beta.1
+
+Every breaking entry below, in the order a program meets it; the entries carry the details.
+
+1. **A set `SAKURA_PERMISSIONS` denies every key it leaves out** (Security, design §17.304).
+   Only a process that sets the variable itself is affected; `sakura run` and `sakura test`
+   write every key. Pass the full table,
+   `{"fs": {"read": [], "write": []}, "net": [], "env": []}` with your lists filled in; a table
+   of another shape is now the defect `D091`.
+2. **A binder named `error` is `V0016`** (Added, design §17.297 (2)): a parameter, lambda
+   parameter, `let`/`var` name or pattern binding named `error` parsed in beta.1 but no body
+   could use it. Rename the binder; a field named `error` is unaffected.
+3. **An anonymous record literal is `V0017`, not `V1002`** (Fixed, design §17.305 (3)): the
+   program was already rejected; a tool that matched `V1002` for `let c = { a: 0 }` matches
+   `V0017 field_outside_record` (one record per field). Write the literal with its type,
+   `Type { a: 0 }`.
+4. **`@worker` on a function of another shape is `V1013`** (Added, experimental `std/worker`,
+   design §17.299 (8)): give the entry the signature `fn(Inbox<I>, Outbox<O>) -> Unit` (any
+   row, not generic) or drop the attribute; such an entry could never be spawned.
+5. **`sakura verify --json` (preview) reports a different obligation set** (Changed, design
+   §17.301 (4) (iii)): a gate that pins the count of obligations or requires zero
+   `unsupported` re-reads them after upgrading.
+
 ### Added
 
 - `bench typescript` counts `sakura check` beside TypeScript 7's `tsc --noEmit` on each
@@ -1858,7 +1888,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...HEAD
+[1.0.0-beta.2]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...v1.0.0-beta.1
 [0.1.0]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0-alpha.1...v0.1.0
 [0.1.0-alpha.1]: https://github.com/icantcodefyi/sakuralang/releases/tag/v0.1.0-alpha.1

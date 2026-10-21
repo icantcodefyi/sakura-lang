@@ -5,6 +5,4 @@
 # does a listed fixture that matches again or is not in that release. The harness is
 # `crates/sakura_cli/tests/compat.rs`.
 
-examples/form_upload Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
-examples/http_retry Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
-examples/router_endpoint Request.body and Response.body are a Payload in 0.2.0 (RFC 0002 §2.4) CHANGELOG.md#changed
+ui/V1002_anonymous_record_literal.sak An anonymous record literal is one V0017 field_outside_record per field, not V0009 cascades and V1002 (design §17.305 (3)) CHANGELOG.md#migration-from-v100-beta1
