@@ -1,0 +1,19 @@
+// The cross-version ABI program (design §17.232 (c), README.md): each release builds it with
+// its own `sakura build --target wasm`, and the module it emits must keep running, with this
+// output, on every later host of the same ABI MAJOR. Persistent lists, closures and string
+// interpolation, so the run allocates, shares and frees heap objects; no host import beyond
+// `Console`, so a later host lacks nothing the module needs.
+
+fn squares(n: Int) -> List<Int> { List.map(List.range(0, n), fn(i) { i * i }) }
+
+pub fn main() -> Unit ! {Console} {
+  let old = List.range(0, 1_000)
+  var xs = old
+  var i = 0
+  while i < 1_000 {
+    xs = List.set(xs, i, i * 2)
+    i = i + 7
+  }
+  Console.print("{List.len(xs)} {List.sum(old)} {List.sum(xs)} {xs[7]} {old[7]}")
+  Console.print("{List.sum(squares(20))} {squares(4)}")
+}
