@@ -23,10 +23,12 @@ compiler/fuzz/corpus/check/malformed.sak
 compiler/fuzz/corpus/parse/malformed.sak
 compiler/tests/ui/V0001_effect_violation_in_broken_body.sak
 compiler/tests/ui/V0001_unterminated_call.sak
+compiler/tests/ui/V0004_interpolation_hole.sak
 compiler/tests/ui/V0004_invalid_character.sak
 compiler/tests/ui/V0006_malformed_number.sak
 compiler/tests/ui/V0009_expected_terminator.sak
 compiler/tests/ui/V0011_call_site_type_arguments.sak
 compiler/tests/ui/V0012_keyword_expression_operand.sak
+compiler/tests/ui/V1002_anonymous_record_literal.sak
 compiler/tests/ui/V2002_signature_first_used_in_broken_body/app.sak
 compiler/tests/ui/V2002_signature_first_used_in_sound_body/app.sak
