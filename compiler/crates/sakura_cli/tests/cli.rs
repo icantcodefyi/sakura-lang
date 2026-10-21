@@ -494,6 +494,17 @@ fn new_projects_check_and_are_formatted() {
         "my rules\n"
     );
     assert!(mine.join("CLAUDE.md").is_file());
+    // `init` says the package name it derived from the directory (§17.293 PQ-11a).
+    let derived = dir.join("Parcel-Quotes");
+    std::fs::create_dir_all(&derived).unwrap();
+    let out = sakura(&["init"], &derived);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let line = out.stderr.lines().find(|l| l.contains("sakura.toml"));
+    assert!(
+        line.is_some_and(|l| l.starts_with("created ") && l.ends_with(" (package `parcel_quotes`)")),
+        "{}",
+        out.stderr
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

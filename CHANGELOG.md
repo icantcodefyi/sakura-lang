@@ -141,6 +141,9 @@ retains earlier implementation history.
   keeps nothing of that run; no cancel, finalizer or trace record is added, so the run ends
   as on JS and WASM (design §17.298 (d), amending §17.296 (5)). The native corpus no longer
   exempts that run from its leak check.
+- `sakura init` (and `sakura new`) names the package in its `sakura.toml` line,
+  ``created <dir>/sakura.toml (package `parcel_quotes`)``, so the name `init` derives from the directory
+  (lowercased, `-` as `_`) is visible without opening the file (design §17.293 PQ-11a).
 - A failing `expect_output` shows both lists with plain braces (`["{\"id\": 2}"]`), where it
   showed `Show`'s escapes (`["\{\"id\": 2\}"]`); an escaped backslash before a brace keeps its
   escape. The message is `expect_eq`'s otherwise, on every backend (design §17.292, small).

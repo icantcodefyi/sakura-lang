@@ -167,7 +167,12 @@ fn scaffold(kind: &str, name: &str, dir: &Path) -> ExitCode {
         if let Err(e) = written {
             return usage_error(format!("{}: {e}", path.display()));
         }
-        eprintln!("created {}", path.display());
+        if rel == "sakura.toml" {
+            // The name `init` derives from the directory is otherwise only in the file.
+            eprintln!("created {} (package `{name}`)", path.display());
+        } else {
+            eprintln!("created {}", path.display());
+        }
     }
     ExitCode::SUCCESS
 }
