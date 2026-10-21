@@ -68,6 +68,14 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 5. **`sakura verify --json` (preview) reports a different obligation set** (Changed, design
    §17.301 (4) (iii)): a gate that pins the count of obligations or requires zero
    `unsupported` re-reads them after upgrading.
+6. **An `Llm` cassette whose tools take refined types misses** (Added `Json.schema` keywords
+   below; this item was missing when beta.2 was published and was added afterwards). A tool
+   input with `String.len`, `List.len` or `Int`/`Float` bounds in its `where` now sends
+   `minLength`/`maxLength`, `minItems`/`maxItems` or `minimum`/`maximum` in its
+   `input_schema`, so the request body differs and a beta.1 recording no longer matches.
+   Matching itself is unchanged. Re-record the cassette with `sakura test --record` after
+   deleting it, or replace each recorded request `body` with the one beta.2 sends.
+   `dogfood/maintenance-triage` did the second (its `tests/fixtures/README.md`).
 
 ### Added
 

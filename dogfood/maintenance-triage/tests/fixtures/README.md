@@ -35,6 +35,12 @@ forwarded, and the in-order synthetic provider assumes it sees every turn.
 On 0.1.0 `ANTHROPIC_BASE_URL` had to be unset, because the adapter read it and it
 changed the recorded URL; since 1.0.0-beta.1 it is not read (see FRICTION.md).
 
+For 1.0.0-beta.2 the request bodies were migrated by script, not regenerated:
+`Json.schema` now states refinement bounds, so the `search_manual` and
+`fetch_entry` input schemas gained `minLength`/`maxLength`. Each new body is the
+one beta.2's adapter sends (captured offline from the synthetic run) and equals
+the recorded body once those keywords are removed; the responses are unchanged.
+
 A changed system instruction, tool description, manual fixture or answer
 schema changes the request bodies; replay then fails as a cassette miss and
 the cassettes must be regenerated and reviewed.
