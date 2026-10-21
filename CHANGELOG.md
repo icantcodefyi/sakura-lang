@@ -39,6 +39,18 @@ retains earlier implementation history.
   longer depends on the host's main-thread default (1 MiB on Windows); the parser's depth and
   long-chain tests run on a 1 MiB thread. `MAX_DEPTH` stays 128 (design §17.305 (7)).
 
+### Fixed
+
+- `sakura verify` no longer builds VCs that grow exponentially in the inlining depth. The
+  `std/crypto` AES-CBC vectors program spent 0.85 s per profile building its VCs, before any
+  solver ran; it now spends 4 ms. A program with two `encrypt` and two `decrypt` calls produced
+  26 MB of SMT text and now produces 2.3 MB. The cause was that a merge of paths copied each path's
+  guard into every merged value, and every enclosing merge copied it again. A guard that is a
+  conjunction or a disjunction is now a definition (`|<name>.path|`), and a record's
+  `path_conditions` show it by that name. Proof statuses do not change, and earlier cache
+  entries are solved again once. Found by the nightly `vc` fuzz run 39564548413; test
+  `compiler/crates/sakura_verify/tests/merge_size.rs`.
+
 ## [1.0.0-beta.2] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

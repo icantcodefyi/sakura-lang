@@ -789,9 +789,18 @@ impl<'m> Gen<'m> {
             return items.pop().expect("one");
         }
         let (na, np) = (base.assume.len(), base.pending.len());
+        // A compound guard is named: it is copied into the disjunction, the pending
+        // implications and every merged value's `ite`, and an enclosing merge copies it once
+        // per path again, so inlined callees would grow it exponentially in their depth.
+        let guard_name = format!("{}.path", names.first().map_or("join", |n| n.as_str()));
         let guards: Vec<Term> = items
             .iter()
-            .map(|(p, _)| Term::and(p.assume[na.min(p.assume.len())..].iter().cloned()))
+            .map(
+                |(p, _)| match Term::and(p.assume[na.min(p.assume.len())..].iter().cloned()) {
+                    g @ Term::App(Op::And | Op::Or, _) => self.define(&guard_name, Sort::Bool, g),
+                    g => g,
+                },
+            )
             .collect();
         let mut path = base.clone();
         path.assume.push(Term::or(guards.iter().cloned()));
