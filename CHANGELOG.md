@@ -407,6 +407,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 
 ### Fixed
 
+- Building `sakura` with the `wasm32-unknown-unknown` target installed always embeds the WASM
+  runtime, or fails the build. A build of `-p sakura_cli` on a cold Cargo registry (as the
+  release build is) could silently produce a binary whose WASM backend was unavailable, since
+  the build script needed sources that build had not downloaded.
 - The WASI command (`build --target wasm --wasi`) writes each `Log.stderr()`/`Log.json()` line
   to stderr, as the Node host does, where it trapped (exit 134).
 - An effect operation's `requires` is now checked at every perform site, on every backend
