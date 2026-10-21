@@ -150,6 +150,20 @@ pub fn convert(m: &c::Module) -> v::Module {
                 effects: w.effects.clone(),
             })
             .collect(),
+        entries: m
+            .entries
+            .iter()
+            .map(|e| v::Entry {
+                name: e.name.clone(),
+                def: e.def.0,
+                fun: e.fun.0,
+                params: (e.params.iter())
+                    .map(|(n, t, u)| (n.clone(), ty(t), *u))
+                    .collect(),
+                result: (ty(&e.result.0), e.result.1),
+                errors: e.errors.clone(),
+            })
+            .collect(),
     }
 }
 
@@ -526,6 +540,22 @@ pub fn back(m: &v::Module) -> c::Module {
                 def: c::DefId(w.def),
                 fun: c::DefId(w.fun),
                 effects: w.effects.clone(),
+            })
+            .collect(),
+        entries: m
+            .entries
+            .iter()
+            .map(|e| c::Entry {
+                name: e.name.clone(),
+                def: c::DefId(e.def),
+                fun: c::DefId(e.fun),
+                params: e
+                    .params
+                    .iter()
+                    .map(|(n, t, u)| (n.clone(), back_ty(t), *u))
+                    .collect(),
+                result: (back_ty(&e.result.0), e.result.1),
+                errors: e.errors.clone(),
             })
             .collect(),
     }

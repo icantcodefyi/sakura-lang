@@ -10,6 +10,7 @@
     "testing",
     "capabilities",
     "memory",
-    "concurrency"
+    "concurrency",
+    "embedding"
   ]
 }

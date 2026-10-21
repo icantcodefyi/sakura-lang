@@ -1,0 +1,184 @@
+---
+title: Embedding a library in Node
+description: Call a Sakura Lang library's public functions from a Node program, on the WebAssembly or the JavaScript build, with callEntry, the entry rule, permissions and the value mapping.
+---
+
+<Callout type="warn" title="Preview">
+  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.1`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+</Callout>
+
+A Sakura Lang package can be a library a Node program calls, not only a program with `main`. Its root module's public functions become **entries**: the WebAssembly build exports them to the Node host, and the JavaScript build writes them to `__entries__.js`. A Node program calls one with `callEntry` and gets back the outcome with its value. Library entries are on main and ship in `1.0.0-beta.3` (WASM runtime ABI 1.16.0).
+
+## Which functions are entries
+
+An entry is a `pub fn` of the package's root module (`src/main.sak`, the module `main` would be in) that:
+
+- is not `main` and not a `@worker` function;
+- is not generic;
+- takes and returns types that have a runtime schema: no function, `Secret`, `Handler` or `@resource` type, in the type or any field it reaches;
+- declares only `Fail` of `error` types and std effects with a parameterless `host()` (`Console`, `Clock`, `Http`, `Task`, …), the same rule as `main`'s row.
+
+A `pub fn` that breaks a rule is simply not an entry; nothing reports it. A package with `main` can have entries too. `Untrusted<T>` is allowed only at the top of a parameter or the result, with `T` a type that has a schema. This library has five entries, `quote`, `total`, `weigh`, `greet` and `echo`. `redact` is not one, because a `Secret` cannot cross into Node, and neither is `open`, because its record has an `Untrusted` field:
+
+```sakura
+pub type Zone = Near | Far
+
+pub type Parcel = { weight_g: Int, zone: Zone, note: Option<String> }
+
+pub type Quote = { zone: Zone, cents: Int }
+
+pub error InvalidWeight(grams: Int)
+
+pub error TooHeavy(grams: Int)
+
+pub type QuoteError = InvalidWeight | TooHeavy
+
+pub type Cents = Int where it >= 0
+
+/// An entry with a record parameter and a `Fail` union: a quote, or the error.
+pub fn quote(parcel: Parcel) -> Quote ! {Fail<QuoteError>} {
+  if parcel.weight_g <= 0 {
+    fail InvalidWeight { grams: parcel.weight_g }
+  } else if parcel.weight_g > 30_000 {
+    fail TooHeavy { grams: parcel.weight_g }
+  } else {
+    let base = match parcel.zone {
+      Near => 500,
+      Far => 900,
+    }
+    Quote { zone: parcel.zone, cents: base + parcel.weight_g / 100 }
+  }
+}
+
+/// A pure entry over a list of a refined type.
+pub fn total(cents: List<Cents>) -> Int { List.sum(cents) }
+
+/// An entry over data from outside: the host passes a plain `Parcel`, checked by its schema,
+/// and the entry receives it as `Untrusted<Parcel>`.
+pub fn weigh(input: Untrusted<Parcel>) -> Int {
+  match Untrusted.check(input, "a positive weight", fn(p) { p.weight_g > 0 }) {
+    Ok(p) => p.weight_g,
+    Err(_) => 0,
+  }
+}
+
+/// An entry whose row has a root handler: it prints, then answers.
+pub fn greet(name: String) -> Bool ! {Console} {
+  Console.print("hello, {name}")
+  String.len(name) > 3
+}
+
+/// Not an entry: a `Secret` parameter has no schema a host may pass.
+pub fn redact(key: Secret<String>) -> String { "<redacted>" }
+
+/// An entry with an `Untrusted<String>` result: the host receives the plain `String`.
+pub fn echo(input: Untrusted<String>) -> Untrusted<String> { input }
+
+pub type Envelope = { body: Untrusted<String> }
+
+/// Not an entry: an `Untrusted` field has no schema; only a top-level `Untrusted<T>` crosses.
+pub fn open(envelope: Envelope) -> Int { Untrusted.len(envelope.body) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{total([1, 2, 3])}")
+}
+```
+
+## Calling an entry from the WebAssembly build
+
+Build the module, then load it in Node with the host that sits beside it:
+
+```sh
+sakura build --target wasm --out-dir out
+```
+
+```js title="consumer.mjs"
+import { readFileSync } from "node:fs";
+import { Host, callEntry, loadTypes } from "./out/sakura_wasm_host.js";
+import * as rt from "./out/sakura_runtime.js";
+
+await loadTypes(); // the package's types, from out/__types__.js
+const host = await new Host().instantiate(readFileSync("./out/main.wasm"));
+
+const Parcel = rt.typeClass("quotes_like::main::Parcel");
+const Zone = rt.typeClass("quotes_like::main::Zone");
+const near = new Zone(0, []);
+
+console.log(Object.keys(host.entries())); // [ 'quote', 'total', 'weigh', 'greet', 'echo' ]
+const o = await callEntry(host, "quote", [new Parcel(2500, near, rt.None)]);
+if (o.kind === "ok") console.log(rt.show(o.value)); // Quote { zone: Near, cents: 525 }
+```
+
+`host.entries()` describes each entry: `{ code, module, params: [[name, schema, untrusted]…], result: { schema, untrusted }, errors }`. One `Host` serves many calls in sequence. It runs one call at a time; to call concurrently, instantiate a second `Host`.
+
+## Calling an entry from the JavaScript build
+
+The JavaScript build writes `__entries__.js` when the package has entries. It exports the same table as `entries` and a `callEntry(name, args)` without the host argument:
+
+```sh
+sakura build --target js --out-dir out-js
+```
+
+```js
+import { callEntry, entries } from "./out-js/__entries__.js";
+import * as rt from "./out-js/sakura_runtime.js";
+
+const o = await callEntry("total", [rt.list([120, 230, 650])]);
+console.log(o); // { kind: 'ok', value: 1000 }
+```
+
+A consumer written against one build runs against the other with its import lines changed: both builds take and return the same values and answer the same shapes. The repository checks this with one consumer that prints the same transcript on both builds (`compiler/tests/entries/quotes_like/consumer.mjs`).
+
+## What `callEntry` answers
+
+`callEntry` resolves to the outcome of the call:
+
+| Outcome | Answer |
+| --- | --- |
+| The function returned | `{ kind: "ok", value }` |
+| It failed with an error of its `Fail` union | `{ kind: "fail", error, shown }`, where `shown` is the error's `Show` text |
+| A defect (a contract violation, an overflow, …) | `{ kind: "defect", code, message, spans }` |
+| `Cli.exit(code)` | `{ kind: "exit", code }` |
+| The task was cancelled | `{ kind: "cancelled" }` |
+
+It throws only when the call itself is wrong: an unknown entry name, another number of arguments, or an argument that is not a value of its parameter's schema. The message is the same on both builds, for example `entry quote takes 1 argument, not 0`. The WebAssembly host throws a `HostFault`, the JavaScript build a `TypeError`. A module built by a release before `1.0.0-beta.3` has no entries: `host.entries()` throws "this module has no entries; build it with sakura 1.0.0-beta.3 or later".
+
+## Values
+
+Arguments and answers are the JavaScript runtime's own values, the ones `sakura_runtime.js` beside the build uses. Nothing is converted to JSON.
+
+| Sakura Lang | JavaScript |
+| --- | --- |
+| `Int` | a `number` that is a safe integer |
+| `Float` | a `number` |
+| `Bool`, `String`, `Unit` | `boolean`, `string`, `undefined` |
+| `Bytes` | `Uint8Array` |
+| `List<T>` | `rt.list([…])`; read it with `rt.items(xs)` |
+| `Map<K, V>`, `Set<T>` | `rt.map_of(rt.list([[k, v], …]))`, `rt.set_of(rt.list([…]))` |
+| a tuple | an array |
+| a record | `new (rt.typeClass("pkg::module::Name"))(field, …)`, fields in declaration order; read them by name (`q.cents`) |
+| a variant | `new (rt.typeClass("pkg::module::Name"))(tag, [payload…])`, `tag` the constructor's position (0 for the first); read `v.tag` and `v.fields` |
+| `Option<T>` | `rt.None`, `rt.Some(x)` |
+| `Untrusted<T>` (a parameter or the result) | a value of `T` |
+
+`rt.show(v)` prints any value as Sakura Lang's `Show` does. The host is the caller, so it establishes what a caller must: a value of a refined type, at any depth, satisfies the type's `where` or the call is refused. `total` above takes `List<Cents>`, so `[120, -5]` is refused before the function runs.
+
+For an `Untrusted<T>` parameter, pass the plain value; the entry receives it as `Untrusted<T>`, which is the type that tells the library it came from outside. The value is still checked against `T`'s schema, so `weigh` refuses `42` or a `Parcel` whose `weight_g` is a string. An `Untrusted<T>` result answers the plain `T`, as `echo` does. Its table entry has `untrusted: true`.
+
+## Permissions
+
+An entry's root handlers are bounded by `SAKURA_PERMISSIONS`, exactly as `main`'s are under `sakura run`. The host reads the process's variable once, at the first operation that needs it, so a consumer sets it before its first call, to the JSON of the `[permissions]` table it wants enforced. Write the full table, `{"fs": {"read": [], "write": []}, "net": [], "env": []}`, with your lists filled in:
+
+```js
+process.env.SAKURA_PERMISSIONS = JSON.stringify({
+  fs: { read: [], write: [] },
+  net: ["carrier.example:443"],
+  env: [],
+});
+```
+
+A key you leave out is denied, so `{}` grants nothing (since `1.0.0-beta.2`; the beta.1 hosts read a missing `net` or `env` as no limit). A table that is not an object of string lists is the defect `D091`. Set it. Without the variable there is no ceiling at all, as for emitted JavaScript run directly: the root handlers reach every file, host and variable the Node process can. An entry whose row declares an effect the table grants nothing for fails at its first operation, with the effect's own error. `sakura run`'s startup check, exit `75` for a `main` that declares an ungranted effect, does not run for entries. See [Capabilities and security](/docs/tour/capabilities).
+
+## The native target
+
+The experimental native target compiles a library and its entries, and `sakura build --target native` succeeds for one, but there is no API to call an entry from native code yet.

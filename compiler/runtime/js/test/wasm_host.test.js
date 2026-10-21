@@ -18,6 +18,7 @@ import {
   OUTCOME,
   Reader,
   abiVersionOf,
+  callEntry,
   defectSpans,
   readDebug,
   runMain,
@@ -754,12 +755,90 @@ function versioned(v) {
   ]);
 }
 
+/**
+ * A host whose stand-in module has library entries (ABI 1.16.0): `table` is the `entries()`
+ * bytes; `start_entry` keeps the payload it was given and starts task 7, which finishes with
+ * outcome `kind`, its payload `shown` (a `fail`'s text) and the `entry_value` bytes `value`.
+ */
+function entryHost(table, { kind = OUTCOME.ok, shown = "", value = [] } = {}) {
+  const { h, put } = host();
+  const text = new TextEncoder();
+  const given = [];
+  put(64, table);
+  const bytesAt = (at, b) => {
+    put(at, [...u32(0), ...u32(0), ...u32(b.length), ...b]);
+    return at;
+  };
+  const alloc = h.exports.alloc_bytes;
+  Object.assign(h.exports, {
+    // A `Bytes`' length at +8, as the runtime's `alloc_bytes` writes it.
+    alloc_bytes: (len) => {
+      const p = alloc(len);
+      if (p !== 0) new DataView(h.exports.memory.buffer).setUint32(p + 8, len, true);
+      return p;
+    },
+    entries: () => [64, table.length],
+    start_entry: (code, p) => {
+      const len = new DataView(h.exports.memory.buffer).getUint32(p + 8, true);
+      given.push([code, [...new Uint8Array(h.exports.memory.buffer, p + 12, len)]]);
+      return 7;
+    },
+    run: () => kind,
+    outcome: () => {
+      const b = [...text.encode(shown)];
+      return kind === OUTCOME.fail ? [kind, bytesAt(40_000, b), b.length] : [kind, 0, 0];
+    },
+    entry_value: () => (kind === OUTCOME.ok || kind === OUTCOME.fail ? bytesAt(50_000, value) : 0),
+    drop: () => {},
+    task_free: () => {},
+  });
+  return { h, given };
+}
+
+const textOf = (s) => {
+  const b = [...new TextEncoder().encode(s)];
+  return [...u32(b.length), ...b];
+};
+/** `entries()`: one entry `total` (code 5, module `m::main`, `cents: List<Int>` -> `Int`). */
+const tableOf = (param, result) => [...u32(1), ...u32(5), ...textOf("total"), ...textOf("m::main"), ...u32(1), ...textOf("cents"), 0, ...textOf(param), 0, ...textOf(result), ...u32(0)];
+const TOTAL = tableOf('["L", "I"]', '"I"');
+const int64 = (v) => [2, ...u32(v), ...u32(0)];
+
+test("callEntry reads the entries table, passes the arguments as one tuple and answers entry_value's 1-tuple", async () => {
+  const { h, given } = entryHost(TOTAL, { value: [9, ...u32(1), ...int64(42)] });
+  assert.deepEqual(h.entries(), { total: { code: 5, module: "m::main", params: [["cents", ["L", "I"], false]], result: { schema: "I", untrusted: false }, errors: [] } });
+  assert.deepEqual(await callEntry(h, "total", [rt.list([1, 2])]), { kind: "ok", value: 42 });
+  assert.deepEqual(given, [[5, [9, ...u32(1), 6, ...u32(2), ...int64(1), ...int64(2)]]]);
+  const failed = entryHost(TOTAL, { kind: OUTCOME.fail, shown: "Overdrawn", value: [9, ...u32(1), 4, ...textOf("Overdrawn")] });
+  assert.deepEqual(await callEntry(failed.h, "total", [rt.list([])]), { kind: "fail", error: "Overdrawn", shown: "Overdrawn" });
+  const cancelled = entryHost(TOTAL, { kind: OUTCOME.cancelled });
+  assert.deepEqual(await callEntry(cancelled.h, "total", [rt.list([])]), { kind: "cancelled" });
+});
+
+test("callEntry's misuses are host faults: a name, an arity, a value its schema refuses, no entries, a second call", async () => {
+  const { h, given } = entryHost(TOTAL, { value: [9, ...u32(1), ...int64(0)] });
+  await assert.rejects(callEntry(h, "nope", []), new HostFault('no entry named "nope"; the entries are total'));
+  await assert.rejects(callEntry(h, "total", []), new HostFault("entry total takes 1 argument, not 0"));
+  await assert.rejects(callEntry(h, "total", [rt.list(["1"])]), new HostFault('argument 1 (cents) of entry total is not a value of schema ["L","I"]'));
+  assert.deepEqual(given, [], "nothing reached the guest");
+  h.calling = true;
+  await assert.rejects(callEntry(h, "total", [rt.list([])]), HostFault);
+  const old = entryHost(TOTAL).h;
+  delete old.exports.entries;
+  assert.throws(() => old.entries(), new HostFault("this module has no entries; build it with sakura 1.0.0-beta.3 or later"));
+  // No entry's schema holds `X` or `null` (design §17.304 (B1)); a table that does is refused.
+  for (const [param, result] of [['["X", "Untrusted"]', '"I"'], ['["L", null]', '"I"'], ['"I"', '["T", ["X", "Secret"]]']]) {
+    const bad = entryHost(tableOf(param, result)).h;
+    assert.throws(() => bad.entries(), new HostFault("an entry's schema cannot contain X or null"), param + result);
+  }
+});
+
 test("the host refuses another MAJOR or a newer MINOR (AbiMismatch, reported as V8003) and accepts an older MINOR", async () => {
-  assert.equal(ABI_VERSION, 0x010f00);
-  for (const v of [0x011000, 0x020000, 0x000f00]) {
+  assert.equal(ABI_VERSION, 0x011000);
+  for (const v of [0x011100, 0x020000, 0x001000]) {
     await assert.rejects(new Host().instantiate(versioned(v)), AbiMismatch, `0x${v.toString(16)}`);
   }
-  for (const v of [0x010f00, 0x010e00, 0x010d00, 0x010c00, 0x010b00, 0x010a00, 0x010900, 0x010800, 0x010700, 0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010b01]) {
+  for (const v of [0x011000, 0x010f00, 0x010e00, 0x010d00, 0x010c00, 0x010b00, 0x010a00, 0x010900, 0x010800, 0x010700, 0x010600, 0x010500, 0x010400, 0x010200, 0x010100, 0x010000, 0x010b01]) {
     await new Host().instantiate(versioned(v));
   }
 });

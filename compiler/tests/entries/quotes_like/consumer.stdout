@@ -1,0 +1,23 @@
+{"call":"quote","answer":{"kind":"ok","value":"Quote { zone: Near, cents: 525 }"}}
+{"call":"quote","answer":{"kind":"ok","value":"Quote { zone: Far, cents: 912 }"}}
+{"call":"quote","answer":{"kind":"fail","error":"InvalidWeight { grams: 0 }","shown":"InvalidWeight { grams: 0 }"}}
+{"call":"quote","answer":{"kind":"fail","error":"TooHeavy { grams: 40000 }","shown":"TooHeavy { grams: 40000 }"}}
+{"call":"total","answer":{"kind":"ok","value":"1000"}}
+{"call":"total","answer":{"kind":"ok","value":"0"}}
+hello, sakura
+{"call":"greet","answer":{"kind":"ok","value":"true"}}
+{"call":"weigh","answer":{"kind":"ok","value":"700"}}
+{"call":"weigh","answer":{"kind":"ok","value":"0"}}
+{"call":"weigh","answer":{"thrown":"argument 1 (input) of entry weigh is not a value of schema [\"A\",\"quotes_like::main::Parcel\",[]]"}}
+{"call":"weigh","answer":{"thrown":"argument 1 (input) of entry weigh is not a value of schema [\"A\",\"quotes_like::main::Parcel\",[]]"}}
+{"call":"weigh","answer":{"thrown":"argument 1 (input) of entry weigh is not a value of schema [\"A\",\"quotes_like::main::Parcel\",[]]"}}
+{"call":"echo","answer":{"kind":"ok","value":"from outside"}}
+{"call":"echo","answer":{"thrown":"argument 1 (input) of entry echo is not a value of schema \"S\""}}
+{"call":"quote","answer":{"thrown":"entry quote takes 1 argument, not 0"}}
+{"call":"quote","answer":{"thrown":"entry quote takes 1 argument, not 2"}}
+{"call":"total","answer":{"thrown":"argument 1 (cents) of entry total is not a value of schema [\"L\",[\"A\",\"quotes_like::main::Cents\",[]]]"}}
+{"call":"total","answer":{"thrown":"argument 1 (cents) of entry total is not a value of schema [\"L\",[\"A\",\"quotes_like::main::Cents\",[]]]"}}
+{"call":"quote","answer":{"thrown":"argument 1 (parcel) of entry quote is not a value of schema [\"A\",\"quotes_like::main::Parcel\",[]]"}}
+{"call":"redact","answer":{"thrown":"no entry named \"redact\"; the entries are quote, total, weigh, greet, echo"}}
+{"call":"open","answer":{"thrown":"no entry named \"open\"; the entries are quote, total, weigh, greet, echo"}}
+{"call":"nope","answer":{"thrown":"no entry named \"nope\"; the entries are quote, total, weigh, greet, echo"}}

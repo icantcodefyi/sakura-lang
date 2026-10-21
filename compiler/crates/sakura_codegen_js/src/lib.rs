@@ -1,7 +1,8 @@
 //! Core IR to JavaScript (CPS + trampoline) and the JS runtime.
 //!
 //! [`emit`] turns a validated [`sakura_core::Module`] into ES2022 modules, one per Sakura Lang source
-//! module, plus `sakura_runtime.js`, `__main__.js` (programs) and `__tests__.js` (tests). The calling
+//! module, plus `sakura_runtime.js`, `__main__.js` (programs), `__entries__.js` (library entries)
+//! and `__tests__.js` (tests). The calling
 //! convention and value representation are specified in `compiler/runtime/js/ABI.md`.
 
 mod direct;
@@ -148,6 +149,54 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
                 module_path(&d.module),
                 name = cx.def_names[entry.index()]
             ),
+        });
+    }
+    // Library entries (design §17.301 (1e)): the table, and `callEntry`, which runs one on the
+    // runtime's own values and answers as the WASM host's `callEntry` does.
+    if !m.entries.is_empty() {
+        let mut imports: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+        let mut table = String::new();
+        let mut defs = String::new();
+        for e in &m.entries {
+            let def = cx.def_names[e.def.index()].as_str();
+            imports.entry(&m.def(e.def).module).or_default().push(def);
+            let params: Vec<String> = (e.params.iter())
+                .map(|(n, t, u)| format!("[{}, {}, {u}]", js_string(n), emit::schema(m, t)))
+                .collect();
+            let errors: Vec<String> = e.errors.iter().map(|x| js_string(x)).collect();
+            let _ = writeln!(
+                table,
+                "  {}: {{ module: {}, params: [{}], result: {{ schema: {}, untrusted: {} }}, errors: [{}] }},",
+                js_string(&e.name),
+                js_string(&m.def(e.fun).module),
+                params.join(", "),
+                emit::schema(m, &e.result.0),
+                e.result.1,
+                errors.join(", ")
+            );
+            let _ = writeln!(defs, "  {}: {def},", js_string(&e.name));
+        }
+        let mut text = format!(
+            "import {{ entryMisuse, registerOps, runEntry }} from \"./{RUNTIME_FILE}\";\n{all_modules}"
+        );
+        for (module, names) in imports {
+            let _ = writeln!(
+                text,
+                "import {{ {} }} from \"./{}\";",
+                names.join(", "),
+                module_path(module)
+            );
+        }
+        let _ = write!(
+            text,
+            "\nregisterOps({effects});\n\nexport const entries = {{\n{table}}};\n\nconst defs = {{\n{defs}}};\n\n\
+             /** Run entry `name` on `args` (one per parameter): a Promise of its outcome. */\n\
+             export async function callEntry(name, args) {{\n  const misuse = entryMisuse(entries, name, args);\n  \
+             if (misuse !== null) throw new TypeError(misuse);\n  return runEntry(defs[name], [...args]);\n}}\n"
+        );
+        files.push(OutputFile {
+            path: "__entries__.js".into(),
+            text,
         });
     }
     if !m.tests.is_empty() {

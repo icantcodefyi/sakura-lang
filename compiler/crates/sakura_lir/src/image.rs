@@ -251,6 +251,48 @@ pub fn workers_table(m: &Module) -> Vec<u8> {
     out
 }
 
+/// The entries table (ABI 1.16.0: WASM `entries()`, §9; design §17.301 (1c)): `u32 n`, then per
+/// library entry `u32 code` (the code `start_entry` takes), its name and module, `u32 nparams`,
+/// per parameter its name, `u8 untrusted` and schema text, the result's `u8 untrusted` and
+/// schema text, `u32 nerrors` and per error its qualified type name (each text `u32 len`,
+/// UTF-8). A flagged schema is `T`'s of an `Untrusted<T>` (§17.304 (B1)).
+pub fn entries_table(m: &Module) -> Vec<u8> {
+    let mut out = (m.entries.len() as u32).to_le_bytes().to_vec();
+    let text = |out: &mut Vec<u8>, s: &str| {
+        out.extend_from_slice(&(s.len() as u32).to_le_bytes());
+        out.extend_from_slice(s.as_bytes());
+    };
+    for e in &m.entries {
+        out.extend_from_slice(&e.code.0.to_le_bytes());
+        text(&mut out, &e.name);
+        text(&mut out, &e.module);
+        out.extend_from_slice(&(e.params.len() as u32).to_le_bytes());
+        for (name, schema, untrusted) in &e.params {
+            text(&mut out, name);
+            out.push(u8::from(*untrusted));
+            text(&mut out, schema);
+        }
+        out.push(u8::from(e.result.1));
+        text(&mut out, &e.result.0);
+        out.extend_from_slice(&(e.errors.len() as u32).to_le_bytes());
+        for error in &e.errors {
+            text(&mut out, error);
+        }
+    }
+    out
+}
+
+/// The entries' codes and arities, `u32 n` then per entry `u32 code, u32 nparams`, which
+/// `start_entry` checks a code and its argument tuple against (`sakura_rt::Rt::start_entry`).
+pub fn entry_codes(m: &Module) -> Vec<u8> {
+    let mut out = (m.entries.len() as u32).to_le_bytes().to_vec();
+    for e in &m.entries {
+        out.extend_from_slice(&e.code.0.to_le_bytes());
+        out.extend_from_slice(&(e.params.len() as u32).to_le_bytes());
+    }
+    out
+}
+
 /// The operation names of every effect, for effect traces (`Rt::trace`): `u32 n`, then per
 /// effect an offset to `u32 n_ops` and `n_ops` name offsets; names `u32 len` + UTF-8, padded
 /// to 4; offsets relative to the table.

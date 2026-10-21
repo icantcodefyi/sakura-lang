@@ -148,6 +148,8 @@ pub struct Module {
     /// The program's `@worker` functions (RFC 0002 §2.9; experimental), for the worker table a
     /// live host reads.
     pub workers: Vec<Worker>,
+    /// The package's library entries (design §17.301 (1c)), for the entries table a host reads.
+    pub entries: Vec<Entry>,
     /// The direct facts of the Core defs (§17.118), indexed by their [`FuncId`]s (the functions
     /// lowering adds after them, adapters, have none).
     pub direct: crate::direct::Facts,
@@ -164,6 +166,22 @@ pub struct Worker {
     pub fun: FuncId,
     pub entry: FuncId,
     pub effects: Vec<String>,
+}
+
+/// A library entry: `code` is its `$entry$<name>` root (a task's code, `start_entry`'s), the
+/// parameters' and result's schema texts as `PrimOp::Schema` renders them, each with its
+/// "untrusted" flag (the text is then `T`'s of an `Untrusted<T>`), and the qualified
+/// names of its `Fail` union's members.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Entry {
+    pub name: String,
+    pub module: String,
+    pub code: FuncId,
+    /// Name, schema text and "untrusted" flag (design §17.304 (B1)).
+    pub params: Vec<(String, String, bool)>,
+    /// Schema text and "untrusted" flag.
+    pub result: (String, bool),
+    pub errors: Vec<String>,
 }
 
 impl Module {

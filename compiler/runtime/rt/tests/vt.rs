@@ -180,6 +180,61 @@ fn http_send_carries_secret_headers_and_cassettes_see_them_redacted() {
 }
 
 #[test]
+fn start_entry_refuses_what_is_no_fresh_tuple_for_a_known_entry() {
+    // Design §17.301 (1c), ABI 1.16.0: `start_entry` takes only a `Bytes` from `alloc_bytes`
+    // (W11, as `invoke`), untouched otherwise; an unknown code, a value that is not a tuple or a
+    // tuple of another arity is 0 with the payload consumed. `entry_value` of no task is 0.
+    let mut rt = runtime();
+    let base = rt.stats().live_objects;
+    // The image's list: one entry, code 9, two parameters.
+    let codes = rt.new_bytes(12).unwrap();
+    rt.heap
+        .mem
+        .bytes_mut(codes + 12, 12)
+        .copy_from_slice(&u32s(&[1, 9, 2]));
+    let list = codes + 12;
+    let bytes = |rt: &mut Rt, v: &[u8]| {
+        let b = rt.new_bytes(v.len() as u32).unwrap();
+        rt.heap
+            .mem
+            .bytes_mut(b + 12, v.len() as u32)
+            .copy_from_slice(v);
+        b
+    };
+    let mut pair = vec![t::TUPLE];
+    pair.extend(u32s(&[2]));
+    pair.extend(int(1));
+    pair.extend(string("a"));
+    let fixed = bytes(&mut rt, &pair);
+    rt.make_static(fixed);
+    let shared = bytes(&mut rt, &pair);
+    rt.dup(shared).unwrap();
+    let int7 = rt.new_int(7).unwrap();
+    for bad in [fixed, shared, int7, shared + 4, 3] {
+        assert_eq!(rt.start_entry(9, bad, list), 0, "payload {bad}");
+    }
+    assert_eq!((rt.rc(shared), rt.rc(int7)), (2, 1), "nothing was taken");
+    let mut single = vec![t::TUPLE];
+    single.extend(u32s(&[1]));
+    single.extend(int(1));
+    for (code, value) in [(8, pair.clone()), (9, single), (9, int(5))] {
+        let b = bytes(&mut rt, &value);
+        assert_eq!(rt.start_entry(code, b, list), 0, "code {code}");
+    }
+    assert_eq!(rt.entry_value(12345), 0);
+    rt.drop(shared);
+    rt.drop(shared);
+    rt.drop(int7);
+    rt.drop(codes);
+    // Only the static payload, never freed, outlives the calls.
+    assert_eq!(
+        rt.stats().live_objects,
+        base + 1,
+        "the refused payloads were consumed"
+    );
+}
+
+#[test]
 fn malformed_values_are_d090_and_leak_nothing() {
     let mut rt = runtime();
     let base = rt.stats().live_objects;

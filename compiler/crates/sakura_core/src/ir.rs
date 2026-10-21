@@ -90,6 +90,26 @@ pub struct Module {
     /// The secondary entry of each `@worker` function of a program (RFC 0002 §2.9;
     /// experimental), which every backend runs since web-APIs phase 11b.
     pub workers: Vec<WorkerEntry>,
+    /// The library entries of the package's root module (design §17.301 (1a)), in declaration
+    /// order: what a host may call besides `main` (WASM `entries()`, JS `__entries__.js`).
+    pub entries: Vec<Entry>,
+}
+
+/// A library entry (design §17.301 (1b)): the `pub fn` `fun` and its root `def`
+/// (`$entry$<name>`), which takes the arguments as one tuple, installs the root handlers `fun`'s
+/// row declares, as `$entry` does, and returns `fun`'s result as a 1-tuple, so a root task's
+/// value is a word on every target. `params` and `result` are schema types (refinements kept),
+/// each with its "untrusted" flag (§17.304 (B1)): the type is then `T` of an `Untrusted<T>`,
+/// and `def` wraps the argument (`untrusted_of`) or unwraps the result (`untrusted_value`), so a
+/// plain `T` crosses. `errors` the qualified names of the `Fail` union's members.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Entry {
+    pub name: String,
+    pub def: DefId,
+    pub fun: DefId,
+    pub params: Vec<(String, Ty, bool)>,
+    pub result: (Ty, bool),
+    pub errors: Vec<String>,
 }
 
 /// A `@worker` function `fun` and its entry `def` (`$worker$<name>`, no parameters): it builds

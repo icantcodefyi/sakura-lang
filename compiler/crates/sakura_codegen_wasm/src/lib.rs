@@ -103,6 +103,9 @@ const FIXED: &[&str] = &[
     "stats",
     "invoke",
     "workers",
+    "entries",
+    "start_entry",
+    "entry_value",
 ];
 
 fn mem(offset: u64, align: u32) -> MemArg {
@@ -203,6 +206,9 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     let tests_off = statics.bytes(&tests_bytes);
     let workers_bytes = sakura_lir::image::workers_table(m);
     let workers_off = statics.bytes(&workers_bytes);
+    let entries_bytes = sakura_lir::image::entries_table(m);
+    let entries_off = statics.bytes(&entries_bytes);
+    let entry_codes_off = statics.bytes(&sakura_lir::image::entry_codes(m));
     let texts = wasi.then(|| wasi::Texts::new(&mut statics));
 
     let g = layout.first_global;
@@ -483,6 +489,40 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .i32_add();
     s.i32_const(workers_bytes.len() as i32).end();
     funcs.push(added(FIXED[9], vec![], i32s(2), f));
+
+    // entries() -> (ptr, len) (ABI 1.16.0)
+    let mut f = Function::new([]);
+    let mut s = f.instructions();
+    s.call(init).drop();
+    s.global_get(static_base)
+        .i32_const(entries_off as i32)
+        .i32_add();
+    s.i32_const(entries_bytes.len() as i32).end();
+    funcs.push(added(FIXED[10], vec![], i32s(2), f));
+
+    // start_entry(code, payload) -> task: `rt_start_entry` with the image's entry list.
+    let mut f = Function::new([]);
+    let mut s = f.instructions();
+    s.call(init)
+        .i32_eqz()
+        .if_(BlockType::Empty)
+        .i32_const(0)
+        .return_()
+        .end();
+    s.local_get(0).local_get(1);
+    s.global_get(static_base)
+        .i32_const(entry_codes_off as i32)
+        .i32_add();
+    s.call(rtf("rt_start_entry")?).end();
+    funcs.push(added(FIXED[11], i32s(2), i32s(1), f));
+
+    // entry_value(task) -> ptr
+    let mut f = Function::new([]);
+    f.instructions()
+        .local_get(0)
+        .call(rtf("rt_entry_value")?)
+        .end();
+    funcs.push(added(FIXED[12], i32s(1), i32s(1), f));
     if let Some(t) = &texts {
         funcs.push(wasi::start(&ix, t));
     }
@@ -520,6 +560,9 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         "stats",
         "invoke",
         "workers",
+        "entries",
+        "start_entry",
+        "entry_value",
     ] {
         exports.push((name.to_string(), ExportKind::Func, index(name)));
     }

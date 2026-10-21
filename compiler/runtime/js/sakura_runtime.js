@@ -454,6 +454,116 @@ export function runMain(entry) {
 }
 
 /**
+ * `__entries__.js`'s `callEntry` (design §17.301 (1e)): run library entry `entry` (the CPS
+ * `$entry$<name>`, which takes the arguments as one tuple, installs the root handlers its row
+ * declares and returns the result as a 1-tuple) on the array `args`, and answer as the WASM
+ * host's `callEntry` does: `{ kind: "ok", value }`, `{ kind: "fail", error, shown }`,
+ * `{ kind: "defect", code, message, spans }`, `{ kind: "exit", code }` or
+ * `{ kind: "cancelled" }`. Values are this runtime's own; nothing is encoded.
+ */
+export async function runEntry(entry, args) {
+  let o;
+  try {
+    o = await runTask(entry, [args]);
+  } catch (e) {
+    if (!(e instanceof Exit)) throw e;
+    flushOut();
+    return { kind: "exit", code: e.code };
+  }
+  flushOut();
+  switch (o.kind) {
+    case "ok":
+      return { kind: "ok", value: o.value[0] };
+    case "fail":
+      return { kind: "fail", error: o.error, shown: show(o.error, null) };
+    case "defect":
+      return { kind: "defect", code: o.code, message: o.message, spans: o.spans ?? [] };
+    default:
+      return { kind: "cancelled" };
+  }
+}
+
+/**
+ * Why `args` cannot be passed to entry `name` of `table` (`{ name: { params: [[name, schema,
+ * untrusted]…], … } }`), or `null`: an unknown name, another arity, or an argument that is not a
+ * value of its parameter's schema, which for an `Untrusted<T>` parameter is `T`'s: the caller
+ * passes a plain `T` and the entry wraps it (design §17.304 (B1)). Both hosts' `callEntry` throw
+ * this one message (design §17.301 (1d)).
+ */
+export function entryMisuse(table, name, args) {
+  if (!Object.hasOwn(table, name)) {
+    const names = Object.keys(table);
+    return `no entry named ${JSON.stringify(name)}; the entries are ${names.length > 0 ? names.join(", ") : "none"}`;
+  }
+  const params = table[name].params;
+  const n = params.length;
+  if (!Array.isArray(args) || args.length !== n) {
+    const given = Array.isArray(args) ? `${args.length}` : "an argument that is not an array";
+    return `entry ${name} takes ${n} argument${n === 1 ? "" : "s"}, not ${given}`;
+  }
+  const bad = params.findIndex(([, schema], i) => !conforms(args[i], schema));
+  if (bad < 0) return null;
+  const [param, schema] = params[bad];
+  return `argument ${bad + 1} (${param}) of entry ${name} is not a value of schema ${JSON.stringify(schema)}`;
+}
+
+/**
+ * Whether `v` is a value of schema `h` (type arguments `env`) in this runtime's representation.
+ * A refined type's value is one of its base that satisfies its `where`, as a decoded one must:
+ * a caller establishes a parameter's refinement, and here the host is the caller. An entry's
+ * schema never holds `X` or `null` (design §17.304 (B1)): no value conforms to one.
+ */
+export function conforms(v, h, env = null, depth = 0) {
+  if (depth > 64) return false;
+  // Parameters are substituted, never seen through: a refined argument keeps its `where`.
+  h = bindVars(h, env);
+  if (h === null) return false;
+  const is = (x, hx, e = null) => conforms(x, hx, e, depth + 1);
+  const r = h[0] === "A" ? refinements.get(h[1]) : undefined;
+  if (r !== undefined) {
+    if (!is(v, r.base, h[2])) return false;
+    try {
+      return satisfies(r, v);
+    } catch {
+      return false;
+    }
+  }
+  switch (typeof h === "string" ? h : h[0]) {
+    case "U":
+      return v === undefined;
+    case "B":
+      return typeof v === "boolean";
+    case "I":
+      return Number.isSafeInteger(v);
+    case "F":
+      return typeof v === "number";
+    case "S":
+      return typeof v === "string";
+    case "Y":
+      return v instanceof Uint8Array;
+    case "T":
+      return Array.isArray(v) && v.length === h.length - 1 && v.every((x, i) => is(x, h[i + 1]));
+    case "L":
+      return v instanceof List && items(v).every((x) => is(x, h[1]));
+    case "E":
+      return v instanceof VSet && entries(v).every((x) => is(x, h[1]));
+    case "M":
+      return v instanceof VMap && entries(v).every(([k, x]) => is(k, h[1]) && is(x, h[2]));
+    case "W":
+      return h[1].includes(v?.$t?.id) && is(v, ["A", v.$t.id, []]);
+    case "A": {
+      const cls = typeClass(h[1]);
+      if (cls === null || !(v instanceof cls)) return false;
+      const t = cls.prototype.$t;
+      if (t.kind === "record") return t.props.every((p, i) => is(v[p], t.h[i], h[2]));
+      const c = t.ctors[v.tag];
+      return c !== undefined && v.fields.length === c.h.length && v.fields.every((x, i) => is(x, c.h[i], h[2]));
+    }
+  }
+  return false;
+}
+
+/**
  * A child task under the current handlers (design §10.6 `expect_defect`). Resumes `k` with
  * `Ok(value)` or `Err("Dnnn: message")` on a defect; a failure propagates to the caller.
  */

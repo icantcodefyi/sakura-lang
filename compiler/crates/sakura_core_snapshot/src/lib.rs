@@ -82,6 +82,10 @@ impl Snapshot {
         if !m.workers.is_empty() {
             fields.push(("workers", list(m.workers.iter().map(line).collect())));
         }
+        // Likewise only a package whose root module has a library entry (design §17.301 (1b)).
+        if !m.entries.is_empty() {
+            fields.push(("entries", list(m.entries.iter().map(line).collect())));
+        }
         let body: Vec<String> = fields
             .iter()
             .map(|(k, v)| format!("\"{k}\": {v}"))
@@ -116,6 +120,23 @@ pub struct Module {
     /// which the WASM and native backends export since web-APIs phase 11b.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub workers: Vec<Worker>,
+    /// The library entries of the package's root module (design §17.301 (1b)), which the JS
+    /// and WASM backends expose and native compiles.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub entries: Vec<Entry>,
+}
+
+/// `sakura_core::ir::Entry`: the `pub fn` `fun`, its root `def` (`$entry$<name>`), its
+/// parameters' and result's schema types, each with its "untrusted" flag, and its `Fail`
+/// union's members by qualified name.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Entry {
+    pub name: String,
+    pub def: DefId,
+    pub fun: DefId,
+    pub params: Vec<(String, Ty, bool)>,
+    pub result: (Ty, bool),
+    pub errors: Vec<String>,
 }
 
 /// `sakura_core::ir::WorkerEntry`: the `@worker` function `fun`, its entry `def`
@@ -171,6 +192,11 @@ impl Module {
         for w in &self.workers {
             if w.def as usize >= self.defs.len() || w.fun as usize >= self.defs.len() {
                 return Err(format!("worker `{}`: def out of range", w.key));
+            }
+        }
+        for e in &self.entries {
+            if e.def as usize >= self.defs.len() || e.fun as usize >= self.defs.len() {
+                return Err(format!("entry `{}`: def out of range", e.name));
             }
         }
         Ok(())

@@ -33,6 +33,9 @@ pub const EXPORTS: &[&str] = &[
     "stats",
     "topic_deliver",
     "workers",
+    "entries",
+    "start_entry",
+    "entry_value",
 ];
 
 /// The `sakura_host` imports of ABI §8 this backend uses.

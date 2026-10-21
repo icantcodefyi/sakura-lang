@@ -19,3 +19,12 @@ std::list::map direct
 main::micro::list_map_fold$2 direct
 std::list::fold direct
 main::micro::sum_tail direct
+main::micro::$entry$fib direct
+main::micro::$entry$tail_sum direct
+main::micro::$entry$loop_sum direct
+main::micro::$entry$list_map_fold direct
+main::micro::$entry$records direct
+main::micro::$entry$strings direct
+main::micro::$entry$effects direct
+main::micro::$entry$contracts direct
+main::micro::$entry$contracts_plain direct

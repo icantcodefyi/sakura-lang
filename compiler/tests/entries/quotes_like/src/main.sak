@@ -1,0 +1,65 @@
+// Library entries (design §17.301 (1a), (1f)): a package whose root module has `pub fn`s a
+// host may call besides `main`. `consumer.mjs` calls them through `callEntry` on the JS and
+// WASM builds and prints one transcript for both.
+
+pub type Zone = Near | Far
+
+pub type Parcel = { weight_g: Int, zone: Zone, note: Option<String> }
+
+pub type Quote = { zone: Zone, cents: Int }
+
+pub error InvalidWeight(grams: Int)
+
+pub error TooHeavy(grams: Int)
+
+pub type QuoteError = InvalidWeight | TooHeavy
+
+pub type Cents = Int where it >= 0
+
+/// An entry with a record parameter and a `Fail` union: a quote, or the error.
+pub fn quote(parcel: Parcel) -> Quote ! {Fail<QuoteError>} {
+  if parcel.weight_g <= 0 {
+    fail InvalidWeight { grams: parcel.weight_g }
+  } else if parcel.weight_g > 30_000 {
+    fail TooHeavy { grams: parcel.weight_g }
+  } else {
+    let base = match parcel.zone {
+      Near => 500,
+      Far => 900,
+    }
+    Quote { zone: parcel.zone, cents: base + parcel.weight_g / 100 }
+  }
+}
+
+/// A pure entry over a list of a refined type.
+pub fn total(cents: List<Cents>) -> Int { List.sum(cents) }
+
+/// An entry over data from outside: the host passes a plain `Parcel`, checked by its schema,
+/// and the entry receives it as `Untrusted<Parcel>`.
+pub fn weigh(input: Untrusted<Parcel>) -> Int {
+  match Untrusted.check(input, "a positive weight", fn(p) { p.weight_g > 0 }) {
+    Ok(p) => p.weight_g,
+    Err(_) => 0,
+  }
+}
+
+/// An entry whose row has a root handler: it prints, then answers.
+pub fn greet(name: String) -> Bool ! {Console} {
+  Console.print("hello, {name}")
+  String.len(name) > 3
+}
+
+/// Not an entry: a `Secret` parameter has no schema a host may pass.
+pub fn redact(key: Secret<String>) -> String { "<redacted>" }
+
+/// An entry with an `Untrusted<String>` result: the host receives the plain `String`.
+pub fn echo(input: Untrusted<String>) -> Untrusted<String> { input }
+
+pub type Envelope = { body: Untrusted<String> }
+
+/// Not an entry: an `Untrusted` field has no schema; only a top-level `Untrusted<T>` crosses.
+pub fn open(envelope: Envelope) -> Int { Untrusted.len(envelope.body) }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("{total([1, 2, 3])}")
+}

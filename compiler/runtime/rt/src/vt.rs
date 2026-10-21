@@ -460,6 +460,71 @@ impl Rt {
         }
     }
 
+    /// The `sakura-vt1` value of the word `w` (borrowed) as a `Bytes`.
+    pub fn vt_encode_value(&mut self, w: u32) -> Res<u32> {
+        let mut b = self.strbuf()?;
+        match self.vt_encode_word(&mut b, w) {
+            Ok(()) => self.finish_bytes(b),
+            Err(e) => {
+                self.strbuf_free(b);
+                Err(e)
+            }
+        }
+    }
+
+    /// `start_entry(code, payload) -> task` (ABI §9, 1.16.0; design §17.301 (1c)): a root task
+    /// running library entry `code` (`$entry$<name>`) with the `sakura-vt1` tuple of its
+    /// arguments in `payload` (a `Bytes` from `alloc_bytes`, consumed) as its root frame's slot
+    /// 0. `codes` addresses the image's list: `u32 n`, then per entry `u32 code, u32 nparams`.
+    /// 0 with the payload untouched unless `host_bytes(payload)` (security review W11, as
+    /// `invoke`); 0 with it consumed when `code` is no entry's, the value is not a tuple of the
+    /// entry's arity, or the heap is exhausted.
+    pub fn start_entry(&mut self, code: u32, payload: u32, codes: u32) -> u32 {
+        if !self.host_bytes(payload) {
+            return 0;
+        }
+        let r = (|| -> Res<u32> {
+            let m = &self.heap.mem;
+            let arity = (0..m.u32(codes))
+                .find(|&i| m.u32(codes + 4 + 8 * i) == code)
+                .map(|i| m.u32(codes + 8 + 8 * i));
+            let Some(arity) = arity else {
+                return Ok(0);
+            };
+            let (len, at) = self.data(payload);
+            let args = self.vt_decode(at, len)?;
+            if !(is_ptr(args)
+                && self.tag(args) == tag::TUPLE
+                && self.heap.mem.u32(args + 8) == arity)
+            {
+                self.drop(args);
+                return Ok(0);
+            }
+            let n = self.frame_size(code, 1);
+            let (task, f) = self.start(code, n, 0).inspect_err(|_| self.drop(args))?;
+            self.set_fslot(f, 0, u64::from(args));
+            Ok(task)
+        })();
+        self.drop(payload);
+        r.unwrap_or(0)
+    }
+
+    /// `entry_value(task) -> ptr` (ABI §9, 1.16.0): for an entry task whose outcome is `ok` or
+    /// `fail`, a `Bytes` (the host drops it) holding the `sakura-vt1` 1-tuple of the result (the
+    /// task's value is already that tuple, design §17.301 (1b)) or of the error; 0 for any other
+    /// outcome or an unfinished task. A `Secret` is redacted (`vt_secrets` false).
+    pub fn entry_value(&mut self, task: u32) -> u32 {
+        use crate::exec::outcome;
+        let saved = core::mem::replace(&mut self.sched.vt_secrets, false);
+        let r = match self.outcome(task) {
+            Ok((outcome::OK, v)) => self.vt_encode_value(v as u32),
+            Ok((outcome::FAIL, v)) => self.vt_encode_tuple(&[v as u32]),
+            _ => Ok(0),
+        };
+        self.sched.vt_secrets = saved;
+        r.unwrap_or(0)
+    }
+
     /// Encode the word `w` (borrowed) into `b`.
     pub fn vt_encode_word(&mut self, b: &mut StrBuf, w: u32) -> Res<()> {
         self.vt_enc(b, WORD, w as u64, 0)

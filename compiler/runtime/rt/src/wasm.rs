@@ -710,6 +710,19 @@ pub extern "C" fn rt_invoke(listener: u32, payload: u32) -> u32 {
     r.unwrap_or(0)
 }
 
+/// `start_entry(code, payload) -> task` (ABI §9, 1.16.0): `codes` is the image's entry list,
+/// passed by the linker's export (`Rt::start_entry`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_start_entry(code: u32, payload: u32, codes: u32) -> u32 {
+    rt().start_entry(code, payload, codes)
+}
+
+/// `entry_value(task) -> ptr` (ABI §9, 1.16.0; `Rt::entry_value`).
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_entry_value(task: u32) -> u32 {
+    rt().entry_value(task)
+}
+
 /// The root of a served request's task: `handle(request)` (slots 0 and 1), then the response
 /// to the host (`serve_respond(task, …)`). A failure or defect is the task's outcome,
 /// which the host reports and answers with a 500.

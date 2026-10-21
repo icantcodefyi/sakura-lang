@@ -392,6 +392,23 @@ send on each (1 if one was full, else 0) and posts `text` on the thread's one
 the same way, unref'd and uncounted. `Worker.inline()` is std code over channels and `Task`, and
 uses the topic builtins too.
 
+**Library entries** (design §17.301 (1a), (1e); rt ABI 1.16.0 on WASM). Each `pub fn` of the
+root module that is an entry has a Core entry `$entry$<name>` of one parameter, the arguments
+as a tuple (a JS array), which builds the root handlers its row declares as `$entry` does,
+calls the function and returns its result as a 1-tuple. When the package has entries the
+emitter writes `__entries__.js`: it imports every emitted module and the `$entry$<name>`s,
+calls `registerOps`, and exports `entries` (`{ name: { module, params: [[name, schema,
+untrusted]…], result: { schema, untrusted }, errors: [qualified name…] } }`, schemas as §7
+literals) and `async callEntry(name, args)`. A parameter or result `Untrusted<T>` has `T`'s
+schema and the flag `true`: the caller passes and receives a plain `T`, and `$entry$<name>`
+applies `untrusted_of` or `untrusted_value` (design §17.304 (B1)). `callEntry` throws a `TypeError` with `entryMisuse(entries, name, args)`'s message for
+an unknown name, another arity or an argument `conforms` refuses (its schema's shape, and a
+refined type's `where` at any depth; the WASM host throws the same message as a `HostFault`), then answers
+`runEntry($entry$<name>, args)`: `{ kind: "ok", value }`, `{ kind: "fail", error, shown }`
+(`shown` is `show(error)`), `{ kind: "defect", code, message, spans }`, `{ kind: "exit", code
+}` or `{ kind: "cancelled" }`. Values are the runtime's own (§7); nothing is encoded. Root
+handlers are bounded by `SAKURA_PERMISSIONS` as `main`'s are; `runMain` is untouched.
+
 ## 7. Values (design §13.4)
 
 | Sakura Lang | JS |

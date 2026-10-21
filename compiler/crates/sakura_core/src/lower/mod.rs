@@ -79,6 +79,11 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
         l.contract_tests();
     }
     l.drain();
+    // After everything `main` and the tests reach, so their defs keep the ids they had.
+    if let Some(package) = package {
+        l.entries(package, main);
+        l.drain();
+    }
     if opts.all_fns {
         l.all_fns();
         l.drain();
@@ -512,6 +517,215 @@ impl<'p> Lower<'p> {
         }
     }
 
+    /// `$entry$<name>` for each library entry of the package's root module (design §17.301
+    /// (1a)–(1b)): a `pub fn` other than `main` and a `@worker` function, non-generic, whose
+    /// parameter and result types have runtime schemas and whose row holds only `Fail` of
+    /// `error` types and std effects with a parameterless `host()`. A `pub fn` failing a clause
+    /// is not an entry, silently.
+    fn entries(&mut self, package: usize, main: Option<hir::DefId>) {
+        let p = self.p;
+        let modules = &p.packages[package].modules;
+        // The root module: `main`'s, else `src/main.sak` or `src/lib.sak`, else the only one.
+        let root = main.map(|m| m.module).or_else(|| {
+            let by = |path: &str| modules.iter().copied().find(|&m| p.module(m).path == path);
+            by("main")
+                .or_else(|| by("lib"))
+                .or_else(|| (modules.len() == 1).then(|| modules[0]))
+        });
+        let Some(root) = root else {
+            return;
+        };
+        for &index in &p.module(root).items {
+            let f = hir::DefId {
+                module: root,
+                index,
+            };
+            if let Some(e) = self.entry_of(f) {
+                self.m.entries.push(e);
+            }
+        }
+    }
+
+    /// The entry of `f` if it is one (see [`Self::entries`]).
+    fn entry_of(&mut self, f: hir::DefId) -> Option<Entry> {
+        let p = self.p;
+        let def = p.def(f);
+        let hir::DefKind::Fn(fd) = &def.kind else {
+            return None;
+        };
+        let bodiless = p.body(f.module, fd.body).value.is_none();
+        if !def.is_pub
+            || def.name == "main"
+            || def
+                .attrs
+                .iter()
+                .any(|a| a.name == "worker" || a.name == "external")
+            || (bodiless && !def.attrs.iter().any(|a| a.name == "llm"))
+        {
+            return None;
+        }
+        let scheme = self.t.defs.get(&f)?;
+        if !scheme.params.is_empty() || !scheme.row_params.is_empty() {
+            return None;
+        }
+        let types::Type::Fn { params, ret, row } = self.t.interner.ty(scheme.ty).clone() else {
+            return None;
+        };
+        let row = self.t.interner.row_data(row).clone();
+        if !matches!(row.tail, types::Tail::Closed) {
+            return None;
+        }
+        let mut fail = None;
+        for label in &row.labels {
+            match label.effect {
+                types::Effect::Fail => fail = label.args.first().copied(),
+                types::Effect::Def(eff) => {
+                    let std = p.packages[p.module(eff.module).package.0 as usize].name == "std";
+                    let host = p.lookup(eff.module, "host").is_some_and(
+                        |h| matches!(&p.def(h).kind, hir::DefKind::Fn(h) if h.sig.params.is_empty()),
+                    );
+                    if !std || !host {
+                        return None;
+                    }
+                }
+            }
+        }
+        // A top-level `Untrusted<T>` parameter or result crosses as a plain `T`, with its flag;
+        // `$entry$<name>` wraps or unwraps it (§17.304 (B1)). Anywhere else `Untrusted` has no
+        // schema, and the function is no entry.
+        let unwrap = |t: types::TypeId| match self.t.interner.ty(t) {
+            types::Type::Con(types::TyCon::Untrusted, a) if a.len() == 1 => (a[0], true),
+            _ => (t, false),
+        };
+        let params: Vec<(types::TypeId, bool)> = params.iter().map(|&t| unwrap(t)).collect();
+        let (ret, ret_untrusted) = unwrap(ret);
+        let schemas: Vec<Ty> = params.iter().map(|&(t, _)| self.schema_ty(t)).collect();
+        let result = self.schema_ty(ret);
+        let errors = match fail {
+            None => vec![],
+            Some(e) => {
+                let ids = match self.schema_ty(e) {
+                    Ty::Union(ids) => ids,
+                    Ty::Adt(id, args) if args.is_empty() => vec![id],
+                    _ => return None,
+                };
+                let error = |t: &TypeDef| matches!(t.kind, TypeKind::Record { error: true, .. });
+                if !ids.iter().all(|&id| error(self.m.ty(id))) {
+                    return None;
+                }
+                let tys: Vec<Ty> = ids.iter().map(|&id| Ty::Adt(id, vec![])).collect();
+                if !tys.iter().all(|t| self.has_schema(t, &mut vec![])) {
+                    return None;
+                }
+                ids.iter()
+                    .map(|&id| self.m.ty(id).qualified_name())
+                    .collect()
+            }
+        };
+        if !schemas
+            .iter()
+            .chain([&result])
+            .all(|t| self.has_schema(t, &mut vec![]))
+        {
+            return None;
+        }
+        // The root def: `(args) -> (fun(args.0, …),)` under `fun`'s root handlers, a flagged
+        // argument wrapped by `untrusted_of`, a flagged result unwrapped by `untrusted_value`.
+        let fun = self.def(f);
+        let values: Vec<Ty> = params.iter().map(|&(t, _)| self.ty(t)).collect();
+        let ret_ty = Ty::Tuple(vec![self.ty(ret)]);
+        let opaque = Ty::Opaque("Untrusted".into());
+        let mut b = FnBuilder::new();
+        let mut blk = Block::new();
+        let args = b.local("args", Ty::Tuple(values.clone()));
+        self.root_handlers(f, &mut b, &mut blk)?;
+        let xs: Vec<Atom> = (values.iter().enumerate())
+            .map(|(i, t)| {
+                let name = &fd.sig.params[i].name;
+                let x = b.local(name.clone(), t.clone());
+                blk.push(x, Bind::Proj(local(args), Proj::Tuple(i as u32)));
+                if !params[i].1 {
+                    return local(x);
+                }
+                let u = b.local(name.clone(), opaque.clone());
+                blk.push(u, Bind::Call(builtin("untrusted_of"), vec![local(x)]));
+                local(u)
+            })
+            .collect();
+        let r = b.local("r", if ret_untrusted { opaque } else { self.ty(ret) });
+        blk.push(r, Bind::Call(Atom::Global(fun), xs));
+        let mut v = r;
+        if ret_untrusted {
+            v = b.local("v", self.ty(ret));
+            blk.push(v, Bind::Call(builtin("untrusted_value"), vec![local(r)]));
+        }
+        let out = b.local("out", ret_ty.clone());
+        blk.push(out, Bind::Alloc(Alloc::Tuple, vec![local(v)]));
+        let body = blk.finish(Expr::Ret(local(out)));
+        let id = self.push_placeholder(&format!("$entry${}", def.name), self.module_name(f.module));
+        self.m.defs[id.index()] = FnDef {
+            params: vec![args],
+            locals: b.locals,
+            ret: ret_ty,
+            body,
+            ..self.m.defs[id.index()].clone()
+        };
+        let names = fd.sig.params.iter().map(|x| x.name.clone());
+        Some(Entry {
+            name: def.name.clone(),
+            def: id,
+            fun,
+            params: (names.zip(schemas).zip(&params))
+                .map(|((n, t), &(_, u))| (n, t, u))
+                .collect(),
+            result: (result, ret_untrusted),
+            errors,
+        })
+    }
+
+    /// Whether a value of schema type `t` crosses a host boundary by its schema (design §17.301
+    /// (1a)): no function, unsolved parameter, `Secret`, handler or `@resource` (or external)
+    /// type, in `t` or any field it reaches, and no `Untrusted` (a top-level one is unwrapped
+    /// first). Recursive types are coinductive.
+    fn has_schema(&self, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
+        match t {
+            Ty::Unit | Ty::Bool | Ty::Int | Ty::Float | Ty::String | Ty::Bytes => true,
+            Ty::Opaque(_) => false,
+            Ty::Tuple(ts) => ts.iter().all(|t| self.has_schema(t, seen)),
+            Ty::List(t) | Ty::Set(t) => self.has_schema(t, seen),
+            Ty::Map(k, v) => self.has_schema(k, seen) && self.has_schema(v, seen),
+            Ty::Union(ids) => ids
+                .iter()
+                .all(|&id| self.has_schema(&Ty::Adt(id, vec![]), seen)),
+            Ty::Refined(r, args) => {
+                let base = subst(&self.m.refinements[r.index()].base, args);
+                self.has_schema(&base, seen)
+            }
+            Ty::Adt(id, args) => {
+                if !args.iter().all(|t| self.has_schema(t, seen)) {
+                    return false;
+                }
+                if seen.contains(id) {
+                    return true;
+                }
+                seen.push(*id);
+                let hir_def = self.types.iter().find(|(_, v)| *v == id).map(|(d, _)| *d);
+                let held = hir_def.is_some_and(|d| {
+                    let d = self.p.def(d);
+                    d.attrs.iter().any(|a| a.name == "resource")
+                        || matches!(&d.kind, hir::DefKind::Type(td) if td.body == hir::TypeDefBody::External)
+                });
+                let def = self.m.ty(*id);
+                // Inside the declaration its parameters are `Var(i)`: `args` were checked.
+                let mut field = |t: &Ty| matches!(t, Ty::Var(_)) || self.has_schema(t, seen);
+                !held
+                    && def.fields().iter().all(|f| field(&f.ty))
+                    && def.ctors().iter().flat_map(|c| &c.fields).all(field)
+            }
+            Ty::Never | Ty::Fn(_) | Ty::Handler(_) | Ty::Instance(_) | Ty::Var(_) => false,
+        }
+    }
+
     /// The constant `V.from(lit)` (`V$lit`) for a literal coerced into refined type `V` at
     /// `pos`; `$entry` evaluates every one before `main` (design §17.71: a failing literal is
     /// `D010` at start-up, primary span the literal, definition span the type). Tests evaluate
@@ -547,13 +761,12 @@ impl<'p> Lower<'p> {
     /// Prefix `$entry` with a call of every literal constant, so they run before any root
     /// handler is built or `main` starts.
     fn init_literals(&mut self) {
-        let Some(entry) = self.m.entry else {
-            return;
-        };
         let inits = std::mem::take(&mut self.literal_inits);
-        // A worker's instance runs its own entry, never `$entry`.
-        let entries: Vec<DefId> = std::iter::once(entry)
+        // A worker's instance runs its own entry, and a host calling a library entry runs that
+        // entry, never `$entry`.
+        let entries: Vec<DefId> = (self.m.entry.into_iter())
             .chain(self.m.workers.iter().map(|w| w.def))
+            .chain(self.m.entries.iter().map(|e| e.def))
             .collect();
         for entry in entries {
             let d = &mut self.m.defs[entry.index()];

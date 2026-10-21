@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010f00;
+export const ABI_VERSION = 0x011000;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -541,6 +541,10 @@ export class Host {
     this.topicInbox = [];
     // The module's `@worker` functions by the code their values hold (`workers()`, ABI 1.15.0).
     this.workerTable = null;
+    // The module's library entries by name (`entries()`, ABI 1.16.0), and whether a
+    // `callEntry` is running on this instance (one root task per `run` loop).
+    this.entryTable = null;
+    this.calling = false;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
     if (path) this.traceFd = proc.getBuiltinModule("node:fs").openSync(path, "a");
@@ -1395,6 +1399,48 @@ export class Host {
   }
 
   /**
+   * The module's library entries, read once from `entries()` (ABI 1.16.0, design §17.301 (1d)):
+   * `{ name: { code, module, params: [[name, schema, untrusted]…], result: { schema, untrusted },
+   * errors } }`, schemas parsed; a flagged schema is `T`'s of an `Untrusted<T>`, which crosses as
+   * a plain `T` (design §17.304 (B1)). A `HostFault` for a module built before 1.16.0, which
+   * exports no `entries`, and for a table whose schema holds `X` or `null`, which no entry has.
+   */
+  entries() {
+    if (this.entryTable !== null) return this.entryTable;
+    if (this.exports.entries === undefined) {
+      throw new HostFault("this module has no entries; build it with sakura 1.0.0-beta.3 or later");
+    }
+    const [at, len] = this.exports.entries();
+    const r = new Reader(this.copyIn(at, len));
+    const text = () => utf8.decode(r.slice());
+    const opaque = (s) => s === null || (Array.isArray(s) && (s[0] === "X" || s.some(opaque)));
+    const schema = () => {
+      const s = JSON.parse(text());
+      if (opaque(s)) throw new HostFault("an entry's schema cannot contain X or null");
+      return s;
+    };
+    const table = {};
+    for (let n = r.u32(); n > 0; n--) {
+      const code = r.u32();
+      const name = text();
+      const module = text();
+      const params = [];
+      for (let k = r.u32(); k > 0; k--) {
+        const param = text();
+        const untrusted = r.u8() === 1;
+        params.push([param, schema(), untrusted]);
+      }
+      const untrusted = r.u8() === 1;
+      const result = { schema: schema(), untrusted };
+      const errors = [];
+      for (let k = r.u32(); k > 0; k--) errors.push(text());
+      table[name] = { code, module, params, result, errors };
+    }
+    this.entryTable = table;
+    return table;
+  }
+
+  /**
    * `worker_start(code, ptr, len)`: a thread running this module at the entry of the `@worker`
    * function whose values hold `code`, with the grants tuple at `(ptr, len)`; its id, -1 or -2
    * as `rt.workerAdmit` answers, or -3 when `code` is no `@worker` function's.
@@ -1549,9 +1595,18 @@ export class Host {
    * (`task_free`, ABI §6.2), so a reused instance does not keep every finished `main`.
    */
   async runTask(entry = -1) {
-    const e = this.exports;
-    const task = e.start(entry);
+    const task = this.exports.start(entry);
     if (task === 0) return { kind: "defect", code: "D096", message: "heap exhausted" };
+    return this.runStarted(task);
+  }
+
+  /**
+   * Run the started root task `task` to an outcome, servicing host requests between runs, then
+   * release it; `value(task, o)`, if given, reads what the outcome carries before the release
+   * (`callEntry`'s `entry_value`).
+   */
+  async runStarted(task, value = null) {
+    const e = this.exports;
     let kind = e.run(task);
     this.reply();
     while (kind === OUTCOME.pending) {
@@ -1571,6 +1626,7 @@ export class Host {
       this.reply();
     }
     const o = this.outcome(task, kind);
+    value?.(task, o);
     // A module built before ABI 1.2.2 has no `task_free` and keeps its finished tasks.
     e.task_free?.(task);
     return o;
@@ -1715,6 +1771,65 @@ export async function runWorker(wt, job) {
   }
   host.close(o);
   done(o.kind === "cancelled" ? { kind: "defect", code: "D090", message: "cancelled" } : o);
+}
+
+/**
+ * Call library entry `name` of the module `host` instantiated (`await loadTypes(); await
+ * host.instantiate(bytes)`) on `args`, one JS value per parameter in the JS runtime's
+ * representation (design §17.301 (1d)); an `Untrusted<T>` parameter takes a plain `T`, which the
+ * entry wraps, and an `Untrusted<T>` result answers a plain `T` (§17.304 (B1)). The answer is
+ * the outcome with its value:
+ * `{ kind: "ok", value }`, `{ kind: "fail", error, shown }`, `{ kind: "defect", code, message,
+ * spans }`, `{ kind: "exit", code }` or `{ kind: "cancelled" }`. It throws only for a misuse
+ * (`HostFault`: an unknown name, another arity, an argument its schema refuses, a module without
+ * entries, a second call on this host before the first finished) or a trap. The root handlers
+ * are bounded by `SAKURA_PERMISSIONS`, read as `runMain` reads it.
+ */
+export async function callEntry(host, name, args) {
+  const entry = host.entries()[name];
+  const misuse = rt.entryMisuse(host.entries(), name, args);
+  if (misuse !== null) throw new HostFault(misuse);
+  if (host.calling) throw new HostFault("a call is already running on this host; instantiate another for concurrency");
+  host.calling = true;
+  try {
+    let o;
+    let value;
+    try {
+      const w = new Writer();
+      host.encode(w, args, ["T", ...entry.params.map(([, s]) => s)]);
+      const payload = host.copyOut(w.done());
+      const task = payload === 0 ? 0 : host.exports.start_entry(entry.code, payload);
+      if (task === 0) return { kind: "defect", code: "D096", message: "heap exhausted", spans: [] };
+      o = await host.runStarted(task, (t, out) => {
+        if (out.kind !== "ok" && out.kind !== "fail") return;
+        const b = host.exports.entry_value(t);
+        if (b === 0) throw new HostFault("the module answered no entry value");
+        const len = new DataView(host.exports.memory.buffer).getUint32(b + 8, true);
+        const bytes = host.copyIn(b + 12, len);
+        host.exports.drop(b);
+        [value] = host.decode(new Reader(bytes));
+      });
+    } catch (e) {
+      if (e instanceof HostFault) throw e;
+      // A trap: the next call runs on a fresh instance, never on the one it left (W9).
+      o = aborted(e);
+      host.close(o);
+      await host.fresh();
+    }
+    switch (o.kind) {
+      case "ok":
+        return { kind: "ok", value };
+      case "fail":
+        return { kind: "fail", error: value, shown: o.shown };
+      case "defect":
+        return { kind: "defect", code: o.code, message: o.message, spans: o.spans ?? [] };
+      default:
+        return o;
+    }
+  } finally {
+    rt.flushOut();
+    host.calling = false;
+  }
 }
 
 /** Run `main` of the module in `bytes` as `__main__.js` does; returns the exit code. */

@@ -135,8 +135,8 @@ fn write(m: &core::Module, ty: &core::Ty, vars: &[u32], params: bool, out: &mut 
     }
 }
 
-/// One schema as text, type parameters as `["V", i]`.
-fn param_text(m: &core::Module, ty: &core::Ty) -> String {
+/// One schema as text, type parameters as `["V", i]` (a library entry's types have none).
+pub(crate) fn param_text(m: &core::Module, ty: &core::Ty) -> String {
     let mut out = vec![];
     write(m, ty, &[], true, &mut out);
     out.into_iter()

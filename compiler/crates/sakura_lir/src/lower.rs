@@ -206,6 +206,42 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             })
         })
         .collect();
+    // A library entry's arguments and value cross as `sakura-vt1` values the host builds and
+    // reads by their schemas: their types are schema roots, and each tuple they hold needs a
+    // row (`vt_decode`), the arguments' own tuple included.
+    let entries = core
+        .entries
+        .iter()
+        .map(|e| {
+            let def = &core.defs[e.def as usize];
+            let args = def
+                .params
+                .first()
+                .map(|&l| def.locals[l as usize].ty.clone());
+            let mut tuples = vec![];
+            for t in e.params.iter().map(|(_, t, _)| t).chain([&e.result.0]) {
+                cx.schema_roots.push((t.clone(), vec![]));
+                crate::schema::tuples(core, t, &mut tuples);
+            }
+            if let Some(t) = &args {
+                crate::schema::tuples(core, t, &mut tuples);
+            }
+            for ts in tuples {
+                let slots: Vec<Slot> = ts.iter().map(|t| Slot::field_of_repr(repr_of(t))).collect();
+                cx.layouts.tuple(&slots);
+            }
+            Entry {
+                name: e.name.clone(),
+                module: def.module.clone(),
+                code: FuncId(e.def),
+                params: (e.params.iter())
+                    .map(|(n, t, u)| (n.clone(), crate::schema::param_text(core, t), *u))
+                    .collect(),
+                result: (crate::schema::param_text(core, &e.result.0), e.result.1),
+                errors: e.errors.clone(),
+            }
+        })
+        .collect();
     let mut funcs: Vec<Func> = cx
         .funcs
         .into_iter()
@@ -279,6 +315,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .map(|(name, d)| (name.clone(), FuncId(*d)))
             .collect(),
         workers,
+        entries,
         direct: cx.facts,
         schemas: crate::schema::descriptors(core, &cx.schema_roots),
     })

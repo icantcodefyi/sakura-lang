@@ -7,6 +7,34 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Added
+
+- **Library entries** (design §17.301 (1)): a `pub fn` of the package's root module other than
+  `main` and a `@worker` function, non-generic, whose parameters and result have runtime
+  schemas (no function, `Secret`, handler or `@resource` type, and `Untrusted<T>` only at the
+  top of a parameter or the result, where it crosses as a plain `T`) and whose row holds only `Fail`
+  of `error` types and std effects with a parameterless `host()`, is an entry a host can call;
+  a `pub fn` failing a clause is silently not one. A package with `main` may have entries too.
+  On WASM, the Node host's `callEntry(host, name, args)` (in `sakura_wasm_host.js`) and on JS
+  the build's new `__entries__.js` (`entries`, `callEntry(name, args)`) take the arguments as
+  the runtime's own JS values and answer `{ kind: "ok", value }`, `{ kind: "fail", error,
+  shown }`, `{ kind: "defect", code, message, spans }`, `{ kind: "exit", code }` or
+  `{ kind: "cancelled" }`; an unknown name, another arity or an argument its schema refuses (a
+  refined type's `where` included, at any depth) throws (a `HostFault` on WASM, a `TypeError`
+  on JS) with the same message. Root handlers are bounded by `SAKURA_PERMISSIONS`, as
+  `main`'s, and without it by nothing; the exit-75 startup check is `sakura run`'s and does not
+  run. One WASM `Host` runs one call at a time. Native compiles entries and
+  exposes no API. Test `compiler/crates/sakura_cli/tests/entries.rs` over
+  `compiler/tests/entries/quotes_like` and its `consumer.mjs`, one transcript on both backends.
+
+### Changed
+
+- The WASM runtime ABI is 1.16.0 (`sakura_abi_version` `0x011000`; design §17.301 (1c)): the
+  exports `entries()`, `start_entry(code, payload)` and `entry_value(task)` carry library
+  entries; `outcome` is unchanged, so `main` and tests read as before. A 1.15 host refuses a
+  1.16 module (`V8003`); a 1.16 host loads older modules, and asking one for its entries is
+  "this module has no entries; build it with sakura 1.0.0-beta.3 or later".
+
 ## [1.0.0-beta.2] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.15.2**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.16.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -23,10 +23,11 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§8.2; design §17.289, RFC 0002 §2.10) and 1.11.0 `std/crypto` tier 2 (§8.2; design §17.288
 (6), RFC 0002 §2.7), 1.12.0 `std/channel`'s object and finalizer code
 (§3.2, §3.5, §7.4; RFC 0002 §2.9) 1.13.0 `Console.eprint`'s import (§8.2; design §17.292
-(9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)) and
+(9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)),
 1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
-§2.9), 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303) and
-1.15.2 the missing-key permissions erratum (§8.3; design §17.304). Owned by
+§2.9), 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303),
+1.15.2 the missing-key permissions erratum (§8.3; design §17.304) and 1.16.0 library entries
+(§9; design §17.301 (1c), §17.304 (B1)). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -313,6 +314,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   outcome code or counter changes, so `sakura_abi_version` stays `0x010f00`. Until
   `v1.0.0-beta.1` inclusive the WASM host read a missing `net` or `env` as no limit, and the
   native host a missing `env`.
+- 1.16.0 (MINOR, design §17.301 (1c), after 11b's 1.15.0) adds library entries: the exports
+  `entries() -> (ptr, len)`, `start_entry(code, payload) -> task` and `entry_value(task) ->
+  ptr` (§9), required of a 1.16 module. An entry is a root `pub fn` other than `main` and a
+  `@worker` function whose parameters and result have schemas (design §17.301 (1a)); its root
+  code `$entry$<name>` takes the arguments as one tuple and its task's value is the 1-tuple
+  of the result, so the return register holds a word on every target. `outcome` is unchanged,
+  so `main` and tests read as before; a host that never calls `entry_value` sees nothing new.
+  The table and `entry_value`'s payload are layouts a host must read, so an older host refuses
+  a 1.16 module by the MINOR rule; a 1.16 host reads an older module as before and reports
+  "no entries" when asked for them. Native compiles the entries and exposes no API; the
+  native descriptor is unchanged. `sakura_abi_version` is `0x011000`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -1280,7 +1292,21 @@ len)` (§10 counters), and since 1.15.0 `workers() -> (ptr, len)` (the worker ta
 `u32 n`, then per `@worker` function `u32 fun`, `u32 entry`, its key and its effects joined
 by newlines, each `u32 len` and UTF-8) and `topic_deliver(name, text)` (two `Bytes` from
 `alloc_bytes`, consumed: a message of topic `name` from another instance, queued on this
-instance's subscriptions of it, between runs). Nothing else; the validator rejects extra exports (§1). The list
+instance's subscriptions of it, between runs), and since 1.16.0 `entries() -> (ptr, len)`
+(the library entries, design §17.301 (1c): `u32 n`, then per entry `u32 code` (the code
+`start_entry` takes), its name and module, `u32 nparams`, per parameter its name, `u8
+untrusted` and schema text, the result's `u8 untrusted` and schema text, `u32 nerrors` and per
+error its qualified type name; each text `u32 len` and UTF-8, schemas as `PrimOp::Schema`
+renders them and never holding `X` or `null`; a flagged schema is `T`'s of an `Untrusted<T>`,
+which crosses as a plain `T` that `$entry$<name>` wraps or unwraps, design §17.304 (B1)),
+`start_entry(code,
+payload) -> task` (`payload` a `Bytes` from `alloc_bytes` holding the `sakura-vt1` tuple of
+the arguments, consumed; refused untouched (0) unless it is one, as `invoke` refuses; 0 with
+it consumed when `code` is no entry's, the value is not a tuple of the entry's arity or the
+heap is exhausted; the tuple is the root frame's slot 0) and `entry_value(task) -> ptr` (for a
+finished entry task whose outcome is `ok` or `fail`, a `Bytes` the host drops holding the
+`sakura-vt1` 1-tuple of the result or of the error, `Secret`s redacted; 0 for any other
+outcome or an unfinished task). Nothing else; the validator rejects extra exports (§1). The list
 describes the **linked** module: rustc exports a `static` as a global holding its address and
 cannot return several values through `extern "C"`, so the M4-WASM linker synthesises
 `sakura_abi_version` and the multi-value exports over single-value runtime functions. The
