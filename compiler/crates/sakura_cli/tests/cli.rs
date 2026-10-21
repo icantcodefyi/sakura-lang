@@ -1040,10 +1040,10 @@ fn invalid_manifests_are_v8006_from_every_command() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
-/// Design §17.73 (gate 6): `sakura test --record` needs `net` hosts in the manifest, and only
-/// then makes `Test.fixtures()` writable for the cassettes.
+/// Design §17.73 (gate 6): `sakura test --record` makes `Test.fixtures()` writable for the
+/// cassettes; a manifest with no `net` hosts records with no network and one note (§17.294 RQ-7).
 #[test]
-fn test_record_needs_net_and_makes_fixtures_writable() {
+fn test_record_makes_fixtures_writable_with_or_without_net() {
     let dir = tmp(
         "record",
         r#"import std/fs.{Fs, FsError}
@@ -1065,14 +1065,26 @@ test "fixtures are writable while recording" {
     );
     let manifest = "[package]\nname = \"record\"\n\n[permissions]\n";
     std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
-    let refused = sakura(&["test", "--record", "main.sak"], &dir);
-    assert_eq!(refused.code, Some(75), "{}", refused.stderr);
-    assert!(
-        refused.stderr.contains("[permissions] net"),
-        "{}",
-        refused.stderr
+    let offline = sakura(&["test", "--record", "main.sak"], &dir);
+    assert_eq!(
+        offline.code,
+        Some(0),
+        "{}{}",
+        offline.stdout,
+        offline.stderr
     );
-    assert!(refused.stdout.is_empty());
+    assert!(
+        offline.stderr.contains(
+            "note: `[permissions] net` lists no host; recording captures in-process handlers only"
+        ),
+        "{}",
+        offline.stderr
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("tests/fixtures/probe.txt")).unwrap(),
+        "x"
+    );
+    std::fs::remove_file(dir.join("tests/fixtures/probe.txt")).unwrap();
 
     // Without `--record` the fixtures are read-only.
     let plain = sakura(&["test", "main.sak"], &dir);
@@ -1126,8 +1138,9 @@ test "never sees OTHER" { expect_eq(Env.get("OTHER"), None) }
     };
     let manifest = "[package]\nname = \"record_env\"\n\n[permissions]\nenv = [\"K\"]\n";
     std::fs::write(dir.join("sakura.toml"), manifest).unwrap();
-    let refused = run(&["test", "--record", "main.sak"]);
-    assert_eq!(refused.status.code(), Some(75), "{}", text(&refused));
+    // No `net` hosts is no network, not a refusal (§17.294 RQ-7): the `env` keys still apply.
+    let offline = run(&["test", "--record", "main.sak"]);
+    assert_eq!(offline.status.code(), Some(0), "{}", text(&offline));
 
     std::fs::write(
         dir.join("sakura.toml"),
@@ -1343,6 +1356,8 @@ fn reserved_package_names_are_v8002() {
 
 /// Design §17.73 (gate 6): `sakura test --record` writes a cassette through std `Http.recording`
 /// from a scripted outer `Http`; a plain `sakura test` then replays it with the network denied.
+/// The manifest lists no `net` host: an in-process handler records with no network (§17.294
+/// RQ-7, the synthetic-cassette recipe).
 #[test]
 fn test_record_then_replay_through_http_recording() {
     let program = |outer: &str| {
@@ -1373,7 +1388,7 @@ test "replays" {{
     let _ = std::fs::remove_dir_all(dir.join("tests"));
     std::fs::write(
         dir.join("sakura.toml"),
-        "[package]\nname = \"record_replay\"\n\n[permissions]\nnet = [\"api.example:443\"]\n",
+        "[package]\nname = \"record_replay\"\n\n[permissions]\n",
     )
     .unwrap();
     let recorded = sakura(&["test", "--record", "main.sak"], &dir);

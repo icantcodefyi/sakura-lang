@@ -151,7 +151,11 @@ pub fn run_node_tests(
     cmd.env("SAKURA_PERMISSIONS", permissions.to_string());
     if record.is_some() {
         writable(&mut cmd, &snapshots.with_file_name("fixtures"))?;
-        cmd.args(["--allow-net", "--disable-warning=ExperimentalWarning"])
+        // No `net` host keeps Node's own network denial too (§17.294 RQ-7).
+        if !net.is_empty() {
+            cmd.arg("--allow-net");
+        }
+        cmd.arg("--disable-warning=ExperimentalWarning")
             .env("SAKURA_RECORD", "1");
     }
     cmd.arg("--max-old-space-size=1024");

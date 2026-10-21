@@ -543,6 +543,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `  where it >= 0`), as `requires` and `ensures` continue a signature; it was a `V0001` and a
   `V5003` at every `validate` of the type (design §17.294 SS-4). `sakura fmt` still writes the
   `where` on the type line.
+- `sakura test --record` with no host in `[permissions] net` runs instead of exiting 75: every
+  host `Http.send` fails closed as under `run`, `Http.recording` appends what in-process
+  handlers answer (a synthetic cassette from `Router.handle` over `Sql.memory()`), and stderr
+  carries one note, "`[permissions] net` lists no host; recording captures in-process handlers
+  only" (design §17.294 RQ-7). An invalid manifest is still `V8006`.
 
 ### Security
 

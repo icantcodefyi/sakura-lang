@@ -967,8 +967,8 @@ fn test(
     direct: bool,
     wasm: bool,
 ) -> ExitCode {
-    // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts, so it needs
-    // some, and its default `Env` reads exactly the manifest's `env` keys.
+    // Design §17.73, §17.102: recording reaches exactly the manifest's `net` hosts (none when
+    // it lists none), and its default `Env` reads exactly the manifest's `env` keys.
     let TestFlags {
         seed,
         ref filter,
@@ -986,12 +986,12 @@ fn test(
             manifest.is_none() && snapshot.files().iter().any(|f| disk::is_manifest(&f.uri));
         let m = manifest.unwrap_or_default();
         let (net, env) = (m.permissions.net, m.permissions.env);
-        // An invalid manifest is the build's `V8006`, not a denial.
+        // No `net` host is no network, not a refusal: in-process handlers still record
+        // (§17.294 RQ-7). An invalid manifest is the build's `V8006`.
         if net.is_empty() && !invalid {
             eprintln!(
-                "error: permission denied: `sakura test --record` reaches only the hosts in sakura.toml's `[permissions] net`, and it lists none"
+                "note: `[permissions] net` lists no host; recording captures in-process handlers only"
             );
-            return ExitCode::from(EXIT_PERMISSION);
         }
         Some((net, env))
     } else {
