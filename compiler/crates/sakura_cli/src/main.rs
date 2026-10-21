@@ -326,7 +326,7 @@ enum McpAction {
 /// The backends `--target` accepts; `compiler_info` reports the same list.
 const TARGETS: [&str; 2] = ["js", "wasm"];
 
-/// The targets `build` and `run` accept: [`TARGETS`], and `native` (experimental, plan M5 N2),
+/// The targets `build`, `run` and `test` accept: [`TARGETS`], and `native` (experimental, plan M5 N2),
 /// which [`native_refusal`] refuses where it is not built.
 const RUN_TARGETS: [&str; 3] = ["js", "wasm", "native"];
 
@@ -651,6 +651,11 @@ fn dispatch(command: Command) -> ExitCode {
             no_direct,
             paths,
         } => {
+            if target == "native"
+                && let Some(why) = native_refusal()
+            {
+                return usage_error(why);
+            }
             let snapshot = if std {
                 Ok(Snapshot::with_std([]))
             } else {

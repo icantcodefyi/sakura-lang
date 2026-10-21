@@ -1118,7 +1118,7 @@ fn native_counts_the_gauge_sets_frames_and_restarts_as_wasm() {
 #[test]
 fn without_the_native_feature_target_native_is_refused() {
     let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
-    for cmd in ["build", "run"] {
+    for cmd in ["build", "run", "test"] {
         let out = sakura(&[cmd, "--target", "native", "hello.sak"], &fixtures);
         assert_eq!(out.code, Some(2), "{cmd}: {}", out.stderr);
         assert!(
