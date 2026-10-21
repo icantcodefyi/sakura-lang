@@ -3993,7 +3993,8 @@ export function cli_exit(code) {
 /**
  * `Cli.parse(args)` into record schema `schema`: `--field-name value` per field (kebab-case),
  * `Bool` fields are switches, `Option` fields may be absent, `List` fields repeat, values are
- * checked against refinements. `--help` fails with the usage.
+ * checked against refinements, a variant is named by a constructor in any ASCII case. `--help`
+ * fails with the usage, which lists a variant's constructors (`<Low|High>`).
  */
 export function cli_parse(args, schema, ctx, k) {
   const CliError = std("std::cli::CliError");
@@ -4007,11 +4008,16 @@ export function cli_parse(args, schema, ctx, k) {
   const fieldSchemas = t.h.map((h) => bindVars(h, schema[2]));
   const kind = (s) =>
     s === "B" ? "switch" : s?.[0] === "A" && s[1] === OPTION ? "option" : s?.[0] === "L" ? "list" : "one";
+  /** `<Low|High>` for a variant whose constructors take no payload, else `<value>`. */
+  const placeholder = (s, kd) => {
+    const cs = cliCtors(kd === "option" ? s[2][0] : kd === "list" ? s[1] : s);
+    return cs?.length && cs.every((c) => c.h.length === 0) ? `<${cs.map((c) => c.name).join("|")}>` : "<value>";
+  };
   const usage = () =>
     `usage: ${t.fields
       .map((n, i) => {
         const kd = kind(fieldSchemas[i]);
-        const f = kd === "switch" ? flag(n) : `${flag(n)} <value>`;
+        const f = kd === "switch" ? flag(n) : `${flag(n)} ${placeholder(fieldSchemas[i], kd)}`;
         return kd === "one" ? f : `[${f}]${kd === "list" ? "..." : ""}`;
       })
       .join(" ")}`;
@@ -4048,7 +4054,18 @@ export function cli_parse(args, schema, ctx, k) {
   return ret(k, new cls(...values));
 }
 
-/** A flag value of schema `s`: strings as given, numbers and refinements checked. */
+/** The constructors (`[{ name, h }]`) of the variant type schema `s` names, or `null`. */
+function cliCtors(s) {
+  if (s === null || s[0] !== "A" || s[1] === OPTION || s[1] === JSON_ID || refinements.has(s[1])) return null;
+  const t = typeClass(s[1])?.prototype.$t;
+  return t?.kind === "variant" ? t.ctors : null;
+}
+const asciiLower = (s) => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
+/**
+ * A flag value of schema `s`: strings as given, numbers and refinements checked, a variant's
+ * constructor by its name in any ASCII case when exactly one constructor matches.
+ */
 function cliValue(text, s) {
   if (s === "S") return text;
   if (s === "I" || s === "F") {
@@ -4061,6 +4078,11 @@ function cliValue(text, s) {
     const v = cliValue(text, bindVars(r.base, s[2]));
     if (!satisfies(r, v)) throw new DecodeFailure("", `${quote(text)} does not satisfy the where clause of ${r.name}`);
     return v;
+  }
+  const cs = cliCtors(s);
+  if (cs !== null && !cs.some((c) => c.name === text)) {
+    const hits = cs.filter((c) => asciiLower(c.name) === asciiLower(text));
+    if (hits.length === 1) return fromJs(hits[0].name, s, "");
   }
   return fromJs(text, s, "");
 }

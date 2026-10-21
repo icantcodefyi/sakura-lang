@@ -241,6 +241,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Cli.parse` needs the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/cli_parse_variant_case",
+        None,
+        "`Cli.parse` needs the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/host_fs_env",
         None,
         "`Fs.list`'s `Entry` decodes with the program's JS type descriptors, which a bare corpus module lacks, and a WASI command has no hosted Fs imports",

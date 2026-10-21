@@ -1,0 +1,36 @@
+// milestone: M5
+// covers: design §10.5, §17.292 (3)
+// spec: §10.5
+
+// `Cli.parse` names a variant by a constructor in any ASCII case when exactly one constructor
+// matches (`high`, `HIGH`); the exact spelling wins over a case-folded one (`Fast` and `FAST`
+// are two constructors, `fast` names neither). The usage lists payload-free constructors as
+// `<Low|High>`, inside `Option` and `List` too, and a variant with a payload as `<value>`.
+import std/cli.{Cli, CliError}
+
+type Level = Low | High
+
+type Speed = Fast | FAST
+
+type Size = Small | Sized(Int)
+
+type Args = { level: Level, speed: Option<Speed>, also: List<Level>, size: Option<Size> }
+
+fn parsed(args: List<String>) -> String {
+  let r: Result<Args, CliError> = try { Cli.parse(args) }
+  match r {
+    Ok(a) => "{a}",
+    Err(e) => e.message,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(parsed(["--level", "High"]))
+  Console.print(parsed(["--level", "high", "--also", "LOW", "--also", "hIgH"]))
+  Console.print(parsed(["--level", "low", "--speed", "FAST"]))
+  Console.print(parsed(["--level", "low", "--speed", "Fast"]))
+  Console.print(parsed(["--level", "low", "--speed", "fast"]))
+  Console.print(parsed(["--level", "low", "--size", "small"]))
+  Console.print(parsed(["--level", "mid"]))
+  Console.print(parsed(["--help"]))
+}

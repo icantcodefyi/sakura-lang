@@ -25,6 +25,7 @@ semantics/channel_try_send_full: 9 funcs, 45 blocks, 10 dup, 28 drop, valid
 semantics/cli_exit_rejects_code: 6 funcs, 13 blocks, 0 dup, 7 drop, valid
 semantics/cli_exit_runs_finalizers: 7 funcs, 17 blocks, 0 dup, 8 drop, valid
 semantics/cli_parse_messages: 5 funcs, 41 blocks, 3 dup, 16 drop, valid
+semantics/cli_parse_variant_case: 3 funcs, 25 blocks, 0 dup, 12 drop, valid
 semantics/clock_micros_monotonic: 15 funcs, 36 blocks, 0 dup, 19 drop, valid
 semantics/closures: 8 funcs, 24 blocks, 4 dup, 17 drop, valid
 semantics/compress_rejects_level: 8 funcs, 49 blocks, 6 dup, 8 drop, valid

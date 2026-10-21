@@ -2491,28 +2491,39 @@ pub fn cli_parse(
         types.type_id(b"std::cli::CliError").ok_or(NO_TYPE)?,
     );
     let mut fields: Vec<(String, S<'_>, Kind)> = vec![];
+    // Each field's value in the usage: a variant's payload-free constructors, else `<value>`.
+    let mut holders: Vec<String> = vec![];
     let mut seq = Seq::new(d.body.text, d.body.at);
     while let Some(f) = seq.next()? {
         let f = d.body.at(f);
         let fname = String::from_utf8_lossy(f.name(f.elem(0)?.at)?).into_owned();
         let fs = f.elem(1)?;
-        let kind = match fs.kind()? {
-            K::Prim(b'B') => Kind::Switch,
-            K::A(o, _) if o == OPTION => Kind::Option,
-            K::L(_) => Kind::List,
-            _ => Kind::One,
+        let (kind, vs) = match fs.kind()? {
+            K::Prim(b'B') => (Kind::Switch, fs),
+            K::A(o, oargs) if o == OPTION => (Kind::Option, oargs.elem(0)?),
+            K::L(e) => (Kind::List, e),
+            _ => (Kind::One, fs),
+        };
+        let holder = match cli_ctors(vs, descs, types)? {
+            Some(cs) if !cs.is_empty() && cs.iter().all(|c| c.1 == 0) => {
+                let names: Vec<&str> = cs.iter().map(|c| c.0.as_str()).collect();
+                format!("<{}>", names.join("|"))
+            }
+            _ => String::from("<value>"),
         };
         fields.push((fname, fs, kind));
+        holders.push(holder);
     }
     let flag = |n: &str| format!("--{}", n.replace('_', "-"));
     let usage = || {
         let parts: Vec<String> = fields
             .iter()
-            .map(|(n, _, k)| {
+            .zip(&holders)
+            .map(|((n, _, k), h)| {
                 let f = if *k == Kind::Switch {
                     flag(n)
                 } else {
-                    format!("{} <value>", flag(n))
+                    format!("{} {h}", flag(n))
                 };
                 match k {
                     Kind::One => f,
@@ -2625,8 +2636,47 @@ impl From<Defect> for CliFail {
     }
 }
 
+/// JS `cliCtors`: the constructors of the variant type `s` names, each with its payload count,
+/// or `None` when `s` names no variant.
+#[cfg(not(target_arch = "wasm32"))]
+fn cli_ctors(
+    s: S<'_>,
+    descs: &[u8],
+    types: &mut dyn Types,
+) -> Res<Option<alloc::vec::Vec<(alloc::string::String, usize)>>> {
+    let K::A(name, args) = s.kind()? else {
+        return Ok(None);
+    };
+    if name == OPTION || name == JSON {
+        return Ok(None);
+    }
+    let Some(at) = types.find(name) else {
+        return Ok(None);
+    };
+    let bind = Bind { args };
+    let d = desc(descs, at, Some(&bind))?;
+    if d.kind == b'r' || d.kind == b'w' {
+        return Ok(None);
+    }
+    let mut out = alloc::vec::Vec::new();
+    let mut ctors = Seq::new(d.body.text, d.body.at);
+    while let Some(ct) = ctors.next()? {
+        let ct = d.body.at(ct);
+        let hs = ct.elem(1)?;
+        let mut n = 0usize;
+        let mut seq = Seq::new(hs.text, hs.at);
+        while seq.next()?.is_some() {
+            n += 1;
+        }
+        let cname = alloc::string::String::from_utf8_lossy(ct.name(ct.elem(0)?.at)?);
+        out.push((cname.into_owned(), n));
+    }
+    Ok(Some(out))
+}
+
 /// JS `cliValue`: a flag's text by schema `s`; strings as given, numbers parsed, refinements
-/// checked, anything else decoded from the text as a JSON string.
+/// checked, a variant's constructor in any ASCII case when exactly one matches, anything else
+/// decoded from the text as a JSON string.
 #[cfg(not(target_arch = "wasm32"))]
 fn cli_value(
     text: &str,
@@ -2703,6 +2753,16 @@ fn cli_value(
         }
         _ => {}
     }
+    let mut canon = None;
+    if let Some(cs) = cli_ctors(s, descs, types)?
+        && !cs.iter().any(|c| c.0 == text)
+    {
+        let mut hits = cs.into_iter().filter(|c| c.0.eq_ignore_ascii_case(text));
+        if let (Some(c), None) = (hits.next(), hits.next()) {
+            canon = Some(c.0);
+        }
+    }
+    let text = canon.as_deref().unwrap_or(text);
     // `fromJs(text, s, "")`: the text as a JSON string.
     let mut j = Vec::new();
     json_string(&mut j, text.as_bytes())?;

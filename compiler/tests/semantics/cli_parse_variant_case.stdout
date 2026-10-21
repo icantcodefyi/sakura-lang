@@ -1,0 +1,8 @@
+Args { level: High, speed: None, also: [], size: None }
+Args { level: High, speed: None, also: [Low, High], size: None }
+Args { level: Low, speed: Some(FAST), also: [], size: None }
+Args { level: Low, speed: Some(Fast), also: [], size: None }
+--speed: unknown constructor "fast" of Speed
+Args { level: Low, speed: None, also: [], size: Some(Small) }
+--level: unknown constructor "mid" of Level
+usage: --level <Low|High> [--speed <Fast|FAST>] [--also <Low|High>]... [--size <value>]

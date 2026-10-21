@@ -34,7 +34,10 @@ pub fn of(args: List<String>) -> Handler<Cli> {
 
 /// Decodes `--field value` flags into the record `T` named by the binding's annotation
 /// (`let a: Args = Cli.parse(Cli.args())`): kebab-case flags, `Bool` fields as switches,
-/// `Option` fields optional, refinements checked. `--help` fails with the generated usage.
+/// `Option` fields optional, `List` fields repeated, refinements checked. A variant field takes
+/// a constructor's name in any ASCII case (`--level high`) when exactly one constructor
+/// matches; an exact spelling always wins. `--help` fails with the generated usage, which
+/// lists a variant's payload-free constructors (`--level <Low|High>`).
 @external(js, "sakura_runtime", "cli_parse")
 pub fn parse<T: Schema>(args: List<String>) -> T ! {Fail<CliError>}
 

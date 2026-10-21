@@ -51,6 +51,12 @@ retains earlier implementation history.
   a keyword: it names a field, not a binding; choose another name"). Since `error` became a
   field name such a binder parsed but no body could use it. A field named `error` is
   unaffected.
+- `Cli.parse` reads a variant-typed flag's constructor in any ASCII case (`--level high` for
+  `Level = Low | High`) when exactly one constructor matches, an exact spelling first, and the
+  usage lists a variant's payload-free constructors (`--level <Low|High>`, also inside
+  `Option` and `List` fields) where it said `<value>`; the same on JS, WASM and native (design
+  §17.292 (3)). A refined flag's message does not yet name the failing clause. Fixture
+  `compiler/tests/semantics/cli_parse_variant_case.sak`.
 - **`std/worker`, experimental** (RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b): outside the 1.0
   contract, and it may change in any release. A function declared `@worker` runs as a second
   instance of the program, with its own heap and root handlers, through

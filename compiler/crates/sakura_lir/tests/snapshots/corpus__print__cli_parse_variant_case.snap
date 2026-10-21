@@ -1,0 +1,138 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::cli_parse_variant_case::Args | Args 48b (level: word*, speed: word*, also: word*, size: word*)
+layout 1 variant main::cli_parse_variant_case::Level | Low 16b () | High 16b ()
+layout 2 variant main::cli_parse_variant_case::Size | Small 16b () | Sized 24b (i64)
+layout 3 variant main::cli_parse_variant_case::Speed | Fast 16b () | FAST 16b ()
+layout 4 error std::cli::CliError | CliError 24b (message: word*)
+layout 5 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 6 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::cli_parse_variant_case, frame 16 slots [%3 word*, %4 bool, %13 word*, %14 bool, %21 word*, %22 bool, %29 word*, %30 bool, %37 word*, %38 bool, %45 word*, %46 bool, %51 word*, %52 bool, %56 word*, %57 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 xs: ptr = alloc list(%0, %1)
+    call parsed#2(%2) -> b1()
+  b1(%3 r: ptr):
+    perform std::console::Console.print(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    drop %5
+    %6 lit: ptr = const str 0
+    %7 lit: ptr = const str 2
+    %8 lit: ptr = const str 3
+    %9 lit: ptr = const str 4
+    %10 lit: ptr = const str 3
+    %11 lit: ptr = const str 5
+    %12 xs: ptr = alloc list(%6, %7, %8, %9, %10, %11)
+    call parsed#2(%12) -> b3()
+  b3(%13 r: ptr):
+    perform std::console::Console.print(%13) -> b4()
+  b4(%14 r: unit):
+    %15 box: word = box %14
+    drop %15
+    %16 lit: ptr = const str 0
+    %17 lit: ptr = const str 6
+    %18 lit: ptr = const str 7
+    %19 lit: ptr = const str 8
+    %20 xs: ptr = alloc list(%16, %17, %18, %19)
+    call parsed#2(%20) -> b5()
+  b5(%21 r: ptr):
+    perform std::console::Console.print(%21) -> b6()
+  b6(%22 r: unit):
+    %23 box: word = box %22
+    drop %23
+    %24 lit: ptr = const str 0
+    %25 lit: ptr = const str 6
+    %26 lit: ptr = const str 7
+    %27 lit: ptr = const str 9
+    %28 xs: ptr = alloc list(%24, %25, %26, %27)
+    call parsed#2(%28) -> b7()
+  b7(%29 r: ptr):
+    perform std::console::Console.print(%29) -> b8()
+  b8(%30 r: unit):
+    %31 box: word = box %30
+    drop %31
+    %32 lit: ptr = const str 0
+    %33 lit: ptr = const str 6
+    %34 lit: ptr = const str 7
+    %35 lit: ptr = const str 10
+    %36 xs: ptr = alloc list(%32, %33, %34, %35)
+    call parsed#2(%36) -> b9()
+  b9(%37 r: ptr):
+    perform std::console::Console.print(%37) -> b10()
+  b10(%38 r: unit):
+    %39 box: word = box %38
+    drop %39
+    %40 lit: ptr = const str 0
+    %41 lit: ptr = const str 6
+    %42 lit: ptr = const str 11
+    %43 lit: ptr = const str 12
+    %44 xs: ptr = alloc list(%40, %41, %42, %43)
+    call parsed#2(%44) -> b11()
+  b11(%45 r: ptr):
+    perform std::console::Console.print(%45) -> b12()
+  b12(%46 r: unit):
+    %47 box: word = box %46
+    drop %47
+    %48 lit: ptr = const str 0
+    %49 lit: ptr = const str 13
+    %50 xs: ptr = alloc list(%48, %49)
+    call parsed#2(%50) -> b13()
+  b13(%51 r: ptr):
+    perform std::console::Console.print(%51) -> b14()
+  b14(%52 r: unit):
+    %53 box: word = box %52
+    drop %53
+    %54 lit: ptr = const str 14
+    %55 xs: ptr = alloc list(%54)
+    call parsed#2(%55) -> b15()
+  b15(%56 r: ptr):
+    perform std::console::Console.print(%56) -> b16()
+  b16(%57 r: unit):
+    %58 box: word = box %57
+    %59 unbox: unit = unbox %58
+    drop %58
+    ret %59
+
+fn $entry#1 top -> unit ; main::cli_parse_variant_case, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn parsed#2 top -> ptr ; main::cli_parse_variant_case, frame 3 slots [%0 word*, %9 word*, %12 word*]
+  b0(%0 args: ptr):
+    try_push -> b4(err, )
+    %11 schema: ptr = const str 15
+    call $cli_parse(%0, %11) -> b5()
+  b1(%1 v: ptr):
+    %2 tag: i64 = tag %1 ctor std::result::Result
+    switch %2 0 => b2(%1) 1 => b3(%1)
+  b2(%3 v: ptr):
+    %5 p: word = proj %3.0 std::result::Result.Ok
+    drop %3
+    %6 s: ptr = show %5
+    drop %5
+    ret %6
+  b3(%4 v: ptr):
+    %7 p: word = proj %4.0 std::result::Result.Err
+    drop %4
+    %8 message: word = proj %7.0 std::cli::CliError
+    drop %7
+    ret %8
+  b4(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    jump b1(%10)
+  b5(%12 r: word) [try]:
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
