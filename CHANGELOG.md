@@ -98,6 +98,14 @@ retains earlier implementation history.
 
 ### Changed
 
+- The `sakura` skill teaches the APIs since `v0.1.0`: `SKILL.md` names `Payload` and points to
+  them; the cookbook reference gains "Current APIs since v0.1.0", six checked files (`Payload`
+  bodies with byte limits, `Redirect.Manual`, `Http.sequence` for multi-turn tests,
+  `Console.eprint`, compact `Log` fields, `Result.ok`/`err`, `Fs.read_up_to`, `Fs.memory_tree`,
+  `Gen.flat_map`, schema keywords from refinements, `with_channel`, `Source.buffer`/`tee`,
+  experimental `std/worker` with grants, `Llm.anthropic_at`) and the `SAKURA_PERMISSIONS` rule;
+  the repair table adds `V0016`, `V1013`, `V3011`, `V7001`, the `Payload` constructor hint and
+  `W1003`'s fix, and a list of symptoms in code written for `v0.1.0`.
 - `sakura verify --json` (preview) reports a different obligation set since 0.1.0 for an
   unchanged program (design §17.301 (4) (iii)): a `match` on a refined type's `validate`, or a
   join of a variant's constructors, is decided where it was `unsupported` (Fixed in

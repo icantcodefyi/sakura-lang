@@ -7,7 +7,7 @@ builds, and contracts/tests/permissions have not been weakened. Repeat the froze
 baseline check after the final edits. Report missing prerequisites and failing
 checks explicitly; do not claim a skipped test passed.
 
-These ten projects teach supported Sakura APIs on the JavaScript backend. Each
+These projects teach supported Sakura APIs on the JavaScript backend. Each
 project is exercised offline by `cargo test -p sakura_cli --test examples`;
 HTTP and LLM exchanges are synthetic committed cassettes, with no network or API keys.
 Use Node 26 for execution, including its built-in SQLite implementation.
@@ -31,6 +31,266 @@ to regenerate the cookbook and skill reference. Edit those sources, not the rend
 Exit 0 can include `unknown` or `unsupported`; inspect statuses and
 `path_feasible`, including `W7002` for vacuity. A proof is conditional on its
 recorded assumptions and target profile, not a whole-program guarantee.
+
+## Current APIs since v0.1.0
+
+Short checked files for what changed after `v0.1.0`; the CHANGELOG's "Migration from v0.1.0"
+lists every breaking change. Each block is a whole file, tested offline.
+
+### HTTP bodies, redirects and multi-turn tests
+
+A body is a `Payload` (`import std/request.{Payload}`): build `Payload.Text(s)`,
+`Payload.Bytes(b)` or `Payload.Empty` (`body: Payload.Text("s")` or
+`.with_payload(…)`), and read it with a `match` or an accessor that takes a byte limit:
+`Response.text(r, limit)` (an `Untrusted<String>`), `Response.json(r, limit)`,
+`Response.bytes(r, limit)`, and the same three on `Request`. Redirects are followed by
+default; `Redirect.Manual` returns the 3xx. `Http.sequence` answers each entry once, in
+order, for a multi-turn exchange; `Http.scripted` keeps answering its first match.
+
+```sakura test id=since-http
+import std/http.{Http, Path}
+import std/request.{Get, Payload, Redirect, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn body_text(r: Response) -> String {
+  match r.body {
+    Payload.Text(s) => s,
+    Payload.Bytes(b) => "{Bytes.len(b)} bytes",
+    Payload.Empty => "",
+  }
+}
+
+fn poll(url: String) -> String ! {Http, Fail<HttpError>} {
+  body_text(Http.send(Request.of(Get, Url.from(url))))
+}
+
+test "each turn answers once, in order" {
+  let turns = [
+    (Path("/job"), Response.status(202, "pending")),
+    (Path("/job"), Response.status(200, "done")),
+  ]
+  with Http.sequence(turns) {
+    expect_eq(try { poll("https://api.example/job") }, Ok("pending"))
+    expect_eq(try { poll("https://api.example/job") }, Ok("done"))
+    expect(Result.is_err(try { poll("https://api.example/job") }))
+  }
+}
+
+test "Redirect.Manual returns the 3xx itself" {
+  let moved = Response { ..Response.status(302, ""), headers: [("location", "/new")] }
+  with Http.sequence([(Path("/old"), moved)]) {
+    let req = Request.of(Get, Url.from("https://api.example/old"))
+    let got = try { Http.send(Request { ..req, redirect: Redirect.Manual }) }
+    expect_eq(got.map(fn(r) { r.status == 302 }), Ok(true))
+  }
+}
+
+test "a body is read under a byte limit" {
+  let r = Response { ..Response.status(200, ""), body: Payload.Bytes(String.to_bytes("hi")) }
+  expect_eq(try { Response.bytes(r, 1024) }, Ok(String.to_bytes("hi")))
+  expect(Result.is_err(try { Response.bytes(r, 1) }))
+}
+```
+
+### Console and Log
+
+A user `handler Console` implements `print`, `read_line` and `eprint` (standard error).
+`Log` fields render as compact JSON: `hits=3`, `id="x"`.
+
+```sakura test id=since-console
+fn tagged() -> Handler<Console, {Console}> {
+  handler Console {
+    fn print(line) { Console.print("out: {line}") }
+    fn eprint(line) { Console.print("err: {line}") }
+    fn read_line() { Console.read_line() }
+  }
+}
+
+test "a Console handler implements eprint" {
+  with tagged() {
+    Console.print("a")
+    Console.eprint("b")
+  }
+  expect_output(["out: a", "err: b"])
+}
+
+test "log fields render as compact JSON" {
+  Log.event(Level.Info, "search", [("hits", Json.Number(3.0)), ("id", Json.String("x"))])
+  expect_output(["Info search hits=3 id=\"x\""])
+}
+```
+
+### Results, files, generators and schemas
+
+`Result.ok`/`err` turn one side into an `Option`. `Fs.read_up_to(path, limit)` fails
+`FsError` past `limit` bytes. `Fs.memory_tree` is `Fs.memory` with directories
+(`MemoryEntry.Directory`, `MemoryEntry.Contents(bytes)`). `Gen.flat_map` draws a value
+from another. `Json.schema` (and a `Tool`'s schema) states a refinement's length and range
+bounds as `maxLength`/`minLength`, `maxItems`/`minItems` and `maximum`/`minimum`; every
+`where` is still checked on decode.
+
+```sakura test id=since-data
+import std/fs.{Fs, MemoryEntry}
+import std/gen
+import std/json.{Json}
+import std/path.{Path}
+
+type Name = String where String.len(it) >= 1 && String.len(it) <= 20
+
+test "Result.ok and Result.err pick one side" {
+  let r: Result<Int, String> = Err("bad")
+  expect_eq(r.ok(), None)
+  expect_eq(r.err(), Some("bad"))
+}
+
+test "a bounded read in a memory tree" {
+  let tree = [
+    (Path.of("out"), MemoryEntry.Directory),
+    (Path.of("in/a.txt"), MemoryEntry.Contents(String.to_bytes("hello"))),
+  ]
+  with Fs.memory_tree(tree) {
+    expect_eq(try { Fs.read_up_to(Path.of("in/a.txt"), 1024) }, Ok(String.to_bytes("hello")))
+    expect(Result.is_err(try { Fs.read_up_to(Path.of("in/a.txt"), 4) }))
+    expect(Result.is_ok(try { Fs.write(Path.of("out/b.txt"), String.to_bytes("x")) }))
+  }
+}
+
+test "Gen.flat_map draws a value that depends on another" {
+  let g = gen.flat_map(gen.list(gen.int(0, 9), 5), fn(xs) {
+    gen.map(gen.int(0, Int.max(List.len(xs), 1) - 1), fn(i) { (xs, i) })
+  })
+  let s = with Random.seeded(7) { g.sample(4) }
+  expect(s.1 < Int.max(List.len(s.0), 1))
+}
+
+test "a refinement's length bound reaches the schema" {
+  let n: Option<Name> = None
+  expect(String.contains(Json.encode(Json.schema(n)), "\"maxLength\":20"))
+}
+```
+
+### Channels and stream buffering
+
+`std/channel`'s `with_channel(capacity, body)` gives `body` a bounded `Sender` and
+`Receiver`; both are resources (`V6003` if they escape). `Source.buffer` pulls ahead of its
+consumer; `Source.tee` reads one source twice, at most `max_lag` items apart.
+
+```sakura test id=since-conc
+import std/channel
+import std/channel.{Receiver, Sender}
+import std/stream.{Source}
+
+fn drain(rx: Receiver<Int>) -> Int ! {Task} {
+  var n = 0
+  var more = true
+  while more {
+    match rx.recv() {
+      Some(x) => { n = n + x },
+      None => { more = false },
+    }
+  }
+  n
+}
+
+test "a bounded channel between two tasks" {
+  let sums = with Task.deterministic(1) {
+    channel.with_channel(2, fn(tx: Sender<Int>, rx: Receiver<Int>) {
+      Task.all([
+        fn() {
+          for x in [1, 2, 3] { let _ = tx.send(x) }
+          tx.close()
+          0
+        },
+        fn() { drain(rx) },
+      ])
+    })
+  }
+  expect_eq(sums, [0, 6])
+}
+
+test "tee reads one source twice, at most 2 items apart" {
+  let src: Source<Int, {}> = Source.from_list([1, 2, 3])
+  let sums = with Task.deterministic(1) {
+    src.tee(2, fn(a, b) {
+      Task.all([
+        fn() { a.fold(0, fn(s, x) { s + x }) },
+        fn() { b.fold(0, fn(s, x) { s + x * 10 }) },
+      ])
+    })
+  }
+  expect_eq(sums, [6, 60])
+}
+
+test "buffer pulls ahead of its consumer" {
+  let src: Source<Int, {}> = Source.from_list([1, 2, 3])
+  let got = with Task.deterministic(1) { src.buffer(2, fn(s) { s.fold(0, fn(n, x) { n + x }) }) }
+  expect_eq(got, 6)
+}
+```
+
+### Workers (experimental)
+
+`std/worker` is outside the 1.0 contract and may change in any release. An `@worker` entry
+is `fn(Inbox<I>, Outbox<O>) -> Unit` (else `V1013`). `Worker.spawn(entry, grants, body)`
+needs `grants` (`Grants.none()` or `Grants.of(Permissions { … })`) within the parent's
+`[permissions]` and covering the entry's effects, else `Err(WorkerError(GrantExceeded))`.
+Test with `Worker.inline()`.
+
+```sakura test id=since-worker
+import std/worker.{Grants, Inbox, Message, Outbox, Permissions, Worker}
+
+@worker
+fn double(inbox: Inbox<Int>, outbox: Outbox<Int>) -> Unit ! {Worker} {
+  match Worker.recv(inbox) {
+    Message(n) => { let _ = Worker.send(outbox, n * 2) },
+    _ => {},
+  }
+}
+
+test "a worker answers through its codec" {
+  with Task.deterministic(1) {
+    with Worker.inline() {
+      let got = Worker.spawn(double, Grants.none(), fn(w) {
+        let _ = Worker.send(w, 21)
+        Worker.recv(w)
+      })
+      expect_eq("{got}", "Ok(Message(42))")
+      let wide = Grants.of(Permissions {
+        fs_read: [],
+        fs_write: [],
+        net: ["a.example:443"],
+        env: [],
+      })
+      expect(Result.is_err(Worker.spawn(double, wide, fn(_w) { () })))
+    }
+  }
+}
+```
+
+### Anthropic endpoint
+
+`ANTHROPIC_BASE_URL` is no longer read: pass the endpoint to `Llm.anthropic_at`.
+
+```sakura check id=since-llm
+import std/budget.{Budget}
+import std/http.{Http}
+import std/llm.{Llm, Model}
+import std/url.{Url}
+
+fn claude(key: Secret<String>) -> Handler<Llm, {Budget, Http}> {
+  Llm.anthropic_at(Url.from("https://api.anthropic.com"), key, Model.of("claude-sonnet-4-5"))
+}
+```
+
+### Permissions table for embedders
+
+A process that sets `SAKURA_PERMISSIONS` itself passes the full table; a key you leave out
+is denied (`{}` grants nothing), and an unset variable means no host limits:
+
+```json
+{"fs": {"read": [], "write": []}, "net": [], "env": []}
+```
 
 ## Decode JSON into a refined record
 

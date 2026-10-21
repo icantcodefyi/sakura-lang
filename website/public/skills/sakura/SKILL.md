@@ -25,12 +25,13 @@ match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
   `!`; effectful signatures name a row, such as `! {Console, Fail<Missing>}`.
 - Calls are positional. No `f<T>(x)` and no `f(name: value)`: annotate a binding
   to guide inference and pass a record when the API takes options.
-- Import non-prelude names explicitly, from their declaring modules. `Http` is
-  in `std/http`; `Request` is in `std/request`. Query before guessing imports.
+- Import non-prelude names explicitly, from their declaring modules: `Http`
+  from `std/http`; `Request` and `Payload` (a body: `Payload.Text(s)`) from
+  `std/request`. Query before guessing imports.
 - Use `let` for a fixed binding and `var` for rebinding. Collections have value
   semantics: `List.set` and `Map.set` return a new collection. Assign that result
-  back to the `var`; neither call mutates the input. Check index bounds first.
-  Prefer `List` for dense integer IDs (as in DeltaBlue), `Map` for sparse keys.
+  back to the `var`. Check index bounds first. Prefer `List` for dense integer
+  IDs, `Map` for sparse keys.
 - For a zero-length case, use `if n == 0 { return ... }` before computing
   `n - 1` or indexing. State the nonnegative-input requirement when needed;
   an empty-input guard alone does not establish it. Ranges are half-open.
@@ -66,7 +67,6 @@ match `sakura --version`, trust the installed compiler's `prompt`, `doc` and
 6. **Build and report.** Run `sakura build` for the requested target (`js` by
    default). Build rejects holes with `V2050`. Report exact commands, results,
    remaining limitations and any authorized signature or permission changes.
-   A build does not test behavior.
 
 ## Four complete examples
 
@@ -129,16 +129,16 @@ test "clock is controlled by the test" {
 
 ## Repair by diagnostic
 
-Read the [repair table](references/repairs.md) on failure; `sakura explain CODE`
-has the full explanation.
+Read the [repair table](references/repairs.md) on failure or to upgrade
+v0.1.0 code; `sakura explain CODE` has the full explanation.
 
 ## Completion and deeper lookup
 
 Finish only when no holes remain, independent tests pass, the requested target
 builds, and contracts/tests/permissions have not been weakened. Report missing
 prerequisites and failing checks; never claim a skipped test passed.
-Read [the cookbook](references/recipes.md) for offline projects and
-`sakura audit`/`sakura verify` guidance.
+Read [the cookbook](references/recipes.md) for offline projects, the APIs
+changed since v0.1.0, and `sakura audit`/`sakura verify` guidance.
 
 Load references selectively: [language](references/language.md),
 [API signatures](references/stdlib.md), and
