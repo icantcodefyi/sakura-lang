@@ -548,6 +548,7 @@ fn cassette(path: Path) -> Cassette
 fn open(c: Cassette) -> Cassette ! {Fs, Fail<HttpError>}
 fn replaying(c: Cassette) -> Handler<Http, {Fs, Http}>
 fn scripted(script: List<(Matcher, Response)>) -> Handler<Http>
+fn sequence(script: List<(Matcher, Response)>) -> Handler<Http>
 ```
 
 ### `std/instant`

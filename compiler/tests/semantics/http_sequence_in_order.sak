@@ -1,0 +1,62 @@
+// milestone: M3
+// spec: design §17.293 MT-4, §17.298 (a); §10.4
+
+// `Http.sequence(script)` answers each request with the first entry not yet used that matches
+// it, and uses it up: two entries for one path answer in turn, an `Any` entry answers the first
+// request that reaches it, and a request with nothing left to match fails `HttpError`. Each
+// redirect hop takes an entry, which stays taken when the request then fails (§17.298 (a)).
+// `Http.stream` takes entries as `send` does. `Http.scripted` stays first-match.
+import std/http.{Any, Http, Path}
+import std/request.{Get, Request}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+
+fn get(url: String) -> String ! {Http} {
+  let got: Result<Response, HttpError> = try { Http.send(Request.of(Get, Url.from(url))) }
+  match got {
+    Ok(r) => "{r.status} {r.body}",
+    Err(e) => "{e}",
+  }
+}
+
+fn redirect(location: String) -> Response {
+  Response { ..Response.status(302, "moved"), headers: [("location", location)] }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let turns = [
+    (Path("/a"), Response.status(500, "first")),
+    (Any, Response.status(200, "any")),
+    (Path("/a"), Response.status(200, "third")),
+  ]
+  with Http.sequence(turns) {
+    Console.print(get("https://x.example/a"))
+    Console.print(get("https://x.example/b"))
+    Console.print(get("https://x.example/a"))
+    Console.print(get("https://x.example/a"))
+  }
+  with Http.scripted(turns) {
+    Console.print("scripted: {get("https://x.example/a")} / {get("https://x.example/a")}")
+  }
+  let hops = [
+    (Path("/start"), redirect("/next")),
+    (Path("/next"), Response.status(200, "next")),
+    (Path("/start"), redirect("/missing")),
+  ]
+  with Http.sequence(hops) {
+    Console.print(get("https://x.example/start"))
+    Console.print(get("https://x.example/start"))
+    Console.print(get("https://x.example/start"))
+  }
+  let streamed = [(Any, Response.status(200, "streamed body")), (Any, Response.status(200, "next"))]
+  with Http.sequence(streamed) {
+    let text = try {
+      Http.stream(
+        Request.of(Get, Url.from("https://x.example/s")),
+        fn(i) { String.from_bytes(Http.read_chunk(i.body, 64)) },
+      )
+    }
+    Console.print("{text}")
+    Console.print(get("https://x.example/s"))
+  }
+}

@@ -1,0 +1,10 @@
+500 Text("first")
+200 Text("any")
+200 Text("third")
+HttpError { status: None, reason: "no scripted response left for Get https://x.example/a" }
+scripted: 500 Text("first") / 500 Text("first")
+200 Text("next")
+HttpError { status: None, reason: "no scripted response left for Get https://x.example/missing" }
+HttpError { status: None, reason: "no scripted response left for Get https://x.example/start" }
+Ok(Ok("streamed body"))
+200 Text("next")

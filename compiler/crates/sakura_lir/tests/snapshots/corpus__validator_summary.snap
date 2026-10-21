@@ -149,6 +149,7 @@ semantics/http_redirect_follows: 123 funcs, 1375 blocks, 210 dup, 833 drop, vali
 semantics/http_redirect_manual_returns_3xx: 120 funcs, 1377 blocks, 210 dup, 826 drop, valid
 semantics/http_redirect_rejects_location: 107 funcs, 1326 blocks, 198 dup, 793 drop, valid
 semantics/http_redirect_scoped_rejects_hop: 120 funcs, 1364 blocks, 210 dup, 817 drop, valid
+semantics/http_sequence_in_order: 121 funcs, 1399 blocks, 201 dup, 840 drop, valid
 semantics/if_else: 3 funcs, 20 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 21 blocks, 0 dup, 16 drop, valid
 semantics/json_codec: 12 funcs, 100 blocks, 5 dup, 74 drop, valid

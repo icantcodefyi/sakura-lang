@@ -149,6 +149,7 @@ semantics/http_redirect_follows: unsupported (builtin string_to_bytes)
 semantics/http_redirect_manual_returns_3xx: unsupported (builtin string_to_bytes)
 semantics/http_redirect_rejects_location: unsupported (builtin string_to_bytes)
 semantics/http_redirect_scoped_rejects_hop: unsupported (builtin string_to_bytes)
+semantics/http_sequence_in_order: unsupported (builtin string_to_bytes)
 semantics/if_else: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/imports: ok, 23 allocated, 8 dup, 31 drop, peak 7, live 0/0
 semantics/json_codec: unsupported (builtin json_encode)

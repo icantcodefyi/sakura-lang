@@ -21,6 +21,11 @@ retains earlier implementation history.
   most `limit + 1`; a negative `limit` is `D020`. Text goes through `String.from_bytes`;
   `Fs.read` and `read_text` keep their shape. Fixtures
   `compiler/tests/semantics/fs_read_up_to.sak` and `fs_read_up_to_rejects_limit.sak`.
+- `Http.sequence(script) -> Handler<Http>` in `std/http` (design §17.293 MT-4), an in-order
+  test handler: each entry answers once, the first unused entry that matches; a request with
+  nothing left to match fails `HttpError`. Each redirect hop takes an entry, and a hop's entry
+  stays taken when the request then fails (design §17.298 (a)); `stream` takes entries as
+  `send` does. `Http.scripted` stays first-match. Fixture `compiler/tests/semantics/http_sequence_in_order.sak`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

@@ -406,6 +406,69 @@ pub fn scripted(script: List<(Matcher, Response)>) -> Handler<Http> {
   }
 }
 
+/// Test handler for an exchange in order: each entry answers once, the first unconsumed entry
+/// that matches; when none is left to match, the request fails with an `HttpError`. A redirect
+/// is followed as `scripted` follows it, each hop taking an entry, and a hop's entry stays taken
+/// when the request then fails. `scripted` stays first-match, which the retry recipes rely on.
+pub fn sequence(script: List<(Matcher, Response)>) -> Handler<Http> {
+  handler Http {
+    var left = script
+    fn send(req) {
+      let out = sequence_follow(left, req)
+      left = out.1
+      out.0?
+    }
+    fn stream(req, body) {
+      let out = sequence_follow(left, req)
+      left = out.1
+      let resp = out.0?
+      let b = http_body_of(payload_bytes(resp.body))
+      http_stream_closing(b, fn() {
+        body(Incoming { status: resp.status, headers: resp.headers, body: b })
+      })
+    }
+    fn read_chunk(b, max) { ok_or_fail(http_stream_read(b, max)) }
+  }
+}
+
+/// `Http.sequence`'s entries for one request: the answer after its redirects, or its failure, and
+/// the entries still unconsumed either way.
+effect Sequence {
+  fn take(req: Request) -> Response ! {Fail<HttpError>}
+  fn left() -> List<(Matcher, Response)>
+}
+
+fn sequence_follow(
+  script: List<(Matcher, Response)>,
+  req: Request,
+) -> (Result<Response, HttpError>, List<(Matcher, Response)>)
+{
+  with consuming(script) {
+    let r = try { follow(req, req, 0, fn(x) { Sequence.take(x) }) }
+    (r, Sequence.left())
+  }
+}
+
+fn consuming(script: List<(Matcher, Response)>) -> Handler<Sequence> {
+  handler Sequence {
+    var left = script
+    fn take(req) {
+      match List.find(List.enumerate(left), fn(entry) { matches(entry.1.0, req) }) {
+        Some((i, entry)) => {
+          left = List.concat(List.slice(left, 0, i), List.slice(left, i + 1, List.len(left)))
+          entry.1
+        },
+        None =>
+          fail HttpError {
+            status: None,
+            reason: "no scripted response left for {req.method} {req.url}",
+          },
+      }
+    }
+    fn left() { left }
+  }
+}
+
 fn scripted_response(script: List<(Matcher, Response)>, req: Request) -> Response
   ! {Fail<HttpError>}
 {

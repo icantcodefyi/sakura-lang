@@ -246,6 +246,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
     ),
     (
+        "semantics/http_sequence_in_order",
+        Some(Host::Wasi),
+        "`Http.sequence`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
+    ),
+    (
         "semantics/http_read_chunk_rejects_zero",
         Some(Host::Wasi),
         "`Http.scripted`'s streamed `Body` is the Node host's `http_body_of` import, which a WASI command lacks",
