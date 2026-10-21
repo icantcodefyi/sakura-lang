@@ -74,7 +74,7 @@ const _: () = assert!(size_of::<SakuraModule>() == 128);
 /// live worker's entry) that leaves one to the runtime is refused at startup, exit 75, before
 /// any user code runs (RFC 0002 §7, design §17.271 (9); `WebSocket` since web-APIs phase 8;
 /// `Http` is served since N1b); a use under a handler `main` installs is `D090` at first use.
-const UNAVAILABLE: &[&str] = &["Llm", "WebSocket"];
+const UNAVAILABLE: &[&str] = &["WebSocket"];
 
 /// The exit code of a program refused at startup (`sakura run`'s permission denial too).
 const EXIT_UNAVAILABLE: i32 = 75;

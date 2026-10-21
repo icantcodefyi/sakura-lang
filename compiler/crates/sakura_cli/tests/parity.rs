@@ -936,7 +936,8 @@ fn native_agrees_with_js_on_run_mode_programs() {
 
 /// Plan M5 N1b: the `secrets` example's token travels to the native `Http` host as a secret
 /// header and appears in none of stdout, stderr, the effect trace or the cassette, while the
-/// cassette replays the charge.
+/// cassette replays the charge. `Llm.anthropic`'s key does the same through the native host's
+/// clauses (design §17.308 (3)): it reaches `Http` only as the one secret header.
 #[cfg(feature = "native")]
 #[test]
 fn a_native_secret_never_reaches_output_trace_or_cassette() {
@@ -958,6 +959,22 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
     let cassette = std::fs::read_to_string(example.join("tests/fixtures/billing.jsonl")).unwrap();
     for text in [&ran.stdout, &ran.stderr, &trace, &cassette] {
         assert!(!text.contains("demo-token"), "the secret leaked: {text}");
+    }
+    let trace = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-llm-secret-trace.jsonl");
+    let _ = std::fs::remove_file(&trace);
+    let env = [
+        ("SAKURA_NATIVE_LIB_DIR", lib.as_path()),
+        ("SAKURA_TRACE", trace.as_path()),
+    ];
+    let fixtures = manifest.join("../../tests/semantics");
+    let args = ["run", "--target", "native", "llm_anthropic_exchanges.sak"];
+    let ran = sakura_env(&args, &fixtures, &env);
+    assert_eq!(ran.code, Some(0), "{}", ran.stderr);
+    assert!(ran.stdout.contains("secrets=1"), "{}", ran.stdout);
+    let trace = std::fs::read_to_string(&trace).unwrap();
+    assert!(trace.contains("\"op\":\"generate\""), "{trace}");
+    for text in [&ran.stdout, &ran.stderr, &trace] {
+        assert!(!text.contains("sk-test-key"), "the key leaked: {text}");
     }
 }
 

@@ -47,6 +47,11 @@ retains earlier implementation history.
   validated with the JS runtime's messages. A native `main` that leaves `Http` to the runtime
   now runs instead of exiting 75; the `secrets` example runs natively. A cassette line that is
   not JSON names the line with the parser's own text, which differs from Node's.
+- **`Llm.anthropic` on `--target native`** (experimental, plan M5 N1b, design §17.308 (3)): the
+  handler's clauses run on the native host and perform `Budget` and `Http` in the program as on
+  JS, so `Http.scripted`, cassettes and `Budget` limits apply; `Llm.stream` reports each partial
+  as the events arrive. The request body, estimates, decoded values and failures are the JS
+  runtime's byte for byte, and the key travels only as the request's secret header.
 - **`W8001 copy_on_write` is reported** (design §17.172, plan `m5-native.md` N5): `sakura check`
   warns at a `List`, `Map` or `Set` update that is proven to copy because the earlier version
   is still held, with the witness as the `cause` span: a later read (`borrowed-after`, through a

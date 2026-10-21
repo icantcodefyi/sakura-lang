@@ -1005,16 +1005,15 @@ impl<'p, 'c> Run<'p, 'c> {
                 "sql_sqlite" => {
                     sakura_rt::native::sql::rt_b_sql_sqlite(ctx, effect, codes, n, bits[0] as u32)
                 }
-                "llm_anthropic" => {
-                    // Its builder is N1b's: the arguments were consumed by the call that
-                    // cannot be made.
-                    for &a in args {
-                        if self.repr(a).is_managed() {
-                            self.live.add(a);
-                        }
-                    }
-                    return Err(self.pad(false, Some((90, &unsupported_builtin(name)))));
-                }
+                "llm_anthropic" => sakura_rt::native::js::rt_b_llm_anthropic(
+                    ctx,
+                    effect,
+                    codes,
+                    n,
+                    bits[0] as u32,
+                    bits[1] as u32,
+                    bits[2] as u32,
+                ),
                 _ => rt::rt_b_host_handler(ctx, effect, codes, n),
             };
             self.vals[dst.index()] = u64::from(d);

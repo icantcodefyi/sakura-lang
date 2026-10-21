@@ -11,6 +11,7 @@
 
 pub mod host;
 pub(crate) mod hosted;
+pub mod js;
 pub(crate) mod prop;
 pub mod serve;
 pub mod sql;
@@ -24,7 +25,8 @@ use core::marker::PhantomData;
 use core::ptr::NonNull;
 
 pub use host::{
-    FileMode, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, SqlValue, WorkerGrants,
+    FileMode, Guest, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, SqlValue,
+    WorkerGrants,
 };
 pub use hosted::{HOSTED, rt_hosted};
 
@@ -468,8 +470,8 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
 /// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
-/// not reached yet (JS-built handlers, WebSocket) resolve to
-/// `rt_code_unsupported`, a `D090` when performed; Http's operations are `hosted`'s.
+/// not reached yet (WebSocket) resolve to `rt_code_unsupported`, a `D090` when performed;
+/// Http's operations are `hosted`'s.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
@@ -487,8 +489,8 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_console_read_line", e::rt_code_console_read_line),
         ("rt_code_file_close", e::rt_code_file_close),
         ("rt_code_http_body_close", hosted::rt_code_http_body_close),
-        ("rt_code_js_callback", e::rt_code_unsupported),
-        ("rt_code_js_clause", e::rt_code_unsupported),
+        ("rt_code_js_callback", js::rt_code_js_callback),
+        ("rt_code_js_clause", js::rt_code_js_clause),
         ("rt_code_log_json_event", e::rt_code_log_json_event),
         ("rt_code_log_stderr_event", e::rt_code_log_stderr_event),
         ("rt_code_prop_failures", prop::rt_code_prop_failures),

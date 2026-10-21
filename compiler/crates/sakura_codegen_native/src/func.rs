@@ -1432,11 +1432,11 @@ impl Gen<'_, '_, '_> {
                 "sql_sqlite" => {
                     self.call1("rt_b_sql_sqlite", &[ef, cs, nv, vals[0]], types::I32)?
                 }
-                "llm_anthropic" => {
-                    // Its builder is N1b's.
-                    self.pad(&held, Some((90, &image::unsupported_builtin(name))))?;
-                    return Ok(Flow::Stop);
-                }
+                "llm_anthropic" => self.call1(
+                    "rt_b_llm_anthropic",
+                    &[ef, cs, nv, vals[0], vals[1], vals[2]],
+                    types::I32,
+                )?,
                 _ => self.call1("rt_b_host_handler", &[ef, cs, nv], types::I32)?,
             };
             self.set(dst, d);

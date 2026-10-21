@@ -79,6 +79,20 @@ pub struct HttpResponse {
     pub body: Vec<u8>,
 }
 
+/// What the runtime answers a JS-built handler's host while it runs a clause (design §17.308
+/// (3)): the host names types and never learns a layout id or touches the heap.
+pub trait Guest {
+    /// The layout type id of the record or variant `name` (`std::request::Request`).
+    fn type_id(&mut self, name: &str) -> Option<u32>;
+    /// `Json.encode` of the `sakura-vt1` `std::json::Json` value `json` (`JSON.stringify`'s text).
+    fn json_text(&mut self, json: &[u8]) -> Option<String>;
+    /// `Json.schema` of a clause's schema argument, as a `sakura-vt1` `std::json::Json` value.
+    fn json_schema(&mut self, schema: &str) -> Option<Vec<u8>>;
+    /// `Json.parse(text)` (JS `JSON.parse`, then its `Json`): the `sakura-vt1`
+    /// `Result<Json, DecodeError>`.
+    fn json_parse(&mut self, text: &str) -> Option<Vec<u8>>;
+}
+
 /// One instance's host. Methods without a default are the root handlers' imports, which every
 /// host provides; the `hosted` builtins default to a host failure (`D091`), so a host
 /// implements only the services it offers.
@@ -239,6 +253,26 @@ pub trait Host {
         Err(unsupported())
     }
 
+    /// A JS-built handler (`Llm.anthropic`): build `name` from its arguments (a `sakura-vt1`
+    /// tuple, `Secret`s with their values: kind `secret`, ABI §8.1); its instance id.
+    fn js_handler(&mut self, _name: &str, _args: &[u8]) -> Hosted<i64> {
+        Err(unsupported())
+    }
+    /// Run operation `op` of handler `instance` on its arguments (a tuple; a closure argument
+    /// crosses as `Unit` and stays in the guest) until it answers (`wasm.rs` `js_answer`'s
+    /// format, plus answer 5: decode text by a schema on the clause's task, then resume).
+    fn js_clause(&mut self, _g: &mut dyn Guest, _instance: i64, _op: u32, _args: &[u8]) -> Vec<u8> {
+        js_unsupported()
+    }
+    /// Resume `session` with the operation's result (`status` 0) or failure (1), one value.
+    fn js_resume(&mut self, _g: &mut dyn Guest, _session: u32, _status: u32, _v: &[u8]) -> Vec<u8> {
+        js_unsupported()
+    }
+    /// Run the host function behind `callback` handle `id` on its argument (one value).
+    fn js_callback(&mut self, _g: &mut dyn Guest, _id: i64, _arg: &[u8]) -> Vec<u8> {
+        js_unsupported()
+    }
+
     /// `Sql.memory()` (`path` `None`) or `Sql.sqlite(path)`: a new database's id. Its handle
     /// (kind `vt::SQL`, slot the id) retires with the handler. A file opens at `sql_root`.
     fn sql_open(&mut self, _path: Option<&str>) -> Hosted<u32> {
@@ -305,6 +339,13 @@ pub trait Host {
     fn test_regression(&mut self, _name: &str) -> Option<String> {
         None
     }
+}
+
+/// Answer 2, `D090`: a JS-built handler this host does not run.
+fn js_unsupported() -> Vec<u8> {
+    let mut out = alloc::vec![2, 90, 0, 0, 0];
+    out.extend_from_slice(b"a host operation this native host does not provide");
+    out
 }
 
 fn unsupported() -> HostError {

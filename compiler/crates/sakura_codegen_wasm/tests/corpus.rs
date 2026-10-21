@@ -173,6 +173,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/llm_anthropic_exchanges",
+        None,
+        "`Json.encode` and `Llm.anthropic`'s decode need the program's JS type descriptors, which a bare corpus module lacks, and Wasmtime builds no JS handler",
+    ),
+    (
         "semantics/uuid_decode",
         None,
         "`Json.decode` needs the program's JS type descriptors, which a bare corpus module lacks",

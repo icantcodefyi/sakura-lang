@@ -490,8 +490,9 @@ table at +96/+104, `sakura_lir::image::workers_table`; layout 6, 128 bytes: a te
 test table at +112/+120, the runner's `Test` clauses and WASM's `tests()` payload, empty for a
 program; a test build runs its tests, `sakura test --target native`, and skips this check).
 After the record's check, the driver refuses a root effect whose service the native host does
-not implement (`Llm`, `WebSocket`; `Http` and `Serve` are served since N1b; a live worker's entry
-by the same rule when it starts): one stderr line naming it, "`Llm` is not available on target
+not implement (`WebSocket`; `Http` and `Serve` are served since N1b, and `Llm`, never a root
+effect (`V9002`), left the list when its handler ran natively; a live worker's entry by the
+same rule when it starts): one stderr line naming it, "`WebSocket` is not available on target
 `native`", and exit 75, before the
 instance exists or any user code runs. A handler for one that the program installs itself is
 `D090` at first use ("a host operation the native host does not provide yet", exit 70;
@@ -503,6 +504,20 @@ types as `Response` or `Incoming`; their `secret_headers` cross with their value
 request, as JS. It is a startup check, not a build-time diagnostic, and no
 diagnostic code.
 
+**JS-built handlers natively** (design §17.308 (3)). `Llm.anthropic`'s clauses
+(`rt_code_js_clause`, `rt_code_js_callback`) speak §8's `js_handler`/`js_clause`/`js_resume`/
+`js_callback` protocol to the native host (`Host::js_*`), with its answers 0–4 as on WASM and
+two additions, host-protocol text with no version change: the host learns layout type ids by
+name and the codec's JSON text (`Guest`: `type_id`, `json_text`, `json_schema`, `json_parse`),
+so it builds values without reading the heap; and answer `5` (`u32` session, `u32` schema
+length, the schema's text, then UTF-8 text) decodes the text by the schema with the JSON codec
+on the clause's task (a refinement's `where` runs there), then resumes the session with status
+0 and the `Result<T, DecodeError>`. A codec type the module never names (`Result`,
+`DecodeError`, `Json`, `Option`) has a reserved id counting down from `u32::MAX`, used only in
+values the host reads. The key crosses only in the `Http` request's `secret_headers` the clause
+performs; answer bytes are zeroed once decoded. A body the clause reads crosses as a new
+`body` handle each time, since the guest retires each handle it decodes.
+
 **Native exclusions** (design §17.170 (2), §17.308 (2a)): the fixtures of
 `compiler/tests/semantics` and the examples that `--target native` does not run yet, each with
 its reason, by its run or test mode. `sakura_cli/tests/parity.rs` reads this table: a listed
@@ -512,11 +527,6 @@ directive, not a row. An empty table means every program agrees natively.
 
 | Program | Mode | Why |
 |---|---|---|
-| `llm_stream_anthropic.sak` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
-| example `agent_loop` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
-| example `budgeted_agent` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
-| example `llm_extract` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
-| example `scripted_tool` | test | `Llm.anthropic` is a JS-built handler (`rt_code_js_clause`, `D090` natively) until lane N1 ports it (design §17.308 (3)) |
 
 ## 2. Scalar representation
 

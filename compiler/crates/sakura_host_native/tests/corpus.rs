@@ -868,7 +868,7 @@ fn the_driver_refuses_a_foreign_sakura_native_record() {
     assert!(out.stdout.is_empty());
 }
 
-/// RFC 0002 §7, design §17.271 (9): a `main` whose row after handling leaves `Llm` or
+/// RFC 0002 §7, design §17.271 (9): a `main` whose row after handling leaves
 /// `WebSocket` (web-APIs phase 8) to the runtime exits 75 at startup with one stderr line naming the effect, before
 /// any user code runs; a row of effects the native host serves runs.
 #[test]
@@ -883,11 +883,8 @@ fn the_driver_refuses_a_root_effect_native_lacks() {
         // Since N1b the native host serves `Http`.
         (&["Console", "Http"][..], 0, ""),
         (&["Console", "Serve"], 0, ""),
-        (
-            &["Llm", "Serve"],
-            75,
-            "`Llm` is not available on target `native`\n",
-        ),
+        // Since N1b the native host runs `Llm.anthropic` (design §17.308 (3)).
+        (&["Llm", "Serve"], 0, ""),
         (
             &["Console", "WebSocket"],
             75,

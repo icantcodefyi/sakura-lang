@@ -801,6 +801,113 @@ fn json(cx: &mut Cx<'_>, name: &str, args: &[u8]) -> Hosted<Result<Vec<u8>, crat
     Ok(done.map(|()| out))
 }
 
+/// The codec's types without the guest, for what runs no `where` (a schema, `Json`'s text).
+struct Plain<'c>(&'c TypeIndex);
+
+impl json::Types for Plain<'_> {
+    fn type_id(&mut self, name: &[u8]) -> Option<u32> {
+        self.0.ids.get(name).copied()
+    }
+
+    fn find(&mut self, name: &[u8]) -> Option<usize> {
+        self.0.by_name.get(name).copied()
+    }
+
+    fn find_id(&mut self, id: u32) -> Option<usize> {
+        self.0.of_id.get(id as usize).copied().flatten()
+    }
+
+    fn satisfies(&mut self, _check: u32, _kind: u32, _vt: &[u8]) -> crate::Res<bool> {
+        Err(Defect::INTERNAL)
+    }
+}
+
+/// The codec's own types a JS-built handler's host reads (design §17.308 (3)): a module that
+/// never names one has no layout id for it, so it gets a reserved id past every layout. Such a
+/// value is the host's only (the `Result` and `DecodeError` of a decode, a parsed `Json`): one the
+/// guest decodes holds only the module's own types.
+const HOST_ONLY: [&[u8]; 4] = [
+    b"std::result::Result",
+    b"std::json::DecodeError",
+    b"std::json::Json",
+    b"std::option::Option",
+];
+
+/// `types` with [`HOST_ONLY`]'s reserved ids.
+struct HostOnly<T>(T);
+
+impl<T: json::Types> json::Types for HostOnly<T> {
+    fn type_id(&mut self, name: &[u8]) -> Option<u32> {
+        self.0.type_id(name).or_else(|| {
+            let i = HOST_ONLY.iter().position(|n| *n == name)?;
+            Some(u32::MAX - i as u32)
+        })
+    }
+
+    fn find(&mut self, name: &[u8]) -> Option<usize> {
+        self.0.find(name)
+    }
+
+    fn find_id(&mut self, id: u32) -> Option<usize> {
+        self.0.find_id(id)
+    }
+
+    fn satisfies(&mut self, check: u32, kind: u32, vt: &[u8]) -> crate::Res<bool> {
+        self.0.satisfies(check, kind, vt)
+    }
+}
+
+/// [`super::host::Guest`] over the module's type index (design §17.308 (3)).
+pub(crate) struct GuestIndex(pub(crate) alloc::rc::Rc<TypeIndex>);
+
+impl GuestIndex {
+    fn types(&self) -> HostOnly<Plain<'_>> {
+        HostOnly(Plain(&self.0))
+    }
+}
+
+impl super::host::Guest for GuestIndex {
+    fn type_id(&mut self, name: &str) -> Option<u32> {
+        json::Types::type_id(&mut self.types(), name.as_bytes())
+    }
+
+    fn json_text(&mut self, v: &[u8]) -> Option<String> {
+        let mut out = Vec::new();
+        let schema = br#"["A","std::json::Json",[]]"#;
+        json::encode(v, schema, &self.0.descs, &mut self.types(), &mut out).ok()?;
+        // Status 0, then a `String`: tag and length.
+        String::from_utf8(out.get(6..)?.to_vec()).ok()
+    }
+
+    fn json_schema(&mut self, schema: &str) -> Option<Vec<u8>> {
+        let mut out = Vec::new();
+        json::schema(
+            schema.as_bytes(),
+            &self.0.descs,
+            &mut self.types(),
+            &mut out,
+        )
+        .ok()?;
+        out.get(1..).map(<[u8]>::to_vec)
+    }
+
+    fn json_parse(&mut self, text: &str) -> Option<Vec<u8>> {
+        let mut out = Vec::new();
+        json::parse(text.as_bytes(), &mut self.types(), &mut out).ok()?;
+        out.get(1..).map(<[u8]>::to_vec)
+    }
+}
+
+/// `Json.decode`'s answer for `text` by `schema` on the running task (a JS-built handler's
+/// answer 5): status 0 and the `Result<T, DecodeError>`, for the host.
+pub(crate) fn json_decode(cx: &mut Cx<'_>, text: &[u8], schema: &[u8]) -> crate::Res<Vec<u8>> {
+    let index = cx.type_index();
+    let mut out = Vec::new();
+    let mut types = HostOnly(Native { cx, index: &index });
+    json::decode(text, schema, &index.descs, &mut types, &mut out)?;
+    Ok(out)
+}
+
 /// `json::sql_rows` on a native `Sql.query`'s completion: the answer.
 pub(crate) fn sql_rows(cx: &mut Cx<'_>, rows: &[u8], schema: &[u8]) -> crate::Res<Vec<u8>> {
     let index = cx.type_index();

@@ -476,10 +476,28 @@ records, regression file and replay at four seeds. The **native exclusion table*
 place of `KNOWN_NATIVE` and `KNOWN_NATIVE_TESTS`, and a row whose program agrees, or that names
 no program, fails. Its rows are the five `Llm.anthropic` test programs; run mode has none.
 
-**Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
-natively; §17.308 (3) picks the port with its two protocol additions; its landing removes the
-table's five rows); Http is ratified as built (§17.308 (3)); the six defaults of 2026-10-22, the table in ABI §1b and property tests ahead of Llm are ratified by §17.309 (1), with served header names lowercased on every host (the JS host's one-line fix lands before beta.4's preparation commit). The WASI command does not call the
-codec yet (no Wasmtime `json_validate` cell).
+**Llm (2026-10-22, §17.308 (3)).** `Llm.anthropic(_at)` runs natively. The guest side of the
+JS-handler protocol (`rt_code_js_clause`, `js_perform`, `js_call`, `rt_code_js_callback`) is
+ported to `runtime/rt/src/native/js.rs`, and the Anthropic clauses are a state machine in
+`sakura_host_native/src/llm.rs` that asks the guest for every step: `Budget.reserve`,
+`Http.send` or `Http.stream`, each `Http.read_chunk` and `on_partial` call, `Budget.settle`, then
+answer 5, which decodes the model's value by the clause's schema with the codec on the clause's
+task. The host builds and reads values by type name (`Guest`) and writes and parses JSON through
+the codec, so the request body and every parse are JS's text. Two readings: a codec type the
+module never names (`DecodeError`, often) gets a reserved id past every layout, used only in
+values the host reads; and each `read_chunk` crosses a fresh handle on the incoming body, since
+the guest retires every handle it decodes. `tests/semantics/llm_anthropic_exchanges.sak` (run
+mode) covers each operation and outcome, the request text and the `Budget` amounts included,
+and `on_partial`'s `HttpError` passing the translation; it agrees with JS natively, and the
+`Secret` test checks the key reaches no output or trace. `Llm` left `UNAVAILABLE`, and the
+exclusion table's five rows went: `llm_stream_anthropic` (its third test included) and the four
+Llm examples agree with JS in test mode.
+
+**Left of N1b:** nothing of the services; Http is ratified as built (§17.308 (3)); the six
+defaults of 2026-10-22, the table in ABI §1b and property tests ahead of Llm are ratified by
+§17.309 (1), with served header names lowercased on every host (the JS host's one-line fix lands
+before beta.4's preparation commit). The WASI command does not call the codec yet (no Wasmtime
+`json_validate` cell).
 
 ### Round 60 (§17.308, 2026-10-21): the lanes that finish M5
 

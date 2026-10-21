@@ -4,9 +4,8 @@
 //! `Cli.args`) and Sql with the JS host's semantics, keeps the instance's handle and file
 //! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
 //! instance's thread; each database runs on its own worker thread (`sql`). `Http.host()`'s
-//! sends, streamed bodies and `Http.recording`'s cassettes are `http`'s. Serve and Llm have no
-//! host service until N1b reaches them: their host handlers' operations are `D090` (the
-//! runtime's `rt_code_unsupported`).
+//! sends, streamed bodies and `Http.recording`'s cassettes are `http`'s, `Llm.anthropic`'s
+//! clauses `llm`'s (design §17.308 (3)), and `Serve.host()`'s server `serve`'s.
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.
@@ -15,6 +14,7 @@
 
 pub mod fs;
 mod http;
+mod llm;
 mod serve;
 mod sql;
 pub mod test;
@@ -27,10 +27,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sakura_rt::exec::outcome;
 use sakura_rt::native::{
-    FileMode, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, Instance, Outcome,
-    SqlValue, WorkerGrants,
+    FileMode, Guest, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, Instance,
+    Outcome, SqlValue, WorkerGrants,
 };
-use sakura_rt::vt::{BODY, DIR, SQL};
+use sakura_rt::vt::{BODY, CALLBACK, DIR, JS_HANDLER, SQL};
 use tokio::sync::mpsc;
 
 /// `[permissions]` of the manifest (`SAKURA_PERMISSIONS`): `None` lists are no limit (an unset
@@ -262,6 +262,8 @@ pub struct NativeHost {
     /// `Http.host()`'s client, built at the first send.
     client: Option<reqwest::Client>,
     cassettes: http::Cassettes,
+    /// `Llm.anthropic`'s handlers and the clauses running on them.
+    llm: llm::Llm,
     files: fs::Files,
     executor: tokio::runtime::Runtime,
     tx: mpsc::UnboundedSender<Completion>,
@@ -323,6 +325,7 @@ impl NativeHost {
             bodies: Table::new(BODY),
             client: None,
             cassettes: http::Cassettes::default(),
+            llm: llm::Llm::default(),
             files: fs::Files::default(),
             executor,
             tx,
@@ -649,6 +652,8 @@ impl Host for NativeHost {
                     *db = None;
                 }
             }
+            JS_HANDLER => self.llm.retire_handler(handle.slot),
+            CALLBACK => self.llm.retire_callback(handle.slot),
             _ => {}
         }
     }
@@ -857,6 +862,29 @@ impl Host for NativeHost {
         resp: &HttpResponse,
     ) -> Hosted<()> {
         op(self.cassettes.append(id, req, resp))
+    }
+
+    fn js_handler(&mut self, name: &str, args: &[u8]) -> Hosted<i64> {
+        if name != "llm_anthropic" {
+            return Err(HostError::Fault(format!("no JS-built handler {name}")));
+        }
+        self.llm.build(args).map_err(HostError::Fault)
+    }
+
+    fn js_clause(&mut self, g: &mut dyn Guest, instance: i64, op: u32, args: &[u8]) -> Vec<u8> {
+        self.llm.clause(g, instance, op, args)
+    }
+
+    fn js_resume(&mut self, g: &mut dyn Guest, session: u32, status: u32, v: &[u8]) -> Vec<u8> {
+        let bodies = &mut self.bodies;
+        let mut dup = |h| bodies.get(h).ok().cloned().map(|b| bodies.insert(b));
+        self.llm.resume(g, &mut dup, session, status, v)
+    }
+
+    fn js_callback(&mut self, _g: &mut dyn Guest, id: i64, arg: &[u8]) -> Vec<u8> {
+        let bodies = &mut self.bodies;
+        let mut dup = |h| bodies.get(h).ok().cloned().map(|b| bodies.insert(b));
+        self.llm.callback(&mut dup, id, arg)
     }
 
     fn sql_open(&mut self, path: Option<&str>) -> Hosted<u32> {
