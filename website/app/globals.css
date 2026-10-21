@@ -94,6 +94,15 @@
   --seal-line: color-mix(in oklab, #b4245f 45%, transparent);
   --seal-ink: #8c1d4b;
 
+  /* Footer (components/site-footer.tsx): the giant name and the petals' shading. */
+  --footer-name: #efe9eb;
+  --petal-rest-a: #ec8ca8;
+  --petal-rest-b: #fbd5e0;
+  --petal-rest-c: #fff6f8;
+  --petal-fall-a: #f3a9bd;
+  --petal-fall-b: #fde6ed;
+  --petal-shadow: rgb(120 60 80 / 0.13);
+
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -157,6 +166,14 @@
   --seal-disc: color-mix(in oklab, #f386a1 16%, #1e1e1e);
   --seal-line: color-mix(in oklab, #f386a1 45%, transparent);
   --seal-ink: #f7a9bc;
+
+  --footer-name: #312d2f;
+  --petal-rest-a: #d9809b;
+  --petal-rest-b: #eec2cf;
+  --petal-rest-c: #f7e4ea;
+  --petal-fall-a: #c97b93;
+  --petal-fall-b: #e7b9c6;
+  --petal-shadow: rgb(0 0 0 / 0.4);
 }
 
 /*
@@ -186,6 +203,45 @@
 #nd-sidebar a[data-active="true"] {
   background-color: var(--sakura-wash);
   font-weight: 500;
+}
+
+/* Code blocks: the copy icon opens into a blossom when copied (Fumadocs sets data-checked for
+   1.5 s). Both icons are drawn here so the swap can cross-fade; the library's own is hidden. */
+figure.shiki button[aria-live] {
+  position: relative;
+}
+figure.shiki button[aria-live] > svg {
+  opacity: 0;
+}
+figure.shiki button[aria-live]::before,
+figure.shiki button[aria-live]::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  transition:
+    opacity var(--duration-fast) ease-out,
+    transform var(--duration-slow) var(--ease-smooth-out);
+}
+figure.shiki button[aria-live]::before {
+  background: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='8' y='2' width='8' height='4' rx='1'/%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+figure.shiki button[aria-live]::after {
+  inset: 2px;
+  /* The Seal's blossom (components/brand.tsx, small cut). */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='%23f386a1'%3E%3Cpath id='p' d='M56.41 35.56L59.36 31.5C64.21 24.83 67.8 21.3 67.8 16.5C67.8 8.5 64.2 3 60 3C57.6 3 51.1 7.8 50 10.6C48.9 7.8 42.4 3 40 3C35.8 3 32.2 8.5 32.2 16.5C32.2 21.3 35.79 24.83 40.64 31.5L43.59 35.56A15.8 15.8 0 0 1 56.41 35.56Z'/%3E%3Cuse href='%23p' transform='rotate(72 50 50)'/%3E%3Cuse href='%23p' transform='rotate(144 50 50)'/%3E%3Cuse href='%23p' transform='rotate(216 50 50)'/%3E%3Cuse href='%23p' transform='rotate(288 50 50)'/%3E%3C/g%3E%3Ccircle cx='50' cy='50' r='9.2' fill='%23d45bb6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  opacity: 0;
+  transform: scale(0.3) rotate(-72deg);
+}
+figure.shiki button[aria-live][data-checked]::before {
+  opacity: 0;
+  transform: scale(0.5);
+}
+figure.shiki button[aria-live][data-checked]::after {
+  opacity: 1;
+  transform: none;
 }
 
 @theme inline {
@@ -395,6 +451,104 @@ figure.shiki figcaption {
   font-family: var(--font-sakura-code);
   font-size: 0.78rem;
   color: var(--muted-foreground);
+}
+
+/* ---------- Footer ---------- */
+
+/* The scene keeps the art's 1180 × 300 box at any width; the name is sized in its width. */
+.footer-scene {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 1180 / 300;
+}
+.footer-branch {
+  position: absolute;
+  inset: 0;
+  background: url("/footer-branch-light.svg") center / 100% 100% no-repeat;
+  transform-origin: 109% 0%;
+}
+.dark .footer-branch {
+  background-image: url("/footer-branch-dark.svg");
+}
+.footer-name {
+  position: absolute;
+  left: 2.54cqi;
+  bottom: 0.02em;
+  margin: 0;
+  font: 600 16.4cqi / 0.8 var(--font-sakura-display);
+  letter-spacing: -0.055em;
+  white-space: nowrap;
+  color: var(--footer-name);
+  user-select: none;
+}
+.footer-fall {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+}
+.footer-fall i {
+  position: absolute;
+  top: -28px;
+  left: var(--x);
+}
+.footer-fall svg {
+  display: block;
+  width: calc(13px * var(--s));
+  height: calc(13px * var(--s));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .footer-branch {
+    animation: footer-sway 10s ease-in-out infinite alternate;
+  }
+  .footer-fall {
+    display: block;
+  }
+  .footer-fall i {
+    animation: footer-drop var(--t) linear var(--d) infinite;
+  }
+  .footer-fall svg {
+    animation: footer-tumble calc(var(--t) / 3.2) ease-in-out var(--d) infinite alternate;
+  }
+}
+@keyframes footer-sway {
+  from {
+    transform: rotate(-0.45deg);
+  }
+  to {
+    transform: rotate(0.55deg);
+  }
+}
+@keyframes footer-drop {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.95;
+  }
+  35% {
+    transform: translate3d(calc(var(--dx) * 0.25), 224px, 0);
+  }
+  70% {
+    transform: translate3d(calc(var(--dx) * 0.7), 448px, 0);
+  }
+  90% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate3d(var(--dx), 640px, 0);
+    opacity: 0;
+  }
+}
+@keyframes footer-tumble {
+  from {
+    transform: translateX(-10px) rotate(-20deg) rotateX(15deg);
+  }
+  to {
+    transform: translateX(10px) rotate(70deg) rotateX(65deg);
+  }
 }
 
 /* ---------- Landing ---------- */

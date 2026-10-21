@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import { PETAL_ANGLES, SAKURA_CUTS } from "@/components/brand";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
@@ -15,7 +17,37 @@ export default function NotFound() {
         id="main"
         className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-5 py-28 sm:px-8"
       >
-        <p className="font-mono text-[13px] text-fail">404: no page at this path</p>
+        <p className="flex items-center gap-4">
+          {/* One blossom opening beside the code: the Seal's press, petal by petal (globals.css). */}
+          <svg
+            viewBox="0 0 100 100"
+            aria-hidden="true"
+            className="seal-bloom size-[clamp(3.5rem,7vw,5rem)]"
+          >
+            <g fill="var(--sakura)">
+              {PETAL_ANGLES.map((a, k) => (
+                <g key={a} transform={a ? `rotate(${a} 50 50)` : undefined}>
+                  <path
+                    className="seal-petal"
+                    style={{ "--k": k } as CSSProperties}
+                    d={SAKURA_CUTS.main.petal}
+                  />
+                </g>
+              ))}
+            </g>
+            <circle
+              className="seal-core"
+              cx="50"
+              cy="50"
+              r={SAKURA_CUTS.main.core}
+              fill="var(--magenta)"
+            />
+          </svg>
+          <span className="font-display text-[clamp(4rem,9vw,6.5rem)] leading-none font-semibold tracking-[-0.04em] text-sakura-text">
+            404
+          </span>
+          <span className="sr-only">: no page at this path</span>
+        </p>
         <h1 className="mt-4 font-display text-[clamp(2.4rem,5vw,3.6rem)] leading-[1.02] font-semibold tracking-[-0.03em]">
           This page never made that promise.
         </h1>
