@@ -7,6 +7,40 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0-beta.3] - 2026-10-21
+
+A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
+1.0.0, and every breaking change until then is listed here with a migration. This section
+collects everything since `v1.0.0-beta.2`; it is dated at the preparation commit. The Rust MSRV
+is unchanged (1.99).
+
+### Migration from v1.0.0-beta.2
+
+Every breaking or behaviour change below, in the order a program meets it; the entries carry
+the details.
+
+1. **The WASM runtime ABI is 1.16.0** (Changed, design §17.301 (1c)): a 1.15 host
+   (`sakura_wasm_host.js` from beta.2 or earlier) refuses a module built by beta.3 with
+   `V8003`. Ship the host and the module from the same release; a 1.16 host still loads older
+   modules, and `main` and tests read `outcome` as before.
+2. **A root module's qualifying `pub fn` is a library entry** (Added, design §17.301 (1)): a
+   JS build now also writes `__entries__.js`, and a WASM module exports `entries()`,
+   `start_entry` and `entry_value`. Nothing changes for a program that does not call them; a
+   tool that lists a build's output files sees the new one. A `pub fn` that fails a clause is
+   silently not an entry, so no program that built before stops building.
+3. **`sakura verify` names compound path guards** (Fixed, from the `vc` fuzz run 39564548413): a record's
+   `path_conditions` show a guard that is a conjunction or disjunction by its definition's name,
+   `|<name>.path|`, instead of its expanded text. A tool that matched the expanded text reads the
+   name. Proof statuses do not change; proof-cache entries written by beta.2 miss once and are
+   solved again.
+4. **`sakura` runs its pipeline on a 256 MiB thread** (Changed, design §17.305 (7)): a deeply
+   nested program that overflowed the host's main-thread stack (1 MiB on Windows) now compiles
+   or reports its diagnostic. `MAX_DEPTH` stays 128; nothing to migrate.
+
+Design §17.307 ratifies two shipped behaviours without changing them: `V1030` counts every
+`import`, used or not (beside `W1003` on an unused one), and a `D020` record carries the call
+span of every call the compiler resolves to a def, a local bound once to a def included.
+
 ### Added
 
 - **Library entries** (design §17.301 (1)): a `pub fn` of the package's root module other than
@@ -1940,7 +1974,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...HEAD
+[1.0.0-beta.3]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...v1.0.0-beta.1
 [0.1.0]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0-alpha.1...v0.1.0

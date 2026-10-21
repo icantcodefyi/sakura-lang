@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "compiler_version": "1.0.0-beta.2",
+  "compiler_version": "1.0.0-beta.3",
   "source": "skills/sakura/",
   "archive": "sakura-skill.zip",
   "sha256": "8f0c5e37e19aa06d8167cab5d6f8fe210bad362cc9cf844dc9fdd39d36d57903",
