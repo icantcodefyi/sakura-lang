@@ -30,6 +30,11 @@ build a small program of several modules in memory; the link label names the sna
 
 **MO06** Importing a module that does not exist is `V1005`, naming an item the module does not export is `V1002`, and importing in a cycle is `V1030`. [V1005](../../compiler/tests/ui/V1005_unresolved_module.sak), [diag_private_and_missing_items](../../compiler/crates/sakura_hir/tests/snapshots/lower__diag_private_and_missing_items.snap), [V1030](../../compiler/tests/ui/V1030_import_cycle/a.sak).
 
+Informative: an `import` is an edge of the module graph whether or not the module uses what it
+binds (design §9, §17.307 (1)), so an unused import that closes a cycle is `V1030` beside
+`W1003`, and removing it, `W1003`'s fix, removes the cycle. MO06 gains the words when the
+`V1030_import_cycle_unused` fixture lands.
+
 **MO18** The prelude is in scope in every module without an import: the types `Unit Bool Int Float String Bytes Never List Map Set Range Handler Secret Untrusted Option Result Duration Instant Uuid Json Level Violation`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, the functions `show expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` and the template tags `sql html url`; any other std name needs its import (MO04). [Every prelude name, no import](../../compiler/tests/semantics/prelude_names_need_no_import.sak), [a non-prelude std name](../../compiler/tests/ui/V1002_non_prelude_std_name.sak).
 
 Informative: design §9 has no wildcard imports, no relative imports and no re-exports; the

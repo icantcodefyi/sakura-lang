@@ -55,10 +55,14 @@ Rows are in [effects](effects.md); refinement defects (`D010`, `D011`) are also 
 **ER22** A `D020` record's spans name the call as `primary` and the clause as `definition` for a direct call, and only the clause, as `primary`, for a call through a function value that another function makes. [direct call](../../compiler/tests/semantics/contract_site_blame.jsonl), [callback](../../compiler/tests/semantics/contract_site_blame_callback.jsonl).
 
 Informative: design §7.2 (§17.163) runs contract checks in every build; only a `proved` status
-from `sakura verify` removes one. ER22 follows design §17.115: a call through a function value
-passes no call site. A local bound to a def and called in the same body
-(`let f = positive` then `f(0)`) is compiled as a direct call today and carries the call span;
-ER22 does not cover that case.
+from `sakura verify` removes one. The rule behind ER22 is design §17.307 (2), under which
+§17.115 reads: the record carries the call span of every call the compiler resolves to a def —
+a direct call, a call through a local bound once to a def (`let f = positive` then `f(0)`,
+[contract_site_blame_value](../../compiler/tests/semantics/contract_site_blame_value.sak)),
+and any call a later release resolves — and no call span for a call it cannot resolve (a
+parameter, a field, a returned value, a closure). The clause span is always present; `primary`
+is the call when there is one. The set of resolved calls may grow in a release and does not
+shrink; ER22 pins its two ends, and the let-bound case joins it when its `.jsonl` lands.
 
 ## Defects
 

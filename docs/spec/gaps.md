@@ -147,11 +147,13 @@ two channels (CC19), and one seed run twice in one process (CC20).
 
 ### Modules and imports
 
-- **Cycles count referenced names only.** Design §9 counts only names a module actually
-  references toward `V1030`, but the compiler does not: `sakura_hir` detects cycles over every
-  import before any name resolves, so two modules where `b`'s `import main/a` is unused still
-  report `V1030` beside `W1003` (checked at `1.0.0-beta.2`). Pinning the rule needs a resolver
-  change, not a fixture.
+Resolved: the cycle rule. Design §9 said only names a module actually references count
+toward `V1030`, while `sakura_hir` detects cycles over every import before any name resolves,
+so two modules where `b`'s `import main/a` is unused report `V1030` beside `W1003` (checked at
+`1.0.0-beta.2`). Design §17.307 (1) ratifies the compiler and amends §9: every `import` is an
+edge, used or not, and the unused one's `W1003` fix removes the cycle. A positive fixture
+(`V1030_import_cycle_unused`, lane C) will add the words to MO06; until then MO06's citation is
+the used-import case.
 
 Pinned since: std's `W1003` exemption (MO17) and the prelude's contents (MO18).
 
