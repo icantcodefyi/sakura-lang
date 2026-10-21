@@ -236,12 +236,30 @@ debug build, where a Cranelift `debug_assert` walks the dominator path per block
 `meta.wide_ratio`) for (iii)'s counted run. (ii) `parity.rs` holds the gauge set on native to
 WASM's output, `frames` and `restarts`, twins and `--no-direct`: the gauge fixture's
 recursions as a run-mode program and the five run-mode deep-recursion fixtures; the gauge
-restored after a caught defect waits for N1's test mode. (i) is open: native parity holds the 10
-run-mode fixtures with a `@wasm` expectation to it and fails at 0, and the `{wasm, native}`
-against-the-evaluator form waits on REQUESTS' default. The CLI side of lane F landed: `native`
-is in `build`'s and `run`'s value lists everywhere, refused with exit 2 where it is not built,
-and `sakura build --target native` prints its one line. **Left of N2f:** (i); (iii) at the next
-beta's preparation commit.
+restored after a caught defect waits for N1's test mode. (i) landed on REQUESTS' defaults: a
+fixture's `// backends: wasm native` makes its `.stdout` the listed backends' expectation and the
+LIR corpus's, so the evaluator, compiled native and WASM are each held to it, and `parity.rs`
+holds the listed runs to each other (exit, record, stdout, trace); a backend left out stops with
+the records of `<name>.<backend>.jsonl`. `exact_i64_print` (wasm, native; JS `D003`),
+`exact_i64_sql` (native; the JS hosts read SQLite's 2^53 + 1 as an `Err`, made `D030`) and
+`exact_i64_json` (native) run in the native job beside the 10 `@wasm` fixtures. (i) found a
+divergence it pins rather than fixes: WASM's `Json.encode` rounds an `Int` past ±(2^53 − 1)
+through the Node host's JavaScript numbers (`exact_i64_json.wasm.stdout`; REQUESTS 2026-10-22).
+(iii)'s tooling landed: `bench compile-native --instructions` counts each phase's instructions
+retired as the difference of a process that stops after it and one that stops before it
+(`SAKURA_NATIVE_STOP_AFTER`), the linker's `cc` and `ld` counted on their own, and `bench bless`
+takes the counted file into `baselines/compile-native/`. **Lane F (2026-10-22):** the CLI side
+(`native` in `build`'s and `run`'s value lists everywhere, exit 2 where it is not built, the
+`--help` label and the one line) and the packaging landed: the A rows of
+`packaging/targets.json` are `native`, `release.yml` builds them with `--features native` and the
+release driver, the archive, npm platform packages, formula and `install.sh` carry it at
+`lib/sakura/native/`, `release.py smoke`/`accept` and `verify-published.yml` build and run a
+native `fib` against the JS run, a missing `cc` is `V8007 native_linker_missing`, and STABILITY,
+the CLI, install and memory pages say so. A local release-path trial (archive smoke, `install.sh`,
+`accept --native`) is green on Apple silicon. **Left of N2f:** (iii)'s counted run on the reference
+Mac at the next beta's preparation commit, blessed by the owner. **Left of F:** the dry run with the
+native step on both A rows (the owner approves the first), then `verify-published.yml` for the
+beta that carries it.
 
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
 error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any

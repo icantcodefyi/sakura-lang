@@ -73,6 +73,13 @@ fn linker_missing(snapshot: &Snapshot) -> Diagnostic {
     }
 }
 
+/// `SAKURA_NATIVE_STOP_AFTER=<phase>` (the bench's counted compile report, design §17.308 (2b)
+/// (iii)): `sakura build` stops after that phase of the timings line, so `bench compile-native
+/// --instructions` counts a phase as the difference of two processes.
+fn stop_after(phase: &str) -> bool {
+    std::env::var("SAKURA_NATIVE_STOP_AFTER").is_ok_and(|p| p == phase)
+}
+
 /// Checks, lowers, compiles and links `snapshot` into `out_dir/main`. On failure the
 /// diagnostics are already reported. `then` is the command that continues (`run`); `checks`
 /// is `--native-checks`.
@@ -101,6 +108,9 @@ pub fn build(
         crate::verify::drop_proved(snapshot, &mut module, "wasm");
     }
     let frontend = start.elapsed();
+    if stop_after("frontend") {
+        return Ok(out_dir.to_path_buf());
+    }
     let lir = match sakura_lir::from_core(&module, sakura_lir::Layout::Tagged) {
         Ok(lir) => lir,
         Err(e) => panic!("LIR lowering: {e}"),
@@ -109,6 +119,9 @@ pub fn build(
         panic!("LIR validator: {e}");
     }
     let lowering = start.elapsed() - frontend;
+    if stop_after("lowering") {
+        return Ok(out_dir.to_path_buf());
+    }
     let native = sakura_codegen_native::Options {
         direct: opts.direct,
         sources: snapshot
@@ -134,14 +147,21 @@ pub fn build(
         root_effects: Analysis::analyze(snapshot)
             .main_effects()
             .unwrap_or_default(),
+        codegen_only: stop_after("codegen"),
     };
     let (object, [codegen, emission]) =
         sakura_codegen_native::emit_timed(&lir, &native).map_err(usage_error)?;
+    if native.codegen_only {
+        return Ok(out_dir.to_path_buf());
+    }
     let driver = driver_dir().map_err(usage_error)?;
     let o = out_dir.join(OBJECT);
     std::fs::create_dir_all(out_dir)
         .and_then(|()| std::fs::write(&o, object))
         .map_err(|e| usage_error(format!("{}: {e}", o.display())))?;
+    if stop_after("object") {
+        return Ok(out_dir.to_path_buf());
+    }
     let linking = Instant::now();
     match sakura_codegen_native::link(&o, &driver, &out_dir.join(EXECUTABLE)) {
         Ok(()) => {}

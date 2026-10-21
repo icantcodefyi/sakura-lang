@@ -30,7 +30,9 @@ retains earlier implementation history.
   the value and refuses it with exit 2 and one line naming those two targets (it was clap's
   "invalid value"; `compiler/contracts/cli.txt` gains the value). MCP `compiler_info` lists
   `native` in `features.backends` only where the binary builds it. `bench compile-native` also reports the wide-function curve (one function
-  of 4,096 to 32,768 guarded rows) and names each phase that grows more than 2× per doubling.
+  of 4,096 to 32,768 guarded rows) and names each phase that grows more than 2× per doubling. `bench compile-native --instructions`
+  counts each phase's instructions retired (macOS), and `bench bless` takes that counted report
+  into `bench/baselines/compile-native/`.
 - **`Http` on `--target native`** (experimental, plan M5 N1b): `Http.host()` sends with
   `reqwest` over `rustls` (no proxy, no automatic redirects: `std/http` follows each hop, so the
   manifest's `net` list is checked on every hop), bodies bounded by `SAKURA_MAX_COPY_BYTES`,

@@ -12,6 +12,7 @@ import os
 import platform
 import random
 import re
+import shlex
 import shutil
 import statistics
 import subprocess
@@ -1240,10 +1241,14 @@ def cmd_bless(a):
     # compare nothing to compare.
     flags = doc["meta"].get("flags", {})
     suite = flags.get("suite")
-    if flags.get("command") and suite != "typescript":  # `compile` and `compile-native` are evidence, not baselines
+    # `compile` and a timed `compile-native` are evidence, not baselines; the counted native compile
+    # report is blessed with a beta's baseline (design §17.308 (2b) (iii)).
+    report = flags.get("command") == "compile-native" and metric(doc) == "instructions"
+    if flags.get("command") and suite != "typescript" and not report:
         log(f"refusing to bless: a `{flags['command']}` run is evidence, not a baseline (docs/release.md §2)")
         return EXIT_ORACLE
-    dest = BENCH / "baselines" / (suite if suite in ("wasm", "typescript") else "") / f"{doc['meta']['host']['id']}.json"
+    where = "compile-native" if report else suite if suite in ("wasm", "typescript") else ""
+    dest = BENCH / "baselines" / where / f"{doc['meta']['host']['id']}.json"
     if dest.exists():  # §17.282 (5): a baseline under other flags is archived by hand, not overwritten
         blessed = json.loads(dest.read_text())
         if reason := flags_refusal(blessed=blessed, run=doc):
@@ -1446,6 +1451,28 @@ def cmd_compile(a):
 # bench compile-native (plan M5 N2: the native compile report that sets the budget, §17.175 (4))
 
 NATIVE_PHASES = ("frontend_ms", "lowering_ms", "codegen_ms", "object_ms", "link_ms")
+# `--instructions` (design §17.308 (2b) (iii)): one counted process per stop, the CLI stopping
+# after that phase (`SAKURA_NATIVE_STOP_AFTER`); the last is the whole build, the linker included.
+NATIVE_STOPS = ("frontend", "lowering", "codegen", "object", None)
+
+
+def linker_commands(out, driver):
+    """The linker's processes for `out/main.o`, as `sakura_codegen_native::link` runs them: `cc`
+    and the commands `cc -###` says it runs (`ld`). `/usr/bin/time -l` counts one process
+    without the children it spawns, so `phase_instructions` counts each of these on its own."""
+    args = [str(out / "main.o"), str(driver / "libsakura_native_driver.a"),
+            *(driver / "native-static-libs.txt").read_text().split(), "-o", str(out / "main")]
+    jobs = run(["cc", "-###", *args]).stderr.splitlines()
+    return [["cc", *args]] + [shlex.split(line) for line in jobs if line.startswith(' "')]
+
+
+def phase_instructions(cmd, linker=()):
+    """One sample's instructions retired per phase: the difference of the processes that stop
+    after it and before it, the `linker` commands' own counts added to `link`."""
+    upto = [counted(cmd, env=stop and {"SAKURA_NATIVE_STOP_AFTER": stop})[1]["instructions"] for stop in NATIVE_STOPS]
+    out = dict(zip(NATIVE_PHASES, (b - a for a, b in zip([0, *upto], upto))))
+    out["link_ms"] += sum(counted(c)[1]["instructions"] for c in linker)
+    return out
 
 
 def build_native_cli():
@@ -1482,8 +1509,10 @@ def wide_source(n):
 
 def wide_superlinear(results):
     """Each phase's median at the widest row count over the one below it, and the phases past
-    2× (superlinear in rows; N2g's acceptance is at most 2×)."""
-    med = {r["program"]: r["median_ms"] for r in results if r["program"].startswith("wide_")}
+    2× (superlinear in rows; N2g's acceptance is at most 2×): instructions when counted, else ms."""
+    wide = [r for r in results if r["program"].startswith("wide_")]
+    key = "instructions" if wide and all(r.get("instructions") for r in wide) else "median_ms"
+    med = {r["program"]: r[key] for r in wide}
     hi, lo = f"wide_{WIDE_ROWS[-1]}", f"wide_{WIDE_ROWS[-2]}"
     if hi not in med or lo not in med:
         return None, []
@@ -1494,13 +1523,20 @@ def wide_superlinear(results):
 def cmd_compile_native(a):
     """`sakura build --target native` of every benchmark program and of the wide-function
     curve's programs, 15 processes after a warm-up, each phase's p95 from the CLI's
-    `SAKURA_NATIVE_TIMINGS` lines (link reported beside the rest)."""
+    `SAKURA_NATIVE_TIMINGS` lines (link reported beside the rest). `--instructions` counts each
+    phase's instructions retired too (`phase_instructions`, macOS): the counted report the owner
+    blesses with a beta's baseline (design §17.308 (2b) (iii)), wall time beside."""
     os.environ["SAKURA_NATIVE_LIB_DIR"] = str(build_native_cli())
     os.environ.setdefault("SAKURA_CACHE_DIR", str(TARGET / "cache"))
-    res = new_result({"command": "compile-native", "seed": SEED})
+    i = a.instructions
+    if i and sys.platform != "darwin":
+        log("--instructions reads macOS's `/usr/bin/time -l`")
+        return EXIT_BLOCKED
+    res = new_result({"command": "compile-native", "seed": SEED, "metric": "instructions" if i else "time"})
     status = EXIT_OK
-    print("| Program | " + " | ".join(f"{k[:-3]} p95 ms" for k in NATIVE_PHASES) + " |\n|---|"
-          + "---:|" * len(NATIVE_PHASES), flush=True)
+    print("| Program | " + " | ".join(f"{k[:-3]} p95 ms" for k in NATIVE_PHASES)
+          + "".join(f" | {k[:-3]} p95 instr" for k in NATIVE_PHASES if i) + " |\n|---|"
+          + "---:|" * len(NATIVE_PHASES) * (2 if i else 1), flush=True)
     sources = [(p, PROGRAMS / p / "sakura" / "main.sak")
                for p in sorted(d.name for d in PROGRAMS.iterdir() if (d / "sakura" / "main.sak").exists())]
     for n in WIDE_ROWS:
@@ -1514,9 +1550,14 @@ def cmd_compile_native(a):
         timings.unlink(missing_ok=True)
         os.environ["SAKURA_NATIVE_TIMINGS"] = str(timings)
         cmd = [str(SAKURA), "build", "--target", "native", "--out-dir", str(TARGET / "native-out" / p), str(source)]
+        counts, linker = [], ()
         try:
             for _ in range(16):
-                sh(cmd)
+                if i:
+                    counts.append(phase_instructions(cmd, linker))
+                    linker = linker or linker_commands(TARGET / "native-out" / p, Path(os.environ["SAKURA_NATIVE_LIB_DIR"]))
+                else:
+                    sh(cmd)
         except Fail as e:
             res["meta"]["failures"].append({"program": p, "variant": "sakura", "engine": "cli", "error": str(e)})
             print(f"| {p} | ✗ {str(e).splitlines()[0]} |")
@@ -1524,17 +1565,22 @@ def cmd_compile_native(a):
             continue
         rows = [json.loads(line) for line in timings.read_text().splitlines()][1:]  # the first warms up
         phases = {k: [r[k] for r in rows] for k in NATIVE_PHASES}
+        counted_phases = {k: [c[k] for c in counts[1:]] for k in NATIVE_PHASES} if i else None
         res["results"].append({"program": p, "variant": "sakura", "engine": "cli", "lane": "compile-native",
                                "ints": None, "samples_ms": phases, "p95_ms": {k: p95(v) for k, v in phases.items()},
                                "median_ms": {k: statistics.median(v) for k, v in phases.items()},
                                "budget_ms": None, "target_ms": None, "rss_bytes": None, "checksum_ok": True,
-                               "checksum": None})
-        print(f"| {p} | " + " | ".join(f"{p95(phases[k]):.1f}" for k in NATIVE_PHASES) + " |", flush=True)
+                               "checksum": None,
+                               **({"process_instructions": counted_phases,
+                                   "instructions": {k: statistics.median(v) for k, v in counted_phases.items()},
+                                   "p95_instructions": {k: p95(v) for k, v in counted_phases.items()}} if i else {})})
+        print(f"| {p} | " + " | ".join(f"{p95(phases[k]):.1f}" for k in NATIVE_PHASES)
+              + "".join(f" | {p95(counted_phases[k]):.4g}" for k in NATIVE_PHASES if i) + " |", flush=True)
     os.environ.pop("SAKURA_NATIVE_TIMINGS")
     ratio, over = wide_superlinear(res["results"])
     res["meta"]["wide_ratio"] = ratio
     if ratio:
-        print(f"wide {WIDE_ROWS[-1]} / {WIDE_ROWS[-2]} rows, median: "
+        print(f"wide {WIDE_ROWS[-1]} / {WIDE_ROWS[-2]} rows, median {'instructions' if i else 'ms'}: "
               + ", ".join(f"{k[:-3]} {v:.2f}×" for k, v in ratio.items() if v is not None)
               + f"; superlinear: {', '.join(over) or 'none'}")
     Path(a.json).parent.mkdir(parents=True, exist_ok=True)
@@ -1777,6 +1823,8 @@ def main(argv=None):
     k.add_argument("--instructions", action="store_true", help="also count each process's instructions (macOS)")
     n = sub.add_parser("compile-native", help="per-phase p95 of `sakura build --target native` (plan M5 N2)")
     n.add_argument("--json", required=True)
+    n.add_argument("--instructions", action="store_true",
+                   help="also count each phase's instructions (macOS): the counted report a beta's bless carries")
     t = sub.add_parser("typescript", help="`sakura check` beside `tsc --noEmit`, and cold start beside Node's TypeScript")
     t.add_argument("--filter", default="*", help="glob over program names (and corpus_10k, corpus_100k)")
     t.add_argument("--processes", type=int, default=TS_PROCESSES, help="counted processes per cell")

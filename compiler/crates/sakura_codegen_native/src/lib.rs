@@ -54,6 +54,9 @@ pub struct Options {
     /// handlers the driver installs; it refuses at startup one the native host lacks (RFC 0002
     /// §7, design §17.271 (9)).
     pub root_effects: Vec<String>,
+    /// Stop after code generation and return no object (the compile report's counted runs,
+    /// `SAKURA_NATIVE_STOP_AFTER=codegen`, design §17.308 (2b) (iii)).
+    pub codegen_only: bool,
 }
 
 impl Default for Options {
@@ -65,6 +68,7 @@ impl Default for Options {
             module_hash: [0; 32],
             checks: false,
             root_effects: vec![],
+            codegen_only: false,
         }
     }
 }
@@ -354,6 +358,9 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
         .map_err(|e| format!("main: {e:?}"))?;
     unwind.add(obj.isa(), &ctx, main)?;
     let codegen = start.elapsed();
+    if opts.codegen_only {
+        return Ok((vec![], [codegen, Duration::ZERO]));
+    }
     let mut product = obj.finish();
     unwind.write(&mut product)?;
     lines.write(&mut product, &opts.sources, &opts.texts)?;

@@ -221,6 +221,8 @@ bench/bench run --suite wasm --instructions --json bench/target/counted-wasm.jso
 bench/bench run --suite native --lane matched --instructions \
   --json bench/target/counted-native.json > bench/target/counted-native.md
 bench/bench compile --instructions --json bench/target/counted-compile.json > bench/target/counted-compile.md
+bench/bench compile-native --instructions --json bench/target/counted-compile-native.json \
+  > bench/target/counted-compile-native.md
 bench/bench typescript --json bench/target/counted-typescript.json > bench/target/counted-typescript.md
 bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.json \
   --json bench/target/envelope.json --md bench/target/envelope.md
@@ -242,7 +244,12 @@ the count lane beside it as a ratio of counts (§17.265 (2); Opus adds the wall-
 `320c9980` the envelope misses on 241 of 264 gating cells, carried under §17.265. The
 same-engine ratios, Sakura against hand JS on one engine, are read on counts against §17.109's
 JS targets. `compile` reports p95 against the research/10 §6 budgets and §17.195 (1)'s targets
-in time, with each case's median instruction count beside them.
+in time, with each case's median instruction count beside them. `compile-native` (from the
+first beta that ships `--target native`, design §17.308 (2b) (iii)) counts the instructions
+retired per phase of `sakura build --target native` (frontend, lowering, codegen, object, link)
+for every bench program and the wide-function curve, at p95 with wall time beside, and names
+each phase whose count grows more than 2× from 16,384 to 32,768 rows; the round that reads the
+blessed file sets §17.175 (4)'s native compile budget from it.
 
 **Bless** (the owner only; `bless` refuses a run with a failed oracle or one made from a dirty
 `compiler/` or `bench/` tree; a counted run needs no quiet host):
@@ -251,6 +258,7 @@ in time, with each case's median instruction count beside them.
 bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-id>.json
 bench/bench bless bench/target/counted-wasm.json    # -> bench/baselines/wasm/<host-id>.json
 bench/bench bless bench/target/counted-typescript.json  # -> bench/baselines/typescript/<host-id>.json
+bench/bench bless bench/target/counted-compile-native.json  # -> bench/baselines/compile-native/<host-id>.json
 ```
 
 The `typescript` run (from `v1.0.0-beta.3` on) puts `sakura check` beside `tsc --noEmit` and a
@@ -279,7 +287,8 @@ the candidate is direction, marked `pending owner bless` in `bench/deltas.md`.
 **Done 2026-10-20:** the baselines are the `3bf2343f` runs under the flags above
 ([checklist](plans/m4-exit-checklist.md)); compares from then on read them.
 
-The native and compile runs are evidence, not baselines, and are not blessed.
+The native, compile and timed `compile-native` runs are evidence, not baselines, and are not
+blessed; the counted `compile-native` report is blessed with the baseline.
 
 **Evidence files**, committed on `main` (`D` is the date, `C` the short commit, `H` the host id):
 

@@ -89,6 +89,29 @@ class WideCurve(unittest.TestCase):
         self.assertAlmostEqual(ratio["lowering_ms"], 2.0)
         self.assertEqual(bench.wide_superlinear([row(hi, 1.0, 1.0)]), (None, []))
 
+    def test_counted_rows_are_read_by_their_instructions(self):
+        lo, hi = bench.WIDE_ROWS[-2:]
+        rows = [{"program": f"wide_{n}", "median_ms": dict.fromkeys(bench.NATIVE_PHASES, 1.0),
+                 "instructions": dict.fromkeys(bench.NATIVE_PHASES, 10) | {"codegen_ms": c}}
+                for n, c in ((lo, 100), (hi, 300))]
+        self.assertEqual(bench.wide_superlinear(rows)[1], ["codegen"])
+
+    def test_a_phase_counts_the_processes_that_stop_after_and_before_it(self):
+        upto = iter([100, 150, 400, 410, 500])
+        seen = []
+        def counted(cmd, env=None):
+            seen.append(env)
+            return "", {"instructions": next(upto)}
+        with patch.object(bench, "counted", counted):
+            got = bench.phase_instructions(["sakura"])
+        self.assertEqual(got, {"frontend_ms": 100, "lowering_ms": 50, "codegen_ms": 250, "object_ms": 10, "link_ms": 90})
+        self.assertEqual(seen[0], {"SAKURA_NATIVE_STOP_AFTER": "frontend"})
+        self.assertIsNone(seen[-1])
+        upto = iter([100, 150, 400, 410, 500, 7, 1000])
+        with patch.object(bench, "counted", counted):
+            got = bench.phase_instructions(["sakura"], [["cc"], ["ld"]])
+        self.assertEqual(got["link_ms"], 90 + 7 + 1000)  # the linker's processes count on their own
+
     def test_the_source_is_one_function_of_n_guarded_rows(self):
         src = bench.wide_source(3)
         self.assertEqual(src.count(" && n > -3 => "), 3)
@@ -1144,6 +1167,10 @@ class TypeScriptSuite(unittest.TestCase):
 
     def test_a_compile_run_is_never_blessed_over_the_js_baseline(self):
         self.assertEqual(self.bless({"command": "compile"}), (bench.EXIT_ORACLE, []))
+
+    def test_the_counted_native_compile_report_is_blessed_beside_the_baseline(self):
+        self.assertEqual(self.bless({"command": "compile-native"}),
+                         (bench.EXIT_OK, ["baselines/compile-native/test.json"]))
 
 
 if __name__ == "__main__":
