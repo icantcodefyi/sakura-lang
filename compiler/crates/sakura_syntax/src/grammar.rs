@@ -38,6 +38,16 @@ pub(crate) const ITEM_ONLY: TokenSet = TokenSet::new(&[
     PROPERTY_KW,
 ]);
 
+/// Whether `kind` can begin a statement or an item; another lex error begins its own.
+pub(crate) fn begins_statement(kind: SyntaxKind) -> bool {
+    expr::EXPR_FIRST.contains(kind)
+        || ITEM_START.contains(kind)
+        || matches!(
+            kind,
+            VAR_KW | FOR_KW | WHILE_KW | RETURN_KW | BREAK_KW | CONTINUE_KW | ERROR_TOKEN
+        )
+}
+
 /// Tokens a list never swallows during recovery: closers and starts of outer constructs.
 pub(crate) const LIST_RECOVERY: TokenSet = TokenSet::new(&[
     R_PAREN, R_BRACKET, L_BRACE, R_BRACE, INTERP_END, LET_KW, VAR_KW,

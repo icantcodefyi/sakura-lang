@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V0004
+// expect-span: V0004 10:17
+// spec: design §17.297 (3), §17.294 WP-5
+// An invalid character at a line's end ends its statement. When the next line starts with a
+// token that neither continues a statement nor begins one (here `:` and `requires`), that line
+// is the same mistake's cascade: the error takes it, so the file reports one record, not a
+// `V0001` and a `V0009` per line.
+pub fn ratio(a: Int, b: Int) -> Int {
+  let r = a / b §
+    : Int
+    requires b != 0
+  r
+}
+
+pub fn twice(n: Int) -> Int { n * 2 }

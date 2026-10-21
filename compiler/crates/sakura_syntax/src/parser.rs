@@ -340,6 +340,12 @@ impl<'t> Parser<'t> {
         loop {
             match self.current() {
                 EOF => break,
+                // A next line that can neither continue a statement nor begin one is this
+                // error's cascade, so the `ERROR` node takes it too (design §17.297 (3)).
+                NEWLINE
+                    if balance == 0
+                        && !matches!(self.past_newlines(), SEMICOLON | R_BRACE | EOF)
+                        && !crate::grammar::begins_statement(self.past_newlines()) => {}
                 NEWLINE | SEMICOLON | R_BRACE if balance == 0 => break,
                 L_PAREN | L_BRACKET | L_BRACE | INTERP_START => balance += 1,
                 R_PAREN | R_BRACKET | R_BRACE | INTERP_END => balance = balance.saturating_sub(1),

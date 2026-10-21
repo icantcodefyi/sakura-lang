@@ -557,6 +557,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   handlers answer (a synthetic cassette from `Router.handle` over `Sql.memory()`), and stderr
   carries one note, "`[permissions] net` lists no host; recording captures in-process handlers
   only" (design §17.294 RQ-7). An invalid manifest is still `V8006`.
+- An invalid character at a line's end whose next line starts with a token that can neither
+  continue a statement nor begin one (`:`, `requires`, `in`, `as`, `?`) is one `V0004`, the
+  next line taken as its cascade, where it also reported a `V0001` and a `V0009` for that line
+  (design §17.297 (3), the edge of §17.294 WP-5). ui case `V0004_line_end_cascade`.
 
 ### Security
 
