@@ -134,7 +134,8 @@ pub fn adapter(
                 (Part::Static(t.newline), Part::Const(1)),
             ],
         ),
-        "console_eprint" => write(
+        // `Log.stderr()`/`Log.json()` lines go where the Node host's `log_write` puts them.
+        "console_eprint" | "log_write" => write(
             &mut s,
             ix,
             t,

@@ -407,6 +407,8 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 
 ### Fixed
 
+- The WASI command (`build --target wasm --wasi`) writes each `Log.stderr()`/`Log.json()` line
+  to stderr, as the Node host does, where it trapped (exit 134).
 - An effect operation's `requires` is now checked at every perform site, on every backend
   (design §7.2, §17.286 (8)): `Cli.exit(256)`, `Random.int(3, 2)`, `Random.bytes(-1)`,
   `Fs.read_chunk(f, 0)`, `Http.read_chunk(b, 0)`, `WebSocket.connect` with `max_message` 0

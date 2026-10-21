@@ -1739,7 +1739,7 @@ fn build_wasi_writes_a_command_for_wasmtime() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("main.sak"),
-        "pub fn main() -> Unit ! {Console} {\n  Console.print(\"{6 * 7}\")\n  Console.eprint(\"to fd 2\")\n}\n",
+        "pub fn main() -> Unit ! {Console, Log} {\n  Console.print(\"{6 * 7}\")\n  Console.eprint(\"to fd 2\")\n  Log.event(Level.Warn, \"logged\", [(\"n\", Json.Number(1.0))])\n}\n",
     )
     .unwrap();
     let args = [
@@ -1775,7 +1775,11 @@ fn build_wasi_writes_a_command_for_wasmtime() {
     );
     assert_eq!(String::from_utf8_lossy(&run.stdout), "42\n");
     // `Console.eprint` is `fd_write` to 2 (design §17.292 (9)).
-    assert_eq!(String::from_utf8_lossy(&run.stderr), "to fd 2\n");
+    // A `Log` line is one too, as the Node host's `log_write` writes it (it trapped before).
+    assert_eq!(
+        String::from_utf8_lossy(&run.stderr),
+        "to fd 2\nWarn logged n=1\n"
+    );
 }
 
 #[test]
