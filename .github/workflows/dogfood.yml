@@ -49,3 +49,13 @@ jobs:
           echo "Dogfood: \`sakuralang@$version\` on \`$(git rev-parse HEAD)\`'s programs" >> "$GITHUB_STEP_SUMMARY"
       - name: Check and test the six programs on js and wasm
         run: dogfood/round.sh "$(npm prefix --global)/bin/sakura"
+      # §17.301 (3d), §17.307 (3): Parcel Quotes' Node consumer against each build, under the
+      # manifest's full permissions table (the consumer's default mode); its exit code decides.
+      - name: Run the Parcel Quotes consumer on wasm and js
+        working-directory: dogfood/parcel-quotes
+        run: |
+          sakura="$(npm prefix --global)/bin/sakura"
+          for target in wasm js; do
+            "$sakura" build --target "$target" --out-dir "$RUNNER_TEMP/pq-consumer/$target"
+            node consumer/consumer.mjs "$RUNNER_TEMP/pq-consumer/$target"
+          done
