@@ -1,11 +1,16 @@
 # M5 — native backend, RC runtime, reuse
 
-**Status: executable plan, provisional.** Opened as a skeleton in round 12 (§17.167), filled in
-round 13 from [research/12](../../research/12-m5-native.md) by design §17.169–§17.178. §14.3's
-M5 line as amended: "Cranelift backend, RC runtime, reuse, `W8001` copy diagnostics (proven
-copies only, §17.172); regions deferred (§17.174)." Nothing here is a date. Opus codes; Sol does
-mechanical, CI and toolchain work; Astra measures and writes docs; the owner accepts platforms
-and blesses numbers (§17.153).
+**Status: executable plan, provisional; all of M5 runs now (round 60, §17.308).** Opened as a
+skeleton in round 12 (§17.167), filled in round 13 from
+[research/12](../../research/12-m5-native.md) by design §17.169–§17.178; re-planned by §17.308
+on 2026-10-21 under the owner's direction to finish M5 and M5b now, including native on
+platforms B and C, and to ship `--target native` as an experimental flag in release binaries
+from the next beta. §14.3's M5 line as amended: "Cranelift backend, RC runtime, reuse, `W8001`
+copy diagnostics (proven copies only, §17.172); regions deferred (§17.174)." Nothing here is a
+date, and nothing here gates `v1.0.0`, whose gate is §17.306's ledger: a row on `main` at the
+last beta's preparation commit ships in 1.0.0, a later row ships in the 1.x minor it lands in
+(§17.308 (1)). Opus codes; Sol does mechanical, CI and toolchain work; Astra measures and writes
+docs; the owner blesses baselines and signs the stabilization entry (§17.308 (1e), (2l)).
 
 ## 1. Inputs and fixed decisions
 
@@ -233,9 +238,39 @@ cassette (`parity.rs`), and native parity is 297 of 297. `secret_wrap`/`secret_e
 already native builtins.
 
 **Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
-natively; see `compiler/REQUESTS.md` 2026-10-21 N1b), serve, `log_json`, the test runner's codes
-and `sakura test --target native`, `V8004` and the exclusion table. The WASI command does not
-call the codec yet (no Wasmtime `json_validate` cell).
+natively; §17.308 (3) picks the port with its two protocol additions), serve, `log_json`, the test
+runner's codes and `sakura test --target native`, `V8004` and the exclusion table; Http is
+ratified as built (§17.308 (3)). The WASI command does not call the codec yet (no Wasmtime
+`json_validate` cell).
+
+### Round 60 (§17.308, 2026-10-21): the lanes that finish M5
+
+The owner's direction: finish all of M5 and M5b now, native on B and C included, and ship
+`--target native` as an experimental flag in release binaries. Lanes are bounded by files
+(§17.285) and run in parallel; "after" names a landing on `main`. Acceptance is the queue row's
+unless the lane says otherwise; §17.308 (2) is the ruling text.
+
+| Lane | What | Owner | Starts | Acceptance beyond the row |
+|---|---|---|---|---|
+| N1 | N1b's remainder in order: serve, test mode (`sakura test --target native`), `V8004`, `log_json`, Llm over native Http with SSE as §17.308 (3) decides (the JS-handler protocol ported, two additions), the exclusion table | Opus | running | `KNOWN_NATIVE` empty; ABI §1b's exit-75 list holds only `WebSocket`; test-mode `native_` cases in `parity.rs` |
+| N2f | the exact-i64 lane (`{wasm, native}` vs the evaluator, `js` excluded by directive), `deep_recursion_gauge` natively, the compile report as a counted run on the reference Mac at the next beta's preparation commit, the wide-function curve at 4,096–32,768 rows per phase | Opus | now | (i)–(ii) in `ci.yml`'s native job on both A runners; (iii)–(iv) in the blessed baseline's files; the superlinear phase named |
+| N2g | the wide-function split: a LIR-to-LIR pass in its own `sakura_lir` file, native backend only; cut edges are frame calls | Opus | after N2f names Cranelift's phase | 32,768 rows ≤ 2× the 16,384-row count per phase; parity unchanged; `deep_ir.rs` native case; WASM bytes unchanged |
+| F | the flag ships (§17.175 (6)): A release binaries built with `--features native`; the driver staticlib at `lib/sakura/native/` in the archive, npm packages and formula; a native `fib` smoke in `release.py smoke`/`accept` and `verify-published.yml`; `--help` label; the one-line profile print; STABILITY row; install page; a missing system linker is one diagnostic (`V8007 native_linker_missing` if free) | Sol | now | dry run green with the native step on both A rows; `verify-published.yml` green for the beta carrying it (= "A shipped" for B-native) |
+| S | `exec-native`: the native backend as a fourth `exec` executor on `x86_64-unknown-linux-gnu`, its own ledger target; not part of 1.0.0's gate | Opus | after F | hours in `compiler/fuzz/README.md`'s ledger; a stabilization condition (§17.308 (1e)) |
+| B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run | `verify-published.yml` green on the B row with the native step |
+| C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
+| N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
+| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1)); ABI MINOR at landing | Opus | after N3 | the row's |
+| N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses) |
+| M | `bench run --suite native` counted as the JS and WASM lanes are; paired `rbtree`; `bench envelope` on the native lane; a native `bench_counters.txt` column with the +1 drop note | Opus (code), Astra (docs, readings) | now; before the first baseline meant to carry a native number | no native number is read before it exists |
+
+Order of landings on today's reading, with the betas they fall into: N5 and N1's serve and test
+mode → F with N2f (i)–(ii) → **beta.4** → N1's rest, N2f (iii)–(iv), M, N3 → **beta.5** (ABI
+1.17.0; the first native baseline) → N2g, S, B-native, N4 → **beta.6 or 1.1.0** (1.18.0) →
+C-native → **1.x**. The ledger (§17.306) decides which beta is the last; 1.0.0 follows it with
+its preparation commit and the remaining rows are 1.x minors. Stabilization (the removal of the
+experimental label, §17.308 (1e)) is a 1.x entry with six measurable conditions and is also the
+M5 exit signature of §17.178.
 
 ### Start conditions in one view
 
@@ -246,13 +281,21 @@ call the codec yet (no Wasmtime `json_validate` cell).
 - **When N1a lands:** N1b and (after L5) N2 in parallel.
 - **Round 42 (§17.285 (4)):** N2's three sanitizer controls and lanes (Miri's invalid slot kind, ASan's double drop and stale callback, the Memcheck lane with the `crabgrind` annotations; `native_detect.rs`, `sakura_host_native`, `ci.yml`'s native job) take the first slot that frees among the six round-42 lanes, lowest priority as before; the lanes run on hosted runners and the Mac's Docker only reproduces; then N1b's remainder on the same line, after phase 8's native-driver change is on `main`. **Phase 8 landed (`6b633a99`), so that trigger has fired (§17.286 (12)):** N1b's remainder may take the next free line; its first item is `http_body_of` in `sakura_host_native` (§17.286 (11)), which the web lane lands now because `parity.rs` is red on `main` without it.
 - **Round 27 (§17.245 (2), §17.247):** no tag waits for native; N0b is done; N5 is M5b with N3 and N4; the line that remains is N1b's remainder → N2's controls and lanes → N2f, at the lowest priority.
-- **When N2 and N0b have landed (M5b):** N3; then N4.
-- **M5 exit** (§17.178): §14.3's amended M5 line; `{js, wasm, native} × {ubuntu, macos}` green on
+- **Round 60 (§17.308 (2)):** every lane in the table above starts on its "Starts" condition;
+  N1, N2f, F, N3, N5 and M run now in parallel; N3's "after" (N2 and N0b) has held since N2e.
+- **M5 exit** (§17.178), now the stabilization entry of §17.308 (1e), a 1.x minor: §14.3's amended M5 line; `{js, wasm, native} × {ubuntu, macos}` green on
   four fields; the four §17.173 lanes green with their detection controls; the paired `rbtree`
   hit rate in every record; the §17.109 M5 envelope measured at a quiet window on platform A with
   every miss a named carry; WASM still green.
 
 ## 3. Pending measurements and their defaults (§17.177)
+
+A "window" below is what §17.264 made every window and §17.308 (2l) restates: the counted
+baseline (instructions retired) on the reference Mac at a beta's or minor's preparation commit,
+run by agents in `../sakura-counted`, blessed by the owner, read by the designer in the round
+that follows. "First window after N3" is the baseline of the first release whose preparation
+commit contains N3 and row M; "second" is the first after it that also contains the prototypes;
+"first window after N2" is the first baseline with row M. No window gates a tag.
 
 | Question | Decided by | Default if the measurement is unavailable |
 |---|---|---|
@@ -295,11 +338,15 @@ checked lowering runs in `ci.yml`'s native job.
 | **C** | + `x86_64-pc-windows-msvc`, `x86_64-apple-darwin` | B shipped and accepted | PE/COFF, Windows calling convention, stack probes, unwind; Windows paths/handles in adapters; Intel macOS deployment target; Windows debugger symbols a stated limitation until a CodeView decision |
 | | | | Channels (`install.ps1`, `.zip`/`sakura.exe`, npm `win32`, formula `on_intel`) and the URI, line-ending and process fixes are `road-to-1.0.md` §6 rows P0–P2 and P5–P8 (§17.180); runners `windows-2025` and `macos-15-intel`; floors Windows 10 x64, macOS 12.0 |
 
-No musl stage and no 32-bit `armv7` (Cranelift has no 32-bit ARM backend, §17.180 (1)). `--target native` ships behind the `native` cargo feature until N2's matrix is green
-on A, then as an experimental flag in release binaries (§17.175 (6)).
+No musl stage and no 32-bit `armv7` (Cranelift has no 32-bit ARM backend, §17.180 (1)). N2's
+matrix is green on A, so `--target native` ships as an experimental flag in release binaries from
+the next beta (§17.175 (6); lane F of §17.308 (2d)), the driver staticlib at `lib/sakura/native/`
+in every channel's archive; B's and C's native lanes follow in that order (§17.308 (2f)–(2g)).
+The label is removed by the stabilization entry of §17.308 (1e).
 
 ## 6. Owner-only items
 
-- Each platform stage exits on `verify-published.yml` green (§17.227; ADR 0003 as amended); the owner announces the quiet windows (§17.153).
-- Bless the native baseline and the §17.177 windows; agents never bless.
-- The M5 exit gate signature, or a written delegation as §17.159 (1).
+- Each platform stage exits on `verify-published.yml` green (§17.227; ADR 0003 as amended); there are no quiet windows (§17.264).
+- Bless each beta's counted baseline, the first native one included (§17.308 (2l)); agents run, never bless.
+- Approve the dry run that first carries the staticlib (lane F).
+- The stabilization entry's signature (§17.308 (1e), the M5 exit of §17.178), or a written delegation as §17.159 (1).
