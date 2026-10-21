@@ -51,7 +51,9 @@ jobs:
         run: dogfood/round.sh "$(npm prefix --global)/bin/sakura"
       # §17.301 (3d), §17.307 (3): Parcel Quotes' Node consumer against each build, under the
       # manifest's full permissions table (the consumer's default mode); its exit code decides.
+      # Library entries (ABI 1.16.0) first ship in 1.0.0-beta.3; earlier releases have no host.entries.
       - name: Run the Parcel Quotes consumer on wasm and js
+        if: ${{ !startsWith(env.VERSION_INPUT, '0.') && !startsWith(env.VERSION_INPUT, 'v0.') && !contains(fromJSON('["1.0.0-beta.1","v1.0.0-beta.1","1.0.0-beta.2","v1.0.0-beta.2"]'), env.VERSION_INPUT) }}
         working-directory: dogfood/parcel-quotes
         run: |
           sakura="$(npm prefix --global)/bin/sakura"
