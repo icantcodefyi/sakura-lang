@@ -2614,6 +2614,7 @@ name = "sakura_host_native"
 version = "1.0.0-beta.4"
 dependencies = [
  "cap-std",
+ "getrandom 0.4.3",
  "http-body-util",
  "hyper",
  "hyper-util",

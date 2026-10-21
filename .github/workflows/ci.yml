@@ -487,7 +487,7 @@ jobs:
           gdb --version | head -n 1
           perf --version
       - name: Native runtime, host, compiled corpus, staticlib and debugger tests
-        run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --features native --locked -- --nocapture
+        run: cargo test -p sakura_rt -p sakura_codegen_native -p sakura_host_native -p sakura_native_driver --features native --locked --no-fail-fast -- --nocapture
       - name: A 32,768-row function compiles natively in pieces (N2g)
         run: cargo test -p sakura_eval --features native --locked --test deep_ir native_ -- --nocapture
       - name: Profiler symbolises compiled Sakura frames (perf on Linux, sample on macOS)

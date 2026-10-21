@@ -21,7 +21,7 @@ pub mod test;
 pub mod worker;
 
 use std::collections::{HashMap, VecDeque};
-use std::io::{BufRead, Read, Write};
+use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -254,7 +254,6 @@ pub struct NativeHost {
     captured_err: String,
     stdin: Option<VecDeque<String>>,
     started: Instant,
-    urandom: Option<std::fs::File>,
     trace: Option<std::fs::File>,
     dirs: Table<fs::Dir>,
     /// `Body` handles: `http_body_of`'s buffered ones and `Http.stream`'s live ones.
@@ -319,7 +318,6 @@ impl NativeHost {
             captured_out: String::new(),
             captured_err: String::new(),
             started: Instant::now(),
-            urandom: None,
             trace,
             dirs: Table::new(DIR),
             bodies: Table::new(BODY),
@@ -453,11 +451,7 @@ impl NativeHost {
     }
 
     fn entropy(&mut self, buf: &mut [u8]) {
-        // ponytail: `/dev/urandom` (platform A); `getrandom` when platform B lands.
-        let f = self.urandom.get_or_insert_with(|| {
-            std::fs::File::open("/dev/urandom").expect("/dev/urandom is readable")
-        });
-        f.read_exact(buf).expect("/dev/urandom is readable");
+        getrandom::fill(buf).expect("the OS random source is readable");
     }
 
     fn u64(&mut self) -> u64 {

@@ -21,6 +21,8 @@ locked in `compiler/Cargo.lock`; full source archives retain their own licence f
 | [target-lexicon](https://crates.io/crates/target-lexicon/0.13.5) | 0.13.5 | Apache-2.0 WITH LLVM-exception | [LICENSE](third-party/cap-std/LICENSE-Apache-2.0_WITH_LLVM-exception) |
 | [gimli](https://crates.io/crates/gimli/0.34.0) | 0.34.0 | MIT OR Apache-2.0 | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-MIT](third-party/gimli/LICENSE-MIT) |
 | [object](https://crates.io/crates/object/0.40.0) | 0.40.0 | Apache-2.0 OR MIT | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-MIT](third-party/object/LICENSE-MIT) |
+| [find-msvc-tools](https://crates.io/crates/find-msvc-tools/0.1.14) | 0.1.14 | MIT OR Apache-2.0 | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-MIT](third-party/find-msvc-tools/LICENSE-MIT) |
+| [getrandom](https://crates.io/crates/getrandom/0.4.3) | 0.4.3 | MIT OR Apache-2.0 | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-MIT](third-party/getrandom/LICENSE-MIT) |
 | [tokio](https://crates.io/crates/tokio/1.53.3) | 1.53.3 | MIT | [LICENSE](third-party/tokio/LICENSE) |
 | [reqwest](https://crates.io/crates/reqwest/0.13.5) | 0.13.5 | MIT OR Apache-2.0 | [LICENSE-APACHE](third-party/reqwest/LICENSE-APACHE), [LICENSE-MIT](third-party/reqwest/LICENSE-MIT) |
 | [rustls](https://crates.io/crates/rustls/0.23.46) | 0.23.46 | Apache-2.0 OR ISC OR MIT | [LICENSE-APACHE](third-party/cap-std/LICENSE-APACHE), [LICENSE-ISC](third-party/rustls/LICENSE-ISC), [LICENSE-MIT](third-party/rustls/LICENSE-MIT) |

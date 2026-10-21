@@ -88,6 +88,8 @@ gimli = "=0.34.0"
 object = "=0.40.0"
 # MSVC's `link.exe` for `--target native` on Windows; already in the lock through `cc`.
 find-msvc-tools = "=0.1.14"
+# The native host's entropy (`Random`) on every platform; already in the lock.
+getrandom = "=0.4.3"
 cap-std = "=4.0.3"
 crabgrind = "=0.4.0"
 # The native heap's reservation (`runtime/rt/src/mem.rs`, design §17.169 (1)).

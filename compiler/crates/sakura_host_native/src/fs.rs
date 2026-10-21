@@ -64,6 +64,15 @@ fn host_message(e: &std::io::Error) -> String {
     .into()
 }
 
+/// [`host_message`] for opening `p` as a file: Windows refuses a directory with "permission
+/// denied" where Unix and Node say "is a directory" (plan m5-native.md row C).
+fn file_message(e: &std::io::Error, p: &Path) -> String {
+    if cfg!(windows) && e.kind() == std::io::ErrorKind::PermissionDenied && p.is_dir() {
+        return "is a directory".into();
+    }
+    host_message(e)
+}
+
 /// `realpath`, as Node's `realpathSync`.
 fn real(p: &Path) -> std::io::Result<PathBuf> {
     std::fs::canonicalize(p)
@@ -165,11 +174,11 @@ impl Dir {
                     None => Err("not found".into()),
                 }
             }
-            Dir::Host { cap, .. } => self.host(rel, false, |_, rel| {
+            Dir::Host { cap, .. } => self.host(rel, false, |p, rel| {
                 let mut out = vec![];
                 cap.open(rel)
                     .and_then(|f| f.take(limit).read_to_end(&mut out))
-                    .map_err(|e| host_message(&e))?;
+                    .map_err(|e| file_message(&e, p))?;
                 Ok(out)
             }),
         }
@@ -186,8 +195,8 @@ impl Dir {
                 s.files.insert(key, data.to_vec());
                 Ok(())
             }
-            Dir::Host { cap, .. } => self.host(rel, true, |_, rel| {
-                cap.write(rel, data).map_err(|e| host_message(&e))
+            Dir::Host { cap, .. } => self.host(rel, true, |p, rel| {
+                cap.write(rel, data).map_err(|e| file_message(&e, p))
             }),
         }
     }
@@ -198,12 +207,12 @@ impl Dir {
         let Dir::Host { cap, .. } = self else {
             return Err("this directory has no host access".into());
         };
-        self.host(rel, true, |_, rel| {
+        self.host(rel, true, |p, rel| {
             let mut o = OpenOptions::new();
             o.append(true).create(true);
             cap.open_with(rel, &o)
                 .and_then(|mut f| f.write_all(data))
-                .map_err(|e| host_message(&e))
+                .map_err(|e| file_message(&e, p))
         })
     }
 
@@ -461,14 +470,14 @@ impl Files {
                 }))
             }
             Dir::Host { cap, .. } => {
-                let f = d.host(rel, mode != FileMode::Read, |_, rel| {
+                let f = d.host(rel, mode != FileMode::Read, |p, rel| {
                     let mut o = OpenOptions::new();
                     match mode {
                         FileMode::Read => o.read(true),
                         FileMode::Write => o.write(true).create(true).truncate(true),
                         FileMode::Append => o.append(true).create(true),
                     };
-                    cap.open_with(rel, &o).map_err(|e| host_message(&e))
+                    cap.open_with(rel, &o).map_err(|e| file_message(&e, p))
                 })?;
                 Ok(self.add(Open::Host(f)))
             }
