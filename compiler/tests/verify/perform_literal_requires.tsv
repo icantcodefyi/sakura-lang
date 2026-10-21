@@ -1,0 +1,13 @@
+# profile	symbol	site	status	clause
+i64	main::main::after_loop	pre%6	proved	requires Cli.exit
+i64	main::main::after_loop	t%5	unsupported	overflow t%5 = 0 + 1
+i64	main::main::after_loop_bad	pre%6	unsupported	requires Cli.exit
+i64	main::main::after_loop_bad	t%5	unsupported	overflow t%5 = 0 + 1
+i64	main::main::computed	pre%2	unsupported	requires Cli.exit
+i64	main::main::finish	pre%0	proved	requires Cli.exit
+js	main::main::after_loop	pre%6	proved	requires Cli.exit
+js	main::main::after_loop	t%5	unsupported	overflow t%5 = 0 + 1
+js	main::main::after_loop_bad	pre%6	unsupported	requires Cli.exit
+js	main::main::after_loop_bad	t%5	unsupported	overflow t%5 = 0 + 1
+js	main::main::computed	pre%2	unsupported	requires Cli.exit
+js	main::main::finish	pre%0	proved	requires Cli.exit

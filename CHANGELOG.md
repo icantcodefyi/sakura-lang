@@ -172,6 +172,11 @@ retains earlier implementation history.
   on every target (design §17.295 F6). An internal `V9001` now points at the invalid
   definition instead of the file's first character. Fixture
   `compiler/tests/semantics/lambda_calls_lambda_through_result_map.sak`.
+- `sakura verify` decides a callee's `requires` at a call whose arguments are all literals by
+  evaluating it (design §17.301 (4) (iii)): `Cli.exit(0)` in a function with a loop is
+  `proved`, where the loop made it `unsupported`. A literal call whose `requires` evaluates
+  false is still the solver's and the path's (so `unsupported` after a loop), and computed
+  arguments are unchanged. Fixture `compiler/tests/verify/perform_literal_requires.sak`.
 - A bare constructor of a std sum type is named with its type (design §17.301 (4) (i)):
   `Text("s")` (0.1.0's `String` body) said "did you mean `Test`?" and `Bytes(b)` was a bare
   `V1007`; both now say "`Text` is a constructor of `Payload` (`std/request`): write

@@ -1,0 +1,31 @@
+// Design §17.301 (4) (iii), row 19 (dogfood/workshop-power's `main`): an operation's `requires`
+// at a perform site whose arguments are literals is decided by evaluation, wherever the call is.
+// `Cli.exit(0)` holds `code >= 0 && code <= 255` on every path, so a loop elsewhere in the
+// function no longer makes it `unsupported`; the loop's own obligations stay `unsupported`.
+import std/cli.{Cli}
+
+// The dogfood's shape: proved.
+fn finish() -> Unit ! {Cli} { Cli.exit(0) }
+
+// After a loop: still proved.
+fn after_loop() -> Unit ! {Cli} {
+  var i = 0
+  while i < 3 { i = i + 1 }
+  Cli.exit(0)
+}
+
+// A literal that breaks the `requires` is left to the solver and the path, and a loop makes the
+// path unreadable: `unsupported`, not a `disproved` the path may not reach.
+fn after_loop_bad() -> Unit ! {Cli} {
+  var i = 0
+  while i < 3 { i = i + 1 }
+  Cli.exit(256)
+}
+
+// A computed code is the encoder's as before: `unsupported` (the result of an effectful call).
+fn computed() -> Unit ! {Cli} {
+  let code = List.len(Cli.args())
+  Cli.exit(code)
+}
+
+pub fn main() -> Unit ! {Cli} { finish() }

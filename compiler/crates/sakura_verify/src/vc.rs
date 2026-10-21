@@ -18,7 +18,7 @@
 //! effect results, builtins) are unconstrained *havoc* constants; an obligation whose `D` or `P`
 //! depends on one is `unsupported`, naming the construct.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::rc::Rc;
 
 use serde::Serialize;
@@ -289,6 +289,7 @@ pub fn generate_def(m: &Module, profile: Profile, def: DefId) -> DefVc {
         memo: HashMap::new(),
         steps: 0,
         unsupported: None,
+        decided: vec![],
     };
     let mut f = Frame::new(d, Emit::Root, "");
     let mut path = Path {
@@ -330,8 +331,14 @@ pub fn generate_def(m: &Module, profile: Profile, def: DefId) -> DefVc {
     }
     g.block(&mut f, &d.body, path);
     if let Some(why) = g.unsupported.clone() {
-        for o in &mut g.vc.obligations {
-            o.unsupported.get_or_insert_with(|| why.clone());
+        for (i, o) in g.vc.obligations.iter_mut().enumerate() {
+            if g.decided.contains(&i) {
+                // Its goal holds whatever the path, and the path is what the loop leaves
+                // unreadable: the solver sees the closed goal alone.
+                o.assume.clear();
+            } else {
+                o.unsupported.get_or_insert_with(|| why.clone());
+            }
         }
     }
     let mut vc = g.vc;
@@ -448,6 +455,9 @@ struct Site {
     local: String,
     pos: Option<Pos>,
     callee: DefId,
+    /// Every argument is a literal (`Cli.exit(0)`), so the callee's `requires` is decided by
+    /// evaluation wherever the call is (design §17.301 (4) (iii)).
+    literal: bool,
 }
 
 struct Frame<'m> {
@@ -461,6 +471,13 @@ struct Frame<'m> {
     prologue_only: bool,
     /// Called from inside a contract predicate: arithmetic is predicate definedness.
     outer_region: bool,
+    /// Locals bound to a literal (`let %2 = 0`): Core binds each once, so a loop cannot change
+    /// them, unlike a value the encoder computed.
+    lits: HashSet<Local>,
+}
+
+fn is_literal(a: &Atom) -> bool {
+    matches!(a, Atom::Lit(Lit::Int(_) | Lit::Bool(_) | Lit::Unit))
 }
 
 impl<'m> Frame<'m> {
@@ -474,6 +491,7 @@ impl<'m> Frame<'m> {
             site: None,
             prologue_only: false,
             outer_region: false,
+            lits: HashSet::new(),
         }
     }
 
@@ -497,6 +515,74 @@ struct Gen<'m> {
     memo: HashMap<Key, Val>,
     steps: u32,
     unsupported: Option<String>,
+    /// Obligations (by index) a function-wide `unsupported` (a loop, a function too large to
+    /// encode) does not reach: a literal call's `requires` that evaluates to true.
+    decided: Vec<usize>,
+}
+
+/// The value of `t` when it depends on no input: every variable it mentions is a local defined
+/// over constants (a literal argument's callee locals). `None` for anything else or a division
+/// by zero. `InRange` is the profile's.
+fn eval_closed(t: &Term, vc: &DefVc) -> Option<Term> {
+    let int = |t: &Term| match eval_closed(t, vc)? {
+        Term::Int(i) => Some(i),
+        _ => None,
+    };
+    let bool = |t: &Term| match eval_closed(t, vc)? {
+        Term::Bool(b) => Some(b),
+        _ => None,
+    };
+    Some(match t {
+        Term::Int(_) | Term::Bool(_) => t.clone(),
+        // Defs only mention earlier variables, so this ends.
+        Term::Var(v) => match vc.vars.get(*v as usize)? {
+            Var {
+                origin: Origin::Local,
+                def: Some(d),
+                ..
+            } => eval_closed(d, vc)?,
+            _ => return None,
+        },
+        Term::App(op, a) => match (op, a.as_slice()) {
+            (Op::Add, [x, y]) => Term::Int(int(x)?.checked_add(int(y)?)?),
+            (Op::Sub, [x, y]) => Term::Int(int(x)?.checked_sub(int(y)?)?),
+            (Op::Mul, [x, y]) => Term::Int(int(x)?.checked_mul(int(y)?)?),
+            (Op::Neg, [x]) => Term::Int(int(x)?.checked_neg()?),
+            (Op::TDiv, [x, y]) => Term::Int(int(x)?.checked_div(int(y)?)?),
+            (Op::TRem, [x, y]) => Term::Int(int(x)?.checked_rem(int(y)?)?),
+            (Op::Eq, [x, y]) => Term::Bool(eval_closed(x, vc)? == eval_closed(y, vc)?),
+            (Op::Lt, [x, y]) => Term::Bool(int(x)? < int(y)?),
+            (Op::Le, [x, y]) => Term::Bool(int(x)? <= int(y)?),
+            (Op::Not, [x]) => Term::Bool(!bool(x)?),
+            (Op::And, xs) => Term::Bool(
+                xs.iter()
+                    .map(bool)
+                    .collect::<Option<Vec<_>>>()?
+                    .iter()
+                    .all(|b| *b),
+            ),
+            (Op::Or, xs) => Term::Bool(
+                xs.iter()
+                    .map(bool)
+                    .collect::<Option<Vec<_>>>()?
+                    .iter()
+                    .any(|b| *b),
+            ),
+            (Op::Implies, [x, y]) => Term::Bool(!bool(x)? || bool(y)?),
+            (Op::Ite, [c, x, y]) => {
+                if bool(c)? {
+                    eval_closed(x, vc)?
+                } else {
+                    eval_closed(y, vc)?
+                }
+            }
+            (Op::InRange, [x]) => {
+                let (lo, hi) = vc.profile.bounds();
+                Term::Bool((lo..=hi).contains(&int(x)?))
+            }
+            _ => return None,
+        },
+    })
 }
 
 fn sort_of(t: &Ty) -> Option<Sort> {
@@ -619,6 +705,9 @@ impl<'m> Gen<'m> {
                             return vec![Exit::Stop(path)];
                         }
                         path.prologue = false;
+                    }
+                    if matches!(bind, Bind::Atom(a) if is_literal(a)) {
+                        f.lits.insert(*local);
                     }
                     match self.bind(f, *local, bind, *pos, &mut path) {
                         Some(v) => {
@@ -1046,6 +1135,10 @@ impl<'m> Gen<'m> {
                             local: name.clone(),
                             pos,
                             callee: d,
+                            literal: args.iter().all(|a| match a {
+                                Atom::Local(l) => f.lits.contains(l),
+                                a => is_literal(a),
+                            }),
                         };
                         return self.call(f, site, &name, &ty, d, caps, vs, path);
                     }
@@ -1198,6 +1291,16 @@ impl<'m> Gen<'m> {
                 (Some(s), Emit::CallSite) => (s.local.clone(), s.pos.or(pos), Some(s.callee)),
                 _ => (name.to_owned(), pos, None),
             };
+            // A literal call's `requires` that holds by evaluation holds on every path, so no
+            // path condition, loop or havoc around the call makes it `unsupported`. One that
+            // evaluates false is left to the solver and the path (it may be unreachable).
+            let literal = f.emit == Emit::CallSite
+                && f.site.as_ref().is_some_and(|s| s.literal)
+                && eval_closed(&Term::and([defined.clone(), cond.clone()]), &self.vc)
+                    == Some(Term::TRUE);
+            if literal {
+                self.decided.push(self.vc.obligations.len());
+            }
             self.vc.obligations.push(Obligation {
                 kind,
                 clause: format!("{word} {}", decl.name),
