@@ -144,9 +144,13 @@ def materialize(directory, candidate):
 def checked(binary, directory, commit):
     result = run([binary, 'check', '--json', '--frozen-specs', 'all', '--since', commit], directory)
     rows = records(result)
+    # Codes, exit and holes only: a record's snapshot hash and paths differ per run, and the
+    # reason lands in a transcript that `replay` must reproduce byte for byte (design §17.297).
+    codes = [row['code'] for row in rows if row.get('code')]
     require(result[0] == 0 and rows[-1].get('holes') == 0,
-            f'candidate check/frozen/holes rejected: {result}')
-    require(not any(row.get('code') for row in rows), f'candidate diagnostics: {rows}')
+            f'candidate check/frozen/holes rejected: exit {result[0]}, holes '
+            f"{rows[-1].get('holes')}, codes {codes}")
+    require(not codes, f'candidate diagnostics: {codes}')
 
 
 def oracle(binary, directory, task, name, candidate):
