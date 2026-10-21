@@ -30,9 +30,9 @@ export function BenchTable({ table }: { table: TableName }) {
                       t.align[i] === "r"
                         ? "text-right tabular-nums"
                         : c === "miss" || c === "over budget" || c === "target missed"
-                          ? "text-fail"
+                          ? "whitespace-nowrap text-fail"
                           : c === "met" || c === "within"
-                            ? "text-ok"
+                            ? "whitespace-nowrap text-ok"
                             : undefined
                     }
                   >

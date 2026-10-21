@@ -1,6 +1,6 @@
 ---
 title: Benchmarks
-description: Instructions retired per call for every benchmark program on the reference Apple M4 Pro, against hand-written JavaScript on the same engine, with the compile-time budgets and the cross-language envelope.
+description: Instructions retired per call for every benchmark program on the reference Mac, against hand-written JavaScript on the same engine, with the compile-time budgets and the cross-language envelope.
 ---
 
 Every number on this page is read at build time from the blessed counted baseline
@@ -54,7 +54,7 @@ the same hand JavaScript on Node.
 ## How it is measured
 
 The metric is **instructions retired per call**, read from macOS's `/usr/bin/time -l` on the
-reference Apple M4 Pro. As with [rustc-perf](https://perf.rust-lang.org), the reason is
+reference Mac named above. As with [rustc-perf](https://perf.rust-lang.org), the reason is
 repeatability: a count barely moves when other programs share the machine, so the suite runs
 while other work goes on and needs no idle night (design §17.264).
 
@@ -100,8 +100,8 @@ differ by more than 1%.
 
 One `sakura` process per run after a warm-up, over generated packages and a new project. The
 budgets are research/10 §6's, on the p95 of fifteen processes; the targets are design §17.195's,
-reported beside the budgets and never an exit. These are wall times on the loaded reference
-machine, with each case's median instruction count beside them. `test_hello` counts the CLI's own
+reported beside the budgets and never an exit. Times are in milliseconds, wall time on the loaded
+reference machine, with each case's median instruction count beside them. `test_hello` counts the CLI's own
 process, not the Node process it starts.
 
 <BenchTable table="compile" />

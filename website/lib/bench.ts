@@ -236,7 +236,7 @@ function compileTable(): Table {
   const over = rows.filter((r) => r[6] === "over budget").length;
   const missed = rows.filter((r) => r[6] === "target missed").map((r) => `\`${r[0]}\``);
   return {
-    head: ["Case", "Lines", "median ms", "p95 ms", "budget ms", "target ms", "p95", "instructions"],
+    head: ["Case", "lines", "median", "p95", "budget", "target", "verdict", "instructions"],
     align: ["l", "r", "r", "r", "r", "r", "l", "r"],
     code: [0],
     rows,
@@ -303,7 +303,7 @@ const verdict = (r: number, c: number) => (r <= c ? "met" : "miss");
 
 function targetsTable(): Table {
   return {
-    head: ["Program", "ceiling", "Node", "", "Bun", ""],
+    head: ["Program", "ceiling", "Node", "verdict", "Bun", "verdict"],
     align: ["l", "r", "r", "l", "r", "l"],
     code: [0],
     rows: targets.map((t) => [
