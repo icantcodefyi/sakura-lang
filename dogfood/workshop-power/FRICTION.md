@@ -233,3 +233,22 @@ that matter here:
 - Native is experimental and absent from release binaries.
 - **Breaking:** a response body cut short in `Http.host()` is `Err(HttpError)`.
 - `init` writes `.gitattributes` with `*.snap -text`.
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- The source needed no change; see MIGRATION.md. Item 6 (`verify_summary` at `"1.0"`) is
+  exactly what the verify run now writes. The obligation records stay at `"1.1"`, so one run
+  mixes two schema versions. The list says so ("reads `"1.0"` on `verify_summary`"), but a
+  reader that keys one version per stream would trip on it.
+- **The verify result changed with no source change, and the list cannot say so.** A new
+  obligation, `main.main requires Cli.exit`, is `unsupported` because `run_cli` has no
+  `ensures` for its exit code. It comes from the `Fixed` entry that checks an effect
+  operation's `requires` at every perform site. The kernel gate is unaffected (45/45 proved
+  on both profiles). A CI gate that pins "1 unsupported, and it is `watts`" would now fail
+  for a different reason: `watts ensures unchanged` is proved on the beta (item 8 of this log
+  is fixed), and `main`'s new obligation takes its place in the count. Discharging it would
+  need `ensures result >= 0 && result <= 255` on `run_cli`; not added, since the list does not
+  ask for it and `main` is outside the proof claim.
+- Item 7 of this log (record-field refinements) was not re-probed; `policy.step` still takes
+  separate `Watts` parameters.
+- `Cli.exit` gives 2 on `--target wasm` (item 11 of this log is fixed).

@@ -4,6 +4,7 @@
 // repository checkout or path to one; sources were the installed CLI and the
 // public website only.
 // Built against `sakura --version`: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+// Upgraded to: sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399); see MIGRATION.md.
 //
 // Usage: sakura run -- '<snapshot JSON>'
 //
