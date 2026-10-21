@@ -2090,6 +2090,11 @@ impl Cx {
             }
             format!("import std/{}.{{{name}}}", self.program.module(t).path)
         };
+        self.import_fix(m, line)
+    }
+
+    /// The `MachineApplicable` fix adding `line` after `m`'s last `import`.
+    fn import_fix(&self, m: ModuleId, line: String) -> Option<Fix> {
         let root = self.mods[m.0 as usize].root.as_ref()?;
         let (at, text) = match root.children().filter(|c| c.kind() == IMPORT).last() {
             Some(i) if i.text().to_string().ends_with('\n') => {
@@ -2107,6 +2112,91 @@ impl Cx {
                 replacement: text,
             }],
         })
+    }
+
+    /// When `name` is a constructor of a std `pub` sum type (design §17.301 (4) (i)), the
+    /// sentence saying so and its fixes. One owner — the only std type with a variant `name`, or
+    /// the only one in a module `m` imports — gives "`Text` is a constructor of `Payload`
+    /// (`std/request`): write `Payload.Text(…)`", the `import` of the type (`MachineApplicable`,
+    /// unless it is in scope) and the rewrite at `range` (`Suggested`, since it changes the
+    /// call); several give the list and no fix.
+    pub(crate) fn std_ctor_hint(
+        &self,
+        m: ModuleId,
+        name: &str,
+        range: TextRange,
+    ) -> Option<(String, Vec<Fix>)> {
+        let p = &self.program;
+        let mut owners: Vec<(ModuleId, DefId)> = Vec::new();
+        for t in (0..p.modules.len() as u32).map(ModuleId) {
+            if t == m || p.packages[p.module(t).package.0 as usize].name != "std" {
+                continue;
+            }
+            for &i in &p.module(t).items {
+                let def = &p.module(t).defs[i];
+                if let DefKind::Type(TypeDef {
+                    body: TypeDefBody::Variants(vs),
+                    opaque: false,
+                    ..
+                }) = &def.kind
+                    && def.is_pub
+                    && vs.iter().any(|&v| p.module(t).defs[v].name == name)
+                {
+                    owners.push((
+                        t,
+                        DefId {
+                            module: t,
+                            index: i,
+                        },
+                    ));
+                }
+            }
+        }
+        if owners.len() > 1 {
+            let imported: Vec<_> = (owners.iter())
+                .filter(|(t, _)| p.module(m).imports.iter().any(|i| i.target == Some(*t)))
+                .copied()
+                .collect();
+            if imported.len() == 1 {
+                owners = imported;
+            }
+        }
+        let shown = |(t, d): &(ModuleId, DefId)| {
+            format!("`{}` (`std/{}`)", p.def(*d).name, p.module(*t).path)
+        };
+        match owners.as_slice() {
+            [] => None,
+            [(t, d)] => {
+                let ty = &p.def(*d).name;
+                let msg = format!(
+                    "`{name}` is a constructor of {}: write `{ty}.{name}(…)`",
+                    shown(&(*t, *d))
+                );
+                let mut fixes = Vec::new();
+                if self.lookup_module_name(m, ty) != Some(Binding::Def(*d)) {
+                    let line = format!("import std/{}.{{{ty}}}", p.module(*t).path);
+                    fixes.extend(self.import_fix(m, line));
+                }
+                fixes.push(Fix {
+                    applicability: Applicability::Suggested,
+                    ..diag::replace_fix(
+                        self.file(m),
+                        range,
+                        format!("Use `{ty}.{name}`"),
+                        &format!("{ty}.{name}"),
+                    )
+                });
+                Some((msg, fixes))
+            }
+            many => {
+                let list: Vec<String> = many.iter().map(shown).collect();
+                let msg = format!(
+                    "`{name}` is a constructor of {}: write `Type.{name}(…)` with its type imported",
+                    list.join(", ")
+                );
+                Some((msg, Vec::new()))
+            }
+        }
     }
 
     /// `W1003` (design §17.294 RQ-5): one warning per name an `import` of `m` binds that no

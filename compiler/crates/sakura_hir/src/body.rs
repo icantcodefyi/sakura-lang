@@ -989,8 +989,26 @@ impl<'a> BodyCx<'a> {
             _ => String::new(),
         };
         let msg = format!("`{}` is {what}, not a value{hint}", name.text());
-        self.cx
-            .report(diag::error(diag::WRONG_KIND, file, name.text_range(), msg));
+        let mut d = diag::error(diag::WRONG_KIND, file, name.text_range(), msg);
+        // `Bytes(b)`: a builtin or std type that is also a std constructor (§17.301 (4) (i)).
+        let foreign = match binding {
+            Binding::Builtin(_) => true,
+            Binding::Def(t) => {
+                let p = &self.cx.program;
+                p.packages[p.module(t.module).package.0 as usize].name == "std"
+            }
+            Binding::Module(_) => false,
+        };
+        if hint.is_empty()
+            && foreign
+            && let Some((more, fixes)) =
+                self.cx
+                    .std_ctor_hint(self.m, name.text(), name.text_range())
+        {
+            d.message.push_str(&format!("; {more}"));
+            d.fixes.extend(fixes);
+        }
+        self.cx.report(d);
         Res::Err
     }
 
@@ -1043,8 +1061,15 @@ impl<'a> BodyCx<'a> {
                 .then(|| self.cx.std_import_fix(self.m, text, true))
                 .flatten()
         });
+        // A std constructor (`Text` of `Payload`) wins over a near spelling (`Test`).
+        let ctor = (import.is_none() && name.kind() == TYPE_NAME)
+            .then(|| self.cx.std_ctor_hint(self.m, text, range))
+            .flatten();
         if let Some(fix) = import {
             d = d.with_fix(fix);
+        } else if let Some((hint, fixes)) = ctor {
+            d.message.push_str(&format!("; {hint}"));
+            d.fixes.extend(fixes);
         } else if let Some(s) = did_you_mean(text, cands.iter().map(String::as_str)) {
             d.message.push_str(&format!("; did you mean `{s}`?"));
             d = d.with_fix(diag::replace_fix(file, range, format!("Use `{s}`"), s));

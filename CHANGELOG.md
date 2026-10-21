@@ -159,6 +159,13 @@ retains earlier implementation history.
   on every target (design §17.295 F6). An internal `V9001` now points at the invalid
   definition instead of the file's first character. Fixture
   `compiler/tests/semantics/lambda_calls_lambda_through_result_map.sak`.
+- A bare constructor of a std sum type is named with its type (design §17.301 (4) (i)):
+  `Text("s")` (0.1.0's `String` body) said "did you mean `Test`?" and `Bytes(b)` was a bare
+  `V1007`; both now say "`Text` is a constructor of `Payload` (`std/request`): write
+  `Payload.Text(…)`", with the type's `import` as the machine-applicable fix and the rewrite
+  as a suggested one, in a call or a pattern. A name several std types share is resolved by
+  the module the file already imports, else the message lists every owner and offers no fix.
+  ui case `V1002_std_constructor_hint`.
 - An anonymous record literal (`let c = { request: 0, cap: 0 }`, a block in expression
   position) is one `V1002` per field, at the field's name, and nothing else: the parser takes
   each `name: …` up to the next `,` or the line's end, where it reported a `V0009` cascade

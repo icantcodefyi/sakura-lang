@@ -1,0 +1,16 @@
+// milestone: M3
+// expect: V1002 V1007
+// design §17.301 (4) (i), row 18: 0.1.0's `String` body is `Payload.Text` now, and a bare
+// `Text("s")` named no std item, so the hint offered the near spelling `Test`. A name that is a
+// constructor of a std sum type says so instead: the type's `import` is the machine-applicable
+// fix and `Payload.Text` the suggested rewrite. `Text` is a constructor of five std types; the
+// one in a module this file imports (`std/request`) is the one named. `Bytes`, a builtin type
+// and `Payload`'s constructor, was a bare `V1007`.
+import std/request.{Request}
+
+fn rebuild(req: Request, b: Bytes) -> Request {
+  let _text = Text("s")
+  Request { ..req, body: Bytes(b) }
+}
+
+pub fn main() -> Unit {}
