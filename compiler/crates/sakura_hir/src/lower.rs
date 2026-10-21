@@ -150,6 +150,7 @@ fn lower_with(
         }
     }
     cx.check_main_rows();
+    cx.check_worker_attrs();
     if let Some((p, _)) = prev {
         let modules = &cx.program.modules;
         let in_reused = |d: &Diagnostic| {
@@ -1342,6 +1343,85 @@ impl Cx {
             );
             let d = Diagnostic::error(codes::V6010, Phase::Capability, msg)
                 .with_span(diag::span(self.file(m), range));
+            self.report(d);
+        }
+    }
+
+    /// `V1013` (design §17.299 (8)): `@worker` sits on a non-generic
+    /// `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker | e}`; on any other item its `$worker$` entry
+    /// could never be spawned. A type the check cannot read (an alias of the program's own, an
+    /// unresolved name) is left to `Worker.spawn`'s type check.
+    fn check_worker_attrs(&mut self) {
+        let p = &self.program;
+        let worker = p.find_module("std", "worker");
+        let get = |name: &str| worker.and_then(|m| p.lookup(m, name));
+        let (inbox, outbox, port) = (get("Inbox"), get("Outbox"), get("Port"));
+        // `Some(true)`: the port end the position wants; `None`: unknown, so not refused.
+        let end = |t: &TypeRef, want: Option<DefId>| -> Option<bool> {
+            match &t.kind {
+                TypeRefKind::Named {
+                    res: TypeRes::Def(d),
+                    ..
+                } if Some(*d) == want || Some(*d) == port => Some(true),
+                TypeRefKind::Named {
+                    res: TypeRes::Def(d),
+                    ..
+                } if Some(*d) != inbox
+                    && Some(*d) != outbox
+                    && matches!(
+                        &p.def(*d).kind,
+                        DefKind::Type(TypeDef {
+                            body: TypeDefBody::Alias(_),
+                            ..
+                        })
+                    ) =>
+                {
+                    None
+                }
+                TypeRefKind::Named {
+                    res: TypeRes::Err, ..
+                } => None,
+                _ => Some(false),
+            }
+        };
+        let mut found = Vec::new();
+        for (mi, module) in p.modules.iter().enumerate() {
+            for (_, def) in module.defs.iter() {
+                let Some(attr) = def.attrs.iter().find(|a| a.name == "worker") else {
+                    continue;
+                };
+                let ok = match &def.kind {
+                    DefKind::Fn(f) => {
+                        let sig = &f.sig;
+                        let unit = matches!(
+                            &sig.ret.kind,
+                            TypeRefKind::Named {
+                                res: TypeRes::Builtin(Builtin::Unit) | TypeRes::Err,
+                                ..
+                            }
+                        ) || matches!(&sig.ret.kind, TypeRefKind::Tuple(ts) if ts.is_empty());
+                        // Any row: `Worker.spawn` takes an entry with fewer effects than
+                        // `{Worker | e}` (a pure one spawns), and `e` is the caller's.
+                        sig.generics.is_empty()
+                            && sig.params.len() == 2
+                            && end(&sig.params[0].ty, inbox) != Some(false)
+                            && end(&sig.params[1].ty, outbox) != Some(false)
+                            && unit
+                    }
+                    _ => false,
+                };
+                if !ok {
+                    found.push((ModuleId(mi as u32), attr.range));
+                }
+            }
+        }
+        for (m, range) in found {
+            let d = diag::error(
+                codes::V1013,
+                self.file(m),
+                range,
+                "`@worker` goes on a non-generic `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker}`: a worker is started by name with its two ports".to_string(),
+            );
             self.report(d);
         }
     }

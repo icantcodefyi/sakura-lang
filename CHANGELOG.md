@@ -50,6 +50,10 @@ retains earlier implementation history.
   `expect_snapshot` name the test runner would refuse (outside letters, digits, `_`, `-` and
   `.`, empty, or starting with `.`), in the runner's words; a computed name is still checked
   when the test runs.
+- `V1013 worker_signature` (design §17.299 (8)): `@worker` on anything but a non-generic
+  `fn(Inbox<I>, Outbox<O>) -> Unit` (any row) is reported at the attribute, since its entry
+  could never be spawned: a function of another shape, a generic one, or a type or constant.
+  It was accepted and its `$worker$` entry was dead code. ui case `V1013_worker_signature`.
 - `V0016 keyword_binder` (design §17.297 (2)): a parameter, a lambda parameter, a `let` or
   `var` name or a pattern binding named `error` is reported where it is declared ("`error` is
   a keyword: it names a field, not a binding; choose another name"). Since `error` became a

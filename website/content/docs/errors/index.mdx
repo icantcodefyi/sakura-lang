@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-97 codes; 68 pages show a fixed program that the compiler's test suite checks.
+98 codes; 68 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -43,6 +43,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V1010](/docs/errors/V1010) | `unknown_attribute` | Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, `@test_only`, `@resource` and `@worker` (experimental) on items, and `@trust("reason")` as an expression (design §2.5). |
 | [V1011](/docs/errors/V1011) | `missing_body` | A function has no body. |
 | [V1012](/docs/errors/V1012) | `mixed_union_alternatives` | `type X = A \| B` must be either all existing error tags (an error-union alias) or all new variants. |
+| [V1013](/docs/errors/V1013) | `worker_signature` | `@worker` marks a worker's entry, which a live worker starts by name with its two ports, so it sits on a non-generic function `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker \| e}` (RFC 0002 §2.9). |
 | [V1020](/docs/errors/V1020) | `recursive_lambda` | Local lambdas cannot refer to themselves. |
 | [V1030](/docs/errors/V1030) | `import_cycle` | Modules import each other in a cycle; v0 forbids import cycles (design §9). |
 | [V1040](/docs/errors/V1040) | `assign_immutable` | Only `var` bindings can be assigned; `let` bindings and parameters are immutable (design §8.1). |

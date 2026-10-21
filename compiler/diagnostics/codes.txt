@@ -45,6 +45,7 @@ V1007 active wrong_kind
 V1010 active unknown_attribute
 V1011 active missing_body
 V1012 active mixed_union_alternatives
+V1013 active worker_signature
 V1020 active recursive_lambda
 V1030 active import_cycle
 V1040 active assign_immutable

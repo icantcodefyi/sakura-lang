@@ -58,6 +58,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V1010` | error | `unknown_attribute` | [V1010_tool_of_lambda.sak](../../compiler/tests/ui/V1010_tool_of_lambda.sak) | active |
 | `V1011` | error | `missing_body` | [V1011_missing_body.sak](../../compiler/tests/ui/V1011_missing_body.sak) | active |
 | `V1012` | error | `mixed_union_alternatives` | [V1012_mixed_union_alternatives.sak](../../compiler/tests/ui/V1012_mixed_union_alternatives.sak) | active |
+| `V1013` | error | `worker_signature` | [V1013_worker_signature.sak](../../compiler/tests/ui/V1013_worker_signature.sak) | active |
 | `V1020` | error | `recursive_lambda` | [V1020_recursive_lambda.sak](../../compiler/tests/ui/V1020_recursive_lambda.sak) | active |
 | `V1030` | error | `import_cycle` | [a.sak](../../compiler/tests/ui/V1030_import_cycle/a.sak), [b.sak](../../compiler/tests/ui/V1030_import_cycle/b.sak) | active |
 | `V1040` | error | `assign_immutable` | [V1040_assign_immutable.sak](../../compiler/tests/ui/V1040_assign_immutable.sak) | active |

@@ -1,0 +1,33 @@
+// milestone: M3
+// expect: V1013 V1013 V1013 V1013 V1013
+// spec: RFC 0002 §2.9 ("a function marked `@worker`"); design §17.299 (8), §17.301 row 8
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker
+
+// `@worker` marks an entry a live worker starts by name with its two ports, so it sits on a
+// non-generic `fn(Inbox<I>, Outbox<O>) -> Unit`; on anything else the entry could never be
+// spawned and the attribute is reported where it is written. `fine` and `pure` are accepted:
+// an entry may perform fewer effects than `Worker`.
+import std/worker.{Inbox, Outbox, Worker}
+
+@worker
+fn fine(_inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Unit ! {Worker} {}
+
+@worker
+fn pure(_inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Unit {}
+
+@worker
+fn double(n: Int) -> Int { n * 2 }
+
+@worker
+fn swapped(_outbox: Outbox<Int>, _inbox: Inbox<Int>) -> Unit ! {Worker} {}
+
+@worker
+fn answers(_inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Int ! {Worker} { 1 }
+
+@worker
+fn generic<T>(_inbox: Inbox<T>, _outbox: Outbox<T>) -> Unit ! {Worker} {}
+
+@worker
+type Job = { id: Int }
+
+pub fn main() -> Unit { let _ = Job { id: 1 } }

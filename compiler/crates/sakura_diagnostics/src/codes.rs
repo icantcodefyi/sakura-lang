@@ -274,6 +274,19 @@ Fixed:
     error Timeout
     type Outcome = Expired | Done";
 
+    V1013 "worker_signature" RESOLVE,
+"`@worker` marks a worker's entry, which a live worker starts by name with its two ports, so
+it sits on a non-generic function `fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker | e}` (RFC 0002
+§2.9). On a function of another shape, or on a type or constant, the entry could never be
+spawned, so the attribute is rejected where it is written.
+
+Wrong:
+    @worker
+    fn double(n: Int) -> Int { n * 2 }
+Fixed:
+    @worker
+    fn double(inbox: Inbox<Int>, outbox: Outbox<Int>) -> Unit ! {Worker} { … }";
+
     V1020 "recursive_lambda" RESOLVE,
 "Local lambdas cannot refer to themselves. Lift the function to the top level, where functions
 may be mutually recursive.
