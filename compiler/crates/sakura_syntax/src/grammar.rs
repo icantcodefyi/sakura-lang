@@ -508,7 +508,7 @@ pub(crate) fn param_list(p: &mut Parser<'_>, typed: bool) {
                 "parameter names start with a lowercase letter",
             );
         }
-        p.bump();
+        p.bump_binder();
         if p.eat(COLON) {
             ty(p);
         } else if typed {
@@ -522,7 +522,7 @@ pub(crate) fn param_list(p: &mut Parser<'_>, typed: bool) {
 /// The `IDENT` of a `let`/`var` binding; a `TYPE_NAME` is reported and kept.
 pub(crate) fn value_name(p: &mut Parser<'_>, what: &str) {
     match p.current() {
-        IDENT => p.bump(),
+        IDENT => p.bump_binder(),
         TYPE_NAME => {
             p.error(
                 codes::EXPECTED,

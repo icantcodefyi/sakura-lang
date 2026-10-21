@@ -202,7 +202,7 @@ fn simple_pat(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             WILDCARD_PAT
         }
         IDENT if !(p.peek_raw(1) == DOT && p.peek_raw(2) == TYPE_NAME) => {
-            p.bump();
+            p.bump_binder();
             BIND_PAT
         }
         IDENT | TYPE_NAME => {

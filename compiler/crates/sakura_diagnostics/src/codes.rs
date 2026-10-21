@@ -158,6 +158,17 @@ its encoding is fixed (its other diagnostics would be about text it does not hol
 files are checked as usual. Save the file as UTF-8: a Latin-1 `é` is the byte 0xE9, which UTF-8
 writes as 0xC3 0xA9. `sakura fmt` and edits leave such a file untouched.";
 
+    V0016 "keyword_binder" PARSE,
+"A parameter, a lambda parameter, a `let` or `var` name or a pattern binding is named `error`
+(design §17.297 (2)). `error` is a keyword: it names a field (`{ error: String }`, `r.error`)
+and declares an error tag at item position, but a body cannot refer to a binding by that name,
+because `error` in an expression is still the keyword. Choose another name.
+
+Wrong:
+    fn describe(error: String) -> String { \"failed: {error}\" }
+Fixed:
+    fn describe(reason: String) -> String { \"failed: {reason}\" }";
+
     // 1: resolve / modules
     V1001 "duplicate_definition" RESOLVE,
 "Two items in the same module and namespace have the same name (design §9). Rename or remove one;

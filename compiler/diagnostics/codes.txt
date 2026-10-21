@@ -34,6 +34,7 @@ V0012 active keyword_expression_operand
 V0013 active invalid_assign_target
 V0014 active named_argument
 V0015 active source_not_utf8
+V0016 active keyword_binder
 V1001 active duplicate_definition
 V1002 active unresolved_name
 V1003 active unresolved_type

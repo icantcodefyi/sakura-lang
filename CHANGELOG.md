@@ -430,6 +430,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `expect_snapshot` name the test runner would refuse (outside letters, digits, `_`, `-` and
   `.`, empty, or starting with `.`), in the runner's words; a computed name is still checked
   when the test runs.
+- `V0016 keyword_binder` (design §17.297 (2)): a parameter, a lambda parameter, a `let` or
+  `var` name or a pattern binding named `error` is reported where it is declared ("`error` is
+  a keyword: it names a field, not a binding; choose another name"). Since `error` became a
+  field name such a binder parsed but no body could use it. A field named `error` is
+  unaffected.
 
 ### Fixed
 

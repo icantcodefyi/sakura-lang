@@ -188,6 +188,22 @@ impl<'t> Parser<'t> {
         self.allow_reserved = true;
     }
 
+    /// Bumps the `IDENT` of a binding (a parameter, a `let`/`var` name, a pattern binding),
+    /// reporting `V0016` when it is `error`, which the lexer turns into an `IDENT` before `:`
+    /// for field names but which no body can use (design §17.297 (2)).
+    pub(crate) fn bump_binder(&mut self) {
+        if let Some(tok) = self.sig.get(self.pos)
+            && tok.kind == IDENT
+            && &self.text[tok.start as usize..tok.end as usize] == "error"
+        {
+            self.error(
+                codes::KEYWORD_BINDER,
+                "`error` is a keyword: it names a field, not a binding; choose another name",
+            );
+        }
+        self.bump();
+    }
+
     pub(crate) fn bump(&mut self) {
         assert!(self.pos < self.sig.len(), "bump at end of input");
         let tok = self.sig[self.pos];

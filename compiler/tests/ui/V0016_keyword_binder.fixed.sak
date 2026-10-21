@@ -1,0 +1,13 @@
+pub fn describe(reason: String) -> Int { String.len(reason) }
+
+pub fn handlers() -> Int {
+  let f = fn(code: Int) { code + 2 }
+  let failure: Int = 3
+  var count: Int = 4
+  count = count + failure
+  f(count)
+}
+
+pub type View = { error: String }
+
+pub fn read(v: View) -> String { v.error }

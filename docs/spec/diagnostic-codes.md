@@ -47,6 +47,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V0013` | error | `invalid_assign_target` | [V0013_invalid_assign_target.sak](../../compiler/tests/ui/V0013_invalid_assign_target.sak) | active |
 | `V0014` | error | `named_argument` | [V0014_named_argument.sak](../../compiler/tests/ui/V0014_named_argument.sak) | active |
 | `V0015` | error | `source_not_utf8` | [app.sak](../../compiler/tests/ui/V0015_source_not_utf8/app.sak), [names.sak](../../compiler/tests/ui/V0015_source_not_utf8/names.sak) | active |
+| `V0016` | error | `keyword_binder` | [V0016_keyword_binder.sak](../../compiler/tests/ui/V0016_keyword_binder.sak) | active |
 | `V1001` | error | `duplicate_definition` | [V1001_duplicate_definition.sak](../../compiler/tests/ui/V1001_duplicate_definition.sak) | active |
 | `V1002` | error | `unresolved_name` | [V1002_anonymous_record_literal.sak](../../compiler/tests/ui/V1002_anonymous_record_literal.sak) | active |
 | `V1003` | error | `unresolved_type` | [V1003_unresolved_type.sak](../../compiler/tests/ui/V1003_unresolved_type.sak) | active |

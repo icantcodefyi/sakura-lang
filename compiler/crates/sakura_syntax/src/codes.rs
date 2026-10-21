@@ -31,3 +31,5 @@ pub const KEYWORD_EXPR_OPERAND: Code = codes::V0012;
 pub const INVALID_ASSIGN_TARGET: Code = codes::V0013;
 /// `name: value` in a call's argument list; only attributes take named arguments (§3.2 rule 13).
 pub const NAMED_ARGUMENT: Code = codes::V0014;
+/// A parameter, `let`/`var` name or pattern binding named `error`, a keyword (§17.297 (2)).
+pub const KEYWORD_BINDER: Code = codes::V0016;
