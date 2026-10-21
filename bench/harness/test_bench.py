@@ -1090,5 +1090,43 @@ class Workflow(unittest.TestCase):
         self.assertIn('wasmtime = "', pins)
 
 
+class TypeScriptSuite(unittest.TestCase):
+    def test_the_lockfile_installs_the_pinned_toolchain(self):
+        import tomllib
+        pins = tomllib.loads((bench.BENCH / "toolchains.toml").read_text())
+        lock = json.loads((bench.TS_TOOLS / "package-lock.json").read_text())["packages"]
+        for name, pin in (("typescript", "typescript"), ("@types/node", "types_node"), ("esbuild", "esbuild")):
+            self.assertEqual(lock[f"node_modules/{name}"]["version"], pins[pin], name)
+            self.assertEqual(lock[""]["devDependencies"][name], pins[pin], name)
+
+    def test_the_typescript_corpus_mirrors_the_sakura_one(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(bench, "TS_TREE", Path(tmp)):
+            entry = bench.ts_corpus(1_000)
+            mods = sorted(p.name for p in (entry.parent / "gen").iterdir())
+            self.assertEqual(mods, ["m0.ts", "m1.ts"])  # 1,000 lines at 10 per function, 50 per module
+            m0 = (entry.parent / "gen" / "m0.ts").read_text()
+            self.assertEqual(m0.count("export function f"), 50)
+            self.assertIn('if (!(x >= 0)) throw new RangeError("requires x >= 0");', m0)
+            self.assertIn('import * as m1 from "./gen/m1.ts";', entry.read_text())
+
+    def bless(self, flags):
+        run = loaded(doc(pair(20.0, 10.0)), load=9.0)
+        run["meta"]["flags"] = {**flags, "metric": "instructions"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run.json"
+            path.write_text(json.dumps(run))
+            with patch.object(bench, "BENCH", Path(tmp)), patch.object(bench, "ROOT", Path(tmp)), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                code = bench.main(["bless", str(path)])
+            return code, [p.relative_to(tmp).as_posix() for p in Path(tmp).rglob("test.json")]
+
+    def test_a_typescript_run_is_blessed_beside_the_js_baseline(self):
+        self.assertEqual(self.bless({"suite": "typescript", "command": "typescript"}),
+                         (bench.EXIT_OK, ["baselines/typescript/test.json"]))
+
+    def test_a_compile_run_is_never_blessed_over_the_js_baseline(self):
+        self.assertEqual(self.bless({"command": "compile"}), (bench.EXIT_ORACLE, []))
+
+
 if __name__ == "__main__":
     unittest.main()

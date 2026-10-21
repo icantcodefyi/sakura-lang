@@ -1,4 +1,4 @@
-function fib(n: number) {
+function fib(n: number): number {
   return n < 2 ? n : fib(n - 1) + fib(n - 2);
 }
 export function run(n: number) {

@@ -221,6 +221,7 @@ bench/bench run --suite wasm --instructions --json bench/target/counted-wasm.jso
 bench/bench run --suite native --lane matched --instructions \
   --json bench/target/counted-native.json > bench/target/counted-native.md
 bench/bench compile --instructions --json bench/target/counted-compile.json > bench/target/counted-compile.md
+bench/bench typescript --json bench/target/counted-typescript.json > bench/target/counted-typescript.md
 bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.json \
   --json bench/target/envelope.json --md bench/target/envelope.md
 ```
@@ -249,7 +250,12 @@ in time, with each case's median instruction count beside them.
 ```sh
 bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-id>.json
 bench/bench bless bench/target/counted-wasm.json    # -> bench/baselines/wasm/<host-id>.json
+bench/bench bless bench/target/counted-typescript.json  # -> bench/baselines/typescript/<host-id>.json
 ```
+
+The `typescript` run (from `v1.0.0-beta.3` on) puts `sakura check` beside `tsc --noEmit` and a
+built program's cold start beside Node running the TypeScript twin. The website shows its
+cells only once a blessed file of the same commit as the `js` baseline exists.
 
 **Node flags (design §17.282).** Every measured Node process runs under `meta.flags.node`,
 `--predictable --min-semi-space-size=16 --max-semi-space-size=16` from the flag commit on (a
@@ -277,7 +283,8 @@ The native and compile runs are evidence, not baselines, and are not blessed.
 
 **Evidence files**, committed on `main` (`D` is the date, `C` the short commit, `H` the host id):
 
-- `bench/baselines/H.json` and `bench/baselines/wasm/H.json`: the two blessed runs.
+- `bench/baselines/H.json` and `bench/baselines/wasm/H.json`: the two blessed runs, and
+  `bench/baselines/typescript/H.json` from `v1.0.0-beta.3` on.
 - `bench/results/D-C-js.json`, `D-C-wasm.json`, `D-C-native.json`, `D-C-compile.json`, their
   `.md` tables, `D-C-envelope.json` and `D-C-envelope.md`.
 - `bench/deltas.md`: the envelope's Markdown and each program's reading against its §17.109

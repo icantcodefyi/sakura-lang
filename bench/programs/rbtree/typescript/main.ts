@@ -5,7 +5,7 @@ const RED = 0, BLACK = 1;
 const node = (c: number, l: Tree, k: number, r: Tree): Node => ({ c, l, k, r });
 const isRed = (t: Tree): t is Node => t !== null && t.c === RED;
 
-function balance(c: number, l: Tree, k: number, r: Tree): Tree {
+function balance(c: number, l: Tree, k: number, r: Tree): Node {
   if (c === BLACK) {
     if (isRed(l) && isRed(l.l)) return node(RED, node(BLACK, l.l.l, l.l.k, l.l.r), l.k, node(BLACK, l.r, k, r));
     if (isRed(l) && isRed(l.r)) return node(RED, node(BLACK, l.l, l.k, l.r.l), l.r.k, node(BLACK, l.r.r, k, r));
@@ -14,7 +14,7 @@ function balance(c: number, l: Tree, k: number, r: Tree): Tree {
   }
   return node(c, l, k, r);
 }
-function ins(t: Tree, k: number): Tree {
+function ins(t: Tree, k: number): Node {
   if (t === null) return node(RED, null, k, null);
   if (k < t.k) return balance(t.c, ins(t.l, k), t.k, t.r);
   if (k > t.k) return balance(t.c, t.l, t.k, ins(t.r, k));

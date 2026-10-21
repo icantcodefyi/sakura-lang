@@ -1,0 +1,10 @@
+{
+  "name": "sakura-bench-typescript",
+  "private": true,
+  "description": "The TypeScript toolchain `bench typescript` compares with; the pins match bench/toolchains.toml.",
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

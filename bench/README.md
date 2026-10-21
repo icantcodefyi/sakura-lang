@@ -39,6 +39,7 @@ bench/bench envelope wasm.json native.json [--json out.json] [--md out.md]  # §
 bench/bench bless out.json                                 # → baselines/<host-id>.json, commit by hand
 bench/bench compile --json compile.json
 bench/bench compile-native --json compile-native.json      # plan M5 N2's native compile report
+bench/bench typescript --json typescript.json              # sakura check/start beside tsc and Node's TypeScript
 bench/bench oracle [--filter <glob>] [--write]
 ```
 
@@ -50,6 +51,7 @@ bench/bench oracle [--filter <glob>] [--write]
 | `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.264). Prints the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes after one warm-up; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. Also `check_hello` and `test_hello` on the `sakura new cli` project (`target/hello`). A `target_ms` column holds §17.195 (1)'s targets (`check_hello` 10 ms, `check_cold_10k` 45 ms): a miss prints `target missed` and is not an exit; `test_hello` has neither budget nor target, nor has `check_wide_match` (`target/wide_match`: §17.200 (8)'s 3,000-arm `Int` match, guarded rows alternating, and 3,000-constructor enumeration). std's analysis cache is `target/cache` unless `SAKURA_CACHE_DIR` is set. `--instructions` (macOS) also counts each `check`/`build`/`test` process's instructions (median and spread; the LSP case is one server and has none); the budgets stay on time. | 0; 2 over budget |
 | `compile-native` | The native compile report (plan M5 N2, design §17.175 (4)): builds the release CLI with the `native` feature and the driver staticlib (`target/native-driver`), then `sakura build --target native` of every program's `sakura/main.sak`, 15 fresh processes after one warm-up, and reports each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines: `frontend` (check and Core), `lowering` (Core → LIR, validated), `codegen` (Cranelift), `object` (unwind, DWARF, the file) and `link` (the system linker). No budget yet: the round after N2 sets it from a quiet window's numbers on the reference host. | 0; 2 a build failed |
+| `typescript` | `sakura check` beside `tsc --noEmit`, and a built program's cold start beside Node running the TypeScript twin ([TypeScript toolchain lane](#typescript-toolchain-lane)). | 0; 1 an oracle failed |
 | `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
 
 The host id is the first 12 hex digits of SHA-256 over CPU brand, OS name and architecture,
@@ -166,6 +168,27 @@ bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.
 
 The command exits 0 whatever the reading: it is a report and the owner reads the gate from
 it. It blesses nothing; a reading from timed runs that are not quiet is direction only.
+
+### TypeScript toolchain lane
+
+`bench typescript --json out.json` (macOS) puts Sakura's toolchain beside TypeScript's on the
+same programs: each program's `typescript/main.ts` twin (with `_shared/typescript/runner.ts`),
+copied into `target/typescript`, a `"type": "module"` package scope. TypeScript 7's native
+`tsc`, `@types/node` and esbuild come from `bench/typescript/package-lock.json` (`npm ci
+--ignore-scripts`), at the pins in `toolchains.toml`. Every cell is one warm-up process, then
+15 counted fresh processes under `/usr/bin/time -l` (all threads of that one process): the
+median instructions, their spread, wall time median and p95 (information), and peak RSS.
+
+| Cell | Variants | Oracle |
+|---|---|---|
+| `check` | `sakura check main.sak` with std's analysis cache (`sakura`, the default) and with `SAKURA_NO_CACHE=1` (`sakura_uncached`); `tsc --noEmit --strict --module nodenext --types node main.ts` (`tsc`) | exit 0, nothing printed |
+| `start` | a fresh `node` (the suite's flags) printing `run(n)` for n in 0–3: Sakura's `build` output (`sakura`); the twin through Node's own type stripping (`node_ts`); the twin bundled first by esbuild (`esbuild`) | the `[checksums]` of n = 0–3 |
+
+`corpus_10k` and `corpus_100k` are `check` cells over `bench compile`'s generated packages
+and their TypeScript transcription (`ts_corpus`: the same records, functions and matches; the
+`requires` clause becomes the throw a TypeScript function needs). A cell's `size` is the
+Sakura source's line count. `tsc` spreads its work over threads; the count is their sum,
+while wall time gains from them. A `typescript` run is blessed to `baselines/typescript/`.
 
 ## Program interface
 
