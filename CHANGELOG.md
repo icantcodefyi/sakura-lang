@@ -9,6 +9,13 @@ retains earlier implementation history.
 
 ### Added
 
+- **The Linux arm64 release binary carries `--target native` too** (experimental, platform B,
+  plan `m5-native.md` row B, design §17.308 (2f)): the `aarch64-unknown-linux-gnu` archive and
+  npm package install the native driver at `lib/sakura/native/` as the macOS arm64 and Linux
+  x64 ones do, `release.py smoke` builds and runs the native `fib` on that row, and a compiler
+  built for `aarch64-unknown-linux-gnu` with the `native` feature no longer refuses the target.
+  CI's native job and the Miri lane also run on `ubuntu-24.04-arm`. The executable needs
+  glibc 2.35 or later, as `sakura` does.
 - **Release binaries for macOS arm64 and Linux x64 carry `--target native`** (experimental,
   design §17.175 (6), §17.308 (2d)): those two archives, their npm platform packages and the
   Homebrew formula install the native driver at `lib/sakura/native/` beside `bin/`

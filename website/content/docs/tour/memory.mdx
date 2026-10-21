@@ -157,7 +157,7 @@ There is no shared mutable memory, so tasks cannot race on data. Tasks communica
 | --- | --- | --- |
 | JavaScript (ES modules, trampolined CPS with a direct-style fast path) | the default; in every release | host GC |
 | WebAssembly (`wasm-encoder`, runtime in linear memory) | complete; in every release | non-atomic RC, no WASM GC required |
-| Native (Cranelift) | experimental; macOS arm64 and Linux x64 release binaries | non-atomic RC; Perceus reuse after 1.0 |
+| Native (Cranelift) | experimental; macOS arm64, Linux x64 and Linux arm64 release binaries | non-atomic RC; Perceus reuse after 1.0 |
 
 Every backend starts from the same Core:
 
@@ -180,7 +180,7 @@ HTTP sends and streams, `Sql.sqlite`, `Llm.stream`, `Serve.host()` and `Log.json
 
 WASM uses signed i64 `Int`; overflow is `D001`. JavaScript keeps its safe-integer profile (`D003` beyond ±(2^53−1)). `String.parse_int` and `Float.to_int_checked` follow the selected backend's range. The JS/WASM parity matrix is enforced in CI on Ubuntu and macOS, comparing outputs, exits, defects and traces, with explicit backend expectations for those integer differences. WASM defect codes, dynamic messages and source spans now match JS. Spans come from `sakura.debug`; `--strip` removes them. See [server limits and failures](/docs/changes#webassembly-backend-complete) for host fault handling.
 
-The macOS arm64 and Linux x64 release binaries (from the first release after v1.0.0-beta.3), and a compiler built from source with `cargo build --release -p sakura_cli --features native`, also accept `--target native` on `build`, `run` and `test`, producing an executable that runs directly. It is **experimental**: it agrees with JavaScript on the semantics corpus, but `Http`, serving, `Llm` and `WebSocket` are not ported yet: a `main` that declares one of them exits 75 at startup with "`Http` is not available on target `native`", before any of its code runs, and a host handler for one installed inside the program stops with a `D090` defect at first use (exit 70). See the [roadmap](/docs/roadmap#m5-native-code-experimental).
+The macOS arm64, Linux x64 and Linux arm64 release binaries (from the first release after v1.0.0-beta.3), and a compiler built from source with `cargo build --release -p sakura_cli --features native`, also accept `--target native` on `build`, `run` and `test`, producing an executable that runs directly. It is **experimental**: it agrees with JavaScript on the semantics corpus, but `Http`, serving, `Llm` and `WebSocket` are not ported yet: a `main` that declares one of them exits 75 at startup with "`Http` is not available on target `native`", before any of its code runs, and a host handler for one installed inside the program stops with a `D090` defect at first use (exit 70). See the [roadmap](/docs/roadmap#m5-native-code-experimental).
 
 **Stability.** `--target js` and `--target wasm` are proposed as stable from v1.0.0-beta.1, and so is the WASM runtime ABI. Generated JavaScript, LIR and WASM bytes are internal and may change in any release. `--target native` is experimental. See [Stability](/docs/stability).
 

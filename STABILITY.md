@@ -40,8 +40,10 @@ the minimum supported Rust version (MSRV) is `workspace.package.rust-version`
 in `compiler/Cargo.toml`. The required `msrv` CI job installs that toolchain,
 checks all workspace targets with the lockfile, and runs workspace tests on Linux.
 MSRV increases may occur in pre-1.0 minor releases and must be announced in notes.
-Supported host/target and OS/ABI minimums will be stated only after native smoke
-tests exist; there are no supported target guarantees yet.
+The release binaries' floors are glibc 2.35 on Linux (x64 and arm64), macOS 12.0 and
+Windows 10 x64; a `--target native` executable needs the same floors as the `sakura` that
+built it. Native smoke tests run on the release rows marked native in
+`packaging/targets.json`; there are no supported native target guarantees.
 
 The compiler caches std's analysis on disk, one file per compiler build, in
 `<cache>/sakuralang/std/`: `<cache>` is `$SAKURA_CACHE_DIR`, else `$XDG_CACHE_HOME` or
@@ -84,7 +86,7 @@ and built-in help commands are also captured in the baseline.
 | CLI | `fmt [PATHS] --check`; `audit [PATHS] --json`; `doc [SYMBOL] --search --json`; `explain CODE`; `prompt --budget` | stable | 1.0.0-beta.1 |
 | CLI | `new KIND NAME --setup`; `init --kind`; `setup --client --apply` (kinds `cli`, `lib`, `agent`, `api`; clients `claude`, `codex`, `cursor`, `all`) | stable | 1.0.0-beta.1 |
 | CLI | `lsp`; `mcp serve --root` | stable | 1.0.0-beta.1 |
-| Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature; release binaries carry it on `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu` from the first release after 1.0.0-beta.3, with the driver staticlib at `lib/sakura/native/` beside `bin/`; experimental, no compatibility row; a build links with the system C linker `cc` and reports a missing one as `V8007`; a native `main` that declares `Http`, `Serve`, `WebSocket` or `Llm` exits 75 at startup, and a native worker whose entry declares one ends at its start the same way (RFC 0002 §7) | experimental | — |
+| Native | Native backend and Cargo `native` feature; `--target native` on `build`, `run` and `test` is accepted only by a compiler built with that feature; release binaries carry it on `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu` (platform B) from the first release after 1.0.0-beta.3, on the floors below, with the driver staticlib at `lib/sakura/native/` beside `bin/`; experimental, no compatibility row; a build links with the system C linker `cc` and reports a missing one as `V8007`; a native `main` that declares `Http`, `Serve`, `WebSocket` or `Llm` exits 75 at startup, and a native worker whose entry declares one ends at its start the same way (RFC 0002 §7) | experimental | — |
 | JSON Lines | `diagnostic`, `hole`, `summary`: `schema_version = "1.0"` in [diagnostic rendering](compiler/crates/sakura_diagnostics/src/json.rs), used by check/build/fix, pre-verification errors and a `test` run that does not compile; one `kind` per closing shape, every `summary` field required (design §17.242 (1)) | stable | 1.0.0-beta.1 |
 | JSON Lines | `audit`, `audit_summary`: `1.0`; `obligation`: `1.1`; verify's post-solver `diagnostic`: `1.1`; `verify_summary`: `1.0` | stable | 1.0.0-beta.1 |
 | JSON Lines | Test `test`, `test_summary`: `1.0` on JS and WASM; `regression` `1.0`, the record `test --contracts` stores as `tests/regressions/<fn>.json` and replays | stable | 1.0.0-beta.1 |

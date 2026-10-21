@@ -1,6 +1,6 @@
 # The native sanitizer lanes of design §17.173 and plan m5-native.md §4, each with the detection
-# control that turns it red when it misses its own seeded fault: Miri (invalid slot kind) on both
-# platform-A hosts, ASan + LSan (double drop, stale request) and Memcheck with the allocator's
+# control that turns it red when it misses its own seeded fault: Miri (invalid slot kind) on the
+# platform-A hosts and ARM Linux (B), ASan + LSan (double drop, stale request) and Memcheck with the allocator's
 # client requests (freed-object read) on x86_64 Linux. The controls run on every change to the
 # native runtime, host or backend; the full Memcheck corpus runs nightly and on demand.
 name: Native sanitizers
@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:

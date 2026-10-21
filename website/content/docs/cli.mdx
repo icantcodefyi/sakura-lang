@@ -63,8 +63,8 @@ contract checks are removed only where `sakura verify` proved them.
 | `--contracts` | test | Also run a generated property for every contracted `pub fn`. |
 | `--std` | test | Run the embedded standard library's own tests. |
 
-`--target native` is **experimental**. The macOS arm64 and Linux x64 release binaries carry it
-from the first release after v1.0.0-beta.3; elsewhere it exits 2 and names those two. A native
+`--target native` is **experimental**. The macOS arm64, Linux x64 and Linux arm64 release binaries
+carry it from the first release after v1.0.0-beta.3; elsewhere it exits 2 and names those three. A native
 build links with the system C linker `cc` and prints one line naming the target experimental;
 see [Install](/docs/install#native-builds-experimental) and
 [Backends](/docs/tour/memory#backends).

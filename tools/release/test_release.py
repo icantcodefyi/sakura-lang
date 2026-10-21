@@ -59,7 +59,7 @@ class ReleasePackaging(unittest.TestCase):
                             self.assertRaises(SystemExit):
                         release.archive(argparse.Namespace(**{**vars(args), "native_dir": None if args.native_dir else driver}))
         self.assertEqual({t["target"] for t in release.TARGETS if t.get("native")},
-                         {"aarch64-apple-darwin", "x86_64-unknown-linux-gnu"})
+                         {"aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"})
 
     def test_dist_tag_follows_the_version_string(self):
         for ver, tag, formula in (("0.1.0", "latest", "sakuralang"), ("1.2.3", "latest", "sakuralang"),

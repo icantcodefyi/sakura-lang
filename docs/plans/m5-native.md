@@ -397,6 +397,26 @@ the split does not touch (REQUESTS 2026-10-22, N2g). `PIECE` is from the curve a
 (1,024 compiled the 32,768-row function fastest) and is above every corpus function (417 blocks)
 and every bench program's (119), so neither is cut.
 
+**B-native (2026-10-22): code and CI landed; acceptance waits for the beta that ships it.**
+The backend needed no AArch64 change for ELF: Cranelift's AArch64 ISA, the generic `object`
+relocations (`R_AARCH64_ABS64`, `PREL32` in `.eh_frame` and DWARF) and the 8-byte data
+alignment the backend already sets hold on Linux as on Apple silicon. Run natively in an
+`ubuntu:24.04` arm64 container on the Apple-silicon laptop (not emulation; no number is taken
+from it): the runtime, host and driver tests, the compiled corpus with twins, `--no-direct`,
+the checked lowering and the cut-at-four split, the `m5-stress` toggles, `gdb`'s backtrace
+through a twin and its caller at their `.sak` lines, the 32,768-row `deep_ir` case and
+`parity.rs`'s `native_` cases (run and test mode, serve, properties, the gauge set and the
+exact-i64 lane) all pass; the corpus needs `--test-threads=2` there only because the container
+has 8 GB. The release path ran there too: `release.py driver`, `archive` and `smoke` on the
+`aarch64-unknown-linux-gnu` archive, the native `fib` included. `ci.yml`'s native job and
+`native-sanitizers.yml`'s Miri lane add `ubuntu-24.04-arm` (the `perf` profile step runs there
+as on x64); `packaging/targets.json` marks the B row `native`, so `release.yml`, the archive,
+npm package, `install.sh` and `verify-published.yml` carry it with no other change; the CLI's
+refusal admits `aarch64-unknown-linux-gnu`. The bounded-heap and cancellation fixtures are corpus
+programs and run in that job. **Left of B:** `verify-published.yml` green on the B row with the
+native step for the first release carrying it (§17.227); the owner approves that dry run with
+F's. AI implementation: Claude Opus 5.5; the human contributor owns acceptance.
+
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
 error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any
 length is honoured. The JSON codec is now written once in `runtime/rt/src/json.rs` (§17.213 (1)):
@@ -475,7 +495,7 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 | N2g | the wide-function split: a LIR-to-LIR pass in its own `sakura_lir` file, native backend only; cut edges are frame calls | Opus | **done** (`4b0f559a`, 2026-10-22, in beta.4; the 2× bar read as met within the log factor, §17.309 (3)) | 32,768 rows ≤ 2× the 16,384-row count per phase; parity unchanged; `deep_ir.rs` native case; WASM bytes unchanged |
 | F | the flag ships (§17.175 (6)): A release binaries built with `--features native`; the driver staticlib at `lib/sakura/native/` in the archive, npm packages and formula; a native `fib` smoke in `release.py smoke`/`accept` and `verify-published.yml`; `--help` label; the one-line profile print; STABILITY row; install page; a missing system linker is one diagnostic (`V8007 native_linker_missing` if free) | Sol | now; **packaging done** (2026-10-22, `647d7ed1`, `V8007`; §17.309 (3)) | dry run green with the native step on both A rows; `verify-published.yml` green for the beta carrying it (= "A shipped" for B-native) |
 | S | `exec-native`: the native backend as a fourth `exec` executor on `x86_64-unknown-linux-gnu`, its own ledger target; not part of 1.0.0's gate | Opus | after F | hours in `compiler/fuzz/README.md`'s ledger; a stabilization condition (§17.308 (1e)) |
-| B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run | `verify-published.yml` green on the B row with the native step |
+| B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run; **code and CI done** (2026-10-22, the owner's direction to run it now; see the B-native note) | `verify-published.yml` green on the B row with the native step |
 | C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
 | N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) — **constructor sites done** (`e55977f8`, ABI 1.17.0, in beta.4; §17.309 (2)); **N3b**: `List.map` leaf/tail reuse, the `m5-stress` set under the lanes, then tokens across direct calls as ordinary object words in frame slots (no new slot kind, no ABI change unless the frame protocol needs one, then a MINOR at landing) — **N3b done** (2026-10-22, still 1.17.0; no slot kind needed) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
 | N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1); **done** 2026-10-22, still 1.17.0); ABI MINOR at landing | Opus | after N3b | the row's |

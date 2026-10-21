@@ -104,7 +104,7 @@ enum Command {
         json: bool,
         /// `js`, or `wasm`: one module linked with the `sakura_rt` runtime (`main.wasm`, with
         /// the Node host `sakura_wasm_host.js`), into `target/sakura/wasm` by default; or
-        /// `native` (experimental; macOS arm64 and Linux x64 builds): an executable `main`.
+        /// `native` (experimental; macOS arm64, Linux x64 and Linux arm64 builds): an executable `main`.
         #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// What to write: the JS modules, or the WASM backend's LIR as text (`main.lir`).
@@ -161,7 +161,7 @@ enum Command {
         /// A file or directory (default: `src/` if present, else `.`).
         path: Option<PathBuf>,
         /// `js`, or `wasm` (run on node through `sakura_wasm_host.js`); or `native`
-        /// (experimental; macOS arm64 and Linux x64 builds: the executable runs directly).
+        /// (experimental; macOS arm64, Linux x64 and Linux arm64 builds: the executable runs directly).
         #[arg(long, default_value = "js", value_parser = RUN_TARGETS)]
         target: String,
         /// Where the build goes [default: target/sakura/<target>].
@@ -331,19 +331,21 @@ const TARGETS: [&str; 2] = ["js", "wasm"];
 const RUN_TARGETS: [&str; 3] = ["js", "wasm", "native"];
 
 /// Why this `sakura` cannot build `--target native`, if it cannot: the backend is built only
-/// with the `native` feature, which the platform-A release binaries carry (design §17.175 (6)).
+/// with the `native` feature, which the platform-A and B release binaries carry (design §17.175
+/// (6), plan m5-native.md §5).
 fn native_refusal() -> Option<String> {
-    let platform_a = cfg!(any(
+    let platform = cfg!(any(
         all(target_arch = "aarch64", target_os = "macos"),
         all(
-            target_arch = "x86_64",
+            any(target_arch = "x86_64", target_arch = "aarch64"),
             target_os = "linux",
             target_env = "gnu"
         )
     ));
-    (!cfg!(feature = "native") || !platform_a).then(|| {
+    (!cfg!(feature = "native") || !platform).then(|| {
         "`--target native` (experimental) is not in this build of sakura: it is built for \
-         aarch64-apple-darwin and x86_64-unknown-linux-gnu only; use `--target js` or `wasm`"
+         aarch64-apple-darwin, x86_64-unknown-linux-gnu and aarch64-unknown-linux-gnu only; use \
+         `--target js` or `wasm`"
             .to_owned()
     })
 }
