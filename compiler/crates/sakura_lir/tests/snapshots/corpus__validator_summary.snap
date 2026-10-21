@@ -135,6 +135,7 @@ semantics/fused_get_expect_map_miss: 3 funcs, 9 blocks, 1 dup, 4 drop, valid
 semantics/fused_get_expect_out_of_range: 4 funcs, 16 blocks, 1 dup, 4 drop, valid
 semantics/fused_get_expect_owned_push: 4 funcs, 22 blocks, 2 dup, 10 drop, valid
 semantics/fused_get_or: 11 funcs, 48 blocks, 11 dup, 40 drop, valid
+semantics/fused_get_or_default_kept: 4 funcs, 13 blocks, 4 dup, 11 drop, valid
 semantics/gen_flat_map: 36 funcs, 170 blocks, 18 dup, 59 drop, valid
 semantics/generic_refinement: 11 funcs, 42 blocks, 10 dup, 26 drop, valid
 semantics/generics: 16 funcs, 88 blocks, 21 dup, 39 drop, valid

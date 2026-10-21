@@ -135,6 +135,7 @@ semantics/fused_get_expect_map_miss: D030, 6 allocated, 4 dup, 10 drop, peak 4, 
 semantics/fused_get_expect_out_of_range: D030, 84 allocated, 824 dup, 908 drop, peak 43, live 0/0
 semantics/fused_get_expect_owned_push: ok, 269 allocated, 2230 dup, 2499 drop, peak 41, live 0/0
 semantics/fused_get_or: ok, 97 allocated, 61 dup, 158 drop, peak 20, live 0/0
+semantics/fused_get_or_default_kept: ok, 25 allocated, 14 dup, 39 drop, peak 12, live 0/0
 semantics/gen_flat_map: ok, 280 allocated, 430 dup, 710 drop, peak 51, live 0/0
 semantics/generic_refinement: ok, 29 allocated, 21 dup, 50 drop, peak 7, live 0/0
 semantics/generics: ok, 74 allocated, 158 dup, 232 drop, peak 12, live 0/0

@@ -250,7 +250,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
     // Design §17.176 (2): the ownership facts, recomputed from the snapshot.
     let sums = owned::summaries(&crate::snapshot::convert::back(core));
     let borrows = |callee: &Callee, i: usize| match callee {
-        Callee::Builtin(name) => owned::BORROWS.contains(&name.as_str()),
+        Callee::Builtin(name) => owned::borrows_arg(name, i),
         // A top-level def: its LIR arguments are its Core parameters (then `$site`). A bound
         // perform's direct clause call is never a candidate (§17.176 (4)).
         Callee::Direct(f) => {

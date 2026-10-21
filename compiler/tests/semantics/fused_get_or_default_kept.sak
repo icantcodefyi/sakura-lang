@@ -1,0 +1,16 @@
+// milestone: M4
+// covers: design §17.149 (an argument a builtin returns is not borrowed), §17.275 (4)
+// spec: §17.275
+
+// `map_get_or(m, k, d)` returns `d` itself when `k` is absent, so a list passed as the default
+// and then updated is shared with the result: the update copies, and `r` keeps the old value.
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a", ","))
+  let m: Map<Int, List<Int>> = Map.insert(Map.empty(), 5, [7])
+  var d = [n, 2]
+  let r = Option.unwrap_or(Map.get(m, 1), d)
+  d = List.set(d, 0, 9)
+  let hit = Option.unwrap_or(Map.get(m, 5), d)
+  d = List.set(d, 1, 8)
+  Console.print("{r} {d} {hit}")
+}

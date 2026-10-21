@@ -161,6 +161,12 @@ pub const BORROWS: &[&str] = &[
     "set_len",
 ];
 
+/// Builtin `name` retains nothing of its argument `i`: a [`BORROWS`] read, except for
+/// `map_get_or`'s default, which it returns when the key is absent.
+pub fn borrows_arg(name: &str, i: usize) -> bool {
+    BORROWS.contains(&name) && !(name == "map_get_or" && i == 2)
+}
+
 /// Builtins returning a shared empty singleton, which every owned entry tests for.
 const SINGLETONS: &[&str] = &["list_empty", "map_empty", "set_empty"];
 
@@ -1155,10 +1161,13 @@ impl<'a> Analysis<'a> {
                 // `List.map`'s `list_reuse` hands its list back to be written over only when no
                 // other reference reaches it (tested at run time), so a caller still holding the
                 // list keeps it intact: `map` borrows it as before (design §17.176 (5)).
-                if BORROWS.contains(&n.as_str()) || n == "list_reuse" {
-                    self.use_all(args, Use::Borrow);
-                } else {
-                    self.use_all(args, Use::Other(Reason::EscapesCall(n.clone())));
+                for (i, a) in args.iter().enumerate() {
+                    let u = if borrows_arg(n, i) || n == "list_reuse" {
+                        Use::Borrow
+                    } else {
+                        Use::Other(Reason::EscapesCall(n.clone()))
+                    };
+                    self.use_atom(a, u);
                 }
                 if SINGLETONS.contains(&n.as_str()) {
                     self.empties.insert(x);

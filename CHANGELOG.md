@@ -110,6 +110,11 @@ retains earlier implementation history.
 
 ### Fixed
 
+- **A list passed as `unwrap_or`'s default of a `Map.get` kept later updates** (JS backend):
+  the fused `map_get_or(m, k, d)` returns `d` itself when `k` is absent, but the ownership
+  pass read every argument of it as borrowed, so `List.set` on `d` afterwards wrote in place
+  and changed the value already returned. The default is now a stored argument; WASM and
+  native were not affected. Fixture `fused_get_or_default_kept`.
 - **`Fs.host()`, `Test.fixtures()` and cassettes under Node 26.12.1** (JS and WASM backends):
   Node 26.12.1's permission model also checks `realpath`, so a directory outside the granted
   paths (the working directory under `sakura test`, a missing `tests/fixtures`) was a `D090`

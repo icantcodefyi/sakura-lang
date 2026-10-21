@@ -44,7 +44,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use super::{Analysis, BORROWS, MAX_PASSES, SINGLETONS, Summary, consumed, each_atom};
+use super::{Analysis, MAX_PASSES, SINGLETONS, Summary, borrows_arg, consumed, each_atom};
 use crate::builtins;
 use crate::ir::*;
 
@@ -501,7 +501,7 @@ impl<'a> Elems<'a> {
         self.uses[x.index()].iter().all(|u| match u {
             At::Let(y) => match self.binds[y] {
                 Bind::Proj(..) | Bind::Prim(..) | Bind::Check(..) | Bind::StateGet(..) => true,
-                Bind::Call(Atom::Builtin(n), _) if BORROWS.contains(&n.as_str()) => true,
+                Bind::Call(Atom::Builtin(n), args) if only_read(n, args, x) => true,
                 Bind::Alloc(Alloc::List, args) => {
                     self.dead_after(*y, x)
                         && args.iter().filter(|a| **a == Atom::Local(x)).count() == 1
@@ -885,7 +885,7 @@ impl<'a> Elems<'a> {
         match b {
             Bind::Proj(..) | Bind::Prim(..) | Bind::Check(..) | Bind::StateGet(..) => true,
             Bind::Atom(_) => self.chain_of(y) == Some(root),
-            Bind::Call(Atom::Builtin(n), _) if BORROWS.contains(&n.as_str()) => true,
+            Bind::Call(Atom::Builtin(n), args) if only_read(n, args, x) => true,
             Bind::Call(_, args) => {
                 // Put back where it was read: an update of its own chain at its own index.
                 let Val::Elem(_, idx) = &self.class[x.index()] else {
@@ -1248,4 +1248,9 @@ fn meet(a: Val, b: Val) -> Val {
         (Val::Param(p), Val::Param(q)) if p == q => Val::Param(p),
         _ => Val::Other,
     }
+}
+
+/// Every argument position of `x` in a call of builtin `n` is one it only reads.
+fn only_read(n: &str, args: &[Atom], x: Local) -> bool {
+    (args.iter().enumerate()).all(|(i, a)| *a != Atom::Local(x) || borrows_arg(n, i))
 }
