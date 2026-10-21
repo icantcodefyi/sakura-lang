@@ -3460,6 +3460,7 @@ function namedFromJs(j, id, args, path, bad) {
 }
 
 function describe(j) {
+  if (j === undefined) return "nothing";
   if (j === null) return "null";
   if (Array.isArray(j)) return "an array";
   if (typeof j === "object") return "an object";
@@ -5176,13 +5177,25 @@ export function llm_anthropic(key, handlerModel, base) {
     );
   };
   const textOf = (msg) => msg.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+  /** The model's text is `{"value": T}` (the API's schema root is an object); `T` is decoded. */
   const decodeValue = (msg, schema, ctx, k) => {
+    const invalid = (message, path) =>
+      fail(ctx, errorOf("std::llm::InvalidOutput", list([new (std("std::core::Violation"))("output", message, path)])));
+    let parsed;
     try {
-      return ret(k, fromJs(JSON.parse(textOf(msg)).value, schema, ""));
+      parsed = JSON.parse(textOf(msg));
     } catch (e) {
-      const V = std("std::core::Violation");
+      return invalid(jsonSyntax(e), "");
+    }
+    // A hand-written cassette with a bare `T` names the wrapper it lacks (design §17.293 MT-2).
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed) || !Object.hasOwn(parsed, "value")) {
+      return invalid('expected an object with a "value" field', "");
+    }
+    try {
+      return ret(k, fromJs(parsed.value, schema, ""));
+    } catch (e) {
       const [message, path] = e instanceof DecodeFailure ? [e.message, e.path] : [String(e.message ?? e), ""];
-      return fail(ctx, errorOf("std::llm::InvalidOutput", list([new V("output", message, path)])));
+      return invalid(message, path);
     }
   };
   const generate = (_i, req, schema, ctx, k) => call(req, { schema }, ctx, (msg) => decodeValue(msg, schema, ctx, k));

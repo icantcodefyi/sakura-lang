@@ -483,6 +483,11 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   range" where it read "found an integer" (§17.294 SS-8a). `decode`'s doc names the messages
   and says that members `T` does not declare are ignored and a repeated key keeps its last
   value (§17.292 (13), §17.294 SS-8c).
+- `Llm.anthropic` given model text without the `{"value": T}` wrapper, as in a hand-written
+  cassette, fails `InvalidOutput` with the clause `expected an object with a "value" field`,
+  where it read "expected an integer, found a undefined"; model text that is not JSON gives
+  `malformed JSON` (design §17.293 MT-2). `anthropic`'s doc says the model's text is
+  `{"value": T}`, and `Llm.scripted`'s that it takes `T` itself.
 
 ### Security
 

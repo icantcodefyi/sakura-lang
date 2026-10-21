@@ -95,7 +95,10 @@ pub fn default() -> Model { Model("default") }
 /// Anthropic's Messages API at `https://api.anthropic.com`, with `T`'s JSON Schema as the output
 /// format: `anthropic_at("https://api.anthropic.com", key, model)`. Each call reserves
 /// `ceil(bytes of the request body / 4) + max_tokens` tokens at the model's price against the
-/// installed `Budget` first and settles the reported usage after.
+/// installed `Budget` first and settles the reported usage after. The API's schema root must be
+/// an object, so the model's text is `{"value": T}` and a hand-written provider cassette wraps
+/// its answer the same way; text without the wrapper fails `InvalidOutput` with the clause
+/// `expected an object with a "value" field`.
 pub fn anthropic(key: Secret<String>, model: Model) -> Handler<Llm, {Budget, Http}> {
   anthropic_at("https://api.anthropic.com", key, model)
 }
@@ -201,7 +204,8 @@ fn offline<T, e>(
   }
 }
 
-/// Test handler: each call consumes the next raw model output, in order. Running out is a
+/// Test handler: each call consumes the next output, in order: the JSON of `T` itself (`4`,
+/// not `anthropic`'s `{"value": 4}`), or for `generate_text` the text. Running out is a
 /// defect (the test is wrong, not the program). For `step`, an output that is a JSON object
 /// with a `tool_use` array is a tool-call turn (design §16.15):
 /// `{"tool_use": [{"name": "kb_search", "input": {"query": "refunds"}}]}`; anything else is
@@ -324,6 +328,23 @@ test "recording a missing exchange without --record is a ProviderError naming it
         expect(String.contains(reason, "Llm.recording"))
       },
       other => expect_eq("{other}", "a ProviderError"),
+    }
+  }
+}
+
+test "an answer without the value wrapper names it" {
+  let req: Request<Int> = request("Count.", Prompt.text("how many?"))
+  let bare = "\{\"content\":[\{\"type\":\"text\",\"text\":\"4\"\}],\"stop_reason\":\"end_turn\",\"usage\":\{\"input_tokens\":1,\"output_tokens\":1\}\}"
+  with Http.scripted([(http.Path("/v1/messages"), Response.status(200, bare))]),
+      Budget.unlimited(),
+      anthropic(Secret.of("k"), default()) {
+    match try { Llm.generate(req) } {
+      Err(InvalidOutput { violations }) =>
+        expect_eq(
+          List.map(violations, fn(v) { v.clause }),
+          ["expected an object with a \"value\" field"],
+        ),
+      other => expect_eq("{other}", "an InvalidOutput"),
     }
   }
 }
