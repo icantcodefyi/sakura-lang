@@ -136,6 +136,16 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **Distinct refined types.** Design §4.6 makes two refined types with the same predicate
   different types; beta.1 agrees (`V2001`, expected `B`, found `A`), but no fixture checks it.
 
+### Effects and handlers
+
+- **Reinstalling one handler value.** Design §5.5 (§17.259 (G07)) says each `with` installs a
+  fresh copy of the handler value's initial state. beta.1 agrees (a counter advanced twice under
+  `with h` reads `1` under the next `with h`), but every fixture builds a new handler per `with`.
+- **Order-dependent tails.** Design §5.2 rule 9 records that two distinct flexible tails joined
+  by equality can still depend on order; no test exercises that edge.
+- **Source-level finalizer order.** EF19's reverse order is pinned in the Rust runtime
+  (`exec.rs`); no `.sak` fixture opens two resources and observes the order they close in.
+
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,
