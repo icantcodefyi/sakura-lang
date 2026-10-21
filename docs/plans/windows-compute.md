@@ -63,7 +63,10 @@ gh auth login     # GitHub.com, HTTPS, login with a web browser; say yes to conf
 ```
 
 The pinned stable toolchain (`compiler/rust-toolchain.toml`, 1.99.1) installs itself on the first
-`cargo` call in the checkout. `NATIVE_NIGHTLY` for §2 is installed there.
+`cargo` call in the checkout, without the WASM target: run
+`rustup target add wasm32-unknown-unknown --toolchain 1.99.1` once after that call, or §2.3's
+parity matrix fails with "the WASM backend is unavailable". `NATIVE_NIGHTLY` for §2 is installed
+there.
 
 ### 0.3 Checkout
 
