@@ -283,6 +283,34 @@ fn claude(key: Secret<String>) -> Handler<Llm, {Budget, Http}> {
 }
 ```
 
+### Embedding from Node
+
+A `pub fn` of the root module (not `main`, not `@worker`, not generic, schema-typed, row of
+`Fail` errors and std effects with `host()`) is an entry. Node calls it with `callEntry`:
+`sakura_wasm_host.js`'s `callEntry(host, name, args)` on WASM, `__entries__.js`'s
+`callEntry(name, args)` on JS. `Untrusted<T>` may be a whole parameter or the result: pass
+the plain value; the entry receives it as `Untrusted<T>`, and the host checks it against
+`T`'s schema first. `Secret`, functions and `Untrusted` fields make a `pub fn` no entry.
+
+```sakura check id=since-entries
+pub type Parcel = { weight_g: Int }
+
+pub fn weigh(input: Untrusted<Parcel>) -> Int {
+  match Untrusted.check(input, "a positive weight", fn(p) { p.weight_g > 0 }) {
+    Ok(p) => p.weight_g,
+    Err(_) => 0,
+  }
+}
+```
+
+```js
+const host = await new Host().instantiate(readFileSync("out/main.wasm")); // after loadTypes()
+const o = await callEntry(host, "weigh", [new (rt.typeClass("pkg::main::Parcel"))(700)]);
+// { kind: "ok", value: 700 }; a wrong value throws a HostFault before the call
+```
+
+Set the full permissions table below before the first call.
+
 ### Permissions table for embedders
 
 A process that sets `SAKURA_PERMISSIONS` itself passes the full table; a key you leave out
