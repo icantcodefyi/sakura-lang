@@ -7,6 +7,7 @@
 // website https://www.sakuralang.com and BRIEF.md.
 // Built against `sakura --version`:
 //   sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+// Upgraded to sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399); see MIGRATION.md.
 //
 // The program recommends suppliers. It never places an order or contacts anyone.
 
@@ -15,7 +16,7 @@ import std/core.{Violation}
 import std/duration.{Duration}
 import std/fs.{Dir, Fs, FsError, Read}
 import std/http.{Any, Body, Http, RateLimited}
-import std/json.{DecodeError, Json}
+import std/json.{Json}
 import std/path.{Path}
 import std/request.{Method, Request}
 import std/response.{HttpError, Response}
@@ -173,7 +174,8 @@ pub fn shop_config() -> Config {
 
 // ---------------------------------------------------------------- wanted items
 
-// 0.1.0 reports `clause` as the literal "where", so the text names the type, not the clause.
+// Written for 0.1.0, where `clause` was the literal "where", so the text names the type,
+// not the clause (1.0.0-beta.1 gives the failing conjunct; the text is kept stable).
 fn violation_text(v: Violation) -> String { "{v.value_summary} is not a valid {v.type_name}" }
 
 /// Bytes → validated wanted items. Rejects oversize, non-UTF-8, bad JSON,

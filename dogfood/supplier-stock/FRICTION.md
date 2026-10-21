@@ -240,3 +240,16 @@ Final state: `sakura check` reports no problems, `sakura fmt --check` passes,
   `Http.scripted([])` so nothing reaches the network. It exists so the real process
   can show exit 0 with the synthetic `.invalid` endpoints. A live run against them
   exits 1 with three `transport` entries (`getaddrinfo ENOTFOUND`).
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- The upgrade was one warning, `W1003` on `DecodeError`, and `sakura fix` removed it
+  (`machine_applicable, local … applied`). The list predicted it; a grep of the import list
+  found it before the compiler did.
+- The program uses only the streamed `Body` from `Http.stream` and builds responses with
+  `Response.status`, so item 1 (`Payload`) never reached it. The cassettes recorded on 0.1.0,
+  including the 429-then-200 retry pair, replay unchanged on the beta, and the replay report
+  is byte-identical on js and wasm.
+- The program prints `value_summary` and `type_name`, not `clause`, because `clause` was
+  always `"where"` on 0.1.0. It could print the failing conjunct now. Left alone: the
+  report text is tested behaviour, and the list does not ask for the change.
