@@ -471,9 +471,26 @@ pub struct Analyzed {
     interfaces: Vec<Option<u64>>,
     /// Per file what it adds to the evaluated functions (`None` for files that are not modules).
     calls: Vec<Option<Arc<Calls>>>,
+    /// [`Analysis::copy_warnings`] of this snapshot, made on first use.
+    copies: OnceLock<Vec<Diagnostic>>,
 }
 
 impl Analyzed {
+    /// What `sakura check` reports: [`CheckResult::diagnostics`], then `W8001`
+    /// ([`Analysis::copy_warnings`], made once per snapshot), so the CLI, the LSP and the MCP
+    /// server show one list (design §12.6, §17.308 (3)).
+    pub fn diagnostics(&self) -> Vec<Diagnostic> {
+        let copies = self
+            .copies
+            .get_or_init(|| Analysis::copy_warnings(&self.snapshot));
+        self.check
+            .diagnostics
+            .iter()
+            .chain(copies)
+            .cloned()
+            .collect()
+    }
+
     /// The `pub fn`s `sakura test --contracts` skips for an opaque parameter (design §17.130).
     pub fn contract_skips(&self) -> Vec<String> {
         sakura_core::contract_skips(&self.program, &self.typed)
@@ -732,6 +749,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
         type_diags,
         interfaces,
         calls,
+        copies: OnceLock::new(),
     };
     // `symbol_id` (§12.2): the innermost item containing the primary span.
     for d in &mut diagnostics {

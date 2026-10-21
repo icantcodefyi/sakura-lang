@@ -263,6 +263,7 @@ fn decode(payload: &[u8], snapshot: &Snapshot) -> Option<Analyzed> {
         type_diags,
         interfaces,
         calls: calls.into_iter().map(|c| c.map(Arc::new)).collect(),
+        copies: OnceLock::new(),
     })
 }
 

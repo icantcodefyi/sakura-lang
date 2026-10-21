@@ -165,6 +165,15 @@ the def may not update on every path. (3) A witness that is only a `return` or a
 handler's use has no position, so it does not warn. AI implementation: Claude Opus 5.5; the human
 contributor owns acceptance.
 
+**N5.5 completion (2026-10-22).** `Analyzed::diagnostics()` is the check's diagnostics followed by
+`W8001`, made once per snapshot, and `sakura check`, the LSP's published diagnostics and every MCP
+tool that reports diagnostics (`check`, `check_patch`, `apply_patch`, `explain_diagnostic`, the fix edits) read
+it, so the three show one list. Measured by `sakura_analysis/tests/copy_edit.rs` in a release build
+on a 10,000-line program (1,000 functions, each with one `W8001`) after a one-line edit: 46 ms for
+the check and 54 ms with `W8001`, inside research/10 §6's 100 ms edit budget, so the LSP reports it
+on every edit rather than on save. `check_reports_copy_warnings` (`sakura_cli/tests/mcp.rs`)
+covers the MCP `check` tool.
+
 **N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
 native corpus count and leaves JS and WASM output unchanged. **N2a, frame-protocol code (landed):**
 `sakura_codegen_native::emit` lowers every LIR function to a CLIF function `(ctx, env, frame) ->
@@ -331,7 +340,7 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 | C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
 | N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
 | N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1)); ABI MINOR at landing | Opus | after N3 | the row's |
-| N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses) |
+| N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses); **N5.5 done** (2026-10-22), 54 ms on a 10,000-line edit, so on every edit |
 | M | `bench run --suite native` counted as the JS and WASM lanes are; paired `rbtree`; `bench envelope` on the native lane; a native `bench_counters.txt` column with the +1 drop note | Opus (code), Astra (docs, readings) | now; before the first baseline meant to carry a native number | no native number is read before it exists |
 
 Order of landings on today's reading, with the betas they fall into: N5 and N1's serve and test

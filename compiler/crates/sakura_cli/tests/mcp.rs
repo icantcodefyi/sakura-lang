@@ -181,6 +181,35 @@ fn check_patch_apply_and_test_over_stdio() {
 
 /// Without `--root` the server's workspace is the nearest `sakura.toml` upward from where it was
 /// started; outside a project it refuses to start and names the directory it searched (§17.143).
+/// §17.308 N5.5: the `check` tool reports `W8001` as `sakura check` does.
+#[test]
+fn check_reports_copy_warnings() {
+    let dir = std::env::temp_dir().join(format!("sakura-mcp-{} w8001", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    #[cfg(unix)]
+    let dir = dir.canonicalize().unwrap();
+    std::fs::write(
+        dir.join("main.sak"),
+        "pub fn main() -> Unit ! {Console} {\n  let parts = String.split(\"a,b\", \",\")\n  \
+         let more = List.push(parts, \"c\")\n  Console.print(\"{List.len(parts)} {List.len(more)}\")\n}\n",
+    )
+    .unwrap();
+    let mut s = Mcp::start(&dir);
+    let (check, err) = s.call("check", json!({}));
+    assert!(!err, "{check}");
+    let codes: Vec<&str> = check["diagnostics"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|d| d["code"].as_str())
+        .collect();
+    assert_eq!(codes, ["W8001"], "{check}");
+    assert_eq!(check["summary"]["warnings"], 1, "{check}");
+    drop(s);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn serve_without_root_finds_the_project_or_refuses() {
     let dir = std::env::temp_dir().join(format!("sakura-mcp-{} root", std::process::id()));

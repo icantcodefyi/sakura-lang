@@ -282,7 +282,7 @@ impl Server {
             .file_ids()
             .find(|&f| disk::is_manifest(&s.file(f).uri))
             .or_else(|| open.iter().find_map(|u| s.file_id(u)));
-        for d in &a.check.diagnostics {
+        for d in &a.diagnostics() {
             let span = match (d.spans.first(), fallback) {
                 (Some(span), _) => span.clone(),
                 (None, Some(f)) => Span::primary(f, 0, 0),

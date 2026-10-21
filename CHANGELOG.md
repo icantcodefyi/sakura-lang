@@ -49,7 +49,8 @@ retains earlier implementation history.
   check is static and adds no JSON field; the code moves from `reserved` to `active` in
   `diagnostics/codes.txt`. `sakura build --dump owned` prints each witness's byte range
   (`shared(borrowed-after at 88..100)`). A program that checked clean may now print warnings;
-  exit codes are unchanged.
+  exit codes are unchanged. The LSP and the MCP `check` tool report `W8001` too, on each edit
+  (about 9 ms more on a 10,000-line program).
 - **`sakura test --target native`** (experimental, plan M5 N1b): the module's tests run in a
   native test executable with the same `test` and `test_summary` records, snapshots and
   `Test.fixtures()` as `--target wasm`. Property tests and `Llm` are not native yet (they end

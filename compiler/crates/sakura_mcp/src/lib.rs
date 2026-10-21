@@ -453,7 +453,7 @@ impl SakuraServer {
                 let snapshot = self.snapshot(p.snapshot.as_deref())?;
                 let a = Analysis::analyze(&snapshot);
                 let records =
-                    diagnostic_records(&a.check.diagnostics, snapshot.files(), snapshot.hash());
+                    diagnostic_records(&a.diagnostics(), snapshot.files(), snapshot.hash());
                 occurrence = records
                     .into_iter()
                     .find(|r| r["id"] == *id)
@@ -601,7 +601,7 @@ impl SakuraServer {
             };
             self.remember(&new);
             let a = Analysis::analyze(&new);
-            let summary = summary_record(&a.check.diagnostics, a.check.holes.len(), new.hash());
+            let summary = summary_record(&a.diagnostics(), a.check.holes.len(), new.hash());
             Ok(CallToolResult::structured(json!({
                 "snapshot": new.hash(),
                 "previous_snapshot": base.hash(),
@@ -797,7 +797,7 @@ impl SakuraServer {
     /// applying it without review (design §7.3).
     fn fix_edits(&self, snapshot: &Snapshot, id: &str) -> Result<Vec<FileEdit>, Failure> {
         let a = Analysis::analyze(snapshot);
-        let records = diagnostic_records(&a.check.diagnostics, snapshot.files(), snapshot.hash());
+        let records = diagnostic_records(&a.diagnostics(), snapshot.files(), snapshot.hash());
         let fix = records
             .iter()
             .flat_map(|r| r["fixes"].as_array().into_iter().flatten())
@@ -844,7 +844,8 @@ fn report(a: &Analyzed, only: &Option<Vec<String>>) -> Value {
             .unwrap_or("");
         selected(only, uri)
     };
-    let diagnostics: Vec<Value> = diagnostic_records(&a.check.diagnostics, s.files(), s.hash())
+    let all = a.diagnostics();
+    let diagnostics: Vec<Value> = diagnostic_records(&all, s.files(), s.hash())
         .into_iter()
         .filter(in_scope)
         .collect();
@@ -852,7 +853,7 @@ fn report(a: &Analyzed, only: &Option<Vec<String>>) -> Value {
         .into_iter()
         .filter(in_scope)
         .collect();
-    let summary = summary_record(&a.check.diagnostics, a.check.holes.len(), s.hash());
+    let summary = summary_record(&all, a.check.holes.len(), s.hash());
     json!({
         "snapshot": s.hash(),
         "diagnostics": diagnostics,
