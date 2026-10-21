@@ -1,0 +1,2101 @@
+{
+ "schema": "sakura-bench-v1",
+ "meta": {
+  "commit": "472dea56e094017df4c9313170a1bf249c3878b8",
+  "dirty": false,
+  "host": {
+   "id": "d88970189598",
+   "cpu": "Apple M4 Pro",
+   "os": "Darwin 27.2.0 arm64",
+   "mem_bytes": 25769803776,
+   "quiet": false,
+   "load": {
+    "quiet": false,
+    "ci": false,
+    "threshold": 3.0,
+    "logical_cpus": 12,
+    "interval_s": 15,
+    "max_load_1m": 3.888671875,
+    "reasons": [
+     "one-minute load 3.89 > 3"
+    ],
+    "snapshots": [
+     {
+      "utc": "2026-10-21T15:27:55Z",
+      "load_1m": 3.37744140625,
+      "busiest": [
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 43.8
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif)",
+        "cpu_percent": 34.5
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif Renderer)",
+        "cpu_percent": 14.1
+       },
+       {
+        "executable": "runningboardd",
+        "cpu_percent": 9.6
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 7.0
+       },
+       {
+        "executable": "chronod",
+        "cpu_percent": 1.9
+       },
+       {
+        "executable": "Sonic",
+        "cpu_percent": 1.5
+       },
+       {
+        "executable": "BatteriesAvocadoWidgetExtension",
+        "cpu_percent": 1.0
+       },
+       {
+        "executable": "com.apple.Virtualization.VirtualMachine",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "backboardd",
+        "cpu_percent": 0.8
+       },
+       {
+        "executable": "notifyd",
+        "cpu_percent": 0.7
+       },
+       {
+        "executable": "claude",
+        "cpu_percent": 0.7
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-21T15:28:10Z",
+      "load_1m": 3.888671875,
+      "busiest": [
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 44.5
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif)",
+        "cpu_percent": 34.6
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif Renderer)",
+        "cpu_percent": 14.0
+       },
+       {
+        "executable": "com.apple.Virtualization.VirtualMachine",
+        "cpu_percent": 10.1
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 7.3
+       },
+       {
+        "executable": "Sonic",
+        "cpu_percent": 2.4
+       },
+       {
+        "executable": "backboardd",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "photolibraryd",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "com.docker.backend",
+        "cpu_percent": 1.3
+       },
+       {
+        "executable": "Google Chrome",
+        "cpu_percent": 0.9
+       },
+       {
+        "executable": "runningboardd",
+        "cpu_percent": 0.6
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 0.6
+       }
+      ]
+     },
+     {
+      "utc": "2026-10-21T15:28:21Z",
+      "load_1m": 3.6845703125,
+      "busiest": [
+       {
+        "executable": "WindowServer",
+        "cpu_percent": 44.8
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif)",
+        "cpu_percent": 34.5
+       },
+       {
+        "executable": "Google Chrome Helper (Aperitif Renderer)",
+        "cpu_percent": 13.8
+       },
+       {
+        "executable": "coreaudiod",
+        "cpu_percent": 6.9
+       },
+       {
+        "executable": "Discord Helper (Renderer)",
+        "cpu_percent": 3.9
+       },
+       {
+        "executable": "Sonic",
+        "cpu_percent": 2.4
+       },
+       {
+        "executable": "launchservicesd",
+        "cpu_percent": 1.4
+       },
+       {
+        "executable": "com.apple.DriverKit-AppleBCMWLAN",
+        "cpu_percent": 0.7
+       },
+       {
+        "executable": "backboardd",
+        "cpu_percent": 0.7
+       },
+       {
+        "executable": "PoolUsage",
+        "cpu_percent": 0.5
+       },
+       {
+        "executable": "Discord Helper",
+        "cpu_percent": 0.4
+       },
+       {
+        "executable": "dasd",
+        "cpu_percent": 0.3
+       }
+      ]
+     }
+    ]
+   }
+  },
+  "engines": {
+   "node": "26.12.0",
+   "bun": "1.4.3",
+   "rustc": "1.99.1",
+   "go": "1.27.2",
+   "ocaml": "5.5.1",
+   "koka": "3.2.9",
+   "hyperfine": "2.0.0",
+   "wasmtime": "49.0.3"
+  },
+  "flags": {
+   "suite": "js",
+   "engines": [
+    "node",
+    "bun"
+   ],
+   "lane": "matched",
+   "sizes": "all",
+   "stable": false,
+   "filter": "fib",
+   "processes": 5,
+   "seed": 20261018,
+   "metric": "instructions",
+   "node": [
+    "--predictable",
+    "--min-semi-space-size=16",
+    "--max-semi-space-size=16"
+   ]
+  },
+  "seed": 20261018,
+  "paths": {
+   "artefacts": "/Users/aniruddhdubge/Desktop/ani/sakura-counted/bench/target",
+   "cwd": "/Users/aniruddhdubge/Desktop/ani/sakura-counted"
+  },
+  "started": "2026-10-21T15:27:47Z",
+  "missing": [],
+  "failures": [],
+  "absent": []
+ },
+ "results": [
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "calls": 4096,
+   "instructions": 1680069.1484375,
+   "process_instructions": [
+    1679808.5261230469,
+    1680146.1306152344,
+    1680069.1484375,
+    1679983.6315917969,
+    1734150.7885742188
+   ],
+   "instruction_spread": 0.0323452534687107,
+   "cycles": 222421.8662109375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 151205147,
+      "cycles": 58652233,
+      "wall_s": 0.018390791010460816,
+      "rss_bytes": 23363584
+     },
+     "many": {
+      "instructions": 7030934022,
+      "cycles": 968951558,
+      "wall_s": 0.24080850000609644,
+      "rss_bytes": 32489472
+     }
+    },
+    {
+     "one": {
+      "instructions": 150236702,
+      "cycles": 58018600,
+      "wall_s": 0.017961457997444086,
+      "rss_bytes": 23314432
+     },
+     "many": {
+      "instructions": 7032316850,
+      "cycles": 972241888,
+      "wall_s": 0.24117900000419468,
+      "rss_bytes": 32522240
+     }
+    },
+    {
+     "one": {
+      "instructions": 149964313,
+      "cycles": 57911594,
+      "wall_s": 0.018348500001593493,
+      "rss_bytes": 23511040
+     },
+     "many": {
+      "instructions": 7032001531,
+      "cycles": 967623827,
+      "wall_s": 0.24028791599266697,
+      "rss_bytes": 32440320
+     }
+    },
+    {
+     "one": {
+      "instructions": 150438299,
+      "cycles": 57784705,
+      "wall_s": 0.01854595899931155,
+      "rss_bytes": 23445504
+     },
+     "many": {
+      "instructions": 7031651254,
+      "cycles": 966713991,
+      "wall_s": 0.2409369999950286,
+      "rss_bytes": 32505856
+     }
+    },
+    {
+     "one": {
+      "instructions": 151647147,
+      "cycles": 57560249,
+      "wall_s": 0.018500209000194445,
+      "rss_bytes": 23461888
+     },
+     "many": {
+      "instructions": 7253519929,
+      "cycles": 1011071521,
+      "wall_s": 0.2507829579990357,
+      "rss_bytes": 32571392
+     }
+    }
+   ],
+   "samples_ms": [
+    0.0543011984852626,
+    0.054391652586360806,
+    0.054174102778858924,
+    0.054332570552872994,
+    0.056736368893695044
+   ],
+   "median_ms": 0.054332570552872994,
+   "process_medians_ms": [
+    0.0543011984852626,
+    0.054391652586360806,
+    0.054174102778858924,
+    0.054332570552872994,
+    0.056736368893695044
+   ],
+   "rss_bytes": 32571392,
+   "process_rss_bytes": [
+    32489472,
+    32522240,
+    32440320,
+    32505856,
+    32571392
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "calls": 1024,
+   "instructions": 7661671.455078125,
+   "process_instructions": [
+    7663051.8203125,
+    7661657.4697265625,
+    7660802.12109375,
+    7662773.3837890625,
+    7661671.455078125
+   ],
+   "instruction_spread": 0.00029363034318822276,
+   "cycles": 1003333.8134765625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1378380928,
+      "cycles": 353636317,
+      "wall_s": 0.09294729100656696,
+      "rss_bytes": 45744128
+     },
+     "many": {
+      "instructions": 9212381385,
+      "cycles": 1453193263,
+      "wall_s": 0.3665888340037782,
+      "rss_bytes": 46301184
+     }
+    },
+    {
+     "one": {
+      "instructions": 1365416321,
+      "cycles": 354174376,
+      "wall_s": 0.09256466700753663,
+      "rss_bytes": 46071808
+     },
+     "many": {
+      "instructions": 9210953570,
+      "cycles": 1380532549,
+      "wall_s": 0.3484591669985093,
+      "rss_bytes": 46088192
+     }
+    },
+    {
+     "one": {
+      "instructions": 1379145834,
+      "cycles": 353118724,
+      "wall_s": 0.09288808300334495,
+      "rss_bytes": 45678592
+     },
+     "many": {
+      "instructions": 9210077693,
+      "cycles": 1377164115,
+      "wall_s": 0.3474820830015233,
+      "rss_bytes": 46268416
+     }
+    },
+    {
+     "one": {
+      "instructions": 1364802548,
+      "cycles": 347438670,
+      "wall_s": 0.09168666700134054,
+      "rss_bytes": 45613056
+     },
+     "many": {
+      "instructions": 9212096266,
+      "cycles": 1451556608,
+      "wall_s": 0.3679940000001807,
+      "rss_bytes": 46235648
+     }
+    },
+    {
+     "one": {
+      "instructions": 1365339114,
+      "cycles": 348579710,
+      "wall_s": 0.09127649999572895,
+      "rss_bytes": 45711360
+     },
+     "many": {
+      "instructions": 9210967891,
+      "cycles": 1377556530,
+      "wall_s": 0.3476930829929188,
+      "rss_bytes": 46219264
+     }
+    }
+   ],
+   "samples_ms": [
+    0.26760172558226714,
+    0.24989697264743427,
+    0.2489427890566276,
+    0.26897395800062895,
+    0.24914884373572477
+   ],
+   "median_ms": 0.24989697264743427,
+   "process_medians_ms": [
+    0.26760172558226714,
+    0.24989697264743427,
+    0.2489427890566276,
+    0.26897395800062895,
+    0.24914884373572477
+   ],
+   "rss_bytes": 46301184,
+   "process_rss_bytes": [
+    46301184,
+    46088192,
+    46268416,
+    46235648,
+    46219264
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 30,
+   "calls": 64,
+   "instructions": 91464808.484375,
+   "process_instructions": [
+    91464808.484375,
+    91435276.046875,
+    91471799.84375,
+    91493227.921875,
+    90788677.203125
+   ],
+   "instruction_spread": 0.007702970469460491,
+   "cycles": 11799198.15625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 220370607,
+      "cycles": 61250077,
+      "wall_s": 0.018706000002566725,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 6072894894,
+      "cycles": 820015053,
+      "wall_s": 0.20877987499989104,
+      "rss_bytes": 21921792
+     }
+    },
+    {
+     "one": {
+      "instructions": 217476562,
+      "cycles": 59209984,
+      "wall_s": 0.018290291001903825,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 6071004818,
+      "cycles": 809616019,
+      "wall_s": 0.20429224999679718,
+      "rss_bytes": 21938176
+     }
+    },
+    {
+     "one": {
+      "instructions": 219872135,
+      "cycles": 61024423,
+      "wall_s": 0.019634249998489395,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 6073342341,
+      "cycles": 816398759,
+      "wall_s": 0.2092265410028631,
+      "rss_bytes": 21889024
+     }
+    },
+    {
+     "one": {
+      "instructions": 219147151,
+      "cycles": 62049342,
+      "wall_s": 0.01906791699002497,
+      "rss_bytes": 21348352
+     },
+     "many": {
+      "instructions": 6074713738,
+      "cycles": 816318124,
+      "wall_s": 0.20996875000128057,
+      "rss_bytes": 21921792
+     }
+    },
+    {
+     "one": {
+      "instructions": 218241886,
+      "cycles": 61883403,
+      "wall_s": 0.0192332919978071,
+      "rss_bytes": 21348352
+     },
+     "many": {
+      "instructions": 6029622492,
+      "cycles": 825375396,
+      "wall_s": 0.2125539580010809,
+      "rss_bytes": 21889024
+     }
+    }
+   ],
+   "samples_ms": [
+    2.9642493439041573,
+    2.894130203230816,
+    2.9712285002005956,
+    2.9828255158008687,
+    3.023219390797749
+   ],
+   "median_ms": 2.9712285002005956,
+   "process_medians_ms": [
+    2.9642493439041573,
+    2.894130203230816,
+    2.9712285002005956,
+    2.9828255158008687,
+    3.023219390797749
+   ],
+   "rss_bytes": 21938176,
+   "process_rss_bytes": [
+    21921792,
+    21938176,
+    21889024,
+    21921792,
+    21889024
+   ],
+   "checksum_ok": true,
+   "checksum": "832040"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "calls": 4096,
+   "instructions": 1122106.6665039062,
+   "process_instructions": [
+    1122485.1225585938,
+    1121773.8735351562,
+    1121879.0021972656,
+    1122875.640625,
+    1122106.6665039062
+   ],
+   "instruction_spread": 0.000981873758291155,
+   "cycles": 148175.71142578125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1358497609,
+      "cycles": 349104122,
+      "wall_s": 0.0917323750036303,
+      "rss_bytes": 45727744
+     },
+     "many": {
+      "instructions": 5956424039,
+      "cycles": 990237199,
+      "wall_s": 0.25194312499661464,
+      "rss_bytes": 47284224
+     }
+    },
+    {
+     "one": {
+      "instructions": 1376016540,
+      "cycles": 353006866,
+      "wall_s": 0.09615991699683946,
+      "rss_bytes": 45613056
+     },
+     "many": {
+      "instructions": 5953510763,
+      "cycles": 956031836,
+      "wall_s": 0.24280500000168104,
+      "rss_bytes": 47251456
+     }
+    },
+    {
+     "one": {
+      "instructions": 1357916739,
+      "cycles": 347964943,
+      "wall_s": 0.09105170899420045,
+      "rss_bytes": 45678592
+     },
+     "many": {
+      "instructions": 5953941370,
+      "cycles": 944611636,
+      "wall_s": 0.23963754100259393,
+      "rss_bytes": 47284224
+     }
+    },
+    {
+     "one": {
+      "instructions": 1359648990,
+      "cycles": 359861567,
+      "wall_s": 0.0964654159906786,
+      "rss_bytes": 45760512
+     },
+     "many": {
+      "instructions": 5958023601,
+      "cycles": 986793125,
+      "wall_s": 0.25611783300701063,
+      "rss_bytes": 47267840
+     }
+    },
+    {
+     "one": {
+      "instructions": 1358724977,
+      "cycles": 347910158,
+      "wall_s": 0.0914468339906307,
+      "rss_bytes": 45613056
+     },
+     "many": {
+      "instructions": 5954873883,
+      "cycles": 947742153,
+      "wall_s": 0.24288612500822637,
+      "rss_bytes": 47267840
+     }
+    }
+   ],
+   "samples_ms": [
+    0.039113952635005944,
+    0.03688296508741473,
+    0.03610965966771573,
+    0.04013316845785653,
+    0.03690277099721584
+   ],
+   "median_ms": 0.03690277099721584,
+   "process_medians_ms": [
+    0.039113952635005944,
+    0.03688296508741473,
+    0.03610965966771573,
+    0.04013316845785653,
+    0.03690277099721584
+   ],
+   "rss_bytes": 47284224,
+   "process_rss_bytes": [
+    47284224,
+    47251456,
+    47284224,
+    47267840,
+    47267840
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 27,
+   "calls": 128,
+   "instructions": 45179493.03125,
+   "process_instructions": [
+    45183795.84375,
+    45168765.765625,
+    45179493.03125,
+    45185888.515625,
+    45170388.453125
+   ],
+   "instruction_spread": 0.0003789938498901801,
+   "cycles": 6297804.953125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1457212215,
+      "cycles": 374046193,
+      "wall_s": 0.09834412499913014,
+      "rss_bytes": 49397760
+     },
+     "many": {
+      "instructions": 7240637641,
+      "cycles": 1188721502,
+      "wall_s": 0.3004767090023961,
+      "rss_bytes": 49971200
+     }
+    },
+    {
+     "one": {
+      "instructions": 1457111773,
+      "cycles": 375225196,
+      "wall_s": 0.09806270900298841,
+      "rss_bytes": 49627136
+     },
+     "many": {
+      "instructions": 7238713791,
+      "cycles": 1185242751,
+      "wall_s": 0.3001464999979362,
+      "rss_bytes": 49840128
+     }
+    },
+    {
+     "one": {
+      "instructions": 1456443629,
+      "cycles": 370499049,
+      "wall_s": 0.09778141700371634,
+      "rss_bytes": 49463296
+     },
+     "many": {
+      "instructions": 7240086881,
+      "cycles": 1179528082,
+      "wall_s": 0.30043520900653675,
+      "rss_bytes": 49889280
+     }
+    },
+    {
+     "one": {
+      "instructions": 1457416384,
+      "cycles": 373409048,
+      "wall_s": 0.09735891700256616,
+      "rss_bytes": 49545216
+     },
+     "many": {
+      "instructions": 7240905503,
+      "cycles": 1178518540,
+      "wall_s": 0.2982425000082003,
+      "rss_bytes": 49741824
+     }
+    },
+    {
+     "one": {
+      "instructions": 1456079239,
+      "cycles": 372767551,
+      "wall_s": 0.09726504099671729,
+      "rss_bytes": 49610752
+     },
+     "many": {
+      "instructions": 7238921495,
+      "cycles": 1170649347,
+      "wall_s": 0.29554116699728183,
+      "rss_bytes": 49938432
+     }
+    }
+   ],
+   "samples_ms": [
+    1.5835569687396855,
+    1.5809772108923426,
+    1.5832327500220345,
+    1.5661022109725309,
+    1.5449980468247304
+   ],
+   "median_ms": 1.5809772108923426,
+   "process_medians_ms": [
+    1.5835569687396855,
+    1.5809772108923426,
+    1.5832327500220345,
+    1.5661022109725309,
+    1.5449980468247304
+   ],
+   "rss_bytes": 49971200,
+   "process_rss_bytes": [
+    49971200,
+    49840128,
+    49889280,
+    49741824,
+    49938432
+   ],
+   "checksum_ok": true,
+   "checksum": "196418"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "calls": 512,
+   "instructions": 10680796.119140625,
+   "process_instructions": [
+    10680796.119140625,
+    10732682.947265625,
+    10680892.798828125,
+    10679865.771484375,
+    10675772.791015625
+   ],
+   "instruction_spread": 0.00532826913042686,
+   "cycles": 1493454.12109375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1422954512,
+      "cycles": 365072071,
+      "wall_s": 0.0952440410037525,
+      "rss_bytes": 49496064
+     },
+     "many": {
+      "instructions": 6891522125,
+      "cycles": 1131483035,
+      "wall_s": 0.2880828330089571,
+      "rss_bytes": 50692096
+     }
+    },
+    {
+     "one": {
+      "instructions": 1450465057,
+      "cycles": 387216076,
+      "wall_s": 0.1033604580006795,
+      "rss_bytes": 49676288
+     },
+     "many": {
+      "instructions": 6918088181,
+      "cycles": 1143458426,
+      "wall_s": 0.2925767920096405,
+      "rss_bytes": 50692096
+     }
+    },
+    {
+     "one": {
+      "instructions": 1421458448,
+      "cycles": 367090161,
+      "wall_s": 0.0959619159984868,
+      "rss_bytes": 49463296
+     },
+     "many": {
+      "instructions": 6891571625,
+      "cycles": 1131738671,
+      "wall_s": 0.28611120898858644,
+      "rss_bytes": 50593792
+     }
+    },
+    {
+     "one": {
+      "instructions": 1421547822,
+      "cycles": 365912197,
+      "wall_s": 0.09555445799196605,
+      "rss_bytes": 49561600
+     },
+     "many": {
+      "instructions": 6891045787,
+      "cycles": 1134452650,
+      "wall_s": 0.28654470801120624,
+      "rss_bytes": 50446336
+     }
+    },
+    {
+     "one": {
+      "instructions": 1435852393,
+      "cycles": 372641308,
+      "wall_s": 0.0981768329947954,
+      "rss_bytes": 49561600
+     },
+     "many": {
+      "instructions": 6888950181,
+      "cycles": 1123697054,
+      "wall_s": 0.2842618750000838,
+      "rss_bytes": 50577408
+     }
+    }
+   ],
+   "samples_ms": [
+    0.3752361660360748,
+    0.38401342970928454,
+    0.37138533787128836,
+    0.37223201564984265,
+    0.3677733574249942
+   ],
+   "median_ms": 0.37223201564984265,
+   "process_medians_ms": [
+    0.3752361660360748,
+    0.38401342970928454,
+    0.37138533787128836,
+    0.37223201564984265,
+    0.3677733574249942
+   ],
+   "rss_bytes": 50692096,
+   "process_rss_bytes": [
+    50692096,
+    50692096,
+    50593792,
+    50446336,
+    50577408
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 30,
+   "calls": 32,
+   "instructions": 191285611.96875,
+   "process_instructions": [
+    191285611.96875,
+    191290083.75,
+    191238817.28125,
+    191185022.59375,
+    191348112.5
+   ],
+   "instruction_spread": 0.0008525989203863577,
+   "cycles": 26680887.5625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1604011063,
+      "cycles": 398972575,
+      "wall_s": 0.10468383399711456,
+      "rss_bytes": 49594368
+     },
+     "many": {
+      "instructions": 7725150646,
+      "cycles": 1253394235,
+      "wall_s": 0.3164399999950547,
+      "rss_bytes": 49659904
+     }
+    },
+    {
+     "one": {
+      "instructions": 1602999459,
+      "cycles": 391887570,
+      "wall_s": 0.10213337499590125,
+      "rss_bytes": 49577984
+     },
+     "many": {
+      "instructions": 7725293743,
+      "cycles": 1249767048,
+      "wall_s": 0.3154795830050716,
+      "rss_bytes": 49627136
+     }
+    },
+    {
+     "one": {
+      "instructions": 1616198019,
+      "cycles": 397315306,
+      "wall_s": 0.10349624999798834,
+      "rss_bytes": 49659904
+     },
+     "many": {
+      "instructions": 7723653216,
+      "cycles": 1239115987,
+      "wall_s": 0.31421691599825863,
+      "rss_bytes": 50233344
+     }
+    },
+    {
+     "one": {
+      "instructions": 1602257627,
+      "cycles": 392104109,
+      "wall_s": 0.10390337501303293,
+      "rss_bytes": 49659904
+     },
+     "many": {
+      "instructions": 7721931786,
+      "cycles": 1234059054,
+      "wall_s": 0.3110932080016937,
+      "rss_bytes": 49758208
+     }
+    },
+    {
+     "one": {
+      "instructions": 1605269853,
+      "cycles": 392231254,
+      "wall_s": 0.1022129170014523,
+      "rss_bytes": 49594368
+     },
+     "many": {
+      "instructions": 7727150663,
+      "cycles": 1246019656,
+      "wall_s": 0.3145187909976812,
+      "rss_bytes": 49659904
+     }
+    }
+   ],
+   "samples_ms": [
+    6.654492187408323,
+    6.624479156471352,
+    6.585020812508446,
+    6.487404937615793,
+    6.594454406240402
+   ],
+   "median_ms": 6.594454406240402,
+   "process_medians_ms": [
+    6.654492187408323,
+    6.624479156471352,
+    6.585020812508446,
+    6.487404937615793,
+    6.594454406240402
+   ],
+   "rss_bytes": 50233344,
+   "process_rss_bytes": [
+    49659904,
+    49627136,
+    50233344,
+    49758208,
+    49659904
+   ],
+   "checksum_ok": true,
+   "checksum": "832040"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "calls": 4096,
+   "instructions": 1565203.6762695312,
+   "process_instructions": [
+    1565010.7153320312,
+    1565203.6762695312,
+    1565208.5473632812,
+    1565135.9265136719,
+    1565705.5280761719
+   ],
+   "instruction_spread": 0.00044391203181724245,
+   "cycles": 222005.36645507812,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1410064206,
+      "cycles": 366067721,
+      "wall_s": 0.09575641700939741,
+      "rss_bytes": 47300608
+     },
+     "many": {
+      "instructions": 7820348096,
+      "cycles": 1281375822,
+      "wall_s": 0.32354904199019074,
+      "rss_bytes": 55361536
+     }
+    },
+    {
+     "one": {
+      "instructions": 1409354244,
+      "cycles": 365292614,
+      "wall_s": 0.09553199999209028,
+      "rss_bytes": 47284224
+     },
+     "many": {
+      "instructions": 7821138464,
+      "cycles": 1264729324,
+      "wall_s": 0.3250911250070203,
+      "rss_bytes": 55246848
+     }
+    },
+    {
+     "one": {
+      "instructions": 1410070098,
+      "cycles": 363879830,
+      "wall_s": 0.09501341701252386,
+      "rss_bytes": 47054848
+     },
+     "many": {
+      "instructions": 7821158416,
+      "cycles": 1273356512,
+      "wall_s": 0.3218552920006914,
+      "rss_bytes": 55263232
+     }
+    },
+    {
+     "one": {
+      "instructions": 1410225117,
+      "cycles": 363935924,
+      "wall_s": 0.09688383300090209,
+      "rss_bytes": 47153152
+     },
+     "many": {
+      "instructions": 7820860961,
+      "cycles": 1274626595,
+      "wall_s": 0.3255435829923954,
+      "rss_bytes": 55459840
+     }
+    },
+    {
+     "one": {
+      "instructions": 1410053964,
+      "cycles": 368001150,
+      "wall_s": 0.09629575000144541,
+      "rss_bytes": 47104000
+     },
+     "many": {
+      "instructions": 7823194049,
+      "cycles": 1278618607,
+      "wall_s": 0.32421295800304506,
+      "rss_bytes": 55361536
+     }
+    }
+   ],
+   "samples_ms": [
+    0.0556134338332015,
+    0.05598991894473215,
+    0.055199920652171386,
+    0.056100382320067865,
+    0.05577552270352726
+   ],
+   "median_ms": 0.05577552270352726,
+   "process_medians_ms": [
+    0.0556134338332015,
+    0.05598991894473215,
+    0.055199920652171386,
+    0.056100382320067865,
+    0.05577552270352726
+   ],
+   "rss_bytes": 55459840,
+   "process_rss_bytes": [
+    55361536,
+    55246848,
+    55263232,
+    55459840,
+    55361536
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "calls": 1024,
+   "instructions": 5109066.830078125,
+   "process_instructions": [
+    5108656.7109375,
+    5109066.830078125,
+    5109116.93359375,
+    5072171.6572265625,
+    5111282.0751953125
+   ],
+   "instruction_spread": 0.0076551000935237215,
+   "cycles": 662711.09375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 125775216,
+      "cycles": 46039819,
+      "wall_s": 0.015248875002725981,
+      "rss_bytes": 21381120
+     },
+     "many": {
+      "instructions": 5358919929,
+      "cycles": 721790561,
+      "wall_s": 0.18213858400122263,
+      "rss_bytes": 22429696
+     }
+    },
+    {
+     "one": {
+      "instructions": 128776191,
+      "cycles": 47794238,
+      "wall_s": 0.015447041994775645,
+      "rss_bytes": 21331968
+     },
+     "many": {
+      "instructions": 5359339891,
+      "cycles": 725046036,
+      "wall_s": 0.18900974999996834,
+      "rss_bytes": 22429696
+     }
+    },
+    {
+     "one": {
+      "instructions": 127687018,
+      "cycles": 48202148,
+      "wall_s": 0.015359333003289066,
+      "rss_bytes": 21413888
+     },
+     "many": {
+      "instructions": 5359391197,
+      "cycles": 726410398,
+      "wall_s": 0.18333395800436847,
+      "rss_bytes": 22396928
+     }
+    },
+    {
+     "one": {
+      "instructions": 125799302,
+      "cycles": 46534794,
+      "wall_s": 0.014779999997699633,
+      "rss_bytes": 21299200
+     },
+     "many": {
+      "instructions": 5321559234,
+      "cycles": 738286783,
+      "wall_s": 0.18607987499854062,
+      "rss_bytes": 22364160
+     }
+    },
+    {
+     "one": {
+      "instructions": 127655457,
+      "cycles": 48510497,
+      "wall_s": 0.015345417006756179,
+      "rss_bytes": 21381120
+     },
+     "many": {
+      "instructions": 5361608302,
+      "cycles": 726948133,
+      "wall_s": 0.18293199999607168,
+      "rss_bytes": 22429696
+     }
+    }
+   ],
+   "samples_ms": [
+    0.16288395214303364,
+    0.16959407518868375,
+    0.16405130956798075,
+    0.166732869132602,
+    0.16365877245050342
+   ],
+   "median_ms": 0.16405130956798075,
+   "process_medians_ms": [
+    0.16288395214303364,
+    0.16959407518868375,
+    0.16405130956798075,
+    0.166732869132602,
+    0.16365877245050342
+   ],
+   "rss_bytes": 22429696,
+   "process_rss_bytes": [
+    22429696,
+    22429696,
+    22396928,
+    22364160,
+    22429696
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 24,
+   "calls": 512,
+   "instructions": 11446672.525390625,
+   "process_instructions": [
+    11446672.525390625,
+    11443115.044921875,
+    11819623.587890625,
+    11440047.470703125,
+    11818146.2890625
+   ],
+   "instruction_spread": 0.03316038930488638,
+   "cycles": 1498399.0078125,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 168658628,
+      "cycles": 62249238,
+      "wall_s": 0.01935254200361669,
+      "rss_bytes": 25493504
+     },
+     "many": {
+      "instructions": 6029670326,
+      "cycles": 830100869,
+      "wall_s": 0.2088510839967057,
+      "rss_bytes": 27230208
+     }
+    },
+    {
+     "one": {
+      "instructions": 168616275,
+      "cycles": 62474338,
+      "wall_s": 0.018555084010586143,
+      "rss_bytes": 25296896
+     },
+     "many": {
+      "instructions": 6027848896,
+      "cycles": 826947891,
+      "wall_s": 0.20746833299926948,
+      "rss_bytes": 27738112
+     }
+    },
+    {
+     "one": {
+      "instructions": 170476492,
+      "cycles": 62920577,
+      "wall_s": 0.019566832997952588,
+      "rss_bytes": 25280512
+     },
+     "many": {
+      "instructions": 6220621270,
+      "cycles": 876534476,
+      "wall_s": 0.21972641700995155,
+      "rss_bytes": 27295744
+     }
+    },
+    {
+     "one": {
+      "instructions": 169094134,
+      "cycles": 64259678,
+      "wall_s": 0.019227417011279613,
+      "rss_bytes": 25329664
+     },
+     "many": {
+      "instructions": 6026278298,
+      "cycles": 827132463,
+      "wall_s": 0.20722387501155026,
+      "rss_bytes": 27049984
+     }
+    },
+    {
+     "one": {
+      "instructions": 168973993,
+      "cycles": 63243377,
+      "wall_s": 0.01874333299929276,
+      "rss_bytes": 25346048
+     },
+     "many": {
+      "instructions": 6219864893,
+      "cycles": 877100125,
+      "wall_s": 0.22010045799834188,
+      "rss_bytes": 27082752
+     }
+    }
+   ],
+   "samples_ms": [
+    0.37035872458091035,
+    0.3676580390390427,
+    0.3915996093724061,
+    0.3671805820317786,
+    0.392330158177856
+   ],
+   "median_ms": 0.37035872458091035,
+   "process_medians_ms": [
+    0.37035872458091035,
+    0.3676580390390427,
+    0.3915996093724061,
+    0.3671805820317786,
+    0.392330158177856
+   ],
+   "rss_bytes": 27738112,
+   "process_rss_bytes": [
+    27230208,
+    27738112,
+    27295744,
+    27049984,
+    27082752
+   ],
+   "checksum_ok": true,
+   "checksum": "46368"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 27,
+   "calls": 256,
+   "instructions": 32441144.90234375,
+   "process_instructions": [
+    32438246.84375,
+    32443179.04296875,
+    32443877.6875,
+    32438381.76953125,
+    32441144.90234375
+   ],
+   "instruction_spread": 0.00017357105511998108,
+   "cycles": 4179619.4765625,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1390036234,
+      "cycles": 353574280,
+      "wall_s": 0.09282083400466945,
+      "rss_bytes": 45613056
+     },
+     "many": {
+      "instructions": 9694227426,
+      "cycles": 1429614727,
+      "wall_s": 0.3602469580073375,
+      "rss_bytes": 45973504
+     }
+    },
+    {
+     "one": {
+      "instructions": 1390994539,
+      "cycles": 357371659,
+      "wall_s": 0.09365437499945983,
+      "rss_bytes": 45629440
+     },
+     "many": {
+      "instructions": 9695490069,
+      "cycles": 1442549184,
+      "wall_s": 0.36342341599811334,
+      "rss_bytes": 45793280
+     }
+    },
+    {
+     "one": {
+      "instructions": 1391953219,
+      "cycles": 349442753,
+      "wall_s": 0.09156170800270047,
+      "rss_bytes": 45563904
+     },
+     "many": {
+      "instructions": 9695668922,
+      "cycles": 1423556866,
+      "wall_s": 0.3610955420008395,
+      "rss_bytes": 45924352
+     }
+    },
+    {
+     "one": {
+      "instructions": 1389679100,
+      "cycles": 349009151,
+      "wall_s": 0.09127779200207442,
+      "rss_bytes": 45645824
+     },
+     "many": {
+      "instructions": 9694261967,
+      "cycles": 1414131908,
+      "wall_s": 0.3560902910103323,
+      "rss_bytes": 45842432
+     }
+    },
+    {
+     "one": {
+      "instructions": 1389929932,
+      "cycles": 353717882,
+      "wall_s": 0.09239624999463558,
+      "rss_bytes": 45711360
+     },
+     "many": {
+      "instructions": 9694969329,
+      "cycles": 1420072483,
+      "wall_s": 0.3573774590040557,
+      "rss_bytes": 46039040
+     }
+    }
+   ],
+   "samples_ms": [
+    1.046291828174617,
+    1.058699867201085,
+    1.049606609399234,
+    1.0300548477175653,
+    1.0350828476930474
+   ],
+   "median_ms": 1.046291828174617,
+   "process_medians_ms": [
+    1.046291828174617,
+    1.058699867201085,
+    1.049606609399234,
+    1.0300548477175653,
+    1.0350828476930474
+   ],
+   "rss_bytes": 46039040,
+   "process_rss_bytes": [
+    45973504,
+    45793280,
+    45924352,
+    45842432,
+    46039040
+   ],
+   "checksum_ok": true,
+   "checksum": "196418"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 30,
+   "calls": 32,
+   "instructions": 204898484.46875,
+   "process_instructions": [
+    211806584.09375,
+    204851744.5,
+    204898484.46875,
+    204888784.5625,
+    211786841.28125
+   ],
+   "instruction_spread": 0.03394285522307372,
+   "cycles": 26668256.21875,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 363453495,
+      "cycles": 89316110,
+      "wall_s": 0.025415208991034888,
+      "rss_bytes": 25329664
+     },
+     "many": {
+      "instructions": 7141796559,
+      "cycles": 997327287,
+      "wall_s": 0.2509832079958869,
+      "rss_bytes": 25968640
+     }
+    },
+    {
+     "one": {
+      "instructions": 368462012,
+      "cycles": 90654860,
+      "wall_s": 0.027328542011673562,
+      "rss_bytes": 25378816
+     },
+     "many": {
+      "instructions": 6919241692,
+      "cycles": 937677051,
+      "wall_s": 0.2364439999946626,
+      "rss_bytes": 26116096
+     }
+    },
+    {
+     "one": {
+      "instructions": 363985868,
+      "cycles": 90908228,
+      "wall_s": 0.025655125005869195,
+      "rss_bytes": 25313280
+     },
+     "many": {
+      "instructions": 6920737371,
+      "cycles": 941184647,
+      "wall_s": 0.23665791600069497,
+      "rss_bytes": 26066944
+     }
+    },
+    {
+     "one": {
+      "instructions": 365153207,
+      "cycles": 88880947,
+      "wall_s": 0.0257208749972051,
+      "rss_bytes": 25559040
+     },
+     "many": {
+      "instructions": 6920426974,
+      "cycles": 942700309,
+      "wall_s": 0.23761858300713357,
+      "rss_bytes": 26116096
+     }
+    },
+    {
+     "one": {
+      "instructions": 363098764,
+      "cycles": 87430160,
+      "wall_s": 0.02535362500930205,
+      "rss_bytes": 25329664
+     },
+     "many": {
+      "instructions": 7141164789,
+      "cycles": 992829090,
+      "wall_s": 0.24940520800009836,
+      "rss_bytes": 25968640
+     }
+    }
+   ],
+   "samples_ms": [
+    7.041502593438054,
+    6.587152343399794,
+    6.593837218588305,
+    6.623858062539512,
+    6.992190093569661
+   ],
+   "median_ms": 6.623858062539512,
+   "process_medians_ms": [
+    7.041502593438054,
+    6.587152343399794,
+    6.593837218588305,
+    6.623858062539512,
+    6.992190093569661
+   ],
+   "rss_bytes": 26116096,
+   "process_rss_bytes": [
+    25968640,
+    26116096,
+    26066944,
+    26116096,
+    25968640
+   ],
+   "checksum_ok": true,
+   "checksum": "832040"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 20,
+   "calls": 8192,
+   "instructions": 751110.9870605469,
+   "process_instructions": [
+    751110.9870605469,
+    751099.8472900391,
+    751423.7935791016,
+    751241.8452148438,
+    751055.0611572266
+   ],
+   "instruction_spread": 0.0004909160273610491,
+   "cycles": 98628.10998535156,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 110633437,
+      "cycles": 42982407,
+      "wall_s": 0.015200166002614424,
+      "rss_bytes": 19349504
+     },
+     "many": {
+      "instructions": 6264002183,
+      "cycles": 852178738,
+      "wall_s": 0.21416458299790975,
+      "rss_bytes": 26198016
+     }
+    },
+    {
+     "one": {
+      "instructions": 111113024,
+      "cycles": 43857550,
+      "wall_s": 0.015046291999169625,
+      "rss_bytes": 19382272
+     },
+     "many": {
+      "instructions": 6263910926,
+      "cycles": 849230591,
+      "wall_s": 0.21542270900681615,
+      "rss_bytes": 26214400
+     }
+    },
+    {
+     "one": {
+      "instructions": 110900977,
+      "cycles": 42110512,
+      "wall_s": 0.01469004100363236,
+      "rss_bytes": 19382272
+     },
+     "many": {
+      "instructions": 6266564694,
+      "cycles": 861945982,
+      "wall_s": 0.2186961249972228,
+      "rss_bytes": 26198016
+     }
+    },
+    {
+     "one": {
+      "instructions": 112844326,
+      "cycles": 42668417,
+      "wall_s": 0.014812665991485119,
+      "rss_bytes": 19398656
+     },
+     "many": {
+      "instructions": 6265074173,
+      "cycles": 850629894,
+      "wall_s": 0.21344945799501147,
+      "rss_bytes": 26198016
+     }
+    },
+    {
+     "one": {
+      "instructions": 110743910,
+      "cycles": 42437421,
+      "wall_s": 0.014477290998911485,
+      "rss_bytes": 19349504
+     },
+     "many": {
+      "instructions": 6263544038,
+      "cycles": 850328545,
+      "wall_s": 0.21371570799965411,
+      "rss_bytes": 26214400
+     }
+    }
+   ],
+   "samples_ms": [
+    0.02433495080644832,
+    0.0244885306415199,
+    0.024888117554411338,
+    0.024247655273867963,
+    0.024280156495137817
+   ],
+   "median_ms": 0.02433495080644832,
+   "process_medians_ms": [
+    0.02433495080644832,
+    0.0244885306415199,
+    0.024888117554411338,
+    0.024247655273867963,
+    0.024280156495137817
+   ],
+   "rss_bytes": 26214400,
+   "process_rss_bytes": [
+    26198016,
+    26214400,
+    26198016,
+    26198016,
+    26214400
+   ],
+   "checksum_ok": true,
+   "checksum": "6765"
+  },
+  {
+   "program": "fib",
+   "variant": "sakura",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 27,
+   "calls": 128,
+   "instructions": 49998611.1640625,
+   "process_instructions": [
+    49998611.1640625,
+    50001414.40625,
+    49989493.359375,
+    48411530.390625,
+    50006698.421875
+   ],
+   "instruction_spread": 0.03190424682029086,
+   "cycles": 6687637.3984375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 208784564,
+      "cycles": 68836519,
+      "wall_s": 0.019985040999017656,
+      "rss_bytes": 25460736
+     },
+     "many": {
+      "instructions": 6608508490,
+      "cycles": 924854106,
+      "wall_s": 0.23201545799383894,
+      "rss_bytes": 26624000
+     }
+    },
+    {
+     "one": {
+      "instructions": 208686261,
+      "cycles": 68120623,
+      "wall_s": 0.02022329199826345,
+      "rss_bytes": 25378816
+     },
+     "many": {
+      "instructions": 6608867305,
+      "cycles": 928761064,
+      "wall_s": 0.23284370799956378,
+      "rss_bytes": 26443776
+     }
+    },
+    {
+     "one": {
+      "instructions": 208419081,
+      "cycles": 69388672,
+      "wall_s": 0.02031849999912083,
+      "rss_bytes": 25346048
+     },
+     "many": {
+      "instructions": 6607341411,
+      "cycles": 919126914,
+      "wall_s": 0.23039887499180622,
+      "rss_bytes": 26460160
+     }
+    },
+    {
+     "one": {
+      "instructions": 208687976,
+      "cycles": 68957579,
+      "wall_s": 0.020382208007504232,
+      "rss_bytes": 25362432
+     },
+     "many": {
+      "instructions": 6405362151,
+      "cycles": 875419029,
+      "wall_s": 0.22006925000459887,
+      "rss_bytes": 26427392
+     }
+    },
+    {
+     "one": {
+      "instructions": 208305353,
+      "cycles": 68756663,
+      "wall_s": 0.0203269579942571,
+      "rss_bytes": 25313280
+     },
+     "many": {
+      "instructions": 6609543659,
+      "cycles": 928215043,
+      "wall_s": 0.23373249999713153,
+      "rss_bytes": 26476544
+     }
+    }
+   ],
+   "samples_ms": [
+    1.6538824843337352,
+    1.6603531875034605,
+    1.6412529296303546,
+    1.5605527344177972,
+    1.6672968749844586
+   ],
+   "median_ms": 1.6538824843337352,
+   "process_medians_ms": [
+    1.6538824843337352,
+    1.6603531875034605,
+    1.6412529296303546,
+    1.5605527344177972,
+    1.6672968749844586
+   ],
+   "rss_bytes": 26624000,
+   "process_rss_bytes": [
+    26624000,
+    26443776,
+    26460160,
+    26427392,
+    26476544
+   ],
+   "checksum_ok": true,
+   "checksum": "196418"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "bun",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 27,
+   "calls": 256,
+   "instructions": 21604832.578125,
+   "process_instructions": [
+    21439258.19921875,
+    21441658.078125,
+    21608889.35546875,
+    21604832.578125,
+    21608715.66015625
+   ],
+   "instruction_spread": 0.007851537642636137,
+   "cycles": 2807833.09375,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 151507497,
+      "cycles": 52748333,
+      "wall_s": 0.018014708999544382,
+      "rss_bytes": 21381120
+     },
+     "many": {
+      "instructions": 5636476564,
+      "cycles": 770248456,
+      "wall_s": 0.1955747500032885,
+      "rss_bytes": 21856256
+     }
+    },
+    {
+     "one": {
+      "instructions": 148929567,
+      "cycles": 49219141,
+      "wall_s": 0.01553599999169819,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 5637090933,
+      "cycles": 771571164,
+      "wall_s": 0.19510391699441243,
+      "rss_bytes": 21823488
+     }
+    },
+    {
+     "one": {
+      "instructions": 147831459,
+      "cycles": 49697886,
+      "wall_s": 0.015747500001452863,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 5679902140,
+      "cycles": 768161638,
+      "wall_s": 0.19610858299711253,
+      "rss_bytes": 21872640
+     }
+    },
+    {
+     "one": {
+      "instructions": 147888479,
+      "cycles": 50073066,
+      "wall_s": 0.01613458400242962,
+      "rss_bytes": 21364736
+     },
+     "many": {
+      "instructions": 5678863605,
+      "cycles": 768878338,
+      "wall_s": 0.19434495898894966,
+      "rss_bytes": 21970944
+     }
+    },
+    {
+     "one": {
+      "instructions": 148026465,
+      "cycles": 51295243,
+      "wall_s": 0.016284750003251247,
+      "rss_bytes": 21348352
+     },
+     "many": {
+      "instructions": 5679857674,
+      "cycles": 768597020,
+      "wall_s": 0.1936725830018986,
+      "rss_bytes": 21954560
+     }
+    }
+   ],
+   "samples_ms": [
+    0.700938148440855,
+    0.6990989569999329,
+    0.7030234335729801,
+    0.6961342772910939,
+    0.6935078085916757
+   ],
+   "median_ms": 0.6990989569999329,
+   "process_medians_ms": [
+    0.700938148440855,
+    0.6990989569999329,
+    0.7030234335729801,
+    0.6961342772910939,
+    0.6935078085916757
+   ],
+   "rss_bytes": 21970944,
+   "process_rss_bytes": [
+    21856256,
+    21823488,
+    21872640,
+    21970944,
+    21954560
+   ],
+   "checksum_ok": true,
+   "checksum": "196418"
+  },
+  {
+   "program": "fib",
+   "variant": "js",
+   "backend": "js",
+   "engine": "node",
+   "lane": "matched",
+   "ints": "js-safe",
+   "size": 30,
+   "calls": 32,
+   "instructions": 137388591.4375,
+   "process_instructions": [
+    137334275.46875,
+    137388591.4375,
+    137375119.09375,
+    137403145.28125,
+    137399453.96875
+   ],
+   "instruction_spread": 0.0005012775207854857,
+   "cycles": 17853846.25,
+   "process_counters": [
+    {
+     "one": {
+      "instructions": 1494089132,
+      "cycles": 360516818,
+      "wall_s": 0.0942329170065932,
+      "rss_bytes": 45629440
+     },
+     "many": {
+      "instructions": 5890200866,
+      "cycles": 926789494,
+      "wall_s": 0.23478229199827183,
+      "rss_bytes": 45760512
+     }
+    },
+    {
+     "one": {
+      "instructions": 1495018666,
+      "cycles": 364842679,
+      "wall_s": 0.09515508299227804,
+      "rss_bytes": 45613056
+     },
+     "many": {
+      "instructions": 5891938977,
+      "cycles": 939210757,
+      "wall_s": 0.23831683400203474,
+      "rss_bytes": 45744128
+     }
+    },
+    {
+     "one": {
+      "instructions": 1495504051,
+      "cycles": 365537780,
+      "wall_s": 0.09574779200193007,
+      "rss_bytes": 45531136
+     },
+     "many": {
+      "instructions": 5891507862,
+      "cycles": 935408742,
+      "wall_s": 0.2377221670030849,
+      "rss_bytes": 45760512
+     }
+    },
+    {
+     "one": {
+      "instructions": 1508810214,
+      "cycles": 369402267,
+      "wall_s": 0.09661054200842045,
+      "rss_bytes": 45662208
+     },
+     "many": {
+      "instructions": 5892404700,
+      "cycles": 936291505,
+      "wall_s": 0.2374844580044737,
+      "rss_bytes": 45563904
+     }
+    },
+    {
+     "one": {
+      "instructions": 1497207102,
+      "cycles": 364839415,
+      "wall_s": 0.09547400000155903,
+      "rss_bytes": 45711360
+     },
+     "many": {
+      "instructions": 5892286578,
+      "cycles": 936165759,
+      "wall_s": 0.2374746249988675,
+      "rss_bytes": 45711360
+     }
+    }
+   ],
+   "samples_ms": [
+    4.353384124897275,
+    4.463838562514866,
+    4.4452552187976835,
+    4.437826812591084,
+    4.43751953116589
+   ],
+   "median_ms": 4.437826812591084,
+   "process_medians_ms": [
+    4.353384124897275,
+    4.463838562514866,
+    4.4452552187976835,
+    4.437826812591084,
+    4.43751953116589
+   ],
+   "rss_bytes": 45760512,
+   "process_rss_bytes": [
+    45760512,
+    45744128,
+    45760512,
+    45563904,
+    45711360
+   ],
+   "checksum_ok": true,
+   "checksum": "832040"
+  }
+ ]
+}

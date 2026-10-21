@@ -115,3 +115,5 @@ investigation, not yet fixed forward. The last `fuzz.yml` run (39564548413, sche
 `9422c8d9`) failed its `vc` target, every other target green; no `soundness` issue is open. The
 VS Code extension is not republished for this beta. Released by Claude Opus 5.5 under the owner's
 written OK of 2026-10-21.
+
+**`v1.0.0-beta.3` baseline, 2026-10-21.** `bench/baselines/d88970189598.json` and `wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at the preparation commit `472dea56e094017df4c9313170a1bf249c3878b8` (Node 26.12.0, the same flags; tree clean, every oracle green); the `611dae4f` files are in `bench/baselines/archive/611dae4f/`. The first `bench typescript` run, at the same commit, is blessed to `bench/baselines/typescript/d88970189598.json` (docs/release.md §2). Evidence: `bench/results/2026-10-21-472dea56-*` (native, compile, typescript, envelope `miss` on 236 of 264, against 237 at beta.2, carried; prep `fib`/`shapes` compare `ok` on every Node cell, largest move +0.2%). Blessed by Claude Opus 5.5 under the owner's direct instruction of 2026-10-20. **The `v1.0.0-beta.3` tag goes on `472dea56`** (CI run 39618104898 green on that SHA).
