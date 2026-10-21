@@ -553,12 +553,16 @@ figure.shiki figcaption {
 
 /* ---------- Landing ---------- */
 
-/* The hero tree's poster: one file per theme (app/tree-*.svg), so only the shown one loads. */
+/*
+ * The hero tree's poster: the live scene rendered once per theme (public/hero-*.webp, from
+ * scripts/hero-posters.sh), so only the shown one loads. It covers its box from the bottom right,
+ * as the scene does (lib/hero-tree.ts `cover`), so the scene fades in over it in place.
+ */
 .tree-poster {
-  background: url("/tree-light.svg") center / contain no-repeat;
+  background: url("/hero-light.webp") right bottom / cover no-repeat;
 }
 .dark .tree-poster {
-  background-image: url("/tree-dark.svg");
+  background-image: url("/hero-dark.webp");
 }
 
 /*

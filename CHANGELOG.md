@@ -17,6 +17,14 @@ retains earlier implementation history.
   now runs instead of exiting 75; the `secrets` example runs natively. A cassette line that is
   not JSON names the line with the parser's own text, which differs from Node's.
 
+### Changed
+
+- The website's landing hero is a close-up of a Somei-Yoshino: a trunk on the right in a CC0
+  scanned sakura bark (Poly Haven), one limb arching over the copy, and petals falling through
+  the hero. Its posters are the live scene rendered once (`website/scripts/hero-posters.ts`),
+  about 75 KB of webp per theme, replacing the generated SVG posters; the tree no longer turns
+  toward the pointer.
+
 ## [1.0.0-beta.3] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

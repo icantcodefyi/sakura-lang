@@ -1,9 +1,9 @@
 import { TreeLive } from "./tree-live";
 
 /**
- * The hero's sakura tree: the poster (app/tree-*.svg, a CSS background so only the current
- * theme's file loads) at the reserved size, then the live scene over it where the device can
- * afford one. Decorative: the poster is a background and the canvas is aria-hidden.
+ * The hero's sakura tree from lg up, behind the copy: the poster (public/hero-*.webp, a CSS
+ * background so only the current theme's file loads), then the live scene over it where the
+ * device can afford one. Decorative: the poster is a background and the canvas is aria-hidden.
  */
 export function Tree({ className }: { className?: string }) {
   return (
@@ -15,7 +15,7 @@ export function Tree({ className }: { className?: string }) {
           key={s}
           rel="preload"
           as="image"
-          href={`/tree-${s}.svg`}
+          href={`/hero-${s}.webp`}
           media={`(prefers-color-scheme: ${s})`}
           fetchPriority="high"
         />

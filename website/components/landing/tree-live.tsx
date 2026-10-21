@@ -30,11 +30,13 @@ export function TreeLive({ children, className }: { children: ReactNode; classNa
     let onScreen = false;
     const sync = () => scene?.run(onScreen && !document.hidden);
     const load = () =>
-      import("./tree-scene").then(({ mount }) => {
-        if (dead) return;
-        scene = mount(cv, () => el.setAttribute("data-live", ""));
-        sync();
-      });
+      Promise.all([import("./tree-scene"), import("@/lib/hero-tree")]).then(
+        ([{ mount }, { HERO }]) => {
+          if (dead) return;
+          scene = mount(cv, () => el.setAttribute("data-live", ""), HERO);
+          sync();
+        },
+      );
     let idle = 0;
     const ric = (window as Partial<Window>).requestIdleCallback; // not in older Safari
     const io = new IntersectionObserver(([e]) => {
