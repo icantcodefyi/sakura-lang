@@ -75,7 +75,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
 | 10 | `std/channel` (`with_channel`, since `with` is a keyword), and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc, in the 1.0 contract (ABI 1.12.0, the next free MINOR after 7c's 1.11.0: tag 19 `Channel`, `rt_code_channel_end`; native as JS and WASM through `rt`; readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
-| 11 | `std/worker` (experimental) | first green minor; 11a (JS, inline, std; no ABI change) landed, 11b (WASM, native, topics in `rt`) next | Opus | 10 |
+| 11 | `std/worker` (experimental) | first green minor; 11a (JS, inline, std; no ABI change) and 11b (WASM, native, topics in `rt`, `Worker.close`; ABI 1.15.0) landed | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
 
@@ -745,6 +745,22 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
   `worker_host_refused_off_js` and `V1010_worker_spawn_untagged`; readings beyond the RFC (the
   shared port type, the shared row, the empty inline table, topics' counting, no `close`) are
   the REQUESTS entry.
+- **11b landed** (ABI 1.15.0, after MT-3's 1.14.0; design §17.299). WASM: `Worker.host()` is
+  a second instance of the module in a Node `Worker` thread over the JS runtime's links,
+  messages as the `sakura-vt1` bytes of their `String`, the entry found through the module's
+  `workers()` table by the code the function value holds. Native: a second `Instance` on an
+  OS thread (the driver's launcher, descriptor layout 5 with the same table), a bounded
+  `mpsc` pair of codec text per link, grants as the worker host's permissions, the parent's
+  `Limits`. Topics are `rt` builtins on every target (a registry of `Channel`s, the host
+  imports `topic_listen`/`topic_post` and the export `topic_deliver`); the four
+  `worker_topic_fanout` rows are gone. `Worker.close(p)` (additive) ends one direction. A
+  thread's environment is the `SAKURA_*` variables and its `env` grant's names; its heap is
+  bounded as its parent's (`resourceLimits` on Node). `WorkerEntry.key` names; the list
+  dispatch stays. RFC §2.9's fragment, `spawn -> Result` and the fixed 64 per direction are
+  corrected. Evidence: `crates/sakura_cli/tests/workers.rs` on JS, WASM and native (a grant
+  test per backend), `worker_close_finishes_inbox`, `worker_host_root_installed` (was
+  `worker_host_refused_off_js`). Readings and the beta.N items left (the inline counter, the
+  `@worker` shape check) are the REQUESTS entry.
 
 ### Phase 12: docs, skill, inventory, prompt budget
 

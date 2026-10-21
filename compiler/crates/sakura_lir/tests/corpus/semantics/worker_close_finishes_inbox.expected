@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+send after close: Err(Closed)
+Message(6)
+Finished
+Ok("closed")

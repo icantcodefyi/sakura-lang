@@ -71,6 +71,7 @@ pub const NATIVE_CODES: &[&str] = &[
     "rt_code_js_callback",
     "rt_code_serve_request",
     "rt_code_channel_end",
+    "rt_code_worker_stop",
 ];
 
 /// The frame and capture slot kinds of a native code's code-table entry: the words a code
@@ -97,6 +98,15 @@ pub fn native_slots(name: &str) -> (Vec<Slot>, Vec<Slot>) {
         "rt_k_channel_send" => (vec![w, w], vec![]),
         "rt_k_channel_recv" => (vec![w], vec![]),
         "rt_code_channel_end" => (vec![], vec![w]),
+        // `std/worker`: `topic_subscribe`'s name, capacity and body (taken at once).
+        "rt_k_topic_subscribe" => (vec![w, i, w], vec![]),
+        // Live workers: the id, and the message a waiting `worker_post` keeps (taken at once);
+        // `worker_closing`'s body, then its result while the thread is awaited; the finalizer's
+        // capture, the id.
+        "rt_k_worker_post" => (vec![i, w], vec![]),
+        "rt_k_worker_take" => (vec![i], vec![]),
+        "rt_k_worker_closing" => (vec![i, w], vec![]),
+        "rt_code_worker_stop" => (vec![], vec![i]),
         // Slot 0 the instance, 1 the activation, then the arguments, kept while a
         // `Sql.sqlite` clause performs `Fs.root()` (`sakura_rt::wasm::sql_instance`); the
         // capture is the instance's handle, retired with the handler.
@@ -222,6 +232,23 @@ pub fn check_message(c: &Contract, func: &str) -> String {
         "D021" => format!("postcondition `{}` of {func} violated", c.name),
         _ => format!("precondition `{}` of {func} violated", c.name),
     }
+}
+
+/// The worker table (ABI 1.15.0: WASM `workers()`, §9, and the native descriptor's `workers`):
+/// `u32 n`, then per `@worker` function `u32 fun` (the code its values hold, which
+/// `worker_start` passes), `u32 entry` (the code a worker's task starts at), its key and its
+/// effects joined by newlines (each `u32 len`, UTF-8).
+pub fn workers_table(m: &Module) -> Vec<u8> {
+    let mut out = (m.workers.len() as u32).to_le_bytes().to_vec();
+    for w in &m.workers {
+        out.extend_from_slice(&w.fun.0.to_le_bytes());
+        out.extend_from_slice(&w.entry.0.to_le_bytes());
+        for text in [w.key.clone(), w.effects.join("\n")] {
+            out.extend_from_slice(&(text.len() as u32).to_le_bytes());
+            out.extend_from_slice(text.as_bytes());
+        }
+    }
+    out
 }
 
 /// The operation names of every effect, for effect traces (`Rt::trace`): `u32 n`, then per

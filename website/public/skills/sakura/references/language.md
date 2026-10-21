@@ -115,7 +115,7 @@ Headers.of get get_all get_set_cookie has append set remove entries to_list   Bl
 Http.get post_json send stream read_chunk bearer scoped scripted sequence recording   Request.of post post_json with_payload with_header with_headers json param header   Response.status ok_json html json text bytes
 WebSocket.connect send receive close messages options protocol accept handshake upgrade subscribe unsubscribe publish host scripted upgrade_request (Received = Data(Text | Binary) | Closed(CloseInfo); SocketReason = Connect | MessageTooLarge | NotOpen | Failed | Accept)
 channel.with_channel send try_send recv close   (Sender/Receiver stay inside the callback; SendError = Full | Closed)
-Worker.spawn send recv topic publish subscribe inline host   Grants.none of (experimental; entry declared @worker; Received = Message | Finished | Failed(WorkerError); live workers JS-only)
+Worker.spawn send recv topic publish subscribe inline host   Grants.none of (experimental; entry declared @worker; Received = Message | Finished | Failed(WorkerError); Worker.close(p) ends one direction; live workers on every target)
 Sql.query execute transaction memory sqlite   sql.migrate   Cli.args exit parse of   Budget.limits unlimited reserve settle
 Llm.request generate generate_text stream step scripted anthropic recording replay (LlmError = Refused | InvalidOutput | Truncated | RateLimited | Timeout | ProviderError | BudgetExceeded)
 Prompt.of text   Model.of default   Untrusted.of trust check len   Secret.of expose map

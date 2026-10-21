@@ -359,7 +359,7 @@ channel's senders or receivers while it is full or empty; `channel_try_send(ch, 
 queued, an item taken, the close) resolves every waiter of the other kind in the order they
 waited, and each tries again; a cancelled waiter leaves its list (`suspend`'s cancel).
 
-**Workers** (`std/worker`, experimental, RFC 0002 §2.9, plan `web-apis.md` phase 11a). A program
+**Workers** (`std/worker`, experimental, RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b). A program
 with `@worker` functions has, beside `$entry`, one Core entry `$worker$<name>` each (no
 parameters: it builds the root handlers the function's row declares and calls it on the ports
 to its parent), and `__main__.js` calls
@@ -369,15 +369,20 @@ to its parent), and `__main__.js` calls
 the clause in a list, so `callback` does not wrap it), refuses grants beyond its own
 `SAKURA_PERMISSIONS` or leaving a declared effect without its permission (-1) and a 17th live
 worker (-2), and starts a `node:worker_threads` `Worker` on `__main__.js` with
-`workerData = { sakuraWorker: key, capacity }` and its grants as that thread's
-`SAKURA_PERMISSIONS` (`SAKURA_TRACE` removed); there `runMain` runs `runWorker`, which runs the
+`workerData = { sakuraWorker: key, capacity }`, its grants as that thread's
+`SAKURA_PERMISSIONS`, an environment of only the `SAKURA_*` variables (`SAKURA_TRACE` removed)
+and the `env` grant's names (11b), and `resourceLimits.maxOldGenerationSizeMb` from the
+parent's bound (its own `resourceLimits`, else `--max-old-space-size`; none when the parent has
+none); there `runMain` runs `runWorker`, which runs the
 key's entry instead of `$entry` and posts how it ended. A link (id 0 in a worker: its parent;
-1, 2, … the workers it spawned) carries `{ m: text }`, `{ ack: 1 }` and
-`{ end: [kind, code] }`; `worker_post(id, text, $ctx, $k)` (0, or 2 once the other side
-ended) waits while the other side holds `capacity` unacknowledged messages, and
+1, 2, … the workers it spawned) carries `{ m: text }`, `{ ack: 1 }`, `{ shut: 1 }` (11b: the
+other side sends nothing more) and `{ end: [kind, code] }`; `worker_post(id, text, $ctx, $k)`
+(0, or 2 once the other side ended or `worker_shut(id)` closed this side) waits while the other side holds `capacity` unacknowledged messages, and
 `worker_take(id, $ctx, $k)` answers `[0, text]`, then the end, `[1, ""]` or `[2, code]` (a
 defect's code, `"fail"` for an uncaught failure, `D096` for the thread's heap limit, `D090` for
-an unexplained exit). A worker that ends otherwise than by returning writes one plain
+an unexplained exit), or `[1, ""]` once the other side shut its direction (`Worker.close`,
+`worker_shut(id)`). The WASM host runs the same links (`sakura_wasm_host.js`'s `workerStart`
+over `workerSpawn`, messages as `sakura-vt1` `String` bytes). A worker that ends otherwise than by returning writes one plain
 `error: worker <key> …` line on stderr, not a defect record. `worker_closing(id, body, $ctx,
 $k)` runs `body()` under a finalizer that terminates the thread, and on return terminates it and
 awaits its exit. Topics: `topic_subscribe(name, capacity, body, $ctx, $k)` registers a channel

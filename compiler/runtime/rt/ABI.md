@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.14.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.15.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -23,7 +23,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§8.2; design §17.289, RFC 0002 §2.10) and 1.11.0 `std/crypto` tier 2 (§8.2; design §17.288
 (6), RFC 0002 §2.7), 1.12.0 `std/channel`'s object and finalizer code
 (§3.2, §3.5, §7.4; RFC 0002 §2.9) 1.13.0 `Console.eprint`'s import (§8.2; design §17.292
-(9)) and 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)). Owned by
+(9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)) and
+1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
+§2.9). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -282,6 +284,22 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   an older host ignores gets a schema without them, a different tool or output schema for the
   same program, so an older host refuses a 1.14 module by the MINOR rule; a 1.14 host reads
   a module without keywords as before. `sakura_abi_version` is `0x010e00`.
+- 1.15.0 (MINOR, design §17.299, RFC 0002 §2.9, plan `web-apis.md` phase 11b, after MT-3's
+  1.14.0) adds `std/worker`'s live workers and its topics in the runtime. Topics: the `cps`
+  builtin `topic_subscribe` and the plain `topic_publish` (`rt_k_topic_subscribe`,
+  `rt_b_topic_publish`, a registry of the instance's subscriptions, each a `Channel`), the
+  `sync` imports `topic_listen(ptr, len)` and `topic_post(name, name_len, text, text_len)`
+  (§8.2), and the export `topic_deliver(name, text)` (§9). Workers: the request kind 5
+  (§8.5), the `cps` builtins `worker_post`, `worker_take` and `worker_closing`, the plain
+  `worker_start` and `worker_shut`, the runtime's `rt_code_worker_stop` as the twelfth code of
+  the native-code table `rt_init` receives (`worker_closing`'s finalizer, after
+  `rt_code_channel_end`), the imports `worker_start`, `worker_post`, `worker_take`,
+  `worker_join`, `worker_stop` and `worker_shut` (§8.2), the export `workers() -> (ptr, len)`
+  (§9), and the same table in the native descriptor, whose layout is version 5
+  (`sakura_native_main_v5`, 112 bytes; §1b). A module that imports them needs a host that has
+  them, so an older host refuses a 1.15 module by the MINOR rule; a WASI command answers
+  `worker_start` with -4 (no live workers) and ignores the topic imports. `sakura_abi_version`
+  is `0x010f00`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -415,9 +433,10 @@ must equal the driver's own triple.
 
 **Backend coverage** (RFC 0002 §7, design §17.271 (9)). The compiler lists `main`'s root
 effects (the std effects of its row after handling) in the module descriptor it hands the
-driver's entry, `sakura_native_main_v4`. After the record's check, the driver refuses a root
-effect whose service the native host does not implement (`Http`, `Serve`, `Llm`, `WebSocket`,
-`Worker`): one stderr
+driver's entry, `sakura_native_main_v5` (descriptor layout 5, 1.15.0: the module's worker
+table at +96/+104, `sakura_lir::image::workers_table`). After the record's check, the driver
+refuses a root effect whose service the native host does not implement (`Http`, `Serve`,
+`Llm`, `WebSocket`; a live worker's entry by the same rule when it starts): one stderr
 line naming it, "`Http` is not available on target `native`", and exit 75, before the
 instance exists or any user code runs. A handler for one that the program installs itself is
 `D090` at first use ("a host operation the native host does not provide yet", exit 70;
@@ -915,8 +934,8 @@ an import the Node host lacks. Every import has one of four shapes:
 
 | Shape | Signature | Used for |
 |---|---|---|
-| `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `ws_accept` (1.10.0), `trace_*`, `retire_handle`, `abort` |
-| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0); completion comes back through the export `complete` (§8.5) |
+| `sync` | `(args as scalars/slices…) -> scalar`, or a `Bytes` from `alloc_bytes` copy-out | console, clock reads, `random_*`, `log_write`, `file_close`, the test runner, SQL and JS-built handlers, `http_body_close`, `serve_respond`, `ws_accept` (1.10.0), `trace_*`, `retire_handle`, `abort`, `worker_start`, `worker_stop`, `worker_shut`, `topic_listen`, `topic_post` (1.15.0) |
+| `async` | `(request_id: i32, args…) -> i32 accepted` | anything that suspends: `clock_sleep_ms`, `http_send`, `http_stream_open`, `http_stream_read`, `serve_listen`, `ws_connect`, `ws_send`, `ws_receive` (1.8.0), `worker_post`, `worker_take`, `worker_join` (1.15.0); completion comes back through the export `complete` (§8.5) |
 | `callback` | the host receives a `callback_id: i32` and later calls the export `invoke(callback_id, args_ptr)`; used only by `serve_listen` | reentrancy, §8.5 |
 | `hosted` (1.2.0) | `(ptr: i32, len: i32) -> i32`: the arguments as one `sakura-vt1` tuple, the answer a status-prefixed `Bytes` from `alloc_bytes` (§8.1) | a builtin whose JS implementation the host runs as is: `fs_*`, `file_open`/`file_read`/`file_write`, `env_get`, `cli_*`, `json_*`, `http_body_of`, `http_recording_*`, `crypto_*` (1.6.0; tier 1b's 1.9.0; tier 2's 1.11.0), `ws_close` (1.8.0), `ws_subscribe`, `ws_unsubscribe`, `ws_publish` (1.10.0) |
 
@@ -1023,6 +1042,29 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
   RSA-OAEP with MGF1 of the same hash, `iv` the caller's seed and `aad` the label; `None` when a
   ciphertext does not decrypt; result top `option`). The native runtime has `crypto_tier2` and
   answers `D090` for any tier-2 code or cipher; a WASI command does not have either import.
+
+- Workers (1.15.0, RFC 0002 §2.9, plan `web-apis.md` phase 11b; `std/worker`, experimental):
+  `worker_start(code, ptr, len) -> i64` (`code` is the code a `@worker` function's values
+  hold, the `fun` of the module's worker table; at `(ptr, len)` the tuple `(fs_read,
+  fs_write, net, env, capacity)` of the grants; answers the worker's id 1, 2, …, -1 when the
+  grants are not within the instance's own table or leave an effect the entry declares
+  without its permission, -2 at 16 live workers, -3 when `code` is no `@worker` function's,
+  -4 when the host has no live workers), `async` `worker_post(request, id: i64, ptr, len)`
+  (the 1-tuple of the message's `String`; completes with the `Int` 0, or 2 once the other side
+  has ended or this side closed, waiting while the other side holds `capacity` unreceived
+  messages), `worker_take(request, id: i64)` (completes with the tuple `(0, text)`, then the
+  end, `(1, "")` finished or `(2, code)` failed, or `(1, "")` once the other side closed its
+  direction) and `worker_join(request, id: i64)` (no payload, once the worker's thread has
+  exited), and `sync` `worker_stop(id: i64)` and `worker_shut(id: i64)` (`Worker.close`).
+  Id 0 is a worker's parent. The host starts the worker as a second instance of the module at
+  the table's `entry`, with the grants as its permissions, its environment only the runtime's
+  `SAKURA_*` variables and the `env` grant's names, and its heap bounded as its parent's; a
+  message is the `Schema` codec's text, as the `sakura-vt1` bytes of its `String` between
+  instances. Topics: `topic_listen(ptr, len)` (deliver topic `name`'s messages from other
+  instances here from now on) and `topic_post(name, name_len, text, text_len)` (`text`
+  published here, for other instances' subscriptions), both `sync`; the host answers a
+  listened topic's message with the export `topic_deliver`, between runs, and drops it where
+  a subscription is full.
 
 **Host `Err` text** (design §17.229 (5)a; both hosts). The runtime's own messages for `fs_*` and
 `file_*` (`not found`, `escapes the directory`, `not a relative path`, `no such directory`,
@@ -1218,7 +1260,11 @@ ptr`, `drop(ptr)`, `layout_table() -> (ptr, len)`, `effect_table() -> (ptr, len)
 -> (kind, ptr, len)` (the outcome encoded as §8.1 transport; a defect's carries its code,
 message and site, §6.5), `tests() -> (ptr, len)` (the
 test list and `effects` map as JS `__tests__.js`, in transport encoding), `stats() -> (ptr,
-len)` (§10 counters). Nothing else; the validator rejects extra exports (§1). The list
+len)` (§10 counters), and since 1.15.0 `workers() -> (ptr, len)` (the worker table:
+`u32 n`, then per `@worker` function `u32 fun`, `u32 entry`, its key and its effects joined
+by newlines, each `u32 len` and UTF-8) and `topic_deliver(name, text)` (two `Bytes` from
+`alloc_bytes`, consumed: a message of topic `name` from another instance, queued on this
+instance's subscriptions of it, between runs). Nothing else; the validator rejects extra exports (§1). The list
 describes the **linked** module: rustc exports a `static` as a global holding its address and
 cannot return several values through `extern "C"`, so the M4-WASM linker synthesises
 `sakura_abi_version` and the multi-value exports over single-value runtime functions. The

@@ -26,12 +26,9 @@ use common::*;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// Fixtures that do not agree yet, and why. Empty from W2 (plan §3.7 row 3) to web-APIs phase
-/// 11a; a fixture that WASM cannot run yet goes here with the reason.
-const KNOWN: &[(&str, &str)] = &[(
-    "worker_topic_fanout.sak",
-    "`std/worker` topics' queues are the JS runtime's until web-APIs phase 11b (`D090` on WASM)",
-)];
+/// Fixtures that do not agree yet, and why. Empty from W2 (plan §3.7 row 3), and again since
+/// web-APIs phase 11b; a fixture that WASM cannot run yet goes here with the reason.
+const KNOWN: &[(&str, &str)] = &[];
 
 struct Run {
     code: Option<i32>,
@@ -668,10 +665,7 @@ fn wasm_twins_agree_with_wasm_frames() {
 /// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
 /// the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
-const KNOWN_NATIVE: &[(&str, &str)] = &[(
-    "worker_topic_fanout.sak",
-    "`std/worker` topics' queues are the JS runtime's until web-APIs phase 11b (`D090` on native)",
-)];
+const KNOWN_NATIVE: &[(&str, &str)] = &[];
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and

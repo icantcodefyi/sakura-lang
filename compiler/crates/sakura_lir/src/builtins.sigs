@@ -145,6 +145,7 @@ untrusted_validate: (ptr) -> ptr
 untrusted_value: (ptr) -> word
 worker_closing: (i64, ptr) -> word cps
 worker_post: (i64, ptr) -> i64 cps
+worker_shut: (i64) -> unit
 worker_start: (ptr, ptr, ptr, ptr, ptr, i64) -> i64
 worker_take: (i64) -> ptr cps
 ws_accept: (ptr, ptr) -> ptr

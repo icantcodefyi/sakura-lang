@@ -31,6 +31,8 @@ pub const EXPORTS: &[&str] = &[
     "outcome",
     "tests",
     "stats",
+    "topic_deliver",
+    "workers",
 ];
 
 /// The `sakura_host` imports of ABI §8 this backend uses.
@@ -86,6 +88,14 @@ pub const IMPORTS: &[&str] = &[
     "ws_send",
     "ws_receive",
     "ws_accept",
+    "topic_listen",
+    "topic_post",
+    "worker_start",
+    "worker_post",
+    "worker_take",
+    "worker_join",
+    "worker_stop",
+    "worker_shut",
 ];
 
 /// The gate for `host`: a [`Host::Wasi`] command may also import `fd_write` and `proc_exit`

@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010e00;
+export const ABI_VERSION = 0x010f00;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -236,6 +236,9 @@ class Writer {
   }
   bytes(b) {
     this.u32(b.length);
+    this.raw(b);
+  }
+  raw(b) {
     this.room(b.length);
     this.buf.set(b, this.n);
     this.n += b.length;
@@ -532,6 +535,12 @@ export class Host {
     this.queued = 0;
     this.copyBudget = null;
     this.wake = null;
+    // `std/worker` topics (ABI 1.15.0): one unref'd `BroadcastChannel` per name this instance
+    // listens to, and the messages they received, for `topic_deliver` between runs.
+    this.topicPorts = new Map();
+    this.topicInbox = [];
+    // The module's `@worker` functions by the code their values hold (`workers()`, ABI 1.15.0).
+    this.workerTable = null;
     this.traceFd = null;
     const path = proc?.env?.SAKURA_TRACE;
     if (path) this.traceFd = proc.getBuiltinModule("node:fs").openSync(path, "a");
@@ -855,6 +864,43 @@ export class Host {
           const ctx = { h: guestFrames, c: { j: (e) => ({ fail: e }), m: 0 }, t: { id: 0, fins: [] }, p: null };
           return this.jsStep({ schema: OPAQUE, inst: c.inst }, () => c.f(...args, ctx, (v) => ({ ok: v })));
         },
+        // `std/worker` topics (ABI 1.15.0), as the JS runtime's: other threads' messages reach
+        // this instance through `topic_deliver`, asynchronously and uncounted.
+        topic_listen: (ptr, len) => void this.topicPort(this.string(ptr, len)),
+        topic_post: (np, nl, tp, tl) => this.topicPort(this.string(np, nl))?.postMessage(this.string(tp, tl)),
+        // `std/worker`'s live workers (ABI 1.15.0): threads running this module at a worker's
+        // entry, over the JS runtime's links (`workerSpawn`). A message is the `sakura-vt1`
+        // bytes of its `String`, passed on as they are; each `async` answer's payload is the
+        // `sakura-vt1` value of the result.
+        worker_start: (code, ptr, len) => BigInt(this.workerStart(code, ptr, len)),
+        worker_post: (request, id, ptr, len) => {
+          const b = this.copyIn(ptr, len);
+          // The 1-tuple of a `String`: tuple tag, count 1, then the value.
+          if (len < 10 || b[0] !== T.tuple || b[1] !== 1 || b[2] | b[3] | b[4] || b[5] !== T.string) {
+            throw new HostFault("worker_post's message is not a string");
+          }
+          const m = b.subarray(5);
+          return this.cps(request, (ctx, k) => rt.worker_post(Number(id), m, ctx, k), (w, v) => {
+            w.u8(T.int);
+            w.i64(v);
+          });
+        },
+        worker_take: (request, id) =>
+          this.cps(request, (ctx, k) => rt.worker_take(Number(id), ctx, k), (w, [kind, text]) => {
+            w.u8(T.tuple);
+            w.u32(2);
+            w.u8(T.int);
+            w.i64(kind);
+            if (text instanceof Uint8Array) w.raw(text);
+            else this.encode(w, text, "S");
+          }),
+        worker_join: (request, id) => {
+          this.inflight.set(request, () => {});
+          rt.workerExited(Number(id)).then(() => this.complete(request, 0, null));
+          return 1;
+        },
+        worker_stop: (id) => rt.workerStop(Number(id)),
+        worker_shut: (id) => rt.worker_shut(Number(id)),
         trace_enabled: () => (this.traceFd === null ? 0 : 1),
         trace_write: (ptr, len) => {
           rt.flushOut();
@@ -1299,6 +1345,89 @@ export class Host {
   }
 
   /**
+   * An `async` import served by a JS runtime CPS function (`start(ctx, k)`) that may wait more
+   * than once (`std/worker`'s links): its suspensions are followed to the answer, which
+   * completes `request` with the `sakura-vt1` value `encode(writer, answer)` writes; `abort`
+   * cancels the wait it is in.
+   */
+  cps(request, start, encode) {
+    let cancel = null;
+    this.inflight.set(request, () => cancel?.());
+    const step = (x) => {
+      let bytes;
+      try {
+        x = settle(x);
+        if (x?.p instanceof Promise && typeof x.k === "function") {
+          cancel = x.cancel;
+          x.p.then((v) => {
+            if (this.inflight.has(request)) step(x.k(v));
+          });
+          return;
+        }
+        const w = new Writer();
+        encode(w, x.ok);
+        bytes = w.done().slice();
+      } catch (e) {
+        if (!(e instanceof rt.Defect || e instanceof HostFault)) throw e;
+        // The guest reads anything but a status-0 value as malformed (`D090`).
+        return this.complete(request, 3, null);
+      }
+      this.complete(request, 0, bytes);
+    };
+    step(start(cpsContext(), (v) => ({ ok: v })));
+    return 1;
+  }
+
+  /** The module's `@worker` functions, read once from `workers()`: code → `{ entry, key, effects }`. */
+  workers() {
+    if (this.workerTable !== null) return this.workerTable;
+    this.workerTable = new Map();
+    if (this.exports.workers === undefined) return this.workerTable;
+    const [at, len] = this.exports.workers();
+    const r = new Reader(this.copyIn(at, len));
+    for (let n = r.u32(); n > 0; n--) {
+      const [code, entry] = [r.u32(), r.u32()];
+      const key = utf8.decode(r.slice());
+      const effects = utf8.decode(r.slice()).split("\n").filter((e) => e !== "");
+      this.workerTable.set(code, { entry, key, effects });
+    }
+    return this.workerTable;
+  }
+
+  /**
+   * `worker_start(code, ptr, len)`: a thread running this module at the entry of the `@worker`
+   * function whose values hold `code`, with the grants tuple at `(ptr, len)`; its id, -1 or -2
+   * as `rt.workerAdmit` answers, or -3 when `code` is no `@worker` function's.
+   */
+  workerStart(code, ptr, len) {
+    const w = this.workers().get(code);
+    if (w === undefined) return -3;
+    const [fsRead, fsWrite, net, env, capacity] = this.args(ptr, len);
+    const table = rt.workerAdmit(w.effects, fsRead, fsWrite, net, env);
+    if (typeof table === "number") return table;
+    const job = { module: this.module, entry: w.entry, key: w.key, argv: this.argv };
+    return rt.workerSpawn(new URL(import.meta.url), { sakuraWasm: job }, table, capacity);
+  }
+
+  /**
+   * The `BroadcastChannel` of topic `name` in this thread (Node delivers a message to every
+   * other channel of the name, never to its sender); unref'd, so it keeps no thread alive.
+   */
+  topicPort(name) {
+    let bc = this.topicPorts.get(name);
+    if (bc === undefined && globalThis.BroadcastChannel !== undefined) {
+      bc = new BroadcastChannel(`sakura-topic:${name}`);
+      bc.onmessage = (e) => {
+        this.topicInbox.push([name, e.data]);
+        this.wake?.();
+      };
+      bc.unref?.();
+      this.topicPorts.set(name, bc);
+    }
+    return bc;
+  }
+
+  /**
    * A host operation finished: queue its completion for the guest, which takes it at its next
    * scheduler point (ABI §8.5: `complete` is never called while the guest runs).
    */
@@ -1325,6 +1454,7 @@ export class Host {
     this.inflight.clear();
     this.completed.length = 0;
     this.queued = 0;
+    this.topicInbox.length = 0;
     this.handles.clear();
     this.sessions.clear();
     this.callbacks.clear();
@@ -1356,6 +1486,17 @@ export class Host {
       this.queued -= bytes?.length ?? 0;
       const p = bytes === null ? 0 : this.copyOut(bytes);
       e.complete(request, status, p, bytes?.length ?? 0);
+    }
+    // A message too large for the copy budget or the heap is missed, as on a full queue.
+    for (const [name, text] of this.topicInbox.splice(0)) {
+      try {
+        const n = this.copyOut(utf8out.encode(name));
+        const t = n === 0 ? 0 : this.copyOut(utf8out.encode(text));
+        if (t !== 0) e.topic_deliver(n, t);
+        else if (n !== 0) e.drop(n);
+      } catch (err) {
+        if (!(err instanceof rt.Defect)) throw err;
+      }
     }
   }
 
@@ -1414,8 +1555,8 @@ export class Host {
     let kind = e.run(task);
     this.reply();
     while (kind === OUTCOME.pending) {
-      if (this.completed.length === 0) {
-        if (this.inflight.size === 0) {
+      if (this.completed.length === 0 && this.topicInbox.length === 0) {
+        if (this.inflight.size === 0 && !rt.workerLinked()) {
           return { kind: "defect", code: "D090", message: "every task is waiting" };
         }
         rt.flushOut();
@@ -1552,6 +1693,28 @@ function writeDefect(o) {
   const record = { schema_version: "1.0", kind: "defect", code: o.code, message: o.message };
   if (o.spans?.length) record.spans = o.spans;
   writeErr(JSON.stringify(record));
+}
+
+/**
+ * A worker's thread (`worker_start`): the module the parent compiled, run from the worker's
+ * entry on a fresh instance, its end reported to the parent as the JS runtime's `runWorker`
+ * reports it.
+ */
+export async function runWorker(wt, job) {
+  const done = rt.workerChild(wt, job.key);
+  const host = new Host({ argv: job.argv });
+  let o;
+  try {
+    await loadTypes();
+    host.module = job.module;
+    host.debug = readDebug(job.module);
+    await host.fresh();
+    o = await host.runTask(job.entry);
+  } catch (e) {
+    o = aborted(e);
+  }
+  host.close(o);
+  done(o.kind === "cancelled" ? { kind: "defect", code: "D090", message: "cancelled" } : o);
 }
 
 /** Run `main` of the module in `bytes` as `__main__.js` does; returns the exit code. */
@@ -1722,7 +1885,14 @@ const isMain = () => {
     return false;
   }
 };
-if (proc?.argv?.[1] && isMain()) {
+const workerJob = () => {
+  const wt = proc?.getBuiltinModule?.("node:worker_threads");
+  return wt && !wt.isMainThread && wt.workerData?.sakuraWasm !== undefined ? wt : null;
+};
+const wt = workerJob();
+if (wt !== null) {
+  await runWorker(wt, wt.workerData.sakuraWasm);
+} else if (proc?.argv?.[1] && isMain()) {
   const fs = proc.getBuiltinModule("node:fs");
   if (proc.argv[2] === "--test") {
     // `--test <module.wasm> <seed> <filter> <snapshot-dir> <update: 0|1>` (as test_runner.js).

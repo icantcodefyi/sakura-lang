@@ -145,11 +145,25 @@ pub struct Module {
     pub builtins: BTreeMap<String, Sig>,
     pub entry: Option<FuncId>,
     pub tests: Vec<(String, FuncId)>,
+    /// The program's `@worker` functions (RFC 0002 §2.9; experimental), for the worker table a
+    /// live host reads.
+    pub workers: Vec<Worker>,
     /// The direct facts of the Core defs (§17.118), indexed by their [`FuncId`]s (the functions
     /// lowering adds after them, adapters, have none).
     pub direct: crate::direct::Facts,
     /// The type descriptors the native JSON and SQL codecs read ([`crate::schema::descriptors`]).
     pub schemas: String,
+}
+
+/// A `@worker` function: `fun` is the code a value of it holds (its adapter), by which
+/// `worker_start` names it; `entry` is its `$worker$<name>` entry, a root task's code; `key` its
+/// qualified name and `effects` the std effects of its declared row (sorted, as `main`'s roots).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Worker {
+    pub key: String,
+    pub fun: FuncId,
+    pub entry: FuncId,
+    pub effects: Vec<String>,
 }
 
 impl Module {

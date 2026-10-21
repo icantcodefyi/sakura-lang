@@ -1,13 +1,16 @@
 //! The entry of a native Sakura program (plan M5 N2; ABI §1b). The object `sakura_codegen_native`
-//! emits defines `main`, which calls [`sakura_native_main_v4`] with the module's descriptor; this
+//! emits defines `main`, which calls [`sakura_native_main_v5`] with the module's descriptor; this
 //! crate, built as a staticlib with `panic = "abort"`, brings the runtime and the native host.
 //! It runs `main` as the Node host does: one instance on one thread, the outcome reported on
-//! stderr and as the exit code.
+//! stderr and as the exit code. A live worker (`std/worker`, ABI 1.15.0) is another instance
+//! of the module on its own thread, started at its entry ([`launcher`]).
 
 #![cfg(feature = "native")]
 
 use std::rc::Rc;
+use std::sync::Arc;
 
+use sakura_host_native::worker::{Job, Launcher, WorkerFn, parse_table};
 use sakura_host_native::{Config, NativeHost, Span, report_spans, run_task};
 use sakura_rt::native::{
     CODES, Ctx, Image, Instance, Limits, Module, Outcome, PROFILE, SakuraCode,
@@ -51,15 +54,19 @@ pub struct SakuraModule {
     /// line: the row after handling, whose root handlers the program installs.
     roots_len: u32,
     roots: *const u8,
+    /// The length (+96) and bytes (+104) of the worker table
+    /// (`sakura_lir::image::workers_table`, ABI 1.15.0).
+    workers_len: u32,
+    workers: *const u8,
 }
 
-const _: () = assert!(size_of::<SakuraModule>() == 96);
+const _: () = assert!(size_of::<SakuraModule>() == 112);
 
-/// The std effects whose host service the native host does not implement: a `main` that
-/// leaves one to the runtime is refused at startup, exit 75, before any user code runs (RFC
-/// 0002 §7, design §17.271 (9); `WebSocket` since web-APIs phase 8, `Worker` since phase 11a);
+/// The std effects whose host service the native host does not implement: a `main` (or a
+/// live worker's entry) that leaves one to the runtime is refused at startup, exit 75, before
+/// any user code runs (RFC 0002 §7, design §17.271 (9); `WebSocket` since web-APIs phase 8);
 /// a use under a handler `main` installs is `D090` at first use.
-const UNAVAILABLE: &[&str] = &["Http", "Llm", "Serve", "WebSocket", "Worker"];
+const UNAVAILABLE: &[&str] = &["Http", "Llm", "Serve", "WebSocket"];
 
 /// The exit code of a program refused at startup (`sakura run`'s permission denial too).
 const EXIT_UNAVAILABLE: i32 = 75;
@@ -204,11 +211,14 @@ impl Debug {
     }
 }
 
-/// The descriptor, moved to the program's thread.
+/// The descriptor, moved to the program's threads.
+#[derive(Clone, Copy)]
 struct Desc(&'static SakuraModule);
 
 // SAFETY: the descriptor and everything it points at are immutable statics of the program.
 unsafe impl Send for Desc {}
+// SAFETY: as `Send`: nothing behind it is ever written.
+unsafe impl Sync for Desc {}
 
 /// Compiled code behind the runtime's [`Module`]: codes below `n` are the program's, the rest
 /// the runtime's [`CODES`] in the table's order.
@@ -253,6 +263,91 @@ fn limit<T: std::str::FromStr>(
     }
 }
 
+/// The module's code and a copy of its static block, for one instance.
+fn linked(m: &'static SakuraModule) -> Rc<Linked> {
+    // SAFETY: the compiler emits `codes` as `n_codes` function pointers and `image` as
+    // `image_len` bytes, immutable for the program's life.
+    let (codes, bytes) = unsafe {
+        (
+            std::slice::from_raw_parts(m.codes, m.n_codes as usize),
+            std::slice::from_raw_parts(m.image, m.image_len as usize),
+        )
+    };
+    Rc::new(Linked {
+        codes,
+        image: Image {
+            bytes: bytes.to_vec(),
+            layout: m.layout,
+            codes: m.code_table,
+            effects: m.effects,
+            ops: m.ops,
+            natives: m.natives,
+            schemas: m.schemas,
+        },
+    })
+}
+
+/// Starts each live worker on its own thread: a second instance of the module with the
+/// parent's limits (its heap bound too, design §17.299 (13)), whose host has the worker's
+/// grants as its permissions, running the worker's entry.
+fn launcher(m: Desc, limits: Limits, table: Vec<WorkerFn>) -> Launcher {
+    Arc::new(move |job: Job| {
+        let table = table.clone();
+        let spawned = std::thread::Builder::new()
+            .stack_size(1 << 28)
+            .spawn(move || run_worker(m, limits, table, job));
+        if let Err(e) = spawned {
+            // The job went with the closure: the worker ends on `D090`.
+            eprintln!("error: a worker's thread did not start: {e}");
+        }
+    })
+}
+
+fn run_worker(m: Desc, limits: Limits, table: Vec<WorkerFn>, job: Job) {
+    let Job {
+        worker,
+        config,
+        parent,
+    } = job;
+    let mut host = match NativeHost::new(config) {
+        Ok(h) => h,
+        Err(e) => return eprintln!("error: worker {}: {e}", worker.key),
+    };
+    host.attach(parent);
+    if let Some(effect) = worker
+        .effects
+        .iter()
+        .find(|e| UNAVAILABLE.contains(&e.as_str()))
+    {
+        eprintln!("`{effect}` is not available on target `native`");
+        return host.report_end(&worker.key, &Outcome::Exit(EXIT_UNAVAILABLE));
+    }
+    host.set_workers(table.clone(), launcher(m, limits, table));
+    let mut inst = match Instance::new(linked(m.0), host, limits) {
+        Ok(i) => i,
+        Err(d) => {
+            return eprintln!(
+                "error: worker {}: D{:03}: {}",
+                worker.key, d.code, d.message
+            );
+        }
+    };
+    let o = match inst.start(worker.entry) {
+        Ok(task) => {
+            let o = run_task(&mut inst, task);
+            inst.task_free(task);
+            o
+        }
+        Err(d) => Outcome::Defect {
+            code: d.code,
+            site: 0,
+            message: d.message.into(),
+        },
+    };
+    inst.host().report_end(&worker.key, &o);
+    inst.close().close();
+}
+
 fn run(m: &'static SakuraModule) -> Result<i32, String> {
     // SAFETY: the compiler emits `native` as `native_len` immutable bytes.
     let native = unsafe { std::slice::from_raw_parts(m.native, m.native_len as usize) };
@@ -272,27 +367,16 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
         eprintln!("`{effect}` is not available on target `native`");
         return Ok(EXIT_UNAVAILABLE);
     }
-    // SAFETY: the compiler emits `codes` as `n_codes` function pointers, `image` and `debug`
-    // as `image_len` and `debug_len` bytes, all immutable for the program's life.
-    let (codes, bytes, debug) = unsafe {
+    // SAFETY: the compiler emits `debug` and `workers` as `debug_len` and `workers_len`
+    // immutable bytes.
+    let (debug, workers) = unsafe {
         (
-            std::slice::from_raw_parts(m.codes, m.n_codes as usize),
-            std::slice::from_raw_parts(m.image, m.image_len as usize),
             std::slice::from_raw_parts(m.debug, m.debug_len as usize),
+            std::slice::from_raw_parts(m.workers, m.workers_len as usize),
         )
     };
-    let module = Rc::new(Linked {
-        codes,
-        image: Image {
-            bytes: bytes.to_vec(),
-            layout: m.layout,
-            codes: m.code_table,
-            effects: m.effects,
-            ops: m.ops,
-            natives: m.natives,
-            schemas: m.schemas,
-        },
-    });
+    let table = parse_table(workers).ok_or("the program's worker table is malformed")?;
+    let module = linked(m);
     let config = Config::from_env()?;
     let defaults = Limits::default();
     let limits = Limits {
@@ -308,7 +392,8 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
         )?,
         max_copy_bytes: config.max_copy_bytes,
     };
-    let host = NativeHost::new(config)?;
+    let mut host = NativeHost::new(config)?;
+    host.set_workers(table.clone(), launcher(Desc(m), limits, table));
     let mut inst = Instance::new(module, host, limits)
         .map_err(|d| format!("D{:03}: {}", d.code, d.message))?;
     if m.entry == u32::MAX {
@@ -370,11 +455,12 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
 /// # Safety
 ///
 /// `m` is the descriptor `sakura_codegen_native` emits: a static that lives as long as the
-/// program, whose `codes`, `image`, `debug`, `native` and `roots` point at `n_codes`
-/// functions, `image_len`, `debug_len`, `native_len` and `roots_len` bytes. The suffix is the descriptor layout's version: a layout change renames
-/// the entry, so an object from another layout fails to link instead of misreading this one.
+/// program, whose `codes`, `image`, `debug`, `native`, `roots` and `workers` point at
+/// `n_codes` functions, `image_len`, `debug_len`, `native_len`, `roots_len` and `workers_len`
+/// bytes. The suffix is the descriptor layout's version: a layout change renames the entry, so
+/// an object from another layout fails to link instead of misreading this one.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn sakura_native_main_v4(m: *const SakuraModule) -> i32 {
+pub unsafe extern "C" fn sakura_native_main_v5(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()

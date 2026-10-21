@@ -11,9 +11,8 @@ Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s pri
 `node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0; tier
 1b's, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519, at 1.9.0) and the RustCrypto and
 dalek crates on native. `std/worker` is experimental, outside the 1.0 contract: its
-`Worker.inline()` runs on every backend, while topics and `Worker.host()`'s live workers are the
-JavaScript host's only (a `main` that declares `Worker` exits 75 at startup on WebAssembly and
-native).
+`Worker.inline()`, topics and `Worker.host()`'s live workers run on every backend (threads on
+JavaScript and on WebAssembly under Node, an OS thread with a second instance on native).
 
 ## Prelude
 
@@ -1092,7 +1091,7 @@ fn of(table: Permissions) -> Grants
 type WorkerReason = GrantExceeded | Limit | Defect(String) | Codec
 error WorkerError(reason: WorkerReason)
 type Received<T> = Message(T) | Finished | Failed(WorkerError)
-opaque type Port<S, R> = { id: Int, tx: Option<Sender<String>>, rx: Option<Receiver<String>> }    // @resource
+opaque type Port<S, R> = { id: Int, sends: Bool, tx: Option<Sender<String>>, rx: Option<Receiver<String>> }    // @resource
 type WorkerHandle<I, O> = Port<I, O>
 type Inbox<I> = Port<Never, I>
 type Outbox<O> = Port<O, Never>
@@ -1103,6 +1102,7 @@ effect Worker {
   fn take<S, R>(p: Port<S, R>) -> Received<String>
   fn publish_text(name: String, text: String) -> Result<Unit, SendError>
   fn subscribe_text<R, e>(name: String, capacity: Int, body: fn(Inbox<String>) -> R ! e) -> R ! e
+  fn close<S, R>(p: Port<S, R>) -> Unit
 }
 fn spawn<I: Schema, O: Schema, R, e>(entry: fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker | e}, grants: Grants, body: fn(WorkerHandle<I, O>) -> R ! {Worker | e}) -> Result<R, WorkerError> ! {Worker | e}
 fn send<S: Schema, R>(p: Port<S, R>, m: S) -> Result<Unit, SendError> ! {Worker}

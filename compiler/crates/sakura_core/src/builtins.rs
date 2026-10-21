@@ -204,7 +204,7 @@ table! {
     Cps channel_recv/1, Direct channel_close/1,
     // Workers (RFC 0002 §2.9, plan `web-apis.md` phase 11a; experimental, JS only)
     Cps topic_subscribe/3, Direct topic_publish/2, Direct worker_start/6, Cps worker_closing/2,
-    Cps worker_post/2, Cps worker_take/1,
+    Cps worker_post/2, Cps worker_take/1, Direct worker_shut/1,
     // Http
     Cps http_send/1, Direct http_recording_open/2, Direct http_recording_lookup/2,
     Direct http_recording_append/3, Cps http_stream_open/1, Cps http_stream_closing/2,

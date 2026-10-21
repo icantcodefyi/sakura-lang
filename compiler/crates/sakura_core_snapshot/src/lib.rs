@@ -67,7 +67,7 @@ impl Snapshot {
         }
         let list = |items: Vec<String>| format!("[\n{}\n]", items.join(",\n"));
         let m = &self.module;
-        let fields = [
+        let mut fields = vec![
             ("defs", list(m.defs.iter().map(line).collect())),
             ("types", list(m.types.iter().map(line).collect())),
             ("effects", list(m.effects.iter().map(line).collect())),
@@ -77,6 +77,11 @@ impl Snapshot {
             ("tests", line(&m.tests)),
             ("entry", line(&m.entry)),
         ];
+        // Only a program with a `@worker` function has the field, so other snapshots keep
+        // their bytes.
+        if !m.workers.is_empty() {
+            fields.push(("workers", list(m.workers.iter().map(line).collect())));
+        }
         let body: Vec<String> = fields
             .iter()
             .map(|(k, v)| format!("\"{k}\": {v}"))
@@ -107,6 +112,20 @@ pub struct Module {
     pub field_schemas: Vec<(TypeId, Vec<Vec<Ty>>)>,
     pub tests: Vec<(String, DefId)>,
     pub entry: Option<DefId>,
+    /// The secondary entries of a program's `@worker` functions (RFC 0002 §2.9; experimental),
+    /// which the WASM and native backends export since web-APIs phase 11b.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub workers: Vec<Worker>,
+}
+
+/// `sakura_core::ir::WorkerEntry`: the `@worker` function `fun`, its entry `def`
+/// (`$worker$<name>`), the key a host names it by and the std effects of its declared row.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Worker {
+    pub key: String,
+    pub def: DefId,
+    pub fun: DefId,
+    pub effects: Vec<String>,
 }
 
 /// The deepest `[`/`{` nesting outside strings.
@@ -147,6 +166,11 @@ impl Module {
                 if let Some(c) = r.check {
                     cx.def_id(c)?;
                 }
+            }
+        }
+        for w in &self.workers {
+            if w.def as usize >= self.defs.len() || w.fun as usize >= self.defs.len() {
+                return Err(format!("worker `{}`: def out of range", w.key));
             }
         }
         Ok(())

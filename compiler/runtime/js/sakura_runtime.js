@@ -4331,14 +4331,18 @@ export function channel_close(ch) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Workers (`std/worker`, experimental; RFC 0002 §2.9, plan `web-apis.md` phase 11a). A live
-// worker is the program again in a `node:worker_threads` thread, running one `@worker`
-// function's entry (`$worker$<name>`, listed by `__main__.js`) with its own heap, and root
-// handlers built from its grants, which reach it as its `SAKURA_PERMISSIONS`. A link is one side
-// of the thread's port: `{ m: text }` is a message (the `Schema` codec's JSON), `{ ack: 1 }` one
-// taken, `{ end: [kind, code] }` the worker's entry ended. A side sends while the other holds
-// fewer than `capacity` unreceived messages and waits otherwise, as on a channel. Id 0 is a
-// worker's link to its parent; 1, 2, … the workers an instance spawned.
+// Workers (`std/worker`, experimental; RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b). A
+// live worker is the program again in a `node:worker_threads` thread, running one `@worker`
+// function's entry (`$worker$<name>`, listed by `__main__.js`; the WASM host's thread runs the
+// module's entry, `sakura_wasm_host.js`) with its own heap, and root handlers built from its
+// grants, which reach it as its `SAKURA_PERMISSIONS`. The thread's environment is the runtime's
+// `SAKURA_*` variables and the variables its `env` grant names, nothing else, and its heap is
+// bounded as its parent's (`resourceLimits`). A link is one side of the thread's port:
+// `{ m }` is a message (the `Schema` codec's JSON text; the WASM host's is the `sakura-vt1`
+// bytes of that `String`), `{ ack: 1 }` one taken, `{ shut: 1 }` the other side sends nothing
+// more (`Worker.close`), `{ end: [kind, code] }` the worker's entry ended. A side sends while
+// the other holds fewer than `capacity` unreceived messages and waits otherwise, as on a
+// channel. Id 0 is a worker's link to its parent; 1, 2, … the workers an instance spawned.
 //
 // Topics are per instance (`topics`, used by `Worker.inline()` too) and reach the process's
 // other threads through one `BroadcastChannel` per name, asynchronously, uncounted, and dropped
@@ -4361,6 +4365,11 @@ export function registerWorkers(url, list) {
   }
 }
 
+/** Whether this thread holds a link to a worker or its parent, which keeps it alive. */
+export function workerLinked() {
+  return workerLinks.size > 0;
+}
+
 /** `node:worker_threads` when this thread runs a worker's entry, else `null`. */
 function workerThread() {
   const wt = proc?.getBuiltinModule?.("node:worker_threads");
@@ -4368,9 +4377,8 @@ function workerThread() {
 }
 
 function workerLink(port, capacity) {
-  const l = { port, credits: capacity, inbox: [], end: null, gone: false, exited: null };
-  l.senders = [];
-  l.receivers = [];
+  const l = { port, credits: capacity, inbox: [], end: null, shut: false, closed: false };
+  Object.assign(l, { gone: false, exited: Promise.resolve(), senders: [], receivers: [] });
   port.on("message", (msg) => {
     if (msg.m !== undefined) {
       l.inbox.push(msg.m);
@@ -4378,6 +4386,9 @@ function workerLink(port, capacity) {
     } else if (msg.ack !== undefined) {
       l.credits++;
       wakeAll(l.senders);
+    } else if (msg.shut !== undefined) {
+      l.shut = true;
+      wakeAll(l.receivers);
     } else if (msg.end !== undefined) {
       workerEnded(l, msg.end);
     }
@@ -4391,11 +4402,14 @@ function workerEnded(l, end) {
   wakeAll(l.receivers);
 }
 
-/** A worker's thread: run its entry, then tell the parent how it ended. */
-function runWorker(wt) {
-  const { sakuraWorker: key, capacity } = wt.workerData;
+/**
+ * A worker's thread: its link to the parent (id 0), and how to tell the parent its entry ended
+ * as the outcome `o` (`runTask`'s, or a `{ kind: "exit", code }`); `key` names it in the one
+ * plain stderr line a failure or defect writes.
+ */
+export function workerChild(wt, key) {
   const port = wt.parentPort;
-  workerLinks.set(0, workerLink(port, capacity));
+  workerLinks.set(0, workerLink(port, wt.workerData.capacity));
   const end = (kind, code) => {
     flushOut();
     port.postMessage({ end: [kind, code] });
@@ -4403,18 +4417,25 @@ function runWorker(wt) {
     port.unref();
   };
   // One plain line, not a defect record: the program goes on, and its parent has the code.
-  const done = (o) => {
+  return (o) => {
     if (o.kind === "ok") return end(1, "");
+    if (o.kind === "exit") return end(2, `exit ${o.code}`);
     if (o.kind === "fail") {
-      writeErr(`error: worker ${key} failed with ${show(o.error, null)}`);
+      writeErr(`error: worker ${key} failed with ${o.shown ?? show(o.error, null)}`);
       return end(2, "fail");
     }
     writeErr(`error: worker ${key} ended on ${o.code}: ${o.message}`);
     return end(2, o.code);
   };
+}
+
+/** A worker's thread: run its entry, then tell the parent how it ended. */
+function runWorker(wt) {
+  const key = wt.workerData.sakuraWorker;
+  const done = workerChild(wt, key);
   const exit = (e) => {
     if (!(e instanceof Exit)) throw e;
-    end(2, `exit ${e.code}`);
+    done({ kind: "exit", code: e.code });
   };
   try {
     const o = runTask(workerRuns.get(key));
@@ -4445,28 +4466,59 @@ function workerDenied(effects, t) {
 }
 
 /**
- * `worker_start([entry], fs_read, fs_write, net, env, capacity)`: a live worker running
- * `entry`'s entry with exactly these grants, and its id; -1 when they are not within this
- * instance's own table or refuse an effect `entry` declares, -2 at `WORKER_LIMIT` live workers.
+ * Whether a worker with these grants may start here, for an entry declaring `effects`: the
+ * grants as a `SAKURA_PERMISSIONS` table, or -1 when they are not within this instance's own
+ * table or refuse an effect the entry declares, -2 at `WORKER_LIMIT` live workers.
  */
-export function worker_start(entry, fsRead, fsWrite, net, env, capacity) {
-  const fn = workerFns.get(toArray(entry)[0]);
-  if (fn === undefined) {
-    throw new Defect("D090", "a live worker runs only a function declared with `@worker`");
-  }
+export function workerAdmit(effects, fsRead, fsWrite, net, env) {
   if (workerLinks.size - (workerLinks.has(0) ? 1 : 0) >= WORKER_LIMIT) return -2;
   const table = {
     fs: { read: toArray(fsRead), write: toArray(fsWrite) },
     net: toArray(net),
     env: toArray(env),
   };
-  if (!grantsWithin(table, granted()) || workerDenied(fn.effects, table)) return -1;
-  const vars = { ...proc.env, SAKURA_PERMISSIONS: JSON.stringify(table) };
-  delete vars.SAKURA_TRACE;
+  if (!grantsWithin(table, granted()) || workerDenied(effects, table)) return -1;
+  return table;
+}
+
+/**
+ * A worker thread's environment (design §17.299 (4)): the runtime's `SAKURA_*` variables but
+ * the trace, the variables the `env` grant names, and the grants as its `SAKURA_PERMISSIONS`. An
+ * `@external(js)` in the thread reads `process.env`, which holds nothing else.
+ */
+function workerEnv(table) {
+  const vars = {};
+  for (const [k, v] of Object.entries(proc.env)) {
+    if ((k.startsWith("SAKURA_") && k !== "SAKURA_TRACE") || table.env.includes(k)) vars[k] = v;
+  }
+  vars.SAKURA_PERMISSIONS = JSON.stringify(table);
+  return vars;
+}
+
+/**
+ * The parent's heap bound for the thread's `resourceLimits` (design §17.299 (13)): a worker
+ * thread's own `maxOldGenerationSizeMb`, else `--max-old-space-size` among Node's options;
+ * `undefined` when there is none, and the thread has Node's default, as its parent does.
+ */
+function workerHeap() {
+  const wt = proc.getBuiltinModule("node:worker_threads");
+  let mb = wt.isMainThread ? 0 : (wt.resourceLimits?.maxOldGenerationSizeMb ?? 0);
+  if (!(mb > 0)) {
+    for (const f of [...proc.execArgv, ...(proc.env.NODE_OPTIONS ?? "").split(/\s+/)]) {
+      const m = /^--max[-_]old[-_]space[-_]size=(\d+)$/.exec(f);
+      if (m !== null) mb = Number(m[1]);
+    }
+  }
+  return mb > 0 ? { maxOldGenerationSizeMb: mb } : undefined;
+}
+
+/** A thread running `url` with `data` (and `capacity`) under the grants `table`: its id. */
+export function workerSpawn(url, data, table, capacity) {
   const { Worker } = proc.getBuiltinModule("node:worker_threads");
-  const thread = new Worker(new URL(workerUrl), {
-    workerData: { sakuraWorker: fn.key, capacity },
-    env: vars,
+  const thread = new Worker(url, {
+    workerData: { ...data, capacity },
+    env: workerEnv(table),
+    resourceLimits: workerHeap(),
   });
   const l = workerLink(thread, capacity);
   l.exited = new Promise((resolve) => {
@@ -4485,17 +4537,37 @@ export function worker_start(entry, fsRead, fsWrite, net, env, capacity) {
   return id;
 }
 
+/**
+ * `worker_start([entry], fs_read, fs_write, net, env, capacity)`: a live worker running
+ * `entry`'s entry with exactly these grants, and its id; -1 when they are not within this
+ * instance's own table or refuse an effect `entry` declares, -2 at `WORKER_LIMIT` live workers.
+ */
+export function worker_start(entry, fsRead, fsWrite, net, env, capacity) {
+  const fn = workerFns.get(toArray(entry)[0]);
+  if (fn === undefined) {
+    throw new Defect("D090", "a live worker runs only a function declared with `@worker`");
+  }
+  const table = workerAdmit(fn.effects, fsRead, fsWrite, net, env);
+  if (typeof table === "number") return table;
+  return workerSpawn(new URL(workerUrl), { sakuraWorker: fn.key }, table, capacity);
+}
+
 /** Terminate worker `id` (a finalizer: it does not wait for the thread). */
-function workerStop(id) {
+export function workerStop(id) {
   const l = workerLinks.get(id);
-  if (l === undefined) return;
+  if (l === undefined || id === 0) return;
   workerLinks.delete(id);
   l.port.terminate();
 }
 
+/** Settles once worker `id`'s thread has exited (at once for an unknown id). */
+export function workerExited(id) {
+  return workerLinks.get(id)?.exited ?? Promise.resolve();
+}
+
 /** `worker_closing(id, body)`: `body()`, then worker `id` terminated and its thread awaited. */
 export function worker_closing(id, body, ctx, k) {
-  const exited = workerLinks.get(id).exited;
+  const exited = workerExited(id);
   const joined = (v) => suspend(exited, () => ret(k, v));
   return finalize(ctx, () => workerStop(id), (c, kk) => body(c, kk), joined);
 }
@@ -4504,7 +4576,7 @@ export function worker_closing(id, body, ctx, k) {
 export function worker_post(id, text, _ctx, k) {
   const l = workerLinks.get(id);
   const attempt = () => {
-    if (l === undefined || l.end !== null) return ret(k, 2);
+    if (l === undefined || l.end !== null || l.closed) return ret(k, 2);
     if (l.credits > 0) {
       l.credits--;
       l.port.postMessage({ m: text });
@@ -4515,7 +4587,10 @@ export function worker_post(id, text, _ctx, k) {
   return attempt();
 }
 
-/** `worker_take(id)`: `[0, text]`, then `l.end` (`[1, ""]` finished, `[2, code]` failed). */
+/**
+ * `worker_take(id)`: `[0, text]`, then `l.end` (`[1, ""]` finished, `[2, code]` failed), or
+ * `[1, ""]` once the other side has shut its direction (`Worker.close`).
+ */
 export function worker_take(id, _ctx, k) {
   const l = workerLinks.get(id);
   const attempt = () => {
@@ -4526,9 +4601,22 @@ export function worker_take(id, _ctx, k) {
       return ret(k, [0, text]);
     }
     if (l.end !== null) return ret(k, l.end);
+    if (l.shut) return ret(k, [1, ""]);
     return channelWait(l.receivers, attempt);
   };
   return attempt();
+}
+
+/**
+ * `worker_shut(id)` (`Worker.close`): nothing more is sent to worker `id` (0: the parent); once
+ * it has taken what was sent its `take` answers `[1, ""]`, and a `post` here answers 2.
+ */
+export function worker_shut(id) {
+  const l = workerLinks.get(id);
+  if (l === undefined || l.closed) return;
+  l.closed = true;
+  if (!l.gone) l.port.postMessage({ shut: 1 });
+  wakeAll(l.senders);
 }
 
 /** Topic name → this instance's subscription queues (channels), and its `BroadcastChannel`. */

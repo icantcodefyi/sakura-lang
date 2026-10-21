@@ -909,13 +909,6 @@ fn run(
         eprintln!("error: permission denied: {why}");
         return ExitCode::from(EXIT_PERMISSION);
     }
-    // RFC 0002 §2.9, plan `web-apis.md` phase 11a: the WASM host has no live workers yet, so a
-    // `main` that leaves `Worker` to the runtime stops before it starts, as the native driver
-    // refuses it (`Worker.inline()` inside `main` runs).
-    if target == "wasm" && roots.iter().any(|e| e == "Worker") {
-        eprintln!("`Worker` is not available on target `wasm`");
-        return ExitCode::from(EXIT_PERMISSION);
-    }
     // The runtime scopes its root handlers by `SAKURA_PERMISSIONS` (runtime/js/ABI.md §7), with
     // paths relative to the package root, which is therefore the working directory.
     let root = a

@@ -1,0 +1,204 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 variant std::task::Fiber
+layout 7 variant std::task::Scope
+layout 8 record std::worker::Grants | Grants 24b (table: word*)
+layout 9 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
+layout 10 record std::worker::Port | Port 48b (id: i64, sends: bool, tx: word*, rx: word*)
+layout 11 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
+layout 12 error std::worker::WorkerError | WorkerError 24b (reason: word*)
+layout 13 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
+layout 14 shape |  32b (word*, word*)
+layout 15 shape |  32b (i64, word*)
+layout 16 shape |  16b ()
+layout 17 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::worker_close_finishes_inbox, frame 4 slots [%2 word*, %3 word*, %6 word*, %8 bool]
+  b0():
+    %0 lit: i64 = const 3
+    %1 r: ptr = $task_deterministic(%0)
+    handle_push %1
+    call inline#22() -> b1()
+  b1(%2 r: ptr) [handle]:
+    handle_push %2
+    call none#23() -> b2()
+  b2(%3 r: ptr) [handle, handle]:
+    %4 f: ptr = closure main$1#24[]
+    %5 fn: ptr = const static closure summer$value#42
+    call spawn#26(%5, %3, %4) -> b3()
+  b3(%6 r: ptr) [handle, handle]:
+    %7 s: ptr = show %6
+    drop %6
+    perform std::console::Console.print(%7) -> b4()
+  b4(%8 r: unit) [handle, handle]:
+    %9 box: word = box %8
+    %10 unbox: unit = unbox %9
+    drop %9
+    handle_pop
+    handle_pop
+    ret %10
+
+fn $entry#1 top -> unit ; main::worker_close_finishes_inbox, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn summer#2 top -> unit ; main::worker_close_finishes_inbox, frame 15 slots [%0 word*, %1 word*, %6 bool, %7 word*, %8 i64, %10 word*, %11 word*, %12 bool, %13 word*, %15 bool, %35 word*, %36 word*, %37 word*, %38 i64, %39 bool]
+  b0(%0 inbox: ptr, %1 outbox: ptr):
+    %62 lit: i64 = const 0
+    %63 lit: bool = const true
+    jump b6(%62, %63, %0, %1)
+  b1(%2 sum: i64, %3 going: bool, %4 inbox: ptr, %5 outbox: ptr):
+    perform std::worker::Worker.close(%4) -> b2(%5, %2)
+  b2(%6 r: unit, %7 outbox: ptr, %8 sum: i64):
+    %9 box: word = box %6
+    drop %9
+    dup %7
+    call send#21(%7, %8) -> b3(%7)
+  b3(%10 r: ptr, %11 outbox: ptr):
+    drop %10
+    dup %11
+    perform std::worker::Worker.close(%11) -> b4(%11)
+  b4(%12 r: unit, %13 outbox: ptr):
+    %14 box: word = box %12
+    drop %14
+    perform std::worker::Worker.close(%13) -> b5()
+  b5(%15 r: unit):
+    %16 box: word = box %15
+    %17 unbox: unit = unbox %16
+    drop %16
+    ret %17
+  b6(%18 sum: i64, %19 going: bool, %20 inbox: ptr, %21 outbox: ptr):
+    if %19 then b8(%20, %21, %18, %19) else b9(%20, %21, %18, %19)
+  b7(%22 v: unit, %23 sum: i64, %24 going: bool, %25 inbox: ptr, %26 outbox: ptr):
+    jump b6(%23, %24, %25, %26)
+  b8(%27 inbox: ptr, %28 outbox: ptr, %29 sum: i64, %30 going: bool):
+    dup %27
+    call recv#19(%27) -> b10(%27, %28, %29, %30)
+  b9(%31 inbox: ptr, %32 outbox: ptr, %33 sum: i64, %34 going: bool):
+    jump b1(%33, %34, %31, %32)
+  b10(%35 r: ptr, %36 inbox: ptr, %37 outbox: ptr, %38 sum: i64, %39 going: bool):
+    %45 tag: i64 = tag %35 ctor std::worker::Received
+    switch %45 0 => b12(%36, %37, %38, %39, %35) _ => b13(%36, %37, %38, %39, %35)
+  b11(%40 v: unit, %41 sum: i64, %42 going: bool, %43 inbox: ptr, %44 outbox: ptr):
+    jump b7(%40, %41, %42, %43, %44)
+  b12(%46 inbox: ptr, %47 outbox: ptr, %48 sum: i64, %49 going: bool, %50 r: ptr):
+    %56 p: word = proj %50.0 std::worker::Received.Message
+    drop %50
+    %57 unbox: i64 = unbox %56
+    drop %56
+    %58 t: i64 = intadd %48, %57
+    %59 lit: unit = const ()
+    jump b11(%59, %58, %49, %46, %47)
+  b13(%51 inbox: ptr, %52 outbox: ptr, %53 sum: i64, %54 going: bool, %55 r: ptr):
+    drop %55
+    %60 lit: unit = const ()
+    %61 lit: bool = const false
+    jump b11(%60, %53, %61, %51, %52)
+
+fn $worker$summer#5 top -> unit ; main::worker_close_finishes_inbox, frame 2 slots [%0 word*, %2 bool]
+  b0():
+    call host#3() -> b1()
+  b1(%0 worker: ptr):
+    handle_push %0
+    %1 fn: ptr = const static closure summer$value#42
+    call enter#4(%1) -> b2()
+  b2(%2 r: unit) [handle]:
+    handle_pop
+    ret %2
+
+fn main$1#24 lambda -> word ; main::worker_close_finishes_inbox, captures [], frame 19 slots [%0 word*, %1 word*, %11 bool, %12 word*, %15 word*, %16 word*, %20 bool, %21 word*, %23 word*, %24 word*, %26 bool, %27 word*, %29 word*, %31 bool, %55 word*, %56 word*, %57 word*, %58 i64, %59 i64]
+  b0(%0 env: ptr, %1 w: word):
+    drop %0
+    %2 lit: i64 = const 1
+    %3 box: word = box %2
+    %4 lit: i64 = const 2
+    %5 box: word = box %4
+    %6 lit: i64 = const 3
+    %7 box: word = box %6
+    %8 xs: ptr = alloc list(%3, %5, %7)
+    dup.candidate %8
+    %9 n: i64 = $list_len(%8)
+    %60 lit: i64 = const 0
+    jump b9(%60, %1, %8, %9)
+  b1(%10 w: ptr):
+    dup %10
+    perform std::worker::Worker.close(%10) -> b2(%10)
+  b2(%11 r: unit, %12 w: ptr):
+    %13 box: word = box %11
+    drop %13
+    %14 lit: i64 = const 4
+    dup %12
+    call send#21(%12, %14) -> b3(%12)
+  b3(%15 r: ptr, %16 w: ptr):
+    %17 s: ptr = show %15
+    drop %15
+    %18 lit: ptr = const str 2
+    %19 s: ptr = concat %18, %17
+    drop %17
+    perform std::console::Console.print(%19) -> b4(%16)
+  b4(%20 r: unit, %21 w: ptr):
+    %22 box: word = box %20
+    drop %22
+    dup %21
+    call recv#19(%21) -> b5(%21)
+  b5(%23 r: ptr, %24 w: ptr):
+    %25 s: ptr = show %23
+    drop %23
+    perform std::console::Console.print(%25) -> b6(%24)
+  b6(%26 r: unit, %27 w: ptr):
+    %28 box: word = box %26
+    drop %28
+    call recv#19(%27) -> b7()
+  b7(%29 r: ptr):
+    %30 s: ptr = show %29
+    drop %29
+    perform std::console::Console.print(%30) -> b8()
+  b8(%31 r: unit):
+    %32 box: word = box %31
+    drop %32
+    %33 lit: ptr = const str 3
+    ret %33
+  b9(%34 i: i64, %35 w: ptr, %36 xs: ptr, %37 n: i64):
+    %38 more: bool = lt.int %34, %37
+    if %38 then b10(%35, %36, %37, %34) else b11(%35, %36, %37, %34)
+  b10(%39 w: ptr, %40 xs: ptr, %41 n: i64, %42 i: i64):
+    dup.candidate %40
+    %47 x: word = $list_at(%40, %42)
+    %48 unbox: i64 = unbox %47
+    drop %47
+    dup %39
+    call send#21(%39, %48) -> b13(%39, %40, %41, %42)
+  b11(%43 w: ptr, %44 xs: ptr, %45 n: i64, %46 i: i64):
+    drop %44
+    jump b1(%43)
+  b12(%49 w: ptr, %50 xs: ptr, %51 n: i64, %52 i: i64):
+    %53 lit: i64 = const 1
+    %54 i: i64 = intadd %52, %53
+    jump b9(%54, %49, %50, %51)
+  b13(%55 r: ptr, %56 w: ptr, %57 xs: ptr, %58 n: i64, %59 i: i64):
+    drop %55
+    jump b12(%56, %57, %58, %59)
+
+fn summer$value#42 adapter of summer#2 -> word ; main::worker_close_finishes_inbox, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr, %1 arg: word, %2 arg: word):
+    drop %0
+    call summer#2(%1, %2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4

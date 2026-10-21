@@ -1,0 +1,11 @@
+// milestone: M3
+// spec: RFC 0002 §2.9, §7; design §17.271 (9), §17.299; plan web-apis.md phase 11b
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker
+
+// `main` declares `Worker`, so the host installs `Worker.host()`, whose live workers JS, WASM
+// under Node and native all have since plan phase 11b: every backend starts `main`, which
+// performs nothing, prints nothing and exits 0. (Until 11b, WASM and native refused it at
+// startup with exit 75.) `crates/sakura_cli/tests/workers.rs` runs live workers on each.
+import std/worker.{Worker}
+
+pub fn main() -> Unit ! {Worker} {}

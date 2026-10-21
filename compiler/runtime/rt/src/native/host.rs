@@ -47,6 +47,16 @@ pub enum SqlValue<'a> {
     Blob(&'a [u8]),
 }
 
+/// A live worker's grants (`std/worker`'s `Permissions`, ABI 1.15.0): the table the worker
+/// runs with, checked by the host against its own.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WorkerGrants {
+    pub fs_read: Vec<String>,
+    pub fs_write: Vec<String>,
+    pub net: Vec<String>,
+    pub env: Vec<String>,
+}
+
 /// One instance's host. Methods without a default are the root handlers' imports, which every
 /// host provides; the `hosted` builtins default to a host failure (`D091`), so a host
 /// implements only the services it offers.
@@ -80,6 +90,35 @@ pub trait Host {
     fn trace_write(&mut self, line: &str);
     /// The guest's last reference to `handle` died (ABI §8.4).
     fn retire_handle(&mut self, handle: HandleId);
+
+    /// `std/worker` topics (ABI 1.15.0): deliver topic `name`'s messages from other instances
+    /// to this one from now on (`Instance::topic_deliver`, between runs).
+    fn topic_listen(&mut self, _name: &str) {}
+    /// `text` published on topic `name` here, for the subscriptions of other instances.
+    fn topic_post(&mut self, _name: &str, _text: &str) {}
+
+    /// `std/worker` (ABI 1.15.0): a live worker running the `@worker` function whose adapter is
+    /// code `code` with `grants` and `capacity` messages per direction: its id (1, 2, …), -1
+    /// when the grants are not within this instance's own table or leave an effect the entry
+    /// declares without its permission, -2 at 16 live workers, -3 when `code` is not a
+    /// `@worker` function's, -4 when this host has no live workers.
+    fn worker_start(&mut self, _code: u32, _grants: WorkerGrants, _capacity: i64) -> i64 {
+        -4
+    }
+    /// `async`: send `text` to worker `id` (0: the parent) and complete `request` with the
+    /// `sakura-vt1` `Int` 0, or 2 once the other side has ended, waiting while it holds
+    /// `capacity` unreceived messages.
+    fn worker_post(&mut self, _request: u32, _id: i64, _text: &str) {}
+    /// `async`: complete `request` with the `sakura-vt1` tuple `(0, text)` of worker `id`'s
+    /// oldest message, then `(1, "")` once it finished or `(2, code)` once it failed.
+    fn worker_take(&mut self, _request: u32, _id: i64) {}
+    /// `async`: complete `request` (no payload) once worker `id`'s thread has exited.
+    fn worker_join(&mut self, _request: u32, _id: i64) {}
+    /// Terminate worker `id`; it does not wait for the thread.
+    fn worker_stop(&mut self, _id: i64) {}
+    /// Worker `id` (0: the parent) receives nothing more from this side: once it has taken
+    /// what was sent, its `take` answers `(1, "")`.
+    fn worker_shut(&mut self, _id: i64) {}
 
     /// `Cli.args()`: the program's arguments.
     fn cli_args(&mut self) -> Hosted<Vec<String>> {

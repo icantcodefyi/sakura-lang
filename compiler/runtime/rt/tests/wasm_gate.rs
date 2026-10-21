@@ -88,6 +88,14 @@ const IMPORTS: &[&str] = &[
     "ws_send",
     "ws_receive",
     "ws_accept",
+    "topic_listen",
+    "topic_post",
+    "worker_start",
+    "worker_post",
+    "worker_take",
+    "worker_join",
+    "worker_stop",
+    "worker_shut",
 ];
 
 /// The ABI §1 allowlist, from an empty set (research/09 §1).

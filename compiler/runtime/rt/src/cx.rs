@@ -13,6 +13,9 @@
 
 use core::marker::PhantomData;
 
+#[cfg(not(target_arch = "wasm32"))]
+use alloc::string::String;
+
 use crate::Rt;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::native::{Ctx, SakuraInstance};
@@ -107,6 +110,20 @@ mod wasm {
         pub fn file_close(id: i64);
         /// Whether the host records effect traces (`SAKURA_TRACE`).
         pub fn trace_enabled() -> u32;
+        /// `std/worker` (ABI 1.15.0, `worker.rs`): a live worker running the `@worker` function
+        /// whose code is `code`, with the grants tuple at `(ptr, len)`: its id, -1, -2, -3 (not
+        /// a `@worker` function) or -4 (no live workers on this host).
+        pub fn worker_start(code: u32, ptr: u32, len: u32) -> i64;
+        /// `async`: the 1-tuple of the message's `String` at `(ptr, len)` to worker `id`.
+        pub fn worker_post(request: u32, id: i64, ptr: u32, len: u32) -> u32;
+        /// `async`: worker `id`'s next message or end.
+        pub fn worker_take(request: u32, id: i64) -> u32;
+        /// `async`: completes once worker `id`'s thread has exited.
+        pub fn worker_join(request: u32, id: i64) -> u32;
+        /// Terminate worker `id`.
+        pub fn worker_stop(id: i64);
+        /// Worker `id` (0: the parent) receives nothing more from this side.
+        pub fn worker_shut(id: i64);
     }
 }
 
@@ -206,6 +223,36 @@ impl Cx<'_> {
     pub fn copy_defect(&mut self) -> crate::Defect {
         crate::Defect::HEAP_EXHAUSTED
     }
+
+    pub fn worker_start(&mut self, code: u32, at: u32, len: u32) -> i64 {
+        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+        unsafe { wasm::worker_start(code, at, len) }
+    }
+
+    pub fn worker_post(&mut self, request: u32, id: i64, at: u32, len: u32) {
+        // SAFETY: as `worker_start`; the host completes `request` later.
+        unsafe { wasm::worker_post(request, id, at, len) };
+    }
+
+    pub fn worker_take(&mut self, request: u32, id: i64) {
+        // SAFETY: a plain import with scalar arguments; the host completes `request` later.
+        unsafe { wasm::worker_take(request, id) };
+    }
+
+    pub fn worker_join(&mut self, request: u32, id: i64) {
+        // SAFETY: as `worker_take`.
+        unsafe { wasm::worker_join(request, id) };
+    }
+
+    pub fn worker_stop(&mut self, id: i64) {
+        // SAFETY: a plain import with a scalar argument.
+        unsafe { wasm::worker_stop(id) }
+    }
+
+    pub fn worker_shut(&mut self, id: i64) {
+        // SAFETY: a plain import with a scalar argument.
+        unsafe { wasm::worker_shut(id) }
+    }
 }
 
 // ---- native: the instance a `Ctx` names, the host behind the `Host` trait --------------------
@@ -255,6 +302,13 @@ impl Cx<'_> {
         }
         for line in rt.trace_log.drain(..) {
             host.trace_write(&line);
+        }
+        for call in rt.topic_log.drain(..) {
+            let text = |b: &[u8]| String::from_utf8_lossy(b).into_owned();
+            match call {
+                crate::TopicCall::Listen(name) => host.topic_listen(&text(&name)),
+                crate::TopicCall::Post(name, t) => host.topic_post(&text(&name), &text(&t)),
+            }
         }
     }
 
@@ -397,6 +451,50 @@ impl Cx<'_> {
         t
     }
 
+    /// `worker_start` (`worker.rs`): the grants tuple `(fs_read, fs_write, net, env, capacity)`
+    /// at `(at, len)` decoded for the host.
+    pub fn worker_start(&mut self, code: u32, at: u32, len: u32) -> i64 {
+        let parsed = {
+            let rt = self.rt();
+            let mut r = VtReader {
+                b: rt.heap.mem.bytes(at, len),
+            };
+            r.grants()
+        };
+        match parsed {
+            Some((grants, capacity)) => self.host().1.worker_start(code, grants, capacity),
+            None => -4,
+        }
+    }
+
+    /// `worker_post`: the message is the 1-tuple of a `String` at `(at, len)`.
+    pub fn worker_post(&mut self, request: u32, id: i64, at: u32, len: u32) {
+        let text = {
+            let rt = self.rt();
+            let mut r = VtReader {
+                b: rt.heap.mem.bytes(at, len),
+            };
+            r.tuple(1).and_then(|()| r.string()).unwrap_or_default()
+        };
+        self.host().1.worker_post(request, id, &text);
+    }
+
+    pub fn worker_take(&mut self, request: u32, id: i64) {
+        self.host().1.worker_take(request, id);
+    }
+
+    pub fn worker_join(&mut self, request: u32, id: i64) {
+        self.host().1.worker_join(request, id);
+    }
+
+    pub fn worker_stop(&mut self, id: i64) {
+        self.host().1.worker_stop(id);
+    }
+
+    pub fn worker_shut(&mut self, id: i64) {
+        self.host().1.worker_shut(id);
+    }
+
     pub(crate) fn max_copy(&self) -> u64 {
         // SAFETY: a plain read of a field no reference covers.
         unsafe { (*self.p.as_ptr()).max_copy }
@@ -424,3 +522,63 @@ impl Cx<'_> {
 /// The WASM host's `TOO_LARGE` (`sakura_wasm_host.js`).
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) const TOO_LARGE: &str = "response too large";
+
+/// A reader of the few `sakura-vt1` shapes the worker imports carry (`worker.rs`).
+#[cfg(not(target_arch = "wasm32"))]
+struct VtReader<'a> {
+    b: &'a [u8],
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl VtReader<'_> {
+    fn take(&mut self, n: usize) -> Option<&[u8]> {
+        let (head, rest) = (self.b.get(..n)?, self.b.get(n..)?);
+        self.b = rest;
+        Some(head)
+    }
+
+    fn u32(&mut self) -> Option<u32> {
+        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
+    }
+
+    fn tag(&mut self, tag: u8) -> Option<()> {
+        (self.take(1)? == [tag]).then_some(())
+    }
+
+    fn tuple(&mut self, n: u32) -> Option<()> {
+        self.tag(crate::vt::t::TUPLE)?;
+        (self.u32()? == n).then_some(())
+    }
+
+    fn string(&mut self) -> Option<String> {
+        self.tag(crate::vt::t::STRING)?;
+        let n = self.u32()? as usize;
+        String::from_utf8(self.take(n)?.to_vec()).ok()
+    }
+
+    fn strings(&mut self) -> Option<alloc::vec::Vec<String>> {
+        self.tag(crate::vt::t::LIST)?;
+        (0..self.u32()?).map(|_| self.string()).collect()
+    }
+
+    fn grants(&mut self) -> Option<(crate::native::WorkerGrants, i64)> {
+        self.tuple(5)?;
+        let (fs_read, fs_write, net, env) = (
+            self.strings()?,
+            self.strings()?,
+            self.strings()?,
+            self.strings()?,
+        );
+        self.tag(crate::vt::t::INT)?;
+        let capacity = i64::from_le_bytes(self.take(8)?.try_into().ok()?);
+        Some((
+            crate::native::WorkerGrants {
+                fs_read,
+                fs_write,
+                net,
+                env,
+            },
+            capacity,
+        ))
+    }
+}

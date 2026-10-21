@@ -23,9 +23,9 @@ None of these is breaking for a program that works on `1.0.0-beta.1`.
 
 - **`std/worker`, experimental**: a function declared `@worker` runs as a second instance of
   the program with its own heap and handlers, started by `Worker.spawn(entry, grants, body)`
-  and reached with `send` and `recv`; `Worker.topic` is `BroadcastChannel`. Live workers run
-  on the JavaScript target; on WebAssembly and native a `main` that declares `Worker` exits 75
-  at startup. It is outside the 1.0 contract and may change in any release. See
+  and reached with `send` and `recv`, and `Worker.close` ends one direction; `Worker.topic`
+  is `BroadcastChannel`. Live workers run on every target: as threads on JavaScript and on
+  WebAssembly under Node, and as OS threads natively. It is outside the 1.0 contract and may change in any release. See
   [Workers](/docs/tour/concurrency#workers-experimental).
 - **Refined types state their bounds in JSON Schema.** `Json.schema` and a `Tool`'s parameters
   carry `minLength`/`maxLength`, `minItems`/`maxItems` and `minimum`/`maximum` for the `where`

@@ -226,9 +226,14 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Worker.send` and `Worker.recv` call `Json.encode` and `Json.decode`, which need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/worker_close_finishes_inbox",
+        None,
+        "`Worker.send` and `Worker.recv` call `Json.encode` and `Json.decode`, which need the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/worker_topic_fanout",
         None,
-        "`Worker.inline()` topics are JS-only builtins until web-APIs phase 11b (D090)",
+        "`Worker.send` and `Worker.recv` call `Json.encode` and `Json.decode`, which need the program's JS type descriptors, which a bare corpus module lacks (its topics run since web-APIs phase 11b)",
     ),
     (
         "semantics/cli_parse_messages",

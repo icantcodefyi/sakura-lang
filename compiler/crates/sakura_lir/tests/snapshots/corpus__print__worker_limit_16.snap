@@ -12,7 +12,7 @@ layout 6 variant std::task::Fiber
 layout 7 variant std::task::Scope
 layout 8 record std::worker::Grants | Grants 24b (table: word*)
 layout 9 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
-layout 10 record std::worker::Port | Port 40b (id: i64, tx: word*, rx: word*)
+layout 10 record std::worker::Port | Port 48b (id: i64, sends: bool, tx: word*, rx: word*)
 layout 11 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
 layout 12 error std::worker::WorkerError | WorkerError 24b (reason: word*)
 layout 13 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
@@ -26,21 +26,21 @@ fn main#0 pub top -> unit ; main::worker_limit_16, frame 6 slots [%2 word*, %4 w
     %0 lit: i64 = const 3
     %1 r: ptr = $task_deterministic(%0)
     handle_push %1
-    call inline#18() -> b1()
+    call inline#20() -> b1()
   b1(%2 r: ptr) [handle]:
     handle_push %2
     %3 lit: i64 = const 1
-    call nest#19(%3) -> b2()
+    call nest#21(%3) -> b2()
   b2(%4 r: ptr) [handle, handle]:
     perform std::console::Console.print(%4) -> b3()
   b3(%5 r: unit) [handle, handle]:
     %6 box: word = box %5
     drop %6
-    call none#20() -> b4()
+    call none#22() -> b4()
   b4(%7 r: ptr) [handle, handle]:
-    %8 f: ptr = closure main$1#21[]
-    %9 fn: ptr = const static closure idle$value#39
-    call spawn#23(%9, %7, %8) -> b5()
+    %8 f: ptr = closure main$1#23[]
+    %9 fn: ptr = const static closure idle$value#42
+    call spawn#25(%9, %7, %8) -> b5()
   b5(%10 r: ptr) [handle, handle]:
     %11 s: ptr = show %10
     drop %10
@@ -71,7 +71,7 @@ fn $entry#1 top -> unit ; main::worker_limit_16, frame 1 slots [%2 bool]
 fn idle#2 top -> unit ; main::worker_limit_16, frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 inbox: ptr, %1 _outbox: ptr):
     drop %1
-    call recv#17(%0) -> b1()
+    call recv#19(%0) -> b1()
   b1(%2 r: ptr):
     drop %2
     %3 lit: unit = const ()
@@ -82,19 +82,19 @@ fn $worker$idle#5 top -> unit ; main::worker_limit_16, frame 2 slots [%0 word*, 
     call host#3() -> b1()
   b1(%0 worker: ptr):
     handle_push %0
-    %1 fn: ptr = const static closure idle$value#39
+    %1 fn: ptr = const static closure idle$value#42
     call enter#4(%1) -> b2()
   b2(%2 r: unit) [handle]:
     handle_pop
     ret %2
 
-fn nest#19 top -> ptr ; main::worker_limit_16, frame 5 slots [%0 i64, %1 word*, %2 i64, %5 word*, %6 i64]
+fn nest#21 top -> ptr ; main::worker_limit_16, frame 5 slots [%0 i64, %1 word*, %2 i64, %5 word*, %6 i64]
   b0(%0 depth: i64):
-    call none#20() -> b1(%0)
+    call none#22() -> b1(%0)
   b1(%1 r: ptr, %2 depth: i64):
-    %3 f: ptr = closure nest$1#24[%2]
-    %4 fn: ptr = const static closure idle$value#39
-    call spawn#23(%4, %1, %3) -> b2(%2)
+    %3 f: ptr = closure nest$1#26[%2]
+    %4 fn: ptr = const static closure idle$value#42
+    call spawn#25(%4, %1, %3) -> b2(%2)
   b2(%5 r: ptr, %6 depth: i64):
     %7 tag: i64 = tag %5 ctor std::result::Result
     switch %7 0 => b3(%6, %5) 1 => b4(%6, %5)
@@ -118,14 +118,14 @@ fn nest#19 top -> ptr ; main::worker_limit_16, frame 5 slots [%0 i64, %1 word*, 
     drop %19
     ret %20
 
-fn main$1#21 lambda -> word ; main::worker_limit_16, captures [], frame 2 slots [%0 word*, %1 word*]
+fn main$1#23 lambda -> word ; main::worker_limit_16, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 _w: word):
     drop %0
     drop %1
     %2 lit: ptr = const str 5
     ret %2
 
-fn nest$1#24 lambda -> word ; main::worker_limit_16, captures [i64], frame 3 slots [%0 word*, %1 word*, %10 word*]
+fn nest$1#26 lambda -> word ; main::worker_limit_16, captures [i64], frame 3 slots [%0 word*, %1 word*, %10 word*]
   b0(%0 env: ptr, %1 _w: word):
     drop %1
     %2 depth: i64 = capture %0.0
@@ -139,11 +139,11 @@ fn nest$1#24 lambda -> word ; main::worker_limit_16, captures [i64], frame 3 slo
   b2(%6 depth: i64):
     %8 lit: i64 = const 1
     %9 t: i64 = intadd %6, %8
-    call nest#19(%9) -> b3()
+    call nest#21(%9) -> b3()
   b3(%10 r: ptr):
     ret %10
 
-fn idle$value#39 adapter of idle#2 -> word ; main::worker_limit_16, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+fn idle$value#42 adapter of idle#2 -> word ; main::worker_limit_16, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
   b0(%0 env: ptr, %1 arg: word, %2 arg: word):
     drop %0
     call idle#2(%1, %2) -> b1()

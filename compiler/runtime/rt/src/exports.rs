@@ -95,7 +95,7 @@ pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -
 // ---- set-up, outcomes -----------------------------------------------------------------------
 
 /// The module's tables (static-block addresses) and the native codes the runtime builds
-/// closures of (`natives`, eleven `u32`s in `NATIVE_CODES` order); false when the layout table is
+/// closures of (`natives`, twelve `u32`s in `NATIVE_CODES` order); false when the layout table is
 /// malformed.
 pub(crate) fn init(
     rt: &mut Rt,
@@ -116,6 +116,7 @@ pub(crate) fn init(
     rt.sched.js_callback_code = code(rt, 8);
     rt.sched.serve_request_code = code(rt, 9);
     rt.sched.channel_end_code = code(rt, 10);
+    rt.sched.worker_stop_code = code(rt, 11);
     rt.set_codes(codes);
     rt.set_effects(effects);
     rt.sched.ops = ops;
@@ -1159,6 +1160,88 @@ pub extern "C" fn rt_k_channel_recv(
     raise_or(rt, r)
 }
 
+// ---- std/worker topics (`crate::channel`, ABI 1.15.0) -------------------------------------------
+
+/// `topic_subscribe(name, capacity, body)` (as JS): `channel_with(capacity, body)` whose channel
+/// is registered under topic `name` for the body's extent; the finalizer (`channel_end`)
+/// unregisters it on every exit.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_topic_subscribe(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    if rt.block(frame) == 1 {
+        let result = rt.take_ret();
+        let closer = rt.fin_pop();
+        let ch = rt.slot(closer, 0) as u32;
+        rt.channel_end(ch);
+        rt.drop(closer);
+        return ret(rt, result);
+    }
+    let name = rt.take_fslot(frame, 0) as u32;
+    let capacity = rt.fslot(frame, 1) as i64;
+    let body = rt.take_fslot(frame, 2) as u32;
+    let r = (|| {
+        let ch = rt.channel_new(capacity).inspect_err(|_| rt.drop(name))?;
+        let closer = rt.new_object(tag::CLOSURE, 24).inspect_err(|_| {
+            rt.drop(ch);
+            rt.drop(name);
+        })?;
+        rt.heap.mem.set_u32(closer + 8, rt.sched.channel_end_code);
+        rt.heap.mem.set_u32(closer + 12, 1);
+        rt.set_slot(closer, 0, ch as u64);
+        rt.dup(ch).inspect_err(|_| {
+            rt.drop(closer);
+            rt.drop(name);
+        })?;
+        rt.fin_push(closer).inspect_err(|_| {
+            rt.drop(ch);
+            rt.drop(name);
+        })?;
+        rt.topic_register(name, ch).inspect_err(|_| rt.drop(ch))?;
+        Ok(ch)
+    })();
+    let ch = match r {
+        Ok(ch) => ch,
+        Err(d) => {
+            rt.drop(body);
+            return rt.raise(d);
+        }
+    };
+    match rt.call_value(body, 1) {
+        Ok(c) => {
+            rt.set_fslot(c, 1, ch as u64);
+            rt.set_block(frame, 1);
+            step::CALL
+        }
+        Err(d) => {
+            rt.drop(ch);
+            rt.raise(d)
+        }
+    }
+}
+
+/// `topic_deliver(name, text) -> ()` (ABI §9, 1.15.0; the host calls it only while the guest is
+/// not running): a message published on topic `name` in another instance, both `Bytes` from
+/// `alloc_bytes` (consumed), queued on this instance's subscriptions of `name`.
+#[cfg(target_arch = "wasm32")]
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_topic_deliver(name: u32, text: u32) {
+    let mut cx = Cx::wasm();
+    let rt = cx.rt();
+    if rt.host_bytes(name) && rt.host_bytes(text) {
+        let _ = rt.topic_deliver(rt.data(name), rt.data(text));
+    }
+    for b in [name, text] {
+        if rt.host_bytes(b) {
+            rt.drop(b);
+        }
+    }
+}
+
 fn raise_or(rt: &mut Rt, r: Res<u32>) -> u32 {
     r.unwrap_or_else(|d| rt.raise(d))
 }
@@ -1739,9 +1822,8 @@ macro_rules! builtins {
                 $($a: $t),*
             ) -> $ret {
                 let mut cx = cx!(ctx);
-                let $rt = cx.rt();
-                let r = $body;
-                builtins!(@ $how $rt r)
+                let r = builtins!(@body $how cx $rt $body);
+                builtins!(@ $how cx r)
             }
         )*
         /// Every `rt_b_*` row above by its export name, through one signature (arguments and
@@ -1762,9 +1844,16 @@ macro_rules! builtins {
             ),)*
         ];
     };
-    (@ ptr $rt:ident $r:ident) => { ptr($rt, $r) };
-    (@ scalar $rt:ident $r:ident) => { scalar($rt, $r) };
-    (@ plain $rt:ident $r:ident) => { $r };
+    // `cx_scalar` and `cx_plain` bodies get the export's `Cx` (they call the host); the others
+    // the runtime.
+    (@body cx_scalar $cx:ident $rt:ident $body:expr) => {{ let $rt = &mut $cx; $body }};
+    (@body cx_plain $cx:ident $rt:ident $body:expr) => {{ let $rt = &mut $cx; $body }};
+    (@body $how:ident $cx:ident $rt:ident $body:expr) => {{ let $rt = $cx.rt(); $body }};
+    (@ ptr $cx:ident $r:ident) => { ptr($cx.rt(), $r) };
+    (@ scalar $cx:ident $r:ident) => { scalar($cx.rt(), $r) };
+    (@ cx_scalar $cx:ident $r:ident) => { scalar($cx.rt(), $r) };
+    (@ plain $cx:ident $r:ident) => { $r };
+    (@ cx_plain $cx:ident $r:ident) => { $r };
 }
 
 /// A builtin called by name with its arguments and result as slots ([`BUILTINS`]).
@@ -1912,6 +2001,21 @@ builtins! {
     };
     rt_b_channel_try_send(ch: u32, v: u32) -> i64 = scalar |rt| rt.channel_try_send(ch, v);
     rt_b_channel_close(ch: u32) -> () = plain |rt| rt.channel_close(ch);
+    // `std/worker`'s topics (ABI 1.15.0): 1 when a subscription here was full.
+    rt_b_topic_publish(name: u32, text: u32) -> i64 = scalar |rt| rt.topic_publish(name, text);
+    // `std/worker`'s live workers (ABI 1.15.0, `worker.rs`): the host's id, -1 or -2.
+    rt_b_worker_start(
+        entry: u32,
+        fs_read: u32,
+        fs_write: u32,
+        net: u32,
+        env: u32,
+        capacity: i64
+    ) -> i64 = cx_scalar |cx| {
+        crate::worker::start(cx, entry, [fs_read, fs_write, net, env], capacity)
+    };
+    // `Worker.close`: worker `id` (0, the parent) receives nothing more from this side.
+    rt_b_worker_shut(id: i64) -> () = cx_plain |cx| cx.worker_shut(id);
     // `std/compress` (RFC 0002 §2.6, `compress.rs`).
     rt_b_compress_deflate(b: u32, level: i64, last: i64) -> u32 = ptr |rt| {
         rt.compress_deflate(b, level, last)

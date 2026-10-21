@@ -6,7 +6,7 @@
 use crate::{Defect, Res, Rt, tag};
 
 /// A growable array of `u32` in one heap block.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Stack {
     block: u32,
     pub len: u32,

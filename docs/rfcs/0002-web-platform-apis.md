@@ -201,18 +201,25 @@ A worker with attenuated authority, typed messages and a deterministic in-proces
 handler (experimental, see §Compatibility):
 
 ```sakura fragment
-import std/worker.{Worker, Grants}
+import std/worker.{Grants, Inbox, Message, Outbox, Worker}
 
 @worker
 fn resize(inbox: Inbox<Bytes>, outbox: Outbox<Int>) -> Unit ! {Worker} {
-  loop { match Worker.recv(inbox) { Some(b) -> Worker.send(outbox, Bytes.len(b)), None -> break } }
+  var going = true
+  while going {
+    match Worker.recv(inbox) {
+      Message(b) => { let _ = Worker.send(outbox, Bytes.len(b)) },
+      _ => { going = false },
+    }
+  }
 }
 
-fn main() -> Unit ! {Console, Worker} {
-  Worker.spawn(resize, Grants.none(), fn(w) {
-    Worker.send(w, Bytes.from_list([1, 2, 3]))
-    Console.print(show(Worker.recv(w)))        // Some(3)
+pub fn main() -> Unit ! {Console, Worker} {
+  let r = Worker.spawn(resize, Grants.none(), fn(w) {
+    let _ = Worker.send(w, Bytes.from_list([1, 2, 3]))
+    Console.print("{Worker.recv(w)}")         // Message(3)
   })
+  Console.print("{r}")                         // Ok(())
 }
 ```
 
@@ -691,16 +698,21 @@ hold a cursor (`V2041`, design §8.1).
   program, with its own heap and handlers, connected by two typed bounded channels whose
   element types are `Schema` (the wire codec; closures, handlers, resources, `Secret` and
   `CryptoKey` cannot cross because they are not `Schema`). `Worker.spawn<I, O, R, e>(entry,
-  grants: Grants, body: fn(WorkerHandle<I, O>) -> R ! e) -> R ! {Worker | e}`; `send(w, m)
-  -> Result<Unit, SendError>`; `recv(w) -> Received<O>` where `Received<O> = Message(O) |
-  Finished | Failed(WorkerError)`. `Grants` is a subset of the parent's `[permissions]`
-  checked at spawn (`Err(WorkerError(GrantExceeded))` otherwise); `Grants.none()` is the
+  grants: Grants, body: fn(WorkerHandle<I, O>) -> R ! {Worker | e}) -> Result<R,
+  WorkerError> ! {Worker | e}` (corrected 2026-10-21 with phase 11b, design §17.299:
+  the refusals below are its `Err`); `send(w, m) -> Result<Unit, SendError>`; `recv(w) ->
+  Received<O>` where `Received<O> = Message(O) | Finished | Failed(WorkerError)`, so a
+  receive loop matches `Message(m)` and ends on `_`; `close(p)` (phase 11b, additive) sends
+  nothing more through `p`, after which the other side reads what was sent, then `Finished`.
+  `Grants` is a subset of the parent's `[permissions]` checked at spawn (`Err(WorkerError(GrantExceeded))` otherwise); `Grants.none()` is the
   isolation primitive that replaces `ShadowRealm`. A worker ends when its entry returns,
   when its handle's callback returns (cancelled and joined, like a fiber), or on its
   defect, which `recv` reports as `Failed`. Limits: at most 16 live workers per instance
-  (`Err(WorkerError(Limit))`), channel capacity per spawn, the worker's heap bound by the
-  host's `SAKURA_MAX_HEAP`. No value, RC pointer or handler crosses the boundary (§17.171,
-  §16 item 22 stay true).
+  (`Err(WorkerError(Limit))`), 64 unreceived messages per direction, fixed (corrected with
+  phase 11b: no per-spawn capacity), the worker's heap bound as its parent's (the host's
+  `SAKURA_MAX_HEAP`; Node's `resourceLimits` from the parent's old-space bound). A worker's
+  environment is the runtime's `SAKURA_*` variables and the variables its `env` grant names.
+  No value, RC pointer or handler crosses the boundary (§17.171, §16 item 22 stay true).
 - `Worker.topic<T: Schema>(name: String) -> Topic<T>` with `publish`/`subscribe` is
   `BroadcastChannel` within one process; delivery is per-subscriber bounded queues with
   the same `SendError` on overflow. No cross-process delivery is claimed.
@@ -823,8 +835,8 @@ included), `Worker.inline`, `Console.captured`, `Clock.virtual`, `Random.seeded`
 | `WebSocket` | `max_message` (default 16 MiB) per message and per receive queue (a frame is bounded by it before its payload is held; no `max_frame`), 64 queued messages, then TCP backpressure; a pong only while the socket is writable; close handshake timeout 5 s (design §17.286 (4)) | `SocketError(MessageTooLarge)`, `Closed(1009)` |
 | `WebSocket.accept` and topics (design §17.289) | `max_message` per accepted socket (default 16 MiB) with the client's queue, pong and close rules; `SAKURA_MAX_SOCKETS` (default 1,024, a positive integer or a startup refusal) open sockets per instance, both roles; a topic name at most 256 bytes; `publish` never waits and skips a subscriber whose write buffer holds `max_message` bytes or more; no idle timer (the handler's `Task.timeout`) | `SocketError(Accept("the socket limit of N is reached"))`, `Connect(…)` the same for `connect`; `D020` on the topic length; a missed message counted out of `publish`'s `Int` |
 | Redirects | 20 hops | `HttpError("too many redirects")` |
-| `Channel`, `Worker` queues | `capacity` per channel | `SendError(Full)` only on `try_send`; `send` waits |
-| Workers | 16 live per instance; heap per worker `SAKURA_MAX_HEAP` | `WorkerError(Limit)`, worker `D096` reported as `Failed` |
+| `Channel`, `Worker` queues | `capacity` per channel; 64 per worker direction, fixed | `SendError(Full)` only on `try_send`; `send` waits |
+| Workers | 16 live per instance; heap per worker as its parent's (`SAKURA_MAX_HEAP`, Node `resourceLimits`) | `WorkerError(Limit)`, worker `D096` reported as `Failed` |
 | `UrlPattern.compile` | pattern length 4 KiB, 64 groups | `PatternError(Limit)` |
 - `std/crypto` (design §17.266 (7)): HKDF `info` at most 1,024 bytes (`Err(CryptoError(Info(n)))`),
   PBKDF2 iterations `1..=2^31 − 1` (`Iterations(n)`), HKDF output at most 255 × the hash

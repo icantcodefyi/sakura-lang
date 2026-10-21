@@ -14,7 +14,7 @@
 
 use crate::exec::step;
 use crate::scratch::Stack;
-use crate::{Res, Rt, tag};
+use crate::{Defect, Res, Rt, tag};
 
 const CAP: u32 = 8;
 const CLOSED: u32 = 12;
@@ -183,7 +183,11 @@ impl Rt {
     }
 
     /// The end of `channel_with`'s extent: the items dropped, the channel closed (`ch` borrowed).
+    /// A topic subscription (`topic_subscribe`) leaves its topic here.
     pub fn channel_end(&mut self, ch: u32) {
+        if self.sched.topics.len > 0 {
+            self.topic_unregister(ch);
+        }
         let mut items = Stack::load(&self.heap.mem, ch + ITEMS);
         let head = self.heap.mem.u32(ch + HEAD);
         let mut dead = 0;
@@ -196,6 +200,139 @@ impl Rt {
         self.heap.mem.set_u32(ch + HEAD, 0);
         self.release(dead);
         self.close_channel(ch);
+    }
+
+    /// Register the subscription channel `ch` under topic `name` (a `String`, consumed; ABI
+    /// 1.15.0, `std/worker`). The registry (`Sched::topics`, `name, ch` pairs in subscription
+    /// order) counts the name but not the channel, since `topic_subscribe`'s finalizer
+    /// (`channel_end`) takes it out before the channel can die. The host is asked to deliver
+    /// `name`'s messages from other instances (`topic_listen`).
+    pub fn topic_register(&mut self, name: u32, ch: u32) -> Res<()> {
+        let mut t = self.sched.topics;
+        let mut r = self.push(&mut t, name);
+        if r.is_ok() {
+            r = self.push(&mut t, ch);
+            if r.is_err() {
+                t.len -= 1;
+            }
+        }
+        self.sched.topics = t;
+        if r.is_err() {
+            self.drop(name);
+            return r;
+        }
+        let (len, at) = self.data(name);
+        self.host_topic_listen(at, len);
+        Ok(())
+    }
+
+    /// Take subscription `ch` out of the registry (`channel_end`), its name released.
+    fn topic_unregister(&mut self, ch: u32) {
+        let mut t = self.sched.topics;
+        let Some(i) = (0..t.len)
+            .step_by(2)
+            .find(|&i| self.stack_at(&t, i + 1) == ch)
+        else {
+            return;
+        };
+        let name = self.stack_at(&t, i);
+        for j in i..t.len - 2 {
+            let w = self.stack_at(&t, j + 2);
+            self.stack_set(&t, j, w);
+        }
+        t.len -= 2;
+        self.sched.topics = t;
+        self.drop(name);
+    }
+
+    /// Whether registered name `name` holds the `len` bytes at `at`.
+    fn topic_is(&self, name: u32, at: u32, len: u32) -> bool {
+        let (nl, na) = self.data(name);
+        nl == len && self.heap.mem.bytes(na, nl) == self.heap.mem.bytes(at, len)
+    }
+
+    /// Queue the string `text` (borrowed) on every subscription of the topic named by the `len`
+    /// bytes at `at`, in the order they subscribed: 1 when one was full (it misses `text`),
+    /// else 0. Queueing wakes receivers and runs no code, so the registry cannot change here.
+    fn topic_fanout(&mut self, at: u32, len: u32, text: u32) -> Res<i64> {
+        let mut full = 0;
+        let mut i = 0;
+        while i < self.sched.topics.len {
+            let t = self.sched.topics;
+            let (name, ch) = (self.stack_at(&t, i), self.stack_at(&t, i + 1));
+            i += 2;
+            if !self.topic_is(name, at, len) {
+                continue;
+            }
+            self.dup(ch)?;
+            self.dup(text).inspect_err(|_| self.drop(ch))?;
+            if self.channel_try_send(ch, text)? == FULL {
+                full = 1;
+            }
+        }
+        Ok(full)
+    }
+
+    /// `topic_publish(name, text)` (both consumed): `topic_fanout` here, and the message to the
+    /// host for the subscriptions of other instances (`topic_post`), which are not counted.
+    pub fn topic_publish(&mut self, name: u32, text: u32) -> Res<i64> {
+        let (nl, na) = self.data(name);
+        let r = self.topic_fanout(na, nl, text);
+        if r.is_ok() {
+            let (tl, ta) = self.data(text);
+            self.host_topic_post(na, nl, ta, tl);
+        }
+        self.drop(name);
+        self.drop(text);
+        r
+    }
+
+    /// A message the host received for a topic from another instance (`topic_deliver`): the
+    /// name and the UTF-8 text are `(len, at)` slices, as [`Rt::data`] gives them; queued as
+    /// `topic_publish` queues one published here.
+    pub fn topic_deliver(&mut self, name: (u32, u32), text: (u32, u32)) -> Res<()> {
+        let ((nl, na), (tl, ta)) = (name, text);
+        let t = self.sched.topics;
+        let any = (0..t.len)
+            .step_by(2)
+            .any(|i| self.topic_is(self.stack_at(&t, i), na, nl));
+        if !any {
+            return Ok(());
+        }
+        let s = self.new_object(
+            tag::STRING,
+            tl.checked_add(16).ok_or(Defect::HEAP_EXHAUSTED)?,
+        )?;
+        self.heap.mem.set_u32(s + 8, tl);
+        self.heap.mem.copy(s + 16, ta, tl);
+        let r = self.topic_fanout(na, nl, s);
+        self.drop(s);
+        r.map(|_| ())
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn host_topic_listen(&mut self, at: u32, len: u32) {
+        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+        unsafe { crate::host::topic_listen(at, len) }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn host_topic_post(&mut self, na: u32, nl: u32, ta: u32, tl: u32) {
+        // SAFETY: a plain import with two slices inside linear memory, copied in at once.
+        unsafe { crate::host::topic_post(na, nl, ta, tl) }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn host_topic_listen(&mut self, at: u32, len: u32) {
+        let name = self.heap.mem.bytes(at, len).to_vec();
+        self.topic_log.push(crate::TopicCall::Listen(name));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn host_topic_post(&mut self, na: u32, nl: u32, ta: u32, tl: u32) {
+        let name = self.heap.mem.bytes(na, nl).to_vec();
+        let text = self.heap.mem.bytes(ta, tl).to_vec();
+        self.topic_log.push(crate::TopicCall::Post(name, text));
     }
 
     /// Release a dead channel's items and lists (`object.rs`, the destruction worklist).

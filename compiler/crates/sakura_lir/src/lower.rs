@@ -193,6 +193,19 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .map_err(|e| format!("{}: {e}", core.defs[i].name))?;
         cx.funcs[i] = Some(f);
     }
+    // A worker's function is a value of its entry (`enter(fun)`), so its adapter exists.
+    let workers = core
+        .workers
+        .iter()
+        .filter_map(|w| {
+            Some(Worker {
+                key: w.key.clone(),
+                fun: *cx.adapters.get(&w.fun)?,
+                entry: FuncId(w.def),
+                effects: w.effects.clone(),
+            })
+        })
+        .collect();
     let mut funcs: Vec<Func> = cx
         .funcs
         .into_iter()
@@ -265,6 +278,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
             .iter()
             .map(|(name, d)| (name.clone(), FuncId(*d)))
             .collect(),
+        workers,
         direct: cx.facts,
         schemas: crate::schema::descriptors(core, &cx.schema_roots),
     })

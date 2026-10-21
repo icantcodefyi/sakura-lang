@@ -140,6 +140,16 @@ pub fn convert(m: &c::Module) -> v::Module {
             .collect(),
         tests: m.tests.iter().map(|t| (t.name.clone(), t.def.0)).collect(),
         entry: m.entry.map(|e| e.0),
+        workers: m
+            .workers
+            .iter()
+            .map(|w| v::Worker {
+                key: w.key.clone(),
+                def: w.def.0,
+                fun: w.fun.0,
+                effects: w.effects.clone(),
+            })
+            .collect(),
     }
 }
 
@@ -508,9 +518,16 @@ pub fn back(m: &v::Module) -> c::Module {
             })
             .collect(),
         entry: m.entry.map(c::DefId),
-        // Only the JS backend runs a worker's entry yet (RFC 0002 §2.9, plan phase 11a): the
-        // snapshot does not carry them.
-        workers: Vec::new(),
+        workers: m
+            .workers
+            .iter()
+            .map(|w| c::WorkerEntry {
+                key: w.key.clone(),
+                def: c::DefId(w.def),
+                fun: c::DefId(w.fun),
+                effects: w.effects.clone(),
+            })
+            .collect(),
     }
 }
 

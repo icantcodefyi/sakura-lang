@@ -1,28 +1,57 @@
-//! Live workers on the JS host (RFC 0002 §2.9, plan `web-apis.md` phase 11a; `std/worker` is
+//! Live workers (RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b; `std/worker` is
 //! experimental): each program runs with `sakura run` as a package whose `sakura.toml` is its
-//! parent table, so `Worker.host()` starts real threads. The semantics fixtures `worker_*` hold
-//! `Worker.inline()` to the same results on every backend; `worker_host_refused_off_js` holds
-//! WASM and native to their startup refusal. Output that crosses threads is printed by the
-//! parent only, so every line's order is the program's.
+//! parent table, so `Worker.host()` starts real threads, on JS, on WASM under Node and (with
+//! the `native` feature) natively. The semantics fixtures `worker_*` hold `Worker.inline()` to
+//! the same results on every backend. Output that crosses threads is printed by the parent
+//! only, so every line's order is the program's.
 
 mod common;
 
 use common::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-/// A package `name` with `[permissions] net = …` and `src/main.sak` = `main`.
-fn package(name: &str, net: &[&str], main: &str) -> PathBuf {
+/// The backends a live worker runs on here: JS, WASM when its runtime is built (required with
+/// `SAKURA_REQUIRE_WASM=1`), and native with the `native` feature.
+fn targets() -> Vec<&'static str> {
+    let mut t = vec!["js"];
+    if sakura_codegen_wasm::available() {
+        t.push("wasm");
+    } else {
+        assert!(
+            std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1"),
+            "WASM runtime is missing"
+        );
+    }
+    if cfg!(feature = "native") {
+        t.push("native");
+    }
+    t
+}
+
+/// The native driver's library directory, built once per test binary.
+#[cfg(feature = "native")]
+fn native_lib() -> &'static Path {
+    static LIB: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    LIB.get_or_init(|| {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap()
+    })
+}
+
+/// A package `name` for `target` with `permissions` (the `[permissions]` table's lines) and
+/// `src/main.sak` = `main`.
+fn package(name: &str, target: &str, permissions: &str, main: &str) -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
         .join("workers")
+        .join(target)
         .join(name);
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    let net: Vec<String> = net.iter().map(|h| format!("{h:?}")).collect();
     std::fs::write(
         dir.join("sakura.toml"),
         format!(
-            "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n[permissions]\nnet = [{}]\n",
+            "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n[permissions]\n{permissions}\n",
             name.replace('_', "-"),
-            net.join(", ")
         ),
     )
     .unwrap();
@@ -30,18 +59,55 @@ fn package(name: &str, net: &[&str], main: &str) -> PathBuf {
     dir
 }
 
-fn run(name: &str, net: &[&str], main: &str) -> Output {
-    let dir = package(name, net, main);
-    let out = sakura(&["run"], &dir);
-    assert!(!out.timed_out, "{name} timed out");
+/// `main` run on `target` as package `name`, with extra environment variables.
+fn run_env(
+    name: &str,
+    target: &str,
+    permissions: &str,
+    main: &str,
+    files: &[(&str, &str)],
+    vars: &[(&str, &Path)],
+) -> Output {
+    let dir = package(name, target, permissions, main);
+    for (path, text) in files {
+        let p = dir.join(path);
+        std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+        std::fs::write(p, text).unwrap();
+    }
+    #[allow(unused_mut)]
+    let mut env = vars.to_vec();
+    #[cfg(feature = "native")]
+    env.push(("SAKURA_NATIVE_LIB_DIR", native_lib()));
+    let out = sakura_env(&["run", "--target", target], &dir, &env);
+    assert!(!out.timed_out, "{name} timed out on {target}");
     out
+}
+
+fn run(name: &str, target: &str, net: &[&str], main: &str) -> Output {
+    let net: Vec<String> = net.iter().map(|h| format!("{h:?}")).collect();
+    run_env(
+        name,
+        target,
+        &format!("net = [{}]", net.join(", ")),
+        main,
+        &[],
+        &[],
+    )
+}
+
+/// `main`'s stdout on every backend, each exiting 0.
+fn on_every_target(name: &str, main: &str, stdout: &str) {
+    for t in targets() {
+        let out = run(name, t, &[], main);
+        assert_eq!(out.code, Some(0), "{t}: {}", out.stderr);
+        assert_eq!(out.stdout, stdout, "{t}");
+    }
 }
 
 #[test]
 fn a_live_worker_answers_through_the_codec_then_finishes() {
-    let out = run(
+    on_every_target(
         "roundtrip",
-        &[],
         r#"import std/worker.{Grants, Inbox, Message, Outbox, Worker}
 
 @worker
@@ -66,20 +132,19 @@ pub fn main() -> Unit ! {Console, Worker} {
   Console.print("{r}")
 }
 "#,
-    );
-    assert_eq!(out.code, Some(0), "{}", out.stderr);
-    assert_eq!(
-        out.stdout,
-        "Message(0)\nMessage(1)\nFinished\nFinished\nOk(\"done\")\n"
+        "Message(0)\nMessage(1)\nFinished\nFinished\nOk(\"done\")\n",
     );
 }
 
+/// JS and WASM: natively a worker declaring `Http` is refused at startup (below).
 #[test]
 fn grants_attenuate_a_live_worker_and_none_cannot_fetch() {
-    let out = run(
-        "grants",
-        &["a.example:443", "b.example:443"],
-        r#"import std/http.{Http}
+    for t in targets().into_iter().filter(|t| *t != "native") {
+        let out = run(
+            "grants",
+            t,
+            &["a.example:443", "b.example:443"],
+            r#"import std/http.{Http}
 import std/request.{Get, Request}
 import std/url.{Url}
 import std/worker.{Grants, Inbox, Message, Outbox, Permissions, Worker}
@@ -108,24 +173,28 @@ pub fn main() -> Unit ! {Console, Worker, Http} {
   Console.print("{r}")
 }
 "#,
-    );
-    assert_eq!(out.code, Some(0), "{}", out.stderr);
-    assert_eq!(
-        out.stdout,
-        "none: Err(WorkerError { reason: GrantExceeded })\n\
+        );
+        assert_eq!(out.code, Some(0), "{t}: {}", out.stderr);
+        assert_eq!(
+            out.stdout,
+            "none: Err(WorkerError { reason: GrantExceeded })\n\
          beyond: Err(WorkerError { reason: GrantExceeded })\n\
          fetched: Message(\"false\")\n\
          nested: Message(\"Err(WorkerError \\{ reason: GrantExceeded \\})\")\n\
-         Ok(())\n"
-    );
+         Ok(())\n",
+            "{t}"
+        );
+    }
 }
 
 #[test]
 fn a_live_workers_defect_is_reported_as_failed() {
-    let out = run(
-        "defect",
-        &[],
-        r#"import std/worker.{Grants, Inbox, Message, Outbox, Worker}
+    for t in targets() {
+        let out = run(
+            "defect",
+            t,
+            &[],
+            r#"import std/worker.{Grants, Inbox, Message, Outbox, Worker}
 
 @worker
 fn divide(inbox: Inbox<Int>, outbox: Outbox<Int>) -> Unit ! {Worker} {
@@ -145,28 +214,29 @@ pub fn main() -> Unit ! {Console, Worker} {
   Console.print("{r}")
 }
 "#,
-    );
-    assert_eq!(out.code, Some(0), "{}", out.stderr);
-    assert_eq!(
-        out.stdout,
-        "Failed(WorkerError { reason: Defect(\"D002\") })\n\
+        );
+        assert_eq!(out.code, Some(0), "{t}: {}", out.stderr);
+        assert_eq!(
+            out.stdout,
+            "Failed(WorkerError { reason: Defect(\"D002\") })\n\
          Failed(WorkerError { reason: Defect(\"D002\") })\n\
          send after: Err(Closed)\n\
-         Ok(())\n"
-    );
-    assert!(
-        out.stderr
-            .contains("error: worker defect::main::divide ended on D002: division by zero"),
-        "{}",
-        out.stderr
-    );
+         Ok(())\n",
+            "{t}"
+        );
+        assert!(
+            out.stderr
+                .contains("error: worker defect::main::divide ended on D002: division by zero"),
+            "{t}: {}",
+            out.stderr
+        );
+    }
 }
 
 #[test]
 fn the_seventeenth_live_worker_is_limit() {
-    let out = run(
+    on_every_target(
         "limit",
-        &[],
         r#"import std/worker.{Grants, Inbox, Outbox, Worker}
 
 @worker
@@ -186,19 +256,14 @@ pub fn main() -> Unit ! {Console, Worker} {
   Console.print("after: {Worker.spawn(idle, Grants.none(), fn(_w) { "spawned" })}")
 }
 "#,
-    );
-    assert_eq!(out.code, Some(0), "{}", out.stderr);
-    assert_eq!(
-        out.stdout,
-        "worker 17: WorkerError { reason: Limit }\nafter: Ok(\"spawned\")\n"
+        "worker 17: WorkerError { reason: Limit }\nafter: Ok(\"spawned\")\n",
     );
 }
 
 #[test]
 fn a_topic_reaches_subscriptions_in_other_workers() {
-    let out = run(
+    on_every_target(
         "topics",
-        &[],
         r#"import std/worker.{Grants, Inbox, Message, Outbox, Topic, Worker}
 
 @worker
@@ -229,13 +294,145 @@ pub fn main() -> Unit ! {Console, Worker} {
   Console.print("{r}")
 }
 "#,
+        "a Message(\"ready\"), b Message(\"ready\")\n\
+         a Message(\"got one\")\na Message(\"got two\")\na Finished\n\
+         b Message(\"got one\")\nb Message(\"got two\")\nb Finished\n\
+         Ok(Ok(()))\n",
+    );
+}
+
+/// The security core (design §17.299): on every backend a worker holds exactly its grants,
+/// which must be within its parent's table; a file outside its `fs.read` grant and a variable
+/// outside its `env` grant are out of its reach although its parent may read them.
+#[test]
+fn a_live_worker_reads_only_what_its_grants_name_on_every_backend() {
+    let main = r#"import std/fs.{Fs}
+import std/path.{Path}
+import std/worker.{Grants, Inbox, Outbox, Permissions, Worker}
+
+fn grants(read: List<String>, env: List<String>) -> Grants {
+  Grants.of(Permissions { fs_read: read, fs_write: [], net: [], env: env })
+}
+
+@worker
+fn probe(_inbox: Inbox<Int>, outbox: Outbox<String>) -> Unit ! {Worker, Fs, Env} {
+  let data = try { Bytes.len(Fs.read(Path.of("data/a.txt"))) }
+  let other = try { Bytes.len(Fs.read(Path.of("other/b.txt"))) }
+  let _ = Worker.send(outbox, "data {data.is_ok()}, other {other.is_ok()}")
+  let _ = Worker.send(outbox, "A {Env.get("WTEST_A")}, B {Env.get("WTEST_B")}")
+  // Its own grants bound the workers it starts, not its parent's.
+  let wider = Worker.spawn(probe, grants(["data", "other"], []), fn(_w) { () })
+  let _ = Worker.send(outbox, "wider {wider}")
+}
+
+pub fn main() -> Unit ! {Console, Worker, Fs, Env} {
+  let other = try { Bytes.len(Fs.read(Path.of("other/b.txt"))) }
+  Console.print("parent: other {other.is_ok()}, B {Env.get("WTEST_B")}")
+  Console.print("beyond fs: {Worker.spawn(probe, grants(["data", "elsewhere"], []), fn(w) { Worker.recv(w) })}")
+  Console.print("beyond env: {Worker.spawn(probe, grants(["data"], ["WTEST_C"]), fn(w) { Worker.recv(w) })}")
+  Console.print("no fs: {Worker.spawn(probe, Grants.none(), fn(w) { Worker.recv(w) })}")
+  let r = Worker.spawn(probe, grants(["data"], ["WTEST_A"]), fn(w) {
+    for _ in [1, 2, 3] { Console.print("{Worker.recv(w)}") }
+  })
+  Console.print("{r}")
+}
+"#;
+    for t in targets() {
+        let out = run_env(
+            "attenuate",
+            t,
+            "fs.read = [\"data\", \"other\"]\nenv = [\"WTEST_A\", \"WTEST_B\"]",
+            main,
+            &[("data/a.txt", "alpha"), ("other/b.txt", "beta")],
+            &[("WTEST_A", Path::new("a")), ("WTEST_B", Path::new("b"))],
+        );
+        assert_eq!(out.code, Some(0), "{t}: {}", out.stderr);
+        assert_eq!(
+            out.stdout,
+            "parent: other true, B Some(\"b\")\n\
+             beyond fs: Err(WorkerError { reason: GrantExceeded })\n\
+             beyond env: Err(WorkerError { reason: GrantExceeded })\n\
+             no fs: Err(WorkerError { reason: GrantExceeded })\n\
+             Message(\"data true, other false\")\n\
+             Message(\"A Some(\\\"a\\\"), B None\")\n\
+             Message(\"wider Err(WorkerError \\{ reason: GrantExceeded \\})\")\n\
+             Ok(())\n",
+            "{t}"
+        );
+    }
+}
+
+/// `Worker.close` between threads, as `worker_close_finishes_inbox` holds it inline.
+#[test]
+fn closing_a_live_workers_inbox_ends_its_loop() {
+    on_every_target(
+        "close",
+        r#"import std/worker.{Grants, Inbox, Message, Outbox, Worker}
+
+@worker
+fn summer(inbox: Inbox<Int>, outbox: Outbox<Int>) -> Unit ! {Worker} {
+  var sum = 0
+  var going = true
+  while going {
+    match Worker.recv(inbox) {
+      Message(n) => { sum = sum + n },
+      _ => { going = false },
+    }
+  }
+  let _ = Worker.send(outbox, sum)
+  Worker.close(outbox)
+}
+
+pub fn main() -> Unit ! {Console, Worker} {
+  let r = Worker.spawn(summer, Grants.none(), fn(w) {
+    for n in [1, 2, 3] { let _ = Worker.send(w, n) }
+    Worker.close(w)
+    Console.print("send after close: {Worker.send(w, 4)}")
+    Console.print("{Worker.recv(w)}")
+    Console.print("{Worker.recv(w)}")
+    "closed"
+  })
+  Console.print("{r}")
+}
+"#,
+        "send after close: Err(Closed)\nMessage(6)\nFinished\nOk(\"closed\")\n",
+    );
+}
+
+/// A worker whose entry declares an effect the native host lacks is refused when it starts,
+/// as `main` is (exit 75 and one line naming the effect); its parent reads that end.
+#[cfg(feature = "native")]
+#[test]
+fn a_native_worker_declaring_http_is_refused_at_its_start() {
+    let out = run(
+        "refused",
+        "native",
+        &["a.example:443"],
+        r#"import std/http.{Any, Http}
+import std/response.{Response}
+import std/worker.{Grants, Inbox, Outbox, Permissions, Worker}
+
+@worker
+fn fetcher(_inbox: Inbox<Int>, _outbox: Outbox<String>) -> Unit ! {Worker, Http} {}
+
+// `main` handles `Http` itself, so it starts; the worker's root `Http` is the host's.
+pub fn main() -> Unit ! {Console, Worker} {
+  let g = Grants.of(Permissions { fs_read: [], fs_write: [], net: ["a.example:443"], env: [] })
+  with Http.scripted([(Any, Response.status(200, ""))]) {
+    Console.print("{Worker.spawn(fetcher, g, fn(w) { Worker.recv(w) })}")
+  }
+}
+"#,
     );
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     assert_eq!(
         out.stdout,
-        "a Message(\"ready\"), b Message(\"ready\")\n\
-         a Message(\"got one\")\na Message(\"got two\")\na Finished\n\
-         b Message(\"got one\")\nb Message(\"got two\")\nb Finished\n\
-         Ok(Ok(()))\n"
+        "Ok(Failed(WorkerError { reason: Defect(\"exit 75\") }))\n"
+    );
+    assert!(
+        out.stderr
+            .contains("`Http` is not available on target `native`"),
+        "{}",
+        out.stderr
     );
 }

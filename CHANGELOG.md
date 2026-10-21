@@ -51,7 +51,7 @@ retains earlier implementation history.
   a keyword: it names a field, not a binding; choose another name"). Since `error` became a
   field name such a binder parsed but no body could use it. A field named `error` is
   unaffected.
-- **`std/worker`, experimental** (RFC 0002 §2.9, plan `web-apis.md` phase 11a): outside the 1.0
+- **`std/worker`, experimental** (RFC 0002 §2.9, plan `web-apis.md` phases 11a and 11b): outside the 1.0
   contract, and it may change in any release. A function declared `@worker` runs as a second
   instance of the program, with its own heap and root handlers, through
   `Worker.spawn(entry, grants, body)`; `send` and `recv` carry messages through the `Schema`
@@ -62,10 +62,18 @@ retains earlier implementation history.
   `Failed(WorkerError(Defect(code)))` and a message that does not decode `Codec`.
   `Worker.topic(name)` with `publish` and `subscribe` is `BroadcastChannel`. `Worker.inline()`,
   the deterministic test handler, runs a worker as a fiber of the same instance on every
-  target; `Worker.host()` runs live workers as threads on the JS target. On WASM and native a
-  `main` that declares `Worker` exits 75 at startup with "`Worker` is not available on target
-  `…`", and topics are `D090`, until phase 11b. `Worker.spawn` of a function not declared
-  `@worker` is `V1010`. No ABI change.
+  target; `Worker.host()` runs live workers as threads on every target (phase 11b): a
+  `node:worker_threads` thread on JS and on WASM under Node, an OS thread with a second
+  instance natively, and topics reach every thread of the process. `Worker.close(p)` sends
+  nothing more through `p`: the other side reads what was sent, then `Finished`, and a later
+  `send` on `p` is `Err(Closed)`. A live worker's environment is the `SAKURA_*` variables and
+  the variables its `env` grant names, and its heap is bounded as its parent's. Natively, a
+  worker whose entry declares an effect the native host lacks (`Http`, …) ends at its start
+  with exit 75 and the "`Http` is not available on target `native`" line, and a stopped
+  worker that never waits again keeps its thread until the process exits. `Worker.spawn` of a
+  function not declared `@worker` is `V1010`. Tests `compiler/crates/sakura_cli/tests/workers.rs`
+  (each live test on JS, WASM and native, grants per backend) and fixture
+  `compiler/tests/semantics/worker_close_finishes_inbox.sak`.
 
 ### Changed
 
@@ -197,6 +205,12 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   §17.299 (12)): a refined type's schema keywords are a fifth argument of `$rt.refined` in
   `__types__.js` and a fifth element of the native descriptor row, read by every
   `json_schema`. A 1.13 host refuses a 1.14 module (`V8003`); a 1.14 host loads older modules.
+- The WASM runtime ABI is 1.15.0 (`sakura_abi_version` `0x010f00`; design §17.299, plan
+  `web-apis.md` phase 11b): `std/worker`'s live workers (`worker_*` imports, request kind 5,
+  the `workers()` export) and topics in the runtime (`topic_listen`, `topic_post`, the
+  `topic_deliver` export), and the native descriptor's layout 5 (`sakura_native_main_v5`)
+  with the worker table. A 1.14 host refuses a 1.15 module (`V8003`); a native program links
+  only with its own release's driver.
 
 - **Breaking since 0.1.0 (design §17.293 MT-9).** `Log.stderr()` and `Log.captured()` write each
   field as `key=` and its value in compact JSON, the text `Json.encode` gives, the same on JS,

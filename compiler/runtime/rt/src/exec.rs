@@ -194,6 +194,10 @@ pub struct Sched {
     /// tasks the host may still read the outcome of (freed once finished, at the next `invoke`).
     pub serve_request_code: u32,
     pub served: Option<crate::scratch::Stack>,
+    /// Topic subscriptions (`std/worker`, ABI 1.15.0, `channel.rs`): `name, channel` pairs.
+    pub topics: crate::scratch::Stack,
+    /// The code of `worker_closing`'s finalizer (`rt_code_worker_stop`), set at link time.
+    pub worker_stop_code: u32,
     /// The code of `Sql.transaction`'s finalizer (`rt_code_sql_rollback`), set at link time.
     pub sql_rollback_code: u32,
     /// The code of `Task.scope`'s finalizer (`rt_code_task_cancel_all`), set at link time.

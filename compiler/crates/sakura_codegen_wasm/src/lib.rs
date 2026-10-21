@@ -102,6 +102,7 @@ const FIXED: &[&str] = &[
     "tests",
     "stats",
     "invoke",
+    "workers",
 ];
 
 fn mem(offset: u64, align: u32) -> MemArg {
@@ -200,6 +201,8 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     } = image::tables(m, &mut statics, &native_names);
     let tests_bytes = tests_table(m);
     let tests_off = statics.bytes(&tests_bytes);
+    let workers_bytes = sakura_lir::image::workers_table(m);
+    let workers_off = statics.bytes(&workers_bytes);
     let texts = wasi.then(|| wasi::Texts::new(&mut statics));
 
     let g = layout.first_global;
@@ -470,6 +473,16 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .call(rtf("rt_invoke")?)
         .end();
     funcs.push(added(FIXED[8], i32s(3), i32s(1), f));
+
+    // workers() -> (ptr, len)
+    let mut f = Function::new([]);
+    let mut s = f.instructions();
+    s.call(init).drop();
+    s.global_get(static_base)
+        .i32_const(workers_off as i32)
+        .i32_add();
+    s.i32_const(workers_bytes.len() as i32).end();
+    funcs.push(added(FIXED[9], vec![], i32s(2), f));
     if let Some(t) = &texts {
         funcs.push(wasi::start(&ix, t));
     }
@@ -493,6 +506,11 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         ExportKind::Func,
         rtf("rt_task_free")?,
     ));
+    exports.push((
+        "topic_deliver".to_string(),
+        ExportKind::Func,
+        rtf("rt_topic_deliver")?,
+    ));
     for name in [
         "start",
         "layout_table",
@@ -501,6 +519,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         "tests",
         "stats",
         "invoke",
+        "workers",
     ] {
         exports.push((name.to_string(), ExportKind::Func, index(name)));
     }

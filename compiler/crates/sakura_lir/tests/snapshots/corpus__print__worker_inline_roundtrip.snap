@@ -13,7 +13,7 @@ layout 7 variant std::task::Fiber
 layout 8 variant std::task::Scope
 layout 9 record std::worker::Grants | Grants 24b (table: word*)
 layout 10 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
-layout 11 record std::worker::Port | Port 40b (id: i64, tx: word*, rx: word*)
+layout 11 record std::worker::Port | Port 48b (id: i64, sends: bool, tx: word*, rx: word*)
 layout 12 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
 layout 13 error std::worker::WorkerError | WorkerError 24b (reason: word*)
 layout 14 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
@@ -27,14 +27,14 @@ fn main#0 pub top -> unit ; main::worker_inline_roundtrip, frame 7 slots [%2 wor
     %0 lit: i64 = const 7
     %1 r: ptr = $task_deterministic(%0)
     handle_push %1
-    call inline#23() -> b1()
+    call inline#25() -> b1()
   b1(%2 r: ptr) [handle]:
     handle_push %2
-    call none#24() -> b2()
+    call none#26() -> b2()
   b2(%3 r: ptr) [handle, handle]:
-    %4 f: ptr = closure main$1#25[]
-    %5 fn: ptr = const static closure sizes$value#48
-    call spawn#30(%5, %3, %4) -> b3()
+    %4 f: ptr = closure main$1#27[]
+    %5 fn: ptr = const static closure sizes$value#51
+    call spawn#32(%5, %3, %4) -> b3()
   b3(%6 r: ptr) [handle, handle]:
     %7 s: ptr = show %6
     drop %6
@@ -42,11 +42,11 @@ fn main#0 pub top -> unit ; main::worker_inline_roundtrip, frame 7 slots [%2 wor
   b4(%8 r: unit) [handle, handle]:
     %9 box: word = box %8
     drop %9
-    call none#24() -> b5()
+    call none#26() -> b5()
   b5(%10 r: ptr) [handle, handle]:
-    %11 f: ptr = closure main$2#31[]
-    %12 fn: ptr = const static closure two$value#49
-    call spawn#33(%12, %10, %11) -> b6()
+    %11 f: ptr = closure main$2#33[]
+    %12 fn: ptr = const static closure two$value#52
+    call spawn#35(%12, %10, %11) -> b6()
   b6(%13 r: ptr) [handle, handle]:
     %14 s: ptr = show %13
     drop %13
@@ -84,7 +84,7 @@ fn sizes#2 top -> unit ; main::worker_inline_roundtrip, frame 10 slots [%0 word*
     jump b2(%8, %9, %10)
   b4(%11 inbox: ptr, %12 outbox: ptr, %13 more: bool):
     dup %11
-    call recv#21(%11) -> b6(%11, %12, %13)
+    call recv#23(%11) -> b6(%11, %12, %13)
   b5(%14 inbox: ptr, %15 outbox: ptr, %16 more: bool):
     drop %14
     drop %15
@@ -99,7 +99,7 @@ fn sizes#2 top -> unit ; main::worker_inline_roundtrip, frame 10 slots [%0 word*
     drop %29
     %35 r: i64 = $bytes_len(%34)
     dup %27
-    call send#22(%27, %35) -> b10(%26, %27, %28)
+    call send#24(%27, %35) -> b10(%26, %27, %28)
   b9(%30 inbox: ptr, %31 outbox: ptr, %32 more: bool, %33 r: ptr):
     drop %33
     %41 lit: unit = const ()
@@ -115,7 +115,7 @@ fn $worker$sizes#5 top -> unit ; main::worker_inline_roundtrip, frame 2 slots [%
     call host#3() -> b1()
   b1(%0 worker: ptr):
     handle_push %0
-    %1 fn: ptr = const static closure sizes$value#48
+    %1 fn: ptr = const static closure sizes$value#51
     call enter#4(%1) -> b2()
   b2(%2 r: unit) [handle]:
     handle_pop
@@ -141,13 +141,13 @@ fn $worker$two#7 top -> unit ; main::worker_inline_roundtrip, frame 2 slots [%0 
     call host#3() -> b1()
   b1(%0 worker: ptr):
     handle_push %0
-    %1 fn: ptr = const static closure two$value#49
+    %1 fn: ptr = const static closure two$value#52
     call enter#4(%1) -> b2()
   b2(%2 r: unit) [handle]:
     handle_pop
     ret %2
 
-fn main$1#25 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 29 slots [%0 word*, %1 word*, %41 word*, %42 word*, %43 word*, %44 i64, %45 i64, %49 bool, %50 word*, %51 word*, %52 i64, %53 i64, %78 word*, %79 word*, %80 word*, %81 i64, %82 i64, %83 i64, %85 word*, %86 word*, %87 word*, %88 i64, %89 i64, %90 i64, %98 bool, %99 word*, %100 word*, %101 i64, %102 i64]
+fn main$1#27 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 29 slots [%0 word*, %1 word*, %41 word*, %42 word*, %43 word*, %44 i64, %45 i64, %49 bool, %50 word*, %51 word*, %52 i64, %53 i64, %78 word*, %79 word*, %80 word*, %81 i64, %82 i64, %83 i64, %85 word*, %86 word*, %87 word*, %88 i64, %89 i64, %90 i64, %98 bool, %99 word*, %100 word*, %101 i64, %102 i64]
   b0(%0 env: ptr, %1 w: word):
     drop %0
     %2 lit: i64 = const 3
@@ -185,7 +185,7 @@ fn main$1#25 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %34 unbox: i64 = unbox %33
     drop %33
     dup %25
-    call recv#28(%25) -> b7(%25, %26, %27, %28)
+    call recv#30(%25) -> b7(%25, %26, %27, %28)
   b5(%29 w: ptr, %30 xs: ptr, %31 n: i64, %32 i: i64):
     drop %29
     drop %30
@@ -214,7 +214,7 @@ fn main$1#25 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %70 unbox: i64 = unbox %69
     drop %69
     %77 lit: i64 = const 0
-    call range#26(%77, %70) -> b13(%61, %62, %63, %64, %70)
+    call range#28(%77, %70) -> b13(%61, %62, %63, %64, %70)
   b11(%65 w: ptr, %66 xs: ptr, %67 n: i64, %68 i: i64):
     drop %66
     jump b1(%65)
@@ -225,7 +225,7 @@ fn main$1#25 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
   b13(%78 r: ptr, %79 w: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64, %83 x: i64):
     %84 r: ptr = $bytes_from_list(%78)
     dup %79
-    call send#27(%79, %84) -> b14(%79, %80, %81, %82, %83)
+    call send#29(%79, %84) -> b14(%79, %80, %81, %82, %83)
   b14(%85 r: ptr, %86 w: ptr, %87 xs: ptr, %88 n: i64, %89 i: i64, %90 x: i64):
     %91 s: ptr = show %90
     %92 lit: ptr = const str 8
@@ -244,7 +244,7 @@ fn main$1#25 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     drop %103
     jump b12(%99, %100, %101, %102)
 
-fn main$2#31 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 12 slots [%0 word*, %1 word*, %35 word*, %36 word*, %37 word*, %38 i64, %39 i64, %43 bool, %44 word*, %45 word*, %46 i64, %47 i64]
+fn main$2#33 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 12 slots [%0 word*, %1 word*, %35 word*, %36 word*, %37 word*, %38 i64, %39 i64, %43 bool, %44 word*, %45 word*, %46 i64, %47 i64]
   b0(%0 env: ptr, %1 w: word):
     drop %0
     %2 lit: i64 = const 1
@@ -273,7 +273,7 @@ fn main$2#31 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %28 unbox: i64 = unbox %27
     drop %27
     dup %19
-    call recv#32(%19) -> b6(%19, %20, %21, %22)
+    call recv#34(%19) -> b6(%19, %20, %21, %22)
   b4(%23 w: ptr, %24 xs: ptr, %25 n: i64, %26 i: i64):
     drop %23
     drop %24
@@ -294,7 +294,7 @@ fn main$2#31 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     drop %48
     jump b5(%44, %45, %46, %47)
 
-fn sizes$value#48 adapter of sizes#2 -> word ; main::worker_inline_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+fn sizes$value#51 adapter of sizes#2 -> word ; main::worker_inline_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
   b0(%0 env: ptr, %1 arg: word, %2 arg: word):
     drop %0
     call sizes#2(%1, %2) -> b1()
@@ -302,7 +302,7 @@ fn sizes$value#48 adapter of sizes#2 -> word ; main::worker_inline_roundtrip, ca
     %4 box: word = box %3
     ret %4
 
-fn two$value#49 adapter of two#6 -> word ; main::worker_inline_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+fn two$value#52 adapter of two#6 -> word ; main::worker_inline_roundtrip, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
   b0(%0 env: ptr, %1 arg: word, %2 arg: word):
     drop %0
     call two#6(%1, %2) -> b1()

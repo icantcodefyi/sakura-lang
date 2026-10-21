@@ -288,8 +288,9 @@ semantics/websocket_rejects_message_too_large: unsupported (builtin bytes_from_l
 semantics/websocket_rejects_url: unsupported (builtin string_to_bytes)
 semantics/websocket_scripted_close_info: unsupported (builtin string_to_bytes)
 semantics/websocket_scripted_echo: unsupported (builtin string_to_bytes)
+semantics/worker_close_finishes_inbox: unsupported (builtin task_host)
 semantics/worker_grants_subset_rejected: unsupported (builtin task_host)
-semantics/worker_host_refused_off_js: ok, 6 allocated, 0 dup, 6 drop, peak 6, live 0/0
+semantics/worker_host_root_installed: ok, 7 allocated, 0 dup, 7 drop, peak 7, live 0/0
 semantics/worker_inline_roundtrip: unsupported (builtin task_host)
 semantics/worker_limit_16: unsupported (builtin task_host)
 semantics/worker_rejects_codec: unsupported (builtin task_host)

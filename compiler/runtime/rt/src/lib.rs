@@ -37,6 +37,8 @@ pub mod value;
 pub mod vt;
 #[cfg(target_arch = "wasm32")]
 mod wasm;
+#[cfg(any(target_arch = "wasm32", feature = "native"))]
+mod worker;
 
 pub use heap::{Heap, Stats};
 
@@ -162,6 +164,18 @@ pub struct Rt {
     /// Effect-trace lines (on wasm32 they go to `sakura_host.trace_write`).
     #[cfg(not(target_arch = "wasm32"))]
     pub trace_log: alloc::vec::Vec<alloc::string::String>,
+    /// Topic imports the runtime made (`topic_listen`, `topic_post`), flushed to the host as
+    /// `host_log` is (on wasm32 they go to `sakura_host`).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub topic_log: alloc::vec::Vec<TopicCall>,
+}
+
+/// A topic import (`std/worker`, ABI 1.15.0) the runtime made: the name, and a message's text.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TopicCall {
+    Listen(alloc::vec::Vec<u8>),
+    Post(alloc::vec::Vec<u8>, alloc::vec::Vec<u8>),
 }
 
 /// A recorded host import call (host builds only).
@@ -200,6 +214,8 @@ impl Rt {
             host_log: alloc::vec::Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             trace_log: alloc::vec::Vec::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            topic_log: alloc::vec::Vec::new(),
         };
         rt.statics()?;
         Ok(rt)
@@ -233,6 +249,11 @@ pub(crate) mod host {
         pub fn abort(request: u32);
         /// One effect-trace line (design §17.80), without its newline.
         pub fn trace_write(ptr: u32, len: u32);
+        /// `std/worker` topics (ABI 1.15.0): deliver topic `name`'s messages from other
+        /// instances to this one (`topic_deliver`), from now on.
+        pub fn topic_listen(ptr: u32, len: u32);
+        /// Post `text` on topic `name` to the subscriptions of other instances.
+        pub fn topic_post(name: u32, name_len: u32, text: u32, text_len: u32);
     }
 }
 

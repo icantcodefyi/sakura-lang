@@ -88,7 +88,7 @@ pub struct Module {
     /// `main`, if this unit is a program.
     pub entry: Option<DefId>,
     /// The secondary entry of each `@worker` function of a program (RFC 0002 §2.9;
-    /// experimental): only the JS backend runs them yet.
+    /// experimental), which every backend runs since web-APIs phase 11b.
     pub workers: Vec<WorkerEntry>,
 }
 

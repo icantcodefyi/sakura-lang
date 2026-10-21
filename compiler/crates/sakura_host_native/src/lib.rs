@@ -15,6 +15,7 @@
 
 pub mod fs;
 mod sql;
+pub mod worker;
 
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, Read, Write};
@@ -22,7 +23,9 @@ use std::path::PathBuf;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sakura_rt::exec::outcome;
-use sakura_rt::native::{FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome, SqlValue};
+use sakura_rt::native::{
+    FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome, SqlValue, WorkerGrants,
+};
 use sakura_rt::vt::{BODY, DIR, SQL};
 use tokio::sync::mpsc;
 
@@ -30,6 +33,8 @@ use tokio::sync::mpsc;
 #[derive(Clone, Debug, Default)]
 pub struct Permissions {
     pub fs: Option<fs::Grants>,
+    /// The `net` hosts, for a live worker's grants (`Http` has no host service here).
+    pub net: Option<Vec<String>>,
     pub env: Option<Vec<String>>,
 }
 
@@ -59,6 +64,7 @@ impl Permissions {
                     .map(PathBuf::from)
                     .collect(),
             }),
+            net: Some(strings(v.get("net"))),
             env: v.get("env").map(|e| strings(Some(e))),
         })
     }
@@ -224,7 +230,8 @@ type Completion = (u32, u32, Vec<u8>);
 
 /// A request in flight, as its cancellation reaches it.
 enum Inflight {
-    Timer(tokio::task::AbortHandle),
+    /// A sleep or a worker operation on the executor.
+    Task(tokio::task::AbortHandle),
     /// A statement on database `.0`'s worker.
     Sql(u32),
 }
@@ -250,6 +257,21 @@ pub struct NativeHost {
     dbs: Vec<Option<sql::Db>>,
     /// Every database worker, joined at `close`.
     workers: Vec<std::thread::JoinHandle<()>>,
+    /// Live workers (`worker`): the module's worker table, how to start one, the links by id
+    /// (0: this worker's parent), and the exits of stopped ones not joined yet.
+    worker_fns: Vec<worker::WorkerFn>,
+    launcher: Option<worker::Launcher>,
+    links: HashMap<i64, worker::Side>,
+    exits: HashMap<i64, tokio::sync::watch::Receiver<()>>,
+    next_worker: i64,
+    /// A worker's link state, which says whether its parent stopped it.
+    stopped: Option<std::sync::Arc<worker::Shared>>,
+    /// Closes when a worker's instance goes, for its parent's `join`.
+    _exit: Option<tokio::sync::watch::Sender<()>>,
+    /// Topic messages and stops from other threads, and this instance's topic registry id.
+    signal_tx: mpsc::UnboundedSender<worker::Signal>,
+    signals: mpsc::UnboundedReceiver<worker::Signal>,
+    instance: u64,
 }
 
 impl NativeHost {
@@ -269,6 +291,7 @@ impl NativeHost {
             None => None,
         };
         let (tx, rx) = mpsc::unbounded_channel();
+        let (signal_tx, signals) = mpsc::unbounded_channel();
         Ok(NativeHost {
             stdin: config.stdin.clone().map(VecDeque::from),
             config,
@@ -287,6 +310,16 @@ impl NativeHost {
             inflight: HashMap::new(),
             dbs: vec![],
             workers: vec![],
+            worker_fns: vec![],
+            launcher: None,
+            links: HashMap::new(),
+            exits: HashMap::new(),
+            next_worker: 1,
+            stopped: None,
+            _exit: None,
+            signal_tx,
+            signals,
+            instance: worker::instance_id(),
         })
     }
 
@@ -300,6 +333,10 @@ impl NativeHost {
     /// `flushOut`).
     pub fn flush_out(&mut self) {
         if self.out.is_empty() {
+            return;
+        }
+        if self.is_stopped() {
+            self.out.clear();
             return;
         }
         let mut text = self.out.join("\n");
@@ -316,6 +353,9 @@ impl NativeHost {
 
     fn write_err(&mut self, line: &str) {
         self.flush_out();
+        if self.is_stopped() {
+            return;
+        }
         if self.config.capture {
             self.captured_err.push_str(line);
             self.captured_err.push('\n');
@@ -377,6 +417,7 @@ impl NativeHost {
         self.bodies.clear();
         self.files.close_all();
         self.flush_out();
+        self.unlisten();
         ledger
     }
 
@@ -460,12 +501,12 @@ impl Host for NativeHost {
             let _ = tx.send((request, outcome::OK, vec![]));
         });
         self.inflight
-            .insert(request, Inflight::Timer(task.abort_handle()));
+            .insert(request, Inflight::Task(task.abort_handle()));
     }
 
     fn abort(&mut self, request: u32) {
         match self.inflight.remove(&request) {
-            Some(Inflight::Timer(h)) => h.abort(),
+            Some(Inflight::Task(h)) => h.abort(),
             Some(Inflight::Sql(db)) => {
                 if let Ok(db) = self.db(db) {
                     db.abort(request);
@@ -543,6 +584,38 @@ impl Host for NativeHost {
             }
             _ => {}
         }
+    }
+
+    fn topic_listen(&mut self, name: &str) {
+        self.listen(name);
+    }
+
+    fn topic_post(&mut self, name: &str, text: &str) {
+        self.publish(name, text);
+    }
+
+    fn worker_start(&mut self, code: u32, grants: WorkerGrants, capacity: i64) -> i64 {
+        self.start_worker(code, grants, capacity)
+    }
+
+    fn worker_post(&mut self, request: u32, id: i64, text: &str) {
+        self.post(request, id, text);
+    }
+
+    fn worker_take(&mut self, request: u32, id: i64) {
+        self.take(request, id);
+    }
+
+    fn worker_join(&mut self, request: u32, id: i64) {
+        self.join(request, id);
+    }
+
+    fn worker_stop(&mut self, id: i64) {
+        self.stop(id);
+    }
+
+    fn worker_shut(&mut self, id: i64) {
+        self.shut(id);
     }
 
     fn cli_args(&mut self) -> Hosted<Vec<String>> {
@@ -674,21 +747,29 @@ impl Host for NativeHost {
 }
 
 /// Drive `task` to an outcome (the Node host's `runTask`): run until nothing can, then wait on
-/// the executor for the next completion of a request in flight; with none in flight, every
-/// task waits on another and the run ends `D090`.
+/// the executor for the next completion of a request in flight or a topic message; with none
+/// in flight and no worker link, every task waits on another and the run ends `D090`. A
+/// stopped worker's task ends `Cancelled`.
 pub fn run_task(inst: &mut Instance<NativeHost>, task: u32) -> Outcome {
     let mut kind = inst.run(task);
     while kind == outcome::PENDING {
         let host = inst.host();
         host.flush_out();
-        let Some((req, status, payload)) = host.next_completion() else {
-            return Outcome::Defect {
-                code: 90,
-                site: 0,
-                message: "every task is waiting".into(),
-            };
+        let r = match host.wait() {
+            worker::Wake::Done(req, status, payload) => {
+                inst.complete(req, status, &payload).map(|_| ())
+            }
+            worker::Wake::Topic(name, text) => inst.topic_deliver(&name, &text),
+            worker::Wake::Stop => return Outcome::Cancelled,
+            worker::Wake::Idle => {
+                return Outcome::Defect {
+                    code: 90,
+                    site: 0,
+                    message: "every task is waiting".into(),
+                };
+            }
         };
-        if let Err(d) = inst.complete(req, status, &payload) {
+        if let Err(d) = r {
             return Outcome::Defect {
                 code: d.code,
                 site: 0,

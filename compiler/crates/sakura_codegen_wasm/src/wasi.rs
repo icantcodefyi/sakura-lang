@@ -149,7 +149,12 @@ pub fn adapter(
         "console_read_line" | "trace_enabled" => {
             s.i32_const(0);
         }
-        "trace_write" | "retire_handle" | "abort" => {}
+        // No other instance: no live workers (`std/worker`'s `D090`).
+        "worker_start" => {
+            s.i64_const(-4);
+        }
+        // One instance: no other subscribes to a topic (`std/worker`).
+        "trace_write" | "retire_handle" | "abort" | "topic_listen" | "topic_post" => {}
         _ => {
             s.unreachable();
         }

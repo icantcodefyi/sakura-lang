@@ -20,7 +20,7 @@ use alloc::vec::Vec;
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
-pub use host::{FileMode, HandleId, Host, HostError, Hosted, SqlValue};
+pub use host::{FileMode, HandleId, Host, HostError, Hosted, SqlValue, WorkerGrants};
 pub use hosted::{HOSTED, rt_hosted};
 
 use crate::cx::Cx;
@@ -125,7 +125,7 @@ pub struct Image {
     pub codes: u32,
     pub effects: u32,
     pub ops: u32,
-    /// The eleven `u32` codes `rt_init` receives (`NATIVE_CODES` order).
+    /// The twelve `u32` codes `rt_init` receives (`NATIVE_CODES` order).
     pub natives: u32,
     /// The type descriptors the JSON and SQL codecs read (`u32 len`, UTF-8 JSON;
     /// `sakura_lir::schema::descriptors`).
@@ -250,6 +250,22 @@ impl<H: Host + 'static> Instance<H> {
         let r = rt.complete(req, status, b);
         cx.flush();
         Ok(r)
+    }
+
+    /// A message published on topic `name` in another instance (`Host::topic_listen`), queued
+    /// on this instance's subscriptions of `name` (wasm's `topic_deliver`).
+    pub fn topic_deliver(&mut self, name: &str, text: &str) -> Result<(), Defect> {
+        let mut cx = self.cx();
+        let rt = cx.rt();
+        let n = rt.new_string(name.as_bytes())?;
+        let r = rt.new_string(text.as_bytes()).and_then(|t| {
+            let r = rt.topic_deliver(rt.data(n), rt.data(t));
+            rt.drop(t);
+            r
+        });
+        rt.drop(n);
+        cx.flush();
+        r
     }
 
     /// `task`'s outcome, decoded as a host reports it.
@@ -448,6 +464,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_test_record_failure", e::rt_code_unsupported),
         ("rt_code_test_snapshot", e::rt_code_unsupported),
         ("rt_code_unsupported", e::rt_code_unsupported),
+        ("rt_code_worker_stop", crate::worker::rt_code_worker_stop),
         ("rt_k_channel_recv", e::rt_k_channel_recv),
         ("rt_k_channel_send", e::rt_k_channel_send),
         ("rt_k_channel_with", e::rt_k_channel_with),
@@ -461,6 +478,10 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_property_run", e::rt_code_unsupported),
         ("rt_k_serve_listen", e::rt_code_unsupported),
         ("rt_k_test_expect_defect", e::rt_k_test_expect_defect),
+        ("rt_k_topic_subscribe", e::rt_k_topic_subscribe),
+        ("rt_k_worker_closing", crate::worker::rt_k_worker_closing),
+        ("rt_k_worker_post", crate::worker::rt_k_worker_post),
+        ("rt_k_worker_take", crate::worker::rt_k_worker_take),
         ("rt_k_ws_connect", e::rt_code_unsupported),
         ("rt_k_ws_receive", e::rt_code_unsupported),
         ("rt_k_ws_send", e::rt_code_unsupported),

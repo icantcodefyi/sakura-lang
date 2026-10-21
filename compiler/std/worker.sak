@@ -8,8 +8,10 @@
 //
 // `Worker.inline()` runs the worker as a fiber of the same instance through the same codec, the
 // deterministic handler for tests. `Worker.host()` (the root handler of a `main` that declares
-// `Worker`) runs it in a thread of the JS host; the WASM and native targets refuse it at startup
-// until they have the service (plan phase 11b).
+// `Worker`) runs it in a thread of the host: a `node:worker_threads` thread on JS and on WASM under
+// Node, an OS thread with a second instance natively (plan phase 11b). A worker thread's
+// environment is the runtime's `SAKURA_*` variables and the variables its `env` grant names, and
+// its heap is bounded as its parent's.
 
 import std/channel
 import std/channel.{Receiver, SendError, Sender}
@@ -49,9 +51,15 @@ pub error WorkerError(reason: WorkerReason)
 pub type Received<T> = Message(T) | Finished | Failed(WorkerError)
 
 /// One end of a worker's connection (`MessagePort`), sending `S` and receiving `R`. A resource:
-/// it lives as long as the callback or entry that received it.
+/// it lives as long as the callback or entry that received it. `sends` is false for an end that
+/// only receives (an `Inbox`), which `close` leaves alone.
 @resource
-pub opaque type Port<S, R> = { id: Int, tx: Option<Sender<String>>, rx: Option<Receiver<String>> }
+pub opaque type Port<S, R> = {
+  id: Int,
+  sends: Bool,
+  tx: Option<Sender<String>>,
+  rx: Option<Receiver<String>>,
+}
 
 /// The parent's end: sends `I` to the worker, receives its `O`.
 pub type WorkerHandle<I, O> = Port<I, O>
@@ -67,7 +75,7 @@ pub type Outbox<O> = Port<O, Never>
 pub opaque type Topic<T> = { name: String }
 
 /// The operations `spawn`, `send`, `recv`, `publish` and `subscribe` perform, over the codec's
-/// text; call those instead.
+/// text (call those instead), and `close`.
 pub effect Worker {
   /// Starts `entry` (the same function, also inside `named`, which a live host looks up by
   /// identity) with `grants` and runs `body` with the parent's end; the worker is cancelled and
@@ -87,6 +95,11 @@ pub effect Worker {
   fn publish_text(name: String, text: String) -> Result<Unit, SendError>
   /// Runs `body` with a fresh subscription of topic `name` holding at most `capacity` messages.
   fn subscribe_text<R, e>(name: String, capacity: Int, body: fn(Inbox<String>) -> R ! e) -> R ! e
+  /// Sends nothing more through `p` (`MessagePort.close` for one direction): the other side
+  /// receives what was sent, then `Finished`, and a later `send` on `p` is `Err(Closed)`. The
+  /// worker's `recv` loop then ends by itself. On an `Inbox` it does nothing; a second `close`
+  /// does nothing.
+  fn close<S, R>(p: Port<S, R>) -> Unit
 }
 
 /// Runs `entry`, a function declared `@worker`, as a worker with `grants`, and `body` with its
@@ -141,7 +154,11 @@ pub fn subscribe<T: Schema, R, e>(
 ) -> R
   ! {Worker | e}
   requires capacity > 0
-{ Worker.subscribe_text(t.name, capacity, fn(p) { body(Port { id: p.id, tx: p.tx, rx: p.rx }) }) }
+{
+  Worker.subscribe_text(t.name, capacity, fn(p) {
+    body(Port { id: p.id, sends: p.sends, tx: p.tx, rx: p.rx })
+  })
+}
 
 /// The deterministic handler for tests: a worker is a fiber of this instance running `entry`
 /// under the performer's handlers (its grants attenuate nothing), its messages encoded and
@@ -151,7 +168,7 @@ pub fn subscribe<T: Schema, R, e>(
 pub fn inline() -> Handler<Worker, {Task}> {
   handler Worker {
     // ponytail: a body that fails keeps its count, so a program that recovers from failed
-    // spawns reaches `Limit` early; count in a finalizer if that ever matters.
+    // spawns reaches `Limit` early; Sakura code has no finalizer to count in (REQUESTS 11b).
     var live = 0
     fn start(entry, _named, grants, body) {
       if !granted_nothing(grants.table) {
@@ -165,12 +182,12 @@ pub fn inline() -> Handler<Worker, {Task}> {
             Task.scope(fn(s) {
               let f = Task.spawn(s, fn() {
                 entry(
-                  Port { id: 0, tx: None, rx: Some(to_rx) },
-                  Port { id: 0, tx: Some(from_tx), rx: None },
+                  Port { id: 0, sends: false, tx: None, rx: Some(to_rx) },
+                  Port { id: 0, sends: true, tx: Some(from_tx), rx: None },
                 )
                 from_tx.close()
               })
-              let r = body(Port { id: 0, tx: Some(to_tx), rx: Some(from_rx) })
+              let r = body(Port { id: 0, sends: true, tx: Some(to_tx), rx: Some(from_rx) })
               Task.cancel(f)
               r
             })
@@ -183,16 +200,15 @@ pub fn inline() -> Handler<Worker, {Task}> {
     fn post(p, text) { post_local(p.tx, text) }
     fn take(p) { take_local(p.rx) }
     fn publish_text(name, text) { published(topic_publish(name, text)) }
-    fn subscribe_text(name, capacity, body) {
-      topic_subscribe(name, capacity, fn(rx) { body(Port { id: 0, tx: None, rx: Some(rx) }) })
-    }
+    fn subscribe_text(name, capacity, body) { subscribed(name, capacity, body) }
+    fn close(p) { close_local(p) }
   }
 }
 
 /// The root handler the host installs for a `main` (or a worker's entry) that declares
-/// `Worker`: each worker a thread of the JS host running the program again, from the entry,
-/// with its root handlers built from its grants. At most 16 are live in an instance. The WASM
-/// and native targets refuse it at startup (plan phase 11b).
+/// `Worker`: each worker a thread of the host (JS, WASM under Node, native) running the program
+/// again, from the entry, with its root handlers built from its grants. At most 16 are live in
+/// an instance.
 pub fn host() -> Handler<Worker> {
   handler Worker {
     fn start(_entry, named, grants, body) {
@@ -203,7 +219,7 @@ pub fn host() -> Handler<Worker> {
       } else if id == -2 {
         Err(WorkerError { reason: Limit })
       } else {
-        Ok(worker_closing(id, fn() { body(Port { id, tx: None, rx: None }) }))
+        Ok(worker_closing(id, fn() { body(Port { id, sends: true, tx: None, rx: None }) }))
       }
     }
     fn post(p, text) {
@@ -226,16 +242,32 @@ pub fn host() -> Handler<Worker> {
       }
     }
     fn publish_text(name, text) { published(topic_publish(name, text)) }
-    fn subscribe_text(name, capacity, body) {
-      topic_subscribe(name, capacity, fn(rx) { body(Port { id: 0, tx: None, rx: Some(rx) }) })
-    }
+    fn subscribe_text(name, capacity, body) { subscribed(name, capacity, body) }
+    // A live port has no local channel but a subscription's, which only receives.
+    fn close(p) { if p.sends { worker_shut(p.id) } }
   }
 }
 
 /// A `@worker` function's entry (`$worker$<name>`, built by the compiler) calls it here, on the
 /// ports to its parent.
 fn enter<I, O, e>(entry: fn(Inbox<I>, Outbox<O>) -> Unit ! e) -> Unit ! e {
-  entry(Port { id: 0, tx: None, rx: None }, Port { id: 0, tx: None, rx: None })
+  entry(
+    Port { id: 0, sends: false, tx: None, rx: None },
+    Port { id: 0, sends: true, tx: None, rx: None },
+  )
+}
+
+fn subscribed<R, e>(name: String, capacity: Int, body: fn(Inbox<String>) -> R ! e) -> R ! e {
+  topic_subscribe(name, capacity, fn(rx) {
+    body(Port { id: 0, sends: false, tx: None, rx: Some(rx) })
+  })
+}
+
+fn close_local<S, R>(p: Port<S, R>) -> Unit ! {Task} {
+  match p.tx {
+    Some(s) => s.close(),
+    None => (),
+  }
 }
 
 fn granted_nothing(t: Permissions) -> Bool {
@@ -300,6 +332,10 @@ fn worker_closing<R, e>(id: Int, body: fn() -> R ! e) -> R ! e
 /// 0 queued, 2 the worker has ended.
 @external(js, "sakura_runtime", "worker_post")
 fn worker_post(id: Int, text: String) -> Int
+
+/// Worker `id` (0: the parent) receives nothing more from this side (`close`).
+@external(js, "sakura_runtime", "worker_shut")
+fn worker_shut(id: Int) -> Unit
 
 /// `(0, text)` a message, `(1, "")` finished, `(2, code)` failed with the defect `code`.
 @external(js, "sakura_runtime", "worker_take")

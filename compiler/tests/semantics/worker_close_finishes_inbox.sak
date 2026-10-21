@@ -1,0 +1,41 @@
+// milestone: M3
+// spec: RFC 0002 §2.9 ("`Worker.close(w)` ... after which the worker's inbox reads `Finished`"); design §17.299 (6); plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#dom-messageport-close
+
+// `Worker.close` ends one direction: the worker's `recv` loop takes the three numbers, then
+// reads `Finished` and ends by itself; it sends the sum and closes its own outbox, so the
+// parent reads the sum, then `Finished` while the worker may still be running, and a `send`
+// after its own `close` is `Err(Closed)`. A second `close`, and one on an `Inbox`, do nothing.
+import std/worker.{Grants, Inbox, Message, Outbox, Worker}
+
+@worker
+fn summer(inbox: Inbox<Int>, outbox: Outbox<Int>) -> Unit ! {Worker} {
+  var sum = 0
+  var going = true
+  while going {
+    match Worker.recv(inbox) {
+      Message(n) => { sum = sum + n },
+      _ => { going = false },
+    }
+  }
+  Worker.close(inbox)
+  let _ = Worker.send(outbox, sum)
+  Worker.close(outbox)
+  Worker.close(outbox)
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(3) {
+    with Worker.inline() {
+      let r = Worker.spawn(summer, Grants.none(), fn(w) {
+        for n in [1, 2, 3] { let _ = Worker.send(w, n) }
+        Worker.close(w)
+        Console.print("send after close: {Worker.send(w, 4)}")
+        Console.print("{Worker.recv(w)}")
+        Console.print("{Worker.recv(w)}")
+        "closed"
+      })
+      Console.print("{r}")
+    }
+  }
+}

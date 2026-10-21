@@ -2,7 +2,7 @@
 //! relocatable object. Each LIR function is a frame-protocol function `(ctx, env, frame) ->
 //! step` ([`func`]); the object also carries the module's static block ([`image`]), the table
 //! of its functions, the descriptor `sakura_native_driver` reads, the `sakura.native` record
-//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v4`. [`link`]
+//! ([`record`]) and `main`, which hands that descriptor to `sakura_native_main_v5`. [`link`]
 //! links it with the driver's staticlib into an executable with the system C linker.
 
 #![cfg(feature = "native")]
@@ -25,7 +25,7 @@ use cranelift_object::{ObjectBuilder, ObjectModule};
 use sakura_lir::lir::{Callee, Module, Term};
 
 /// The size of `sakura_native_driver::SakuraModule` on a 64-bit target.
-const DESCRIPTOR: usize = 96;
+const DESCRIPTOR: usize = 112;
 
 /// The Cranelift release the backend is built with: the workspace pin (design §17.175 (1)).
 pub const CRANELIFT: &str = "0.136.3";
@@ -274,6 +274,14 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     d.define(roots.iter().copied().chain([0]).collect());
     obj.define_data(roots_id, &d).map_err(|e| e.to_string())?;
 
+    // The worker table (`sakura_lir::image::workers_table`), for live workers.
+    let workers = sakura_lir::image::workers_table(m);
+    let workers_id = data(&mut obj, "sakura$workers", false)?;
+    let mut d = DataDescription::new();
+    d.define(workers.clone().into_boxed_slice());
+    d.set_align(8);
+    obj.define_data(workers_id, &d).map_err(|e| e.to_string())?;
+
     let module_id = data(&mut obj, "sakura$module", true)?;
     let mut bytes = vec![0u8; DESCRIPTOR];
     let mut put = |at: usize, v: u32| bytes[at..at + 4].copy_from_slice(&v.to_le_bytes());
@@ -291,6 +299,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     put(68, image.schemas);
     put(80, record.len() as u32);
     put(84, roots.len() as u32);
+    put(96, workers.len() as u32);
     let mut d = DataDescription::new();
     d.define(bytes.into_boxed_slice());
     d.set_align(8);
@@ -304,9 +313,11 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     d.write_data_addr(72, native_gv, 0);
     let roots_gv = obj.declare_data_in_data(roots_id, &mut d);
     d.write_data_addr(88, roots_gv, 0);
+    let workers_gv = obj.declare_data_in_data(workers_id, &mut d);
+    d.write_data_addr(104, workers_gv, 0);
     obj.define_data(module_id, &d).map_err(|e| e.to_string())?;
 
-    // `main(argc, argv)`: `return sakura_native_main_v4(&sakura$module);`
+    // `main(argc, argv)`: `return sakura_native_main_v5(&sakura$module);`
     let ptr = obj.target_config().pointer_type();
     let mut msig = obj.make_signature();
     msig.params.push(AbiParam::new(types::I32));
@@ -319,7 +330,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     nsig.params.push(AbiParam::new(ptr));
     nsig.returns.push(AbiParam::new(types::I32));
     let native_main = obj
-        .declare_function("sakura_native_main_v4", Linkage::Import, &nsig)
+        .declare_function("sakura_native_main_v5", Linkage::Import, &nsig)
         .map_err(|e| e.to_string())?;
     ctx.func.signature = msig;
     {

@@ -166,7 +166,7 @@ Logical races with the outside world, such as two tasks reading and then writing
 ## Workers (experimental)
 
 <Callout type="warn" title="Experimental">
-  `std/worker` and the `@worker` attribute are outside the 1.0 contract and may change in any release. Live workers run on the JavaScript target only for now. On WebAssembly and native, a `main` that declares `Worker` exits 75 at startup, and topics are not available; `Worker.inline()` runs on every target.
+  `std/worker` and the `@worker` attribute are outside the 1.0 contract and may change in any release. Live workers and topics run on every target: as `node:worker_threads` threads on JavaScript and on WebAssembly under Node, and as OS threads with a second instance on native. `Worker.inline()` runs on every target too.
 </Callout>
 
 A worker is `new Worker` without shared memory: a second instance of the program, running one function declared `@worker` with its own heap and its own root handlers. `Worker.spawn(entry, grants, body)` starts it and gives `body` a handle. `send` (`postMessage`) and `recv` (`onmessage`, as a value) carry messages through the `Schema` codec, so closures, handlers, resources and `Secret` cannot cross. `recv` returns `Message(v)`, `Finished` once the worker's function has returned and its messages are read, or `Failed(WorkerError)` when it ended on a defect (`ErrorEvent`). When `body` returns, the worker is cancelled, as a fiber is.
