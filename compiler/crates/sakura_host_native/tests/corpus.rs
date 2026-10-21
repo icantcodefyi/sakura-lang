@@ -801,8 +801,9 @@ fn a_debugger_backtraces_through_native_frames() {
     );
 }
 
-/// Plan M5 N2d: the object's `.eh_frame` has an entry for every function it defines, each
-/// relocated against that function (so unwinding never falls back to frame-pointer guesses).
+/// Plan M5 N2d: the object's `.eh_frame` (`.pdata` on Windows) has an entry for every function
+/// it defines, each relocated against that function (so unwinding never falls back to
+/// frame-pointer guesses).
 #[test]
 fn every_compiled_function_has_unwind_information() {
     use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget, SymbolKind};
@@ -815,8 +816,8 @@ fn every_compiled_function_has_unwind_information() {
     let file = object::File::parse(bytes.as_slice()).unwrap();
     let eh = file
         .sections()
-        .find(|s| matches!(s.name(), Ok(".eh_frame" | "__eh_frame")))
-        .expect("an .eh_frame section");
+        .find(|s| matches!(s.name(), Ok(".eh_frame" | "__eh_frame" | ".pdata")))
+        .expect("an .eh_frame or .pdata section");
     let covered: std::collections::BTreeSet<_> = eh
         .relocations()
         .filter_map(|(_, r)| match r.target() {

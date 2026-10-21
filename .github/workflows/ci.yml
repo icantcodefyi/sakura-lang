@@ -445,7 +445,8 @@ jobs:
         # Platform A, then B (ARM Linux) and C (Windows x64, Intel macOS), plan m5-native.md §5.
         os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm, windows-2025, macos-15-intel]
     runs-on: ${{ matrix.os }}
-    # ubuntu-latest needs about 30 minutes since N4a runs the corpus both ways (cb0056fb).
+    # ubuntu-latest needs about 30 minutes since N4a runs the corpus both ways (cb0056fb),
+    # Windows longer.
     timeout-minutes: 45
     defaults:
       run:

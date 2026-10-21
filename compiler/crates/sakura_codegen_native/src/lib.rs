@@ -508,7 +508,10 @@ pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), LinkError> {
         };
         let mut to = std::ffi::OsString::from("/OUT:");
         to.push(out);
-        cmd.arg("/NOLOGO").arg(to);
+        // The import libraries [`build_driver`] copied beside the driver.
+        let mut libpath = std::ffi::OsString::from("/LIBPATH:");
+        libpath.push(driver);
+        cmd.arg("/NOLOGO").arg(to).arg(libpath);
         cmd
     };
     #[cfg(not(windows))]
@@ -526,7 +529,9 @@ pub fn link(object: &Path, driver: &Path, out: &Path) -> Result<(), LinkError> {
             std::io::ErrorKind::NotFound => LinkError::Missing,
             _ => LinkError::Failed(format!("the system C linker `{LINKER}`: {e}")),
         })?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    // `link.exe` reports on stdout.
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned()
+        + &String::from_utf8_lossy(&output.stdout);
     if output.status.success() {
         Ok(())
     } else if stderr.contains("xcrun: error: invalid active developer path") {
@@ -577,6 +582,37 @@ pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> 
         .find_map(|l| l.split_once("native-static-libs: ").map(|(_, r)| r))
     {
         std::fs::write(&libs_file, line).map_err(|e| e.to_string())?;
+        if cfg!(windows) {
+            copy_import_libs(&dir.join("build"), line, &dir)?;
+        }
     }
     Ok(dir)
+}
+
+/// Windows: the `windows-targets` crates link import libraries from their own source directories
+/// (`windows.0.53.0.lib`), which `native-static-libs` names but no linker search path has. Copy
+/// each `.lib` of `libs` found in the search paths the build scripts under `build` printed into
+/// `into`, where [`link`] looks.
+fn copy_import_libs(build: &Path, libs: &str, into: &Path) -> Result<(), String> {
+    let mut search = vec![];
+    for entry in std::fs::read_dir(build).map_err(|e| e.to_string())? {
+        let output = entry.map_err(|e| e.to_string())?.path().join("output");
+        for line in std::fs::read_to_string(output).unwrap_or_default().lines() {
+            let line = line.replacen("cargo::", "cargo:", 1);
+            if let Some(dir) = line.strip_prefix("cargo:rustc-link-search=native=") {
+                search.push(PathBuf::from(dir));
+            }
+        }
+    }
+    for lib in libs.split_whitespace().filter(|l| l.ends_with(".lib")) {
+        // One already in place may be open in a concurrent link, which Windows does not let a
+        // copy overwrite; the libraries are versioned by name.
+        if into.join(lib).is_file() {
+            continue;
+        }
+        if let Some(found) = search.iter().map(|d| d.join(lib)).find(|f| f.is_file()) {
+            std::fs::copy(&found, into.join(lib)).map_err(|e| format!("{lib}: {e}"))?;
+        }
+    }
+    Ok(())
 }

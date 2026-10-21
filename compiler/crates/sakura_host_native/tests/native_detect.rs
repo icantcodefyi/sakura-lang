@@ -82,8 +82,10 @@ fn seeded(fault: &str, inject: impl Fn(&mut Module) -> bool) -> (String, Module)
 fn caught(fault: &str, inject: impl Fn(&mut Module) -> bool) {
     let (name, m) = seeded(fault, inject);
     let (status, stderr) = run_native(fault, &m, true);
+    // An abort: a signal on Unix, `__fastfail`'s STATUS_STACK_BUFFER_OVERRUN on Windows.
+    let aborted = status.is_none() || (cfg!(windows) && status == Some(0xC000_0409_u32 as i32));
     assert!(
-        status.is_none() && stderr.contains("native-checks: an access of"),
+        aborted && stderr.contains("native-checks: an access of"),
         "{fault} in {name} was not caught (exit {status:?}):\n{stderr}"
     );
 }

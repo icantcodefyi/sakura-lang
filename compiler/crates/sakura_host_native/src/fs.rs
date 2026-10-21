@@ -717,6 +717,8 @@ mod tests {
             .err(),
             Some("this directory has no host access".into())
         );
-        std::fs::remove_dir_all(&tmp).unwrap();
+        // The shadowed `Dir`s still hold their handles, which Windows does not delete under.
+        let removed = std::fs::remove_dir_all(&tmp);
+        assert!(cfg!(windows) || removed.is_ok(), "{removed:?}");
     }
 }
