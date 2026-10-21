@@ -30,10 +30,12 @@ build a small program of several modules in memory; the link label names the sna
 
 **MO06** Importing a module that does not exist is `V1005`, naming an item the module does not export is `V1002`, and importing in a cycle is `V1030`. [V1005](../../compiler/tests/ui/V1005_unresolved_module.sak), [diag_private_and_missing_items](../../compiler/crates/sakura_hir/tests/snapshots/lower__diag_private_and_missing_items.snap), [V1030](../../compiler/tests/ui/V1030_import_cycle/a.sak).
 
+**MO18** The prelude is in scope in every module without an import: the types `Unit Bool Int Float String Bytes Never List Map Set Range Handler Secret Untrusted Option Result Duration Instant Uuid Json Level Violation`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, the functions `show expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` and the template tags `sql html url`; any other std name needs its import (MO04). [Every prelude name, no import](../../compiler/tests/semantics/prelude_names_need_no_import.sak), [a non-prelude std name](../../compiler/tests/ui/V1002_non_prelude_std_name.sak).
+
 Informative: design §9 has no wildcard imports, no relative imports and no re-exports; the
-grammar has no syntax for them. The prelude (design §9) supplies `Option`, `Result`,
-`Violation`, the effects `Fail Console Clock Random Env Log Task Test` and the test functions
-without an import, as the corpus's programs show throughout.
+grammar has no syntax for them. The prelude also reserves the tag `shell` for a `std/shell`
+that does not exist yet, so using it is `V1002` today, and `Trust` resolves but may only appear
+as the type of `@trust("…")` (`V6001`), so the fixture names neither.
 
 ## Visibility
 

@@ -1,0 +1,65 @@
+// milestone: M3
+// mode: check
+// covers: design §9 (Prelude)
+// spec: §9
+
+// Every name design §9 lists for the prelude is in scope with no `import`: the compiler-known
+// and std types, the constructors, the effects, the test functions and the template tags. The
+// file has no import line and checks clean; `V1002_non_prelude_std_name` is the other side.
+// Two names are in scope but cannot be written here: `Trust` is the type of `@trust("…")`,
+// which no field or parameter may hold (`V6001`), and `shell` is reserved for a `std/shell`
+// that does not exist yet (`std/INDEX.md`), so using it is `V1002`.
+
+type Everything = {
+  unit: Unit,
+  bool: Bool,
+  int: Int,
+  float: Float,
+  string: String,
+  bytes: Bytes,
+  list: List<Int>,
+  map: Map<String, Int>,
+  set: Set<Int>,
+  range: Range,
+  secret: Secret<String>,
+  untrusted: Untrusted<String>,
+  option: Option<Int>,
+  result: Result<Int, String>,
+  duration: Duration,
+  instant: Instant,
+  uuid: Uuid,
+  json: Json,
+  level: Level,
+  violation: Violation,
+  never: fn() -> Never,
+  console: Handler<Console>,
+}
+
+error Odd(n: Int)
+
+fn effects() -> Unit ! {Clock, Console, Env, Log, Random, Task, Test, Fail<Odd>} {}
+
+fn values() -> List<String> {
+  let a: Option<Int> = Some(1)
+  let b: Option<Int> = None
+  let c: Result<Int, String> = Ok(1)
+  let d: Result<Int, String> = Err("e")
+  [show(a), show(b), show(c), show(d)]
+}
+
+fn tags() -> List<String> {
+  let _h = html"<p>{1}</p>"
+  let _u = url"https://example.com/{"a b"}"
+  let _q = sql"select {1}"
+  []
+}
+
+test "the test functions" {
+  expect(true)
+  expect_eq(values(), ["Some(1)", "None", "Ok(1)", "Err(\"e\")"])
+  expect_fail(fn() { fail Odd { n: 1 } }, Odd { n: 1 })
+  expect_fails_with(fn() { fail Odd { n: 1 } }, fn(e) { e.n == 1 })
+  expect_defect(fn() { 1 / 0 })
+  expect_output([])
+  expect_snapshot("tags", tags())
+}

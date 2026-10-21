@@ -1,0 +1,8 @@
+// milestone: M3
+// expect: V1002
+// design §9: only the prelude is in scope without an import. `Decimal` is a std type whose
+// module, `std/decimal`, is not in the prelude, so its home-module call is unresolved, with the
+// machine-applicable fix that adds `import std/decimal.{Decimal}`.
+// `prelude_names_need_no_import` (tests/semantics) is the other side.
+
+pub fn main() -> Unit { let _d = Decimal.parse("1.5") }

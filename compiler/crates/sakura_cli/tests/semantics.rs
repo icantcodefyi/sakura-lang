@@ -97,6 +97,20 @@ fn expect(
     if mode == "run" {
         compare_file(&want.stdout, &out.stdout)?;
     }
+    // `<name>.jsonl`, when present, is the defect record on stderr, its spans included, with the
+    // fixture's URI written as its file name (design §17.115).
+    let record = path.with_extension("jsonl");
+    if mode == "run" && record.exists() {
+        let (uri, name) = (
+            file_uri(&path.canonicalize().unwrap()),
+            path.file_name().unwrap().to_str().unwrap(),
+        );
+        let defects: String = (out.stderr.lines())
+            .filter(|l| l.contains("\"kind\":\"defect\""))
+            .map(|l| l.replace(&uri, name) + "\n")
+            .collect();
+        compare_file(&record, &defects)?;
+    }
     Ok(())
 }
 

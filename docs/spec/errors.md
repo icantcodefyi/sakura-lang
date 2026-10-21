@@ -52,9 +52,13 @@ Rows are in [effects](effects.md); refinement defects (`D010`, `D011`) are also 
 
 **ER16** A defect raised while a contract predicate is evaluated is the defect `D011`, while a defect after the predicate has held keeps its own code. [D011](../../compiler/tests/semantics/defect_D011_contract_evaluation_failed.sak), [inner message](../../compiler/tests/semantics/defect_D011_inner_message.sak), [nested requires](../../compiler/tests/semantics/defect_D011_nested_requires.sak), [kept bracket](../../compiler/tests/semantics/defect_D001_after_a_kept_bracket.sak).
 
+**ER22** A `D020` record's spans name the call as `primary` and the clause as `definition` for a direct call, and only the clause, as `primary`, for a call through a function value that another function makes. [direct call](../../compiler/tests/semantics/contract_site_blame.jsonl), [callback](../../compiler/tests/semantics/contract_site_blame_callback.jsonl).
+
 Informative: design §7.2 (§17.163) runs contract checks in every build; only a `proved` status
-from `sakura verify` removes one. Through a function value the defect carries the clause's
-span and no call-site span (§17.115); the fixtures check the code, not the spans.
+from `sakura verify` removes one. ER22 follows design §17.115: a call through a function value
+passes no call site. A local bound to a def and called in the same body
+(`let f = positive` then `f(0)`) is compiled as a direct call today and carries the call span;
+ER22 does not cover that case.
 
 ## Defects
 

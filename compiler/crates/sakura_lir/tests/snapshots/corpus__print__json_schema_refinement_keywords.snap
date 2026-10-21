@@ -2,7 +2,7 @@
 source: crates/sakura_lir/tests/corpus.rs
 expression: text
 ---
-layout 0 record main::json_schema_refinement_keywords::Form | Form 96b (name: word*, tags: word*, percent: i64, ratio: f64, even: i64, either: i64, small: i64, code: word*, handle: word*, loose: word*)
+layout 0 record main::json_schema_refinement_keywords::Form | Form 104b (name: word*, tags: word*, percent: i64, ratio: f64, even: i64, either: i64, small: i64, code: word*, handle: word*, loose: word*, picks: word*)
 layout 1 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
 layout 2 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
 layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
@@ -24,7 +24,7 @@ fn main#0 pub top -> unit ; main::json_schema_refinement_keywords, frame 3 slots
     %7 schema: ptr = const str 0
     %8 lit: ptr = const str 2
     %9 r: ptr = $json_decode(%8, %7)
-    call is_ok#12(%9) -> b2()
+    call is_ok#13(%9) -> b2()
   b2(%10 r: bool):
     %11 s: ptr = show %10
     perform std::console::Console.print(%11) -> b3()
@@ -216,3 +216,24 @@ fn Form.loose$check#11 top -> bool ; main::json_schema_refinement_keywords, fram
     drop %9
     %13 lit: bool = const false
     jump b1(%13)
+
+fn Form.picks$check#12 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    dup.candidate %0
+    %2 r: i64 = $list_len(%0)
+    %3 lit: i64 = const 1
+    %4 t: bool = ge.int %2, %3
+    if %4 then b2(%0) else b3(%0)
+  b1(%5 v: bool):
+    %6 exit: unit = $contract_exit()
+    ret %5
+  b2(%7 it: ptr):
+    %9 r: i64 = $list_len(%7)
+    %10 lit: i64 = const 3
+    %11 t: bool = le.int %9, %10
+    jump b1(%11)
+  b3(%8 it: ptr):
+    drop %8
+    %12 lit: bool = const false
+    jump b1(%12)

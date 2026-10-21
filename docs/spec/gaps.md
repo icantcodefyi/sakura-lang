@@ -114,11 +114,8 @@ order with arguments before the callee (EV28), and short-circuit `&&` and `||` (
 
 ### Types and refinements
 
-- **`minItems`.** Design §17.300 lowers `List.len(it) >= n` to `minItems`;
-  [the fixture](../../compiler/tests/semantics/json_schema_refinement_keywords.sak) states no
-  `minItems`, so TY22 does not claim it.
-
-Pinned since: distinct refined types (TY23) and field refinements at construction (TY24).
+Pinned since: distinct refined types (TY23), field refinements at construction (TY24) and
+`minItems` (TY22, the fixture's `picks` field).
 Resolved: the `minLength` disagreement (design §17.300 (2)–(3) landed in `17a77175`; the
 fixture's `handle` field states `minLength: 2` for `>= 8` and `loose` states nothing for
 `>= -1 && >= 0`, so TY22 now says ⌈n/4⌉ and the negative-bound rule; design §17.303).
@@ -138,10 +135,8 @@ Pinned since: reinstalling one handler value (EF21).
 
 ### Errors, `Result` and defects
 
-- **Contract spans.** Design §17.115 gives a call through a function value the clause's span
-  only; the `contract_site_blame_*` fixtures check the defect code, not the spans.
-
-Pinned since: a failing `main` (ER20) and `try` around a defect (ER21).
+Pinned since: a failing `main` (ER20), `try` around a defect (ER21) and the spans of a `D020`
+record through a callback and a direct call (ER22).
 
 ### Concurrency
 
@@ -156,13 +151,12 @@ two channels (CC19).
 ### Modules and imports
 
 - **Cycles count referenced names only.** Design §9 counts only names a module actually
-  references toward `V1030`; the fixture is a cycle of used imports, so the narrower rule is
-  unpinned.
-- **The prelude's contents.** Design §9 lists the prelude; programs across the corpus use its
-  names, but no fixture enumerates it or shows a non-prelude std name failing without an import
-  beyond `diag_explicit_imports`.
+  references toward `V1030`, but the compiler does not: `sakura_hir` detects cycles over every
+  import before any name resolves, so two modules where `b`'s `import main/a` is unused still
+  report `V1030` beside `W1003` (checked at `1.0.0-beta.2`). Pinning the rule needs a resolver
+  change, not a fixture.
 
-Pinned since: std's `W1003` exemption (MO17).
+Pinned since: std's `W1003` exemption (MO17) and the prelude's contents (MO18).
 
 ## Coverage accounting
 

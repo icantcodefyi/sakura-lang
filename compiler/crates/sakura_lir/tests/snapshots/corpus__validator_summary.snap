@@ -166,7 +166,7 @@ semantics/json_codec: 12 funcs, 100 blocks, 5 dup, 74 drop, valid
 semantics/json_decode_int_range: 2 funcs, 9 blocks, 3 dup, 6 drop, valid
 semantics/json_parse_malformed: 47 funcs, 167 blocks, 19 dup, 68 drop, valid
 semantics/json_render_indent: 8 funcs, 117 blocks, 18 dup, 46 drop, valid
-semantics/json_schema_refinement_keywords: 13 funcs, 43 blocks, 4 dup, 10 drop, valid
+semantics/json_schema_refinement_keywords: 14 funcs, 47 blocks, 5 dup, 11 drop, valid
 semantics/lambda_calls_lambda_through_result_map: 7 funcs, 20 blocks, 1 dup, 14 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 13 drop, valid
 semantics/line_endings_crlf: 5 funcs, 11 blocks, 2 dup, 15 drop, valid
