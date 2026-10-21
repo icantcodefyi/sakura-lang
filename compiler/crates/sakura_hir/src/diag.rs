@@ -6,6 +6,7 @@ use text_size::TextRange;
 
 pub const DUPLICATE: Code = codes::V1001;
 pub const SHADOWED_IMPORT: Code = codes::W1002;
+pub const UNUSED_IMPORT: Code = codes::W1003;
 pub const UNRESOLVED_NAME: Code = codes::V1002;
 pub const UNRESOLVED_TYPE: Code = codes::V1003;
 pub const CASE_MISMATCH: Code = codes::V1004;

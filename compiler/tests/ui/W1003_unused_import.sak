@@ -1,0 +1,29 @@
+// milestone: M3
+// expect: W1003 W1003 W1003 W1003 W1003
+// §17.294 RQ-5: one W1003 per unused imported name. `Json`, the last of its list, goes with the
+// comma before it and `Level`, the first, with the comma after it; the `import`s of `retry`,
+// `crypto` and `Violation` go whole. A name used in a value (`None`), only in a type
+// (`DecodeError`), only in a pattern (`Some`) or only in a `@contract_test` attribute (`Log`)
+// is used.
+import std/core.{Violation}
+import std/crypto
+import std/json.{DecodeError, Json}
+import std/log.{Level, Log}
+import std/option.{None, Some}
+import std/retry.{retry}
+
+@contract_test(handlers: [Log.captured()])
+pub fn show(n: Int) -> String
+  requires n > 0
+{ "{n}" }
+
+pub fn same(e: DecodeError) -> DecodeError { e }
+
+pub fn is_some(o: Option<Int>) -> Bool {
+  match o {
+    Some(_) => true,
+    _ => false,
+  }
+}
+
+pub fn nothing() -> Option<Int> { None }

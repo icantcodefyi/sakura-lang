@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-94 codes; 65 pages show a fixed program that the compiler's test suite checks.
+95 codes; 66 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -129,6 +129,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | Code | Title | Summary |
 | --- | --- | --- |
 | [W1002](/docs/errors/W1002) | `shadowed_import` | A local binding shadows an imported name. |
+| [W1003](/docs/errors/W1003) | `unused_import` | An imported name is never used in this module: not in a value, a type, a pattern or a `@contract_test` attribute. |
 | [W4010](/docs/errors/W4010) | `catch_all_on_open_union` | A `catch` uses `_ => …` on an error union that may grow. |
 | [W5005](/docs/errors/W5005) | `linear_contract_on_hot_path` | A `requires`, `ensures`, `where` or `property requires` clause calls `List.all`, `List.any`, `List.contains` or `String.contains` on a parameter (or `it`), so every check scans the whole value (design §7.2). |
 | [W7001](/docs/errors/W7001) | `property_discard_budget` | A property discarded more than 90% of its generated inputs, so it tested almost nothing (design §7.4). |

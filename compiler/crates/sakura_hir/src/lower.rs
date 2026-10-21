@@ -143,7 +143,10 @@ fn lower_with(
                 now.bodies = p.bodies.clone();
                 *reused = true;
             }
-            None => cx.lower_items(id),
+            None => {
+                cx.lower_items(id);
+                cx.report_unused_imports(id);
+            }
         }
     }
     cx.check_main_rows();
@@ -168,6 +171,48 @@ fn lower_with(
 }
 
 // ---- Syntax helpers --------------------------------------------------------------------------
+
+/// The `import` item `node` from its keyword (a comment above it stays) through its line break.
+fn import_line(node: &SyntaxNode, text: &str) -> TextRange {
+    let start =
+        token(node, IMPORT_KW).map_or(node.text_range().start(), |t| t.text_range().start());
+    let mut end = usize::from(node.text_range().end());
+    if !text[..end].ends_with('\n') {
+        end += ["\r\n", "\n"]
+            .iter()
+            .find(|nl| text[end..].starts_with(**nl))
+            .map_or(0, |nl| nl.len());
+    }
+    TextRange::new(start, text_size::TextSize::new(end as u32))
+}
+
+/// The text removing the imported name at `range` from its `{…}` list: the name with the comma
+/// and space after it, or, for the last name, with the comma before it.
+fn name_removal(root: &SyntaxNode, range: TextRange) -> Option<TextRange> {
+    let name = root.covering_element(range).into_token()?;
+    let next_sig = |t: &SyntaxToken| {
+        std::iter::successors(t.next_token(), |t| t.next_token())
+            .find(|t| !t.kind().is_trivia() && t.kind() != NEWLINE)
+    };
+    let prev_sig = |t: &SyntaxToken| {
+        std::iter::successors(t.prev_token(), |t| t.prev_token())
+            .find(|t| !t.kind().is_trivia() && t.kind() != NEWLINE)
+    };
+    match next_sig(&name) {
+        Some(comma) if comma.kind() == COMMA => match next_sig(&comma) {
+            Some(after) if after.kind() != R_BRACE => {
+                Some(TextRange::new(range.start(), after.text_range().start()))
+            }
+            _ => Some(TextRange::new(range.start(), comma.text_range().end())),
+        },
+        _ => match prev_sig(&name) {
+            Some(comma) if comma.kind() == COMMA => {
+                Some(TextRange::new(comma.text_range().start(), range.end()))
+            }
+            _ => None,
+        },
+    }
+}
 
 pub(crate) fn child(n: &SyntaxNode, k: SyntaxKind) -> Option<SyntaxNode> {
     n.children().find(|c| c.kind() == k)
@@ -311,6 +356,11 @@ pub(crate) struct ModCx {
     pub import_nodes: Vec<SyntaxNode>,
     /// Names a failed import would have bound; their uses are not reported again.
     pub poisoned: std::collections::BTreeSet<String>,
+    /// Imported names a lookup has resolved to their import, for `W1003`.
+    pub used: std::cell::RefCell<std::collections::BTreeSet<String>>,
+    /// Modules whose items a lookup has resolved, by any route (an import or the prelude): an
+    /// `import std/env` counts as used by `Env`, which the prelude finds in it.
+    pub used_modules: std::cell::RefCell<std::collections::BTreeSet<ModuleId>>,
 }
 
 #[derive(Default)]
@@ -1978,6 +2028,74 @@ impl Cx {
         })
     }
 
+    /// `W1003` (design §17.294 RQ-5): one warning per name an `import` of `m` binds that no
+    /// lookup resolved to it, with a fix removing the name, or the whole `import` when nothing
+    /// it binds is used. std's own modules are not checked.
+    fn report_unused_imports(&mut self, m: ModuleId) {
+        let pkg = self.program.module(m).package.0 as usize;
+        if self.program.packages[pkg].name == "std" {
+            return;
+        }
+        let Some(root) = self.mods[m.0 as usize].root.clone() else {
+            return;
+        };
+        let file = self.file(m);
+        let text = root.text().to_string();
+        // `@contract_test`'s handlers are read by name later (`Effect.constructor()`).
+        let contract_names = (root.descendants())
+            .filter(|a| a.kind() == ATTRIBUTE && name_token(a, IDENT).0 == "contract_test")
+            .flat_map(|a| a.descendants_with_tokens().filter_map(|e| e.into_token()))
+            .map(|t| t.text().to_string());
+        self.mods[m.0 as usize]
+            .used
+            .borrow_mut()
+            .extend(contract_names);
+        let mut out = Vec::new();
+        for node in root.children().filter(|c| c.kind() == IMPORT) {
+            let mods = &self.mods[m.0 as usize];
+            let (used, used_modules) = (mods.used.borrow(), mods.used_modules.borrow());
+            let mut bound: Vec<(&String, Binding, TextRange)> = (mods.imported.iter())
+                .filter(|(_, (_, r))| node.text_range().contains_range(*r))
+                .map(|(n, (b, r))| (n, *b, *r))
+                .collect();
+            bound.sort_by_key(|(_, _, r)| r.start());
+            let unused: Vec<_> = (bound.iter())
+                .filter(|(n, b, _)| match b {
+                    Binding::Module(t) => !used.contains(*n) && !used_modules.contains(t),
+                    _ => !used.contains(*n),
+                })
+                .collect();
+            let whole = unused.len() == bound.len();
+            for &&(name, _, range) in &unused {
+                let (title, span) = if whole {
+                    ("Remove the import".to_string(), import_line(&node, &text))
+                } else {
+                    let span = name_removal(&root, range).unwrap_or(range);
+                    (format!("Remove `{name}` from the import"), span)
+                };
+                let d = diag::warning(
+                    diag::UNUSED_IMPORT,
+                    file,
+                    range,
+                    format!("`{name}` is imported but never used"),
+                )
+                .with_fix(Fix {
+                    title,
+                    applicability: Applicability::MachineApplicable,
+                    impact: Impact::Local,
+                    edits: vec![Edit {
+                        span: diag::span(file, span),
+                        replacement: String::new(),
+                    }],
+                });
+                out.push(d);
+            }
+        }
+        for d in out {
+            self.report(d);
+        }
+    }
+
     fn report_unresolved_type(
         &mut self,
         m: ModuleId,
@@ -2046,11 +2164,28 @@ impl Cx {
             .get(name)
             .map(|&index| Binding::Def(DefId { module: m, index }));
         let imported = self.mods[m.0 as usize].imported.get(name).map(|&(b, _)| b);
-        own.into_iter()
+        if own.is_none() && imported.is_some_and(|b| keep(&b)) {
+            self.mods[m.0 as usize]
+                .used
+                .borrow_mut()
+                .insert(name.to_string());
+        }
+        let found = own
+            .into_iter()
             .chain(imported)
             .chain(Builtin::from_name(name).map(Binding::Builtin))
             .chain(self.lookup_prelude(name))
-            .find(keep)
+            .find(keep);
+        let home = match found {
+            Some(Binding::Def(d)) => Some(d.module),
+            Some(Binding::Module(t)) => Some(t),
+            Some(Binding::Builtin(b)) => self.program.home_module(TypeRes::Builtin(b)),
+            None => None,
+        };
+        if let Some(t) = home.filter(|&t| t != m) {
+            self.mods[m.0 as usize].used_modules.borrow_mut().insert(t);
+        }
+        found
     }
 
     /// Resolves the segments of a `PATH` (`x`, `T`, `mod.T`, `T.Variant`, `mod.T.Variant`).

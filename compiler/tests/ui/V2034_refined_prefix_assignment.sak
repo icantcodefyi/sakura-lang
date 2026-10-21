@@ -4,7 +4,7 @@
 
 // `r` is a plain record, but the prefix `r.total` is a `Decimal`: assigning `frac` through it
 // would build a non-canonical `Decimal` without running `is_canonical`.
-import std/decimal.{Decimal, DecimalRepr}
+import std/decimal.{Decimal}
 
 type Receipt = { total: Decimal }
 

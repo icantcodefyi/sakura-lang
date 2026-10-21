@@ -91,6 +91,7 @@ V8020 active spec_frozen
 V9001 active internal_error
 V9002 active phase_unavailable
 W1002 active shadowed_import
+W1003 active unused_import
 W4010 active catch_all_on_open_union
 W5005 active linear_contract_on_hot_path
 W7001 active property_discard_budget

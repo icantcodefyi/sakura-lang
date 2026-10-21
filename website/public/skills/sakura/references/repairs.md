@@ -42,6 +42,7 @@ help and guide before assuming an API exists.
 | `V5004` | A literal violates the refined type's `where` predicate. | Correct the literal or reject invalid input through validation. Keep the predicate. Dynamic input belongs at an explicit checked/validated boundary. | `tests/ui/V5004_literal_violates_refinement.sak` |
 | `V6003` | A resource escapes the callback that owns its lifetime. | Consume it within the callback and return ordinary data. Do not return the resource or capture it in an escaping closure. | `tests/ui/V6003_resource_escape.sak` |
 | `V8020` | Repair changed a frozen signature, row, error union, contract, test/property or permission. | Restore the frozen task and repair the implementation. Compare against the agreed baseline; do not reset the baseline to conceal the change. An intended specification change needs authorization and a separately reviewed baseline. | `crates/sakura_cli/tests/cli.rs` (`frozen_specs_compare_with_git_head`) |
+| `W1003` | An imported name nothing in the module uses. | Apply its fix with `sakura fix`, or use the name where the task needs it. | `tests/ui/W1003_unused_import.sak` |
 
 `W7001` means a generated property exhausted its discard budget: inspect whether
 inputs can meet the precondition and whether the generator covers them. Do not

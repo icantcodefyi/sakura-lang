@@ -104,6 +104,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V9001` | error | `internal_error` | [guard_reports_a_dropped_comment_or_broken_output](../../compiler/crates/sakura_fmt/src/lib.rs) | active |
 | `V9002` | error | `phase_unavailable` | [V9002_contract_test_handler_unsupported.sak](../../compiler/tests/ui/V9002_contract_test_handler_unsupported.sak) | active |
 | `W1002` | warning | `shadowed_import` | [W1002_shadowed_import.sak](../../compiler/tests/ui/W1002_shadowed_import.sak) | active |
+| `W1003` | warning | `unused_import` | [W1003_unused_import.sak](../../compiler/tests/ui/W1003_unused_import.sak) | active |
 | `W4010` | warning | `catch_all_on_open_union` | [W4010_catch_all_on_open_union.sak](../../compiler/tests/ui/W4010_catch_all_on_open_union.sak) | active |
 | `W5005` | warning | `linear_contract_on_hot_path` | [W5005_linear_contract_on_hot_path.sak](../../compiler/tests/ui/W5005_linear_contract_on_hot_path.sak) | active |
 | `W7001` | warning | `property_discard_budget` | [W7001_property_discard_budget.sak](../../compiler/tests/ui/W7001_property_discard_budget.sak) | active |

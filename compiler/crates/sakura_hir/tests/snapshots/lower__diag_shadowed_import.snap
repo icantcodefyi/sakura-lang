@@ -18,3 +18,6 @@ pub fn value() -> Int
 W1002 `value` shadows an imported name
   Primary file0 2:21 `value`
   Definition file0 1:17 `value` (imported here)
+W1003 `value` is imported but never used
+  Primary file0 1:17 `value`
+  fix: Remove the import -> ``

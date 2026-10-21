@@ -20,3 +20,12 @@ pub fn fc() -> Int
 == diagnostics
 V1030 import cycle: app/a → app/b → app/c → app/a; imports must form a DAG (design §9) — move the shared items into a module both can import
   Primary file2 1:8 `app/a`
+W1003 `b` is imported but never used
+  Primary file0 1:8 `app/b`
+  fix: Remove the import -> ``
+W1003 `c` is imported but never used
+  Primary file1 1:8 `app/c`
+  fix: Remove the import -> ``
+W1003 `a` is imported but never used
+  Primary file2 1:8 `app/a`
+  fix: Remove the import -> ``

@@ -1,0 +1,19 @@
+import std/json.{DecodeError}
+import std/log.{Log}
+import std/option.{None, Some}
+
+@contract_test(handlers: [Log.captured()])
+pub fn show(n: Int) -> String
+  requires n > 0
+{ "{n}" }
+
+pub fn same(e: DecodeError) -> DecodeError { e }
+
+pub fn is_some(o: Option<Int>) -> Bool {
+  match o {
+    Some(_) => true,
+    _ => false,
+  }
+}
+
+pub fn nothing() -> Option<Int> { None }

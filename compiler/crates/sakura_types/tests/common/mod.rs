@@ -152,7 +152,10 @@ pub fn check_modules(modules: &[(&str, &str)]) -> Checked {
     let (typed, type_diags) = check_program_with(&program, &parse_errors);
     let mut diags: Vec<Diagnostic> = parse_errors;
     let mut std_diags = Vec::new();
-    for d in program.diagnostics.iter().cloned().chain(type_diags) {
+    // `W1003` is not a typing result, and the cases share preambles that import more than each
+    // uses; `tests/ui` and `sakura_hir` hold the warning.
+    let diagnostics = program.diagnostics.iter().cloned().chain(type_diags);
+    for d in diagnostics.filter(|d| d.code != sakura_diagnostics::codes::W1003) {
         if d.spans.first().is_some_and(|s| s.file.0 < n) {
             if !diags.contains(&d) {
                 diags.push(d);

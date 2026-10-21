@@ -798,6 +798,18 @@ Warning:
 Fixed:
     let max_attempts = 3";
 
+    W1003 "unused_import" RESOLVE,
+"An imported name is never used in this module: not in a value, a type, a pattern or a
+`@contract_test` attribute. The fix removes the name, or the whole `import` when nothing it
+brings is used, so `sakura fix` applies it (design §17.294 RQ-5).
+
+Warning:
+    import std/json.{DecodeError, Json}
+    fn show(n: Int) -> String { Json.encode(n) }
+Fixed:
+    import std/json.{Json}
+    fn show(n: Int) -> String { Json.encode(n) }";
+
     W4010 "catch_all_on_open_union" PATTERN,
 "A `catch` uses `_ => …` on an error union that may grow. New error tags would be silently
 swallowed; list the tags instead (design §5.3).

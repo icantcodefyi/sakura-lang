@@ -1,5 +1,5 @@
 // milestone: M1
-// expect: W1002
+// expect: W1002 W1003
 import std/retry.{retry}
 
 fn attempts() -> Int {

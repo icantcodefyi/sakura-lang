@@ -40,7 +40,7 @@ fn attempts() -> Int {
 {
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:e62db61b2fa70d49",
+  "id": "d:c9c08b04880cf898",
   "code": "W1002",
   "severity": "warning",
   "phase": "resolve",
@@ -50,16 +50,16 @@ fn attempts() -> Int {
   "spans": [
     {
       "uri": "file://$DIR/W1002_shadowed_import.sak",
-      "content_hash": "sha256:85bf3bd33fd7034ff2f082a235afd9dfe7293700fc964b6860c8251319e073f4",
-      "start_byte": 89,
-      "end_byte": 94,
+      "content_hash": "sha256:7b139884207f8f349edb814044cd8c6f272074a1ef531789d821f78f2881830d",
+      "start_byte": 95,
+      "end_byte": 100,
       "role": "primary"
     },
     {
       "uri": "file://$DIR/W1002_shadowed_import.sak",
-      "content_hash": "sha256:85bf3bd33fd7034ff2f082a235afd9dfe7293700fc964b6860c8251319e073f4",
-      "start_byte": 52,
-      "end_byte": 57,
+      "content_hash": "sha256:7b139884207f8f349edb814044cd8c6f272074a1ef531789d821f78f2881830d",
+      "start_byte": 58,
+      "end_byte": 63,
       "role": "definition",
       "label": "imported here"
     }
@@ -79,8 +79,6 @@ fn attempts() -> Int {
 [`compiler/tests/ui/W1002_shadowed_import.fixed.sak`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/tests/ui/W1002_shadowed_import.fixed.sak), which `sakura check` accepts with no diagnostics:
 
 ```sakura
-import std/retry.{retry}
-
 fn attempts() -> Int {
   let max_attempts = 3
   max_attempts

@@ -114,7 +114,8 @@ file inventories/hashes, compact source sizes and exact initial diagnostics. It
 checks gold and hollow candidates under the frozen starter, then compiles and
 executes each oracle separately: **gold passes all 25; hollow fails all 25**.
 Hollow programs must compile without holes, so a syntax error cannot count as a
-successful negative control. Gold also passes the unchanged visible tests. Task 11's hollow triggers the expected
+successful negative control. `W1003 unused_import` is not counted against a starter or a
+candidate: the oracles are appended to the candidate and use its imports. Gold also passes the unchanged visible tests. Task 11's hollow triggers the expected
 postcondition defect `D021`; other hollow cases must produce failed test records,
 not an unrelated defect or process failure.
 

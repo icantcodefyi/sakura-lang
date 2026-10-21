@@ -364,6 +364,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   `{"error":…,"message":…}`. `error` at item position still declares an error tag, so no
   program changes meaning; there is no raw-identifier syntax. Fixture
   `compiler/tests/semantics/error_field_name.sak`.
+- `W1003 unused_import` (design §17.294 RQ-5): one warning per imported name nothing in the
+  module uses (a use in a value, a type, a pattern or a `@contract_test` attribute counts),
+  with a machine-applicable fix that removes the name, or the whole `import` when nothing it
+  brings is used, so `sakura fix` applies it. std's own modules are not checked.
 
 ### Fixed
 
