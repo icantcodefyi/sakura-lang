@@ -1,0 +1,64 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 1 variant std::log::Level | Debug 16b () | Info 16b () | Warn 16b () | Error 16b ()
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::log_json_line, frame 2 slots [%3 bool, %32 bool]
+  b0():
+    %0 r: ptr = $log_json()
+    handle_push %0
+    %6 v: ptr = const static std::log::Level.Warn
+    %7 lit: f64 = const 1.0
+    %8 r: ptr = alloc std::json::Json.Number(%7)
+    %9 lit: ptr = const str 1
+    %10 tup: ptr = alloc tuple#4(word, word)(%9, %8)
+    %11 v: ptr = const static std::json::Json.Null
+    %12 lit: ptr = const str 2
+    %13 tup: ptr = alloc tuple#4(word, word)(%12, %11)
+    %14 lit: ptr = const str 3
+    %15 r: ptr = alloc std::json::Json.String(%14)
+    %16 lit: ptr = const str 4
+    %17 tup: ptr = alloc tuple#4(word, word)(%16, %15)
+    %18 lit: f64 = const 5.0
+    %19 r: ptr = alloc std::json::Json.Number(%18)
+    %20 lit: ptr = const str 5
+    %21 tup: ptr = alloc tuple#4(word, word)(%20, %19)
+    %22 lit: f64 = const 2.0
+    %23 r: ptr = alloc std::json::Json.Number(%22)
+    %24 lit: ptr = const str 1
+    %25 tup: ptr = alloc tuple#4(word, word)(%24, %23)
+    %26 lit: bool = const true
+    %27 r: ptr = alloc std::json::Json.Bool(%26)
+    %28 lit: ptr = const str 6
+    %29 tup: ptr = alloc tuple#4(word, word)(%28, %27)
+    %30 xs: ptr = alloc list(%10, %13, %17, %21, %25, %29)
+    %31 lit: ptr = const str 7
+    perform std::log::Log.event(%6, %31, %30) -> b3()
+  b1(%1 v: word):
+    drop %1
+    %2 lit: ptr = const str 0
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    %5 unbox: unit = unbox %4
+    drop %4
+    ret %5
+  b3(%32 r: unit) [handle]:
+    %33 box: word = box %32
+    handle_pop
+    jump b1(%33)
+
+fn $entry#1 top -> unit ; main::log_json_line, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

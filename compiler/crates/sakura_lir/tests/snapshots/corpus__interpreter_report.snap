@@ -181,6 +181,7 @@ semantics/literal_refinement_checked_at_startup: D010, 3 allocated, 0 dup, 3 dro
 semantics/literal_refinement_decided: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
 semantics/literal_refinement_passes_once: ok, 12 allocated, 0 dup, 12 drop, peak 3, live 0/0
 semantics/literals_and_operators: ok, 40 allocated, 0 dup, 40 drop, peak 4, live 0/0
+semantics/log_json_line: unsupported (builtin log_json)
 semantics/loop_jump_past_inner_var: ok, 10 allocated, 0 dup, 10 drop, peak 4, live 0/0
 semantics/loop_resume_bound: ok, 93 allocated, 40 dup, 133 drop, peak 11, live 0/0
 semantics/loop_resume_edges: ok, 72 allocated, 49 dup, 121 drop, peak 13, live 0/0
