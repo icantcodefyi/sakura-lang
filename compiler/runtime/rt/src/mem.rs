@@ -171,7 +171,7 @@ mod native {
         }
     }
 
-    #[cfg(not(miri))]
+    #[cfg(all(unix, not(miri)))]
     fn reserve(len: usize) -> Option<NonNull<u8>> {
         #[cfg(target_os = "linux")]
         const FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANONYMOUS | libc::MAP_NORESERVE;
@@ -186,16 +186,55 @@ mod native {
         NonNull::new(p.cast())
     }
 
-    #[cfg(not(miri))]
+    #[cfg(all(unix, not(miri)))]
     fn commit(at: NonNull<u8>, len: usize) -> bool {
         // SAFETY: `at..at + len` is page-aligned and inside a reservation `reserve` made.
         unsafe { libc::mprotect(at.as_ptr().cast(), len, libc::PROT_READ | libc::PROT_WRITE) == 0 }
     }
 
-    #[cfg(not(miri))]
+    #[cfg(all(unix, not(miri)))]
     fn release(base: NonNull<u8>, len: usize) {
         // SAFETY: exactly the mapping `reserve` made; nothing refers into it after `drop`.
         unsafe { libc::munmap(base.as_ptr().cast(), len) };
+    }
+
+    // Windows (platform C): reserve with `VirtualAlloc`, commit with it again, release once.
+    #[cfg(all(windows, not(miri)))]
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn VirtualAlloc(at: *mut u8, len: usize, kind: u32, protect: u32) -> *mut u8;
+        fn VirtualFree(at: *mut u8, len: usize, kind: u32) -> i32;
+    }
+    #[cfg(all(windows, not(miri)))]
+    const MEM_COMMIT: u32 = 0x1000;
+    #[cfg(all(windows, not(miri)))]
+    const MEM_RESERVE: u32 = 0x2000;
+    #[cfg(all(windows, not(miri)))]
+    const MEM_RELEASE: u32 = 0x8000;
+    #[cfg(all(windows, not(miri)))]
+    const PAGE_NOACCESS: u32 = 0x01;
+    #[cfg(all(windows, not(miri)))]
+    const PAGE_READWRITE: u32 = 0x04;
+
+    #[cfg(all(windows, not(miri)))]
+    fn reserve(len: usize) -> Option<NonNull<u8>> {
+        // SAFETY: a reservation at an address of the system's choosing touches no existing
+        // memory; the result is checked before use.
+        NonNull::new(unsafe {
+            VirtualAlloc(core::ptr::null_mut(), len, MEM_RESERVE, PAGE_NOACCESS)
+        })
+    }
+
+    #[cfg(all(windows, not(miri)))]
+    fn commit(at: NonNull<u8>, len: usize) -> bool {
+        // SAFETY: `at..at + len` is page-aligned and inside a reservation `reserve` made.
+        !unsafe { VirtualAlloc(at.as_ptr(), len, MEM_COMMIT, PAGE_READWRITE) }.is_null()
+    }
+
+    #[cfg(all(windows, not(miri)))]
+    fn release(base: NonNull<u8>, _len: usize) {
+        // SAFETY: exactly the reservation `reserve` made; nothing refers into it after `drop`.
+        unsafe { VirtualFree(base.as_ptr(), 0, MEM_RELEASE) };
     }
 
     // Miri interprets no `mprotect`: the reservation is one zeroed allocation and committing is
