@@ -52,7 +52,7 @@ Rows are in [effects](effects.md); refinement defects (`D010`, `D011`) are also 
 
 **ER16** A defect raised while a contract predicate is evaluated is the defect `D011`, while a defect after the predicate has held keeps its own code. [D011](../../compiler/tests/semantics/defect_D011_contract_evaluation_failed.sak), [inner message](../../compiler/tests/semantics/defect_D011_inner_message.sak), [nested requires](../../compiler/tests/semantics/defect_D011_nested_requires.sak), [kept bracket](../../compiler/tests/semantics/defect_D001_after_a_kept_bracket.sak).
 
-**ER22** A `D020` record's spans name the call as `primary` and the clause as `definition` for a direct call, and only the clause, as `primary`, for a call through a function value that another function makes. [direct call](../../compiler/tests/semantics/contract_site_blame.jsonl), [callback](../../compiler/tests/semantics/contract_site_blame_callback.jsonl).
+**ER22** A `D020` record's spans name the call as `primary` and the clause as `definition` for a call the compiler resolves to a def, and only the clause, as `primary`, for a call through a function value that another function makes. [direct call](../../compiler/tests/semantics/contract_site_blame.jsonl), [callback](../../compiler/tests/semantics/contract_site_blame_callback.jsonl), [a local bound to a def](../../compiler/tests/semantics/contract_site_blame_value.jsonl).
 
 Informative: design §7.2 (§17.163) runs contract checks in every build; only a `proved` status
 from `sakura verify` removes one. The rule behind ER22 is design §17.307 (2), under which
@@ -62,7 +62,7 @@ a direct call, a call through a local bound once to a def (`let f = positive` th
 and any call a later release resolves — and no call span for a call it cannot resolve (a
 parameter, a field, a returned value, a closure). The clause span is always present; `primary`
 is the call when there is one. The set of resolved calls may grow in a release and does not
-shrink; ER22 pins its two ends, and the let-bound case joins it when its `.jsonl` lands.
+shrink; ER22 pins its two ends and the let-bound case.
 
 ## Defects
 

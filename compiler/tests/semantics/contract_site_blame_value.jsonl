@@ -1,0 +1,1 @@
+{"schema_version":"1.0","kind":"defect","code":"D020","message":"precondition `nonzero` of positive violated","spans":[{"uri":"contract_site_blame_value.sak","start_byte":265,"end_byte":269,"role":"primary"},{"uri":"contract_site_blame_value.sak","start_byte":166,"end_byte":171,"role":"definition"}]}
