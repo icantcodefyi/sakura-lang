@@ -151,9 +151,8 @@ Resolved: the cycle rule. Design §9 said only names a module actually reference
 toward `V1030`, while `sakura_hir` detects cycles over every import before any name resolves,
 so two modules where `b`'s `import main/a` is unused report `V1030` beside `W1003` (checked at
 `1.0.0-beta.2`). Design §17.307 (1) ratifies the compiler and amends §9: every `import` is an
-edge, used or not, and the unused one's `W1003` fix removes the cycle. A positive fixture
-(`V1030_import_cycle_unused`, lane C) will add the words to MO06; until then MO06's citation is
-the used-import case.
+edge, used or not, and the unused one's `W1003` fix removes the cycle. MO06 now states it and
+cites the positive fixture `V1030_import_cycle_unused`.
 
 Pinned since: std's `W1003` exemption (MO17) and the prelude's contents (MO18).
 

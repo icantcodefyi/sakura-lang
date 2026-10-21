@@ -1,0 +1,9 @@
+// milestone: M1
+// expect: V1030 W1003
+// expect-span: V1030 1:8
+// design §9, §17.307 (1): every `import` is an edge of the module graph whether or not the
+// module uses what it binds. `b` imports `main/a` and uses nothing, so that import closes the
+// cycle: `V1030` and `W1003` on `b`'s import line, whose fix (remove it) removes the cycle.
+import main/b
+
+pub fn one() -> Int { b.two() - 1 }
