@@ -113,6 +113,9 @@ semantics/encoding_rejects_unsupported_label: ok, 562 allocated, 2015 dup, 2577 
 semantics/error_field_name: unsupported (builtin json_encode)
 semantics/error_unions: ok, 8 allocated, 2 dup, 10 drop, peak 3, live 0/0
 semantics/eval_order_left_to_right: ok, 9 allocated, 0 dup, 9 drop, peak 5, live 0/0
+semantics/exact_i64_json: unsupported (builtin json_encode)
+semantics/exact_i64_print: ok, 29 allocated, 0 dup, 29 drop, peak 4, live 0/0
+semantics/exact_i64_sql: unsupported (builtin sql_memory)
 semantics/float_nan_negative_zero: ok, 41 allocated, 0 dup, 41 drop, peak 6, live 0/0
 semantics/float_rem: ok, 5 allocated, 0 dup, 5 drop, peak 2, live 0/0
 semantics/form_encode_rejects_boundary: unsupported (builtin string_to_bytes)

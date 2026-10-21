@@ -113,6 +113,9 @@ semantics/encoding_rejects_unsupported_label: 11 funcs, 80 blocks, 18 dup, 30 dr
 semantics/error_field_name: 3 funcs, 18 blocks, 1 dup, 19 drop, valid
 semantics/error_unions: 5 funcs, 28 blocks, 0 dup, 5 drop, valid
 semantics/eval_order_left_to_right: 4 funcs, 20 blocks, 0 dup, 11 drop, valid
+semantics/exact_i64_json: 3 funcs, 10 blocks, 0 dup, 5 drop, valid
+semantics/exact_i64_print: 3 funcs, 14 blocks, 0 dup, 21 drop, valid
+semantics/exact_i64_sql: 6 funcs, 43 blocks, 4 dup, 14 drop, valid
 semantics/float_nan_negative_zero: 3 funcs, 16 blocks, 0 dup, 28 drop, valid
 semantics/float_rem: 3 funcs, 11 blocks, 0 dup, 4 drop, valid
 semantics/form_encode_rejects_boundary: 13 funcs, 105 blocks, 14 dup, 59 drop, valid

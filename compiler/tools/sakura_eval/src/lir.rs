@@ -2007,7 +2007,8 @@ impl<'m> Vm<'m> {
                 }
                 W(self.string(s[b0..b1].to_owned())?)
             }
-            // As the runtime: anything but an integer within ±(2^53−1) is `None`.
+            // As the JS runtime, so the differential test can hold it to the reference evaluator:
+            // anything but an integer within ±(2^53−1) is `None` (the i64 runtime reads any i64).
             ("string_parse_int", [W(s)]) => {
                 let s = self.str_of(*s)?;
                 let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
@@ -2015,7 +2016,7 @@ impl<'m> Vm<'m> {
                 let n = s
                     .parse::<i64>()
                     .ok()
-                    .filter(|i| well_formed && i.abs() < (1 << 53));
+                    .filter(|i| well_formed && i.unsigned_abs() < (1 << 53));
                 let boxed = match n {
                     Some(i) => Some(self.box_val(I(i))?),
                     None => None,
