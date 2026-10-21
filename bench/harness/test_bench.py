@@ -77,6 +77,24 @@ def rss_doc(peaks, engine="node"):
     return result
 
 
+class WideCurve(unittest.TestCase):
+    def test_names_the_phases_past_twice_at_the_widest_doubling(self):
+        def row(n, codegen, lowering):
+            ms = dict.fromkeys(bench.NATIVE_PHASES, 1.0) | {"codegen_ms": codegen, "lowering_ms": lowering}
+            return {"program": f"wide_{n}", "median_ms": ms}
+        lo, hi = bench.WIDE_ROWS[-2:]
+        ratio, over = bench.wide_superlinear([row(lo, 3000.0, 100.0), row(hi, 11000.0, 200.0),
+                                              {"program": "fib", "median_ms": {}}])
+        self.assertEqual(over, ["codegen"])
+        self.assertAlmostEqual(ratio["lowering_ms"], 2.0)
+        self.assertEqual(bench.wide_superlinear([row(hi, 1.0, 1.0)]), (None, []))
+
+    def test_the_source_is_one_function_of_n_guarded_rows(self):
+        src = bench.wide_source(3)
+        self.assertEqual(src.count(" && n > -3 => "), 3)
+        self.assertIn('Console.print("{wide(2)} {wide(-5)} {wide(3)}")', src)
+
+
 class RssComparison(unittest.TestCase):
     def test_node_crossing_confirmed_blocks_even_with_only_one_peak(self):
         base = rss_doc([1000] * 5)

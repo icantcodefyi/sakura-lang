@@ -1469,22 +1469,51 @@ def build_native_cli():
     return lib.parent
 
 
+# The wide-function curve (design §17.240 (3), §17.308 (2b) (iv)): one function of n `&&`-guarded
+# rows, `deep_ir.rs`'s `fan_in` shape.
+WIDE_ROWS = (4096, 8192, 16384, 32768)
+
+
+def wide_source(n):
+    rows = "".join(f"    n if n < {i + 1} && n > -{n} => {i},\n" for i in range(n))
+    return (f"fn wide(x: Int) -> Int {{\n  match x {{\n{rows}    _ => -1,\n  }}\n}}\n\n"
+            f"pub fn main() -> Unit ! {{Console}} {{\n  Console.print(\"{{wide({n - 1})}} {{wide(-5)}} {{wide({n})}}\")\n}}\n")
+
+
+def wide_superlinear(results):
+    """Each phase's median at the widest row count over the one below it, and the phases past
+    2× (superlinear in rows; N2g's acceptance is at most 2×)."""
+    med = {r["program"]: r["median_ms"] for r in results if r["program"].startswith("wide_")}
+    hi, lo = f"wide_{WIDE_ROWS[-1]}", f"wide_{WIDE_ROWS[-2]}"
+    if hi not in med or lo not in med:
+        return None, []
+    ratio = {k: med[hi][k] / med[lo][k] if med[lo][k] else None for k in NATIVE_PHASES}
+    return ratio, [k[:-3] for k, v in ratio.items() if v is not None and v > 2]
+
+
 def cmd_compile_native(a):
-    """`sakura build --target native` of every benchmark program, 15 processes after a warm-up,
-    each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines (link reported beside the rest)."""
+    """`sakura build --target native` of every benchmark program and of the wide-function
+    curve's programs, 15 processes after a warm-up, each phase's p95 from the CLI's
+    `SAKURA_NATIVE_TIMINGS` lines (link reported beside the rest)."""
     os.environ["SAKURA_NATIVE_LIB_DIR"] = str(build_native_cli())
     os.environ.setdefault("SAKURA_CACHE_DIR", str(TARGET / "cache"))
     res = new_result({"command": "compile-native", "seed": SEED})
     status = EXIT_OK
     print("| Program | " + " | ".join(f"{k[:-3]} p95 ms" for k in NATIVE_PHASES) + " |\n|---|"
           + "---:|" * len(NATIVE_PHASES), flush=True)
-    for p in sorted(d.name for d in PROGRAMS.iterdir() if (d / "sakura" / "main.sak").exists()):
+    sources = [(p, PROGRAMS / p / "sakura" / "main.sak")
+               for p in sorted(d.name for d in PROGRAMS.iterdir() if (d / "sakura" / "main.sak").exists())]
+    for n in WIDE_ROWS:
+        path = TARGET / "native-wide" / f"wide_{n}.sak"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(wide_source(n))
+        sources.append((f"wide_{n}", path))
+    for p, source in sources:
         timings = TARGET / "native-timings" / f"{p}.jsonl"
         timings.parent.mkdir(parents=True, exist_ok=True)
         timings.unlink(missing_ok=True)
         os.environ["SAKURA_NATIVE_TIMINGS"] = str(timings)
-        cmd = [str(SAKURA), "build", "--target", "native", "--out-dir", str(TARGET / "native-out" / p),
-               str(PROGRAMS / p / "sakura" / "main.sak")]
+        cmd = [str(SAKURA), "build", "--target", "native", "--out-dir", str(TARGET / "native-out" / p), str(source)]
         try:
             for _ in range(16):
                 sh(cmd)
@@ -1502,6 +1531,12 @@ def cmd_compile_native(a):
                                "checksum": None})
         print(f"| {p} | " + " | ".join(f"{p95(phases[k]):.1f}" for k in NATIVE_PHASES) + " |", flush=True)
     os.environ.pop("SAKURA_NATIVE_TIMINGS")
+    ratio, over = wide_superlinear(res["results"])
+    res["meta"]["wide_ratio"] = ratio
+    if ratio:
+        print(f"wide {WIDE_ROWS[-1]} / {WIDE_ROWS[-2]} rows, median: "
+              + ", ".join(f"{k[:-3]} {v:.2f}×" for k, v in ratio.items() if v is not None)
+              + f"; superlinear: {', '.join(over) or 'none'}")
     Path(a.json).parent.mkdir(parents=True, exist_ok=True)
     Path(a.json).write_text(json.dumps(res, indent=1) + "\n")
     return status

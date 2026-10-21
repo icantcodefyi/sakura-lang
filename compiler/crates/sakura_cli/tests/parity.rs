@@ -743,8 +743,15 @@ fn native_agrees_with_js_on_run_mode_programs() {
             frames,
         )
     });
-    let (mut agree, mut failures) = (0, vec![]);
+    let (mut agree, mut failures, mut exact) = (0, vec![], 0);
     for (job, (js, mut twins, frames)) in jobs.iter().zip(runs) {
+        // The exact-i64 lane (plan M5 N2): a fixture with its own `@wasm` expectation is where
+        // JS stops at ±(2^53−1) and `i64` goes on; native is held to it.
+        if let Job::Fixture(path, d, _) = job
+            && expectation(path, d, "wasm").own
+        {
+            exact += 1;
+        }
         let (label, expect) = match job {
             Job::Fixture(path, d, _) => (
                 path.file_name().unwrap().to_string_lossy().into_owned(),
@@ -822,13 +829,14 @@ fn native_agrees_with_js_on_run_mode_programs() {
         }
     }
     eprintln!(
-        "native parity: {agree} of {} run-mode fixtures and examples agree with JS; {} known; \
-         {} failures",
+        "native parity: {agree} of {} run-mode fixtures and examples agree with JS; {exact} \
+         held to their exact-i64 expectation; {} known; {} failures",
         jobs.len(),
         KNOWN_NATIVE.len(),
         failures.len()
     );
     assert!(!jobs.is_empty(), "the corpus must not be empty");
+    assert!(exact > 0, "no fixture exercised the exact-i64 lane");
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
@@ -857,6 +865,75 @@ fn a_native_secret_never_reaches_output_trace_or_cassette() {
     for text in [&ran.stdout, &ran.stderr, &trace, &cassette] {
         assert!(!text.contains("demo-token"), "the secret leaked: {text}");
     }
+}
+
+/// Design §17.308 (2b) (ii): the gauge set on native. `deep_recursion_gauge.sak`'s recursions as
+/// a run-mode program (its tests wait for `sakura test --target native`: a direct recursion, a
+/// mutual one and a region entering a recursive one, each a million deep, then a defect a million
+/// calls down) and the run-mode deep-recursion fixtures run on native and on WASM, with twins
+/// and under `--no-direct`: the same output and the same `frames` and `restarts`, so a gauge
+/// abort restarts through frames where WASM's does.
+#[cfg(feature = "native")]
+#[test]
+fn native_counts_the_gauge_sets_frames_and_restarts_as_wasm() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(std::env::var_os("CI").is_none(), "node is missing");
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+    let semantics = manifest.join("../../tests/semantics");
+    let fixture = std::fs::read_to_string(semantics.join("deep_recursion_gauge.sak")).unwrap();
+    let defs = &fixture[..fixture.find("\ntest ").expect("the fixture's test block")];
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-gauge");
+    std::fs::create_dir_all(&tmp).unwrap();
+    let main = "\npub fn main() -> Unit ! {Console} {\n  \
+                Console.print(\"{sum(1_000_000)} {is_even(1_000_001)} {outer(1_000_000)}\")\n  \
+                Console.print(\"{sum_until(1_000_000)}\")\n}\n";
+    std::fs::write(tmp.join("gauge.sak"), format!("{defs}\n{main}")).unwrap();
+    let mut programs = vec![(tmp.join("gauge.sak"), tmp.clone())];
+    for name in [
+        "deep_sum",
+        "deep_countdown",
+        "mutual_recursion",
+        "deep_recursion_defect",
+        "direct_region_restart",
+    ] {
+        programs.push((semantics.join(format!("{name}.sak")), semantics.clone()));
+    }
+    let jobs: Vec<(&PathBuf, &PathBuf, &[&str])> = programs
+        .iter()
+        .flat_map(|(p, d)| [(p, d, &[][..]), (p, d, &["--no-direct"][..])])
+        .collect();
+    let failures: Vec<String> = par_map(&jobs, |(path, dir, flags)| {
+        let name = path.file_name().unwrap().to_string_lossy().into_owned();
+        let counts = |target: &str, var: &str| {
+            let stats = tmp.join(format!("{name}{}.{target}.stats", flags.concat()));
+            let _ = std::fs::remove_file(&stats);
+            let env = [
+                ("SAKURA_NATIVE_LIB_DIR", lib.as_path()),
+                (var, stats.as_path()),
+            ];
+            let run = run_env("native-gauge", "run", target, &name, dir, flags, &env);
+            let text = std::fs::read_to_string(&stats).unwrap_or_default();
+            let v: serde_json::Value =
+                serde_json::from_str(text.lines().last().unwrap_or("{}")).unwrap();
+            (run, (v["frames"].as_u64(), v["restarts"].as_u64()))
+        };
+        let (wasm, w) = counts("wasm", "SAKURA_WASM_STATS");
+        let (native, n) = counts("native", "SAKURA_NATIVE_STATS");
+        let why = compare(None, "run", &wasm, &native)
+            .or_else(|| (w.0.is_none() || w != n).then(|| format!("wasm {w:?}, native {n:?}")));
+        why.map(|w| format!("{name} {flags:?} (frames, restarts): {w}"))
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    assert!(failures.is_empty(), "{}", failures.join("\n\n"));
 }
 
 /// Design §17.175 (6): a compiler without the native backend refuses `--target native` with exit

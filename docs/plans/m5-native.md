@@ -225,12 +225,23 @@ native changes, nightly and on demand, and `ci.yml`'s scheduled Miri and Valgrin
 there. The first dispatched run, 39472738215, is green: Miri on both A hosts; ASan + LSan over
 the runtime, the native host and the in-process corpus; Memcheck over the compiled corpus (270 of
 270 both with twins and with `--no-direct`). The lanes are not branch-protection required
-(that is a remote setting). **Left of N2:** N2f the compile
-report's numbers at a quiet window on the reference host (`bench/bench compile-native` landed:
-per program, frontend, lowering, codegen, object and link p95 from `SAKURA_NATIVE_TIMINGS`;
-on a loaded laptop codegen is at most 49 ms (`deltablue`), object emission under 1 ms and the
-link 58–145 ms) and the `{js, wasm, native} × {ubuntu, macos}` matrix, plus test mode (`sakura test --target native`)
-once N1b's services land; `deep_recursion_gauge` and the exact-i64 lane.
+(that is a remote setting). **N2f (§17.308 (2b), 2026-10-21; numbers advisory, never
+blessed):** (iv) the wide-function curve on a release CLI (Apple-silicon laptop, min of 3):
+Cranelift's `define_function` 0.34, 1.0, 3.3 and 11.6 s at 4,096, 8,192, 16,384 and 32,768
+`&&`-guarded rows; our CLIF building 17–162 ms, frontend 37–256 ms and lowering 27–283 ms, all
+linear; object 1–9 ms; link about 72 ms. **The superlinear phase is Cranelift's** (regalloc2
+about 70%, the e-graph about 25%), so N2g's condition holds; §17.240's 30 s / 115 s were a
+debug build, where a Cranelift `debug_assert` walks the dominator path per block (REQUESTS
+2026-10-21, lane N2f). `bench compile-native` carries the curve (`wide_<rows>`,
+`meta.wide_ratio`) for (iii)'s counted run. (ii) `parity.rs` holds the gauge set on native to
+WASM's output, `frames` and `restarts`, twins and `--no-direct`: the gauge fixture's
+recursions as a run-mode program and the five run-mode deep-recursion fixtures; the gauge
+restored after a caught defect waits for N1's test mode. (i) is open: native parity holds the 10
+run-mode fixtures with a `@wasm` expectation to it and fails at 0, and the `{wasm, native}`
+against-the-evaluator form waits on REQUESTS' default. The CLI side of lane F landed: `native`
+is in `build`'s and `run`'s value lists everywhere, refused with exit 2 where it is not built,
+and `sakura build --target native` prints its one line. **Left of N2f:** (i); (iii) at the next
+beta's preparation commit.
 
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
 error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any
@@ -340,7 +351,7 @@ commit contains N3 and row M; "second" is the first after it that also contains 
 | WASM allocation-bound set: `nbody`, `sieve`, `spectral_norm`, `rbtree`, `binary_trees`, `deltablue` (§17.211 (5)) | first window after N0b (owned facts on the LIR, `List.set` on its owned path), then N3/N4's windows, WASM and native lanes | carried with their JS carries; no WASM-only representation work |
 | WASM frame cliffs after WS-W1/WS-W2 (§17.230 (2): an aborting clause, a performing lambda, `deltablue`'s closure-calling entries) | WS-W3's attribution, then WS-W4 (`performance-r1.md` §9), M5 | frames stay; the programs read at the windows with their carries |
 | Fan-in into the WASM dispatch loop (§17.236; plan `m3-completion-and-m4.md` §3.8 row 31): past about 16,000 guarded rows in one function V8's optimising tier aborts on the loop header's input count | M5, before `v0.2.0`, beside N2 (`sakura_codegen_native` reads the same LIR and is checked on the same fixture); never before the M4 window | the 0.1.0 notes state the limit; jumps grouped through one stub per 256-block chunk |
-| Native compile of one wide function (§17.240 (3)): superlinear, 30 s at 16,384 guarded rows, 115 s at 32,768 | N2f's per-phase report at 4,096–32,768 rows | the limit is stated on the native page; splitting one LIR function into several native functions is M5b |
+| Native compile of one wide function (§17.240 (3)): superlinear, 30 s at 16,384 guarded rows, 115 s at 32,768 (a debug build) | N2f's per-phase report at 4,096–32,768 rows: **measured, Cranelift's** (release: 3.3 s at 16,384, 11.6 s at 32,768; ours linear; advisory) | N2g, the split (§17.308 (2c)), may start |
 | `ptr64-v1` pointer profile (§17.169 (4)) | after N2's `offset32-v1` baseline is measured | `offset32-v1` only |
 
 ## 4. Sanitizer lanes (§17.173)
