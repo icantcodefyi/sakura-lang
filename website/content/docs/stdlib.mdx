@@ -627,6 +627,7 @@ type Status = Int where it >= 100 && it <= 599
 type Response = { status: Status, headers: List<(String, String)>, body: Payload }
 error HttpError(status: Option<Status>, reason: String)
 fn status(code: Int, body: String) -> Response requires code >= 100 && code <= 599
+fn status_json<T: Schema>(code: Int, value: T) -> Response requires code >= 100 && code <= 599
 fn ok_json<T: Schema>(value: T) -> Response
 fn html(h: Html) -> Response
 fn json<T: Schema>(r: Response, limit: Int) -> T ! {Fail<DecodeError | HttpError>}

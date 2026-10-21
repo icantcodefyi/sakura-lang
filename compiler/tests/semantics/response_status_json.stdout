@@ -1,0 +1,4 @@
+422 [("content-type", "application/json")]
+{"code":"invalid","detail":"quantity"}
+true
+true

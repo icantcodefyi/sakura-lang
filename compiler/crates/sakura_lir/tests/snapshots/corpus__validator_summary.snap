@@ -217,6 +217,8 @@ semantics/request_method_options_trace: 128 funcs, 1589 blocks, 249 dup, 954 dro
 semantics/request_payload_bytes_roundtrip: 28 funcs, 117 blocks, 11 dup, 49 drop, valid
 semantics/request_text_strict_utf8: 21 funcs, 106 blocks, 8 dup, 71 drop, valid
 semantics/response_bytes_limit: 8 funcs, 50 blocks, 4 dup, 31 drop, valid
+semantics/response_status_json: 11 funcs, 51 blocks, 0 dup, 15 drop, valid
+semantics/response_status_json_rejects_code: 6 funcs, 24 blocks, 0 dup, 4 drop, valid
 semantics/router_matches_through_urlpattern: 104 funcs, 1411 blocks, 229 dup, 801 drop, valid
 semantics/router_rejects_unsupported_pattern: 83 funcs, 1235 blocks, 194 dup, 693 drop, valid
 semantics/row_param_type: 6 funcs, 22 blocks, 4 dup, 15 drop, valid

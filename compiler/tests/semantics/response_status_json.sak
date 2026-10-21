@@ -1,0 +1,21 @@
+// milestone: M3
+// spec: design §17.294 RQ-6; §10.4
+
+// `Response.status_json(code, value)` is `ok_json`'s JSON body and content type at `code`, and
+// `ok_json(value)` is its short form at 200; the record-update spelling of a status stays valid.
+import std/request.{Text}
+import std/response.{Response, Status}
+
+type Problem = { code: String, detail: String }
+
+pub fn main() -> Unit ! {Console} {
+  let r = Response.status_json(422, Problem { code: "invalid", detail: "quantity" })
+  Console.print("{r.status} {r.headers}")
+  match r.body {
+    Text(s) => Console.print(s),
+    _ => Console.print("not text"),
+  }
+  Console.print("{Response.ok_json([1, 2]) == Response.status_json(200, [1, 2])}")
+  let updated = Response { ..Response.ok_json("x"), status: Status.from(201) }
+  Console.print("{updated == Response.status_json(201, "x")}")
+}

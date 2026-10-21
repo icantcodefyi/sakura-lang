@@ -368,6 +368,9 @@ Every breaking entry below, in the order a program meets it; the entries carry t
   module uses (a use in a value, a type, a pattern or a `@contract_test` attribute counts),
   with a machine-applicable fix that removes the name, or the whole `import` when nothing it
   brings is used, so `sakura fix` applies it. std's own modules are not checked.
+- `Response.status_json(code, value)` (design §17.294 RQ-6): `ok_json`'s JSON body and
+  content type at status `code` (`requires code >= 100 && code <= 599`); `ok_json(value)` is
+  its short form at 200, and `Response { ..Response.ok_json(value), status: … }` stays valid.
 
 ### Fixed
 

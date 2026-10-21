@@ -20,7 +20,18 @@ pub fn status(code: Int, body: String) -> Response
   requires code >= 100 && code <= 599
 { Response { status: Status.from(code), headers: [], body: Text(body) } }
 
-/// A 200 response with `value` encoded as JSON.
+/// A `code` response with `value` encoded as JSON: `ok_json`'s body and content type.
+pub fn status_json<T: Schema>(code: Int, value: T) -> Response
+  requires code >= 100 && code <= 599
+{
+  Response {
+    status: Status.from(code),
+    headers: [("content-type", "application/json")],
+    body: Text(Json.encode(value)),
+  }
+}
+
+/// A 200 response with `value` encoded as JSON, the short form of `status_json(200, value)`.
 pub fn ok_json<T: Schema>(value: T) -> Response {
   Response {
     status: Status.from(200),

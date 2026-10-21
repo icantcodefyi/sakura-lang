@@ -1,0 +1,14 @@
+// milestone: M3
+// expect-exit: 70
+// expect-defect: D020
+// spec: design §17.294 RQ-6; §7.2
+
+// `status_json` requires an HTTP status code in 100..=599: `600` is the caller's defect
+// (`D020`, blaming this call), as for `Response.status`.
+import std/response.{Response}
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  let r = Response.status_json(600, "late")
+  Console.print("never {r.status}")
+}
