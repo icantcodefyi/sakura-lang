@@ -50,8 +50,24 @@ explains (a program allocating without bound within the reference evaluator's st
 
 | Date (UTC) | Commit | Target | Host | Workers | Wall s | CPU-h | Corpus after | Findings |
 |---|---|---|---|---|---|---|---|---|
+| 2026-10-21 | `72e9d8480c22` | `exec` | github ubuntu-latest run 39637860914 | 1 | 240 | 0.1 | 256 | #9 |
+| 2026-10-21 | `72e9d8480c22` | `fmt_idempotent` | github ubuntu-latest run 39637860914 | 1 | 1839 | 0.5 | 4,337 | #8 |
+| 2026-10-21 | `72e9d8480c22` | `lir` | github ubuntu-latest run 39637860914 | 1 | 7011 | 1.9 | 4,774 | none |
+| 2026-10-21 | `72e9d8480c22` | `vc` | github ubuntu-latest run 39637860914 | 1 | 7963 | 2.2 | 5,452 | none |
+| 2026-10-21 | `72e9d8480c22` | `check` | github ubuntu-latest run 39637860914 | 1 | 13836 | 3.8 | 6,861 | none |
+| 2026-10-21 | `72e9d8480c22` | `parse` | github ubuntu-latest run 39637860914 | 1 | 20401 | 5.7 | 4,169 | none |
+| 2026-10-21 | `72e9d8480c22` | `row_unify` | github ubuntu-latest run 39637860914 | 1 | 20401 | 5.7 | 101 | none |
+| 2026-10-21 | `472dea56e094` | sanitizers (miri, asan, memcheck) | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | — | 1351 | — | — | none |
+| 2026-10-21 | `5b1f9430763e` | `parse` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 8 | 8703 | 19.3 | 108,681 | none |
+| 2026-10-21 | `a3e540779ac2` | `row_unify` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 12 | 5792 | 19.3 | 1,420 | none |
 
-Totals (CPU-h, rows at or after `611dae4f`): parse 0 · check 0 · fmt_idempotent 0 · row_unify 0 · lir 0 · vc 0 · exec 0.
+Totals (CPU-h, rows at or after `611dae4f`): parse 25.0 · check 3.8 · fmt_idempotent 0.5 · row_unify 25.0 · lir 1.9 · vc 2.2 · exec 0.1.
+
+The `check`, `lir` and `vc` rows of run 39637860914 each ended at one `oom-` artefact after two
+to four hours: the job's RSS had grown to 2 GiB around a live heap of about 300 MiB, and each
+input alone runs in under 5 s and 0.9 GiB on `main` of 2026-10-21, so they are stale (not findings). The
+local rows from `check` on run their workers' time as four shorter jobs each
+(`-jobs=4×workers`), which restarts a process before its RSS grows that far.
 
 CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` on this crate
 for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a
