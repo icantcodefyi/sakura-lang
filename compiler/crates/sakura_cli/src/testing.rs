@@ -120,7 +120,15 @@ pub fn run_node_tests(
         let permissions =
             serde_json::json!({"fs": {"read": [], "write": []}, "net": [], "env": []});
         cmd.env("SAKURA_PERMISSIONS", permissions.to_string());
-        return wait_tests(cmd, seed, filter, snapshots, update, limit);
+        return wait_tests(
+            "the native test executable",
+            cmd,
+            seed,
+            filter,
+            snapshots,
+            update,
+            limit,
+        );
     }
     let mut cmd = node();
     cmd.arg("--permission")
@@ -175,12 +183,13 @@ pub fn run_node_tests(
     } else {
         cmd.arg(dir.join("__sakura_test__.js"));
     }
-    wait_tests(cmd, seed, filter, snapshots, update, limit)
+    wait_tests("node", cmd, seed, filter, snapshots, update, limit)
 }
 
-/// Run the test runner `cmd` with `<seed> <filter> <snapshot-dir> <update>`, its stdout
-/// collected, killed past `limit`.
+/// Run the test runner `cmd` (`runner` names it in an error) with `<seed> <filter>
+/// <snapshot-dir> <update>`, its stdout collected, killed past `limit`.
 fn wait_tests(
+    runner: &str,
     mut cmd: std::process::Command,
     seed: u64,
     filter: &str,
@@ -196,7 +205,7 @@ fn wait_tests(
         .stdout(Stdio::piped());
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("cannot start the test runner: {e}"))?;
+        .map_err(|e| format!("cannot start {runner}: {e}"))?;
     let mut stdout = child.stdout.take().expect("piped stdout");
     let reader = std::thread::spawn(move || {
         let mut s = String::new();
