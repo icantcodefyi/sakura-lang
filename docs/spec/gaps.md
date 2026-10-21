@@ -166,6 +166,17 @@ observed with the published `sakuralang@1.0.0-beta.1`, not a source build.
 - **Same seed, two runs.** CC09's "every run" rests on the fixtures' pinned output, which each
   harness run compares; no test runs one seed twice in one process and compares traces.
 
+### Modules and imports
+
+- **Cycles count referenced names only.** Design §9 counts only names a module actually
+  references toward `V1030`; the fixture is a cycle of used imports, so the narrower rule is
+  unpinned.
+- **The prelude's contents.** Design §9 lists the prelude; programs across the corpus use its
+  names, but no fixture enumerates it or shows a non-prelude std name failing without an import
+  beyond `diag_explicit_imports`.
+- **std and `W1003`.** std's own modules are exempt from `W1003` (CHANGELOG); no test asserts the
+  exemption.
+
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,

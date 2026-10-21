@@ -9,6 +9,12 @@ retains earlier implementation history.
 
 ### Added
 
+- Draft semantics chapters in `docs/spec/`: evaluation and values, types and refinements,
+  effects and handlers, errors and defects, concurrency, and modules and imports. Each labelled
+  rule cites a checked-in fixture; behaviour without a fixture, and every place design and the
+  compiler disagree (such as `MIN % -1`), is informative and listed in `docs/spec/gaps.md`.
+  `spec_docs.py --check` counts the new labels. No compiler behaviour changes.
+
 - `Json.schema` (and so a `Tool`'s schema) states the bounds a refined type's `where` can say
   (design §17.293 MT-3, §17.298 (c)): the top-level `&&` conjuncts `String.len(it) <= n`/`>= n`
   become `maxLength`/`minLength`, `List.len(it)` `maxItems`/`minItems`, and `it <= n`/`>= n` on
