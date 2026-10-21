@@ -408,9 +408,12 @@ function asDefect(err) {
 /**
  * Entry point used by the emitted `__main__.js`: run `entry` (a CPS function of no arguments
  * that installs root handlers and calls `main`), then set the exit status:
- * 0 ok; 1 `main` failed with an uncaught error; 70 defect (design §12.1).
+ * 0 ok; 1 `main` failed with an uncaught error; 70 defect (design §12.1). In a worker's thread
+ * it runs that worker's entry instead (`runWorker`).
  */
 export function runMain(entry) {
+  const thread = workerThread();
+  if (thread !== null) return runWorker(thread);
   const done = (o) => {
     flushOut();
     if (o.kind === "ok") return;
@@ -4309,6 +4312,251 @@ export function channel_close(ch) {
   ch.closed = true;
   wakeAll(ch.senders);
   wakeAll(ch.receivers);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Workers (`std/worker`, experimental; RFC 0002 §2.9, plan `web-apis.md` phase 11a). A live
+// worker is the program again in a `node:worker_threads` thread, running one `@worker`
+// function's entry (`$worker$<name>`, listed by `__main__.js`) with its own heap, and root
+// handlers built from its grants, which reach it as its `SAKURA_PERMISSIONS`. A link is one side
+// of the thread's port: `{ m: text }` is a message (the `Schema` codec's JSON), `{ ack: 1 }` one
+// taken, `{ end: [kind, code] }` the worker's entry ended. A side sends while the other holds
+// fewer than `capacity` unreceived messages and waits otherwise, as on a channel. Id 0 is a
+// worker's link to its parent; 1, 2, … the workers an instance spawned.
+//
+// Topics are per instance (`topics`, used by `Worker.inline()` too) and reach the process's
+// other threads through one `BroadcastChannel` per name, asynchronously, uncounted, and dropped
+// where a queue is full.
+
+const WORKER_LIMIT = 16;
+let workerUrl = null;
+/** `@worker` function value → `{ key, effects }`, and key → its entry. */
+const workerFns = new Map();
+const workerRuns = new Map();
+const workerLinks = new Map();
+let workerNext = 1;
+
+/** `__main__.js`: the program's `@worker` functions, each `[fn, key, entry, effects]`. */
+export function registerWorkers(url, list) {
+  workerUrl = url;
+  for (const [fn, key, run, effects] of list) {
+    workerFns.set(fn, { key, effects });
+    workerRuns.set(key, run);
+  }
+}
+
+/** `node:worker_threads` when this thread runs a worker's entry, else `null`. */
+function workerThread() {
+  const wt = proc?.getBuiltinModule?.("node:worker_threads");
+  return wt && !wt.isMainThread && wt.workerData?.sakuraWorker !== undefined ? wt : null;
+}
+
+function workerLink(port, capacity) {
+  const l = { port, credits: capacity, inbox: [], end: null, gone: false, exited: null };
+  l.senders = [];
+  l.receivers = [];
+  port.on("message", (msg) => {
+    if (msg.m !== undefined) {
+      l.inbox.push(msg.m);
+      wakeAll(l.receivers);
+    } else if (msg.ack !== undefined) {
+      l.credits++;
+      wakeAll(l.senders);
+    } else if (msg.end !== undefined) {
+      workerEnded(l, msg.end);
+    }
+  });
+  return l;
+}
+
+function workerEnded(l, end) {
+  l.end ??= end;
+  wakeAll(l.senders);
+  wakeAll(l.receivers);
+}
+
+/** A worker's thread: run its entry, then tell the parent how it ended. */
+function runWorker(wt) {
+  const { sakuraWorker: key, capacity } = wt.workerData;
+  const port = wt.parentPort;
+  workerLinks.set(0, workerLink(port, capacity));
+  const end = (kind, code) => {
+    flushOut();
+    port.postMessage({ end: [kind, code] });
+    // The thread ends once nothing else holds it.
+    port.unref();
+  };
+  // One plain line, not a defect record: the program goes on, and its parent has the code.
+  const done = (o) => {
+    if (o.kind === "ok") return end(1, "");
+    if (o.kind === "fail") {
+      writeErr(`error: worker ${key} failed with ${show(o.error, null)}`);
+      return end(2, "fail");
+    }
+    writeErr(`error: worker ${key} ended on ${o.code}: ${o.message}`);
+    return end(2, o.code);
+  };
+  const exit = (e) => {
+    if (!(e instanceof Exit)) throw e;
+    end(2, `exit ${e.code}`);
+  };
+  try {
+    const o = runTask(workerRuns.get(key));
+    return o instanceof Promise ? o.then(done, exit) : done(o);
+  } catch (e) {
+    return exit(e);
+  }
+}
+
+/** Whether every entry of `t`'s lists is in this instance's own table (`null`: no limits). */
+function grantsWithin(t, own) {
+  if (own === null) return true;
+  const within = (xs, ys) => xs.every((x) => (ys ?? []).includes(x));
+  return (
+    within(t.fs.read, own.fs?.read) &&
+    within(t.fs.write, own.fs?.write) &&
+    within(t.net, own.net) &&
+    within(t.env, own.env)
+  );
+}
+
+/** `sakura run`'s refusal of `main` (design §6.2), for a worker's declared `effects`. */
+function workerDenied(effects, t) {
+  const net = ["Http", "Serve", "Sql", "WebSocket"];
+  return effects.some(
+    (e) => (e === "Fs" && t.fs.read.length === 0) || (net.includes(e) && t.net.length === 0),
+  );
+}
+
+/**
+ * `worker_start([entry], fs_read, fs_write, net, env, capacity)`: a live worker running
+ * `entry`'s entry with exactly these grants, and its id; -1 when they are not within this
+ * instance's own table or refuse an effect `entry` declares, -2 at `WORKER_LIMIT` live workers.
+ */
+export function worker_start(entry, fsRead, fsWrite, net, env, capacity) {
+  const fn = workerFns.get(toArray(entry)[0]);
+  if (fn === undefined) {
+    throw new Defect("D090", "a live worker runs only a function declared with `@worker`");
+  }
+  if (workerLinks.size - (workerLinks.has(0) ? 1 : 0) >= WORKER_LIMIT) return -2;
+  const table = {
+    fs: { read: toArray(fsRead), write: toArray(fsWrite) },
+    net: toArray(net),
+    env: toArray(env),
+  };
+  if (!grantsWithin(table, granted()) || workerDenied(fn.effects, table)) return -1;
+  const vars = { ...proc.env, SAKURA_PERMISSIONS: JSON.stringify(table) };
+  delete vars.SAKURA_TRACE;
+  const { Worker } = proc.getBuiltinModule("node:worker_threads");
+  const thread = new Worker(new URL(workerUrl), {
+    workerData: { sakuraWorker: fn.key, capacity },
+    env: vars,
+  });
+  const l = workerLink(thread, capacity);
+  l.exited = new Promise((resolve) => {
+    thread.once("exit", () => {
+      l.gone = true;
+      workerEnded(l, [2, "D090"]);
+      resolve();
+    });
+  });
+  // An error outside the entry's task: the heap limit, or a runtime bug.
+  thread.on("error", (e) =>
+    workerEnded(l, [2, e?.code === "ERR_WORKER_OUT_OF_MEMORY" ? "D096" : "D090"]),
+  );
+  const id = workerNext++;
+  workerLinks.set(id, l);
+  return id;
+}
+
+/** Terminate worker `id` (a finalizer: it does not wait for the thread). */
+function workerStop(id) {
+  const l = workerLinks.get(id);
+  if (l === undefined) return;
+  workerLinks.delete(id);
+  l.port.terminate();
+}
+
+/** `worker_closing(id, body)`: `body()`, then worker `id` terminated and its thread awaited. */
+export function worker_closing(id, body, ctx, k) {
+  const exited = workerLinks.get(id).exited;
+  const joined = (v) => suspend(exited, () => ret(k, v));
+  return finalize(ctx, () => workerStop(id), (c, kk) => body(c, kk), joined);
+}
+
+/** `worker_post(id, text)`: 0 sent, 2 once the other side has ended; waits for a credit. */
+export function worker_post(id, text, _ctx, k) {
+  const l = workerLinks.get(id);
+  const attempt = () => {
+    if (l === undefined || l.end !== null) return ret(k, 2);
+    if (l.credits > 0) {
+      l.credits--;
+      l.port.postMessage({ m: text });
+      return ret(k, 0);
+    }
+    return channelWait(l.senders, attempt);
+  };
+  return attempt();
+}
+
+/** `worker_take(id)`: `[0, text]`, then `l.end` (`[1, ""]` finished, `[2, code]` failed). */
+export function worker_take(id, _ctx, k) {
+  const l = workerLinks.get(id);
+  const attempt = () => {
+    if (l === undefined) return ret(k, [1, ""]);
+    if (l.inbox.length > 0) {
+      const text = l.inbox.shift();
+      if (!l.gone) l.port.postMessage({ ack: 1 });
+      return ret(k, [0, text]);
+    }
+    if (l.end !== null) return ret(k, l.end);
+    return channelWait(l.receivers, attempt);
+  };
+  return attempt();
+}
+
+/** Topic name → this instance's subscription queues (channels), and its `BroadcastChannel`. */
+const workerTopics = new Map();
+const workerTopicPorts = new Map();
+
+function workerTopicPort(name) {
+  let bc = workerTopicPorts.get(name);
+  if (bc === undefined && globalThis.BroadcastChannel !== undefined) {
+    bc = new BroadcastChannel(`sakura-topic:${name}`);
+    bc.onmessage = (e) => workerTopicDeliver(name, e.data);
+    bc.unref?.();
+    workerTopicPorts.set(name, bc);
+  }
+  return bc;
+}
+
+/** Queue `text` on every subscription of `name` here: 1 if one was full, else 0. */
+function workerTopicDeliver(name, text) {
+  let full = 0;
+  for (const ch of workerTopics.get(name) ?? []) {
+    if (channel_try_send(ch, text) === 1) full = 1;
+  }
+  return full;
+}
+
+/** `topic_subscribe(name, capacity, body)`: `body(queue)` with the queue registered. */
+export function topic_subscribe(name, capacity, body, ctx, k) {
+  const ch = { cap: capacity, items: [], closed: false, senders: [], receivers: [] };
+  let subs = workerTopics.get(name);
+  if (subs === undefined) workerTopics.set(name, (subs = new Set()));
+  subs.add(ch);
+  workerTopicPort(name);
+  const end = () => {
+    subs.delete(ch);
+    if (subs.size === 0 && workerTopics.get(name) === subs) workerTopics.delete(name);
+    channelEnd(ch);
+  };
+  return finalize(ctx, end, (c, kk) => body(ch, c, kk), k);
+}
+
+export function topic_publish(name, text) {
+  workerTopicPort(name)?.postMessage(text);
+  return workerTopicDeliver(name, text);
 }
 
 // ---------------------------------------------------------------------------------------------

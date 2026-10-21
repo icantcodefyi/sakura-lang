@@ -10,7 +10,10 @@ Status: every module checks clean and its `test` blocks pass under `sakura test 
 Every module runs on the JavaScript and WebAssembly backends. `std/crypto`'s primitives are
 `node:crypto` on JavaScript, the Node host's on WebAssembly (`hosted` imports, ABI 1.6.0; tier
 1b's, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519, at 1.9.0) and the RustCrypto and
-dalek crates on native.
+dalek crates on native. `std/worker` is experimental, outside the 1.0 contract: its
+`Worker.inline()` runs on every backend, while topics and `Worker.host()`'s live workers are the
+JavaScript host's only (a `main` that declares `Worker` exits 75 at startup on WebAssembly and
+native).
 
 ## Prelude
 
@@ -73,6 +76,7 @@ when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.se
 | Query a database | `sql` templates, `Sql.query`; `Sql.memory` for tests |
 | Call a model or run tools | `Prompt`, `Llm`, `Tool`, `Agent`, `Budget`; `Llm.scripted` for tests |
 | Retry, time or parallelize work | `retry`, `Clock`, `Random`, `std/task.timeout`, `std/task.par_map`, `std/task.every`, `Task.cancel` |
+| Run work in a second instance (experimental) | `@worker`, `Worker.spawn`, `send`, `recv`, `Grants.none`; `Worker.topic`, `publish`, `subscribe`; `Worker.inline()` for tests |
 | Test effects deterministically | `Test`, `Console.captured`, `Console.scripted`, `Clock.fixed`, `Http.scripted`, `Serve.scripted`, `WebSocket.scripted` |
 
 ## Complexity and behaviour notes
@@ -170,6 +174,7 @@ html → core             router → request, response, url, urlpattern
 serve → request, response, router, url, encoding
 http → request, response, url, duration, fs, path, stream          budget   prompt
 websocket → url, stream, string, bytes, list, map
+worker → channel, json, list   (+ Task for `Worker.inline()`)
 llm → budget, core, fs, http, path, prompt, task, untrusted               sql → fs, path
 tool → llm              agent → budget, core, llm, prompt, tool
 ```
@@ -1075,6 +1080,38 @@ fn messages(sock: Socket) -> Source<Message, {WebSocket, Fail<SocketError>}>
 fn host() -> Handler<WebSocket>
 type ScriptStep = Reply(Message, Message) | Push(Message) | Close(Int, String)
 fn scripted(script: List<ScriptStep>) -> Handler<WebSocket>
+```
+
+### `std/worker` (experimental)
+
+```sakura fragment
+type Permissions = { fs_read: List<String>, fs_write: List<String>, net: List<String>, env: List<String> }
+opaque type Grants = { table: Permissions }
+fn none() -> Grants
+fn of(table: Permissions) -> Grants
+type WorkerReason = GrantExceeded | Limit | Defect(String) | Codec
+error WorkerError(reason: WorkerReason)
+type Received<T> = Message(T) | Finished | Failed(WorkerError)
+opaque type Port<S, R> = { id: Int, tx: Option<Sender<String>>, rx: Option<Receiver<String>> }    // @resource
+type WorkerHandle<I, O> = Port<I, O>
+type Inbox<I> = Port<Never, I>
+type Outbox<O> = Port<O, Never>
+opaque type Topic<T> = { name: String }
+effect Worker {
+  fn start<I, O, R, e>(entry: fn(Inbox<I>, Outbox<O>) -> Unit ! e, named: List<fn(Inbox<I>, Outbox<O>) -> Unit ! e>, grants: Grants, body: fn(WorkerHandle<I, O>) -> R ! e) -> Result<R, WorkerError> ! e
+  fn post<S, R>(p: Port<S, R>, text: String) -> Result<Unit, SendError>
+  fn take<S, R>(p: Port<S, R>) -> Received<String>
+  fn publish_text(name: String, text: String) -> Result<Unit, SendError>
+  fn subscribe_text<R, e>(name: String, capacity: Int, body: fn(Inbox<String>) -> R ! e) -> R ! e
+}
+fn spawn<I: Schema, O: Schema, R, e>(entry: fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker | e}, grants: Grants, body: fn(WorkerHandle<I, O>) -> R ! {Worker | e}) -> Result<R, WorkerError> ! {Worker | e}
+fn send<S: Schema, R>(p: Port<S, R>, m: S) -> Result<Unit, SendError> ! {Worker}
+fn recv<S, R: Schema>(p: Port<S, R>) -> Received<R> ! {Worker}
+fn topic<T: Schema>(name: String) -> Topic<T> requires String.len(name) <= 256
+fn publish<T: Schema>(t: Topic<T>, m: T) -> Result<Unit, SendError> ! {Worker}
+fn subscribe<T: Schema, R, e>(t: Topic<T>, capacity: Int, body: fn(Inbox<T>) -> R ! {Worker | e}) -> R ! {Worker | e} requires capacity > 0
+fn inline() -> Handler<Worker, {Task}>
+fn host() -> Handler<Worker>
 ```
 
 <!-- agent_docs: signatures end -->

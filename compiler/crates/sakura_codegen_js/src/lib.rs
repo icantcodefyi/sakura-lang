@@ -108,10 +108,43 @@ pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
     }
     if let Some(entry) = m.entry {
         let d = m.def(entry);
+        // `@worker` functions (RFC 0002 §2.9): the runtime finds a live worker's entry by the
+        // function value `Worker.spawn` received, and a worker thread runs it in place of `main`.
+        let (mut worker_imports, mut workers) = (String::new(), String::new());
+        if !m.workers.is_empty() {
+            let mut imports: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+            workers.push_str("registerWorkers(import.meta.url, [\n");
+            for w in &m.workers {
+                let (fun, def) = (&cx.def_names[w.fun.index()], &cx.def_names[w.def.index()]);
+                imports.entry(&m.def(w.fun).module).or_default().push(fun);
+                imports.entry(&m.def(w.def).module).or_default().push(def);
+                let effects: Vec<String> = w.effects.iter().map(|e| js_string(e)).collect();
+                let _ = writeln!(
+                    workers,
+                    "  [{fun}, {}, {def}, [{}]],",
+                    js_string(&w.key),
+                    effects.join(", ")
+                );
+            }
+            workers.push_str("]);\n");
+            for (module, names) in imports {
+                let _ = writeln!(
+                    worker_imports,
+                    "import {{ {} }} from \"./{}\";",
+                    names.join(", "),
+                    module_path(module)
+                );
+            }
+        }
+        let register = if workers.is_empty() {
+            ""
+        } else {
+            "registerWorkers, "
+        };
         files.push(OutputFile {
             path: "__main__.js".into(),
             text: format!(
-                "import {{ registerOps, runMain }} from \"./{RUNTIME_FILE}\";\n{all_modules}import {{ {name} }} from \"./{}\";\n\nregisterOps({effects});\nrunMain({name});\n",
+                "import {{ registerOps, {register}runMain }} from \"./{RUNTIME_FILE}\";\n{all_modules}import {{ {name} }} from \"./{}\";\n{worker_imports}\nregisterOps({effects});\n{workers}runMain({name});\n",
                 module_path(&d.module),
                 name = cx.def_names[entry.index()]
             ),

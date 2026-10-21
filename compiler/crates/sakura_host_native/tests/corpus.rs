@@ -22,7 +22,10 @@ use sakura_rt::native::{Instance, Limits, Outcome};
 
 /// Programs that need a standard service of N1b, with the reason (an empty table at N1b's end,
 /// or one justified there: design §17.170 (2)).
-const KNOWN_NATIVE: &[(&str, &str)] = &[];
+const KNOWN_NATIVE: &[(&str, &str)] = &[(
+    "semantics/worker_topic_fanout",
+    "`Worker.inline()` topics are JS-only builtins until web-APIs phase 11b (D090)",
+)];
 
 struct Program {
     name: String,
@@ -747,6 +750,11 @@ fn the_driver_refuses_a_root_effect_native_lacks() {
             &["Console", "WebSocket"],
             75,
             "`WebSocket` is not available on target `native`\n",
+        ),
+        (
+            &["Console", "Worker"],
+            75,
+            "`Worker` is not available on target `native`\n",
         ),
         (&["Console"], 0, ""),
     ] {

@@ -1,0 +1,47 @@
+// milestone: M3
+// spec: RFC 0002 §2.9 ("`Worker.inline()` is the deterministic test handler"); plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker-postmessage
+
+// The RFC's worker under `Worker.inline()`: the parent posts three byte strings and the worker
+// answers each with its length, every message through the codec a live worker uses; when the
+// callback returns, the worker is cancelled. A second worker sends two messages and returns, so
+// the parent receives them, then `Finished` for good. Under `Task.deterministic` the order is
+// the same on every backend.
+import std/worker.{Grants, Inbox, Message, Outbox, Worker}
+
+@worker
+fn sizes(inbox: Inbox<Bytes>, outbox: Outbox<Int>) -> Unit ! {Worker} {
+  var more = true
+  while more {
+    match Worker.recv(inbox) {
+      Message(b) => { let _ = Worker.send(outbox, b.len()) },
+      _ => { more = false },
+    }
+  }
+}
+
+@worker
+fn two(_inbox: Inbox<Int>, outbox: Outbox<String>) -> Unit ! {Worker} {
+  let _ = Worker.send(outbox, "first")
+  let _ = Worker.send(outbox, "second")
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(7) {
+    with Worker.inline() {
+      let r = Worker.spawn(sizes, Grants.none(), fn(w) {
+        for n in [3, 0, 5] {
+          let sent = Worker.send(w, Bytes.from_list(List.range(0, n)))
+          Console.print("sent {n}: {sent}")
+        }
+        for _ in [1, 2, 3] { Console.print("received {Worker.recv(w)}") }
+        "sizes done"
+      })
+      Console.print("{r}")
+      let s = Worker.spawn(two, Grants.none(), fn(w) {
+        for _ in [1, 2, 3, 4] { Console.print("received {Worker.recv(w)}") }
+      })
+      Console.print("{s}")
+    }
+  }
+}

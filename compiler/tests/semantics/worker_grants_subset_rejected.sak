@@ -1,0 +1,28 @@
+// milestone: M3
+// spec: RFC 0002 §2.9 ("`Grants` is a subset of the parent's `[permissions]` checked at spawn"), §3; plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker
+
+// A grant beyond the parent's table is refused at `spawn`, before the worker or the callback
+// runs. `Worker.inline()`'s parent table is the empty one `sakura test` runs under, so a `net`
+// entry is beyond it while `Grants.none()` is not.
+import std/worker.{Grants, Inbox, Outbox, Permissions, Worker}
+
+@worker
+fn idle(_inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Unit ! {Worker} {}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(1) {
+    with Worker.inline() {
+      let wide = Grants.of(Permissions {
+        fs_read: [],
+        fs_write: [],
+        net: ["example.com:443"],
+        env: [],
+      })
+      let refused = Worker.spawn(idle, wide, fn(_w) { Console.print("never printed") })
+      Console.print("net grant: {refused}")
+      let none = Worker.spawn(idle, Grants.none(), fn(_w) { "ran" })
+      Console.print("no grant: {none}")
+    }
+  }
+}

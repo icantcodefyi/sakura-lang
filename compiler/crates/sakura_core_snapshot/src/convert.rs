@@ -506,6 +506,9 @@ pub fn back(m: &v::Module) -> c::Module {
             })
             .collect(),
         entry: m.entry.map(c::DefId),
+        // Only the JS backend runs a worker's entry yet (RFC 0002 §2.9, plan phase 11a): the
+        // snapshot does not carry them.
+        workers: Vec::new(),
     }
 }
 

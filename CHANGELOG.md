@@ -35,6 +35,21 @@ retains earlier implementation history.
   a keyword: it names a field, not a binding; choose another name"). Since `error` became a
   field name such a binder parsed but no body could use it. A field named `error` is
   unaffected.
+- **`std/worker`, experimental** (RFC 0002 §2.9, plan `web-apis.md` phase 11a): outside the 1.0
+  contract, and it may change in any release. A function declared `@worker` runs as a second
+  instance of the program, with its own heap and root handlers, through
+  `Worker.spawn(entry, grants, body)`; `send` and `recv` carry messages through the `Schema`
+  codec, and `recv` returns `Message(v)`, `Finished` or `Failed(WorkerError)`. `Grants.none()`
+  and `Grants.of(Permissions { … })` must be a subset of the parent's `[permissions]` and give
+  each effect the entry declares its permission, or `spawn` is `Err(WorkerError(GrantExceeded))`;
+  at most 16 workers are live per instance (`Limit`); a worker's defect is
+  `Failed(WorkerError(Defect(code)))` and a message that does not decode `Codec`.
+  `Worker.topic(name)` with `publish` and `subscribe` is `BroadcastChannel`. `Worker.inline()`,
+  the deterministic test handler, runs a worker as a fiber of the same instance on every
+  target; `Worker.host()` runs live workers as threads on the JS target. On WASM and native a
+  `main` that declares `Worker` exits 75 at startup with "`Worker` is not available on target
+  `…`", and topics are `D090`, until phase 11b. `Worker.spawn` of a function not declared
+  `@worker` is `V1010`. No ABI change.
 
 ### Fixed
 

@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+Failed(WorkerError { reason: Codec })
+Message(2.5)
+Ok(())

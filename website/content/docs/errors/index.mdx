@@ -40,7 +40,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V1005](/docs/errors/V1005) | `unresolved_module` | An `import` names a module that does not exist in the snapshot, std, or the declared dependencies. |
 | [V1006](/docs/errors/V1006) | `private_item` | The item exists but this module cannot use it: it is not `pub`, or it is a constructor or field of a `pub opaque` type, which only the declaring module may use (design §9). |
 | [V1007](/docs/errors/V1007) | `wrong_kind` | A name resolved to the wrong kind of item for where it is used: an effect where a type is expected, a type where a value is expected, and so on. |
-| [V1010](/docs/errors/V1010) | `unknown_attribute` | Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, `@test_only` on items, and `@trust("reason")` as an expression (design §2.5). |
+| [V1010](/docs/errors/V1010) | `unknown_attribute` | Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, `@test_only`, `@resource` and `@worker` (experimental) on items, and `@trust("reason")` as an expression (design §2.5). |
 | [V1011](/docs/errors/V1011) | `missing_body` | A function has no body. |
 | [V1012](/docs/errors/V1012) | `mixed_union_alternatives` | `type X = A \| B` must be either all existing error tags (an error-union alias) or all new variants. |
 | [V1020](/docs/errors/V1020) | `recursive_lambda` | Local lambdas cannot refer to themselves. |

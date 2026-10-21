@@ -75,7 +75,7 @@ one branch of work, one gate run, one push to `main`, one changelog entry.
 | 8s | `std/websocket` server: `WebSocket.accept` inside a `Serve` handler, pure `handshake`, `origins`, `SAKURA_MAX_SOCKETS`, topics (`subscribe`/`unsubscribe`/`publish`) in the host (RFC §2.10; §17.289) | pre-rc, in the 1.0 contract (ABI 1.10.0, the first of 8s and 10 to be ready, §17.289 (11); readings and the owner's review list in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
 | 9 | `std/urlpattern` and `Router` on it | pre-rc (`b2fde35d`; §17.281) | Opus | landed |
 | 10 | `std/channel` (`with_channel`, since `with` is a keyword), and `Stream.buffer`/`tee` over it (§17.280 (4)) | pre-rc, in the 1.0 contract (ABI 1.12.0, the next free MINOR after 7c's 1.11.0: tag 19 `Channel`, `rt_code_channel_end`; native as JS and WASM through `rt`; readings in `compiler/REQUESTS.md` 2026-10-21) | Opus | landed |
-| 11 | `std/worker` (experimental) | first green minor | Opus | 10 |
+| 11 | `std/worker` (experimental) | first green minor; 11a (JS, inline, std; no ABI change) landed, 11b (WASM, native, topics in `rt`) next | Opus | 10 |
 | 12 | Docs, skill, inventory, prompt budget | with each phase; final pass pre-rc | Sol (mechanical), Opus (pages with code) | each phase |
 | R | Land research/15 and the fixture-vector tables | 0.1.0 (`3a027001`) | Sol | landed |
 
@@ -732,6 +732,19 @@ and the two bare-corpus WASM `KNOWN` rows need no plan row (§17.284 (6), (7)).
 - **Acceptance.** Inline fixtures green on three backends; live JS and WASM green; native
   green or refusing at startup with the message; the experimental label present in every
   place phase 12 lists.
+- **11a landed** (no ABI change). `std/worker`: `Port<S, R>` with `WorkerHandle`, `Inbox` and
+  `Outbox` as its aliases, `spawn -> Result<R, WorkerError>` sharing the entry's row, `send`,
+  `recv`, `Grants` over `Permissions`, `WorkerReason = GrantExceeded | Limit | Defect(String) |
+  Codec`, topics, `inline()` in Sakura over `std/channel` (every target), `host()` on
+  `node:worker_threads` (JS); `@worker` with `V1010` at a `spawn` of anything else, and Core's
+  `$worker$<name>` entries registered by `__main__.js`. WASM and native refuse a `main` that
+  declares `Worker` at startup (exit 75, "`Worker` is not available on target `…`"), and
+  topics are runtime builtins on JS only (`D090` elsewhere, a `KNOWN` row) until 11b. Fixtures
+  as listed but `worker_none_grants_cannot_fetch` and `worker_defect_reported_as_failed`,
+  which are `crates/sakura_cli/tests/workers.rs` (live threads), plus `worker_rejects_codec`,
+  `worker_host_refused_off_js` and `V1010_worker_spawn_untagged`; readings beyond the RFC (the
+  shared port type, the shared row, the empty inline table, topics' counting, no `close`) are
+  the REQUESTS entry.
 
 ### Phase 12: docs, skill, inventory, prompt budget
 

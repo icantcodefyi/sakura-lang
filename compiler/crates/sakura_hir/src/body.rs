@@ -517,6 +517,52 @@ impl<'a> BodyCx<'a> {
     }
 
     fn call(&mut self, n: &SyntaxNode) -> Expr {
+        let call = self.call_expr(n);
+        self.check_worker_entry(&call, n.text_range());
+        call
+    }
+
+    /// `Worker.spawn(f, …)` (RFC 0002 §2.9) takes a non-generic function declared with
+    /// `@worker`, since a live worker runs it by name in a second instance (`V1010`, as
+    /// `Tool.of`'s rule).
+    fn check_worker_entry(&mut self, call: &Expr, range: TextRange) {
+        let Expr::Call { callee, args, .. } = call else {
+            return;
+        };
+        let p = &self.cx.program;
+        let Expr::Path(Res::Def(d)) = self.body.exprs[*callee] else {
+            return;
+        };
+        // The name first: most calls are not to a `spawn`.
+        if p.def(d).name != "spawn"
+            || p.find_module("std", "worker")
+                .and_then(|m| p.lookup(m, "spawn"))
+                != Some(d)
+        {
+            return;
+        }
+        let ok = match args.first().map(|a| &self.body.exprs[*a]) {
+            // Already reported: an unresolved name or a parse error.
+            Some(Expr::Path(Res::Err) | Expr::Missing) => return,
+            Some(Expr::Path(Res::Def(d))) => {
+                let def = p.def(*d);
+                matches!(&def.kind, DefKind::Fn(f) if f.sig.generics.is_empty())
+                    && def.attrs.iter().any(|a| a.name == "worker")
+            }
+            _ => false,
+        };
+        if !ok {
+            let file = self.file();
+            self.cx.report(diag::error(
+                diag::UNKNOWN_ATTRIBUTE,
+                file,
+                range,
+                "`Worker.spawn` takes a non-generic function declared with `@worker`".to_string(),
+            ));
+        }
+    }
+
+    fn call_expr(&mut self, n: &SyntaxNode) -> Expr {
         let range = n.text_range();
         let callee = exprs(n).next();
         if let Some(c) = &callee

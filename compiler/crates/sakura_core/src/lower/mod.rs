@@ -41,26 +41,24 @@ pub struct Lowered {
 pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) -> Lowered {
     let mut l = Lower::new(program, typed);
     l.builtin_types();
-    let main = program
-        .packages
-        .iter()
-        .position(|p| p.name != "std")
-        .and_then(|pkg| {
-            let pkg = &program.packages[pkg];
-            let mut found = None;
-            for &mid in &pkg.modules {
-                if let Some(d) = program.lookup(mid, "main")
-                    && matches!(program.def(d).kind, hir::DefKind::Fn(_))
-                    && (found.is_none() || program.module(mid).path == "main")
-                {
-                    found = Some(d);
-                }
+    let package = program.packages.iter().position(|p| p.name != "std");
+    let main = package.and_then(|pkg| {
+        let pkg = &program.packages[pkg];
+        let mut found = None;
+        for &mid in &pkg.modules {
+            if let Some(d) = program.lookup(mid, "main")
+                && matches!(program.def(d).kind, hir::DefKind::Fn(_))
+                && (found.is_none() || program.module(mid).path == "main")
+            {
+                found = Some(d);
             }
-            found
-        });
-    if let Some(main) = main {
+        }
+        found
+    });
+    if let (Some(main), Some(package)) = (main, package) {
         let entry = l.entry(main);
         l.m.entry = entry;
+        l.workers(package);
     }
     for (mi, module) in program.modules.iter().enumerate() {
         let is_std = program.packages[module.package.0 as usize].name == "std";
@@ -409,36 +407,9 @@ impl<'p> Lower<'p> {
     /// `$entry`: build each root handler `main` declares, install them, call `main`.
     fn entry(&mut self, main: hir::DefId) -> Option<DefId> {
         let main_id = self.def(main);
-        let scheme = self.t.defs.get(&main)?;
-        let row = match self.t.interner.ty(scheme.ty) {
-            types::Type::Fn { row, .. } => *row,
-            _ => return None,
-        };
         let mut b = FnBuilder::new();
         let mut blk = Block::new();
-        for label in self.t.interner.row_data(row).labels.clone() {
-            let types::Effect::Def(eff) = label.effect else {
-                continue;
-            };
-            let host = self.p.lookup(eff.module, "host").filter(
-                |&h| matches!(&self.p.def(h).kind, hir::DefKind::Fn(f) if f.sig.params.is_empty()),
-            );
-            let Some(host) = host else {
-                let range = self.p.def(main).range;
-                let what = format!(
-                    "a root `{}` handler (the driver installs root handlers only for std \
-                     effects with a parameterless `host()`, limited by `[permissions]`)",
-                    self.p.def(eff).name
-                );
-                self.unsupported(main.module, range, &what);
-                continue;
-            };
-            let e = self.effect(eff);
-            let h = b.local(self.m.effect(e).name.to_lowercase(), Ty::Handler(e));
-            let callee = self.callee(host);
-            blk.push(h, Bind::Call(callee, vec![]));
-            blk.handle(local(h));
-        }
+        self.root_handlers(main, &mut b, &mut blk)?;
         let r = b.local("r", Ty::Unit);
         blk.push(r, Bind::Call(Atom::Global(main_id), vec![]));
         let body = blk.finish(Expr::Ret(local(r)));
@@ -449,6 +420,95 @@ impl<'p> Lower<'p> {
             ..self.m.defs[id.index()].clone()
         };
         Some(id)
+    }
+
+    /// Build and install into `blk` the root handler of each effect `f`'s declared row names
+    /// (its std `host()`); the effects' names, sorted. `None` when `f` is not a function.
+    fn root_handlers(
+        &mut self,
+        f: hir::DefId,
+        b: &mut FnBuilder,
+        blk: &mut Block,
+    ) -> Option<Vec<String>> {
+        let scheme = self.t.defs.get(&f)?;
+        let row = match self.t.interner.ty(scheme.ty) {
+            types::Type::Fn { row, .. } => *row,
+            _ => return None,
+        };
+        let mut names = Vec::new();
+        for label in self.t.interner.row_data(row).labels.clone() {
+            let types::Effect::Def(eff) = label.effect else {
+                continue;
+            };
+            names.push(self.p.def(eff).name.clone());
+            let host = self.p.lookup(eff.module, "host").filter(
+                |&h| matches!(&self.p.def(h).kind, hir::DefKind::Fn(f) if f.sig.params.is_empty()),
+            );
+            let Some(host) = host else {
+                let range = self.p.def(f).range;
+                let what = format!(
+                    "a root `{}` handler (the driver installs root handlers only for std \
+                     effects with a parameterless `host()`, limited by `[permissions]`)",
+                    self.p.def(eff).name
+                );
+                self.unsupported(f.module, range, &what);
+                continue;
+            };
+            let e = self.effect(eff);
+            let h = b.local(self.m.effect(e).name.to_lowercase(), Ty::Handler(e));
+            let callee = self.callee(host);
+            blk.push(h, Bind::Call(callee, vec![]));
+            blk.handle(local(h));
+        }
+        names.sort();
+        Some(names)
+    }
+
+    /// `$worker$<name>` for each `@worker` function of the program's package (RFC 0002 §2.9):
+    /// the root handlers its row declares, then `std/worker`'s `enter(f)`, which calls `f` on
+    /// the instance's own ports.
+    fn workers(&mut self, package: usize) {
+        let Some(enter) =
+            (self.p.find_module("std", "worker")).and_then(|m| self.p.lookup(m, "enter"))
+        else {
+            return;
+        };
+        let p = self.p;
+        for &mid in &p.packages[package].modules {
+            for &index in &p.module(mid).items {
+                let f = hir::DefId { module: mid, index };
+                let def = p.def(f);
+                // `Worker.spawn` takes only a non-generic one (`V1010`).
+                if !matches!(&def.kind, hir::DefKind::Fn(fd) if fd.sig.generics.is_empty())
+                    || !def.attrs.iter().any(|a| a.name == "worker")
+                {
+                    continue;
+                }
+                let fun = self.def(f);
+                let mut b = FnBuilder::new();
+                let mut blk = Block::new();
+                let Some(effects) = self.root_handlers(f, &mut b, &mut blk) else {
+                    continue;
+                };
+                let r = b.local("r", Ty::Unit);
+                let callee = self.callee(enter);
+                blk.push(r, Bind::Call(callee, vec![Atom::Global(fun)]));
+                let body = blk.finish(Expr::Ret(local(r)));
+                let module = self.module_name(mid);
+                let id = self.push_placeholder(&format!("$worker${}", def.name), module.clone());
+                self.m.defs[id.index()] = FnDef {
+                    locals: b.locals,
+                    body,
+                    ..self.m.defs[id.index()].clone()
+                };
+                self.m.workers.push(WorkerEntry {
+                    key: format!("{module}::{}", def.name),
+                    def: id,
+                    fun,
+                    effects,
+                });
+            }
+        }
     }
 
     /// The constant `V.from(lit)` (`V$lit`) for a literal coerced into refined type `V` at
@@ -490,23 +550,29 @@ impl<'p> Lower<'p> {
             return;
         };
         let inits = std::mem::take(&mut self.literal_inits);
-        let d = &mut self.m.defs[entry.index()];
-        let mut body = std::mem::replace(&mut d.body, Expr::Ret(unit()));
-        for c in inits.into_iter().rev() {
-            let ty = self.m.defs[c.index()].ret.clone();
+        // A worker's instance runs its own entry, never `$entry`.
+        let entries: Vec<DefId> = std::iter::once(entry)
+            .chain(self.m.workers.iter().map(|w| w.def))
+            .collect();
+        for entry in entries {
             let d = &mut self.m.defs[entry.index()];
-            d.locals.push(LocalDecl {
-                name: "lit".into(),
-                ty,
-            });
-            body = Expr::Let {
-                local: Local(d.locals.len() as u32 - 1),
-                bind: Bind::Call(Atom::Global(c), vec![]),
-                pos: None,
-                body: Box::new(body),
-            };
+            let mut body = std::mem::replace(&mut d.body, Expr::Ret(unit()));
+            for &c in inits.iter().rev() {
+                let ty = self.m.defs[c.index()].ret.clone();
+                let d = &mut self.m.defs[entry.index()];
+                d.locals.push(LocalDecl {
+                    name: "lit".into(),
+                    ty,
+                });
+                body = Expr::Let {
+                    local: Local(d.locals.len() as u32 - 1),
+                    bind: Bind::Call(Atom::Global(c), vec![]),
+                    pos: None,
+                    body: Box::new(body),
+                };
+            }
+            self.m.defs[entry.index()].body = body;
         }
-        self.m.defs[entry.index()].body = body;
     }
 
     /// A test body plus its wrapper `fn(seed)` that installs the deterministic defaults of

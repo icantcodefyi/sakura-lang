@@ -1,0 +1,26 @@
+// milestone: M3
+// spec: RFC 0002 §2.9 ("the only serialization that crosses an instance boundary is the `Schema` codec"), §4; plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker-postmessage
+
+// A message is copied through the `Schema` codec, JSON, which has no NaN: a NaN `Float` is
+// written as `null`, which does not decode as a `Float`, so the receiver gets
+// `Failed(WorkerError(Codec))` for that message and the next one as sent.
+import std/worker.{Grants, Inbox, Outbox, Worker}
+
+@worker
+fn floats(_inbox: Inbox<Int>, outbox: Outbox<Float>) -> Unit ! {Worker} {
+  let _ = Worker.send(outbox, Float.sqrt(-1.0))
+  let _ = Worker.send(outbox, 2.5)
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(2) {
+    with Worker.inline() {
+      let r = Worker.spawn(floats, Grants.none(), fn(w) {
+        Console.print("{Worker.recv(w)}")
+        Console.print("{Worker.recv(w)}")
+      })
+      Console.print("{r}")
+    }
+  }
+}

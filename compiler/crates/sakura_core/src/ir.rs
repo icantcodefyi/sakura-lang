@@ -87,6 +87,21 @@ pub struct Module {
     pub tests: Vec<Test>,
     /// `main`, if this unit is a program.
     pub entry: Option<DefId>,
+    /// The secondary entry of each `@worker` function of a program (RFC 0002 §2.9;
+    /// experimental): only the JS backend runs them yet.
+    pub workers: Vec<WorkerEntry>,
+}
+
+/// A `@worker` function `fun` and its entry `def` (`$worker$<name>`, no parameters): it builds
+/// the root handlers `fun`'s row declares, as `$entry` does for `main`, and calls `fun` on the
+/// instance's own ports. A live worker's host finds it by `key`, the function's qualified name.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WorkerEntry {
+    pub key: String,
+    pub def: DefId,
+    pub fun: DefId,
+    /// The std effects of `fun`'s declared row, sorted, as `main_effects` names them.
+    pub effects: Vec<String>,
 }
 
 impl Module {

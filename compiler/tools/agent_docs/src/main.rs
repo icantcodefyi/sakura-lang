@@ -174,7 +174,16 @@ fn std_signatures() -> String {
             if module.is_some() {
                 out.push_str("```\n\n");
             }
-            out.push_str(&format!("### `std/{}`\n\n```sakura fragment\n", s.module));
+            // Outside the 1.0 contract (STABILITY.md): `std/worker`, RFC 0002 §2.9.
+            let label = if s.module == "worker" {
+                " (experimental)"
+            } else {
+                ""
+            };
+            out.push_str(&format!(
+                "### `std/{}`{label}\n\n```sakura fragment\n",
+                s.module
+            ));
             module = Some(&s.module);
         }
         if s.kind == "effect" {

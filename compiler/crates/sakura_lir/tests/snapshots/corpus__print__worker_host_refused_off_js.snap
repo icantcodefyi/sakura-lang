@@ -1,0 +1,33 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 record std::worker::Grants | Grants 24b (table: word*)
+layout 6 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
+layout 7 record std::worker::Port | Port 40b (id: i64, tx: word*, rx: word*)
+layout 8 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
+layout 9 error std::worker::WorkerError | WorkerError 24b (reason: word*)
+layout 10 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
+layout 11 shape |  32b (word*, word*)
+layout 12 shape |  32b (i64, word*)
+layout 13 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::worker_host_refused_off_js, frame 0 slots []
+  b0():
+    %0 lit: unit = const ()
+    ret %0
+
+fn $entry#2 top -> unit ; main::worker_host_refused_off_js, frame 2 slots [%0 word*, %1 bool]
+  b0():
+    call host#1() -> b1()
+  b1(%0 worker: ptr):
+    handle_push %0
+    call main#0() -> b2()
+  b2(%1 r: unit) [handle]:
+    handle_pop
+    ret %1

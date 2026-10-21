@@ -1,0 +1,4 @@
+ending: ok
+--- stdout
+worker 17: WorkerError { reason: Limit }
+after: Ok("spawned")

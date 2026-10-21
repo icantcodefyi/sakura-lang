@@ -293,7 +293,9 @@ caller. `std/test`'s `expect_defect` is built on it.
   runMain($entry);
   ```
   The entry files (`__main__.js`, `__tests__.js`) also import every emitted module, so each
-  registers its classes (`$rt.def`) before host functions build std values.
+  registers its classes (`$rt.def`) before host functions build std values. A program with
+  `@worker` functions also imports them and their entries and calls `registerWorkers` before
+  `runMain` (Workers, below).
   `$entry` is a Core-generated function that builds the root handlers for the effects `main`
   declares (calling each std effect's `host()`), installs them, and calls `main`. `runMain`
   flushes stdout and sets `process.exitCode`: `0` ok; `1` if `main` fails with an uncaught
@@ -356,6 +358,34 @@ channel's senders or receivers while it is full or empty; `channel_try_send(ch, 
 2 closed) and `channel_close(ch)` never wait. Every change that may let a waiter go on (an item
 queued, an item taken, the close) resolves every waiter of the other kind in the order they
 waited, and each tries again; a cancelled waiter leaves its list (`suspend`'s cancel).
+
+**Workers** (`std/worker`, experimental, RFC 0002 §2.9, plan `web-apis.md` phase 11a). A program
+with `@worker` functions has, beside `$entry`, one Core entry `$worker$<name>` each (no
+parameters: it builds the root handlers the function's row declares and calls it on the ports
+to its parent), and `__main__.js` calls
+`registerWorkers(import.meta.url, [[fn, key, $worker$<name>, effects], …])` before `runMain`,
+`key` the function's qualified name and `effects` its row's std effects. `Worker.host()`'s
+`worker_start([fn], fs_read, fs_write, net, env, capacity)` finds `fn` by identity (it reaches
+the clause in a list, so `callback` does not wrap it), refuses grants beyond its own
+`SAKURA_PERMISSIONS` or leaving a declared effect without its permission (-1) and a 17th live
+worker (-2), and starts a `node:worker_threads` `Worker` on `__main__.js` with
+`workerData = { sakuraWorker: key, capacity }` and its grants as that thread's
+`SAKURA_PERMISSIONS` (`SAKURA_TRACE` removed); there `runMain` runs `runWorker`, which runs the
+key's entry instead of `$entry` and posts how it ended. A link (id 0 in a worker: its parent;
+1, 2, … the workers it spawned) carries `{ m: text }`, `{ ack: 1 }` and
+`{ end: [kind, code] }`; `worker_post(id, text, $ctx, $k)` (0, or 2 once the other side
+ended) waits while the other side holds `capacity` unacknowledged messages, and
+`worker_take(id, $ctx, $k)` answers `[0, text]`, then the end, `[1, ""]` or `[2, code]` (a
+defect's code, `"fail"` for an uncaught failure, `D096` for the thread's heap limit, `D090` for
+an unexplained exit). A worker that ends otherwise than by returning writes one plain
+`error: worker <key> …` line on stderr, not a defect record. `worker_closing(id, body, $ctx,
+$k)` runs `body()` under a finalizer that terminates the thread, and on return terminates it and
+awaits its exit. Topics: `topic_subscribe(name, capacity, body, $ctx, $k)` registers a channel
+(as `channel_with`'s) under `name` for `body`'s extent, and `topic_publish(name, text)` tries a
+send on each (1 if one was full, else 0) and posts `text` on the thread's one
+`BroadcastChannel("sakura-topic:<name>")`, which delivers it to the other threads' subscriptions
+the same way, unref'd and uncounted. `Worker.inline()` is std code over channels and `Task`, and
+uses the topic builtins too.
 
 ## 7. Values (design §13.4)
 

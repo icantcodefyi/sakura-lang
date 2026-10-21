@@ -1,0 +1,125 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 record std::worker::Grants | Grants 24b (table: word*)
+layout 8 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
+layout 9 record std::worker::Port | Port 40b (id: i64, tx: word*, rx: word*)
+layout 10 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
+layout 11 error std::worker::WorkerError | WorkerError 24b (reason: word*)
+layout 12 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
+layout 13 shape |  32b (word*, word*)
+layout 14 shape |  32b (i64, word*)
+layout 15 shape |  16b ()
+layout 16 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::worker_grants_subset_rejected, frame 7 slots [%2 word*, %9 word*, %12 word*, %16 bool, %18 word*, %21 word*, %25 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 r: ptr = $task_deterministic(%0)
+    handle_push %1
+    call inline#16() -> b1()
+  b1(%2 r: ptr) [handle]:
+    handle_push %2
+    %3 xs: ptr = alloc list()
+    %4 xs: ptr = alloc list()
+    %5 lit: ptr = const str 0
+    %6 xs: ptr = alloc list(%5)
+    %7 xs: ptr = alloc list()
+    %8 rec: ptr = alloc std::worker::Permissions(%3, %4, %6, %7)
+    call of#17(%8) -> b2()
+  b2(%9 r: ptr) [handle, handle]:
+    %10 f: ptr = closure main$1#18[]
+    %11 fn: ptr = const static closure idle$value#37
+    call spawn#20(%11, %9, %10) -> b3()
+  b3(%12 r: ptr) [handle, handle]:
+    %13 s: ptr = show %12
+    drop %12
+    %14 lit: ptr = const str 1
+    %15 s: ptr = concat %14, %13
+    drop %13
+    perform std::console::Console.print(%15) -> b4()
+  b4(%16 r: unit) [handle, handle]:
+    %17 box: word = box %16
+    drop %17
+    call none#21() -> b5()
+  b5(%18 r: ptr) [handle, handle]:
+    %19 f: ptr = closure main$2#22[]
+    %20 fn: ptr = const static closure idle$value#37
+    call spawn#20(%20, %18, %19) -> b6()
+  b6(%21 r: ptr) [handle, handle]:
+    %22 s: ptr = show %21
+    drop %21
+    %23 lit: ptr = const str 2
+    %24 s: ptr = concat %23, %22
+    drop %22
+    perform std::console::Console.print(%24) -> b7()
+  b7(%25 r: unit) [handle, handle]:
+    %26 box: word = box %25
+    %27 unbox: unit = unbox %26
+    drop %26
+    handle_pop
+    handle_pop
+    ret %27
+
+fn $entry#1 top -> unit ; main::worker_grants_subset_rejected, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn idle#2 top -> unit ; main::worker_grants_subset_rejected, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 _inbox: ptr, %1 _outbox: ptr):
+    drop %0
+    drop %1
+    %2 lit: unit = const ()
+    ret %2
+
+fn $worker$idle#5 top -> unit ; main::worker_grants_subset_rejected, frame 2 slots [%0 word*, %2 bool]
+  b0():
+    call host#3() -> b1()
+  b1(%0 worker: ptr):
+    handle_push %0
+    %1 fn: ptr = const static closure idle$value#37
+    call enter#4(%1) -> b2()
+  b2(%2 r: unit) [handle]:
+    handle_pop
+    ret %2
+
+fn main$1#18 lambda -> word ; main::worker_grants_subset_rejected, captures [], frame 3 slots [%0 word*, %1 word*, %3 bool]
+  b0(%0 env: ptr, %1 _w: word):
+    drop %0
+    drop %1
+    %2 lit: ptr = const str 3
+    perform std::console::Console.print(%2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+
+fn main$2#22 lambda -> word ; main::worker_grants_subset_rejected, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 _w: word):
+    drop %0
+    drop %1
+    %2 lit: ptr = const str 4
+    ret %2
+
+fn idle$value#37 adapter of idle#2 -> word ; main::worker_grants_subset_rejected, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr, %1 arg: word, %2 arg: word):
+    drop %0
+    call idle#2(%1, %2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4

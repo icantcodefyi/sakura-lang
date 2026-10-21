@@ -26,15 +26,17 @@ use common::*;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// Fixtures that do not agree yet, and why. Empty since W2 (plan §3.7 row 3); a fixture
-/// that WASM cannot run yet goes here with the reason.
-const KNOWN: &[(&str, &str)] = &[];
+/// Fixtures that do not agree yet, and why. Empty from W2 (plan §3.7 row 3) to web-APIs phase
+/// 11a; a fixture that WASM cannot run yet goes here with the reason.
+const KNOWN: &[(&str, &str)] = &[(
+    "worker_topic_fanout.sak",
+    "`std/worker` topics' queues are the JS runtime's until web-APIs phase 11b (`D090` on WASM)",
+)];
 
 struct Run {
     code: Option<i32>,
     stdout: String,
-    /// Read by the native comparison's declared refusals.
-    #[cfg_attr(not(feature = "native"), expect(dead_code))]
+    /// Read by the declared refusals (`expect-stderr@<backend>`).
     stderr: String,
     defect: Option<Defect>,
     trace: String,
@@ -201,6 +203,12 @@ fn compare(
             for (b, e, r) in [("js", &ej, js), ("wasm", &ew, wasm)] {
                 if r.code != Some(e.exit) {
                     return Some(format!("{b}: exit {:?}, expected {}", r.code, e.exit));
+                }
+                // A startup refusal's one line (RFC 0002 §7; `Worker` on WASM, phase 11a).
+                if let Some(want) = d.get(&format!("expect-stderr@{b}"))
+                    && r.stderr != format!("{want}\n")
+                {
+                    return Some(format!("{b}: stderr {:?}, expected {want:?}", r.stderr));
                 }
                 if let Some(code) = &e.defect
                     && r.defect.as_ref().map(|d| &d.code) != Some(code)
@@ -660,7 +668,10 @@ fn wasm_twins_agree_with_wasm_frames() {
 /// Run-mode fixtures the native backend cannot run yet, and why; one that starts agreeing fails
 /// the test until it is removed (as [`KNOWN`]).
 #[cfg(feature = "native")]
-const KNOWN_NATIVE: &[(&str, &str)] = &[];
+const KNOWN_NATIVE: &[(&str, &str)] = &[(
+    "worker_topic_fanout.sak",
+    "`std/worker` topics' queues are the JS runtime's until web-APIs phase 11b (`D090` on native)",
+)];
 
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and

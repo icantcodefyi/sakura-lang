@@ -240,9 +240,11 @@ Fixed:
 
     V1010 "unknown_attribute" RESOLVE,
 "Only these attributes exist in v0: `@tool`, `@llm`, `@external`, `@total`, `@contract_test`,
-`@deprecated`, `@server`, `@test_only` on items, and `@trust(\"reason\")` as an expression
-(design §2.5). Any other attribute is unknown, any attribute but `@trust` in expression position
-is rejected, and `Tool.of` takes only a function declared with `@tool` (§11.2).
+`@deprecated`, `@server`, `@test_only`, `@resource` and `@worker` (experimental) on items, and
+`@trust(\"reason\")` as an expression (design §2.5). Any other attribute is unknown, any
+attribute but `@trust` in expression position is rejected, `Tool.of` takes only a function
+declared with `@tool` (§11.2), and `Worker.spawn` only a non-generic function declared with
+`@worker` (RFC 0002 §2.9).
 
 Wrong:
     @pure

@@ -1,0 +1,46 @@
+// milestone: M3
+// spec: RFC 0002 §2.9 ("`Worker.topic` ... per-subscriber bounded queues with the same `SendError` on overflow"); plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/web-messaging.html#broadcasting-to-other-browsing-contexts
+
+// Two subscriptions of one topic, one queueing a single message and one four: the first
+// `publish` reaches both, the second finds the small one full, so that one misses it and the
+// result is `Err(Full)`. A worker's subscription receives what the parent publishes once it has
+// said it is ready, and nothing is delivered to a subscription after its callback has returned.
+import std/worker.{Grants, Inbox, Message, Outbox, Topic, Worker}
+
+@worker
+fn listener(_inbox: Inbox<Int>, outbox: Outbox<String>) -> Unit ! {Worker} {
+  let news: Topic<String> = Worker.topic("news")
+  Worker.subscribe(news, 4, fn(sub) {
+    let _ = Worker.send(outbox, "ready")
+    match Worker.recv(sub) {
+      Message(s) => { let _ = Worker.send(outbox, "worker got {s}") },
+      other => { let _ = Worker.send(outbox, "worker {other}") },
+    }
+  })
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(5) {
+    with Worker.inline() {
+      let news: Topic<String> = Worker.topic("news")
+      Worker.subscribe(news, 1, fn(small) {
+        Worker.subscribe(news, 4, fn(large) {
+          Console.print("one: {Worker.publish(news, "one")}")
+          Console.print("two: {Worker.publish(news, "two")}")
+          Console.print("small {Worker.recv(small)}")
+          Console.print("large {Worker.recv(large)}")
+          Console.print("large {Worker.recv(large)}")
+        })
+      })
+      let r = Worker.spawn(listener, Grants.none(), fn(w) {
+        Console.print("{Worker.recv(w)}")
+        Console.print("three: {Worker.publish(news, "three")}")
+        Console.print("{Worker.recv(w)}")
+        Console.print("{Worker.recv(w)}")
+      })
+      Console.print("{r}")
+      Console.print("four, no subscriber: {Worker.publish(news, "four")}")
+    }
+  }
+}

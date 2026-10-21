@@ -1,0 +1,12 @@
+// milestone: M3
+// expect: V1010
+// spec: RFC 0002 §2.9 ("a function marked `@worker`"); plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker
+
+// A live worker runs its entry by name in a second instance, so `Worker.spawn` takes only a
+// non-generic function declared with `@worker`, never a lambda or an undeclared function.
+import std/worker.{Grants, Inbox, Outbox, Worker}
+
+fn echo(_inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Unit ! {Worker} {}
+
+pub fn run() -> Unit ! {Worker} { let _ = Worker.spawn(echo, Grants.none(), fn(_w) { 1 }) }

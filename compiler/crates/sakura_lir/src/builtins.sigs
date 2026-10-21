@@ -138,9 +138,15 @@ task_deterministic: (i64) -> ptr
 task_host: () -> ptr
 test_env: (ptr, ptr) -> ptr
 test_expect_defect: (ptr) -> unit cps
+topic_publish: (ptr, ptr) -> i64
+topic_subscribe: (ptr, i64, ptr) -> word cps
 untrusted_of: (word) -> ptr
 untrusted_validate: (ptr) -> ptr
 untrusted_value: (ptr) -> word
+worker_closing: (i64, ptr) -> word cps
+worker_post: (i64, ptr) -> i64 cps
+worker_start: (ptr, ptr, ptr, ptr, ptr, i64) -> i64
+worker_take: (i64) -> ptr cps
 ws_accept: (ptr, ptr) -> ptr
 ws_close: (i64, i64, ptr) -> ptr
 ws_connect: (ptr, ptr) -> ptr cps

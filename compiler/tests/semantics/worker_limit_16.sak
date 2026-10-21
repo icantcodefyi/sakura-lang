@@ -1,0 +1,30 @@
+// milestone: M3
+// spec: RFC 0002 §2.9, §6 ("at most 16 live workers per instance"); plan web-apis.md phase 11
+// Spec: https://html.spec.whatwg.org/multipage/workers.html#dom-worker
+
+// Sixteen workers are live at once, each spawned inside the previous one's callback; the
+// seventeenth is `Err(WorkerError(Limit))` and runs nothing. Once they have ended, a spawn
+// succeeds again.
+import std/worker.{Grants, Inbox, Outbox, Worker}
+
+@worker
+fn idle(inbox: Inbox<Int>, _outbox: Outbox<Int>) -> Unit ! {Worker} { let _ = Worker.recv(inbox) }
+
+fn nest(depth: Int) -> String ! {Worker} {
+  let r = Worker.spawn(idle, Grants.none(), fn(_w) {
+    if depth == 17 { "innermost" } else { nest(depth + 1) }
+  })
+  match r {
+    Ok(s) => s,
+    Err(e) => "worker {depth}: {e}",
+  }
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  with Task.deterministic(3) {
+    with Worker.inline() {
+      Console.print(nest(1))
+      Console.print("after: {Worker.spawn(idle, Grants.none(), fn(_w) { "spawned" })}")
+    }
+  }
+}

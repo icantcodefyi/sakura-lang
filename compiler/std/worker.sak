@@ -1,0 +1,306 @@
+// Workers (**experimental**: outside the 1.0 contract until the owner stabilizes it; RFC 0002
+// §2.9, §3, §6; plan `web-apis.md` phase 11). A worker is a second Sakura instance running one
+// function of the program declared `@worker`, with its own heap and its own root handlers, built
+// from the `Grants` it was spawned with exactly as `sakura run` builds `main`'s. Parent and
+// worker share no value: each message is copied through the `Schema` codec (the JSON
+// `Json.encode` writes), so closures, handlers, resources, `Secret` and `CryptoKey` cannot cross.
+// There are no listeners: a message is a value `recv` returns, so control flow is a `match`.
+//
+// `Worker.inline()` runs the worker as a fiber of the same instance through the same codec, the
+// deterministic handler for tests. `Worker.host()` (the root handler of a `main` that declares
+// `Worker`) runs it in a thread of the JS host; the WASM and native targets refuse it at startup
+// until they have the service (plan phase 11b).
+
+import std/channel
+import std/channel.{Receiver, SendError, Sender}
+
+/// The authority a worker runs with, shaped like `sakura.toml`'s `[permissions]`: the
+/// directories `Fs` may read and write, the `host:port` entries the network effects may reach,
+/// and the environment variables `Env` may read.
+pub type Permissions = {
+  fs_read: List<String>,
+  fs_write: List<String>,
+  net: List<String>,
+  env: List<String>,
+}
+
+/// A worker's grants: a subset of its parent's own `[permissions]`, entry by entry, checked at
+/// `spawn`. A grant never widens the parent's table.
+pub opaque type Grants = { table: Permissions }
+
+/// No authority at all: the isolation primitive (`ShadowRealm`'s place).
+pub fn none() -> Grants {
+  Grants { table: Permissions { fs_read: [], fs_write: [], net: [], env: [] } }
+}
+
+/// Exactly `table`, if it is a subset of the parent's.
+pub fn of(table: Permissions) -> Grants { Grants { table } }
+
+/// `GrantExceeded`: the grants are not a subset of the parent's table, or they leave an effect
+/// the entry declares without its permission (as `sakura run` refuses `main`). `Limit`: 16
+/// workers are live in this instance. `Defect(code)`: the worker ended on that defect (`"fail"`
+/// for an uncaught failure). `Codec`: a message did not decode as the receiver's type.
+pub type WorkerReason = GrantExceeded | Limit | Defect(String) | Codec
+
+pub error WorkerError(reason: WorkerReason)
+
+/// What `recv` returns: a message, `Finished` once the other side has ended and every message it
+/// sent has been received, or `Failed` (`ErrorEvent`, as a value).
+pub type Received<T> = Message(T) | Finished | Failed(WorkerError)
+
+/// One end of a worker's connection (`MessagePort`), sending `S` and receiving `R`. A resource:
+/// it lives as long as the callback or entry that received it.
+@resource
+pub opaque type Port<S, R> = { id: Int, tx: Option<Sender<String>>, rx: Option<Receiver<String>> }
+
+/// The parent's end: sends `I` to the worker, receives its `O`.
+pub type WorkerHandle<I, O> = Port<I, O>
+
+/// The worker's receiving end, and a topic subscription's.
+pub type Inbox<I> = Port<Never, I>
+
+/// The worker's sending end.
+pub type Outbox<O> = Port<O, Never>
+
+/// A named fan-out (`BroadcastChannel`) carrying `T`. Topics are process-wide: every
+/// subscription of a name, in any instance, receives what is published to it.
+pub opaque type Topic<T> = { name: String }
+
+/// The operations `spawn`, `send`, `recv`, `publish` and `subscribe` perform, over the codec's
+/// text; call those instead.
+pub effect Worker {
+  /// Starts `entry` (the same function, also inside `named`, which a live host looks up by
+  /// identity) with `grants` and runs `body` with the parent's end; the worker is cancelled and
+  /// joined when `body` returns.
+  fn start<I, O, R, e>(
+    entry: fn(Inbox<I>, Outbox<O>) -> Unit ! e,
+    named: List<fn(Inbox<I>, Outbox<O>) -> Unit ! e>,
+    grants: Grants,
+    body: fn(WorkerHandle<I, O>) -> R ! e,
+  ) -> Result<R, WorkerError>
+    ! e
+  /// Queues encoded text on `p`, waiting while the other side holds 64 unreceived messages.
+  fn post<S, R>(p: Port<S, R>, text: String) -> Result<Unit, SendError>
+  /// The oldest encoded message on `p`, waiting while there is none.
+  fn take<S, R>(p: Port<S, R>) -> Received<String>
+  /// Queues `text` for every subscription of topic `name`; `Err(Full)` if one was full.
+  fn publish_text(name: String, text: String) -> Result<Unit, SendError>
+  /// Runs `body` with a fresh subscription of topic `name` holding at most `capacity` messages.
+  fn subscribe_text<R, e>(name: String, capacity: Int, body: fn(Inbox<String>) -> R ! e) -> R ! e
+}
+
+/// Runs `entry`, a function declared `@worker`, as a worker with `grants`, and `body` with its
+/// handle (`new Worker`). When `body` returns the worker is cancelled and joined, as a fiber is;
+/// it also ends when `entry` returns, or on its defect, which `recv` reports as `Failed`.
+/// `Err(WorkerError(GrantExceeded))` or `Err(WorkerError(Limit))` and nothing runs otherwise.
+/// Each direction holds at most 64 unreceived messages; `send` waits beyond that.
+pub fn spawn<I: Schema, O: Schema, R, e>(
+  entry: fn(Inbox<I>, Outbox<O>) -> Unit ! {Worker | e},
+  grants: Grants,
+  body: fn(WorkerHandle<I, O>) -> R ! {Worker | e},
+) -> Result<R, WorkerError>
+  ! {Worker | e}
+{ Worker.start(entry, [entry], grants, body) }
+
+/// Sends `m` through `p` (`postMessage`), waiting while the receiver holds 64 unreceived
+/// messages; `Err(Closed)` once the receiver has ended.
+pub fn send<S: Schema, R>(p: Port<S, R>, m: S) -> Result<Unit, SendError> ! {Worker} {
+  Worker.post(p, Json.encode(m))
+}
+
+/// The oldest message on `p`, waiting while there is none (`onmessage`, as a value).
+pub fn recv<S, R: Schema>(p: Port<S, R>) -> Received<R> ! {Worker} {
+  match Worker.take(p) {
+    Message(text) => match Json.decode(text) {
+      Ok(v) => Message(v),
+      Err(_) => Failed(WorkerError { reason: Codec }),
+    },
+    Finished => Finished,
+    Failed(e) => Failed(e),
+  }
+}
+
+/// The topic `name` (at most 256 bytes) carrying `T`.
+pub fn topic<T: Schema>(name: String) -> Topic<T>
+  requires String.len(name) <= 256
+{ Topic { name } }
+
+/// Queues `m` for every current subscription of `t` (`BroadcastChannel.postMessage`); it never
+/// waits. A subscription whose queue is full misses it, and then the result is `Err(Full)`
+/// (only subscriptions in this instance are counted; one in another misses it uncounted).
+pub fn publish<T: Schema>(t: Topic<T>, m: T) -> Result<Unit, SendError> ! {Worker} {
+  Worker.publish_text(t.name, Json.encode(m))
+}
+
+/// Runs `body` with a subscription of `t` that queues at most `capacity` messages published
+/// from then on; it ends when `body` returns. `recv` on it waits while it is empty.
+pub fn subscribe<T: Schema, R, e>(
+  t: Topic<T>,
+  capacity: Int,
+  body: fn(Inbox<T>) -> R ! {Worker | e},
+) -> R
+  ! {Worker | e}
+  requires capacity > 0
+{ Worker.subscribe_text(t.name, capacity, fn(p) { body(Port { id: p.id, tx: p.tx, rx: p.rx }) }) }
+
+/// The deterministic handler for tests: a worker is a fiber of this instance running `entry`
+/// under the performer's handlers (its grants attenuate nothing), its messages encoded and
+/// decoded as a live worker's are. Its parent's table is the empty one `sakura test` runs
+/// under, so any grant but `none()` is `GrantExceeded`. A defect in the worker is the
+/// program's, and a failure reaches `spawn`'s caller, since both run in one instance.
+pub fn inline() -> Handler<Worker, {Task}> {
+  handler Worker {
+    // ponytail: a body that fails keeps its count, so a program that recovers from failed
+    // spawns reaches `Limit` early; count in a finalizer if that ever matters.
+    var live = 0
+    fn start(entry, _named, grants, body) {
+      if !granted_nothing(grants.table) {
+        Err(WorkerError { reason: GrantExceeded })
+      } else if live >= 16 {
+        Err(WorkerError { reason: Limit })
+      } else {
+        live = live + 1
+        let r = channel.with_channel(64, fn(to_tx: Sender<String>, to_rx: Receiver<String>) {
+          channel.with_channel(64, fn(from_tx: Sender<String>, from_rx: Receiver<String>) {
+            Task.scope(fn(s) {
+              let f = Task.spawn(s, fn() {
+                entry(
+                  Port { id: 0, tx: None, rx: Some(to_rx) },
+                  Port { id: 0, tx: Some(from_tx), rx: None },
+                )
+                from_tx.close()
+              })
+              let r = body(Port { id: 0, tx: Some(to_tx), rx: Some(from_rx) })
+              Task.cancel(f)
+              r
+            })
+          })
+        })
+        live = live - 1
+        Ok(r)
+      }
+    }
+    fn post(p, text) { post_local(p.tx, text) }
+    fn take(p) { take_local(p.rx) }
+    fn publish_text(name, text) { published(topic_publish(name, text)) }
+    fn subscribe_text(name, capacity, body) {
+      topic_subscribe(name, capacity, fn(rx) { body(Port { id: 0, tx: None, rx: Some(rx) }) })
+    }
+  }
+}
+
+/// The root handler the host installs for a `main` (or a worker's entry) that declares
+/// `Worker`: each worker a thread of the JS host running the program again, from the entry,
+/// with its root handlers built from its grants. At most 16 are live in an instance. The WASM
+/// and native targets refuse it at startup (plan phase 11b).
+pub fn host() -> Handler<Worker> {
+  handler Worker {
+    fn start(_entry, named, grants, body) {
+      let t = grants.table
+      let id = worker_start(named, t.fs_read, t.fs_write, t.net, t.env, 64)
+      if id == -1 {
+        Err(WorkerError { reason: GrantExceeded })
+      } else if id == -2 {
+        Err(WorkerError { reason: Limit })
+      } else {
+        Ok(worker_closing(id, fn() { body(Port { id, tx: None, rx: None }) }))
+      }
+    }
+    fn post(p, text) {
+      match p.tx {
+        Some(_) => post_local(p.tx, text),
+        None => if worker_post(p.id, text) == 0 { Ok(()) } else { Err(channel.Closed) },
+      }
+    }
+    fn take(p) {
+      match p.rx {
+        Some(_) => take_local(p.rx),
+        None => {
+          let r = worker_take(p.id)
+          match r.0 {
+            0 => Message(r.1),
+            1 => Finished,
+            _ => Failed(WorkerError { reason: Defect(r.1) }),
+          }
+        },
+      }
+    }
+    fn publish_text(name, text) { published(topic_publish(name, text)) }
+    fn subscribe_text(name, capacity, body) {
+      topic_subscribe(name, capacity, fn(rx) { body(Port { id: 0, tx: None, rx: Some(rx) }) })
+    }
+  }
+}
+
+/// A `@worker` function's entry (`$worker$<name>`, built by the compiler) calls it here, on the
+/// ports to its parent.
+fn enter<I, O, e>(entry: fn(Inbox<I>, Outbox<O>) -> Unit ! e) -> Unit ! e {
+  entry(Port { id: 0, tx: None, rx: None }, Port { id: 0, tx: None, rx: None })
+}
+
+fn granted_nothing(t: Permissions) -> Bool {
+  t.fs_read.len() + t.fs_write.len() + t.net.len() + t.env.len() == 0
+}
+
+fn post_local(tx: Option<Sender<String>>, text: String) -> Result<Unit, SendError> {
+  match tx {
+    Some(s) => if port_send(s, text) == 0 { Ok(()) } else { Err(channel.Closed) },
+    None => Err(channel.Closed),
+  }
+}
+
+fn take_local(rx: Option<Receiver<String>>) -> Received<String> {
+  match rx {
+    Some(r) => match port_recv(r) {
+      Some(text) => Message(text),
+      None => Finished,
+    },
+    None => Finished,
+  }
+}
+
+fn published(full: Int) -> Result<Unit, SendError> {
+  if full == 0 { Ok(()) } else { Err(channel.Full) }
+}
+
+/// `std/channel`'s queue operations, as the handlers' own (they wait as `channel.send` and
+/// `channel.recv` do).
+@external(js, "sakura_runtime", "channel_send")
+fn port_send(tx: Sender<String>, v: String) -> Int
+
+@external(js, "sakura_runtime", "channel_recv")
+fn port_recv(rx: Receiver<String>) -> Option<String>
+
+/// A fresh subscription queue of `capacity` registered under topic `name`, passed to `body`;
+/// unregistered, closed and emptied by a finalizer on every exit of `body`. 1 from
+/// `topic_publish` when a subscription in this instance was full.
+@external(js, "sakura_runtime", "topic_subscribe")
+fn topic_subscribe<R, e>(name: String, capacity: Int, body: fn(Receiver<String>) -> R ! e) -> R ! e
+
+@external(js, "sakura_runtime", "topic_publish")
+fn topic_publish(name: String, text: String) -> Int
+
+/// A live worker running `entry`'s first element with exactly the grants, and its id; -1 for
+/// `GrantExceeded`, -2 for `Limit`.
+@external(js, "sakura_runtime", "worker_start")
+fn worker_start<I, O, e>(
+  entry: List<fn(Inbox<I>, Outbox<O>) -> Unit ! e>,
+  fs_read: List<String>,
+  fs_write: List<String>,
+  net: List<String>,
+  env: List<String>,
+  capacity: Int,
+) -> Int
+
+/// `body()`, then the worker `id` terminated and its thread awaited; a finalizer terminates it
+/// on every other exit.
+@external(js, "sakura_runtime", "worker_closing")
+fn worker_closing<R, e>(id: Int, body: fn() -> R ! e) -> R ! e
+
+/// 0 queued, 2 the worker has ended.
+@external(js, "sakura_runtime", "worker_post")
+fn worker_post(id: Int, text: String) -> Int
+
+/// `(0, text)` a message, `(1, "")` finished, `(2, code)` failed with the defect `code`.
+@external(js, "sakura_runtime", "worker_take")
+fn worker_take(id: Int) -> (Int, String)

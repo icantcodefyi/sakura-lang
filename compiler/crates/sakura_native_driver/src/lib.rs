@@ -57,9 +57,9 @@ const _: () = assert!(size_of::<SakuraModule>() == 96);
 
 /// The std effects whose host service the native host does not implement: a `main` that
 /// leaves one to the runtime is refused at startup, exit 75, before any user code runs (RFC
-/// 0002 §7, design §17.271 (9); `WebSocket` since web-APIs phase 8); a use under a handler
-/// `main` installs is `D090` at first use.
-const UNAVAILABLE: &[&str] = &["Http", "Llm", "Serve", "WebSocket"];
+/// 0002 §7, design §17.271 (9); `WebSocket` since web-APIs phase 8, `Worker` since phase 11a);
+/// a use under a handler `main` installs is `D090` at first use.
+const UNAVAILABLE: &[&str] = &["Http", "Llm", "Serve", "WebSocket", "Worker"];
 
 /// The exit code of a program refused at startup (`sakura run`'s permission denial too).
 const EXIT_UNAVAILABLE: i32 = 75;

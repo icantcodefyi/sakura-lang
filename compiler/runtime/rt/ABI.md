@@ -402,7 +402,8 @@ must equal the driver's own triple.
 **Backend coverage** (RFC 0002 §7, design §17.271 (9)). The compiler lists `main`'s root
 effects (the std effects of its row after handling) in the module descriptor it hands the
 driver's entry, `sakura_native_main_v4`. After the record's check, the driver refuses a root
-effect whose service the native host does not implement (`Http`, `Serve`, `Llm`): one stderr
+effect whose service the native host does not implement (`Http`, `Serve`, `Llm`, `WebSocket`,
+`Worker`): one stderr
 line naming it, "`Http` is not available on target `native`", and exit 75, before the
 instance exists or any user code runs. A handler for one that the program installs itself is
 `D090` at first use ("a host operation the native host does not provide yet", exit 70;

@@ -163,6 +163,57 @@ The producer runs at most four items ahead of the consumer. Under `Task.determin
 
 Logical races with the outside world, such as two tasks reading and then writing the same database row, are still possible. The type system does not prove their absence.
 
+## Workers (experimental)
+
+<Callout type="warn" title="Experimental">
+  `std/worker` and the `@worker` attribute are outside the 1.0 contract and may change in any release. Live workers run on the JavaScript target only for now. On WebAssembly and native, a `main` that declares `Worker` exits 75 at startup, and topics are not available; `Worker.inline()` runs on every target.
+</Callout>
+
+A worker is `new Worker` without shared memory: a second instance of the program, running one function declared `@worker` with its own heap and its own root handlers. `Worker.spawn(entry, grants, body)` starts it and gives `body` a handle. `send` (`postMessage`) and `recv` (`onmessage`, as a value) carry messages through the `Schema` codec, so closures, handlers, resources and `Secret` cannot cross. `recv` returns `Message(v)`, `Finished` once the worker's function has returned and its messages are read, or `Failed(WorkerError)` when it ended on a defect (`ErrorEvent`). When `body` returns, the worker is cancelled, as a fiber is.
+
+```sakura
+import std/worker.{Grants, Inbox, Message, Outbox, Worker, WorkerError}
+
+@worker
+fn sizes(inbox: Inbox<Bytes>, outbox: Outbox<Int>) -> Unit ! {Worker} {
+  var more = true
+  while more {
+    match Worker.recv(inbox) {
+      Message(b) => {
+        let _sent = Worker.send(outbox, b.len())
+      },
+      _ => { more = false },
+    }
+  }
+}
+
+fn total(parts: List<Bytes>) -> Result<Int, WorkerError> ! {Worker} {
+  Worker.spawn(sizes, Grants.none(), fn(w) {
+    for p in parts { let _sent = Worker.send(w, p) }
+    var sum = 0
+    for _ in parts {
+      match Worker.recv(w) {
+        Message(n) => { sum = sum + n },
+        _ => {},
+      }
+    }
+    sum
+  })
+}
+
+test "a worker measures each part" {
+  with Task.deterministic(1), Worker.inline() {
+    expect_eq(total([Bytes.from_list([1, 2]), Bytes.from_list([3, 4, 5])]), Ok(5))
+  }
+}
+```
+
+- **Grants.** A worker's authority is its `Grants`: `Grants.none()`, the isolation `ShadowRealm` would give, or `Grants.of(table)` with lists shaped like `[permissions]`. They must be a subset of the parent's own table, and must give every effect the worker's function declares its permission, or `spawn` returns `Err(WorkerError(GrantExceeded))` and nothing runs. A worker spawns its own workers within its grants.
+- **Rows.** The worker's effects are part of `spawn`'s row, so a parent that spawns a worker declaring `Http` declares `Http` too.
+- **Limits.** At most 16 workers are live in an instance (`Limit`), and each direction holds 64 unreceived messages before `send` waits.
+- **Topics.** `Worker.topic(name)` is `BroadcastChannel`: `subscribe(topic, capacity, body)` gives `body` a bounded queue of what is published from then on, in any instance of the process, and `publish` never waits. A subscription in this instance whose queue is full misses the message, and `publish` returns `Err(Full)`.
+- **Tests.** `Worker.inline()` runs the worker as a fiber of the same instance through the same codec, so the test above needs no thread. It refuses any grant but `none()`, and the worker uses the test's own handlers.
+
 ## Detached work
 
 There is no fire-and-forget spawn and no detached work in v0: every fiber belongs to a scope. A supervisor for long-running work is deferred (design §16.14). A capability, or a handler that captured one, may not flow into a `Task.spawn` closure whose scope outlives the `with` that produced it (`V6002`).
@@ -257,6 +308,7 @@ The first backend compiles to JavaScript with a CPS trampoline and is single-thr
 - A capability or capturing handler does not escape into a task that outlives its scope (`V6002`).
 - A `Fiber<T>` does not outlive its scope.
 - A channel's `Sender` or `Receiver` is not returned from `with_channel`'s callback or kept in handler state (`V6003`).
+- `Worker.spawn` takes a non-generic function declared `@worker` (`V1010`), and a worker's message types have `Schema` (`V2032`).
 
 ## Next
 

@@ -1,0 +1,280 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::channel::Receiver
+layout 1 variant std::channel::SendError | Full 16b () | Closed 16b ()
+layout 2 variant std::channel::Sender
+layout 3 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 4 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 5 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 6 variant std::task::Fiber
+layout 7 variant std::task::Scope
+layout 8 record std::worker::Grants | Grants 24b (table: word*)
+layout 9 record std::worker::Permissions | Permissions 48b (fs_read: word*, fs_write: word*, net: word*, env: word*)
+layout 10 record std::worker::Port | Port 40b (id: i64, tx: word*, rx: word*)
+layout 11 variant std::worker::Received | Message 24b (word*) | Finished 16b () | Failed 24b (word*)
+layout 12 record std::worker::Topic | Topic 24b (name: word*)
+layout 13 error std::worker::WorkerError | WorkerError 24b (reason: word*)
+layout 14 variant std::worker::WorkerReason | GrantExceeded 16b () | Limit 16b () | Defect 24b (word*) | Codec 16b ()
+layout 15 shape |  32b (word*, word*)
+layout 16 shape |  32b (i64, word*)
+layout 17 shape |  16b ()
+layout 18 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::worker_topic_fanout, frame 12 slots [%2 word*, %5 word*, %9 word*, %10 word*, %11 word*, %12 word*, %15 word*, %16 word*, %18 bool, %19 word*, %22 word*, %26 bool]
+  b0():
+    %0 lit: i64 = const 5
+    %1 r: ptr = $task_deterministic(%0)
+    handle_push %1
+    call inline#27() -> b1()
+  b1(%2 r: ptr) [handle]:
+    handle_push %2
+    %3 lit: ptr = const str 0
+    %4 $site: i64 = const 6
+    call topic#17(%3, %4) -> b2()
+  b2(%5 r: ptr) [handle, handle]:
+    dup %5
+    %6 f: ptr = closure main$1#28[%5]
+    %7 lit: i64 = const 1
+    %8 $site: i64 = const 7
+    dup %5
+    call subscribe#24(%5, %7, %6, %8) -> b3(%5)
+  b3(%9 r: word, %10 r: ptr) [handle, handle]:
+    drop %9
+    call none#32() -> b4(%10)
+  b4(%11 r: ptr, %12 r: ptr) [handle, handle]:
+    dup %12
+    %13 f: ptr = closure main$2#33[%12]
+    %14 fn: ptr = const static closure listener$value#50
+    call spawn#35(%14, %11, %13) -> b5(%12)
+  b5(%15 r: ptr, %16 r: ptr) [handle, handle]:
+    %17 s: ptr = show %15
+    drop %15
+    perform std::console::Console.print(%17) -> b6(%16)
+  b6(%18 r: unit, %19 r: ptr) [handle, handle]:
+    %20 box: word = box %18
+    drop %20
+    %21 lit: ptr = const str 1
+    call publish#31(%19, %21) -> b7()
+  b7(%22 r: ptr) [handle, handle]:
+    %23 s: ptr = show %22
+    drop %22
+    %24 lit: ptr = const str 2
+    %25 s: ptr = concat %24, %23
+    drop %23
+    perform std::console::Console.print(%25) -> b8()
+  b8(%26 r: unit) [handle, handle]:
+    %27 box: word = box %26
+    %28 unbox: unit = unbox %27
+    drop %27
+    handle_pop
+    handle_pop
+    ret %28
+
+fn $entry#1 top -> unit ; main::worker_topic_fanout, frame 1 slots [%2 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    %1 task: ptr = $task_host()
+    handle_push %1
+    call main#0() -> b1()
+  b1(%2 r: unit) [handle, handle]:
+    handle_pop
+    handle_pop
+    ret %2
+
+fn listener#2 top -> unit ; main::worker_topic_fanout, frame 5 slots [%0 word*, %1 word*, %4 word*, %5 word*, %9 word*]
+  b0(%0 _inbox: ptr, %1 outbox: ptr):
+    drop %0
+    %2 lit: ptr = const str 0
+    %3 $site: i64 = const 8
+    call topic#17(%2, %3) -> b1(%1)
+  b1(%4 r: ptr, %5 outbox: ptr):
+    %6 f: ptr = closure listener$1#18[%5]
+    %7 lit: i64 = const 4
+    %8 $site: i64 = const 9
+    call subscribe#24(%4, %7, %6, %8) -> b2()
+  b2(%9 r: word):
+    %10 unbox: unit = unbox %9
+    drop %9
+    ret %10
+
+fn $worker$listener#5 top -> unit ; main::worker_topic_fanout, frame 2 slots [%0 word*, %2 bool]
+  b0():
+    call host#3() -> b1()
+  b1(%0 worker: ptr):
+    handle_push %0
+    %1 fn: ptr = const static closure listener$value#50
+    call enter#4(%1) -> b2()
+  b2(%2 r: unit) [handle]:
+    handle_pop
+    ret %2
+
+fn listener$1#18 lambda -> word ; main::worker_topic_fanout, captures [word*], frame 9 slots [%0 word*, %1 word*, %4 word*, %5 word*, %6 word*, %7 word*, %8 word*, %18 word*, %24 word*]
+  b0(%0 env: ptr, %1 sub: word):
+    %2 outbox: ptr = capture %0.0
+    drop %0
+    %3 lit: ptr = const str 3
+    dup %2
+    call send#20(%2, %3) -> b1(%2, %1)
+  b1(%4 r: ptr, %5 outbox: ptr, %6 sub: ptr):
+    drop %4
+    call recv#22(%6) -> b2(%5)
+  b2(%7 r: ptr, %8 outbox: ptr):
+    %9 tag: i64 = tag %7 ctor std::worker::Received
+    switch %9 0 => b3(%8, %7) _ => b4(%8, %7)
+  b3(%10 outbox: ptr, %11 r: ptr):
+    %14 p: word = proj %11.0 std::worker::Received.Message
+    drop %11
+    %15 s: ptr = show %14
+    drop %14
+    %16 lit: ptr = const str 4
+    %17 s: ptr = concat %16, %15
+    drop %15
+    call send#20(%10, %17) -> b5()
+  b4(%12 outbox: ptr, %13 r: ptr):
+    %21 s: ptr = show %13
+    drop %13
+    %22 lit: ptr = const str 5
+    %23 s: ptr = concat %22, %21
+    drop %21
+    call send#20(%12, %23) -> b6()
+  b5(%18 r: ptr):
+    drop %18
+    %19 lit: unit = const ()
+    %20 box: word = box %19
+    ret %20
+  b6(%24 r: ptr):
+    drop %24
+    %25 lit: unit = const ()
+    %26 box: word = box %25
+    ret %26
+
+fn main$1#28 lambda -> word ; main::worker_topic_fanout, captures [word*], frame 3 slots [%0 word*, %1 word*, %6 word*]
+  b0(%0 env: ptr, %1 small: word):
+    %2 news: ptr = capture %0.0
+    drop %0
+    dup %2
+    %3 f: ptr = closure main$1$1#29[%2, %1]
+    %4 lit: i64 = const 4
+    %5 $site: i64 = const 10
+    call subscribe#24(%2, %4, %3, %5) -> b1()
+  b1(%6 r: word):
+    ret %6
+
+fn main$1$1#29 lambda -> word ; main::worker_topic_fanout, captures [word*, word*], frame 26 slots [%0 word*, %1 word*, %5 word*, %6 word*, %7 word*, %8 word*, %12 bool, %13 word*, %14 word*, %15 word*, %18 word*, %19 word*, %20 word*, %24 bool, %25 word*, %26 word*, %28 word*, %29 word*, %33 bool, %34 word*, %36 word*, %37 word*, %41 bool, %42 word*, %44 word*, %48 bool]
+  b0(%0 env: ptr, %1 large: word):
+    %2 news: ptr = capture %0.0
+    %3 small: ptr = capture %0.1
+    drop %0
+    %4 lit: ptr = const str 8
+    dup %2
+    call publish#31(%2, %4) -> b1(%2, %3, %1)
+  b1(%5 r: ptr, %6 news: ptr, %7 small: ptr, %8 large: ptr):
+    %9 s: ptr = show %5
+    drop %5
+    %10 lit: ptr = const str 9
+    %11 s: ptr = concat %10, %9
+    drop %9
+    perform std::console::Console.print(%11) -> b2(%6, %7, %8)
+  b2(%12 r: unit, %13 news: ptr, %14 small: ptr, %15 large: ptr):
+    %16 box: word = box %12
+    drop %16
+    %17 lit: ptr = const str 10
+    call publish#31(%13, %17) -> b3(%14, %15)
+  b3(%18 r: ptr, %19 small: ptr, %20 large: ptr):
+    %21 s: ptr = show %18
+    drop %18
+    %22 lit: ptr = const str 11
+    %23 s: ptr = concat %22, %21
+    drop %21
+    perform std::console::Console.print(%23) -> b4(%19, %20)
+  b4(%24 r: unit, %25 small: ptr, %26 large: ptr):
+    %27 box: word = box %24
+    drop %27
+    call recv#22(%25) -> b5(%26)
+  b5(%28 r: ptr, %29 large: ptr):
+    %30 s: ptr = show %28
+    drop %28
+    %31 lit: ptr = const str 12
+    %32 s: ptr = concat %31, %30
+    drop %30
+    perform std::console::Console.print(%32) -> b6(%29)
+  b6(%33 r: unit, %34 large: ptr):
+    %35 box: word = box %33
+    drop %35
+    dup %34
+    call recv#22(%34) -> b7(%34)
+  b7(%36 r: ptr, %37 large: ptr):
+    %38 s: ptr = show %36
+    drop %36
+    %39 lit: ptr = const str 13
+    %40 s: ptr = concat %39, %38
+    drop %38
+    perform std::console::Console.print(%40) -> b8(%37)
+  b8(%41 r: unit, %42 large: ptr):
+    %43 box: word = box %41
+    drop %43
+    call recv#22(%42) -> b9()
+  b9(%44 r: ptr):
+    %45 s: ptr = show %44
+    drop %44
+    %46 lit: ptr = const str 13
+    %47 s: ptr = concat %46, %45
+    drop %45
+    perform std::console::Console.print(%47) -> b10()
+  b10(%48 r: unit):
+    %49 box: word = box %48
+    ret %49
+
+fn main$2#33 lambda -> word ; main::worker_topic_fanout, captures [word*], frame 18 slots [%0 word*, %1 word*, %3 word*, %4 word*, %5 word*, %7 bool, %8 word*, %9 word*, %12 word*, %13 word*, %17 bool, %18 word*, %20 word*, %21 word*, %23 bool, %24 word*, %26 word*, %28 bool]
+  b0(%0 env: ptr, %1 w: word):
+    %2 news: ptr = capture %0.0
+    drop %0
+    dup %1
+    call recv#22(%1) -> b1(%2, %1)
+  b1(%3 r: ptr, %4 news: ptr, %5 w: ptr):
+    %6 s: ptr = show %3
+    drop %3
+    perform std::console::Console.print(%6) -> b2(%4, %5)
+  b2(%7 r: unit, %8 news: ptr, %9 w: ptr):
+    %10 box: word = box %7
+    drop %10
+    %11 lit: ptr = const str 14
+    call publish#31(%8, %11) -> b3(%9)
+  b3(%12 r: ptr, %13 w: ptr):
+    %14 s: ptr = show %12
+    drop %12
+    %15 lit: ptr = const str 15
+    %16 s: ptr = concat %15, %14
+    drop %14
+    perform std::console::Console.print(%16) -> b4(%13)
+  b4(%17 r: unit, %18 w: ptr):
+    %19 box: word = box %17
+    drop %19
+    dup %18
+    call recv#22(%18) -> b5(%18)
+  b5(%20 r: ptr, %21 w: ptr):
+    %22 s: ptr = show %20
+    drop %20
+    perform std::console::Console.print(%22) -> b6(%21)
+  b6(%23 r: unit, %24 w: ptr):
+    %25 box: word = box %23
+    drop %25
+    call recv#22(%24) -> b7()
+  b7(%26 r: ptr):
+    %27 s: ptr = show %26
+    drop %26
+    perform std::console::Console.print(%27) -> b8()
+  b8(%28 r: unit):
+    %29 box: word = box %28
+    ret %29
+
+fn listener$value#50 adapter of listener#2 -> word ; main::worker_topic_fanout, captures [], frame 4 slots [%0 word*, %1 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr, %1 arg: word, %2 arg: word):
+    drop %0
+    call listener#2(%1, %2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    ret %4

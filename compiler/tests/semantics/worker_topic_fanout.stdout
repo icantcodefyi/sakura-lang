@@ -1,0 +1,11 @@
+one: Ok(())
+two: Err(Full)
+small Message("one")
+large Message("one")
+large Message("two")
+Message("ready")
+three: Ok(())
+Message("worker got three")
+Finished
+Ok(())
+four, no subscriber: Ok(())
