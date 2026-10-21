@@ -6,10 +6,17 @@ use sakura_analysis::{Analysis, Analyzed, Snapshot, SymbolQuery};
 use serde_json::Value;
 
 pub(crate) fn doc(json: bool, search: Option<&str>, symbol: Option<&str>) -> ExitCode {
-    // Std needs no project (design §17.292 (11)): with no sources here, std is the snapshot,
-    // and a symbol named under std (`std::fs::rooted`, `std/http`) never loads the directory's
-    // tree (§17.294 SS-1, WP-2).
-    let std_only = symbol.is_some_and(|s| s.starts_with("std::") || s.starts_with("std/"));
+    // Std needs no project (design §17.292 (11)): with no sources here, std is the snapshot.
+    // A symbol named under std (`std::fs::rooted`, `std/http`) never loads the directory's
+    // tree, and a bare name (`Fs.rooted`) loads it only under a project, a `sakura.toml` or a
+    // `src/` here (§17.294 SS-1, WP-2; §17.298 (e1)).
+    let project = || {
+        sakura_analysis::disk::manifest_near(std::path::Path::new(".")).is_some()
+            || std::path::Path::new("src").is_dir()
+    };
+    let std_only = symbol.is_some_and(|s| {
+        s.starts_with("std::") || s.starts_with("std/") || (!s.contains("::") && !project())
+    });
     let loaded = if std_only {
         Ok(Snapshot::with_std([]))
     } else {

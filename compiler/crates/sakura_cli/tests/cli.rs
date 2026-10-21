@@ -723,10 +723,13 @@ fn doc_reads_std_outside_a_project() {
         "{}",
         out.stdout
     );
-    // Design §17.294 SS-1 (WP-2): a symbol named under std never loads the directory's tree,
-    // so a stray file there (here an old `.sakura` one, which loading refuses) changes nothing.
+    // Design §17.294 SS-1 (WP-2), §17.298 (e1): a symbol named under std never loads the
+    // directory's tree, and outside a project (no `sakura.toml`, no `src/`) a bare name does
+    // not either, so stray files there (an old `.sakura` one, which loading refuses, and a
+    // `.sak` defining its own `rooted`) change nothing.
     std::fs::write(dir.join("stray.sakura"), "pub fn rooted() -> Int { 1 }\n").unwrap();
-    for symbol in ["std::fs::rooted", "std/fs"] {
+    std::fs::write(dir.join("stray.sak"), "pub fn rooted() -> Int { 1 }\n").unwrap();
+    for symbol in ["std::fs::rooted", "std/fs", "Fs.rooted", "rooted"] {
         let out = sakura(&["doc", symbol], &dir);
         assert_eq!(out.code, Some(0), "{symbol}: {}", out.stderr);
         assert!(
@@ -734,7 +737,21 @@ fn doc_reads_std_outside_a_project() {
             "{symbol}: {}",
             out.stdout
         );
+        assert!(
+            !out.stdout.contains("::rooted\npub fn rooted() -> Int"),
+            "{symbol}: {}",
+            out.stdout
+        );
     }
+    // Under a project the bare name loads the tree, so the project's `rooted` answers too.
+    std::fs::write(dir.join("sakura.toml"), "[package]\nname = \"stray\"\n").unwrap();
+    let out = sakura(&["doc", "rooted"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert!(
+        out.stdout.contains("::rooted\npub fn rooted() -> Int"),
+        "{}",
+        out.stdout
+    );
     std::fs::remove_dir_all(&dir).ok();
 }
 
