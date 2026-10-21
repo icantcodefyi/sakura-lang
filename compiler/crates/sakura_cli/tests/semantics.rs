@@ -5,7 +5,8 @@
 //! `// mode: check` requires a clean `sakura check`. `run` and
 //! `test` fixtures also run under `--no-direct` with identical effect traces (design §17.111).
 //! These runs are on JS, so `@js` directives apply (§17.80); `tests/parity.rs` holds WASM to
-//! JS and to its own `@wasm` expectations.
+//! JS and to its own `@wasm` expectations. A fixture whose `// backends:` leaves out `js` (the
+//! exact-i64 lane) is held to its `.js.jsonl` here (`common::excluded`).
 
 mod common;
 
@@ -72,6 +73,10 @@ fn expect(
 ) -> Result<(), String> {
     if out.timed_out {
         return Err(format!("`sakura {mode}` timed out"));
+    }
+    // The exact-i64 lane (design §17.308 (2b) (i)): JS is excluded and pinned by its `.js.jsonl`.
+    if backends(d).is_some_and(|b| !b.contains(&"js")) {
+        return excluded(path, "js", out.code, &out.stdout, &out.stderr);
     }
     let want = expectation(path, d, "js");
     if out.code != Some(want.exit) {

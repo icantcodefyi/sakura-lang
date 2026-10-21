@@ -1,0 +1,19 @@
+// milestone: M3
+// backends: wasm native
+// covers: design §4.1, §17.80, §17.308 (2b) (i) (the exact-i64 lane); spec: §4.1
+
+// The exact-i64 lane: `Int` beyond ±(2^53 − 1) printed, computed, compared, shown and parsed.
+// WASM and native compute every line exactly and agree with the LIR evaluator;
+// JS stops at the first such value with `D003`, its record in `exact_i64_print.js.jsonl`.
+fn edge() -> Int { 9_007_199_254_740_991 }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("start")
+  let big = edge() + 2
+  Console.print("{big} {-big}")
+  Console.print("{big * 512} {(big * 1000) / 7} {(big * 1000) % 7}")
+  Console.print("{9_223_372_036_854_775_807 - big} {-9_223_372_036_854_775_807 - 1}")
+  Console.print("{big > edge()} {big == edge() + 2} {big - 2 == edge()}")
+  Console.print("{String.len(Int.to_string(big))} {Int.to_string(-9_223_372_036_854_775_807 - 1)}")
+  Console.print("{"9007199254740993".parse_int()} {"-9223372036854775808".parse_int()}")
+}

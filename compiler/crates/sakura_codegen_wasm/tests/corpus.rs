@@ -141,6 +141,18 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         CRYPTO_ON_WASI,
     ),
     (
+        "semantics/exact_i64_json",
+        None,
+        "the Node host encodes JSON through JavaScript numbers, which round an `Int` beyond \
+         ±(2^53 − 1) (REQUESTS 2026-10-22, lane N2f); WASI does not call the codec yet",
+    ),
+    (
+        "semantics/exact_i64_sql",
+        None,
+        "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks; \
+         the JS hosts read an INTEGER beyond ±(2^53 − 1) as an `Err` (design §17.241 (2))",
+    ),
+    (
         "semantics/sql_untrusted_param",
         None,
         "SQL rows decode with the program's JS type descriptors, which a bare corpus module lacks",

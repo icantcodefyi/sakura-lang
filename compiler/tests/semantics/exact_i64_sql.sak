@@ -1,0 +1,31 @@
+// milestone: M3
+// backends: native
+// covers: design §17.241 (2), §17.308 (2b) (i) (the exact-i64 lane); spec: §10.2
+
+// An SQLite INTEGER beyond ±(2^53 − 1) reads exactly natively and agrees with the LIR evaluator.
+// The JS hosts (JS, and WASM under Node) decode it as an `Err`, which this program turns into
+// `D030` carrying the message; each record is in `exact_i64_sql.<backend>.jsonl`.
+import std/sql.{Sql, SqlError}
+
+fn exact(r: Result<List<Int>, SqlError>) -> List<Int> {
+  match r {
+    Ok(v) => v,
+    Err(e) => {
+      let none: Option<List<Int>> = None
+      none.expect(e.message)
+    },
+  }
+}
+
+pub fn main() -> Unit ! {Console, Fail<SqlError>} {
+  with Sql.memory() {
+    let _ = Sql.execute(sql"create table t (v integer)")
+    let _ = Sql.execute(sql"insert into t values (9007199254740993), (-9223372036854775808), (42)")
+    let small: List<Int> = Sql.query(sql"select v from t where v = 42")
+    Console.print("{small}")
+    let all: Result<List<Int>, SqlError> = try { Sql.query(sql"select v from t order by v") }
+    Console.print("{exact(all)}")
+    let less: Result<List<Int>, SqlError> = try { Sql.query(sql"select v - 1 from t where v > 42") }
+    Console.print("{exact(less)}")
+  }
+}

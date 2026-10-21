@@ -14,7 +14,7 @@
 //! the run.
 //!
 //! Expectations: a semantics program's are its `.stdout` file and its `expect-defect` directive
-//! (the `@wasm` variant when present); programs whose `needs:` names the JS backend or that
+//! (the `@wasm` variant when present, unless `// backends:` names the backends `.stdout` is); programs whose `needs:` names the JS backend or that
 //! expect the JS-only `D003` are left out.
 //! A differential program's are the reference evaluator's (`sakura_eval::run_main`), which the
 //! JS backend is held to by `tools/sakura_eval/tests/differential.rs`.
@@ -126,8 +126,14 @@ pub fn outputs() -> (Vec<(PathBuf, String)>, Vec<String>) {
             ));
             continue;
         }
-        // WASM's stdout, as the ending is WASM's (`<name>.wasm.stdout` overrides, §17.80).
-        let stdout = std::fs::read_to_string(path.with_extension("wasm.stdout"))
+        // WASM's stdout, as the ending is WASM's (`<name>.wasm.stdout` overrides, §17.80); a
+        // fixture with `// backends:` (the exact-i64 lane, §17.308 (2b) (i)) is its `.stdout`.
+        let own = path.with_extension(if d.contains_key("backends") {
+            "stdout"
+        } else {
+            "wasm.stdout"
+        });
+        let stdout = std::fs::read_to_string(own)
             .or_else(|_| std::fs::read_to_string(path.with_extension("stdout")))
             .unwrap_or_default();
         let uri = format!("file:///semantics/{name}.sak");

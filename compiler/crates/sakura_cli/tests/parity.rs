@@ -283,6 +283,37 @@ fn compare(
     None
 }
 
+/// The exact-i64 lane (design §17.308 (2b) (i)): `None` unless the fixture has `// backends:`.
+/// Then each run on a listed backend exits 0 with `.stdout`, and agrees with the first such run
+/// on its exit, defect record, stdout and effect trace; a run on any other backend stops with the
+/// defect records of its `.jsonl` (`common::excluded`). `Some(None)` when all of that holds.
+fn lane(
+    path: &Path,
+    d: &BTreeMap<String, String>,
+    runs: &[(&str, &Run)],
+) -> Option<Option<String>> {
+    let listed = backends(d)?;
+    let want = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
+    let mut first: Option<&Run> = None;
+    for &(b, r) in runs {
+        if !listed.contains(&b) {
+            if let Err(e) = excluded(path, b, r.code, &r.stdout, &r.stderr) {
+                return Some(Some(e));
+            }
+        } else if r.code != Some(0) || r.stdout != want {
+            return Some(Some(format!(
+                "{b}: exit {:?}, stdout {:?}; expected 0 and .stdout\n{}",
+                r.code, r.stdout, r.stderr
+            )));
+        } else if let Some(why) = first.and_then(|f| compare(None, "run", f, r)) {
+            return Some(Some(format!("{b}: {why}")));
+        } else {
+            first = first.or(Some(r));
+        }
+    }
+    Some(None)
+}
+
 /// The traces (expected defect codes masked) of a fixture whose backends print different
 /// stdout by design (§17.80: JS defects at `Int` ±2^53 where WASM continues) agree up to where
 /// the defecting backend stopped: its trace without its defect record is a prefix of the
@@ -510,7 +541,9 @@ fn js_and_wasm_agree_on_the_semantics_corpus() {
                 count_ops(&wasm.trace, &mut ops);
                 covered.push((name.clone(), std::mem::take(&mut wasm.imports)));
                 let known_reason = KNOWN.iter().find(|(n, _)| *n == name).map(|(_, r)| *r);
-                match (compare(Some((path, d)), mode, &js, &wasm), known_reason) {
+                let why = lane(path, d, &[("js", &js), ("wasm", &wasm)])
+                    .unwrap_or_else(|| compare(Some((path, d)), mode, &js, &wasm));
+                match (why, known_reason) {
                     (None, None) => agree += 1,
                     (None, Some(_)) => {
                         failures.push(format!("{name}: agrees now; drop it from KNOWN"))
@@ -670,7 +703,9 @@ const KNOWN_NATIVE: &[(&str, &str)] = &[];
 /// Plan M5 N2c: `--target native` (experimental) agrees with JS on every run-mode fixture and
 /// run-mode example, with its direct twins and under `--no-direct`, by the comparison JS and
 /// WASM are held to. The native profile's `Int` is WASM's exact `i64`, so a fixture's `@wasm`
-/// expectation is native's too. A program with `expect-exit@native` is the declared difference
+/// expectation is native's too, and a fixture whose `// backends:` lists native is held to its
+/// `.stdout` and to WASM's run (the exact-i64 lane, design §17.308 (2b) (i), `lane`). A program
+/// with `expect-exit@native` is the declared difference
 /// of RFC 0002 §7 (design §17.271 (9)): `main` leaves an effect the native host lacks to the
 /// runtime, so native exits with that code and prints exactly `expect-stderr@native` on stderr
 /// while JS runs it. Test mode waits for `sakura test --target native` (after N1b).
@@ -737,16 +772,30 @@ fn native_agrees_with_js_on_run_mode_programs() {
                 &env,
             )
         });
+        // The exact-i64 lane's fixtures are compared with WASM too (design §17.308 (2b) (i)).
+        let wasm = matches!(job, Job::Fixture(_, d, _) if backends(d).is_some())
+            .then(|| run_env("native", "run", "wasm", &name, dir, &[], &[]));
         (
             run_env("native", "run", "js", &name, dir, &args, &[]),
             run_env("native", "run", "native", &name, dir, &args, &env),
             frames,
+            wasm,
         )
     });
     let (mut agree, mut failures, mut exact) = (0, vec![], 0);
-    for (job, (js, mut twins, frames)) in jobs.iter().zip(runs) {
-        // The exact-i64 lane (plan M5 N2): a fixture with its own `@wasm` expectation is where
-        // JS stops at ±(2^53−1) and `i64` goes on; native is held to it.
+    for (job, (js, mut twins, frames, wasm)) in jobs.iter().zip(runs) {
+        if let (Job::Fixture(path, d, _), Some(wasm)) = (job, &wasm) {
+            let mut runs = vec![("js", &js), ("wasm", wasm), ("native", &twins)];
+            runs.extend(frames.iter().map(|f| ("native", f)));
+            exact += 1;
+            match lane(path, d, &runs).flatten() {
+                None => agree += 1,
+                Some(why) => failures.push(format!("{}: {why}", path.display())),
+            }
+            continue;
+        }
+        // The exact-i64 lane (plan M5 N2) also has the fixtures with their own `@wasm`
+        // expectation, where JS stops at ±(2^53−1) and `i64` goes on; native is held to it.
         if let Job::Fixture(path, d, _) = job
             && expectation(path, d, "wasm").own
         {

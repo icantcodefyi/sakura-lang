@@ -109,6 +109,57 @@ pub fn expectation(path: &Path, d: &BTreeMap<String, String>, backend: &str) -> 
     }
 }
 
+/// `// backends: wasm native` (design §17.308 (2b) (i), the exact-i64 lane): the backends whose
+/// expectation the fixture's `.stdout` is, each run compared with the others listed and, through
+/// the LIR corpus, with the LIR evaluator. `None` when the fixture names none (every backend).
+pub fn backends(d: &BTreeMap<String, String>) -> Option<Vec<&str>> {
+    Some(d.get("backends")?.split_whitespace().collect())
+}
+
+/// A run on a backend the fixture's [`backends`] leaves out prints exactly
+/// `<name>.<backend>.stdout` and exits 0 when that file exists (a divergence REQUESTS tracks, so
+/// a fix fails here until the backend joins `backends`); otherwise it stops with the defect
+/// records in `<name>.<backend>.jsonl` (the fixture's URI written as its file name), exit 70,
+/// after printing a prefix of `.stdout`.
+pub fn excluded(
+    path: &Path,
+    backend: &str,
+    code: Option<i32>,
+    stdout: &str,
+    stderr: &str,
+) -> Result<(), String> {
+    let own = path.with_extension(format!("{backend}.stdout"));
+    if own.exists() {
+        if code != Some(0) {
+            return Err(format!(
+                "{backend}: exit {code:?}, expected 0\nstderr:\n{stderr}"
+            ));
+        }
+        return compare_file(&own, stdout);
+    }
+    if code != Some(70) {
+        return Err(format!(
+            "{backend}: exit {code:?}, expected 70\nstderr:\n{stderr}"
+        ));
+    }
+    let want = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
+    if !want.starts_with(stdout) {
+        return Err(format!(
+            "{backend}: stdout is not a prefix of .stdout:\n{stdout}"
+        ));
+    }
+    let (uri, name) = (
+        file_uri(&path.canonicalize().unwrap()),
+        path.file_name().unwrap().to_str().unwrap(),
+    );
+    let defects: String = stderr
+        .lines()
+        .filter(|l| l.contains("\"kind\":\"defect\""))
+        .map(|l| l.replace(&uri, name) + "\n")
+        .collect();
+    compare_file(&path.with_extension(format!("{backend}.jsonl")), &defects)
+}
+
 /// The defect codes of a §17.80 effect trace's `defect` events, in order.
 pub fn trace_defects(trace: &str) -> Vec<String> {
     trace

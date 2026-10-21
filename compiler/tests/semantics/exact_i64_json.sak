@@ -1,0 +1,23 @@
+// milestone: M3
+// backends: native
+// covers: design §17.80, §17.294 SS-8a, §17.308 (2b) (i) (the exact-i64 lane); spec: §4.1
+
+// JSON integers beyond ±(2^53 − 1): native writes each exactly and agrees with the LIR evaluator,
+// and decoding one is the same `Err` on every backend (SS-8a). JS stops at the first such value
+// with `D003` (`exact_i64_json.js.jsonl`). WASM's Node host encodes through JavaScript numbers
+// today, so `exact_i64_json.wasm.stdout` records its rounded digits: a divergence reported in
+// `compiler/REQUESTS.md` (2026-10-22, lane N2f); WASM joins `backends` when it is fixed.
+import std/json.{DecodeError, Json}
+
+type Row = { id: Int }
+
+fn edge() -> Int { 9_007_199_254_740_991 }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print(Json.encode([edge(), 1]))
+  let big = edge() + 2
+  Console.print(Json.encode([big, -big, 9_223_372_036_854_775_807, -9_223_372_036_854_775_807 - 1]))
+  Console.print(Json.encode(Row { id: big }))
+  let back: Result<Int, DecodeError> = Json.decode(Json.encode(big))
+  Console.print("{back}")
+}

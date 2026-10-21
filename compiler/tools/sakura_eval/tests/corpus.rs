@@ -41,8 +41,9 @@ fn evaluator_agrees_with_expected_stdout() {
             .take_while(|l| l.starts_with("//"))
             .find_map(|l| l.strip_prefix("// expect-defect:"))
             .map(|c| c.trim().to_owned());
-        // `needs:` names a backend other than JS (`D001` before `D003` needs 64-bit `Int`).
-        let other_backend = text.contains("\n// needs:");
+        // `needs:` names a backend other than JS (`D001` before `D003` needs 64-bit `Int`), and
+        // `backends:` the exact-i64 lane's (design §17.308 (2b) (i)): this evaluator is JS's profile.
+        let other_backend = text.contains("\n// needs:") || text.contains("\n// backends:");
         if mode != "run" || other_backend || (text.contains("// expect-exit:") && defect.is_none())
         {
             continue;
