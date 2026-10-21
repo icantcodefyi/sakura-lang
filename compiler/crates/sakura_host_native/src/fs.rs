@@ -192,6 +192,21 @@ impl Dir {
         }
     }
 
+    /// Appends `data` to the host file `rel`, created if missing (a cassette's next exchange,
+    /// JS `withResolved(p, "a", …)`).
+    pub fn append(&self, rel: &str, data: &[u8]) -> Res<()> {
+        let Dir::Host { cap, .. } = self else {
+            return Err("this directory has no host access".into());
+        };
+        self.host(rel, true, |_, rel| {
+            let mut o = OpenOptions::new();
+            o.append(true).create(true);
+            cap.open_with(rel, &o)
+                .and_then(|mut f| f.write_all(data))
+                .map_err(|e| host_message(&e))
+        })
+    }
+
     /// Entries `(name, is_dir)` sorted by name (code point order).
     pub fn list(&self, rel: &str) -> Res<Vec<(String, bool)>> {
         match self {

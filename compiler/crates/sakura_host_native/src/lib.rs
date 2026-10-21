@@ -3,10 +3,10 @@
 //! (Console, Clock, Random, `log_write`, traces), the `hosted` services (Env, Fs, `file_*`,
 //! `Cli.args`) and Sql with the JS host's semantics, keeps the instance's handle and file
 //! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
-//! instance's thread; each database runs on its own worker thread (`sql`). Http, serve and Llm
-//! have no host service until N1b reaches them: their host handlers' operations are `D090`
-//! (the runtime's `rt_code_unsupported`). `Http.scripted`'s buffered `Body` (`http_body_of`)
-//! is the one Http table here.
+//! instance's thread; each database runs on its own worker thread (`sql`). `Http.host()`'s
+//! sends, streamed bodies and `Http.recording`'s cassettes are `http`'s. Serve and Llm have no
+//! host service until N1b reaches them: their host handlers' operations are `D090` (the
+//! runtime's `rt_code_unsupported`).
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.
@@ -14,6 +14,7 @@
 #![cfg(feature = "native")]
 
 pub mod fs;
+mod http;
 mod sql;
 pub mod worker;
 
@@ -24,7 +25,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use sakura_rt::exec::outcome;
 use sakura_rt::native::{
-    FileMode, HandleId, Host, HostError, Hosted, Instance, Outcome, SqlValue, WorkerGrants,
+    FileMode, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, Instance, Outcome,
+    SqlValue, WorkerGrants,
 };
 use sakura_rt::vt::{BODY, DIR, SQL};
 use tokio::sync::mpsc;
@@ -34,7 +36,7 @@ use tokio::sync::mpsc;
 #[derive(Clone, Debug, Default)]
 pub struct Permissions {
     pub fs: Option<fs::Grants>,
-    /// The `net` hosts, for a live worker's grants (`Http` has no host service here).
+    /// The `net` hosts (`host:port`), checked on every Http send and a live worker's grants.
     pub net: Option<Vec<String>>,
     pub env: Option<Vec<String>>,
 }
@@ -190,15 +192,6 @@ impl<T> Table<T> {
             .ok_or_else(|| HostError::Fault("a released or unknown handle".into()))
     }
 
-    fn get_mut(&mut self, h: HandleId) -> Hosted<&mut T> {
-        let kind = self.kind;
-        self.slots
-            .get_mut((h.slot as usize).wrapping_sub(1))
-            .filter(|e| h.kind == kind && e.generation == h.generation)
-            .and_then(|e| e.value.as_mut())
-            .ok_or_else(|| HostError::Fault("a released or unknown handle".into()))
-    }
-
     fn retire(&mut self, h: HandleId) {
         if let Some(e) = self.slots.get_mut((h.slot as usize).wrapping_sub(1))
             && e.generation == h.generation
@@ -240,6 +233,9 @@ enum Inflight {
     Task(tokio::task::AbortHandle),
     /// A statement on database `.0`'s worker.
     Sql(u32),
+    /// `http_stream_open` on the executor, and the `Body` it fills: retired unless the guest
+    /// receives it.
+    Open(tokio::task::AbortHandle, HandleId),
 }
 
 pub struct NativeHost {
@@ -252,8 +248,11 @@ pub struct NativeHost {
     urandom: Option<std::fs::File>,
     trace: Option<std::fs::File>,
     dirs: Table<fs::Dir>,
-    /// `http_body_of`'s buffered bodies: the bytes not read yet, `None` once closed.
-    bodies: Table<Option<VecDeque<u8>>>,
+    /// `Body` handles: `http_body_of`'s buffered ones and `Http.stream`'s live ones.
+    bodies: Table<http::Shared>,
+    /// `Http.host()`'s client, built at the first send.
+    client: Option<reqwest::Client>,
+    cassettes: http::Cassettes,
     files: fs::Files,
     executor: tokio::runtime::Runtime,
     tx: mpsc::UnboundedSender<Completion>,
@@ -283,7 +282,7 @@ pub struct NativeHost {
 impl NativeHost {
     pub fn new(config: Config) -> Result<NativeHost, String> {
         let executor = tokio::runtime::Builder::new_current_thread()
-            .enable_time()
+            .enable_all()
             .build()
             .map_err(|e| e.to_string())?;
         let trace = match &config.trace {
@@ -309,6 +308,8 @@ impl NativeHost {
             trace,
             dirs: Table::new(DIR),
             bodies: Table::new(BODY),
+            client: None,
+            cassettes: http::Cassettes::default(),
             files: fs::Files::default(),
             executor,
             tx,
@@ -390,8 +391,13 @@ impl NativeHost {
                 return None;
             }
             let c = self.executor.block_on(self.rx.recv())?;
-            if self.inflight.remove(&c.0).is_some() {
-                return Some(c);
+            match self.inflight.remove(&c.0) {
+                Some(Inflight::Open(_, body)) if c.1 != outcome::OK => {
+                    self.bodies.retire(body);
+                    return Some(c);
+                }
+                Some(_) => return Some(c),
+                None => {}
             }
         }
     }
@@ -450,6 +456,37 @@ impl NativeHost {
             .get_mut(id as usize)
             .and_then(Option::as_mut)
             .ok_or_else(|| HostError::Fault("a released or unknown database".into()))
+    }
+}
+
+impl NativeHost {
+    /// Run `f` on the executor for `request`, completing it with `f`'s status and payload;
+    /// aborting `request` drops `f` (a connection closes with it).
+    fn spawn(
+        &mut self,
+        request: u32,
+        f: impl std::future::Future<Output = http::Done> + Send + 'static,
+    ) {
+        let tx = self.tx.clone();
+        let task = self.executor.spawn(async move {
+            let (st, payload) = f.await;
+            let _ = tx.send((request, st, payload));
+        });
+        self.inflight
+            .insert(request, Inflight::Task(task.abort_handle()));
+    }
+
+    /// The client (built at the first send) and the `reqwest` request for `req`.
+    fn request_of(
+        &mut self,
+        req: &HttpRequest<'_>,
+    ) -> Result<(reqwest::Client, reqwest::Request), String> {
+        let client = match &self.client {
+            Some(c) => c.clone(),
+            None => self.client.insert(http::client()?).clone(),
+        };
+        let rq = http::build(&client, req)?;
+        Ok((client, rq))
     }
 }
 
@@ -513,6 +550,10 @@ impl Host for NativeHost {
     fn abort(&mut self, request: u32) {
         match self.inflight.remove(&request) {
             Some(Inflight::Task(h)) => h.abort(),
+            Some(Inflight::Open(h, body)) => {
+                h.abort();
+                self.bodies.retire(body);
+            }
             Some(Inflight::Sql(db)) => {
                 if let Ok(db) = self.db(db) {
                     db.abort(request);
@@ -692,21 +733,110 @@ impl Host for NativeHost {
     }
 
     fn http_body_of(&mut self, bytes: &[u8]) -> Hosted<HandleId> {
-        Ok(self.bodies.insert(Some(bytes.iter().copied().collect())))
+        let b = http::Body {
+            buf: bytes.iter().copied().collect(),
+            ..Default::default()
+        };
+        Ok(self
+            .bodies
+            .insert(std::sync::Arc::new(std::sync::Mutex::new(b))))
     }
 
     fn http_body_read(&mut self, body: HandleId, max: i64) -> Hosted<Vec<u8>> {
-        let Some(buf) = self.bodies.get_mut(body)? else {
+        let mut b = http::lock(self.bodies.get(body)?);
+        if b.closed {
             return Err(HostError::Err("the response body is closed".into()));
-        };
-        let n = buf.len().min(usize::try_from(max).unwrap_or(0));
-        Ok(buf.drain(..n).collect())
+        }
+        let n = b.buf.len().min(usize::try_from(max).unwrap_or(0));
+        Ok(b.buf.drain(..n).collect())
     }
 
     fn http_body_close(&mut self, body: HandleId) {
-        if let Ok(b) = self.bodies.get_mut(body) {
-            *b = None;
+        if let Ok(b) = self.bodies.get(body) {
+            let mut b = http::lock(b);
+            b.closed = true;
+            b.live = None;
+            b.buf.clear();
         }
+    }
+
+    fn http_body_waits(&mut self, body: HandleId) -> bool {
+        self.bodies.get(body).is_ok_and(|b| {
+            let b = http::lock(b);
+            !b.closed && b.buf.is_empty() && b.live.is_some()
+        })
+    }
+
+    fn http_body_fetch(&mut self, request: u32, body: HandleId, max: i64) {
+        let Ok(shared) = self.bodies.get(body).cloned() else {
+            let m = b"a released or unknown handle".to_vec();
+            return self.spawn(request, async move {
+                (sakura_rt::exec::status::HOST_FAILURE, m)
+            });
+        };
+        self.spawn(request, http::read(shared, max));
+    }
+
+    fn http_refused(&mut self, req: &HttpRequest<'_>) -> Option<String> {
+        let net = self
+            .config
+            .permissions
+            .as_ref()
+            .and_then(|p| p.net.as_deref());
+        http::refusal(net, req.url)
+    }
+
+    fn http_send(&mut self, request: u32, req: &HttpRequest<'_>) {
+        let max = self.config.max_copy_bytes;
+        match self.request_of(req) {
+            Ok((client, rq)) => self.spawn(request, http::send(client, rq, max)),
+            Err(m) => self.spawn(request, async move {
+                (sakura_rt::exec::status::ERR, m.into_bytes())
+            }),
+        }
+    }
+
+    fn http_stream_open(&mut self, request: u32, req: &HttpRequest<'_>) {
+        let (client, rq) = match self.request_of(req) {
+            Ok(r) => r,
+            Err(m) => {
+                return self.spawn(request, async move {
+                    (sakura_rt::exec::status::ERR, m.into_bytes())
+                });
+            }
+        };
+        let shared = http::Shared::default();
+        let h = self.bodies.insert(shared.clone());
+        let tx = self.tx.clone();
+        let task = self.executor.spawn(async move {
+            let (st, payload) =
+                http::open(client, rq, shared, [h.kind, h.slot, h.generation]).await;
+            let _ = tx.send((request, st, payload));
+        });
+        self.inflight
+            .insert(request, Inflight::Open(task.abort_handle(), h));
+    }
+
+    fn http_recording_open(&mut self, dir: HandleId, path: &str) -> Hosted<i64> {
+        let d = self.dir(dir)?;
+        op(self.cassettes.open(d, path))
+    }
+
+    fn http_recording_lookup(
+        &mut self,
+        id: i64,
+        req: &HttpRequest<'_>,
+    ) -> Hosted<Option<HttpResponse>> {
+        op(self.cassettes.lookup(id, req))
+    }
+
+    fn http_recording_append(
+        &mut self,
+        id: i64,
+        req: &HttpRequest<'_>,
+        resp: &HttpResponse,
+    ) -> Hosted<()> {
+        op(self.cassettes.append(id, req, resp))
     }
 
     fn sql_open(&mut self, path: Option<&str>) -> Hosted<u32> {
@@ -1014,6 +1144,98 @@ mod tests {
             rows.ends_with(&int(200_001)),
             "the write ran to its end inside the transaction"
         );
+    }
+
+    /// `Http.host()` against a local server (no outside network): a send with its secret header
+    /// on the wire, a streamed body read in chunks, the size bound, and the `net` refusal.
+    #[test]
+    fn http_sends_streams_bounds_and_refuses_on_a_local_server() {
+        use std::io::{BufRead, BufReader};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let mut seen = vec![];
+            for _ in 0..3 {
+                let (s, _) = listener.accept().unwrap();
+                let mut r = BufReader::new(s.try_clone().unwrap());
+                let mut head = String::new();
+                loop {
+                    let mut line = String::new();
+                    r.read_line(&mut line).unwrap();
+                    if line == "\r\n" {
+                        break;
+                    }
+                    head.push_str(&line);
+                }
+                seen.push(head);
+                let body = "hello world";
+                let mut s = s;
+                let _ = write!(
+                    s,
+                    "HTTP/1.1 200 OK\r\ncontent-length: {}\r\nx-b: 2\r\nx-a: 1\r\nx-a: 3\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+            seen
+        });
+        let mut h = host();
+        let url = format!("http://127.0.0.1:{port}/p");
+        let req = HttpRequest {
+            method: "GET",
+            url: &url,
+            headers: vec![("accept", "text/plain")],
+            secret_headers: vec![("authorization", "Bearer tok")],
+            ..Default::default()
+        };
+        h.http_send(1, &req);
+        let (r, st, payload) = h.next_completion().unwrap();
+        assert_eq!((r, st), (1, 0));
+        let text = String::from_utf8_lossy(&payload);
+        assert!(
+            text.contains("x-a") && text.ends_with("hello world"),
+            "{text}"
+        );
+        let a = text.find("1, 3").unwrap();
+        assert!(
+            a < text.find("x-b").unwrap(),
+            "sorted, one name joined: {text}"
+        );
+        h.http_stream_open(2, &req);
+        let (r, st, payload) = h.next_completion().unwrap();
+        assert_eq!((r, st), (2, 0));
+        let w = |i: usize| u32::from_le_bytes(payload[i..i + 4].try_into().unwrap());
+        let n = payload.len();
+        let body = HandleId {
+            kind: w(n - 12),
+            slot: w(n - 8),
+            generation: w(n - 4),
+        };
+        assert!(h.http_body_waits(body));
+        h.http_body_fetch(3, body, 5);
+        assert_eq!(h.next_completion(), Some((3, 0, b"hello".to_vec())));
+        assert!(
+            !h.http_body_waits(body),
+            "the rest of the chunk is buffered"
+        );
+        assert_eq!(h.http_body_read(body, 100), Ok(b" world".to_vec()));
+        h.http_body_close(body);
+        assert!(h.http_body_read(body, 1).is_err());
+        h.config.max_copy_bytes = 4;
+        h.http_send(4, &req);
+        assert_eq!(
+            h.next_completion(),
+            Some((4, 1, b"response too large".to_vec()))
+        );
+        let seen = server.join().unwrap();
+        assert!(seen[0].to_lowercase().contains("authorization: bearer tok"));
+        h.config.permissions = Some(Permissions::parse(r#"{"net": ["a.example:443"]}"#).unwrap());
+        assert_eq!(
+            h.http_refused(&req),
+            Some(format!(
+                "127.0.0.1:{port} is not in the manifest's net list"
+            ))
+        );
+        assert_eq!(h.close().aborted_requests, 0);
     }
 
     #[test]

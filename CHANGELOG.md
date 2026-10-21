@@ -7,6 +7,16 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Added
+
+- **`Http` on `--target native`** (experimental, plan M5 N1b): `Http.host()` sends with
+  `reqwest` over `rustls` (no proxy, no automatic redirects: `std/http` follows each hop, so the
+  manifest's `net` list is checked on every hop), bodies bounded by `SAKURA_MAX_COPY_BYTES`,
+  `Http.stream` bodies read as they arrive, and `Http.recording` cassettes replayed and
+  validated with the JS runtime's messages. A native `main` that leaves `Http` to the runtime
+  now runs instead of exiting 75; the `secrets` example runs natively. A cassette line that is
+  not JSON names the line with the parser's own text, which differs from Node's.
+
 ## [1.0.0-beta.3] - 2026-10-21
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

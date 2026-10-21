@@ -723,7 +723,7 @@ fn the_driver_refuses_a_foreign_sakura_native_record() {
     assert!(out.stdout.is_empty());
 }
 
-/// RFC 0002 §7, design §17.271 (9): a `main` whose row after handling leaves `Http`, `Serve`,
+/// RFC 0002 §7, design §17.271 (9): a `main` whose row after handling leaves `Serve`,
 /// `Llm` or `WebSocket` (web-APIs phase 8) to the runtime exits 75 at startup with one stderr line naming the effect, before
 /// any user code runs; a row of effects the native host serves runs.
 #[test]
@@ -735,11 +735,8 @@ fn the_driver_refuses_a_root_effect_native_lacks() {
     let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-coverage");
     std::fs::create_dir_all(&dir).unwrap();
     for (roots, code, stderr) in [
-        (
-            &["Console", "Http"][..],
-            75,
-            "`Http` is not available on target `native`\n",
-        ),
+        // Since N1b the native host serves `Http`.
+        (&["Console", "Http"][..], 0, ""),
         (
             &["Llm", "Serve"],
             75,

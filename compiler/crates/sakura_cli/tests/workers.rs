@@ -403,22 +403,21 @@ pub fn main() -> Unit ! {Console, Worker} {
 /// as `main` is (exit 75 and one line naming the effect); its parent reads that end.
 #[cfg(feature = "native")]
 #[test]
-fn a_native_worker_declaring_http_is_refused_at_its_start() {
+fn a_native_worker_declaring_websocket_is_refused_at_its_start() {
     let out = run(
         "refused",
         "native",
         &["a.example:443"],
-        r#"import std/http.{Any, Http}
-import std/response.{Response}
+        r#"import std/websocket.{WebSocket}
 import std/worker.{Grants, Inbox, Outbox, Permissions, Worker}
 
 @worker
-fn fetcher(_inbox: Inbox<Int>, _outbox: Outbox<String>) -> Unit ! {Worker, Http} {}
+fn fetcher(_inbox: Inbox<Int>, _outbox: Outbox<String>) -> Unit ! {Worker, WebSocket} {}
 
-// `main` handles `Http` itself, so it starts; the worker's root `Http` is the host's.
+// `main` handles `WebSocket` itself, so it starts; the worker's root `WebSocket` is the host's.
 pub fn main() -> Unit ! {Console, Worker} {
   let g = Grants.of(Permissions { fs_read: [], fs_write: [], net: ["a.example:443"], env: [] })
-  with Http.scripted([(Any, Response.status(200, ""))]) {
+  with WebSocket.scripted([]) {
     Console.print("{Worker.spawn(fetcher, g, fn(w) { Worker.recv(w) })}")
   }
 }
@@ -431,7 +430,7 @@ pub fn main() -> Unit ! {Console, Worker} {
     );
     assert!(
         out.stderr
-            .contains("`Http` is not available on target `native`"),
+            .contains("`WebSocket` is not available on target `native`"),
         "{}",
         out.stderr
     );

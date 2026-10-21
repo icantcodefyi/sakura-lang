@@ -11,9 +11,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::Ctx;
-use super::host::{FileMode, HandleId, Host, HostError, Hosted};
+use super::host::{FileMode, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse};
 use crate::cx::{Cx, TOO_LARGE};
-use crate::exec::step;
+use crate::exec::{status, step};
 use crate::exports::ret;
 use crate::json;
 use crate::object::UNIT;
@@ -77,6 +77,9 @@ pub extern "C" fn rt_hosted(ctx: Ctx<'_>, id: u32, at: u32, len: u32) -> u32 {
             option: rt.option_id(),
             entry: rt.type_named(b"std::fs::Entry"),
             mode: rt.type_named(b"std::fs::Mode"),
+            response: rt.type_named(b"std::response::Response"),
+            incoming: rt.type_named(b"std::http::Incoming"),
+            payload: rt.type_named(b"std::request::Payload"),
         };
         let size = rt.heap.mem.size();
         let r = if u64::from(at) + u64::from(len) > size {
@@ -110,7 +113,20 @@ struct Ids {
     option: u32,
     entry: Option<u32>,
     mode: Option<u32>,
+    response: Option<u32>,
+    incoming: Option<u32>,
+    payload: Option<u32>,
 }
+
+/// A layout type id an answer needs, or the fault that the module has none.
+fn need(id: Option<u32>, name: &str) -> Hosted<u32> {
+    id.ok_or_else(|| HostError::Fault(alloc::format!("the module has no {name}")))
+}
+
+/// `std::request::Method`'s constructors as `fetch` sends them.
+const METHODS: [&str; 8] = [
+    "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE",
+];
 
 fn defect(e: HostError) -> Vec<u8> {
     match e {
@@ -266,6 +282,87 @@ fn call(host: &mut dyn Host, ids: &Ids, name: Option<&str>, args: &[u8]) -> Host
             let b = host.http_body_of(bytes)?;
             w.handle(b);
         }
+        Some("http_recording_open") => {
+            arity(2)?;
+            let (d, path) = (r.dir()?, r.string()?);
+            r.end()?;
+            result(&mut w, ids, host.http_recording_open(d, path), |w, id| {
+                w.int(id);
+            })?;
+        }
+        Some(op @ ("http_recording_lookup" | "http_recording_lookup_stream")) => {
+            arity(2)?;
+            let id = r.int()?;
+            let req = r.request()?;
+            r.end()?;
+            let stream = op == "http_recording_lookup_stream";
+            let (ty, payload) = if stream {
+                (need(ids.incoming, "std::http::Incoming")?, 0)
+            } else {
+                (
+                    need(ids.response, "std::response::Response")?,
+                    need(ids.payload, "std::request::Payload")?,
+                )
+            };
+            let found = host.http_recording_lookup(id, &req);
+            let found = match found {
+                // A replayed stream's body is one buffered chunk.
+                Ok(Some(resp)) if stream => {
+                    let b = host.http_body_of(&resp.body)?;
+                    Ok(Some((resp, Some(b))))
+                }
+                Ok(found) => Ok(found.map(|resp| (resp, None))),
+                Err(e) => Err(e),
+            };
+            result(&mut w, ids, found, |w, found| match found {
+                None => {
+                    w.variant(ids.option, 0, 0);
+                }
+                Some((resp, body)) => {
+                    w.variant(ids.option, 1, 1);
+                    w.record(ty, 3).int(resp.status).headers(&resp.headers);
+                    match body {
+                        Some(b) => w.handle(b),
+                        None => w.payload(payload, &resp.body),
+                    };
+                }
+            })?;
+        }
+        Some("http_recording_append") => {
+            arity(3)?;
+            let id = r.int()?;
+            let req = r.request()?;
+            r.tag(t::RECORD)?;
+            let (_, n) = (r.u32()?, r.u32()?);
+            if n != 3 {
+                return Err(fault("a malformed hosted argument"));
+            }
+            let resp = r.response_parts(false)?;
+            r.end()?;
+            result(
+                &mut w,
+                ids,
+                host.http_recording_append(id, &req, &resp),
+                |w, ()| {
+                    w.unit();
+                },
+            )?;
+        }
+        Some("http_recording_append_stream") => {
+            arity(5)?;
+            let id = r.int()?;
+            let req = r.request()?;
+            let resp = r.response_parts(true)?;
+            r.end()?;
+            result(
+                &mut w,
+                ids,
+                host.http_recording_append(id, &req, &resp),
+                |w, ()| {
+                    w.unit();
+                },
+            )?;
+        }
         Some(_) => {
             return Err(HostError::Failure(
                 "a host operation this native host does not provide".into(),
@@ -392,6 +489,98 @@ impl<'a> Reader<'a> {
         }
     }
 
+    /// A variant's constructor, after checking it has `n` payloads (the type id is not checked:
+    /// the shape is).
+    fn ctor(&mut self, n: u32) -> Hosted<u32> {
+        self.tag(t::VARIANT)?;
+        let (_, ctor, k) = (self.u32()?, self.u32()?, self.u32()?);
+        if k != n {
+            return Err(fault("a hosted argument of the wrong kind"));
+        }
+        Ok(ctor)
+    }
+
+    /// A `List<(String, String)>`; with `secret`, the second of each pair is a `Secret<String>`
+    /// (its value, or `""` where it crossed redacted).
+    fn pairs(&mut self, secret: bool) -> Hosted<Vec<(&'a str, &'a str)>> {
+        let n = self.list()?;
+        let mut out = Vec::new();
+        for _ in 0..n {
+            if self.tuple()? != 2 {
+                return Err(fault("a hosted argument of the wrong kind"));
+            }
+            let name = self.string()?;
+            if secret {
+                self.tag(t::SECRET)?;
+                if self.b.get(self.at) == Some(&t::UNIT) {
+                    self.at += 1;
+                    out.push((name, ""));
+                    continue;
+                }
+            }
+            out.push((name, self.string()?));
+        }
+        Ok(out)
+    }
+
+    /// A `std::request::Payload`'s bytes; `None` for `Empty`.
+    fn payload(&mut self) -> Hosted<Option<&'a [u8]>> {
+        self.tag(t::VARIANT)?;
+        let (_, ctor, n) = (self.u32()?, self.u32()?, self.u32()?);
+        match (ctor, n) {
+            (0, 0) => Ok(None),
+            (1, 1) => Ok(Some(self.string()?.as_bytes())),
+            (2, 1) => Ok(Some(self.bytes()?)),
+            _ => Err(fault("a hosted argument of the wrong kind")),
+        }
+    }
+
+    /// A `std::request::Request`.
+    fn request(&mut self) -> Hosted<HttpRequest<'a>> {
+        self.tag(t::RECORD)?;
+        let (_, n) = (self.u32()?, self.u32()?);
+        if n != 7 {
+            return Err(fault("a hosted argument of the wrong kind"));
+        }
+        let method = METHODS
+            .get(self.ctor(0)? as usize)
+            .ok_or_else(|| fault("a hosted argument of the wrong kind"))?;
+        let url = self.string()?;
+        let headers = self.pairs(false)?;
+        let body = self.payload()?;
+        self.ctor(0)?;
+        let secret_headers = self.pairs(true)?;
+        self.pairs(false)?;
+        Ok(HttpRequest {
+            method,
+            url,
+            headers,
+            body,
+            secret_headers,
+        })
+    }
+
+    /// A response's status, headers and body: a `Response`'s fields (a `Payload` body), or with
+    /// `bytes` the separate arguments of `http_recording_append_stream`.
+    fn response_parts(&mut self, bytes: bool) -> Hosted<HttpResponse> {
+        let status = self.int()?;
+        let headers = self
+            .pairs(false)?
+            .into_iter()
+            .map(|(n, v)| (String::from(n), String::from(v)))
+            .collect();
+        let body = if bytes {
+            self.bytes()?
+        } else {
+            self.payload()?.unwrap_or_default()
+        };
+        Ok(HttpResponse {
+            status,
+            headers,
+            body: Vec::from(body),
+        })
+    }
+
     fn end(&self) -> Hosted<()> {
         if self.at == self.b.len() {
             Ok(())
@@ -449,6 +638,22 @@ impl W {
     fn handle(&mut self, h: HandleId) -> &mut W {
         self.0.push(t::HANDLE);
         self.u32(h.kind).u32(h.slot).u32(h.generation)
+    }
+    fn headers(&mut self, hs: &[(String, String)]) -> &mut W {
+        self.list(hs.len());
+        for (n, v) in hs {
+            self.0.push(t::TUPLE);
+            self.u32(2).string(n).string(v);
+        }
+        self
+    }
+    /// The body a host delivers (JS `payloadOf`): `Empty` with no bytes, else `Bytes`.
+    fn payload(&mut self, id: u32, b: &[u8]) -> &mut W {
+        if b.is_empty() {
+            self.variant(id, 0, 0)
+        } else {
+            self.variant(id, 2, 1).bytes(b)
+        }
     }
 }
 
@@ -635,30 +840,199 @@ fn body_close(cx: &mut Cx<'_>, body: u32) -> Res<()> {
     Ok(())
 }
 
+/// Request kind of an Http operation (as wasm32's).
+const HTTP: u32 = 2;
+
+/// The block an Http operation resumes at with its request's completion.
+const ANSWERED: u32 = 1;
+
+/// Return `Ok(ok(data))`, or `Err(reason)` for an ordinary failure; a host failure is `D091`.
+fn ok_or_err(
+    rt: &mut Rt,
+    st: u32,
+    data: &[u8],
+    ok: impl FnOnce(&mut Rt, &[u8]) -> Res<u32>,
+) -> u32 {
+    let r = match st {
+        status::OK => ok(rt, data).and_then(|v| rt.ok(v)),
+        status::ERR => rt.new_string(data).and_then(|s| rt.err(s)),
+        _ => {
+            let m = String::from_utf8_lossy(data).into_owned();
+            Err(super::sql::host_defect(rt, HostError::Failure(m)))
+        }
+    };
+    match r {
+        Ok(v) => ret(rt, u64::from(v)),
+        Err(d) => rt.raise(d),
+    }
+}
+
+/// A new `Bytes` holding `b`.
+fn new_bytes(rt: &mut Rt, b: &[u8]) -> Res<u32> {
+    let n = u32::try_from(b.len()).map_err(|_| Defect::HEAP_EXHAUSTED)?;
+    let p = rt.new_bytes(n)?;
+    rt.heap.mem.bytes_mut(p + 12, n).copy_from_slice(b);
+    Ok(p)
+}
+
+/// `http_send`'s or `http_stream_open`'s completion `(Int status, List headers, Bytes body |
+/// Handle body)` as the `Response` or `Incoming` it is.
+fn answered(rt: &mut Rt, data: &[u8], open: bool) -> Res<u32> {
+    let bad = crate::vt::MALFORMED;
+    if data.get(..6) != Some(&[t::TUPLE, 3, 0, 0, 0, t::INT]) {
+        return Err(bad);
+    }
+    let heads = json::vt_skip(data, 14, 0)?;
+    let body = &data[heads..];
+    let name: &[u8] = if open {
+        b"std::http::Incoming"
+    } else {
+        b"std::response::Response"
+    };
+    let ty = rt.type_named(name).ok_or(bad)?;
+    let mut w = W(Vec::with_capacity(data.len() + 32));
+    w.record(ty, 3).0.extend_from_slice(&data[5..heads]);
+    match body.first() {
+        Some(&t::HANDLE) if open && body.len() == 13 => w.0.extend_from_slice(body),
+        Some(&t::BYTES) if !open && body.len() >= 5 => {
+            let payload = rt.type_named(b"std::request::Payload").ok_or(bad)?;
+            w.payload(payload, &body[5..]);
+        }
+        _ => return Err(bad),
+    }
+    let b = new_bytes(rt, &w.0)?;
+    let v = rt.vt_decode(b + 12, w.0.len() as u32);
+    rt.drop(b);
+    v
+}
+
+/// `http_send(req)` and `http_stream_open(req)` (cps, as JS and wasm32): imports of kind
+/// `secret` (ABI §8.1), so `secret_headers` cross with their values, and every copy that
+/// carried them is zeroed. Cancelling the task aborts the request (`Host::abort`).
+fn http_request(ctx: Ctx<'_>, frame: u32, open: bool) -> u32 {
+    let mut cx = Cx::native(ctx);
+    let rt = cx.rt();
+    if rt.block(frame) == ANSWERED {
+        let (st, data) = super::sql::completion(rt);
+        return ok_or_err(rt, st, &data, |rt, d| answered(rt, d, open));
+    }
+    let req = rt.take_fslot(frame, 0) as u32;
+    rt.sched.vt_secrets = true;
+    let b = rt.vt_encode_tuple(&[req]);
+    rt.sched.vt_secrets = false;
+    rt.drop(req);
+    let b = match b {
+        Ok(b) => b,
+        Err(d) => return rt.raise(d),
+    };
+    let mut v = rt.data_bytes(b).to_vec();
+    let (len, at) = rt.data(b);
+    rt.heap.mem.fill(at, 0, len);
+    rt.drop(b);
+    let step = (|| {
+        let mut r = Reader { b: &v, at: 0 };
+        if r.tuple()? != 1 {
+            return Err(fault("a hosted call with the wrong arity"));
+        }
+        let parsed = r.request()?;
+        r.end()?;
+        let refused = cx.hosted_parts().1.http_refused(&parsed);
+        let rt = cx.rt();
+        let id = match refused {
+            Some(m) => Err(m),
+            None => match rt.request(HTTP) {
+                Ok(Some(id)) => Ok(id),
+                Ok(None) => Err("too many pending operations".into()),
+                Err(d) => return Ok(rt.raise(d)),
+            },
+        };
+        let id = match id {
+            Ok(id) => id,
+            Err(m) => {
+                let e = rt.new_string(m.as_bytes()).and_then(|s| rt.err(s));
+                return Ok(match e {
+                    Ok(e) => ret(rt, u64::from(e)),
+                    Err(d) => rt.raise(d),
+                });
+            }
+        };
+        rt.set_block(frame, ANSWERED);
+        let host = cx.hosted_parts().1;
+        if open {
+            host.http_stream_open(id, &parsed);
+        } else {
+            host.http_send(id, &parsed);
+        }
+        Ok(step::SUSPEND)
+    })();
+    v.fill(0);
+    match step {
+        Ok(s) => s,
+        Err(e) => {
+            let rt = cx.rt();
+            let d = super::sql::host_defect(rt, e);
+            rt.raise(d)
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_send(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
+    http_request(ctx, frame, false)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_k_http_stream_open(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
+    http_request(ctx, frame, true)
+}
+
 /// `http_stream_read(body, max)` (cps, as JS and wasm32): up to `max` bytes, empty at the end,
-/// `Err` after the body closed. A buffered body answers at once.
+/// `Err` after the body closed. Buffered bytes answer at once; a live body with none waits for
+/// the network (a request; cancelling the task aborts it).
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_k_http_stream_read(ctx: Ctx<'_>, _env: u32, frame: u32) -> u32 {
     let mut cx = Cx::native(ctx);
     let rt = cx.rt();
+    if rt.block(frame) == ANSWERED {
+        let (st, data) = super::sql::completion(rt);
+        return ok_or_err(rt, st, &data, new_bytes);
+    }
     let body = rt.take_fslot(frame, 0) as u32;
     let max = rt.fslot(frame, 1) as i64;
-    let read = body_handle(rt, body).map(|h| cx.hosted_parts().1.http_body_read(h, max));
+    let h = match body_handle(rt, body) {
+        Ok(h) => h,
+        Err(d) => {
+            rt.drop(body);
+            return rt.raise(d);
+        }
+    };
+    let host = cx.hosted_parts().1;
+    let read = if host.http_body_waits(h) {
+        let rt = cx.rt();
+        match rt.request(HTTP) {
+            Ok(Some(id)) => {
+                rt.set_block(frame, ANSWERED);
+                // The guest's `Body` stays alive in the `Http.stream` callback meanwhile.
+                rt.drop(body);
+                cx.hosted_parts().1.http_body_fetch(id, h, max);
+                return step::SUSPEND;
+            }
+            Ok(None) => Err(HostError::Err("too many pending operations".into())),
+            Err(d) => {
+                rt.drop(body);
+                return rt.raise(d);
+            }
+        }
+    } else {
+        host.http_body_read(h, max)
+    };
     let rt = cx.rt();
     rt.drop(body);
-    let r = read.and_then(|read| match read {
-        Ok(b) => {
-            let n = u32::try_from(b.len()).map_err(|_| Defect::HEAP_EXHAUSTED)?;
-            let p = rt.new_bytes(n)?;
-            rt.heap.mem.bytes_mut(p + 12, n).copy_from_slice(&b);
-            rt.ok(p)
-        }
-        Err(HostError::Err(m)) => {
-            let s = rt.new_string(m.as_bytes())?;
-            rt.err(s)
-        }
+    let r = match read {
+        Ok(b) => new_bytes(rt, &b).and_then(|p| rt.ok(p)),
+        Err(HostError::Err(m)) => rt.new_string(m.as_bytes()).and_then(|s| rt.err(s)),
         Err(e) => Err(super::sql::host_defect(rt, e)),
-    });
+    };
     match r {
         Ok(v) => ret(rt, u64::from(v)),
         Err(d) => rt.raise(d),

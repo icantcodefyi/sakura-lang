@@ -243,7 +243,7 @@ fn start(cx: &mut Cx<'_>, frame: u32, db: u32, rows: bool) -> u32 {
 }
 
 /// The completion of `query` or `execute`: the payload (consumed) as a `Vec`, with its status.
-fn completion(rt: &mut Rt) -> (u32, Vec<u8>) {
+pub(super) fn completion(rt: &mut Rt) -> (u32, Vec<u8>) {
     let bits = rt.take_ret();
     let payload = bits as u32;
     let data = if payload == 0 {

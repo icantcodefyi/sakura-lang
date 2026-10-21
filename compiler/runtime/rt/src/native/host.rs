@@ -57,6 +57,28 @@ pub struct WorkerGrants {
     pub env: Vec<String>,
 }
 
+/// A `std::request::Request` as a host sends it or a cassette keys it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct HttpRequest<'a> {
+    /// Upper case, as `fetch` sends it (`GET`).
+    pub method: &'a str,
+    pub url: &'a str,
+    pub headers: Vec<(&'a str, &'a str)>,
+    /// The payload's bytes (`Text` as UTF-8); `None` for `Empty`.
+    pub body: Option<&'a [u8]>,
+    /// `secret_headers` with their values: only `http_send` and `http_stream_open` (imports of
+    /// kind `secret`, ABI §8.1) see them; the cassette operations get none.
+    pub secret_headers: Vec<(&'a str, &'a str)>,
+}
+
+/// A response a cassette replays.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct HttpResponse {
+    pub status: i64,
+    pub headers: Vec<(String, String)>,
+    pub body: Vec<u8>,
+}
+
 /// One instance's host. Methods without a default are the root handlers' imports, which every
 /// host provides; the `hosted` builtins default to a host failure (`D091`), so a host
 /// implements only the services it offers.
@@ -173,6 +195,49 @@ pub trait Host {
     }
     /// Closes `body` (`http_stream_closing`'s finalizer); a second close does nothing.
     fn http_body_close(&mut self, _body: HandleId) {}
+    /// Whether reading `body` waits for the network (a live body with nothing buffered):
+    /// then the read is `http_body_fetch`, else `http_body_read`.
+    fn http_body_waits(&mut self, _body: HandleId) -> bool {
+        false
+    }
+    /// `async`: complete `request` with status 0 and up to `max` raw bytes of `body` (empty at
+    /// its end), or 1 and the reason.
+    fn http_body_fetch(&mut self, _request: u32, _body: HandleId, _max: i64) {}
+    /// `async` (`Http.host()`'s `http_send`): send `req` with `redirect: manual` and complete
+    /// `request` with status 0 and the `sakura-vt1` tuple `(Int status, List<(String, String)>
+    /// headers, Bytes body)`, or 1 and the reason no response arrived; 3 is a host failure.
+    fn http_send(&mut self, _request: u32, _req: &HttpRequest<'_>) {}
+    /// Why `req` is refused before it is sent (the manifest's `net` list), answered at once as
+    /// the `Err` of `http_send` or `http_stream_open`, with no request.
+    fn http_refused(&mut self, _req: &HttpRequest<'_>) -> Option<String> {
+        None
+    }
+    /// `async`: as `http_send`, completing with `(Int status, List<(String, String)> headers,
+    /// Handle body)` (kind `vt::BODY`) once the status and headers arrive.
+    fn http_stream_open(&mut self, _request: u32, _req: &HttpRequest<'_>) {}
+    /// `Http.recording`'s cassette at `path` inside `dir`: its id, or `Err(reason)` naming the
+    /// file (and the line of a malformed one).
+    fn http_recording_open(&mut self, _dir: HandleId, _path: &str) -> Hosted<i64> {
+        Err(unsupported())
+    }
+    /// The next recorded response for `req` in cassette `id`; `Ok(None)` is a miss while
+    /// recording, `Err(reason)` a miss otherwise or a refused credential header.
+    fn http_recording_lookup(
+        &mut self,
+        _id: i64,
+        _req: &HttpRequest<'_>,
+    ) -> Hosted<Option<HttpResponse>> {
+        Err(unsupported())
+    }
+    /// Append one exchange to cassette `id` (only while recording).
+    fn http_recording_append(
+        &mut self,
+        _id: i64,
+        _req: &HttpRequest<'_>,
+        _resp: &HttpResponse,
+    ) -> Hosted<()> {
+        Err(unsupported())
+    }
 
     /// `Sql.memory()` (`path` `None`) or `Sql.sqlite(path)`: a new database's id. Its handle
     /// (kind `vt::SQL`, slot the id) retires with the handler. A file opens at `sql_root`.
