@@ -25,7 +25,7 @@
 "contracts": [
 
 ],
-"refinements": [{"name":"Percent","module":"main::trace_decode_then_spawn","base":"Int","check":2}],
+"refinements": [{"name":"Percent","module":"main::trace_decode_then_spawn","base":"Int","check":2,"keywords":"{\"minimum\": 0, \"maximum\": 100}"}],
 "field_schemas": [[4,[["String",{"Refined":[0,[]]}]]]],
 "tests": [],
 "entry": 1

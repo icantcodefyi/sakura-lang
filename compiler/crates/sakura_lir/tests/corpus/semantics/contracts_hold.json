@@ -19,7 +19,7 @@
 {"kind":"Requires","name":"scale","pos":{"file":57,"offset":193,"end":203}},
 {"kind":"Ensures","name":"scale","pos":{"file":57,"offset":214,"end":229}}
 ],
-"refinements": [{"name":"Percent","module":"main::contracts_hold","base":"Int","check":4}],
+"refinements": [{"name":"Percent","module":"main::contracts_hold","base":"Int","check":4,"keywords":"{\"minimum\": 0, \"maximum\": 100}"}],
 "field_schemas": [],
 "tests": [],
 "entry": 1

@@ -191,6 +191,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         "`Json.encode`, `Json.decode` and `Json.schema` need the program's JS type descriptors, which a bare corpus module lacks",
     ),
     (
+        "semantics/json_schema_refinement_keywords",
+        None,
+        "`Json.schema` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",
+    ),
+    (
         "semantics/error_field_name",
         None,
         "`Json.encode` and `Json.decode` need the program's JS type descriptors, which a bare corpus module lacks",

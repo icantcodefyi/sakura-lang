@@ -141,7 +141,7 @@
 {"kind":"Where","name":"Status","pos":{"file":35,"offset":332,"end":338}},
 {"kind":"Requires","name":"get","pos":{"file":38,"offset":1683,"end":1718}}
 ],
-"refinements": [{"name":"Url","module":"std::url","base":"String","check":2},{"name":"Status","module":"std::response","base":"Int","check":4}],
+"refinements": [{"name":"Url","module":"std::url","base":"String","check":2},{"name":"Status","module":"std::response","base":"Int","check":4,"keywords":"{\"minimum\": 100, \"maximum\": 599}"}],
 "field_schemas": [[8,[[{"Adt":[4,[]]},{"Refined":[0,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[9,[]]},{"Adt":[10,[]]},{"List":{"Tuple":["String",{"Opaque":"Secret"}]}},{"List":{"Tuple":["String","String"]}}]]],[11,[[{"Refined":[1,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[9,[]]}]]]],
 "tests": [],
 "entry": 1

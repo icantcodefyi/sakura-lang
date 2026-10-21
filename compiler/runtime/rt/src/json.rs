@@ -2134,7 +2134,8 @@ fn heap_object(o: &mut HeapOut<'_>, es: u32, depth: u32) -> Res<()> {
 // ---- JSON Schema --------------------------------------------------------------------------------
 
 /// `json_schema(witness, schema)`: the JSON Schema (draft 2020-12) of `schema` as a `Json` value
-/// (JS `jsonSchemaJs`; recursive types through `$defs`, refinements as their base).
+/// (JS `jsonSchemaJs`; recursive types through `$defs`, refinements as their base with the
+/// keywords their `where` states).
 /// ponytail: builds a tree with `alloc`, so only targets with an allocator have it (not wasm32).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn schema(schema: &[u8], descs: &[u8], types: &mut dyn Types, out: &mut dyn Out) -> Res<()> {
@@ -2272,12 +2273,31 @@ pub fn schema(schema: &[u8], descs: &[u8], types: &mut dyn Types, out: &mut dyn 
         }
         fn named_schema(&mut self, id: &[u8], args: Option<S<'_>>, depth: u32) -> Res<J> {
             let bind = args.map(|args| Bind { args });
-            let d = match self.types.find(id) {
+            let at = self.types.find(id);
+            let d = match at {
                 Some(at) => Some(desc(self.descs, at, bind.as_ref())?),
                 None => None,
             };
-            if let Some(d) = d.as_ref().filter(|d| d.kind == b'w') {
-                return self.go(d.body, depth + 1);
+            if let (Some(at), Some(d)) = (at, d.as_ref().filter(|d| d.kind == b'w')) {
+                let mut out = self.go(d.body, depth + 1)?;
+                // The keywords its `where` states over the base's (ABI 1.14.0), as JS spreads
+                // them: a key the base has keeps its place.
+                if let (J::Obj(m), Some(k)) = (&mut out, nth(self.descs, at, 4)?) {
+                    let me = S {
+                        text: self.descs,
+                        at: k,
+                        env: None,
+                    };
+                    let mut kws = Seq::new(self.descs, k);
+                    while let Some((key, v)) = kws.member()? {
+                        let (key, v) = (s(me.name(key)?), J::Num(number(self.descs, v)?));
+                        match m.iter_mut().find(|(k, _)| *k == key) {
+                            Some(slot) => slot.1 = v,
+                            None => m.push((key, v)),
+                        }
+                    }
+                }
+                return Ok(out);
             }
             if id == JSON {
                 return Ok(obj([]));

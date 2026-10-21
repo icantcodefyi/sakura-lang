@@ -1,0 +1,45 @@
+// milestone: M3
+// covers: design §17.293 MT-3, §17.298 (c), runtime/rt/ABI.md 1.14.0
+// spec: §10.3
+
+// `Json.schema` states the JSON Schema keywords a refined type's `where` can say: the top-level
+// `&&` conjuncts `String.len(it) <= n`/`>= n` (`maxLength`/`minLength`), `List.len(it)`
+// (`maxItems`/`minItems`), and `it <= n`/`>= n` on `Int` and `Float` (`maximum`/`minimum`),
+// beside the base's schema. A bound stated twice keeps the tighter one; any other conjunct
+// (`it % 2 == 0`, `it < 10`, `||`) states nothing and is still checked on decode. A field's own
+// `where` states its keywords the same way. The same text on JS, WASM and native.
+import std/json.{DecodeError, Json}
+
+type Name = String where String.len(it) >= 1 && String.len(it) <= 20
+
+type Tags = List<String> where List.len(it) <= 8 && List.len(it) <= 5
+
+type Percent = Int where it >= 0 && it <= 100
+
+type Ratio = Float where it >= -1.5 && it <= 2.0
+
+type Even = Int where it % 2 == 0 && it < 10
+
+type Either = Int where it >= 0 || it <= -10
+
+type Small = Percent where it <= 10
+
+type Form = {
+  name: Name,
+  tags: Tags,
+  percent: Percent,
+  ratio: Ratio,
+  even: Even,
+  either: Either,
+  small: Small,
+  code: String where String.len(it) <= 4,
+}
+
+pub fn main() -> Unit ! {Console} {
+  let w: Option<Form> = None
+  Console.print(Json.encode(Json.schema(w)))
+  let bad: Result<Form, DecodeError> = Json.decode(
+    "\{\"name\": \"a\", \"tags\": [], \"percent\": 1, \"ratio\": 0.5, \"even\": 3, \"either\": 1, \"small\": 1, \"code\": \"x\"\}",
+  )
+  Console.print("{bad.is_ok()}")
+}

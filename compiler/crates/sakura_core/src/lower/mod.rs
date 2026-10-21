@@ -146,8 +146,9 @@ pub(crate) struct Lower<'p> {
     schemes: HashMap<DefId, (Vec<u32>, Vec<u32>)>,
 }
 
-/// A field's `where`: its predicate body, the field name and its range.
-type FieldPred = (hir::BodyId, String, text_size::TextRange);
+/// A field's `where`: its predicate body, the field name, its range and how many top-level
+/// `&&` conjuncts the syntax found.
+type FieldPred = (hir::BodyId, String, text_size::TextRange, usize);
 
 /// An operation's `requires` def (its parameters) and `ensures` def (its parameters, then the
 /// result), each called around every perform of it (design §17.286 (8)).
@@ -1029,7 +1030,7 @@ impl<'p> Lower<'p> {
                         let pred = f
                             .refinement
                             .as_ref()
-                            .map(|(b, _)| (*b, f.name.clone(), f.range));
+                            .map(|(b, t)| (*b, f.name.clone(), f.range, t.conjuncts.len()));
                         (f.ty.clone(), pred)
                     })
                     .collect(),
@@ -1055,16 +1056,18 @@ impl<'p> Lower<'p> {
             for (i, (t, pred)) in g.iter().enumerate() {
                 let base = self.ty_ref_k(t, &[], true);
                 row.push(match pred {
-                    Some((body, field, range)) => {
+                    Some((body, field, range, n)) => {
                         let module = self.module_name(d.module);
                         let name = format!("{tname}.{field}");
                         let check = self.push_placeholder(&format!("{name}$check"), module.clone());
                         let r = RefinementId(self.m.refinements.len() as u32);
+                        let keywords = self.schema_keywords(d.module, *body, *n, &base);
                         self.m.refinements.push(Refinement {
                             name: name.clone(),
                             module,
                             base,
                             check,
+                            keywords,
                         });
                         let fd = expr::FnLower::lower_refinement_check(
                             self, d.module, name, *range, *body, check,
@@ -1144,7 +1147,9 @@ impl<'p> Lower<'p> {
             return r;
         }
         let hir::DefKind::Type(hir::TypeDef {
-            body: hir::TypeDefBody::Refined { base, pred, .. },
+            body: hir::TypeDefBody::Refined {
+                base, pred, text, ..
+            },
             ..
         }) = self.p.def(d).kind.clone()
         else {
@@ -1159,9 +1164,12 @@ impl<'p> Lower<'p> {
             module,
             base: Ty::Unit,
             check,
+            keywords: String::new(),
         });
         self.refinements.insert(d, r);
         let base = self.ty_ref_k(&base, &[], true);
+        self.m.refinements[r.index()].keywords =
+            self.schema_keywords(d.module, pred, text.conjuncts.len(), &base);
         self.m.refinements[r.index()].base = base;
         let range = self.p.def(d).range;
         let fd = expr::FnLower::lower_refinement_check(
@@ -1174,6 +1182,97 @@ impl<'p> Lower<'p> {
         );
         self.m.defs[check.index()] = fd;
         r
+    }
+
+    /// The JSON Schema keywords that the top-level `&&` conjuncts (`n` of them, as the syntax
+    /// found) of the `where` `pred` over `base` state, as one JSON object's text, or empty
+    /// (design §17.298 (c)): `String.len(it) <= n`/`>= n` → `maxLength`/`minLength`,
+    /// `List.len(it)` → `maxItems`/`minItems`, `it <= n`/`>= n` on `Int` and `Float` →
+    /// `maximum`/`minimum`. A keyword stated twice keeps the tighter bound; any other conjunct
+    /// states nothing. `String.len` counts UTF-8 bytes and `maxLength` characters, so the two
+    /// agree on ASCII and the decode check stays the rule.
+    fn schema_keywords(
+        &self,
+        module: hir::ModuleId,
+        pred: hir::BodyId,
+        n: usize,
+        base: &Ty,
+    ) -> String {
+        use hir::{BinaryOp, Expr, Literal, Res, UnaryOp};
+        let body = self.p.body(module, pred);
+        let (Some(v), &[it]) = (body.value, &body.params[..]) else {
+            return String::new();
+        };
+        let mut base = base;
+        while let Ty::Refined(r, _) = base {
+            base = &self.m.refinements[r.index()].base;
+        }
+        let is_it = |e: hir::ExprId| matches!(body.exprs[e], Expr::Path(Res::Local(l)) if l == it);
+        // The literal's value, its JSON text and whether it is an `Int`.
+        let number = |e: hir::ExprId| -> Option<(f64, String, bool)> {
+            let (neg, e) = match body.exprs[e] {
+                Expr::Unary {
+                    op: UnaryOp::Neg,
+                    expr,
+                } => (true, expr),
+                _ => (false, e),
+            };
+            let sign = if neg { "-" } else { "" };
+            match body.exprs[e] {
+                Expr::Lit(Literal::Int(i)) => {
+                    let i = if neg { i.checked_neg()? } else { i };
+                    Some((i as f64, i.to_string(), true))
+                }
+                Expr::Lit(Literal::Float(f)) if f.is_finite() => {
+                    Some((if neg { -f } else { f }, format!("{sign}{f:?}"), false))
+                }
+                _ => None,
+            }
+        };
+        let mut out: Vec<(&str, f64, String)> = Vec::new();
+        for e in expr::conjunct_exprs(body, v, n) {
+            let Expr::Binary { op, lhs, rhs } = body.exprs[e] else {
+                continue;
+            };
+            let upper = match op {
+                BinaryOp::Le => true,
+                BinaryOp::Ge => false,
+                _ => continue,
+            };
+            let Some((value, text, integer)) = number(rhs) else {
+                continue;
+            };
+            let name = if is_it(lhs) && matches!(base, Ty::Int | Ty::Float) {
+                ["minimum", "maximum"][upper as usize]
+            } else if let Expr::Call { callee, args, .. } = &body.exprs[lhs]
+                && let [a] = args[..]
+                && is_it(a)
+                && integer
+                && let Expr::Path(Res::Def(f)) = body.exprs[*callee]
+                && self.p.def(f).name == "len"
+            {
+                match (self.module_name(f.module).as_str(), base) {
+                    ("std::string", Ty::String) => ["minLength", "maxLength"][upper as usize],
+                    ("std::list", Ty::List(_)) => ["minItems", "maxItems"][upper as usize],
+                    _ => continue,
+                }
+            } else {
+                continue;
+            };
+            match out.iter_mut().find(|(k, ..)| *k == name) {
+                Some(kw) if (value < kw.1) == upper => (kw.1, kw.2) = (value, text),
+                Some(_) => {}
+                None => out.push((name, value, text)),
+            }
+        }
+        if out.is_empty() {
+            return String::new();
+        }
+        let members: Vec<String> = out
+            .iter()
+            .map(|(k, _, v)| format!("\"{k}\": {v}"))
+            .collect();
+        format!("{{{}}}", members.join(", "))
     }
 
     pub fn effect(&mut self, d: hir::DefId) -> EffectId {

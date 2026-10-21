@@ -650,34 +650,13 @@ impl<'a, 'p> FnLower<'a, 'p> {
     }
 
     /// The predicate `v` split at its top-level `&&` as HIR lowered it, each conjunct with its
-    /// text; the whole predicate and its whole text when it is not a chain. The HIR has no
-    /// parentheses, so the spine is peeled exactly as many times as the syntax found conjuncts.
+    /// text; the whole predicate and its whole text when it is not a chain.
     fn conjuncts(&self, v: ExprId, text: &hir::PredText) -> Vec<(ExprId, String)> {
-        let whole = vec![(v, text.text.clone())];
-        if text.conjuncts.len() < 2 {
-            return whole;
+        let es = conjunct_exprs(self.body, v, text.conjuncts.len());
+        if es.len() < 2 {
+            return vec![(v, text.text.clone())];
         }
-        let mut rights = Vec::new();
-        let mut cur = v;
-        for _ in 1..text.conjuncts.len() {
-            match &self.body.exprs[cur] {
-                hir::Expr::Binary {
-                    op: hir::BinaryOp::And,
-                    lhs,
-                    rhs,
-                } => {
-                    rights.push(*rhs);
-                    cur = *lhs;
-                }
-                _ => return whole,
-            }
-        }
-        rights.push(cur);
-        rights.reverse();
-        rights
-            .into_iter()
-            .zip(text.conjuncts.iter().cloned())
-            .collect()
+        es.into_iter().zip(text.conjuncts.iter().cloned()).collect()
     }
 
     /// `Violation { type_name, clause, value_summary }` (design §4.3) for `validate`.
@@ -2301,4 +2280,28 @@ pub(crate) fn cmp_ty(t: &Ty) -> CmpTy {
         Ty::String => CmpTy::String,
         _ => CmpTy::Any,
     }
+}
+
+/// The predicate `v` split into its `n` top-level `&&` conjuncts (as the syntax counted them),
+/// left to right; `[v]` when it is not such a chain. The HIR has no parentheses, so the spine
+/// is peeled exactly `n - 1` times.
+pub(crate) fn conjunct_exprs(body: &hir::Body, v: ExprId, n: usize) -> Vec<ExprId> {
+    let mut rights = Vec::new();
+    let mut cur = v;
+    for _ in 1..n.max(1) {
+        match &body.exprs[cur] {
+            hir::Expr::Binary {
+                op: hir::BinaryOp::And,
+                lhs,
+                rhs,
+            } => {
+                rights.push(*rhs);
+                cur = *lhs;
+            }
+            _ => return vec![v],
+        }
+    }
+    rights.push(cur);
+    rights.reverse();
+    rights
 }

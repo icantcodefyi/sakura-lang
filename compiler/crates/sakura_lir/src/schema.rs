@@ -155,8 +155,11 @@ fn param_text(m: &core::Module, ty: &core::Ty) -> String {
 /// ```text
 /// record      ["r", name, [[field, schema]…]]
 /// variant     ["v", name, [[ctor, [schema…]]…]]
-/// refinement  ["w", name, base schema, the predicate's function index]
+/// refinement  ["w", name, base schema, the predicate's function index, keywords?]
 /// ```
+///
+/// where `keywords`, when the `where` states any, is the JSON Schema keywords object
+/// (`{"maxLength": 20}`, ABI 1.14.0, design §17.298 (c)).
 ///
 /// Field schemas mention refined types (`Module::field_schemas`) and the type's own parameters
 /// as `["V", i]`. Empty when nothing is reachable.
@@ -331,8 +334,12 @@ fn walk_named(
             if out.contains_key(&key) {
                 return;
             }
+            let keywords = match d.keywords.as_str() {
+                "" => String::new(),
+                k => format!(", {k}"),
+            };
             let text = format!(
-                "[\"w\", {}, {}, {}]",
+                "[\"w\", {}, {}, {}{keywords}]",
                 quoted(&d.name),
                 param_text(m, &d.base),
                 d.check

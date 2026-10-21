@@ -1225,6 +1225,16 @@ test("a refined decode runs its predicate under the decoding task and allocates 
   assert.equal(next, decoding + 1);
 });
 
+test("json_schema states a refinement's keywords over its base; a module without them gets the base", () => {
+  // ABI 1.14.0 (design §17.298 (c)): the fifth argument of `refined`, absent before it.
+  rt.refined("t::Name", "Name", "S", (v, _ctx, k) => ret(k, true), { maxLength: 20, minLength: 1 });
+  rt.refined("t::Old", "Old", "I", (v, _ctx, k) => ret(k, true));
+  const schema = (id) => JSON.parse(rt.json_encode(rt.json_schema(null, ["A", id, []]), ["A", "std::json::Json", []]));
+  const doc = "https://json-schema.org/draft/2020-12/schema";
+  assert.deepEqual(schema("t::Name"), { $schema: doc, type: "string", maxLength: 20, minLength: 1 });
+  assert.deepEqual(schema("t::Old"), { $schema: doc, type: "integer" });
+});
+
 test("violated blames the call site from the table, else the clause", () => {
   const call = { uri: "m.sak", start_byte: 10, end_byte: 14 };
   const clause = { uri: "m.sak", start_byte: 2, end_byte: 6 };

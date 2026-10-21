@@ -130,6 +130,7 @@ pub fn convert(m: &c::Module) -> v::Module {
                 module: r.module.clone(),
                 base: ty(&r.base),
                 check: r.check.0,
+                keywords: r.keywords.clone(),
             })
             .collect(),
         field_schemas: m
@@ -487,6 +488,7 @@ pub fn back(m: &v::Module) -> c::Module {
                 module: r.module.clone(),
                 base: back_ty(&r.base),
                 check: c::DefId(r.check),
+                keywords: r.keywords.clone(),
             })
             .collect(),
         field_schemas: m

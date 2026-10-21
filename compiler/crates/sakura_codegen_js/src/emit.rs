@@ -57,8 +57,13 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
     }
     for r in &cx.m.refinements {
         if r.module == module {
+            // The keywords are a fifth argument only when there are any (ABI 1.14.0).
+            let keywords = match r.keywords.as_str() {
+                "" => String::new(),
+                k => format!(", {k}"),
+            };
             w.line(&format!(
-                "$rt.refined({}, {}, {}, {});",
+                "$rt.refined({}, {}, {}, {}{keywords});",
                 js_string(&r.qualified_name()),
                 js_string(&r.name),
                 schema(cx.m, &r.base),

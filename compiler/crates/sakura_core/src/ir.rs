@@ -135,6 +135,9 @@ pub struct Refinement {
     pub base: Ty,
     /// `fn(base) -> Bool`: the `where` predicate.
     pub check: DefId,
+    /// The JSON Schema keywords the predicate's recognisable top-level conjuncts state, as one
+    /// JSON object's text (`{"maxLength": 20}`), or empty (design §17.298 (c)).
+    pub keywords: String,
 }
 
 impl Refinement {

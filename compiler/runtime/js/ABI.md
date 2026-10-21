@@ -474,9 +474,18 @@ only when their `where` holds. Decode errors carry a JSON Pointer (`/items/0/ema
 fields optional, `List` fields repeat, refinements are checked; `--help` fails with the usage.
 
 `json_schema(witness, schema)` returns the JSON Schema (draft 2020-12) of the schema as a
-`Json` value, matching this encoding (recursive types through `$defs`; refinements are not
-stated). A type parameter left unsolved in code has schema `null`: encoding then follows the
+`Json` value, matching this encoding (recursive types through `$defs`; a refined type is its
+base's schema with the keywords its `where` states, below; every `where` is still checked on
+decode). A type parameter left unsolved in code has schema `null`: encoding then follows the
 value's runtime shape, decoding fails with "the target type is not known".
+
+The compiler lowers the recognisable top-level `&&` conjuncts of a `where` to JSON Schema
+keywords (design §17.298 (c)): `String.len(it) <= n`/`>= n` to `maxLength`/`minLength`,
+`List.len(it) <= n`/`>= n` to `maxItems`/`minItems`, and `it <= n`/`>= n` on `Int` and `Float`
+to `maximum`/`minimum`, a bound stated twice keeping the tighter; any other conjunct states
+nothing. They are the fifth argument of `$rt.refined(id, name, base, check, keywords)`,
+omitted when there are none and read as `{}` then. (`String.len` counts UTF-8 bytes and
+`maxLength` characters; the two agree on ASCII.)
 
 **Permissions.** The driver passes the manifest's `[permissions]` as JSON in
 `SAKURA_PERMISSIONS`: `{"fs": {"read": […], "write": […]}, "net": ["host:port", …], "env": […]}`
@@ -686,7 +695,7 @@ cases, each as a child task under a `Test` handler that collects that case's fai
 (section 7): primitives, collections, tuples, records, variants (constructors without fields
 are preferred as the size runs out, so recursive types stay finite), error unions, and refined
 types, whose `where` is checked by running the emitted `T$check` (`$rt.refined(id, name, base,
-check)`; values are retried up to 100 times, then the case is discarded). A quarter of a case's
+check, keywords)`; values are retried up to 100 times, then the case is discarded). A quarter of a case's
 `Int`, `Float` and `String` values repeat one drawn earlier in the same case, so
 `requires List.contains(xs, x)` is satisfiable. The first failing case
 (a recorded failure, an uncaught `Fail` or a defect) is shrunk greedily (integers toward 0,

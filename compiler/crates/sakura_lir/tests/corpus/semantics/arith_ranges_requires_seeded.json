@@ -19,7 +19,7 @@
 {"kind":"Requires","name":"bounded","pos":{"file":57,"offset":489,"end":516}},
 {"kind":"Requires","name":"sum_tail","pos":{"file":57,"offset":374,"end":380}}
 ],
-"refinements": [{"name":"Percent","module":"main::arith_ranges_requires_seeded","base":"Int","check":5}],
+"refinements": [{"name":"Percent","module":"main::arith_ranges_requires_seeded","base":"Int","check":5,"keywords":"{\"minimum\": 0, \"maximum\": 100}"}],
 "field_schemas": [],
 "tests": [],
 "entry": 1

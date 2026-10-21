@@ -9,6 +9,15 @@ retains earlier implementation history.
 
 ### Added
 
+- `Json.schema` (and so a `Tool`'s schema) states the bounds a refined type's `where` can say
+  (design §17.293 MT-3, §17.298 (c)): the top-level `&&` conjuncts `String.len(it) <= n`/`>= n`
+  become `maxLength`/`minLength`, `List.len(it)` `maxItems`/`minItems`, and `it <= n`/`>= n` on
+  `Int` and `Float` `maximum`/`minimum`, beside the base's schema, the same on JS, WASM and
+  native; any other conjunct states nothing, and every `where` is still checked on decode.
+  `String.len` counts UTF-8 bytes where `maxLength` counts characters, so the two agree on
+  ASCII. Structured outputs (`Llm`) drop the keywords the API rejects. `pattern` waits for a
+  `String.matches` in std. Fixture
+  `compiler/tests/semantics/json_schema_refinement_keywords.sak`.
 - `Result.ok(r) -> Option<A>` and `Result.err(r) -> Option<E>` (design §17.293 MT-11a), both
   `@total`: one side of a `Result` as an `Option`, the other side `None`. Fixture
   `compiler/tests/semantics/result_ok_err.sak`.
@@ -153,6 +162,10 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - The WASM runtime ABI is 1.13.0 (`sakura_abi_version` `0x010d00`; design §17.292 (9)): the
   import `console_eprint(ptr, len)` carries `Console.eprint` to the Node host. A 1.12 host
   refuses a 1.13 module (`V8003`).
+- The WASM runtime ABI is 1.14.0 (`sakura_abi_version` `0x010e00`; design §17.298 (c),
+  §17.299 (12)): a refined type's schema keywords are a fifth argument of `$rt.refined` in
+  `__types__.js` and a fifth element of the native descriptor row, read by every
+  `json_schema`. A 1.13 host refuses a 1.14 module (`V8003`); a 1.14 host loads older modules.
 
 - **Breaking since 0.1.0 (design §17.293 MT-9).** `Log.stderr()` and `Log.captured()` write each
   field as `key=` and its value in compact JSON, the text `Json.encode` gives, the same on JS,

@@ -1068,6 +1068,7 @@ mod tests {
                 module: "m".into(),
                 base: Ty::Int,
                 check: DefId(0),
+                keywords: String::new(),
             }],
             ..Module::default()
         };

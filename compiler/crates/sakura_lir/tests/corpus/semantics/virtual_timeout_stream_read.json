@@ -165,7 +165,7 @@
 {"kind":"Requires","name":"status","pos":{"file":35,"offset":807,"end":833}},
 {"kind":"Where","name":"Status","pos":{"file":35,"offset":332,"end":338}}
 ],
-"refinements": [{"name":"Url","module":"std::url","base":"String","check":3},{"name":"Status","module":"std::response","base":"Int","check":5}],
+"refinements": [{"name":"Url","module":"std::url","base":"String","check":3},{"name":"Status","module":"std::response","base":"Int","check":5,"keywords":"{\"minimum\": 100, \"maximum\": 599}"}],
 "field_schemas": [[6,[[{"Adt":[7,[]]},{"Refined":[0,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[8,[]]},{"Adt":[9,[]]},{"List":{"Tuple":["String",{"Opaque":"Secret"}]}},{"List":{"Tuple":["String","String"]}}]]],[10,[[{"Refined":[1,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[8,[]]}]]],[11,[[{"Adt":[0,[{"Refined":[1,[]]}]]},"String"]]],[12,[[{"Refined":[1,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[13,[]]}]]]],
 "tests": [],
 "entry": 1

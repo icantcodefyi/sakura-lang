@@ -1,0 +1,175 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::json_schema_refinement_keywords::Form | Form 80b (name: word*, tags: word*, percent: i64, ratio: f64, even: i64, either: i64, small: i64, code: word*)
+layout 1 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 2 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::json_schema_refinement_keywords, frame 3 slots [%5 bool, %10 bool, %12 bool]
+  b0():
+    %0 v: ptr = const static std::option::Option.None
+    %1 schema: ptr = const str 0
+    %2 r: ptr = $json_schema(%0, %1)
+    %3 schema: ptr = const str 1
+    %4 r: ptr = $json_encode(%2, %3)
+    perform std::console::Console.print(%4) -> b1()
+  b1(%5 r: unit):
+    %6 box: word = box %5
+    drop %6
+    %7 schema: ptr = const str 0
+    %8 lit: ptr = const str 2
+    %9 r: ptr = $json_decode(%8, %7)
+    call is_ok#10(%9) -> b2()
+  b2(%10 r: bool):
+    %11 s: ptr = show %10
+    perform std::console::Console.print(%11) -> b3()
+  b3(%12 r: unit):
+    %13 box: word = box %12
+    %14 unbox: unit = unbox %13
+    drop %13
+    ret %14
+
+fn $entry#1 top -> unit ; main::json_schema_refinement_keywords, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn Name$check#2 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    dup %0
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 1
+    %4 t: bool = ge.int %2, %3
+    if %4 then b2(%0) else b3(%0)
+  b1(%5 v: bool):
+    %6 exit: unit = $contract_exit()
+    ret %5
+  b2(%7 it: ptr):
+    %9 r: i64 = $string_len(%7)
+    %10 lit: i64 = const 20
+    %11 t: bool = le.int %9, %10
+    jump b1(%11)
+  b3(%8 it: ptr):
+    drop %8
+    %12 lit: bool = const false
+    jump b1(%12)
+
+fn Tags$check#3 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    dup.candidate %0
+    %2 r: i64 = $list_len(%0)
+    %3 lit: i64 = const 8
+    %4 t: bool = le.int %2, %3
+    if %4 then b2(%0) else b3(%0)
+  b1(%5 v: bool):
+    %6 exit: unit = $contract_exit()
+    ret %5
+  b2(%7 it: ptr):
+    %9 r: i64 = $list_len(%7)
+    %10 lit: i64 = const 5
+    %11 t: bool = le.int %9, %10
+    jump b1(%11)
+  b3(%8 it: ptr):
+    drop %8
+    %12 lit: bool = const false
+    jump b1(%12)
+
+fn Percent$check#4 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: i64 = const 100
+    %9 t: bool = le.int %6, %8
+    jump b1(%9)
+  b3(%7 it: i64):
+    %10 lit: bool = const false
+    jump b1(%10)
+
+fn Ratio$check#5 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 f64]
+  b0(%0 it: f64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: f64 = const 1.5
+    %3 t: f64 = floatneg %2
+    %4 t: bool = ge.float %0, %3
+    if %4 then b2(%0) else b3(%0)
+  b1(%5 v: bool):
+    %6 exit: unit = $contract_exit()
+    ret %5
+  b2(%7 it: f64):
+    %9 lit: f64 = const 2.0
+    %10 t: bool = le.float %7, %9
+    jump b1(%10)
+  b3(%8 it: f64):
+    %11 lit: bool = const false
+    jump b1(%11)
+
+fn Even$check#6 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 2
+    %3 t: i64 = intrem %0, %2
+    %4 lit: i64 = const 0
+    %5 t: bool = eq.int %3, %4
+    if %5 then b2(%0) else b3(%0)
+  b1(%6 v: bool):
+    %7 exit: unit = $contract_exit()
+    ret %6
+  b2(%8 it: i64):
+    %10 lit: i64 = const 10
+    %11 t: bool = lt.int %8, %10
+    jump b1(%11)
+  b3(%9 it: i64):
+    %12 lit: bool = const false
+    jump b1(%12)
+
+fn Either$check#7 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 enter: unit = $contract_enter()
+    %2 lit: i64 = const 0
+    %3 t: bool = ge.int %0, %2
+    if %3 then b2(%0) else b3(%0)
+  b1(%4 v: bool):
+    %5 exit: unit = $contract_exit()
+    ret %4
+  b2(%6 it: i64):
+    %8 lit: bool = const true
+    jump b1(%8)
+  b3(%7 it: i64):
+    %9 lit: i64 = const 10
+    %10 t: i64 = intneg %9
+    %11 t: bool = le.int %7, %10
+    jump b1(%11)
+
+fn Small$check#8 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 i64]
+  b0(%0 it: i64):
+    %1 lit: unit = const ()
+    %2 lit: i64 = const 10
+    %3 t: bool = le.int %0, %2
+    %4 lit: unit = const ()
+    ret %3
+
+fn Form.code$check#9 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
+  b0(%0 it: ptr):
+    %1 enter: unit = $contract_enter()
+    %2 r: i64 = $string_len(%0)
+    %3 lit: i64 = const 4
+    %4 t: bool = le.int %2, %3
+    %5 exit: unit = $contract_exit()
+    ret %4

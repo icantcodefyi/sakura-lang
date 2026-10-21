@@ -22,7 +22,7 @@
 "contracts": [
 
 ],
-"refinements": [{"name":"Slug","module":"main::validate_untrusted_into_refined","base":"String","check":5},{"name":"Percent","module":"main::validate_untrusted_into_refined","base":"Int","check":7}],
+"refinements": [{"name":"Slug","module":"main::validate_untrusted_into_refined","base":"String","check":5},{"name":"Percent","module":"main::validate_untrusted_into_refined","base":"Int","check":7,"keywords":"{\"minimum\": 0, \"maximum\": 100}"}],
 "field_schemas": [],
 "tests": [],
 "entry": 1

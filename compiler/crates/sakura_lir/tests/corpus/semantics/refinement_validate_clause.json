@@ -23,7 +23,7 @@
 "contracts": [
 
 ],
-"refinements": [{"name":"Percent","module":"main::refinement_validate_clause","base":"Int","check":9}],
+"refinements": [{"name":"Percent","module":"main::refinement_validate_clause","base":"Int","check":9,"keywords":"{\"minimum\": 0, \"maximum\": 100}"}],
 "field_schemas": [],
 "tests": [],
 "entry": 1

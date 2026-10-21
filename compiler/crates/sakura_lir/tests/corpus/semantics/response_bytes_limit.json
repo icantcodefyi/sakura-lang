@@ -24,7 +24,7 @@
 {"kind":"Requires","name":"status","pos":{"file":35,"offset":807,"end":833}},
 {"kind":"Where","name":"Status","pos":{"file":35,"offset":332,"end":338}}
 ],
-"refinements": [{"name":"Status","module":"std::response","base":"Int","check":2}],
+"refinements": [{"name":"Status","module":"std::response","base":"Int","check":2,"keywords":"{\"minimum\": 100, \"maximum\": 599}"}],
 "field_schemas": [[2,[[{"Refined":[0,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[3,[]]}]]],[4,[[{"Adt":[0,[{"Refined":[0,[]]}]]},"String"]]]],
 "tests": [],
 "entry": 1

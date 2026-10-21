@@ -313,6 +313,9 @@ pub struct Refinement {
     pub module: String,
     pub base: Ty,
     pub check: DefId,
+    /// JSON Schema keywords as one JSON object's text, or empty (design §17.298 (c)).
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub keywords: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -30,7 +30,7 @@
 {"kind":"Requires","name":"status_json","pos":{"file":35,"offset":1070,"end":1096}},
 {"kind":"Requires","name":"status_json","pos":{"file":35,"offset":1070,"end":1096}}
 ],
-"refinements": [{"name":"Status","module":"std::response","base":"Int","check":2}],
+"refinements": [{"name":"Status","module":"std::response","base":"Int","check":2,"keywords":"{\"minimum\": 100, \"maximum\": 599}"}],
 "field_schemas": [[2,[[{"Refined":[0,[]]},{"List":{"Tuple":["String","String"]}},{"Adt":[3,[]]}]]]],
 "tests": [],
 "entry": 1
