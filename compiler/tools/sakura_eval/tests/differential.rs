@@ -1421,7 +1421,7 @@ fn defect_code(line: &str) -> Option<String> {
 /// contract predicate, where it surfaces as `D011`).
 fn run_eval(module: sakura_core::Module) -> Option<(Ending, bool)> {
     let out = std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(sakura_lir::STACK_SIZE)
         .spawn(move || {
             let limits = Limits {
                 audit_ranges: true,
@@ -1628,7 +1628,7 @@ fn run_wasm(dir: &Path, wasm: &[u8]) -> Ending {
 fn run_lir(m: sakura_lir::lir::Module) -> Option<Ending> {
     use sakura_eval::lir;
     let out = std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(sakura_lir::STACK_SIZE)
         .spawn(move || lir::run_main(&m, lir::Limits::default()))
         .unwrap()
         .join()

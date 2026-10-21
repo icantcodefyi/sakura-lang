@@ -17,6 +17,10 @@ use sakura_rt::native::{
 };
 use sakura_rt::vt;
 
+/// The stack of `main`'s and each worker's thread: `sakura_lir::STACK_SIZE`, mirrored because
+/// the staticlib a program links carries no compiler crate.
+const STACK_SIZE: usize = 1 << 28;
+
 /// The module descriptor the compiler emits (`sakura_codegen_native`, symbol `sakura$module`):
 /// pointers are the target's, every other field a `u32`. The layout is a contract between the
 /// compiler and this crate, which ship together.
@@ -294,7 +298,7 @@ fn launcher(m: Desc, limits: Limits, table: Vec<WorkerFn>) -> Launcher {
     Arc::new(move |job: Job| {
         let table = table.clone();
         let spawned = std::thread::Builder::new()
-            .stack_size(1 << 28)
+            .stack_size(STACK_SIZE)
             .spawn(move || run_worker(m, limits, table, job));
         if let Err(e) = spawned {
             // The job went with the closure: the worker ends on `D090`.
@@ -464,7 +468,7 @@ pub unsafe extern "C" fn sakura_native_main_v5(m: *const SakuraModule) -> i32 {
     // SAFETY: the caller's contract above.
     let m = Desc(unsafe { &*m });
     let code = std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(STACK_SIZE)
         .spawn(move || {
             let m = m;
             run(m.0).unwrap_or_else(|e| {

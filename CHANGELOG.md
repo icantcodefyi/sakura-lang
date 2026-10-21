@@ -34,6 +34,10 @@ retains earlier implementation history.
   entries; `outcome` is unchanged, so `main` and tests read as before. A 1.15 host refuses a
   1.16 module (`V8003`); a 1.16 host loads older modules, and asking one for its entries is
   "this module has no entries; build it with sakura 1.0.0-beta.3 or later".
+- `sakura` runs its pipeline on a thread with a 256 MiB stack, the size the native driver and
+  the corpus harnesses already use (`sakura_lir::STACK_SIZE`), so a deeply nested program no
+  longer depends on the host's main-thread default (1 MiB on Windows); the parser's depth and
+  long-chain tests run on a 1 MiB thread. `MAX_DEPTH` stays 128 (design §17.305 (7)).
 
 ## [1.0.0-beta.2] - 2026-10-21
 

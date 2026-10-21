@@ -53,7 +53,7 @@ pub fn programs() -> Vec<Program> {
 /// Runs `f` on a thread with a large stack: Core and LIR trees of long programs nest deeply.
 pub fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(sakura_lir::STACK_SIZE)
         .spawn(f)
         .unwrap()
         .join()
@@ -69,7 +69,7 @@ pub fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec
         let handles: Vec<_> = (0..workers.min(items.len()))
             .map(|_| {
                 std::thread::Builder::new()
-                    .stack_size(1 << 28)
+                    .stack_size(sakura_lir::STACK_SIZE)
                     .spawn_scoped(s, || {
                         let mut done = Vec::new();
                         loop {

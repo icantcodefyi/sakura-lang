@@ -18,6 +18,12 @@ pub mod validate;
 
 use std::collections::BTreeMap;
 
+/// The stack, in bytes, of every thread that runs the compiler pipeline or a program: `sakura`'s
+/// own (so the parser's margin at `MAX_DEPTH` does not depend on the host's main-thread default,
+/// 1 MiB on Windows), the corpus harnesses' and, mirrored, the native driver's (design §17.305
+/// (7)). Core and LIR trees of long programs nest deeply.
+pub const STACK_SIZE: usize = 1 << 28;
+
 /// `sakura-core-snapshot-v1` (§17.107), the shared committed Core.
 pub use sakura_core_snapshot as snapshot;
 

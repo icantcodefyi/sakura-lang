@@ -469,7 +469,7 @@ fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> 
         let handles: Vec<_> = (0..workers.min(items.len()))
             .map(|_| {
                 std::thread::Builder::new()
-                    .stack_size(1 << 28)
+                    .stack_size(sakura_lir::STACK_SIZE)
                     .spawn_scoped(s, || {
                         let mut done = Vec::new();
                         loop {
@@ -495,7 +495,7 @@ fn par_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> 
 /// Lowering long programs nests deeply; run on a big stack, as `sakura_lir`'s corpus tests do.
 fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(sakura_lir::STACK_SIZE)
         .spawn(f)
         .unwrap()
         .join()

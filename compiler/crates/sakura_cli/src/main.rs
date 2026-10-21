@@ -436,7 +436,19 @@ fn fill_skill_metadata(text: &str, version: &str, git: &str) -> String {
     out
 }
 
+/// Runs the pipeline on a thread of `sakura_lir::STACK_SIZE` bytes, so the parser's margin at
+/// `MAX_DEPTH` and the deep Core and LIR walks do not depend on the host's main-thread default
+/// (8 MiB on macOS and Linux, 1 MiB on Windows; design §17.305 (7)).
 fn main() -> ExitCode {
+    std::thread::Builder::new()
+        .stack_size(sakura_lir::STACK_SIZE)
+        .spawn(cli_main)
+        .expect("the pipeline's thread starts")
+        .join()
+        .unwrap_or(ExitCode::from(EXIT_ERRORS))
+}
+
+fn cli_main() -> ExitCode {
     let cli = Cli::parse();
     let json = matches!(
         cli.command,

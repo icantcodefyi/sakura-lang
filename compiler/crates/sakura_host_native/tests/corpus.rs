@@ -504,7 +504,7 @@ fn two_instances_close_in_one_process() {
 
 fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     std::thread::Builder::new()
-        .stack_size(1 << 28)
+        .stack_size(sakura_lir::STACK_SIZE)
         .spawn(f)
         .unwrap()
         .join()
@@ -520,7 +520,7 @@ fn big_stack_map<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> V
     std::thread::scope(|s| {
         for _ in 0..workers {
             std::thread::Builder::new()
-                .stack_size(1 << 28)
+                .stack_size(sakura_lir::STACK_SIZE)
                 .spawn_scoped(s, || {
                     loop {
                         let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);

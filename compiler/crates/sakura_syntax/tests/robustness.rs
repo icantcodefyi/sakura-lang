@@ -140,8 +140,23 @@ fn every_prefix_of_every_fixture() {
     }
 }
 
+/// Runs `f` on a 1 MiB stack, the smallest main thread the binary meets (Windows), so the
+/// parser's margin at `MAX_DEPTH` is a test rather than a user's overflow (design §17.305 (7)).
+fn on_small_stack(f: impl FnOnce() + Send + 'static) {
+    std::thread::Builder::new()
+        .stack_size(1 << 20)
+        .spawn(f)
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
 #[test]
 fn deep_nesting_is_bounded() {
+    on_small_stack(deep_nesting_cases);
+}
+
+fn deep_nesting_cases() {
     let n = 100_000;
     let cases = [
         format!("fn f() -> Int {{ {} }}", "(".repeat(n)),
@@ -212,6 +227,10 @@ fn long_flat_input_is_linear() {
 
 #[test]
 fn long_chains_are_not_nesting() {
+    on_small_stack(long_chain_cases);
+}
+
+fn long_chain_cases() {
     let n = 10_000;
     let cases = [
         format!("fn f() -> Int {{ 1{} }}\n", " + 1".repeat(n)),
