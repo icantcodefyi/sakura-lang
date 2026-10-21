@@ -292,7 +292,8 @@ impl NativeHost {
             return -2;
         }
         // The grants must be within this instance's own table (`None`: no limits), entry by
-        // entry with exact string equality, as the JS host compares them.
+        // entry with exact string equality, as the JS host compares them; a table without an
+        // `env` key grants a worker no variable, as JS reads the missing key as `[]`.
         if let Some(own) = &self.config.permissions {
             let dirs = |own: Option<&Vec<std::path::PathBuf>>| {
                 own.map(|d| {
@@ -306,7 +307,7 @@ impl NativeHost {
             if !(within(&g.fs_read, dirs(fs.map(|f| &f.read)).as_deref())
                 && within(&g.fs_write, dirs(fs.map(|f| &f.write)).as_deref())
                 && within(&g.net, own.net.as_deref())
-                && within(&g.env, own.env.as_deref()))
+                && within(&g.env, Some(own.env.as_deref().unwrap_or(&[]))))
             {
                 return -1;
             }
@@ -515,5 +516,8 @@ mod tests {
         assert_eq!(p.fs.unwrap().read, [std::path::PathBuf::from("data")]);
         assert_eq!(p.env.unwrap(), ["A"]);
         assert_eq!(p.net.unwrap(), Vec::<String>::new());
+        // A table without an `env` key reads as `[]`: no variable may be granted.
+        h.config.permissions = Some(Permissions::parse(r#"{"fs":{"read":["data"]}}"#).unwrap());
+        assert_eq!(h.start_worker(3, g(&["data"], &["A"]), 64), -1);
     }
 }
