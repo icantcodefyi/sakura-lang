@@ -1,25 +1,28 @@
 ---
 title: Changes since 0.1.0
-description: What main and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
+description: What main, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
 ---
 
 `v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
 published-install check passed on every platform ([Install](/docs/install#platform-claims)).
-`v1.0.0-beta.1` is published (2026-10-21), a beta of 1.0 that is not for production: it may
+`v1.0.0-beta.2` is published (2026-10-21), a beta of 1.0 that is not for production: it may
 have bugs and may change before 1.0.0, and the [stability guarantees](/docs/stability) of RFC 0001
-are intended from it. These docs track **main**, which holds later changes that no package
-has yet: [On main since 1.0.0-beta.1](#on-main-since-100-beta1) lists them. The changes in
-[1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the beta and not in the `0.1.0`
-packages: the [1.0.0-beta.1 section of the changelog](/changelog#v1.0.0-beta.1) opens with the
-migration list from `v0.1.0`. Neither release has a compatibility promise; see [Stability](/docs/stability).
+are intended from the betas. `v1.0.0-beta.1` (2026-10-21) came before it. These docs track
+**main**, which may hold later changes that no package has yet; the [changelog](/changelog) lists
+them under Unreleased. [1.0.0-beta.2, since 1.0.0-beta.1](#100-beta2-since-100-beta1) and
+[1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the betas and not in the `0.1.0`
+packages: the [1.0.0-beta.2](/changelog#v1.0.0-beta.2) and
+[1.0.0-beta.1](/changelog#v1.0.0-beta.1) sections of the changelog open with their migration
+lists. No release has a compatibility promise; see [Stability](/docs/stability).
 The [changelog](/changelog) is the complete list; this page covers what a program or an agent
 notices. Upgrading from `0.1.0-alpha.1`? Read [0.1.0, from alpha.1](#010-from-alpha1) too.
 
-## On main since 1.0.0-beta.1
+## 1.0.0-beta.2, since 1.0.0-beta.1
 
-None of these is breaking for a program that works on `1.0.0-beta.1`.
+A program that works on `1.0.0-beta.1` may need a change: the
+[migration list](/changelog#v1.0.0-beta.2) names the five breaking items.
 
-### Added on main
+### Added in 1.0.0-beta.2
 
 - **`std/worker`, experimental**: a function declared `@worker` runs as a second instance of
   the program with its own heap and handlers, started by `Worker.spawn(entry, grants, body)`
@@ -43,7 +46,7 @@ None of these is breaking for a program that works on `1.0.0-beta.1`.
 - **WASM runtime ABI 1.14.0.** A host built for `1.0.0-beta.1`'s ABI 1.13 refuses a module
   from main with `V8003`. The Node host in the same compiler always matches.
 
-### Fixed and changed on main
+### Fixed and changed in 1.0.0-beta.2
 
 - `sakura test --record` runs when `[permissions] net` lists no host: requests to hosts fail
   closed, and `Http.recording` captures what in-process handlers answer.

@@ -94,3 +94,24 @@ extension is not republished for this beta. Released by Claude Opus 5.5 under th
 OK of 2026-10-21. Reminder: rotate the npm token (exposed in an agent's tool output on 2026-10-21).
 
 **`v1.0.0-beta.2` baseline, 2026-10-21.** `bench/baselines/d88970189598.json` and `wasm/d88970189598.json` now hold the counted `js` and `wasm` runs at the preparation commit `611dae4faf5e4f9524a8544911b9ecf695525d1b` (Node 26.12.0, the same flags; tree clean, every oracle green); the `0a50bbe1` files are in `bench/baselines/archive/0a50bbe1/`. Evidence: `bench/results/2026-10-21-611dae4f-*` (native, compile, envelope `miss` on 237 of 264, unchanged and carried; prep `fib`/`shapes` compare `ok` on every Node cell, largest move +0.7%). The `bench typescript` comparison starts at beta.3 (docs/release.md). Blessed by Claude Opus 5.5 under the owner's direct instruction of 2026-10-20. **The `v1.0.0-beta.2` tag goes on `611dae4f`** (CI run 39588247282 green on that SHA).
+
+**`v1.0.0-beta.2` close-out (docs/release.md §7), 2026-10-21.** Tag `v1.0.0-beta.2` (annotated)
+peels to `611dae4faf5e4f9524a8544911b9ecf695525d1b`, the preparation commit, so the `611dae4f`
+bless stands. CI on that SHA: run 39588247282, green. Dry run 39594745683 and `sign_test`
+39594749008, green. Tag run
+[39597378924](https://github.com/icantcodefyi/sakuralang/actions/runs/39597378924): Darwin signed
+(Developer ID P62B65A837) and notarized, then GitHub (prerelease, 19 assets, `SHA256SUMS`
+verified), npm (`beta` = `1.0.0-beta.2`, `latest` stays `0.1.0`, provenance) and Homebrew
+(`sakuralang-beta`); the published binary prints
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`. `compat.yml`
+[39597378926](https://github.com/icantcodefyi/sakuralang/actions/runs/39597378926) against
+`v1.0.0-beta.1`: success. `verify-published.yml`
+[39603597672](https://github.com/icantcodefyi/sakuralang/actions/runs/39603597672): the first
+attempt failed only because the npm companion packages were still propagating; the rerun of the
+failed jobs is green on all six rows. **Open:** `dogfood.yml`
+[39603442654](https://github.com/icantcodefyi/sakuralang/actions/runs/39603442654) failed:
+`maintenance-triage` misses its cassettes in 9 of 31 tests against `1.0.0-beta.2`; under
+investigation, not yet fixed forward. The last `fuzz.yml` run (39564548413, scheduled, on
+`9422c8d9`) failed its `vc` target, every other target green; no `soundness` issue is open. The
+VS Code extension is not republished for this beta. Released by Claude Opus 5.5 under the owner's
+written OK of 2026-10-21.
