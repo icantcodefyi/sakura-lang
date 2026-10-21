@@ -253,6 +253,18 @@ fn import_sorting_keeps_the_header_on_top() {
 }
 
 #[test]
+fn import_sorting_ignores_trivia_inside_the_path() {
+    // Found by the fmt_idempotent fuzz target: `m/ t` sorted before `m/m` by its source text,
+    // then as the printed `m/t` after it, so a second run reordered the imports.
+    let once = sakura_fmt::format("import m/m\nimport m/ t").unwrap();
+    assert_eq!(once, "import m/m\nimport m/t\n");
+    assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+    // The `std` group is decided on the printed path too.
+    let once = sakura_fmt::format("import a\nimport std /core\n").unwrap();
+    assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+}
+
+#[test]
 fn import_sorting_keeps_header_before_inline_comment() {
     for (text, expected) in [
         (

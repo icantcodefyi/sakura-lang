@@ -42,6 +42,9 @@ retains earlier implementation history.
   paths (the working directory under `sakura test`, a missing `tests/fixtures`) was a `D090`
   `ERR_ACCESS_DENIED` instead of the runtime's own refusal or `not found`. The runtime now
   resolves the nearest ancestor Node allows and keeps its messages on every Node 26 release.
+- **`sakura fmt` sorts imports idempotently** (#8): imports were ordered by their source text,
+  whitespace or comments inside the path included (`import m/ t`), but printed without them, so
+  a second run could reorder them. The order and the `std` group now follow the printed path.
 
 ## [1.0.0-beta.3] - 2026-10-21
 

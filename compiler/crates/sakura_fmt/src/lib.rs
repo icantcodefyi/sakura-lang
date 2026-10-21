@@ -1656,10 +1656,19 @@ impl Fmt<'_> {
     }
 }
 
+/// The key is the path as printed, without the trivia inside it, so a second run sorts the
+/// formatted imports the same way.
 fn import_key(n: &SyntaxNode) -> (u8, String) {
     let path = ast::Import::cast(n.clone())
         .and_then(|i| i.path())
-        .map_or(String::new(), |p| p.syntax().text().to_string());
+        .map_or(String::new(), |p| {
+            p.syntax()
+                .descendants_with_tokens()
+                .filter_map(|e| e.into_token())
+                .filter(|t| !t.kind().is_trivia())
+                .map(|t| t.text().to_string())
+                .collect()
+        });
     (u8::from(path != "std" && !path.starts_with("std/")), path)
 }
 
