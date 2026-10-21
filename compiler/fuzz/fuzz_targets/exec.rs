@@ -157,10 +157,19 @@ fn report(runs: &[(&str, &Run)]) -> String {
         .join("\n")
 }
 
-/// `main`'s row is at most `{Console}`: the one std effect every runner handles alike.
+/// `main`'s row is at most `{Console}`: the one std effect every runner handles alike. The
+/// entry is `$entry`, whose own row is empty, so the row read is that of `main` beside it.
 fn console_only(m: &sakura_core::Module) -> bool {
     let Some(entry) = m.entry else { return false };
-    let row = &m.def(entry).row;
+    let module = &m.def(entry).module;
+    let Some(main) = m
+        .defs
+        .iter()
+        .find(|d| d.name == "main" && &d.module == module)
+    else {
+        return false;
+    };
+    let row = &main.row;
     row.fail.is_none()
         && row.tail.is_none()
         && row.effects.iter().all(|e| {
