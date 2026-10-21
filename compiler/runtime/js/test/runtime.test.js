@@ -2,6 +2,7 @@
 // The CPS functions below are written the way the emitter writes them (see ABI.md).
 
 import assert from "node:assert/strict";
+import nodeCrypto from "node:crypto";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import * as rt from "../sakura_runtime.js";
@@ -1928,4 +1929,24 @@ test("an RSA private key that cannot sign answers no public key", () => {
   bad[60] ^= 1; // inside the modulus
   assert.equal(rt.crypto_public_of(10, bad).length, 0);
   assert.equal(rt.crypto_public_of(10, new Uint8Array([48, 0])).length, 0);
+});
+
+// §17.295 F5: `p·q = n`, `dp`, `dq` and `qi` are checked, since a wrong CRT part still signs.
+test("an RSA private key with an inconsistent CRT member answers no public key", () => {
+  const [keys] = rsaTable("rsassa_pkcs1.txt");
+  const [pkcs8, spki] = keys.get("0");
+  const jwk = nodeCrypto.createPrivateKey({ key: Buffer.from(pkcs8), format: "der", type: "pkcs8" }).export({ format: "jwk" });
+  assert.ok(same(rt.crypto_public_of(10, pkcs8), spki));
+  // Each member's last byte flipped where it sits in the DER (each member's bytes occur once).
+  for (const m of ["p", "q", "dp", "dq", "qi"]) {
+    const v = Buffer.from(jwk[m], "base64url");
+    const bad = Buffer.from(pkcs8);
+    const at = bad.indexOf(v);
+    assert.ok(at > 0 && bad.indexOf(v, at + 1) < 0, m);
+    bad[at + v.length - 1] ^= 1;
+    assert.equal(rt.crypto_public_of(10, bad).length, 0, m);
+  }
+  for (const file of ["rsassa_pkcs1.txt", "rsa_oaep.txt"]) {
+    for (const [k] of rsaTable(file)[0].values()) assert.ok(rt.crypto_public_of(10, k).length > 0, file);
+  }
 });

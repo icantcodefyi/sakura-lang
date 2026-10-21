@@ -2734,9 +2734,21 @@ const ecdh = (curve, d) => {
 };
 
 /**
+ * Whether an RSA private key's CRT members agree with `n` and `d`: `p·q = n`,
+ * `dp = d mod (p − 1)`, `dq = d mod (q − 1)` and `qi·q ≡ 1 (mod p)`, as BoringSSL's import
+ * checks them. OpenSSL signs correctly through a wrong `qi` (it re-checks the CRT result), so
+ * the pairwise signature alone does not catch one.
+ */
+const rsaCrtConsistent = (key) => {
+  const j = key.export({ format: "jwk" });
+  const big = (m) => BigInt(`0x${Buffer.from(j[m] ?? "", "base64url").toString("hex") || "0"}`);
+  const [n, d, p, q, dp, dq, qi] = ["n", "d", "p", "q", "dp", "dq", "qi"].map(big);
+  return p > 1n && q > 1n && p * q === n && dp === d % (p - 1n) && dq === d % (q - 1n) && (qi * q) % p === 1n;
+};
+/**
  * The public key, or no bytes for a scalar that is not a key (zero or at least the order; Node
  * refuses those). An RSA private key answers its SPKI once it signs a message its public key
- * verifies, as BoringSSL's import checks a key, or no bytes.
+ * verifies and its CRT members are consistent, as BoringSSL's import checks a key, or no bytes.
  */
 export function crypto_public_of(curve, d) {
   try {
@@ -2746,7 +2758,7 @@ export function crypto_public_of(curve, d) {
       const pub = nodeCrypto().createPublicKey(key);
       const empty = Buffer.alloc(0);
       const ok = key.asymmetricKeyType === "rsa" && nodeCrypto().verify("sha256", empty, pub, nodeCrypto().sign("sha256", empty, key));
-      return ok ? new Uint8Array(pub.export({ format: "der", type: "spki" })) : new Uint8Array(0);
+      return ok && rsaCrtConsistent(key) ? new Uint8Array(pub.export({ format: "der", type: "spki" })) : new Uint8Array(0);
     }
     const spki = nodeCrypto().createPublicKey(privateKeyOf(curve, d)).export({ format: "der", type: "spki" });
     return new Uint8Array(spki.subarray(SPKI[curve].length));

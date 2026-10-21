@@ -7,5 +7,6 @@ spki extended Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
 pkcs8 as spki Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
 pkcs8 cut Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
 pkcs8 that cannot sign Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
+pkcs8 with a wrong qi Err(KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") })
 jwk KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }
 jwk private KeyError { reason: Unavailable("RSASSA-PKCS1-v1_5") }

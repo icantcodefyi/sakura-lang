@@ -105,6 +105,11 @@ retains earlier implementation history.
   keeps nothing of that run; no cancel, finalizer or trace record is added, so the run ends
   as on JS and WASM (design §17.298 (d), amending §17.296 (5)). The native corpus no longer
   exempts that run from its leak check.
+- `crypto.import_key` of an RSA private key (PKCS #8 or JWK) checks its CRT members after the
+  pairwise signature, as BoringSSL does: unless `p·q = n`, `dp = d mod (p − 1)`,
+  `dq = d mod (q − 1)` and `qi·q ≡ 1 (mod p)` it fails `Malformed`, on JS and WASM (design
+  §17.295 F5). A key with a wrong `qi` used to import and sign, since OpenSSL re-checks its CRT
+  result. Fixture `compiler/tests/semantics/crypto_rsa_key_formats.sak`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

@@ -8,7 +8,8 @@
 // which reads back to the same key; only member names are printed. `Raw` is no RSA format. Refused
 // as `Malformed`: the DER cut or extended, a JWK whose `alg` names another algorithm, one with a
 // leading zero byte in `n`, without its CRT members or with `oth`, a modulus of 1,024 bits, an
-// even public exponent, and a private key that cannot sign (its modulus changed).
+// even public exponent, a private key that cannot sign (its modulus changed), and one whose
+// CRT coefficient `qi` differs in its last byte (it still signs; `qi·q ≢ 1 (mod p)`).
 // On native, which has no tier 2, every import answers `Unavailable(...)` (`.native.stdout`, RFC 0002 §2.7's declared difference). Generated from the table.
 import std/crypto
 import std/crypto.{Algorithm, CryptoKey, Digest, KeyError, KeyFormat, Usage}
@@ -60,6 +61,9 @@ pub fn main() -> Unit ! {Console} {
   Console.print("pkcs8 as spki {imported(KeyFormat.Spki, checks, pkcs8)}")
   Console.print("pkcs8 cut {imported(KeyFormat.Pkcs8, sign, Bytes.slice(pkcs8, 0, 600))}")
   Console.print("pkcs8 that cannot sign {imported(KeyFormat.Pkcs8, sign, flip(pkcs8, 60))}")
+  Console.print(
+    "pkcs8 with a wrong qi {imported(KeyFormat.Pkcs8, sign, flip(pkcs8, Bytes.len(pkcs8) - 1))}",
+  )
   match crypto.import_key(KeyFormat.Spki, alg, checks, true, Secret.of(spki)) {
     Ok(p) => {
       let text = crypto.export_key(p, KeyFormat.Jwk)

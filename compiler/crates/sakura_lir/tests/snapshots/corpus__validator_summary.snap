@@ -58,7 +58,7 @@ semantics/crypto_hmac_rfc4231: 85 funcs, 886 blocks, 133 dup, 552 drop, valid
 semantics/crypto_import_rejects_usage: 79 funcs, 816 blocks, 131 dup, 504 drop, valid
 semantics/crypto_jwk_roundtrip: 133 funcs, 1298 blocks, 219 dup, 719 drop, valid
 semantics/crypto_pbkdf2_rfc7914: 86 funcs, 904 blocks, 130 dup, 587 drop, valid
-semantics/crypto_rsa_key_formats: 115 funcs, 1138 blocks, 212 dup, 724 drop, valid
+semantics/crypto_rsa_key_formats: 115 funcs, 1141 blocks, 215 dup, 727 drop, valid
 semantics/crypto_rsa_oaep_vectors: 99 funcs, 1042 blocks, 180 dup, 684 drop, valid
 semantics/crypto_rsa_pss_vectors: 102 funcs, 998 blocks, 146 dup, 596 drop, valid
 semantics/crypto_rsassa_pkcs1_vectors: 102 funcs, 991 blocks, 145 dup, 591 drop, valid
