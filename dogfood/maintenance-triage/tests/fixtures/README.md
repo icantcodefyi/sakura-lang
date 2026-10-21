@@ -26,14 +26,14 @@ listed bodies in order without touching the network.
 
 ```sh
 rm tests/fixtures/*.jsonl
-env -u ANTHROPIC_BASE_URL sakura test --record --filter regenerate
-env -u ANTHROPIC_BASE_URL sakura test
+sakura test --record --filter regenerate
+sakura test
 ```
 
 Delete a cassette before regenerating it: under `--record` only misses are
 forwarded, and the in-order synthetic provider assumes it sees every turn.
-`ANTHROPIC_BASE_URL` must be unset (see FRICTION.md): the adapter reads it
-from the process environment and it changes the recorded URL.
+On 0.1.0 `ANTHROPIC_BASE_URL` had to be unset, because the adapter read it and it
+changed the recorded URL; since 1.0.0-beta.1 it is not read (see FRICTION.md).
 
 A changed system instruction, tool description, manual fixture or answer
 schema changes the request bodies; replay then fails as a cassette miss and

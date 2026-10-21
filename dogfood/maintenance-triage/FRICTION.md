@@ -241,3 +241,18 @@ offered exact imports. The first full `sakura check` of about 400 lines
 reported three distinct problems, all with direct fixes. `sakura check` runs
 in under 0.1 s and `sakura test` (31 tests) in about 1.5 s on js. Wasm parity
 held for all 31 tests and the CLI run.
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- The migration list's items 10 and 11 were the whole upgrade; see MIGRATION.md. The
+  first item of this log is fixed: with `ANTHROPIC_BASE_URL` set, the replay and all 31
+  tests pass, so the `env -u` workaround leaves both READMEs.
+- Item 11's hunk was already on `main`, put there by the compiler change that made the
+  break (`ab662859`), so the corpus on `main` was no longer "the program as written on
+  v0.1.0". That change edited the two `expect_output` lists by hand and left the file failing
+  `sakura fmt --check`; the upgrade had to run `sakura fmt` to get back to clean. A compiler
+  change that edits `dogfood/` should run the program's `fmt --check` too, or leave the
+  edit to the upgrade.
+- `Console.eprint` now exists, so the `Log.event(Level.Error, …)` workaround for stderr
+  (and its fixed `Error ` prefix) could go; not changed here, since the list does not require
+  it and the CLI's stderr text is part of its tested behaviour.

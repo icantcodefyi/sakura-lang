@@ -3,8 +3,9 @@
 A bounded assistant that turns a workshop volunteer's malfunction report into a
 short, cited triage note from a small local equipment manual. Written in Sakura
 Lang against the installed `sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)`
-by Claude Opus 5.5 in a fresh session with no repository checkout. See BRIEF.md
-for the requirements and FRICTION.md for problems met on the way.
+by Claude Opus 5.5 in a fresh session with no repository checkout, and upgraded
+to `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)` (MIGRATION.md).
+See BRIEF.md for the requirements and FRICTION.md for problems met on the way.
 
 ## Running
 
@@ -18,8 +19,8 @@ and exits 0. A failure prints one `triage failed: ...` line on stderr and exits
 2 (usage or input), 3 (configuration: missing key), 4 (model, provider, budget
 or tool failure) or 5 (the answer failed the citation checks).
 
-Unset `ANTHROPIC_BASE_URL` before running or testing; the provider adapter reads
-it from the process environment (FRICTION.md).
+Since 1.0.0-beta.1 `Llm.anthropic` no longer reads `ANTHROPIC_BASE_URL`, so the
+variable may stay set (FRICTION.md).
 
 ## Authority
 

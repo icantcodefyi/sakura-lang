@@ -6,6 +6,7 @@
 // sources were only the installed CLI (`sakura prompt`, `sakura doc`), the
 // public website www.sakuralang.com and BRIEF.md.
 // Built against: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+// Upgraded to: sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399); see MIGRATION.md.
 
 import std/agent.{Agent}
 import std/budget.{Budget, BudgetExceeded, BudgetKind, Limits}
@@ -620,10 +621,7 @@ test "02 the success case records the actual fetch activity" {
     drill_incident(),
   )
   expect_eq(report.retrieved, ["drill-press-belt-slip"])
-  expect_output([
-    "Info manual.search hits=5",
-    "Info manual.fetch id=\"drill-press-belt-slip\"",
-  ])
+  expect_output(["Info manual.search hits=5", "Info manual.fetch id=\"drill-press-belt-slip\""])
 }
 
 test "03 a citation of an unknown entry is rejected" {
@@ -1163,10 +1161,7 @@ test "29 a three-turn provider replay searches, fetches and is escalated by poli
     expect_eq(report.citations, ["table-saw-smoke"])
     expect_eq(report.disposition, Disposition.EscalateToSupervisor)
     expect(report.hazard_policy_applied)
-    expect_output([
-      "Info manual.search hits=3",
-      "Info manual.fetch id=\"table-saw-smoke\"",
-    ])
+    expect_output(["Info manual.search hits=3", "Info manual.fetch id=\"table-saw-smoke\""])
   }
 }
 
