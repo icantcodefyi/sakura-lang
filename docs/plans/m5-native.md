@@ -1,6 +1,6 @@
 # M5 — native backend, RC runtime, reuse
 
-**Status: executable plan, provisional; all of M5 runs now (round 60, §17.308).** Opened as a
+**Status: executable plan, provisional; all of M5 runs now (round 60, §17.308; round 61, §17.309, ratified the first landings and amended the order: beta.4 carries N3, ABI 1.17.0 and N2g's split).** Opened as a
 skeleton in round 12 (§17.167), filled in round 13 from
 [research/12](../../research/12-m5-native.md) by design §17.169–§17.178; re-planned by §17.308
 on 2026-10-21 under the owner's direction to finish M5 and M5b now, including native on
@@ -385,7 +385,7 @@ no program, fails. Its rows are the five `Llm.anthropic` test programs; run mode
 
 **Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
 natively; §17.308 (3) picks the port with its two protocol additions; its landing removes the
-table's five rows); Http is ratified as built (§17.308 (3)). The WASI command does not call the
+table's five rows); Http is ratified as built (§17.308 (3)); the six defaults of 2026-10-22, the table in ABI §1b and property tests ahead of Llm are ratified by §17.309 (1), with served header names lowercased on every host (the JS host's one-line fix lands before beta.4's preparation commit). The WASI command does not call the
 codec yet (no Wasmtime `json_validate` cell).
 
 ### Round 60 (§17.308, 2026-10-21): the lanes that finish M5
@@ -397,22 +397,25 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 
 | Lane | What | Owner | Starts | Acceptance beyond the row |
 |---|---|---|---|---|
-| N1 | N1b's remainder in order: serve, test mode (`sakura test --target native`), `V8004`, `log_json`, Llm over native Http with SSE as §17.308 (3) decides (the JS-handler protocol ported, two additions), the exclusion table | Opus | running | `KNOWN_NATIVE` empty; ABI §1b's exit-75 list holds only `WebSocket`; test-mode `native_` cases in `parity.rs` |
-| N2f | the exact-i64 lane (`{wasm, native}` vs the evaluator, `js` excluded by directive), `deep_recursion_gauge` natively, the compile report as a counted run on the reference Mac at the next beta's preparation commit, the wide-function curve at 4,096–32,768 rows per phase | Opus | now | (i)–(ii) in `ci.yml`'s native job on both A runners; (iii)–(iv) in the blessed baseline's files; the superlinear phase named |
-| N2g | the wide-function split: a LIR-to-LIR pass in its own `sakura_lir` file, native backend only; cut edges are frame calls | Opus | after N2f names Cranelift's phase | 32,768 rows ≤ 2× the 16,384-row count per phase; parity unchanged; `deep_ir.rs` native case; WASM bytes unchanged |
-| F | the flag ships (§17.175 (6)): A release binaries built with `--features native`; the driver staticlib at `lib/sakura/native/` in the archive, npm packages and formula; a native `fib` smoke in `release.py smoke`/`accept` and `verify-published.yml`; `--help` label; the one-line profile print; STABILITY row; install page; a missing system linker is one diagnostic (`V8007 native_linker_missing` if free) | Sol | now | dry run green with the native step on both A rows; `verify-published.yml` green for the beta carrying it (= "A shipped" for B-native) |
+| N1 | N1b's remainder in order: serve, test mode (`sakura test --target native`), `V8004`, `log_json` — **done** (2026-10-22, `51f2c561`, `6bb4714a`, `f1f410c0`; six defaults ratified, §17.309 (1), with served header names lowercased on every host, a JS-host fix) — then property tests (`propertySteps`) and the exclusion table (ABI §1b's, read by `parity.rs`; built per the plan text of `7c984a0d`, code to follow on `main`), then Llm over native Http with SSE as §17.308 (3) decides (the JS-handler protocol ported, two additions), whose landing empties the table | Opus | running | `KNOWN_NATIVE` empty; ABI §1b's exit-75 list holds only `WebSocket`; test-mode `native_` cases in `parity.rs` |
+| N2f | the exact-i64 lane (`{wasm, native}` vs the evaluator, `js` excluded by directive), `deep_recursion_gauge` natively, the compile report as a counted run on the reference Mac at the next beta's preparation commit, the wide-function curve at 4,096–32,768 rows per phase — **(i), (ii), (iv) and (iii)'s tooling done** (`bc143415`, `76a5047f`, `0af76bba`; §17.309 (3)); left: the counted run at beta.4's preparation commit and the gauge-after-caught-defect test-mode case | Opus | now | (i)–(ii) in `ci.yml`'s native job on both A runners; (iii)–(iv) in the blessed baseline's files; the superlinear phase named |
+| N2g | the wide-function split: a LIR-to-LIR pass in its own `sakura_lir` file, native backend only; cut edges are frame calls | Opus | **done** (`4b0f559a`, 2026-10-22, in beta.4; the 2× bar read as met within the log factor, §17.309 (3)) | 32,768 rows ≤ 2× the 16,384-row count per phase; parity unchanged; `deep_ir.rs` native case; WASM bytes unchanged |
+| F | the flag ships (§17.175 (6)): A release binaries built with `--features native`; the driver staticlib at `lib/sakura/native/` in the archive, npm packages and formula; a native `fib` smoke in `release.py smoke`/`accept` and `verify-published.yml`; `--help` label; the one-line profile print; STABILITY row; install page; a missing system linker is one diagnostic (`V8007 native_linker_missing` if free) | Sol | now; **packaging done** (2026-10-22, `647d7ed1`, `V8007`; §17.309 (3)) | dry run green with the native step on both A rows; `verify-published.yml` green for the beta carrying it (= "A shipped" for B-native) |
 | S | `exec-native`: the native backend as a fourth `exec` executor on `x86_64-unknown-linux-gnu`, its own ledger target; not part of 1.0.0's gate | Opus | after F | hours in `compiler/fuzz/README.md`'s ledger; a stabilization condition (§17.308 (1e)) |
 | B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run | `verify-published.yml` green on the B row with the native step |
 | C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
-| N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
-| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1)); ABI MINOR at landing | Opus | after N3 | the row's |
+| N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) — **constructor sites done** (`e55977f8`, ABI 1.17.0, in beta.4; §17.309 (2)); **N3b**: `List.map` leaf/tail reuse, the `m5-stress` set under the lanes, then tokens across direct calls as ordinary object words in frame slots (no new slot kind, no ABI change unless the frame protocol needs one, then a MINOR at landing) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
+| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1)); ABI MINOR at landing | Opus | after N3b | the row's |
 | N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses); **N5.5 done** (2026-10-22), 54 ms on a 10,000-line edit, so on every edit |
 | M | `bench run --suite native` counted as the JS and WASM lanes are; paired `rbtree`; `bench envelope` on the native lane; a native `bench_counters.txt` column with the +1 drop note | Opus (code), Astra (docs, readings) | now; before the first baseline meant to carry a native number | no native number is read before it exists |
 
-Order of landings on today's reading, with the betas they fall into: N5 and N1's serve and test
-mode → F with N2f (i)–(ii) → **beta.4** → N1's rest, N2f (iii)–(iv), M, N3 → **beta.5** (ABI
-1.17.0; the first native baseline) → N2g, S, B-native, N4 → **beta.6 or 1.1.0** (1.18.0) →
-C-native → **1.x**. The ledger (§17.306) decides which beta is the last; 1.0.0 follows it with
+Order of landings as round 61 (§17.309 (6)) reads `main` at `bd4cc02f`: N5, N1's serve and test
+mode, F's packaging, N2f (i)–(ii) and (iv) and N3 have landed, so **beta.4** carries `W8001`, the
+flag with the staticlib and smoke, native test mode and serve, N2g's split, the exact-i64 lane and **ABI
+1.17.0**; before its preparation commit, the two JS-host fixes of §17.309 (1c) and (3c) and
+nothing else; at it, N2f (iii)'s counted run → N1's Llm and property tests, M (the first native
+run-time baseline), N3b, S → **beta.5** → B-native, N4 (1.18.0) → **beta.6 or 1.1.0** →
+C-native → **1.x**. (§17.308 (2)'s "N3 → beta.5 (ABI 1.17.0)" reads as this.) The ledger (§17.306) decides which beta is the last; 1.0.0 follows it with
 its preparation commit and the remaining rows are 1.x minors. Stabilization (the removal of the
 experimental label, §17.308 (1e)) is a 1.x entry with six measurable conditions and is also the
 M5 exit signature of §17.178.
@@ -448,7 +451,7 @@ commit contains N3 and row M; "second" is the first after it that also contains 
 | Scalar leaves (unboxed `Int`/`Float` elements) | same window: `boxes` and time on `nbody`/`spectral_norm` against adapter cost on `shapes`/`map_set` | boxed words stay (ABI §4) |
 | Record reuse / representation (§17.138) | first window after N3: `reuses` on `nbody`, `shapes`, `binary_trees` | constructor-site reuse only; any layout change is a new profile (ABI MINOR) |
 | `nbody` §17.118 carry (§17.160 (1)) | first window after N2, native lane | carried with the scalar-leaf question |
-| Native compile budget (§17.175 (4)) | N2's per-program lowering/codegen/object/link p95 on the reference host | research/10 §6 build budget applies to compile-to-object; link reported beside it; no native compile claim |
+| Native compile budget (§17.175 (4)) | N2f (iii)'s counted `bench compile-native` run on the reference Mac at beta.4's preparation commit, blessed with its baseline (§17.309 (3)) | research/10 §6 build budget applies to compile-to-object; link reported beside it; no native compile claim |
 | Regions (§17.174) | after N3+N4 window: share of `requested` bytes dying inside the allocating twin on the allocation kernels | no region work |
 | `Option` niche (§17.199 (1); research/08 §6.2, §17.83, §17.99) | first window after N3, native lane: a prototype's `requested` bytes and time on `shapes` and `map_set` against the tagged layout (the measured upper bound is 11.8% of `shapes`' bytes) | tagged stays; if built, the universal ABI §4.3 form with the per-field schema table, an ABI MINOR allocated at landing; the §17.99 parity gate is its acceptance |
 | `deltablue`: ownership through parameters and fields, dense `Int`-keyed map (§17.201 (2)) | WS-P13a measured (22.7% owned-only, below the bar; flat arrays 8.8×); §17.217: `List` is the mechanism, WS-P13c measures the `List` port now, and the window above reads `deltablue` on `List` with one flat candidate (a copy-on-shared-write vector with `W8001`) against the trie; no representation that switches on an ownership fact | HAMT and trie stay; `deltablue` carried under §17.152 (2), named in `bench/deltas.md`; **round 26**: WS-P13b is built on JS (§17.235, 51% less time at n = 5000, advisory) and pushes after the M4 window; the LIR reads its facts at N0b, which is when the WASM cell moves |
