@@ -734,10 +734,13 @@ impl<'a> Elems<'a> {
     /// Disowns every chain an origin, update or use rules out.
     fn poison(&mut self) {
         let n = self.def.locals.len();
-        // A builder's list owns its elements when every record pushed into a builder is fresh.
+        // A builder's list owns its elements when every record pushed or set into a builder is
+        // fresh.
         let built = self.binds.values().all(|b| match b {
-            Bind::Call(Atom::Builtin(name), args) if name == "list_builder_push" => {
-                match args.get(1) {
+            Bind::Call(Atom::Builtin(name), args)
+                if name == "list_builder_push" || name == "list_builder_set" =>
+            {
+                match args.get(if name == "list_builder_push" { 1 } else { 2 }) {
                     Some(Atom::Local(v)) if self.rec[v.index()] => {
                         self.class[v.index()] == Val::Fresh
                     }

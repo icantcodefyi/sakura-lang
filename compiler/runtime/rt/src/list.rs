@@ -339,6 +339,17 @@ impl Rt {
         Ok(xs)
     }
 
+    /// `std/list`'s `reuse` (plan M5 N3, design §17.176 (5)): `Ok(xs)` when no other reference
+    /// reaches `xs`, so `List.map` writes each result over the element it came from, each leaf
+    /// and the tail in place; else `Err(xs)`. Consumes `xs`; one counted test.
+    pub fn list_reuse(&mut self, xs: u32) -> Res<u32> {
+        if self.reusable(xs) {
+            self.ok(xs)
+        } else {
+            self.err(xs)
+        }
+    }
+
     /// A fresh list of `n` words from `f(i)` (each owned), dropping what was built on failure.
     pub fn list_from(&mut self, n: u32, mut f: impl FnMut(&mut Rt, u32) -> Res<u32>) -> Res<u32> {
         let mut out = self.empty_list;

@@ -1,0 +1,156 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::reuse_list_map::P | P 32b (x: i64, y: i64)
+layout 1 variant std::list::Builder
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::reuse_list_map, frame 17 slots [%13 word*, %14 i64, %15 word*, %21 bool, %22 i64, %23 word*, %28 word*, %29 word*, %31 word*, %32 word*, %53 bool, %54 word*, %57 word*, %58 word*, %60 word*, %61 word*, %67 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 r: ptr = $string_split(%0, %1)
+    %3 r: i64 = $list_len(%2)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intsub %3, %4
+    %6 box: word = box %5
+    %7 lit: i64 = const 2
+    %8 box: word = box %7
+    %9 lit: i64 = const 3
+    %10 box: word = box %9
+    %11 xs: ptr = alloc list(%6, %8, %10)
+    %12 f: ptr = closure main$1#2[]
+    dup.candidate %11
+    call map#3(%11, %12) -> b1(%3, %11)
+  b1(%13 r: ptr, %14 r: i64, %15 xs: ptr):
+    %16 s: ptr = show %15
+    %17 lit: ptr = const str 2
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %19 s: ptr = show %13
+    drop %13
+    %20 s: ptr = concat %18, %19
+    drop %19
+    perform std::console::Console.print(%20) -> b2(%14, %15)
+  b2(%21 r: unit, %22 r: i64, %23 xs: ptr):
+    %24 box: word = box %21
+    drop %24
+    %25 lit: i64 = const 35
+    %26 t: i64 = intmul %25, %22
+    %27 lit: i64 = const 0
+    call range#4(%27, %26) -> b3(%23)
+  b3(%28 r: ptr, %29 xs: ptr):
+    %30 f: ptr = closure main$2#5[]
+    call map#3(%28, %30) -> b4(%29)
+  b4(%31 r: ptr, %32 xs: ptr):
+    dup.candidate %31
+    %33 r: i64 = $list_len(%31)
+    %34 s: ptr = show %33
+    %35 lit: ptr = const str 2
+    %36 s: ptr = concat %34, %35
+    drop %35
+    %37 lit: i64 = const 0
+    dup.candidate %31
+    %38 r: ptr = $list_get(%31, %37)
+    %39 s: ptr = show %38
+    drop %38
+    %40 s: ptr = concat %36, %39
+    drop %39
+    %41 lit: ptr = const str 2
+    %42 s: ptr = concat %40, %41
+    drop %41
+    %43 lit: i64 = const 31
+    dup.candidate %31
+    %44 r: ptr = $list_get(%31, %43)
+    %45 s: ptr = show %44
+    drop %44
+    %46 s: ptr = concat %42, %45
+    drop %45
+    %47 lit: ptr = const str 2
+    %48 s: ptr = concat %46, %47
+    drop %47
+    %49 lit: i64 = const 69
+    %50 r: ptr = $list_get(%31, %49)
+    %51 s: ptr = show %50
+    drop %50
+    %52 s: ptr = concat %48, %51
+    drop %51
+    perform std::console::Console.print(%52) -> b5(%32)
+  b5(%53 r: unit, %54 xs: ptr):
+    %55 box: word = box %53
+    drop %55
+    %56 f: ptr = closure main$3#6[]
+    dup.candidate %54
+    call map#3(%54, %56) -> b6(%54)
+  b6(%57 r: ptr, %58 xs: ptr):
+    %59 f: ptr = closure main$4#7[]
+    call map#3(%57, %59) -> b7(%58)
+  b7(%60 r: ptr, %61 xs: ptr):
+    %62 s: ptr = show %60
+    drop %60
+    %63 lit: ptr = const str 2
+    %64 s: ptr = concat %62, %63
+    drop %63
+    %65 s: ptr = show %61
+    drop %61
+    %66 s: ptr = concat %64, %65
+    drop %65
+    perform std::console::Console.print(%66) -> b8()
+  b8(%67 r: unit):
+    %68 box: word = box %67
+    %69 unbox: unit = unbox %68
+    drop %68
+    ret %69
+
+fn $entry#1 top -> unit ; main::reuse_list_map, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#2 lambda -> word ; main::reuse_list_map, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$2#5 lambda -> word ; main::reuse_list_map, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %2, %3
+    %5 rec: ptr = alloc main::reuse_list_map::P(%2, %4)
+    ret %5
+
+fn main$3#6 lambda -> word ; main::reuse_list_map, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 10
+    %4 t: i64 = intmul %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn main$4#7 lambda -> word ; main::reuse_list_map, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    %5 box: word = box %4
+    ret %5

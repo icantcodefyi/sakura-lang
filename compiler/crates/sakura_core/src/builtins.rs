@@ -83,9 +83,9 @@ macro_rules! cols {
             ..PLAIN
         }
     };
-    (stores $v:literal) => {
+    (stores $v:literal $(at $i:literal)?) => {
         Builtin {
-            elems: Elems::Stores { value: $v, index: None },
+            elems: Elems::Stores { value: $v, index: cols!(@at $($i)?) },
             ..PLAIN
         }
     };
@@ -130,6 +130,8 @@ table! {
     // Transient builders, used only inside std/list bodies (design §17.116)
     Direct list_builder/0, Direct list_builder_push/2 [stores 1],
     Direct list_builder_finish/1 [fresh built],
+    // `List.map` over a list no other reference reaches, in its own storage (design §17.176 (5))
+    Direct list_reuse/1, Direct list_builder_at/2, Direct list_builder_set/3 [stores 2 at 1],
     Cps list_map/2 [callback 1], Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)

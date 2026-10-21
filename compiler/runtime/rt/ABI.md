@@ -341,7 +341,14 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   (1.3.0's rule): a 1.16 host refuses a 1.17 module. On native, `--native-checks` makes the
   `Alloc` call `rt_check_token(token, tag, size)` first, which stops the process unless the
   token is `Unit` or a live, unshared object of that tag, at least `size` bytes, whose slots
-  own nothing. `sakura_abi_version` is `0x011100`.
+  own nothing. `std/list`'s `map` (design §17.176 (5)) calls `rt_b_list_reuse(xs) -> ptr`, which
+  consumes `xs` and returns `Ok(xs)` when no other reference reaches it, else `Err(xs)` (one
+  `reuse_attempts`, a `reuses` for `Ok`); on `Ok` it writes each result over its element with
+  `rt_b_list_builder_set`, which is `rt_b_list_set`, after reading it with
+  `rt_b_list_builder_at`, which is `rt_b_list_at`, so the leaves and tail are written in place
+  and counted as `List.set`'s updates are. Until index `i` is written its slot holds the source
+  element, so a defect in the mapped function drops a list of results and source elements, each
+  an ordinary owned word. These three are internal too. `sakura_abi_version` is `0x011100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -1380,7 +1387,8 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   that `List.set`, `List.push` (a list literal and a list builder push too), `Map.insert`,
   `Map.remove`, `Set.insert` or `Set.remove` consumes, then each trie or HAMT node and the log
   list on the update's path that it reaches through a node it wrote; the runtime's own list
-  building is not counted; since 1.17.0 each `reuse_reset` of a constructor site too), `reuses` (the
+  building is not counted; since 1.17.0 each `reuse_reset` of a constructor site and each
+  `List.map`'s `list_reuse` test too), `reuses` (the
   attempts that wrote the existing object: no other reference reached it, it is not static and
   it had room, so a HAMT node that grows for a new key is a miss; a node below a copied one is
   copied without a test, so a wrapper hit never hides copied descendants; a remove copies its

@@ -2040,6 +2040,11 @@ builtins! {
         let _ = rt;
         b
     };
+    // `List.map` writing each result over the element it came from (plan M5 N3): the builder
+    // is the list itself, so these are `list_at` and `list_set`.
+    rt_b_list_reuse(xs: u32) -> u32 = ptr |rt| rt.list_reuse(xs);
+    rt_b_list_builder_at(b: u32, i: i64) -> u32 = ptr |rt| rt.list_at(b, i);
+    rt_b_list_builder_set(b: u32, i: i64, x: u32) -> u32 = ptr |rt| rt.list_set(b, i, x);
     rt_b_list_set(xs: u32, i: i64, x: u32) -> u32 = ptr |rt| rt.list_set(xs, i, x);
     rt_b_list_slice(xs: u32, a: i64, b: i64) -> u32 = ptr |rt| rt.list_slice(xs, a, b);
     rt_b_string_len(s: u32) -> i64 = plain |rt| rt.string_len(s);

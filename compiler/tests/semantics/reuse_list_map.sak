@@ -1,0 +1,23 @@
+// milestone: M3
+// covers: plan m5-native.md N3; design §17.176 (5) (`List.map` over a list no other reference
+// reaches writes each result over the element it came from, in its leaves and tail; a live
+// original is intact)
+
+type P = { x: Int, y: Int }
+
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ","))
+
+  // Live: `original` is read after the map and is unchanged.
+  let original = [n - 1, 2, 3]
+  let updated = List.map(original, fn(x) { x + 1 })
+  Console.print("{original} {updated}")
+
+  // Dead: mapped in its own storage, two full leaves and a tail of six, Int to a record.
+  let big = List.map(List.range(0, 35 * n), fn(x) { P { x: x, y: x * 2 } })
+  Console.print("{List.len(big)} {List.get(big, 0)} {List.get(big, 31)} {List.get(big, 69)}")
+
+  // Dead after a shared one: the copy is unique and is mapped in place in turn.
+  let twice = List.map(List.map(original, fn(x) { x * 10 }), fn(x) { x + 1 })
+  Console.print("{twice} {original}")
+}

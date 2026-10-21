@@ -1979,7 +1979,7 @@ impl<'m> Vm<'m> {
                 )?)
             }
             ("list_len", [W(xs)]) => I(self.list(*xs)?.len() as i64),
-            ("list_at", [W(xs), I(i)]) => {
+            ("list_at" | "list_builder_at", [W(xs), I(i)]) => {
                 let xs = self.list(*xs)?;
                 let w = *index(*i, xs.len())
                     .and_then(|i| xs.get(i))
@@ -1997,6 +1997,25 @@ impl<'m> Vm<'m> {
             }
             // A builder is the list it would finish as (design §17.116).
             ("list_builder", []) => self.new_list(vec![])?,
+            // `std/list`'s `reuse`: `Ok(xs)` when nothing else holds `xs` (design §17.176 (5)).
+            ("list_reuse", [W(xs)]) => {
+                let unique = matches!(
+                    self.obj(*xs)?,
+                    Obj {
+                        rc: 1,
+                        is_static: false,
+                        ..
+                    }
+                );
+                let result = self
+                    .m
+                    .layouts
+                    .builtin("Result")
+                    .ok_or(Ending::Unsupported("Result is not in this module".into()))?;
+                self.dup(*xs)?;
+                let body = Body::Slots(result.0, u32::from(!unique), vec![Sv::W(*xs)]);
+                W(self.alloc_obj(tag::VARIANT, body, false)?)
+            }
             ("list_builder_finish", [W(b)]) => {
                 self.list(*b)?;
                 self.dup(*b)?;
@@ -2010,7 +2029,7 @@ impl<'m> Vm<'m> {
                 ys.push(x);
                 self.new_list(ys)?
             }
-            ("list_set", [W(xs), I(i), x]) => {
+            ("list_set" | "list_builder_set", [W(xs), I(i), x]) => {
                 // `List.set`'s `requires` has checked the index; out of range is defence.
                 let mut ys = self.list(*xs)?.to_vec();
                 let Some(i) = index(*i, ys.len()) else {

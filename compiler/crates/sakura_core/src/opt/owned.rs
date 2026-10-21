@@ -150,6 +150,7 @@ pub const BORROWS: &[&str] = &[
     "list_get",
     "list_get_expect",
     "list_at",
+    "list_builder_at",
     "list_contains",
     "map_get",
     "map_get_expect",
@@ -1151,7 +1152,10 @@ impl<'a> Analysis<'a> {
             Bind::Prim(_, args) => self.use_all(args, Use::Borrow),
             Bind::Call(Atom::Builtin(n), args) => {
                 let b = builtins::lookup(n);
-                if BORROWS.contains(&n.as_str()) {
+                // `List.map`'s `list_reuse` hands its list back to be written over only when no
+                // other reference reaches it (tested at run time), so a caller still holding the
+                // list keeps it intact: `map` borrows it as before (design §17.176 (5)).
+                if BORROWS.contains(&n.as_str()) || n == "list_reuse" {
                     self.use_all(args, Use::Borrow);
                 } else {
                     self.use_all(args, Use::Other(Reason::EscapesCall(n.clone())));

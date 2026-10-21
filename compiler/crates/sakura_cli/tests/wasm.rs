@@ -1416,6 +1416,69 @@ fn constructor_reuse_counts_its_hits() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan M5 N3, design §17.176 (5): `List.map(original, fn(x) { x + 1 })` over a three-element
+/// literal (3 attempts, 2 hits). With `original` live, `map`'s uniqueness test misses and it
+/// builds a new list (3 pushes, the first onto the static empty list: 3/2). With `original`
+/// dead, the test hits and each result is written over its element in place, each `put`
+/// testing the root and the tail (6/6), and the new root and tail are never requested. On
+/// frames (`--no-direct`): a direct region's frame-protocol entry that may abort holds its
+/// arguments for the restart, so `map` entered from `main`'s frames finds `original` shared;
+/// `map` called inside a direct region (`bumped`, over `List.range`'s three pushes, 3/2) reuses
+/// either way. Each tuple is (attempts, reuses, requested bytes).
+#[test]
+fn list_map_reuses_a_dead_original() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("list_map_reuse");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let run = |name: &str, src: &str, flag: &str| {
+        std::fs::write(dir.join(format!("{name}.sak")), src).unwrap();
+        let stats = dir.join(format!("{name}{flag}.jsonl"));
+        let out_dir = dir.join(format!("out-{name}{flag}"));
+        let file = format!("{name}.sak");
+        let mut args = vec!["run", "--target", "wasm", "--out-dir"];
+        args.push(out_dir.to_str().unwrap());
+        args.extend([flag, &file].into_iter().filter(|a| !a.is_empty()));
+        let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+        assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);
+        let line = std::fs::read_to_string(&stats).unwrap();
+        let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+        let n = |k: &str| v[k].as_u64().unwrap();
+        (
+            out.stdout,
+            (n("reuse_attempts"), n("reuses"), n("requested")),
+        )
+    };
+    let program = |k: &str| {
+        format!(
+            "pub fn main() -> Unit ! {{Console}} {{\n  let n = List.len(String.split(\"a\", \",\"))\n  \
+             let original = [n, 2, 3]\n  let updated = List.map(original, fn(x) {{ x + 1 }})\n  \
+             let k = {k}\n  Console.print(\"{{k}} {{updated}}\")\n}}\n"
+        )
+    };
+    let (out, live) = run("live", &program("List.len(original)"), "--no-direct");
+    assert_eq!(out, "3 [2, 3, 4]\n");
+    let (out, dead) = run("dead", &program("3"), "--no-direct");
+    assert_eq!(out, "3 [2, 3, 4]\n");
+    assert_eq!((live.0, live.1), (7, 4), "{live:?}");
+    assert_eq!((dead.0, dead.1), (10, 9), "{dead:?}");
+    assert!(dead.2 < live.2, "requested {} vs {}", dead.2, live.2);
+    let (_, held) = run("dead", &program("3"), "");
+    assert_eq!((held.0, held.1), (7, 4), "{held:?}");
+    let twin = "fn bumped(n: Int) -> List<Int> { List.map(List.range(0, n), fn(x) { x + 1 }) }\n\n\
+                pub fn main() -> Unit ! {Console} {\n  \
+                let n = List.len(String.split(\"a\", \",\"))\n  Console.print(\"{bumped(3 * n)}\")\n}\n";
+    for flag in ["", "--no-direct"] {
+        let (out, (attempts, reuses, _)) = run("twin", twin, flag);
+        assert_eq!(out, "[1, 2, 3]\n");
+        assert_eq!((attempts, reuses), (10, 9), "{flag}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.172 (3): `W8001` is pinned by the N0b counters. Every `tests/ui` fixture with
 /// `// counters: copies` (each warns, which `ui.rs` checks) runs with no reuse hit and at least
 /// one missed attempt; every one with `// counters: reuses` (none warns) has a hit.

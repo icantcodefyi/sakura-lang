@@ -113,6 +113,13 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             list(ys)
         }
         ("list_builder_finish", [b @ List(_)]) => b.clone(),
+        // As the JS runtime: `List.map` never reuses a list here (design §17.176 (5)).
+        ("list_reuse", [xs @ List(_)]) => {
+            let t = module
+                .builtin_type("Result")
+                .ok_or_else(|| Stop::Unsupported("Result is not in this module".into()))?;
+            Variant(t, 1, Rc::new([xs.clone()]))
+        }
         ("list_concat", [List(xs), List(ys)]) => {
             list(xs.iter().chain(ys.iter()).cloned().collect())
         }

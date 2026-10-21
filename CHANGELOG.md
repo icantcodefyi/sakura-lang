@@ -73,12 +73,20 @@ retains earlier implementation history.
   reuses, in `reuses`, so `bench_counters.txt` changes for `deltablue`, `nbody`, `rbtree` and
   `shapes`. `--native-checks` checks each reuse token before it is used. JS output and every
   program's output are unchanged.
+- **`List.map` writes over a list nothing else holds** (design §17.176 (5), plan
+  `m5-native.md` N3; WASM and native): `List.map(xs, f)` with `xs` not used again puts each
+  result in the leaf or tail slot of the element it came from instead of building a new list;
+  when `xs` is still held it builds a new one as before and `xs` stays intact. The test is one
+  `reuse_attempts`, and each in-place write counts as `List.set`'s does, so
+  `bench_counters.txt` changes for `nbody`, `pipeline` and `shapes`. A `map` entered from
+  effectful code into a direct region whose twin may restart finds its list held for the
+  restart and builds a new one. JS output and every program's output are unchanged.
 
 ### Changed
 
 - The WASM runtime ABI is 1.17.0 (`sakura_abi_version` `0x011100`; design §17.176 (3), plan
-  `m5-native.md` N3): constructor-site reuse adds two runtime functions internal to the module
-  and counts reuse sites in the existing `stats()` counters; no import, export or layout
+  `m5-native.md` N3): constructor-site reuse adds two runtime functions internal to the module,
+  `List.map` three more, and counts reuse sites in the existing `stats()` counters; no import, export or layout
   changes. A host built for ABI 1.16 refuses a 1.17 module with `V8003`; rebuild with the
   matching compiler. A 1.17 host still runs older modules.
 

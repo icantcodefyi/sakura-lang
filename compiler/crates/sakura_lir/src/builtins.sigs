@@ -82,12 +82,15 @@ json_parse: (ptr) -> ptr
 json_schema: (ptr, ptr) -> ptr
 list_at: (ptr, i64) -> word
 list_builder: () -> ptr
+list_builder_at: (ptr, i64) -> word
 list_builder_finish: (ptr) -> ptr
 list_builder_push: (ptr, word) -> ptr
+list_builder_set: (ptr, i64, word) -> ptr
 list_get: (ptr, i64) -> ptr
 list_get_expect: (ptr, i64, ptr) -> word
 list_len: (ptr) -> i64
 list_push: (ptr, word) -> ptr
+list_reuse: (ptr) -> ptr
 list_set: (ptr, i64, word) -> ptr
 list_slice: (ptr, i64, i64) -> ptr
 llm_anthropic: (ptr, ptr, ptr) -> ptr

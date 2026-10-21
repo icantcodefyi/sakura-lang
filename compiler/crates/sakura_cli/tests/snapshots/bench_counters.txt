@@ -41,17 +41,17 @@ map_set n=1000
   direct: frames 4, boxes 15834, dups 12011, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
   all-frame: frames 3005, boxes 15834, dups 12011, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11006, borrows 0
 nbody n=1000
-  direct: frames 4, boxes 0, dups 42026, drops 7027, restarts 0, reuse_attempts 60008, reuses 40006, borrow_candidates 37026, borrows 0
-  all-frame: frames 52038, boxes 0, dups 42026, drops 7027, restarts 0, reuse_attempts 60008, reuses 40006, borrow_candidates 37026, borrows 0
+  direct: frames 4, boxes 0, dups 43026, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 0
+  all-frame: frames 52038, boxes 0, dups 43026, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 0
 pipeline n=1000
-  direct: frames 4, boxes 2501, dups 6005, drops 7013, restarts 0, reuse_attempts 2500, reuses 2497, borrow_candidates 2505, borrows 0
-  all-frame: frames 2509, boxes 2501, dups 6005, drops 7013, restarts 0, reuse_attempts 2500, reuses 2497, borrow_candidates 2505, borrows 0
+  direct: frames 4, boxes 2501, dups 6006, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 0
+  all-frame: frames 2509, boxes 2501, dups 6006, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 0
 rbtree n=1000
   direct: frames 4, boxes 0, dups 118637, drops 107983, restarts 0, reuse_attempts 1010, reuses 1009, borrow_candidates 13, borrows 0
   all-frame: frames 21969, boxes 0, dups 118637, drops 107983, restarts 0, reuse_attempts 1010, reuses 1009, borrow_candidates 13, borrows 0
 shapes n=1000
-  direct: frames 4, boxes 10184, dups 43723, drops 43728, restarts 0, reuse_attempts 11000, reuses 5994, borrow_candidates 10012, borrows 0
-  all-frame: frames 21010, boxes 10184, dups 43723, drops 43728, restarts 0, reuse_attempts 11000, reuses 5994, borrow_candidates 10012, borrows 0
+  direct: frames 4, boxes 10184, dups 43728, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 0
+  all-frame: frames 21010, boxes 10184, dups 43728, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 0
 sieve n=1000
   direct: frames 4, boxes 0, dups 2473, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 0
   all-frame: frames 1444, boxes 0, dups 2473, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 0

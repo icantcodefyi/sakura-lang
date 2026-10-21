@@ -51,10 +51,38 @@ pub fn concat<A>(a: List<A>, b: List<A>) -> List<A> {
   out
 }
 
+// `xs` itself as the builder of `map`'s result when no other reference reaches it (WASM and
+// native; design §17.176 (5)), else `xs` back. Until `put` writes index `i`, the builder's
+// element `i` is still `xs`'s, which `take` reads.
+@external(js, "sakura_runtime", "list_reuse")
+fn reuse<A, B>(xs: List<A>) -> Result<Builder<B>, List<A>>
+
+@external(js, "sakura_runtime", "list_builder_at")
+fn take<A, B>(b: Builder<B>, i: Int) -> A
+
+@external(js, "sakura_runtime", "list_builder_set")
+fn put<B>(b: Builder<B>, i: Int, y: B) -> Builder<B>
+
 pub fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e {
-  var out: Builder<B> = builder()
-  for x in xs { out = append(out, f(x)) }
-  finish(out)
+  let n = len(xs)
+  match reuse(xs) {
+    Ok(b) => {
+      var out: Builder<B> = b
+      var i = 0
+      while i < n {
+        let x = take(out, i)
+        let y = f(x)
+        out = put(out, i, y)
+        i = i + 1
+      }
+      finish(out)
+    },
+    Err(xs) => {
+      var out: Builder<B> = builder()
+      for x in xs { out = append(out, f(x)) }
+      finish(out)
+    },
+  }
 }
 
 pub fn filter<A, e>(xs: List<A>, f: fn(A) -> Bool ! e) -> List<A> ! e {

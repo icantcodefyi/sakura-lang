@@ -1,0 +1,15 @@
+// milestone: M3
+// covers: plan m5-native.md N3; design §17.176 (5) (a defect in `List.map`'s function at element
+// two, over a list it reuses, frees the list with the first result and the unmapped elements)
+// expect-exit: 70
+// expect-defect: D002
+
+type P = { x: Int, y: Int }
+
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ","))
+  let ok = List.map(List.range(0, 3 * n), fn(x) { P { x: x, y: 1 } })
+  Console.print("ok {List.len(ok)}")
+  let never = List.map(List.range(0, 3 * n), fn(x) { P { x: 10 / (x - 1), y: x } })
+  Console.print("never {List.len(never)}")
+}

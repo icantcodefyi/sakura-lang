@@ -1380,6 +1380,17 @@ export function list_builder_push(b, x) {
   }
   return b;
 }
+// `List.map` in the list's own storage is the WASM and native runtimes' (design §17.176 (5)):
+// here a list is never reused, so `map` builds a new one and the other two are never called.
+export function list_reuse(xs) {
+  return Err(xs);
+}
+export function list_builder_at(_b, _i) {
+  throw new Error("list_builder_at: the JS runtime never reuses a list");
+}
+export function list_builder_set(_b, _i, _x) {
+  throw new Error("list_builder_set: the JS runtime never reuses a list");
+}
 export function list_builder_finish(b) {
   b.leaf.length = b.i;
   return fromLeaves(b.leaves, b.leaf);
