@@ -296,10 +296,21 @@ list: the `secrets` example runs natively, its token in none of stdout, stderr, 
 cassette (`parity.rs`), and native parity is 297 of 297. `secret_wrap`/`secret_expose` were
 already native builtins.
 
+**N1 progress (2026-10-22): test mode, `V8004`, `log_json` and serve landed.**
+`sakura test --target native` builds a test executable (descriptor layout 6, the test table at
++112/+120) whose runner ports WASM's records, snapshots and `Test.fixtures()`; `parity.rs`'s
+`native_agrees_with_js_on_test_mode_programs` compares every test-mode fixture and example with
+JS. `Log.json()` writes the JS runtime's line from `runtime/rt`. `V8004`'s explain text names
+native, and `tests/wasm.rs` refuses a user `@external(js)` on both. `Serve.host()` runs on
+`hyper` (1 MiB cap and `413`, the copy budget's `D091` with `413` or `500`, a handler's defect
+`500`, `D096` `503`), each request a task through the shared `invoke`; `parity.rs`'s
+`native_serve_answers_as_wasm_does` reads WASM's answers and records. `Serve` left the driver's
+unavailable list, which now holds `Llm` and `WebSocket`.
+
 **Left of N1b:** Llm (`Llm.anthropic` is the JS-built handler `rt_code_js_clause`, still `D090`
-natively; §17.308 (3) picks the port with its two protocol additions), serve, `log_json`, the test
-runner's codes and `sakura test --target native`, `V8004` and the exclusion table; Http is
-ratified as built (§17.308 (3)). The WASI command does not call the codec yet (no Wasmtime
+natively; §17.308 (3) picks the port with its two protocol additions), property tests natively
+(`prop_*` are still `rt_code_unsupported`; `KNOWN_NATIVE_TESTS` lists them) and the exclusion
+table; Http is ratified as built (§17.308 (3)). The WASI command does not call the codec yet (no Wasmtime
 `json_validate` cell).
 
 ### Round 60 (§17.308, 2026-10-21): the lanes that finish M5

@@ -54,6 +54,12 @@ retains earlier implementation history.
   native test executable with the same `test` and `test_summary` records, snapshots and
   `Test.fixtures()` as `--target wasm`. Property tests and `Llm` are not native yet (they end
   `D090`). `Log.json()` runs natively with the JS backend's JSON lines.
+- **`Serve.host()` on `--target native`** (experimental, plan M5 N1b): the server runs on
+  `hyper` and answers each request from its own task, as on `--target wasm`: a body over 1 MiB
+  or over `SAKURA_MAX_COPY_BYTES` is `413`, a reply over the budget or a handler's defect is
+  `500` with its `D091` or defect record, and the server keeps answering. A native `main` that
+  leaves `Serve` to the runtime now runs instead of exiting 75. Request header names arrive
+  lowercased, as `hyper` gives them.
 
 ### Changed
 

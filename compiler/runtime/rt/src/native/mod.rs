@@ -11,6 +11,7 @@
 
 pub mod host;
 pub(crate) mod hosted;
+pub mod serve;
 pub mod sql;
 pub mod test;
 
@@ -438,8 +439,8 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
 /// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
-/// not reached yet (serve, JS handlers, the test runner) resolve to `rt_code_unsupported`, a
-/// `D090` when performed; Http's operations are `hosted`'s.
+/// not reached yet (JS-built handlers, property search, WebSocket) resolve to
+/// `rt_code_unsupported`, a `D090` when performed; Http's operations are `hosted`'s.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
@@ -468,7 +469,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_code_random_float", e::rt_code_random_float),
         ("rt_code_random_int", e::rt_code_random_int),
         ("rt_code_random_uuid", e::rt_code_random_uuid),
-        ("rt_code_serve_request", e::rt_code_unsupported),
+        ("rt_code_serve_request", serve::rt_code_serve_request),
         ("rt_code_sql_execute", sql::rt_code_sql_execute),
         ("rt_code_sql_query", sql::rt_code_sql_query),
         ("rt_code_sql_rollback", sql::rt_code_sql_rollback),
@@ -504,7 +505,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_http_stream_open", hosted::rt_k_http_stream_open),
         ("rt_k_http_stream_read", hosted::rt_k_http_stream_read),
         ("rt_k_property_run", e::rt_code_unsupported),
-        ("rt_k_serve_listen", e::rt_code_unsupported),
+        ("rt_k_serve_listen", serve::rt_k_serve_listen),
         ("rt_k_test_expect_defect", e::rt_k_test_expect_defect),
         ("rt_k_topic_subscribe", e::rt_k_topic_subscribe),
         ("rt_k_worker_closing", crate::worker::rt_k_worker_closing),

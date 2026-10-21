@@ -277,6 +277,14 @@ pub trait Host {
         Ok(())
     }
 
+    /// `Serve.host()` (async): listen on `host:port` and hand each request to
+    /// `Instance::serve_invoke` with `listener`; complete `request` with the UTF-8 reason of
+    /// the `ServeError` only when the server cannot start or stops. `abort(request)` stops it.
+    fn serve_listen(&mut self, _request: u32, _listener: u32, _host: &str, _port: i64) {}
+    /// The response of the served request answered by `task`: the `sakura-vt1` tuple of the
+    /// `Response`.
+    fn serve_respond(&mut self, _task: u32, _response: &[u8]) {}
+
     /// The test runner's `std::test::Test` operations (`sakura test --target native`, as the
     /// WASM host's `test_*` imports): the running test's failures and captured output, its
     /// snapshot check and `tests/fixtures` (a read-only `Dir`).

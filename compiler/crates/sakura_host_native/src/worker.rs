@@ -151,6 +151,8 @@ pub enum Wake {
     Topic(String, String),
     /// The parent stopped this worker.
     Stop,
+    /// A served request read in full (`Serve.host()`).
+    Served(crate::serve::Incoming),
     /// Nothing is in flight and nothing links this instance to another: every task waits.
     Idle,
 }
@@ -247,10 +249,11 @@ impl NativeHost {
                 while self.rx.try_recv().is_ok() {}
                 return Wake::Idle;
             }
-            let (rx, signals) = (&mut self.rx, &mut self.signals);
+            let (rx, signals, served) = (&mut self.rx, &mut self.signals, &mut self.servers.rx);
             let woke = self.executor.block_on(async {
                 tokio::select! {
                     c = rx.recv() => c.map(|(r, s, p)| Wake::Done(r, s, p)),
+                    r = served.recv() => r.map(Wake::Served),
                     s = signals.recv() => s.map(|s| match s {
                         Signal::Topic(n, t) => Wake::Topic(n, t),
                         Signal::Stop => Wake::Stop,

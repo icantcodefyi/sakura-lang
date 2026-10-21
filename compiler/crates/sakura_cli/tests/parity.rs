@@ -1129,6 +1129,166 @@ fn without_the_native_feature_target_native_is_refused() {
     }
 }
 
+/// `method path` with `body` and `x-name: ann` on loopback `port`: "status close body".
+#[cfg(all(feature = "native", unix))]
+fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
+    use std::io::{Read, Write};
+    let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+    write!(
+        s,
+        "{method} {path} HTTP/1.1\r\nhost: 127.0.0.1\r\nx-name: ann\r\ncontent-length: {}\r\n\
+         connection: close\r\n\r\n{body}",
+        body.len()
+    )
+    .unwrap();
+    let mut out = String::new();
+    s.read_to_string(&mut out).unwrap();
+    let status = out.split(' ').nth(1).unwrap_or("").to_string();
+    let (head, body) = out.split_once("\r\n\r\n").unwrap_or((&out, ""));
+    let close = head
+        .lines()
+        .any(|l| l.eq_ignore_ascii_case("connection: close"));
+    format!("{status} {close} {body}")
+}
+
+/// `Serve.host()` on native answers as on WASM (`wasm.rs`'s `serve_host_answers_on_wasm_as_on_js`
+/// and `serve_over_the_copy_budget_answers_413_or_500_and_keeps_serving`): each request in its own
+/// task, a handler's defect a 500 with its record, and with `SAKURA_MAX_COPY_BYTES=1024` a 2 KiB
+/// request 413 and a 2 KiB reply 500, each with one `D091`; the server keeps answering.
+#[cfg(all(feature = "native", unix))]
+#[test]
+fn native_serve_answers_as_wasm_does() {
+    use std::os::unix::process::CommandExt;
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let lib =
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &tmp.join("native-driver"))
+            .unwrap();
+    let dir = tmp.join("native-serve");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    std::fs::write(
+        dir.join("sakura.toml"),
+        format!(
+            "[package]\nname = \"srv\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n\
+             [permissions]\nnet = [\"127.0.0.1:{port}\"]\n"
+        ),
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/main.sak"),
+        format!(
+            "import std/request.{{Bytes, Request}}\nimport std/response.{{Response}}\n\
+             import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
+             pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
+             \x20 let router = Router.new()\n\
+             \x20   .get(\"/hi\", fn(req) {{ Response.status(200, \"hello {{Request.header(req, \"x-name\")}}\") }})\n\
+             \x20   .get(\"/boom\", fn(_req) {{ Response.status(200, List.first([]).expect(\"boom\")) }})\n\
+             \x20   .post(\"/echo\", fn(req) {{\n\
+             \x20     let n = match req.body {{ Bytes(b) => Bytes.len(b), _ => 0 }}\n\
+             \x20     Response.status(200, \"{{n}}\")\n\
+             \x20   }})\n\
+             \x20   .get(\"/big\", fn(_req) {{ Response.status(200, String.repeat(\"y\", 2048)) }})\n\
+             \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
+        ),
+    )
+    .unwrap();
+    let err = dir.join("stderr");
+    let out_dir = dir.join("out");
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sakura"))
+        .args([
+            "run",
+            "--target",
+            "native",
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+        ])
+        .env("SAKURA_NATIVE_LIB_DIR", &lib)
+        .env("SAKURA_MAX_COPY_BYTES", "1024")
+        .current_dir(&dir)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::fs::File::create(&err).unwrap())
+        .process_group(0)
+        .spawn()
+        .unwrap();
+    // `--` is required: procps `kill` (Linux) takes `-9 -PGID` as options and kills nothing.
+    let stop = |child: &mut std::process::Child| {
+        let _ = std::process::Command::new("kill")
+            .args(["-9", "--", &format!("-{}", child.id())])
+            .status();
+        let _ = child.wait();
+    };
+    let start = std::time::Instant::now();
+    while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
+        if start.elapsed() > time_limit() || child.try_wait().unwrap().is_some() {
+            stop(&mut child);
+            panic!(
+                "the server did not start\n{}",
+                std::fs::read_to_string(&err).unwrap_or_default()
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let big = "x".repeat(2048);
+    let got = [
+        http_send(port, "GET", "/hi", ""),
+        http_send(port, "GET", "/boom", ""),
+        http_send(port, "GET", "/missing", ""),
+        http_send(port, "POST", "/echo", &big),
+        http_send(port, "POST", "/echo", "small"),
+        http_send(port, "GET", "/big", ""),
+        http_send(port, "GET", "/hi", ""),
+    ]
+    .map(|a| a.replace(&"y".repeat(2048), "y*2048"));
+    let alive = child.try_wait().unwrap().is_none();
+    stop(&mut child);
+    let stderr = std::fs::read_to_string(&err).unwrap_or_default();
+    let defects: Vec<String> = stderr
+        .lines()
+        .filter(|l| l.contains("\"kind\":\"defect\""))
+        .map(|l| {
+            let v: serde_json::Value = serde_json::from_str(l).unwrap();
+            format!(
+                "{} {}",
+                v["code"].as_str().unwrap(),
+                v["message"].as_str().unwrap()
+            )
+        })
+        .collect();
+    assert_eq!(
+        got,
+        [
+            "200 true hello Some(\"ann\")",
+            "500 true internal error",
+            "404 true not found",
+            "413 true request body too large",
+            "200 true 5",
+            "500 true internal error",
+            "200 true hello Some(\"ann\")",
+        ],
+        "{stderr}"
+    );
+    assert!(alive, "the native server ended:\n{stderr}");
+    assert_eq!(defects.len(), 3, "{stderr}");
+    assert_eq!(defects[0], "D030 boom", "{stderr}");
+    // WASM's 2217 bytes, and 24 for the `x-name` header its request lacks.
+    assert_eq!(
+        defects[1..],
+        [
+            "D091 request too large: 2241 bytes over SAKURA_MAX_COPY_BYTES",
+            "D091 response too large: 2094 bytes over SAKURA_MAX_COPY_BYTES"
+        ],
+        "{stderr}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.173 (4): `sakura build --target native --native-checks` builds the checked
 /// lowering, which runs a correct program unchanged; the flag needs `--target native`.
 #[cfg(feature = "native")]

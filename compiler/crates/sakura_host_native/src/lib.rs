@@ -15,6 +15,7 @@
 
 pub mod fs;
 mod http;
+mod serve;
 mod sql;
 pub mod test;
 pub mod worker;
@@ -237,6 +238,13 @@ enum Inflight {
     /// `http_stream_open` on the executor, and the `Body` it fills: retired unless the guest
     /// receives it.
     Open(tokio::task::AbortHandle, HandleId),
+    /// A listening server: its accept loop, and whether it still answers requests.
+    Serve(
+        tokio::task::AbortHandle,
+        std::sync::Arc<std::sync::atomic::AtomicBool>,
+    ),
+    /// A completion already queued, with nothing to cancel.
+    Queued,
 }
 
 pub struct NativeHost {
@@ -280,6 +288,8 @@ pub struct NativeHost {
     instance: u64,
     /// `sakura test --target native`'s runner and the running test.
     pub(crate) runner: test::Runner,
+    /// `Serve.host()`'s served requests.
+    pub(crate) servers: serve::Servers,
 }
 
 impl NativeHost {
@@ -331,6 +341,7 @@ impl NativeHost {
             signals,
             instance: worker::instance_id(),
             runner: test::Runner::default(),
+            servers: serve::Servers::default(),
         })
     }
 
@@ -419,6 +430,7 @@ impl NativeHost {
             closed_files: self.files.len(),
             ..Ledger::default()
         };
+        self.close_servers();
         for request in self.inflight.keys().copied().collect::<Vec<_>>() {
             self.abort(request);
         }
@@ -563,7 +575,11 @@ impl Host for NativeHost {
                     db.abort(request);
                 }
             }
-            None => {}
+            Some(Inflight::Serve(h, open)) => {
+                open.store(false, std::sync::atomic::Ordering::Relaxed);
+                h.abort();
+            }
+            Some(Inflight::Queued) | None => {}
         }
     }
 
@@ -885,6 +901,14 @@ impl Host for NativeHost {
         self.db(db)?.end(token, commit).map_err(HostError::Failure)
     }
 
+    fn serve_listen(&mut self, request: u32, listener: u32, host: &str, port: i64) {
+        self.serve(request, listener, host, port);
+    }
+
+    fn serve_respond(&mut self, task: u32, response: &[u8]) {
+        self.respond(task, response);
+    }
+
     fn test_record_failure(&mut self, message: &str) {
         self.runner.failures.push(message.to_string());
     }
@@ -916,6 +940,7 @@ impl Host for NativeHost {
 /// stopped worker's task ends `Cancelled`.
 pub fn run_task(inst: &mut Instance<NativeHost>, task: u32) -> Outcome {
     let mut kind = inst.run(task);
+    serve::reply(inst);
     while kind == outcome::PENDING {
         let host = inst.host();
         host.flush_out();
@@ -924,6 +949,10 @@ pub fn run_task(inst: &mut Instance<NativeHost>, task: u32) -> Outcome {
                 inst.complete(req, status, &payload).map(|_| ())
             }
             worker::Wake::Topic(name, text) => inst.topic_deliver(&name, &text),
+            worker::Wake::Served(r) => {
+                serve::deliver(inst, r);
+                Ok(())
+            }
             worker::Wake::Stop => return Outcome::Cancelled,
             worker::Wake::Idle => {
                 return Outcome::Defect {
@@ -941,6 +970,7 @@ pub fn run_task(inst: &mut Instance<NativeHost>, task: u32) -> Outcome {
             };
         }
         kind = inst.run(task);
+        serve::reply(inst);
     }
     inst.host().flush_out();
     inst.outcome(task)
@@ -973,6 +1003,7 @@ pub fn report_spans(host: &mut NativeHost, o: &Outcome, spans: &[Span]) -> i32 {
         Outcome::Exit(code) => *code,
         Outcome::Cancelled | Outcome::Pending => 70,
         Outcome::Defect { code, message, .. } => {
+            host.servers.defected = true;
             // Keys in the JS and WASM hosts' order, so the record's bytes match theirs.
             let text = |s: &str| serde_json::Value::from(s).to_string();
             let mut record = format!(

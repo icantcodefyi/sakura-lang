@@ -92,6 +92,60 @@ pub extern "C" fn run(task: u32) -> u32 {
 pub extern "C" fn complete(request: u32, status: u32, payload: u32, _len: u32) -> u32 {
     Cx::wasm().rt().complete(request, status, payload)
 }
+/// `invoke(listener, payload) -> task` (ABI §9), wasm's `rt_invoke` and the native
+/// `Instance::serve_invoke`: the task answering the `Request` in `payload` (consumed) for the
+/// server whose `serve_listen` frame is `listener`, or 0 when it is gone or the heap is
+/// exhausted. Request tasks that have finished since the last call are freed first.
+pub(crate) fn invoke(rt: &mut Rt, listener: u32, payload: u32) -> u32 {
+    if let Some(mut served) = rt.sched.served.take() {
+        let mut i = 0;
+        while i < served.len {
+            let t = rt.stack_at(&served, i);
+            if rt.task_done(t) {
+                let last = rt.pop(&mut served).unwrap_or(t);
+                if i < served.len {
+                    rt.stack_set(&served, i, last);
+                }
+                rt.task_free(t);
+            } else {
+                i += 1;
+            }
+        }
+        rt.sched.served = Some(served);
+    }
+    // Not a fresh `Bytes` from `alloc_bytes`: refused untouched (security review W11).
+    if !rt.host_bytes(payload) {
+        return 0;
+    }
+    let r = (|| {
+        let (len, at) = rt.data(payload);
+        let req = rt.vt_decode(at, len)?;
+        let Some((f, act)) = rt.live_frame(listener) else {
+            rt.drop(req);
+            return Ok(0);
+        };
+        let handle = rt.fslot(f, 1) as u32;
+        let code = rt.sched.serve_request_code;
+        let started = rt.dup(handle).and_then(|_| {
+            rt.start_under(act, code, 2)
+                .inspect_err(|_| rt.drop(handle))
+        });
+        let (task, root) = started.inspect_err(|_| rt.drop(req))?;
+        rt.set_fslot(root, 0, u64::from(handle));
+        rt.set_fslot(root, 1, u64::from(req));
+        let mut served = rt
+            .sched
+            .served
+            .take()
+            .unwrap_or(crate::scratch::Stack::NONE);
+        let pushed = rt.push(&mut served, task);
+        rt.sched.served = Some(served);
+        pushed.map(|()| task)
+    })();
+    rt.drop(payload);
+    r.unwrap_or(0)
+}
+
 // ---- set-up, outcomes -----------------------------------------------------------------------
 
 /// The module's tables (static-block addresses) and the native codes the runtime builds

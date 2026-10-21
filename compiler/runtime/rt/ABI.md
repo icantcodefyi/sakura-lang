@@ -463,12 +463,12 @@ table at +96/+104, `sakura_lir::image::workers_table`; layout 6, 128 bytes: a te
 test table at +112/+120, the runner's `Test` clauses and WASM's `tests()` payload, empty for a
 program; a test build runs its tests, `sakura test --target native`, and skips this check).
 After the record's check, the driver refuses a root effect whose service the native host does
-not implement (`Serve`, `Llm`, `WebSocket`; `Http` is served since N1b; a live worker's entry
+not implement (`Llm`, `WebSocket`; `Http` and `Serve` are served since N1b; a live worker's entry
 by the same rule when it starts): one stderr line naming it, "`Llm` is not available on target
 `native`", and exit 75, before the
 instance exists or any user code runs. A handler for one that the program installs itself is
 `D090` at first use ("a host operation the native host does not provide yet", exit 70;
-`rt_code_unsupported`), read from native runs of `Serve.host()` (design §17.277). Natively
+`rt_code_unsupported`). Natively
 `http_send` and `http_stream_open` are requests the host completes with the tuple `(Int
 status, List<(String, String)> headers, Bytes body)` or `(…, Handle body)`, which the runtime
 types as `Response` or `Incoming`; their `secret_headers` cross with their values (kind
