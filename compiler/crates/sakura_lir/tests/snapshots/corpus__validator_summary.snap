@@ -34,7 +34,7 @@ semantics/closures: 8 funcs, 24 blocks, 4 dup, 17 drop, valid
 semantics/compress_rejects_level: 8 funcs, 49 blocks, 6 dup, 8 drop, valid
 semantics/compress_roundtrip_formats: 24 funcs, 313 blocks, 47 dup, 121 drop, valid
 semantics/compress_source_roundtrip: 77 funcs, 659 blocks, 129 dup, 283 drop, valid
-semantics/console_eprint: 48 funcs, 164 blocks, 15 dup, 85 drop, valid
+semantics/console_eprint: 47 funcs, 161 blocks, 15 dup, 75 drop, valid
 semantics/constants: 6 funcs, 16 blocks, 3 dup, 12 drop, valid
 semantics/contract_site_blame: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contract_site_blame_callback: 5 funcs, 15 blocks, 3 dup, 5 drop, valid

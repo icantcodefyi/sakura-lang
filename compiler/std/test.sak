@@ -62,8 +62,20 @@ pub fn expect_fails_with<T, E: Show, e>(
 @external(js, "sakura_runtime", "test_expect_defect")
 pub fn expect_defect<T, e>(body: fn() -> T ! e) -> Unit ! {Test | e}
 
-/// The test's captured output (`Console.print`, `Log.event`) must equal `lines`.
-pub fn expect_output(lines: List<String>) -> Unit ! {Test} { expect_eq(Test.output_lines(), lines) }
+/// The test's captured output (`Console.print`, `Log.event`) must equal `lines`. A failure shows
+/// both lists as `expect_eq` does, with braces unescaped (`{"id": 1}`, not `\{"id": 1\}`).
+pub fn expect_output(lines: List<String>) -> Unit ! {Test} {
+  let got = Test.output_lines()
+  if got != lines {
+    Test.record_failure("expected {unbraced(show(lines))}, got {unbraced(show(got))}")
+  }
+}
+
+/// `shown` with `Show`'s `\{` and `\}` as plain braces. An escaped backslash before a brace
+/// (`\\\{`) keeps its own escape, since `Show` never writes a lone `\` before a brace.
+fn unbraced(shown: String) -> String {
+  String.replace(String.replace(shown, "\\\{", "\{"), "\\\}", "\}")
+}
 
 /// Compares `show(value)` with the stored snapshot `name`.
 pub fn expect_snapshot<A: Show>(name: String, value: A) -> Unit ! {Test} {

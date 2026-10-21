@@ -287,6 +287,25 @@ fn test_json_has_exactly_one_summary_at_the_end() {
     assert_eq!(recs[2]["failed"], 1);
 }
 
+/// Design §17.292 (small), §17.301 row 12: a failing `expect_output` shows braces unescaped,
+/// and an escaped backslash before a brace keeps its escape; the same on JS and WASM.
+#[test]
+fn a_failing_expect_output_shows_plain_braces() {
+    let dir = tmp(
+        "expect-output-braces",
+        "test \"braces\" {\n  with Console.captured() {\n    Console.print(\"\\{\\\"id\\\": 1\\}\")\n    Console.print(\"a\\\\\\{b\")\n    expect_output([\"\\{\\\"id\\\": 2\\}\"])\n  }\n}\n",
+    );
+    for target in ["js", "wasm"] {
+        let out = sakura(&["test", "--json", "--target", target, "main.sak"], &dir);
+        assert_eq!(out.code, Some(3), "{target}: {}{}", out.stdout, out.stderr);
+        let recs = common::json_lines(&out.stdout).unwrap();
+        assert_eq!(
+            recs[0]["failures"][0], r#"expected ["{\"id\": 2}"], got ["{\"id\": 1}", "a\\{b"]"#,
+            "{target}"
+        );
+    }
+}
+
 /// Design §17.186: Node's loader realpaths the entry script, so a build directory reached through
 /// a symlink must still be granted under its real path, and the snapshot write must be granted.
 #[cfg(unix)]

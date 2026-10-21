@@ -141,6 +141,10 @@ retains earlier implementation history.
   keeps nothing of that run; no cancel, finalizer or trace record is added, so the run ends
   as on JS and WASM (design §17.298 (d), amending §17.296 (5)). The native corpus no longer
   exempts that run from its leak check.
+- A failing `expect_output` shows both lists with plain braces (`["{\"id\": 2}"]`), where it
+  showed `Show`'s escapes (`["\{\"id\": 2\}"]`); an escaped backslash before a brace keeps its
+  escape. The message is `expect_eq`'s otherwise, on every backend (design §17.292, small).
+  Test `a_failing_expect_output_shows_plain_braces` in `compiler/crates/sakura_cli/tests/cli.rs`.
 - `crypto.import_key` of an RSA private key (PKCS #8 or JWK) checks its CRT members after the
   pairwise signature, as BoringSSL does: unless `p·q = n`, `dp = d mod (p − 1)`,
   `dq = d mod (q − 1)` and `qi·q ≡ 1 (mod p)` it fails `Malformed`, on JS and WASM (design
