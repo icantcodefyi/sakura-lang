@@ -28,10 +28,10 @@ fn main#0 pub top -> unit ; main::decompress_rejects_malformed, frame 150 slots 
     %5 v: ptr = const static std::compress::Format.Gzip
     %6 lit: i64 = const 6
     %7 $site: i64 = const 7
-    dup %4
+    dup.candidate %4
     call compress#3(%4, %5, %6, %7) -> b2(%4)
   b2(%8 r: ptr, %9 r: ptr):
-    dup %8
+    dup.candidate %8
     %10 r: i64 = $bytes_len(%8)
     %11 v: ptr = const static std::compress::Format.Gzip
     %12 lit: ptr = const str 1
@@ -146,10 +146,10 @@ fn main#0 pub top -> unit ; main::decompress_rejects_malformed, frame 150 slots 
     %145 v: ptr = const static std::compress::Format.Deflate
     %146 lit: i64 = const 6
     %147 $site: i64 = const 8
-    dup %143
+    dup.candidate %143
     call compress#3(%143, %145, %146, %147) -> b22(%143, %144)
   b22(%148 r: ptr, %149 r: ptr, %150 r: ptr):
-    dup %148
+    dup.candidate %148
     %151 r: i64 = $bytes_len(%148)
     %152 v: ptr = const static std::compress::Format.Deflate
     %153 lit: ptr = const str 1
@@ -209,7 +209,7 @@ fn main#0 pub top -> unit ; main::decompress_rejects_malformed, frame 150 slots 
     %233 $site: i64 = const 9
     call compress#3(%230, %231, %232, %233) -> b35()
   b35(%234 r: ptr):
-    dup %234
+    dup.candidate %234
     %235 r: i64 = $bytes_len(%234)
     %236 v: ptr = const static std::compress::Format.DeflateRaw
     %237 lit: ptr = const str 1
@@ -340,7 +340,7 @@ fn set#5 top -> ptr ; main::decompress_rejects_malformed, frame 3 slots [%0 word
     %7 r: ptr = $bytes_from_list(%6)
     %8 lit: i64 = const 1
     %9 t: i64 = intadd %1, %8
-    dup %0
+    dup.candidate %0
     %10 r: i64 = $bytes_len(%0)
     %11 r: ptr = $bytes_slice(%0, %9, %10)
     %12 xs: ptr = alloc list(%4, %7, %11)
@@ -349,7 +349,7 @@ fn set#5 top -> ptr ; main::decompress_rejects_malformed, frame 3 slots [%0 word
 
 fn flip#6 top -> ptr ; main::decompress_rejects_malformed, frame 6 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64, %13 word*]
   b0(%0 b: ptr, %1 i: i64):
-    dup %0
+    dup.candidate %0
     %2 r: ptr = $bytes_get(%0, %1)
     %3 lit: i64 = const 0
     %4 box: word = box %3

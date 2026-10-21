@@ -41,12 +41,12 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %15 $site: i64 = const 2
     call encode_multipart#2(%13, %14, %15) -> b1()
   b1(%16 r: ptr):
-    dup %16
+    dup.candidate %16
     %17 r: i64 = $bytes_len(%16)
     %18 lit: i64 = const 3
     %19 lit: i64 = const 8
     %20 rec: ptr = alloc std::form::FormLimits(%18, %17, %19)
-    dup %16
+    dup.candidate %16
     %21 r: i64 = $bytes_len(%16)
     %22 s: ptr = show %21
     %23 lit: ptr = const str 7
@@ -61,7 +61,7 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     drop %30
     %31 lit: ptr = const str 9
     dup %28
-    dup %29
+    dup.candidate %29
     call parse_multipart#3(%28, %31, %29) -> b3(%28, %29)
   b3(%32 r: ptr, %33 r: ptr, %34 rec: ptr):
     call outcome#4(%32) -> b4(%33, %34)
@@ -79,7 +79,7 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %46 max_field_bytes: i64 = proj %43.2 std::form::FormLimits
     %47 lit: i64 = const 2
     %48 rec: ptr = alloc std::form::FormLimits(%47, %45, %46)
-    dup %42
+    dup.candidate %42
     %49 r: i64 = $bytes_len(%42)
     %50 lit: i64 = const 1
     %51 t: i64 = intsub %49, %50

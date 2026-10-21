@@ -144,7 +144,7 @@ fn echo_once#6 top -> ptr ; main::websocket_scripted_echo, frame 8 slots [%0 wor
     %3 f: ptr = closure echo_once$1#15[]
     %4 $site: i64 = const 7
     dup.candidate %1
-    dup %2
+    dup.candidate %2
     dup.candidate %3
     call WebSocket.connect#12(%2, %1, %3, %4) -> b2(%2, %1, %3)
   b2(%5 pre: unit, %6 url: ptr, %7 r: ptr, %8 f: ptr):
@@ -156,7 +156,7 @@ fn echo_once#6 top -> ptr ; main::websocket_scripted_echo, frame 8 slots [%0 wor
 fn main$1#8 lambda -> word ; main::websocket_scripted_echo, captures [], frame 14 slots [%0 word*, %1 word*, %2 word*, %3 word*, %9 bool, %10 word*, %12 word*, %13 word*, %17 bool, %18 word*, %27 bool, %28 word*, %30 word*, %33 word*]
   b0(%0 env: ptr, %1 sock: word):
     drop %0
-    dup %1
+    dup.candidate %1
     call protocol#9(%1) -> b1(%1)
   b1(%2 r: ptr, %3 sock: ptr):
     %4 s: ptr = show %2

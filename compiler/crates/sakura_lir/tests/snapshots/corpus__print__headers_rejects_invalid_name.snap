@@ -51,7 +51,7 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %23
     %26 lit: ptr = const str 14
     %27 lit: ptr = const str 15
-    dup %25
+    dup.candidate %25
     call append#5(%25, %26, %27) -> b6(%25)
   b5(%24 r: ptr):
     %78 p: word = proj %24.0 std::result::Result.Err
@@ -74,7 +74,7 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %38
     %39 lit: ptr = const str 12
     %40 lit: ptr = const str 17
-    dup %37
+    dup.candidate %37
     call set#6(%37, %39, %40) -> b9(%37)
   b9(%41 r: ptr, %42 h: ptr):
     %43 fn: ptr = const static closure to_list$value#32
@@ -90,7 +90,7 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %51 box: word = box %49
     drop %51
     %52 lit: ptr = const str 19
-    dup %50
+    dup.candidate %50
     call get#7(%50, %52) -> b12(%50)
   b12(%53 r: ptr, %54 h: ptr):
     %55 s: ptr = show %53
@@ -102,7 +102,7 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %59 s: ptr = concat %57, %58
     drop %58
     %60 lit: ptr = const str 0
-    dup %54
+    dup.candidate %54
     call has#8(%54, %60) -> b13(%54, %59)
   b13(%61 r: bool, %62 h: ptr, %63 s: ptr):
     %64 s: ptr = show %61

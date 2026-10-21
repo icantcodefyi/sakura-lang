@@ -67,7 +67,7 @@ fn main$1#6 lambda -> word ; main::fs_read_chunk_rejects_zero, captures [], fram
     drop %0
     %2 lit: i64 = const 1
     %3 $site: i64 = const 6
-    dup %1
+    dup.candidate %1
     call Fs.read_chunk#7(%1, %2, %3) -> b1(%1)
   b1(%4 pre: unit, %5 f: ptr):
     %6 lit: i64 = const 1
@@ -82,7 +82,7 @@ fn main$1#6 lambda -> word ; main::fs_read_chunk_rejects_zero, captures [], fram
     drop %13
     %14 lit: i64 = const 0
     %15 $site: i64 = const 7
-    dup %12
+    dup.candidate %12
     call Fs.read_chunk#7(%12, %14, %15) -> b4(%12)
   b4(%16 pre: unit, %17 f: ptr):
     %18 lit: i64 = const 0

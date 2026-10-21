@@ -90,8 +90,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     dup %48
     %53 r: ptr = $bytes_slice(%48, %51, %52)
     %54 $site: i64 = const 3
-    dup %49
-    dup %49
+    dup.candidate %49
+    dup.candidate %49
     dup.candidate %50
     call encrypt#5(%50, %49, %49, %53, %54) -> b8(%49, %50, %48)
   b8(%55 r: ptr, %56 r: ptr, %57 k: ptr, %58 r: ptr):
@@ -109,8 +109,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     dup %65
     %69 r: ptr = $bytes_slice(%65, %67, %68)
     %70 $site: i64 = const 4
-    dup %63
-    dup %63
+    dup.candidate %63
+    dup.candidate %63
     dup.candidate %64
     call encrypt#5(%64, %63, %63, %69, %70) -> b10(%63, %64, %65)
   b10(%71 r: ptr, %72 r: ptr, %73 k: ptr, %74 r: ptr):
@@ -128,9 +128,9 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     dup %81
     %85 r: ptr = $bytes_slice(%81, %83, %84)
     %86 $site: i64 = const 5
-    dup %79
+    dup.candidate %79
     dup.candidate %80
-    dup %81
+    dup.candidate %81
     call encrypt#5(%80, %85, %79, %81, %86) -> b12(%79, %80, %81)
   b12(%87 r: ptr, %88 r: ptr, %89 k: ptr, %90 r: ptr):
     %91 s: ptr = show %87
@@ -232,8 +232,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     perform std::console::Console.print(%343) -> b43(%201, %202, %203, %204, %205)
   b31(%210 r: ptr, %211 xs: ptr, %212 r: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 bits: i64, %217 data: ptr, %218 k: ptr):
     %219 $site: i64 = const 7
-    dup %212
-    dup %212
+    dup.candidate %212
+    dup.candidate %212
     dup.candidate %218
     call encrypt#5(%218, %212, %212, %210, %219) -> b32(%211, %212, %213, %214, %215, %216, %217, %218)
   b32(%220 r: ptr, %221 xs: ptr, %222 r: ptr, %223 xs: ptr, %224 n: i64, %225 i: i64, %226 bits: i64, %227 data: ptr, %228 k: ptr):
@@ -245,10 +245,10 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     %254 p: word = proj %244.0 std::result::Result.Ok
     %355 token: word = $reuse_reset(%244)
     %255 $site: i64 = const 8
-    dup %237
-    dup %237
+    dup.candidate %237
+    dup.candidate %237
     dup.candidate %243
-    dup %254
+    dup.candidate %254
     call decrypt#6(%243, %237, %237, %254, %255) -> b36(%236, %237, %238, %239, %240, %241, %242, %243, %254, %355)
   b35(%245 xs: ptr, %246 r: ptr, %247 xs: ptr, %248 n: i64, %249 i: i64, %250 bits: i64, %251 data: ptr, %252 k: ptr, %253 r: ptr):
     drop %251
@@ -275,7 +275,7 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     %279 lit: ptr = const str 10
     %280 s: ptr = concat %278, %279
     drop %279
-    dup %274
+    dup.candidate %274
     call hex#7(%274) -> b38(%267, %268, %269, %270, %271, %273, %274, %277, %280)
   b38(%281 r: ptr, %282 xs: ptr, %283 r: ptr, %284 xs: ptr, %285 n: i64, %286 i: i64, %287 k: ptr, %288 ct: ptr, %289 t: bool, %290 s: ptr):
     %291 s: ptr = show %281
@@ -295,8 +295,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_kw_rfc3394, frame 157 slots [%27 wo
     call flip#8(%288, %299) -> b39(%282, %283, %284, %285, %286, %287, %298)
   b39(%300 r: ptr, %301 xs: ptr, %302 r: ptr, %303 xs: ptr, %304 n: i64, %305 i: i64, %306 k: ptr, %307 s: ptr):
     %308 $site: i64 = const 9
-    dup %302
-    dup %302
+    dup.candidate %302
+    dup.candidate %302
     call decrypt#6(%306, %302, %302, %300, %308) -> b40(%301, %302, %303, %304, %305, %307)
   b40(%309 r: ptr, %310 xs: ptr, %311 r: ptr, %312 xs: ptr, %313 n: i64, %314 i: i64, %315 s: ptr):
     %316 s: ptr = show %309
@@ -340,7 +340,7 @@ fn alg#2 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 1 slots [%0 i64]
 fn unhex#3 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
@@ -391,7 +391,7 @@ fn unhex#3 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 12 slots [%0 word*, %
 
 fn hex#7 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup %0
+    dup.candidate %0
     %1 r: i64 = $bytes_len(%0)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 14
@@ -400,7 +400,7 @@ fn hex#7 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 6 slots [%0 word*, %24 
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup %7
+    dup.candidate %7
     %21 r: ptr = $bytes_get(%7, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22
@@ -439,7 +439,7 @@ fn hex#7 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 6 slots [%0 word*, %24 
 
 fn flip#8 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 5 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64]
   b0(%0 b: ptr, %1 at: i64):
-    dup %0
+    dup.candidate %0
     %2 r: ptr = $bytes_get(%0, %1)
     %3 lit: i64 = const 0
     %4 box: word = box %3
@@ -463,7 +463,7 @@ fn flip#8 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 5 slots [%0 word*, %1 
     %22 r: ptr = $bytes_from_list(%21)
     %23 lit: i64 = const 1
     %24 t: i64 = intadd %17, %23
-    dup %16
+    dup.candidate %16
     %25 r: i64 = $bytes_len(%16)
     %26 r: ptr = $bytes_slice(%16, %24, %25)
     %27 xs: ptr = alloc list(%19, %22, %26)
@@ -481,7 +481,7 @@ fn flip#8 top -> ptr ; main::crypto_aes_kw_rfc3394, frame 5 slots [%0 word*, %1 
 fn main$1#10 lambda -> word ; main::crypto_aes_kw_rfc3394, captures [], frame 5 slots [%0 word*, %1 word*, %4 word*, %5 word*, %12 word*]
   b0(%0 env: ptr, %1 b: word):
     drop %0
-    dup %1
+    dup.candidate %1
     %2 r: ptr = $string_from_bytes(%1)
     %3 lit: ptr = const str 14
     call unwrap_or#11(%2, %3) -> b1(%1)

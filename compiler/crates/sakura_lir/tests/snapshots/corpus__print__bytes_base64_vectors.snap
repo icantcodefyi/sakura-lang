@@ -38,7 +38,7 @@ fn main#0 pub top -> unit ; main::bytes_base64_vectors, frame 43 slots [%23 word
     %20 r: ptr = $bytes_from_list(%19)
     %21 v: ptr = const static std::bytes::Alphabet.Standard
     %22 lit: bool = const true
-    dup %20
+    dup.candidate %20
     call to_base64#2(%20, %21, %22) -> b2(%20)
   b2(%23 r: ptr, %24 r: ptr):
     perform std::console::Console.print(%23) -> b3(%24)
@@ -81,11 +81,11 @@ fn main#0 pub top -> unit ; main::bytes_base64_vectors, frame 43 slots [%23 word
   b11(%50 xs: ptr, %51 n: i64, %52 i: i64):
     dup.candidate %50
     %56 x: word = $list_at(%50, %52)
-    dup %56
+    dup.candidate %56
     %62 r: ptr = $string_to_bytes(%56)
     %63 v: ptr = const static std::bytes::Alphabet.Standard
     %64 lit: bool = const true
-    dup %62
+    dup.candidate %62
     call to_base64#2(%62, %63, %64) -> b14(%50, %51, %52, %56, %62)
   b12(%53 xs: ptr, %54 n: i64, %55 i: i64):
     drop %53
@@ -97,11 +97,11 @@ fn main#0 pub top -> unit ; main::bytes_base64_vectors, frame 43 slots [%23 word
   b14(%65 r: ptr, %66 xs: ptr, %67 n: i64, %68 i: i64, %69 x: ptr, %70 r: ptr):
     %71 v: ptr = const static std::bytes::Alphabet.Url
     %72 lit: bool = const false
-    dup %70
+    dup.candidate %70
     call to_base64#2(%70, %71, %72) -> b15(%66, %67, %68, %69, %70, %65)
   b15(%73 r: ptr, %74 xs: ptr, %75 n: i64, %76 i: i64, %77 x: ptr, %78 r: ptr, %79 r: ptr):
     %80 v: ptr = const static std::bytes::Alphabet.Standard
-    dup %79
+    dup.candidate %79
     call from_base64#3(%79, %80) -> b16(%74, %75, %76, %77, %78, %79, %73)
   b16(%81 r: ptr, %82 xs: ptr, %83 n: i64, %84 i: i64, %85 x: ptr, %86 r: ptr, %87 r: ptr, %88 r: ptr):
     dup %86
@@ -143,7 +143,7 @@ fn main#0 pub top -> unit ; main::bytes_base64_vectors, frame 43 slots [%23 word
     jump b13(%114, %115, %116)
   b19(%118 xs: ptr, %119 n: i64, %120 i: i64, %121 x: ptr, %122 r: ptr, %123 r: ptr, %124 r: ptr):
     %132 v: ptr = const static std::bytes::Alphabet.Url
-    dup %124
+    dup.candidate %124
     call from_base64#3(%124, %132) -> b21(%118, %119, %120, %121, %122, %123, %124)
   b20(%125 xs: ptr, %126 n: i64, %127 i: i64, %128 x: ptr, %129 r: ptr, %130 r: ptr, %131 r: ptr):
     drop %129

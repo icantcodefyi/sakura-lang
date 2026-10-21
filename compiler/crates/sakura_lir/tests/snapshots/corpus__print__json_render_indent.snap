@@ -53,7 +53,7 @@ fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*,
   b2(%42 r: ptr):
     %43 r: ptr = alloc std::json::Json.Object(%42)
     %44 v: ptr = const static std::option::Option.None
-    dup %43
+    dup.candidate %43
     call render#3(%43, %44) -> b3(%43)
   b3(%45 r: ptr, %46 r: ptr):
     perform std::console::Console.print(%45) -> b4(%46)
@@ -61,11 +61,11 @@ fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*,
     %49 box: word = box %47
     drop %49
     %50 v: ptr = const static std::option::Option.None
-    dup %48
+    dup.candidate %48
     call render#3(%48, %50) -> b5(%48)
   b5(%51 r: ptr, %52 r: ptr):
     %53 schema: ptr = const str 9
-    dup %52
+    dup.candidate %52
     %54 r: ptr = $json_encode(%52, %53)
     %55 t: bool = eq.string %51, %54
     drop %51
@@ -77,11 +77,11 @@ fn main#0 pub top -> unit ; main::json_render_indent, frame 26 slots [%32 word*,
     %59 lit: i64 = const 0
     %60 box: word = box %59
     %61 r: ptr = alloc std::option::Option.Some(%60)
-    dup %52
+    dup.candidate %52
     call render#3(%52, %61) -> b6(%52, %58)
   b6(%62 r: ptr, %63 r: ptr, %64 s: ptr):
     %65 schema: ptr = const str 9
-    dup %63
+    dup.candidate %63
     %66 r: ptr = $json_encode(%63, %65)
     %67 t: bool = eq.string %62, %66
     drop %62

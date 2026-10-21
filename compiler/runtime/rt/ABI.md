@@ -1397,9 +1397,12 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   copied without a test, so a wrapper hit never hides copied descendants; a remove copies its
   index path without testing it, which N0b does not count),
   `borrow_candidates` (executed `Dup`s the LIR marked: the reference stays live after a call
-  that only reads it, a read-only builtin or a direct def whose ownership summary borrows the
-  parameter, so borrowing would remove the `Dup` and the callee's `Drop`; each is also counted
-  in `dups`) and `borrows` (calls that passed an argument under a borrowed convention: 0 until
+  that only reads it, so borrowing would remove the `Dup` and the callee's `Drop`; each is
+  also counted in `dups`. Since 1.17.0 (design §17.247 (1)) the call is a builtin argument
+  the runtime only reads (`sakura_lir::borrow::reads`) or a parameter a direct def never
+  consumes on any path, for every managed type; before, a read-only collection builtin or a
+  direct def whose ownership summary borrows a collection, carrier or function. The set of
+  marked sites may grow in a later version; a benchmark record's `abi_version` names it) and `borrows` (calls that passed an argument under a borrowed convention: 0 until
   plan N4). A benchmark record adds `reuse_rate = reuses / reuse_attempts` (`null` when
   attempts are 0) and the module's `abi_version`, which names the counter set. The interface is
   `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the module's `abi_version` and the

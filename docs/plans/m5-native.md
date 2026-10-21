@@ -260,6 +260,25 @@ slice:** `rt/tests/fixtures/abi/1.17.0/`, which is captured from the first relea
 that ships 1.17.0. AI implementation: Claude Opus 5.5; the human
 contributor owns acceptance.
 
+**N4a progress (2026-10-22): `E` widened, the first commit (§17.247 (1)).** The marking is a
+LIR fact now (`sakura_lir::borrow`), computed before ownership inserts `Dup`/`Drop`: a builtin
+argument the runtime only reads (`reads`, audited argument by argument against `runtime/rt`:
+not a `*_expect` message, `map_get_or`'s default, `string_trim`, `string_slice`, `list_slice`,
+`bytes_slice`, `show`, an owned update, `list_reuse` or `bytes_concat`), or a parameter of a
+direct def that never consumes it on any path (`never_consumes`: a greatest fixpoint over the
+direct defs, through block parameters every incoming edge passes it to), for every managed
+type. It replaces Core's ownership summary as the source, which was not the reference-count
+fact in four ways the corpus shows: a closure call and a capture consume the closure or the
+value at run time, `List.map` consumes its list since N3, and a parameter moved into a tuple
+scrutinee or a keeping callee is consumed. Corpus print snapshots: 347 `dup` →
+`dup.candidate`, 19 back, no other line. `bench_counters.txt` re-recorded with only
+`borrow_candidates` moving (`dups`, `drops` and every other counter unchanged): deltablue
+106,241 → 116,126, json_validate 306 → 393, map_set 11,006 → 11,010, rbtree 13 → 14,
+tokenizer 1,004 → 3,005; this is the baseline N4's bar is read against.
+`reuse_and_borrow_counters_reconcile_by_hand` gains a string and a plain record (3 candidates,
+0 before). ABI 1.17.0's §10 text says so (unreleased, so no MINOR). AI implementation: Claude
+Opus 5.5; the human contributor owns acceptance.
+
 **N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
 native corpus count and leaves JS and WASM output unchanged. **N2a, frame-protocol code (landed):**
 `sakura_codegen_native::emit` lowers every LIR function to a CLIF function `(ctx, env, frame) ->
@@ -459,7 +478,7 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 | B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run | `verify-published.yml` green on the B row with the native step |
 | C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
 | N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) — **constructor sites done** (`e55977f8`, ABI 1.17.0, in beta.4; §17.309 (2)); **N3b**: `List.map` leaf/tail reuse, the `m5-stress` set under the lanes, then tokens across direct calls as ordinary object words in frame slots (no new slot kind, no ABI change unless the frame protocol needs one, then a MINOR at landing) — **N3b done** (2026-10-22, still 1.17.0; no slot kind needed) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
-| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1)); ABI MINOR at landing | Opus | after N3b | the row's |
+| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1); **done** 2026-10-22, still 1.17.0); ABI MINOR at landing | Opus | after N3b | the row's |
 | N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses); **N5.5 done** (2026-10-22), 54 ms on a 10,000-line edit, so on every edit |
 | M | `bench run --suite native` counted as the JS and WASM lanes are; paired `rbtree`; `bench envelope` on the native lane; a native `bench_counters.txt` column with the +1 drop note | Opus (code), Astra (docs, readings) | now; before the first baseline meant to carry a native number | no native number is read before it exists |
 

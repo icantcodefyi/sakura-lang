@@ -74,7 +74,7 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
   b6(%29 password: ptr, %30 salt: ptr, %31 iterations: i64, %32 len: i64, %33 xs: ptr, %34 n: i64, %35 i: i64):
     %36 v: ptr = const static std::crypto::Digest.Sha256
     %37 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%36)
-    dup %29
+    dup.candidate %29
     %38 r: ptr = $string_to_bytes(%29)
     %39 r: ptr = $secret_wrap(%38)
     %40 v: ptr = const static std::crypto::KeyFormat.Raw
@@ -150,7 +150,7 @@ fn $entry#1 top -> unit ; main::crypto_pbkdf2_rfc7914, frame 1 slots [%1 bool]
 
 fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup %0
+    dup.candidate %0
     %1 r: i64 = $bytes_len(%0)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 6
@@ -159,7 +159,7 @@ fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup %7
+    dup.candidate %7
     %21 r: ptr = $bytes_get(%7, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22

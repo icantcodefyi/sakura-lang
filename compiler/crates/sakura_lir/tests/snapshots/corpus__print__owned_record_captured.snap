@@ -50,7 +50,7 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
     %28 lit: i64 = const 2
     %29 box: word = box %28
     %30 xs: ptr = alloc list(%25, %27, %29)
-    dup.candidate %22
+    dup %22
     call total#6(%22, %30) -> b6(%22)
   b6(%31 r: i64, %32 r: ptr):
     %33 lit: i64 = const 1
@@ -100,7 +100,7 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
   b12(%63 r: unit, %64 r: ptr):
     %65 box: word = box %63
     drop %65
-    dup %64
+    dup.candidate %64
     call two_views#8(%64) -> b13(%64)
   b13(%66 r: ptr, %67 r: ptr):
     %133 p: ptr = tuple_get %66.0

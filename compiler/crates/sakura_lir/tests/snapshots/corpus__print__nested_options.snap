@@ -35,7 +35,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %20 box: word = box %18
     drop %20
     %21 f: ptr = closure main$1#2[]
-    dup.candidate %19
+    dup %19
     call map#4(%19, %21) -> b2(%19)
   b2(%22 r: ptr, %23 xs: ptr):
     %24 s: ptr = show %22
@@ -46,7 +46,7 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     drop %27
     dup %26
     %28 f: ptr = closure main$2#5[%26]
-    dup.candidate %26
+    dup %26
     call map#4(%26, %28) -> b4(%26)
   b4(%29 r: ptr, %30 xs: ptr):
     %31 s: ptr = show %29
@@ -538,7 +538,7 @@ fn main$4#12 lambda -> word ; main::nested_options, captures [word*], frame 1 sl
 fn main$5#13 lambda -> word ; main::nested_options, captures [], frame 6 slots [%0 word*, %1 word*, %2 word*, %3 i64, %4 word*, %5 word*]
   b0(%0 env: ptr, %1 acc: word, %2 o: word):
     drop %0
-    dup %2
+    dup.candidate %2
     call depth#3(%2) -> b1(%1, %2)
   b1(%3 r: i64, %4 acc: ptr, %5 o: ptr):
     %6 box: word = box %3

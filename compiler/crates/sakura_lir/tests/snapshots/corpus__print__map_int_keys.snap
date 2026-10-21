@@ -59,7 +59,7 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %43 lit: ptr = const str 0
     %44 s: ptr = concat %42, %43
     drop %43
-    dup %38
+    dup.candidate %38
     call keys#2(%38) -> b2(%40, %38, %39, %44)
   b2(%45 r: ptr, %46 xs: ptr, %47 m: ptr, %48 i: i64, %49 s: ptr):
     %50 s: ptr = show %45
@@ -185,7 +185,7 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %489 lit: i64 = const 0
     jump b30(%158, %489, %160, %161, %162, %163)
   b10(%164 m: ptr, %165 i: i64, %166 found: i64, %167 hits: i64, %168 big: ptr, %169 xs: ptr):
-    dup %168
+    dup.candidate %168
     %170 r: ptr = $map_entries(%168)
     dup.candidate %170
     %171 n: i64 = $list_len(%170)
@@ -233,7 +233,7 @@ fn main#0 pub top -> unit ; main::map_int_keys, frame 51 slots [%45 word*, %46 w
     %204 lit: ptr = const str 0
     %205 s: ptr = concat %203, %204
     drop %204
-    dup %176
+    dup.candidate %176
     call values#5(%176) -> b12(%178, %172, %173, %174, %175, %176, %177, %205)
   b12(%206 r: ptr, %207 xs: ptr, %208 m: ptr, %209 i: i64, %210 found: i64, %211 hits: i64, %212 big: ptr, %213 sum: i64, %214 s: ptr):
     %215 lit: i64 = const 0

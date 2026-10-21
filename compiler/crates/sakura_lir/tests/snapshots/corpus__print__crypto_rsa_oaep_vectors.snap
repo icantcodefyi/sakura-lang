@@ -190,9 +190,9 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %147 r: ptr = $string_to_bytes(%146)
     %148 $site: i64 = const 3
     dup.candidate %139
-    dup %143
-    dup %145
-    dup %147
+    dup.candidate %143
+    dup.candidate %145
+    dup.candidate %147
     call encrypt#8(%139, %143, %145, %147, %148) -> b10(%136, %139, %141, %143, %145, %147)
   b9(%137 p: ptr, %138 p: ptr):
     drop %138
@@ -207,21 +207,21 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
   b10(%149 r: ptr, %150 k: ptr, %151 p: ptr, %152 r: ptr, %153 r: ptr, %154 r: ptr, %155 r: ptr):
     %156 $site: i64 = const 4
     dup.candidate %151
-    dup %153
-    dup %154
-    dup %155
+    dup.candidate %153
+    dup.candidate %154
+    dup.candidate %155
     call encrypt#8(%151, %153, %154, %155, %156) -> b11(%150, %151, %152, %153, %154, %155, %149)
   b11(%157 r: ptr, %158 k: ptr, %159 p: ptr, %160 r: ptr, %161 r: ptr, %162 r: ptr, %163 r: ptr, %164 r: ptr):
     %165 lit: ptr = const str 28
     %166 r: ptr = $string_to_bytes(%165)
     %167 $site: i64 = const 5
     dup.candidate %159
-    dup %162
-    dup %163
+    dup.candidate %162
+    dup.candidate %163
     call encrypt#8(%159, %166, %162, %163, %167) -> b12(%158, %159, %160, %161, %162, %163, %164, %157)
   b12(%168 r: ptr, %169 k: ptr, %170 p: ptr, %171 r: ptr, %172 r: ptr, %173 r: ptr, %174 r: ptr, %175 r: ptr, %176 r: ptr):
     %177 fn: ptr = const static closure $bytes_len$value#96
-    dup %175
+    dup.candidate %175
     call map#7(%175, %177) -> b13(%169, %170, %171, %172, %173, %174, %175, %176, %168)
   b13(%178 r: ptr, %179 k: ptr, %180 p: ptr, %181 r: ptr, %182 r: ptr, %183 r: ptr, %184 r: ptr, %185 r: ptr, %186 r: ptr, %187 r: ptr):
     %188 s: ptr = show %178
@@ -270,8 +270,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %233 r: ptr = $bytes_slice(%230, %231, %232)
     %234 $site: i64 = const 6
     dup.candidate %226
-    dup %227
-    dup %228
+    dup.candidate %227
+    dup.candidate %228
     call encrypt#8(%226, %228, %227, %233, %234) -> b18(%226, %227, %228, %229, %230)
   b18(%235 r: ptr, %236 p: ptr, %237 r: ptr, %238 r: ptr, %239 r: ptr, %240 r: ptr):
     %241 fn: ptr = const static closure $bytes_len$value#96
@@ -288,8 +288,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     drop %257
     %258 $site: i64 = const 7
     dup.candidate %252
-    dup %253
-    dup %254
+    dup.candidate %253
+    dup.candidate %254
     call encrypt#8(%252, %254, %253, %256, %258) -> b21(%252, %253, %254, %255)
   b21(%259 r: ptr, %260 p: ptr, %261 r: ptr, %262 r: ptr, %263 r: ptr):
     %264 s: ptr = show %259
@@ -340,9 +340,9 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %635 token: word = $reuse_reset(%322)
     %333 $site: i64 = const 9
     dup.candidate %316
-    dup %318
-    dup %320
-    dup %323
+    dup.candidate %318
+    dup.candidate %320
+    dup.candidate %323
     call decrypt#5(%316, %318, %320, %323, %333) -> b31(%316, %317, %318, %319, %320, %321, %323, %332, %635)
   b30(%324 k: ptr, %325 p: ptr, %326 r: ptr, %327 r: ptr, %328 r: ptr, %329 r: ptr, %330 p: ptr, %331 p: ptr):
     drop %324
@@ -365,8 +365,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     drop %348
     %350 $site: i64 = const 10
     dup.candidate %335
-    dup %337
-    dup %339
+    dup.candidate %337
+    dup.candidate %339
     call decrypt#5(%335, %337, %339, %342, %350) -> b32(%335, %336, %337, %338, %339, %340, %341, %349)
   b32(%351 r: ptr, %352 k: ptr, %353 p: ptr, %354 r: ptr, %355 r: ptr, %356 r: ptr, %357 r: ptr, %358 a: ptr, %359 s: ptr):
     dup %357
@@ -385,8 +385,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %374 r: ptr = $string_to_bytes(%373)
     %375 $site: i64 = const 11
     dup.candidate %365
-    dup %367
-    dup %371
+    dup.candidate %367
+    dup.candidate %371
     call decrypt#5(%365, %367, %374, %371, %375) -> b34(%365, %366, %367, %368, %369, %370, %371)
   b34(%376 r: ptr, %377 k: ptr, %378 p: ptr, %379 r: ptr, %380 r: ptr, %381 r: ptr, %382 r: ptr, %383 a: ptr):
     %384 s: ptr = show %376
@@ -400,9 +400,9 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     drop %395
     %396 $site: i64 = const 12
     dup.candidate %388
-    dup %391
-    dup %392
-    dup %394
+    dup.candidate %391
+    dup.candidate %392
+    dup.candidate %394
     call decrypt#5(%388, %391, %392, %394, %396) -> b36(%388, %389, %390, %391, %392, %393, %394)
   b36(%397 r: ptr, %398 k: ptr, %399 p: ptr, %400 r: ptr, %401 r: ptr, %402 r: ptr, %403 r: ptr, %404 a: ptr):
     %405 s: ptr = show %397
@@ -418,7 +418,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %418 lit: i64 = const 256
     %419 r: ptr = $bytes_slice(%415, %417, %418)
     %420 $site: i64 = const 13
-    dup %411
+    dup.candidate %411
     call decrypt#5(%409, %411, %413, %419, %420) -> b38(%410, %411, %412, %414)
   b38(%421 r: ptr, %422 p: ptr, %423 r: ptr, %424 r: ptr, %425 r: ptr):
     %426 s: ptr = show %421
@@ -463,7 +463,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %464 i: i64 = intadd %462, %463
     jump b42(%464, %460, %461)
   b46(%465 hash: ptr, %466 id: i64, %467 result: ptr, %468 pkcs8: ptr, %469 label: ptr, %470 message: ptr, %471 ciphertext: ptr, %472 xs: ptr, %473 n: i64, %474 i: i64):
-    dup %465
+    dup.candidate %465
     call digest#2(%465) -> b47(%472, %473, %474, %465, %466, %467, %468, %469, %470, %471)
   b47(%475 r: ptr, %476 xs: ptr, %477 n: i64, %478 i: i64, %479 hash: ptr, %480 id: i64, %481 result: ptr, %482 pkcs8: ptr, %483 label: ptr, %484 message: ptr, %485 ciphertext: ptr):
     %486 r: ptr = alloc std::crypto::Algorithm.RsaOaep(%475)
@@ -535,7 +535,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_oaep_vectors, frame 257 slots [%104
     %584 s: ptr = concat %582, %583
     drop %583
     %585 fn: ptr = const static closure hex$value#97
-    dup %566
+    dup.candidate %566
     call map#7(%566, %585) -> b56(%567, %568, %569, %573, %566, %584)
   b56(%586 r: ptr, %587 xs: ptr, %588 n: i64, %589 i: i64, %590 message: ptr, %591 r: ptr, %592 s: ptr):
     %593 s: ptr = show %586
@@ -597,7 +597,7 @@ fn digest#2 top -> ptr ; main::crypto_rsa_oaep_vectors, frame 1 slots [%0 word*]
 fn unhex#3 top -> ptr ; main::crypto_rsa_oaep_vectors, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
@@ -648,7 +648,7 @@ fn unhex#3 top -> ptr ; main::crypto_rsa_oaep_vectors, frame 12 slots [%0 word*,
 
 fn hex#6 top -> ptr ; main::crypto_rsa_oaep_vectors, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup %0
+    dup.candidate %0
     %1 r: i64 = $bytes_len(%0)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 3
@@ -657,7 +657,7 @@ fn hex#6 top -> ptr ; main::crypto_rsa_oaep_vectors, frame 6 slots [%0 word*, %2
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup %7
+    dup.candidate %7
     %21 r: ptr = $bytes_get(%7, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22

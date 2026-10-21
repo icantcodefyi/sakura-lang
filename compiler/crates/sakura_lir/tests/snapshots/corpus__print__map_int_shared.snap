@@ -50,7 +50,7 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %33 lit: ptr = const str 1
     %34 s: ptr = concat %32, %33
     drop %33
-    dup %19
+    dup.candidate %19
     call sum_values#2(%19) -> b4(%19, %17, %28, %34)
   b4(%35 r: i64, %36 m: ptr, %37 m: ptr, %38 r: ptr, %39 s: ptr):
     %40 s: ptr = show %35
@@ -103,7 +103,7 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %73 lit: ptr = const str 1
     %74 s: ptr = concat %72, %73
     drop %73
-    dup %66
+    dup.candidate %66
     call sum_values#2(%66) -> b6(%65, %66, %67, %74)
   b6(%75 r: i64, %76 m: ptr, %77 m: ptr, %78 r: ptr, %79 s: ptr):
     %80 s: ptr = show %75
@@ -155,7 +155,7 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %112 lit: ptr = const str 1
     %113 s: ptr = concat %111, %112
     drop %112
-    dup %106
+    dup.candidate %106
     call sum_values#2(%106) -> b8(%105, %106, %113)
   b8(%114 r: i64, %115 m: ptr, %116 r: ptr, %117 s: ptr):
     %118 s: ptr = show %114

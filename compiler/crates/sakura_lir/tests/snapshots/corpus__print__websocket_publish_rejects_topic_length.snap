@@ -86,8 +86,8 @@ fn main$1#8 lambda -> word ; main::websocket_publish_rejects_topic_length, captu
     call repeat#9(%2, %3, %4) -> b1(%1)
   b1(%5 r: ptr, %6 sock: ptr):
     %7 $site: i64 = const 11
-    dup %5
-    dup %6
+    dup.candidate %5
+    dup.candidate %6
     call WebSocket.subscribe#10(%6, %5, %7) -> b2(%6, %5)
   b2(%8 pre: unit, %9 sock: ptr, %10 r: ptr):
     dup %9
@@ -106,8 +106,8 @@ fn main$1#8 lambda -> word ; main::websocket_publish_rejects_topic_length, captu
     call repeat#9(%18, %19, %20) -> b5(%16)
   b5(%21 r: ptr, %22 sock: ptr):
     %23 $site: i64 = const 13
-    dup %21
-    dup %22
+    dup.candidate %21
+    dup.candidate %22
     call WebSocket.subscribe#10(%22, %21, %23) -> b6(%22, %21)
   b6(%24 pre: unit, %25 sock: ptr, %26 r: ptr):
     perform std::websocket::WebSocket.subscribe(%25, %26) -> b7()

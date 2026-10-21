@@ -35,7 +35,7 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
   b3(%12 xs: ptr, %13 n: i64, %14 i: i64):
     dup.candidate %12
     %18 x: word = $list_at(%12, %14)
-    dup %18
+    dup.candidate %18
     call parse#2(%18) -> b6(%12, %13, %14, %18)
   b4(%15 xs: ptr, %16 n: i64, %17 i: i64):
     drop %15
@@ -58,7 +58,7 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %47 s: ptr = concat %45, %46
     drop %46
     %48 lit: ptr = const str 6
-    dup %44
+    dup.candidate %44
     call with_path#3(%44, %48) -> b10(%34, %35, %36, %37, %44, %47)
   b9(%39 xs: ptr, %40 n: i64, %41 i: i64, %42 x: ptr, %43 r: ptr):
     %102 p: word = proj %43.0 std::result::Result.Err

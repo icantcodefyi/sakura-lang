@@ -37,14 +37,14 @@ fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots 
     %10 lit: ptr = const str 5
     call append#4(%8, %9, %10) -> b6()
   b6(%11 r: ptr):
-    dup %11
+    dup.candidate %11
     call to_string#5(%11) -> b7(%11)
   b7(%12 r: ptr, %13 r: ptr):
     perform std::console::Console.print(%12) -> b8(%13)
   b8(%14 r: unit, %15 r: ptr):
     %16 box: word = box %14
     drop %16
-    dup %15
+    dup.candidate %15
     call to_string#5(%15) -> b9(%15)
   b9(%17 r: ptr, %18 r: ptr):
     call parse#2(%17) -> b10(%18)

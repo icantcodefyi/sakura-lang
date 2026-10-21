@@ -68,7 +68,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     %37 box: word = box %31
     drop %37
     %38 v: ptr = const static std::crypto::KeyFormat.Spki
-    dup %33
+    dup.candidate %33
     %39 r: i64 = $bytes_len(%33)
     %40 lit: i64 = const 1
     %41 t: i64 = intsub %39, %40
@@ -156,7 +156,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     %144 box: word = box %138
     drop %144
     %145 v: ptr = const static std::crypto::KeyFormat.Pkcs8
-    dup %139
+    dup.candidate %139
     %146 r: i64 = $bytes_len(%139)
     %147 lit: i64 = const 1
     %148 t: i64 = intsub %146, %147
@@ -216,7 +216,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     call unwrap_or#11(%198, %200) -> b27(%199)
   b27(%201 r: word, %202 xs: ptr):
     %203 lit: ptr = const str 10
-    dup %201
+    dup.candidate %201
     call member#12(%201, %203) -> b28(%202, %201)
   b28(%204 r: ptr, %205 xs: ptr, %206 r: ptr):
     %207 lit: ptr = const str 11
@@ -269,7 +269,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     call unwrap_or#11(%245, %249) -> b36(%246, %247, %248)
   b36(%250 r: word, %251 r: ptr, %252 r: ptr, %253 xs: ptr):
     %254 lit: ptr = const str 15
-    dup %250
+    dup.candidate %250
     call member#12(%250, %254) -> b37(%251, %252, %253, %250)
   b37(%255 r: ptr, %256 r: ptr, %257 r: ptr, %258 xs: ptr, %259 r: ptr):
     dup %259
@@ -286,7 +286,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     drop %275
     %276 lit: ptr = const str 17
     %277 lit: ptr = const str 18
-    dup %273
+    dup.candidate %273
     %278 r: ptr = $string_replace(%273, %276, %277)
     call jwk#13(%278) -> b40(%270, %271, %272, %273, %274)
   b40(%279 r: ptr, %280 r: ptr, %281 r: ptr, %282 xs: ptr, %283 r: ptr, %284 r: ptr):
@@ -301,8 +301,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     drop %294
     %295 lit: ptr = const str 20
     %296 t: ptr = concat %295, %293
-    dup %292
-    dup %293
+    dup.candidate %292
+    dup.candidate %293
     %297 r: ptr = $string_replace(%292, %293, %296)
     call jwk#13(%297) -> b42(%289, %290, %291, %292, %293)
   b42(%298 r: ptr, %299 r: ptr, %300 r: ptr, %301 xs: ptr, %302 r: ptr, %303 r: ptr):
@@ -319,7 +319,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     %315 lit: i64 = const 171
     dup %312
     %316 r: ptr = $string_slice(%312, %314, %315)
-    dup %311
+    dup.candidate %311
     %317 r: ptr = $string_replace(%311, %312, %316)
     call jwk#13(%317) -> b44(%308, %309, %310, %311)
   b44(%318 r: ptr, %319 r: ptr, %320 r: ptr, %321 xs: ptr, %322 r: ptr):
@@ -334,7 +334,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     drop %331
     %332 lit: ptr = const str 23
     %333 lit: ptr = const str 24
-    dup %330
+    dup.candidate %330
     %334 r: ptr = $string_replace(%330, %332, %333)
     call jwk#13(%334) -> b46(%327, %328, %329, %330)
   b46(%335 r: ptr, %336 r: ptr, %337 r: ptr, %338 xs: ptr, %339 r: ptr):
@@ -438,7 +438,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     %484 s: ptr = concat %482, %483
     drop %483
     %485 v: ptr = const static std::crypto::KeyFormat.Pkcs8
-    dup.candidate %472
+    dup %472
     call export_key#4(%472, %485) -> b64(%465, %466, %467, %468, %469, %470, %472, %481, %484, %708)
   b63(%473 r: ptr, %474 r: ptr, %475 xs: ptr, %476 n: i64, %477 i: i64, %478 x: ptr, %479 p: ptr, %480 p: ptr):
     drop %480
@@ -467,7 +467,7 @@ fn main#0 pub top -> unit ; main::crypto_rsa_key_formats, frame 356 slots [%1 wo
     %501 s: ptr = concat %499, %500
     drop %500
     %502 v: ptr = const static std::crypto::KeyFormat.Spki
-    dup.candidate %494
+    dup %494
     call export_key#4(%494, %502) -> b65(%487, %488, %489, %490, %491, %492, %493, %494, %501)
   b65(%503 r: ptr, %504 r: ptr, %505 r: ptr, %506 xs: ptr, %507 n: i64, %508 i: i64, %509 x: ptr, %510 k: ptr, %511 p: ptr, %512 s: ptr):
     dup %505
@@ -599,7 +599,7 @@ fn $entry#1 top -> unit ; main::crypto_rsa_key_formats, frame 1 slots [%1 bool]
 fn unhex#2 top -> ptr ; main::crypto_rsa_key_formats, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
@@ -661,7 +661,7 @@ fn names#5 top -> ptr ; main::crypto_rsa_key_formats, frame 3 slots [%0 word*, %
 fn again#6 top -> bool ; main::crypto_rsa_key_formats, frame 33 slots [%0 word*, %1 word*, %2 word*, %4 word*, %5 word*, %6 word*, %7 word*, %19 word*, %20 word*, %21 word*, %22 word*, %23 word*, %24 word*, %25 word*, %26 word*, %27 word*, %28 word*, %29 word*, %30 word*, %31 word*, %34 word*, %35 word*, %36 word*, %37 word*, %48 word*, %49 word*, %50 word*, %51 word*, %71 word*, %58 word*, %59 word*, %60 word*, %61 word*]
   b0(%0 key: ptr, %1 format: ptr, %2 der: ptr):
     %3 v: ptr = const static std::crypto::KeyFormat.Jwk
-    dup.candidate %0
+    dup %0
     call export_key#4(%0, %3) -> b1(%0, %1, %2)
   b1(%4 r: ptr, %5 key: ptr, %6 format: ptr, %7 der: ptr):
     %8 tag: i64 = tag %4 ctor std::result::Result
@@ -682,7 +682,7 @@ fn again#6 top -> bool ; main::crypto_rsa_key_formats, frame 33 slots [%0 word*,
     %69 lit: bool = const false
     ret %69
   b4(%19 r: ptr, %20 key: ptr, %21 format: ptr, %22 der: ptr, %23 jwk: ptr, %24 v: ptr):
-    dup %20
+    dup.candidate %20
     call usages#20(%20) -> b5(%20, %21, %22, %23, %24, %19)
   b5(%25 r: ptr, %26 key: ptr, %27 format: ptr, %28 der: ptr, %29 jwk: ptr, %30 v: ptr, %31 r: ptr):
     %32 r: ptr = $secret_wrap(%29)
@@ -694,7 +694,7 @@ fn again#6 top -> bool ; main::crypto_rsa_key_formats, frame 33 slots [%0 word*,
   b7(%39 key: ptr, %40 format: ptr, %41 der: ptr, %42 r: ptr):
     %47 p: word = proj %42.0 std::result::Result.Ok
     %70 token: word = $reuse_reset(%42)
-    dup.candidate %47
+    dup %47
     call export_key#4(%47, %40) -> b9(%39, %41, %47, %70)
   b8(%43 key: ptr, %44 format: ptr, %45 der: ptr, %46 r: ptr):
     drop %43
@@ -743,7 +743,7 @@ fn imported#8 top -> ptr ; main::crypto_rsa_key_formats, frame 5 slots [%0 word*
 
 fn flip#9 top -> ptr ; main::crypto_rsa_key_formats, frame 5 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64]
   b0(%0 b: ptr, %1 at: i64):
-    dup %0
+    dup.candidate %0
     %2 r: ptr = $bytes_get(%0, %1)
     %3 lit: i64 = const 0
     %4 box: word = box %3
@@ -767,7 +767,7 @@ fn flip#9 top -> ptr ; main::crypto_rsa_key_formats, frame 5 slots [%0 word*, %1
     %22 r: ptr = $bytes_from_list(%21)
     %23 lit: i64 = const 1
     %24 t: i64 = intadd %17, %23
-    dup %16
+    dup.candidate %16
     %25 r: i64 = $bytes_len(%16)
     %26 r: ptr = $bytes_slice(%16, %24, %25)
     %27 xs: ptr = alloc list(%19, %22, %26)

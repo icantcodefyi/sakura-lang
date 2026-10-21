@@ -146,7 +146,7 @@ fn price#4 top -> i64 ; main::fused_get_expect, frame 2 slots [%0 word*, %1 word
 fn twice#5 top -> i64 ; main::fused_get_expect, frame 4 slots [%0 word*, %1 i64, %3 bool, %4 word*]
   b0(%0 xs: ptr, %1 i: i64):
     %2 r: ptr = $list_get(%0, %1)
-    dup %2
+    dup.candidate %2
     call is_some#6(%2) -> b1(%2)
   b1(%3 r: bool, %4 r: ptr):
     if %3 then b2(%4) else b3(%4)

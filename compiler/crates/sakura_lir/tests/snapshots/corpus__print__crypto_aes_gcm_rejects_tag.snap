@@ -123,8 +123,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     %82 r: ptr = $string_to_bytes(%81)
     %83 $site: i64 = const 3
     dup.candidate %77
-    dup %78
-    dup %80
+    dup.candidate %78
+    dup.candidate %80
     call encrypt#9(%77, %78, %80, %82, %83) -> b13(%75, %76, %77, %78, %80)
   b13(%84 r: ptr, %85 xs: ptr, %86 r: ptr, %87 k: ptr, %88 r: ptr, %89 r: ptr):
     %93 tag: i64 = tag %84 ctor std::result::Result
@@ -134,11 +134,11 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
   b15(%94 xs: ptr, %95 r: ptr, %96 k: ptr, %97 r: ptr, %98 r: ptr, %99 r: ptr):
     %106 p: word = proj %99.0 std::result::Result.Ok
     drop %99
-    dup %106
+    dup.candidate %106
     %107 r: i64 = $bytes_len(%106)
     %108 lit: i64 = const 1
     %109 t: i64 = intsub %107, %108
-    dup %106
+    dup.candidate %106
     %110 r: ptr = $bytes_get(%106, %109)
     %111 lit: i64 = const 0
     %112 box: word = box %111
@@ -181,9 +181,9 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     drop %155
     %156 $site: i64 = const 4
     dup.candidate %150
-    dup %151
-    dup %152
-    dup %153
+    dup.candidate %151
+    dup.candidate %152
+    dup.candidate %153
     call decrypt#4(%150, %151, %152, %153, %156) -> b20(%148, %149, %150, %151, %152, %153, %154)
   b20(%157 r: ptr, %158 xs: ptr, %159 r: ptr, %160 k: ptr, %161 r: ptr, %162 r: ptr, %163 ct: ptr, %164 r: ptr):
     %165 lit: ptr = const str 11
@@ -202,8 +202,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     drop %180
     %181 $site: i64 = const 5
     dup.candidate %175
-    dup %176
-    dup %177
+    dup.candidate %176
+    dup.candidate %177
     call decrypt#4(%175, %176, %177, %179, %181) -> b22(%173, %174, %175, %176, %177, %178)
   b22(%182 r: ptr, %183 xs: ptr, %184 r: ptr, %185 k: ptr, %186 r: ptr, %187 r: ptr, %188 ct: ptr):
     %189 s: ptr = show %182
@@ -219,8 +219,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     %201 r: ptr = $string_to_bytes(%200)
     %202 $site: i64 = const 6
     dup.candidate %195
-    dup %196
-    dup %198
+    dup.candidate %196
+    dup.candidate %198
     call decrypt#4(%195, %196, %201, %198, %202) -> b24(%193, %194, %195, %196, %197, %198)
   b24(%203 r: ptr, %204 xs: ptr, %205 r: ptr, %206 k: ptr, %207 r: ptr, %208 r: ptr, %209 ct: ptr):
     %210 s: ptr = show %203
@@ -238,8 +238,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     %223 r: ptr = $bytes_slice(%219, %221, %222)
     %224 $site: i64 = const 7
     dup.candidate %216
-    dup %218
-    dup %219
+    dup.candidate %218
+    dup.candidate %219
     call decrypt#4(%216, %223, %218, %219, %224) -> b26(%214, %215, %216, %217, %218, %219)
   b26(%225 r: ptr, %226 xs: ptr, %227 r: ptr, %228 k: ptr, %229 r: ptr, %230 r: ptr, %231 ct: ptr):
     %232 s: ptr = show %225
@@ -257,8 +257,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     %245 r: ptr = $bytes_slice(%241, %243, %244)
     %246 $site: i64 = const 8
     dup.candidate %238
-    dup %239
-    dup %240
+    dup.candidate %239
+    dup.candidate %240
     call decrypt#4(%238, %239, %240, %245, %246) -> b28(%236, %237, %238, %239, %240, %241)
   b28(%247 r: ptr, %248 xs: ptr, %249 r: ptr, %250 k: ptr, %251 r: ptr, %252 r: ptr, %253 ct: ptr):
     %254 s: ptr = show %247
@@ -276,8 +276,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 210 slots [%
     %267 r: ptr = $bytes_slice(%261, %265, %266)
     %268 $site: i64 = const 9
     dup.candidate %260
-    dup %262
-    dup %263
+    dup.candidate %262
+    dup.candidate %263
     call decrypt#4(%260, %267, %262, %263, %268) -> b30(%258, %259, %260, %261, %262, %263)
   b30(%269 r: ptr, %270 xs: ptr, %271 r: ptr, %272 k: ptr, %273 r: ptr, %274 r: ptr, %275 ct: ptr):
     %276 s: ptr = show %269
@@ -425,7 +425,7 @@ fn $entry#1 top -> unit ; main::crypto_aes_gcm_rejects_tag, frame 1 slots [%1 bo
 fn unhex#2 top -> ptr ; main::crypto_aes_gcm_rejects_tag, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3

@@ -133,7 +133,7 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %87 box: word = box %85
     drop %87
     %88 lit: ptr = const str 35
-    dup %86
+    dup.candidate %86
     call get#3(%86, %88) -> b15(%86)
   b15(%89 r: ptr, %90 h: ptr):
     %91 s: ptr = show %89
@@ -146,7 +146,7 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %96 box: word = box %94
     drop %96
     %97 lit: ptr = const str 20
-    dup %95
+    dup.candidate %95
     call get#3(%95, %97) -> b17(%95)
   b17(%98 r: ptr, %99 h: ptr):
     %100 s: ptr = show %98
@@ -158,7 +158,7 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
   b18(%103 r: unit, %104 h: ptr):
     %105 box: word = box %103
     drop %105
-    dup %104
+    dup.candidate %104
     call get_set_cookie#5(%104) -> b19(%104)
   b19(%106 r: ptr, %107 h: ptr):
     %108 s: ptr = show %106
@@ -171,7 +171,7 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %113 box: word = box %111
     drop %113
     %114 lit: ptr = const str 18
-    dup %112
+    dup.candidate %112
     call get_all#6(%112, %114) -> b21(%112)
   b21(%115 r: ptr, %116 h: ptr):
     %117 s: ptr = show %115
@@ -239,7 +239,7 @@ fn main#0 pub top -> unit ; main::headers_validate_and_combine, frame 42 slots [
     %168 lit: ptr = const str 41
     %169 s: ptr = concat %167, %168
     drop %168
-    dup %164
+    dup.candidate %164
     call get#3(%164, %162) -> b34(%163, %164, %165, %166, %169)
   b34(%170 r: ptr, %171 xs: ptr, %172 h: ptr, %173 n: i64, %174 i: i64, %175 s: ptr):
     %176 s: ptr = show %170

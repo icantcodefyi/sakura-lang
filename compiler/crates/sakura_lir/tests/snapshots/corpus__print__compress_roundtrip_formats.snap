@@ -33,7 +33,7 @@ fn main#0 pub top -> unit ; main::compress_roundtrip_formats, frame 17 slots [%3
     %13 lit: ptr = const str 2
     call round_trip#3(%13, %12) -> b3(%8)
   b3(%14 r: unit, %15 r: ptr):
-    dup %15
+    dup.candidate %15
     %16 r: ptr = $string_to_bytes(%15)
     %17 lit: ptr = const str 3
     call round_trip#3(%17, %16) -> b4(%15)
@@ -62,7 +62,7 @@ fn main#0 pub top -> unit ; main::compress_roundtrip_formats, frame 17 slots [%3
   b9(%38 r: ptr):
     %40 p: word = proj %38.0 std::result::Result.Ok
     drop %38
-    dup %40
+    dup.candidate %40
     %41 r: i64 = $bytes_len(%40)
     %42 s: ptr = show %41
     %43 lit: ptr = const str 5
@@ -184,8 +184,8 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     %105 unbox: i64 = unbox %104
     drop %104
     %119 $site: i64 = const 7
-    dup %83
-    dup %87
+    dup.candidate %83
+    dup.candidate %87
     call compress#5(%83, %87, %105, %119) -> b13(%82, %83, %84, %85, %86, %87, %88, %89, %90, %91, %92, %105)
   b11(%93 label: ptr, %94 b: ptr, %95 xs: ptr, %96 n: i64, %97 i: i64, %98 x: ptr, %99 r: ptr, %100 n: i64, %101 i: i64, %102 same: bool, %103 smaller: bool):
     drop %99
@@ -216,12 +216,12 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     jump b18(%223, %209, %210, %199, %200, %201, %202, %203, %204, %205, %206, %207)
   b20(%211 label: ptr, %212 b: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 x: ptr, %217 r: ptr, %218 n: i64, %219 i: i64, %220 r: ptr, %221 v: bool, %222 smaller: bool):
     %224 r: i64 = $bytes_len(%220)
-    dup %212
+    dup.candidate %212
     %225 r: i64 = $bytes_len(%212)
     %226 t: bool = lt.int %224, %225
     jump b18(%226, %221, %222, %211, %212, %213, %214, %215, %216, %217, %218, %219)
   b21(%228 label: ptr, %229 b: ptr, %230 xs: ptr, %231 n: i64, %232 i: i64, %233 x: ptr, %234 r: ptr, %235 n: i64, %236 i: i64, %237 same: bool, %238 smaller: bool, %239 x: i64, %240 r: ptr):
-    dup %229
+    dup.candidate %229
     %254 r: i64 = $bytes_len(%229)
     %255 $site: i64 = const 8
     dup %233

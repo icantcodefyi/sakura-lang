@@ -56,7 +56,7 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %31 $site: i64 = const 2
     call encode_multipart#3(%29, %30, %31) -> b4()
   b4(%32 r: ptr):
-    dup %32
+    dup.candidate %32
     %33 r: ptr = $string_from_bytes(%32)
     %34 lit: ptr = const str 11
     call unwrap_or#4(%33, %34) -> b5(%32)
@@ -73,7 +73,7 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %43 lit: i64 = const 1024
     %44 rec: ptr = alloc std::form::FormLimits(%41, %42, %43)
     %45 lit: ptr = const str 15
-    dup %44
+    dup.candidate %44
     call parse_multipart#5(%40, %45, %44) -> b7(%44)
   b7(%46 r: ptr, %47 rec: ptr):
     call describe#6(%46) -> b8(%47)
@@ -86,7 +86,7 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %52 lit: ptr = const str 16
     %53 r: ptr = $string_to_bytes(%52)
     %54 lit: ptr = const str 15
-    dup %51
+    dup.candidate %51
     call parse_multipart#5(%53, %54, %51) -> b10(%51)
   b10(%55 r: ptr, %56 rec: ptr):
     call describe#6(%55) -> b11(%56)

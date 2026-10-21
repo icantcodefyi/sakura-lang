@@ -159,7 +159,7 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
     call unhex#2(%167) -> b36(%163, %164, %165, %166, %167, %168, %169, %170)
   b19(%171 v: ptr, %172 xs: ptr, %173 n: i64, %174 i: i64, %175 name: ptr, %176 msg: ptr, %177 sig: ptr, %178 p: ptr):
     %179 lit: i64 = const 0
-    dup %171
+    dup.candidate %171
     %180 r: ptr = $bytes_get(%171, %179)
     %181 lit: i64 = const 0
     %182 box: word = box %181
@@ -274,7 +274,7 @@ fn $entry#1 top -> unit ; main::crypto_ed25519_rfc8032, frame 1 slots [%1 bool]
 fn unhex#2 top -> ptr ; main::crypto_ed25519_rfc8032, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3

@@ -46,7 +46,7 @@ fn $entry#1 top -> unit ; main::json_schema_refinement_keywords, frame 1 slots [
 fn Name$check#2 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 1
     %4 t: bool = ge.int %2, %3
@@ -177,7 +177,7 @@ fn Form.code$check#9 top -> bool ; main::json_schema_refinement_keywords, frame 
 fn Form.handle$check#10 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 8
     %4 t: bool = ge.int %2, %3
@@ -198,7 +198,7 @@ fn Form.handle$check#10 top -> bool ; main::json_schema_refinement_keywords, fra
 fn Form.loose$check#11 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 1
     %4 t: i64 = intneg %3

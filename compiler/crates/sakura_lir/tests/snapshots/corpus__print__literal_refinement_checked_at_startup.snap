@@ -58,7 +58,7 @@ fn Slug$from#4 top -> ptr ; main::literal_refinement_checked_at_startup, frame 2
   b0(%0 it: ptr, %1 $site: i64):
     %2 enter: unit = $contract_enter()
     %3 lit: ptr = const str 1
-    dup %0
+    dup.candidate %0
     %4 r: ptr = $string_split(%0, %3)
     %5 r: i64 = $list_len(%4)
     %6 lit: i64 = const 1

@@ -106,19 +106,19 @@ fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 161 slots [%41 w
     %70 xs: ptr = alloc list(%66, %66)
     %71 r: ptr = $bytes_concat(%70)
     %72 $site: i64 = const 3
-    dup %67
+    dup.candidate %67
     dup.candidate %68
-    dup %69
+    dup.candidate %69
     call encrypt#5(%68, %69, %67, %71, %72) -> b9(%67, %68, %69, %66)
   b9(%73 r: ptr, %74 r: ptr, %75 k: ptr, %76 r: ptr, %77 r: ptr):
     %78 f: ptr = closure main$1#8[]
     call map#9(%73, %78) -> b10(%74, %75, %76, %77)
   b10(%79 r: ptr, %80 r: ptr, %81 k: ptr, %82 r: ptr, %83 r: ptr):
     %84 $site: i64 = const 4
-    dup %80
+    dup.candidate %80
     dup.candidate %81
-    dup %83
-    dup %83
+    dup.candidate %83
+    dup.candidate %83
     call encrypt#5(%81, %83, %80, %83, %84) -> b11(%80, %81, %82, %83, %79)
   b11(%85 r: ptr, %86 r: ptr, %87 k: ptr, %88 r: ptr, %89 r: ptr, %90 r: ptr):
     %91 t: bool = eq.any %90, %85
@@ -213,7 +213,7 @@ fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 161 slots [%41 w
     call unhex#3(%218) -> b28(%211, %212, %213, %214, %215, %216, %217, %218, %219, %210)
   b28(%220 r: ptr, %221 xs: ptr, %222 r: ptr, %223 xs: ptr, %224 n: i64, %225 i: i64, %226 bits: i64, %227 block: ptr, %228 pt: ptr, %229 k: ptr, %230 r: ptr):
     %231 $site: i64 = const 6
-    dup %222
+    dup.candidate %222
     dup.candidate %229
     call encrypt#5(%229, %230, %222, %220, %231) -> b29(%221, %222, %223, %224, %225, %226, %227, %228, %229)
   b29(%232 r: ptr, %233 xs: ptr, %234 r: ptr, %235 xs: ptr, %236 n: i64, %237 i: i64, %238 bits: i64, %239 block: ptr, %240 pt: ptr, %241 k: ptr):
@@ -242,8 +242,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_ctr_rfc3686, frame 161 slots [%41 w
     perform std::console::Console.print(%330) -> b38(%259, %260, %261, %262, %263)
   b33(%270 r: ptr, %271 xs: ptr, %272 r: ptr, %273 xs: ptr, %274 n: i64, %275 i: i64, %276 bits: i64, %277 pt: ptr, %278 k: ptr, %279 ct: ptr, %357 token: word):
     %280 $site: i64 = const 7
-    dup %272
-    dup %279
+    dup.candidate %272
+    dup.candidate %279
     call decrypt#6(%278, %270, %272, %279, %280) -> b34(%271, %272, %273, %274, %275, %276, %277, %279, %357)
   b34(%281 r: ptr, %282 xs: ptr, %283 r: ptr, %284 xs: ptr, %285 n: i64, %286 i: i64, %287 bits: i64, %288 pt: ptr, %289 ct: ptr, %358 token: word):
     call unhex#3(%288) -> b35(%282, %283, %284, %285, %286, %287, %289, %281, %358)
@@ -305,7 +305,7 @@ fn alg#2 top -> ptr ; main::crypto_aes_ctr_rfc3686, frame 1 slots [%0 i64]
 fn unhex#3 top -> ptr ; main::crypto_aes_ctr_rfc3686, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
@@ -356,7 +356,7 @@ fn unhex#3 top -> ptr ; main::crypto_aes_ctr_rfc3686, frame 12 slots [%0 word*, 
 
 fn hex#7 top -> ptr ; main::crypto_aes_ctr_rfc3686, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup %0
+    dup.candidate %0
     %1 r: i64 = $bytes_len(%0)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 22
@@ -365,7 +365,7 @@ fn hex#7 top -> ptr ; main::crypto_aes_ctr_rfc3686, frame 6 slots [%0 word*, %24
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup %7
+    dup.candidate %7
     %21 r: ptr = $bytes_get(%7, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22

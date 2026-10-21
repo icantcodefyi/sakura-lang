@@ -105,7 +105,7 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2
     %76 f: ptr = closure main$2#12[%68]
     call map#13(%67, %76) -> b16(%68, %69, %70, %71, %72, %73, %74, %75)
   b16(%77 r: ptr, %78 r: ptr, %79 r: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64, %83 x: ptr, %84 r: ptr, %85 r: ptr):
-    dup %85
+    dup.candidate %85
     %86 r: i64 = $bytes_len(%85)
     %87 lit: i64 = const 3
     %88 t: i64 = intsub %86, %87

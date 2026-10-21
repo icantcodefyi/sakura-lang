@@ -173,7 +173,7 @@ fn main$2#9 lambda -> word ; main::websocket_scripted_close_info, captures [], f
     %2 lit: i64 = const 1000
     %3 lit: ptr = const str 12
     %4 $site: i64 = const 8
-    dup %1
+    dup.candidate %1
     call WebSocket.close#10(%1, %2, %3, %4) -> b1(%1)
   b1(%5 pre: unit, %6 sock: ptr):
     %7 lit: i64 = const 1000
@@ -186,7 +186,7 @@ fn main$2#9 lambda -> word ; main::websocket_scripted_close_info, captures [], f
     %12 lit: i64 = const 3000
     %13 lit: ptr = const str 13
     %14 $site: i64 = const 9
-    dup %10
+    dup.candidate %10
     call WebSocket.close#10(%10, %12, %13, %14) -> b3(%10)
   b3(%15 pre: unit, %16 sock: ptr):
     %17 lit: i64 = const 3000

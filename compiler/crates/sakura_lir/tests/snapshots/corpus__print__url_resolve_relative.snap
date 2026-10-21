@@ -88,7 +88,7 @@ fn main#0 pub top -> unit ; main::url_resolve_relative, frame 24 slots [%1 word*
     dup.candidate %53
     %60 x: word = $list_at(%53, %55)
     dup %52
-    dup %60
+    dup.candidate %60
     call resolve#3(%52, %60) -> b9(%52, %53, %54, %55, %60)
   b7(%56 base: ptr, %57 xs: ptr, %58 n: i64, %59 i: i64):
     drop %56

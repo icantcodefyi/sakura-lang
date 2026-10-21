@@ -1285,7 +1285,7 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
 /// `List.set`'s `requires` reads `len(xs)` once per call, a direct def that only reads its
 /// parameter is one per call with the list live after it, and the last call is none; a def that
 /// returns its parameter, an effectful (CPS) def, a closure and a handler clause called directly
-/// by a bound perform (§17.176 (4)) are never candidates. `borrows`
+/// by a bound perform (§17.176 (4)) are never candidates, whatever the parameter's type. `borrows`
 /// is 0 before plan N4. Each tuple is (reuse attempts, reuses, borrow candidates, borrows).
 #[test]
 fn reuse_and_borrow_counters_reconcile_by_hand() {
@@ -1302,7 +1302,11 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
                 fn noisy(xs: List<Int>) -> Int ! {Console} {\n\
                 \x20 Console.print(\".\")\n\
                 \x20 List.len(xs)\n\
-                }\n\n";
+                }\n\n\
+                type Pt = { x: Int, y: Int }\n\n\
+                fn size(s: String) -> Int { String.len(s) }\n\n\
+                fn same(s: String) -> String { s }\n\n\
+                fn sum(p: Pt) -> Int { p.x + p.y }\n\n";
     let counters = |name: &str, body: &str, stdout: &str| {
         let src = dir.join(format!("{name}.sak"));
         let main = format!("{defs}pub fn main() -> Unit ! {{Console}} {{\n{body}}}\n");
@@ -1374,6 +1378,15 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         print("n + List.len(xs) + List.len(ys)")
     );
     assert_eq!(counters("clause", &clause, "4\n"), (3, 1, 0, 0));
+    // Every managed type (§17.247 (1)): `size` reads its string twice with it live after and
+    // `sum` its record once; `same` returns it and `String.trim` may, so neither is a candidate.
+    let any = format!(
+        "  let s = String.trim(\" ab \")\n  let p = Pt {{ x: 1, y: 2 }}\n{}",
+        print(
+            "size(s) + size(s) + sum(p) + sum(p) + String.len(same(s)) + String.len(String.trim(s))"
+        )
+    );
+    assert_eq!(counters("every_type", &any, "14\n"), (0, 0, 3, 0));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

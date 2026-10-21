@@ -84,7 +84,7 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     drop %59
     %61 r: ptr = $string_to_bytes(%50)
     %62 lit: ptr = const str 3
-    dup %42
+    dup.candidate %42
     call parse_multipart#3(%61, %62, %42) -> b8(%42, %43, %44, %45, %60)
   b6(%46 rec: ptr, %47 xs: ptr, %48 n: i64, %49 i: i64):
     drop %46
@@ -119,7 +119,7 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %110 lit: ptr = const str 18
     %111 s: ptr = concat %109, %110
     drop %110
-    dup %90
+    dup.candidate %90
     dup %91
     call parse_multipart#3(%91, %100, %90) -> b15(%90, %91, %92, %93, %94, %111)
   b13(%95 rec: ptr, %96 r: ptr, %97 xs: ptr, %98 n: i64, %99 i: i64):

@@ -40,7 +40,7 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     jump b5(%73, %21, %20)
   b2(%22 parts: ptr, %23 r: ptr):
     %24 r: ptr = $bytes_concat(%22)
-    dup %24
+    dup.candidate %24
     %25 r: i64 = $bytes_len(%24)
     %26 s: ptr = show %25
     %27 lit: ptr = const str 1

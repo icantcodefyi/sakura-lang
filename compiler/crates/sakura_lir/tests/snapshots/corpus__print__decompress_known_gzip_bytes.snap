@@ -172,7 +172,7 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %161 lit: ptr = const str 12
     %162 s: ptr = concat %160, %161
     drop %161
-    dup %159
+    dup.candidate %159
     %163 r: i64 = $bytes_len(%159)
     %164 s: ptr = show %163
     %165 s: ptr = concat %162, %164

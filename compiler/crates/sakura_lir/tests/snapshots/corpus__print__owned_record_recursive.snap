@@ -181,7 +181,7 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
     %3 t: bool = eq.int %1, %2
     if %3 then b7(%0, %1) else b8(%0, %1)
   b1(%4 v: unit, %5 p: ptr, %6 i: i64):
-    dup %5
+    dup.candidate %5
     call put_var#6(%5, %6, %6) -> b2(%5, %6)
   b2(%7 r: ptr, %8 p: ptr, %9 i: i64):
     %10 lit: i64 = const 1

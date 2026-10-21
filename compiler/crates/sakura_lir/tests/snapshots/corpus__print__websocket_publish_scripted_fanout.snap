@@ -102,7 +102,7 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     drop %0
     %3 lit: ptr = const str 21
     %4 $site: i64 = const 11
-    dup %1
+    dup.candidate %1
     call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
   b1(%5 pre: unit, %6 up: ptr, %7 a: ptr):
     %8 lit: ptr = const str 21
@@ -132,8 +132,8 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     %30 r: ptr = alloc std::option::Option.Some(%27)
     %31 lit: ptr = const str 21
     %32 $site: i64 = const 13
-    dup %29
-    dup %30
+    dup.candidate %29
+    dup.candidate %30
     call WebSocket.publish#11(%31, %29, %30, %32) -> b6(%29, %30)
   b6(%33 pre: unit, %34 r: ptr, %35 r: ptr):
     %36 lit: ptr = const str 21
@@ -152,8 +152,8 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     %45 v: ptr = const static std::option::Option.None
     %46 lit: ptr = const str 25
     %47 $site: i64 = const 14
-    dup %44
-    dup %45
+    dup.candidate %44
+    dup.candidate %45
     call WebSocket.publish#11(%46, %44, %45, %47) -> b9(%44, %45)
   b9(%48 pre: unit, %49 r: ptr, %50 v: ptr):
     %51 lit: ptr = const str 25
@@ -174,7 +174,7 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %0
     %3 lit: ptr = const str 21
     %4 $site: i64 = const 15
-    dup %1
+    dup.candidate %1
     call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
   b1(%5 pre: unit, %6 a: ptr, %7 b: ptr):
     %8 lit: ptr = const str 21
@@ -188,8 +188,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %15 v: ptr = const static std::option::Option.None
     %16 lit: ptr = const str 21
     %17 $site: i64 = const 16
-    dup %14
-    dup %15
+    dup.candidate %14
+    dup.candidate %15
     call WebSocket.publish#11(%16, %14, %15, %17) -> b3(%10, %11, %14, %15)
   b3(%18 pre: unit, %19 a: ptr, %20 b: ptr, %21 r: ptr, %22 v: ptr):
     %23 lit: ptr = const str 21
@@ -209,8 +209,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %36 r: ptr = alloc std::option::Option.Some(%31)
     %37 lit: ptr = const str 21
     %38 $site: i64 = const 17
-    dup %35
-    dup %36
+    dup.candidate %35
+    dup.candidate %36
     call WebSocket.publish#11(%37, %35, %36, %38) -> b6(%31, %32, %35, %36)
   b6(%39 pre: unit, %40 a: ptr, %41 b: ptr, %42 r: ptr, %43 r: ptr):
     %44 lit: ptr = const str 21
@@ -262,7 +262,7 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %84
     %85 lit: ptr = const str 21
     %86 $site: i64 = const 18
-    dup %83
+    dup.candidate %83
     call WebSocket.unsubscribe#12(%83, %85, %86) -> b15(%82, %83)
   b15(%87 pre: unit, %88 a: ptr, %89 b: ptr):
     %90 lit: ptr = const str 21
@@ -276,8 +276,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %97 r: ptr = alloc std::option::Option.Some(%92)
     %98 lit: ptr = const str 21
     %99 $site: i64 = const 19
-    dup %96
-    dup %97
+    dup.candidate %96
+    dup.candidate %97
     call WebSocket.publish#11(%98, %96, %97, %99) -> b17(%93, %96, %97)
   b17(%100 pre: unit, %101 b: ptr, %102 r: ptr, %103 r: ptr):
     %104 lit: ptr = const str 21
@@ -293,7 +293,7 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %112
     %113 lit: ptr = const str 21
     %114 $site: i64 = const 20
-    dup %111
+    dup.candidate %111
     call WebSocket.subscribe#9(%111, %113, %114) -> b20(%111)
   b20(%115 pre: unit, %116 b: ptr):
     %117 lit: ptr = const str 21

@@ -20,7 +20,7 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %2 lit: ptr = const str 1
     call of#2(%1, %2) -> b1()
   b1(%3 r: ptr):
-    dup %3
+    dup.candidate %3
     call size#3(%3) -> b2(%3)
   b2(%4 r: i64, %5 r: ptr):
     %6 s: ptr = show %4
@@ -105,7 +105,7 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %74 lit: ptr = const str 14
     call of#2(%73, %74) -> b6(%57)
   b6(%75 r: ptr, %76 r: ptr):
-    dup %75
+    dup.candidate %75
     call text#5(%75) -> b7(%76, %75)
   b7(%77 r: ptr, %78 r: ptr, %79 r: ptr):
     %80 s: ptr = show %77
@@ -184,7 +184,7 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     drop %146
     %148 lit: i64 = const 0
     %149 lit: i64 = const 4
-    dup %129
+    dup.candidate %129
     call slice#4(%129, %148, %149, %137) -> b18(%129, %130, %131, %132, %147)
   b16(%133 r: ptr, %134 xs: ptr, %135 n: i64, %136 i: i64):
     drop %134
@@ -225,7 +225,7 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     jump b20(%186, %181, %182, %183)
   b24(%187 start: i64, %188 end: i64, %189 r: ptr, %190 xs: ptr, %191 n: i64, %192 i: i64):
     %193 lit: ptr = const str 14
-    dup %189
+    dup.candidate %189
     call slice#4(%189, %187, %188, %193) -> b25(%189, %190, %191, %192, %187, %188)
   b25(%194 r: ptr, %195 r: ptr, %196 xs: ptr, %197 n: i64, %198 i: i64, %199 start: i64, %200 end: i64):
     %201 s: ptr = show %199
@@ -241,7 +241,7 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %208 lit: ptr = const str 23
     %209 s: ptr = concat %207, %208
     drop %208
-    dup %194
+    dup.candidate %194
     call text#5(%194) -> b26(%195, %196, %197, %198, %194, %209)
   b26(%210 r: ptr, %211 r: ptr, %212 xs: ptr, %213 n: i64, %214 i: i64, %215 r: ptr, %216 s: ptr):
     %217 s: ptr = show %210

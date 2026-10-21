@@ -29,7 +29,7 @@ fn main#0 pub top -> unit ; main::error_field_name, frame 15 slots [%7 bool, %8 
   b3(%13 r: unit, %14 rec: ptr):
     %15 box: word = box %13
     drop %15
-    dup %14
+    dup.candidate %14
     call describe#2(%14) -> b4(%14)
   b4(%16 r: ptr, %17 rec: ptr):
     perform std::console::Console.print(%16) -> b5(%17)

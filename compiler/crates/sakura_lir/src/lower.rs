@@ -33,8 +33,6 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use sakura_core::opt::owned;
-
 use crate::layout::{LayoutTable, Slot};
 use crate::lir::{self, *};
 use crate::snapshot::{
@@ -247,27 +245,20 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         .into_iter()
         .map(|f| f.ok_or_else(|| "missing function".to_owned()))
         .collect::<R<_>>()?;
-    // Design §17.176 (2): the ownership facts, recomputed from the snapshot.
-    let sums = owned::summaries(&crate::snapshot::convert::back(core));
-    let borrows = |callee: &Callee, i: usize| match callee {
-        Callee::Builtin(name) => owned::borrows_arg(name, i),
-        // A top-level def: its LIR arguments are its Core parameters (then `$site`). A bound
-        // perform's direct clause call is never a candidate (§17.176 (4)).
-        Callee::Direct(f) => {
-            core.defs
-                .get(f.index())
-                .is_some_and(|d| matches!(d.kind, core::FnKind::Top { .. }))
-                && cx.facts.direct(f.0)
-                && sums.get(f.index()).is_some_and(|s| s.borrows(i))
-        }
-        Callee::Closure(_) => false,
-    };
-    // A token may ride the continuation of a call of a direct top-level def (`reuse`).
+    // A direct top-level def: a borrow candidate's callee (a bound perform's direct clause
+    // call never is, §17.176 (4)), and a call a reuse token may ride the continuation of.
     let direct = |g: FuncId| {
         core.defs
             .get(g.index())
             .is_some_and(|d| matches!(d.kind, core::FnKind::Top { .. }))
             && cx.facts.direct(g.0)
+    };
+    // Design §17.247 (1): the arguments a call only reads, for every managed type.
+    let never = crate::borrow::never_consumes(&funcs, &direct);
+    let borrows = |callee: &Callee, i: usize| match callee {
+        Callee::Builtin(name) => crate::borrow::reads(name, i),
+        Callee::Direct(f) => never.get(f.index()).and_then(|a| a.get(i)) == Some(&true),
+        Callee::Closure(_) => false,
     };
     for f in &mut funcs {
         ownership(f, &borrows)?;

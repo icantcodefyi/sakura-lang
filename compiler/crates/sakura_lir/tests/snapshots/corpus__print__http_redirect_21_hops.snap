@@ -247,7 +247,7 @@ fn counting$Http_read_chunk#122 clause std::http::Http.read_chunk -> ptr ; main:
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
     %4 $site: i64 = const 22
-    dup %2
+    dup.candidate %2
     call Http.read_chunk#117(%2, %3, %4) -> b1(%2, %3)
   b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
     perform std::http::Http.read_chunk(%6, %7) -> b2()

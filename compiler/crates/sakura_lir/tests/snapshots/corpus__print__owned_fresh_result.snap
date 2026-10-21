@@ -99,7 +99,7 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     dup %58
     jump b37(%58, %414, %60, %58)
   b7(%61 xs: ptr, %62 i: i64, %63 ws: ptr, %64 xs: ptr):
-    dup.candidate %63
+    dup %63
     call shifted#4(%63) -> b8(%64, %61, %63)
   b8(%65 r: ptr, %66 xs: ptr, %67 xs: ptr, %68 ws: ptr):
     %69 lit: i64 = const 0

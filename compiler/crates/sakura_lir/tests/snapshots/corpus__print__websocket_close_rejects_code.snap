@@ -99,7 +99,7 @@ fn main$1#8 lambda -> word ; main::websocket_close_rejects_code, captures [], fr
     %2 lit: i64 = const 1001
     %3 lit: ptr = const str 6
     %4 $site: i64 = const 7
-    dup %1
+    dup.candidate %1
     call WebSocket.close#9(%1, %2, %3, %4) -> b1(%1)
   b1(%5 pre: unit, %6 sock: ptr):
     %7 lit: i64 = const 1001

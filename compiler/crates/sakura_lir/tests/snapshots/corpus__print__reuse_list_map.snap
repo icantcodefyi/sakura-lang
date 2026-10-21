@@ -24,7 +24,7 @@ fn main#0 pub top -> unit ; main::reuse_list_map, frame 17 slots [%13 word*, %14
     %10 box: word = box %9
     %11 xs: ptr = alloc list(%6, %8, %10)
     %12 f: ptr = closure main$1#2[]
-    dup.candidate %11
+    dup %11
     call map#3(%11, %12) -> b1(%3, %11)
   b1(%13 r: ptr, %14 r: i64, %15 xs: ptr):
     %16 s: ptr = show %15
@@ -84,7 +84,7 @@ fn main#0 pub top -> unit ; main::reuse_list_map, frame 17 slots [%13 word*, %14
     %55 box: word = box %53
     drop %55
     %56 f: ptr = closure main$3#6[]
-    dup.candidate %54
+    dup %54
     call map#3(%54, %56) -> b6(%54)
   b6(%57 r: ptr, %58 xs: ptr):
     %59 f: ptr = closure main$4#7[]

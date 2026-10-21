@@ -419,7 +419,7 @@ fn $entry#1 top -> unit ; main::crypto_jwk_roundtrip, frame 1 slots [%1 bool]
 fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word*, %1 word*, %3 word*, %4 word*, %5 word*, %14 word*, %15 word*, %16 word*, %17 word*, %18 word*, %19 word*, %20 word*, %21 word*, %22 word*, %23 word*, %24 word*, %25 word*, %26 word*, %27 word*, %28 word*, %29 word*, %30 word*, %34 word*, %35 word*, %36 word*, %37 word*, %38 word*, %39 word*, %40 word*, %41 word*, %42 word*, %43 word*, %44 word*, %45 word*, %46 word*, %47 word*, %48 word*, %51 word*, %52 word*, %53 word*, %54 word*, %55 word*, %60 word*, %61 word*, %62 word*, %63 word*, %64 bool, %68 word*, %69 word*, %70 word*, %71 bool, %72 word*, %87 bool, %102 word*, %103 word*, %104 word*, %105 word*, %106 word*, %107 word*, %108 word*, %109 word*, %110 word*, %111 word*, %112 word*, %113 word*, %114 word*, %132 word*, %133 word*, %134 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %140 word*, %141 word*, %147 word*, %148 word*, %154 bool]
   b0(%0 key: ptr, %1 via: ptr):
     %2 v: ptr = const static std::crypto::KeyFormat.Jwk
-    dup.candidate %0
+    dup %0
     call export_key#12(%0, %2) -> b1(%0, %1)
   b1(%3 r: ptr, %4 key: ptr, %5 via: ptr):
     %6 tag: i64 = tag %3 ctor std::result::Result
@@ -427,7 +427,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
   b2(%7 key: ptr, %8 via: ptr, %9 r: ptr):
     %13 p: word = proj %9.0 std::result::Result.Ok
     drop %9
-    dup.candidate %7
+    dup %7
     call members#6(%7) -> b4(%7, %8, %13)
   b3(%10 key: ptr, %11 via: ptr, %12 r: ptr):
     drop %11
@@ -439,7 +439,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
   b5(%18 r: ptr, %19 key: ptr, %20 via: ptr, %21 jwk: ptr):
     call sort#111(%18) -> b6(%19, %20, %21)
   b6(%22 r: ptr, %23 key: ptr, %24 via: ptr, %25 jwk: ptr):
-    dup.candidate %23
+    dup %23
     call members#6(%23) -> b7(%23, %24, %25, %22)
   b7(%26 r: ptr, %27 key: ptr, %28 via: ptr, %29 jwk: ptr, %30 r: ptr):
     %31 lit: ptr = const str 10
@@ -448,7 +448,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     dup.candidate %27
     call algorithm#112(%27) -> b8(%27, %28, %29, %30, %32, %33)
   b8(%34 r: ptr, %35 key: ptr, %36 via: ptr, %37 jwk: ptr, %38 r: ptr, %39 r: ptr, %40 v: ptr):
-    dup %35
+    dup.candidate %35
     call usages#113(%35) -> b9(%35, %36, %37, %38, %39, %40, %34)
   b9(%41 r: ptr, %42 key: ptr, %43 via: ptr, %44 jwk: ptr, %45 r: ptr, %46 r: ptr, %47 v: ptr, %48 r: ptr):
     %49 r: ptr = $secret_wrap(%44)
@@ -531,7 +531,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %143 lit: bool = const false
     jump b19(%143, %127, %129, %130)
   b22(%132 r: ptr, %133 key: ptr, %134 via: ptr, %135 r: ptr, %136 r: ptr):
-    dup.candidate %133
+    dup %133
     call export_key#12(%133, %134) -> b23(%133, %135, %136, %132)
   b23(%137 r: ptr, %138 key: ptr, %139 r: ptr, %140 r: ptr, %141 r: ptr):
     %142 t: bool = eq.any %141, %137

@@ -86,6 +86,11 @@ retains earlier implementation history.
 
 ### Changed
 
+- **`borrow_candidates` counts every managed type** (WASM and native counters, ABI 1.17.0
+  §10): a `Dup` is marked when the reference stays live after a builtin argument the runtime
+  only reads or a parameter a direct def never consumes, now for strings, records and every
+  other managed value, not only collections. Benchmark records with `abi_version` 1.17.0 read
+  the wider set; no other counter and no program's output changes.
 - The WASM runtime ABI is 1.17.0 (`sakura_abi_version` `0x011100`; design §17.176 (3), plan
   `m5-native.md` N3): constructor-site reuse adds two runtime functions internal to the module,
   `List.map` three more, and counts reuse sites in the existing `stats()` counters; no import, export or layout

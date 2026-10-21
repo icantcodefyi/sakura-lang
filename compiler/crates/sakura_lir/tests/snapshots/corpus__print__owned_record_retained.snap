@@ -39,7 +39,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %18 lit: i64 = const 1
     %19 t: i64 = intneg %18
     %20 lit: i64 = const 0
-    dup %15
+    dup.candidate %15
     call put_var#4(%15, %20, %19) -> b5(%15, %16)
   b5(%21 r: ptr, %22 p: ptr, %23 i: i64):
     %24 lit: i64 = const 9
@@ -186,7 +186,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %137 cons: word = proj %136.1 main::owned_record_retained::Planner
     %138 r: i64 = $list_len(%137)
     %139 lit: i64 = const 2
-    dup %136
+    dup.candidate %136
     call put_var#4(%136, %139, %138) -> b17(%136)
   b17(%140 r: ptr, %141 rec: ptr):
     %142 mark: i64 = proj %141.2 main::owned_record_retained::Planner
@@ -266,7 +266,7 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %193 p: i64 = proj %190.0 main::owned_record_retained::Stop
     drop %190
     %194 lit: i64 = const 9
-    dup %192
+    dup.candidate %192
     call put_var#4(%192, %194, %193) -> b25(%191, %192)
   b25(%195 r: ptr, %196 i: i64, %197 r: ptr):
     jump b15(%195, %197, %196)

@@ -14,7 +14,7 @@ fn main#0 pub top -> unit ; main::records, frame 11 slots [%4 word*, %5 word*, %
     %1 lit: ptr = const str 0
     %2 lit: bool = const false
     %3 rec: ptr = alloc main::records::User(%0, %1, %2)
-    dup %3
+    dup.candidate %3
     call promote#2(%3) -> b1(%3)
   b1(%4 r: ptr, %5 rec: ptr):
     %6 admin: bool = proj %5.2 main::records::User

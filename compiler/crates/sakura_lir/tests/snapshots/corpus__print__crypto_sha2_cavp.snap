@@ -142,7 +142,7 @@ fn $entry#1 top -> unit ; main::crypto_sha2_cavp, frame 1 slots [%1 bool]
 fn unhex#2 top -> ptr ; main::crypto_sha2_cavp, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup %0
+    dup.candidate %0
     %2 r: i64 = $string_len(%0)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
@@ -193,7 +193,7 @@ fn unhex#2 top -> ptr ; main::crypto_sha2_cavp, frame 12 slots [%0 word*, %33 i6
 
 fn hex#4 top -> ptr ; main::crypto_sha2_cavp, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup %0
+    dup.candidate %0
     %1 r: i64 = $bytes_len(%0)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 1
@@ -202,7 +202,7 @@ fn hex#4 top -> ptr ; main::crypto_sha2_cavp, frame 6 slots [%0 word*, %24 word*
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup %7
+    dup.candidate %7
     %21 r: ptr = $bytes_get(%7, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22

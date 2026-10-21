@@ -136,7 +136,7 @@ fn main#0 pub top -> unit ; main::tag_eq, frame 48 slots [%2 bool, %8 bool, %9 w
     %92 v: ptr = const static main::tag_eq::Dir.Forward
     %93 lit: i64 = const 1
     %94 rec: ptr = alloc main::tag_eq::Con(%92, %93)
-    dup %91
+    dup.candidate %91
     call cons#7(%91, %94) -> b17(%91)
   b17(%95 r: bool, %96 rec: ptr):
     %97 s: ptr = show %95
