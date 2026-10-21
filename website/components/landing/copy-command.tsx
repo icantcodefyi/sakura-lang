@@ -49,7 +49,10 @@ export function CopyCommand({ commands }: { commands: string[] }) {
         }}
         className="absolute top-2.5 right-2.5 grid size-8 place-items-center rounded-md text-muted-foreground transition-colors group-hover:text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-sakura"
       >
-        {copied ? <Check className="size-4 text-ok" /> : <Copy className="size-4" />}
+        <span className="t-icon-swap" data-state={copied ? "b" : "a"}>
+          <Copy data-icon="a" className="size-4" />
+          <Check data-icon="b" className="size-4 text-ok" />
+        </span>
       </button>
       <span aria-live="polite" className="sr-only">
         {copied ? "Copied" : ""}

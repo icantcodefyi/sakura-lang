@@ -30,11 +30,11 @@ export function ThemeToggle() {
           aria-label="Color theme"
         >
           <Sun
-            className="size-4 transition-[transform,opacity] duration-200 dark:scale-75 dark:opacity-0"
+            className="size-4 transition-[transform,opacity,filter] duration-(--duration-fast) ease-in-out dark:scale-25 dark:opacity-0 dark:blur-(--blur-small)"
             strokeWidth={1.75}
           />
           <Moon
-            className="absolute size-4 scale-75 opacity-0 transition-[transform,opacity] duration-200 dark:scale-100 dark:opacity-100"
+            className="absolute size-4 scale-25 opacity-0 blur-(--blur-small) transition-[transform,opacity,filter] duration-(--duration-fast) ease-in-out dark:scale-100 dark:opacity-100 dark:blur-none"
             strokeWidth={1.75}
           />
         </Button>

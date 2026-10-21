@@ -98,6 +98,17 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
+  /* Motion tokens (transitions.dev scale): pick by what the motion does, not by the number. */
+  --duration-stagger: 40ms; /* per-item stagger offset */
+  --duration-micro: 80ms; /* large-item stagger */
+  --duration-quick: 150ms; /* menu close, tooltip appear */
+  --duration-fast: 250ms; /* icon swap, menu open, sliding tabs */
+  --duration-medium: 350ms; /* panel close */
+  --duration-slow: 400ms; /* panel open */
+  --duration-very-slow: 500ms; /* text reveal */
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1); /* open, close, slide, position */
+  --blur-small: 2px; /* icon swap, panel swap */
+
   --fd-layout-width: 1440px;
 }
 
@@ -489,13 +500,49 @@ figure.shiki figcaption {
 
 @media (prefers-reduced-motion: no-preference) {
   .rise {
-    animation: rise 700ms var(--ease-out) both;
-    animation-delay: calc(var(--i, 0) * 70ms);
+    animation: rise var(--duration-very-slow) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--duration-micro));
   }
   /* For the hero's largest text: no opacity step, so it paints (and counts for LCP) at once. */
   .rise-text {
-    animation: rise-text 700ms var(--ease-out) both;
-    animation-delay: calc(var(--i, 0) * 70ms);
+    animation: rise-text var(--duration-very-slow) var(--ease-out) both;
+    animation-delay: calc(var(--i, 0) * var(--duration-micro));
+  }
+}
+
+/* Two icons in one slot (the copy button): cross-fade with blur and scale (transitions.dev). */
+.t-icon-swap {
+  display: inline-grid;
+}
+.t-icon-swap > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--duration-fast) ease-in-out,
+    filter var(--duration-fast) ease-in-out,
+    transform var(--duration-fast) ease-in-out;
+}
+.t-icon-swap[data-state="a"] > [data-icon="b"],
+.t-icon-swap[data-state="b"] > [data-icon="a"] {
+  opacity: 0;
+  filter: blur(var(--blur-small));
+  transform: scale(0.25);
+}
+
+/* A segmented control's active pill, slid between options (components/sliding-pill.ts). */
+.t-tabs-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transition:
+    transform var(--duration-fast) var(--ease-smooth-out),
+    width var(--duration-fast) var(--ease-smooth-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap > *,
+  .t-tabs-pill {
+    transition: none !important;
   }
 }
 

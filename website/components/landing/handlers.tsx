@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSlidingPill } from "@/components/sliding-pill";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { WINDOW, WindowBar } from "./window";
 
@@ -35,12 +36,13 @@ const WITH = {
 
 export function HandlersDiagram() {
   const [mode, setMode] = useState<Mode>("run");
+  const { bar, pill, ready } = useSlidingPill(mode);
   return (
     <div className={WINDOW}>
       <WindowBar className="flex-wrap justify-between gap-x-3 gap-y-2 py-2 sm:px-4">
         <code
           key={mode}
-          className="min-w-0 text-muted-foreground sm:truncate sm:text-[12px] motion-safe:animate-[note-in_260ms_var(--ease-out)_both]"
+          className="min-w-0 text-muted-foreground sm:truncate sm:text-[12px] motion-safe:animate-[note-in_var(--duration-fast)_var(--ease-out)_both]"
         >
           {WITH[mode]}
         </code>
@@ -50,13 +52,20 @@ export function HandlersDiagram() {
           onValueChange={(v) => v && setMode(v as Mode)}
           aria-label="Where signup runs"
           spacing={0}
-          className="rounded-md border border-border bg-background p-0.5 font-sans"
+          ref={bar}
+          data-pill={ready || undefined}
+          className="group/pill relative rounded-md border border-border bg-background p-0.5 font-sans"
         >
+          <span
+            ref={pill}
+            aria-hidden
+            className="t-tabs-pill hidden rounded-[5px] bg-paper group-data-pill/pill:block"
+          />
           {(["run", "test"] as const).map((m) => (
             <ToggleGroupItem
               key={m}
               value={m}
-              className="h-8 rounded-[5px]! px-3 text-[12.5px] text-muted-foreground data-[state=on]:bg-paper data-[state=on]:text-ink"
+              className="z-[1] h-8 rounded-[5px]! px-3 text-[12.5px] text-muted-foreground data-[state=on]:bg-paper data-[state=on]:text-ink group-data-pill/pill:data-[state=on]:bg-transparent"
             >
               {m === "run" ? "In production" : "In a test"}
             </ToggleGroupItem>
@@ -72,8 +81,8 @@ export function HandlersDiagram() {
               {/* the handler: the only thing that changes */}
               <div
                 key={mode}
-                className="w-full rounded-md border border-sakura/60 bg-sakura-wash px-2 py-2.5 motion-safe:animate-[swap-in_320ms_var(--ease-out)_both] sm:px-3"
-                style={{ animationDelay: `${i * 50}ms` }}
+                className="w-full rounded-md border border-sakura/60 bg-sakura-wash px-2 py-2.5 motion-safe:animate-[swap-in_var(--duration-fast)_var(--ease-out)_both] sm:px-3"
+                style={{ animationDelay: `calc(${i} * var(--duration-stagger))` }}
               >
                 <p className="font-mono text-[11px] font-medium text-foreground sm:text-[12.5px]">
                   {/* a zero-width space lets Clock.fixed(t0) break after the dot on phones */}
