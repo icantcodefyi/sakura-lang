@@ -3,7 +3,7 @@
 // chooses a host from data.
 
 import std/http.{Http}
-import std/request.{Get, Request}
+import std/request.{Get, Payload, Request}
 import std/response.{HttpError, Response}
 import std/url.{Url}
 
@@ -24,6 +24,16 @@ pub fn session() -> List<Request> {
     fetch_request("VAC-12"),
     create_request("VAC-12", "Second intake of the same vacuum"),
   ]
+}
+
+/// A response body as text. Since 1.0.0-beta.1 `Response.body` is a `Payload`;
+/// a body that is not UTF-8 reads as "" (callers then fail to decode it).
+pub fn body_text(r: Response) -> String {
+  match r.body {
+    Payload.Empty => "",
+    Payload.Text(s) => s,
+    Payload.Bytes(b) => String.from_bytes(b).unwrap_or(""),
+  }
 }
 
 /// Sends each request in order and keeps every response.

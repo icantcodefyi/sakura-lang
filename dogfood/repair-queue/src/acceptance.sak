@@ -3,13 +3,14 @@
 // the response body into its record and inspects the database afterwards.
 
 import std/json.{DecodeError}
-import std/request.{Delete, Get, Put, Request}
+import std/request.{Delete, Get, Payload, Put, Request}
 import std/response.{Response, Status}
 import std/router.{Router}
 import std/sql.{Sql, SqlError}
 import std/url.{Url}
 
 import repair_queue/api.{ErrorView, ListView, TicketView, app}
+import repair_queue/client.{body_text}
 import repair_queue/policy
 import repair_queue/policy.{Description, InProgress, Intake, TicketId, Waiting}
 import repair_queue/store
@@ -32,18 +33,18 @@ type CreateBodyRaw = { id: String, description: String }
 fn get(path: String) -> Response ! {Sql} { send(Request.of(Get, Url.from(path))) }
 
 fn put(path: String, body: String) -> Response ! {Sql} {
-  send(Request { ..Request.of(Put, Url.from(path)), body })
+  send(Request { ..Request.of(Put, Url.from(path)), body: Payload.Text(body) })
 }
 
 fn move(id: String, expected: String, state: String) -> Response ! {Sql} {
   put("/tickets/{id}/state", "\{\"state\":\"{state}\",\"expected\":\"{expected}\"\}")
 }
 
-fn ticket(r: Response) -> TicketView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+fn ticket(r: Response) -> TicketView ! {Fail<DecodeError>} { Json.decode(body_text(r))? }
 
-fn problem(r: Response) -> ErrorView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+fn problem(r: Response) -> ErrorView ! {Fail<DecodeError>} { Json.decode(body_text(r))? }
 
-fn listing(r: Response) -> ListView ! {Fail<DecodeError>} { Json.decode(r.body)? }
+fn listing(r: Response) -> ListView ! {Fail<DecodeError>} { Json.decode(body_text(r))? }
 
 fn status(code: Int) -> Status
   requires code >= 100 && code <= 599
@@ -444,9 +445,9 @@ test "25 a simulated SqlError yields a generic 500 without paths or SQL" {
     ] {
       expect_eq(r.status, status(500))
       expect_eq(problem(r), ErrorView { code: "internal", message: "internal error" })
-      expect(!String.contains(r.body, "sqlite"))
-      expect(!String.contains(r.body, "/srv"))
-      expect(!String.contains(r.body, "select"))
+      expect(!String.contains(body_text(r), "sqlite"))
+      expect(!String.contains(body_text(r), "/srv"))
+      expect(!String.contains(body_text(r), "select"))
     }
   }
 }

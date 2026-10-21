@@ -28,11 +28,11 @@ fn statuses(rs: List<Response>) -> List<Int> { List.map(rs, fn(r) { r.status }) 
 test "cassette: the client create/read/conflict sequence replays offline" {
   let rs = replay()
   expect_eq(statuses(rs), [201, 200, 409])
-  let created: TicketView = Json.decode(rs[0].map(fn(r) { r.body }).unwrap_or(""))?
+  let created: TicketView = Json.decode(rs[0].map(client.body_text).unwrap_or(""))?
   expect_eq((created.id, created.station, created.state), ("VAC-12", "intake", "waiting"))
-  let read: TicketView = Json.decode(rs[1].map(fn(r) { r.body }).unwrap_or(""))?
+  let read: TicketView = Json.decode(rs[1].map(client.body_text).unwrap_or(""))?
   expect_eq(read, created)
-  let conflict: ErrorView = Json.decode(rs[2].map(fn(r) { r.body }).unwrap_or(""))?
+  let conflict: ErrorView = Json.decode(rs[2].map(client.body_text).unwrap_or(""))?
   expect_eq(conflict.code, "duplicate")
 }
 
@@ -43,13 +43,13 @@ test "cassette: the actual router gives the recorded response records" {
     let live = List.map(client.session(), fn(req) { Router.handle(app(), req) })
     expect_eq(statuses(live), statuses(recorded))
     for (i, r) in List.enumerate(live) {
-      let want = recorded[i].map(fn(x) { x.body }).unwrap_or("")
+      let want = recorded[i].map(client.body_text).unwrap_or("")
       if i == 2 {
-        let a: ErrorView = Json.decode(r.body)?
+        let a: ErrorView = Json.decode(client.body_text(r))?
         let b: ErrorView = Json.decode(want)?
         expect_eq(a, b)
       } else {
-        let a: TicketView = Json.decode(r.body)?
+        let a: TicketView = Json.decode(client.body_text(r))?
         let b: TicketView = Json.decode(want)?
         expect_eq(a, b)
       }

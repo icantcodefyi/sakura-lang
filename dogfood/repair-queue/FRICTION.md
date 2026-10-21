@@ -141,3 +141,22 @@ what I expected, what happened and how I got past it.
   in `src/main.sak`. No migration was attempted, and none is claimed. I did not set up
   CI, so the js and wasm results are local runs only.
 - **Triage (2026-10-21, §17.294):** process, no toolchain item: §17.291 (3c) runs the programs on `v0.1.0`; Astra's `MIGRATION.md` is written against beta.1's notes when they exist.
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- **Item 1's examples do not compile as written.** `body: Text("s")` gives
+  `V1002 cannot find \`Text\` in this scope; did you mean \`Test\`?`, and a match arm
+  `Bytes(b)` gives `V1007 \`Bytes\` is the builtin type \`Bytes\`, not a value`. What works is
+  `import std/request.{Payload}` and `Payload.Text(s)`, `Payload.Empty`, `Payload.Bytes(b)`.
+  The `V1002` help suggests `Test`, not the import of `Payload`, which is the one hint
+  that would have helped. (Migration-list gap, wording.)
+- **`Response.text`/`Response.json` are not drop-in.** Both take a `limit`, and `text` returns
+  `Untrusted<String>`, which needs `Untrusted.trust(u, reason)` to become a `String`. The list
+  shows `Response.bytes(r, limit)` with its limit but `Response.text` without one, so I first
+  assumed `Response.text(r)`. For tests reading bodies the router itself produced, one
+  `body_text` helper over a `match` was shorter. (Migration-list gap, wording.)
+- The compiler found every `r.body` site (15 `V2001`), so item 1 cannot be missed; the cost
+  is only in learning the replacement's exact form.
+- Not friction: the integration script passes unchanged on the beta (restart persistence,
+  status matrix over curl, the four refusals), and so does the client cassette recorded on
+  0.1.0. Replay hands the body back as a `Payload` the same `match` reads.

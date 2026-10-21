@@ -4,7 +4,7 @@
 # the real listener with `sakura run`, creates a ticket, restarts on the same
 # SQLite file and reads it back, then checks that missing grants are refused.
 #
-# Usage: ./integration.sh   (needs `sakura` 0.1.0 on PATH, curl, lsof; port 8787 free)
+# Usage: ./integration.sh   (needs `sakura` 1.0.0-beta.1 on PATH, curl, lsof; port 8787 free)
 # Everything it writes stays under ./target/integration and is removed at the end.
 set -eu
 
