@@ -195,3 +195,16 @@ Markdown exports. Items are ordered roughly by impact.
 - Triage (2026-10-21, Fable, design §17.292, small things): `init`'s files are by design (the
   templates); the escaped braces are a cosmetic bug, beta.N; the union ordering is by design and
   gets one sentence on the `fmt` page in the sweep.
+
+## 2026-10-21 — Upgrade to 1.0.0-beta.1 (Claude Opus 5.5)
+
+- The migration list predicted no change and none was needed; see MIGRATION.md. Two of
+  this log's beta-blocking items are visibly fixed on the published beta: `Cli.exit` gives
+  1 and 2 on `--target wasm` (was D090, exit 70), and `--batch '..\x'` is refused by
+  `Path.validate` itself.
+- The list is about breaks only, so it does not say which old workarounds are now
+  redundant (`decode_raw`'s `Json.parse` pre-check, the backslash segment check, the
+  `import std/core.{Violation}` now that `Violation` is in the prelude). They stay valid;
+  a reader finds them only by reading the `Fixed` section against their own code.
+- The header's "statuses hold on js only" sentence became false with no compile signal; the
+  only fix is noticing it. Small, but it is the kind of drift an upgrade leaves behind.

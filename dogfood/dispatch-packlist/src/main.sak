@@ -4,13 +4,14 @@
 // Written in a fresh session with no repository checkout; sources were only the
 // installed CLI (`sakura prompt`, `sakura doc`), the public website and BRIEF.md.
 // Built against: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
+// Upgraded to: sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399); see MIGRATION.md.
 //
 // Usage: sakura run -- --batch <dir under data> --format <text|json>
 // Exit status: 0 every file accepted, 1 the batch completed with rejections,
 // 2 invalid arguments. Directory I/O failures and an over-limit batch escape
 // `main` as typed failures (the runtime reports them and exits 1) without a report.
-// On `--target wasm` in 0.1.0, `Cli.exit` is the defect D090 (exit 70), so statuses
-// 1 and 2 hold on the JS target only; see FRICTION.md.
+// The statuses hold on `--target js` and `--target wasm` (on 0.1.0, `Cli.exit` was
+// the WASM defect D090; see FRICTION.md).
 
 import std/cli.{Cli, CliError}
 import std/core.{Violation}
