@@ -189,7 +189,6 @@ fn exe_ending(status: std::process::ExitStatus, stderr: &str) -> String {
     }
 }
 
-/// Compile, link and run `core`: `(ending, stdout, stderr, the stats line)`.
 /// Lower, compile and link corpus program `name` into an executable in `dir`.
 fn build(
     name: &str,
@@ -199,8 +198,18 @@ fn build(
 ) -> Result<PathBuf, String> {
     let m = sakura_lir::lower::lower(core, &sakura_lir::builtin_sigs())
         .map_err(|e| format!("lowering failed: {e}"))?;
+    build_lir(name, opts, &m, dir)
+}
+
+/// Compile and link the LIR of program `name` into an executable in `dir`.
+fn build_lir(
+    name: &str,
+    opts: sakura_codegen_native::Options,
+    m: &sakura_lir::lir::Module,
+    dir: &Path,
+) -> Result<PathBuf, String> {
     let object =
-        sakura_codegen_native::emit(&m, &opts).map_err(|e| format!("codegen failed: {e}"))?;
+        sakura_codegen_native::emit(m, &opts).map_err(|e| format!("codegen failed: {e}"))?;
     let stem = format!(
         "{}{}{}",
         name.replace('/', "-"),
@@ -213,14 +222,20 @@ fn build(
     Ok(exe)
 }
 
+/// Compile, link and run `core`: `(ending, stdout, stderr, the stats line)`.
 fn run_compiled(
     name: &str,
     opts: sakura_codegen_native::Options,
     core: &snapshot::Module,
     dir: &Path,
 ) -> (String, String, String, String) {
+    run_exe(build(name, opts, core, dir))
+}
+
+/// Run a built executable: `(ending, stdout, stderr, the stats line)`.
+fn run_exe(built: Result<PathBuf, String>) -> (String, String, String, String) {
     let fail = |e: String| (e, String::new(), String::new(), String::new());
-    let exe = match build(name, opts, core, dir) {
+    let exe = match built {
         Ok(exe) => exe,
         Err(e) => return fail(e),
     };
@@ -415,6 +430,98 @@ fn the_corpus_runs_clean_under_native_checks() {
         programs.len() - KNOWN_NATIVE.len() - failures.len(),
         programs.len() - KNOWN_NATIVE.len()
     );
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+/// The `m5-stress` set (plan M5 §4, research/12 §7 item 5) in corpus programs: retained shared
+/// subtrees, nested handler state, callback re-entry, cancellation at suspensions, late handle
+/// completions, finalizers, shutdown while pending, reuse-token abandonment at a defect, nested
+/// `Option`s and deep iterative destruction. Allocation failure at each site, `Dup` overflow
+/// and handle generation retirement are the runtime's own tests (`runtime/rt/tests`, Miri).
+const M5_STRESS: &[&str] = &[
+    "semantics/reuse_constructor",
+    "semantics/list_retained_version",
+    "semantics/owned_record_retained",
+    "semantics/owned_retained_version",
+    "semantics/handler_state",
+    "semantics/handler_reinstall_fresh_state",
+    "semantics/handler_forwarding",
+    "semantics/handler_callback_context",
+    "semantics/direct_higher_order",
+    "semantics/catch_around_row_polymorphic_call",
+    "semantics/handler_cancel_bound",
+    "semantics/handler_cancel_in_loop",
+    "semantics/handler_cancel_twin",
+    "semantics/channel_cancel_wakes_waiters",
+    "semantics/scope_failure_after_cancelled_sibling",
+    "semantics/task_cancel_finished_noop",
+    "semantics/task_cancel_then_join_is_d095",
+    "semantics/task_cancel_fiber_runs_finalizers",
+    "semantics/cli_exit_runs_finalizers",
+    "semantics/worker_close_finishes_inbox",
+    "semantics/channel_close_drains_then_none",
+    "semantics/reuse_constructor_defect",
+    "semantics/reuse_list_map",
+    "semantics/reuse_list_map_defect",
+    "semantics/deep_recursion_defect",
+    "semantics/nested_options",
+    "semantics/reuse_deep_destruction",
+];
+
+/// Plan M5 §4: the `m5-stress` set compiled natively agrees with its expectation under each
+/// toggle, twins and `--no-direct` by reuse and with reuse stripped (`sakura_lir::reuse::strip`;
+/// the borrow toggle joins with N4), and ends with the evaluator's live objects, which is the
+/// runtime's static baseline (`live 0/0` in the evaluator's report).
+#[test]
+fn the_m5_stress_set_agrees_under_each_toggle() {
+    use sakura_codegen_native::Options;
+    let programs: Vec<Program> = programs()
+        .into_iter()
+        .filter(|p| M5_STRESS.contains(&p.name.as_str()))
+        .collect();
+    assert_eq!(
+        programs.len(),
+        M5_STRESS.len(),
+        "an m5-stress program is missing"
+    );
+    driver();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-stress");
+    std::fs::create_dir_all(&dir).unwrap();
+    let results = big_stack_map(&programs, |p| {
+        let (_, _, _, want) = run_with_stats(&p.core);
+        let lowered = sakura_lir::lower::lower(&p.core, &sakura_lir::builtin_sigs()).unwrap();
+        let mut stripped = lowered.clone();
+        for f in &mut stripped.funcs {
+            sakura_lir::reuse::strip(f);
+        }
+        let mut runs = vec![];
+        for (reuse, m) in [("reuse", &lowered), ("no reuse", &stripped)] {
+            for direct in [true, false] {
+                let name = format!("{}-{}", p.name, reuse.replace(' ', "-"));
+                let opts = Options {
+                    direct,
+                    ..Default::default()
+                };
+                let mode = format!("{reuse}, {}", if direct { "twins" } else { "--no-direct" });
+                runs.push((mode, run_exe(build_lir(&name, opts, m, &dir))));
+            }
+        }
+        (runs, want.live_objects)
+    });
+    let _ = std::fs::remove_dir_all(&dir);
+    let mut failures = vec![];
+    for (p, (runs, live)) in programs.iter().zip(results) {
+        for (mode, (got, stdout, stderr, stats)) in runs {
+            if got != p.ending || stdout != p.stdout {
+                failures.push(format!(
+                    "{} ({mode}): expected {} got {got}\n--- stdout\n{stdout}--- stderr\n{stderr}",
+                    p.name, p.ending
+                ));
+            } else if ownership(&stats).first() != Some(&("live_objects".into(), live)) {
+                failures.push(format!("{} ({mode}): live objects differ: {stats}", p.name));
+            }
+        }
+    }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 

@@ -306,3 +306,37 @@ pub fn token_params(f: &Func) -> HashMap<Var, Shape> {
         }
     }
 }
+
+/// `f` as [`reuse`] found it: each `reuse_reset` its `Drop` again, each `Alloc` allocating, and
+/// no token parameter or edge argument. The `m5-stress` set runs with and without reuse (plan
+/// M5 §4).
+pub fn strip(f: &mut Func) {
+    let params = token_params(f);
+    for b in 0..f.blocks.len() {
+        let target_params: Vec<Vec<Var>> = f.blocks[b]
+            .term
+            .edges()
+            .iter()
+            .map(|(e, lead)| f.blocks[e.block.index()].params[*lead..].to_vec())
+            .collect();
+        let block = &mut f.blocks[b];
+        for i in &mut block.insts {
+            match i {
+                Inst::Builtin { name, args, .. } if name == RESET => *i = Inst::Drop(args[0]),
+                Inst::Alloc { reuse, .. } => *reuse = None,
+                _ => {}
+            }
+        }
+        for (n, ps) in target_params.iter().enumerate() {
+            let e = edge_mut(&mut block.term, n);
+            let mut k = 0;
+            e.args.retain(|_| {
+                k += 1;
+                !params.contains_key(&ps[k - 1])
+            });
+        }
+    }
+    for block in &mut f.blocks {
+        block.params.retain(|p| !params.contains_key(p));
+    }
+}

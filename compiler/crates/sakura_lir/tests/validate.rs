@@ -349,3 +349,28 @@ fn reuse_tokens_are_linear_and_cross_only_direct_calls() {
         rejected(&bad, "crosses a call that may suspend");
     });
 }
+
+/// Plan M5 §4: the `m5-stress` set runs with reuse stripped, so every corpus program must still
+/// validate without it, with no reset or reusing allocation left.
+#[test]
+fn every_corpus_program_validates_with_reuse_stripped() {
+    big_stack(|| {
+        for p in common::programs() {
+            let mut m = lower::lower(&p.core, &sigs()).unwrap();
+            for f in &mut m.funcs {
+                sakura_lir::reuse::strip(f);
+            }
+            assert_eq!(errors(&m), Vec::<String>::new(), "{}", p.name);
+            let left = m
+                .funcs
+                .iter()
+                .flat_map(|f| &f.blocks)
+                .flat_map(|b| &b.insts)
+                .any(|i| {
+                    matches!(i, Inst::Builtin { name, .. } if name == sakura_lir::reuse::RESET)
+                        || matches!(i, Inst::Alloc { reuse: Some(_), .. })
+                });
+            assert!(!left, "{}: reuse left after strip", p.name);
+        }
+    });
+}

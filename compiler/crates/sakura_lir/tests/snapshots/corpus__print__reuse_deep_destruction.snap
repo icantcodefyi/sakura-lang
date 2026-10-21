@@ -1,0 +1,117 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant main::reuse_deep_destruction::L | Nil 16b () | Cons 32b (i64, word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::reuse_deep_destruction, frame 14 slots [%7 word*, %9 word*, %11 i64, %12 word*, %14 bool, %15 word*, %18 word*, %20 word*, %21 word*, %23 i64, %24 word*, %29 i64, %30 word*, %33 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 r: ptr = $string_split(%0, %1)
+    %3 r: i64 = $list_len(%2)
+    %4 lit: i64 = const 50000
+    %5 t: i64 = intmul %3, %4
+    %6 v: ptr = const static main::reuse_deep_destruction::L.Nil
+    call build#2(%5, %6) -> b1()
+  b1(%7 r: ptr):
+    %8 v: ptr = const static main::reuse_deep_destruction::L.Nil
+    call rev#3(%7, %8) -> b2()
+  b2(%9 r: ptr):
+    %10 lit: i64 = const 0
+    dup %9
+    call sum#4(%9, %10) -> b3(%9)
+  b3(%11 r: i64, %12 r: ptr):
+    %13 s: ptr = show %11
+    perform std::console::Console.print(%13) -> b4(%12)
+  b4(%14 r: unit, %15 r: ptr):
+    %16 box: word = box %14
+    drop %16
+    %17 v: ptr = const static main::reuse_deep_destruction::L.Nil
+    call rev#3(%15, %17) -> b5()
+  b5(%18 r: ptr):
+    %19 v: ptr = const static main::reuse_deep_destruction::L.Nil
+    dup %18
+    call rev#3(%18, %19) -> b6(%18)
+  b6(%20 r: ptr, %21 r: ptr):
+    %22 lit: i64 = const 0
+    call sum#4(%21, %22) -> b7(%20)
+  b7(%23 r: i64, %24 r: ptr):
+    %25 s: ptr = show %23
+    %26 lit: ptr = const str 2
+    %27 s: ptr = concat %25, %26
+    drop %26
+    %28 lit: i64 = const 0
+    call sum#4(%24, %28) -> b8(%27)
+  b8(%29 r: i64, %30 s: ptr):
+    %31 s: ptr = show %29
+    %32 s: ptr = concat %30, %31
+    drop %31
+    perform std::console::Console.print(%32) -> b9()
+  b9(%33 r: unit):
+    %34 box: word = box %33
+    %35 unbox: unit = unbox %34
+    drop %34
+    ret %35
+
+fn $entry#1 top -> unit ; main::reuse_deep_destruction, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn build#2 top -> ptr ; main::reuse_deep_destruction, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 n: i64, %1 acc: ptr):
+    jump b1(%0, %1)
+  b1(%2 n: i64, %3 acc: ptr):
+    %4 lit: i64 = const 0
+    %5 t: bool = eq.int %2, %4
+    if %5 then b2(%2, %3) else b3(%2, %3)
+  b2(%6 n: i64, %7 acc: ptr):
+    ret %7
+  b3(%8 n: i64, %9 acc: ptr):
+    %10 lit: i64 = const 1
+    %11 t: i64 = intsub %8, %10
+    %12 r: ptr = alloc main::reuse_deep_destruction::L.Cons(%8, %9)
+    jump b1(%11, %12)
+
+fn rev#3 top -> ptr ; main::reuse_deep_destruction, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 l: ptr, %1 acc: ptr):
+    jump b1(%0, %1)
+  b1(%2 l: ptr, %3 acc: ptr):
+    %4 tag: i64 = tag %2 ctor main::reuse_deep_destruction::L
+    switch %4 0 => b2(%2, %3) 1 => b3(%2, %3)
+  b2(%5 l: ptr, %6 acc: ptr):
+    drop %5
+    ret %6
+  b3(%7 l: ptr, %8 acc: ptr):
+    %9 p: i64 = proj %7.0 main::reuse_deep_destruction::L.Cons
+    %10 p: word = proj %7.1 main::reuse_deep_destruction::L.Cons
+    %14 token: word = $reuse_reset(%7)
+    %11 lit: i64 = const 1
+    %12 t: i64 = intadd %9, %11
+    %13 r: ptr = alloc main::reuse_deep_destruction::L.Cons(%12, %8) reuse %14
+    jump b1(%10, %13)
+
+fn sum#4 top -> i64 ; main::reuse_deep_destruction, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 l: ptr, %1 acc: i64):
+    jump b1(%0, %1)
+  b1(%2 l: ptr, %3 acc: i64):
+    %4 tag: i64 = tag %2 ctor main::reuse_deep_destruction::L
+    switch %4 0 => b2(%2, %3) 1 => b3(%2, %3)
+  b2(%5 l: ptr, %6 acc: i64):
+    drop %5
+    ret %6
+  b3(%7 l: ptr, %8 acc: i64):
+    %9 p: i64 = proj %7.0 main::reuse_deep_destruction::L.Cons
+    %10 p: word = proj %7.1 main::reuse_deep_destruction::L.Cons
+    drop %7
+    %11 t: i64 = intadd %8, %9
+    jump b1(%10, %11)

@@ -1,0 +1,33 @@
+// milestone: M3
+// covers: plan m5-native.md §4 (the m5-stress set: deep iterative destruction); design
+// §17.176 (3) (a cons cell rebuilt in the arm that took it apart reuses its storage)
+
+type L = Nil | Cons(Int, L)
+
+fn build(n: Int, acc: L) -> L { if n == 0 { acc } else { build(n - 1, Cons(n, acc)) } }
+
+// Each cell is taken apart and one is built in the same arm: unique, so rebuilt in place.
+fn rev(l: L, acc: L) -> L {
+  match l {
+    Nil => acc,
+    Cons(x, t) => rev(t, Cons(x + 1, acc)),
+  }
+}
+
+fn sum(l: L, acc: Int) -> Int {
+  match l {
+    Nil => acc,
+    Cons(x, t) => sum(t, acc + x),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ",")) * 50000
+  let l = build(n, Nil)
+  let r = rev(l, Nil)
+  Console.print("{sum(r, 0)}")
+  // A version kept while another is built from it: both are destroyed whole at the end.
+  let kept = rev(r, Nil)
+  let again = rev(kept, Nil)
+  Console.print("{sum(kept, 0)} {sum(again, 0)}")
+}

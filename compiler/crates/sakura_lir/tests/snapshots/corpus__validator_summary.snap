@@ -244,6 +244,7 @@ semantics/response_status_json_rejects_code: 6 funcs, 24 blocks, 0 dup, 4 drop, 
 semantics/result_ok_err: 12 funcs, 62 blocks, 13 dup, 43 drop, valid
 semantics/reuse_constructor: 8 funcs, 54 blocks, 6 dup, 37 drop, valid
 semantics/reuse_constructor_defect: 3 funcs, 10 blocks, 0 dup, 4 drop, valid
+semantics/reuse_deep_destruction: 5 funcs, 24 blocks, 2 dup, 7 drop, valid
 semantics/reuse_list_map: 8 funcs, 36 blocks, 11 dup, 32 drop, valid
 semantics/reuse_list_map_defect: 6 funcs, 32 blocks, 6 dup, 13 drop, valid
 semantics/router_matches_through_urlpattern: 104 funcs, 1419 blocks, 232 dup, 796 drop, valid

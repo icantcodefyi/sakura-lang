@@ -237,10 +237,21 @@ path in place: 26/23 → 216/213 attempts/hits on WASM (the 20 ascending inserti
 spine, 190 more resets). **Reading:** `bench/programs/rbtree` rebuilds through `balance(c,
 ins(l, k), y, r)`, a separate def, so its path still copies (the token would be a call
 argument, which §17.176 (3) excludes); only `balance`'s red-red arms pair their inner node:
-1,010/1,009 → 1,107/1,106. **Not done in this slice:** the `sieve`/`nbody`/`rbtree` timing
-deltas (advisory, at the first quiet window); the §17.173 sanitizer lanes with the `m5-stress`
-set; and `rt/tests/fixtures/abi/1.17.0/`, which is captured from the first release that ships
-1.17.0. AI implementation: Claude Opus 5.5; the human
+1,010/1,009 → 1,107/1,106. **The `m5-stress` set (2026-10-22):** `M5_STRESS` in
+`sakura_host_native/tests/corpus.rs` names 27 corpus programs for research/12 §7 item 5's cases
+(retained shared subtrees, nested handler state, callback re-entry, cancellation at
+suspensions, late completions, finalizers, shutdown while pending, a defect between a reset and
+its `Alloc` and inside `List.map`, nested `Option`s, and the new `reuse_deep_destruction`: a
+100,000-cell list rebuilt in place and destroyed); `the_m5_stress_set_agrees_under_each_toggle`
+compiles each natively with twins and `--no-direct`, with reuse and with it stripped
+(`reuse::strip`; the borrow toggle joins with N4), and holds the ending, stdout and the
+evaluator's live objects (its static baseline) in all four. Allocation failure at each site,
+`Dup` overflow and handle generation retirement are `runtime/rt`'s own tests. Being corpus
+programs, the set runs in every §17.173 lane already: ASan + LSan over the in-process corpus,
+Memcheck over the compiled corpus and `--native-checks` (`native-sanitizers.yml`, `ci.yml`).
+**Not done in this slice:** the `sieve`/`nbody`/`rbtree` timing deltas (advisory, at the first
+quiet window); and `rt/tests/fixtures/abi/1.17.0/`, which is captured from the first release
+that ships 1.17.0. AI implementation: Claude Opus 5.5; the human
 contributor owns acceptance.
 
 **N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
@@ -508,7 +519,8 @@ commit contains N3 and row M; "second" is the first after it that also contains 
 | Checked lowering `--native-checks` | both A targets | every generated load/store/bulk copy against the allocator's shadow; frame slots, globals; poison on free and token consumption | generated out-of-bounds load/store |
 
 Plus the `m5-stress` fixture set (research/12 §7 item 5) under direct/reuse/borrow toggles with the
-live-object baseline asserted. The exit wording is "runtime: Miri and ASan/LSan; generated code:
+live-object baseline asserted (`M5_STRESS`, `sakura_host_native/tests/corpus.rs`; the borrow
+toggle with N4). The exit wording is "runtime: Miri and ASan/LSan; generated code:
 Memcheck with allocator annotations and the checked lowering", never "full ASan". The first
 three lanes and their controls run in `native-sanitizers.yml` (green on run 39472738215); the
 checked lowering runs in `ci.yml`'s native job.

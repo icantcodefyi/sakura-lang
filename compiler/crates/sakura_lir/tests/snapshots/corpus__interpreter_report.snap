@@ -244,6 +244,7 @@ semantics/response_status_json_rejects_code: D020, 1 allocated, 0 dup, 1 drop, p
 semantics/result_ok_err: ok, 43 allocated, 53 dup, 96 drop, peak 13, live 0/0
 semantics/reuse_constructor: ok, 61 allocated, 313 dup, 374 drop, peak 25, live 0/0
 semantics/reuse_constructor_defect: D002, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
+semantics/reuse_deep_destruction: ok, 200009 allocated, 599996 dup, 800005 drop, peak 200001, live 0/0
 semantics/reuse_list_map: ok, 338 allocated, 7670 dup, 8008 drop, peak 79, live 0/0
 semantics/reuse_list_map_defect: D002, 50 allocated, 117 dup, 167 drop, peak 11, live 0/0
 semantics/router_matches_through_urlpattern: unsupported (builtin string_to_bytes)
