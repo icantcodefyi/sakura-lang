@@ -124,6 +124,12 @@ retains earlier implementation history.
   `dq = d mod (q − 1)` and `qi·q ≡ 1 (mod p)` it fails `Malformed`, on JS and WASM (design
   §17.295 F5). A key with a wrong `qi` used to import and sign, since OpenSSL re-checks its CRT
   result. Fixture `compiler/tests/semantics/crypto_rsa_key_formats.sak`.
+- A lambda that calls a `let`-bound lambda, whose body calls through a lambda of its own
+  (`let f = fn(x) { take(x).map(fn(_) { () }) }`, `let g = fn(s) { f(s) }`), builds and runs;
+  `check` said "no problems" and `run` failed `V9001` "call row has unbound row variable r0"
+  on every target (design §17.295 F6). An internal `V9001` now points at the invalid
+  definition instead of the file's first character. Fixture
+  `compiler/tests/semantics/lambda_calls_lambda_through_result_map.sak`.
 
 ## [1.0.0-beta.1] - 2026-10-21
 

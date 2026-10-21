@@ -915,7 +915,13 @@ impl Analysis {
                 Phase::Internal,
                 format!("Core lowering produced invalid Core: {}", list.join("; ")),
             );
-            if let Some(file) = snapshot.user_files().next() {
+            // At the first invalid def's source when it has one (design §17.295 F6).
+            let at = errors
+                .iter()
+                .find_map(|e| lowered.module.defs.get(e.def?.index())?.pos);
+            if let Some(p) = at {
+                d = d.with_span(Span::primary(p.file, p.offset, p.end));
+            } else if let Some(file) = snapshot.user_files().next() {
                 d = d.with_span(Span::primary(file, 0, 0));
             }
             diagnostics.push(d);

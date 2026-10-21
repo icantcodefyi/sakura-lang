@@ -1,0 +1,13 @@
+// milestone: M3
+// covers: design §17.295 F6, §17.301 row 6
+
+// A `let`-bound lambda is generalized; a second lambda that captures it calls it at the
+// value's own type, so the call row has no row variable of the outer scheme (no `V9001`).
+fn take(x: Int, n: Int) -> Result<Int, String> { if n > x { Err("too many") } else { Ok(n) } }
+
+pub fn main() -> Unit ! {Console} {
+  let f = fn(x, z) { take(x, z + 1).map(fn(_) { () }) }
+  let g = fn(s) { f(s, 1) }
+  Console.print("{f(10, 1)}")
+  Console.print("{g(10)}")
+}

@@ -2171,6 +2171,17 @@ impl<'a, 'p> FnLower<'a, 'p> {
             };
             caps.push(v);
         }
+        // A capture has the type of the value captured, not the local's recorded type: a
+        // let-generalized lambda's local carries its scheme's parameters, which are not this
+        // def's (design §17.295 F6), while the value bound to it has the lambda's own type.
+        let cap_tys: Vec<Ty> = free
+            .iter()
+            .zip(&caps)
+            .map(|(l, a)| match a {
+                Atom::Local(x) => self.b.locals[x.index()].ty.clone(),
+                _ => self.local_ty(*l),
+            })
+            .collect();
         // Schema parameters in scope are captured too.
         caps.extend(self.reps.iter().map(|(_, l)| local(*l)));
         let module = self.l.module_name(self.module);
@@ -2205,8 +2216,8 @@ impl<'a, 'p> FnLower<'a, 'p> {
         };
         let mut captures: Vec<Local> = free
             .iter()
-            .map(|l| {
-                let ty = s.local_ty(*l);
+            .zip(cap_tys)
+            .map(|(l, ty)| {
                 let c = s.b.local(s.body.locals[*l].name.clone(), ty);
                 s.env.insert(*l, local(c));
                 c

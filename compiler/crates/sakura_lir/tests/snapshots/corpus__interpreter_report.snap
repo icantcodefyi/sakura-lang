@@ -158,6 +158,7 @@ semantics/json_decode_int_range: unsupported (builtin json_decode)
 semantics/json_parse_malformed: unsupported (builtin json_decode)
 semantics/json_render_indent: unsupported (builtin json_encode)
 semantics/json_schema_refinement_keywords: unsupported (builtin json_schema)
+semantics/lambda_calls_lambda_through_result_map: ok, 18 allocated, 4 dup, 22 drop, peak 6, live 0/0
 semantics/let_polymorphism: ok, 16 allocated, 2 dup, 18 drop, peak 6, live 0/0
 semantics/line_endings_crlf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0
 semantics/line_endings_lf: ok, 26 allocated, 5 dup, 31 drop, peak 9, live 0/0
