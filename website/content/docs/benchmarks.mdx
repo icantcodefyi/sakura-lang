@@ -20,9 +20,46 @@ this one machine: not a language ranking, and not a speed claim.
   release (design §17.265). Sakura Lang makes no cross-language speed claim.
 </Callout>
 
+## Where Sakura is ahead
+
+The cells of the same files where Sakura beats its comparison, found by rule rather than picked:
+every program whose count is below hand JavaScript's at its largest size, every memory reading
+at least 10% below it, and every compile case inside its budget. A re-bless that loses one drops it.
+Each figure links to its row below.
+
+<BenchWins />
+
+### Fewer instructions than hand-written JavaScript
+
+The mechanism is specific to each program: the `pipeline` stages fuse into one loop, `tokenizer`
+owns the string it consumes, and a `handled` counter compiles to a direct call. It says nothing
+about other programs.
+
+<BenchTable table="winsJs" />
+
+### Less peak memory
+
+<BenchTable table="winsMemory" />
+
+### Compile time inside its budget
+
+<BenchTable table="winsCompile" />
+
+### Beside TypeScript
+
+`bench typescript` checks each program's TypeScript twin with TypeScript 7's native
+`tsc --noEmit` (strict, with `@types/node`) beside `sakura check`, and starts each built program
+beside Node running the twin. It is counted and blessed from `v1.0.0-beta.3` on, in the same run
+as the tables above; until that run is blessed this section has no numbers.
+
+<BenchTable table="typescript" />
+
+<BenchTable table="typescriptStart" />
+
 ## Sakura against hand-written JavaScript
 
-The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs each
+From here on the page holds every program, the misses as they are. The
+[benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs each
 workload written in Sakura Lang and written by hand in JavaScript, the same algorithm in the same
 order, and compares the two on one engine, Node or Bun. A ratio is Sakura's count over hand
 JavaScript's: below 1× Sakura retires fewer instructions, above it more. Design §17.109 sets a

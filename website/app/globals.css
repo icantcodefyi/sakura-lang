@@ -539,6 +539,24 @@ figure.shiki figcaption {
     width var(--duration-fast) var(--ease-smooth-out);
 }
 
+/* A benchmark callout's bar grows from zero as it scrolls into view (components/bench.tsx).
+   Transform only, tied to scroll: nothing moves the layout, and without support it is static. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .bar-grow {
+      transform-origin: left;
+      animation: bar-grow var(--ease-smooth-out) both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 35%;
+    }
+  }
+}
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t-icon-swap > *,
   .t-tabs-pill {

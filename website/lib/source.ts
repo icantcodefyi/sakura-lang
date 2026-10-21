@@ -4,7 +4,14 @@ import { renderPlaceholder } from "fumadocs-core/mdx-plugins/remark-llms.runtime
 import { RELEASE } from "@/lib/release";
 import { site } from "@/lib/site";
 import { diagramMarkdown } from "@/components/docs-diagrams";
-import { chartMarkdown, runMarkdown, tableMarkdown, tables, type TableName } from "@/lib/bench";
+import {
+  chartMarkdown,
+  runMarkdown,
+  tableMarkdown,
+  tables,
+  winsMarkdown,
+  type TableName,
+} from "@/lib/bench";
 
 const docs = defineDocs({
   dir: "content/docs",
@@ -24,6 +31,7 @@ const docs = defineDocs({
           "BenchChart",
           "BenchRun",
           "BenchTable",
+          "BenchWins",
           // docs diagrams (components/docs-diagrams.tsx), printed as Markdown by diagramMarkdown
           "AgentLoop",
           "AuthorityFlow",
@@ -64,6 +72,7 @@ const markdownFor = {
   Step: ({ children }: { children: string }) => children.trim(),
   BenchChart: chartMarkdown,
   BenchRun: runMarkdown,
+  BenchWins: winsMarkdown,
   BenchTable: ({ attributes }: { attributes: Record<string, unknown> }) =>
     tableMarkdown(tables[attributes.table as TableName]),
   ...diagramMarkdown,

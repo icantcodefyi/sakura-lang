@@ -1,14 +1,16 @@
 import Link from "next/link";
-import { envelopeTally, run, targetMedian, targets, times } from "@/lib/bench";
+import { WinCallout } from "@/components/bench";
+import { callouts, envelopeTally, run, targetMedian, targets, times } from "@/lib/bench";
 
-// Three readings of the blessed baseline (lib/bench.ts), each beside its target, so a miss reads
-// as a miss. No cross-language ratio: the envelope is stated as cells met and missed.
+// Where Sakura is ahead in the blessed baseline (lib/bench.ts finds the wins by rule), then the
+// whole picture beside it, so a win never reads as the average: the median against hand JS,
+// the ceilings met and the cross-language envelope, misses stated as misses.
 const within = (e: "node" | "bun") => targets.filter((t) => t[e] <= t.ceiling[e]).length;
 
 const READINGS = [
   {
     value: times(targetMedian.node),
-    label: "median, Sakura over hand-written JS on Node",
+    label: "median over hand-written JS on Node",
     target: `target ≤ ${targetMedian.ceiling.toFixed(1)}×; Bun ${times(targetMedian.bun)}`,
   },
   {
@@ -29,11 +31,12 @@ export function Benchmarks() {
       <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 md:py-32">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <h2 className="max-w-xl font-display text-[clamp(2rem,3.6vw,2.9rem)] leading-[1.04] font-semibold tracking-[-0.03em] text-balance">
-            Measured, not promised.
+            Where Sakura is fast.
           </h2>
           <p className="max-w-sm text-[15px] leading-relaxed text-muted-foreground">
             Instructions retired per call on an {run.cpu}, against the same program written by hand
-            in JavaScript on the same engine. Counts, not times, and short of the targets today.{" "}
+            in JavaScript on the same engine, from the blessed baseline. These are the cells where
+            Sakura is ahead; most are not, and the line below says so.{" "}
             <Link
               href="/docs/benchmarks"
               className="font-medium text-foreground underline decoration-sakura underline-offset-4"
@@ -42,17 +45,26 @@ export function Benchmarks() {
             </Link>
           </p>
         </div>
-        <dl className="mt-14 grid border-t border-border md:grid-cols-3">
+        <div className="mt-14 border-t border-border">
+          <ul className="grid sm:-mx-6 sm:grid-cols-2 lg:grid-cols-4">
+            {callouts.map((w) => (
+              <li
+                key={w.id}
+                className="border-b border-border py-7 last:border-b-0 sm:px-6 sm:nth-[2n]:border-l lg:border-b-0 lg:not-first:border-l"
+              >
+                <WinCallout win={w} href="/docs/benchmarks" />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <dl className="mt-10 grid gap-x-8 gap-y-4 border-t border-border pt-6 sm:grid-cols-3">
           {READINGS.map((r) => (
-            <div
-              key={r.label}
-              className="flex flex-col border-b border-border py-6 md:border-b-0 md:py-8 md:not-first:border-l md:not-first:pl-8 md:not-last:pr-8"
-            >
-              <dt className="mt-3 text-[15px] leading-snug">{r.label}</dt>
-              <dd className="order-first font-display text-[clamp(2.2rem,4vw,3rem)] leading-none font-semibold tracking-[-0.03em] tabular-nums">
+            <div key={r.label} className="flex flex-col">
+              <dt className="text-[13.5px] leading-snug text-muted-foreground">{r.label}</dt>
+              <dd className="order-first font-display text-[1.6rem] leading-tight font-semibold tracking-[-0.02em] tabular-nums">
                 {r.value}
               </dd>
-              <dd className="mt-1 font-mono text-[12.5px] text-faint">{r.target}</dd>
+              <dd className="font-mono text-[12px] text-faint">{r.target}</dd>
             </div>
           ))}
         </dl>
@@ -64,7 +76,7 @@ export function Benchmarks() {
           >
             {run.short}
           </a>
-          , {run.date}, Node {run.engines.node} and Bun {run.engines.bun}.
+          , {run.date}, Node {run.engines.node} and Bun {run.engines.bun}. Counts, not times.
         </p>
       </div>
     </section>

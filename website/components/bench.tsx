@@ -1,10 +1,27 @@
 // The benchmarks page's tables and chart, rendered on the server from lib/bench.ts. The chart is
 // inline SVG with a fixed viewBox per layout (a container query picks wide or narrow, as in
 // docs-diagrams.tsx), so it reserves its height and nothing shifts.
-import { runFacts, tables, targets, targetMedian, times, type TableName } from "@/lib/bench";
+import Link from "next/link";
+import {
+  callouts,
+  runFacts,
+  tables,
+  targets,
+  targetMedian,
+  times,
+  type TableName,
+  type Win,
+} from "@/lib/bench";
 
 export function BenchTable({ table }: { table: TableName }) {
   const t = tables[table];
+  // A suite not yet blessed: its notice, or nothing if a sibling table carries it.
+  if (!t.rows.length)
+    return t.summary ? (
+      <p className="not-prose my-6 border-y border-border py-4 font-mono text-[13px] text-faint">
+        {t.summary}
+      </p>
+    ) : null;
   return (
     <>
       {/* Focusable so a keyboard can scroll a wide table, as Fumadocs' own tables are. */}
@@ -21,8 +38,12 @@ export function BenchTable({ table }: { table: TableName }) {
             </tr>
           </thead>
           <tbody>
-            {t.rows.map((r) => (
-              <tr key={r[0]}>
+            {t.rows.map((r, row) => (
+              <tr
+                key={t.ids?.[row] ?? r[0]}
+                id={t.ids?.[row]}
+                className={t.ids ? "scroll-mt-24 target:bg-sakura-wash" : undefined}
+              >
                 {r.map((c, i) => (
                   <td
                     key={i}
@@ -235,5 +256,73 @@ export function BenchChart() {
         {times(targetMedian.bun)} on Bun, against {targetMedian.ceiling.toFixed(1)}×.
       </figcaption>
     </figure>
+  );
+}
+
+// ---------- The wins ----------
+
+/** Two measured values as bars on one linear scale from zero: Sakura in sakura, the
+ * comparison in a recessive neutral. The numbers are text beside them, so the bars are
+ * hidden from a screen reader. */
+function WinBars({ bars }: { bars: Win["bars"] }) {
+  const top = Math.max(...bars.map((b) => b.value));
+  return (
+    <span className="mt-5 grid grid-cols-[4rem_1fr_auto] items-center gap-x-3 gap-y-2 font-mono text-[12px]">
+      {bars.map((b, i) => (
+        <span key={b.label} className="contents">
+          <span className="text-muted-foreground">{b.label}</span>
+          <span aria-hidden className="h-1.5">
+            <span
+              className={`bar-grow block h-full rounded-full ${i === 0 ? "bg-[var(--chart-node)]" : "bg-muted-foreground/35"}`}
+              style={{ width: `${(b.value / top) * 100}%` }}
+            />
+          </span>
+          <span className="text-right text-foreground tabular-nums">{b.shown}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** One win: the figure, what it says, the measured pair, and a link to its row. */
+export function WinCallout({ win, href = "" }: { win: Win; href?: string }) {
+  return (
+    <Link
+      href={`${href}#${win.id}`}
+      className="group flex h-full flex-col rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-sakura-text"
+    >
+      <span className="font-display text-[clamp(2.2rem,4vw,3rem)] leading-none font-semibold tracking-[-0.03em]">
+        {win.value}
+      </span>
+      <span className="mt-3 text-[15px] leading-snug text-balance">{win.label}</span>
+      <WinBars bars={win.bars} />
+      <span className="mt-auto flex items-baseline gap-2 pt-5 font-mono text-[12px] text-faint">
+        <span className="min-w-0">
+          <code className="text-foreground">{win.subject}</code>, {win.note}
+        </span>
+        <span
+          aria-hidden
+          className="ml-auto text-sakura-text transition-transform duration-250 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-x-1"
+        >
+          →
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/** The benchmarks page's wins: the landing page's callouts, two to a row. */
+export function BenchWins() {
+  return (
+    <div className="not-prose my-8 grid border-t border-border sm:grid-cols-2">
+      {callouts.map((w) => (
+        <div
+          key={w.id}
+          className="border-b border-border py-6 sm:odd:pr-6 sm:even:border-l sm:even:pl-6"
+        >
+          <WinCallout win={w} />
+        </div>
+      ))}
+    </div>
   );
 }

@@ -9,6 +9,11 @@ retains earlier implementation history.
 
 ### Added
 
+- `bench typescript` counts `sakura check` beside TypeScript 7's `tsc --noEmit` on each
+  benchmark program's TypeScript twin and two generated packages, and a built program's cold
+  start beside Node running the twin. It is blessed from `v1.0.0-beta.3`; the website shows it
+  only then. The benchmarks page and the landing page now lead with the blessed cells where
+  Sakura is ahead, found by rule, beside the full results.
 - Draft semantics chapters in `docs/spec/`: evaluation and values, types and refinements,
   effects and handlers, errors and defects, concurrency, and modules and imports. Each labelled
   rule cites a checked-in fixture; behaviour without a fixture, and every place design and the

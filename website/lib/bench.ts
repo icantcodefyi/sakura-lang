@@ -1,5 +1,5 @@
 import "server-only";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { site } from "@/lib/site";
 
@@ -20,6 +20,7 @@ type Cell = {
   instructions: number;
   instruction_spread: number;
   process_instructions?: number[];
+  process_counters?: { one: { rss_bytes: number } }[];
   median_ms: number;
   p95_ms?: number;
   budget_ms?: number | null;
@@ -115,6 +116,8 @@ export type Table = {
   head: string[];
   /** `r` right-aligns a numeric column. */
   align: ("l" | "r")[];
+  /** Each row's anchor, for links from the wins band and the landing page. */
+  ids?: string[];
   /** Columns whose cells are code (program names). */
   code?: number[];
   rows: string[][];
@@ -396,7 +399,328 @@ function envelopeTable(): Table {
   };
 }
 
+// ---------- Wins ----------
+// Every cell of the same files where Sakura is ahead of its comparison, found by rule, not
+// picked: a re-bless that loses a win drops it here and on the landing page.
+
+const MIB = 2 ** 20;
+const mib = (b: number) => `${(b / MIB).toFixed(1)} MiB`;
+/** A cell's peak RSS over its one-call processes: one call each side, whatever `calls` was. */
+const oneCallRss = (c: Cell) => Math.max(...(c.process_counters ?? []).map((p) => p.one.rss_bytes));
+/** Below this a memory ratio is within run-to-run noise and not called a win. */
+const MEMORY_MARGIN = 0.9;
+
+const sizesOf = (run: Run, program: string) =>
+  [...new Set(run.results.filter((c) => c.program === program).map((c) => c.size))].toSorted(
+    (a, b) => a - b,
+  );
+
+export type Win = {
+  /** The row's anchor on the benchmarks page. */
+  id: string;
+  /** `3.46×` */
+  value: string;
+  /** What the value says, completing a sentence after it. */
+  label: string;
+  subject: string;
+  /** The measured pair, Sakura first: the callout's two bars. */
+  bars: [sakura: Bar, other: Bar];
+  note: string;
+};
+export type Bar = { label: string; value: number; shown: string };
+
+type JsWin = {
+  program: string;
+  engine: "node" | "bun";
+  n: number;
+  sakura: Cell;
+  hand: Cell;
+  ratio: number;
+  everySize: boolean;
+  wallAgrees: boolean;
+};
+const ENGINE = { node: "Node", bun: "Bun" } as const;
+
+const jsWins: JsWin[] = largest(js)
+  .flatMap(([program, n]) =>
+    (["node", "bun"] as const).map((engine) => {
+      const sakura = get(jsCells, program, "sakura", engine, n)!;
+      const hand = get(jsCells, program, "js", engine, n)!;
+      return {
+        program,
+        engine,
+        n,
+        sakura,
+        hand,
+        ratio: sakura.instructions / hand.instructions,
+        everySize: sizesOf(js, program).every((s) => (ratio(program, s, engine) ?? 2) < 1),
+        wallAgrees: sakura.median_ms < hand.median_ms,
+      };
+    }),
+  )
+  .filter((w) => w.ratio < 1)
+  .toSorted((a, b) => (a.engine === b.engine ? a.ratio - b.ratio : a.engine === "node" ? -1 : 1));
+
+const jsWinId = (w: Pick<JsWin, "program" | "engine">) =>
+  `win-${w.program.replaceAll(/[^a-z0-9]+/g, "-")}-${w.engine}`;
+
+function winsJsTable(): Table {
+  return {
+    head: ["Program", "engine", "n", "Sakura", "hand JS", "ratio", "every size", "wall time"],
+    align: ["l", "l", "r", "r", "r", "r", "l", "l"],
+    code: [0],
+    ids: jsWins.map(jsWinId),
+    rows: jsWins.map((w) => [
+      w.program,
+      w.engine === "bun" ? "Bun (advisory)" : "Node",
+      grouped(w.n),
+      count(w.sakura.instructions),
+      count(w.hand.instructions),
+      times(w.ratio),
+      w.everySize ? "yes" : "no",
+      w.wallAgrees ? "faster" : "slower",
+    ]),
+    summary: `${jsWins.filter((w) => w.engine === "node").length} programs retire fewer instructions per call than their hand-written JavaScript twin on Node at the largest size, and ${jsWins.filter((w) => w.engine === "bun").length} on Bun. The last column is the wall time of the same cells, on a loaded host: direction only, and where it disagrees with the count it says so.`,
+  };
+}
+
+type MemoryWin = {
+  program: string;
+  backend: "js" | "wasm";
+  n: number;
+  sakura: number;
+  hand: number;
+};
+const memoryWins: MemoryWin[] = [
+  ...largest(js).map(([program, n]) => ({
+    program,
+    backend: "js" as const,
+    n,
+    sakura: oneCallRss(get(jsCells, program, "sakura", "node", n)!),
+    hand: oneCallRss(get(jsCells, program, "js", "node", n)!),
+  })),
+  ...largest(wasm).map(([program, n]) => ({
+    program,
+    backend: "wasm" as const,
+    n,
+    sakura: oneCallRss(get(wasmCells, program, "sakura", "node", n)!),
+    hand: oneCallRss(get(wasmCells, program, "js", "node", n)!),
+  })),
+]
+  .filter((w) => w.sakura / w.hand < MEMORY_MARGIN)
+  .toSorted((a, b) => a.sakura / a.hand - b.sakura / b.hand);
+const memoryWinId = (w: MemoryWin) =>
+  `memory-${w.program.replaceAll(/[^a-z0-9]+/g, "-")}-${w.backend}`;
+
+function winsMemoryTable(): Table {
+  return {
+    head: ["Program", "backend", "n", "Sakura", "hand JS", "ratio"],
+    align: ["l", "l", "r", "r", "r", "r"],
+    code: [0],
+    ids: memoryWins.map(memoryWinId),
+    rows: memoryWins.map((w) => [
+      w.program,
+      w.backend === "wasm" ? "WebAssembly" : "JavaScript",
+      grouped(w.n),
+      mib(w.sakura),
+      mib(w.hand),
+      times(w.sakura / w.hand),
+    ]),
+    summary: `Peak resident memory of a fresh Node process that makes one call, the highest of the cell's five, against the same for hand JavaScript; listed when at least 10% lower. A WebAssembly program keeps its data in linear memory rather than in JavaScript objects; the same cells retire many more instructions (see the WebAssembly table).`,
+  };
+}
+
+type CompileWin = {
+  case: string;
+  lines: number;
+  p95: number;
+  budget: number;
+  target?: number | null;
+};
+const compileWins: CompileWin[] = compile.results
+  .filter((c) => c.budget_ms != null && (c.p95_ms ?? c.median_ms) <= c.budget_ms)
+  .map((c) => ({
+    case: c.program,
+    lines: c.size,
+    p95: c.p95_ms ?? c.median_ms,
+    budget: c.budget_ms!,
+    target: c.target_ms,
+  }))
+  .toSorted((a, b) => b.budget / b.p95 - a.budget / a.p95);
+const targetMissed = (w: CompileWin) => w.target != null && w.p95 > w.target;
+
+function winsCompileTable(): Table {
+  return {
+    head: ["Case", "lines", "p95", "budget", "headroom", "target"],
+    align: ["l", "r", "r", "r", "r", "l"],
+    code: [0],
+    ids: compileWins.map((w) => `compile-${w.case.replaceAll("_", "-")}`),
+    rows: compileWins.map((w) => [
+      w.case,
+      grouped(w.lines),
+      `${ms(w.p95)} ms`,
+      `${ms(w.budget)} ms`,
+      times(w.budget / w.p95),
+      w.target == null ? DASH : `${ms(w.target)} ms, ${targetMissed(w) ? "missed" : "met"}`,
+    ]),
+  };
+}
+
+// ---------- Sakura beside TypeScript ----------
+// `bench typescript` (bench/README.md): blessed from v1.0.0-beta.3 on. Shown only when the
+// blessed file is of the same commit as the JavaScript baseline; until then the page says so.
+
+const tsPath = join(BENCH, "baselines", "typescript", `${HOST}.json`);
+const tsRun = existsSync(tsPath) ? read<Run>("baselines", "typescript", `${HOST}.json`) : undefined;
+export const typescript = tsRun?.meta.commit === js.meta.commit ? tsRun : undefined;
+if (typescript?.results.some((c) => !c.checksum_ok)) throw new Error("a TypeScript cell failed");
+const tsPrograms = typescript
+  ? [...new Set(typescript.results.filter((c) => c.engine === "check").map((c) => c.program))]
+  : [];
+export const NEXT_RELEASE =
+  "Measured at the next release (v1.0.0-beta.3): shown here once that run is blessed.";
+
+function typescriptTable(): Table {
+  const v = (p: string, variant: string, engine: string) =>
+    typescript?.results.find(
+      (c) => c.program === p && c.variant === variant && c.engine === engine,
+    );
+  return {
+    head: ["Program", "lines", "sakura check", "uncached", "tsc --noEmit", "tsc over Sakura"],
+    align: ["l", "r", "r", "r", "r", "r"],
+    code: [0],
+    ids: tsPrograms.map((p) => `typescript-${p.replaceAll(/[^a-z0-9]+/g, "-")}`),
+    rows: tsPrograms.map((p) => {
+      const s = v(p, "sakura", "check")!;
+      const u = v(p, "sakura_uncached", "check");
+      const t = v(p, "tsc", "check")!;
+      return [
+        p,
+        grouped(s.size),
+        count(s.instructions),
+        cellOr(u),
+        count(t.instructions),
+        times(t.instructions / s.instructions),
+      ];
+    }),
+    summary: typescript
+      ? `Instructions per process of a clean check, the median of ${typescript.meta.flags.processes} fresh processes. TypeScript ${typescript.meta.engines.typescript}'s native compiler checks on several threads, and the count is their sum.`
+      : NEXT_RELEASE,
+  };
+}
+
+function typescriptStartTable(): Table {
+  const programs = typescript
+    ? [...new Set(typescript.results.filter((c) => c.engine === "start").map((c) => c.program))]
+    : [];
+  const v = (p: string, variant: string) =>
+    typescript!.results.find(
+      (c) => c.program === p && c.variant === variant && c.engine === "start",
+    );
+  return {
+    head: ["Program", "Sakura, built", "Node, main.ts", "ratio", "esbuild bundle", "ratio"],
+    align: ["l", "r", "r", "r", "r", "r"],
+    code: [0],
+    rows: programs.map((p) => {
+      const s = v(p, "sakura")!;
+      const n = v(p, "node_ts")!;
+      const e = v(p, "esbuild")!;
+      return [
+        p,
+        count(s.instructions),
+        count(n.instructions),
+        times(s.instructions / n.instructions),
+        count(e.instructions),
+        times(s.instructions / e.instructions),
+      ];
+    }),
+    summary: typescript
+      ? "Instructions of a fresh Node process that loads the program, prints run(n) for n from 0 to 3 and exits: Sakura's build output, the TypeScript twin through Node's own type stripping, and the same twin bundled first by esbuild. A ratio is Sakura's count over the other's."
+      : undefined, // the check table above carries the notice
+  };
+}
+
+// ---------- The callouts ----------
+
+const jsCallout = (w: JsWin): Win => ({
+  id: jsWinId(w),
+  value: times(1 / w.ratio),
+  label: "fewer instructions per call than the hand-written JavaScript",
+  subject: w.program,
+  bars: [
+    { label: "Sakura", value: w.sakura.instructions, shown: count(w.sakura.instructions) },
+    { label: "hand JS", value: w.hand.instructions, shown: count(w.hand.instructions) },
+  ],
+  note: `${ENGINE[w.engine]}, n = ${grouped(w.n)}${w.everySize ? ", and at every size counted" : ""}`,
+});
+
+const memoryCallout = (w: MemoryWin): Win => ({
+  id: memoryWinId(w),
+  value: times(w.hand / w.sakura),
+  label: "less peak memory than the hand-written JavaScript",
+  subject: w.program,
+  bars: [
+    { label: "Sakura", value: w.sakura, shown: mib(w.sakura) },
+    { label: "hand JS", value: w.hand, shown: mib(w.hand) },
+  ],
+  note: `${w.backend === "wasm" ? "WebAssembly" : "JavaScript backend"}, one call on Node, n = ${grouped(w.n)}`,
+});
+
+const compileCallout = (w: CompileWin): Win => ({
+  id: `compile-${w.case.replaceAll("_", "-")}`,
+  value: `${ms(w.p95)} ms`,
+  label: `p95 to ${w.case.startsWith("build") ? "build" : "check"} ${grouped(w.lines)} lines`,
+  subject: w.case,
+  bars: [
+    { label: "p95", value: w.p95, shown: `${ms(w.p95)} ms` },
+    { label: "budget", value: w.budget, shown: `${ms(w.budget)} ms` },
+  ],
+  note: `${times(w.budget / w.p95)} inside its budget`,
+});
+
+/** `sakura check` against `tsc --noEmit` on the generated 10,000-line package, once blessed. */
+const tsCallout = (): Win[] => {
+  const cell = (variant: string) =>
+    typescript?.results.find(
+      (c) => c.program === "corpus_10k" && c.variant === variant && c.engine === "check",
+    );
+  const s = cell("sakura");
+  const t = cell("tsc");
+  if (!s || !t || t.instructions <= s.instructions) return [];
+  return [
+    {
+      id: "typescript-corpus-10k",
+      value: times(t.instructions / s.instructions),
+      label: "fewer instructions to type-check than tsc --noEmit",
+      subject: "corpus_10k",
+      bars: [
+        { label: "Sakura", value: s.instructions, shown: count(s.instructions) },
+        { label: "tsc", value: t.instructions, shown: count(t.instructions) },
+      ],
+      note: `${grouped(s.size)} lines, TypeScript ${typescript!.meta.engines.typescript}`,
+    },
+  ];
+};
+
+/** The landing page's band, best first: instruction wins whose wall time agrees (one of them
+ * yields to the TypeScript check once that is blessed), the compile case with the most
+ * headroom and no missed target, and the largest memory win. */
+const fast = jsWins.filter((w) => w.engine === "node" && w.wallAgrees).map(jsCallout);
+export const callouts: Win[] = [
+  ...[...fast.slice(0, 1), ...tsCallout(), ...fast.slice(1)].slice(0, 2),
+  ...compileWins
+    .filter((w) => !targetMissed(w))
+    .slice(0, 1)
+    .map(compileCallout),
+  ...memoryWins.slice(0, 1).map(memoryCallout),
+];
+
 export const tables = {
+  winsJs: winsJsTable(),
+  winsMemory: winsMemoryTable(),
+  winsCompile: winsCompileTable(),
+  typescript: typescriptTable(),
+  typescriptStart: typescriptStartTable(),
   js: jsTable(),
   wasm: wasmTable(),
   native: nativeTable(),
@@ -458,6 +782,7 @@ export const runFacts: [label: string, value: string, href?: string][] = [
 
 const escape = (s: string) => s.replaceAll("|", "\\|");
 export function tableMarkdown(t: Table) {
+  if (!t.rows.length) return t.summary ? `_${t.summary}_` : "";
   const cell = (s: string, i: number) =>
     t.code?.includes(i) && s !== DASH && !s.includes(" ") ? `\`${s}\`` : escape(s);
   const lines = [
@@ -473,6 +798,14 @@ export const runMarkdown = () =>
     .map(
       ([label, value, href]) =>
         `- **${label}:** ${href ? `[\`${value}\`](${href})` : label === "Node flags" ? `\`${value}\`` : value}`,
+    )
+    .join("\n");
+
+export const winsMarkdown = () =>
+  callouts
+    .map(
+      (w) =>
+        `- **${w.value}** ${w.label}: \`${w.subject}\`, ${w.note} (${w.bars.map((b) => `${b.label} ${b.shown}`).join(", ")}).`,
     )
     .join("\n");
 
