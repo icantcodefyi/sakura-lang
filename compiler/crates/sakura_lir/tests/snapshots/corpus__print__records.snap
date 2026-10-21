@@ -92,7 +92,7 @@ fn promote#2 top -> ptr ; main::records, frame 1 slots [%0 word*]
   b0(%0 u: ptr):
     %1 id: i64 = proj %0.0 main::records::User
     %2 name: word = proj %0.1 main::records::User
-    drop %0
+    %5 token: word = $reuse_reset(%0)
     %3 lit: bool = const true
-    %4 rec: ptr = alloc main::records::User(%1, %2, %3)
+    %4 rec: ptr = alloc main::records::User(%1, %2, %3) reuse %5
     ret %4

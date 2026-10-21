@@ -25,7 +25,7 @@ retains earlier implementation history.
 - **`--target native` names itself experimental and is refused where it is not built** (design
   §17.175 (6), §17.308 (1d)): `sakura build --target native` prints one line on stderr naming
   the target experimental with its layout profile and ABI (`note: \`--target native\` is
-  experimental (profile offset32-v1, ABI 1.16.0)`). A compiler without the `native` feature, or
+  experimental (profile offset32-v1, ABI 1.17.0)`). A compiler without the `native` feature, or
   built for a target other than `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`, accepts
   the value and refuses it with exit 2 and one line naming those two targets (it was clap's
   "invalid value"; `compiler/contracts/cli.txt` gains the value). MCP `compiler_info` lists
@@ -61,8 +61,22 @@ retains earlier implementation history.
   `500` with its `D091` or defect record, and the server keeps answering. A native `main` that
   leaves `Serve` to the runtime now runs instead of exiting 75. Request header names arrive
   lowercased, as `hyper` gives them.
+- **Constructor-site reuse** (design §17.176 (3), plan `m5-native.md` N3; WASM and native):
+  a `match` arm or function that takes a record or a constructor apart and builds one of the
+  same type and constructor in the same block writes the new value into the old object's
+  storage when nothing else holds it (Perceus `reset`/`reuse`). A version still held elsewhere
+  is copied as before and stays intact. Each such site counts in `reuse_attempts` and, when it
+  reuses, in `reuses`, so `bench_counters.txt` changes for `deltablue`, `nbody`, `rbtree` and
+  `shapes`. `--native-checks` checks each reuse token before it is used. JS output and every
+  program's output are unchanged.
 
 ### Changed
+
+- The WASM runtime ABI is 1.17.0 (`sakura_abi_version` `0x011100`; design §17.176 (3), plan
+  `m5-native.md` N3): constructor-site reuse adds two runtime functions internal to the module
+  and counts reuse sites in the existing `stats()` counters; no import, export or layout
+  changes. A host built for ABI 1.16 refuses a 1.17 module with `V8003`; rebuild with the
+  matching compiler. A 1.17 host still runs older modules.
 
 - The website's landing hero is a close-up of a Somei-Yoshino: a trunk on the right in a CC0
   scanned sakura bark (Poly Haven), one limb arching over the copy, and petals falling through

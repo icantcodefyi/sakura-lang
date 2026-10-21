@@ -1,0 +1,70 @@
+// milestone: M3
+// covers: plan m5-native.md N3; design §17.176 (3) (a constructor rebuilt in the arm that took
+// it apart reuses its storage when unique; a retained version is intact)
+
+type P = { x: Int, y: Int }
+
+type Color = Red | Black
+
+type Tree = E | T(Color, Tree, Int, Tree)
+
+fn shift(p: P) -> P { P { x: p.x + 1, y: p.y } }
+
+fn bump(t: Tree) -> Tree {
+  match t {
+    E => E,
+    T(c, l, v, r) => T(c, l, v + 1, r),
+  }
+}
+
+fn ins(t: Tree, k: Int) -> Tree {
+  match t {
+    E => T(Red, E, k, E),
+    T(c, l, y, r) => if k < y { T(c, ins(l, k), y, r) } else { T(c, l, y, ins(r, k)) },
+  }
+}
+
+fn blacken(t: Tree) -> Tree {
+  match t {
+    T(_, l, y, r) => T(Black, l, y, r),
+    E => E,
+  }
+}
+
+fn sum(t: Tree) -> Int {
+  match t {
+    E => 0,
+    T(_, l, v, r) => sum(l) + v + sum(r),
+  }
+}
+
+fn blacks(t: Tree) -> Int {
+  match t {
+    E => 0,
+    T(Black, l, _, r) => 1 + blacks(l) + blacks(r),
+    T(Red, l, _, r) => blacks(l) + blacks(r),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ","))
+
+  // Unique: each rebuilt in place.
+  let p = shift(shift(P { x: n, y: n }))
+  Console.print("record {p.x} {p.y}")
+  var t = E
+  var i = 0
+  while i < 20 {
+    t = blacken(ins(t, i * n))
+    i = i + 1
+  }
+  Console.print("tree {sum(t)} {blacks(t)} {sum(bump(t))}")
+
+  // Retained: the old version is read after the update and is unchanged.
+  let q = P { x: n, y: 7 }
+  let q2 = shift(q)
+  Console.print("kept record {q.x} {q.y} {q2.x} {q2.y}")
+  let old = t
+  let t2 = bump(blacken(t))
+  Console.print("kept tree {sum(old)} {sum(t2)} {blacks(old)}")
+}

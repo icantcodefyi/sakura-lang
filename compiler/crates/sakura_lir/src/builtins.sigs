@@ -106,6 +106,7 @@ match_failure: () -> unit
 option_expect: (ptr, ptr) -> word
 property_run: (i64, ptr, ptr, ptr, i64, i64, i64, ptr) -> unit cps
 random_host: () -> ptr
+reuse_reset: (ptr) -> word
 secret_expose: (ptr) -> word
 secret_wrap: (ptr) -> ptr
 serve_listen: (ptr, ptr) -> unit cps

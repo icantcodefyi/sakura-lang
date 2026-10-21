@@ -96,6 +96,42 @@ impl Rt {
         u
     }
 
+    /// `reuse_reset` (plan M5 N3, design §17.176 (3)): the reuse token for the tuple, record or
+    /// variant `w`, which the caller owns. When no other reference reaches `w`, its children are
+    /// released and its slots zeroed, and `w` itself is the token: an object of its row whose
+    /// slots own nothing, so dropping an unused token frees it. Otherwise `w` is dropped and the
+    /// token is `Unit`. Each call is a reuse attempt; a returned object is a reuse.
+    pub fn reuse_reset(&mut self, w: u32) -> u32 {
+        if !self.reusable(w) {
+            self.drop(w);
+            return UNIT;
+        }
+        debug_assert!(matches!(
+            self.tag(w),
+            tag::TUPLE | tag::RECORD | tag::VARIANT
+        ));
+        let row = self.obj_row(w);
+        let mut head = 0;
+        for i in 0..row.n_slots {
+            if self.owns(&row, i) {
+                self.dec_slot(w + SLOTS + 8 * i, &mut head);
+            }
+        }
+        self.heap.mem.fill(w + SLOTS, 0, 8 * row.n_slots);
+        self.release(head);
+        w
+    }
+
+    /// The block an `Alloc` reusing `token` writes ([`Rt::reuse_reset`]): the token's own
+    /// storage, or a fresh object when it is `Unit`. The compiler pairs a token only with an
+    /// allocation of its row, so the sizes agree.
+    pub fn reuse_or_alloc(&mut self, token: u32, tag: u16, size: u32) -> Res<u32> {
+        if is_ptr(token) {
+            return Ok(token);
+        }
+        self.new_object(tag, size)
+    }
+
     /// `Dup`: one more owner. `D092` instead of wrapping at 2^32 − 1.
     pub fn dup(&mut self, w: u32) -> Res<()> {
         if !self.counted(w) {

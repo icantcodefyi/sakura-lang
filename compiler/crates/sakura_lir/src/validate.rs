@@ -17,7 +17,13 @@
 //! - **ownership**: simulating reference counts through each block, every owned reference is
 //!   consumed or dropped exactly once on each outgoing edge and at every `Return`/`Fail`, and
 //!   nothing is used after it was consumed. Because blocks pass every live value explicitly,
-//!   checking each block's edges is checking every path.
+//!   checking each block's edges is checking every path;
+//! - **reuse tokens** (plan M5 N3, design §17.176 (3)): a `reuse_reset` takes an object whose
+//!   shape a `Proj` of this block names, and its token is consumed by exactly one `Alloc` of that
+//!   shape in the same block, or dropped; it is never another instruction's operand, an edge
+//!   argument, a call's or a `try`'s value, returned or failed with. A block has no suspension,
+//!   call or `perform` before its terminator, and a defect's landing pad drops the token as the
+//!   reference it is (the emptied object, or `Unit`), so every exit frees it.
 //!
 //! Under `--layout=niche` (not enabled in M4) a payload projection of `Option` is rejected
 //! (ABI §4.3); the flag is [`crate::lir::Module`]'s `niche` field.
@@ -26,6 +32,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::layout::{EntryKind, Slot};
 use crate::lir::*;
+use crate::reuse::RESET;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Error {
@@ -106,6 +113,9 @@ struct State {
     regions: Vec<RegionKind>,
     /// The block's [`Inst::Bound`]: its closure, activation, effect and operation.
     bound: Option<(Var, Var, u32, u32)>,
+    /// The shape each variable is projected as in this block, and each live reuse token's.
+    shapes: HashMap<Var, Shape>,
+    tokens: HashMap<Var, Shape>,
 }
 
 impl<'a> Checker<'a> {
@@ -225,6 +235,8 @@ impl<'a> Checker<'a> {
             count: HashMap::new(),
             regions: block.regions.clone(),
             bound: None,
+            shapes: HashMap::new(),
+            tokens: HashMap::new(),
         };
         for &p in &block.params {
             self.define(&mut st, p)?;
@@ -342,6 +354,7 @@ impl<'a> Checker<'a> {
 
     fn inst(&self, st: &mut State, inst: &Inst) -> R {
         use Inst::*;
+        self.tokens(st, inst)?;
         match inst {
             Dup(v) | DupCandidate(v) | Drop(v) => {
                 self.not_id(*v, "is counted")?;
@@ -724,6 +737,44 @@ impl<'a> Checker<'a> {
         Ok(())
     }
 
+    /// The reuse-token rules (module docs) for `inst`, before it runs.
+    fn tokens(&self, st: &mut State, inst: &Inst) -> R {
+        match inst {
+            Inst::Proj { src, shape, .. } => {
+                st.shapes.insert(*src, shape.clone());
+            }
+            Inst::Builtin { dst, name, args } if name == RESET => {
+                let shape = args.first().and_then(|x| st.shapes.get(x));
+                let shape = shape.ok_or("`reuse_reset` of an object no `Proj` here shapes")?;
+                ensure(!matches!(shape, Shape::List), || {
+                    "`reuse_reset` of a list".into()
+                })?;
+                st.tokens.insert(*dst, shape.clone());
+                return Ok(());
+            }
+            Inst::Alloc {
+                shape,
+                reuse: Some(t),
+                ..
+            } => {
+                ensure(st.tokens.get(t) == Some(shape), || {
+                    format!("%{} is not a reuse token of this block for this shape", t.0)
+                })?;
+                st.tokens.remove(t);
+            }
+            Inst::Drop(t) => {
+                st.tokens.remove(t);
+            }
+            _ => {}
+        }
+        for (v, _) in inst.uses() {
+            ensure(!st.tokens.contains_key(&v), || {
+                format!("reuse token %{} is an operand", v.0)
+            })?;
+        }
+        Ok(())
+    }
+
     fn call_args(&self, args: &[Var], params: &[Repr], what: &str) -> R {
         ensure(args.len() == params.len(), || {
             format!(
@@ -740,6 +791,9 @@ impl<'a> Checker<'a> {
     }
 
     fn term(&self, st: &mut State, term: &Term) -> R {
+        if let Some(t) = st.tokens.keys().min() {
+            return Err(format!("reuse token %{} outlives its block", t.0));
+        }
         for (v, u) in term.uses() {
             self.use_var(st, v, u)?;
         }
@@ -862,6 +916,8 @@ impl<'a> Checker<'a> {
                 count: std::mem::take(&mut counts),
                 regions: vec![],
                 bound: None,
+                shapes: HashMap::new(),
+                tokens: HashMap::new(),
             };
             for (&a, &p) in edge.args.iter().zip(&target.params[lead..]) {
                 self.use_var(&mut edge_st, a, Use::Consume)?;

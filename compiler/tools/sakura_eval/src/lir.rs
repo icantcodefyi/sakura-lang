@@ -389,6 +389,59 @@ impl<'m> Vm<'m> {
         Ok(())
     }
 
+    /// `reuse_reset` (plan M5 N3): an object no other reference reaches loses its children and
+    /// is the token itself, keeping the reference `w` held; anything else is dropped for `Unit`.
+    fn reuse_reset(&mut self, w: u32) -> R<u32> {
+        let unique = match Self::index(w).and_then(|i| self.heap.get(i)) {
+            Some(Some(o)) => !o.is_static && o.rc == 1 && matches!(o.body, Body::Slots(..)),
+            _ => false,
+        };
+        if !unique {
+            self.drop_word(w)?;
+            return Ok(UNIT);
+        }
+        let o = self.obj(w)?.clone();
+        let mut children = Vec::new();
+        self.children(&o, &mut children)?;
+        if let Some(Some(Obj {
+            body: Body::Slots(_, _, slots),
+            ..
+        })) = Self::index(w).and_then(|i| self.heap.get_mut(i))
+        {
+            for s in slots.iter_mut() {
+                if matches!(s, Sv::W(_)) {
+                    *s = Sv::W(0);
+                }
+            }
+        }
+        for c in children {
+            self.drop_word(c)?;
+        }
+        Ok(w)
+    }
+
+    /// An `Alloc` into reuse token `t`: the audit that it is an emptied object of the same tag
+    /// that nothing else holds, then the new constructor in its place.
+    fn reuse_into(&mut self, t: u32, (tag, body): (u16, Body)) -> R<()> {
+        let Some(Some(o)) = Self::index(t).and_then(|i| self.heap.get_mut(i)) else {
+            return internal(format!("reuse of a freed token {t:#x}"));
+        };
+        if o.is_static || o.rc != 1 || o.tag != tag {
+            return internal(format!("reuse token {t:#x} is shared or of another class"));
+        }
+        if let (Body::Slots(a, _, old), Body::Slots(b, _, new)) = (&o.body, &body)
+            && (tag == tag::TUPLE || a == b)
+            && old.len() == new.len()
+            && old.iter().all(|s| !matches!(s, Sv::W(w) if *w != 0))
+        {
+            o.body = body;
+            return Ok(());
+        }
+        internal(format!(
+            "reuse token {t:#x} has another layout or live children"
+        ))
+    }
+
     /// `Drop` with the non-recursive destruction worklist (ABI §3.5).
     fn drop_word(&mut self, w: u32) -> R<()> {
         let mut work = vec![w];
@@ -1160,11 +1213,30 @@ impl<'m> Vm<'m> {
                 };
                 self.set(cur, *dst, Val::I(t))
             }
-            Alloc { dst, shape, args } => {
+            Alloc {
+                dst,
+                shape,
+                args,
+                reuse,
+            } => {
                 let vals = args
                     .iter()
                     .map(|&a| self.take(cur, a))
                     .collect::<R<Vec<_>>>()?;
+                let token = match reuse {
+                    Some(t) => Some(self.take_word(cur, *t)?),
+                    None => None,
+                };
+                if let Some(t) = token.filter(|&t| Self::index(t).is_some()) {
+                    let body = match shape {
+                        Shape::Tuple(l) => (tag::TUPLE, Body::Slots(l.0, 0, slots(&vals)?)),
+                        Shape::Record(l) => (tag::RECORD, Body::Slots(l.0, 0, slots(&vals)?)),
+                        Shape::Variant(l, c) => (tag::VARIANT, Body::Slots(l.0, *c, slots(&vals)?)),
+                        Shape::List => return internal("a reuse token for a list"),
+                    };
+                    self.reuse_into(t, body)?;
+                    return self.set(cur, *dst, Val::W(t));
+                }
                 let w = match shape {
                     Shape::List => {
                         let ws = vals
@@ -1354,6 +1426,11 @@ impl<'m> Vm<'m> {
                     self.defect(&code, msg)
                 }
             },
+            Builtin { dst, name, args } if name == sakura_lir::reuse::RESET => {
+                let w = self.take_word(cur, args[0])?;
+                let t = self.reuse_reset(w)?;
+                self.set(cur, *dst, Val::W(t))
+            }
             Builtin { dst, name, args } => {
                 let vals = args
                     .iter()

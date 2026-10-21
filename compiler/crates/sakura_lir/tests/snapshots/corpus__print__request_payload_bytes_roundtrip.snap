@@ -151,8 +151,8 @@ fn echo$Http_send#23 clause std::http::Http.send -> ptr ; main::request_payload_
     drop %7
     %9 status: i64 = proj %6.0 std::response::Response
     %10 headers: word = proj %6.1 std::response::Response
-    drop %6
-    %11 rec: ptr = alloc std::response::Response(%9, %10, %8)
+    %12 token: word = $reuse_reset(%6)
+    %11 rec: ptr = alloc std::response::Response(%9, %10, %8) reuse %12
     ret %11
 
 fn echo$Http_stream#25 clause std::http::Http.stream -> word ; main::request_payload_bytes_roundtrip, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 word*]

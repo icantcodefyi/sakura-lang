@@ -38,8 +38,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %7 xs: ptr = alloc list(%6)
     %8 status: i64 = proj %3.0 std::response::Response
     %9 body: word = proj %3.2 std::response::Response
-    drop %3
-    %10 rec: ptr = alloc std::response::Response(%8, %7, %9)
+    %189 token: word = $reuse_reset(%3)
+    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %189
     %11 lit: ptr = const str 3
     %12 r: ptr = alloc std::http::Matcher.Path(%11)
     %13 tup: ptr = alloc tuple#18(word, word)(%12, %10)
@@ -72,8 +72,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %46 xs: ptr = alloc list(%45)
     %47 status: i64 = proj %38.0 std::response::Response
     %48 body: word = proj %38.2 std::response::Response
-    drop %38
-    %49 rec: ptr = alloc std::response::Response(%47, %46, %48)
+    %190 token: word = $reuse_reset(%38)
+    %49 rec: ptr = alloc std::response::Response(%47, %46, %48) reuse %190
     %50 tup: ptr = alloc tuple#18(word, word)(%42, %49)
     %51 lit: ptr = const str 10
     %52 r: ptr = alloc std::http::Matcher.Path(%51)
@@ -88,8 +88,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %65 xs: ptr = alloc list(%64)
     %66 status: i64 = proj %56.0 std::response::Response
     %67 body: word = proj %56.2 std::response::Response
-    drop %56
-    %68 rec: ptr = alloc std::response::Response(%66, %65, %67)
+    %191 token: word = $reuse_reset(%56)
+    %68 rec: ptr = alloc std::response::Response(%66, %65, %67) reuse %191
     %69 tup: ptr = alloc tuple#18(word, word)(%61, %68)
     %70 xs: ptr = alloc list(%57, %58, %59, %60, %69)
     call scripted#6(%70) -> b6()

@@ -263,8 +263,12 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
             dst,
             shape: s,
             args,
+            reuse,
         } => {
-            format!("{} = alloc {}({})", def(dst), shape(m, s), vars(args))
+            let into = reuse
+                .map(|t| format!(" reuse %{}", t.0))
+                .unwrap_or_default();
+            format!("{} = alloc {}({}){into}", def(dst), shape(m, s), vars(args))
         }
         Proj {
             dst,

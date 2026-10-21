@@ -1323,7 +1323,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x011000, "{name}");
+        assert_eq!(v["abi_version"], 0x011100, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),
@@ -1374,6 +1374,45 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         print("n + List.len(xs) + List.len(ys)")
     );
     assert_eq!(counters("clause", &clause, "4\n"), (3, 1, 0, 0));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan M5 N3 (ABI 1.17.0): each constructor rebuilt in the arm that took it apart is a reuse
+/// attempt, a hit when unique. `reuse_constructor`: 26 resets (2 records, 20 `blacken`s, 1
+/// `bump`, then the retained record, `blacken` of the retained tree and `bump` of its fresh
+/// result); the retained record and tree are the 3 misses (`String.split` counts nothing).
+#[test]
+fn constructor_reuse_counts_its_hits() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("constructor_reuse");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/semantics/reuse_constructor.sak")
+        .canonicalize()
+        .unwrap();
+    let stats = dir.join("stats.jsonl");
+    let out_dir = dir.join("out");
+    let args = [
+        "run",
+        "--target",
+        "wasm",
+        "--out-dir",
+        out_dir.to_str().unwrap(),
+        fixture.to_str().unwrap(),
+    ];
+    let out = sakura_env(&args, &dir, &[("SAKURA_WASM_STATS", &stats)]);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let line = std::fs::read_to_string(&stats).unwrap();
+    let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
+    assert_eq!(
+        (v["reuse_attempts"].as_u64(), v["reuses"].as_u64()),
+        (Some(26), Some(23)),
+        "{v}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

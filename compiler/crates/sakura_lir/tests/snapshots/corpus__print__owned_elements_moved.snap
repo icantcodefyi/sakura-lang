@@ -141,11 +141,11 @@ fn drift#2 top -> ptr ; main::owned_elements_moved, frame 26 slots [%0 word*, %1
     jump b7(%76, %77, %78, %79, %80, %75)
   b14(%85 r: ptr, %86 steps: i64, %87 bs: ptr, %88 i: i64, %89 seen: i64, %90 b: ptr, %91 k: i64, %92 t: i64, %93 v: i64):
     %94 x: i64 = proj %85.0 main::owned_elements_moved::Body
-    drop %85
+    %104 token: word = $reuse_reset(%85)
     %95 t: i64 = intadd %93, %94
     %96 tag: word = proj %90.2 main::owned_elements_moved::Body
     drop %90
-    %97 rec: ptr = alloc main::owned_elements_moved::Body(%92, %95, %96)
+    %97 rec: ptr = alloc main::owned_elements_moved::Body(%92, %95, %96) reuse %104
     %98 lit: i64 = const 1
     %99 t: i64 = intadd %91, %98
     %100 lit: unit = const ()

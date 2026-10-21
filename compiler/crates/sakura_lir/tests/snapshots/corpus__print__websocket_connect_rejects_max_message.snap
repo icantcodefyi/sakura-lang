@@ -57,9 +57,9 @@ fn main#0 pub top -> unit ; main::websocket_connect_rejects_max_message, frame 8
   b5(%9 r: ptr) [handle, try]:
     %10 subprotocols: word = proj %9.0 std::websocket::Options
     %11 headers: word = proj %9.1 std::websocket::Options
-    drop %9
+    %24 token: word = $reuse_reset(%9)
     %12 lit: i64 = const 0
-    %13 rec: ptr = alloc std::websocket::Options(%10, %11, %12)
+    %13 rec: ptr = alloc std::websocket::Options(%10, %11, %12) reuse %24
     %14 f: ptr = closure main$1#7[]
     %15 lit: ptr = const str 1
     %16 $site: i64 = const 5

@@ -162,8 +162,8 @@ fn redirect#3 top -> ptr ; main::http_redirect_follows, frame 4 slots [%0 i64, %
     %8 xs: ptr = alloc list(%7)
     %9 status: i64 = proj %4.0 std::response::Response
     %10 body: word = proj %4.2 std::response::Response
-    drop %4
-    %11 rec: ptr = alloc std::response::Response(%9, %8, %10)
+    %12 token: word = $reuse_reset(%4)
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10) reuse %12
     ret %11
 
 fn logged#12 top -> ptr ; main::http_redirect_follows, frame 0 slots []

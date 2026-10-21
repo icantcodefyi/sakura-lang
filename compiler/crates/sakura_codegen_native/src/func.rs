@@ -904,7 +904,12 @@ impl Gen<'_, '_, '_> {
                 };
                 self.set(*dst, x);
             }
-            Inst::Alloc { dst, shape, args } => self.alloc(*dst, shape, args, live)?,
+            Inst::Alloc {
+                dst,
+                shape,
+                args,
+                reuse,
+            } => self.alloc(*dst, shape, args, *reuse, live)?,
             Inst::Proj {
                 dst, src, index, ..
             } => {
@@ -1311,7 +1316,14 @@ impl Gen<'_, '_, '_> {
         Ok(self.b.ins().uextend(types::I32, r))
     }
 
-    fn alloc(&mut self, dst: Var, shape: &Shape, args: &[Var], live: &Live) -> Result<(), String> {
+    fn alloc(
+        &mut self,
+        dst: Var,
+        shape: &Shape,
+        args: &[Var],
+        reuse: Option<Var>,
+        live: &Live,
+    ) -> Result<(), String> {
         let (tag, header): (i64, Vec<(i32, u32)>) = match shape {
             Shape::Tuple(l) => (TUPLE, vec![(8, args.len() as u32), (12, l.0)]),
             Shape::Record(l) => (RECORD, vec![(8, l.0)]),
@@ -1339,10 +1351,20 @@ impl Gen<'_, '_, '_> {
         };
         let t = self.iconst32(tag);
         let size = self.iconst32(16 + 8 * args.len() as i64);
-        let d = self.call1("rt_alloc", &[t, size], types::I32)?;
-        // The arguments are still held until they are stored.
+        // A reuse token's storage (plan M5 N3), else a fresh block.
+        let d = match reuse {
+            Some(token) => {
+                let token = self.val(token)?;
+                if self.e.checks {
+                    self.call0("rt_check_token", &[token, t, size])?;
+                }
+                self.call1("rt_reuse", &[token, t, size], types::I32)?
+            }
+            None => self.call1("rt_alloc", &[t, size], types::I32)?,
+        };
+        // The arguments (and the token) are still held until they are stored.
         let mut held = live.clone();
-        for &a in args {
+        for &a in args.iter().chain(&reuse) {
             if self.repr(a).is_managed() {
                 *held.entry(a).or_default() += 1;
             }

@@ -39,9 +39,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 
   b1(%0 r: ptr):
     %1 subprotocols: word = proj %0.0 std::websocket::Options
     %2 headers: word = proj %0.1 std::websocket::Options
-    drop %0
+    %75 token: word = $reuse_reset(%0)
     %3 lit: i64 = const 5
-    %4 rec: ptr = alloc std::websocket::Options(%1, %2, %3)
+    %4 rec: ptr = alloc std::websocket::Options(%1, %2, %3) reuse %75
     %5 lit: ptr = const str 0
     %6 r: ptr = alloc std::websocket::Message.Text(%5)
     %7 lit: i64 = const 0

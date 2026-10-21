@@ -91,8 +91,8 @@ fn fill#2 top -> ptr ; main::owned_elements_boxed, frame 4 slots [%0 word*, %1 i
     %26 lit: i64 = const 1
     %27 t: i64 = intadd %25, %26
     %28 x: i64 = proj %17.0 main::owned_elements_boxed::Body
-    drop %17
-    %29 rec: ptr = alloc main::owned_elements_boxed::Body(%28, %27)
+    %35 token: word = $reuse_reset(%17)
+    %29 rec: ptr = alloc main::owned_elements_boxed::Body(%28, %27) reuse %35
     %30 r: ptr = $list_push(%18, %24)
     %31 lit: i64 = const 1
     %32 t: i64 = intadd %19, %31

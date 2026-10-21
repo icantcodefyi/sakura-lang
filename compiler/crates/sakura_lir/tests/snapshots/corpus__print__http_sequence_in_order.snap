@@ -280,8 +280,8 @@ fn redirect#9 top -> ptr ; main::http_sequence_in_order, frame 3 slots [%0 word*
     %8 xs: ptr = alloc list(%7)
     %9 status: i64 = proj %4.0 std::response::Response
     %10 body: word = proj %4.2 std::response::Response
-    drop %4
-    %11 rec: ptr = alloc std::response::Response(%9, %8, %10)
+    %12 token: word = $reuse_reset(%4)
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10) reuse %12
     ret %11
 
 fn main$1#12 lambda -> word ; main::http_sequence_in_order, captures [], frame 5 slots [%0 word*, %1 word*, %5 bool, %6 word*, %8 word*]

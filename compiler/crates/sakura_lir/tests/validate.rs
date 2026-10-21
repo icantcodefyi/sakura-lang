@@ -177,6 +177,7 @@ fn an_activation_id_never_enters_an_ordinary_value() {
             dst,
             shape: Shape::List,
             args: vec![id],
+            reuse: None,
         },
     );
     m.funcs[fi].blocks[0].insts.insert(1, Inst::Drop(dst));
@@ -283,4 +284,40 @@ fn a_clause_follows_its_operations_signature() {
         .unwrap();
     m.funcs[fi].ret = Repr::F64;
     rejected(&m, "its operation");
+}
+
+#[test]
+fn reuse_tokens_are_linear_and_stay_in_their_block() {
+    big_stack(|| {
+        // Plan M5 N3: `reuse_constructor` lowers with constructor-site reuse.
+        let m = lowered("reuse_constructor");
+        assert!(errors(&m).is_empty(), "{:?}", errors(&m));
+        let (fi, bi, k) = find(&m, |i| matches!(i, Inst::Alloc { reuse: Some(_), .. }));
+        let Inst::Alloc { reuse: Some(t), .. } = m.funcs[fi].blocks[bi].insts[k] else {
+            unreachable!()
+        };
+
+        // Never consumed.
+        let mut bad = m.clone();
+        if let Inst::Alloc { reuse, .. } = &mut bad.funcs[fi].blocks[bi].insts[k] {
+            *reuse = None;
+        }
+        rejected(&bad, "outlives its block");
+
+        // Read as an ordinary operand.
+        let mut bad = m.clone();
+        bad.funcs[fi].blocks[bi].insts.insert(k, Inst::Dup(t));
+        rejected(&bad, "is an operand");
+
+        // Given to an allocation of another constructor.
+        let mut bad = m.clone();
+        if let Inst::Alloc { shape, .. } = &mut bad.funcs[fi].blocks[bi].insts[k] {
+            *shape = match &*shape {
+                Shape::Variant(l, c) => Shape::Variant(*l, *c + 1),
+                Shape::Record(l) => Shape::Tuple(*l),
+                other => other.clone(),
+            };
+        }
+        rejected(&bad, "is not a reuse token of this block for this shape");
+    });
 }

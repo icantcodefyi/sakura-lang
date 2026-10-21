@@ -313,6 +313,8 @@ fn builtin_sigs() -> String {
         ("map_get_or", "(ptr, word, word) -> word"),
         ("map_contains", "(ptr, word) -> bool"),
         ("tag_eq", "(ptr, ptr) -> bool"),
+        // `sakura_lir::reuse` (plan M5 N3).
+        ("reuse_reset", "(ptr) -> word"),
         ("contract_enter", "() -> unit"),
         ("contract_exit", "() -> unit"),
         ("match_failure", "() -> unit"),

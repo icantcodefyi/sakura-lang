@@ -114,8 +114,8 @@ fn carry#2 top -> ptr ; main::owned_elements_carried, frame 16 slots [%0 word*, 
     %95 lit: i64 = const 1
     %96 t: i64 = intadd %94, %95
     %97 x: i64 = proj %84.0 main::owned_elements_carried::Body
-    drop %84
-    %98 rec: ptr = alloc main::owned_elements_carried::Body(%97, %96)
+    %118 token: word = $reuse_reset(%84)
+    %98 rec: ptr = alloc main::owned_elements_carried::Body(%97, %96) reuse %118
     %99 lit: i64 = const 1
     %100 t: i64 = intadd %87, %99
     %101 lit: unit = const ()

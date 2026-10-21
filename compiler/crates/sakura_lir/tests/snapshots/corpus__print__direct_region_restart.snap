@@ -331,8 +331,8 @@ fn fold_acc#3 top -> ptr ; main::direct_region_restart, frame 2 slots [%0 word*,
     %10 total: i64 = proj %8.0 main::direct_region_restart::Acc
     %11 t: i64 = intadd %10, %9
     %12 label: word = proj %8.1 main::direct_region_restart::Acc
-    drop %8
-    %13 rec: ptr = alloc main::direct_region_restart::Acc(%11, %12)
+    %16 token: word = $reuse_reset(%8)
+    %13 rec: ptr = alloc main::direct_region_restart::Acc(%11, %12) reuse %16
     %14 lit: i64 = const 1
     %15 t: i64 = intsub %9, %14
     jump b1(%13, %15)

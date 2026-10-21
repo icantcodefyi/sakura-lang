@@ -613,7 +613,12 @@ impl<'p, 'c> Run<'p, 'c> {
                     }
                 };
             }
-            Inst::Alloc { dst, shape, args } => self.alloc(*dst, shape, args)?,
+            Inst::Alloc {
+                dst,
+                shape,
+                args,
+                reuse,
+            } => self.alloc(*dst, shape, args, *reuse)?,
             Inst::Proj {
                 dst, src, index, ..
             } => {
@@ -923,7 +928,7 @@ impl<'p, 'c> Run<'p, 'c> {
         Ok(())
     }
 
-    fn alloc(&mut self, dst: Var, shape: &Shape, args: &[Var]) -> Step {
+    fn alloc(&mut self, dst: Var, shape: &Shape, args: &[Var], reuse: Option<Var>) -> Step {
         let ctx = self.ctx;
         let (tag, header): (u32, Vec<(u32, u32)>) = match shape {
             Shape::Tuple(l) => (TUPLE, vec![(8, args.len() as u32), (12, l.0)]),
@@ -947,7 +952,12 @@ impl<'p, 'c> Run<'p, 'c> {
                 return Ok(());
             }
         };
-        let d = rt::rt_alloc(ctx, tag, 16 + 8 * args.len() as u32);
+        // A reuse token's storage (plan M5 N3), else a fresh block.
+        let size = 16 + 8 * args.len() as u32;
+        let d = match reuse {
+            Some(token) => rt::rt_reuse(ctx, self.word(token), tag, size),
+            None => rt::rt_alloc(ctx, tag, size),
+        };
         self.check_zero(d, true)?;
         for (off, v) in header {
             ctx.store_u32(d + off, v);

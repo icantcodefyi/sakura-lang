@@ -89,8 +89,8 @@ fn flip#2 top -> ptr ; main::generics, frame 1 slots [%0 word*]
   b0(%0 p: ptr):
     %1 right: word = proj %0.1 main::generics::Pair
     %2 left: word = proj %0.0 main::generics::Pair
-    drop %0
-    %3 rec: ptr = alloc main::generics::Pair(%1, %2)
+    %4 token: word = $reuse_reset(%0)
+    %3 rec: ptr = alloc main::generics::Pair(%1, %2) reuse %4
     ret %3
 
 fn largest#3 top -> ptr ; main::generics, frame 3 slots [%0 word*, %1 word*, %2 word*]

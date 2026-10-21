@@ -45,8 +45,8 @@ fn main#0 pub top -> unit ; main::http_redirect_21_hops, frame 11 slots [%1 bool
     %11 xs: ptr = alloc list(%10)
     %12 status: i64 = proj %7.0 std::response::Response
     %13 body: word = proj %7.2 std::response::Response
-    drop %7
-    %14 rec: ptr = alloc std::response::Response(%12, %11, %13)
+    %38 token: word = $reuse_reset(%7)
+    %14 rec: ptr = alloc std::response::Response(%12, %11, %13) reuse %38
     %15 v: ptr = const static std::http::Matcher.Any
     %16 tup: ptr = alloc tuple#18(word, word)(%15, %14)
     %17 xs: ptr = alloc list(%16)
@@ -280,7 +280,7 @@ fn chain$1#123 lambda -> word ; main::http_redirect_21_hops, captures [], frame 
     %20 xs: ptr = alloc list(%19)
     %21 status: i64 = proj %10.0 std::response::Response
     %22 body: word = proj %10.2 std::response::Response
-    drop %10
-    %23 rec: ptr = alloc std::response::Response(%21, %20, %22)
+    %25 token: word = $reuse_reset(%10)
+    %23 rec: ptr = alloc std::response::Response(%21, %20, %22) reuse %25
     %24 tup: ptr = alloc tuple#18(word, word)(%12, %23)
     ret %24

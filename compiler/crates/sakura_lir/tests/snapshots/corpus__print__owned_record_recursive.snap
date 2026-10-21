@@ -204,8 +204,8 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
   b6(%27 r: i64, %28 r: ptr, %29 t: i64):
     %30 t: i64 = intadd %29, %27
     %31 vars: word = proj %28.0 main::owned_record_recursive::Planner
-    drop %28
-    %32 rec: ptr = alloc main::owned_record_recursive::Planner(%31, %30)
+    %38 token: word = $reuse_reset(%28)
+    %32 rec: ptr = alloc main::owned_record_recursive::Planner(%31, %30) reuse %38
     ret %32
   b7(%33 p: ptr, %34 i: i64):
     ret %33
@@ -221,8 +221,8 @@ fn put_var#6 top -> ptr ; main::owned_record_recursive, frame 5 slots [%0 word*,
     call set#10(%3, %1, %4, %5) -> b1(%0)
   b1(%6 r: ptr, %7 p: ptr):
     %8 mark: i64 = proj %7.1 main::owned_record_recursive::Planner
-    drop %7
-    %9 rec: ptr = alloc main::owned_record_recursive::Planner(%6, %8)
+    %10 token: word = $reuse_reset(%7)
+    %9 rec: ptr = alloc main::owned_record_recursive::Planner(%6, %8) reuse %10
     ret %9
 
 fn odd#11 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1 i64, %13 word*, %14 i64, %24 word*, %25 i64]

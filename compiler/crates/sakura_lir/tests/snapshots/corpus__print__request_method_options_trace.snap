@@ -46,8 +46,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %7 xs: ptr = alloc list(%6)
     %8 status: i64 = proj %3.0 std::response::Response
     %9 body: word = proj %3.2 std::response::Response
-    drop %3
-    %10 rec: ptr = alloc std::response::Response(%8, %7, %9)
+    %182 token: word = $reuse_reset(%3)
+    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %182
     %11 v: ptr = const static std::request::Method.Options
     %12 r: ptr = alloc std::http::Matcher.Method(%11)
     dup %10

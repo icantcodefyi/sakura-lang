@@ -420,6 +420,21 @@ pub extern "C" fn rt_alloc(
     ptr(rt, r)
 }
 
+/// `rt_alloc` for an `Alloc` that reuses `token` (`Rt::reuse_or_alloc`, plan M5 N3): internal to
+/// the linked module, as `rt_dup_candidate`.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_reuse(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    token: u32,
+    t: u32,
+    size: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let r = rt.reuse_or_alloc(token, t as u16, size);
+    ptr(rt, r)
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_box_i64(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>, v: i64) -> u32 {
     let mut cx = cx!(ctx);
@@ -2012,6 +2027,8 @@ builtins! {
         rt.sched.exiting = true;
         rt.sched.raised = true;
     };
+    // `sakura_lir::reuse`'s token for an `Alloc` of the same constructor (plan M5 N3).
+    rt_b_reuse_reset(x: u32) -> u32 = plain |rt| rt.reuse_reset(x);
     rt_b_list_len(xs: u32) -> i64 = plain |rt| rt.list_len(xs);
     rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i);
     rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i);

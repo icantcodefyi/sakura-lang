@@ -88,9 +88,9 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %54 rec: ptr = alloc std::form::FormLimits(%52, %51, %53)
     %55 max_parts: i64 = proj %43.0 std::form::FormLimits
     %56 max_bytes: i64 = proj %43.1 std::form::FormLimits
-    drop %43
+    %111 token: word = $reuse_reset(%43)
     %57 lit: i64 = const 7
-    %58 rec: ptr = alloc std::form::FormLimits(%55, %56, %57)
+    %58 rec: ptr = alloc std::form::FormLimits(%55, %56, %57) reuse %111
     %59 lit: i64 = const 0
     %60 lit: i64 = const 0
     %61 lit: i64 = const 0

@@ -193,8 +193,8 @@ fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %
     %8 t: i64 = intadd %6, %7
     %9 vars: word = proj %4.0 main::owned_record_loop_twice::Planner
     %10 cons: word = proj %4.1 main::owned_record_loop_twice::Planner
-    drop %4
-    %11 rec: ptr = alloc main::owned_record_loop_twice::Planner(%9, %10, %8)
+    %67 token: word = $reuse_reset(%4)
+    %11 rec: ptr = alloc main::owned_record_loop_twice::Planner(%9, %10, %8) reuse %67
     ret %11
   b3(%12 p: ptr, %13 i: i64):
     %14 vars: word = proj %12.0 main::owned_record_loop_twice::Planner
@@ -236,8 +236,8 @@ fn grow#3 top -> ptr ; main::owned_record_loop_twice, frame 7 slots [%0 word*, %
     %59 box: word = box %58
     %60 r: ptr = $list_push(%57, %59)
     %61 mark: i64 = proj %49.2 main::owned_record_loop_twice::Planner
-    drop %49
-    %62 rec: ptr = alloc main::owned_record_loop_twice::Planner(%56, %60, %61)
+    %68 token: word = $reuse_reset(%49)
+    %62 rec: ptr = alloc main::owned_record_loop_twice::Planner(%56, %60, %61) reuse %68
     %63 lit: i64 = const 1
     %64 t: i64 = intadd %50, %63
     %65 lit: unit = const ()
@@ -254,6 +254,6 @@ fn put_var#5 top -> ptr ; main::owned_record_loop_twice, frame 5 slots [%0 word*
   b1(%6 r: ptr, %7 p: ptr):
     %8 cons: word = proj %7.1 main::owned_record_loop_twice::Planner
     %9 mark: i64 = proj %7.2 main::owned_record_loop_twice::Planner
-    drop %7
-    %10 rec: ptr = alloc main::owned_record_loop_twice::Planner(%6, %8, %9)
+    %11 token: word = $reuse_reset(%7)
+    %10 rec: ptr = alloc main::owned_record_loop_twice::Planner(%6, %8, %9) reuse %11
     ret %10

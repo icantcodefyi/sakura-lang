@@ -264,6 +264,9 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
     };
     for f in &mut funcs {
         ownership(f, &borrows)?;
+        if crate::reuse::reuse(f) {
+            cx.used_builtins.insert(crate::reuse::RESET.to_owned());
+        }
     }
     let builtins = cx
         .used_builtins
@@ -1899,6 +1902,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                     dst,
                     shape,
                     args: vs,
+                    reuse: None,
                 }));
             }
             core::Alloc::List => Shape::List,
@@ -1926,6 +1930,7 @@ impl<'c, 'a> Fl<'c, 'a> {
             dst,
             shape,
             args: vs,
+            reuse: None,
         }))
     }
 

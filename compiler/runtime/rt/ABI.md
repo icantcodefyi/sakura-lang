@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.16.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.17.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -26,8 +26,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (9)), 1.14.0 the schema keywords of refined types (§1b; design §17.298 (c), §17.299 (12)),
 1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
 §2.9), 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303),
-1.15.2 the missing-key permissions erratum (§8.3; design §17.304) and 1.16.0 library entries
-(§9; design §17.301 (1c), §17.304 (B1)). Owned by
+1.15.2 the missing-key permissions erratum (§8.3; design §17.304), 1.16.0 library entries
+(§9; design §17.301 (1c), §17.304 (B1)) and 1.17.0 constructor-site reuse (§10; design
+§17.176 (3), §17.308; plan M5 N3). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -325,6 +326,22 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   a 1.16 module by the MINOR rule; a 1.16 host reads an older module as before and reports
   "no entries" when asked for them. Native compiles the entries and exposes no API; the
   native descriptor is unchanged. `sakura_abi_version` is `0x011000`.
+- 1.17.0 (MINOR, design §17.176 (3), §17.308; plan M5 N3) adds constructor-site reuse. A match
+  arm that takes a record or a constructor apart and builds one of the same row and constructor
+  in the same block turns the `Drop` of the old object into `rt_b_reuse_reset(x) -> word`: when
+  no other reference reaches `x` (not static, `rc = 1`) it releases `x`'s children, zeroes its
+  slots and returns `x` itself as the token, else it drops `x` and returns `Unit`. The `Alloc`
+  then calls `rt_reuse(token, tag, size)`, which returns the token's storage or allocates as
+  `rt_alloc` does when the token is `Unit`, and writes the header and slots as before. Each
+  `reuse_reset` is one `reuse_attempts` and each object returned as a token one `reuses` (§10);
+  `stats()` gains no field. A token is an ordinary owned word that never leaves its block, so a
+  landing pad frees an unused one as any other object. Both functions are internal to the
+  linked module (as `rt_dup_candidate`); no byte layout, import, export or outcome changes.
+  It is a MINOR because the counters a module writes are part of what it requires of its host
+  (1.3.0's rule): a 1.16 host refuses a 1.17 module. On native, `--native-checks` makes the
+  `Alloc` call `rt_check_token(token, tag, size)` first, which stops the process unless the
+  token is `Unit` or a live, unshared object of that tag, at least `size` bytes, whose slots
+  own nothing. `sakura_abi_version` is `0x011100`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -1348,7 +1365,7 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   that `List.set`, `List.push` (a list literal and a list builder push too), `Map.insert`,
   `Map.remove`, `Set.insert` or `Set.remove` consumes, then each trie or HAMT node and the log
   list on the update's path that it reaches through a node it wrote; the runtime's own list
-  building is not counted; plan N3 adds constructor sites holding a reuse token), `reuses` (the
+  building is not counted; since 1.17.0 each `reuse_reset` of a constructor site too), `reuses` (the
   attempts that wrote the existing object: no other reference reached it, it is not static and
   it had room, so a HAMT node that grows for a new key is a miss; a node below a copied one is
   copied without a test, so a wrapper hit never hides copied descendants; a remove copies its

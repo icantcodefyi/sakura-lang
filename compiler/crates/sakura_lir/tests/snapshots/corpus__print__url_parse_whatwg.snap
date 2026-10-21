@@ -767,8 +767,8 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
   b21(%778 r: ptr, %779 n: i64, %780 i: i64, %781 x: ptr, %782 input: ptr, %783 with_origin: bool, %784 r: ptr):
     drop %782
     %792 p: word = proj %784.0 std::result::Result.Err
-    drop %784
-    %793 r: ptr = alloc std::result::Result.Err(%792)
+    %798 token: word = $reuse_reset(%784)
+    %793 r: ptr = alloc std::result::Result.Err(%792) reuse %798
     jump b19(%793, %778, %779, %780, %781, %783)
   b22(%786 r: ptr, %787 r: ptr, %788 n: i64, %789 i: i64, %790 x: ptr, %791 with_origin: bool):
     jump b19(%786, %787, %788, %789, %790, %791)

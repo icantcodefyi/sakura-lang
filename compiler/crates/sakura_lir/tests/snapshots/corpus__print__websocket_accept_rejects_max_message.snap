@@ -62,9 +62,9 @@ fn main#0 pub top -> unit ; main::websocket_accept_rejects_max_message, frame 11
     %14 subprotocol: word = proj %12.0 std::websocket::Upgrade
     %15 origins: word = proj %12.1 std::websocket::Upgrade
     %16 headers: word = proj %12.2 std::websocket::Upgrade
-    drop %12
+    %28 token: word = $reuse_reset(%12)
     %17 lit: i64 = const 0
-    %18 rec: ptr = alloc std::websocket::Upgrade(%14, %15, %16, %17)
+    %18 rec: ptr = alloc std::websocket::Upgrade(%14, %15, %16, %17) reuse %28
     %19 f: ptr = closure main$1#8[]
     %20 $site: i64 = const 6
     dup.candidate %13

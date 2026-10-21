@@ -89,8 +89,8 @@ fn kick#2 top -> ptr ; main::owned_elements_option, frame 8 slots [%0 word*, %1 
     %8 lit: i64 = const 10
     %9 t: i64 = intadd %7, %8
     %10 x: i64 = proj %3.0 main::owned_elements_option::Body
-    drop %3
-    %11 rec: ptr = alloc main::owned_elements_option::Body(%10, %9)
+    %29 token: word = $reuse_reset(%3)
+    %11 rec: ptr = alloc main::owned_elements_option::Body(%10, %9) reuse %29
     %12 $site: i64 = const 2
     call set#4(%4, %5, %11, %12) -> b2(%6)
   b2(%13 r: ptr, %14 item: ptr):

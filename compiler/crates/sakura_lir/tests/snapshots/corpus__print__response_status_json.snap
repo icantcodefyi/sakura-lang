@@ -72,8 +72,8 @@ fn main#0 pub top -> unit ; main::response_status_json, frame 15 slots [%5 word*
   b8(%41 r: i64, %42 r: ptr):
     %43 headers: word = proj %42.1 std::response::Response
     %44 body: word = proj %42.2 std::response::Response
-    drop %42
-    %45 rec: ptr = alloc std::response::Response(%41, %43, %44)
+    %65 token: word = $reuse_reset(%42)
+    %45 rec: ptr = alloc std::response::Response(%41, %43, %44) reuse %65
     %46 lit: i64 = const 201
     %47 lit: ptr = const str 3
     %48 $site: i64 = const 9

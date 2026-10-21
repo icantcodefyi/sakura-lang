@@ -122,10 +122,10 @@ fn spread#2 top -> ptr ; main::owned_elements_guard, frame 13 slots [%0 word*, %
     %46 x: i64 = proj %41.0 main::owned_elements_guard::Body
     %47 t: i64 = intadd %45, %46
     %48 v: i64 = proj %40.1 main::owned_elements_guard::Body
-    drop %40
+    %62 token: word = $reuse_reset(%40)
     %49 lit: i64 = const 1
     %50 t: i64 = intadd %48, %49
-    %51 rec: ptr = alloc main::owned_elements_guard::Body(%47, %50)
+    %51 rec: ptr = alloc main::owned_elements_guard::Body(%47, %50) reuse %62
     %52 $site: i64 = const 2
     call set#4(%42, %44, %51, %52) -> b12(%41, %43, %44)
   b12(%53 r: ptr, %54 r: ptr, %55 i: i64, %56 j: i64):

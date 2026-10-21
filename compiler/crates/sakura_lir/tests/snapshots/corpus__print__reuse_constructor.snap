@@ -1,0 +1,308 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant main::reuse_constructor::Color | Red 16b () | Black 16b ()
+layout 1 record main::reuse_constructor::P | P 32b (x: i64, y: i64)
+layout 2 variant main::reuse_constructor::Tree | E 16b () | T 48b (word*, word*, i64, word*)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 shape |  32b (word*, word*)
+layout 6 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %6 i64, %7 word*, %8 i64, %18 bool, %19 i64, %25 i64, %26 i64, %27 word*, %33 i64, %34 i64, %35 word*, %36 word*, %41 word*, %42 i64, %43 word*, %44 word*, %45 i64, %46 i64, %47 word*, %48 word*, %51 bool, %52 i64, %53 word*, %57 word*, %58 word*, %59 word*, %79 bool, %80 word*, %82 word*, %83 word*, %84 word*, %85 word*, %86 i64, %87 word*, %88 word*, %94 i64, %95 word*, %96 word*, %101 i64, %102 word*, %105 bool, %124 word*, %125 i64, %126 i64, %127 word*, %128 i64, %129 i64]
+  b0():
+    %0 lit: ptr = const str 0
+    %1 lit: ptr = const str 1
+    %2 r: ptr = $string_split(%0, %1)
+    %3 r: i64 = $list_len(%2)
+    %4 rec: ptr = alloc main::reuse_constructor::P(%3, %3)
+    call shift#2(%4) -> b1(%3)
+  b1(%5 r: ptr, %6 r: i64):
+    call shift#2(%5) -> b2(%6)
+  b2(%7 r: ptr, %8 r: i64):
+    %9 x: i64 = proj %7.0 main::reuse_constructor::P
+    %10 s: ptr = show %9
+    %11 lit: ptr = const str 2
+    %12 s: ptr = concat %11, %10
+    drop %10
+    %13 lit: ptr = const str 3
+    %14 s: ptr = concat %12, %13
+    drop %13
+    %15 y: i64 = proj %7.1 main::reuse_constructor::P
+    drop %7
+    %16 s: ptr = show %15
+    %17 s: ptr = concat %14, %16
+    drop %16
+    perform std::console::Console.print(%17) -> b3(%8)
+  b3(%18 r: unit, %19 r: i64):
+    %20 box: word = box %18
+    drop %20
+    %21 v: ptr = const static main::reuse_constructor::Tree.E
+    %133 lit: i64 = const 0
+    jump b18(%21, %133, %19)
+  b4(%22 t: ptr, %23 i: i64, %24 r: i64):
+    dup %22
+    call sum#5(%22) -> b5(%24, %22)
+  b5(%25 r: i64, %26 r: i64, %27 t: ptr):
+    %28 s: ptr = show %25
+    %29 lit: ptr = const str 4
+    %30 s: ptr = concat %29, %28
+    drop %28
+    %31 lit: ptr = const str 3
+    %32 s: ptr = concat %30, %31
+    drop %31
+    dup %27
+    call blacks#6(%27) -> b6(%26, %27, %32)
+  b6(%33 r: i64, %34 r: i64, %35 t: ptr, %36 s: ptr):
+    %37 s: ptr = show %33
+    %38 s: ptr = concat %36, %37
+    drop %37
+    %39 lit: ptr = const str 3
+    %40 s: ptr = concat %38, %39
+    drop %39
+    dup %35
+    call bump#7(%35) -> b7(%34, %35, %40)
+  b7(%41 r: ptr, %42 r: i64, %43 t: ptr, %44 s: ptr):
+    call sum#5(%41) -> b8(%42, %43, %44)
+  b8(%45 r: i64, %46 r: i64, %47 t: ptr, %48 s: ptr):
+    %49 s: ptr = show %45
+    %50 s: ptr = concat %48, %49
+    drop %49
+    perform std::console::Console.print(%50) -> b9(%46, %47)
+  b9(%51 r: unit, %52 r: i64, %53 t: ptr):
+    %54 box: word = box %51
+    drop %54
+    %55 lit: i64 = const 7
+    %56 rec: ptr = alloc main::reuse_constructor::P(%52, %55)
+    dup %56
+    call shift#2(%56) -> b10(%53, %56)
+  b10(%57 r: ptr, %58 t: ptr, %59 rec: ptr):
+    %60 x: i64 = proj %59.0 main::reuse_constructor::P
+    %61 s: ptr = show %60
+    %62 lit: ptr = const str 5
+    %63 s: ptr = concat %62, %61
+    drop %61
+    %64 lit: ptr = const str 3
+    %65 s: ptr = concat %63, %64
+    drop %64
+    %66 y: i64 = proj %59.1 main::reuse_constructor::P
+    drop %59
+    %67 s: ptr = show %66
+    %68 s: ptr = concat %65, %67
+    drop %67
+    %69 lit: ptr = const str 3
+    %70 s: ptr = concat %68, %69
+    drop %69
+    %71 x: i64 = proj %57.0 main::reuse_constructor::P
+    %72 s: ptr = show %71
+    %73 s: ptr = concat %70, %72
+    drop %72
+    %74 lit: ptr = const str 3
+    %75 s: ptr = concat %73, %74
+    drop %74
+    %76 y: i64 = proj %57.1 main::reuse_constructor::P
+    drop %57
+    %77 s: ptr = show %76
+    %78 s: ptr = concat %75, %77
+    drop %77
+    perform std::console::Console.print(%78) -> b11(%58)
+  b11(%79 r: unit, %80 t: ptr):
+    %81 box: word = box %79
+    drop %81
+    dup %80
+    call blacken#4(%80) -> b12(%80)
+  b12(%82 r: ptr, %83 t: ptr):
+    call bump#7(%82) -> b13(%83)
+  b13(%84 r: ptr, %85 t: ptr):
+    dup %85
+    call sum#5(%85) -> b14(%85, %84)
+  b14(%86 r: i64, %87 t: ptr, %88 r: ptr):
+    %89 s: ptr = show %86
+    %90 lit: ptr = const str 6
+    %91 s: ptr = concat %90, %89
+    drop %89
+    %92 lit: ptr = const str 3
+    %93 s: ptr = concat %91, %92
+    drop %92
+    call sum#5(%88) -> b15(%87, %93)
+  b15(%94 r: i64, %95 t: ptr, %96 s: ptr):
+    %97 s: ptr = show %94
+    %98 s: ptr = concat %96, %97
+    drop %97
+    %99 lit: ptr = const str 3
+    %100 s: ptr = concat %98, %99
+    drop %99
+    call blacks#6(%95) -> b16(%100)
+  b16(%101 r: i64, %102 s: ptr):
+    %103 s: ptr = show %101
+    %104 s: ptr = concat %102, %103
+    drop %103
+    perform std::console::Console.print(%104) -> b17()
+  b17(%105 r: unit):
+    %106 box: word = box %105
+    %107 unbox: unit = unbox %106
+    drop %106
+    ret %107
+  b18(%108 t: ptr, %109 i: i64, %110 r: i64):
+    %111 lit: i64 = const 20
+    %112 t: bool = lt.int %109, %111
+    if %112 then b20(%110, %108, %109) else b21(%110, %108, %109)
+  b19(%113 v: unit, %114 t: ptr, %115 i: i64, %116 r: i64):
+    jump b18(%114, %115, %116)
+  b20(%117 r: i64, %118 t: ptr, %119 i: i64):
+    %123 t: i64 = intmul %119, %117
+    call ins#3(%118, %123) -> b22(%117, %119)
+  b21(%120 r: i64, %121 t: ptr, %122 i: i64):
+    jump b4(%121, %122, %120)
+  b22(%124 r: ptr, %125 r: i64, %126 i: i64):
+    call blacken#4(%124) -> b23(%125, %126)
+  b23(%127 r: ptr, %128 r: i64, %129 i: i64):
+    %130 lit: i64 = const 1
+    %131 t: i64 = intadd %129, %130
+    %132 lit: unit = const ()
+    jump b19(%132, %127, %131, %128)
+
+fn $entry#1 top -> unit ; main::reuse_constructor, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn shift#2 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 x: i64 = proj %0.0 main::reuse_constructor::P
+    %2 lit: i64 = const 1
+    %3 t: i64 = intadd %1, %2
+    %4 y: i64 = proj %0.1 main::reuse_constructor::P
+    %6 token: word = $reuse_reset(%0)
+    %5 rec: ptr = alloc main::reuse_constructor::P(%3, %4) reuse %6
+    ret %5
+
+fn ins#3 top -> ptr ; main::reuse_constructor, frame 10 slots [%0 word*, %1 i64, %26 word*, %27 word*, %28 i64, %29 word*, %31 word*, %32 word*, %33 word*, %34 i64]
+  b0(%0 t: ptr, %1 k: i64):
+    %2 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %2 0 => b1(%0, %1) 1 => b2(%0, %1)
+  b1(%3 t: ptr, %4 k: i64):
+    drop %3
+    %7 v: ptr = const static main::reuse_constructor::Color.Red
+    %8 v: ptr = const static main::reuse_constructor::Tree.E
+    %9 v: ptr = const static main::reuse_constructor::Tree.E
+    %10 r: ptr = alloc main::reuse_constructor::Tree.T(%7, %8, %4, %9)
+    ret %10
+  b2(%5 t: ptr, %6 k: i64):
+    %11 p: word = proj %5.0 main::reuse_constructor::Tree.T
+    %12 p: word = proj %5.1 main::reuse_constructor::Tree.T
+    %13 p: i64 = proj %5.2 main::reuse_constructor::Tree.T
+    %14 p: word = proj %5.3 main::reuse_constructor::Tree.T
+    drop %5
+    %15 t: bool = lt.int %6, %13
+    if %15 then b3(%6, %11, %12, %13, %14) else b4(%6, %11, %12, %13, %14)
+  b3(%16 k: i64, %17 c: ptr, %18 l: ptr, %19 y: i64, %20 r: ptr):
+    call ins#3(%18, %16) -> b5(%17, %19, %20)
+  b4(%21 k: i64, %22 c: ptr, %23 l: ptr, %24 y: i64, %25 r: ptr):
+    call ins#3(%25, %21) -> b6(%22, %23, %24)
+  b5(%26 r: ptr, %27 c: ptr, %28 y: i64, %29 r: ptr):
+    %30 r: ptr = alloc main::reuse_constructor::Tree.T(%27, %26, %28, %29)
+    ret %30
+  b6(%31 r: ptr, %32 c: ptr, %33 l: ptr, %34 y: i64):
+    %35 r: ptr = alloc main::reuse_constructor::Tree.T(%32, %33, %34, %31)
+    ret %35
+
+fn blacken#4 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]
+  b0(%0 t: ptr):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 v: ptr = const static main::reuse_constructor::Tree.E
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    drop %5
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    %11 token: word = $reuse_reset(%3)
+    %9 v: ptr = const static main::reuse_constructor::Color.Black
+    %10 r: ptr = alloc main::reuse_constructor::Tree.T(%9, %6, %7, %8) reuse %11
+    ret %10
+
+fn sum#5 top -> i64 ; main::reuse_constructor, frame 6 slots [%0 word*, %9 i64, %10 i64, %11 word*, %13 i64, %14 i64]
+  b0(%0 t: ptr):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    drop %5
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    drop %3
+    call sum#5(%6) -> b3(%7, %8)
+  b3(%9 r: i64, %10 v: i64, %11 r: ptr):
+    %12 t: i64 = intadd %9, %10
+    call sum#5(%11) -> b4(%12)
+  b4(%13 r: i64, %14 t: i64):
+    %15 t: i64 = intadd %14, %13
+    ret %15
+
+fn blacks#6 top -> i64 ; main::reuse_constructor, frame 9 slots [%0 word*, %14 i64, %15 word*, %16 i64, %17 i64, %19 i64, %20 word*, %23 i64, %24 i64]
+  b0(%0 t: ptr):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    drop %3
+    %9 tag: i64 = tag %5 ctor main::reuse_constructor::Color
+    drop %5
+    switch %9 0 => b3(%6, %8) 1 => b4(%6, %8)
+  b3(%10 p: ptr, %11 p: ptr):
+    call blacks#6(%10) -> b5(%11)
+  b4(%12 p: ptr, %13 p: ptr):
+    call blacks#6(%12) -> b7(%13)
+  b5(%14 r: i64, %15 r: ptr):
+    call blacks#6(%15) -> b6(%14)
+  b6(%16 r: i64, %17 r: i64):
+    %18 t: i64 = intadd %17, %16
+    ret %18
+  b7(%19 r: i64, %20 r: ptr):
+    %21 lit: i64 = const 1
+    %22 t: i64 = intadd %21, %19
+    call blacks#6(%20) -> b8(%22)
+  b8(%23 r: i64, %24 t: i64):
+    %25 t: i64 = intadd %24, %23
+    ret %25
+
+fn bump#7 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]
+  b0(%0 t: ptr):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 v: ptr = const static main::reuse_constructor::Tree.E
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    %12 token: word = $reuse_reset(%3)
+    %9 lit: i64 = const 1
+    %10 t: i64 = intadd %7, %9
+    %11 r: ptr = alloc main::reuse_constructor::Tree.T(%5, %6, %10, %8) reuse %12
+    ret %11

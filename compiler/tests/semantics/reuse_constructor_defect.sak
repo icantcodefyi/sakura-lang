@@ -1,0 +1,22 @@
+// milestone: M3
+// covers: plan m5-native.md N3; design §17.176 (3) (a defect between the reset of a unique
+// object and the constructor that reuses it frees the token)
+// expect-exit: 70
+// expect-defect: D002
+
+type Tree = E | T(Tree, Int, Tree)
+
+fn scale(t: Tree, d: Int) -> Tree {
+  match t {
+    E => E,
+    T(l, v, r) => T(l, v / d, r),
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ","))
+  let t = scale(T(E, n * 10, E), n)
+  Console.print("ok")
+  let u = scale(t, n - 2)
+  Console.print("never")
+}

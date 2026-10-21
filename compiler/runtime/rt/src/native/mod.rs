@@ -426,6 +426,31 @@ pub extern "C" fn rt_check(ctx: Ctx<'_>, obj: u32, offset: u32, len: u32) {
     }
 }
 
+/// `--native-checks` at the consumption of a reuse token (ABI 1.17.0, plan M5 N3): the token
+/// is `Unit`, or a live object of tag `t` holding `size` bytes ([`rt_check`]) that nothing else
+/// reaches and whose slots `reuse_reset` emptied. Anything else stops the process.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_check_token(ctx: Ctx<'_>, token: u32, t: u32, size: u32) {
+    if !crate::object::is_ptr(token) {
+        return;
+    }
+    rt_check(ctx, token, 0, size);
+    let rt = ctx.rt();
+    let empty = (16..size)
+        .step_by(8)
+        .all(|o| rt.heap.mem.u64(token + o) == 0);
+    if u32::from(rt.tag(token)) != t
+        || rt.rc(token) != 1
+        || rt.flags(token) & crate::object::STATIC != 0
+        || !empty
+    {
+        std::eprintln!(
+            "native-checks: reuse token {token} is shared, of another class or not emptied"
+        );
+        std::process::abort();
+    }
+}
+
 /// The module's dispatch for `Cx`: the `Rc` is cloned out of the field first, so no borrow of
 /// the instance spans the call into code.
 pub(crate) fn dispatch(p: NonNull<SakuraInstance>, code: u32, env: u32, frame: u32) -> u32 {

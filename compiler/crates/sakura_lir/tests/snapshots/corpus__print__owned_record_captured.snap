@@ -236,8 +236,8 @@ fn put_var#5 top -> ptr ; main::owned_record_captured, frame 5 slots [%0 word*, 
     call set#14(%3, %1, %4, %5) -> b1(%0)
   b1(%6 r: ptr, %7 p: ptr):
     %8 mark: i64 = proj %7.1 main::owned_record_captured::Planner
-    drop %7
-    %9 rec: ptr = alloc main::owned_record_captured::Planner(%6, %8)
+    %10 token: word = $reuse_reset(%7)
+    %9 rec: ptr = alloc main::owned_record_captured::Planner(%6, %8) reuse %10
     ret %9
 
 fn total#6 top -> i64 ; main::owned_record_captured, frame 3 slots [%0 word*, %1 word*, %5 word*]
@@ -302,8 +302,8 @@ fn two_views#8 top -> ptr ; main::owned_record_captured, frame 6 slots [%0 word*
     call set#14(%2, %3, %5, %6) -> b1(%0, %1)
   b1(%7 r: ptr, %8 p: ptr, %9 vars: ptr):
     %10 mark: i64 = proj %8.1 main::owned_record_captured::Planner
-    drop %8
-    %11 rec: ptr = alloc main::owned_record_captured::Planner(%7, %10)
+    %15 token: word = $reuse_reset(%8)
+    %11 rec: ptr = alloc main::owned_record_captured::Planner(%7, %10) reuse %15
     call sum#4(%9) -> b2(%11)
   b2(%12 r: i64, %13 rec: ptr):
     %14 tup: ptr = alloc tuple#7(word, i64)(%13, %12)

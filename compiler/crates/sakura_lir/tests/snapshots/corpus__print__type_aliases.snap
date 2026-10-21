@@ -53,8 +53,8 @@ fn next_id#3 top -> ptr ; main::type_aliases, frame 1 slots [%0 word*]
     switch %1 0 => b1(%0)
   b1(%2 id: ptr):
     %3 p: i64 = proj %2.0 main::type_aliases::UserId.UserId
-    drop %2
+    %7 token: word = $reuse_reset(%2)
     %4 lit: i64 = const 1
     %5 t: i64 = intadd %3, %4
-    %6 r: ptr = alloc main::type_aliases::UserId.UserId(%5)
+    %6 r: ptr = alloc main::type_aliases::UserId.UserId(%5) reuse %7
     ret %6

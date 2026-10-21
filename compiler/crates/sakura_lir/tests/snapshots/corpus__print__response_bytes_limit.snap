@@ -28,8 +28,8 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %12 r: ptr = alloc std::request::Payload.Bytes(%11)
     %13 status: i64 = proj %3.0 std::response::Response
     %14 headers: word = proj %3.1 std::response::Response
-    drop %3
-    %15 rec: ptr = alloc std::response::Response(%13, %14, %12)
+    %90 token: word = $reuse_reset(%3)
+    %15 rec: ptr = alloc std::response::Response(%13, %14, %12) reuse %90
     %16 lit: i64 = const 3
     dup %15
     call read#4(%15, %16) -> b2(%15)
@@ -65,8 +65,8 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %40 r: ptr = alloc std::request::Payload.Text(%39)
     %41 status: i64 = proj %37.0 std::response::Response
     %42 headers: word = proj %37.1 std::response::Response
-    drop %37
-    %43 rec: ptr = alloc std::response::Response(%41, %42, %40)
+    %91 token: word = $reuse_reset(%37)
+    %43 rec: ptr = alloc std::response::Response(%41, %42, %40) reuse %91
     %44 lit: i64 = const 2
     dup %43
     call read#4(%43, %44) -> b7(%38, %43)
@@ -112,8 +112,8 @@ fn main#0 pub top -> unit ; main::response_bytes_limit, frame 29 slots [%3 word*
     %78 v: ptr = const static std::request::Payload.Empty
     %79 status: i64 = proj %76.0 std::response::Response
     %80 headers: word = proj %76.1 std::response::Response
-    drop %76
-    %81 rec: ptr = alloc std::response::Response(%79, %80, %78)
+    %92 token: word = $reuse_reset(%76)
+    %81 rec: ptr = alloc std::response::Response(%79, %80, %78) reuse %92
     %82 lit: i64 = const 0
     call read#4(%81, %82) -> b14()
   b14(%83 r: ptr):

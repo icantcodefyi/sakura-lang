@@ -40,8 +40,8 @@ fn main#0 pub top -> unit ; main::http_redirect_scoped_rejects_hop, frame 41 slo
     %10 xs: ptr = alloc list(%9)
     %11 status: i64 = proj %5.0 std::response::Response
     %12 body: word = proj %5.2 std::response::Response
-    drop %5
-    %13 rec: ptr = alloc std::response::Response(%11, %10, %12)
+    %101 token: word = $reuse_reset(%5)
+    %13 rec: ptr = alloc std::response::Response(%11, %10, %12) reuse %101
     %14 tup: ptr = alloc tuple#18(word, word)(%6, %13)
     %15 lit: ptr = const str 4
     %16 r: ptr = alloc std::http::Matcher.Path(%15)

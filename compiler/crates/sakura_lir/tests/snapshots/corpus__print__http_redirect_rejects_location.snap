@@ -142,8 +142,8 @@ fn redirect#3 top -> ptr ; main::http_redirect_rejects_location, frame 3 slots [
     %8 xs: ptr = alloc list(%7)
     %9 status: i64 = proj %4.0 std::response::Response
     %10 body: word = proj %4.2 std::response::Response
-    drop %4
-    %11 rec: ptr = alloc std::response::Response(%9, %8, %10)
+    %12 token: word = $reuse_reset(%4)
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10) reuse %12
     ret %11
 
 fn main$1#9 lambda -> word ; main::http_redirect_rejects_location, captures [], frame 2 slots [%0 word*, %1 word*]

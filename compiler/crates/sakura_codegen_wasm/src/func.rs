@@ -1116,7 +1116,12 @@ impl Gen<'_, '_> {
                 }
                 s.local_set(self.local(*dst));
             }
-            Inst::Alloc { dst, shape, args } => self.alloc(s, *dst, shape, args, &before)?,
+            Inst::Alloc {
+                dst,
+                shape,
+                args,
+                reuse,
+            } => self.alloc(s, *dst, shape, args, *reuse, &before)?,
             Inst::Proj {
                 dst, src, index, ..
             } => {
@@ -1611,6 +1616,7 @@ impl Gen<'_, '_> {
         dst: Var,
         shape: &Shape,
         args: &[Var],
+        reuse: Option<Var>,
         live: &Live,
     ) -> Result<(), String> {
         let d = self.local(dst);
@@ -1641,8 +1647,19 @@ impl Gen<'_, '_> {
                 return Ok(());
             }
         };
+        // A reuse token's storage (plan M5 N3), else a fresh block.
+        if let Some(t) = reuse {
+            s.local_get(self.local(t));
+        }
         s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
-        self.call_rt(s, "rt_alloc")?;
+        self.call_rt(
+            s,
+            if reuse.is_some() {
+                "rt_reuse"
+            } else {
+                "rt_alloc"
+            },
+        )?;
         s.local_set(d);
         self.check_zero(s, d, live)?;
         for (off, v) in header {

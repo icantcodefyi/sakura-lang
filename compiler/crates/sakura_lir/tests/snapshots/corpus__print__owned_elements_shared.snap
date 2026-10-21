@@ -110,8 +110,8 @@ fn kick#2 top -> ptr ; main::owned_elements_shared, frame 6 slots [%0 word*, %1 
     %6 lit: i64 = const 10
     %7 t: i64 = intadd %5, %6
     %8 x: i64 = proj %2.0 main::owned_elements_shared::Body
-    drop %2
-    %9 rec: ptr = alloc main::owned_elements_shared::Body(%8, %7)
+    %12 token: word = $reuse_reset(%2)
+    %9 rec: ptr = alloc main::owned_elements_shared::Body(%8, %7) reuse %12
     %10 $site: i64 = const 2
     call set#5(%3, %4, %9, %10) -> b2()
   b2(%11 r: ptr):

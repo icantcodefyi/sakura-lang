@@ -460,11 +460,15 @@ pub enum Inst {
         src: Var,
         of: TagOf,
     },
-    /// Consumes `args` into the new object's slots.
+    /// Consumes `args` into the new object's slots. With `reuse`, a reuse token (consumed) from
+    /// `reuse_reset` of an object of this very shape (plan M5 N3, design §17.176 (3)): when the
+    /// token is that emptied object, the new one is written into its storage; when it is
+    /// `Unit` (the object was shared), a block is allocated as without one.
     Alloc {
         dst: Var,
         shape: Shape,
         args: Vec<Var>,
+        reuse: Option<Var>,
     },
     /// Slot `index` of a record or variant `src` (borrowed); the result is a new reference.
     Proj {
@@ -712,7 +716,11 @@ impl Inst {
             | TupleGet { src, .. } => {
                 vec![(*src, Borrow)]
             }
-            Alloc { args, .. } => all(args, Consume),
+            Alloc { args, reuse, .. } => {
+                let mut v = all(args, Consume);
+                v.extend(reuse.map(|t| (t, Consume)));
+                v
+            }
             MakeClosure { captures, .. } => all(captures, Consume),
             LoadCapture { env, .. } => vec![(*env, Borrow)],
             MakeHandler { state, clauses, .. } => {
