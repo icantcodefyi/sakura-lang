@@ -51,7 +51,7 @@ export async function Code({
               {numbers ? (
                 <span
                   aria-hidden
-                  className="mr-4 w-5 shrink-0 text-right text-faint tabular-nums select-none"
+                  className={`mr-4 w-5 shrink-0 text-right tabular-nums select-none ${mark?.[i] ? "text-muted-foreground" : "text-faint"}`}
                 >
                   {i + 1}
                 </span>
