@@ -219,6 +219,16 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 
 ### Changed
 
+- The WASM runtime ABI is 1.14.0 (`sakura_abi_version` `0x010e00`; design §17.298 (c),
+  §17.299 (12)): a refined type's schema keywords are a fifth argument of `$rt.refined` in
+  `__types__.js` and a fifth element of the native descriptor row, read by every
+  `json_schema`. A 1.13 host refuses a 1.14 module (`V8003`); a 1.14 host loads older modules.
+- The WASM runtime ABI is 1.15.0 (`sakura_abi_version` `0x010f00`; design §17.299, plan
+  `web-apis.md` phase 11b): `std/worker`'s live workers (`worker_*` imports, request kind 5,
+  the `workers()` export) and topics in the runtime (`topic_listen`, `topic_post`, the
+  `topic_deliver` export), and the native descriptor's layout 5 (`sakura_native_main_v5`)
+  with the worker table. A 1.14 host refuses a 1.15 module (`V8003`); a native program links
+  only with its own release's driver.
 - The `sakura` skill teaches the APIs since `v0.1.0`: `SKILL.md` names `Payload` and points to
   them; the cookbook reference gains "Current APIs since v0.1.0", six checked files (`Payload`
   bodies with byte limits, `Redirect.Manual`, `Http.sequence` for multi-turn tests,
@@ -404,16 +414,6 @@ Every breaking entry below, in the order a program meets it; the entries carry t
 - The WASM runtime ABI is 1.13.0 (`sakura_abi_version` `0x010d00`; design §17.292 (9)): the
   import `console_eprint(ptr, len)` carries `Console.eprint` to the Node host. A 1.12 host
   refuses a 1.13 module (`V8003`).
-- The WASM runtime ABI is 1.14.0 (`sakura_abi_version` `0x010e00`; design §17.298 (c),
-  §17.299 (12)): a refined type's schema keywords are a fifth argument of `$rt.refined` in
-  `__types__.js` and a fifth element of the native descriptor row, read by every
-  `json_schema`. A 1.13 host refuses a 1.14 module (`V8003`); a 1.14 host loads older modules.
-- The WASM runtime ABI is 1.15.0 (`sakura_abi_version` `0x010f00`; design §17.299, plan
-  `web-apis.md` phase 11b): `std/worker`'s live workers (`worker_*` imports, request kind 5,
-  the `workers()` export) and topics in the runtime (`topic_listen`, `topic_post`, the
-  `topic_deliver` export), and the native descriptor's layout 5 (`sakura_native_main_v5`)
-  with the worker table. A 1.14 host refuses a 1.15 module (`V8003`); a native program links
-  only with its own release's driver.
 
 - **Breaking since 0.1.0 (design §17.293 MT-9).** `Log.stderr()` and `Log.captured()` write each
   field as `key=` and its value in compact JSON, the text `Json.encode` gives, the same on JS,
