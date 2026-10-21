@@ -90,7 +90,7 @@
 {"name":"State","module":"std::url","params":0,"kind":{"Variant":{"ctors":[{"name":"SchemeStart","fields":[]},{"name":"Scheme","fields":[]},{"name":"NoScheme","fields":[]},{"name":"SpecialRelativeOrAuthority","fields":[]},{"name":"PathOrAuthority","fields":[]},{"name":"RelativeState","fields":[]},{"name":"RelativeSlash","fields":[]},{"name":"SpecialAuthoritySlashes","fields":[]},{"name":"SpecialAuthorityIgnoreSlashes","fields":[]},{"name":"Authority","fields":[]},{"name":"Host","fields":[]},{"name":"Port","fields":[]},{"name":"File","fields":[]},{"name":"FileSlash","fields":[]},{"name":"FileHost","fields":[]},{"name":"PathStart","fields":[]},{"name":"Path","fields":[]},{"name":"OpaquePathState","fields":[]},{"name":"Query","fields":[]},{"name":"Fragment","fields":[]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Requires","name":"pow","pos":{"file":24,"offset":1303,"end":1311}},

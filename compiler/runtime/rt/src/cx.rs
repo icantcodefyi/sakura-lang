@@ -88,6 +88,8 @@ mod wasm {
         pub fn console_print(ptr: u32, len: u32);
         /// The next line as a `Bytes` from `alloc_bytes` (without its newline), 0 at the end.
         pub fn console_read_line() -> u32;
+        /// A stderr line (JS `console_eprint`, ABI 1.13.0).
+        pub fn console_eprint(ptr: u32, len: u32);
         pub fn clock_now_ms() -> i64;
         pub fn clock_monotonic_ms() -> i64;
         /// Microseconds on the same clock as `clock_monotonic_ms` (ABI 1.5.0).
@@ -131,6 +133,11 @@ impl Cx<'_> {
         // SAFETY: a plain import with a slice inside linear memory, copied in before it returns
         // (ABI §8.1).
         unsafe { wasm::console_print(at, len) }
+    }
+
+    pub fn console_eprint(&mut self, at: u32, len: u32) {
+        // SAFETY: a plain import with a slice inside linear memory, copied in at once.
+        unsafe { wasm::console_eprint(at, len) }
     }
 
     pub fn console_read_line(&mut self) -> u32 {
@@ -294,6 +301,11 @@ impl Cx<'_> {
     pub fn console_print(&mut self, at: u32, len: u32) {
         let (rt, host) = self.host();
         host.console_print(Self::text_at(rt, at, len));
+    }
+
+    pub fn console_eprint(&mut self, at: u32, len: u32) {
+        let (rt, host) = self.host();
+        host.console_eprint(Self::text_at(rt, at, len));
     }
 
     pub fn console_read_line(&mut self) -> u32 {

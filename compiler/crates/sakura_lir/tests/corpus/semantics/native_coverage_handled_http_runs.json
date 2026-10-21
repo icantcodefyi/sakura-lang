@@ -129,7 +129,7 @@
 {"name":"Utf8Error","module":"std::string","params":0,"kind":{"Record":{"fields":[{"name":"offset","ty":"Int"}],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Http","module":"std::http","ops":[{"name":"send","params":[{"Adt":[2,[]]}],"ret":{"Adt":[6,[]]},"fail":{"Adt":[7,[]]}},{"name":"stream","params":[{"Adt":[2,[]]},{"Fn":{"params":[{"Adt":[8,[]]}],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Var":0},"fail":{"Adt":[7,[]]}},{"name":"read_chunk","params":[{"Adt":[9,[]]},"Int"],"ret":"Bytes","fail":{"Adt":[7,[]]}}]}
 ],
 "contracts": [

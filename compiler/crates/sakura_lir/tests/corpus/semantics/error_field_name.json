@@ -13,7 +13,7 @@
 {"name":"Problem","module":"main::error_field_name","params":0,"kind":{"Record":{"fields":[{"name":"error","ty":"String"}],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 

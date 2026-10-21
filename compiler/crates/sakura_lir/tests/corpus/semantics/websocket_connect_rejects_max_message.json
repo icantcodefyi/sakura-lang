@@ -149,7 +149,7 @@
 {"name":"Utf8Error","module":"std::string","params":0,"kind":{"Record":{"fields":[{"name":"offset","ty":"Int"}],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"WebSocket","module":"std::websocket","ops":[{"name":"connect","params":["String",{"Adt":[2,[]]},{"Fn":{"params":[{"Adt":[3,[]]}],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Var":0},"fail":{"Adt":[4,[]]}},{"name":"send","params":[{"Adt":[3,[]]},{"Adt":[6,[]]}],"ret":"Unit","fail":{"Adt":[4,[]]}},{"name":"receive","params":[{"Adt":[3,[]]}],"ret":{"Adt":[7,[]]},"fail":{"Adt":[4,[]]}},{"name":"close","params":[{"Adt":[3,[]]},"Int","String"],"ret":"Unit","fail":{"Adt":[4,[]]}},{"name":"accept","params":[{"Adt":[9,[]]},{"Adt":[13,[]]},{"Fn":{"params":[{"Adt":[3,[]]}],"ret":"Unit","row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Adt":[14,[]]},"fail":{"Adt":[4,[]]}},{"name":"subscribe","params":[{"Adt":[3,[]]},"String"],"ret":"Unit","fail":{"Adt":[4,[]]}},{"name":"unsubscribe","params":[{"Adt":[3,[]]},"String"],"ret":"Unit","fail":{"Adt":[4,[]]}},{"name":"publish","params":["String",{"Adt":[6,[]]},{"Adt":[0,[{"Adt":[3,[]]}]]}],"ret":"Int","fail":{"Adt":[4,[]]}}]}
 ],
 "contracts": [

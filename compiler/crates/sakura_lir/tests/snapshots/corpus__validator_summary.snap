@@ -30,6 +30,7 @@ semantics/closures: 8 funcs, 24 blocks, 4 dup, 17 drop, valid
 semantics/compress_rejects_level: 8 funcs, 49 blocks, 6 dup, 8 drop, valid
 semantics/compress_roundtrip_formats: 24 funcs, 313 blocks, 47 dup, 121 drop, valid
 semantics/compress_source_roundtrip: 75 funcs, 650 blocks, 124 dup, 281 drop, valid
+semantics/console_eprint: 48 funcs, 164 blocks, 15 dup, 85 drop, valid
 semantics/constants: 6 funcs, 16 blocks, 3 dup, 12 drop, valid
 semantics/contract_site_blame: 3 funcs, 6 blocks, 0 dup, 0 drop, valid
 semantics/contract_site_blame_callback: 5 funcs, 15 blocks, 3 dup, 5 drop, valid
@@ -149,7 +150,7 @@ semantics/if_else: 3 funcs, 20 blocks, 0 dup, 6 drop, valid
 semantics/imports: 9 funcs, 21 blocks, 0 dup, 16 drop, valid
 semantics/json_codec: 12 funcs, 100 blocks, 5 dup, 74 drop, valid
 semantics/json_decode_int_range: 2 funcs, 9 blocks, 3 dup, 6 drop, valid
-semantics/json_parse_malformed: 46 funcs, 165 blocks, 19 dup, 66 drop, valid
+semantics/json_parse_malformed: 47 funcs, 167 blocks, 19 dup, 68 drop, valid
 semantics/json_render_indent: 8 funcs, 117 blocks, 18 dup, 46 drop, valid
 semantics/let_polymorphism: 4 funcs, 10 blocks, 2 dup, 13 drop, valid
 semantics/line_endings_crlf: 5 funcs, 11 blocks, 2 dup, 15 drop, valid

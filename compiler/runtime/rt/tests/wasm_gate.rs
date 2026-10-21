@@ -41,6 +41,7 @@ const IMPORTS: &[&str] = &[
     "abort",
     "console_print",
     "console_read_line",
+    "console_eprint",
     "trace_enabled",
     "trace_write",
     "clock_now_ms",

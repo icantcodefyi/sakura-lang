@@ -16,7 +16,7 @@
 {"name":"Format","module":"std::compress","params":0,"kind":{"Variant":{"ctors":[{"name":"Gzip","fields":[]},{"name":"Deflate","fields":[]},{"name":"DeflateRaw","fields":[]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Requires","name":"compress","pos":{"file":7,"offset":2084,"end":2108}}

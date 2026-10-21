@@ -703,6 +703,19 @@ test("Secret never prints; Json.parse builds std values", () => {
   assert.equal(intMessage("1.5"), "expected an integer, found a number");
 });
 
+test("Console.eprint writes a stderr line: the host clause (op 2) and the WASM host's import (§17.292 (9))", () => {
+  const lines = [];
+  const write = process.stderr.write;
+  process.stderr.write = (line) => lines.push(line);
+  try {
+    rt.console_host().c[2](0, "from the clause", null, () => {});
+    rt.console_eprint("from the import");
+  } finally {
+    process.stderr.write = write;
+  }
+  assert.deepEqual(lines, ["from the clause\n", "from the import\n"]);
+});
+
 test("log_stderr writes each field as compact JSON (§17.293 MT-9)", () => {
   class Level extends rt.Variant {}
   Level.prototype.$t = rt.variantType("Level", "std::log", [["Debug", []], ["Info", []], ["Warn", []], ["Error", []]]);

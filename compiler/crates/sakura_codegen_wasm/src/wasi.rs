@@ -134,6 +134,16 @@ pub fn adapter(
                 (Part::Static(t.newline), Part::Const(1)),
             ],
         ),
+        "console_eprint" => write(
+            &mut s,
+            ix,
+            t,
+            2,
+            &[
+                (Part::Local(0), Part::Local(1)),
+                (Part::Static(t.newline), Part::Const(1)),
+            ],
+        ),
         // No input: end of file. No effect traces. No handles or requests to release.
         "console_read_line" | "trace_enabled" => {
             s.i32_const(0);

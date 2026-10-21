@@ -1,0 +1,100 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::duration::Duration | Duration 24b (i64)
+layout 1 variant std::fs::Dir
+layout 2 variant std::instant::Instant | Instant 24b (i64)
+layout 3 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 4 variant std::list::Builder
+layout 5 variant std::log::Level | Debug 16b () | Info 16b () | Warn 16b () | Error 16b ()
+layout 6 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 7 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 8 shape |  32b (word*, word*)
+layout 9 shape |  32b (i64, word*)
+layout 10 shape |  16b ()
+layout 11 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::console_eprint, frame 2 slots [%1 bool, %4 bool]
+  b0():
+    %0 lit: ptr = const str 0
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 lit: ptr = const str 1
+    perform std::console::Console.eprint(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    %6 unbox: unit = unbox %5
+    drop %5
+    ret %6
+
+fn $entry#1 top -> unit ; main::console_eprint, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn test$0#2 top -> unit ; main::console_eprint, frame 3 slots [%1 bool, %4 bool, %9 bool]
+  b0():
+    %0 lit: ptr = const str 2
+    perform std::console::Console.print(%0) -> b1()
+  b1(%1 r: unit):
+    %2 box: word = box %1
+    drop %2
+    %3 lit: ptr = const str 3
+    perform std::console::Console.eprint(%3) -> b2()
+  b2(%4 r: unit):
+    %5 box: word = box %4
+    drop %5
+    %6 lit: ptr = const str 2
+    %7 lit: ptr = const str 3
+    %8 xs: ptr = alloc list(%6, %7)
+    call expect_output#3(%8) -> b3()
+  b3(%9 r: unit):
+    ret %9
+
+fn test$0$run#11 test -> unit ; main::console_eprint, frame 5 slots [%0 i64, %8 word*, %9 i64, %15 word*, %24 bool]
+  b0(%0 seed: i64):
+    %1 print: ptr = closure captured$Console_print#43[]
+    %2 read_line: ptr = closure captured$Console_read_line#44[]
+    %3 eprint: ptr = closure captured$Console_eprint#45[]
+    %4 console: ptr = handler std::console::Console row 10 state() clauses(%1, %2, %3)
+    handle_push %4
+    %5 event: ptr = closure captured$Log_event#39[]
+    %6 log: ptr = handler std::log::Log row 10 state() clauses(%5)
+    handle_push %6
+    %7 lit: i64 = const 0
+    call from_unix_millis#6(%7) -> b1(%0)
+  b1(%8 epoch: ptr, %9 seed: i64) [handle, handle]:
+    %10 now: ptr = closure fixed$Clock_now#34[%8]
+    %11 monotonic: ptr = closure fixed$Clock_monotonic#35[]
+    %12 sleep: ptr = closure fixed$Clock_sleep#37[]
+    %13 monotonic_micros: ptr = closure fixed$Clock_monotonic_micros#38[]
+    %14 clock: ptr = handler std::clock::Clock row 10 state() clauses(%10, %11, %12, %13)
+    handle_push %14
+    call seeded#8(%9) -> b2()
+  b2(%15 random: ptr) [handle, handle, handle]:
+    handle_push %15
+    %16 vars: ptr = $map_empty()
+    dup %16
+    %17 get: ptr = closure of$Env_get#16[%16]
+    %18 secret: ptr = closure of$Env_secret#17[%16]
+    %19 env: ptr = handler std::env::Env row 10 state() clauses(%17, %18)
+    %20 get: ptr = closure host$Env_get#12[]
+    %21 secret: ptr = closure host$Env_secret#13[]
+    %22 env_host: ptr = handler std::env::Env row 10 state() clauses(%20, %21)
+    %23 env_default: ptr = $test_env(%22, %19)
+    handle_push %23
+    call test$0#2() -> b3()
+  b3(%24 r: unit) [handle, handle, handle, handle, handle]:
+    handle_pop
+    handle_pop
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %24

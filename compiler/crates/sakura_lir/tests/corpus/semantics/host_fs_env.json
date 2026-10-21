@@ -64,7 +64,7 @@
 {"name":"Utf8Error","module":"std::string","params":0,"kind":{"Record":{"fields":[{"name":"offset","ty":"Int"}],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Env","module":"std::env","ops":[{"name":"get","params":["String"],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"secret","params":["String"],"ret":{"Adt":[0,[{"Opaque":"Secret"}]]},"fail":null}]},
 {"name":"Fs","module":"std::fs","ops":[{"name":"root","params":[],"ret":{"Adt":[2,[]]},"fail":null},{"name":"read","params":["String"],"ret":"Bytes","fail":{"Adt":[3,[]]}},{"name":"read_text","params":["String"],"ret":{"Opaque":"Untrusted"},"fail":{"Adt":[3,[]]}},{"name":"write","params":["String","Bytes"],"ret":"Unit","fail":{"Adt":[3,[]]}},{"name":"list","params":["String"],"ret":{"List":{"Adt":[4,[]]}},"fail":{"Adt":[3,[]]}},{"name":"exists","params":["String"],"ret":"Bool","fail":null},{"name":"with_file","params":["String",{"Adt":[5,[]]},{"Fn":{"params":[{"Adt":[6,[]]}],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Var":0},"fail":{"Adt":[3,[]]}},{"name":"read_chunk","params":[{"Adt":[6,[]]},"Int"],"ret":"Bytes","fail":{"Adt":[3,[]]}},{"name":"write_chunk","params":[{"Adt":[6,[]]},"Bytes"],"ret":"Unit","fail":{"Adt":[3,[]]}}]}
 ],

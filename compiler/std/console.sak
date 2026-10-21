@@ -5,23 +5,26 @@ pub effect Console {
   fn print(line: String) -> Unit
   /// The next line of standard input without its newline; `None` at end of input.
   fn read_line() -> Option<String>
+  /// Writes `line` and a newline to standard error (`eprint`; `error` is a keyword).
+  fn eprint(line: String) -> Unit
 }
 
-/// Root handler over the process's stdout/stdin. The host installs it for a `main`
+/// Root handler over the process's stdout, stderr and stdin. The host installs it for a `main`
 /// that declares `Console`; user code rarely calls it.
 @external(js, "sakura_runtime", "console_host")
 pub fn host() -> Handler<Console>
 
-/// Test default: printed lines go to the test's captured output; input is empty.
+/// Test default: printed lines, `eprint`'s too, go to the test's captured output; input is empty.
 pub fn captured() -> Handler<Console, {Test}> {
   handler Console {
     fn print(line) { Test.output(line) }
     fn read_line() { None }
+    fn eprint(line) { Test.output(line) }
   }
 }
 
 /// A test handler whose input is `lines`, one per `read_line`, then end of input; printed lines
-/// go to the test's captured output, as under `captured()`.
+/// go to the test's captured output (`eprint`'s too), as under `captured()`.
 pub fn scripted(lines: List<String>) -> Handler<Console, {Test}> {
   handler Console {
     var next = 0
@@ -30,6 +33,7 @@ pub fn scripted(lines: List<String>) -> Handler<Console, {Test}> {
       next = next + 1
       List.get(lines, next - 1)
     }
+    fn eprint(line) { Test.output(line) }
   }
 }
 

@@ -291,6 +291,7 @@ fn decompress_source<T, e>(src: Source<Bytes, e>, format: Format, max_out: Int, 
 effect Console {
   fn print(line: String) -> Unit
   fn read_line() -> Option<String>
+  fn eprint(line: String) -> Unit
 }
 fn host() -> Handler<Console>    // @external
 fn captured() -> Handler<Console, {Test}>

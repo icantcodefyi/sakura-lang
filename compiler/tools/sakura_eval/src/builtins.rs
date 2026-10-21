@@ -428,6 +428,7 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
                 clauses: vec![
                     native(crate::Native::ConsolePrint),
                     native(crate::Native::ConsoleReadLine),
+                    native(crate::Native::ConsoleEprint),
                 ],
             }))
         }

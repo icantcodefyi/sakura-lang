@@ -3072,7 +3072,12 @@ export function console_print(line) {
   writeOut(line);
 }
 
-/** Root handler for `std::console::Console` (ops: print, read_line). */
+/** `Console.eprint`: a stderr line, after any pending stdout. */
+export function console_eprint(line) {
+  writeErr(line);
+}
+
+/** Root handler for `std::console::Console` (ops: print, read_line, eprint). */
 export function console_host() {
   return new Handler(
     "std::console::Console",
@@ -3082,6 +3087,10 @@ export function console_host() {
         return ret(k, undefined);
       },
       (_i, _ctx, k) => ret(k, console_read_line()),
+      (_i, line, _ctx, k) => {
+        writeErr(line);
+        return ret(k, undefined);
+      },
     ],
     [],
   );

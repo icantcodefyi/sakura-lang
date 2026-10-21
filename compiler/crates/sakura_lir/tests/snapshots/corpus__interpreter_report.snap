@@ -30,6 +30,7 @@ semantics/closures: ok, 24 allocated, 12 dup, 36 drop, peak 9, live 0/0
 semantics/compress_rejects_level: unsupported (builtin string_to_bytes)
 semantics/compress_roundtrip_formats: unsupported (builtin bytes_from_list)
 semantics/compress_source_roundtrip: unsupported (builtin string_to_bytes)
+semantics/console_eprint: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/constants: ok, 17 allocated, 10 dup, 27 drop, peak 8, live 0/0
 semantics/contract_site_blame: D020, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/contract_site_blame_callback: D020, 4 allocated, 3 dup, 7 drop, peak 4, live 0/0

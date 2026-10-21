@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.12.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.13.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -21,8 +21,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 `std/websocket`'s host operations (§8.2, §8.5; RFC 0002 §1, §6), 1.9.0 `std/crypto` tier
 1b's `hosted` imports (§8.2; design §17.288 (10), RFC 0002 §2.7), 1.10.0 the WebSocket server
 (§8.2; design §17.289, RFC 0002 §2.10) and 1.11.0 `std/crypto` tier 2 (§8.2; design §17.288
-(6), RFC 0002 §2.7) and 1.12.0 `std/channel`'s object and finalizer code
-(§3.2, §3.5, §7.4; RFC 0002 §2.9). Owned by
+(6), RFC 0002 §2.7), 1.12.0 `std/channel`'s object and finalizer code
+(§3.2, §3.5, §7.4; RFC 0002 §2.9) and 1.13.0 `Console.eprint`'s import (§8.2; design §17.292
+(9)). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -260,6 +261,13 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `channel_receiver`, `channel_try_send` and `channel_close`. No import or export changes: a
   channel never crosses to the host, which serves no request for it; the version records the
   new tag and table entry, and an older host refuses a 1.12 module by the MINOR rule.
+- 1.13.0 (MINOR, design §17.292 (9), after phase 10's 1.12.0, §17.266 (1)) adds
+  `Console.eprint(line)`, the `Console` effect's third operation: the import
+  `console_eprint(ptr, len)` (§8.2), one stderr line, beside `console_print`, and the runtime's
+  `rt_code_console_eprint` as the host console handler's third clause. The WASI command writes
+  it with `fd_write` to 2; the native host writes it as a `log_write` line. Nothing shipped
+  changes, but a module that imports it needs a host that has it, so an older host refuses a
+  1.13 module by the MINOR rule. `sakura_abi_version` is `0x010d00`.
   `sakura_abi_version` is `0x010c00`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
@@ -909,7 +917,7 @@ these; a WASI command (the pure corpus on Wasmtime, `Host::Wasi`) imports only
 - Runtime (M4-RT): `retire_handle(kind, slot, generation)`, `abort(request)`,
   `trace_enabled() -> i32`, `trace_write(ptr, len)` (one §17.80 trace line).
 - Console, clock, random, log (M4-WASM): `console_print(ptr, len)`, `console_read_line() ->
-  Bytes` (0 at the end), `clock_now_ms() -> i64`, `clock_monotonic_ms() -> i64`,
+  Bytes` (0 at the end), `console_eprint(ptr, len)` (1.13.0, a stderr line), `clock_now_ms() -> i64`, `clock_monotonic_ms() -> i64`,
   `clock_monotonic_us() -> i64` (1.5.0, the same clock in microseconds), `async`
   `clock_sleep_ms(request, ms: i64)`, `random_int(lo: i64, hi: i64) -> i64`, `random_float() ->
   f64`, `random_bytes(n: i64) -> Bytes`, `random_uuid() -> Bytes`, `log_write(ptr, len)`,

@@ -23,7 +23,7 @@ import * as rt from "./sakura_runtime.js";
 rt.stopTracing();
 
 /** ABI §0: the version this host implements. */
-export const ABI_VERSION = 0x010c00;
+export const ABI_VERSION = 0x010d00;
 
 /** The `stats()` counters in order (ABI §10). */
 export const STATS = [
@@ -609,6 +609,7 @@ export class Host {
     return {
       sakura_host: {
         console_print: (ptr, len) => rt.console_print(this.string(ptr, len)),
+        console_eprint: (ptr, len) => rt.console_eprint(this.string(ptr, len)),
         console_read_line: () => {
           const line = rt.console_read_line();
           return line.tag === 1 ? this.copyOut(new TextEncoder().encode(line.fields[0])) : 0;

@@ -413,6 +413,7 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ),
         ("rt_code_clock_now", e::rt_code_clock_now),
         ("rt_code_clock_sleep", e::rt_code_clock_sleep),
+        ("rt_code_console_eprint", e::rt_code_console_eprint),
         ("rt_code_console_print", e::rt_code_console_print),
         ("rt_code_console_read_line", e::rt_code_console_read_line),
         ("rt_code_file_close", e::rt_code_file_close),

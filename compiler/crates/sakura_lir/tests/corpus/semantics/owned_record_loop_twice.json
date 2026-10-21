@@ -15,7 +15,7 @@
 {"name":"Planner","module":"main::owned_record_loop_twice","params":0,"kind":{"Record":{"fields":[{"name":"vars","ty":{"List":"Int"}},{"name":"cons","ty":{"List":"Int"}},{"name":"mark","ty":"Int"}],"error":false}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Requires","name":"set","pos":{"file":26,"offset":961,"end":982}}

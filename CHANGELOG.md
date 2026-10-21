@@ -59,15 +59,27 @@ Every breaking entry below, in the order a program meets it; the entries carry t
     it comes from the environment.
 11. **Log fields render as compact JSON** (Changed, design §17.293 MT-9): a test that matched
     `hits=Number(3.0)` matches `hits=3`, and `id=String("x")` becomes `id="x"`.
+12. **`Console` gains `eprint`** (Changed, design §17.292 (9)): a user `handler Console` adds
+    `fn eprint(line) { … }`, e.g. the same body as its `print`.
 
 ### Changed
+
+- **Breaking for user handlers since 0.1.0 (design §17.292 (9)).** The `Console` effect gains
+  a third operation, `eprint(line: String) -> Unit`, which writes `line` and a newline to
+  standard error: `Console.host()` writes to the process's stderr on JS, WASM (the Node host,
+  and the WASI command with `fd_write` to 2) and native, and `Console.captured()` and
+  `Console.scripted()` send it to the test's output as `print` does. A user `handler Console`
+  must add it. (`eprint`, not `error`, because `error` is a keyword.) Migration: add
+  `fn eprint(line) { … }` to each user `Console` handler.
+- The WASM runtime ABI is 1.13.0 (`sakura_abi_version` `0x010d00`; design §17.292 (9)): the
+  import `console_eprint(ptr, len)` carries `Console.eprint` to the Node host. A 1.12 host
+  refuses a 1.13 module (`V8003`).
 
 - **Breaking since 0.1.0 (design §17.293 MT-9).** `Log.stderr()` and `Log.captured()` write each
   field as `key=` and its value in compact JSON, the text `Json.encode` gives, the same on JS,
   WASM and native: `Info manual.search hits=3 id="drill-press-belt-slip"
   ok=true tags=["a","b"]` where 0.1.0 wrote `hits=Number(3.0) id=String("drill-press-belt-slip")`.
   `Log.json()` is unchanged. Migration: a test that matched `hits=Number(3.0)` matches `hits=3`.
-
 - **Breaking since 0.1.0 (design §17.293 MT-1).** `Llm.anthropic` no longer reads the process
   variable `ANTHROPIC_BASE_URL`: it always sends to `https://api.anthropic.com`, and the new
   `Llm.anthropic_at(base: Url, key, model)` sends to `<base>/v1/messages`, where the manifest's

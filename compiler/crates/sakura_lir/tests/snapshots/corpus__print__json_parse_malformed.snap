@@ -104,42 +104,43 @@ fn shown#3 top -> ptr ; main::json_parse_malformed, frame 0 slots []
     %10 xs: ptr = alloc list(%5, %8, %9)
     ret %10
 
-fn test$0$run#12 test -> unit ; main::json_parse_malformed, frame 5 slots [%0 i64, %7 word*, %8 i64, %14 word*, %23 bool]
+fn test$0$run#12 test -> unit ; main::json_parse_malformed, frame 5 slots [%0 i64, %8 word*, %9 i64, %15 word*, %24 bool]
   b0(%0 seed: i64):
     %1 print: ptr = closure captured$Console_print#44[]
     %2 read_line: ptr = closure captured$Console_read_line#45[]
-    %3 console: ptr = handler std::console::Console row 11 state() clauses(%1, %2)
-    handle_push %3
-    %4 event: ptr = closure captured$Log_event#40[]
-    %5 log: ptr = handler std::log::Log row 11 state() clauses(%4)
-    handle_push %5
-    %6 lit: i64 = const 0
-    call from_unix_millis#7(%6) -> b1(%0)
-  b1(%7 epoch: ptr, %8 seed: i64) [handle, handle]:
-    %9 now: ptr = closure fixed$Clock_now#35[%7]
-    %10 monotonic: ptr = closure fixed$Clock_monotonic#36[]
-    %11 sleep: ptr = closure fixed$Clock_sleep#38[]
-    %12 monotonic_micros: ptr = closure fixed$Clock_monotonic_micros#39[]
-    %13 clock: ptr = handler std::clock::Clock row 11 state() clauses(%9, %10, %11, %12)
-    handle_push %13
-    call seeded#9(%8) -> b2()
-  b2(%14 random: ptr) [handle, handle, handle]:
+    %3 eprint: ptr = closure captured$Console_eprint#46[]
+    %4 console: ptr = handler std::console::Console row 11 state() clauses(%1, %2, %3)
+    handle_push %4
+    %5 event: ptr = closure captured$Log_event#40[]
+    %6 log: ptr = handler std::log::Log row 11 state() clauses(%5)
+    handle_push %6
+    %7 lit: i64 = const 0
+    call from_unix_millis#7(%7) -> b1(%0)
+  b1(%8 epoch: ptr, %9 seed: i64) [handle, handle]:
+    %10 now: ptr = closure fixed$Clock_now#35[%8]
+    %11 monotonic: ptr = closure fixed$Clock_monotonic#36[]
+    %12 sleep: ptr = closure fixed$Clock_sleep#38[]
+    %13 monotonic_micros: ptr = closure fixed$Clock_monotonic_micros#39[]
+    %14 clock: ptr = handler std::clock::Clock row 11 state() clauses(%10, %11, %12, %13)
     handle_push %14
-    %15 vars: ptr = $map_empty()
-    dup %15
-    %16 get: ptr = closure of$Env_get#17[%15]
-    %17 secret: ptr = closure of$Env_secret#18[%15]
-    %18 env: ptr = handler std::env::Env row 11 state() clauses(%16, %17)
-    %19 get: ptr = closure host$Env_get#13[]
-    %20 secret: ptr = closure host$Env_secret#14[]
-    %21 env_host: ptr = handler std::env::Env row 11 state() clauses(%19, %20)
-    %22 env_default: ptr = $test_env(%21, %18)
-    handle_push %22
+    call seeded#9(%9) -> b2()
+  b2(%15 random: ptr) [handle, handle, handle]:
+    handle_push %15
+    %16 vars: ptr = $map_empty()
+    dup %16
+    %17 get: ptr = closure of$Env_get#17[%16]
+    %18 secret: ptr = closure of$Env_secret#18[%16]
+    %19 env: ptr = handler std::env::Env row 11 state() clauses(%17, %18)
+    %20 get: ptr = closure host$Env_get#13[]
+    %21 secret: ptr = closure host$Env_secret#14[]
+    %22 env_host: ptr = handler std::env::Env row 11 state() clauses(%20, %21)
+    %23 env_default: ptr = $test_env(%22, %19)
+    handle_push %23
     call test$0#2() -> b3()
-  b3(%23 r: unit) [handle, handle, handle, handle, handle]:
+  b3(%24 r: unit) [handle, handle, handle, handle, handle]:
     handle_pop
     handle_pop
     handle_pop
     handle_pop
     handle_pop
-    ret %23
+    ret %24

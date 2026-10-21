@@ -175,8 +175,9 @@ enum Sv {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Native {
-    ConsolePrint,
-    ConsoleReadLine,
+    Print,
+    ReadLine,
+    Eprint,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1509,7 +1510,7 @@ impl<'m> Vm<'m> {
     fn native(&mut self, n: Native, args: Vec<Val>) -> R<Val> {
         // args: [activation id, operation arguments…] (the closure was already released).
         let r = match n {
-            Native::ConsolePrint => {
+            Native::Print => {
                 let Some(Val::W(line)) = args.get(1) else {
                     return internal("Console.print without a line");
                 };
@@ -1518,7 +1519,9 @@ impl<'m> Vm<'m> {
                 self.stdout.push('\n');
                 Val::U
             }
-            Native::ConsoleReadLine => Val::W(self.option(None)?),
+            Native::ReadLine => Val::W(self.option(None)?),
+            // The evaluator's outcome records no stderr.
+            Native::Eprint => Val::U,
         };
         for a in args {
             if let Val::W(w) = a {
@@ -1884,15 +1887,16 @@ impl<'m> Vm<'m> {
             ("match_failure", []) => return self.defect("D090", "match failure"),
             ("console_host", []) => {
                 let effect = self.console_effect()?;
-                let print = self.static_closure(Code::Native(Native::ConsolePrint))?;
-                let read = self.static_closure(Code::Native(Native::ConsoleReadLine))?;
+                let print = self.static_closure(Code::Native(Native::Print))?;
+                let read = self.static_closure(Code::Native(Native::ReadLine))?;
+                let eprint = self.static_closure(Code::Native(Native::Eprint))?;
                 W(self.alloc_obj(
                     tag::HANDLER,
                     Body::Handler {
                         effect,
                         row: None,
                         state: vec![],
-                        clauses: vec![print, read],
+                        clauses: vec![print, read, eprint],
                     },
                     false,
                 )?)

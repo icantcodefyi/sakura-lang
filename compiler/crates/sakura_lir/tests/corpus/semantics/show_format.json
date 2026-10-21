@@ -12,7 +12,7 @@
 {"name":"Color","module":"main::show_format","params":0,"kind":{"Variant":{"ctors":[{"name":"Red","fields":[]},{"name":"Rgb","fields":["Int","Int","Int"]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 

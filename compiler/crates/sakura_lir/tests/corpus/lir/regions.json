@@ -21,7 +21,7 @@
 {"name":"Other","module":"main::main","params":0,"kind":{"Record":{"fields":[],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Count","module":"main::main","ops":[{"name":"tick","params":[],"ret":"Int","fail":null},{"name":"each","params":["Int",{"Fn":{"params":["Int"],"ret":"Unit","row":{"effects":[],"fail":null,"tail":null}}}],"ret":"Unit","fail":null}]}
 ],
 "contracts": [

@@ -25,7 +25,7 @@
 {"name":"Duration","module":"std::duration","params":0,"kind":{"Variant":{"ctors":[{"name":"Duration","fields":["Int"]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Clock","module":"std::clock","ops":[{"name":"now","params":[],"ret":{"Adt":[2,[]]},"fail":null},{"name":"monotonic","params":[],"ret":{"Adt":[3,[]]},"fail":null},{"name":"sleep","params":[{"Adt":[3,[]]}],"ret":"Unit","fail":null},{"name":"monotonic_micros","params":[],"ret":"Int","fail":null}]},
 {"name":"Counter","module":"main::loop_resume_twice","ops":[{"name":"next","params":[],"ret":"Int","fail":null}]}
 ],

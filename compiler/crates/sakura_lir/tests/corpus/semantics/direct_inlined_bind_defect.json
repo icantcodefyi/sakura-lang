@@ -13,7 +13,7 @@
 {"name":"Box","module":"main::direct_inlined_bind_defect","params":0,"kind":{"Record":{"fields":[{"name":"v","ty":"Int"}],"error":false}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Ensures","name":"halved","pos":{"file":56,"offset":359,"end":369}}

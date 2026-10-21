@@ -44,7 +44,7 @@
 {"name":"Builder","module":"std::list","params":1,"kind":{"Variant":{"ctors":[]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Random","module":"std::random","ops":[{"name":"int","params":["Int","Int"],"ret":"Int","fail":null},{"name":"float","params":[],"ret":"Float","fail":null},{"name":"bytes","params":["Int"],"ret":"Bytes","fail":null},{"name":"uuid","params":[],"ret":"String","fail":null}]},
 {"name":"Clock","module":"std::clock","ops":[{"name":"now","params":[],"ret":{"Adt":[2,[]]},"fail":null},{"name":"monotonic","params":[],"ret":{"Adt":[3,[]]},"fail":null},{"name":"sleep","params":[{"Adt":[3,[]]}],"ret":"Unit","fail":null},{"name":"monotonic_micros","params":[],"ret":"Int","fail":null}]}
 ],

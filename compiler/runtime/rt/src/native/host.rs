@@ -54,6 +54,10 @@ pub trait Host {
     fn console_print(&mut self, line: &str);
     /// The next line of input without its newline, `None` at the end.
     fn console_read_line(&mut self) -> Option<String>;
+    /// `Console.eprint`: a stderr line, as `log_write` writes one.
+    fn console_eprint(&mut self, line: &str) {
+        self.log_write(line);
+    }
     fn clock_now_ms(&mut self) -> i64;
     fn clock_monotonic_ms(&mut self) -> i64;
     /// Microseconds on the same clock as `clock_monotonic_ms`.

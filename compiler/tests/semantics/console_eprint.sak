@@ -1,0 +1,18 @@
+// milestone: M3
+// expect-stderr: to stderr
+// spec: design §17.292 (9)
+
+// `Console.eprint` writes a line to standard error: the host handler on JS, WASM (the Node host
+// and the WASI command, `fd_write` to 2) and native. Stdout holds only `print`'s line. Under a
+// test, `captured()` sends both to the test's output.
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("to stdout")
+  Console.eprint("to stderr")
+}
+
+test "eprint is captured as print is" {
+  Console.print("one")
+  Console.eprint("two")
+  expect_output(["one", "two"])
+}

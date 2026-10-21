@@ -171,7 +171,7 @@ From design §10.2. Each effect lives in its own std module (`std/console`, `std
 
 | Effect | Operations | Purpose |
 | --- | --- | --- |
-| `Console` | `print`, `read_line` | Terminal IO |
+| `Console` | `print`, `read_line`, `eprint` | Terminal IO (`eprint` writes to stderr) |
 | `Clock` | `now`, `monotonic`, `sleep` | Time |
 | `Random` | `int`, `float`, `bytes`, `uuid` | Randomness |
 | `Env` | `get`, `secret` | Environment variables: `get` returns `Option<String>`, `secret` returns `Option<Secret<String>>` |

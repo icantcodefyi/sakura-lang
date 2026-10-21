@@ -15,7 +15,7 @@
 {"name":"Result","module":"std::result","params":2,"kind":{"Variant":{"ctors":[{"name":"Ok","fields":[{"Var":0}]},{"name":"Err","fields":[{"Var":1}]}]}},"builtin":"Result"}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Counter","module":"main::handler_state","ops":[{"name":"next","params":[],"ret":"Int","fail":null}]}
 ],
 "contracts": [

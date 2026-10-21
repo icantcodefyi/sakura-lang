@@ -38,7 +38,7 @@
 {"name":"SendError","module":"std::channel","params":0,"kind":{"Variant":{"ctors":[{"name":"Full","fields":[]},{"name":"Closed","fields":[]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Task","module":"std::task","ops":[{"name":"scope","params":[{"Fn":{"params":[{"Adt":[2,[]]}],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Var":0},"fail":null},{"name":"spawn","params":[{"Adt":[2,[]]},{"Fn":{"params":[],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}],"ret":{"Adt":[3,[{"Var":0}]]},"fail":null},{"name":"join","params":[{"Adt":[3,[{"Var":0}]]}],"ret":{"Var":0},"fail":null},{"name":"all","params":[{"List":{"Fn":{"params":[],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}}],"ret":{"List":{"Var":0}},"fail":null},{"name":"race","params":[{"List":{"Fn":{"params":[],"ret":{"Var":0},"row":{"effects":[],"fail":null,"tail":null}}}}],"ret":{"Var":0},"fail":null},{"name":"yield_now","params":[],"ret":"Unit","fail":null},{"name":"cancel","params":[{"Adt":[3,[{"Var":0}]]}],"ret":"Unit","fail":null},{"name":"cancelled","params":[{"Adt":[2,[]]}],"ret":"Bool","fail":null}]}
 ],
 "contracts": [

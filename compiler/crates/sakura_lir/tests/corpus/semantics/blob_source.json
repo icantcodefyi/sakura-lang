@@ -57,7 +57,7 @@
 {"name":"Decoder","module":"std::encoding","params":0,"kind":{"Record":{"fields":[{"name":"encoding","ty":{"Adt":[9,[]]}},{"name":"errors","ty":{"Adt":[10,[]]}},{"name":"pending","ty":"Bytes"},{"name":"offset","ty":"Int"},{"name":"started","ty":"Bool"}],"error":false}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Requires","name":"to_list","pos":{"file":44,"offset":4328,"end":4342}},

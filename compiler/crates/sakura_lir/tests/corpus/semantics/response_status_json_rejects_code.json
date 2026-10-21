@@ -15,7 +15,7 @@
 {"name":"Payload","module":"std::request","params":0,"kind":{"Variant":{"ctors":[{"name":"Empty","fields":[]},{"name":"Text","fields":["String"]},{"name":"Bytes","fields":["Bytes"]}]}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]}
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]}
 ],
 "contracts": [
 {"kind":"Requires","name":"status_json","pos":{"file":35,"offset":1070,"end":1096}},

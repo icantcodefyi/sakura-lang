@@ -18,7 +18,7 @@
 {"name":"Neg","module":"main::match_guard_run_regions","params":0,"kind":{"Record":{"fields":[],"error":true}},"builtin":null}
 ],
 "effects": [
-{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null}]},
+{"name":"Console","module":"std::console","ops":[{"name":"print","params":["String"],"ret":"Unit","fail":null},{"name":"read_line","params":[],"ret":{"Adt":[0,["String"]]},"fail":null},{"name":"eprint","params":["String"],"ret":"Unit","fail":null}]},
 {"name":"Pick","module":"main::match_guard_run_regions","ops":[{"name":"pick","params":["Int"],"ret":"Int","fail":null}]}
 ],
 "contracts": [

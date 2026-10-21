@@ -1310,7 +1310,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x010c00, "{name}");
+        assert_eq!(v["abi_version"], 0x010d00, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),
@@ -1739,7 +1739,7 @@ fn build_wasi_writes_a_command_for_wasmtime() {
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(
         dir.join("main.sak"),
-        "pub fn main() -> Unit ! {Console} {\n  Console.print(\"{6 * 7}\")\n}\n",
+        "pub fn main() -> Unit ! {Console} {\n  Console.print(\"{6 * 7}\")\n  Console.eprint(\"to fd 2\")\n}\n",
     )
     .unwrap();
     let args = [
@@ -1774,6 +1774,8 @@ fn build_wasi_writes_a_command_for_wasmtime() {
         String::from_utf8_lossy(&run.stderr)
     );
     assert_eq!(String::from_utf8_lossy(&run.stdout), "42\n");
+    // `Console.eprint` is `fd_write` to 2 (design §17.292 (9)).
+    assert_eq!(String::from_utf8_lossy(&run.stderr), "to fd 2\n");
 }
 
 #[test]

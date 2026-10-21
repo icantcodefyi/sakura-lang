@@ -57,6 +57,7 @@ pub enum Callable {
 pub enum Native {
     ConsolePrint,
     ConsoleReadLine,
+    ConsoleEprint,
     TestRecordFailure,
     TestFailures,
     TestOutput,
@@ -409,6 +410,7 @@ impl<'m> Machine<'m> {
             let native = |op: &OpDef| match (e.name.as_str(), op.name.as_str()) {
                 ("Console", "print") => Some(Native::ConsolePrint),
                 ("Console", "read_line") => Some(Native::ConsoleReadLine),
+                ("Console", "eprint") => Some(Native::ConsoleEprint),
                 ("Test", "record_failure") => Some(Native::TestRecordFailure),
                 ("Test", "failures") => Some(Native::TestFailures),
                 ("Test", "output") => Some(Native::TestOutput),
@@ -572,6 +574,13 @@ impl<'m> Machine<'m> {
                 Ok(Value::Unit)
             }
             Native::ConsoleReadLine => builtins::option(self.module, None),
+            // Captured as `print` under tests; the evaluator's outcome records no stderr.
+            Native::ConsoleEprint => {
+                if self.testing {
+                    self.test_output.push(str_of(&arg(1))?.to_string());
+                }
+                Ok(Value::Unit)
+            }
             Native::TestRecordFailure => {
                 self.failures.push(str_of(&arg(1))?.to_string());
                 Ok(Value::Unit)

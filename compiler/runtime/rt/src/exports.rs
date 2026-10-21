@@ -738,6 +738,26 @@ pub extern "C" fn rt_code_console_print(
     step::RETURN
 }
 
+/// `Console.eprint(line)` of the host console handler: as `rt_code_console_print`, to stderr.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_code_console_eprint(
+    #[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>,
+    _env: u32,
+    frame: u32,
+) -> u32 {
+    let mut cx = cx!(ctx);
+    let rt = cx.rt();
+    let clause = rt.take_fslot(frame, 0) as u32;
+    let line = rt.take_fslot(frame, 2) as u32;
+    let (len, at) = rt.data(line);
+    cx.console_eprint(at, len);
+    let rt = cx.rt();
+    rt.drop(line);
+    rt.drop(clause);
+    rt.set_ret(UNIT as u64);
+    step::RETURN
+}
+
 /// `Console.read_line()`: `None` at end of input (the host returns -1), else `Some(line)`.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_code_console_read_line(
