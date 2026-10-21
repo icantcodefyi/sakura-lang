@@ -620,6 +620,41 @@ figure.shiki figcaption {
   }
 }
 
+/* Agents section: the recorded session plays once, line by line; MCP packets shuttle. */
+.mcp-out {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .term-in {
+    animation: term-in var(--duration-slow) var(--ease-out) both;
+    animation-delay: calc(300ms + var(--term-i, 0) * 320ms);
+  }
+  .mcp-out {
+    animation: mcp-out 2.8s var(--ease-in-out) var(--mcp-delay, 0s) infinite both;
+  }
+}
+@keyframes term-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes mcp-out {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  10%,
+  30% {
+    opacity: 1;
+  }
+  40%,
+  100% {
+    opacity: 0;
+    transform: translateX(var(--mcp-d));
+  }
+}
+
 /* Pipeline figure: petals carry the build from source through the checker to each backend. */
 .pp {
   opacity: 0;

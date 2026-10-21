@@ -10,8 +10,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Landing page
 
-The page answers, in order: what Sakura Lang is, why use it, what the code looks like, whether
-it is fast, whether it is ready and how to start. Detail belongs in the docs, linked from there.
+The page answers, in order: what Sakura Lang is, why use it, how it works with a coding agent,
+what the code looks like, whether it is fast, whether it is ready and how to start. Detail
+belongs in the docs, linked from there.
 Every displayed version comes from `RELEASE` in `lib/release.ts`: the hero badge, install
 commands, the status section, footer, changelog page and llms.txt. Change it only once the tag
 is published; then check that `status.tsx` still matches /docs/stability. `/changelog` renders

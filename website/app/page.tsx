@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { HeaderControls } from "@/components/header-controls";
 import { SiteHeader } from "@/components/site-header";
+import { Agents } from "@/components/landing/agents";
 import { Benchmarks } from "@/components/landing/benchmarks";
 import { CodeSample } from "@/components/landing/code";
 import { Hero } from "@/components/landing/hero";
@@ -63,10 +64,12 @@ export default function Home() {
         <HeaderControls />
       </SiteHeader>
       <main id="main" className="flex-1">
-        {/* The questions a curious developer asks, in order: what, why, how it reads, how fast,
+        {/* The questions a curious developer asks, in order: what, why, how it works with an
+            agent, how it reads, how fast,
             how ready, how to start. Everything else lives in the docs. */}
         <Hero />
         <Why />
+        <Agents />
         <CodeSample />
         <Benchmarks />
         <Status />
