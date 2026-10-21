@@ -50,6 +50,10 @@ retains earlier implementation history.
   `diagnostics/codes.txt`. `sakura build --dump owned` prints each witness's byte range
   (`shared(borrowed-after at 88..100)`). A program that checked clean may now print warnings;
   exit codes are unchanged.
+- **`sakura test --target native`** (experimental, plan M5 N1b): the module's tests run in a
+  native test executable with the same `test` and `test_summary` records, snapshots and
+  `Test.fixtures()` as `--target wasm`. Property tests and `Llm` are not native yet (they end
+  `D090`). `Log.json()` runs natively with the JS backend's JSON lines.
 
 ### Changed
 

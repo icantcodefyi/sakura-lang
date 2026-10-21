@@ -46,6 +46,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         CRYPTO_ON_WASI,
     ),
     (
+        "semantics/log_json_line",
+        None,
+        "`Log.json()` is a JS-built handler on WASM, whose types a bare corpus module lacks (and WASI has no JS)",
+    ),
+    (
         "semantics/crypto_jwk_roundtrip",
         None,
         "`Json.parse` answers a `Json`, whose JS type descriptor a bare corpus module lacks (and WASI has no crypto)",
