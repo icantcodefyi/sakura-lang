@@ -118,6 +118,7 @@ semantics/exact_i64_json: 3 funcs, 10 blocks, 0 dup, 5 drop, valid
 semantics/exact_i64_print: 3 funcs, 14 blocks, 0 dup, 21 drop, valid
 semantics/exact_i64_sql: 6 funcs, 43 blocks, 0 dup, 14 drop, valid
 semantics/float_nan_negative_zero: 3 funcs, 16 blocks, 0 dup, 28 drop, valid
+semantics/float_nan_structural_order: 8 funcs, 47 blocks, 7 dup, 58 drop, valid
 semantics/float_rem: 3 funcs, 11 blocks, 0 dup, 4 drop, valid
 semantics/form_encode_rejects_boundary: 14 funcs, 125 blocks, 1 dup, 65 drop, valid
 semantics/form_encode_wpt: 40 funcs, 344 blocks, 6 dup, 128 drop, valid

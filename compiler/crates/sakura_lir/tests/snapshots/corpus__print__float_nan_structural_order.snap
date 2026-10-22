@@ -1,0 +1,197 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::float_nan_structural_order::R | R 24b (v: f64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (f64, i64)
+
+fn main#0 pub top -> unit ; main::float_nan_structural_order, frame 12 slots [%0 f64, %1 f64, %2 f64, %34 bool, %35 f64, %97 bool, %98 f64, %106 word*, %107 f64, %115 word*, %116 word*, %119 bool]
+  b0():
+    call zero#2() -> b1()
+  b1(%0 r: f64):
+    call zero#2() -> b2(%0)
+  b2(%1 r: f64, %2 r: f64):
+    %3 t: f64 = floatdiv %2, %1
+    %4 t: bool = le.float %3, %3
+    %5 s: ptr = show %4
+    %6 lit: ptr = const str 0
+    %7 s: ptr = concat %5, %6
+    drop %6
+    %8 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %9 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %10 t: bool = le.any %8, %9
+    drop %8
+    drop %9
+    %11 s: ptr = show %10
+    %12 s: ptr = concat %7, %11
+    drop %11
+    %13 lit: ptr = const str 0
+    %14 s: ptr = concat %12, %13
+    drop %13
+    %15 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %16 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %17 t: bool = ge.any %15, %16
+    drop %15
+    drop %16
+    %18 s: ptr = show %17
+    %19 s: ptr = concat %14, %18
+    drop %18
+    %20 lit: ptr = const str 0
+    %21 s: ptr = concat %19, %20
+    drop %20
+    %22 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %23 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %24 t: bool = lt.any %22, %23
+    drop %22
+    drop %23
+    %25 s: ptr = show %24
+    %26 s: ptr = concat %21, %25
+    drop %25
+    %27 lit: ptr = const str 0
+    %28 s: ptr = concat %26, %27
+    drop %27
+    %29 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %30 rec: ptr = alloc main::float_nan_structural_order::R(%3)
+    %31 t: bool = eq.any %29, %30
+    drop %29
+    drop %30
+    %32 s: ptr = show %31
+    %33 s: ptr = concat %28, %32
+    drop %32
+    perform std::console::Console.print(%33) -> b3(%3)
+  b3(%34 r: unit, %35 t: f64):
+    %36 box: word = box %34
+    drop %36
+    %37 box: word = box %35
+    %38 xs: ptr = alloc list(%37)
+    %39 lit: f64 = const 1.0
+    %40 box: word = box %39
+    %41 xs: ptr = alloc list(%40)
+    %42 t: bool = lt.any %38, %41
+    drop %38
+    drop %41
+    %43 s: ptr = show %42
+    %44 lit: ptr = const str 0
+    %45 s: ptr = concat %43, %44
+    drop %44
+    %46 lit: f64 = const 1.0
+    %47 box: word = box %46
+    %48 xs: ptr = alloc list(%47)
+    %49 box: word = box %35
+    %50 xs: ptr = alloc list(%49)
+    %51 t: bool = lt.any %48, %50
+    drop %48
+    drop %50
+    %52 s: ptr = show %51
+    %53 s: ptr = concat %45, %52
+    drop %52
+    %54 lit: ptr = const str 0
+    %55 s: ptr = concat %53, %54
+    drop %54
+    %56 box: word = box %35
+    %57 xs: ptr = alloc list(%56)
+    %58 lit: f64 = const 1.0
+    %59 box: word = box %58
+    %60 xs: ptr = alloc list(%59)
+    %61 t: bool = gt.any %57, %60
+    drop %57
+    drop %60
+    %62 s: ptr = show %61
+    %63 s: ptr = concat %55, %62
+    drop %62
+    %64 lit: ptr = const str 0
+    %65 s: ptr = concat %63, %64
+    drop %64
+    %66 lit: i64 = const 2
+    %67 tup: ptr = alloc tuple#5(f64, i64)(%35, %66)
+    %68 lit: i64 = const 3
+    %69 tup: ptr = alloc tuple#5(f64, i64)(%35, %68)
+    %70 t: bool = lt.any %67, %69
+    drop %67
+    drop %69
+    %71 s: ptr = show %70
+    %72 s: ptr = concat %65, %71
+    drop %71
+    %73 lit: ptr = const str 0
+    %74 s: ptr = concat %72, %73
+    drop %73
+    %75 lit: f64 = const 0.0
+    %76 t: f64 = floatneg %75
+    %77 box: word = box %76
+    %78 xs: ptr = alloc list(%77)
+    %79 lit: f64 = const 0.0
+    %80 box: word = box %79
+    %81 xs: ptr = alloc list(%80)
+    %82 t: bool = lt.any %78, %81
+    drop %78
+    drop %81
+    %83 s: ptr = show %82
+    %84 s: ptr = concat %74, %83
+    drop %83
+    %85 lit: ptr = const str 0
+    %86 s: ptr = concat %84, %85
+    drop %85
+    %87 lit: f64 = const 0.0
+    %88 t: f64 = floatneg %87
+    %89 box: word = box %88
+    %90 xs: ptr = alloc list(%89)
+    %91 lit: f64 = const 0.0
+    %92 box: word = box %91
+    %93 xs: ptr = alloc list(%92)
+    %94 t: bool = le.any %90, %93
+    drop %90
+    drop %93
+    %95 s: ptr = show %94
+    %96 s: ptr = concat %86, %95
+    drop %95
+    perform std::console::Console.print(%96) -> b4(%35)
+  b4(%97 r: unit, %98 t: f64):
+    %99 box: word = box %97
+    drop %99
+    %100 box: word = box %98
+    %101 lit: f64 = const 1.0
+    %102 box: word = box %101
+    %103 lit: f64 = const 0.5
+    %104 box: word = box %103
+    %105 xs: ptr = alloc list(%100, %102, %104)
+    call sort#3(%105) -> b5(%98)
+  b5(%106 r: ptr, %107 t: f64):
+    %108 s: ptr = show %106
+    drop %106
+    %109 lit: ptr = const str 0
+    %110 s: ptr = concat %108, %109
+    drop %109
+    %111 rec: ptr = alloc main::float_nan_structural_order::R(%107)
+    %112 lit: f64 = const 1.0
+    %113 rec: ptr = alloc main::float_nan_structural_order::R(%112)
+    %114 xs: ptr = alloc list(%111, %113)
+    call sort#3(%114) -> b6(%110)
+  b6(%115 r: ptr, %116 s: ptr):
+    %117 s: ptr = show %115
+    drop %115
+    %118 s: ptr = concat %116, %117
+    drop %117
+    perform std::console::Console.print(%118) -> b7()
+  b7(%119 r: unit):
+    %120 box: word = box %119
+    %121 unbox: unit = unbox %120
+    drop %120
+    ret %121
+
+fn $entry#1 top -> unit ; main::float_nan_structural_order, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn zero#2 top -> f64 ; main::float_nan_structural_order, frame 0 slots []
+  b0():
+    %0 lit: f64 = const 0.0
+    ret %0

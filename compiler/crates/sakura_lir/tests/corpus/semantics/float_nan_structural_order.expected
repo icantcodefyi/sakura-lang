@@ -1,0 +1,5 @@
+ending: ok
+--- stdout
+false true true false false
+false true true true false true
+[0.5, 1.0, NaN] [R { v: 1.0 }, R { v: NaN }]

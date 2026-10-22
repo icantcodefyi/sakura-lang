@@ -118,6 +118,7 @@ semantics/exact_i64_json: unsupported (builtin json_encode)
 semantics/exact_i64_print: ok, 29 allocated, 0 dup, 29 drop, peak 4, live 0/0
 semantics/exact_i64_sql: unsupported (builtin sql_memory)
 semantics/float_nan_negative_zero: ok, 41 allocated, 0 dup, 41 drop, peak 6, live 0/0
+semantics/float_nan_structural_order: ok, 103 allocated, 66 dup, 169 drop, peak 11, live 0/0
 semantics/float_rem: ok, 5 allocated, 0 dup, 5 drop, peak 2, live 0/0
 semantics/form_encode_rejects_boundary: unsupported (builtin string_to_bytes)
 semantics/form_encode_wpt: unsupported (builtin bytes_from_list)
