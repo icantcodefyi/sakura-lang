@@ -251,8 +251,11 @@ for every bench program and the wide-function curve, at p95 with wall time besid
 each phase whose count grows more than 2× from 16,384 to 32,768 rows; the round that reads the
 blessed file sets §17.175 (4)'s native compile budget from it.
 
-**Bless** (the owner only; `bless` refuses a run with a failed oracle or one made from a dirty
-`compiler/` or `bench/` tree; a counted run needs no quiet host):
+**Bless** (the owner's step; `bless` refuses a run with a failed oracle or one made from a dirty
+`compiler/` or `bench/` tree; a counted run needs no quiet host). Under the owner's written
+delegation of 2026-10-22 (design §17.310 (1)) the agent that made the run blesses it and records
+"blessed by Claude <model> under the owner's written delegation of 2026-10-22" in
+`bench/deltas.md` and the commit; the owner can overturn any bless:
 
 ```sh
 bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-id>.json
@@ -486,7 +489,10 @@ checks, channel artifacts, signing and limitations. Record explicit approval for
 the tag and channels. Changed source/binary/packaging bytes invalidate the
 corresponding approval.
 
-**Only afterward**, the owner creates/pushes an annotated tag on that commit.
+**Only afterward**, the owner creates/pushes an annotated tag on that commit. From
+`v1.0.0-beta.4` the dry-run, environment and channel approvals and the beta tags are made by
+Claude under the owner's written delegation of 2026-10-22 (design §17.310 (1)), recorded as such
+in the run's notes and REQUESTS; **the `v1.0.0` tag stays the owner's.**
 This is a future command template, not an instruction for the research agent:
 
 ```sh
