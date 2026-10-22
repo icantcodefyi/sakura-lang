@@ -1,10 +1,14 @@
 ---
 title: sakura.toml
-description: The project manifest, its three tables, the reserved dependencies key and the diagnostics for an invalid manifest.
+description: The sakura.toml file that names your project and lists what your program may access, with every key it accepts.
 ---
 
-A project is a `sakura.toml` manifest and a `src/` directory; one file is one module. The
-manifest has three tables. Anything else is refused before the program is checked.
+`sakura.toml` is the file at the root of every Sakura project. It names the project and lists
+what the program is allowed to touch: files, network hosts and environment variables. Read
+this page when you add a permission or see a manifest error.
+
+A project is a `sakura.toml` manifest and a `src/` directory; each `.sak` file is one module.
+The manifest has three tables. Anything else is refused before the program is checked.
 
 ```toml title="sakura.toml"
 [package]
@@ -33,8 +37,8 @@ rlimit = 20000000
 
 ## [permissions]
 
-`[permissions]` is the ceiling on the root authority `main` receives (design §6.2). Everything
-absent is denied. Each key is a list of strings:
+`[permissions]` lists everything your program may access. Your `main` function can never do
+more than this table allows, and anything not listed is denied. Each key is a list of strings:
 
 | Key | Grants |
 | --- | --- |
@@ -44,7 +48,9 @@ absent is denied. Each key is a list of strings:
 | `env` | Environment variables `Env` may read. Other names read as absent. |
 | `process` | Reserved. `process = []` is accepted and grants nothing, the same as leaving the key out: no std effect starts processes. Any other list is [`V8006`](/docs/errors/V8006): "`process` grants nothing in this version: no std effect starts processes; the key is reserved". |
 
-The host supplies root handlers only for the std effects `main` declares. When `main`
+An effect is something a function may do, such as `Fs` (files) or `Http` (network), and a
+handler is the code that carries it out. The host supplies handlers only for the std effects
+`main` declares. When `main`
 declares `Fs` with an empty `fs.read`, or `Http`, `Serve` or `WebSocket` with an empty `net`,
 `sakura run` refuses to start it and exits with `75`, before any code runs. `sakura run`
 passes the table to the host handlers, which enforce it on every operation. This is a
@@ -98,8 +104,7 @@ dependencies it records only its format version. Commit it; do not edit it by ha
 ## Stability
 
 `[package]` with `name`, `version` and `edition`, `[permissions]` with its four keys and the
-reserved `process = []`,
-`[verify] rlimit`, the `V8005` refusal and the `V8006` rule are proposed as **stable from
-v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). Until then the preview carries no
+reserved `process = []`, `[verify] rlimit`, the `V8005` refusal and the `V8006` rule are
+proposed as **stable from v1.0.0-beta.1**; see [Stability](/docs/stability). Until then the preview carries no
 compatibility promise. Packages will be added without changing the meaning of an existing
 manifest.

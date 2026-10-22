@@ -3,7 +3,8 @@ title: Build and deploy a server
 description: Scaffold an HTTP service, test its routes without a socket, run it under its manifest's grants, then ship it in a container.
 ---
 
-This guide goes from an empty directory to a running HTTP service. It assumes `sakura` and
+This guide takes you from an empty directory to an HTTP service running in a container. Follow
+it when you want to build a web API in Sakura Lang. It assumes `sakura` and
 Node 26 are installed ([Install](/docs/install)) and that you have read the
 [Quickstart](/docs/quickstart). The scaffold, tests, HTTP responses and permission-failure
 outputs below were rechecked with the published `v1.0.0-beta.3` on 2026-10-21.
@@ -29,7 +30,8 @@ edition = "2026"
 net = ["127.0.0.1:8080"]
 ```
 
-`net` is the ceiling on the network: `Serve` may listen, and `Http` may connect, only on the
+The comment is the template's own: `main` can use only what `[permissions]` grants, and
+anything left out is denied. `net` is the limit on the network: `Serve` may listen, and `Http` may connect, only on the
 `host:port` pairs it lists. See [sakura.toml](/docs/manifest).
 
 ## Write the routes
@@ -76,8 +78,9 @@ test "greet checks its body" {
 }
 ```
 
-- `Router<{}>` says the handlers perform no effects. A route that read a file or called
-  another service would show it in that row, and `main` would have to declare it.
+- `Router<{}>` says the handlers perform no effects (an effect is something code may do,
+  such as read a file or call the network). A route that read a file or called another
+  service would list that effect inside the `{}`, and `main` would have to declare it.
 - `Request.json(req, 1024)` reads at most 1,024 bytes, decodes the JSON and checks the
   refinement on `name`. Malformed JSON, a missing field, an empty or a long name and an
   oversized body are all `BadRequest`, answered here with a 400.
