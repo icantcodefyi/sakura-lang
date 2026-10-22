@@ -131,6 +131,11 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
         CRYPTO_ON_WASI,
     ),
     (
+        "semantics/crypto_revealed_key_is_zeroed",
+        Some(Host::Wasi),
+        CRYPTO_ON_WASI,
+    ),
+    (
         "semantics/crypto_pbkdf2_rfc7914",
         Some(Host::Wasi),
         CRYPTO_ON_WASI,
