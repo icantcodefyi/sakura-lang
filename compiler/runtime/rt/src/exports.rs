@@ -140,7 +140,8 @@ pub(crate) fn invoke(rt: &mut Rt, listener: u32, payload: u32) -> u32 {
             .unwrap_or(crate::scratch::Stack::NONE);
         let pushed = rt.push(&mut served, task);
         rt.sched.served = Some(served);
-        pushed.map(|()| task)
+        // Untracked, it would answer a request the host refuses: it never runs.
+        pushed.map(|()| task).inspect_err(|_| rt.task_discard(task))
     })();
     rt.drop(payload);
     r.unwrap_or(0)

@@ -637,13 +637,17 @@ pub extern "C" fn rt_k_serve_listen(_env: u32, frame: u32) -> u32 {
     }
     let addr = rt.take_fslot(frame, 0) as u32;
     let listener = rt.current_frame();
-    let r = rt.request_or_defect(SERVE).and_then(|id| {
-        with_args(rt, &[addr], |_, at, len| {
+    let r = match rt.request_or_defect(SERVE) {
+        Ok(id) => with_args(rt, &[addr], |_, at, len| {
             // SAFETY: a plain import with a slice inside linear memory, copied in at once; the
             // host completes `id` when the server stops.
             unsafe { host::serve_listen(id, listener, at, len) }
-        })
-    });
+        }),
+        Err(d) => {
+            rt.drop(addr);
+            Err(d)
+        }
+    };
     match r {
         Ok(_) => {
             rt.set_block(frame, 1);
@@ -1012,12 +1016,16 @@ pub extern "C" fn rt_code_js_callback(_env: u32, frame: u32) -> u32 {
                 rt.set_fslot(frame, 2 + i, u64::from(w));
                 Ok(())
             });
-            kept.and_then(|()| {
-                with_args_reentrant(&[arg], |at, len| {
+            match kept {
+                Ok(()) => with_args_reentrant(&[arg], |at, len| {
                     // SAFETY: a plain import with a slice inside linear memory, copied in at once.
                     unsafe { host::js_callback(id, at, len) }
-                })
-            })
+                }),
+                Err(d) => {
+                    rt.drop(arg);
+                    Err(d)
+                }
+            }
         }
         block => js_continue(frame, block),
     };
@@ -1052,12 +1060,18 @@ pub extern "C" fn rt_k_property_run(_env: u32, frame: u32) -> u32 {
         0 => {
             let args = [1, 2, 7].map(|i| rt.take_fslot(frame, i) as u32);
             let seed = rt.fslot(frame, 0) as i64;
-            let r = rt.new_int(seed).and_then(|s| {
+            let r = match rt.new_int(seed) {
                 // SAFETY: a plain import with a slice inside linear memory, copied in at once.
-                with_args(rt, &[s, args[0], args[1], args[2]], |_, at, len| unsafe {
+                Ok(s) => with_args(rt, &[s, args[0], args[1], args[2]], |_, at, len| unsafe {
                     host::prop_begin(at, len)
-                })
-            });
+                }),
+                Err(d) => {
+                    for a in args {
+                        rt.drop(a);
+                    }
+                    Err(d)
+                }
+            };
             let session = match r {
                 Ok(s) => s,
                 Err(d) => return rt.raise(d),
@@ -1151,7 +1165,8 @@ fn prop_advance(frame: u32, result: i64, text: u32) -> u32 {
         _ => rt.vt_decode(at + 1, len - 1).and_then(|msg| {
             let test = rt
                 .effect_named(b"std::test::Test")
-                .ok_or(Defect::INTERNAL)?;
+                .ok_or(Defect::INTERNAL)
+                .inspect_err(|_| rt.drop(msg))?;
             let rec = rt.fslot(frame, 4) as u32;
             match rt.perform_value(frame, test, rec, 1) {
                 Ok(0) => {
@@ -1178,25 +1193,35 @@ fn prop_advance(frame: u32, result: i64, text: u32) -> u32 {
 /// `Test` handler, handed off to; the frame waits at block 1.
 fn prop_case(rt: &mut Rt, frame: u32, session: i64, values: u32) -> Res<u32> {
     let case = rt.fslot(frame, 3) as u32;
-    rt.dup(case)?;
     let row = rt.obj_row(values);
     let mut args = [0u64; 16];
-    let n = row.n_slots.min(16);
+    let n = row.n_slots.min(16) as usize;
     for i in 0..n {
-        let w = rt.slot_word(values, i)?;
-        args[i as usize] = w as u64;
+        let w = rt.slot_word(values, i as u32).inspect_err(|_| {
+            for &a in &args[..i] {
+                rt.drop(a as u32);
+            }
+        })?;
+        args[i] = w as u64;
     }
-    let child = rt.spawn_value_args(case, &args[..n as usize])?;
-    let test = rt
-        .effect_named(b"std::test::Test")
-        .ok_or(Defect::INTERNAL)?;
+    rt.dup(case).inspect_err(|_| {
+        for &a in &args[..n] {
+            rt.drop(a as u32);
+        }
+    })?;
+    let child = rt.spawn_value_args(case, &args[..n])?;
     let (rec, fails, nops) = (
         rt.fslot(frame, 4) as u32,
         rt.fslot(frame, 5) as u32,
         rt.fslot(frame, 6) as u32,
     );
-    let h = prop_handler(rt, test, session, rec, fails, nops)?;
-    rt.install_in(child, h)?;
+    let installed = rt
+        .effect_named(b"std::test::Test")
+        .ok_or(Defect::INTERNAL)
+        .and_then(|test| prop_handler(rt, test, session, rec, fails, nops))
+        .and_then(|h| rt.install_in(child, h));
+    // Without the case's handler the child must not run: it unwinds at once.
+    installed.inspect_err(|_| rt.cancel(child))?;
     rt.set_fslot(frame, 9, child as u64);
     rt.handoff(child);
     rt.set_block(frame, 1);

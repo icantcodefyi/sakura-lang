@@ -1337,25 +1337,35 @@ fn prop_advance(cx: &mut Cx<'_>, ctx: Ctx<'_>, frame: u32, result: Option<Case>)
 /// `Test` handler, handed off to; the frame waits at block 1.
 fn prop_case(rt: &mut Rt, frame: u32, session: i64, values: u32) -> Res<u32> {
     let case = rt.fslot(frame, 3) as u32;
-    rt.dup(case)?;
     let row = rt.obj_row(values);
     let mut args = [0u64; 16];
-    let n = row.n_slots.min(16);
+    let n = row.n_slots.min(16) as usize;
     for i in 0..n {
-        let w = rt.slot_word(values, i)?;
-        args[i as usize] = w as u64;
+        let w = rt.slot_word(values, i as u32).inspect_err(|_| {
+            for &a in &args[..i] {
+                rt.drop(a as u32);
+            }
+        })?;
+        args[i] = w as u64;
     }
-    let child = rt.spawn_value_args(case, &args[..n as usize])?;
-    let test = rt
-        .effect_named(b"std::test::Test")
-        .ok_or(Defect::INTERNAL)?;
+    rt.dup(case).inspect_err(|_| {
+        for &a in &args[..n] {
+            rt.drop(a as u32);
+        }
+    })?;
+    let child = rt.spawn_value_args(case, &args[..n])?;
     let (rec, fails, nops) = (
         rt.fslot(frame, 4) as u32,
         rt.fslot(frame, 5) as u32,
         rt.fslot(frame, 6) as u32,
     );
-    let h = prop_handler(rt, test, session, rec, fails, nops)?;
-    rt.install_in(child, h)?;
+    let installed = rt
+        .effect_named(b"std::test::Test")
+        .ok_or(Defect::INTERNAL)
+        .and_then(|test| prop_handler(rt, test, session, rec, fails, nops))
+        .and_then(|h| rt.install_in(child, h));
+    // Without the case's handler the child must not run: it unwinds at once.
+    installed.inspect_err(|_| rt.cancel(child))?;
     rt.set_fslot(frame, 9, child as u64);
     rt.handoff(child);
     rt.set_block(frame, 1);

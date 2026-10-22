@@ -378,7 +378,12 @@ impl Rt {
                 })?;
                 for (i, v) in vals.iter().enumerate() {
                     let bits = self.vt_slot(*v, self.kind(&row, i as u32));
-                    let bits = bits.inspect_err(|_| self.drop(p))?;
+                    let bits = bits.inspect_err(|_| {
+                        self.drop(p);
+                        for v in &vals[i + 1..] {
+                            self.vt_release(*v);
+                        }
+                    })?;
                     self.set_slot(p, i as u32, bits);
                 }
                 V::Word(p)

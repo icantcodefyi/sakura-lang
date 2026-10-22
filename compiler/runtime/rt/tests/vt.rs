@@ -6,7 +6,7 @@
 
 mod common;
 
-use common::{Known, Ty, layout_bytes};
+use common::{Known, Ty, exhaust, layout_bytes};
 use sakura_rt::layout::{I64, WORD};
 use sakura_rt::vt::t;
 use sakura_rt::{Rt, tag};
@@ -416,4 +416,30 @@ fn a_wipe_buffer_overwrites_every_block_it_leaves_behind() {
     rt.heap.mem.unpoison(first + 16, 40);
     assert_eq!(rt.heap.mem.bytes(first + 16, 40), &key[..]);
     rt.strbuf_free(b);
+}
+
+#[test]
+fn a_tuple_that_runs_the_heap_out_releases_every_element() {
+    // `(1.5, "b")` takes the all-word pair row, so the `Float` is boxed after the `String` and
+    // the tuple are made; with no room for the box, the `String` after it goes too.
+    let mut rt = runtime();
+    let base = rt.stats().live_objects;
+    let mut v = vec![t::TUPLE];
+    v.extend(u32s(&[2]));
+    v.push(t::FLOAT);
+    v.extend(1.5f64.to_bits().to_le_bytes());
+    v.extend(string("b"));
+    let b = rt.new_bytes(v.len() as u32).unwrap();
+    rt.heap
+        .mem
+        .bytes_mut(b + 12, v.len() as u32)
+        .copy_from_slice(&v);
+    let fill = exhaust(&mut rt, &[32, 32]);
+    let r = rt.vt_decode(b + 12, v.len() as u32);
+    assert_eq!(r, Err(sakura_rt::Defect::HEAP_EXHAUSTED));
+    for p in fill {
+        rt.heap.free(p);
+    }
+    rt.drop(b);
+    assert_eq!(rt.stats().live_objects, base);
 }

@@ -71,6 +71,7 @@ const SLEEPER: u32 = 29;
 const TASK_SCOPE: u32 = 30;
 const CANCEL_ALL: u32 = 31;
 const BIG_BODY: u32 = 32;
+const DEFERRED_OOM: u32 = 33;
 
 const TABLE: &[Code] = &[
     callback_stub,
@@ -106,6 +107,7 @@ const TABLE: &[Code] = &[
     sakura_rt::task::scope,
     sakura_rt::task::cancel_all,
     quick,
+    deferred_oom,
 ];
 
 fn codes() -> Vec<Option<CodeDesc<'static>>> {
@@ -144,6 +146,7 @@ fn codes() -> Vec<Option<CodeDesc<'static>>> {
         d("scope", &[WORD, I64, WORD, WORD, I64], &[]),
         d("cancel_all", &[], &[I64]),
         d("big_body", &[I64; 120], &[]),
+        d("deferred_oom", &[], &[]),
     ]
 }
 
@@ -756,6 +759,20 @@ fn fin_alloc(rt: &mut Rt, env: u32, _f: u32) -> u32 {
     RETURN
 }
 
+/// A completion while the guest runs, with no room left to queue it: refused (0) and its
+/// payload released, as a stale one is.
+fn deferred_oom(rt: &mut Rt, _env: u32, _f: u32) -> u32 {
+    let payload = ok!(rt, rt.new_bytes(4));
+    let fill = exhaust(rt, &[]);
+    let queued = rt.complete(0, status::OK, payload);
+    for p in fill {
+        rt.heap.free(p);
+    }
+    trace(rt, queued as u64);
+    rt.set_ret(UNIT as u64);
+    RETURN
+}
+
 // ---- harness ----------------------------------------------------------------------------
 
 fn counts(rt: &Rt) -> (u64, u32, u32) {
@@ -1137,6 +1154,42 @@ fn task_handler_releases_the_generator_once_on_failure() {
     rt.drop(rng);
     rt.drop(codes);
     assert_eq!(rt.stats().live_objects, base);
+}
+
+/// Failures while a task or an activation is set up release what was made (design §17.310
+/// (3d)): a handler whose state cannot be counted again, installed in a started task or in
+/// a test's; a fiber for a group that is gone; a completion with no room to queue it.
+#[test]
+fn failed_set_ups_release_what_they_made() {
+    let mut rt = runtime(64 << 20);
+    ten_times(&mut rt, |rt| {
+        for test in [false, true] {
+            let w = rt.new_int(5).unwrap();
+            let h = handler(rt, E, CB_STATE, &[QUICK], &[w as u64]).unwrap();
+            rt.heap.mem.set_u32(w + 4, u32::MAX);
+            let task = if test {
+                assert_eq!(rt.start_test(QUICK, 1, h), Err(Defect::RC_OVERFLOW));
+                None
+            } else {
+                let (task, _) = rt.start(QUICK, 0, 0).unwrap();
+                assert_eq!(rt.install_in(task, h), Err(Defect::RC_OVERFLOW));
+                Some(task)
+            };
+            assert_eq!(rt.rc(w), u32::MAX - 1, "the handler's reference went");
+            rt.heap.mem.set_u32(w + 4, 1);
+            rt.drop(w);
+            if let Some(task) = task {
+                assert_eq!(rt.run(task, TABLE), outcome::OK);
+                finish(rt, task);
+            }
+        }
+        let body = closure(rt, QUICK, &[]).unwrap();
+        assert_eq!(rt.fiber_start(0, body, 0), Err(Defect::INTERNAL));
+        let (task, kind) = run_task(rt, DEFERRED_OOM, 0, 0, 0);
+        assert_eq!(kind, outcome::OK);
+        assert_eq!(traces(rt), [0]);
+        finish(rt, task);
+    });
 }
 
 #[test]

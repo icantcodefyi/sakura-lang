@@ -752,7 +752,12 @@ impl Rt {
             for i in 0..n {
                 if self.kind(row, i) == WORD {
                     let w = self.heap.mem.u32(a + A_STATE + 8 * i);
-                    self.dup(w)?;
+                    if let Err(e) = self.dup(w) {
+                        // The words from `i` on were not taken: release the ones before.
+                        self.heap.mem.fill(a + A_STATE + 8 * i, 0, 8 * (n - i));
+                        self.free_activation(a);
+                        return Err(e);
+                    }
                 }
             }
         }
@@ -1312,27 +1317,29 @@ impl Rt {
         }
         if self.sched.running {
             let mut q = self.sched.deferred.take().unwrap_or(Stack::NONE);
+            let len = q.len;
             let ok = [req, status, payload]
                 .iter()
                 .all(|&v| self.push(&mut q, v).is_ok());
+            if !ok {
+                q.len = len;
+            }
             self.sched.deferred = Some(q);
-            return if ok { 2 } else { 0 };
+            if ok {
+                return 2;
+            }
+            // ponytail: no room to queue it, so it is lost as a stale one is and its request
+            // stays pending (as `enqueue`'s lost wake-up); a queue reserved per request if a
+            // run ever shows it.
+            self.discard_completion(status, payload);
+            return 0;
         }
         let live = self.arena_obj(req, tag::REQUEST).filter(|&r| {
             let t = self.arena_obj(self.u(r, R_TASK), tag::TASK);
             t.is_some_and(|t| self.u(t, T_EPOCH) == self.u(r, R_EPOCH))
         });
         let Some(r) = live else {
-            if status == status::OK_HANDLE && payload != 0 {
-                let at = payload + 12;
-                let (k, s, g) = (
-                    self.heap.mem.u32(at),
-                    self.heap.mem.u32(at + 4),
-                    self.heap.mem.u32(at + 8),
-                );
-                self.retire_handle(k, s, g);
-            }
-            self.drop(payload);
+            self.discard_completion(status, payload);
             return 0;
         };
         let tid = self.u(r, R_TASK);
@@ -1349,6 +1356,20 @@ impl Rt {
             self.begin(t, DEFECT);
         }
         1
+    }
+
+    /// Drop a completion's payload unread, retiring the handle it carries (ABI §8.5).
+    fn discard_completion(&mut self, status: u32, payload: u32) {
+        if status == status::OK_HANDLE && payload != 0 {
+            let at = payload + 12;
+            let (k, s, g) = (
+                self.heap.mem.u32(at),
+                self.heap.mem.u32(at + 4),
+                self.heap.mem.u32(at + 8),
+            );
+            self.retire_handle(k, s, g);
+        }
+        self.drop(payload);
     }
 
     fn apply_deferred(&mut self) {
@@ -2091,17 +2112,24 @@ impl Rt {
     /// Start `body` (a closure value, consumed) as a member of group `id`, under activation
     /// `act` (the performer's), and hand off to it: the caller returns `step::YIELD` next.
     pub fn fiber_start(&mut self, id: u32, body: u32, act: u32) -> Res<u32> {
-        let g = self.group(id).ok_or(Defect::INTERNAL)?;
+        let Some(g) = self.group(id) else {
+            self.drop(body);
+            return Err(Defect::INTERNAL);
+        };
         let child = self.spawn_value(body)?;
         let t = self.task(child);
-        self.set(t, T_GROUP, id);
         if let Some(f) = self.arena_obj(self.u(t, T_FRAME), tag::FRAME) {
             self.set(f, F_ACT, act);
         }
         let mut s = Stack::load(&self.heap.mem, g + G_FIBERS);
         let r = self.push(&mut s, child);
         s.store(&mut self.heap.mem, g + G_FIBERS);
-        r?;
+        if let Err(e) = r {
+            // Not a member: it unwinds before running, as `spawn_value`'s own failure does.
+            self.cancel(child);
+            return Err(e);
+        }
+        self.set(t, T_GROUP, id);
         self.handoff(child);
         Ok(child)
     }
@@ -2326,7 +2354,14 @@ impl Rt {
         self.sched.current = task;
         let r = self.handle_install(f, handler);
         self.sched.current = saved;
-        r.map(|_| task)
+        r.map(|_| task).inspect_err(|_| self.task_discard(task))
+    }
+
+    /// Release task `id`, started but not yet run, when its caller cannot finish setting it up:
+    /// out of the run queue, then as [`Self::task_abandon`], so nothing of it runs.
+    pub(crate) fn task_discard(&mut self, id: u32) {
+        self.unqueue(id);
+        self.task_abandon(id);
     }
 
     /// A child of the current task running the closure value `closure` (consumed into its slot

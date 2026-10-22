@@ -52,6 +52,24 @@ retains earlier implementation history.
   `D096`. Each is now released once. A debug assertion in the runtime's drop now catches
   any drop of a freed block. The JS backend was not affected.
 
+### Fixed
+
+- **The WASM and native runtimes now release everything on more defect paths**
+  (design §17.310 (3d)). These are paths where the heap ran out, a count overflowed or an
+  internal check failed. On each path the runtime now releases what it had already built
+  or been given:
+  - a decoded tuple's remaining elements;
+  - an activation and its handler when a state count overflows;
+  - a `Task.scope` group, and a `Task.all`/`Task.race` group;
+  - a fiber body sent to a group that is gone;
+  - a test or served-request task that could not be set up;
+  - a completion that could not be queued;
+  - `Serve.listen`'s address, `property_run`'s arguments, a property's report and case
+    values, and a JS callback's argument.
+
+  A fiber or property case whose set-up failed is now cancelled before it runs. A
+  completion that could not be queued no longer leaves a partial entry behind.
+
 ## [1.0.0-beta.4] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

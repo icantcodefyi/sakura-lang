@@ -358,6 +358,13 @@ fn start_next(rt: &mut Rt, frame: u32) -> Res<Option<u32>> {
     Ok(Some(step::YIELD))
 }
 
+/// `all`/`race` raising `d`: the group goes (its members keep running, as when `race`
+/// returns); the state slots go as the frame unwinds.
+fn raise_group(rt: &mut Rt, frame: u32, d: Defect) -> u32 {
+    rt.group_free(rt.fslot(frame, 5) as u32);
+    rt.raise(d)
+}
+
 /// Release `all`/`race`'s state slots.
 fn drop_state(rt: &mut Rt, frame: u32) {
     for slot in [2, 3, 6] {
@@ -372,20 +379,20 @@ pub fn all(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
     if rt.block(frame) == 0
         && let Err(d) = begin_group(rt, frame, group::ALL)
     {
-        return rt.raise(d);
+        return raise_group(rt, frame, d);
     }
     if rt.block(frame) == 1 {
         match start_next(rt, frame) {
             Ok(Some(s)) => return s,
             Ok(None) => rt.set_block(frame, 2),
-            Err(d) => return rt.raise(d),
+            Err(d) => return raise_group(rt, frame, d),
         }
     }
     let gid = rt.fslot(frame, 5) as u32;
     match waiting(rt, gid) {
         Ok(true) => return step::YIELD,
         Ok(false) => {}
-        Err(d) => return rt.raise(d),
+        Err(d) => return raise_group(rt, frame, d),
     }
     let decided = rt.group_decided(gid);
     if decided != 0 {
@@ -416,13 +423,13 @@ pub fn race(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
     if rt.block(frame) == 0
         && let Err(d) = begin_group(rt, frame, group::RACE)
     {
-        return rt.raise(d);
+        return raise_group(rt, frame, d);
     }
     if rt.block(frame) == 1 {
         match start_next(rt, frame) {
             Ok(Some(s)) => return s,
             Ok(None) => rt.set_block(frame, 2),
-            Err(d) => return rt.raise(d),
+            Err(d) => return raise_group(rt, frame, d),
         }
         let gid = rt.fslot(frame, 5) as u32;
         if rt.wait_decided(gid) {
