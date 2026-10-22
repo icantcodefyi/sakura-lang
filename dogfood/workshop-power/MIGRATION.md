@@ -117,3 +117,28 @@ obligations all `proved` and `path_feasible: true`; the closing record
 
 **No hunk needed.** Prediction and result agree (item 5 checked, counts unchanged).
 Migration-list gaps: none.
+
+## v1.0.0-beta.2 → v1.0.0-beta.3
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.3]` as tagged (`git show v1.0.0-beta.3:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.2", items 1–4, and the Added, Changed and Fixed entries, read
+  against the program as of `v1.0.0-beta.3` (`472dea56`), which is the beta.2 round's result
+  (`main`'s since `6bd16751`; `dogfood/` has not changed since that tag).
+- Compiler: the published `sakuralang@1.0.0-beta.3` from npm in a scratch prefix.
+- Not blind: `dogfood.yml` had passed on beta.3 (run 39635001196) before this was written.
+  The author also ran beta.3's `verify` on this program (by mistake) before writing this
+  list, so the verify row is not blind either.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 the WASM runtime ABI is 1.16.0; a 1.15 host refuses a beta.3 module | No | `sakura test --target wasm` builds the module and loads the host from the same install |
+| 2 a root module's qualifying `pub fn` is a library entry | Yes, no edit | root `pub fn`s such as `evaluate`, `render_error` and `to_report` likely qualify; nothing lists the build's files |
+| 3 `verify` names compound path guards | **Check, outside the source** | the gate's reader counts statuses per symbol and never matches `path_conditions` text, so it needs no change; "proof statuses do not change". Predicted: the beta.2 counts (95, 94 proved, 1 `unsupported`, kernel 45/45), with some `path_conditions` now naming a guard `\|<name>.path\|` |
+| 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
+| Fixed: `verify` VCs no longer grow exponentially in the inlining depth | No | the same statuses, by the entry |
+
+Predicted diff: none in the source; the verify gate unchanged.

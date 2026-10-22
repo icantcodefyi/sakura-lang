@@ -95,3 +95,25 @@ Predicted diff: **none**.
 test` 27/27 on js and 27/27 on `--target wasm`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
+
+## v1.0.0-beta.2 → v1.0.0-beta.3
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.3]` as tagged (`git show v1.0.0-beta.3:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.2", items 1–4, and the Added, Changed and Fixed entries, read
+  against the program as of `v1.0.0-beta.3` (`472dea56`), which is the beta.2 round's result
+  (`main`'s since `6bd16751`; `dogfood/` has not changed since that tag).
+- Compiler: the published `sakuralang@1.0.0-beta.3` from npm in a scratch prefix.
+- Not blind: `dogfood.yml` had passed on beta.3 (run 39635001196) before this was written.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 the WASM runtime ABI is 1.16.0; a 1.15 host refuses a beta.3 module | No | `sakura test --target wasm` builds the module and loads the host from the same install |
+| 2 a root module's qualifying `pub fn` is a library entry | Yes, no edit | root `pub fn`s such as `render`, `exit_status` and `parse_wanted` likely qualify (the generic `gather` and `plan` cannot), so a js build also writes `__entries__.js`; nothing lists the build's files |
+| 3 `verify` names compound path guards | No | the program is not verified |
+| 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
+
+Predicted diff: **none**.
