@@ -1,13 +1,13 @@
 ---
 title: Stability
-description: What the preview promises today, what the v1.0.0-beta.3 beta may still change, what draft RFC 0001 proposes to make stable, and what stays experimental.
+description: What the preview promises today, what the v1.0.0-beta.4 beta may still change, what draft RFC 0001 proposes to make stable, and what stays experimental.
 ---
 
-**Today there is no compatibility promise.** The latest release is the beta `v1.0.0-beta.3`;
+**Today there is no compatibility promise.** The latest release is the beta `v1.0.0-beta.4`;
 the earlier preview, `0.1.0`, stays on the default channels. Behaviour may change before 1.0.0.
 
 <Callout type="warn" title="The beta">
-  `v1.0.0-beta.3` is a beta of 1.0 and **not for production**. It may have bugs, and it may
+  `v1.0.0-beta.4` is a beta of 1.0 and **not for production**. It may have bugs, and it may
   change before 1.0.0, including the contracts below. Every breaking change between the beta
   and 1.0.0 is listed in the [changelog](/changelog) with a migration. It is published as a GitHub
   prerelease, on npm under the `beta` tag and as the Homebrew formula `sakuralang-beta` ([Install](/docs/install#the-beta)); `npm i -g sakuralang` and
@@ -47,7 +47,7 @@ applies, and that file's inventory is the authoritative list.
 | [Language server](/docs/editors) standard protocol features | stable | 1.0.0-beta.1 |
 | The `sakura/holeContext` LSP extension | experimental | — |
 | [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 1.0.0-beta.1 |
-| `--target native` and the native runtime (in the macOS arm64, Linux x64 and Linux arm64 release binaries from the first release after v1.0.0-beta.3) | experimental | — |
+| `--target native` and the native runtime (in the macOS arm64, Linux x64 and Linux arm64 release binaries from v1.0.0-beta.4) | experimental | — |
 | Runtime limits: the JS and WASM hosts read none from the environment; the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` | experimental | — |
 
 Human-readable output, help text, diagnostic wording and generated code bytes are never

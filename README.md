@@ -140,11 +140,12 @@ signature. The compiler rejects anything else.
 | `v1.0.0-beta.1` | A beta of 1.0, not production: it may have bugs and may change before 1.0.0, every breaking change listed in the CHANGELOG with a migration; one `--json` summary kind per record shape, binary HTTP bodies, the web APIs | **shipped** 2026-10-21 (npm `beta`, `sakuralang-beta`) |
 | `v1.0.0-beta.2` | The second beta, not production: `std/worker` (experimental), JSON Schema bounds for refined types, a set `SAKURA_PERMISSIONS` denies every key it leaves out; migrations in the CHANGELOG | **shipped** 2026-10-21 (npm `beta`, `sakuralang-beta`) |
 | `v1.0.0-beta.3` | The third beta, not production: library entries a Node program calls (`callEntry` on WASM, `__entries__.js` on JS), WASM runtime ABI 1.16.0, `sakura verify` without exponential VC growth; migrations in the CHANGELOG | **shipped** 2026-10-21 (npm `beta`, `sakuralang-beta`) |
+| `v1.0.0-beta.4` | The fourth beta, not production: `--target native` (experimental) in the macOS arm64, Linux x64 and Linux arm64 release binaries, `W8001` copy-on-write warnings, Perceus reuse and borrowed read-only calls, WASM runtime ABI 1.18.0; migrations in the CHANGELOG | **shipped** 2026-10-22 (npm `beta`, `sakuralang-beta`) |
 | `v1.0.0` | Production: the fuzz campaign's ledger (≥ 24 CPU-hours per target, zero soundness findings; design §17.306) and no P1 defect, then 1.0; packages follow in 1.x | planned |
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is
-**experimental**, exists only in source builds with the `native` feature, and under the current
-plan gates no release. Packages arrive in 1.x; until then `[dependencies]` is refused. Releases are not
+**experimental**: the macOS arm64, Linux x64 and Linux arm64 release binaries carry it from
+`v1.0.0-beta.4`, and under the current plan it gates no release. Packages arrive in 1.x; until then `[dependencies]` is refused. Releases are not
 dated; see the [roadmap](website/content/docs/roadmap.mdx) and the
 [road to 1.0](docs/plans/road-to-1.0.md). The [design](docs/design.md) is provisional.
 

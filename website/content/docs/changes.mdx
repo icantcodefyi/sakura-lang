@@ -1,23 +1,57 @@
 ---
 title: Changes since 0.1.0
-description: What main, 1.0.0-beta.3, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
+description: What main, 1.0.0-beta.4, 1.0.0-beta.3, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
 ---
 
 `v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
 published-install check passed on every platform ([Install](/docs/install#platform-claims)).
-`v1.0.0-beta.3` is published (2026-10-21), a beta of 1.0 that is not for production: it may
+`v1.0.0-beta.4` is published (2026-10-22), a beta of 1.0 that is not for production: it may
 have bugs and may change before 1.0.0, and the [stability guarantees](/docs/stability) of RFC 0001
-are intended from the betas. `v1.0.0-beta.2` and `v1.0.0-beta.1` (both 2026-10-21) came before
-it. These docs track **main**, which may hold later changes that no package has yet; the
+are intended from the betas. `v1.0.0-beta.3`, `v1.0.0-beta.2` and `v1.0.0-beta.1` (all
+2026-10-21) came before it. These docs track **main**, which may hold later changes that no package has yet; the
 [changelog](/changelog) lists them under Unreleased.
+[1.0.0-beta.4, since 1.0.0-beta.3](#100-beta4-since-100-beta3),
 [1.0.0-beta.3, since 1.0.0-beta.2](#100-beta3-since-100-beta2),
 [1.0.0-beta.2, since 1.0.0-beta.1](#100-beta2-since-100-beta1) and
 [1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the betas and not in the `0.1.0`
-packages: the [1.0.0-beta.3](/changelog#v1.0.0-beta.3), [1.0.0-beta.2](/changelog#v1.0.0-beta.2)
+packages: the [1.0.0-beta.4](/changelog#v1.0.0-beta.4), [1.0.0-beta.3](/changelog#v1.0.0-beta.3),
+[1.0.0-beta.2](/changelog#v1.0.0-beta.2)
 and [1.0.0-beta.1](/changelog#v1.0.0-beta.1) sections of the changelog open with their migration
 lists. No release has a compatibility promise; see [Stability](/docs/stability).
 The [changelog](/changelog) is the complete list; this page covers what a program or an agent
 notices. Upgrading from `0.1.0-alpha.1`? Read [0.1.0, from alpha.1](#010-from-alpha1) too.
+
+## 1.0.0-beta.4, since 1.0.0-beta.3
+
+A program that works on `1.0.0-beta.3` needs no source change, but may print `W8001` warnings,
+and a served handler sees lowercase header names on JS and WASM; the
+[migration list](/changelog#v1.0.0-beta.4) names every item.
+
+### Added in 1.0.0-beta.4
+
+- **`--target native` in the release binaries (experimental).** The macOS arm64, Linux x64 and
+  Linux arm64 archives, npm packages and the Homebrew formula install the native driver beside
+  `bin/`, so `sakura build`, `run` and `test --target native` work from an installed `sakura`.
+  A native build links with the system `cc` (`V8007 native_linker_missing` without one) and
+  runs every standard service but `WebSocket`: `Http`, serving, `Llm`, test mode and property
+  tests. The flag may change or go away without a migration.
+- **`W8001 copy_on_write`.** `sakura check`, the LSP and the MCP `check` tool warn at a `List`,
+  `Map` or `Set` update proven to copy because the earlier version is still held, with the
+  holder as the `cause` span. Exit codes are unchanged.
+- **Perceus reuse and borrowed calls** (WebAssembly and native): a rebuilt record or
+  constructor, and `List.map` over a list nothing else holds, reuse the old storage; a value
+  only read by a call is lent instead of counted. No program's output changes.
+
+### Fixed and changed in 1.0.0-beta.4
+
+- **WASM runtime ABI 1.18.0.** A host from `1.0.0-beta.3` (ABI 1.16) refuses a beta.4 module
+  with `V8003`; a 1.18 host still loads older modules. ABI 1.17.0 shipped in no release.
+- A served `Request.headers` names each header in lowercase on JS and WASM, as native does.
+- `Json.encode` on WASM writes an `Int` beyond ±(2^53 − 1) exactly instead of rounding it.
+- On JS, a `List` passed as `unwrap_or`'s default of a `Map.get` no longer changes when it is
+  updated later.
+- `sakura fmt` sorts imports by their printed path, so a second run keeps the order, and keeps
+  the space in `1 .2`.
 
 ## 1.0.0-beta.3, since 1.0.0-beta.2
 
