@@ -1,24 +1,48 @@
 ---
 title: Build manifest
-description: Inspect the trusted base and runtime contract obligations emitted by sakura build --manifest.
+description: See what a build trusts and which contract checks it keeps, with sakura build --manifest.
 ---
 
-The source-built compiler supports the manifest for both targets:
+`sakura build --manifest` writes a file describing a build: which code it trusts without
+checking, and which contract checks it keeps at run time. Reviewers and release tools read it
+to see what a build relies on.
 
 ```sh
 sakura build --manifest src
 sakura build --target wasm --manifest src
 ```
 
-A successful build writes its output to `target/sakura/js` (or `target/sakura/wasm`) and the manifest to `target/sakura/manifest.json`, relative to the working directory. `--out-dir` changes the output directory; the manifest path stays `target/sakura/manifest.json`. `--emit lir` writes no manifest. A failed build does not write a new manifest, so check the exit status before consuming an existing file.
+A successful build writes its output to `target/sakura/js` (or `target/sakura/wasm`) and the
+manifest to `target/sakura/manifest.json`, relative to the working directory. `--out-dir`
+changes the output directory; the manifest path stays `target/sakura/manifest.json`.
+`--emit lir` writes no manifest. A failed build does not write a new manifest, so check the exit
+status before reading an existing file.
+
+## What is in it
 
 The manifest is one JSON object with:
 
-- `schema_version: "1.1"`, `kind: "manifest"`, `target` (`js` or `wasm`: the build target, and the verification profile its statuses were obtained for) and the input `snapshot` hash. Version 1.1 added `target`.
-- `compiler.version` and `compiler.git`; local builds may have a null git value.
-- `trusted` entries for the compiler, the runtime (with SHA-256), std host bindings, user `@external` declarations, `@trust` reasons and `@total` declarations. The JS runtime is `sakura_runtime.js`; a WASM build lists `sakura_rt.wasm` (linked into `main.wasm`), the Node host `sakura_wasm_host.js` and the `sakura_runtime.js` it delegates to.
-- `obligations` with an ID, symbol ID, clause, status and source span. Build records have status `proved` only for clauses whose checks were all removed using matching authenticated proofs; other clauses remain `runtime_checked`. A WASM build removes the checks proved by `sakura verify --target wasm` (the `i64` profile), and a JS build those proved on the `js` profile.
+- `schema_version: "1.1"`, `kind: "manifest"`, `target` (`js` or `wasm`: the build target, and
+  the verification profile its statuses were obtained for) and the input `snapshot` hash.
+  Version 1.1 added `target`.
+- `compiler.version` and `compiler.git`; a local build may have a null `git`.
+- `trusted`: the **trusted base**, everything the build relies on without the compiler checking
+  it. That is the compiler, the runtime (with its SHA-256), the standard library's host
+  bindings, your `@external` declarations, `@trust` reasons and `@total` declarations. The
+  JavaScript runtime is `sakura_runtime.js`. A WebAssembly build lists `sakura_rt.wasm` (linked
+  into `main.wasm`), the Node host `sakura_wasm_host.js` and the `sakura_runtime.js` it
+  delegates to.
+- `obligations`: one entry per contract clause, with an ID,
+  symbol ID, clause, status and source span. A build marks a clause `proved` only when it
+  removed all of that clause's checks using matching authenticated proofs from
+  [`sakura verify`](/docs/agents/verify); every other clause is `runtime_checked`. A WebAssembly
+  build removes the checks proved by `sakura verify --target wasm` (the `i64` profile), and a
+  JavaScript build those proved on the `js` profile.
 
-Obligation IDs use `o:` followed by a digest of the symbol, clause name and normalized predicate. A function-body edit that preserves these does not change its obligation ID. That identity is not a proof-cache validity guarantee: verification also tracks bodies and other dependencies.
+An obligation ID is `o:` followed by a digest of the symbol, the clause name and the normalized
+predicate, so editing only a function's body keeps its obligation IDs. That ID does not decide
+whether a stored proof is still valid: verification also tracks bodies and other dependencies.
 
-This records assumptions and runtime obligations; it does not certify the program. See [`sakura verify`](/docs/agents/verify) for proof statuses, the authenticated cache and which checks a build can remove.
+The manifest records assumptions and run-time checks; it does not certify the program. See
+[`sakura verify`](/docs/agents/verify) for proof statuses, the proof cache and which checks a
+build can remove.

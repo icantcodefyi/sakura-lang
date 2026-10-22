@@ -3,33 +3,22 @@ title: llms.txt and Markdown exports
 description: The two llms.txt files for Sakura Lang - this site's Markdown exports, and the language reference in docs/llms.txt that sakura prompt emits.
 ---
 
-There are two different `llms.txt` files in the Sakura Lang project. Do not confuse them.
+This page is for anyone feeding Sakura Lang docs to a model. The project has two different
+`llms.txt` files: one exports this website's pages, the other teaches a model the language.
+Use the language reference to write code and the site exports to read explanations.
 
 | | Site exports | Language reference |
 | --- | --- | --- |
 | Where | This website: `/llms.txt`, `/llms-full.txt`, `/docs/<page>.md` | The repository: [`docs/llms.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt) |
 | Contents | These docs pages, as Markdown | The whole core language in one file, written for a model's context |
-| Status | Live today | Exists today as a file; `sakura prompt` emits it |
+| How to get it | Fetch the URLs | Read the file, or run `sakura prompt` |
 | Use it for | Explanations, the tour, agent tooling docs | Writing Sakura Lang code |
-
-## Portable skill
-
-The [`sakura` skill](/skills/sakura/SKILL.md) adds the compiler workflow, examples
-and repairs to the language reference. Its relative references are served raw
-alongside it. Download the [ZIP](/skills/sakura-skill.zip), verify its
-[SHA-256 checksum](/skills/sakura-skill.sha256), and inspect the
-[manifest](/skills/manifest.json) for the compiler version and file/ZIP hashes.
-The committed distribution depends only on contents, without a Git commit field.
-The [agents overview](/docs/agents#portable-sakura-lang-skill) lists project-local
-install paths and immutable source URLs. These are byte-identical source files,
-including metadata placeholders; the installed compiler embeds its own matched
-bundle. They are served directly, without the docs Markdown transformation.
 
 ## Site exports
 
-<Callout type="info" title="Available today">
-  These endpoints are served by this site now. They export the docs, not a compiler.
-</Callout>
+These URLs export this site's docs as Markdown, so a model can read them without the web page
+around them.
+
 
 | URL | Contents |
 | --- | --- |
@@ -39,16 +28,16 @@ bundle. They are served directly, without the docs Markdown transformation.
 | `/docs/<path>.md` | Any docs page as Markdown. Append `.md` to its URL. `.mdx` works too. |
 
 ```bash
-curl https://<this-site>/llms.txt
-curl https://<this-site>/llms-full.txt
-curl https://<this-site>/docs/tour/effects.md
+curl https://www.sakuralang.com/llms.txt
+curl https://www.sakuralang.com/llms-full.txt
+curl https://www.sakuralang.com/docs/tour/effects.md
 ```
 
 Each exported page starts with its title, its URL, its Markdown URL, and its description. Components are flattened to plain Markdown: callouts become blockquotes and card grids become link lists.
 
 Every rendered page also has a **Copy as Markdown** button and a menu linking to its `.md` version and its source on GitHub.
 
-Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL to refresh one topic. `/llms-full.txt` is the whole site, including design rationale and planned tooling, so it is larger than the language reference.
+Use `/llms.txt` to choose pages when the model's context is tight, and a page's `.md` URL to refresh one topic. `/llms-full.txt` is the whole site, so it is much larger than the language reference.
 
 ## The language reference: `docs/llms.txt`
 
@@ -62,7 +51,7 @@ Use `/llms.txt` to choose pages when context is tight. Use a per-page `.md` URL 
 - the most used standard library names;
 - common diagnostics and their fixes.
 
-The [design](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) is provisional and includes unimplemented decisions. Use the guide embedded in your compiler for its availability claims. Retrieve full library signatures with MCP `symbol_query` or the implemented offline `sakura doc --search` command.
+It does not list every library signature. Look those up with the MCP `symbol_query` tool or offline with `sakura doc --search`.
 
 ### `sakura prompt`
 
@@ -71,17 +60,24 @@ sakura prompt
 sakura prompt --budget 8000
 ```
 
-`sakura prompt` prints the compiler's embedded `docs/llms.txt`. `--budget N` estimates four bytes per token and drops trailing whole sections to fit; it is not a tokenizer and does not add library signatures. Use `sakura doc <symbol>` or `sakura doc --search <pattern>` for those.
+`sakura prompt` prints the copy of `docs/llms.txt` built into your compiler, so it always matches the version you run. `--budget N` keeps the output under about `N` tokens: it counts four bytes per token and drops whole sections from the end. It is not a real tokenizer, and it does not add library signatures; use `sakura doc <symbol>` or `sakura doc --search <pattern>` for those.
 
-For browsing the latest source guide (which may differ from your installed binary):
+The newest version from the repository, which may be ahead of your installed compiler:
 
 ```bash
-curl https://raw.githubusercontent.com/icantcodefyi/sakuralang/master/docs/llms.txt
+curl https://raw.githubusercontent.com/icantcodefyi/sakuralang/main/docs/llms.txt
 ```
+
+## The Sakura skill
+
+The [`sakura` skill](/skills/sakura/SKILL.md) adds the compiler workflow, examples and common
+repairs to the language reference. The [agents overview](/docs/agents#install-the-sakura-skill)
+shows how to download, verify and install it. Its files are served exactly as they are in the
+repository, without the Markdown conversion the docs pages get.
 
 ## System prompt snippet
 
-A starting point for an agent that writes Sakura Lang. `sakura prompt` is available; consult its status section for planned interfaces.
+A starting point for the system prompt of an agent that writes Sakura Lang:
 
 ```text
 You write code in Sakura Lang. Before writing code, read the Sakura Lang language reference

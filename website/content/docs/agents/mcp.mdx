@@ -3,17 +3,20 @@ title: MCP server
 description: The sakura mcp serve server, which exposes the compiler to agents as Model Context Protocol tools, and the planned export of your own functions.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+`sakura mcp serve` lets a coding agent call the compiler directly, as tools, instead of running
+shell commands and parsing their output. Read this page to connect an agent such as Claude Code,
+Codex or Cursor to Sakura Lang.
 
-`sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io) server. An agent calls compiler functions directly instead of running shell commands and parsing their output.
-
-The CLI, the language server (`sakura lsp`), and the MCP server are thin adapters over one Rust analysis library (`sakura_analysis`). They share diagnostic data for the same input. MCP returns JSON objects containing records and summaries; CLI `--json` emits [JSON Lines](/docs/agents/diagnostics), and LSP adapts diagnostics to its protocol.
+[Model Context Protocol](https://modelcontextprotocol.io) (MCP) is the standard way agents
+discover and call tools. The command line (CLI), the language server for editors
+(`sakura lsp`) and the MCP server all sit on the same compiler analysis, so they report the
+same diagnostics for the same code. Only the packaging differs: MCP returns JSON objects, CLI
+`--json` writes [JSON Lines](/docs/agents/diagnostics), and the language server uses its own
+protocol.
 
 ## Client configuration
 
-The server uses stdin/stdout. Set `command` to the installed executable; this JSON shape is for clients using `mcpServers`. Replace the absolute root below with your project directory. See the [client-specific setup](https://github.com/icantcodefyi/sakuralang/blob/main/docs/mcp.md) for Claude Code, Codex and Cursor.
+The server talks over standard input and output. For clients configured with an `mcpServers` entry, point `command` at the installed `sakura` and replace the root below with your project's absolute path. See the [client-specific setup](https://github.com/icantcodefyi/sakuralang/blob/main/docs/mcp.md) for Claude Code, Codex and Cursor.
 
 ```json
 {
@@ -28,9 +31,11 @@ The server uses stdin/stdout. Set `command` to the installed executable; this JS
 
 ## Snapshots
 
-Analysis works on an immutable **workspace snapshot**. `check` without a `snapshot` reads the workspace from disk. Analysis and patch results carry snapshot ids; information tools such as `compiler_info` do not. This makes results reproducible and lets the server detect stale edits: a patch built against an old snapshot conflicts instead of applying to the wrong text.
+A **snapshot** is a frozen copy of the project's files that the server analyzes. Each analysis or patch result names the snapshot it came from (information tools such as `compiler_info` do not). `check` without a `snapshot` reads the files from disk. Snapshots make results reproducible and catch stale edits: a patch made against an old snapshot is reported as a conflict instead of being applied to the wrong text.
 
-## Tools in v0
+## Tools
+
+The server offers these ten tools.
 
 | Tool | Parameters | Returns |
 | --- | --- | --- |
@@ -45,25 +50,25 @@ Analysis works on an immutable **workspace snapshot**. `check` without a `snapsh
 | `apply_patch` | `snapshot`, `patch_id`, optional `frozen_specs`, `write` | A new snapshot, or a conflict. |
 | `test` | `snapshot`, `selectors`, `seed`, `budget_ms` | Test results under deterministic handlers: `test` records and the `test_summary`, as `sakura test --json` writes them. |
 
-`features.backends` lists the compiled backends (including `wasm` when present). `features.verify` reports CLI verification support together with solver status; a missing solver does not remove that capability. `features.test_execution` reports whether a test runner is configured. `sakura verify` is implemented in the CLI; MCP `verify`, `refactor` and `impact` tools remain planned.
+In `compiler_info`, `features.backends` lists the compile targets this compiler has (including `wasm` when present). `features.verify` says whether the CLI can verify and whether a solver is installed; a missing solver does not remove the capability. `features.test_execution` says whether a test runner is configured. Verification is the CLI's [`sakura verify`](/docs/agents/verify); MCP `verify`, `refactor` and `impact` tools are planned, not built.
 
-`check.budget_ms` is a soft budget reported by `over_budget`. `test.budget_ms` is a wall-clock limit (60,000 by default, capped at 300,000). `docs_query` estimates tokens from bytes; its default budget is 1,500.
+`check.budget_ms` is a soft time budget: going over it only sets `over_budget`. `test.budget_ms` is a hard wall-clock limit in milliseconds (60,000 by default, at most 300,000). `docs_query` estimates tokens from bytes; its default budget is 1,500 tokens.
 
 ### Checking a patch before applying it
 
-`check_patch` lets an agent try an edit without changing anything. The interface delta tells the agent, and the reviewer, whether the edit changes a public signature, effect row, or error union. `apply_patch` then commits it and returns the new snapshot.
+`check_patch` lets an agent try an edit without changing anything. The **interface delta** in its answer tells the agent, and the reviewer, whether the edit changes a public signature, effect row (the side effects a function may perform) or error union. `apply_patch` then makes the edit and returns the new snapshot.
 
 <PatchFlow />
 
-**Frozen specs are opt-in on each call.** Pass `frozen_specs: "all"` (or comma-separated symbol names, including `permissions`) to both `check_patch` and `apply_patch`. The check returns `frozen_spec_violations`; application rejects changes to the selected signatures, effect rows, error unions, contracts, tests/properties and permissions with `V8020`. Use the original base snapshot when applying. Omitting `frozen_specs` does not enforce a prior check's freeze policy. The CLI compares against Git: `sakura check --frozen-specs all --since <baseline>`.
+**Frozen specs** stop an agent from passing a check by editing the spec. They are opt-in on each call: pass `frozen_specs: "all"` (or comma-separated symbol names, including `permissions`) to both `check_patch` and `apply_patch`. The check returns `frozen_spec_violations`; application rejects changes to the selected signatures, effect rows, error unions, contracts, tests/properties and permissions with `V8020`. Use the original base snapshot when applying. Omitting `frozen_specs` does not enforce a prior check's freeze policy. The CLI compares against Git: `sakura check --frozen-specs all --since <baseline>`.
 
 ### Authority
 
-Tools that execute code, such as `test`, run with capabilities issued by the host. A caller cannot name authority in a tool call. Tests run with deterministic default handlers and network access denied.
+Tools that run code, such as `test`, get their permissions from the server, never from the caller: a tool call cannot ask for more access. Tests run with deterministic default handlers (the same answers every run) and no network access.
 
 ## Exporting your own functions as tools
 
-**Planned:** compiler HTTP transport and function export are separate from the implemented stdio tools. `sakura mcp serve --tools a,b` would export functions from your program as MCP tools (design §11.2). `Tool.of` works in-process today; the export flag is not implemented.
+**Planned, not built:** `sakura mcp serve --tools a,b` would export functions from your own program as MCP tools, and an HTTP transport would sit beside the standard input and output one. What works today is `Tool.of`, which makes a tool for a model inside your program.
 
 A tool function is marked `@tool("description")`. Its parameters and result must be `Schema` types, and its error union must be made of `Schema` tags. This complete example checks the implemented in-process path; it does not start an MCP export:
 
@@ -84,8 +89,13 @@ In the planned MCP export, the model never supplies authority. The handlers inst
 
 ## Stability
 
-The stdio server, the ten tools above, their parameters, and the snapshot, content-hash and patch-id protocol are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). A tool that returns a CLI record, such as `symbol_query` or `hole_context`, returns exactly the `--json` record of the same name, `kind` included (design §17.242). Function export, HTTP transport and the `verify`, `refactor` and `impact` tools are not implemented and carry no promise.
+The standard input and output server, the ten tools above, their parameters, and the snapshot, content-hash and patch-id protocol are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). A tool that returns a CLI record, such as `symbol_query` or `hole_context`, returns exactly the `--json` record of the same name, `kind` included. Function export, HTTP transport and the `verify`, `refactor` and `impact` tools are not built and carry no promise.
 
 ## Next
 
 [Diagnostics](/docs/agents/diagnostics): the JSON format every tool returns.
+
+## For contributors
+
+The [design document](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)
+covers the MCP interface (section 12.6) and function export (section 11.2).

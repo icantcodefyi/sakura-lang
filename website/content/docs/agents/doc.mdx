@@ -3,7 +3,9 @@ title: Offline API search
 description: Find signatures, effects, contracts and documentation with sakura doc.
 ---
 
-`sakura doc` searches the current project and the embedded std library without contacting a service. Run these commands from a project directory:
+`sakura doc` looks up functions and types in your project and in the standard library, with no
+network. Agents use it to check a signature instead of guessing; people can use it the same way.
+Run these commands from a project directory:
 
 ```sh
 sakura doc --search "fn(List<A>) -> Int"
@@ -11,8 +13,21 @@ sakura doc std::list::len
 sakura doc --json std::list::len
 ```
 
-A symbol argument containing `::` is an exact symbol ID; other arguments search by name. `--search` matches a type pattern. Human output includes the symbol ID, signature, effect row, contracts and doc comment when present.
+- `--search` takes a **type pattern**: the shape of the function you want. The first command
+  finds functions that take a list of anything and return an `Int`, such as `List.len`.
+- An argument containing `::`, such as `std::list::len`, is an exact **symbol ID**, the full
+  name of one item. Any other argument searches by name.
 
-`--json` prints one JSON object, not JSON Lines: `schema_version` (`"1.0"`), `kind` (`"symbol_query"`), `snapshot`, `total`, `symbols` and `truncated`. The symbol records use the compiler MCP `symbol_query` representation with a `type` field. No matches gives `total: 0` and exit 0; the human command prints “no symbol matches”. Treat that as an empty search result, not a compiler diagnostic.
+The human output shows each match's symbol ID, signature, **effect row** (the side effects it
+may perform), contracts and doc comment when it has one.
 
-Use [MCP](/docs/agents/mcp) when an agent needs structured queries alongside checking and edits. The [standard-library index](/docs/stdlib) is a browsable copy of the source signature inventory. `sakura doc --index` is not implemented.
+## JSON output
+
+`--json` prints one JSON object, not JSON Lines: `schema_version` (`"1.0"`), `kind`
+(`"symbol_query"`), `snapshot`, `total`, `symbols` and `truncated`. Each symbol uses the same
+shape as the MCP `symbol_query` tool, with a `type` field. No match gives `total: 0` and exit 0,
+and the human command prints “no symbol matches”. Treat that as an empty result, not an error.
+
+Use [MCP](/docs/agents/mcp) when an agent needs search alongside checking and edits. The
+[standard library page](/docs/stdlib) is a browsable copy of the same signatures.
+`sakura doc --index` is not implemented.

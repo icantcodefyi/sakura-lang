@@ -1,18 +1,34 @@
 ---
 title: Trust audit
-description: Inventory trust assumptions and explicit refinement conversions with sakura audit.
+description: List every place a Sakura project asks to be trusted instead of checked, with sakura audit.
 ---
 
-`sakura audit` is available in the source-built CLI. Run it from a project directory:
+`sakura audit` lists every place in your project where the code asks to be trusted instead of
+checked. Run it before you review an agent's work: these are the lines a human should read
+first.
 
 ```sh
 sakura audit src
 sakura audit --json src
 ```
 
-It lists user-package `@trust` expressions (including reason and resolved sink), `@total` declarations, `@external` declarations, `@resource` types and explicit refined-type `T.from` calls. The human report groups sites by file. Std sites are excluded here; the [build manifest](/docs/agents/build-manifest) includes the std trusted base.
+## What it lists
 
-The following program checks and runs; its audit contains one `total`, one `from` and one `trust` site:
+| Site | What it is |
+| --- | --- |
+| `trust` | An `@trust("reason")` expression: the code vouches for a value the compiler cannot check. The record keeps the reason and the **sink**, the function that receives the trusted value. |
+| `total` | A function marked `@total`: its author promises, without proof, that it finishes on every input, so contracts may call it. |
+| `external` | An `@external` declaration: a function written in the host language (such as JavaScript), outside the compiler's checks. |
+| `resource` | A type marked `@resource`, such as an open file that must not outlive its scope. |
+| `from` | An explicit `T.from(...)` call that converts a value into a **refined type** (a type with a limit, such as `Int where it > 0`) and checks the limit at run time. |
+
+Only your own package is listed; the standard library is not. The
+[build manifest](/docs/agents/build-manifest) includes the standard library's trusted parts.
+The human report groups the sites by file.
+
+## An example
+
+This program checks and runs. Its audit has one `total`, one `from` and one `trust` site:
 
 ```sakura
 @total
@@ -27,10 +43,21 @@ pub fn main() -> Unit ! {Console} {
 }
 ```
 
-JSON output is JSON Lines: each site has `schema_version: "1.0"`, `kind: "audit"`, `site`, `symbol_id`, `span` and `reason` (nullable). `trust` and `from` records also identify the resolved `sink`. A final `audit_summary` has the snapshot hash (`snapshot`), the site count (`sites`) and counts by site kind (`by_site`). Spans identify the source URI, content hash and byte range.
+## JSON output
 
-An audit is an inventory, not a successful type check or a security certification. It exits 0 regardless of the sites found; loading and usage errors can still fail. Run `sakura check` separately.
+`--json` writes JSON Lines, one record per line. Each site is a record with
+`schema_version: "1.0"`, `kind: "audit"`, `site`, `symbol_id`, `span` and `reason` (which can be
+null). `trust` and `from` records also name the resolved `sink`. Spans give the source URI,
+content hash and byte range. The last record is an `audit_summary` with the snapshot hash
+(`snapshot`), the number of sites (`sites`) and the count for each kind of site (`by_site`).
+
+An audit is a list, not a type check or a security certificate. It exits 0 whatever sites it
+finds, though loading and usage errors can still fail it. Run `sakura check` separately.
 
 ## Literal conversions
 
-A literal whose refinement succeeds at compile time needs no startup conversion and does not appear in the report. A literal the checker cannot decide keeps a startup check, listed as a `from` record with `reason: "literal"` at the literal and the refined type's `from` as its `sink` (design §17.78, §17.87). See [contracts](/docs/tour/contracts#literal-refinements-at-compile-time).
+A literal given a refined type, such as `let p: Positive = 5`, is checked while compiling when
+the compiler can decide it; then it needs no run-time check and is not listed. A literal the compiler cannot decide keeps a check when
+the program starts. It is listed as a `from` record with `reason: "literal"`, at the literal,
+with the refined type's `from` as its `sink`. See
+[contracts](/docs/tour/contracts#literal-refinements-at-compile-time).

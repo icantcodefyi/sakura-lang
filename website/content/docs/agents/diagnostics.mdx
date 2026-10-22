@@ -3,54 +3,27 @@ title: Diagnostics
 description: Reference for the JSON Lines diagnostics produced by sakura check --json, including record kinds, error codes, and fix impact classes.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+When a tool or an agent reads compiler output, it reads these records. This page shows what
+`sakura check --json` and the other `--json` commands print, what each field means, and the
+error codes and exit codes to expect.
 
-Diagnostics are an API. Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. The CLI, the LSP server, and the [MCP server](/docs/agents/mcp) share one analysis library; CLI JSON Lines, MCP result objects and LSP messages wrap that data differently.
+A **diagnostic** is one problem the compiler found: an error, a warning or a note. Every
+diagnostic has a stable code (such as `V3001`), exact byte positions in the source, the expected
+and actual values, links to the problem that caused it, and fixes that say what they change.
+The CLI, the editor language server and the [MCP server](/docs/agents/mcp) report the same data,
+each in its own packaging.
 
 ```bash
 sakura check --json
 sakura test --json
 ```
 
-`--json` writes **JSON Lines**: one record per line. Human-readable output is rendered from the same data.
+`--json` writes **JSON Lines**: one JSON object (a **record**) per line. The human-readable
+output is rendered from the same data.
 
-## Record kinds
+## An example
 
-| `kind` | Meaning |
-| --- | --- |
-| `diagnostic` | An error, warning, or note. Shape below. |
-| `hole` | A [typed hole](/docs/agents/typed-holes) with its context. |
-| `obligation` | Emitted by `sakura verify --json`: `proved`, `disproved`, `unknown` or `unsupported`. See [verify](/docs/agents/verify). |
-| `test` | A test result from `sakura test --json`. |
-| `audit` | A trust, totality, refinement or external site from `sakura audit --json`. See [Trust audit](/docs/agents/audit). |
-| `symbol_query` | The single record `sakura doc --json` writes. See [Offline API search](/docs/agents/doc). |
-| `summary` | End of `check`, `fix` and `build` (and of a `test` run that does not compile). `summary.truncated` is `true` if output hit the cap. |
-| `test_summary` | End of `sakura test --json`. |
-| `audit_summary` | End of `sakura audit --json`. |
-| `verify_summary` | End of `sakura verify --json`. |
-
-Three more records are not on stdout: `target/sakura/manifest.json` (`kind: "manifest"`, from
-`sakura build --manifest` and `sakura verify`), the runtime `defect` record on stderr
-(below) and the `regression` record that `sakura test --contracts` stores in
-`tests/regressions/<fn>.json` ([Testing](/docs/tour/testing#catching-an-ensures-bug)). Every
-record carries `kind` and `schema_version`; the fields of each kind and
-version are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt),
-which a test checks every command's output against. A usage error (a wrong flag, a missing
-file) is text on stderr with exit `2`, even with `--json`.
-
-Each closing record has one shape, every field present: `summary` has `snapshot`, `errors`,
-`warnings`, `notes`, `total`, `emitted`, `truncated` and `holes`; `test_summary` has
-`passed`, `failed`, `skipped`, `total` and `seed`; `audit_summary` has `snapshot`, `sites`
-and `by_site`; `verify_summary` (1.0, while verify's other records are 1.1) has the
-`summary` counts without `holes`, plus `proved`, `disproved`, `unknown`, `unsupported` and
-`reused`. Up to 0.1.0, all four were `kind: "summary"` (verify's at 1.1); match the new kinds
-on main.
-
-## The diagnostic record
-
-The program below omits `Console` from `greet`'s effect row:
+A function's **effect row**, written after `!`, lists the side effects it may perform. The program below prints with `Console` but leaves `Console` out of `greet`'s effect row:
 
 ```sakura expect=V3001
 fn greet(name: String) -> Unit {
@@ -58,7 +31,7 @@ fn greet(name: String) -> Unit {
 }
 ```
 
-`sakura check --json` reports it as one line, shown here pretty-printed with illustrative paths and shortened hashes and ids. Only the first fix is included.
+`sakura check --json` reports it as one line. Here it is spread over several lines, with example paths, shortened hashes and ids, and only the first fix:
 
 ```json
 {
@@ -93,7 +66,41 @@ fn greet(name: String) -> Unit {
 }
 ```
 
-For `V3001`, the compiler offers two fixes: add the effect to the signature (`interface_change`) or handle it locally with `with` (`local`). The local handler edit is `incomplete`: the agent must supply a suitable handler.
+For `V3001` the compiler offers two fixes: add the effect to the signature (impact `interface_change`), or handle it inside the function with `with` (impact `local`). The local fix is `incomplete`: the agent must supply a suitable handler. The tables below explain every field.
+
+## Record kinds
+
+Every record has a `kind` field that says what it is:
+
+| `kind` | Meaning |
+| --- | --- |
+| `diagnostic` | An error, warning or note, as in the example above. |
+| `hole` | A [typed hole](/docs/agents/typed-holes) with its context. |
+| `obligation` | Emitted by `sakura verify --json`: `proved`, `disproved`, `unknown` or `unsupported`. See [verify](/docs/agents/verify). |
+| `test` | A test result from `sakura test --json`. |
+| `audit` | A trust, totality, refinement or external site from `sakura audit --json`. See [Trust audit](/docs/agents/audit). |
+| `symbol_query` | The single record `sakura doc --json` writes. See [Offline API search](/docs/agents/doc). |
+| `summary` | End of `check`, `fix` and `build` (and of a `test` run that does not compile). `summary.truncated` is `true` if output hit the cap. |
+| `test_summary` | End of `sakura test --json`. |
+| `audit_summary` | End of `sakura audit --json`. |
+| `verify_summary` | End of `sakura verify --json`. |
+
+Three more records are not on stdout: `target/sakura/manifest.json` (`kind: "manifest"`, from
+`sakura build --manifest` and `sakura verify`), the runtime `defect` record on stderr
+(below) and the `regression` record that `sakura test --contracts` stores in
+`tests/regressions/<fn>.json` ([Testing](/docs/tour/testing#catching-an-ensures-bug)). Every
+record carries `kind` and `schema_version`; the fields of each kind and
+version are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt),
+which a test checks every command's output against. A usage error (a wrong flag, a missing
+file) is text on stderr with exit `2`, even with `--json`.
+
+Each closing record has one shape, every field present: `summary` has `snapshot`, `errors`,
+`warnings`, `notes`, `total`, `emitted`, `truncated` and `holes`; `test_summary` has
+`passed`, `failed`, `skipped`, `total` and `seed`; `audit_summary` has `snapshot`, `sites`
+and `by_site`; `verify_summary` (version 1.0, while verify's other records are 1.1) has the
+`summary` counts without `holes`, plus `proved`, `disproved`, `unknown`, `unsupported` and
+`reused`. Up to 0.1.0, all four were `kind: "summary"` (verify's at 1.1); since
+1.0.0-beta.1 each command ends with its own kind.
 
 For the `V1002`, `V2002` and `V4004` changes in 0.1.0 and syntax-error suppression by
 source location, see [0.1.0's changes](/docs/changes#diagnostics-and-json).
@@ -102,7 +109,7 @@ source location, see [0.1.0's changes](/docs/changes#diagnostics-and-json).
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `schema_version` | string | Version of this format. `"1.0"` in v0. |
+| `schema_version` | string | Version of this record format: `"1.0"`. |
 | `kind` | string | `"diagnostic"`. |
 | `id` | string | Unique per occurrence in this run. |
 | `code` | string | Stable class, such as `V3001`. See [codes](#error-codes). |
@@ -120,7 +127,7 @@ source location, see [0.1.0's changes](/docs/changes#diagnostics-and-json).
 | `explanation_uri` | string | `sakura://explain/<code>`. Same content as `sakura explain <code>` and the MCP `explain_diagnostic` tool. |
 | `fixes` | array | Zero or more fixes. See below. |
 
-Span `role` is one of `primary`, `cause`, `definition`, or `use`.
+A **span** is a range of bytes in one file. Its `role` is one of `primary` (where the problem is), `cause`, `definition` or `use`.
 
 ### Rules
 
@@ -172,12 +179,12 @@ Codes are `V` + a phase digit + three digits for errors, `W` for warnings, and `
 | `5` | Contracts and refinements | `V5001` predicate outside the contract subset |
 | `6` | Capabilities, resources, escape | `V6002` capability escapes its scope, `V6003` resource escapes, `V6010` non-std effect in `main` |
 | `7` | Tests and verification | `W7001` property discard budget, `W7002` vacuous obligation |
-| `8` | Packages, manifest, ABI, frozen specs | `V8001` no entry point, `V8002` reserved package name, `V8003` ABI version mismatch, `V8004` external unsupported on the target, `V8005` `[dependencies]` refused, `V8006` invalid manifest, `V8020` spec frozen |
+| `8` | Packages, manifest, runtime version, frozen specs | `V8001` no entry point, `V8002` reserved package name, `V8003` WebAssembly module and host from different releases, `V8004` external unsupported on the target, `V8005` `[dependencies]` refused, `V8006` invalid manifest, `V8020` spec frozen |
 | `9` | Internal | Compiler bugs |
 
-Warnings named in the design include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), `W7002` (a proof over impossible assumptions), and `W8001` (a collection update copies in a loop).
+Other warnings include `W1002` (a local shadows an import), `W4010` (catch-all `_` on an open error union), `W5005` (an O(n) contract on a hot path), `W7001` (property generator discard budget exceeded), `W7002` (a proof over impossible assumptions), and `W8001` (a `List`, `Map` or `Set` update must copy because an earlier version is still in use).
 
-Runtime defects are not diagnostics from `sakura check`. They terminate the task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
+A **defect** is an error found while the program runs, not by `sakura check`. It ends the running task; if `main` defects, the program writes one `defect` record to stderr and exits with status 70:
 
 ```json
 {"schema_version":"1.0","kind":"defect","code":"D002","message":"division by zero"}
@@ -195,8 +202,8 @@ Runtime defects are not diagnostics from `sakura check`. They terminate the task
 | `D030` | `Option.expect` on `None` |
 | `D031` | `String.slice` off a character boundary |
 | `D090`, `D091` | runtime-internal error, host operation failed |
-| `D092`–`D095` | WASM runtime limits: a reference count overflow, a failed finalizer, a callback after its handler ended, a join on a retired fiber (`D095` is also a `Task.join` after `Task.cancel`, on every backend) |
-| `D096` | the WASM heap limit was reached or memory could not grow |
+| `D092`–`D095` | WebAssembly runtime limits: a reference count overflow, a failed finalizer, a callback after its handler ended, a join on a retired fiber (`D095` is also a `Task.join` after `Task.cancel`, on every backend) |
+| `D096` | the WebAssembly heap limit was reached or memory could not grow |
 
 ## Exit codes
 
@@ -211,7 +218,7 @@ Runtime defects are not diagnostics from `sakura check`. They terminate the task
 
 ## Stability
 
-Diagnostic codes are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability): a code is never reused or renumbered, and a retired code stays reserved. The `--json` records, their fields and the exit codes are proposed as stable from the same version, with fields only added within a major; the summary split above is on main. Messages, labels and the terminal rendering are not a contract and keep improving.
+Diagnostic codes are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability): a code is never reused or renumbered, and a retired code stays reserved. The `--json` records, their fields and the exit codes are proposed as stable from the same version, with fields only added within a major; each command's own closing kind (above) dates from 1.0.0-beta.1. Messages, labels and the terminal rendering are not a contract and keep improving.
 
 ## Next
 

@@ -1,67 +1,32 @@
 ---
 title: Overview
-description: How an AI agent is expected to work with Sakura Lang, from reading the docs to handing signature changes to a human.
+description: How an AI coding agent works with Sakura Lang - the skill to install, the tools it calls, and the loop from signature to tested code.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+This section is for anyone who has a coding agent (Claude Code, Codex, Cursor and others) write
+Sakura Lang, and for people building tools around the compiler. It covers what to give the
+agent, which compiler tools it calls, and the loop it follows.
+
+<Callout type="warn" title="Beta">
+  Sakura Lang is in beta: it may have bugs and may change before 1.0.0, so it is not for
+  production. These docs follow the main branch, which can be ahead of the latest release. See
+  [Stability](/docs/stability) for what you can rely on and [Changes](/docs/changes) for what
+  each release changed.
 </Callout>
 
-Sakura Lang is designed to be written by agents and reviewed by humans. The signature is the contract: parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`. Agents write bodies against it; humans review signatures and the diff of signatures.
+## The idea in one paragraph
 
-## Portable Sakura Lang skill
-
-Read the raw [`SKILL.md`](/skills/sakura/SKILL.md), or download the
-[complete skill ZIP](/skills/sakura-skill.zip) with its
-[SHA-256 checksum](/skills/sakura-skill.sha256) and
-[content manifest](/skills/manifest.json). The skill and its relative references
-are a byte-identical mirror of [`skills/sakura/`](https://github.com/icantcodefyi/sakuralang/tree/main/skills/sakura).
-
-Verify the ZIP with `shasum -a 256 -c sakura-skill.sha256`, then extract its `sakura/`
-folder under one project-local skill directory: `.claude/skills/sakura/`,
-`.agents/skills/sakura/`, or `.cursor/skills/sakura/`. Keep its `references/` and any
-`assets/` alongside `SKILL.md`.
-
-The manifest records the compiler version, every file's SHA-256 and the ZIP's
-SHA-256. It contains no Git commit: identical source contents produce identical
-artifacts across commits and rebases. The website tracks current source; the CLI
-fills its matching bundle's metadata from its version and build-time
-`SAKURA_GIT_COMMIT`. Prefer your compiler's embedded guide when versions differ.
-For an immutable source URL, choose a repository revision explicitly:
-`https://raw.githubusercontent.com/icantcodefyi/sakuralang/<commit>/skills/sakura/SKILL.md`.
-
-## Available today
-
-| Resource | What it is |
-| --- | --- |
-| [`/llms.txt`](/llms.txt) | Index of every page on this site, with titles, descriptions, and URLs. |
-| [`/llms-full.txt`](/llms-full.txt) | Every page on this site concatenated into one Markdown file. |
-| `/docs/<page>.md` | Any page on this site as Markdown. Append `.md` to its URL; the docs root is `/docs.md`. |
-| Copy as Markdown | A button at the top of every page, next to a menu with the `.md` link and the GitHub source. |
-| [`docs/llms.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt) | The language reference for agents: the whole core language in one file. Lives in the repository. |
-| [`docs/design.md`](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) | The provisional v0 design, including unimplemented decisions; use the compiler and its matched guide for availability. |
-
-The two `llms.txt` files are different things. See [llms.txt](/docs/agents/llms-txt).
-
-## Implemented toolchain
-
-| Tool | Purpose | Design |
-| --- | --- | --- |
-| `sakura check --json` | Diagnostics, holes, and a summary as JSON Lines. | design §12.2 |
-| `?name` typed holes | Placeholders the checker reports with expected type, effects, locals, and candidates. | design §12.4 |
-| `sakura prompt` | Emits the embedded language guide; `--budget` truncates whole sections using a byte-based estimate. Retrieve signatures with `sakura doc`. | design §12.1 |
-| `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact class and rejects patches that touch frozen specs. | design §7.3 |
-| [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc) | Trust inventory and offline signature search. | design §17.78 |
-| [`sakura build --manifest`](/docs/agents/build-manifest) | Trusted components and runtime contract obligations. | design §17.76 |
-| [`sakura verify`](/docs/agents/verify) | Contract and arithmetic proofs, counterexamples and authenticated check removal. | design §17.84–§17.86 |
-| [`sakura test --record`](/docs/agents/cassettes) | Opt-in cassette recording; ordinary tests replay offline. | design §17.73 |
-| `sakura mcp serve` | The compiler as Model Context Protocol tools. | design §12.6 |
-
-The [roadmap](/docs/roadmap) says what is complete, experimental and planned.
+Agents write the code; humans review the **signatures**. A signature is everything a function
+promises from the outside: its parameter and result types, any **refinements** on them (limits
+such as `where it > 0`), its **effect row** (the side effects it may perform, such as `Console`
+or `Http`, written after `!`), the errors it can fail with, and its **contracts** (`requires`
+for what callers must guarantee, `ensures` for what the function guarantees back). An agent
+fills in bodies to match; a reviewer reads the signatures and how they changed.
 
 ## The working loop
 
-Use this loop with the source-built CLI or compiler MCP server. A successful `check` can still contain holes; finish with tests and a build.
+Use this loop with the `sakura` command line (CLI) or the compiler's [MCP server](/docs/agents/mcp).
+A `check` that passes can still contain unfinished parts, so always finish with tests and a build.
 
 <AgentLoop />
 
@@ -70,12 +35,16 @@ Use this loop with the source-built CLI or compiler MCP server. A successful `ch
 
 ### Load the language
 
-Read `docs/llms.txt` once per session (or run `sakura prompt`). It is the entire core language. Look up library signatures with the MCP `symbol_query` tool instead of guessing; [`sakura doc --search`](/docs/agents/doc) is also available offline.
+Read `docs/llms.txt` once per session, or run `sakura prompt`, which prints the same file. It is
+the whole core language in one file. Look up library functions with the MCP `symbol_query` tool
+instead of guessing; [`sakura doc --search`](/docs/agents/doc) does the same offline.
 
 </Step>
 <Step>
 
 ### Write signatures first, bodies as holes
+
+A **typed hole** is a placeholder, `?name`, for code not written yet:
 
 ```sakura holes
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
@@ -86,46 +55,114 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-`sakura check` accepts holes. Signatures are what a human reviews, so get them right first.
+`sakura check` accepts holes. The signatures are what a human reviews, so get them right first.
 
 </Step>
 <Step>
 
 ### Check
 
-Run `sakura check --json`, or call the MCP `check` tool. Each [typed hole](/docs/agents/typed-holes) comes back as a `hole` record with its expected type, allowed effects, locals, and ranked candidates.
+Run `sakura check --json`, or call the MCP `check` tool. Each [typed hole](/docs/agents/typed-holes)
+comes back as a `hole` record: the type it must have, the effects allowed there, the local
+variables in scope, and ranked suggestions.
 
 </Step>
 <Step>
 
 ### Fill holes and fix diagnostics
 
-Each problem is a `diagnostic` record with a stable code, byte spans, structured expected/actual, and fixes. See [Diagnostics](/docs/agents/diagnostics). `sakura explain V3001` gives the rationale for a code.
+Each problem comes back as a `diagnostic` record with a stable code (such as `V3001`), the exact
+place in the source, what was expected and what was found, and suggested fixes. See
+[Diagnostics](/docs/agents/diagnostics). `sakura explain V3001` explains a code.
 
 </Step>
 <Step>
 
-### Apply fixes by impact class
+### Apply fixes by impact
 
-`local` fixes that are `machine_applicable` are safe to apply. `interface_change`, `contract_change`, and `authority_change` fixes are never `machine_applicable`; `sakura fix` never applies the last two. Run `sakura test --json`, then `sakura fmt`.
+Every fix says what it changes, its **impact**. `local` fixes marked `machine_applicable` are safe
+to apply. Fixes with impact `interface_change`, `contract_change` or `authority_change` are never
+`machine_applicable`, and `sakura fix` never applies the last two. Then run `sakura test --json`
+and `sakura fmt`.
 
 </Step>
 <Step>
 
 ### Report signature changes
 
-If the task really needs a new effect, error tag, permission, or a changed contract, make the change and list it for the reviewer. During repair, use `--frozen-specs all --since <baseline>` against the agreed Git revision; MCP callers must pass `frozen_specs: "all"` on both patch calls. Run `sakura build` after tests to reject remaining holes.
+If the task really needs a new effect, error, permission or a changed contract, make the change
+and list it for the reviewer. To stop an agent from editing the spec to make a check pass, run
+`--frozen-specs all --since <baseline>` against the agreed Git revision; MCP callers pass
+`frozen_specs: "all"` on both patch calls. Run `sakura build` after the tests: it refuses any
+hole that is left.
 
 </Step>
 </Steps>
 
 ## What an agent should never do
 
-- Add an effect, error tag, or `[permissions]` entry without flagging it.
-- Weaken or delete a `requires`, `ensures`, or `where` clause, or edit a `test` body, to make a check pass. Contract violations (`D020`, `D021`) mean the caller or callee is wrong, not the spec.
-- Use `.trust(@trust("..."))`, `Secret.expose`, `.expect`, or `Email.from` outside trusted boundaries, or without a true reason.
+- Add an effect, error tag or `[permissions]` entry without flagging it.
+- Weaken or delete a `requires`, `ensures` or `where` clause, or edit a `test` body, to make a
+  check pass. A contract violation (`D020`, `D021`) means the caller or the function is wrong,
+  not the spec.
+- Use `.trust(@trust("..."))`, `Secret.expose`, `.expect` or `Email.from` outside trusted
+  boundaries, or without a true reason.
 - Leave a `?hole` in code meant to build. `sakura build` and `sakura run` reject it with `V2050`.
-- Borrow syntax from other languages: call-site type arguments (`f<T>(x)`, `V0011`) and named arguments (`f(name: v)`, `V0014`) do not exist. Annotate the binding (`let rows: List<User> = Sql.query(q)`) and pass a record for options. Import every non-prelude name explicitly (`import std/http.{Http}` and `import std/request.{Request}`).
+- Borrow syntax from other languages: call-site type arguments (`f<T>(x)`, `V0011`) and named
+  arguments (`f(name: v)`, `V0014`) do not exist. Annotate the binding
+  (`let rows: List<User> = Sql.query(q)`) and pass a record for options. Import every name
+  outside the prelude explicitly (`import std/http.{Http}` and `import std/request.{Request}`).
+
+## Install the Sakura skill
+
+A **skill** is a folder of instructions an agent loads on demand. The `sakura` skill teaches the
+compiler workflow, with examples and common repairs. Read the raw
+[`SKILL.md`](/skills/sakura/SKILL.md), or download the [complete skill ZIP](/skills/sakura-skill.zip)
+with its [SHA-256 checksum](/skills/sakura-skill.sha256) and
+[content manifest](/skills/manifest.json).
+
+1. Verify the ZIP: `shasum -a 256 -c sakura-skill.sha256`.
+2. Extract its `sakura/` folder into one project-local skill directory: `.claude/skills/sakura/`,
+   `.agents/skills/sakura/` or `.cursor/skills/sakura/`.
+3. Keep its `references/` and any `assets/` next to `SKILL.md`.
+
+The files are a byte-identical copy of
+[`skills/sakura/`](https://github.com/icantcodefyi/sakuralang/tree/main/skills/sakura) in the
+repository. The manifest records the compiler version, every file's SHA-256 and the ZIP's
+SHA-256, but no Git commit, so the same source always produces the same files. The website
+follows the current source; your installed compiler carries its own matching copy, filled in
+from its version and the `SAKURA_GIT_COMMIT` it was built with. Prefer the compiler's copy when
+versions differ. For a URL that never changes, pin a commit:
+`https://raw.githubusercontent.com/icantcodefyi/sakuralang/<commit>/skills/sakura/SKILL.md`.
+
+## What to read
+
+| Resource | What it is |
+| --- | --- |
+| [`docs/llms.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt) | The language reference for agents: the whole core language in one file. |
+| [`/llms.txt`](/llms.txt) | An index of every page on this site, with titles, descriptions and URLs. |
+| [`/llms-full.txt`](/llms-full.txt) | Every page on this site in one Markdown file. |
+| `/docs/<page>.md` | Any page on this site as Markdown: add `.md` to its URL. The docs root is `/docs.md`. |
+| Copy as Markdown | A button at the top of every page, next to a menu with the `.md` link and the GitHub source. |
+
+The two `llms.txt` files are different things; see [llms.txt](/docs/agents/llms-txt).
+
+## The tools
+
+| Tool | What it does |
+| --- | --- |
+| `sakura check --json` | Reports diagnostics, holes and a summary as JSON Lines (one JSON object per line). |
+| `?name` typed holes | Placeholders the checker describes: expected type, effects, locals and suggestions. |
+| `sakura prompt` | Prints the embedded language guide; `--budget` drops whole sections to fit a size. Look up signatures with `sakura doc`. |
+| `sakura fix`, `--frozen-specs` | Applies compiler fixes by impact, and refuses patches that touch frozen specs. |
+| [`sakura audit`](/docs/agents/audit) | Lists every place the code asks to be trusted. |
+| [`sakura doc`](/docs/agents/doc) | Searches signatures offline. |
+| [`sakura build --manifest`](/docs/agents/build-manifest) | Records what a build trusts and which contract checks it keeps. |
+| [`sakura verify`](/docs/agents/verify) | Proves contracts and arithmetic safe, or finds a counterexample. |
+| [`sakura test --record`](/docs/agents/cassettes) | Records HTTP and model exchanges once; ordinary tests replay them offline. |
+| [`sakura mcp serve`](/docs/agents/mcp) | Runs the compiler as Model Context Protocol tools. |
+
+The [roadmap](/docs/roadmap) says what is finished, experimental and planned.
 
 ## Pages in this section
 
@@ -134,24 +171,34 @@ If the task really needs a new effect, error tag, permission, or a changed contr
     The site's Markdown exports and the language's `docs/llms.txt`.
   </Card>
   <Card title="MCP server" href="/docs/agents/mcp">
-    The implemented stdio compiler tools and the planned function-export interface.
+    The compiler as tools an agent calls directly.
   </Card>
   <Card title="Diagnostics" href="/docs/agents/diagnostics">
-    The JSON Lines format, error codes, and fix impact classes.
+    The JSON Lines format, error codes and fix impact.
   </Card>
   <Card title="Typed holes" href="/docs/agents/typed-holes">
-    Writing programs incrementally with `?name`.
+    Writing programs a step at a time with `?name`.
   </Card>
   <Card title="Trust audit" href="/docs/agents/audit">
-    Inventory explicit trust, totality and refinement boundaries.
+    Find every place the code asks to be trusted.
   </Card>
   <Card title="Offline API search" href="/docs/agents/doc">
-    Query signatures, effect rows and contracts with sakura doc.
+    Look up signatures, effects and contracts with sakura doc.
   </Card>
   <Card title="Build manifest" href="/docs/agents/build-manifest">
-    Inspect trusted dependencies and runtime contract obligations.
+    See what a build trusts and which checks it keeps.
+  </Card>
+  <Card title="Verify contracts" href="/docs/agents/verify">
+    Prove contracts with a solver and read counterexamples.
   </Card>
   <Card title="Cassettes and recording" href="/docs/agents/cassettes">
-    Replay HTTP and LLM exchanges offline; opt into recording.
+    Replay HTTP and model exchanges offline; record them when you choose.
   </Card>
 </Cards>
+
+## For contributors
+
+The [design document](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)
+explains the reasoning behind these tools (section 12 covers the agent interface). It is
+provisional and includes decisions not built yet; the compiler and its matching guide say what
+is available.

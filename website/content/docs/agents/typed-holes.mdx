@@ -3,13 +3,13 @@ title: Typed holes
 description: How ?name holes let agents write a Sakura Lang program incrementally, with the checker reporting what fits in each gap.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+A **typed hole** is a placeholder for code you have not written yet. You write it `?name`: a
+`?` followed directly by a name, with no space. The compiler checks the rest of the program
+around it and tells you what the hole needs: its type, the side effects allowed there, the
+variables in scope and code that would fit.
 
-A typed hole is a placeholder for code you have not written yet. In Sakura Lang it is written `?name`: a `?` immediately followed by an identifier, with no space. A hole is an expression of a fresh type, so a program with holes can be checked before it is finished.
-
-Holes turn "write the whole function and hope it compiles" into small steps, each with precise feedback.
+This page is for agents, and the people guiding them, who build a program step by step instead
+of writing a whole function and hoping it compiles.
 
 ## Writing a hole
 
@@ -26,25 +26,11 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 
 The name is for you and for tooling. Use one that says what belongs there: `?body`, `?user`, `?retry_policy`.
 
-`?` also appears as postfix raise on a `Result` (`r?`). The two never clash: `?name` with no space before the identifier is always a hole, and `?` after an operand is always raise.
+`?` has a second use: after a `Result` value (`r?`) it gives the success value or raises the error as a failure (`Fail<E>`). The two never clash: `?` directly before a name is always a hole, and `?` after a value is always a raise.
 
 ## What a hole reports
 
-After solving the enclosing body, `sakura check --json` emits one `hole` record per hole, on its own line. The record is exactly this shape ([design §12.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-| Field | Meaning |
-| --- | --- |
-| `id` | `h:` plus a hash of the name, the file's content hash, and the span. Stable across runs while the text is unchanged. |
-| `name` | The identifier after `?`. |
-| `snapshot` | Hash of the workspace snapshot that was checked. |
-| `span` | Where the hole is, in the same shape as a diagnostic span, with `role` `primary`. |
-| `expected_type` | The type the hole must produce, fully solved where possible, as `{ "render", "structured" }`. |
-| `allowed_effects` | The full effect row allowed at this point, as `{ "render", "row" }`. Effects already used elsewhere in the body are not subtracted. |
-| `locals` | Every local in scope, innermost last, each with `name` and `type`. |
-| `candidates` | Up to 10 ranked expressions that fit, each with `expr` and its `fit` kind. |
-| `contracts_in_scope` | The refinements and contracts assumed at this point. |
-
-For the `clamp` program above, saved as `src/main.sak`, the record looks like this, pretty-printed, with hashes shortened:
+`sakura check --json` writes one `hole` record per hole, each on its own line. For the `clamp` program above, saved as `src/main.sak`, the record looks like this, spread over several lines and with hashes shortened:
 
 ```json
 {
@@ -75,14 +61,28 @@ For the `clamp` program above, saved as `src/main.sak`, the record looks like th
 
 A function candidate carries holes for its own arguments, named after its parameters, so filling the hole with it leaves smaller holes to fill next.
 
+Every `hole` record has exactly these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `id` | `h:` plus a hash of the name, the file's content hash, and the span. Stable across runs while the text is unchanged. |
+| `name` | The identifier after `?`. |
+| `snapshot` | Hash of the workspace snapshot that was checked. |
+| `span` | Where the hole is, in the same shape as a diagnostic span, with `role` `primary`. |
+| `expected_type` | The type the hole must produce, fully solved where possible, as `{ "render", "structured" }`. |
+| `allowed_effects` | The full effect row (the side effects allowed) at this point, as `{ "render", "row" }`. Effects already used elsewhere in the body are not subtracted. |
+| `locals` | Every local in scope, innermost last, each with `name` and `type`. |
+| `candidates` | Up to 10 ranked expressions that fit, each with `expr` and its `fit` kind. |
+| `contracts_in_scope` | The refinements (limits on a type, such as `where it > 0`) and contracts (`requires` and `ensures`) assumed at this point. |
+
 ## How candidates are ranked
 
 - Exact fits from locals come first.
-- Then constructors and functions whose result type unifies with the expected type, such as `Int.min` or `Int.max` here. Each is tried in a rollback snapshot, so trying a candidate never changes the inference state.
+- Then constructors and functions whose result type matches the expected type, such as `Int.min` or `Int.max` here. Each is tried on a throwaway copy of the type checker's state, so trying a candidate never changes what the checker has worked out.
 - Candidates that would need an effect outside the allowed row are filtered out.
 - At most 10 candidates are reported.
 
-A hole never affects inference of other bindings beyond its own fresh type variable. The rest of the body, including effects and contracts, is checked normally around it.
+A hole never changes the inferred types of other variables; it only stands for its own unknown type. The rest of the body, including effects and contracts, is checked normally around it.
 
 ## Filling a hole
 
@@ -97,7 +97,7 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 }
 ```
 
-The `ensures` clause is checked on normal return unless an eligible build removes it using a matching authenticated proof. `run` and `test` retain it; there is no `build --release` flag. A wrong fill triggers `D021` blamed on `clamp`. See [verification](/docs/agents/verify).
+The `ensures` clause is checked each time `clamp` returns normally. Only a build can drop that check, and only when [`sakura verify`](/docs/agents/verify) has proved it; `run` and `test` always keep it, and there is no `build --release` flag. A wrong fill triggers the defect `D021`, which blames `clamp`. See [verification](/docs/agents/verify).
 
 ## Narrower holes
 
@@ -114,7 +114,7 @@ Here the report expects `Instant`, and `allowed_effects` is `{Console, Clock}`. 
 
 ## Holes in the MCP server
 
-The [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool. It returns the same record for one hole, which is cheaper than re-checking the project. The compiler's acceptance tests require the language server, after replaying the same edits, to match `hole_context` byte for byte.
+The [MCP server](/docs/agents/mcp) has a `hole_context(snapshot, hole_id)` tool. It returns the same record for one hole, which is cheaper than re-checking the project. The compiler's tests require the editor language server, after the same edits, to report exactly the same bytes as `hole_context`.
 
 ## Recommended agent workflow
 
