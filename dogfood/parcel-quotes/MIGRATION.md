@@ -125,3 +125,14 @@ library entries, which ship in beta.3 (`dogfood.yml` skips it before beta.3).
 | 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
 
 Predicted diff: **none**; the consumer runs from this release.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura test`
+31/31 on js and 31/31 on `--target wasm`. The Node consumer, as `dogfood.yml` runs it
+(`sakura build --target wasm|js --out-dir …`, then `node consumer/consumer.mjs <dir>`, Node
+26.12.0): exit 0 and "all checks passed" on both builds, 24 checks each, the `--denied` and
+`--empty` children included. The js build's `__entries__.js` lists `describe_problem`, `quote`
+and `render_outcome`.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

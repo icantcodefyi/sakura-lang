@@ -154,3 +154,11 @@ from `6bd16751`, but the tag's notes still lack it.
 | 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 31/31 on js and 31/31 on `--target wasm`. A js build writes no `__entries__.js`: `main` is the
+root module's only `pub fn`.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

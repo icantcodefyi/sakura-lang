@@ -142,3 +142,17 @@ Migration-list gaps: none.
 | Fixed: `verify` VCs no longer grow exponentially in the inlining depth | No | the same statuses, by the entry |
 
 Predicted diff: none in the source; the verify gate unchanged.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura test`
+28/28 on js and 28/28 on `--target wasm`. A js build also writes `__entries__.js`, with the
+entries `error_json`, `evaluate`, `input_failure_code`, `render_error`, `run_cli` and
+`to_report`.
+
+Verification gate, as on beta.2: exit 0 on both profiles; 95 obligations, 94 proved, 1
+`unsupported` (`main requires Cli.exit`); kernel 45/45 `proved`, all `path_feasible`. Item 3
+shows: of the 2,139 `path_conditions` per profile, 13 now name a guard (for example
+`|reason_of.result.path|`), where beta.2 named none. The statuses did not move.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

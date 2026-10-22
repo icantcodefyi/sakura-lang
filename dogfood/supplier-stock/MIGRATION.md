@@ -117,3 +117,12 @@ test` 27/27 on js and 27/27 on `--target wasm`.
 | 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 27/27 on js and 27/27 on `--target wasm`. A js build also writes `__entries__.js`, with nine entries:
+`eligible_offers`, `exit_status`, `fetch_offers`, `parse_feed`, `parse_wanted`, `read_wanted`,
+`reconcile`, `render` and `shop_config` (`retry_policy`, `gather` and `plan` are not entries).
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

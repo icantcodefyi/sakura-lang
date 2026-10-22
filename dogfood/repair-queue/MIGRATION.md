@@ -141,3 +141,11 @@ test` 32/32 on js and 32/32 on `--target wasm`.
 | 4 the pipeline runs on a 256 MiB thread | No | nothing to migrate, by the item |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 32/32 on js and 32/32 on `--target wasm`. A js build also writes `__entries__.js`, with the entries
+`listen_host` and `listen_port`, as predicted.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.
