@@ -7,7 +7,38 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0-beta.5] - 2026-10-22
+
+A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
+1.0.0, and every breaking change until then is listed here with a migration. This section
+collects everything since `v1.0.0-beta.4` (design §17.310 (5)); it is dated at the preparation
+commit. The Rust MSRV is unchanged (1.99) and the WASM runtime ABI stays 1.18.0, so a beta.4
+host loads a beta.5 module. `--target native` stays an experimental flag outside every
+compatibility promise ([STABILITY](STABILITY.md)), now in the Intel macOS release binary too.
+
+### Migration from v1.0.0-beta.4
+
+Every behaviour change below, in the order a program meets it; the entries carry the details.
+Nothing is breaking.
+
+1. **`sakura fmt` keeps an external type's `where` on the next line** (Fixed, #11): a file that
+   beta.4's formatter had joined into `type P where …` did not parse; written on two lines, it
+   now formats and stays so. Nothing else formats differently.
+2. **The benchmark counters move for a `match` on a tuple literal** (Changed, N3c): such a
+   match builds no tuple, so `dups` and `drops` fall and `reuses` can rise in `stats()`. A tool
+   comparing `stats()` with a beta.4 record re-records it; no program's output changes.
+3. **The Intel macOS release binary carries `--target native`** (Added, experimental, platform
+   C): `sakura build --target native` on `x86_64-apple-darwin` links with the system `cc`, and
+   without one fails with `V8007 native_linker_missing` (exit 1), as on the other native rows;
+   beta.4 refused it with exit 2. Windows x64 still refuses it in the release binary.
+
 ### Added
+
+- **The Intel macOS release binary carries `--target native`** (experimental, platform C, plan
+  `m5-native.md` row C, design §17.308 (2g)): the `x86_64-apple-darwin` archive, npm package and
+  Homebrew formula install the native driver at `lib/sakura/native/` as the macOS arm64 and
+  Linux rows do, and `release.py smoke` builds and runs the native `fib` on that row. The
+  executable targets macOS 12 or later. The Windows x64 release binary does not carry it yet.
 
 - **The benchmark harness counts Sakura's native executable** (plan `m5-native.md` row M, design
   §17.308 (2k)): `bench run --suite native` builds every program with `--target native` and
@@ -20,7 +51,7 @@ retains earlier implementation history.
 - **`--target native` builds on Intel macOS and Windows x64 from source** (experimental,
   platform C, plan `m5-native.md` row C, design §17.308 (2g)): a compiler built with
   `--features native` for `x86_64-apple-darwin` or `x86_64-pc-windows-msvc` no longer refuses
-  the target; no release binary for either carries it yet. On Windows the object is COFF with
+  the target. On Windows the object is COFF with
   `.pdata`/`.xdata` unwind records and inline stack probes, linked with MSVC's `link.exe` from
   the Visual Studio installation (when there is none, `V8007` names the Build Tools), and the
   executables are `main.exe` and `tests.exe`. Windows executables carry no debugger symbols
@@ -40,6 +71,11 @@ retains earlier implementation history.
   it. In `bench_counters.txt` only `rbtree` moves (`dups` 118,623 → 91,803, `drops`
   107,885 → 72,028, reuses 1,106 → 1,203). No program's output changes, and there is no ABI
   change.
+- **Borrowed variants are bounded per direct call component** (WASM and native, plan
+  `m5-native.md` N4b): past two variants per borrowable parameter, a strongly connected
+  component of direct calls takes its arguments owned while the rest of the module still lends
+  (beta.4 stopped lending to every def once the module passed its function count). No program's
+  output or counters change, and there is no ABI change.
 
 ### Security
 
@@ -69,6 +105,9 @@ retains earlier implementation history.
 
   A fiber or property case whose set-up failed is now cancelled before it runs. A
   completion that could not be queued no longer leaves a partial entry behind.
+- **`sakura fmt` keeps an external type's `where` on the next line** (#11): `type P` followed
+  by `where …` on the next line was joined into `type P where …`, which does not parse without
+  `=` (`V9001`).
 
 ## [1.0.0-beta.4] - 2026-10-22
 
@@ -275,9 +314,6 @@ the details.
 - **`sakura fmt` keeps `1 .2` apart** (#10): the field of a number literal was printed as `1.2`,
   a float, so `1 .2 = m` failed with `V9001` and `1 .2` changed meaning. A number keeps the
   space before its `.field`.
-- **`sakura fmt` keeps an external type's `where` on the next line** (#11): `type P` followed
-  by `where …` on the next line was joined into `type P where …`, which does not parse without
-  `=` (`V9001`).
 - Website benchmark fallback text no longer names beta.3 as an upcoming release, and the
   server guide pins beta.3 after rechecking its displayed outputs with the published beta.3.
 - Standard library docs describe native worker shutdown limits, exact grant-path matching
@@ -2251,7 +2287,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.4...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.5...HEAD
+[1.0.0-beta.5]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.4...v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...v1.0.0-beta.2
