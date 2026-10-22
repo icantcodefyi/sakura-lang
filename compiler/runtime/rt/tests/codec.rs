@@ -205,3 +205,19 @@ fn slice_clamps_and_concat_is_linear() {
     rt.drop(all);
     assert_eq!(rt.stats().live_objects, base);
 }
+
+#[test]
+fn concat_past_the_length_limit_drops_its_parts() {
+    let mut rt = rt();
+    let base = rt.stats().live_objects;
+    // 4,096 copies of one 1 MiB part: 2^32 bytes overflow the u32 length.
+    let part = bytes(&mut rt, &vec![7; 1 << 20]);
+    let mut xs = rt.list_empty();
+    for _ in 0..4096 {
+        rt.dup(part).unwrap();
+        xs = rt.list_push_update(xs, part).unwrap();
+    }
+    rt.drop(part);
+    assert!(rt.bytes_concat(xs).is_err());
+    assert_eq!(rt.stats().live_objects, base);
+}

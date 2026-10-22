@@ -111,12 +111,9 @@ impl Rt {
     /// `Bytes.concat(parts)`: one allocation and one copy of each part, so linear in the total.
     pub fn bytes_concat(&mut self, parts: u32) -> Res<u32> {
         let k = self.list_n(parts);
-        let mut total = 0u32;
-        for i in 0..k {
-            let (len, _) = self.data(self.at(parts, i));
-            total = total.checked_add(len).ok_or(Defect::HEAP_EXHAUSTED)?;
-        }
-        let r = self.new_bytes(total).inspect(|&p| {
+        let total = (0..k).try_fold(0u32, |t, i| t.checked_add(self.data(self.at(parts, i)).0));
+        let r = total.ok_or(Defect::HEAP_EXHAUSTED);
+        let r = r.and_then(|t| self.new_bytes(t)).inspect(|&p| {
             let mut o = p + 12;
             for i in 0..k {
                 let (len, at) = self.data(self.at(parts, i));

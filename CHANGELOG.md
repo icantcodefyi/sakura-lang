@@ -135,6 +135,8 @@ retains earlier implementation history.
 
 ### Fixed
 
+- **`Bytes.concat` past 4 GiB leaked its parts** (WASM and native): the overflow now drops the
+  list before it fails with the heap defect.
 - **`Llm.anthropic` on `--target native` read a model's `-0` as `0` and a hex `retry-after` as
   no duration**: the value now decodes from text that keeps its sign, and `retry-after` reads
   as JS `Number(s)` exactly (`0x`, `0o` and `0b` integers, JS white space, empty as 0), so native
