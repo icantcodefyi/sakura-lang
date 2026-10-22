@@ -1,0 +1,24 @@
+[package]
+name = "sakura_packages"
+description = "Packages (RFC 0003): the MVS resolver, the index, the canonical tarball, the cache and lock entries."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Every one is already in the lock: no new crate (plan packages.md §1). `miniz_oxide` is the
+# exact pin, so the canonical tarball's compressed bytes (and its checksum) do not depend on
+# which DEFLATE backend another crate's features select.
+miniz_oxide.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -15,6 +15,7 @@ default-members = [
     "crates/sakura_lir",
     "crates/sakura_lsp",
     "crates/sakura_mcp",
+    "crates/sakura_packages",
     "crates/sakura_syntax",
     "crates/sakura_types",
     "crates/sakura_verify",
@@ -47,6 +48,8 @@ sakura_lir = { path = "crates/sakura_lir" }
 sakura_mcp = { path = "crates/sakura_mcp" }
 sakura_lsp = { path = "crates/sakura_lsp" }
 sakura_codegen_wasm = { path = "crates/sakura_codegen_wasm" }
+# Packages (RFC 0003); depends on no other workspace crate.
+sakura_packages = { path = "crates/sakura_packages" }
 
 sakura_codegen_native = { path = "crates/sakura_codegen_native" }
 sakura_host_native = { path = "crates/sakura_host_native" }
