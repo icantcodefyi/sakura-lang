@@ -1,0 +1,19 @@
+// milestone: M4
+// covers: design §17.149 (a borrowed argument is not retained), §17.310 (2g) (the `BORROWS` audit)
+// spec: §17.275
+
+// The fused `*_expect` reads only read their list or map and key; their message is the
+// defect's, so Core does not count it a borrow (as `reads` does not). A message built at run
+// time, passed and then extended, and a list read and then updated, keep their own values.
+pub fn main() -> Unit ! {Console} {
+  let n = List.len(String.split("a,b", ","))
+  var xs = [[n], [3]]
+  var msg = "item {n}"
+  let first = xs[0].expect(msg)
+  msg = "{msg}!"
+  xs = List.set(xs, 0, [7])
+  let m: Map<Int, List<Int>> = Map.insert(Map.empty(), n, first)
+  let got = Map.get(m, n).expect(msg)
+  msg = "{msg}?"
+  Console.print("{xs} {first} {got} {msg}")
+}

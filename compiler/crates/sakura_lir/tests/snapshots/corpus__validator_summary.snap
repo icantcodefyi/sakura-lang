@@ -130,6 +130,7 @@ semantics/fs_read_chunk_rejects_zero: 36 funcs, 170 blocks, 20 dup, 63 drop, val
 semantics/fs_read_up_to: 39 funcs, 223 blocks, 26 dup, 83 drop, valid
 semantics/fs_read_up_to_rejects_limit: 37 funcs, 183 blocks, 21 dup, 69 drop, valid
 semantics/function_values: 5 funcs, 14 blocks, 0 dup, 13 drop, valid
+semantics/fused_borrows_kept: 3 funcs, 9 blocks, 3 dup, 16 drop, valid
 semantics/fused_get_expect: 11 funcs, 44 blocks, 0 dup, 25 drop, valid
 semantics/fused_get_expect_map_miss: 4 funcs, 10 blocks, 0 dup, 5 drop, valid
 semantics/fused_get_expect_out_of_range: 5 funcs, 17 blocks, 0 dup, 5 drop, valid

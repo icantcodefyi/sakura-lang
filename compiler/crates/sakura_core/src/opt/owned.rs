@@ -151,7 +151,6 @@ pub const BORROWS: &[&str] = &[
     "list_get_expect",
     "list_at",
     "list_builder_at",
-    "list_contains",
     "map_get",
     "map_get_expect",
     "map_get_or",
@@ -162,9 +161,12 @@ pub const BORROWS: &[&str] = &[
 ];
 
 /// Builtin `name` retains nothing of its argument `i`: a [`BORROWS`] read, except for
-/// `map_get_or`'s default, which it returns when the key is absent.
+/// `map_get_or`'s default, which it returns when the key is absent, and an `*_expect`'s
+/// message, which its defect keeps. `sakura_lir::borrow`'s `reads` agrees at every position but
+/// the ones its test names (design §17.310 (2g)).
 pub fn borrows_arg(name: &str, i: usize) -> bool {
-    BORROWS.contains(&name) && !(name == "map_get_or" && i == 2)
+    BORROWS.contains(&name)
+        && !(i == 2 && matches!(name, "map_get_or" | "list_get_expect" | "map_get_expect"))
 }
 
 /// Builtins returning a shared empty singleton, which every owned entry tests for.
