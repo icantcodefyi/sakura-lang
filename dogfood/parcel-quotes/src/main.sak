@@ -5,7 +5,7 @@
 // path to one; sources were the installed CLI (`sakura prompt`, `sakura doc`),
 // the public website https://www.sakuralang.com and BRIEF.md.
 // Release built against: sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
-// Upgraded to: sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399); see MIGRATION.md.
+// Upgraded to: sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281); see MIGRATION.md.
 //
 // `quote` is the library entry. It validates the parcel before any HTTP work,
 // fetches the carrier snapshot under a handler narrowed to the one carrier

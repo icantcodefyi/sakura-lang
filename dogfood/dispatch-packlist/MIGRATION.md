@@ -180,3 +180,15 @@ is never warned about" reads. Migration-list gaps: none.
 | (provenance) `src/main.sak` header `Upgraded to:` line | Yes, not a migration | the line names beta.1; after this round it names beta.5 |
 
 Predicted diff: **none required**; the header's provenance line.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0 warnings); `sakura fmt --check` clean; `sakura test`
+24/24 on js and 24/24 on `--target wasm`. Native was not run (item 3; outside the
+round).
+
+| Hunk | Required? | Predicted by the list? |
+| ---- | --------- | ---------------------- |
+| `src/main.sak` header: `Upgraded to` provenance line names beta.5 | No (provenance) | n/a, not a migration |
+
+**No migration hunk needed.** Prediction and result agree. Migration-list gaps: none.
