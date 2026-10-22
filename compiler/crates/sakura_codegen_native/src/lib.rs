@@ -582,7 +582,16 @@ pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> 
         .lines()
         .find_map(|l| l.split_once("native-static-libs: ").map(|(_, r)| r))
     {
-        std::fs::write(&libs_file, line).map_err(|e| e.to_string())?;
+        // A fresh build replays the note, and a link running alongside may be reading the
+        // file: rewrite it only when it changes, and whole (a name per writer, then a rename).
+        if std::fs::read_to_string(&libs_file).ok().as_deref() != Some(line) {
+            static WRITES: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+            let n = WRITES.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let tmp = dir.join(format!(".{DRIVER_LIBS}.{}.{n}", std::process::id()));
+            std::fs::write(&tmp, line)
+                .and_then(|()| std::fs::rename(&tmp, &libs_file))
+                .map_err(|e| e.to_string())?;
+        }
         if cfg!(windows) {
             copy_import_libs(&dir.join("build"), line, &dir)?;
         }

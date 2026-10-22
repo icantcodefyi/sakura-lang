@@ -68,3 +68,23 @@ fn constant_object_links_and_runs() {
     assert_eq!(Command::new(&program).status().unwrap().code(), Some(42));
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+/// A second `build_driver` leaves the driver's link line as it was: a fresh `cargo rustc` replays
+/// the `native-static-libs` note, and rewriting the file in place let a link running alongside
+/// read it empty and miss `-lm` (`deep_recursion_defect` in the gauge set, exit 2 on
+/// ubuntu-24.04-arm at v1.0.0-beta.4).
+#[cfg(feature = "native")]
+#[test]
+fn a_second_driver_build_leaves_the_link_line_in_place() {
+    let workspace = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let target = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let libs = |dir: std::path::PathBuf| {
+        let path = dir.join(sakura_codegen_native::DRIVER_LIBS);
+        let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
+        (std::fs::read_to_string(&path).unwrap(), modified)
+    };
+    let first = libs(sakura_codegen_native::build_driver(&workspace, &target).unwrap());
+    let second = libs(sakura_codegen_native::build_driver(&workspace, &target).unwrap());
+    assert!(!first.0.is_empty(), "the driver's link line is empty");
+    assert_eq!(first, second, "the driver's link line was rewritten");
+}
