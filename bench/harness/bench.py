@@ -1679,7 +1679,10 @@ def build_native_cli():
     lib, libs = target / "release" / "libsakura_native_driver.a", target / "release" / "native-static-libs.txt"
     if lib.exists() and not libs.exists():
         lib.unlink()  # `--print native-static-libs` speaks only when it links
-    r = subprocess.run(["cargo", "rustc", "--release", "--locked", "-p", "sakura_native_driver", "--features", "native",
+    # --color never: under CARGO_TERM_COLOR=always (GitHub's Rust cache sets it) the note ends in
+    # an ANSI reset, which became part of the last library name (`-lm\x1b[0m`).
+    r = subprocess.run(["cargo", "rustc", "--color", "never", "--release", "--locked", "-p", "sakura_native_driver",
+                        "--features", "native",
                         "--lib", "--crate-type", "staticlib", "--target-dir", str(target), "--", "-Cpanic=abort",
                         "--print", "native-static-libs"], cwd=compiler, capture_output=True, text=True, timeout=1800)
     if r.returncode != 0:
