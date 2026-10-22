@@ -411,7 +411,7 @@ fn main$1#10 lambda -> word ; main::crypto_spki_import_rejects_garbage, captures
   b0(%0 env: ptr, %1 k: word):
     drop %0
     %7 k.lent: ref = lend %1
-    call kind#123(%7) -> b1(%1)
+    call kind#124(%7) -> b1(%1)
   b1(%2 r: ptr, %3 k: ptr):
     call usages#12(%3) -> b2(%2)
   b2(%4 r: ptr, %5 r: ptr):

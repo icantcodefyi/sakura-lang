@@ -104,7 +104,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
     drop %48
     jump b6()
   b12(%53 r: ptr):
-    %54 fn: ptr = const static closure $bytes_len$value#88
+    %54 fn: ptr = const static closure $bytes_len$value#89
     call map#6(%53, %54) -> b13()
   b13(%55 r: ptr):
     %56 s: ptr = show %55
@@ -175,7 +175,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
     %149 $site: i64 = const 6
     %232 p.lent: ref = lend %138
     %233 r.lent: ref = lend %147
-    call derive_bits#90(%232, %233, %148, %149) -> b29(%132, %133, %134, %135, %136, %138, %147, %236)
+    call derive_bits#91(%232, %233, %148, %149) -> b29(%132, %133, %134, %135, %136, %138, %147, %236)
   b28(%139 xs: ptr, %140 n: i64, %141 i: i64, %142 case: ptr, %143 out: ptr, %144 r: ptr, %145 p: ptr):
     drop %143
     drop %144
@@ -193,7 +193,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
     %170 $site: i64 = const 7
     %234 s.lent: ref = lend %164
     %235 r.lent: ref = lend %165
-    call derive_bits#90(%234, %235, %169, %170) -> b31(%159, %160, %161, %162, %163, %164, %165, %168)
+    call derive_bits#91(%234, %235, %169, %170) -> b31(%159, %160, %161, %162, %163, %164, %165, %168)
   b31(%171 r: ptr, %172 xs: ptr, %173 n: i64, %174 i: i64, %175 case: ptr, %176 out: ptr, %177 s: ptr, %178 r: ptr, %179 t: bool):
     call unhex#5(%176) -> b32(%172, %173, %174, %175, %177, %178, %179, %171)
   b32(%180 r: ptr, %181 xs: ptr, %182 n: i64, %183 i: i64, %184 case: ptr, %185 s: ptr, %186 r: ptr, %187 t: bool, %188 r: ptr):
@@ -225,7 +225,7 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
     %206 $site: i64 = const 8
     call derive_bits#4(%185, %186, %205, %206) -> b33(%181, %182, %183, %204)
   b33(%207 r: ptr, %208 xs: ptr, %209 n: i64, %210 i: i64, %211 s: ptr):
-    %212 fn: ptr = const static closure $bytes_len$value#88
+    %212 fn: ptr = const static closure $bytes_len$value#89
     call map#6(%207, %212) -> b34(%208, %209, %210, %211)
   b34(%213 r: ptr, %214 xs: ptr, %215 n: i64, %216 i: i64, %217 s: ptr):
     %218 s: ptr = show %213
@@ -259,7 +259,7 @@ fn private_key#2 top -> ptr ; main::crypto_x25519_rfc7748, frame 3 slots [%0 wor
     %7 xs: ptr = alloc list(%6)
     %8 r: ptr = $secret_wrap(%3)
     %9 lit: bool = const false
-    call import_key#24(%4, %5, %7, %9, %8) -> b2()
+    call import_key#25(%4, %5, %7, %9, %8) -> b2()
   b2(%10 r: ptr):
     ret %10
 
@@ -272,7 +272,7 @@ fn public_key#3 top -> ptr ; main::crypto_x25519_rfc7748, frame 6 slots [%0 word
   b1(%4 r: ptr, %5 v: ptr, %6 v: ptr, %7 xs: ptr):
     %8 r: ptr = $secret_wrap(%4)
     %9 lit: bool = const true
-    call import_key#24(%5, %6, %7, %9, %8) -> b2()
+    call import_key#25(%5, %6, %7, %9, %8) -> b2()
   b2(%10 r: ptr):
     ret %10
 
@@ -361,7 +361,7 @@ fn nibble#8 top -> i64 ; main::crypto_x25519_rfc7748, frame 1 slots [%0 word*]
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
 
-fn $bytes_len$value#88 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#89 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

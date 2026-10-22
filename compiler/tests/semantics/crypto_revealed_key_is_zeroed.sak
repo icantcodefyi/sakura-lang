@@ -1,0 +1,50 @@
+// milestone: M5
+// spec: RFC 0002 §2.7; design §17.288 (7)
+
+// Plan M5 N-S: an HMAC key's bytes are revealed by `hmac`, `verify` and a `Raw` `export_key`,
+// and the exported bytes outlive the key. Printed output is the same on every backend; on WASM,
+// `tests/wasm.rs` then reads linear memory: the key's bytes are gone (ABI 1.19.0 `wipe`),
+// while the plain `decoy` bytes, never a `Secret`, are still there. Both patterns are computed,
+// so neither is in the data segment.
+import std/crypto
+import std/crypto.{Algorithm, Digest, KeyFormat, Usage}
+
+pub fn main() -> Unit ! {Console} {
+  let decoy = pattern(53, 7)
+  let raw = match crypto.import_key(
+    KeyFormat.Raw,
+    Algorithm.Hmac(Digest.Sha256),
+    [Usage.Sign, Usage.Verify],
+    true,
+    Secret.of(pattern(37, 11)),
+  ) {
+    Ok(k) => {
+      let data = String.to_bytes("message")
+      let tag = crypto.hmac(k, data)
+      Console.print("hmac {String.slice(hex(tag), 0, 16)} {k.verify(tag, data)}")
+      match crypto.export_key(k, KeyFormat.Raw) {
+        Ok(raw) => raw,
+        Err(e) => String.to_bytes("{e}"),
+      }
+    },
+    Err(e) => String.to_bytes("{e}"),
+  }
+  // The key and its `Secret` are gone; the revealed bytes live on as `raw`.
+  Console.print("export {String.slice(hex(crypto.digest(Digest.Sha256, raw)), 0, 16)}")
+  Console.print("decoy {Bytes.len(decoy)}")
+}
+
+/// A thousand bytes `(i * a + b) % 256`: a block class that the printing in between leaves alone.
+fn pattern(a: Int, b: Int) -> Bytes {
+  Bytes.from_list(List.map(List.range(0, 1000), fn(i) { (i * a + b) % 256 }))
+}
+
+fn hex(b: Bytes) -> String {
+  let digits = "0123456789abcdef"
+  var out = ""
+  for i in 0..Bytes.len(b) {
+    let x = Bytes.get(b, i).unwrap_or(0)
+    out = out + String.slice(digits, x / 16, x / 16 + 1) + String.slice(digits, x % 16, x % 16 + 1)
+  }
+  out
+}

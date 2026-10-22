@@ -101,7 +101,10 @@ pub error CryptoError(reason: CryptoReason)
 
 /// A key (Web Crypto's `CryptoKey`). Its material is a `Secret`, so a key has no `Show` or
 /// `Schema` and cannot reach text, a log or a cassette. Non-extractable means `export_key`
-/// fails: a policy this module enforces, not a hardware boundary.
+/// fails: a policy this module enforces, not a hardware boundary. On native and WASM the
+/// material's bytes, and the scalars and shared secrets this module copies from them, are
+/// overwritten when freed; other copies (`export_key` in a format other than `Raw`, a caller's
+/// slice) are not, and on JS nothing is: the garbage collector frees memory unseen.
 pub opaque type CryptoKey = {
   algorithm: Algorithm,
   kind: KeyKind,
@@ -255,7 +258,7 @@ pub fn generate_key_pair(alg: Algorithm, usages: List<Usage>, extractable: Bool)
     && List.any(usages, fn(u) { u != Verify })
 {
   let c = curve_of(alg).unwrap_or(0)
-  let d = private_scalar(c)
+  let d = wiped(private_scalar(c))
   let public = crypto_public_of(c, d)
   let mine = List.filter(usages, fn(u) { u != Verify })
   let theirs = List.filter(usages, fn(u) { u == Verify })
@@ -429,7 +432,7 @@ pub fn derive_bits(key: CryptoKey, params: DeriveParams, bits: Int) -> Result<By
         Err(CryptoError { reason: Length(bits) })
       } else {
         let c = curve_of(key.algorithm).unwrap_or(0)
-        let secret = crypto_ecdh(c, private_part(key), reveal(peer.material))
+        let secret = wiped(crypto_ecdh(c, private_part(key), reveal(peer.material)))
         if Bytes.len(secret) == 0 {
           Err(CryptoError { reason: ZeroSecret })
         } else {
@@ -695,7 +698,7 @@ fn scalar_len(c: Int) -> Int {
 fn point_len(c: Int) -> Int { if is_nist(c) { 1 + 2 * scalar_len(c) } else { 32 } }
 
 fn private_part(key: CryptoKey) -> Bytes {
-  Bytes.slice(reveal(key.material), 0, scalar_len(curve_of(key.algorithm).unwrap_or(0)))
+  wiped(Bytes.slice(reveal(key.material), 0, scalar_len(curve_of(key.algorithm).unwrap_or(0))))
 }
 
 /// A private scalar or seed from `Random`: any 32 bytes on Ed25519 and X25519; on a NIST curve a
@@ -1243,6 +1246,10 @@ fn jwk_rsa(alg: Algorithm, usages: List<Usage>, extractable: Bool, b: Bytes) -> 
 
 // The one place key material leaves its `Secret`: into a primitive, or out of `export_key`.
 fn reveal(material: Secret<Bytes>) -> Bytes { Secret.expose(material, @trust("std/crypto")) }
+
+// A copy of key material std makes (a scalar, a shared secret): its block is zeroed when freed on
+// native and WASM, as a `Secret`'s bytes are (plan M5 N-S); on JS this does nothing.
+fn wiped(b: Bytes) -> Bytes { reveal(Secret.of(b)) }
 
 @external(js, "sakura_runtime", "crypto_digest")
 fn crypto_digest(alg: Int, data: Bytes) -> Bytes

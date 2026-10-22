@@ -123,7 +123,7 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     drop %109
     perform std::console::Console.print(%110) -> b14(%65, %66, %67)
   b11(%87 r: ptr, %88 xs: ptr, %89 n: i64, %90 i: i64, %91 s: ptr):
-    %92 fn: ptr = const static closure hex$value#84
+    %92 fn: ptr = const static closure hex$value#85
     call map#5(%87, %92) -> b12(%88, %89, %90, %91)
   b12(%93 r: ptr, %94 xs: ptr, %95 n: i64, %96 i: i64, %97 s: ptr):
     %98 s: ptr = show %93
@@ -195,7 +195,7 @@ fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 
     drop %46
     jump b4(%47, %25, %26, %27)
 
-fn hex$value#84 adapter of hex#4 -> word ; main::crypto_pbkdf2_rfc7914, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn hex$value#85 adapter of hex#4 -> word ; main::crypto_pbkdf2_rfc7914, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     call hex#4(%1) -> b1()

@@ -189,14 +189,14 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
   b24(%232 r: ptr, %233 xs: ptr, %234 n: i64, %235 i: i64, %236 name: ptr, %237 msg: ptr, %238 p: ptr, %239 v: ptr, %240 r: ptr, %241 t: bool, %242 r: ptr):
     %243 $site: i64 = const 6
     %391 p.lent: ref = lend %238
-    call verify#100(%391, %242, %232, %243) -> b25(%233, %234, %235, %236, %237, %238, %239, %240, %241)
+    call verify#101(%391, %242, %232, %243) -> b25(%233, %234, %235, %236, %237, %238, %239, %240, %241)
   b25(%244 r: bool, %245 xs: ptr, %246 n: i64, %247 i: i64, %248 name: ptr, %249 msg: ptr, %250 p: ptr, %251 v: ptr, %252 r: ptr, %253 t: bool):
     dup %249
     call unhex#2(%249) -> b26(%245, %246, %247, %248, %249, %250, %251, %252, %253, %244)
   b26(%254 r: ptr, %255 xs: ptr, %256 n: i64, %257 i: i64, %258 name: ptr, %259 msg: ptr, %260 p: ptr, %261 v: ptr, %262 r: ptr, %263 t: bool, %264 r: bool):
     %265 $site: i64 = const 7
     %392 p.lent: ref = lend %260
-    call verify#100(%392, %262, %254, %265) -> b27(%255, %256, %257, %258, %259, %260, %261, %263, %264)
+    call verify#101(%392, %262, %254, %265) -> b27(%255, %256, %257, %258, %259, %260, %261, %263, %264)
   b27(%266 r: bool, %267 xs: ptr, %268 n: i64, %269 i: i64, %270 name: ptr, %271 msg: ptr, %272 p: ptr, %273 v: ptr, %274 t: bool, %275 r: bool):
     %276 t: bool = not %266
     if %276 then b30(%267, %268, %269, %270, %271, %272, %273, %274, %275) else b31(%267, %268, %269, %270, %271, %272, %273, %274, %275)
@@ -290,7 +290,7 @@ fn unhex#2 top -> ptr ; main::crypto_ed25519_rfc8032, frame 12 slots [%0 word*, 
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#98(%32) -> b6(%12, %13, %14, %15)
+    call nibble#99(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -311,14 +311,14 @@ fn unhex#2 top -> ptr ; main::crypto_ed25519_rfc8032, frame 12 slots [%0 word*, 
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#98(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#99(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
     %57 r: ptr = $list_push(%53, %56)
     jump b5(%57, %50, %51, %52)
 
-fn nibble#98 top -> i64 ; main::crypto_ed25519_rfc8032, frame 1 slots [%0 word*]
+fn nibble#99 top -> i64 ; main::crypto_ed25519_rfc8032, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0

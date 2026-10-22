@@ -320,7 +320,7 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %340 $site: i64 = const 11
     %438 p.lent: ref = lend %336
     dup.candidate %337
-    call verify#111(%438, %332, %337, %340) -> b44(%333, %334, %335, %336, %337, %338, %339)
+    call verify#112(%438, %332, %337, %340) -> b44(%333, %334, %335, %336, %337, %338, %339)
   b44(%341 r: bool, %342 xs: ptr, %343 n: i64, %344 i: i64, %345 p: ptr, %346 r: ptr, %347 v: ptr, %348 s: ptr):
     %349 s: ptr = show %341
     %350 s: ptr = concat %348, %349
@@ -340,7 +340,7 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %439 p.lent: ref = lend %345
     dup.candidate %346
     dup.candidate %347
-    call verify#111(%439, %347, %346, %358) -> b45(%342, %343, %344, %345, %346, %347, %357)
+    call verify#112(%439, %347, %346, %358) -> b45(%342, %343, %344, %345, %346, %347, %357)
   b45(%359 r: bool, %360 xs: ptr, %361 n: i64, %362 i: i64, %363 p: ptr, %364 r: ptr, %365 v: ptr, %366 s: ptr):
     %367 s: ptr = show %359
     %368 s: ptr = concat %366, %367
@@ -414,7 +414,7 @@ fn unhex#3 top -> ptr ; main::crypto_ecdsa_p384_p521, frame 12 slots [%0 word*, 
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#109(%32) -> b6(%12, %13, %14, %15)
+    call nibble#110(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -435,7 +435,7 @@ fn unhex#3 top -> ptr ; main::crypto_ecdsa_p384_p521, frame 12 slots [%0 word*, 
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#109(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#110(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
@@ -449,13 +449,13 @@ fn refused#8 top -> bool ; main::crypto_ecdsa_p384_p521, frame 11 slots [%0 word
     %5 $site: i64 = const 15
     %25 p.lent: ref = lend %0
     dup.candidate %1
-    call verify#111(%25, %1, %4, %5) -> b1(%0, %1, %2)
+    call verify#112(%25, %1, %4, %5) -> b1(%0, %1, %2)
   b1(%6 r: bool, %7 p: ptr, %8 sig: ptr, %9 msg: ptr):
     %10 t: bool = not %6
     if %10 then b2(%7, %8, %9) else b3(%7, %8, %9)
   b2(%11 p: ptr, %12 sig: ptr, %13 msg: ptr):
     %17 lit: i64 = const 0
-    call flip#25(%12, %17) -> b4(%11, %13)
+    call flip#28(%12, %17) -> b4(%11, %13)
   b3(%14 p: ptr, %15 sig: ptr, %16 msg: ptr):
     drop %14
     drop %15
@@ -469,7 +469,7 @@ fn refused#8 top -> bool ; main::crypto_ecdsa_p384_p521, frame 11 slots [%0 word
     %23 t: bool = not %22
     ret %23
 
-fn flip#25 top -> ptr ; main::crypto_ecdsa_p384_p521, frame 5 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64]
+fn flip#28 top -> ptr ; main::crypto_ecdsa_p384_p521, frame 5 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64]
   b0(%0 b: ptr, %1 at: i64):
     %39 b.lent: ref = lend %0
     %2 r: ptr = $bytes_get(%39, %1)
@@ -510,7 +510,7 @@ fn flip#25 top -> ptr ; main::crypto_ecdsa_p384_p521, frame 5 slots [%0 word*, %
     %38 t: i64 = intadd %34, %37
     jump b2(%38, %32, %33)
 
-fn nibble#109 top -> i64 ; main::crypto_ecdsa_p384_p521, frame 1 slots [%0 word*]
+fn nibble#110 top -> i64 ; main::crypto_ecdsa_p384_p521, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0

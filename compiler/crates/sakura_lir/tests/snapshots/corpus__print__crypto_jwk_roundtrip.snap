@@ -228,7 +228,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     dup %174
     call import_key#9(%175, %177, %179, %180, %174) -> b16(%173, %174)
   b16(%181 r: ptr, %182 r: ptr, %183 r: ptr) [handle]:
-    %184 fn: ptr = const static closure kind$value#130
+    %184 fn: ptr = const static closure kind$value#131
     call map#11(%181, %184) -> b17(%182, %183)
   b17(%185 r: ptr, %186 r: ptr, %187 r: ptr) [handle]:
     %188 s: ptr = show %185
@@ -249,7 +249,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %201 lit: bool = const true
     call import_key#9(%198, %192, %200, %201, %197) -> b19(%193)
   b19(%202 r: ptr, %203 r: ptr) [handle]:
-    %204 fn: ptr = const static closure kind$value#130
+    %204 fn: ptr = const static closure kind$value#131
     call map#11(%202, %204) -> b20(%203)
   b20(%205 r: ptr, %206 r: ptr) [handle]:
     %207 s: ptr = show %205
@@ -293,7 +293,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %235 v: ptr = const static std::crypto::KeyFormat.Jwk
     call export_key#12(%234, %235) -> b26(%233)
   b26(%236 r: ptr, %237 r: ptr) [handle]:
-    %238 fn: ptr = const static closure $bytes_len$value#131
+    %238 fn: ptr = const static closure $bytes_len$value#132
     call map#11(%236, %238) -> b27(%237)
   b27(%239 r: ptr, %240 r: ptr) [handle]:
     %241 s: ptr = show %239
@@ -360,7 +360,7 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %313 lit: ptr = const str 24
     %314 s: ptr = concat %312, %313
     drop %313
-    %315 fn: ptr = const static closure kind$value#130
+    %315 fn: ptr = const static closure kind$value#131
     call map#11(%305, %315) -> b39(%306, %307, %308, %309, %310, %314)
   b39(%316 r: ptr, %317 r: ptr, %318 r: ptr, %319 xs: ptr, %320 n: i64, %321 i: i64, %322 s: ptr) [handle]:
     %323 s: ptr = show %316
@@ -431,11 +431,11 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     drop %11
     %146 p: word = proj %12.0 std::result::Result.Err
     drop %12
-    call algorithm#112(%10) -> b24(%146)
+    call algorithm#113(%10) -> b24(%146)
   b4(%14 r: ptr, %15 key: ptr, %16 via: ptr, %17 jwk: ptr):
-    call keys#110(%14) -> b5(%15, %16, %17)
+    call keys#111(%14) -> b5(%15, %16, %17)
   b5(%18 r: ptr, %19 key: ptr, %20 via: ptr, %21 jwk: ptr):
-    call sort#111(%18) -> b6(%19, %20, %21)
+    call sort#112(%18) -> b6(%19, %20, %21)
   b6(%22 r: ptr, %23 key: ptr, %24 via: ptr, %25 jwk: ptr):
     dup %23
     call members#6(%23) -> b7(%23, %24, %25, %22)
@@ -444,10 +444,10 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %32 r: ptr = $map_get(%26, %31)
     %33 v: ptr = const static std::crypto::KeyFormat.Jwk
     %157 key.lent: ref = lend %27
-    call algorithm#136(%157) -> b8(%27, %28, %29, %30, %32, %33)
+    call algorithm#137(%157) -> b8(%27, %28, %29, %30, %32, %33)
   b8(%34 r: ptr, %35 key: ptr, %36 via: ptr, %37 jwk: ptr, %38 r: ptr, %39 r: ptr, %40 v: ptr):
     %158 key.lent: ref = lend %35
-    call usages#137(%158) -> b9(%35, %36, %37, %38, %39, %40, %34)
+    call usages#138(%158) -> b9(%35, %36, %37, %38, %39, %40, %34)
   b9(%41 r: ptr, %42 key: ptr, %43 via: ptr, %44 jwk: ptr, %45 r: ptr, %46 r: ptr, %47 v: ptr, %48 r: ptr):
     %49 r: ptr = $secret_wrap(%44)
     %50 lit: bool = const true
@@ -457,7 +457,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     switch %90 0 => b15(%52, %53, %54, %55, %51) 1 => b16(%52, %53, %54, %55, %51)
   b11(%56 v: bool, %57 key: ptr, %58 r: ptr, %59 r: ptr):
     %159 key.lent: ref = lend %57
-    call algorithm#136(%159) -> b12(%57, %58, %59, %56)
+    call algorithm#137(%159) -> b12(%57, %58, %59, %56)
   b12(%60 r: ptr, %61 key: ptr, %62 r: ptr, %63 r: ptr, %64 v: bool):
     %65 s: ptr = show %60
     drop %60
@@ -500,7 +500,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %101 p: word = proj %95.0 std::result::Result.Ok
     drop %95
     %160 p.lent: ref = lend %101
-    call kind#138(%160) -> b17(%91, %92, %93, %94, %101)
+    call kind#139(%160) -> b17(%91, %92, %93, %94, %101)
   b16(%96 key: ptr, %97 via: ptr, %98 r: ptr, %99 r: ptr, %100 r: ptr):
     drop %97
     %144 p: word = proj %100.0 std::result::Result.Err
@@ -510,7 +510,7 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     jump b11(%145, %96, %98, %99)
   b17(%102 r: ptr, %103 key: ptr, %104 via: ptr, %105 r: ptr, %106 r: ptr, %107 k: ptr):
     %161 key.lent: ref = lend %103
-    call kind#138(%161) -> b18(%103, %104, %105, %106, %107, %102)
+    call kind#139(%161) -> b18(%103, %104, %105, %106, %107, %102)
   b18(%108 r: ptr, %109 key: ptr, %110 via: ptr, %111 r: ptr, %112 r: ptr, %113 k: ptr, %114 r: ptr):
     %115 tag: i64 = tag %114 ctor std::crypto::KeyKind
     drop %114
@@ -594,7 +594,7 @@ fn main$1#14 lambda -> word ; main::crypto_jwk_roundtrip, captures [], frame 4 s
     %2 v: ptr = const static std::crypto::KeyFormat.Jwk
     call export_key#12(%1, %2) -> b1()
   b1(%3 r: ptr):
-    %4 fn: ptr = const static closure $bytes_len$value#131
+    %4 fn: ptr = const static closure $bytes_len$value#132
     call map#11(%3, %4) -> b2()
   b2(%5 r: ptr):
     ret %5
@@ -607,7 +607,7 @@ fn main$2#15 lambda -> word ; main::crypto_jwk_roundtrip, captures [], frame 2 s
     %3 box: word = box %2
     ret %3
 
-fn $bytes_len$value#131 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
+fn $bytes_len$value#132 adapter of $bytes_len -> word ; runtime, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     %2 r: i64 = $bytes_len(%1)

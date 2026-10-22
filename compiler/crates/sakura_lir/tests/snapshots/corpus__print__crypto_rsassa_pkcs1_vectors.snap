@@ -102,7 +102,7 @@ fn main#0 pub top -> unit ; main::crypto_rsassa_pkcs1_vectors, frame 130 slots [
     jump b2(%60, %56, %57)
   b6(%61 hash: ptr, %62 id: i64, %63 pkcs8: ptr, %64 spki: ptr, %65 data: ptr, %66 signature: ptr, %67 xs: ptr, %68 n: i64, %69 i: i64):
     %326 hash.lent: ref = lend %61
-    call digest#102(%326) -> b7(%67, %68, %69, %61, %62, %63, %64, %65, %66)
+    call digest#103(%326) -> b7(%67, %68, %69, %61, %62, %63, %64, %65, %66)
   b7(%70 r: ptr, %71 xs: ptr, %72 n: i64, %73 i: i64, %74 hash: ptr, %75 id: i64, %76 pkcs8: ptr, %77 spki: ptr, %78 data: ptr, %79 signature: ptr):
     %80 r: ptr = alloc std::crypto::Algorithm.RsassaPkcs1(%70)
     %81 v: ptr = const static std::crypto::KeyFormat.Pkcs8
@@ -216,7 +216,7 @@ fn main#0 pub top -> unit ; main::crypto_rsassa_pkcs1_vectors, frame 130 slots [
     %327 p.lent: ref = lend %213
     dup.candidate %214
     dup.candidate %215
-    call verify#103(%327, %215, %214, %228) -> b21(%208, %209, %210, %213, %214, %215, %227)
+    call verify#104(%327, %215, %214, %228) -> b21(%208, %209, %210, %213, %214, %215, %227)
   b21(%229 r: bool, %230 xs: ptr, %231 n: i64, %232 i: i64, %233 p: ptr, %234 r: ptr, %235 r: ptr, %236 s: ptr):
     %237 s: ptr = show %229
     %238 s: ptr = concat %236, %237
@@ -229,7 +229,7 @@ fn main#0 pub top -> unit ; main::crypto_rsassa_pkcs1_vectors, frame 130 slots [
     %243 $site: i64 = const 7
     %328 p.lent: ref = lend %233
     dup.candidate %235
-    call verify#103(%328, %235, %242, %243) -> b22(%230, %231, %232, %233, %234, %235, %240)
+    call verify#104(%328, %235, %242, %243) -> b22(%230, %231, %232, %233, %234, %235, %240)
   b22(%244 r: bool, %245 xs: ptr, %246 n: i64, %247 i: i64, %248 p: ptr, %249 r: ptr, %250 r: ptr, %251 s: ptr):
     %252 s: ptr = show %244
     %253 s: ptr = concat %251, %252
@@ -316,7 +316,7 @@ fn unhex#3 top -> ptr ; main::crypto_rsassa_pkcs1_vectors, frame 12 slots [%0 wo
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#100(%32) -> b6(%12, %13, %14, %15)
+    call nibble#101(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -337,7 +337,7 @@ fn unhex#3 top -> ptr ; main::crypto_rsassa_pkcs1_vectors, frame 12 slots [%0 wo
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#100(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#101(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
@@ -385,7 +385,7 @@ fn flip#8 top -> ptr ; main::crypto_rsassa_pkcs1_vectors, frame 5 slots [%0 word
     %38 t: i64 = intadd %34, %37
     jump b2(%38, %32, %33)
 
-fn nibble#100 top -> i64 ; main::crypto_rsassa_pkcs1_vectors, frame 1 slots [%0 word*]
+fn nibble#101 top -> i64 ; main::crypto_rsassa_pkcs1_vectors, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0
@@ -418,7 +418,7 @@ fn nibble#100 top -> i64 ; main::crypto_rsassa_pkcs1_vectors, frame 1 slots [%0 
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
 
-fn digest#102 borrowed variant of #2 -> ptr ; main::crypto_rsassa_pkcs1_vectors, frame 1 slots [%0 i64]
+fn digest#103 borrowed variant of #2 -> ptr ; main::crypto_rsassa_pkcs1_vectors, frame 1 slots [%0 i64]
   b0(%0 name: ref):
     %1 lit: ptr = const str 0
     %2 is: bool = eq.string %0, %1

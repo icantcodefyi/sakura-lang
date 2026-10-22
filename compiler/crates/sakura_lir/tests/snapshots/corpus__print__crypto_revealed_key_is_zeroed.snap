@@ -1,0 +1,268 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::bytes::Alphabet | Standard 16b () | Url 16b ()
+layout 1 error std::bytes::Base64Error | Base64Error 32b (offset: i64, reason: word*)
+layout 2 variant std::core::Trust
+layout 3 variant std::crypto::AesLength | Aes128 16b () | Aes256 16b ()
+layout 4 variant std::crypto::Algorithm | Hmac 24b (word*) | Hkdf 24b (word*) | Pbkdf2 24b (word*) | AesGcm 24b (word*) | AesCbc 24b (word*) | AesCtr 24b (word*) | AesKw 24b (word*) | Ecdsa 24b (word*) | Ecdh 24b (word*) | Ed25519 16b () | X25519 16b () | RsassaPkcs1 24b (word*) | RsaPss 24b (word*) | RsaOaep 24b (word*)
+layout 5 record std::crypto::CryptoKey | CryptoKey 56b (algorithm: word*, kind: word*, usages: word*, extractable: bool, material: word*)
+layout 6 variant std::crypto::Curve | P256 16b () | P384 16b () | P521 16b ()
+layout 7 variant std::crypto::Digest | Sha256 16b () | Sha384 16b () | Sha512 16b ()
+layout 8 error std::crypto::KeyError | KeyError 24b (reason: word*)
+layout 9 variant std::crypto::KeyFormat | Raw 16b () | Pkcs8 16b () | Spki 16b () | Jwk 16b ()
+layout 10 variant std::crypto::KeyKind | SecretKey 16b () | PublicKey 16b () | PrivateKey 16b ()
+layout 11 variant std::crypto::KeyReason | NotExtractable 16b () | NoUsages 16b () | NotAllowed 24b (word*) | Empty 16b () | Format 24b (word*) | Malformed 16b () | Unavailable 24b (word*)
+layout 12 variant std::crypto::Usage | Sign 16b () | Verify 16b () | DeriveBits 16b () | Encrypt 16b () | Decrypt 16b ()
+layout 13 error std::json::DecodeError | DecodeError 32b (path: word*, message: word*)
+layout 14 variant std::json::Json | Null 16b () | Bool 24b (bool) | Number 24b (f64) | String 24b (word*) | Array 24b (word*) | Object 24b (word*)
+layout 15 variant std::list::Builder
+layout 16 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 17 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 18 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
+layout 19 shape |  32b (word*, word*)
+layout 20 shape |  32b (i64, word*)
+layout 21 shape |  40b (i64, i64, i64)
+
+fn main#0 pub top -> unit ; main::crypto_revealed_key_is_zeroed, frame 33 slots [%2 word*, %11 word*, %12 word*, %13 word*, %14 word*, %15 word*, %18 word*, %19 word*, %23 word*, %24 word*, %25 word*, %26 word*, %33 bool, %34 word*, %40 bool, %52 word*, %53 word*, %54 word*, %55 word*, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %70 bool, %71 word*, %72 word*, %73 word*, %76 bool, %77 word*, %78 word*, %81 word*, %82 word*]
+  b0():
+    %0 lit: i64 = const 53
+    %1 lit: i64 = const 7
+    call pattern#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    %3 v: ptr = const static std::crypto::KeyFormat.Raw
+    %4 v: ptr = const static std::crypto::Digest.Sha256
+    %5 r: ptr = alloc std::crypto::Algorithm.Hmac(%4)
+    %6 v: ptr = const static std::crypto::Usage.Sign
+    %7 v: ptr = const static std::crypto::Usage.Verify
+    %8 xs: ptr = alloc list(%6, %7)
+    %9 lit: i64 = const 37
+    %10 lit: i64 = const 11
+    call pattern#2(%9, %10) -> b2(%2, %3, %5, %8)
+  b2(%11 r: ptr, %12 r: ptr, %13 v: ptr, %14 r: ptr, %15 xs: ptr):
+    %16 r: ptr = $secret_wrap(%11)
+    %17 lit: bool = const true
+    call import_key#3(%13, %14, %15, %17, %16) -> b3(%12)
+  b3(%18 r: ptr, %19 r: ptr):
+    %43 tag: i64 = tag %18 ctor std::result::Result
+    switch %43 0 => b9(%19, %18) 1 => b10(%19, %18)
+  b4(%20 v: ptr, %21 r: ptr):
+    %22 v: ptr = const static std::crypto::Digest.Sha256
+    call digest#8(%22, %20) -> b5(%21)
+  b5(%23 r: ptr, %24 r: ptr):
+    call hex#5(%23) -> b6(%24)
+  b6(%25 r: ptr, %26 r: ptr):
+    %27 lit: i64 = const 0
+    %28 lit: i64 = const 16
+    %29 r: ptr = $string_slice(%25, %27, %28)
+    %30 s: ptr = show %29
+    drop %29
+    %31 lit: ptr = const str 0
+    %32 s: ptr = concat %31, %30
+    drop %30
+    perform std::console::Console.print(%32) -> b7(%26)
+  b7(%33 r: unit, %34 r: ptr):
+    %35 box: word = box %33
+    drop %35
+    %36 r: i64 = $bytes_len(%34)
+    %37 s: ptr = show %36
+    %38 lit: ptr = const str 1
+    %39 s: ptr = concat %38, %37
+    drop %37
+    perform std::console::Console.print(%39) -> b8()
+  b8(%40 r: unit):
+    %41 box: word = box %40
+    %42 unbox: unit = unbox %41
+    drop %41
+    ret %42
+  b9(%44 r: ptr, %45 r: ptr):
+    %48 p: word = proj %45.0 std::result::Result.Ok
+    drop %45
+    %49 lit: ptr = const str 2
+    %50 r: ptr = $string_to_bytes(%49)
+    %51 $site: i64 = const 3
+    %97 p.lent: ref = lend %48
+    dup.candidate %50
+    call hmac#102(%97, %50, %51) -> b11(%44, %48, %50)
+  b10(%46 r: ptr, %47 r: ptr):
+    %94 p: word = proj %47.0 std::result::Result.Err
+    drop %47
+    %95 s: ptr = show %94
+    drop %94
+    %96 r: ptr = $string_to_bytes(%95)
+    jump b4(%96, %46)
+  b11(%52 r: ptr, %53 r: ptr, %54 k: ptr, %55 r: ptr):
+    %98 r.lent: ref = lend %52
+    call hex#103(%98) -> b12(%53, %54, %55, %52)
+  b12(%56 r: ptr, %57 r: ptr, %58 k: ptr, %59 r: ptr, %60 r: ptr):
+    %61 lit: i64 = const 0
+    %62 lit: i64 = const 16
+    %63 r: ptr = $string_slice(%56, %61, %62)
+    %64 s: ptr = show %63
+    drop %63
+    %65 lit: ptr = const str 3
+    %66 s: ptr = concat %65, %64
+    drop %64
+    %67 lit: ptr = const str 4
+    %68 s: ptr = concat %66, %67
+    drop %67
+    %69 $site: i64 = const 4
+    %99 k.lent: ref = lend %58
+    call verify#104(%99, %60, %59, %69) -> b13(%57, %58, %68)
+  b13(%70 r: bool, %71 r: ptr, %72 k: ptr, %73 s: ptr):
+    %74 s: ptr = show %70
+    %75 s: ptr = concat %73, %74
+    drop %74
+    perform std::console::Console.print(%75) -> b14(%71, %72)
+  b14(%76 r: unit, %77 r: ptr, %78 k: ptr):
+    %79 box: word = box %76
+    drop %79
+    %80 v: ptr = const static std::crypto::KeyFormat.Raw
+    call export_key#7(%78, %80) -> b15(%77)
+  b15(%81 r: ptr, %82 r: ptr):
+    %85 tag: i64 = tag %81 ctor std::result::Result
+    switch %85 0 => b17(%82, %81) 1 => b18(%82, %81)
+  b16(%83 v: ptr, %84 r: ptr):
+    jump b4(%83, %84)
+  b17(%86 r: ptr, %87 r: ptr):
+    %90 p: word = proj %87.0 std::result::Result.Ok
+    drop %87
+    jump b16(%90, %86)
+  b18(%88 r: ptr, %89 r: ptr):
+    %91 p: word = proj %89.0 std::result::Result.Err
+    drop %89
+    %92 s: ptr = show %91
+    drop %91
+    %93 r: ptr = $string_to_bytes(%92)
+    jump b16(%93, %88)
+
+fn $entry#1 top -> unit ; main::crypto_revealed_key_is_zeroed, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn pattern#2 top -> ptr ; main::crypto_revealed_key_is_zeroed, frame 6 slots [%0 i64, %1 i64, %4 word*, %5 i64, %6 i64, %8 word*]
+  b0(%0 a: i64, %1 b: i64):
+    %2 lit: i64 = const 0
+    %3 lit: i64 = const 1000
+    call range#99(%2, %3) -> b1(%0, %1)
+  b1(%4 r: ptr, %5 a: i64, %6 b: i64):
+    %7 f: ptr = closure pattern$1#100[%5, %6]
+    call map#28(%4, %7) -> b2()
+  b2(%8 r: ptr):
+    %9 r: ptr = $bytes_from_list(%8)
+    ret %9
+
+fn hex#5 top -> ptr ; main::crypto_revealed_key_is_zeroed, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
+  b0(%0 b: ptr):
+    %50 b.lent: ref = lend %0
+    %1 r: i64 = $bytes_len(%50)
+    %48 lit: i64 = const 0
+    %49 lit: ptr = const str 6
+    jump b1(%48, %49, %0, %1)
+  b1(%2 i: i64, %3 out: ptr, %4 b: ptr, %5 r: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
+    %51 b.lent: ref = lend %7
+    %21 r: ptr = $bytes_get(%51, %9)
+    %22 lit: i64 = const 0
+    %23 box: word = box %22
+    call unwrap_or#48(%21, %23) -> b5(%7, %8, %9, %10)
+  b3(%11 b: ptr, %12 r: i64, %13 i: i64, %14 out: ptr):
+    drop %11
+    ret %14
+  b4(%15 out: ptr, %16 b: ptr, %17 r: i64, %18 i: i64):
+    %19 lit: i64 = const 1
+    %20 i: i64 = intadd %18, %19
+    jump b1(%20, %15, %16, %17)
+  b5(%24 r: word, %25 b: ptr, %26 r: i64, %27 i: i64, %28 out: ptr):
+    %29 unbox: i64 = unbox %24
+    drop %24
+    %30 lit: i64 = const 16
+    %31 t: i64 = intdiv %29, %30
+    %32 lit: i64 = const 16
+    %33 t: i64 = intdiv %29, %32
+    %34 lit: i64 = const 1
+    %35 t: i64 = intadd %33, %34
+    %36 lit: ptr = const str 5
+    %37 r: ptr = $string_slice(%36, %31, %35)
+    %38 t: ptr = concat %28, %37
+    drop %37
+    %39 lit: i64 = const 16
+    %40 t: i64 = intrem %29, %39
+    %41 lit: i64 = const 16
+    %42 t: i64 = intrem %29, %41
+    %43 lit: i64 = const 1
+    %44 t: i64 = intadd %42, %43
+    %45 lit: ptr = const str 5
+    %46 r: ptr = $string_slice(%45, %40, %44)
+    %47 t: ptr = concat %38, %46
+    drop %46
+    jump b4(%47, %25, %26, %27)
+
+fn pattern$1#100 lambda -> word ; main::crypto_revealed_key_is_zeroed, captures [i64, i64], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 i: word):
+    %2 a: i64 = capture %0.0
+    %3 b: i64 = capture %0.1
+    drop %0
+    %4 unbox: i64 = unbox %1
+    drop %1
+    %5 t: i64 = intmul %4, %2
+    %6 t: i64 = intadd %5, %3
+    %7 lit: i64 = const 256
+    %8 t: i64 = intrem %6, %7
+    %9 box: word = box %8
+    ret %9
+
+fn hex#103 borrowed variant of #5 -> ptr ; main::crypto_revealed_key_is_zeroed, frame 6 slots [%0 i64, %24 word*, %25 i64, %26 i64, %27 i64, %28 word*]
+  b0(%0 b: ref):
+    %50 b.lent: ref = lend %0
+    %1 r: i64 = $bytes_len(%50)
+    %48 lit: i64 = const 0
+    %49 lit: ptr = const str 6
+    jump b1(%48, %49, %0, %1)
+  b1(%2 i: i64, %3 out: ptr, %4 b: ref, %5 r: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 b: ref, %8 r: i64, %9 i: i64, %10 out: ptr):
+    %51 b.lent: ref = lend %7
+    %21 r: ptr = $bytes_get(%51, %9)
+    %22 lit: i64 = const 0
+    %23 box: word = box %22
+    call unwrap_or#48(%21, %23) -> b5(%7, %8, %9, %10)
+  b3(%11 b: ref, %12 r: i64, %13 i: i64, %14 out: ptr):
+    ret %14
+  b4(%15 out: ptr, %16 b: ref, %17 r: i64, %18 i: i64):
+    %19 lit: i64 = const 1
+    %20 i: i64 = intadd %18, %19
+    jump b1(%20, %15, %16, %17)
+  b5(%24 r: word, %25 b: ref, %26 r: i64, %27 i: i64, %28 out: ptr):
+    %29 unbox: i64 = unbox %24
+    drop %24
+    %30 lit: i64 = const 16
+    %31 t: i64 = intdiv %29, %30
+    %32 lit: i64 = const 16
+    %33 t: i64 = intdiv %29, %32
+    %34 lit: i64 = const 1
+    %35 t: i64 = intadd %33, %34
+    %36 lit: ptr = const str 5
+    %37 r: ptr = $string_slice(%36, %31, %35)
+    %38 t: ptr = concat %28, %37
+    drop %37
+    %39 lit: i64 = const 16
+    %40 t: i64 = intrem %29, %39
+    %41 lit: i64 = const 16
+    %42 t: i64 = intrem %29, %41
+    %43 lit: i64 = const 1
+    %44 t: i64 = intadd %42, %43
+    %45 lit: ptr = const str 5
+    %46 r: ptr = $string_slice(%45, %40, %44)
+    %47 t: ptr = concat %38, %46
+    drop %46
+    jump b4(%47, %25, %26, %27)

@@ -1372,6 +1372,57 @@ console.log(seen.join("\n"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan M5 N-S (ABI 1.19.0 `wipe`): after `main` has revealed, exported and dropped an HMAC key,
+/// linear memory no longer holds the key's bytes, while the fixture's plain `decoy` bytes,
+/// freed the same way but never a `Secret`, are still there, so the scan sees freed blocks.
+#[test]
+fn revealed_key_bytes_are_gone_from_linear_memory() {
+    if !available() {
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("revealed_key");
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tests/semantics/crypto_revealed_key_is_zeroed.sak");
+    std::fs::copy(fixture, dir.join("main.sak")).unwrap();
+    let built = sakura(
+        &["build", "--target", "wasm", "--out-dir", "out", "main.sak"],
+        &dir,
+    );
+    assert_eq!(built.code, Some(0), "{}", built.stderr);
+    let scan = r#"
+const [dir] = process.argv.slice(1);
+const { pathToFileURL } = process.getBuiltinModule("node:url");
+const { Host, loadTypes } = await import(pathToFileURL(`${dir}/sakura_wasm_host.js`));
+const host = new Host();
+await loadTypes();
+await host.instantiate(process.getBuiltinModule("node:fs").readFileSync(`${dir}/main.wasm`));
+const o = await host.runTask(-1);
+const mem = Buffer.from(host.exports.memory.buffer);
+const pattern = (a, b) => Buffer.from(Array.from({ length: 1000 }, (_, i) => (i * a + b) % 256));
+console.log(`${o.kind} key ${mem.indexOf(pattern(37, 11)) >= 0} decoy ${mem.indexOf(pattern(53, 7)) >= 0}`);
+"#;
+    let out = std::process::Command::new("node")
+        .args(["--input-type=module", "-e", scan])
+        .arg(dir.join("out"))
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        stdout.lines().last(),
+        Some("ok key false decoy true"),
+        "{stdout}"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Design §17.192 (2): tail cycles with no nesting order run as one loop per def on WASM, so the
 /// fixture's three 10^6-step cycles take a few frames in all (3,000,059 before the dispatch join).
 #[test]

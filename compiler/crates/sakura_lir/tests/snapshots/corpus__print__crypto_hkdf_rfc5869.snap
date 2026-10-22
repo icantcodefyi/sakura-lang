@@ -130,7 +130,7 @@ fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*
     %116 $site: i64 = const 2
     call derive_bits#4(%107, %110, %115, %116) -> b14(%102, %103, %104, %113)
   b14(%117 r: ptr, %118 xs: ptr, %119 n: i64, %120 i: i64, %121 s: ptr):
-    %122 fn: ptr = const static closure hex$value#86
+    %122 fn: ptr = const static closure hex$value#87
     call map#6(%117, %122) -> b15(%118, %119, %120, %121)
   b15(%123 r: ptr, %124 xs: ptr, %125 n: i64, %126 i: i64, %127 s: ptr):
     %128 s: ptr = show %123
@@ -178,7 +178,7 @@ fn unhex#2 top -> ptr ; main::crypto_hkdf_rfc5869, frame 12 slots [%0 word*, %33
     %31 t: i64 = intadd %29, %30
     dup %12
     %32 r: ptr = $string_slice(%12, %27, %31)
-    call nibble#85(%32) -> b6(%12, %13, %14, %15)
+    call nibble#86(%32) -> b6(%12, %13, %14, %15)
   b4(%16 s: ptr, %17 t: i64, %18 i: i64, %19 out: ptr):
     drop %16
     jump b1(%19)
@@ -199,7 +199,7 @@ fn unhex#2 top -> ptr ; main::crypto_hkdf_rfc5869, frame 12 slots [%0 word*, %33
     %47 t: i64 = intadd %45, %46
     dup %34
     %48 r: ptr = $string_slice(%34, %43, %47)
-    call nibble#85(%48) -> b7(%34, %35, %36, %37, %39)
+    call nibble#86(%48) -> b7(%34, %35, %36, %37, %39)
   b7(%49 r: i64, %50 s: ptr, %51 t: i64, %52 i: i64, %53 out: ptr, %54 t: i64):
     %55 t: i64 = intadd %54, %49
     %56 box: word = box %55
@@ -254,7 +254,7 @@ fn hex#5 top -> ptr ; main::crypto_hkdf_rfc5869, frame 6 slots [%0 word*, %24 wo
     drop %46
     jump b4(%47, %25, %26, %27)
 
-fn nibble#85 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
+fn nibble#86 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
   b0(%0 c: ptr):
     %34 lit: i64 = const 0
     %35 lit: i64 = const 0
@@ -287,7 +287,7 @@ fn nibble#85 top -> i64 ; main::crypto_hkdf_rfc5869, frame 1 slots [%0 word*]
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
 
-fn hex$value#86 adapter of hex#5 -> word ; main::crypto_hkdf_rfc5869, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
+fn hex$value#87 adapter of hex#5 -> word ; main::crypto_hkdf_rfc5869, captures [], frame 3 slots [%0 word*, %1 word*, %2 word*]
   b0(%0 env: ptr, %1 arg: word):
     drop %0
     call hex#5(%1) -> b1()

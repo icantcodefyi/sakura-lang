@@ -105,6 +105,18 @@ retains earlier implementation history.
   or code point, so these were quadratic (the `tokenizer` benchmark at size 50,000 now retires
   about 295× fewer instructions). WASM and JS were not affected.
 
+### Security
+
+- **Revealed key bytes are zeroed when freed on native and WASM** (ABI 1.19.0,
+  `sakura_abi_version` `0x011300`; design §17.288 (7), plan `m5-native.md` N-S). A `Bytes` or
+  `String` revealed from a `Secret` (as `std/crypto` does for every primitive and for a `Raw`
+  `export_key`) used to be freed unzeroed when it outlived its `Secret`. Now the `Secret` marks
+  its inner value with the new header flag `wipe`, and that value's bytes are overwritten when
+  it is freed. `std/crypto` marks its own scalar copies and ECDH shared secrets the same way.
+  Nothing else is zeroed: a copy a program makes (a slice, a concatenation) is freed as before.
+  On JS nothing is zeroed, and the JS ABI now says so: a `Uint8Array` is freed by the garbage
+  collector unseen. A 1.18 host refuses a 1.19 module (ABI §0); no program's output changes.
+
 ## [1.0.0-beta.5] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
