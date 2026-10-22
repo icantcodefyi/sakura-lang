@@ -1,0 +1,20 @@
+family = "allocation"
+suite = "benchmarks-game"
+# Benchmarks Game binary-trees: the timed sizes are a ladder a CI runner can afford (sizes up to 6
+# all build depth-6 trees); the suite's own performance size is `performance_size`. `official`
+# is its expected output for `size`, checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/binarytrees.html).
+sizes = [10, 12, 14, 16]
+lane = "matched"
+ints = "js-safe"
+official = { size = 10, md5 = "d662376f485039a2ddfc7e5acca43edb", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/binarytrees-output.txt", performance_size = 21 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "232410398"
+"1" = "232410398"
+"2" = "232410398"
+"3" = "232410398"
+"10" = "84258318"
+"12" = "645385360"
+"14" = "544079158"
+"16" = "241407451"

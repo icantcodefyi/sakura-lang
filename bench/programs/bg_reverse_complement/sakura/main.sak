@@ -1,0 +1,218 @@
+// reverse-complement, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/
+// benchmarksgame/description/revcomp.html): read FASTA line by line and, for each sequence, write
+// its header line and its reverse complement in 60-character lines, complementing by the
+// description's IUB table (lower-case input gets the upper-case complement, as in the reference
+// programs). The input is what the Benchmarks Game pipes in, `fasta n`'s output, generated in
+// memory by the bg_fasta program's code (copied below) as part of the timed work. Sakura Lang has
+// no mutable byte buffer: a sequence's lines are joined once with `Bytes.concat`, each output
+// line is a List of complemented byte values made `Bytes` by `Bytes.from_list`, and the output
+// is one `Bytes.concat`. The task's "grow the data buffered-read by buffered-read" has no
+// counterpart for an in-memory input.
+// run(n) is the digest (bench/README.md) of the bytes the program writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+let alu = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
+  + "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
+  + "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
+  + "ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA"
+  + "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG"
+  + "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC"
+  + "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA"
+
+let iub = [
+  ("a", 0.27),
+  ("c", 0.12),
+  ("g", 0.12),
+  ("t", 0.27),
+  ("B", 0.02),
+  ("D", 0.02),
+  ("H", 0.02),
+  ("K", 0.02),
+  ("M", 0.02),
+  ("N", 0.02),
+  ("R", 0.02),
+  ("S", 0.02),
+  ("V", 0.02),
+  ("W", 0.02),
+  ("Y", 0.02),
+]
+
+let homo_sapiens = [
+  ("a", 0.3029549426680),
+  ("c", 0.1979883004921),
+  ("g", 0.1975473066391),
+  ("t", 0.3015094502008),
+]
+
+let width = 60
+let im = 139968
+let ia = 3877
+let ic = 29573
+
+/// A nucleotide's byte and the cumulative probability up to and including it.
+type Acid = { p: Float, c: Int }
+
+fn cumulative(table: List<(String, Float)>) -> List<Acid> {
+  var p = 0.0
+  var out: List<Acid> = []
+  for (c, q) in table {
+    p = p + q
+    out = List.push(out, Acid { p, c: Option.expect(Bytes.get(String.to_bytes(c), 0), "code") })
+  }
+  out
+}
+
+let newline = String.to_bytes("\n")
+
+fn repeat_fasta(parts: List<Bytes>, header: String, s: String, count: Int) -> List<Bytes> {
+  var out = List.push(parts, String.to_bytes(header))
+  let doubled = String.to_bytes(s + s)
+  let len = String.len(s)
+  var pos = 0
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    out = List.push(List.push(out, Bytes.slice(doubled, pos, pos + line)), newline)
+    pos = pos + line
+    if pos >= len { pos = pos - len }
+    left = left - line
+  }
+  out
+}
+
+fn random_fasta(
+  parts: List<Bytes>,
+  header: String,
+  table: List<Acid>,
+  count: Int,
+  start: Int,
+) -> (List<Bytes>, Int)
+{
+  var out = List.push(parts, String.to_bytes(header))
+  let last = Option.expect(List.last(table), "table").c
+  var seed = start
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    var bytes: List<Int> = []
+    var i = 0
+    while i < line {
+      seed = (seed * ia + ic) % im
+      let r = Int.to_float(seed) / Int.to_float(im)
+      var c = last
+      for a in table {
+        if r < a.p {
+          c = a.c
+          break
+        }
+      }
+      bytes = List.push(bytes, c)
+      i = i + 1
+    }
+    out = List.push(List.push(out, Bytes.from_list(bytes)), newline)
+    left = left - line
+  }
+  (out, seed)
+}
+
+/// What the Benchmarks Game fasta program writes for n: this program's input.
+fn fasta(n: Int) -> Bytes {
+  let one = repeat_fasta([], ">ONE Homo sapiens alu\n", alu, 2 * n)
+  let (two, seed) = random_fasta(one, ">TWO IUB ambiguity codes\n", cumulative(iub), 3 * n, 42)
+  let (three, _) = random_fasta(
+    two,
+    ">THREE Homo sapiens frequency\n",
+    cumulative(homo_sapiens),
+    5 * n,
+    seed,
+  )
+  Bytes.concat(three)
+}
+
+/// Each byte's complement: the IUB codes and their lower-case forms map to the upper-case
+/// complement, every other byte to itself.
+fn complements() -> List<Int> {
+  let from = String.to_bytes("ACGTUMRWSYKVHDBN")
+  let to = String.to_bytes("TGCAAKYWSRMBDHVN")
+  var table = List.range(0, 256)
+  var i = 0
+  while i < Bytes.len(from) {
+    let f = Option.expect(Bytes.get(from, i), "code")
+    let t = Option.expect(Bytes.get(to, i), "code")
+    table = List.set(List.set(table, f, t), f + 32, t)
+    i = i + 1
+  }
+  table
+}
+
+/// The reverse complement of a sequence in 60-character lines.
+fn reverse_complement(parts: List<Bytes>, seq: Bytes, table: List<Int>) -> List<Bytes> {
+  var out = parts
+  var i = Bytes.len(seq)
+  while i > 0 {
+    let line = Int.min(width, i)
+    var bytes: List<Int> = []
+    var j = 0
+    while j < line {
+      i = i - 1
+      bytes = List.push(
+        bytes,
+        Option.expect(table[Option.expect(Bytes.get(seq, i), "byte")], "complement"),
+      )
+      j = j + 1
+    }
+    out = List.push(List.push(out, Bytes.from_list(bytes)), newline)
+  }
+  out
+}
+
+/// What the Benchmarks Game program writes for `fasta n` on its input.
+fn revcomp(n: Int) -> Bytes {
+  let table = complements()
+  let text = match String.from_bytes(fasta(n)) {
+    Ok(s) => s,
+    Err(_) => "",
+  }
+  var out: List<Bytes> = []
+  var seq: List<Bytes> = []
+  for line in String.split(text, "\n") {
+    if String.starts_with(line, ">") {
+      out = List.push(
+        reverse_complement(out, Bytes.concat(seq), table),
+        String.to_bytes(line + "\n"),
+      )
+      seq = []
+    } else {
+      seq = List.push(seq, String.to_bytes(line))
+    }
+  }
+  Bytes.concat(reverse_complement(out, Bytes.concat(seq), table))
+}
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(revcomp(n)) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(revcomp(n), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

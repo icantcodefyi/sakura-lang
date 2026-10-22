@@ -1,0 +1,20 @@
+family = "indexed integer arrays"
+suite = "benchmarks-game"
+# Benchmarks Game fannkuch-redux: the timed sizes are a ladder a CI runner can afford (n! grows
+# tenfold per step); the suite's own performance size is `performance_size`. `official` is its
+# expected output for `size`, checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/fannkuchredux.html).
+sizes = [6, 7, 8, 9]
+lane = "matched"
+ints = "js-safe"
+official = { size = 7, md5 = "d1e89bf9f505631e76ced5153b83dbb1", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/fannkuchredux-output.txt", performance_size = 12 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "54772683"
+"1" = "942276364"
+"2" = "853226271"
+"3" = "321901889"
+"6" = "106156793"
+"7" = "667839320"
+"8" = "729083194"
+"9" = "226032289"

@@ -1,0 +1,180 @@
+// n-body, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/benchmarksgame/
+// description/nbody.html): the Java program's symplectic integrator over the same five bodies,
+// dt = 0.01, printing the energy before and after n steps as `%.9f` lines. `nbody` is the same
+// integrator with a checksum for the §17.109 envelope; this program is checked against the
+// Benchmarks Game's own output file. Sakura Lang has no mutable arrays, so the bodies are a
+// persistent List updated with `List.set`, in the reference program's operation order.
+// run(n) is the digest (bench/README.md) of the bytes the program writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+type Body = { x: Float, y: Float, z: Float, vx: Float, vy: Float, vz: Float, mass: Float }
+
+let pi = 3.141592653589793
+let solar_mass = 4.0 * pi * pi
+let days = 365.24
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body index") }
+
+fn set(bs: List<Body>, i: Int, b: Body) -> List<Body> { List.set(bs, i, b) }
+
+fn planet(x: Float, y: Float, z: Float, vx: Float, vy: Float, vz: Float, m: Float) -> Body {
+  Body { x, y, z, vx: vx * days, vy: vy * days, vz: vz * days, mass: m * solar_mass }
+}
+
+fn system() -> List<Body> {
+  [
+    Body { x: 0.0, y: 0.0, z: 0.0, vx: 0.0, vy: 0.0, vz: 0.0, mass: solar_mass },
+    planet(
+      4.84143144246472090e+00,
+      -1.16032004402742839e+00,
+      -1.03622044471123109e-01,
+      1.66007664274403694e-03,
+      7.69901118419740425e-03,
+      -6.90460016972063023e-05,
+      9.54791938424326609e-04,
+    ),
+    planet(
+      8.34336671824457987e+00,
+      4.12479856412430479e+00,
+      -4.03523417114321381e-01,
+      -2.76742510726862411e-03,
+      4.99852801234917238e-03,
+      2.30417297573763929e-05,
+      2.85885980666130812e-04,
+    ),
+    planet(
+      1.28943695621391310e+01,
+      -1.51111514016986312e+01,
+      -2.23307578892655734e-01,
+      2.96460137564761618e-03,
+      2.37847173959480950e-03,
+      -2.96589568540237556e-05,
+      4.36624404335156298e-05,
+    ),
+    planet(
+      1.53796971148509165e+01,
+      -2.59193146099879641e+01,
+      1.79258772950371181e-01,
+      2.68067772490389322e-03,
+      1.62824170038242295e-03,
+      -9.51592254519715870e-05,
+      5.15138902046611451e-05,
+    ),
+  ]
+}
+
+fn offset_momentum(bs: List<Body>) -> List<Body> {
+  var px = 0.0
+  var py = 0.0
+  var pz = 0.0
+  for b in bs {
+    px = px + b.vx * b.mass
+    py = py + b.vy * b.mass
+    pz = pz + b.vz * b.mass
+  }
+  let sun = at(bs, 0)
+  set(
+    bs,
+    0,
+    Body { ..sun, vx: 0.0 - px / solar_mass, vy: 0.0 - py / solar_mass, vz: 0.0 - pz / solar_mass },
+  )
+}
+
+fn energy(bs: List<Body>) -> Float {
+  let n = List.len(bs)
+  var e = 0.0
+  var i = 0
+  while i < n {
+    let b = at(bs, i)
+    e = e + 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy + b.vz * b.vz)
+    var j = i + 1
+    while j < n {
+      let c = at(bs, j)
+      let dx = b.x - c.x
+      let dy = b.y - c.y
+      let dz = b.z - c.z
+      e = e - b.mass * c.mass / Float.sqrt(dx * dx + dy * dy + dz * dz)
+      j = j + 1
+    }
+    i = i + 1
+  }
+  e
+}
+
+fn advance(start: List<Body>, dt: Float) -> List<Body> {
+  let n = List.len(start)
+  var bs = start
+  var i = 0
+  while i < n {
+    var b = at(bs, i)
+    var j = i + 1
+    while j < n {
+      let c = at(bs, j)
+      let dx = b.x - c.x
+      let dy = b.y - c.y
+      let dz = b.z - c.z
+      let d2 = dx * dx + dy * dy + dz * dz
+      let mag = dt / (d2 * Float.sqrt(d2))
+      b = Body {
+        ..b,
+        vx: b.vx - dx * c.mass * mag,
+        vy: b.vy - dy * c.mass * mag,
+        vz: b.vz - dz * c.mass * mag,
+      }
+      bs = set(
+        bs,
+        j,
+        Body {
+          ..c,
+          vx: c.vx + dx * b.mass * mag,
+          vy: c.vy + dy * b.mass * mag,
+          vz: c.vz + dz * b.mass * mag,
+        },
+      )
+      j = j + 1
+    }
+    bs = set(bs, i, b)
+    i = i + 1
+  }
+  List.map(bs, fn(b) { Body { ..b, x: b.x + dt * b.vx, y: b.y + dt * b.vy, z: b.z + dt * b.vz } })
+}
+
+/// What the Benchmarks Game program writes for n.
+fn text(n: Int) -> String {
+  var bs = offset_momentum(system())
+  let before = Float.format(energy(bs), 9)
+  var i = 0
+  while i < n {
+    bs = advance(bs, 0.01)
+    i = i + 1
+  }
+  "{before}\n{Float.format(energy(bs), 9)}\n"
+}
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(String.to_bytes(text(n))) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(String.to_bytes(text(n)), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

@@ -1,0 +1,109 @@
+// spectral-norm, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/benchmarksgame/
+// description/spectralnorm.html): the power method on the infinite matrix A, as the Java program's
+// four functions A, Av, Atv and AtAv, ten iterations, printing the norm as a `%.9f` line.
+// `spectral_norm` is the same computation with a checksum; this program is checked against the
+// Benchmarks Game's own output file. Sakura Lang has no mutable arrays, so each product is a
+// fresh List built with `List.push` where the Java program overwrites an array; the Float
+// operation order is the Java program's. Deviation: for n = 0 (where the Java program divides 0
+// by 0) the norm is taken as 0. run(n) is the digest (bench/README.md) of the bytes the program
+// writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+/// The matrix entry a(i, j), 0-based: 1 / ((i + j)(i + j + 1) / 2 + i + 1).
+fn a(i: Int, j: Int) -> Float { 1.0 / Int.to_float((i + j) * (i + j + 1) / 2 + i + 1) }
+
+fn at(v: List<Float>, i: Int) -> Float { Option.expect(v[i], "vector index") }
+
+/// A times v.
+fn mul_av(v: List<Float>, n: Int) -> List<Float> {
+  var out: List<Float> = []
+  var i = 0
+  while i < n {
+    var sum = 0.0
+    var j = 0
+    while j < n {
+      sum = sum + a(i, j) * at(v, j)
+      j = j + 1
+    }
+    out = List.push(out, sum)
+    i = i + 1
+  }
+  out
+}
+
+/// A transposed times v.
+fn mul_atv(v: List<Float>, n: Int) -> List<Float> {
+  var out: List<Float> = []
+  var i = 0
+  while i < n {
+    var sum = 0.0
+    var j = 0
+    while j < n {
+      sum = sum + a(j, i) * at(v, j)
+      j = j + 1
+    }
+    out = List.push(out, sum)
+    i = i + 1
+  }
+  out
+}
+
+/// A transposed times A times v.
+fn mul_atav(v: List<Float>, n: Int) -> List<Float> { mul_atv(mul_av(v, n), n) }
+
+fn approximate(n: Int) -> Float {
+  if n == 0 { return 0.0 }
+  var u: List<Float> = []
+  var k = 0
+  while k < n {
+    u = List.push(u, 1.0)
+    k = k + 1
+  }
+  var v = u
+  var i = 0
+  while i < 10 {
+    v = mul_atav(u, n)
+    u = mul_atav(v, n)
+    i = i + 1
+  }
+  var vbv = 0.0
+  var vv = 0.0
+  var m = 0
+  while m < n {
+    vbv = vbv + at(u, m) * at(v, m)
+    vv = vv + at(v, m) * at(v, m)
+    m = m + 1
+  }
+  Float.sqrt(vbv / vv)
+}
+
+/// What the Benchmarks Game program writes for n.
+fn text(n: Int) -> String { "{Float.format(approximate(n), 9)}\n" }
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(String.to_bytes(text(n))) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(String.to_bytes(text(n)), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

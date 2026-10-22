@@ -1,0 +1,268 @@
+// k-nucleotide, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/
+// benchmarksgame/description/knucleotide.html): read FASTA line by line, extract sequence THREE
+// (upper-cased), count its 1- and 2-nucleotide sequences (written with their percentage
+// frequencies, `%.3f`, by descending frequency then ascending key) and the 3-, 4-, 6-, 12- and
+// 18-nucleotide counts of GGT, GGTA, GGTATT, GGTATTTTAATT and GGTATTTTAATTTATAGT. `update`
+// counts one reading frame into a hash table (Sakura's built-in `Map`, grown from empty), and
+// `count` combines all k frames. The input is what the Benchmarks Game pipes in, `fasta n`'s
+// output, generated in memory by the bg_fasta program's code (copied below) as part of the timed
+// work. Keys are the nucleotides mapped to 0..3 and packed base 4 (`key * 4 + code`, as
+// Sakura has no shifts), the encoding the description allows. Sakura Lang's `Map` is a
+// persistent value: each update returns the new map, which is assigned back.
+// run(n) is the digest (bench/README.md) of the bytes the program writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+let alu = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
+  + "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
+  + "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
+  + "ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA"
+  + "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG"
+  + "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC"
+  + "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA"
+
+let iub = [
+  ("a", 0.27),
+  ("c", 0.12),
+  ("g", 0.12),
+  ("t", 0.27),
+  ("B", 0.02),
+  ("D", 0.02),
+  ("H", 0.02),
+  ("K", 0.02),
+  ("M", 0.02),
+  ("N", 0.02),
+  ("R", 0.02),
+  ("S", 0.02),
+  ("V", 0.02),
+  ("W", 0.02),
+  ("Y", 0.02),
+]
+
+let homo_sapiens = [
+  ("a", 0.3029549426680),
+  ("c", 0.1979883004921),
+  ("g", 0.1975473066391),
+  ("t", 0.3015094502008),
+]
+
+let width = 60
+let im = 139968
+let ia = 3877
+let ic = 29573
+
+/// A nucleotide's byte and the cumulative probability up to and including it.
+type Acid = { p: Float, c: Int }
+
+fn cumulative(table: List<(String, Float)>) -> List<Acid> {
+  var p = 0.0
+  var out: List<Acid> = []
+  for (c, q) in table {
+    p = p + q
+    out = List.push(out, Acid { p, c: Option.expect(Bytes.get(String.to_bytes(c), 0), "code") })
+  }
+  out
+}
+
+let newline = String.to_bytes("\n")
+
+fn repeat_fasta(parts: List<Bytes>, header: String, s: String, count: Int) -> List<Bytes> {
+  var out = List.push(parts, String.to_bytes(header))
+  let doubled = String.to_bytes(s + s)
+  let len = String.len(s)
+  var pos = 0
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    out = List.push(List.push(out, Bytes.slice(doubled, pos, pos + line)), newline)
+    pos = pos + line
+    if pos >= len { pos = pos - len }
+    left = left - line
+  }
+  out
+}
+
+fn random_fasta(
+  parts: List<Bytes>,
+  header: String,
+  table: List<Acid>,
+  count: Int,
+  start: Int,
+) -> (List<Bytes>, Int)
+{
+  var out = List.push(parts, String.to_bytes(header))
+  let last = Option.expect(List.last(table), "table").c
+  var seed = start
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    var bytes: List<Int> = []
+    var i = 0
+    while i < line {
+      seed = (seed * ia + ic) % im
+      let r = Int.to_float(seed) / Int.to_float(im)
+      var c = last
+      for a in table {
+        if r < a.p {
+          c = a.c
+          break
+        }
+      }
+      bytes = List.push(bytes, c)
+      i = i + 1
+    }
+    out = List.push(List.push(out, Bytes.from_list(bytes)), newline)
+    left = left - line
+  }
+  (out, seed)
+}
+
+/// What the Benchmarks Game fasta program writes for n: this program's input.
+fn fasta(n: Int) -> Bytes {
+  let one = repeat_fasta([], ">ONE Homo sapiens alu\n", alu, 2 * n)
+  let (two, seed) = random_fasta(one, ">TWO IUB ambiguity codes\n", cumulative(iub), 3 * n, 42)
+  let (three, _) = random_fasta(
+    two,
+    ">THREE Homo sapiens frequency\n",
+    cumulative(homo_sapiens),
+    5 * n,
+    seed,
+  )
+  Bytes.concat(three)
+}
+
+/// A nucleotide's code 0..3: A, C, G, T.
+fn code(b: Int) -> Int { if b == 65 { 0 } else if b == 67 { 1 } else if b == 71 { 2 } else { 3 } }
+
+/// Sequence THREE, read line by line from the FASTA text, upper-cased, as codes 0..3.
+fn sequence_three(input: Bytes) -> List<Int> {
+  let text = match String.from_bytes(input) {
+    Ok(s) => s,
+    Err(_) => "",
+  }
+  var parts: List<String> = []
+  var inside = false
+  for line in String.split(text, "\n") {
+    if String.starts_with(line, ">") {
+      inside = String.starts_with(line, ">THREE")
+    } else if inside {
+      parts = List.push(parts, String.to_upper(line))
+    }
+  }
+  let bytes = String.to_bytes(List.join(parts, ""))
+  let len = Bytes.len(bytes)
+  var seq: List<Int> = []
+  var i = 0
+  while i < len {
+    seq = List.push(seq, code(Option.expect(Bytes.get(bytes, i), "byte")))
+    i = i + 1
+  }
+  seq
+}
+
+/// Count the k-nucleotides starting at frame, frame + k, frame + 2k, … into the table.
+fn update(table: Map<Int, Int>, seq: List<Int>, k: Int, frame: Int) -> Map<Int, Int> {
+  let len = List.len(seq)
+  var out = table
+  var i = frame
+  while i + k <= len {
+    var key = 0
+    var j = 0
+    while j < k {
+      key = key * 4 + Option.expect(seq[i + j], "nucleotide")
+      j = j + 1
+    }
+    out = Map.update(out, key, fn(c) {
+      match c {
+        Some(v) => v + 1,
+        None => 1,
+      }
+    })
+    i = i + k
+  }
+  out
+}
+
+/// Every k-nucleotide's count, all k reading frames combined.
+fn count(seq: List<Int>, k: Int) -> Map<Int, Int> {
+  var table: Map<Int, Int> = Map.empty()
+  var frame = 0
+  while frame < k {
+    table = update(table, seq, k, frame)
+    frame = frame + 1
+  }
+  table
+}
+
+/// The key of a k-nucleotide as its letters.
+fn letters(key: Int, k: Int) -> String {
+  var out = ""
+  var j = k - 1
+  while j >= 0 {
+    out = out + Option.expect(["A", "C", "G", "T"][key / Int.pow(4, j) % 4], "code")
+    j = j - 1
+  }
+  out
+}
+
+/// The packed key of a nucleotide string.
+fn key_of(s: String) -> Int {
+  let bytes = String.to_bytes(s)
+  var key = 0
+  var i = 0
+  while i < Bytes.len(bytes) {
+    key = key * 4 + code(Option.expect(Bytes.get(bytes, i), "byte"))
+    i = i + 1
+  }
+  key
+}
+
+/// The k-nucleotides with their percentage frequencies, by descending frequency then key.
+fn frequencies(seq: List<Int>, k: Int) -> String {
+  let entries = Map.entries(count(seq, k))
+  let total = List.fold(entries, 0, fn(sum, e) { sum + e.1 })
+  var out = ""
+  for (key, c) in List.sort_by(entries, fn(e) { (0 - e.1, e.0) }) {
+    out = out
+      + "{letters(key, k)} {Float.format(100.0 * Int.to_float(c) / Int.to_float(total), 3)}\n"
+  }
+  out + "\n"
+}
+
+/// What the Benchmarks Game program writes for `fasta n` on its input.
+fn text(n: Int) -> String {
+  let seq = sequence_three(fasta(n))
+  var out = frequencies(seq, 1) + frequencies(seq, 2)
+  for s in ["GGT", "GGTA", "GGTATT", "GGTATTTTAATT", "GGTATTTTAATTTATAGT"] {
+    let found = Option.unwrap_or(Map.get(count(seq, String.len(s)), key_of(s)), 0)
+    out = out + "{found}\t{s}\n"
+  }
+  out
+}
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(String.to_bytes(text(n))) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(String.to_bytes(text(n)), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

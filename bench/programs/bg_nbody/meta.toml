@@ -1,0 +1,19 @@
+family = "f64 records"
+suite = "benchmarks-game"
+# Benchmarks Game n-body: the timed sizes are a ladder a CI runner can afford; the suite's own
+# performance size is `performance_size`. `official` is its expected output for `size`, checked by
+# md5 for every variant (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/nbody.html).
+sizes = [1000, 10000, 100000, 500000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 1000, md5 = "5b8f3d2f968e5487d8995b5c4e516beb", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/nbody-output.txt", performance_size = 50000000 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "94405791"
+"1" = "93719637"
+"2" = "93659063"
+"3" = "93598458"
+"1000" = "125025204"
+"10000" = "923641771"
+"100000" = "98307606"
+"500000" = "152706871"

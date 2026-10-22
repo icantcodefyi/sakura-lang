@@ -1,0 +1,21 @@
+family = "byte table, bytes out"
+suite = "benchmarks-game"
+# Benchmarks Game reverse-complement: the program's input, `fasta n`'s output (which the suite pipes
+# in), is generated in memory with bg_fasta's code as part of the timed work. The timed sizes are a
+# ladder a CI runner can afford; the suite's performance size is `performance_size`. `official` is
+# its expected output for the input `fasta 1000`, checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/revcomp.html).
+sizes = [10000, 25000, 50000, 100000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 1000, md5 = "c071aa7e007a9770b2fb4304f55a17e5", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/revcomp-output.txt", performance_size = 25000000 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "523511331"
+"1" = "754539070"
+"2" = "527516811"
+"3" = "267218344"
+"10000" = "249066354"
+"25000" = "397558352"
+"50000" = "456498885"
+"100000" = "333837280"

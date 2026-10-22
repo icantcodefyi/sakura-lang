@@ -1,0 +1,156 @@
+// fasta, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/benchmarksgame/
+// description/fasta.html): copy ALU for 2n nucleotides, then 3n and 5n nucleotides picked at
+// random from the IUB and Homo sapiens tables, in 60-character lines. The naive LCG (IM 139968,
+// IA 3877, IC 29573, seed 42) is called once per nucleotide, never cached, and its value
+// (max = 1: seed / IM in f64) is matched against cumulative f64 probabilities by linear search.
+// Sakura Lang has no mutable byte buffer: the ALU lines are `Bytes.slice`s of ALU twice over, as
+// the reference C programs write slices of a doubled string; each random line is a List of byte
+// values made `Bytes` with `Bytes.from_list`; all the pieces are joined once by `Bytes.concat`.
+// run(n) is the digest (bench/README.md) of the bytes the program writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+let alu = "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG"
+  + "GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA"
+  + "CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT"
+  + "ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA"
+  + "GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG"
+  + "AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC"
+  + "AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA"
+
+let iub = [
+  ("a", 0.27),
+  ("c", 0.12),
+  ("g", 0.12),
+  ("t", 0.27),
+  ("B", 0.02),
+  ("D", 0.02),
+  ("H", 0.02),
+  ("K", 0.02),
+  ("M", 0.02),
+  ("N", 0.02),
+  ("R", 0.02),
+  ("S", 0.02),
+  ("V", 0.02),
+  ("W", 0.02),
+  ("Y", 0.02),
+]
+
+let homo_sapiens = [
+  ("a", 0.3029549426680),
+  ("c", 0.1979883004921),
+  ("g", 0.1975473066391),
+  ("t", 0.3015094502008),
+]
+
+let width = 60
+let im = 139968
+let ia = 3877
+let ic = 29573
+
+/// A nucleotide's byte and the cumulative probability up to and including it.
+type Acid = { p: Float, c: Int }
+
+fn cumulative(table: List<(String, Float)>) -> List<Acid> {
+  var p = 0.0
+  var out: List<Acid> = []
+  for (c, q) in table {
+    p = p + q
+    out = List.push(out, Acid { p, c: Option.expect(Bytes.get(String.to_bytes(c), 0), "code") })
+  }
+  out
+}
+
+let newline = String.to_bytes("\n")
+
+fn repeat_fasta(parts: List<Bytes>, header: String, s: String, count: Int) -> List<Bytes> {
+  var out = List.push(parts, String.to_bytes(header))
+  let doubled = String.to_bytes(s + s)
+  let len = String.len(s)
+  var pos = 0
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    out = List.push(List.push(out, Bytes.slice(doubled, pos, pos + line)), newline)
+    pos = pos + line
+    if pos >= len { pos = pos - len }
+    left = left - line
+  }
+  out
+}
+
+fn random_fasta(
+  parts: List<Bytes>,
+  header: String,
+  table: List<Acid>,
+  count: Int,
+  start: Int,
+) -> (List<Bytes>, Int)
+{
+  var out = List.push(parts, String.to_bytes(header))
+  let last = Option.expect(List.last(table), "table").c
+  var seed = start
+  var left = count
+  while left > 0 {
+    let line = Int.min(width, left)
+    var bytes: List<Int> = []
+    var i = 0
+    while i < line {
+      seed = (seed * ia + ic) % im
+      let r = Int.to_float(seed) / Int.to_float(im)
+      var c = last
+      for a in table {
+        if r < a.p {
+          c = a.c
+          break
+        }
+      }
+      bytes = List.push(bytes, c)
+      i = i + 1
+    }
+    out = List.push(List.push(out, Bytes.from_list(bytes)), newline)
+    left = left - line
+  }
+  (out, seed)
+}
+
+/// What the Benchmarks Game program writes for n.
+fn fasta(n: Int) -> Bytes {
+  let one = repeat_fasta([], ">ONE Homo sapiens alu\n", alu, 2 * n)
+  let (two, seed) = random_fasta(one, ">TWO IUB ambiguity codes\n", cumulative(iub), 3 * n, 42)
+  let (three, _) = random_fasta(
+    two,
+    ">THREE Homo sapiens frequency\n",
+    cumulative(homo_sapiens),
+    5 * n,
+    seed,
+  )
+  Bytes.concat(three)
+}
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(fasta(n)) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(fasta(n), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

@@ -1,0 +1,72 @@
+// binary-trees, the Benchmarks Game's task (benchmarksgame-team.pages.debian.net/benchmarksgame/
+// description/binarytrees.html): a stretch tree of depth max(6, n) + 1, a long-lived tree of
+// depth max(6, n), and 2^(max − d + 4) bottom-up trees for every even-offset depth d from 4,
+// each walked to count its nodes, writing the suite's report lines. `binary_trees` is the same
+// work with a summed checksum; this program is checked against the Benchmarks Game's own output
+// file. Every node is a `Node` allocation, leaves included (`Node(Leaf, Leaf)`: `Leaf` is a
+// nullary constructor, the Java program's null child); no pool or arena, the runtime's default
+// memory management. run(n) is the digest (bench/README.md) of the bytes the program writes for n.
+import std/bytes.{Standard}
+import std/cli.{Cli}
+
+type Tree = Leaf | Node(Tree, Tree)
+
+fn bottom_up(depth: Int) -> Tree {
+  if depth > 0 { Node(bottom_up(depth - 1), bottom_up(depth - 1)) } else { Node(Leaf, Leaf) }
+}
+
+fn check(t: Tree) -> Int {
+  match t {
+    Leaf => 0,
+    Node(l, r) => 1 + check(l) + check(r),
+  }
+}
+
+/// What the Benchmarks Game program writes for n.
+fn text(n: Int) -> String {
+  let min_depth = 4
+  let max_depth = Int.max(min_depth + 2, n)
+  let stretch_depth = max_depth + 1
+  var out = "stretch tree of depth {stretch_depth}\t check: {check(bottom_up(stretch_depth))}\n"
+  let long_lived = bottom_up(max_depth)
+  var d = min_depth
+  while d <= max_depth {
+    let iterations = Int.pow(2, max_depth - d + min_depth)
+    var sum = 0
+    var i = 0
+    while i < iterations {
+      sum = sum + check(bottom_up(d))
+      i = i + 1
+    }
+    out = "{out}{iterations}\t trees of depth {d}\t check: {sum}\n"
+    d = d + 2
+  }
+  "{out}long lived tree of depth {max_depth}\t check: {check(long_lived)}\n"
+}
+
+/// The suite's digest of an output: h = (31·h + byte) mod 1,000,000,007 over every byte.
+fn digest(b: Bytes) -> Int {
+  let len = Bytes.len(b)
+  var h = 0
+  var i = 0
+  while i < len {
+    h = (h * 31 + Option.expect(Bytes.get(b, i), "byte")) % 1000000007
+    i = i + 1
+  }
+  h
+}
+
+pub fn run(n: Int) -> Int { digest(String.to_bytes(text(n))) }
+
+/// The output for n as base64: `Console` writes lines of text, not raw bytes.
+pub fn output(n: Int) -> String { Bytes.to_base64(String.to_bytes(text(n)), Standard, true) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument; `-- output <n>` prints output(n).
+pub fn main() -> Unit ! {Cli, Console} {
+  let args = Cli.args()
+  if List.first(args) == Some("output") {
+    Console.print(output(Option.expect(String.parse_int(Option.expect(args[1], "size")), "size")))
+  } else {
+    for arg in args { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+  }
+}

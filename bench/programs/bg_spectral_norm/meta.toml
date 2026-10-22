@@ -1,0 +1,20 @@
+family = "numeric nested loops"
+suite = "benchmarks-game"
+# Benchmarks Game spectral-norm: the timed sizes are a ladder a CI runner can afford; the suite's
+# own performance size is `performance_size`. `official` is its expected output for `size`,
+# checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/spectralnorm.html).
+sizes = [100, 400, 1000, 2000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 100, md5 = "eff6e24f23038e516091ddcdd9a746f4", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/spectralnorm-output.txt", performance_size = 5500 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "677369660"
+"1" = "395915152"
+"2" = "489677781"
+"3" = "294184228"
+"100" = "739767299"
+"400" = "763509765"
+"1000" = "763535929"
+"2000" = "763536704"

@@ -1,0 +1,21 @@
+family = "hash table counting"
+suite = "benchmarks-game"
+# Benchmarks Game k-nucleotide: the program's input, `fasta n`'s output (which the suite pipes in),
+# is generated in memory with bg_fasta's code as part of the timed work. The timed sizes are a
+# ladder a CI runner can afford; the suite's performance size is `performance_size`. `official` is
+# its expected output for the input `fasta 1000`, checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/knucleotide.html).
+sizes = [1000, 5000, 25000, 50000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 1000, md5 = "3b6fac2ed835eefc452a69a1ca4fa677", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/knucleotide-output.txt", performance_size = 25000000 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "347948325"
+"1" = "110956983"
+"2" = "151924911"
+"3" = "377540938"
+"1000" = "447089901"
+"5000" = "652777032"
+"25000" = "397630996"
+"50000" = "995744415"

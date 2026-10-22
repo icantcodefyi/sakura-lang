@@ -1,0 +1,20 @@
+family = "f64 loops, bytes out"
+suite = "benchmarks-game"
+# Benchmarks Game mandelbrot: the timed sizes are a ladder a CI runner can afford (200 is the
+# suite's own check size); the suite's performance size is `performance_size`. `official` is its
+# expected output for `size`, checked by md5 for every variant
+# (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/mandelbrot.html).
+sizes = [200, 500, 1000, 2000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 200, md5 = "cc65e64bd553ed18896de1dfe7fae3e5", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/mandelbrot-output.txt", performance_size = 16000 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "499707256"
+"1" = "491849313"
+"2" = "275987732"
+"3" = "444041903"
+"200" = "846087606"
+"500" = "414289496"
+"1000" = "692736900"
+"2000" = "900993599"

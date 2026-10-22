@@ -1,0 +1,19 @@
+family = "LCG, f64 search, bytes out"
+suite = "benchmarks-game"
+# Benchmarks Game fasta: the timed sizes are a ladder a CI runner can afford; the suite's own
+# performance size is `performance_size`. `official` is its expected output for `size`, checked by
+# md5 for every variant (https://benchmarksgame-team.pages.debian.net/benchmarksgame/description/fasta.html).
+sizes = [10000, 50000, 100000, 250000]
+lane = "matched"
+ints = "js-safe"
+official = { size = 1000, md5 = "60cbd78a7793bcc8032ef153b4a37b56", output = "https://benchmarksgame-team.pages.debian.net/benchmarksgame/download/fasta-output.txt", performance_size = 25000000 }
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "523511331"
+"1" = "770383073"
+"2" = "240974539"
+"3" = "100535434"
+"10000" = "333480156"
+"50000" = "112894163"
+"100000" = "126379765"
+"250000" = "364036565"
