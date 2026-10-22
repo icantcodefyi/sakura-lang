@@ -1,17 +1,20 @@
 ---
 title: Editor setup
-description: Use Sakura Lang in VS Code (and editors built on it) through the compiler's language server, sakura lsp.
+description: Get errors, hover, completion and formatting for Sakura Lang in VS Code and other editors, through the compiler's language server.
 ---
 
-<Callout type="warn" title="Build the extension from source">
-  The VS Code extension is not on the VS Code Marketplace or Open VSX yet. Build it from the repository as below; it needs a `sakura` executable from [Install](/docs/install) or a [source build](/docs/quickstart#install-from-source).
-</Callout>
+Your editor talks to the compiler you installed, through `sakura lsp`. So the errors in your
+editor are exactly the ones `sakura check` prints.
 
-The editor support is the compiler's own language server, `sakura lsp`, over stdio. The VS Code extension in [`editors/vscode/`](https://github.com/icantcodefyi/sakuralang/tree/main/editors/vscode) is a thin client for it: diagnostics, hover, definitions, completion, formatting and quick fixes come from the compiler you installed, so the editor and `sakura check` always agree.
+<Callout type="warn" title="Build the extension from source">
+  The VS Code extension is not on the VS Code Marketplace or Open VSX yet. Build it from the
+  repository as shown below. It needs a `sakura` command from [Install](/docs/install) or a
+  [source build](/docs/quickstart#install-from-source).
+</Callout>
 
 ## VS Code
 
-Build and install the extension from a checkout. You need [Bun](https://bun.sh):
+You need [Bun](https://bun.sh) and a clone of the repository:
 
 ```bash
 cd sakuralang/editors/vscode
@@ -20,9 +23,15 @@ bun run package
 code --install-extension sakura-0.1.0-alpha.1.vsix
 ```
 
-Open a folder that contains a project (a `sakura.toml`). The extension starts `sakura lsp` once per project, in the nearest directory above the file that holds a `sakura.toml`, so a workspace with several projects checks each separately.
+Then open a folder that contains a project (a folder with a `sakura.toml`). That's all.
 
-It finds the compiler through the `sakura.path` setting, or the first `sakura` on `PATH` when the setting is empty. Without one it shows an error with a link to the install instructions; set the path and the server starts without a reload.
+The same `.vsix` also installs in editors built on VS Code that accept local extensions, such
+as Cursor and VSCodium.
+
+### If the extension cannot find `sakura`
+
+The extension uses the first `sakura` on your `PATH`. If yours is somewhere else, set
+`sakura.path`:
 
 ```json title=".vscode/settings.json"
 {
@@ -30,29 +39,53 @@ It finds the compiler through the `sakura.path` setting, or the first `sakura` o
 }
 ```
 
-The same `.vsix` installs in editors built on VS Code that accept local extensions, such as Cursor and VSCodium.
+The server starts as soon as you save the setting; no reload needed. Without a compiler, the
+extension shows an error that links to the install instructions.
 
-## What it shows
+The extension starts one server per project, in the nearest folder above the file that holds a
+`sakura.toml`. A workspace with several projects checks each one separately.
 
-- **Diagnostics** as you type, including files you have not opened. The error code in each one links to its [error page](/docs/errors), for example `V1004` to `/docs/errors/V1004`.
-- **Quick fixes** with their impact class in the title, such as ``Use `List` (impact: local)``. Fixes that change a contract or an authority say so before you apply them. A fix computed before the file last changed is refused rather than applied to the wrong text; ask for it again.
-- **Formatting** with `sakura fmt`'s rules, on save by default. Turn it off with `"[sakura]": { "editor.formatOnSave": false }`.
-- **Show Hole Context** (command palette, or right-click in a `.sak` file): the [typed hole](/docs/agents/typed-holes) at the cursor as JSON, the same record the MCP `hole_context` tool returns: expected type, effects, locals and candidates.
-- **Highlighting** from the grammar this site uses, plus comment toggling, bracket matching and auto-closing pairs.
+## What you get
+
+- **Errors as you type**, including in files you have not opened. Each error code links to
+  its [error page](/docs/errors), for example `V1004` to `/docs/errors/V1004`.
+- **Quick fixes** that show how big a change they make, such as
+  ``Use `List` (impact: local)``. A fix that would change a contract or widen access says so
+  before you apply it. If the file changed since the fix was computed, it is refused; ask for
+  it again.
+- **Formatting on save**, with `sakura fmt`'s rules. To turn it off, set
+  `"[sakura]": { "editor.formatOnSave": false }`.
+- **Show Hole Context**, from the command palette or by right-clicking in a `.sak` file. It
+  shows the [typed hole](/docs/agents/typed-holes) (a `?name` placeholder) at the cursor as
+  JSON: the expected type, effects, local variables and candidates. It is the same record the
+  MCP `hole_context` tool returns.
+- **Highlighting**, comment toggling, bracket matching and auto-closing pairs.
+
+## Other editors
+
+Any editor with an LSP client works. Run `sakura lsp`, with no arguments, in the project
+folder. Details for client authors:
+
+- The server reads its project from the first workspace folder.
+- It prefers UTF-8 positions and falls back to UTF-16.
+- It answers `sakura/holeContext` (with a `textDocument` and a `position`) with the hole
+  record.
+- Diagnostics carry a `codeDescription` link. Quick fixes carry their impact in
+  `data.impact` and, when the client supports `documentChanges`, the document version they
+  were computed for.
 
 ## Tree-sitter
 
 [`editors/tree-sitter-sakura`](https://github.com/icantcodefyi/sakuralang/tree/main/editors/tree-sitter-sakura)
-provides the grammar, Rust and Node bindings, highlighting, locals, indentation,
-and SQL/HTML injection queries. Neither binding is published. The repository
-README lists build steps and parser differences; the compiler parser remains
-authoritative. The corpus checks LF and CRLF token spans. VS Code still uses
-its TextMate grammar; installing this tree-sitter grammar does not add LSP features.
-
-## Other editors
-
-Any editor with an LSP client can run `sakura lsp` with no arguments in the project directory. The server takes its project from the first workspace folder, prefers UTF-8 positions and falls back to UTF-16, and answers `sakura/holeContext` (a `textDocument` and `position`) with the hole record. Diagnostics carry a `codeDescription` link; quick fixes carry their impact class in `data.impact` and, when the client supports `documentChanges`, the document version they were computed for.
+is a Tree-sitter grammar with Rust and Node bindings, plus queries for highlighting, locals,
+indentation and SQL/HTML injection. Neither binding is published; the README there lists
+build steps and where it differs from the compiler's parser, which stays authoritative. VS
+Code still uses its TextMate grammar, and the Tree-sitter grammar adds no LSP features.
 
 ## Stability
 
-The language server's standard protocol features (document sync, diagnostics, hover, definition, completion, formatting and code actions, over stdio) are proposed as **stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). The `sakura/holeContext` request and the extra fields in a diagnostic's or fix's `data` are **experimental**. The VS Code extension and the Tree-sitter grammar are not published and carry no promise.
+The language server's standard features (document sync, diagnostics, hover, definition,
+completion, formatting and code actions, over stdio) are proposed as **stable from
+v1.0.0-beta.1** under [draft RFC 0001](/docs/stability). The `sakura/holeContext` request and
+the extra fields in a diagnostic's or fix's `data` are **experimental**. The VS Code extension
+and the Tree-sitter grammar are not published and carry no promise.

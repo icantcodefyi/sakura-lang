@@ -1,73 +1,138 @@
 ---
 title: FAQ
-description: Honest answers to common questions about Sakura Lang's status, design choices, and relationship to other languages.
+description: Short, honest answers to common questions about Sakura Lang.
 ---
 
-## Is Sakura Lang usable today?
+## Can I use Sakura Lang today?
 
-Sakura Lang is a preview: useful for experiments, without stable compatibility or
-production-readiness guarantees. `v1.0.0-beta.4` is published on npm, Homebrew and GitHub:
-a beta of 1.0 that may have bugs and may change before 1.0.0, not for production. `0.1.0`, the earlier preview, stays on the default channels. Current main includes JS and WASM execution, contract verification, LSP and MCP. All twenty
-repository examples (the design's twelve and eight cookbook recipes) run or test in CI;
-none is check-only. Native execution remains experimental. [Stability](/docs/stability)
-describes what is proposed to become stable from the beta. See
-[Install](/docs/install), [changes on main](/docs/changes) and the [roadmap](/docs/roadmap).
+For experiments, yes. For production, not yet. The latest release, `v1.0.0-beta.4`, is a beta: it
+may have bugs and may change before 1.0.0. `0.1.0`, the earlier preview, stays on the default
+npm and Homebrew channels.
 
-## Why not just use TypeScript with Effect-TS?
+Programs run on JavaScript and WebAssembly. The editor support (LSP), the MCP server and
+`sakura verify` work today. Native executables are experimental. Every example project in the
+repository runs or passes its tests in CI.
 
-Effect-TS is excellent and shows that typed effects and errors work for real services. Sakura Lang takes its application model directly. The difference is enforcement. In TypeScript, the effect system is a library: any function can still throw, call `fetch` directly, read `process.env`, or cast to `any`, and nothing in the language stops it. An agent under pressure to make a test pass will find those exits.
+See [Install](/docs/install), [Stability](/docs/stability) for what the beta promises, and
+[changes on main](/docs/changes).
 
-In Sakura Lang, effects are the only way to do IO and `Fail<E>` is the only way to fail with an expected error, so the signature is a guarantee rather than a convention. Sakura Lang also adds things a library cannot: refinement types and contracts, authority limited by handlers and `[permissions]`, `Untrusted<T>` and `Secret<T>`, and compiler-managed memory.
+## What is an effect?
 
-## What does Sakura Lang take from other languages?
+Anything a function does besides returning a value: printing, reading the clock, calling the
+network, failing. A Sakura Lang function lists its effects after `!`:
 
-A lot, and it says so. The [prior art](/docs/prior-art) page goes through Koka, Effect-TS, Unison, Roc, Rust, Go, Gleam, Lean, Dafny, Elm, and others, and for each one lists what Sakura Lang takes, what it rejects, and why. In short: Koka's effect rows and Perceus reference counting, Effect-TS's typed errors and requirements, Unison's plain handlers and compiler MCP server, Roc's platform-owned authority, Rust's `Result` and exhaustive matching, and Go's single toolchain and option-free formatter. Sakura Lang is a new language, not a fork of any of them.
+This is a signature only, not a whole program.
 
-## Why reference counting? What about cycles?
+```sakura fragment
+fn load(id: String) -> User ! {Http, Fail<NotFound>}
+```
 
-On the WebAssembly backend, and the experimental native one, reference counting inserted at compile time gives predictable memory use and no collector pauses, without asking the programmer to reason about lifetimes. Perceus-style reuse, planned after 1.0, will turn an update to a uniquely owned value into an in-place write. The JavaScript backend uses the host GC with identical semantics.
+`load` returns a `User`, may make HTTP requests, and may fail with `NotFound`. A function
+without `!` does none of these. See [Effects](/docs/tour/effects).
 
-Cycles cannot be built, because values have value semantics: a value can only refer to values that existed before it. Cyclic data such as graphs uses `Graph<N>` with `NodeId` keys. The only stateful constructs are handler `var` state and `Graph`, and both are confined. See [Memory model](/docs/tour/memory).
+## What is a handler?
+
+The code that decides what an effect actually does. The same function can run against a real
+database in production and an in-memory list in a test, just by installing a different
+handler with `with`. See [Handlers](/docs/tour/handlers).
 
 ## Why `!` for effects?
 
-It reads as "and also": `-> User ! {Users, Clock}` returns a `User` and also performs `Users` and `Clock`. It is short and visually separates the return type from the effect row. Omitting `!` always means pure.
+Read it as "and also": `-> User ! {Users, Clock}` returns a `User` and also uses `Users` and
+`Clock`. It is short, and it keeps the return type apart from the effects. Leaving out `!`
+always means pure.
+
+## Why not TypeScript with Effect-TS?
+
+Effect-TS is excellent and shows that typed effects and errors work for real services. Sakura
+Lang takes its model directly. The difference is enforcement. In TypeScript the model is a
+library: any function can still throw, call `fetch`, read `process.env` or cast to `any`. An
+agent under pressure to pass a test will find those exits.
+
+In Sakura Lang, effects are the only way to do IO and `Fail<E>` is the only way to fail with
+an expected error, so the signature is a guarantee, not a convention. The language also adds
+what a library cannot: refinement types, contracts, permissions in `sakura.toml`,
+`Untrusted<T>` and `Secret<T>`, and compiler-managed memory.
+
+## What does Sakura Lang take from other languages?
+
+A lot, and it says so. Koka's effect rows and reference counting, Effect-TS's typed errors,
+Unison's plain handlers and compiler MCP server, Roc's platform-owned access, Rust's `Result`
+and exhaustive matching, and Go's single toolchain and option-free formatter. The
+[prior art](/docs/prior-art) page covers each language, including what Sakura Lang rejects.
 
 ## Why no `async`?
 
-Every Sakura Lang function may suspend, and nothing in application code can observe whether it did, so an `Async` label would carry no information. Suspension is a property of handlers: `Clock.sleep` suspends under the live clock and returns at once under `Clock.fixed`. Concurrency uses the `Task` effect with structured scopes. See [Concurrency](/docs/tour/concurrency).
-
-## Will humans enjoy writing Sakura Lang?
-
-That is a goal, but not the primary one. Sakura Lang is designed first to be easy for agents to write correctly and for humans to review. In practice those overlap: a small grammar, no null, no exceptions, and signatures that say what a function does are pleasant for people too. Whether effect rows stay readable in large programs is something the first releases are meant to find out.
-
-## Is Sakura Lang tied to one AI vendor?
-
-No. The interfaces are open formats: Markdown docs and `llms.txt`, JSON Lines diagnostics, and the Model Context Protocol. Any agent that can run a command or speak MCP can use the toolchain. The `Llm` effect is provider-neutral; the installed handler chooses the provider. v0 ships one provider handler (`Llm.anthropic`) plus `Llm.scripted` and `Llm.replay` for offline tests.
-
-## Are there performance numbers?
-
-Instruction counts, yes; speed claims, no. The [benchmarks page](/docs/benchmarks) lists the instructions each benchmark program retires per call on the reference Mac at one blessed commit, against the same program written by hand in JavaScript on the same engine, with compile times beside their budgets. A count repeats on one machine, but it is not a time. Today Sakura misses most of its design ceilings against hand-written JavaScript and misses the cross-language envelope against Rust, Go, OCaml and Koka; the page shows by how much. JavaScript and WASM execution are implemented, native code through Cranelift is experimental, and Perceus reuse comes after 1.0. The [benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) contains reproducible workloads and reports; its results are specific to workloads and one host, not a language ranking.
+Any Sakura Lang function may wait, and your code cannot tell whether a call did, so an `async`
+label would say nothing. The handler decides: `Clock.sleep` waits under the real clock and
+returns at once under a test clock. To run work in parallel, use the `Task` effect. See
+[Concurrency](/docs/tour/concurrency).
 
 ## Why no `mut`?
 
-Mutation plus aliasing is the source of many hard bugs, and it is what forces Rust to have a borrow checker. Sakura Lang has `var` for rebinding a name, but no value can be mutated through an alias: `u.email = e` on a `var u` is sugar for `u = User { ..u, email: e }`, and closures capture by value. The compiler reuses buffers in place when it can prove a value is unshared, so loops that build lists stay cheap.
+Changing a value that something else also points to causes many hard bugs, and it is why Rust
+needs a borrow checker. Sakura Lang has `var`, which lets you give a name a new value, but no
+value can change under someone else's feet. `u.email = e` on a `var u` is short for
+`u = User { ..u, email: e }`. The compiler updates in place when it can prove nothing else
+holds the value, so loops that build lists stay cheap.
+
+## How is memory managed?
+
+You never manage it by hand. The JavaScript backend uses JavaScript's garbage collector. The
+WebAssembly backend, and the experimental native one, use reference counting that the
+compiler inserts, which gives predictable memory use and no collector pauses.
+
+Values can only refer to values that existed before them, so reference cycles cannot form.
+For data that really is cyclic, such as a graph, use `Graph<N>` with `NodeId` keys. See
+[Memory model](/docs/tour/memory).
 
 ## What happens when a contract cannot be proven?
 
-Runtime checks remain unless a matching authenticated proof lets `sakura build` remove an eligible non-entry `where` or `ensures` check. `requires`, entry checks and checked arithmetic remain in that proof-removal pass. `sakura verify` is implemented; `unknown` never authorizes removal. `run` and `test` retain checks, and `test --contracts` generates properties and stores shrunk failures. There is no `sakura build --release` flag. See [Contracts](/docs/tour/contracts).
+It is checked at runtime instead. `run` and `test` keep every check. `sakura build` removes a
+check only where `sakura verify` proved it, and only for some kinds of check; an `unknown`
+result never removes anything. There is no `--release` flag that turns checks off. See
+[Contracts](/docs/tour/contracts).
 
-## Can Sakura Lang call existing libraries in other languages?
+## Can I call libraries written in other languages?
 
-On the JavaScript backend, yes, through `@external` declarations. Foreign calls perform a `Foreign` effect that only the host root handler can provide, so `main` must declare it. Exceptions become a typed `ForeignError`, callbacks passed to foreign code must be pure, and any package that uses `@external` is marked `trusted` in the build manifest. See [design §13.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).
+On the JavaScript backend, yes, through `@external` declarations. Foreign calls perform a
+`Foreign` effect that only the host can provide, so `main` must declare it. A foreign exception
+becomes a typed `ForeignError`, callbacks passed to foreign code must be pure, and the build
+manifest marks such code as `trusted`.
+
+## Is it fast?
+
+Speed is a design goal. The [benchmarks page](/docs/benchmarks) shows the current numbers and
+what they measure. Results are specific to those workloads and one machine; they are not a
+ranking of languages.
+
+## Is Sakura Lang tied to one AI vendor?
+
+No. It uses open formats: Markdown docs and `llms.txt`, JSON Lines errors, and the Model
+Context Protocol. Any agent that can run a command or speak MCP can use it. The `Llm` effect is
+provider-neutral. Today there is one provider handler, `Llm.anthropic`, plus `Llm.scripted`
+and `Llm.replay` for offline tests.
+
+## Will people enjoy writing it?
+
+That is a goal, but not the first one. Sakura Lang is designed first to be easy for agents to
+write correctly and for people to review. Those overlap a lot: a small grammar, no null, no
+exceptions and honest signatures are pleasant for people too. Whether effect lists stay
+readable in large programs is something the early releases are meant to find out.
 
 ## What is the license?
 
-Dual-licensed under MIT or Apache-2.0, at your option. See `LICENSE-MIT` and `LICENSE-APACHE` in the repository.
+MIT or Apache-2.0, at your option. See `LICENSE-MIT` and `LICENSE-APACHE` in the repository.
 
 ## How can I help?
 
-- Read [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) and the [Language Tour](/docs/tour/basics), and open issues on [GitHub](https://github.com/icantcodefyi/sakuralang) where the design is unclear, inconsistent, or wrong.
-- Try writing a small program you know well in Sakura Lang syntax, by hand or with an agent, and report what was awkward.
+- Write a small program you know well in Sakura Lang, by hand or with an agent, and
+  [open an issue](https://github.com/icantcodefyi/sakuralang/issues) about what was awkward.
+- Report anything in the [Language Tour](/docs/tour/basics) or the design that is unclear or
+  wrong.
 - Point out prior art the design should learn from.
-- Language changes go through [RFCs](https://github.com/icantcodefyi/sakuralang/tree/main/docs/rfcs); see [CONTRIBUTING.md](https://github.com/icantcodefyi/sakuralang/blob/main/CONTRIBUTING.md).
+- Language changes go through [RFCs](https://github.com/icantcodefyi/sakuralang/tree/main/docs/rfcs);
+  see [CONTRIBUTING.md](https://github.com/icantcodefyi/sakuralang/blob/main/CONTRIBUTING.md).
+
+Details for contributors: the [language design](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)
+(§13.6 covers foreign calls) and the [roadmap](/docs/roadmap).

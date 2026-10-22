@@ -1,31 +1,22 @@
 ---
 title: Install
-description: Install the Sakura Lang beta or the 0.1.0 preview on macOS, Linux or Windows, with release-specific platform evidence.
+description: Install Sakura Lang with one command on macOS, Linux or Windows, then check which platforms each release supports.
 ---
 
-Sakura Lang's latest release is `v1.0.0-beta.4`, a beta of 1.0, on npm, Homebrew and GitHub
-Releases for Apple silicon and Intel macOS, Linux x64 and ARM64, and Windows x64 (Homebrew
-serves macOS and Linux x64). `0.1.0`, the earlier preview, stays on the default channels. Neither
-has a stable language or API compatibility promise ([Stability](/docs/stability)). These docs
-track main; [changes since 0.1.0](/docs/changes) are in the beta. Install Node 26 before using
-npm, `sakura run`, or `sakura test`. The standalone compiler can check and build without Node;
-the installer does not install Node for you.
+## Install in one command
 
-## The beta
+First install [Node 26](https://nodejs.org). `sakura run` and `sakura test` need it to run
+your program. Then:
 
-`v1.0.0-beta.4` is a beta of 1.0. **It is not for production**: it may have bugs and may change
-before 1.0.0, and every breaking change until then is listed in the [changelog](/changelog)
-with a migration ([Stability](/docs/stability)). It is a
-[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.4), and
-these commands install it:
-
-```bash title="npm"
+```bash title="npm (macOS, Linux, Windows)"
 npm install --global sakuralang@beta
 sakura --version
 ```
 
-```bash title="Homebrew"
-brew tap icantcodefyi/sakuralang && brew trust --tap icantcodefyi/sakuralang && brew install sakuralang-beta
+```bash title="Homebrew (macOS, Linux x64)"
+brew tap icantcodefyi/sakuralang
+brew trust --tap icantcodefyi/sakuralang
+brew install sakuralang-beta
 sakura --version
 ```
 
@@ -33,161 +24,141 @@ sakura --version
 sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)
 ```
 
-The [release installer](#release-installer) takes `version=1.0.0-beta.4`, and the
-[Windows installer](#windows-x64) from that release takes `-Version 1.0.0-beta.4`. The beta stays
-off the default channels: `npm install --global sakuralang` (the `latest` tag) and
-`brew install sakuralang` keep installing `0.1.0` until `v1.0.0`. The two Homebrew formulas both
-install `sakura`, so remove one (`brew uninstall sakuralang`) before installing the other. The
-platform claims and the per-platform commands below are for v0.1.0; the beta earns its own
-claims with its own published-install run.
+That's it. Go to the [Quickstart](/docs/quickstart) to run your first program.
 
-## Platform claims
+Good to know:
 
-We use three claim levels, tied to a named release:
+- The compiler alone can check and build code without Node. Only running and testing need it.
+- Neither the installer nor npm installs Node for you.
+- Homebrew installs Node as a dependency. It installs the formula's current version, not a
+  pinned one, so check the printed version before you report a problem.
 
-- **Supported.** A target in [the inventory](https://github.com/icantcodefyi/sakuralang/blob/main/packaging/targets.json)
-  whose CI suites and parity pass, with a green published-install smoke on a hosted
-  runner of that OS and CPU for that release. An install or run failure there is a
-  P1 release defect, fixed in a new version.
-- **Expected to work.** The same binary on an OS without a hosted runner, with the
-  tested environment stated. This does not mean the project ran it on that device.
-- **Community-confirmed.** An expected-to-work configuration with a report showing
-  the complete acceptance list passing, recorded as
-  `confirmed on <device>, <OS build>, <version> (#issue)`.
+## The beta
 
-For v0.1.0, every inventory target is **Supported**. The published-install acceptance
+`v1.0.0-beta.4` is a beta of 1.0. **It is not for production**: it may have bugs and may change
+before 1.0.0. Every breaking change until then is listed in the [changelog](/changelog) with a
+migration ([Stability](/docs/stability)). It is a
+[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.4).
+
+The beta is not on the default channels. Until `v1.0.0`, `npm install --global sakuralang` (the
+`latest` tag) and `brew install sakuralang` install `0.1.0`, the earlier preview. These docs
+track `main`; see [changes since 0.1.0](/docs/changes).
+
+The two Homebrew formulas both install `sakura`. Remove one (`brew uninstall sakuralang`)
+before you install the other.
+
+To install `0.1.0` with npm instead, run `npm install --global sakuralang@0.1.0`.
+
+## Release installer
+
+Use this on macOS or Linux if you would rather not use npm or Homebrew. Download the script,
+read it, then run it:
+
+```bash title="Release installer"
+version=0.1.0
+curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
+less install.sh
+sh install.sh --version "$version"
+export PATH="$HOME/.local/bin:$PATH"
+sakura --version
+```
+
+For the beta, set `version=1.0.0-beta.4`.
+
+The installer:
+
+- picks the build for your CPU and system;
+- checks the download against `SHA256SUMS`, and also checks its attestation if the GitHub CLI
+  (`gh`) is installed (without `gh` it reports `integrity verified, not attested`);
+- installs to `~/.local/bin`, or to `--prefix /absolute/path`.
+
+To keep `sakura` available in new shells, add the `PATH` line to your shell profile yourself.
+
+macOS binaries from v0.1.0 on are signed with a Developer ID (team `P62B65A837`) and notarized
+by Apple. `0.1.0-alpha.1` was not signed.
+
+## Windows x64
+
+Use npm (above), or the PowerShell installer. Download it, read it, then run it:
+
+```powershell title="install.ps1"
+Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0/install.ps1" -OutFile install.ps1
+Get-Content install.ps1
+./install.ps1 -Version 0.1.0
+```
+
+For the beta, take `install.ps1` from that release and pass `-Version 1.0.0-beta.4`.
+
+It checks the ZIP against `SHA256SUMS` and installs `sakura.exe` to
+`%LOCALAPPDATA%\Programs\sakuralang\bin`. Add that folder to `PATH` yourself. Use Windows 10
+x64 or later; the MSVC runtime is statically linked, so you do not need the Visual C++ runtime. Windows on ARM is not supported, and proof caching is not implemented on
+Windows.
+
+## Install from source
+
+To follow `main` between releases, see
+[Install from source](/docs/quickstart#install-from-source).
+
+## Platforms
+
+| System | CPU | npm | Homebrew | Installer | Oldest system |
+| --- | --- | --- | --- | --- | --- |
+| macOS | Apple silicon | yes | yes | yes | macOS 12.0 |
+| macOS | Intel | yes | yes | yes | macOS 12.0 |
+| Linux (glibc) | x64 | yes | yes | yes | glibc 2.35 (Ubuntu 22.04) |
+| Linux (glibc) | ARM64 | yes | no | yes | glibc 2.35 (Ubuntu 22.04) |
+| Windows | x64 | yes | no | `install.ps1` | Windows 10 |
+
+There is no release build for Alpine (musl), 32-bit ARM (`armv7`) or Windows on ARM.
+
+"Oldest system" is what the binary is built to need. The automated tests run on newer
+systems.
+
+### Platform claims
+
+Each claim is tied to a named release:
+
+- **Supported.** CI tests the target, and a fresh install from the public channels passes the
+  whole acceptance list on a hosted runner of that system and CPU. An install or run failure
+  there is a release bug, fixed in a new version.
+- **Expected to work.** The same binary on a system without a hosted runner. The project has
+  not run it on that device.
+- **Community-confirmed.** An expected-to-work setup that a user ran through the whole
+  acceptance list, recorded as `confirmed on <device>, <OS build>, <version> (#issue)`.
+
+For v0.1.0, every platform in the table is **Supported**. The published-install check
 ([run 39375162895](https://github.com/icantcodefyi/sakuralang/actions/runs/39375162895),
 2026-10-20) installed `0.1.0` from the public channels on fresh GitHub-hosted runners and
-passed the whole acceptance list on all six rows:
+passed on all six rows:
 
-| Target | Runner | Channels | Claim |
-|---|---|---|---|
-| `aarch64-apple-darwin` | `macos-15` | npm, Homebrew, installer | **Supported** |
-| `x86_64-apple-darwin` | `macos-15-intel` | npm, Homebrew, installer | **Supported** |
-| `x86_64-unknown-linux-gnu` | `ubuntu-22.04` | npm, Homebrew, installer | **Supported** |
-| `aarch64-unknown-linux-gnu` | `ubuntu-22.04-arm` | npm, installer | **Supported** |
-| `aarch64-unknown-linux-gnu` | Debian bookworm container on `ubuntu-24.04-arm`, 1,800 MB memory limit | npm, installer | **Supported** |
-| `x86_64-pc-windows-msvc` | `windows-2025` | npm, installer | **Supported** |
+| Target | Runner | Channels |
+|---|---|---|
+| `aarch64-apple-darwin` | `macos-15` | npm, Homebrew, installer |
+| `x86_64-apple-darwin` | `macos-15-intel` | npm, Homebrew, installer |
+| `x86_64-unknown-linux-gnu` | `ubuntu-22.04` | npm, Homebrew, installer |
+| `aarch64-unknown-linux-gnu` | `ubuntu-22.04-arm` | npm, installer |
+| `aarch64-unknown-linux-gnu` | Debian bookworm container on `ubuntu-24.04-arm`, 1,800 MB memory limit | npm, installer |
+| `x86_64-pc-windows-msvc` | `windows-2025` | npm, installer |
 
-A Raspberry Pi is **expected to work**, not supported: see [below](#raspberry-pi-4-and-5).
-The claim is for v0.1.0; a later release earns it again with its own run. See the
-[platform plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md#6-platforms-b-and-c-design-17180-acceptance-17227).
-
-## Floors
-
-The oldest systems a v0.1.0 binary is meant for. The smoke runs on newer hosts (the runners
-above), so a floor is what the binary is built to need, not an OS the project ran:
-
-- **Linux, both CPUs:** glibc 2.35 or later, the glibc of Ubuntu 22.04, where both
-  Linux archives are built and smoke-tested.
-- **macOS, both CPUs:** macOS 12.0 or later.
-- **Windows x64:** Windows 10 x64 or later; the MSVC runtime is statically linked.
-
-## Native builds (experimental)
-
-`sakura build --target native` compiles a program to an executable (`target/sakura/native/main`).
-It is experimental: the flag and its driver may change or go away in a later release without a
-migration. The macOS Apple silicon, Linux x64 and Linux arm64 release binaries carry it from
-v1.0.0-beta.4; every channel (the release installer, npm and Homebrew) installs
-its driver, `lib/sakura/native/libsakura_native_driver.a`, beside `bin/`, where `sakura` finds
-it (`SAKURA_NATIVE_LIB_DIR` names another directory). Other release binaries refuse the target
-with exit 2. On Intel macOS and Windows x64 a compiler built from source with
-`cargo build --release -p sakura_cli --features native` builds native executables too
-(`main.exe` on Windows); Windows executables carry no debugger symbols, and defect traces still
-name Sakura source positions.
-
-A native build needs a system linker, and Sakura Lang bundles none; on macOS and Linux it is
-the C compiler on `PATH` as `cc`:
-
-- **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
-- **Linux:** a C compiler, for example `sudo apt install gcc` on Debian or Ubuntu, or
-  `sudo dnf install gcc` on Fedora.
-- **Windows (source builds):** MSVC's `link.exe`, from the Visual Studio Build Tools with the
-  "Desktop development with C++" workload; `sakura` finds it in the Visual Studio installation,
-  not on `PATH`.
-
-Without one, the build stops with [`V8007`](/docs/errors/V8007). The executable needs no Node and
-no Sakura Lang install to run; it runs on the floors above.
-
-## macOS: Apple silicon
-
-Target: `aarch64-apple-darwin`. **Supported** in v0.1.0, with an archive, an npm package
-and the Homebrew formula, smoke-tested from the published channels on GitHub's macOS 15
-ARM64 runner. Use macOS 12.0 or later.
-
-With Node 26 and npm installed:
-
-```bash title="npm"
-npm install --global sakuralang@0.1.0
-sakura --version
-```
-
-Alternatively, use the [release installer](#release-installer) with
-`version=0.1.0`, or the Homebrew tap:
-
-```bash title="Homebrew"
-brew tap icantcodefyi/sakuralang && brew trust --tap icantcodefyi/sakuralang && brew install sakuralang
-sakura --version
-```
-
-Homebrew installs the formula's current version and its Node dependency; it is not
-a version-pinned install. Check the printed version before reporting a result.
-
-## Linux: x64, glibc
-
-Target: `x86_64-unknown-linux-gnu`. **Supported** in v0.1.0. The archive is built and
-smoke-tested on Ubuntu 22.04; use glibc 2.35 or later. Alpine/musl has no release artifact.
-
-With Node 26 and npm installed:
-
-```bash title="npm"
-npm install --global sakuralang@0.1.0
-sakura --version
-```
-
-Alternatively, use the [release installer](#release-installer) with
-`version=0.1.0`, or the Homebrew tap:
-
-```bash title="Homebrew"
-brew tap icantcodefyi/sakuralang && brew trust --tap icantcodefyi/sakuralang && brew install sakuralang
-sakura --version
-```
-
-## Linux: ARM64, glibc
-
-Target: `aarch64-unknown-linux-gnu`. **Supported** in v0.1.0, new in that release, with an
-archive and the `sakuralang-linux-arm64-gnu` npm platform package. It is built and
-smoke-tested on Ubuntu 22.04 ARM64 and in a Debian bookworm container, with CI suites and
-parity on Ubuntu 24.04 ARM64; use glibc 2.35 or later. With Node 26 and npm installed:
-
-```bash title="npm"
-npm install --global sakuralang@0.1.0
-sakura --version
-```
-
-Or use the [release installer](#release-installer) with `version=0.1.0`. Homebrew does
-not serve Linux ARM64; use npm or the installer.
-32-bit ARM (`armv7`) has no release artifact.
+These claims are for v0.1.0. A later release earns them again with its own run. A Windows
+Server runner does not prove a Windows 11 device, and a Rosetta run of the archive alone
+cannot confirm Intel npm or Homebrew installs.
 
 ### Raspberry Pi 4 and 5
 
-**Expected to work** with the v0.1.0 Linux ARM64 release.
+**Expected to work** with the v0.1.0 Linux ARM64 release, on 64-bit Raspberry Pi OS. The
+project has not run it on Pi hardware.
 
-Tested on GitHub's Ubuntu ARM64 runners and in a Debian bookworm arm64 container; Raspberry
-Pi 4 and 5 with 64-bit Raspberry Pi OS are expected to work and have not been run on Pi
-hardware by the project.
-
-The Debian bookworm container ran the whole acceptance list with a 1,800 MB memory limit, a
-stand-in for a Pi 4 with 2 GB, and passed
+A Debian bookworm arm64 container with a 1,800 MB memory limit, standing in for a 2 GB Pi 4,
+passed the whole acceptance list
 ([run 39375162895](https://github.com/icantcodefyi/sakuralang/actions/runs/39375162895)).
-Peak memory was not measured. A container is not Pi hardware evidence. Use a 64-bit OS
-(`uname -m` should print `aarch64`), not 32-bit Raspberry Pi OS.
+Peak memory was not measured, and a container is not a Pi.
 
-Node's ARM64 build needs `libatomic1`. Raspberry Pi OS ships it; a minimal Debian
-image needs `sudo apt install libatomic1` first.
+Use a 64-bit OS: `uname -m` should print `aarch64`. Node's ARM64 build needs `libatomic1`.
+Raspberry Pi OS ships it; on a minimal Debian image run `sudo apt install libatomic1` first.
 
-Install Node 26 with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-in Bash. Download and inspect its installer, then run it:
+To install Node 26 with [nvm](https://github.com/nvm-sh/nvm#installing-and-updating) in Bash,
+download and read its installer, then run it:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.8/install.sh -o install-nvm.sh
@@ -201,82 +172,56 @@ node --version
 npm --version
 ```
 
-Check that Node prints `v26.x.x`. Then use the Linux ARM64 commands above. Run npm as your normal user with nvm. The Sakura Lang installer
-never installs Node or edits your shell profile.
+Check that Node prints `v26.x.x`, then install with npm as your normal user.
 
-## Release installer
+## Native builds (experimental)
 
-For macOS or Linux:
+`sakura build --target native` compiles a program to an executable,
+`target/sakura/native/main`. The executable needs no Node and no Sakura Lang install to run.
+This is **experimental**: the flag may change or go away in a later release without a
+migration. See [Native](/docs/native).
 
-```bash title="Release installer"
-version=0.1.0
-curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
-less install.sh
-sh install.sh --version "$version"
-export PATH="$HOME/.local/bin:$PATH"
-sakura --version
-```
+Which binaries can do it:
 
-Windows uses [`install.ps1`](#windows-x64).
-The installer selects the host's CPU and ABI, checks the archive against
-`SHA256SUMS`, and installs to `~/.local/bin`. If GitHub CLI (`gh`) is installed,
-attestation verification must also pass. Without `gh`, it reports
-`integrity verified, not attested`. To keep the command available in new shells,
-add the PATH line to your shell profile yourself.
+- The macOS Apple silicon, Linux x64 and Linux arm64 release binaries, from v1.0.0-beta.4.
+  Every channel (installer, npm and Homebrew) installs the driver it needs,
+  `lib/sakura/native/libsakura_native_driver.a`, next to `bin/`. Set `SAKURA_NATIVE_LIB_DIR`
+  to use another directory.
+- On Intel macOS and Windows x64, a compiler built from source with
+  `cargo build --release -p sakura_cli --features native` (the executable is `main.exe` on
+  Windows). Windows executables carry no debugger symbols; defect traces still name Sakura
+  source positions.
+- Other release binaries refuse `--target native` with exit code 2.
 
-macOS binaries from v0.1.0 on are signed with a Developer ID (team `P62B65A837`) and
-notarized by Apple; `0.1.0-alpha.1` was not signed.
-Bare Mach-O executables cannot carry stapled tickets. Installer prefixes must be
-absolute; use `--prefix /absolute/path` to override the default.
+A native build needs a system linker. Sakura Lang does not bundle one:
 
-## Windows x64
+- **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
+- **Linux:** a C compiler on `PATH` as `cc`, for example `sudo apt install gcc` (Debian,
+  Ubuntu) or `sudo dnf install gcc` (Fedora).
+- **Windows (source builds):** MSVC's `link.exe`, from the Visual Studio Build Tools with the
+  "Desktop development with C++" workload. `sakura` finds it in the Visual Studio
+  installation, not on `PATH`.
 
-Target: `x86_64-pc-windows-msvc`. New in v0.1.0 and **Supported** in it, smoke-tested from
-the published channels on GitHub's Windows Server 2025 runner. Use Windows 10 x64 or later.
-The release has a ZIP, the
-`sakuralang-win32-x64-msvc` npm package and the checksum-verifying `install.ps1`, and CI runs
-the compiler suites and JS/WASM parity on hosted Windows runners. With Node 26 and npm
-installed:
+Without a linker, the build stops with [`V8007`](/docs/errors/V8007).
 
-```powershell title="npm"
-npm install --global sakuralang@0.1.0
-sakura --version
-```
+## Report your platform
 
-Or download and inspect the installer in PowerShell, then run it:
+Start with `sakura --version` and [create a project](/docs/quickstart#2-create-a-project). To
+record a **Community-confirmed** platform,
+[file a platform report](https://github.com/icantcodefyi/sakuralang/issues/new) with:
 
-```powershell title="install.ps1"
-Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0/install.ps1" -OutFile install.ps1
-Get-Content install.ps1
-./install.ps1 -Version 0.1.0
-```
+- the device, OS build, exact Sakura Lang version and commit, and `node --version`;
+- `uname -a` (or `winver`), and `/etc/os-release` on Linux;
+- the result of the whole acceptance list: `new cli`, `check`, `test`, `build`, `run`,
+  `run --target wasm`, an MCP initialize handshake, `setup --apply` twice, and the expected
+  refusal to run when Node is absent.
 
-It checks the ZIP against `SHA256SUMS` and installs `sakura.exe` to
-`%LOCALAPPDATA%\Programs\sakuralang\bin`; add that directory to `PATH` yourself.
-A Windows Server runner result does not imply a Windows 11 device run. Windows ARM64
-is not an inventory target. Proof caching on Windows is not implemented.
+A successful install alone is not a confirmation. No device confirmations are recorded yet.
 
-## macOS: Intel
+Benchmark results in `bench/` apply only to the project's reference machine. A platform claim
+says nothing about speed on a Pi or any other machine.
 
-Target: `x86_64-apple-darwin`. New in v0.1.0 and **Supported** in it, smoke-tested from the
-published channels on GitHub's macOS 15 Intel runner. The release has a signed archive, the
-`sakuralang-darwin-x64` npm package and the
-Homebrew formula, and CI runs the parity suites on hosted Intel macOS runners. Use
-`npm install --global sakuralang@0.1.0`, the
-[release installer](#release-installer) with `version=0.1.0`, or the Homebrew tap as
-for Apple silicon. Use macOS 12.0 or later. A Rosetta archive smoke alone cannot confirm
-Intel npm or Homebrew installs.
-
-## Check the installation and report a platform
-
-Start with `sakura --version` and [create a project](/docs/quickstart#create-a-project).
-For **Community-confirmed** evidence, [file a platform report](https://github.com/icantcodefyi/sakuralang/issues/new)
-with the device, OS build, exact Sakura Lang version and commit, `node --version`,
-`uname -a` (or `winver`), and `/etc/os-release` on Linux. Record the outcome of the
-whole acceptance list: `new cli`, `check`, `test`, `build`, `run`,
-`run --target wasm`, an MCP initialize handshake, `setup --apply` twice, and the
-expected refusal to run when Node is absent. A successful install alone is not a
-community confirmation. No device confirmations are recorded on this page yet.
-
-Performance measurements in `bench/` apply only to the project's reference host;
-platform acceptance does not establish performance on a Pi or another machine.
+Details for contributors: the
+[target inventory](https://github.com/icantcodefyi/sakuralang/blob/main/packaging/targets.json)
+and the
+[platform plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md#6-platforms-b-and-c-design-17180-acceptance-17227).

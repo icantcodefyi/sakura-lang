@@ -1,98 +1,101 @@
 ---
 title: Quickstart
-description: Install the Sakura Lang compiler, then check, test and run a first program.
+description: Install Sakura Lang, then create, run and test a first program in about two minutes.
 ---
 
-<Callout type="warn" title="Beta">
-  The latest release, `v1.0.0-beta.4`, is a beta for macOS (Apple silicon and Intel), Linux (x64 and ARM64) and Windows x64: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on the default channels. These docs track main. See [Install](/docs/install) for every platform and [Stability](/docs/stability) for what the beta promises.
-</Callout>
+This page takes you from nothing to a running program. It takes about two minutes.
 
-## Install
+## 1. Install
 
-With [Node 26](https://nodejs.org) installed (`sakura run` and `sakura test` execute the generated JavaScript with `node`):
+You need [Node 26](https://nodejs.org): `sakura run` and `sakura test` run the compiled
+JavaScript with `node`. Then install the compiler with npm:
 
 ```bash
 npm install --global sakuralang@beta
 sakura --version
 ```
 
-```text
-sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)
-```
-
-Homebrew (`brew tap icantcodefyi/sakuralang && brew trust --tap icantcodefyi/sakuralang && brew install sakuralang-beta`) and a checksum-verifying installer are also available; see [Install](/docs/install). The standard library is embedded in the binary, so `sakura` works from any directory.
-
-## Install from source
-
-To follow main between releases, build from source. You need [rustup](https://rustup.rs) and Node 26. The repository pins its Rust toolchain in `compiler/rust-toolchain.toml`, so rustup fetches the right version on first build.
+On macOS or Linux x64 you can use Homebrew instead:
 
 ```bash
-git clone https://github.com/icantcodefyi/sakuralang
-cd sakuralang/compiler
-cargo install --locked --path crates/sakura_cli
-sakura --version
+brew tap icantcodefyi/sakuralang
+brew trust --tap icantcodefyi/sakuralang
+brew install sakuralang-beta
 ```
 
-To try it without installing, run `cargo run -p sakura_cli -- <command>` inside `compiler/`.
+[Install](/docs/install) covers Windows, the installer script, other versions and every
+platform.
 
-## Run an example
-
-`compiler/examples/` holds the design's twelve example programs and eight [cookbook](/docs/cookbook) recipes as projects. Every one runs or tests in CI; none is check-only. From a checkout:
+## 2. Create a project
 
 ```bash
-sakura run compiler/examples/counter
+sakura new cli hello
+cd hello
+```
+
+This makes a `hello` folder with a manifest (`sakura.toml`), your code in `src/main.sak`,
+and an `AGENTS.md` that tells coding agents how to work in the project.
+
+## 3. Run it
+
+```bash
+sakura run
 ```
 
 ```text
-1. milk
-2. eggs
-1. bread
+hello, world
 ```
 
-`counter` is a user-defined effect whose handler keeps state. `sakura test compiler/examples/typed_errors` runs a program that recovers from typed failures with `try`/`catch`. The [examples README](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/examples/README.md) records each project's mode.
+Anything after `--` goes to your program:
 
-## Create a project
-
-Run `sakura new cli hello` to scaffold a project (`lib`, `agent`, and `api` templates also exist), or write the two files below by hand. A project is a `sakura.toml` manifest and a `src/` directory, and one file is one module.
-
-The scaffold also writes `AGENTS.md`, short instructions for coding agents (check the compiler version, read `sakura prompt`, run `check`, `fmt --check` and `test`, never widen a contract to pass), and a `CLAUDE.md` that imports it with `@AGENTS.md`. `sakura init` writes them only when they are absent and never overwrites a file.
-
-```toml title="hello/sakura.toml"
-[package]
-name = "hello"
-version = "0.1.0"
-edition = "2026"
-
-[permissions]
+```bash
+sakura run -- Ada
 ```
 
-`[permissions]` is the ceiling on what the program may do (design §6). This program only prints, so it is empty. `sakura run` enforces startup grants and passes the table as `SAKURA_PERMISSIONS` for host-handler enforcement. Missing required root authority exits with 75.
+```text
+hello, Ada
+```
 
-A program is one package over std. `[dependencies]` is reserved for packages, which arrive in a later minor release; a manifest that declares it, even empty, is refused with [`V8005`](/docs/errors/V8005) before anything runs. Any other table or key the manifest does not define, a value of the wrong type or malformed TOML is [`V8006`](/docs/errors/V8006), reported by `sakura check` at the place in `sakura.toml`. See [sakura.toml](/docs/manifest) for every key.
+## 4. Read the code
+
+Open `src/main.sak`:
 
 ```sakura title="hello/src/main.sak"
-/// Build a greeting for a person.
-fn greet(name: String) -> String { "Hello, {name}" }
+import std/cli.{Cli}
 
-pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
+/// The greeting for `name`.
+pub fn greeting(name: String) -> String { "hello, {name}" }
 
-test "greets by name" { expect_eq(greet("Ada"), "Hello, Ada") }
-
-property "always starts with Hello"(name: String) {
-  expect(String.starts_with(greet(name), "Hello, "))
+pub fn main() -> Unit ! {Cli, Console} {
+  let name = Option.unwrap_or(List.first(Cli.args()), "world")
+  Console.print(greeting(name))
 }
+
+test "greets by name" { expect_eq(greeting("Sakura Lang"), "hello, Sakura Lang") }
 ```
 
-`greet` has no `!`, so it is pure. `main` declares `Console`, the only effect the program performs. This is the canonical layout: `sakura fmt` keeps a short body on its signature's line.
+- `greeting` has no `!` in its signature, so it is **pure**: it only builds a string.
+- `main` ends with `! {Cli, Console}`. These are its **effects**, the things it does besides
+  returning a value. It reads command-line arguments (`Cli`) and prints (`Console`), and
+  nothing else.
+- `List.first` returns an `Option`: `Some(first)` or `None` for an empty list. There is no
+  `null`. `Option.unwrap_or` picks `"world"` when there is no argument.
+- The `test` sits next to the code it tests.
 
-## Check, test and run
+## 5. Test and check
 
-Run these from `hello/`. With no path, each command uses `src/`.
+```bash
+sakura test
+```
 
-<Steps>
-<Step>
+```text
+test greets by name ... ok
 
-### Check
+1 passed, 0 failed, 0 skipped (seed 0)
+```
+
+Tests run with a fixed clock, seeded randomness and captured output, so they give the same
+result every time. `sakura check` type-checks the project without running it:
 
 ```bash
 sakura check
@@ -102,67 +105,34 @@ sakura check
 no problems
 ```
 
-`sakura check` parses, resolves names, checks types and effects, and checks that every `match` is exhaustive. It generates no code, and it accepts typed holes.
+## 6. Break it on purpose
 
-</Step>
-<Step>
-
-### Test
-
-```bash
-sakura test
-```
-
-```text
-test greets by name ... ok
-test always starts with Hello ... ok
-
-2 passed, 0 failed, 0 skipped (seed 0)
-```
-
-`sakura test` runs every `test` and `property` block under deterministic handlers (a fixed clock, a seeded random source, captured console output) with the network denied. `--seed 7` changes the property inputs, `--filter greets` runs matching tests only, and `--json` writes one record per test.
-
-</Step>
-<Step>
-
-### Run
-
-```bash
-sakura run
-```
-
-```text
-Hello, world
-```
-
-`sakura run` checks the program, compiles it to JavaScript under `target/sakura/js/`, and runs `main` with `node`. Arguments after `--` go to the program. The exit code is the program's: `0` for success, `1` when `main` fails with an uncaught typed error, `70` for a defect such as integer overflow, with one JSON `defect` record on stderr.
-
-</Step>
-</Steps>
-
-`sakura fmt` rewrites files in the one canonical format; `sakura fmt --check` changes nothing and exits `1` if a file is not formatted.
-
-## Check it, as an agent would
-
-Suppose `greet` starts printing without declaring it:
+Make `greeting` print, without changing its signature:
 
 ```sakura expect=V3001 title="hello/src/main.sak"
-/// Build a greeting for a person.
-fn greet(name: String) -> String {
+import std/cli.{Cli}
+
+/// The greeting for `name`.
+pub fn greeting(name: String) -> String {
   Console.print("greeting {name}") // [!code highlight]
-  "Hello, {name}"
+  "hello, {name}"
 }
 
-pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
+pub fn main() -> Unit ! {Cli, Console} {
+  let name = Option.unwrap_or(List.first(Cli.args()), "world")
+  Console.print(greeting(name))
+}
 ```
 
+`sakura check` refuses it:
+
 ```text
-error[V3001]: function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)
-  ┌─ src/main.sak:2:4
+error[V3001]: function `greeting` performs `Console`, which its signature does not allow (allowed: `{}`)
+  ┌─ src/main.sak:4:8
   │
-2 │ fn greet(name: String) -> String {
-  │    ^^^^^
-3 │   Console.print("greeting {name}")
+4 │ pub fn greeting(name: String) -> String {
+  │        ^^^^^^^^
+5 │   Console.print("greeting {name}")
   │   -------------------------------- `Console.print` performs `Console` here
   │
   = expected: {}
@@ -174,48 +144,17 @@ error[V3001]: function `greet` performs `Console`, which its signature does not 
 1 error
 ```
 
-`sakura check --json` writes the same error as JSON Lines, one record per line, followed by a `summary` record. The `diagnostic` record, pretty-printed with hashes shortened:
+The signature promised a pure function, and the body broke that promise. You have two honest
+fixes: add `! {Console}` to the signature, so a reviewer sees the change, or remove the print.
+`sakura explain V3001` describes the error with a wrong and a fixed program.
 
-```json
-{
-  "schema_version": "1.0",
-  "kind": "diagnostic",
-  "id": "d:e8f9a0e1d729d3d1",
-  "code": "V3001",
-  "severity": "error",
-  "phase": "effect",
-  "message": "function `greet` performs `Console`, which its signature does not allow (allowed: `{}`)",
-  "snapshot": "sha256:9470da24…",
-  "symbol_id": null,
-  "spans": [
-    { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
-      "start_byte": 38, "end_byte": 43, "role": "primary" },
-    { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
-      "start_byte": 72, "end_byte": 104, "role": "cause",
-      "label": "`Console.print` performs `Console` here" }
-  ],
-  "related_ids": [],
-  "expected": { "render": "{}", "row": { "labels": [], "tail": null } },
-  "actual": { "render": "{Console}", "row": { "labels": [{ "effect": "std::Console", "args": [] }], "tail": null } },
-  "obligation": null,
-  "counterexample": null,
-  "explanation_uri": "sakura://explain/V3001",
-  "fixes": [
-    { "id": "f:e8f9a0e1d729d3d1.0", "title": "Add `Console` to the signature",
-      "applicability": "suggested", "impact": "interface_change",
-      "edits": [{ "span": { "uri": "file:///…/hello/src/main.sak", "content_hash": "sha256:f1ee9f10…",
-                            "start_byte": 67, "end_byte": 67, "role": "primary" },
-                  "replacement": " ! {Console}" }] },
-    { "id": "f:e8f9a0e1d729d3d1.1", "title": "Handle the effect locally with `with`",
-      "applicability": "incomplete", "impact": "local",
-      "edits": [/* wraps the body in `with ?handler { … }` */] }
-  ]
-}
-```
+Agents read the same error as JSON with `sakura check --json`. See
+[Diagnostics](/docs/agents/diagnostics).
 
-Spans are zero-based, half-open UTF-8 byte offsets, and an edit applies only while `content_hash` still matches. The first fix changes the function's interface, so it is `suggested`, never `machine_applicable`: an agent must not widen a signature silently. `sakura explain V3001` prints the rationale with a wrong and a fixed program. See [Diagnostics](/docs/agents/diagnostics) for the format.
+## 7. Ask the compiler what fits
 
-A typed hole is how an agent asks the compiler what fits:
+A **typed hole** is a placeholder, `?name`, for code you have not written yet. `sakura check`
+accepts it and tells you what could go there:
 
 ```sakura holes
 fn unfinished(x: Int) -> Int { ?result }
@@ -225,23 +164,50 @@ fn unfinished(x: Int) -> Int { ?result }
 hole ?result: expected Int, effects {}; locals [x: Int]; candidates [x, Int.abs(?i), Int.clamp(?i, ?lo, ?hi), …]
 ```
 
-`sakura check` accepts holes; `sakura build` and `sakura run` reject them with `V2050`. See [Typed holes](/docs/agents/typed-holes).
+`sakura build` and `sakura run` refuse a program that still has holes. See
+[Typed holes](/docs/agents/typed-holes).
 
-## Commands
+## What is in the project
 
-| Command | Today |
+- **`sakura.toml`** names the package. Its `[permissions]` table lists what the program may
+  reach: files, network hosts and environment variables. It starts empty, because this program
+  only reads its arguments and prints. See [sakura.toml](/docs/manifest).
+- **`src/`** holds the code. One file is one module, and `src/main.sak` holds `main`.
+- **`AGENTS.md`** and **`CLAUDE.md`** give coding agents short instructions: run `check`,
+  `fmt --check` and `test`, and never weaken a contract to make a check pass.
+
+Format your code with `sakura fmt`. It has no options, so every project looks the same.
+
+## Common commands
+
+| Command | What it does |
 | --- | --- |
-| `sakura check [--json] [paths]` | Parse, resolve, type and effect check, exhaustiveness. Holes allowed |
-| `sakura build [paths]` | Check, then generate JavaScript. Holes rejected (`V2050`) |
-| `sakura run [path] [-- args]` | Build and run `main` with `node` |
-| `sakura test [--json] [--seed N] [--filter text] [--update-snapshots]` | Run tests and properties with deterministic handlers |
-| `sakura fmt [--check] [paths]` | Canonical format. There are no options |
-| `sakura explain V3001` | Rationale, causes and repairs for a diagnostic code |
-| `sakura prompt` | Print the language guide for agents ([llms.txt](https://github.com/icantcodefyi/sakuralang/blob/main/docs/llms.txt)) |
-| `sakura verify [--json] [paths]` | Prove contracts and arithmetic with Z3 ([Verify contracts](/docs/agents/verify)) |
+| `sakura new cli NAME` | Create a project (`lib`, `agent` and `api` also exist) |
+| `sakura run [-- ARGS]` | Build and run `main` |
+| `sakura test` | Run every `test` and `property` |
+| `sakura check` | Type-check without running |
+| `sakura fmt` | Format the code |
+| `sakura explain CODE` | Explain an error code |
+| `sakura build --target wasm` | Build for WebAssembly instead of JavaScript |
 
-`build`, `run` and `test` take `--target wasm` to use the WebAssembly backend. Also available: `sakura new`, `sakura init`, `sakura setup`, `sakura fix`, `sakura audit`, `sakura doc`, `sakura check --frozen-specs all [--since rev]`, `sakura lsp`, and `sakura mcp serve`. The [CLI reference](/docs/cli) lists every command, flag and exit code, and [sakura.toml](/docs/manifest) the manifest. There are no package commands: packages arrive after 1.0. See [changes on main](/docs/changes) for differences from the published preview.
+The [CLI reference](/docs/cli) lists every command, flag and exit code.
+
+## Install from source
+
+To follow `main` between releases, build the compiler yourself. You need
+[rustup](https://rustup.rs) and Node 26. rustup fetches the pinned Rust version on the first
+build.
+
+```bash
+git clone https://github.com/icantcodefyi/sakuralang
+cd sakuralang/compiler
+cargo install --locked --path crates/sakura_cli
+sakura --version
+```
+
+From a checkout, `sakura run compiler/examples/counter` runs one of the
+[example projects](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/examples/README.md).
 
 ## Next
 
-[Build and deploy a server](/docs/server) next, or start the [Language Tour](/docs/tour/basics).
+Start the [Language Tour](/docs/tour/basics), or [build and deploy a server](/docs/server).

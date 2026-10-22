@@ -1,104 +1,120 @@
 ---
 title: Why Sakura Lang
-description: The problem with reviewing agent-written code, the thesis that the signature should be the contract, and the principles that follow from it.
+description: Why agent-written code is hard to review, how putting the facts in the signature helps, and how Sakura Lang compares with languages you know.
 ---
+
+AI agents write more and more code. Writing code is no longer the hard part. Trusting it is.
 
 ## The problem
 
-AI agents now write a large share of new code, and that share is growing. The bottleneck has moved from writing code to trusting it.
+Reviewing every line does not scale when an agent writes thousands of lines an hour. Reviewers
+skim. Skimming only works if the important facts are easy to find, and in most languages they
+are not:
 
-The usual answer is code review, but reviewing diffs line by line does not scale when an agent can produce thousands of lines an hour. Reviewers skim. Skimming works only if the important facts about a change are easy to find, and in most languages they are not.
+- **Exceptions.** Any call can throw, and the signature does not say what.
+- **Null.** A value that may be missing looks the same as one that is always there.
+- **Unlimited access.** Any function in any dependency can open a socket, read an environment
+  variable or write a file. Supply-chain attacks rely on this.
+- **Hidden side effects.** A function called `format_price` might call a currency API.
+  Nothing in its signature tells you.
 
-Four properties of mainstream languages make agent-written code risky to accept:
+Agents make these problems worse. To make a test pass, an agent might add a network call to a
+helper, swallow an exception, or paste a request parameter into a SQL string. Each change looks
+small and harmless in a diff.
 
-- **Exceptions.** Any call can throw, and nothing in the signature says what. A reviewer cannot tell which failures are handled without reading every callee.
-- **Null.** A value that may be absent looks the same as one that is always present.
-- **Ambient authority.** Any function in any dependency can open a socket, read an environment variable, or write a file. Supply-chain attacks rely on this.
-- **Hidden IO.** A function named `format_price` might call a currency API. Nothing stops it, and nothing in the signature reveals it.
+## The answer: the signature is the contract
 
-Agents make these problems sharper, not different. An agent will happily add a network call to a helper to make a test pass, catch and ignore an exception to silence an error, or interpolate a request parameter into a SQL string. Each change is small and plausible in a diff.
+In Sakura Lang, a function's signature lists what it takes, what it returns, everything it may
+do, every error it may fail with, and what it promises about its result:
 
-## The thesis
-
-Make the signature the contract, and make the compiler enforce it.
-
-In Sakura Lang, a function signature states what the function takes, what it returns, every effect it may perform, every error it may fail with, and the guarantees it makes about its result:
-
-This is a declaration or context-dependent excerpt, not a standalone program.
+This is a signature only, not a whole program.
 
 ```sakura fragment
 fn signup(email: Email) -> User ! {Users, Clock, Random, Fail<SignupError>}
   ensures result.email == email
 ```
 
-The body cannot perform an effect that is not listed or fail with a tag that is not listed; both are compile errors. The `ensures` clause is checked at runtime on every normal return, in every build mode.
+- `! {Users, Clock, Random, …}` lists the function's **effects**: what it does besides
+  returning a value.
+- `Fail<SignupError>` lists the errors it can fail with.
+- `ensures` is a **contract**: a promise about the result, checked every time the function
+  returns.
 
-This changes what review means. A human reviews the signatures, which are short and change rarely. The compiler checks the bodies, which are long and change constantly. When an agent's change needs a new effect, the signature has to change, and a signature change is exactly the thing a reviewer looks for. Compiler fixes that would widen authority or weaken a contract are never applied automatically.
+If the body does something the signature does not list, the code does not compile. So you
+review the signatures, which are short and rarely change. The compiler checks the bodies, which
+are long and change all the time.
 
-## Why not an existing language
+When an agent's change needs a new effect, the signature has to change, and a changed signature
+is exactly what a reviewer looks for. The compiler never applies a fix by itself if that fix
+would widen access or weaken a contract.
 
-Every language below is excellent at what it was designed for. None was designed for this workflow, and each shapes Sakura Lang in some way. The [prior art](/docs/prior-art) page lists, language by language, what Sakura Lang takes and what it rejects.
+## Compared with languages you know
 
-**TypeScript.** Huge ecosystem, fast feedback, and the language most agents write best today. But exceptions are untyped, any function can perform any IO, `any` and type assertions are one keystroke away, and there are several ways to do almost everything.
+Each of these languages is excellent at what it was built for. None was built for this
+workflow. The [prior art](/docs/prior-art) page goes through each in detail.
 
-**Python.** The most readable mainstream language and a strong fit for scripts and data work. Types are optional and unchecked at runtime, exceptions and IO are invisible in signatures, and dependencies run with full authority at import time.
+| Language | What it does well | What Sakura Lang changes |
+| --- | --- | --- |
+| **TypeScript** | Huge ecosystem; agents write it well. | Exceptions are untyped, any function can do any IO, and `any` is one keystroke away. |
+| **Python** | Readable; great for scripts and data. | Types are optional, and errors and IO are invisible in signatures. |
+| **Rust** | Fast and memory safe, with a strict, helpful compiler. | No lifetimes or borrow checker to satisfy, and IO is tracked in signatures. |
+| **Go** | Small, consistent, one toolchain, one format. | Errors cannot be ignored, there is no nil, and code reaches the network only if its signature says so. |
+| **Effect-TS** | Typed errors and requirements in TypeScript. | The same model, built into the language, so there is no way around it. |
 
-**Rust.** Proves that a language can be fast and memory safe without a garbage collector, and that a strict compiler with good diagnostics changes how people work. The cost is lifetimes and the borrow checker. Agents spend effort satisfying ownership rules unrelated to the task, and IO and panics are not tracked in signatures.
-
-**Go.** Small, consistent, and quick to compile, with one toolchain and a formatter with no options. That simplicity is a direct inspiration. But errors can be discarded, nil remains, effects are untracked, and any package can reach the network.
-
-**Effect-TS.** Brings typed errors and typed requirements to TypeScript, and shows that the model works for real services. It is a library on top of a language that cannot enforce it: plain TypeScript can still throw and still perform IO directly. Sakura Lang's `! {Users, Fail<E>}` is that model with no wrapper type, and it is the only way to write code.
-
-**Koka, Unison, and Roc.** Koka contributed row-typed effects, effect-polymorphic higher-order functions, and Perceus reference counting. Unison contributed domain-named abilities with plain handlers and a compiler that speaks MCP; Sakura Lang keeps ordinary files and Git rather than a codebase database. Roc contributed platform-owned authority and in-place updates behind a value interface. Sakura Lang combines these with contracts, capabilities, `Untrusted`/`Secret` types, and machine-readable tooling, aimed at agents writing code for humans to review.
+Sakura Lang also borrows from research languages: effect rows from Koka, plain handlers from
+Unison, and platform-owned access from Roc. It adds contracts, permission checks and
+machine-readable tooling for agents.
 
 ## Design principles
 
-These follow [design §1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).
+**The signature is the contract.** Every top-level function has a full signature. Only local
+variables have inferred types.
 
-### The signature is the contract
+**One way to do each thing.** One function syntax, one way to handle errors (`try`/`catch`),
+one way to install a handler (`with`), one way to say "maybe missing" (`Option`), one
+formatter. No operator overloading, implicit conversions, macros or inheritance.
 
-Parameter types with refinements, result type, effect row, error union, and `requires`/`ensures`: a reader can review a function from its signature alone. Every top-level function has a full signature; only local bindings are inferred.
+**Leaving something out has one meaning.** A function without `!` is pure. A missing `match`
+case, a missing effect or an unhandled error is a compile error, never a silent default.
 
-### One way
+**Errors are an API.** Every compiler error has a stable code, exact positions and suggested
+fixes that say how big a change they make. See [Diagnostics](/docs/agents/diagnostics).
 
-One function syntax, one call syntax, one recovery construct (`try`/`catch`), one handler syntax (`with`), one absence type (`Option`), one failure protocol (`Fail<E>`), one formatter. No operator overloading, implicit conversions, macros, user-defined operators, or inheritance.
+**The compiler owns memory.** You never write lifetimes or reference counts. In return, values
+cannot be shared and changed at the same time, and files and connections close at the end of a
+scope.
 
-### Omission has one meaning
+**Honest guarantees.** The compiler never says "verified" for code that only compiled. Every
+claim has one of four levels:
 
-A function type without `!` is pure. Missing cases, missing effects, and missing error handling are compile errors, never defaults.
-
-### Diagnostics are an API
-
-Every diagnostic has a stable code, byte spans, structured expected and actual values, causal links, and fixes that declare their impact. See [Diagnostics](/docs/agents/diagnostics).
-
-### Honest guarantees
-
-The compiler never prints "verified" for a program that merely compiled. Every claim about a program has exactly one status:
-
-| Status | Meaning | Established by |
+| Level | Meaning | Where it comes from |
 | --- | --- | --- |
-| `proved` | Holds on all executions under the stated assumptions. | The type and effect checker, and contracts `sakura verify` discharged with Z3. |
-| `runtime_checked` | Violations are detected at the boundary and become a defect. | Contract lowering, checked arithmetic, checked refinements. |
-| `tested` | Held on the executed inputs. | `sakura test`. |
-| `trusted` | Assumed. | FFI, host handlers, `@trust` sites, the toolchain itself. |
+| `proved` | Holds on every run, under the stated assumptions. | The type checker, and contracts that `sakura verify` proved. |
+| `runtime_checked` | A violation is caught when it happens and stops the program. | Contracts, refinement types and checked arithmetic. |
+| `tested` | Held on the inputs the tests tried. | `sakura test`. |
+| `trusted` | Assumed, not checked. | Foreign calls (`@external`), host handlers, `@trust` sites, the toolchain itself. |
 
-The type system proves that every performed effect has a handler, every `Fail` tag is caught or declared, every `match` is exhaustive, no value is null, no index is unchecked, a `Secret` is never shown, and a capability cannot be forged. It does not prove business correctness, termination, or that the specification is the right one.
+The type checker proves that every effect has a handler, every error is handled or declared,
+every `match` covers every case, no value is null, no list index goes unchecked, and a secret
+is never printed. It does not prove that your business logic is right, that a loop ends, or
+that your specification says what you meant.
 
-### Compiler owns memory
+## What the language leaves out for now
 
-No lifetimes, borrow annotations, or `Rc` in user code. The price is a restricted data model (no aliasable mutation, no cycles) and explicit resource scopes.
-
-## Non-goals for v0
-
-- Multi-shot or non-tail-resumptive handlers, `resume`, first-class continuations.
-- An `Async` effect or a sync/async split in source.
-- User-defined traits or interfaces. A fixed set of derived constraints (`Eq`, `Ord`, `Hash`, `Show`, `Schema`) covers v0.
-- Higher-rank types, GADTs, type-level computation.
-- Information-flow control. `Secret<T>` prevents accidental disclosure, not deliberate leakage.
-- Automatic termination proofs.
-- Durable workflows, a distributed runtime, or a UI engine. These are later packages.
-- A tracing GC on native or WASM.
+- Handlers that resume more than once, or first-class continuations.
+- `async`/`await`. Any function may wait; the handler decides.
+- User-defined traits or interfaces. A fixed set (`Eq`, `Ord`, `Hash`, `Show`, `Schema`) is
+  derived for you.
+- Advanced type features: higher-rank types, GADTs, type-level computation.
+- Information-flow control. `Secret<T>` stops accidental leaks, not deliberate ones.
+- Automatic proofs that a loop ends.
+- Durable workflows, a distributed runtime or a UI engine. These are planned as later
+  packages.
+- A tracing garbage collector on WebAssembly or native.
 
 ## Next
 
-Read the [Quickstart](/docs/quickstart) preview, or go straight to the [Language Tour](/docs/tour/basics).
+Try the [Quickstart](/docs/quickstart), or start the [Language Tour](/docs/tour/basics).
+
+Details for contributors: [design §1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)
+states these principles in full.

@@ -1,21 +1,46 @@
 ---
 title: Introduction
-description: Sakura Lang is an agent-first, general-purpose programming language in which the signature is the contract.
+description: Sakura Lang is a programming language for code that AI agents write and people review. Every function says what it can do, and the compiler checks it.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
+Sakura Lang is a programming language for code that AI agents write and people review.
+Every function's signature says what the function can do. The compiler checks that the body
+does nothing more.
+
+```sakura title="src/main.sak"
+fn greet(name: String) -> String { "Hello, {name}" }
+
+pub fn main() -> Unit ! {Console} { Console.print(greet("world")) }
+
+test "greets by name" { expect_eq(greet("Ada"), "Hello, Ada") }
+```
+
+`sakura run` prints `Hello, world`. Here is what each line says:
+
+- `greet` takes a `String` and returns a `String`. It has no `!`, so it is **pure**: it only
+  computes a value. It cannot print, read files or call the network.
+- `main` ends with `! {Console}`. The part after `!` lists the function's **effects**: the
+  things it does besides returning a value. `main` may print to the console, and nothing else.
+- The `test` lives next to the code and runs with `sakura test`.
+
+Ready to try it? [Install](/docs/install) takes one command, and the
+[Quickstart](/docs/quickstart) runs this program.
+
+<Callout type="warn" title="Beta">
+  The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0,
+  so it is not for production. See [Stability](/docs/stability) for what it promises.
 </Callout>
 
-Sakura Lang is the programming language built for agents.
+## Why a signature matters
 
-Most new code is now written by AI agents. Reviewing every line of that code does not scale, and the parts that matter most (what a function touches, how it can fail, what it guarantees) are usually invisible in mainstream languages. Sakura Lang is designed so that those parts are always written down, in one place, and checked by the compiler.
+Agents can write thousands of lines an hour. Nobody can review all of it line by line. In most
+languages, the important facts about a function are hidden in its body: whether it touches the
+network, how it can fail, what it guarantees.
 
-## The core idea
+Sakura Lang puts those facts in the signature. You review the signature, which is short. The
+compiler checks the body, which is long.
 
-**The signature is the contract.** Humans review signatures. The compiler checks that the code does what its signature says.
-
-A Sakura Lang signature states the inputs (with refinements), the output, every effect the function may perform, every way it can fail, and its `requires`/`ensures` clauses. The body cannot do anything the signature does not allow.
+Here is a bigger example: signing up a user.
 
 ```sakura title="src/users.sak"
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
@@ -58,57 +83,67 @@ test "duplicate email fails" {
 }
 ```
 
-Reading only the signature of `signup`, a reviewer learns that it:
+Read only the signature of `signup`, and you know that it:
 
-- accepts only a string that satisfies the `Email` refinement,
-- performs `Users`, `Clock`, and `Random`, and nothing else (no network, no file system, no environment),
-- can fail only with `EmailTaken` or `Banned`,
-- returns a user whose email is the one passed in. This `ensures` clause is checked at runtime on every return.
+- **accepts only a valid email.** `Email` is a **refinement type**: a `String` plus a rule
+  (at most 254 bytes, contains `@`). A value that breaks the rule never gets in.
+- **uses only `Users`, `Clock` and `Random`.** It cannot reach the network, the file system
+  or environment variables. `Users` is an effect this program declares itself.
+- **fails only with `EmailTaken` or `Banned`.** `Fail<SignupError>` lists every expected
+  error. There are no exceptions and no `null`.
+- **returns a user with the same email.** The `ensures` line is a **contract**: a rule
+  about the result, checked every time the function returns.
 
-The test installs an in-memory handler for `Users`. `Clock` and `Random` need no handler in a test, because tests run under deterministic defaults (`Clock.fixed`, `Random.seeded`). No mocking library is involved: these are just different handlers for the same effects.
+The test swaps in `memory_users()`, a **handler**: code that decides what an effect does when
+it runs. In production, a handler could talk to a database. In the test, it keeps a list in
+memory. Tests also get a fixed clock and seeded randomness for free, so no mocking library is
+needed.
 
-## Six pillars
+## What you get
 
-**1. Effects you can see.** Every function type carries an effect row after `!`. Expected failure is the built-in `Fail<E>` effect over a union of `error` tags. There are no exceptions and no null. Defects such as overflow or a violated contract are not effects; they terminate the task. See [Effects](/docs/tour/effects) and [Handlers](/docs/tour/handlers).
+- **Effects you can see.** Everything a function does besides returning a value is listed
+  after `!`. See [Effects](/docs/tour/effects).
+- **Errors as values.** Expected failures are typed, and the compiler makes you handle them.
+  Bugs such as integer overflow stop the program with a clear report. See
+  [Effects](/docs/tour/effects#failure-faile-and-error-unions).
+- **Checked contracts.** `requires`, `ensures` and refinement types are checked at runtime in
+  every build, and `sakura verify` can prove some of them ahead of time. See
+  [Contracts](/docs/tour/contracts).
+- **Limited access.** Under `sakura run`, a program reaches only the files, hosts and
+  environment variables you list in `sakura.toml`. See [Capabilities and security](/docs/tour/capabilities).
+- **No manual memory management.** No lifetimes and no borrow checker. Values never change
+  under you. See [Memory model](/docs/tour/memory).
+- **Tools for agents.** Errors come as JSON with suggested fixes, `?name` placeholders ask the
+  compiler what fits, and the compiler runs as an MCP server. See [For Agents](/docs/agents).
+- **One tool.** The `sakura` command checks, builds, runs, tests, formats and proves. See the
+  [CLI reference](/docs/cli).
 
-**2. Memory without a borrow checker.** Every value has value semantics: no aliasable mutation, no reference cells, no cycles in the safe heap, no lifetimes. The JavaScript backend uses the host GC. The WebAssembly backend inserts reference counting at compile time and has no tracing GC; Perceus-style in-place reuse is planned after 1.0. Speed is a design goal, and no performance claim is made yet. See [Memory model](/docs/tour/memory).
-
-**3. Contracts, always checked.** Refinement types (`where`), `requires`, and `ensures` are checked at runtime in every build. `sakura test --contracts` generates properties for eligible public functions and saves shrunk failures for replay. `sakura verify` asks the Z3 solver to prove individual obligations, and `sakura build` removes only the checks it proved. See [Contracts](/docs/tour/contracts) and [Testing](/docs/tour/testing).
-
-**4. Secure by construction.** Effects are requirements; handlers are authority. The host supplies root handlers only for the std effects `main` declares, limited by `[permissions]` in `sakura.toml`, and code can only narrow that authority. `Untrusted<T>` marks outside data, `Secret<T>` cannot be shown or serialized, and tagged templates such as `sql"..."` never splice raw text. See [Capabilities and security](/docs/tour/capabilities).
-
-**5. Built for agents.** A grammar that fits on one page, one way to do each thing, typed holes (`?name`), JSON Lines diagnostics with byte spans and fixes labelled by impact, specs frozen during agent repair, and a compiler MCP server. See [For Agents](/docs/agents).
-
-**6. Batteries included.** One `sakura` binary for `new`, `check`, `build`, `run`, `test`, `verify`, `fmt`, `fix`, `audit`, `doc`, `setup`, LSP, and MCP (see the [CLI reference](/docs/cli)). The v0 standard library covers HTTP client and server, routing, SQL (SQLite first), JSON with derived schemas, CLI parsing, testing, and typed LLM calls with tools and budgets. See [Standard library](/docs/stdlib).
-
-## Status
-
-- **Design:** [docs/design.md](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) is the authoritative v0 design. Anything it does not specify is not in v0.
-- **Compiler:** a Rust workspace in [compiler/](https://github.com/icantcodefyi/sakuralang/tree/main/compiler). It checks the whole language and runs it on JavaScript (the default) and WebAssembly, which agree on the test corpus. `sakura verify` proves contracts with Z3. Native code generation through Cranelift is experimental; the macOS arm64, Linux x64 and Linux arm64 release binaries carry it from `v1.0.0-beta.4`.
-- **Releases:** `v1.0.0-beta.4` is published on npm (the `beta` tag), Homebrew (`sakuralang-beta`) and GitHub (a prerelease). It is a beta that may have bugs and may change before 1.0.0, not for production; [Stability](/docs/stability) describes what is proposed to become stable from it. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`.
-- **Code on this site** follows the v0 design. The repository examples have executable coverage; planned features are labeled and the roadmap records remaining gates. These docs track main; [changes since 0.1.0](/docs/changes) are in the beta.
-
-The [roadmap](/docs/roadmap) says what is complete, what is experimental and which releases lead to 1.0.
+Programs run on JavaScript (the default) and WebAssembly. Compiling to a native executable is
+[experimental](/docs/native).
 
 ## Where to go next
 
 <Cards>
   <Card title="Quickstart" href="/docs/quickstart">
-    Install the compiler, then check, test and run a first program.
-  </Card>
-  <Card title="Build and deploy a server" href="/docs/server">
-    An HTTP service from `sakura new api` to a container, with its routes tested and its grants enforced.
-  </Card>
-  <Card title="Why Sakura Lang" href="/docs/why-sakura-lang">
-    The problem with agent-written code and the design principles behind Sakura Lang.
+    Install the compiler, then create, test and run a first program.
   </Card>
   <Card title="Language Tour" href="/docs/tour/basics">
-    Ten short pages covering the whole language, from bindings to concurrency.
+    Short pages that build up the language one idea at a time.
+  </Card>
+  <Card title="Build a server" href="/docs/server">
+    An HTTP service from `sakura new api` to a container.
+  </Card>
+  <Card title="Why Sakura Lang" href="/docs/why-sakura-lang">
+    The problem with agent-written code, and how the language answers it.
   </Card>
   <Card title="For Agents" href="/docs/agents">
-    llms.txt, the MCP server, JSON diagnostics, and typed holes.
+    llms.txt, the MCP server, JSON diagnostics and typed holes.
   </Card>
-  <Card title="Prior art" href="/docs/prior-art">
-    What Sakura Lang takes from other languages, and what it rejects.
+  <Card title="FAQ" href="/docs/faq">
+    Short answers to common questions.
   </Card>
 </Cards>
+
+Details for contributors: the [language design](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md),
+the [compiler](https://github.com/icantcodefyi/sakuralang/tree/main/compiler), the
+[roadmap](/docs/roadmap) and [changes since 0.1.0](/docs/changes).

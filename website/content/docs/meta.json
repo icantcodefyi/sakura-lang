@@ -3,11 +3,12 @@
   "pages": [
     "---Start---",
     "index",
-    "why-sakura-lang",
     "install",
     "quickstart",
-    "server",
+    "why-sakura-lang",
     "editors",
+    "server",
+    "faq",
     "---Language Tour---",
     "...tour",
     "---For Agents---",
@@ -24,7 +25,6 @@
     "stability",
     "roadmap",
     "changes",
-    "prior-art",
-    "faq"
+    "prior-art"
   ]
 }

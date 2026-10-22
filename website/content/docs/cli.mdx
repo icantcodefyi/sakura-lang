@@ -3,10 +3,19 @@ title: CLI reference
 description: Every sakura command, its flags, exit codes and environment variables, with each surface's stability level.
 ---
 
-One `sakura` binary is the whole toolchain. This page lists what the current compiler
-accepts; `sakura <command> --help` prints the same flags for the binary you have. Commands
-that take `[PATHS]` accept files or directories and, with none, use `src/` when it exists,
-otherwise the current directory.
+One `sakura` command is the whole toolchain. These are the ones you use every day:
+
+```bash
+sakura new cli hello   # create a project
+sakura run             # build and run main
+sakura test            # run the tests
+sakura check           # type-check without running
+sakura fmt             # format the code
+```
+
+This page lists everything the current compiler accepts. `sakura <command> --help` prints the
+same flags for the binary you have. Commands that take `[PATHS]` accept files or folders. With
+none, they use `src/` when it exists, otherwise the current folder.
 
 ## Commands
 
@@ -30,7 +39,7 @@ otherwise the current directory.
 | `sakura mcp serve` | The compiler as an MCP server on stdin/stdout. See [MCP server](/docs/agents/mcp). |
 
 There is no package command: packages are not part of 1.0, and a manifest that declares
-`[dependencies]` is refused with [`V8005`](/docs/errors/V8005). There is no `--release` flag;
+`[dependencies]` is refused with [`V8005`](/docs/errors/V8005). There is no `--release` flag:
 contract checks are removed only where `sakura verify` proved them.
 
 ## Flags
@@ -112,7 +121,7 @@ absent.
 
 `sakura run` exits with the program's own status, so a program can return other values.
 `sakura test` exits with its test runner's `0`, `2`, `3` or `70` unchanged, after the runner's
-own message on stderr (a WebAssembly module built for another ABI is `V8003` and `2`); any
+own message on stderr (a WebAssembly module built for another runtime version is `V8003` and `2`); any
 other runner status is `70`, reported as a crash of the runner.
 
 ## Environment
