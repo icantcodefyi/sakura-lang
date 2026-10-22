@@ -30,5 +30,9 @@ pnpm-lock.yaml text eol=lf linguist-generated=true
 # Snapshots are byte-exact data (design §17.196 (1)).
 *.snap -text
 
+# GitHub Linguist: Sakura Lang sources. Inert until Linguist lists the language
+# (docs/linguist-submission.md); then it pins `.sak` here even if another language claims it.
+*.sak linguist-language=Sakura-Lang
+
 # Line-ending fixtures keep their bytes (design §17.180 (4b)).
 compiler/tests/semantics/line_endings_crlf.sak -text whitespace=cr-at-eol
