@@ -5,6 +5,12 @@ import Link from "next/link";
 import { CountUp } from "@/components/count-up";
 import {
   callouts,
+  count as countOf,
+  factor,
+  hostedFacts,
+  nativeHeadline,
+  nativePrograms,
+  nativeSummary,
   runFacts,
   summary,
   tables,
@@ -80,10 +86,11 @@ const inlineCode = (s: string) =>
     .map((part, i) => (part.startsWith("`") ? <code key={i}>{part.slice(1, -1)}</code> : part));
 
 /** The counted run: commit, date, machine, engines and flags, as a flat definition list. */
-export function BenchRun() {
+export function BenchRun({ hosted = false }: { hosted?: boolean }) {
+  const facts = hosted ? hostedFacts : runFacts;
   return (
     <dl className="not-prose my-6 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 border-y border-border py-4 text-[14px] leading-relaxed">
-      {runFacts.map(([label, value, href]) => (
+      {facts.map(([label, value, href]) => (
         <div key={label} className="contents">
           <dt className="font-mono text-[12.5px] text-muted-foreground">{label}</dt>
           <dd className="min-w-0">
@@ -363,5 +370,89 @@ export function BenchSummary() {
         </li>
       ))}
     </ul>
+  );
+}
+
+// ---------- Native ----------
+
+/** Sakura native against each language in one plain line: typical, closest and furthest. */
+export function NativeSummary() {
+  return (
+    <ul className="not-prose my-6 grid border-t border-border">
+      {nativeSummary.map((r) => (
+        <li
+          key={r.lang}
+          className="grid gap-x-6 gap-y-1 border-b border-border py-3.5 text-[15px] leading-relaxed sm:grid-cols-[7rem_9rem_1fr]"
+        >
+          <span className="font-semibold">vs {r.name}</span>
+          <span className="tabular-nums">
+            <span className="font-semibold">{factor(r.typical)}</span>{" "}
+            <span className="text-muted-foreground">the work</span>
+          </span>
+          <span className="text-muted-foreground">
+            {r.ahead.length ? "Ahead" : "Closest"}: {inlineCode(nativeHeadline(r.closest, r.name))}.
+            Furthest: {factor(r.furthest.ratio)} on <code>{r.furthest.program}</code>.
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One flat bar chart per program: instructions per call, Sakura first, on a linear scale from
+ * zero within the program, so a gap looks as large as it is. */
+export function NativeChart() {
+  return (
+    <div className="not-prose my-8 grid gap-x-10 border-t border-border md:grid-cols-2">
+      {nativePrograms.map((p) => {
+        const top = Math.max(p.sakura, ...p.rows.map((r) => r.instructions));
+        const bars = [
+          { name: "Sakura", value: p.sakura, note: "" },
+          ...p.rows.map((r) => ({
+            name: r.name,
+            value: r.instructions,
+            note: r.ratio < 1 ? `${factor(1 / r.ratio)} more` : `${factor(r.ratio)} less`,
+          })),
+        ];
+        return (
+          <figure
+            key={p.program}
+            id={`native-chart-${p.program.replaceAll("_", "-")}`}
+            className="scroll-mt-24 border-b border-border py-5"
+          >
+            <figcaption className="flex items-baseline gap-2 text-[14px]">
+              <code className="font-mono font-semibold text-foreground">{p.program}</code>
+              <span className="min-w-0 truncate text-muted-foreground">{p.about}</span>
+              <span className="ml-auto font-mono text-[12px] whitespace-nowrap text-faint tabular-nums">
+                n = {p.n.toLocaleString("en-US")}
+              </span>
+            </figcaption>
+            <div className="mt-3 grid grid-cols-[3.5rem_1fr_auto_4.75rem] items-center gap-x-3 gap-y-1.5 font-mono text-[12px]">
+              {bars.map((b, i) => (
+                <span key={b.name} className="contents">
+                  <span className={i === 0 ? "text-foreground" : "text-muted-foreground"}>
+                    {b.name}
+                  </span>
+                  <span aria-hidden className="h-1.5">
+                    <span
+                      className={`block h-full min-w-0.5 rounded-full ${i === 0 ? "bg-[var(--chart-node)]" : "bg-muted-foreground/35"}`}
+                      style={{ width: `${(b.value / top) * 100}%` }}
+                    />
+                  </span>
+                  <span className="text-right text-foreground tabular-nums">
+                    {countOf(b.value)}
+                  </span>
+                  <span className="text-right text-faint tabular-nums">{b.note}</span>
+                </span>
+              ))}
+            </div>
+          </figure>
+        );
+      })}
+      <p className="pt-3 text-[13px] text-faint md:col-span-2">
+        Instructions per call at each program&apos;s largest size. Bars start at zero, one scale per
+        program. The right column is how much work the other language does compared with Sakura.
+      </p>
+    </div>
   );
 }

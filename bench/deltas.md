@@ -346,3 +346,54 @@ read `ok` on all 99 Node cells (`compare` flags only advisory Bun rows;
 at the advisory `5941d656` run; `rbtree`'s counts are within 0.1% of that run's. Prep `fib` and
 `shapes` compare `ok` on every Node cell (largest move −1.2%). Source:
 `bench/results/2026-10-22-447dce0c-*`.
+
+## Every program in C, Rust, Go, OCaml and Koka (`49c49e2a`, 2026-10-22; counted, not blessed)
+
+The owner's word of 2026-10-22: native benchmarks are the main ones. `7bd0291a` adds a C port of
+all 22 programs and OCaml (17) and Koka (11) ports of the programs that had none, so Sakura's
+`--target native` executable is now counted beside five languages on every program.
+`bench run --suite native --lane matched --instructions` at
+`49c49e2aec9494d867c0ba599b4e5f8ef171a4c3` (`main`) in a clean `../sakura-native-counted`, host
+`d88970189598`, tree clean, every oracle and checksum green on all 609 cells; Apple clang 21.0.0,
+Rust 1.99.1, Go 1.27.2, OCaml 5.5.1, Koka 3.2.9; host load up to 68.7 (other agents),
+informational for counts (§17.264). Sources: `results/2026-10-22-49c49e2a-native-ports.{json,md}`
+and `-envelope-m5.{json,md}`.
+
+**Not blessed.** The first native baseline is beta.5's (`447dce0c`, above) and it already
+includes `--suite native`; a run between releases is evidence (docs/release.md §2). The new ports
+join the blessed baseline at the next release's preparation commit, whose counted native run
+builds every port. Until then the website shows the blessed Sakura and Rust/Go/OCaml/Koka cells
+and takes only the cells the baseline lacks (C, and the new OCaml and Koka ports) from this run,
+marked as such. That is sound because nothing moved between the two: every one of the 87 Sakura
+cells reads within ±0.23% of the blessed count (no §17.177 window has landed in between), and the
+282 port cells both files have within −2.7% to +4.2% (Go's concurrent collector; the rest within
+±1.3%). Spread: a median 0.04–0.09% per language except Go (0.28%, 29 of 87 cells over 1%); no C
+cell over 1%.
+
+**Sakura native ÷ each language**, instructions per call at the largest size, the geometric mean
+over the fifteen families (`handled` once), closest and furthest program of all 22:
+
+| Against | Typical | Closest | Furthest |
+|---|---:|---|---|
+| C | 81.6× | `binary_trees` 1.93× | `tokenizer` 29,614× |
+| Rust (overflow checks) | 27.4× | `tail_clique` 1.76× | `handled_reentry` 348× |
+| Go | 15.5× | `tail_clique` 1.13× | `handled_reentry` 210× |
+| OCaml | 9.7× | `handled_d16` **0.52×** (also `d4` 1.62×) | `tokenizer` 3,352× |
+| Koka | 5.0× | `map_set` **0.61×**, `tail_clique` **0.73×** | `tokenizer` 93.7× |
+
+Read with the ports' own shapes, each named in its header comment: clang folds C `countdown`'s
+sum loop to a closed form (2,109×) and the contracts loops nearly so (574×, 364×); the C, OCaml
+and Koka `tokenizer` ports append to one buffer while the Rust and Go ports copy the string per
+word, so the native runtime's per-call UTF-8 check (row M's carry above) shows against them at
+full size; OCaml 5's effect handlers allocate a continuation per perform, so native Sakura does
+less work than OCaml on `handled_d16`.
+
+**M5 envelope** (`bench envelope` on the one file): reads cleanly with the new variants; `miss`
+on 124 of 132 gating cells, met 8 (`map_set` against Koka), the beta.5 reading unchanged. C has no
+§17.109 ceiling and the new OCaml and Koka ports of numeric and text programs add no gating row,
+so the envelope's rows are those of beta.5. Every miss stays carried under §17.152 (2) with the
+cause row M names above; this run adds no new cause.
+
+Both this run and the beta.5 baseline predate `f6be3c1d` (`text()` checks UTF-8 once per builtin
+call), so their native `tokenizer` and `json_validate` cells, and every ratio against them, are the
+superlinear ones; the website says so, and the next preparation commit's counted run reads the fix.

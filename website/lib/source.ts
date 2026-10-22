@@ -6,6 +6,8 @@ import { site } from "@/lib/site";
 import { diagramMarkdown } from "@/components/docs-diagrams";
 import {
   chartMarkdown,
+  hostedFacts,
+  runFacts,
   runMarkdown,
   summaryMarkdown,
   tableMarkdown,
@@ -34,6 +36,8 @@ const docs = defineDocs({
           "BenchSummary",
           "BenchTable",
           "BenchWins",
+          "NativeChart",
+          "NativeSummary",
           // docs diagrams (components/docs-diagrams.tsx), printed as Markdown by diagramMarkdown
           "AgentLoop",
           "AuthorityFlow",
@@ -73,9 +77,12 @@ const markdownFor = {
   Steps: ({ children }: { children: string }) => children.trim(),
   Step: ({ children }: { children: string }) => children.trim(),
   BenchChart: chartMarkdown,
-  BenchRun: runMarkdown,
+  BenchRun: ({ attributes }: { attributes: Record<string, unknown> }) =>
+    runMarkdown(attributes.hosted ? hostedFacts : runFacts),
   BenchSummary: summaryMarkdown,
   BenchWins: winsMarkdown,
+  NativeChart: () => tableMarkdown(tables.native),
+  NativeSummary: () => tableMarkdown(tables.nativeSummary),
   BenchTable: ({ attributes }: { attributes: Record<string, unknown> }) =>
     tableMarkdown(tables[attributes.table as TableName]),
   ...diagramMarkdown,

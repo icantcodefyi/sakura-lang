@@ -1,26 +1,77 @@
 ---
 title: Benchmarks
-description: How fast Sakura Lang is today, in plain numbers. Where it beats hand-written JavaScript and TypeScript's checker, where it is behind, why, and how it is measured.
+description: How fast Sakura Lang's native code is against C, Rust, Go, OCaml and Koka, in plain counted numbers, where it is close, where it is far behind, and how it is measured. Then the JavaScript and WebAssembly builds.
 ---
 
 How fast is Sakura Lang today? The short answer:
 
 <BenchSummary />
 
-Every number on this page counts **work**: the CPU instructions a program runs. Seconds change
-from one run to the next, but a count comes out the same each time, so small changes are easy to
-see. Fewer instructions usually means faster, though not always.
-[How we measure](#how-we-measure) has the details. All numbers come straight from the measurement
-files in the repository. None is typed in by hand.
+## Native code against C, Rust, Go, OCaml and Koka
 
-## The highlights
+[`sakura build --target native`](/docs/native) turns a program into a machine-code executable.
+Here it runs the same 22 programs as hand-written C, Rust, Go, OCaml and Koka, with the same
+algorithm in the same order and every program's answer checked. Each number is the **work** a
+program does for one call: the CPU instructions it runs, counted on one machine.
+[How we measure](#how-we-measure) has the details.
+
+<NativeSummary />
+
+Native Sakura is young, and on most programs it is far behind. It is closest on recursion, trees
+and maps, and furthest on loops over lists and arrays, on effect handlers and on text. The
+reasons are [below](#why-native-sakura-is-fast-and-what-still-holds-it-back).
+
+### Program by program
+
+<NativeChart />
+
+### Time on a GitHub runner
+
+The same comparison in milliseconds, from a GitHub-hosted Mac that anyone can rerun with the
+`Benchmarks` workflow (mode `native`). Time is noisier than counts, so each cell shows its spread.
+
+<BenchRun hosted />
+
+<BenchTable table="nativeTime" />
+
+### Why native Sakura is fast, and what still holds it back
+
+- **Cranelift machine code.** The native backend compiles straight to machine code with
+  Cranelift, the code generator Wasmtime uses. There is no interpreter or JIT warm-up.
+- **Memory reused in place.** Sakura counts references for you. When nothing else holds a value,
+  an update rewrites it where it is (Perceus reuse), so a loop that rebuilds a list or tree can
+  allocate nothing.
+- **Borrowing instead of copying.** A function that only reads its argument borrows it, and the
+  call does no reference-counting work.
+- **Unboxed arithmetic in typed code.** An `Int` or `Float` in a typed local or a handler's
+  state is a plain machine number; `nbody`'s inner loop allocates no boxes at all. A number inside
+  a `List` or generic code is still a boxed word.
+- **No garbage-collector pauses.** Memory is freed the moment its last reference goes, so there is
+  no collector to stop the program.
+- **What holds it back today.** A `List` is a persistent tree, so `sieve`, `spectral_norm` and
+  `nbody` read and write through it where C indexes an array. Every effect operation pays for
+  a handler dispatch, where the C, Rust and Go versions make a plain function call (the `handled`
+  programs). `deltablue`'s persistent maps copy
+  where the other languages mutate. And the runtime re-checks a string's UTF-8 on every text
+  call, so `tokenizer` and `json_validate` grow faster than their input.
+
+### Every count
+
+<BenchTable table="native" />
+
+## JavaScript and WebAssembly
+
+The default build is JavaScript, and `--target wasm` builds WebAssembly. These sections compare
+those builds with the same programs written by hand in JavaScript.
+
+### The highlights
 
 Each figure compares Sakura with something you already know. They are found by a fixed rule, not
 picked: if a new measurement loses one, it drops off this page. Each one links to its row below.
 
 <BenchWins />
 
-## Why it's fast
+### Why the JavaScript build is fast
 
 - **Compiled ahead of time.** `sakura build` turns your program into plain JavaScript or
   WebAssembly. With [`--target native`](/docs/native) (experimental) it builds an executable
@@ -45,7 +96,7 @@ picked: if a new measurement loses one, it drops off this page. Each one links t
 - **A checker built for the loop.** The compiler is written in Rust and caches its analysis of
   the standard library, so a check of a small file starts mostly done.
 
-## Against hand-written JavaScript
+### Against hand-written JavaScript
 
 Each program is written twice: in Sakura, and by hand in JavaScript, with the same algorithm in
 the same order. Both run on the same engine, Node or Bun. The chart shows how much work Sakura
@@ -58,21 +109,21 @@ program, and one for the typical program.
 
 Bun rows are [advisory](#what-advisory-means): they are reported, but they block nothing.
 
-### Programs where Sakura does less work
+#### Programs where Sakura does less work
 
 Every program that runs fewer instructions than its hand-written version at its largest size.
 Each win comes from that program's shape and says nothing about other programs.
 
 <BenchTable table="winsJs" />
 
-### Every program
+#### Every program
 
 Each program at its largest input size `n`. `K`, `M` and `G` mean thousands, millions and
 billions of instructions per call.
 
 <BenchTable table="js" />
 
-### WebAssembly
+#### WebAssembly
 
 The same programs compiled with `--target wasm`, run by Node and by Wasmtime, against the
 hand-written JavaScript on Node. On work, WebAssembly is further behind than the JavaScript
@@ -80,7 +131,7 @@ build.
 
 <BenchTable table="wasm" />
 
-### Memory
+#### Memory
 
 On memory, WebAssembly is ahead: it keeps data in one block of memory rather than in many
 JavaScript objects. This table lists every program whose peak memory is at least 10% below the
@@ -110,25 +161,14 @@ have a tighter target too. The p95 is the time that 19 of 20 runs beat.
 
 <BenchTable table="compile" />
 
-## Against Rust, Go, OCaml and Koka
+## WebAssembly against native languages
 
-Sakura is far from these languages today. The design sets goals for Sakura's WebAssembly build
-against each of them. Number crunching is compared with Rust and Go, allocation-heavy programs
-with OCaml and Koka, effect handlers with Koka, and text processing with Rust. Most of these goals
-are missed by a wide margin. They are reported as information and gate no release.
+The design also sets goals for Sakura's **WebAssembly** build against the native languages:
+number crunching against Rust and Go, allocation-heavy programs against OCaml and Koka, effect
+handlers against Koka, and text processing against Rust. Most are missed by a wide margin. They
+are reported as information and gate no release.
 
 <BenchTable table="envelope" />
-
-Native code is where this comparison will be made again. Its run-time numbers are counted but not
-blessed yet, and they come in the next release. Until then this page shows none, and Sakura Lang
-makes no native speed claim. [Native code](/docs/native) has its compile times.
-
-### The other languages' numbers
-
-The same programs in Rust (with overflow checks, to match Sakura), Go, OCaml and Koka, counted in
-the same run. A dash means the program has no version in that language.
-
-<BenchTable table="native" />
 
 ## How we measure
 

@@ -22,6 +22,7 @@ type Cell = {
   process_instructions?: number[];
   process_counters?: { one: { rss_bytes: number } }[];
   median_ms: number;
+  process_medians_ms?: number[];
   p95_ms?: number;
   budget_ms?: number | null;
   target_ms?: number | null;
@@ -57,10 +58,21 @@ const short = js.meta.commit.slice(0, 8);
 // The evidence files of the blessed commit: bench/results/<date>-<commit>-<suite>.json.
 const evidence = <T>(suite: string) =>
   read<T>("results", `${js.meta.started.slice(0, 10)}-${short}-${suite}.json`);
-const native = evidence<Run>("native");
+const native = read<Run>("baselines", "native", `${HOST}.json`);
+if (native.meta.commit !== js.meta.commit) throw new Error("the js and native baselines differ");
+// Ports counted after the bless, on the same host and toolchains: C, and OCaml and Koka ports of
+// the programs that had none. A port's count does not depend on Sakura's compiler, so its cells
+// stand beside the blessed Sakura cells until the next bless takes them in (docs/release.md §2).
+const NATIVE_PORTS = "2026-10-22-49c49e2a-native-ports.json";
+const nativePorts = read<Run>("results", NATIVE_PORTS);
+if (nativePorts.meta.host.id !== HOST) throw new Error("the native ports were counted elsewhere");
+// Wall time of the same programs on a GitHub-hosted runner (bench.yml, mode native): the time
+// anyone can reproduce. Its run id is in the file name.
+const HOSTED = "TEMP-hosted-1-native.json";
+const hosted = read<Run>("results", HOSTED);
 const compile = evidence<Run>("compile");
 const envelope = evidence<Envelope>("envelope");
-for (const run of [js, wasm, native, compile])
+for (const run of [js, wasm, native, nativePorts, hosted, compile])
   if (run.results.some((c) => !c.checksum_ok)) throw new Error("a counted cell failed its oracle");
 
 // ---------- Formatting ----------
@@ -71,12 +83,16 @@ export function count(n: number) {
   return `${(n / d).toPrecision(3)}${u ? ` ${u}` : ""}`;
 }
 export const times = (r: number) => `${r.toFixed(2)}×`;
+/** A native ratio: `1.84×`, `27×` (two places only where they matter). */
+export const factor = (r: number) =>
+  r >= 10 ? `${Math.round(r).toLocaleString("en-US")}×` : times(r);
 const percent = (r: number) => `${(r * 100).toFixed(2)}%`;
 const median = (xs: number[]) => {
   const s = xs.toSorted((a, b) => a - b);
   const m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
+const day = (iso: string) => iso.slice(0, 10);
 const grouped = (n: number) => n.toLocaleString("en-US");
 
 // ---------- Lookups ----------
@@ -187,27 +203,6 @@ function wasmTable(): Table {
     summary: absent.length
       ? `${absent.join(", ")} has no Wasmtime cell: it needs JSON decoding, which only the Node host implements.`
       : undefined,
-  };
-}
-
-const LANGUAGES = [
-  ["rust", "Rust"],
-  ["go", "Go"],
-  ["ocaml", "OCaml"],
-  ["koka", "Koka"],
-  ["koka-noreuse", "Koka, no reuse"],
-] as const;
-
-function nativeTable(): Table {
-  return {
-    head: ["Program", "n", ...LANGUAGES.map(([, name]) => name)],
-    align: ["l", "r", ...LANGUAGES.map(() => "r" as const)],
-    code: [0],
-    rows: largest(native).map(([p, n]) => [
-      p,
-      grouped(n),
-      ...LANGUAGES.map(([lang]) => cellOr(get(nativeCells, p, lang, "native", n))),
-    ]),
   };
 }
 
@@ -758,7 +753,195 @@ const nodeWins = jsWins.filter((w) => w.engine === "node");
 const wasmMemory = memoryWins.filter((w) => w.backend === "wasm");
 const check = tsCallout()[0];
 const build = compileWins.find((w) => w.case.startsWith("build") && !targetMissed(w));
+// ---------- Native ----------
+// Sakura's `--target native` executable beside the same programs in C, Rust, Go, OCaml and
+// Koka, counted in one run on the reference Mac (Rust with overflow checks, as Sakura has them).
+
+export const NATIVE_LANGUAGES = [
+  ["c", "C"],
+  ["rust", "Rust"],
+  ["go", "Go"],
+  ["ocaml", "OCaml"],
+  ["koka", "Koka"],
+] as const;
+type Language = (typeof NATIVE_LANGUAGES)[number][0];
+const portCells = index(nativePorts);
+/** A port's cell: the blessed one, else the one counted after the bless. */
+const port = (program: string, lang: string, size: number) =>
+  get(nativeCells, program, lang, "native", size) ?? get(portCells, program, lang, "native", size);
+const sinceBless = (program: string, lang: string, size: number) =>
+  !get(nativeCells, program, lang, "native", size) &&
+  !!get(portCells, program, lang, "native", size);
+
+export type NativeRow = { lang: string; name: string; instructions: number; ratio: number };
+export type NativeProgram = {
+  program: string;
+  about: string;
+  n: number;
+  sakura: number;
+  rows: NativeRow[];
+};
+/** Every program at its largest size: Sakura's count, then each language's and Sakura ÷ it. */
+export const nativePrograms: NativeProgram[] = largest(native).map(([program, n]) => {
+  const sakura = get(nativeCells, program, "sakura", "native", n)!.instructions;
+  return {
+    program,
+    about: about(program),
+    n,
+    sakura,
+    rows: NATIVE_LANGUAGES.flatMap(([lang, name]) => {
+      const c = port(program, lang, n);
+      return c
+        ? [{ lang, name, instructions: c.instructions, ratio: sakura / c.instructions }]
+        : [];
+    }),
+  };
+});
+
+const geomean = (xs: number[]) => Math.exp(xs.reduce((a, x) => a + Math.log(x), 0) / xs.length);
+/** One program per family (`handled` at depth 1), as the JS targets, so no family counts six times. */
+const FAMILIES = new Set(CEILINGS.map(([p]) => p));
+
+export type NativeSummaryRow = {
+  lang: Language;
+  name: string;
+  /** Families compared, and the geometric mean of Sakura ÷ the language over them. */
+  families: number;
+  typical: number;
+  closest: { program: string; ratio: number };
+  furthest: { program: string; ratio: number };
+  /** Programs (of all) where Sakura runs fewer instructions. */
+  ahead: string[];
+};
+export const nativeSummary: NativeSummaryRow[] = NATIVE_LANGUAGES.map(([lang, name]) => {
+  const all = nativePrograms.flatMap((p) =>
+    p.rows.filter((r) => r.lang === lang).map((r) => ({ program: p.program, ratio: r.ratio })),
+  );
+  const sorted = all.toSorted((a, b) => a.ratio - b.ratio);
+  const families = all.filter((r) => FAMILIES.has(r.program));
+  return {
+    lang,
+    name,
+    families: families.length,
+    typical: geomean(families.map((r) => r.ratio)),
+    closest: sorted[0],
+    furthest: sorted[sorted.length - 1],
+    ahead: sorted.filter((r) => r.ratio < 1).map((r) => r.program),
+  };
+}).filter((r) => r.families > 0);
+
+/** `1.64× less work than Koka on map_set`, `within 1.84× of Rust on binary_trees`. */
+export const nativeHeadline = (r: NativeSummaryRow["closest"], name: string) =>
+  r.ratio < 1 / 1.05
+    ? `${factor(1 / r.ratio)} less work than ${name} on \`${r.program}\``
+    : r.ratio <= 1.05
+      ? `about even with ${name} on \`${r.program}\``
+      : `within ${factor(r.ratio)} of ${name} on \`${r.program}\``;
+
+function nativeTable(): Table {
+  return {
+    head: ["Program", "n", "Sakura", ...NATIVE_LANGUAGES.map(([, name]) => name), "Koka, no reuse"],
+    align: ["l", "r", "r", ...NATIVE_LANGUAGES.map(() => "r" as const), "r"],
+    code: [0],
+    ids: nativePrograms.map((p) => `native-${p.program.replaceAll("_", "-")}`),
+    rows: nativePrograms.map(({ program: p, n, sakura }) => [
+      p,
+      grouped(n),
+      count(sakura),
+      ...[...NATIVE_LANGUAGES.map(([lang]) => lang), "koka-noreuse"].map((lang) => {
+        const c = port(p, lang, n);
+        return c ? `${count(c.instructions)}${sinceBless(p, lang, n) ? "*" : ""}` : DASH;
+      }),
+    ]),
+    summary: `Instructions per call at the largest size. A dash means the program has no version in that language. ${
+      nativePorts.results.some((c) => sinceBless(c.program, c.variant, c.size))
+        ? `* counted on ${day(nativePorts.meta.started)} at \`${nativePorts.meta.commit.slice(0, 8)}\` on the same machine, after the baseline was blessed; these ports join the baseline at the next release.`
+        : ""
+    }`,
+  };
+}
+
+function nativeSummaryTable(): Table {
+  return {
+    head: ["Against", "typical", "closest", "furthest", "Sakura ahead"],
+    align: ["l", "r", "l", "l", "r"],
+    rows: nativeSummary.map((r) => [
+      r.name,
+      factor(r.typical),
+      `${factor(r.closest.ratio)} on ${r.closest.program}`,
+      `${factor(r.furthest.ratio)} on ${r.furthest.program}`,
+      grouped(r.ahead.length),
+    ]),
+    summary:
+      "Sakura's instructions per call over the other language's, at each program's largest size. Typical is the geometric mean over the program families (one handled program, not six); 2× means Sakura does twice the work.",
+  };
+}
+
+// ---------- Native wall time, on a GitHub-hosted runner ----------
+
+const hostedCells = index(hosted);
+const spreadOf = (c: Cell) => {
+  const xs = c.process_medians_ms ?? [];
+  return xs.length ? (Math.max(...xs) - Math.min(...xs)) / median(xs) : 0;
+};
+const msWithSpread = (c?: Cell) =>
+  c?.median_ms == null ? DASH : `${ms(c.median_ms)} ±${Math.round((spreadOf(c) * 100) / 2)}%`;
+export const hostedRun = {
+  id: HOSTED.match(/hosted-(\d+)/)![1],
+  url: `${site.github}/actions/runs/${HOSTED.match(/hosted-(\d+)/)![1]}`,
+  commit: hosted.meta.commit.slice(0, 8),
+  commitUrl: `${site.github}/commit/${hosted.meta.commit}`,
+  date: day(hosted.meta.started),
+  cpu: hosted.meta.host.cpu,
+  os: hosted.meta.host.os,
+  processes: hosted.meta.flags.processes,
+  engines: hosted.meta.engines,
+};
+
+export const hostedTypical = NATIVE_LANGUAGES.map(([lang, name]) => {
+  const ratios = largest(hosted).flatMap(([p, n]) => {
+    const s = get(hostedCells, p, "sakura", "native", n);
+    const o = get(hostedCells, p, lang, "native", n);
+    return FAMILIES.has(p) && s?.median_ms && o?.median_ms ? [s.median_ms / o.median_ms] : [];
+  });
+  return { name, families: ratios.length, typical: ratios.length ? geomean(ratios) : undefined };
+}).filter((r) => r.typical !== undefined);
+
+export const hostedFacts: [label: string, value: string, href?: string][] = [
+  ["Workflow run", hostedRun.id, hostedRun.url],
+  ["Commit", hostedRun.commit, hostedRun.commitUrl],
+  ["Measured", hostedRun.date],
+  ["Machine", `GitHub-hosted macos-latest, ${hostedRun.cpu}, ${hostedRun.os}`],
+  [
+    "Toolchains",
+    `Apple clang ${hostedRun.engines.c}, Rust ${hostedRun.engines.rustc}, Go ${hostedRun.engines.go}, OCaml ${hostedRun.engines.ocaml}, Koka ${hostedRun.engines.koka}`,
+  ],
+  ["Processes", `${hostedRun.processes} fresh processes per cell, the median reported`],
+];
+
+function nativeTimeTable(): Table {
+  return {
+    head: ["Program", "n", "Sakura", ...NATIVE_LANGUAGES.map(([, name]) => name)],
+    align: ["l", "r", "r", ...NATIVE_LANGUAGES.map(() => "r" as const)],
+    code: [0],
+    rows: largest(hosted).map(([p, n]) => [
+      p,
+      grouped(n),
+      msWithSpread(get(hostedCells, p, "sakura", "native", n)),
+      ...NATIVE_LANGUAGES.map(([lang]) => msWithSpread(get(hostedCells, p, lang, "native", n))),
+    ]),
+    summary: `Milliseconds per call at the largest size: the median of ${hosted.meta.flags.processes} fresh processes, ± half their range. Typical (geometric mean over the families), Sakura's time over: ${hostedTypical.map((r) => `${r.name} ${factor(r.typical!)}`).join(", ")}. Measured on a GitHub-hosted ${hosted.meta.host.cpu} runner, which other jobs may share, so expect a few percent of noise.`,
+  };
+}
+
+const bestNative = nativeSummary
+  .map((r) => ({ ...r.closest, name: r.name }))
+  .toSorted((a, b) => a.ratio - b.ratio)[0];
 export const summary: [lead: string, text: string][] = [
+  [
+    "Native code is young.",
+    `For the typical program, native Sakura does ${nativeSummary.map((r) => `${factor(r.typical)} the work of ${r.name}`).join(", ")}. Its best result: ${nativeHeadline(bestNative, bestNative.name)}.`,
+  ],
   [
     "Checking and building are fast.",
     [
@@ -771,16 +954,12 @@ export const summary: [lead: string, text: string][] = [
       .concat("."),
   ],
   [
-    "Running code is mixed.",
-    `${nodeWins.length} of ${largest(js).length} programs do less work than the same program written by hand in JavaScript${nodeWins.length ? `, up to ${times(1 / nodeWins[0].ratio)} less` : ""}. The typical program does ${times(targetMedian.node)} the work.`,
+    "Against hand-written JavaScript, running code is mixed.",
+    `${nodeWins.length} of ${largest(js).length} programs do less work than the same program written by hand in JavaScript${nodeWins.length ? `, up to ${factor(1 / nodeWins[0].ratio)} less` : ""}. The typical program does ${factor(targetMedian.node)} the work.`,
   ],
   [
     wasmMemory.length ? "WebAssembly saves memory." : "Memory is no lower yet.",
-    `${wasmMemory.length} programs built to WebAssembly use at least 10% less peak memory than hand-written JavaScript${wasmMemory.length ? `, up to ${times(wasmMemory[0].hand / wasmMemory[0].sakura)} less` : ""}.`,
-  ],
-  [
-    "Native code is experimental.",
-    "Its run-time numbers are counted but not blessed yet; they come in the next release.",
+    `${wasmMemory.length} programs built to WebAssembly use at least 10% less peak memory than hand-written JavaScript${wasmMemory.length ? `, up to ${factor(wasmMemory[0].hand / wasmMemory[0].sakura)} less` : ""}.`,
   ],
 ];
 
@@ -792,6 +971,8 @@ export const tables = {
   js: jsTable(),
   wasm: wasmTable(),
   native: nativeTable(),
+  nativeSummary: nativeSummaryTable(),
+  nativeTime: nativeTimeTable(),
   compile: compileTable(),
   targets: targetsTable(),
   spread: spreadTable(),
@@ -808,7 +989,6 @@ export const compileMs = (program: string) => {
 
 // ---------- The run ----------
 
-const day = (iso: string) => iso.slice(0, 10);
 export const run = {
   commit: js.meta.commit,
   short,
@@ -833,6 +1013,7 @@ const engineList = () => {
     `Go ${e.go}`,
     `OCaml ${e.ocaml}`,
     `Koka ${e.koka}`,
+    `Apple clang ${nativePorts.meta.engines.c}`,
   ].join(", ");
 };
 
@@ -844,6 +1025,17 @@ export const runFacts: [label: string, value: string, href?: string][] = [
   ["Engines", engineList()],
   ["Node flags", run.nodeFlags],
   ["Processes", `${run.processes} pairs per cell, the median reported`],
+  [
+    "Native baseline",
+    `baselines/native/${HOST}.json`,
+    `${site.github}/blob/main/bench/baselines/native/${HOST}.json`,
+  ],
+  [
+    "Ports since the bless",
+    `results/${NATIVE_PORTS}`,
+    `${site.github}/blob/main/bench/results/${NATIVE_PORTS}`,
+  ],
+  ["Hosted wall time", `results/${HOSTED}`, `${site.github}/blob/main/bench/results/${HOSTED}`],
 ];
 
 // ---------- Markdown, for the .md and llms routes ----------
@@ -861,8 +1053,8 @@ export function tableMarkdown(t: Table) {
   return [lines.join("\n"), t.summary].filter(Boolean).join("\n\n");
 }
 
-export const runMarkdown = () =>
-  runFacts
+export const runMarkdown = (facts = runFacts) =>
+  facts
     .map(
       ([label, value, href]) =>
         `- **${label}:** ${href ? `[\`${value}\`](${href})` : label === "Node flags" ? `\`${value}\`` : value}`,
