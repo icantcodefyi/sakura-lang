@@ -143,3 +143,13 @@ root module's only `pub fn`.
 | 8 `--target native` is in the release binaries | No | the round and `dogfood.yml` test on js and wasm only; nothing changes for those, by the item |
 
 Predicted diff: **none required**; possibly one `W8001` warning in a test, which needs no edit.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
+warnings); `sakura fmt --check` clean; `sakura test` 24/24 on js and 24/24 on `--target
+wasm`. Native was not run (item 8; outside the round).
+
+**No hunk needed.** The prediction allowed one possible `W8001` in a test; none was reported, so
+the test's `hundred` (a `List.map` result) is not warned about, as the entry's "a call result
+is never warned about" reads. Migration-list gaps: none.

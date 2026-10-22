@@ -185,3 +185,12 @@ shows: of the 2,139 `path_conditions` per profile, 13 now name a guard (for exam
 | (verify) | No | nothing in the section changes `verify`; predicted: beta.3's counts |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
+warnings); `sakura fmt --check` clean; `sakura test` 28/28 on js and 28/28 on `--target
+wasm`. `verify` as on beta.3: exit 0 on both profiles, 95
+obligations, 94 proved, 1 `unsupported` (`main requires Cli.exit`), kernel 45/45 proved. Native was not run (item 8; outside the round).
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

@@ -176,3 +176,14 @@ test` 32/32 on js and 32/32 on `--target wasm`. A js build also writes `__entrie
 | Fixed: `Fs.host()`, `Test.fixtures()` and cassettes under Node 26.12.1 | No edit | a host fix; this round's Node is 26.12.0 |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
+warnings); `sakura fmt --check` clean; `sakura test` 32/32 on js and 32/32 on `--target
+wasm`. `./integration.sh` with beta.4 first on `PATH`: "all
+integration checks passed" (the ticket survives a restart; the 404/405/400/409/200 matrix;
+the four missing-grant runs refused with 75, 75, 1 and 1), so item 4's lowercase served headers
+do not reach the program. Native was not run (item 8; outside the round).
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

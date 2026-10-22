@@ -190,3 +190,11 @@ root module's only `pub fn`.
 | Fixed: `Fs.host()`, `Test.fixtures()` and cassettes under Node 26.12.1 | No edit | a host fix; this round's Node is 26.12.0 |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
+warnings); `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on `--target
+wasm`. Native was not run (item 8; outside the round).
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.
