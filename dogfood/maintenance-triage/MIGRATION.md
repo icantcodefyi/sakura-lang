@@ -198,3 +198,30 @@ warnings); `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on `-
 wasm`. Native was not run (item 8; outside the round).
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
+
+## v1.0.0-beta.4 → v1.0.0-beta.5
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.5]` as tagged (`git show v1.0.0-beta.5:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.4", items 1–3 ("Nothing is breaking"), and the Added, Changed,
+  Security and Fixed entries, read against the program as of `v1.0.0-beta.5` (`447dce0c`), the
+  beta.4 round's result (`dogfood/` unchanged since `v1.0.0-beta.3`).
+- Compiler: the published `sakuralang@1.0.0-beta.5` from npm in a scratch prefix.
+- Not blind: `dogfood.yml` had passed on beta.5 (run 39815265106) before this was written, and
+  the author had already run beta.5's `sakura check --json` on the six programs (0 warnings
+  each).
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 `sakura fmt` keeps an external type's `where` on the next line | No | the program declares no external type (`type P` with no `=`); `fmt --check` stays clean |
+| 2 the benchmark counters move for a `match` on a tuple literal | No | the program reads no `stats()`; "no program's output changes" |
+| 3 the Intel macOS release binary carries `--target native` | No | the round tests js and wasm only |
+| Changed: borrowed variants bounded per call component | No | no output or counter change, by the entry |
+| Security: `Task.scope`/`Task.deterministic` released a value twice when the heap ran out | No | a fix on an out-of-memory path; no source change |
+| Fixed: the runtimes release everything on more defect paths | No | no source change |
+| (provenance) `src/main.sak` header `Upgraded to:` line | Yes, not a migration | the line names beta.1; after this round it names beta.5 |
+
+Predicted diff: **none required**; the header's provenance line.
