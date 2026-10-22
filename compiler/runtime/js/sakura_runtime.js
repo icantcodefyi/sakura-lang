@@ -3795,8 +3795,13 @@ function permissionsOf(raw) {
   return { fs: { read: list(t.fs?.read), write: list(t.fs?.write) }, net: list(t.net), env: list(t.env) };
 }
 
-/** The working directory, limited to the manifest's `fs.read`/`fs.write` directories. */
+/**
+ * The working directory, limited to the manifest's `fs.read`/`fs.write` directories. With no host
+ * process (a browser, the website playground) it is one memory directory, empty at start.
+ */
+let memoryCwd = null;
 export function fs_root() {
+  if (proc === undefined) return (memoryCwd ??= fs_memory_root(EMPTY_LIST));
   const root = realpath(proc.cwd());
   const p = granted();
   const abs = (dirs) => (dirs ?? []).map((d) => nodePath().resolve(root, d));

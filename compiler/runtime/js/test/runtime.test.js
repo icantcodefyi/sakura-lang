@@ -911,6 +911,22 @@ test("a memory Dir answers like a host directory (design §17.119)", () => {
   assert.deepEqual(rt.fs_read(tree, "out/logs"), rt.Err("is a directory"));
 });
 
+test("without a host process (the playground), fs_root is one memory directory", async () => {
+  const saved = globalThis.process;
+  globalThis.process = undefined;
+  let fresh;
+  try {
+    // A second instance of the module, loaded while `process` is unset.
+    fresh = await import(`../sakura_runtime.js?browser`);
+  } finally {
+    globalThis.process = saved;
+  }
+  const root = fresh.fs_root();
+  assert.notEqual(fresh.Dir.store(root), null);
+  assert.deepEqual(fresh.fs_write(root, "a.txt", new TextEncoder().encode("a")), fresh.Ok(undefined));
+  assert.equal(new TextDecoder().decode(fresh.fs_read(fresh.fs_root(), "a.txt").fields[0]), "a");
+});
+
 test("memory with_file writes through on every chunk and keeps them when the body fails", () => {
   const [READ, WRITE, APPEND] = [{ tag: 0 }, { tag: 1 }, { tag: 2 }];
   const bytes = (s) => rt.string_to_bytes(s);

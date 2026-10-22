@@ -546,7 +546,8 @@ empty directory, which `Fs.memory_tree` passes); `Fs.memory` is
 proper prefix of a key a directory, `fs_subdir` shares the store, a write needs an existing
 parent directory (`not found` otherwise), reading a directory is `is a directory`. No grants
 apply. Host-path users (`http_recording_open`, `sql_sqlite`) get `this directory has no host
-access`.
+access`. Without a host process (`globalThis.process` unset: a browser, the website playground)
+`fs_root()` is one memory directory for the run, empty at start, so `Fs.host()` works in memory.
 `Untrusted<T>` is `$rt.Untrusted { v }`, shown as `Untrusted.of(…)`.
 
 **Open files.** `file_open(dir, path, mode)` (same path rules; `Read` needs `fs.read`, `Write`
