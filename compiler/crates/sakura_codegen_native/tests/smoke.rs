@@ -88,3 +88,40 @@ fn a_second_driver_build_leaves_the_link_line_in_place() {
     assert!(!first.0.is_empty(), "the driver's link line is empty");
     assert_eq!(first, second, "the driver's link line was rewritten");
 }
+
+/// Under `CARGO_TERM_COLOR=always` (GitHub's Rust cache sets it) the driver's link line stays
+/// plain: cargo's colour ended the `native-static-libs` note in an ANSI reset, which the link kept
+/// as part of the last library (`library 'm\x1b[0m' not found`, as the bench harness met in
+/// 8ad07545). The variable is set on a child run of this binary, not on this process.
+#[cfg(feature = "native")]
+#[test]
+fn the_driver_link_line_has_no_colour_under_forced_colour() {
+    let output = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "driver_link_line_under_the_callers_colour",
+            "--ignored",
+        ])
+        .env("CARGO_TERM_COLOR", "always")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+}
+
+#[cfg(feature = "native")]
+#[test]
+#[ignore = "run by the_driver_link_line_has_no_colour_under_forced_colour"]
+fn driver_link_line_under_the_callers_colour() {
+    let workspace = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let target = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+    let dir = sakura_codegen_native::build_driver(&workspace, &target).unwrap();
+    let libs = std::fs::read_to_string(dir.join(sakura_codegen_native::DRIVER_LIBS)).unwrap();
+    assert!(
+        !libs.contains('\x1b'),
+        "colour codes in the link line: {libs:?}"
+    );
+}

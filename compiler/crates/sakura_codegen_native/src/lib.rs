@@ -565,9 +565,18 @@ pub fn build_driver(workspace: &Path, target: &Path) -> Result<PathBuf, String> 
         features = format!("{features},{extra}");
     }
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    // `--color never`: under `CARGO_TERM_COLOR=always` the note ends in an ANSI reset, which
+    // would become part of the last library.
     let output = Command::new(cargo)
         .current_dir(workspace)
-        .args(["rustc", "-p", "sakura_native_driver", "--features"])
+        .args([
+            "rustc",
+            "--color",
+            "never",
+            "-p",
+            "sakura_native_driver",
+            "--features",
+        ])
         .arg(features)
         .args([
             "--lib",
