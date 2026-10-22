@@ -2676,6 +2676,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sakura_playground"
+version = "1.0.0-beta.5"
+dependencies = [
+ "sakura_analysis",
+ "sakura_diagnostics",
+ "serde_json",
+]
+
+[[package]]
 name = "sakura_rt"
 version = "1.0.0-beta.5"
 dependencies = [

@@ -1,0 +1,26 @@
+[package]
+name = "sakura_playground"
+description = "The browser playground's compiler: check and JS code generation behind a C ABI for wasm32."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sakura_analysis.workspace = true
+sakura_diagnostics.workspace = true
+serde_json.workspace = true
+
+# Not `workspace = true`: the four `#[unsafe(no_mangle)]` exports are the module's ABI, and the
+# workspace forbids unsafe code. Nothing here dereferences a pointer.
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
