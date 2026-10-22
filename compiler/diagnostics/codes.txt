@@ -72,6 +72,7 @@ V3010 active invalid_operation_row
 V3011 active handler_clause_mismatch
 V3012 active with_non_handler
 V3020 active test_unhandled_effect
+V3030 active effect_ceiling_exceeded
 V4001 active non_exhaustive_match
 V4002 active unreachable_arm
 V4003 active or_pattern_bindings
@@ -84,6 +85,7 @@ V6001 active capability_construction
 V6002 active scoped_value_escape
 V6003 active resource_escape
 V6010 active non_std_effect_in_main
+V6020 active dependency_acquires_authority
 V7001 active invalid_snapshot_name
 V8001 active missing_entry_point
 V8002 active reserved_package_name
@@ -93,6 +95,10 @@ V8005 active dependencies_not_supported
 V8006 active manifest_invalid
 V8007 active native_linker_missing
 V8020 active spec_frozen
+V8030 active dependency_invalid
+V8031 active lockfile_invalid
+V8032 active dependency_effects_exceeded
+V8034 active package_missing
 V9001 active internal_error
 V9002 active phase_unavailable
 W1002 active shadowed_import

@@ -1,0 +1,11 @@
+// The `stamp` package: labels with the time from the caller's `Clock`. Its ceiling,
+// `effects = ["Clock"]` in sakura.toml, bounds what its public functions may require.
+
+/// Milliseconds since the Unix epoch, by the caller's clock.
+pub fn millis() -> Int ! {Clock} { Instant.to_unix_millis(Clock.now()) }
+
+/// `label` with the time in front: `[1500] started`.
+pub fn stamped(label: String) -> String ! {Clock} { "[{millis()}] {label}" }
+
+// The consumer's `sakura test` does not run this: a dependency's tests are its own.
+test "the test clock stands at zero" { expect_eq(stamped("x"), "[0] x") }

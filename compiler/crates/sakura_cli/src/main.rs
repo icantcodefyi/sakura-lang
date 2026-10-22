@@ -14,6 +14,7 @@ use sakura_diagnostics::{
 };
 
 mod audit;
+mod deps;
 mod doc;
 mod fix;
 mod manifest;
@@ -228,6 +229,12 @@ enum Command {
         json: bool,
         paths: Vec<PathBuf>,
     },
+    /// The packages of the build (experimental, RFC 0003), read from `sakura.lock` and the
+    /// manifests; nothing is resolved or fetched.
+    Deps {
+        #[command(subcommand)]
+        action: DepsAction,
+    },
     /// Offline documentation and type-pattern search.
     Doc {
         #[arg(long)]
@@ -279,6 +286,23 @@ enum Command {
     /// Language server on stdin/stdout: diagnostics, hover, go to definition, completion,
     /// formatting and quick fixes. The workspace is the client's first workspace folder.
     Lsp,
+}
+
+#[derive(Subcommand)]
+enum DepsAction {
+    /// The build's packages as a tree from the root package: version, source, ceiling, trust.
+    Tree {
+        #[arg(long)]
+        json: bool,
+        paths: Vec<PathBuf>,
+    },
+    /// Per package: its declared ceiling (`[package] effects`), whether it may acquire
+    /// authority, and each place it does (`host()` calls and `@external` bindings).
+    Capabilities {
+        #[arg(long)]
+        json: bool,
+        paths: Vec<PathBuf>,
+    },
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -485,6 +509,10 @@ fn cli_main() -> ExitCode {
             | Command::Verify { json: true, .. }
             | Command::Audit { json: true, .. }
             | Command::Doc { json: true, .. }
+            | Command::Deps {
+                action: DepsAction::Tree { json: true, .. }
+                    | DepsAction::Capabilities { json: true, .. }
+            }
     );
     // A compiler bug must still produce a diagnostic (and valid JSON Lines), never a bare panic.
     std::panic::catch_unwind(move || dispatch(cli.command)).unwrap_or_else(|panic| {
@@ -695,6 +723,10 @@ fn dispatch(command: Command) -> ExitCode {
         ),
         Command::Fmt { check, paths } => fmt(check, &paths),
         Command::Audit { json, paths } => audit::audit(json, &paths),
+        Command::Deps { action } => match action {
+            DepsAction::Tree { json, paths } => deps::deps(false, json, &paths),
+            DepsAction::Capabilities { json, paths } => deps::deps(true, json, &paths),
+        },
         Command::Doc {
             json,
             search,
@@ -749,13 +781,17 @@ fn usage_error(message: impl std::fmt::Display) -> ExitCode {
     ExitCode::from(EXIT_USAGE)
 }
 
-/// Reads `paths` (default: `src/` if present, else `.`) into a snapshot.
+/// Reads `paths` (default: `src/` if present, else `.`) into a snapshot, first writing
+/// `sakura.lock` for a project whose dependencies are all `path` dependencies and that has no
+/// lock yet (plan P1's stand-in for `sakura sync`, [`disk::lock_path_dependencies`]).
 fn load(paths: &[PathBuf]) -> Result<Snapshot, String> {
-    if paths.is_empty() {
-        disk::load(&disk::default_roots(Path::new(".")))
+    let roots = if paths.is_empty() {
+        disk::default_roots(Path::new("."))
     } else {
-        disk::load(paths)
-    }
+        paths.to_vec()
+    };
+    disk::lock_path_dependencies(&roots)?;
+    disk::load(&roots)
 }
 
 fn check(json: bool, frozen: Option<&str>, since: &str, paths: &[PathBuf]) -> ExitCode {
@@ -978,12 +1014,8 @@ fn run(
     }
     // The runtime scopes its root handlers by `SAKURA_PERMISSIONS` (runtime/js/ABI.md §7), with
     // paths relative to the package root, which is therefore the working directory.
-    let root = a
-        .snapshot
-        .files()
-        .iter()
-        .find(|f| disk::is_manifest(&f.uri))
-        .and_then(|f| disk::uri_path(&f.uri))
+    let root = sakura_analysis::root_manifest(&a.snapshot)
+        .and_then(|f| disk::uri_path(&a.snapshot.file(f).uri))
         .and_then(|p| p.parent().map(Path::to_path_buf));
     let mut node = if target == "wasm" {
         wasm::command(&dir)

@@ -1,0 +1,3 @@
+// expect: V8031
+// RFC 0003 §3.2, §4.1: a version floor above the locked version is `V8031` at the manifest line.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

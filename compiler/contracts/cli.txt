@@ -18,6 +18,13 @@ arg sakura check help short=Some('h') long=Some("help") aliases=None short_alias
 arg sakura check json short=None long=Some("json") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
 arg sakura check paths short=None long=None aliases=None short_aliases=None action=Append arity=Some(1..) required=false hidden=false values=[] defaults=[]
 arg sakura check since short=None long=Some("since") aliases=None short_aliases=None action=Set arity=Some(1) required=false hidden=false values=[] defaults=["HEAD"]
+arg sakura deps capabilities help short=Some('h') long=Some("help") aliases=None short_aliases=None action=Help arity=Some(0) required=false hidden=false values=[] defaults=[]
+arg sakura deps capabilities json short=None long=Some("json") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
+arg sakura deps capabilities paths short=None long=None aliases=None short_aliases=None action=Append arity=Some(1..) required=false hidden=false values=[] defaults=[]
+arg sakura deps help short=Some('h') long=Some("help") aliases=None short_aliases=None action=Help arity=Some(0) required=false hidden=false values=[] defaults=[]
+arg sakura deps tree help short=Some('h') long=Some("help") aliases=None short_aliases=None action=Help arity=Some(0) required=false hidden=false values=[] defaults=[]
+arg sakura deps tree json short=None long=Some("json") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
+arg sakura deps tree paths short=None long=None aliases=None short_aliases=None action=Append arity=Some(1..) required=false hidden=false values=[] defaults=[]
 arg sakura doc help short=Some('h') long=Some("help") aliases=None short_aliases=None action=Help arity=Some(0) required=false hidden=false values=[] defaults=[]
 arg sakura doc json short=None long=Some("json") aliases=None short_aliases=None action=SetTrue arity=Some(0) required=false hidden=false values=[] defaults=["false"]
 arg sakura doc search short=None long=Some("search") aliases=None short_aliases=None action=Set arity=Some(1) required=false hidden=false values=[] defaults=[]
@@ -78,6 +85,13 @@ arg sakura version short=Some('V') long=Some("version") aliases=None short_alias
 command sakura audit hidden=false
 command sakura build hidden=false
 command sakura check hidden=false
+command sakura deps capabilities hidden=false
+command sakura deps help capabilities hidden=false
+command sakura deps help help hidden=false
+command sakura deps help hidden=false
+command sakura deps help tree hidden=false
+command sakura deps hidden=false
+command sakura deps tree hidden=false
 command sakura doc hidden=false
 command sakura explain hidden=false
 command sakura fix hidden=false
@@ -85,6 +99,9 @@ command sakura fmt hidden=false
 command sakura help audit hidden=false
 command sakura help build hidden=false
 command sakura help check hidden=false
+command sakura help deps capabilities hidden=false
+command sakura help deps hidden=false
+command sakura help deps tree hidden=false
 command sakura help doc hidden=false
 command sakura help explain hidden=false
 command sakura help fix hidden=false

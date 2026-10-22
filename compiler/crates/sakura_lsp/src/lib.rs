@@ -278,10 +278,8 @@ impl Server {
         // or of the first open document when there is no manifest.
         let mut open: Vec<&String> = self.open.keys().collect();
         open.sort();
-        let fallback = s
-            .file_ids()
-            .find(|&f| disk::is_manifest(&s.file(f).uri))
-            .or_else(|| open.iter().find_map(|u| s.file_id(u)));
+        let fallback =
+            sakura_analysis::root_manifest(s).or_else(|| open.iter().find_map(|u| s.file_id(u)));
         for d in &a.diagnostics() {
             let span = match (d.spans.first(), fallback) {
                 (Some(span), _) => span.clone(),

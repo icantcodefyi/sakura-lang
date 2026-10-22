@@ -1,0 +1,9 @@
+import fmt/pad
+
+/// `name` padded to 8 columns, then the time.
+pub fn at(name: String) -> String ! {Clock} {
+  "{pad.right(name, 8)}{Instant.to_unix_millis(Clock.now())}"
+}
+
+// Not run by `app`'s `sakura test`: a failing test here proves it.
+test "a dependency's tests are its own" { expect_eq(1, 2) }

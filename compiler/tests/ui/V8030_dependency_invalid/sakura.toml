@@ -1,0 +1,12 @@
+[package]
+name = "billing"
+
+[dependencies]
+Http = "1.0.0"
+std = "1.0.0"
+json = "*"
+util = { version = "1.0.0", path = "../util" }
+abs = { path = "/opt/abs" }
+scraper = { git = "https://github.com/acme/scraper" }
+parser = { git = "https://github.com/acme/parser", rev = "main" }
+lexer = { git = "https://github.com/acme/lexer", branch = "main" }

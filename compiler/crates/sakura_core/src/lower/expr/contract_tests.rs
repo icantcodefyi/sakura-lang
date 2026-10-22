@@ -39,7 +39,9 @@ impl Lower<'_> {
 
     pub(crate) fn user_items(&self) -> Vec<hir::DefId> {
         let p = self.p;
-        let user = |m: &hir::Module| p.packages[m.package.0 as usize].name != "std";
+        // The root package's: a dependency's contracts are its own tests (RFC 0003 §2.3).
+        let root = p.packages.iter().position(|pk| pk.name != "std");
+        let user = |m: &hir::Module| Some(m.package.0 as usize) == root;
         (p.modules.iter().enumerate())
             .filter(|(_, m)| user(m))
             .flat_map(|(mi, m)| {

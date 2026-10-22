@@ -1,0 +1,3 @@
+/// A JS binding: `V6020` in a dependency that is not trusted.
+@external(js, "./clock.js", "now")
+pub fn now() -> Int

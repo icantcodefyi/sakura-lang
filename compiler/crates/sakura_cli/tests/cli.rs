@@ -931,22 +931,25 @@ fn build_manifest_lists_trusted_base_and_obligations() {
     assert!(!broken.join("target/sakura/manifest.json").exists());
 }
 
-/// Design §17.232: `[dependencies]` in any form is `V8005` at the key, before anything runs; the
-/// lock file is untouched. Malformed TOML is `V8006` alone (§17.239), and no table is no error.
+/// RFC 0003 §1.4 (was design §17.232): an empty `[dependencies]` table, in any spelling, is a
+/// program over std and runs; a form this release does not support (`git`) is `V8005` at the
+/// entry, before anything runs. Neither reads nor writes the lock. Malformed TOML is `V8006`
+/// alone (§17.239), and no table is no error.
 #[test]
-fn dependencies_are_v8005_before_anything_runs() {
+fn dependencies_are_v8005_only_in_an_unsupported_form() {
+    let git = "[package]\nname = \"app\"\n[dependencies]\nscraper = { git = \"https://x/s\", rev = \"9f2c0b7e1a4d3c6b8e5f7a9d0c1b2e3f4a5b6c7d\" }\n";
     let cases = [
-        ("table", "[package]\nname = \"app\"\n[dependencies]\n", true),
+        (
+            "table",
+            "[package]\nname = \"app\"\n[dependencies]\n",
+            false,
+        ),
         (
             "inline",
             "dependencies = {}\n[package]\nname = \"app\"\n",
-            true,
+            false,
         ),
-        (
-            "dotted",
-            "dependencies.http = \"1\"\n[package]\nname = \"app\"\n",
-            true,
-        ),
+        ("git", git, true),
         (
             "malformed",
             "[package]\nname = \"app\n[dependencies]\n",
@@ -973,14 +976,10 @@ fn dependencies_are_v8005_before_anything_runs() {
             assert_eq!(out.code, Some(1), "{case}: {}", out.stdout);
             let span = &v8005.expect(&out.stdout)["spans"][0];
             let (start, end) = (
-                span["start_byte"].as_u64().unwrap(),
-                span["end_byte"].as_u64().unwrap(),
+                span["start_byte"].as_u64().unwrap() as usize,
+                span["end_byte"].as_u64().unwrap() as usize,
             );
-            assert_eq!(
-                &manifest[start as usize..end as usize],
-                "dependencies",
-                "{case}"
-            );
+            assert!(manifest[start..end].starts_with("scraper = {"), "{case}");
             assert!(
                 run.stderr.contains("error[V8005]"),
                 "{case}: {}",
@@ -996,7 +995,10 @@ fn dependencies_are_v8005_before_anything_runs() {
                 assert!(run.stderr.contains("error[V8006]"), "{}", run.stderr);
                 assert!(!run.stderr.contains("V8005"), "{}", run.stderr);
             }
-            "absent" => assert_eq!(run.stdout, "ran\n", "{}", run.stderr),
+            "table" | "inline" | "absent" => {
+                assert_eq!(out.code, Some(0), "{case}: {}", out.stdout);
+                assert_eq!(run.stdout, "ran\n", "{case}: {}", run.stderr);
+            }
             _ => {}
         }
         let lock = std::fs::read_to_string(dir.join("sakura.lock")).unwrap();

@@ -1,0 +1,18 @@
+// milestone: M3
+// mode: run
+// covers: ImportDecl WithExpr TestDecl
+
+// RFC 0003 (experimental): a root package and a `path` dependency, `stamp`, whose ceiling is
+// `Clock`. The root accepts that ceiling on its `[dependencies]` line, and `stamp` performs
+// `Clock` through the handler `main` installs; it never acquires the host clock itself.
+
+import stamp/clock
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.fixed(Instant.from_unix_millis(1500)) {
+    Console.print(clock.stamped("started"))
+    Console.print(clock.stamped("done"))
+  }
+}
+
+test "the dependency runs under the test clock" { expect_eq(clock.stamped("t"), "[0] t") }

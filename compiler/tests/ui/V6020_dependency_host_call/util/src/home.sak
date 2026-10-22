@@ -1,0 +1,10 @@
+import std/env.{Env}
+
+/// Reads `HOME` with authority the dependency takes for itself: `V6020`.
+pub fn home() -> Option<String> { with Env.host() { Env.get("HOME") } }
+
+/// The same through the caller's `Env` handler: no authority of its own.
+pub fn home_of_caller() -> Option<String> ! {Env} { Env.get("HOME") }
+
+// Tests are not compiled by consumers, so a `host()` here is not the gate's business.
+test "home reads the variable" { expect_eq(with Env.host() { Env.get("NO_SUCH_VAR") }, None) }

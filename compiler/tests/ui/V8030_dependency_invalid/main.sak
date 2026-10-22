@@ -1,0 +1,6 @@
+// expect: V8030 V8030 V8030 V8030 V8030 V8030 V8030 V8030
+// RFC 0003 §1.2: each malformed `[dependencies]` entry is `V8030` at the entry, naming its
+// cause: a name that is not a package name, a reserved name, a floor that is not
+// `MAJOR.MINOR.PATCH`, both `version` and `path`, an absolute `path`, `git` without `rev`, a
+// `rev` that is not a full commit hash, and an unknown key (a branch).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

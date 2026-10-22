@@ -567,6 +567,25 @@ Fixed:
     fn empty_db() -> Handler<Db> { handler Db { fn count() { 0 } } }
     test \"counts rows\" { with empty_db() { expect_eq(Db.count(), 0) } }";
 
+    V3030 "effect_ceiling_exceeded" EFFECT,
+"A `pub fn` of a package requires a std effect that the package's ceiling does not list (RFC
+0003 §5.1, experimental). `[package] effects` in `sakura.toml` is the ceiling: the std effects
+the package's public functions may require. The check unions the std effects in every `pub fn`'s
+row (user-defined effects, `Fail` and `Test` are not counted) and reports each `pub fn` whose row
+goes beyond the ceiling. A package without an `effects` key has no ceiling and no check; `effects
+= []` is a pure package. Either remove the effect from the function or widen the ceiling, which
+every consumer then has to accept on its dependency line (`V8032`).
+
+Wrong:
+    # sakura.toml
+    [package]
+    name = \"stamp\"
+    effects = [\"Clock\"]
+    # src/lib.sak
+    pub fn log_now() -> Unit ! {Clock, Console} { Console.print(\"{Clock.monotonic_micros()}\") }
+Fixed:
+    pub fn now() -> Int ! {Clock} { Clock.monotonic_micros() }";
+
     // 4: patterns
     V4001 "non_exhaustive_match" PATTERN,
 "A `match` does not cover every value. The diagnostic names a witness value that no arm
@@ -746,6 +765,25 @@ Fixed:
       with empty_db() { Console.print(\"{Db.count()} rows\") }
     }";
 
+    V6020 "dependency_acquires_authority" CAPABILITY,
+"A dependency acquires authority itself: it calls a std `host()` constructor (`Fs.host()`,
+`Env.host()`, …) or declares an `@external` binding (RFC 0003 §5.2, experimental). In any
+package other than the one being built, authority comes only from the consumer: the dependency
+performs the effects its public rows declare, through the handlers its caller installs. A
+`host()` call reads the program's root grants, so without this rule a dependency could use
+`Fs` without `Fs` in any public row. Rewrite the dependency to declare the effect in its row, or,
+if you have reviewed it, write `trusted = true` on its line in the consumer's `[dependencies]`;
+`sakura audit` and `build --manifest` then list each such site under the package's name. `test`
+bodies of a dependency are not compiled by its consumers and are not checked.
+
+Wrong:
+    # util/src/lib.sak, a dependency
+    import std/env.{Env}
+    pub fn home() -> Option<String> { with Env.host() { Env.get(\"HOME\") } }
+Fixed:
+    import std/env.{Env}
+    pub fn home() -> Option<String> ! {Env} { Env.get(\"HOME\") }";
+
     // 7: tests / verification
     V7001 "invalid_snapshot_name" VERIFY,
 "The literal name given to `expect_snapshot` cannot name a snapshot file (design §17.294 SS-13).
@@ -793,26 +831,28 @@ Rust with no JavaScript engine, and it never bridges to Node. Build with `--targ
 write the function in Sakura Lang.";
 
     V8005 "dependencies_not_supported" PACKAGE,
-"Packages are not supported yet: `sakura.toml` declares `[dependencies]` (RFC
-0001). This release compiles one package over std; packages arrive in a later minor release, and
-the key is reserved until then. Any form is refused before anything runs: an empty table, entries,
-an inline `dependencies = {}` or a dotted key. Nothing is fetched and `sakura.lock` is untouched.
-Remove the table and use std; do not vendor another package's sources into `src/` to stand in for it.
+"A `[dependencies]` entry in `sakura.toml` uses a form this release does not support (RFC 0003
+§1.4). Packages are experimental: `path` dependencies are supported; a version floor parses, and
+locking it from a registry arrives with `sakura sync` in a later release; `git` dependencies are not
+supported yet. The message names the form; the diagnostic points at the entry. Earlier
+releases refused every `[dependencies]` table with this code; a table that is empty, or whose
+entries are all supported, now compiles. Nothing is fetched.
 
 Wrong:
-    [package]
-    name = \"billing\"
     [dependencies]
-Fixed:
-    [package]
-    name = \"billing\"";
+    scraper = { git = \"https://github.com/acme/scraper\", rev = \"9f2c0b7e1a4d3c6b8e5f7a9d0c1b2e3f4a5b6c7d\" }
+Fixed (a local checkout of the same commit):
+    [dependencies]
+    scraper = { path = \"../scraper\" }";
 
     V8006 "manifest_invalid" PACKAGE,
 "sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown,
 a value has the wrong type, or `[package]` has no `name`. The message is the parser's and the span
 points at the key, the value or the syntax error. Nothing builds or runs until it is fixed. The
-manifest has `[package]` (`name`, `version`, `edition`), `[permissions]` and `[verify]`; any other
-table, `[targets]` included, is unknown. `[dependencies]` is `V8005` instead. `[permissions]
+manifest has `[package]` (`name`, `version`, `edition`, and for packages `sakura`, `effects`,
+`description`, `license`, `repository`, `keywords`), `[permissions]`, `[verify]`,
+`[dependencies]` (whose entries are checked as `V8030` instead) and `[packages]` (`registry`,
+`vendor`, `min_age`); any other table, `[targets]` included, is unknown. `[permissions]
 process` is reserved: `process = []` is accepted and grants nothing, and any other list is
 `V8006`, since no std effect starts processes.
 
@@ -833,6 +873,61 @@ the Command Line Tools, which provide `cc`; on Debian or Ubuntu, `sudo apt insta
     V8020 "spec_frozen" PACKAGE,
 "A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body
 (design §7.3). Frozen specs are the reviewer's intent; change the implementation instead.";
+
+    V8030 "dependency_invalid" PACKAGE,
+"An entry of `[dependencies]` in `sakura.toml` is malformed (RFC 0003 §1.2, experimental).
+An entry is `name = \"MAJOR.MINOR.PATCH\"`, `name = { version = \"…\" }`, `name = { path =
+\"<relative dir>\" }` or `name = { git = \"<https URL>\", rev = \"<40 hex>\" }`, each optionally
+with `effects = [...]` and `trusted = true`. The message names the cause: a name that is not
+`[a-z][a-z0-9_]*` or is `std` or `main`; a floor that is not three numbers (no `*`, ranges,
+pre-release or build metadata); both `version` and `path`; a `path` that is absolute; a `git`
+without `rev`, or a `rev` that is not a full 40-hex commit hash (a branch or tag is refused); an
+unknown key; a value of the wrong type; or a `path` dependency whose own `sakura.toml` names it
+differently from its key.
+
+Wrong:
+    [dependencies]
+    util = \"*\"
+Fixed:
+    [dependencies]
+    util = { path = \"../util\" }";
+
+    V8031 "lockfile_invalid" PACKAGE,
+"`sakura.lock` does not describe the dependencies `sakura.toml` declares, or is not a lock file
+(RFC 0003 §3, experimental). The lock is authoritative: `check`, `build`, `run` and `test` load
+exactly the packages it lists and never resolve or fetch. The message names the cause: a
+dependency added to or removed from the manifest, a version floor above the locked version, a
+changed `path`, a changed `trusted`, a dependency whose declared ceiling (`[package] effects`)
+changed since it was locked, a lock that is not TOML, or a `version` other than 1 or 2.
+`version = 1` is read as a lock with no packages.
+
+The fix is to run `sakura sync`. In this release, which has no `sync` command yet, a project
+whose dependencies are all `path` dependencies gets its lock written by the next `sakura check`,
+`build`, `run` or `test` when `sakura.lock` is absent or says `version = 1`: delete the lock, or
+set it to `version = 1`, to have it rewritten.";
+
+    V8032 "dependency_effects_exceeded" PACKAGE,
+"A dependency's declared ceiling (its `[package] effects`, recorded in `sakura.lock`) lists std
+effects that the consumer's line for it does not accept (RFC 0003 §5.1, experimental). The
+`effects` on a `[dependencies]` line is what the consumer agrees the dependency, and everything
+it calls, may require; absent, it is `[]`, so a dependency with any ceiling needs the line. A new
+version or an edited `path` dependency that widens its ceiling stops compiling here until the
+line is edited. The suggested fix rewrites the line with the dependency's ceiling; it is an
+authority change and never applied automatically.
+
+Wrong:
+    [dependencies]
+    stamp = { path = \"../stamp\" }   # stamp declares effects = [\"Clock\"]
+Fixed:
+    [dependencies]
+    stamp = { path = \"../stamp\", effects = [\"Clock\"] }";
+
+    V8034 "package_missing" PACKAGE,
+"`sakura.lock` lists a package whose files are not there (RFC 0003 §3.2, experimental): a `path`
+dependency's directory has no `sakura.toml`, or a registry or git package is not in the vendor
+directory or the package cache, which this release does not fill yet. Nothing is fetched by
+`check`, `build`, `run` or `test`. Restore the directory, correct the `path` in `sakura.toml`, or
+run `sakura sync` once it exists.";
 
     // 9: internal
     V9001 "internal_error" INTERNAL,

@@ -1,0 +1,10 @@
+// RFC 0003 §5.1: every `pub fn` row within `[package] effects` (here exactly at it) passes, and
+// a user-defined effect never counts against the ceiling.
+
+pub effect Tally {
+  fn add(n: Int) -> Unit
+}
+
+pub fn log_now() -> Unit ! {Clock, Console} { Console.print("{Clock.monotonic_micros()}") }
+
+pub fn count() -> Unit ! {Tally} { Tally.add(1) }

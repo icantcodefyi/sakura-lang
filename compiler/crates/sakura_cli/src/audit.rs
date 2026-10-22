@@ -36,7 +36,7 @@ pub(crate) fn audit(json: bool, paths: &[PathBuf]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn symbol_id(a: &Analyzed, def: DefId) -> String {
+pub(crate) fn symbol_id(a: &Analyzed, def: DefId) -> String {
     a.symbol(def).map(|s| s.id.clone()).unwrap_or_else(|| {
         let m = a.program.module(def.module);
         format!(
@@ -50,7 +50,9 @@ fn symbol_id(a: &Analyzed, def: DefId) -> String {
 
 /// Every site in the user's packages; std's trusted base is the compiler's, listed by
 /// `sakura build --manifest`. A record's `symbol_id` is its enclosing declaration; `sink` is
-/// the resolved callee of a `@trust` or the refined type's `from`.
+/// the resolved callee of a `@trust` or the refined type's `from`. A site in a dependency
+/// (RFC 0003) names its `package`, in a `1.1` record, and a trusted dependency's calls of a std
+/// `host()` constructor are `host` sites.
 pub(crate) fn records(a: &Analyzed) -> Vec<Value> {
     sites(a, false)
 }
@@ -157,6 +159,19 @@ pub(crate) fn sites(a: &Analyzed, with_std: bool) -> Vec<Value> {
             }
         }
     }
+    // RFC 0003 §5.2: the dependencies' own authority, which the gate lets through only for a
+    // trusted one (`V6020` otherwise).
+    for (i, pkg) in a.packages().iter().enumerate().skip(1) {
+        if !pkg.trusted {
+            continue;
+        }
+        for s in sakura_analysis::authority_sites(&a.program, i + 1) {
+            if let Some(module) = &s.module {
+                let sink = format!("std::{module}::host");
+                sites.push(site(a, s.owner, "host", s.start, s.end, None, Some(&sink)));
+            }
+        }
+    }
     sites.sort_by(|a, b| {
         let key = |r: &Value| {
             (
@@ -179,7 +194,8 @@ fn site(
     reason: Option<&str>,
     sink: Option<&str>,
 ) -> Value {
-    let file = a.snapshot.file(a.program.module(owner.module).file);
+    let module = a.program.module(owner.module);
+    let file = a.snapshot.file(module.file);
     let mut value = json!({
         "schema_version": "1.0", "kind": "audit", "site": kind,
         "symbol_id": symbol_id(a, owner), "reason": reason,
@@ -188,6 +204,11 @@ fn site(
     });
     if let Some(sink) = sink {
         value["sink"] = json!(sink);
+    }
+    // Packages after std and the root are dependencies (1.1 added `package`).
+    if module.package.0 > 1 {
+        value["schema_version"] = json!("1.1");
+        value["package"] = json!(a.program.packages[module.package.0 as usize].name);
     }
     value
 }

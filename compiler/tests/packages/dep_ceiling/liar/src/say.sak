@@ -1,0 +1,2 @@
+/// Declares a pure ceiling but prints.
+pub fn hello() -> Unit ! {Console} { Console.print("hello") }

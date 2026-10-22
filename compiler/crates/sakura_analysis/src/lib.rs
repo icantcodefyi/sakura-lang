@@ -15,8 +15,10 @@ use serde::{Deserialize, Serialize};
 
 pub mod disk;
 mod edit;
+pub mod lock;
 mod manifest;
 mod nav;
+mod packages;
 mod query;
 mod render;
 mod specs;
@@ -24,8 +26,13 @@ mod std_cache;
 mod symbols;
 
 pub use edit::{Conflict, FileEdit};
-pub use manifest::{FsPermissions, Manifest, ManifestError, Package, Permissions, Verify};
+pub use lock::{Lock, LockedPackage};
+pub use manifest::{
+    Dependency, DependencyError, DependencySource, FsPermissions, Manifest, ManifestError, Package,
+    Packages, Permissions, Verify, Version, dependencies, dependencies_key,
+};
 pub use nav::{Completion, Hover, Location};
+pub use packages::{AuthoritySite, BuildPackage, authority_sites, root_manifest};
 pub use query::SymbolQuery;
 pub use specs::{Frozen, InterfaceChange, InterfaceDelta, InterfaceEntry, Obligation};
 pub use symbols::Symbol;
@@ -172,11 +179,25 @@ impl Snapshot {
         Snapshot::of(sources.into_iter().chain(std))
     }
 
-    /// Sakura Lang modules that are not part of the embedded std library.
+    /// The root package's modules: not std's, and not a dependency's (RFC 0003), whose files
+    /// sit below their own `sakura.toml`.
     pub fn user_files(&self) -> impl Iterator<Item = FileId> + '_ {
-        self.file_ids().filter(|&f| {
+        let root = root_manifest(self);
+        let dirs: Vec<(Vec<&str>, bool)> = (self.file_ids())
+            .filter(|&f| disk::is_manifest(&self.file(f).uri))
+            .map(|f| {
+                let mut dir = disk::uri_segments(&self.file(f).uri);
+                dir.pop();
+                (dir, Some(f) == root)
+            })
+            .collect();
+        self.file_ids().filter(move |&f| {
             let uri = &self.file(f).uri;
-            !is_std(uri) && is_module(uri)
+            let segments = disk::uri_segments(uri);
+            let owner = (dirs.iter())
+                .filter(|(d, _)| segments.len() > d.len() && segments.starts_with(d))
+                .max_by_key(|(d, _)| d.len());
+            !is_std(uri) && is_module(uri) && owner.is_none_or(|(_, root)| *root)
         })
     }
 
@@ -584,14 +605,20 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     // lowered nor checked again) when its text is unchanged and none of its diagnostics points
     // into a changed file; files past the prefix are new.
     let name = package_name(snapshot);
+    let layout = packages::layout(snapshot);
+    let build = layout.packages(&name);
+    // A manifest or lock edit can move files between packages, so only a module's edit keeps
+    // the previous analysis (its interface hash is `None` for other files).
     let prev = latest.into_iter().chain(prevs).find(|p| {
         let n = p.snapshot.files.len();
         let same_files = n == snapshot.files.len()
-            && p.program.packages.last().is_some_and(|pk| pk.name == name);
+            && p.program.packages.get(1).is_some_and(|pk| pk.name == name);
         (same_files || p.snapshot.files.iter().all(|f| is_std(&f.uri)))
             && n <= snapshot.files.len()
             && (p.snapshot.files.iter().zip(&snapshot.files).enumerate()).all(|(i, (a, b))| {
-                a.uri == b.uri && (a.content_hash == b.content_hash || p.interfaces[i] == hash(i))
+                a.uri == b.uri
+                    && (a.content_hash == b.content_hash
+                        || (p.interfaces[i].is_some() && p.interfaces[i] == hash(i)))
             })
     });
     let interfaces: Vec<Option<u64>> = (0..parses.len())
@@ -650,7 +677,7 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     }
     let (mut program, lowered) = lower(
         snapshot,
-        &name,
+        &build,
         &|i| match carried[i] {
             true => None,
             false => parse(i).map(sakura_syntax::Parse::syntax),
@@ -715,7 +742,8 @@ fn analyze<'a>(snapshot: &Snapshot, prevs: impl IntoIterator<Item = &'a Analyzed
     diagnostics.extend(program.diagnostics.iter().cloned());
     diagnostics.extend(type_diags.iter().cloned());
     diagnostics.extend(reserved_package_name(snapshot));
-    diagnostics.extend(dependencies_not_supported(snapshot));
+    diagnostics.extend(layout.diagnostics(snapshot, &name));
+    diagnostics.extend(packages::ceilings_and_gate(&program, &typed, &build));
     diagnostics.extend(manifest_invalid(snapshot));
     // A file that is not UTF-8 is a broken module: `V0015` is its one diagnostic, by the cascade
     // rule by place (design §17.207 (1), §17.243 (3)); the other files are checked as usual.
@@ -781,12 +809,12 @@ impl Analysis {
     }
 }
 
-/// Whether the user package has a `pub fn main`.
+/// Whether the root package has a `pub fn main`.
 fn has_entry(program: &sakura_hir::Program) -> bool {
     program
         .packages
-        .iter()
-        .filter(|p| p.name != "std")
+        .get(1)
+        .into_iter()
         .flat_map(|p| &p.modules)
         .filter_map(|&m| program.lookup(m, "main"))
         .any(|d| {
@@ -1036,15 +1064,26 @@ fn consumed_name(a: &Analyzed, c: &sakura_core::opt::owned::Copy) -> Option<Stri
     plain.then(|| text.to_owned())
 }
 
-/// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sak`; user files are
-/// package `main` (renamed by [`package_name`]) with the path relative to the last `src/`
-/// (`users/repo`), or the file stem.
-fn module_of(uri: &str) -> (&'static str, String) {
+/// Where a snapshot file belongs: `("std", "list")` for `sakura:///std/list.sak`. `dirs` are the
+/// directories (URI segments) of the snapshot's manifests with their package's name: a file whose
+/// nearest one is a dependency's is that package's, with the path relative to its `src/` (RFC
+/// 0003 §2.1); `""` names a manifest outside the build, whose files belong to no package. Other
+/// user files are package `main` (renamed by [`package_name`]) with the path relative to the last
+/// `src/` (`users/repo`), or the file stem.
+fn module_of<'a>(uri: &str, dirs: &[(Vec<&str>, &'a str)]) -> (&'a str, String) {
     let path = uri.strip_suffix(".sak").unwrap_or(uri);
     if let Some(rest) = path.strip_prefix("sakura:///std/") {
         return ("std", rest.to_owned());
     }
     let segments = disk::uri_segments(path);
+    let nearest = (dirs.iter())
+        .filter(|(dir, _)| segments.len() > dir.len() && segments.starts_with(dir))
+        .max_by_key(|(dir, _)| dir.len());
+    if let Some((dir, name)) = nearest.filter(|(_, name)| *name != "main") {
+        let rel = &segments[dir.len()..];
+        let rel = rel.strip_prefix(&["src"][..]).unwrap_or(rel);
+        return (name, rel.join("/"));
+    }
     let file = segments.len() - 1;
     let rel = match segments[1.min(file)..file]
         .iter()
@@ -1056,25 +1095,22 @@ fn module_of(uri: &str) -> (&'static str, String) {
     ("main", rel)
 }
 
-/// The user package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127) or
+/// The root package's name: `sakura.toml`'s `name`, or `main` without one (§9, §17.127) or
 /// when the name is reserved (`V8002`).
 fn package_name(snapshot: &Snapshot) -> String {
-    (snapshot.files.iter())
-        .find(|f| disk::is_manifest(&f.uri))
-        .and_then(|f| Manifest::parse(&f.text).ok())
+    root_manifest(snapshot)
+        .and_then(|f| Manifest::parse(&snapshot.file(f).text).ok())
         .map(|m| m.package.name)
         .filter(|n| !n.is_empty() && !RESERVED_PACKAGES.contains(&n.as_str()))
         .unwrap_or_else(|| "main".to_owned())
 }
 
 /// `std` is the standard library and `main` the package of a file run without a manifest.
-const RESERVED_PACKAGES: [&str; 2] = ["std", "main"];
+pub(crate) const RESERVED_PACKAGES: [&str; 2] = ["std", "main"];
 
 /// `V8002` when `sakura.toml` names its package `std` or `main` (§17.131), at the `name` line.
 fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
-    let file = snapshot
-        .file_ids()
-        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
+    let file = root_manifest(snapshot)?;
     let text = &snapshot.file(file).text;
     let name = Manifest::parse(text).ok()?.package.name;
     if !RESERVED_PACKAGES.contains(&name.as_str()) {
@@ -1104,35 +1140,18 @@ fn reserved_package_name(snapshot: &Snapshot) -> Option<Diagnostic> {
     )
 }
 
-/// `V8005` when `sakura.toml` declares `dependencies` in any form (§17.232), at the key.
-fn dependencies_not_supported(snapshot: &Snapshot) -> Option<Diagnostic> {
-    let file = snapshot
-        .file_ids()
-        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
-    let key = manifest::dependencies_key(&snapshot.file(file).text)?;
-    Some(
-        Diagnostic::error(
-            codes::V8005,
-            Phase::Package,
-            manifest::dependencies_message(),
-        )
-        .with_span(Span::primary(file, key.start as u32, key.end as u32)),
-    )
-}
-
-/// `V8006` when `sakura.toml` is not a valid manifest (§17.239), at the parser's span.
-fn manifest_invalid(snapshot: &Snapshot) -> Option<Diagnostic> {
-    let file = snapshot
-        .file_ids()
-        .find(|&f| disk::is_manifest(&snapshot.file(f).uri))?;
-    let e = Manifest::parse(&snapshot.file(file).text).err()?;
-    Some(
-        Diagnostic::error(codes::V8006, Phase::Package, e.message).with_span(Span::primary(
-            file,
-            e.span.start as u32,
-            e.span.end as u32,
-        )),
-    )
+/// `V8006` for each `sakura.toml` of the snapshot that is not a valid manifest (§17.239), at the
+/// parser's span.
+fn manifest_invalid(snapshot: &Snapshot) -> impl Iterator<Item = Diagnostic> + '_ {
+    (snapshot.file_ids())
+        .filter(|&f| disk::is_manifest(&snapshot.file(f).uri))
+        .filter_map(|file| {
+            let e = Manifest::parse(&snapshot.file(file).text).err()?;
+            Some(
+                Diagnostic::error(codes::V8006, Phase::Package, e.message)
+                    .with_span(Span::primary(file, e.span.start as u32, e.span.end as u32)),
+            )
+        })
 }
 
 /// `V0015` for file `file`, which is not UTF-8, at its first invalid byte (design §17.243 (3),
@@ -1157,41 +1176,57 @@ fn parse_file(snapshot: &Snapshot, file: FileId) -> Option<sakura_syntax::Parse>
 /// `lower_reusing` carries whole, which reads no tree.
 fn lower(
     snapshot: &Snapshot,
-    name: &str,
+    build: &[BuildPackage],
     root: &dyn Fn(usize) -> Option<sakura_syntax::SyntaxNode>,
     prev: Option<(&sakura_hir::Program, &dyn Fn(sakura_hir::ModuleId) -> bool)>,
 ) -> (sakura_hir::Program, usize) {
     static EMPTY: OnceLock<sakura_syntax::Parse> = OnceLock::new();
-    let mut std = Vec::new();
-    let mut user = Vec::new();
+    // std, the root, then the dependencies: the root is the first package after std, which Core
+    // takes for the program's entry and tests.
+    let mut packages: Vec<sakura_hir::PackageInput> = std::iter::once(("std", vec![]))
+        .chain(build.iter().map(|p| {
+            let deps = p.manifest.dependencies.iter().map(|d| d.name.as_str());
+            (p.name.as_str(), deps.collect())
+        }))
+        .map(|(name, deps)| sakura_hir::PackageInput {
+            name,
+            deps,
+            modules: vec![],
+        })
+        .collect();
+    let dirs: Vec<(Vec<&str>, &str)> = (snapshot.file_ids())
+        .filter(|&f| disk::is_manifest(&snapshot.file(f).uri))
+        .map(|f| {
+            let mut dir = disk::uri_segments(&snapshot.file(f).uri);
+            dir.pop();
+            let name = match build.iter().position(|p| p.file == Some(f)) {
+                Some(0) => "main",
+                Some(i) => build[i].name.as_str(),
+                None if build[0].file.is_none() => "main",
+                None => "",
+            };
+            (dir, name)
+        })
+        .collect();
     for file in snapshot.file_ids() {
         let uri = &snapshot.file(file).uri;
         if !is_module(uri) {
             continue;
         }
-        let (package, path) = module_of(uri);
+        let (package, path) = module_of(uri, &dirs);
+        if package.is_empty() {
+            continue;
+        }
         let root = (root(file.0 as usize))
             .unwrap_or_else(|| EMPTY.get_or_init(|| sakura_syntax::parse("")).syntax());
         let input = sakura_hir::ModuleInput { file, path, root };
-        if package == "std" {
-            &mut std
-        } else {
-            &mut user
-        }
-        .push(input);
+        let at = match package {
+            "std" => 0,
+            "main" => 1,
+            dep => (packages.iter().skip(2).position(|p| p.name == dep)).map_or(1, |i| i + 2),
+        };
+        packages[at].modules.push(input);
     }
-    let packages = [
-        sakura_hir::PackageInput {
-            name: "std",
-            deps: vec![],
-            modules: std,
-        },
-        sakura_hir::PackageInput {
-            name,
-            deps: vec![],
-            modules: user,
-        },
-    ];
     match prev {
         Some((program, reuse)) => sakura_hir::lower_reusing(&packages, program, reuse),
         None => {
@@ -1218,22 +1253,46 @@ mod tests {
 
     #[test]
     fn module_paths() {
-        assert_eq!(module_of("sakura:///std/list.sak"), ("std", "list".into()));
         assert_eq!(
-            module_of("file:///p/src/users/repo.sak"),
-            ("main", "users/repo".into())
+            module_of("sakura:///std/list.sak", &[]),
+            ("std", "list".into())
         );
-        assert_eq!(module_of("file:///tmp/hello.sak"), ("main", "hello".into()));
-        // The same project checked out on Windows (design §17.180 (4a)).
         assert_eq!(
-            module_of("file:///C:/p/src/users/repo.sak"),
+            module_of("file:///p/src/users/repo.sak", &[]),
             ("main", "users/repo".into())
         );
         assert_eq!(
-            module_of("file:///C:/tmp/hello.sak"),
+            module_of("file:///tmp/hello.sak", &[]),
             ("main", "hello".into())
         );
-        assert_eq!(module_of("file:///C:/src/a.sak"), ("main", "a".into()));
+        // The same project checked out on Windows (design §17.180 (4a)).
+        assert_eq!(
+            module_of("file:///C:/p/src/users/repo.sak", &[]),
+            ("main", "users/repo".into())
+        );
+        assert_eq!(
+            module_of("file:///C:/tmp/hello.sak", &[]),
+            ("main", "hello".into())
+        );
+        assert_eq!(module_of("file:///C:/src/a.sak", &[]), ("main", "a".into()));
+        // A dependency's file is that package's, relative to its own `src/` (RFC 0003 §2.1),
+        // whatever `src` segments the root's path has.
+        let deps = [
+            (disk::uri_segments("file:///p/src/util"), "util"),
+            (disk::uri_segments("file:///p/src/util/vendor/fmt"), "fmt"),
+        ];
+        assert_eq!(
+            module_of("file:///p/src/util/src/time/now.sak", &deps),
+            ("util", "time/now".into())
+        );
+        assert_eq!(
+            module_of("file:///p/src/util/vendor/fmt/src/lib.sak", &deps),
+            ("fmt", "lib".into())
+        );
+        assert_eq!(
+            module_of("file:///p/src/app/main.sak", &deps),
+            ("main", "app/main".into())
+        );
     }
 
     #[test]

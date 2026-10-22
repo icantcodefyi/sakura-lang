@@ -62,7 +62,9 @@ pub fn lower(program: &hir::Program, typed: &TypedProgram, opts: &LowerOptions) 
     }
     for (mi, module) in program.modules.iter().enumerate() {
         let is_std = program.packages[module.package.0 as usize].name == "std";
-        if is_std && !opts.std_tests {
+        // A dependency's tests are its own (RFC 0003 §2.3): only std's and the root's compile.
+        let is_dep = !is_std && Some(module.package.0 as usize) != package;
+        if is_dep || (is_std && !opts.std_tests) {
             continue;
         }
         for &item in &module.items {

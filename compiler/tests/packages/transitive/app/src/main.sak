@@ -1,0 +1,7 @@
+import util/label
+
+pub fn main() -> Unit ! {Console} {
+  with Clock.fixed(Instant.from_unix_millis(42)) { Console.print(label.at("ready")) }
+}
+
+test "the root's tests run" { expect_eq(1 + 1, 2) }

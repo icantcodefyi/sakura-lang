@@ -1,0 +1,4 @@
+// expect: V8031
+// RFC 0003 §3.1: a lock is `version = 1` (no packages) or `version = 2`; anything else is
+// `V8031` at the version.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

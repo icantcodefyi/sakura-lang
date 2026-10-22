@@ -6,7 +6,7 @@ description: "Every Sakura Lang diagnostic code with its explanation, a program 
 
 Every diagnostic code the compiler and the runtime report, with its explanation, a program that triggers it and, where one is checked in, the fixed program. Codes are stable and never renumbered (design §12.3); `sakura explain <code>` prints the same explanation offline, and a diagnostic's `explanation_uri` (`sakura://explain/<code>`) maps to `/docs/errors/<code>`. `V` codes are errors, `W` warnings and `D` runtime defects; the [diagnostics reference](/docs/agents/diagnostics) describes the JSON records.
 
-100 codes; 69 pages show a fixed program that the compiler's test suite checks.
+106 codes; 69 pages show a fixed program that the compiler's test suite checks.
 
 ## Lex and parse
 
@@ -80,6 +80,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V3011](/docs/errors/V3011) | `handler_clause_mismatch` | A `handler` must provide exactly one clause per operation of its effect, with matching parameter counts (design §5.5). |
 | [V3012](/docs/errors/V3012) | `with_non_handler` | `with` was given something that is not a `Handler<E, r>` value. |
 | [V3020](/docs/errors/V3020) | `test_unhandled_effect` | Tests run under deterministic default handlers for `Clock`, `Random`, `Env`, `Console` and `Log` (design §5.8). |
+| [V3030](/docs/errors/V3030) | `effect_ceiling_exceeded` | A `pub fn` of a package requires a std effect that the package's ceiling does not list (RFC 0003 §5.1, experimental). |
 
 ## Patterns
 
@@ -107,6 +108,7 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V6002](/docs/errors/V6002) | `scoped_value_escape` | A scoped value escapes the `with` that bounds it (design §6.3). |
 | [V6003](/docs/errors/V6003) | `resource_escape` | A `@resource` value (v0: `File`) escapes the callback of the operation that introduced it: the callback returns a type containing it (directly, or inside a record, list or closure), or the value is stored in handler `var` state (design §8.4). |
 | [V6010](/docs/errors/V6010) | `non_std_effect_in_main` | `main`'s effect row may contain only std effects, because only they have host root handlers (design §9). |
+| [V6020](/docs/errors/V6020) | `dependency_acquires_authority` | A dependency acquires authority itself: it calls a std `host()` constructor (`Fs.host()`, `Env.host()`, …) or declares an `@external` binding (RFC 0003 §5.2, experimental). |
 
 ## Tests and verification
 
@@ -122,10 +124,14 @@ Every diagnostic code the compiler and the runtime report, with its explanation,
 | [V8002](/docs/errors/V8002) | `reserved_package_name` | `sakura.toml` names its package `std` or `main` (design §9). |
 | [V8003](/docs/errors/V8003) | `abi_version_mismatch` | The WASM module was compiled against a runtime ABI this host does not implement (`runtime/rt/ABI.md` §0): its major version differs, or its minor version is newer than the host's, so it may need imports the host lacks. |
 | [V8004](/docs/errors/V8004) | `target_unsupported_external` | A user package declares an `@external(js, …)` function, and `--target wasm` has no JavaScript to call: the WASM backend runs std's host operations through the runtime's own imports only. |
-| [V8005](/docs/errors/V8005) | `dependencies_not_supported` | Packages are not supported yet: `sakura.toml` declares `[dependencies]` (RFC 0001). |
+| [V8005](/docs/errors/V8005) | `dependencies_not_supported` | A `[dependencies]` entry in `sakura.toml` uses a form this release does not support (RFC 0003 §1.4). |
 | [V8006](/docs/errors/V8006) | `manifest_invalid` | sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown, a value has the wrong type, or `[package]` has no `name`. |
 | [V8007](/docs/errors/V8007) | `native_linker_missing` | `sakura build --target native` (experimental) links the program with the system C linker, `cc`, and none is on `PATH`. |
 | [V8020](/docs/errors/V8020) | `spec_frozen` | A patch modifies a frozen symbol's signature, effect row, error union, contracts, or a test body (design §7.3). |
+| [V8030](/docs/errors/V8030) | `dependency_invalid` | An entry of `[dependencies]` in `sakura.toml` is malformed (RFC 0003 §1.2, experimental). |
+| [V8031](/docs/errors/V8031) | `lockfile_invalid` | `sakura.lock` does not describe the dependencies `sakura.toml` declares, or is not a lock file (RFC 0003 §3, experimental). |
+| [V8032](/docs/errors/V8032) | `dependency_effects_exceeded` | A dependency's declared ceiling (its `[package] effects`, recorded in `sakura.lock`) lists std effects that the consumer's line for it does not accept (RFC 0003 §5.1, experimental). |
+| [V8034](/docs/errors/V8034) | `package_missing` | `sakura.lock` lists a package whose files are not there (RFC 0003 §3.2, experimental): a `path` dependency's directory has no `sakura.toml`, or a registry or git package is not in the vendor directory or the package cache, which this release does not fill yet. |
 
 ## Internal
 

@@ -85,6 +85,7 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V3011` | error | `handler_clause_mismatch` | [V3011_handler_clause_mismatch.sak](../../compiler/tests/ui/V3011_handler_clause_mismatch.sak) | active |
 | `V3012` | error | `with_non_handler` | [V3012_with_non_handler.sak](../../compiler/tests/ui/V3012_with_non_handler.sak) | active |
 | `V3020` | error | `test_unhandled_effect` | [V3020_test_unhandled_effect.sak](../../compiler/tests/ui/V3020_test_unhandled_effect.sak) | active |
+| `V3030` | error | `effect_ceiling_exceeded` | [lib.sak](../../compiler/tests/ui/V3030_effect_ceiling_exceeded/lib.sak) | active |
 | `V4001` | error | `non_exhaustive_match` | [V4001_non_exhaustive_match.sak](../../compiler/tests/ui/V4001_non_exhaustive_match.sak) | active |
 | `V4002` | error | `unreachable_arm` | [V4002_unreachable_arm.sak](../../compiler/tests/ui/V4002_unreachable_arm.sak) | active |
 | `V4003` | error | `or_pattern_bindings` | [V4003_or_pattern_bindings.sak](../../compiler/tests/ui/V4003_or_pattern_bindings.sak) | active |
@@ -97,15 +98,20 @@ The [chapter](diagnostics.md) defines the table's scope.
 | `V6002` | error | `scoped_value_escape` | [V6002_scoped_value_escape.sak](../../compiler/tests/ui/V6002_scoped_value_escape.sak) | active |
 | `V6003` | error | `resource_escape` | [V6003_resource_escape.sak](../../compiler/tests/ui/V6003_resource_escape.sak) | active |
 | `V6010` | error | `non_std_effect_in_main` | [V6010_non_std_effect_in_main.sak](../../compiler/tests/ui/V6010_non_std_effect_in_main.sak) | active |
+| `V6020` | error | `dependency_acquires_authority` | [main.sak](../../compiler/tests/ui/V6020_dependency_external/main.sak) | active |
 | `V7001` | error | `invalid_snapshot_name` | [V7001_invalid_snapshot_name.sak](../../compiler/tests/ui/V7001_invalid_snapshot_name.sak) | active |
 | `V8001` | error | `missing_entry_point` | [V8001_missing_entry_point.sak](../../compiler/tests/ui/V8001_missing_entry_point.sak) | active |
 | `V8002` | error | `reserved_package_name` | [reserved_package_names_are_v8002](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
 | `V8003` | error | `abi_version_mismatch` | [runMain and runTests report V8003 for another ABI and exit 2](../../compiler/runtime/js/test/wasm_host.test.js) | active |
 | `V8004` | error | `target_unsupported_external` | [a_user_js_external_is_refused_on_wasm_and_native](../../compiler/crates/sakura_cli/tests/wasm.rs) | active |
-| `V8005` | error | `dependencies_not_supported` | [main.sak](../../compiler/tests/ui/V8005_dependencies_table/main.sak) | active |
+| `V8005` | error | `dependencies_not_supported` | [main.sak](../../compiler/tests/ui/V8005_git_dependency/main.sak) | active |
 | `V8006` | error | `manifest_invalid` | [main.sak](../../compiler/tests/ui/V8006_manifest_has_targets_table/main.sak) | active |
 | `V8007` | error | `native_linker_missing` | [native_missing_linker_is_v8007](../../compiler/crates/sakura_cli/tests/parity.rs) | active |
 | `V8020` | error | `spec_frozen` | [frozen_specs_compare_with_git_head](../../compiler/crates/sakura_cli/tests/cli.rs) | active |
+| `V8030` | error | `dependency_invalid` | [main.sak](../../compiler/tests/ui/V8030_dependency_invalid/main.sak) | active |
+| `V8031` | error | `lockfile_invalid` | [main.sak](../../compiler/tests/ui/V8031_floor_above_lock/main.sak) | active |
+| `V8032` | error | `dependency_effects_exceeded` | [main.sak](../../compiler/tests/ui/V8032_dependency_effects_exceeded/main.sak) | active |
+| `V8034` | error | `package_missing` | [main.sak](../../compiler/tests/ui/V8034_package_missing/main.sak) | active |
 | `V9001` | error | `internal_error` | [guard_reports_a_dropped_comment_or_broken_output](../../compiler/crates/sakura_fmt/src/lib.rs) | active |
 | `V9002` | error | `phase_unavailable` | [V9002_contract_test_handler_unsupported.sak](../../compiler/tests/ui/V9002_contract_test_handler_unsupported.sak) | active |
 | `W1002` | warning | `shadowed_import` | [W1002_shadowed_import.sak](../../compiler/tests/ui/W1002_shadowed_import.sak) | active |

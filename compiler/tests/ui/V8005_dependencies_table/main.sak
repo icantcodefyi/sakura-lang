@@ -1,3 +1,0 @@
-// expect: V8005
-// Packages arrive in a later minor (design §17.232): a `[dependencies]` table is refused even empty.
-pub fn main() -> Unit ! {Console} { Console.print("hi") }

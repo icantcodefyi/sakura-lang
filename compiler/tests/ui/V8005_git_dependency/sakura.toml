@@ -1,0 +1,5 @@
+[package]
+name = "billing"
+
+[dependencies]
+scraper = { git = "https://github.com/acme/scraper", rev = "9f2c0b7e1a4d3c6b8e5f7a9d0c1b2e3f4a5b6c7d" }

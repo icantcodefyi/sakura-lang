@@ -1,0 +1,8 @@
+[package]
+name = "billing"
+
+[dependencies]
+fresh = { path = "fresh" }
+moved = { path = "moved" }
+tight = { path = "tight", effects = ["Clock"] }
+vouched = { path = "vouched", trusted = true }

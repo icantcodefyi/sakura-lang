@@ -1,0 +1,6 @@
+import std/env.{Env}
+
+pub fn home() -> Option<String> { with Env.host() { Env.get("HOME") } }
+
+@external(js, "./clock.js", "now")
+pub fn now() -> Int

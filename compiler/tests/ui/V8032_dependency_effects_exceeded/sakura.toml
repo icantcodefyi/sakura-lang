@@ -1,0 +1,5 @@
+[package]
+name = "billing"
+
+[dependencies]
+stamp = { path = "stamp" }

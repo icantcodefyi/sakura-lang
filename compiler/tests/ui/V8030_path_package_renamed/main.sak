@@ -1,0 +1,4 @@
+// expect: V8030
+// RFC 0003 §2.2: a `path` dependency whose own sakura.toml names another package than its key
+// is `V8030`; the directory's files belong to no package of the build.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

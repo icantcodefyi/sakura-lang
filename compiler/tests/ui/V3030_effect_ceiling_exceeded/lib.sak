@@ -1,0 +1,10 @@
+// expect: V3030
+// expect-span: V3030 6:8
+// RFC 0003 §5.1: a `pub fn` whose row has a std effect beyond `[package] effects` is `V3030` at
+// the function; private functions and user-defined effects do not count.
+
+pub fn log_now() -> Unit ! {Clock, Console} { Console.print("{Clock.monotonic_micros()}") }
+
+pub fn now() -> Int ! {Clock} { Clock.monotonic_micros() }
+
+fn shout(s: String) -> Unit ! {Console} { Console.print(s) }

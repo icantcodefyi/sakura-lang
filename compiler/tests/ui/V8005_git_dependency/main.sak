@@ -1,0 +1,4 @@
+// expect: V8005
+// RFC 0003 §1.4: a `git` dependency is a form this release does not support yet, at the entry;
+// plan P5 adds git sources and turns this fixture into a positive one. Nothing is fetched.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

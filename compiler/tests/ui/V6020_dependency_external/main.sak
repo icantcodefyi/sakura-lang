@@ -1,0 +1,4 @@
+// expect: V6020
+// RFC 0003 §5.2: an `@external` declaration in a dependency is `V6020` at the attribute unless the
+// root trusts the dependency.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

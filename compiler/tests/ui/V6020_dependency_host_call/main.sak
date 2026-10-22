@@ -1,0 +1,6 @@
+// expect: V6020
+// RFC 0003 §5.2: a dependency that calls a std `host()` constructor acquires authority itself,
+// which is `V6020` at the call unless the root trusts it.
+import util/home
+
+pub fn main() -> Unit ! {Console, Env} { Console.print("{home.home_of_caller()}") }

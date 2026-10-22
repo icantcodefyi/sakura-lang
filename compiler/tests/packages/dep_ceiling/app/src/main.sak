@@ -1,0 +1,3 @@
+import liar/say
+
+pub fn main() -> Unit ! {Console} { say.hello() }

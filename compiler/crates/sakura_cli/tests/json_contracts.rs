@@ -89,7 +89,34 @@ const fn case(
     }
 }
 
+/// A root with a trusted `path` dependency that acquires authority (RFC 0003): `audit` 1.1,
+/// `manifest` 1.2 and both `deps` commands. The lock is written by the command itself.
+const TRUSTED_DEP: &[(&str, &str)] = &[
+    (
+        "sakura.toml",
+        "[package]\nname = \"app\"\n\n[dependencies]\nsys = { path = \"sys\", trusted = true }\n",
+    ),
+    (
+        "sys/sakura.toml",
+        "[package]\nname = \"sys\"\nversion = \"0.1.0\"\neffects = []\n",
+    ),
+    (
+        "sys/src/home.sak",
+        "import std/env.{Env}\n\npub fn home() -> Option<String> { with Env.host() { Env.get(\"HOME\") } }\n",
+    ),
+];
+
+/// A dependency the lock does not list: `deps` reports `V8031` and closes with `summary`.
+const STALE_DEP: &[(&str, &str)] = &[
+    (
+        "sakura.toml",
+        "[package]\nname = \"app\"\n\n[dependencies]\nsys = { path = \"sys\" }\n",
+    ),
+    ("sakura.lock", "version = 2\n"),
+];
+
 const SUMMARY: Option<&str> = Some("summary");
+const DEPS_SUMMARY: Option<&str> = Some("deps_summary");
 const TEST_SUMMARY: Option<&str> = Some("test_summary");
 const AUDIT_SUMMARY: Option<&str> = Some("audit_summary");
 const VERIFY_SUMMARY: Option<&str> = Some("verify_summary");
@@ -283,6 +310,56 @@ const CASES: &[Case] = &[
         1,
         VERIFY_SUMMARY,
     ),
+    Case {
+        files: TRUSTED_DEP,
+        ..case(
+            "deps_tree",
+            &["deps", "tree", "--json"],
+            Some(OK),
+            0,
+            DEPS_SUMMARY,
+        )
+    },
+    Case {
+        files: TRUSTED_DEP,
+        ..case(
+            "deps_capabilities",
+            &["deps", "capabilities", "--json"],
+            Some(OK),
+            0,
+            DEPS_SUMMARY,
+        )
+    },
+    Case {
+        files: STALE_DEP,
+        ..case(
+            "deps_stale",
+            &["deps", "tree", "--json"],
+            Some(OK),
+            1,
+            SUMMARY,
+        )
+    },
+    Case {
+        files: TRUSTED_DEP,
+        ..case(
+            "audit_dependency",
+            &["audit", "--json"],
+            Some(OK),
+            0,
+            AUDIT_SUMMARY,
+        )
+    },
+    Case {
+        files: TRUSTED_DEP,
+        ..case(
+            "build_manifest_dependency",
+            &["build", "--json", "--manifest"],
+            Some(OK),
+            0,
+            SUMMARY,
+        )
+    },
     // Design §12.1: a defect is a record on stderr whatever the flags.
     case("run_defect", &["run", "main.sak"], Some(DEFECTS), 70, None),
     case(
@@ -499,7 +576,10 @@ fn every_json_record_matches_the_baseline() {
             errors.push(at(format!("no defect record on stderr: {}", out.stderr)));
         }
         // A stored regression in the contract's shape is the one the runner replays.
-        if !c.files.is_empty() && !out.stdout.contains("(stored regression replayed)") {
+        if c.args.contains(&"--contracts")
+            && !c.files.is_empty()
+            && !out.stdout.contains("(stored regression replayed)")
+        {
             errors.push(at(format!(
                 "the stored regression was not replayed: {}",
                 out.stdout

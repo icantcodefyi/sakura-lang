@@ -1,0 +1,5 @@
+// RFC 0003 §5.2: the twins of the `V6020` fixtures pass when the root's line says
+// `trusted = true`; `sakura audit` then lists both sites under the package `util`.
+import util/home
+
+pub fn main() -> Unit ! {Console} { Console.print("{home.home()}") }

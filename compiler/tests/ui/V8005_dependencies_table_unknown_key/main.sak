@@ -1,3 +1,0 @@
-// expect: V8005 V8006
-// An unknown key beside `[dependencies]` is `V8006` after `V8005` (design §17.232, §17.239).
-pub fn main() -> Unit ! {Console} { Console.print("hi") }

@@ -1,0 +1,9 @@
+[package]
+name = "packages_two"
+version = "0.1.0"
+edition = "2026"
+
+[dependencies]
+stamp = { path = "stamp", effects = ["Clock"] }
+
+[permissions]

@@ -1,0 +1,4 @@
+// expect: V8031
+// RFC 0003 §3.2: a dependency with no sakura.lock is `V8031`; this release writes the lock itself
+// only when every dependency is a `path` dependency that exists, and fetches nothing.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

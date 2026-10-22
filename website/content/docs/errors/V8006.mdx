@@ -9,8 +9,10 @@ An error from the `package` phase. `sakura explain V8006` prints this explanatio
 sakura.toml is not a valid manifest: the TOML is malformed, a key is unknown,
 a value has the wrong type, or `[package]` has no `name`. The message is the parser's and the span
 points at the key, the value or the syntax error. Nothing builds or runs until it is fixed. The
-manifest has `[package]` (`name`, `version`, `edition`), `[permissions]` and `[verify]`; any other
-table, `[targets]` included, is unknown. `[dependencies]` is `V8005` instead. `[permissions]
+manifest has `[package]` (`name`, `version`, `edition`, and for packages `sakura`, `effects`,
+`description`, `license`, `repository`, `keywords`), `[permissions]`, `[verify]`,
+`[dependencies]` (whose entries are checked as `V8030` instead) and `[packages]` (`registry`,
+`vendor`, `min_age`); any other table, `[targets]` included, is unknown. `[permissions]
 process` is reserved: `process = []` is accepted and grants nothing, and any other list is
 `V8006`, since no std effect starts processes.
 
@@ -56,11 +58,11 @@ js = {}
 {
   "schema_version": "1.0",
   "kind": "diagnostic",
-  "id": "d:ed70c940fd1c30a7",
+  "id": "d:acc097967dfe1405",
   "code": "V8006",
   "severity": "error",
   "phase": "package",
-  "message": "unknown field `targets`, expected one of `package`, `permissions`, `verify`",
+  "message": "unknown field `targets`, expected one of `package`, `permissions`, `verify`, `packages`",
   "snapshot": "sha256:$SNAPSHOT",
   "symbol_id": null,
   "spans": [

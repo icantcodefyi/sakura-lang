@@ -1,0 +1,4 @@
+/// `s` followed by spaces up to `width` characters.
+pub fn right(s: String, width: Int) -> String {
+  if String.len(s) >= width { s } else { right("{s} ", width) }
+}

@@ -36,17 +36,23 @@ pub(crate) fn manifest(a: &Analyzed, target: &str, statuses: &BTreeMap<String, &
     for (id, bytes) in runtimes(target) {
         trusted.push(json!({"kind": "runtime", "id": id, "sha256": sha256(bytes)}));
     }
+    let mut packaged = false;
     for site in crate::audit::sites(a, true) {
         let id = site["symbol_id"].as_str().unwrap_or("");
         let kind = match site["site"].as_str() {
             Some("external") if id.starts_with("std::") => "std_host",
-            Some(k @ ("external" | "trust" | "total")) => k,
+            Some(k @ ("external" | "trust" | "total" | "host")) => k,
             // `T.from` is checked at run time and `@resource` restricts; neither is trusted.
             _ => continue,
         };
         let mut entry = json!({"kind": kind, "id": id, "span": site["span"]});
         if let Some(reason) = site["reason"].as_str() {
             entry["reason"] = json!(reason);
+        }
+        // A dependency's site, under its package's name (RFC 0003 §5.2).
+        if let Some(package) = site.get("package") {
+            entry["package"] = package.clone();
+            packaged = true;
         }
         trusted.push(entry);
     }
@@ -62,8 +68,9 @@ pub(crate) fn manifest(a: &Analyzed, target: &str, statuses: &BTreeMap<String, &
         })
         .collect();
     json!({
-        // 1.1 added `target` (§17.163 (3)).
-        "schema_version": "1.1",
+        // 1.1 added `target` (§17.163 (3)); 1.2, a `trusted` entry's `package`, so a build
+        // without dependencies stays 1.1.
+        "schema_version": if packaged { "1.2" } else { "1.1" },
         "kind": "manifest",
         "target": target,
         "snapshot": a.snapshot.hash(),

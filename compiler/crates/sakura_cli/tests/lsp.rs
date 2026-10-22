@@ -301,3 +301,54 @@ fn an_invalid_manifest_is_v8006_on_the_manifest() {
     assert!(c.shutdown());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// RFC 0003 (plan P1): hover and go to definition reach into a `path` dependency's source,
+/// which the server loads from `sakura.lock` even outside the workspace folder.
+#[test]
+fn hover_and_definition_reach_into_a_path_dependency() {
+    let dir = std::env::temp_dir().join(format!("sakura-lsp-deps-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    for (path, text) in [
+        (
+            "app/sakura.toml",
+            "[package]\nname = \"app\"\n\n[dependencies]\nutil = { path = \"../util\" }\n",
+        ),
+        (
+            "util/sakura.toml",
+            "[package]\nname = \"util\"\nversion = \"0.1.0\"\n",
+        ),
+        (
+            "util/src/label.sak",
+            "/// Shouts.\npub fn loud(s: String) -> String { \"{s}!\" }\n",
+        ),
+    ] {
+        std::fs::create_dir_all(dir.join(path).parent().unwrap()).unwrap();
+        std::fs::write(dir.join(path), text).unwrap();
+    }
+    let main = "import util/label\n\npub fn main() -> Unit ! {Console} { Console.print(label.loud(\"hi\")) }\n";
+    std::fs::create_dir_all(dir.join("app/src")).unwrap();
+    std::fs::write(dir.join("app/src/main.sak"), main).unwrap();
+    // The server reads the lock; the CLI writes it for a path-only project.
+    let out = common::sakura(&["check"], &dir.join("app"));
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let root = common::file_uri(&dir.join("app"));
+    let uri = format!("{root}/src/main.sak");
+    let (mut c, _) = Lsp::start(&root);
+    let doc = json!({"uri": uri, "languageId": "sakura", "version": 1, "text": main});
+    c.notify("textDocument/didOpen", json!({"textDocument": doc}));
+    let col = main.lines().nth(2).unwrap().find("loud").unwrap() + 1;
+    let at = json!({"textDocument": {"uri": uri}, "position": {"line": 2, "character": col}});
+    let hover = c.request("textDocument/hover", at.clone());
+    let text = hover["contents"]["value"].as_str().unwrap_or_default();
+    assert!(text.contains("fn loud(s: String) -> String"), "{hover}");
+    assert!(text.contains("Shouts."), "{hover}");
+    let def = c.request("textDocument/definition", at);
+    assert_eq!(
+        def["uri"],
+        common::file_uri(&dir.join("util/src/label.sak")),
+        "{def}"
+    );
+    assert_eq!(def["range"]["start"]["line"], 1, "{def}");
+    assert!(c.shutdown());
+    let _ = std::fs::remove_dir_all(&dir);
+}

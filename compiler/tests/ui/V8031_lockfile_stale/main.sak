@@ -1,0 +1,6 @@
+// expect: V8031 V8031 V8031 V8031 V8031
+// RFC 0003 §3.2: sakura.lock is authoritative, and each way it contradicts the manifests is
+// `V8031` with the fix `sakura sync`: a dependency it does not list (`fresh`), a changed `path`
+// (`moved`), a dependency whose declared ceiling changed (`tight`), a changed `trusted`
+// (`vouched`), and a locked package nothing depends on (`gone`, at the lock entry).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

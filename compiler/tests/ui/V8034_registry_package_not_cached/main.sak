@@ -1,0 +1,4 @@
+// expect: V8034
+// RFC 0003 §3.2, §7: `check` never fetches; a locked registry package that is not in the vendor
+// directory or the cache is `V8034` (this release has no `sakura sync` to fill the cache yet).
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

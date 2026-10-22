@@ -1,0 +1,5 @@
+[package]
+name = "billing"
+
+[dependencies]
+util = { path = "util", trusted = true }

@@ -1,0 +1,4 @@
+// expect: V8034
+// RFC 0003 §3.2: a locked `path` package whose directory has no sakura.toml is `V8034` at the
+// lock entry; nothing is resolved in its place.
+pub fn main() -> Unit ! {Console} { Console.print("hi") }

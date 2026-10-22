@@ -1,0 +1,6 @@
+// expect: V8032
+// RFC 0003 §5.1: a dependency whose ceiling the consumer's line does not accept is `V8032` at
+// that line, with a suggested fix (an authority change) that adds `effects = ["Clock"]`.
+import stamp/lib
+
+pub fn main() -> Unit ! {Clock, Console} { Console.print("{lib.now()}") }
