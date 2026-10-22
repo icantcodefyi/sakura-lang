@@ -140,6 +140,9 @@ retains earlier implementation history.
 - **`sakura fmt` sorts imports idempotently** (#8): imports were ordered by their source text,
   whitespace or comments inside the path included (`import m/ t`), but printed without them, so
   a second run could reorder them. The order and the `std` group now follow the printed path.
+- **`sakura fmt` keeps `1 .2` apart** (#10): the field of a number literal was printed as `1.2`,
+  a float, so `1 .2 = m` failed with `V9001` and `1 .2` changed meaning. A number keeps the
+  space before its `.field`.
 - Website benchmark fallback text no longer names beta.3 as an upcoming release, and the
   server guide pins beta.3 after rechecking its displayed outputs with the published beta.3.
 - Standard library docs describe native worker shutdown limits, exact grant-path matching

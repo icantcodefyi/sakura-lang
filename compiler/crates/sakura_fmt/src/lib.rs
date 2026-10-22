@@ -1388,8 +1388,17 @@ impl Fmt<'_> {
             }
         }
         parts.reverse();
+        // `1 .2` is the field `2` of `1`; printed as `1.2` it would lex as a float, so a number
+        // keeps the space before its `.field` and the two stay on one line.
+        let numeric_base = cur.kind() == LITERAL
+            && parts.first().is_some_and(|p| p.kind() == FIELD_EXPR)
+            && cur
+                .last_token()
+                .is_some_and(|t| matches!(t.kind(), INT | FLOAT));
         let base = if parts.first() == Some(&cur) {
             nil()
+        } else if numeric_base {
+            self.node(&cur).append(t(" "))
         } else {
             self.node(&cur)
         };
@@ -1419,7 +1428,8 @@ impl Fmt<'_> {
         // Never break before a leading call/index (`f\n(x)` would be two statements), and keep
         // the first `.name` on a type or module path (`Router.new()`) unless a comment
         // precedes it.
-        let glue = parts.first().is_some_and(|p| p.kind() != FIELD_EXPR)
+        let glue = (numeric_base && segments.peek().is_some_and(|s| s.0.parts.is_empty()))
+            || parts.first().is_some_and(|p| p.kind() != FIELD_EXPR)
             || (cur.kind() == PATH_EXPR && segments.peek().is_some_and(|s| s.0.parts.is_empty()));
         if glue && let Some((_, first)) = segments.next() {
             doc = doc.append(concat(first));

@@ -265,6 +265,26 @@ fn import_sorting_ignores_trivia_inside_the_path() {
 }
 
 #[test]
+fn a_field_of_a_number_keeps_its_space() {
+    // Found by the fmt_idempotent fuzz target: `1 .2` printed as `1.2` lexed as a float, so an
+    // assignment to it no longer parsed (V9001) and an expression changed meaning.
+    for src in [
+        "fn m() -> U { 1 .2 = m }\n",
+        "fn m() -> Int { 1 .2 }\n",
+        "fn m() -> Int { 1.5 .2 }\n",
+        "fn m() -> Int { 1 .a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z.aa.bb.cc.dd.ee }\n",
+    ] {
+        let once = sakura_fmt::format(src).unwrap_or_else(|e| panic!("{src}: {e:?}"));
+        assert!(once.contains(" ."), "{once}");
+        assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+    }
+    assert_eq!(
+        sakura_fmt::format("fn m()->U{1 .2=m}").unwrap(),
+        "fn m() -> U { 1 .2 = m }\n"
+    );
+}
+
+#[test]
 fn import_sorting_keeps_header_before_inline_comment() {
     for (text, expected) in [
         (
