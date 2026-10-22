@@ -1145,7 +1145,14 @@ fn native_counts_the_gauge_sets_frames_and_restarts_as_wasm() {
         let (native, n) = counts("native", "SAKURA_NATIVE_STATS");
         let why = compare(None, "run", &wasm, &native)
             .or_else(|| (w.0.is_none() || w != n).then(|| format!("wasm {w:?}, native {n:?}")));
-        why.map(|w| format!("{name} {flags:?} (frames, restarts): {w}"))
+        // `compare` names its sides js and wasm: here they are WASM and native.
+        why.map(|w| {
+            format!(
+                "{name} {flags:?} (frames, restarts; wasm vs native): {w}\n--- wasm stderr\n{}\
+                 --- native stderr\n{}",
+                wasm.stderr, native.stderr
+            )
+        })
     })
     .into_iter()
     .flatten()
