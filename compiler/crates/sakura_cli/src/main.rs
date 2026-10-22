@@ -1089,7 +1089,8 @@ fn test(
     let has_tests = if wasm {
         dir.join(wasm::TESTS).exists()
     } else if target == "native" {
-        dir.join("tests").exists()
+        dir.join(if cfg!(windows) { "tests.exe" } else { "tests" })
+            .exists()
     } else {
         dir.join("__tests__.js").exists()
     };

@@ -1509,8 +1509,9 @@ fn native_checks_builds_a_checked_executable() {
 }
 
 /// Design §17.308 (2d): with no system C linker on `PATH`, a native build is one `V8007` that
-/// names `cc`, exit 1.
-#[cfg(feature = "native")]
+/// names `cc`, exit 1. Not on Windows, where `link.exe` is found through the Visual Studio
+/// installation rather than `PATH`.
+#[cfg(all(feature = "native", not(windows)))]
 #[test]
 fn native_missing_linker_is_v8007() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
