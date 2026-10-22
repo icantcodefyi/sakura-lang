@@ -91,6 +91,15 @@ retains earlier implementation history.
   - `examples/packages_two` runs a root and a `path` dependency with a `Clock` ceiling on JS,
     WASM and native.
 
+- **The semver bump classifier** (packages lane P4, RFC 0003 §9.2): `InterfaceDelta::bump()`
+  in `sakura_analysis` classifies a change of a package's public surface as patch, minor or
+  major, with the major-0 shift and the items that need the bump. `sakura publish` will call it;
+  nothing user-facing runs it yet. The MCP `check_patch` tool's `interface_delta` entries gain
+  three optional keys: `effects` (the checked row without `Fail`), `errors` (the `Fail` tags with
+  aliases resolved) and `schema` (the `Schema` shape, private types it is made of included). A
+  change to a private alias or type that a public item names now shows in `changed`. The keys
+  are additive; existing keys are unchanged.
+
 ### Changed
 
 - **`V8005 dependencies_not_supported` names only an unsupported dependency form** (RFC 0003

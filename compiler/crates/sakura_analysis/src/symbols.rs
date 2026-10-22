@@ -222,17 +222,52 @@ fn normalize(node: &SyntaxNode) -> String {
     )
 }
 
+/// What the bump rule compares of a function's or operation's signature (RFC 0003 §9.2): the
+/// signature without its declared effect row (`! {…}`), which is classified on its own, and
+/// without parameter names, which no call site writes.
+pub(crate) fn signature_without_row(root: &SyntaxNode, name_start: u32) -> Option<String> {
+    let item = item_node(root, name_start.into())?;
+    let mut parts = Vec::new();
+    for el in item.children_with_tokens() {
+        match el {
+            NodeOrToken::Node(list) if list.kind() == K::PARAM_LIST => {
+                for el in list.children_with_tokens() {
+                    match el {
+                        NodeOrToken::Node(param) if param.kind() == K::PARAM => {
+                            parts.extend(param.children().next().map(NodeOrToken::Node));
+                        }
+                        el => parts.push(el),
+                    }
+                }
+            }
+            el if not_signature(el.kind()) || matches!(el.kind(), K::BANG | K::EFFECT_ROW) => {}
+            el => parts.push(el),
+        }
+    }
+    Some(join_tokens(parts.into_iter()))
+}
+
 fn signature_text(node: &SyntaxNode) -> String {
     let mut parts = Vec::new();
     for el in node.children_with_tokens() {
-        match el.kind() {
-            K::BLOCK | K::ATTRIBUTE | K::CONTRACT | K::DOC_COMMENT | K::COMMENT => continue,
-            // A constant's interface is its name and type, not its value.
-            K::EQ if node.kind() == K::CONST_DECL => break,
-            _ => parts.push(el),
+        if not_signature(el.kind()) {
+            continue;
         }
+        // A constant's interface is its name and type, not its value.
+        if el.kind() == K::EQ && node.kind() == K::CONST_DECL {
+            break;
+        }
+        parts.push(el);
     }
     join_tokens(parts.into_iter())
+}
+
+/// What a signature leaves out of its item.
+fn not_signature(kind: K) -> bool {
+    matches!(
+        kind,
+        K::BLOCK | K::ATTRIBUTE | K::CONTRACT | K::DOC_COMMENT | K::COMMENT
+    )
 }
 
 fn effects_text(node: &SyntaxNode) -> Option<String> {
