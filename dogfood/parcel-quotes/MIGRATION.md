@@ -1,4 +1,10 @@
-# Migration: parcel-quotes, v0.1.0 → v1.0.0-beta.1
+# Migration: parcel-quotes
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -6,7 +12,7 @@
 - Compiler: the published `sakuralang@1.0.0-beta.1` from npm,
   `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)`.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program is a library over `Http`: `fetch_rates` builds `Request.of(Method.Get, …)` and
 streams the body with `Http.stream`/`Http.read_chunk` under `Http.scoped`; tests use
@@ -35,7 +41,7 @@ Predicted diff: `src/carrier.sak` `fetch_rates` sets `redirect: Manual` (item 3)
 import of the `Redirect` type (the list does not say which module exports it; `std/request`
 is the guess); the test 25b and `raw_body` comments.
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 Unchanged source on beta.1: `sakura check` passes with one warning, `W1003 \`Quote\` is
 imported but never used` (`src/quote_tests.sak:23`); `sakura test` 30/31 on js and on wasm,

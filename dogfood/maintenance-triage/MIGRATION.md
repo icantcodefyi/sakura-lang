@@ -1,4 +1,10 @@
-# Migration: maintenance-triage, v0.1.0 → v1.0.0-beta.1
+# Migration: maintenance-triage
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -9,7 +15,7 @@
   (item 11, tests 02 and 29) was already applied on `main` by the compiler commit
   `ab662859`, which made the break; it is counted below as a predicted hunk.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program is an `Llm` agent with two tools over a user `Manual` effect, a user
 `handler Http` (`synthetic_provider`, for regenerating cassettes), `Http.recording`
@@ -34,7 +40,7 @@ cassettes under `tests/fixtures`, `Log.event` with fields, and a CLI with `Cli.e
 
 Predicted diff: tests 02 and 29 (item 11, pre-applied) and the README sentence (item 10).
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 beta.1: `sakura check` no problems; `sakura test` 31/31 on js and 31/31 on `--target wasm`;
 `sakura build` and `sakura build --target wasm` succeed; `sakura run -- manual.json

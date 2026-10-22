@@ -1,4 +1,10 @@
-# Migration: supplier-stock, v0.1.0 → v1.0.0-beta.1
+# Migration: supplier-stock
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -6,7 +12,7 @@
 - Compiler: the published `sakuralang@1.0.0-beta.1` from npm,
   `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)`.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program fetches three supplier feeds concurrently with `Http.stream`/`Http.read_chunk`
 under `Http.scoped`, retries 429/5xx with `std/retry`, validates with refinements, and prints
@@ -33,7 +39,7 @@ cassettes (including a 429-then-200 pair), and three user `handler Http`s (`gate
 
 Predicted diff: drop `DecodeError` from the `std/json` import (item 14).
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 Unchanged source on beta.1: `sakura check` passes with exactly the predicted warning,
 `W1003 \`DecodeError\` is imported but never used` (`src/main.sak:18`); `sakura test` 27/27

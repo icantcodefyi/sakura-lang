@@ -1,4 +1,10 @@
-# Migration: workshop-power, v0.1.0 → v1.0.0-beta.1
+# Migration: workshop-power
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -6,7 +12,7 @@
 - Compiler: the published `sakuralang@1.0.0-beta.1` from npm,
   `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)`.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program is pure: a CLI over `Cli` and `Console` that decodes one JSON snapshot,
 validates it into refined types and runs a contracted scalar kernel. Its acceptance
@@ -32,7 +38,7 @@ record reader the author kept outside the repository (FRICTION.md item 10).
 
 Predicted diff: none in the source; the verify run reads `verify_summary`.
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 Unchanged source on beta.1: `sakura check` no problems (no `W1003`); `sakura fmt --check`
 clean; `sakura test` 28/28 on js and 28/28 on `--target wasm`, the `example_report`

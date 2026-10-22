@@ -1,4 +1,10 @@
-# Migration: repair-queue, v0.1.0 → v1.0.0-beta.1
+# Migration: repair-queue
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -6,7 +12,7 @@
 - Compiler: the published `sakuralang@1.0.0-beta.1` from npm,
   `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)`.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program is a `Serve` + `Router` + `Sql` service. The service reads bodies only through
 `Request.json(req, limit)` and answers with `Response.ok_json` and a record update of it.
@@ -34,7 +40,7 @@ listener with `sakura run` and curl.
 
 Predicted diff: item 1 hunks (a), (b), (c), (e), possibly (d), all in tests.
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 Unchanged source on beta.1: `sakura check` fails with 15 `V2001` errors, every one at a
 site item 1 predicted: `acceptance.sak` 35 (a), 42/44/46 (b), 447–449 (c); `cassette.sak`

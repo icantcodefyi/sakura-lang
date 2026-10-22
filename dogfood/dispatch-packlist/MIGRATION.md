@@ -1,4 +1,10 @@
-# Migration: dispatch-packlist, v0.1.0 → v1.0.0-beta.1
+# Migration: dispatch-packlist
+
+One section per upgrade round (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+row 2a): the prediction from that release's CHANGELOG section, written and committed before
+the upgrade, then the result against the published compiler.
+
+## v0.1.0 → v1.0.0-beta.1
 
 - Author: Claude Opus 5.5, 2026-10-21 (design §17.255 (3), §17.291 (1b)).
 - Source: CHANGELOG `[1.0.0-beta.1]`, "Migration from v0.1.0", items 1–14, read against
@@ -6,7 +12,7 @@
 - Compiler: the published `sakuralang@1.0.0-beta.1` from npm,
   `sakura 1.0.0-beta.1 (7aee189efa2dd571a8a7988a91b69f507fc46399)`.
 
-## Prediction (written before the upgrade)
+### Prediction (written before the upgrade)
 
 The program is a CLI over `Cli`, `Fs`, `Console` and `Log`. It uses no HTTP, no `Router`,
 no `std/crypto`, no LLM, no user handler and no `--json` consumer.
@@ -30,7 +36,7 @@ no `std/crypto`, no LLM, no user handler and no `--json` consumer.
 
 Predicted diff: **none**.
 
-## Result (after the upgrade)
+### Result (after the upgrade)
 
 Unchanged source, beta.1: `sakura check` no problems; `sakura fmt --check` clean;
 `sakura test` 24/24 on js and 24/24 on `--target wasm`; `sakura build` and
