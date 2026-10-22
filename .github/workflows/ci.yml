@@ -502,15 +502,21 @@ jobs:
           mkdir -p "$dir"
           printf '%s\n' \
             'fn fib(n: Int) -> Int { if n < 2 { n } else { fib(n - 1) + fib(n - 2) } }' \
-            'pub fn main() -> Unit ! {Console} { Console.print("{fib(33)}") }' > "$dir/fib.sak"
+            'pub fn main() -> Unit ! {Console} { Console.print("{fib(35)}") }' > "$dir/fib.sak"
           target/debug/sakura build --target native --out-dir "$dir/out" "$dir/fib.sak"
           if [ "$RUNNER_OS" = Linux ]; then
             sudo perf record -F 999 -g -o "$dir/perf.data" "$dir/out/main"
             sudo perf report --stdio -i "$dir/perf.data" | tee "$dir/report.txt" > /dev/null
           else
+            # The Intel macOS image takes only 2 to 12 samples a second, and a fib frame is on the
+            # native stack in about half of them (calls return through the runtime), so one window
+            # can miss it: sample one-second windows while fib runs until one names it.
             "$dir/out/main" & pid=$!
             sleep 0.5
-            sample "$pid" 1 -file "$dir/report.txt"
+            while kill -0 "$pid" 2> /dev/null; do
+              sample "$pid" 1 -file "$dir/report.txt" || break
+              if grep -q -F 'main::fib::fib' "$dir/report.txt"; then break; fi
+            done
             wait "$pid"
           fi
           # The compiled function's symbol is `sakura$<index>$main::fib::fib`.
