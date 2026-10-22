@@ -20,13 +20,14 @@ Failure (`Fail<E>`, `try`, `?`) is the errors chapter (see the [README](README.m
 
 **EF04** A type's row parameter is filled by a row argument, which is unified and never widened, while a type where a row is expected is `V1007` and a wrong argument count is `V2002`. [Row parameter on a type](../../compiler/tests/semantics/row_param_type.sak), [closed_row_arguments_must_be_equal](../../compiler/crates/sakura_types/tests/row_args.rs), [V1007](../../compiler/tests/ui/V1007_row_argument_kind.sak), [V2002](../../compiler/tests/ui/V2002_row_argument_count.sak).
 
-**EF05** Whether a body checks against its row does not depend on the order of its statements. [statement_order_does_not_matter](../../compiler/crates/sakura_types/tests/order.rs), [bounded_tails_do_not_depend_on_statement_order](../../compiler/crates/sakura_types/tests/rows.rs).
+**EF05** A body's check does not depend on the order of its statements, except that two distinct flexible effect tails first joined by equality (§5.2 rule 9) take the bound of the tail bounded first, which can reject a program another order accepts. [statement_order_does_not_matter](../../compiler/crates/sakura_types/tests/order.rs), [bounded_tails_do_not_depend_on_statement_order](../../compiler/crates/sakura_types/tests/rows.rs), [distinct_flexible_tails_joined_first_depend_on_order](../../compiler/crates/sakura_types/tests/rows.rs).
 
-Informative: design §5.2 rule 9 records one order-dependent edge, two distinct flexible tails
-joined by equality.
+Informative: the exception is design §5.2 rule 9's order-dependent edge.
 [distinct_flexible_tails_joined_first_depend_on_order](../../compiler/crates/sakura_types/tests/rows.rs)
-exhibits it: swapping two statements of one body turns a clean check into `V3001`, so EF05 as
-worded does not hold for that program; the disagreement is open in [gaps](gaps.md).
+exhibits it: swapping two statements of one body turns a clean check into `V3001`. The false
+`V3001` rejects a valid program and no order accepts an invalid one. The exception goes with
+the 1.x checker fix, whose landing inverts that test and restores the unconditional sentence
+(design §17.312 (3); [gaps](gaps.md)).
 
 ## Effects and operations
 

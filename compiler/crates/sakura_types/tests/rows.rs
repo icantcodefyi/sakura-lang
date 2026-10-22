@@ -138,8 +138,8 @@ error A
     assert_eq!(c.value_row("g").0, "{Clock}");
 }
 
-/// §5.2 rule 9's documented edge, which the spec's EF05 does not yet except (REQUESTS,
-/// 2026-10-22): `h(a)` relates `a`'s flexible tail to `h`'s parameter tail by equality. If
+/// §5.2 rule 9's documented edge, the exception the spec's EF05 states until the 1.x checker
+/// fix inverts this test (design §17.312 (3)): `h(a)` relates `a`'s flexible tail to `h`'s parameter tail by equality. If
 /// that join comes first, `h`'s later `Console` argument reaches `a`'s tail past its
 /// `{Clock}` bound (a false `V3001`); in the other order `h`'s tail holds `Console` before
 /// the join, and the body checks.

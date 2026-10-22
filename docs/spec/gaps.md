@@ -129,9 +129,10 @@ after the tag).
   [distinct_flexible_tails_joined_first_depend_on_order](../../compiler/crates/sakura_types/tests/rows.rs)
   exhibits it: in a lambda `fn(h, a)` whose `a` is passed where `fn() -> Int ! {Clock}` is
   expected, `h(a)` then `h(fn() { Console.print("x") … })` is `V3001`, and the reverse order
-  checks. EF05 states order independence without that exception; the compiler is not changed
-  to match EF05 and EF05 is not narrowed to match the compiler until the designer rules
-  (REQUESTS, 2026-10-22). The false `V3001` rejects a valid program, so it is not unsound.
+  checks. The false `V3001` rejects a valid program, so it is not unsound. EF05 states the
+  exception for 1.0 (design §17.312 (3)); the exception goes with the 1.x checker fix, which
+  records the join as a bound in `subsume_tails`'s `(Var, Var)` arm, accepts strictly more
+  programs, inverts the test and restores EF05's unconditional sentence.
 - **Source-level finalizer order.** EF19's reverse order is pinned in the Rust runtime
   (`exec.rs`). No `.sak` program can observe it: no std resource's finalizer does anything
   source code can see afterwards (a closed file or channel has left its callback, `V6003`), and
