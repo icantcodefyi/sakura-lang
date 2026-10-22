@@ -18,7 +18,8 @@ retains earlier implementation history.
   an empty in-memory directory, and a `main` that leaves `Http`, `Serve`, `Sql`, `Llm`,
   `WebSocket` or `Worker` to the host is refused as on native ("`Http` is not available on target
   `browser`"). Diagnostics show inline with their codes beside `sakura check`'s output; the
-  repository's runnable examples are in a menu, and a link carries the program compressed in its
+  repository's runnable examples are in a menu (the site's shadcn select, each with a name
+  and a one-line description), and a link carries the program compressed in its
   hash. Documentation blocks holding a whole program link to it. `sakura verify` (Z3) does not run
   in the browser. With no host `process`, the JS runtime's `Fs.host()` is that memory directory
   (`compiler/runtime/js/ABI.md` §7, memory directories).

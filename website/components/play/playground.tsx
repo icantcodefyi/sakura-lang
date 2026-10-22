@@ -3,6 +3,15 @@
 import { Link2, Loader2, Play, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { TokenSpans, type TokenLine } from "@/components/token-spans";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Example } from "@/lib/play-examples";
 import { decodeCode, encodeCode } from "@/lib/play-link";
 
@@ -242,14 +251,14 @@ export function Playground({
     setStatus(null);
     setOutput([]);
     setTab("output");
-    const { result, error } = await compile(code, true);
+    const { result, error, ms } = await compile(code, true);
     const finish = (s: Status, chunks: Chunk[] = []) => {
       setOutput((o) => [...o, ...chunks]);
       setStatus(s);
       setRunning(false);
     };
     if (!result) return finish("unsupported", [{ stream: "err", text: `${error}\n` }]);
-    setCheck({ answer: result, code, ms: 0 });
+    setCheck({ answer: result, code, ms: ms ?? 0 });
     if (result.errors || !result.files) {
       return finish("errors", [{ stream: "err", text: `${result.human}\n` }]);
     }
@@ -366,6 +375,7 @@ export function Playground({
     i = j;
   }
 
+  const current = examples.find((e) => e.name === example);
   const compilerNote =
     compilerState === "loading"
       ? "Loading the compiler…"
@@ -378,56 +388,65 @@ export function Playground({
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:h-[calc(100dvh-3.5rem)] lg:flex-none">
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-5">
-        <label htmlFor="play-example" className="sr-only">
-          Example
-        </label>
-        <select
-          id="play-example"
-          value={example}
-          onChange={(e) => choose(e.target.value)}
-          className="h-9 min-w-0 flex-1 cursor-pointer rounded-md border border-border bg-background px-2.5 font-mono text-[13px] text-foreground transition-colors hover:border-strong sm:max-w-56 sm:flex-none"
-        >
-          <option value="" disabled>
-            Your program
-          </option>
-          {examples.map((e) => (
-            <option key={e.name} value={e.name}>
-              {e.name}
-            </option>
-          ))}
-        </select>
+        <Select value={example} onValueChange={choose}>
+          <SelectTrigger
+            aria-label="Example"
+            className="min-w-0 flex-1 border-border bg-background hover:bg-muted data-[size=default]:h-10 sm:w-56 sm:data-[size=default]:h-9 sm:flex-none dark:border-input dark:hover:bg-input/50"
+          >
+            <SelectValue placeholder="Your program">{current?.label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent
+            position="popper"
+            align="start"
+            className="w-80 max-w-[calc(100vw-1.5rem)]"
+          >
+            {examples.map((e) => (
+              <SelectItem key={e.name} value={e.name} textValue={e.label} className="py-1.5">
+                <span className="grid gap-0.5">
+                  <span>{e.label}</span>
+                  {e.description ? (
+                    <span className="text-[12.5px] text-muted-foreground">{e.description}</span>
+                  ) : null}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <p
           aria-live="polite"
           className="hidden min-w-0 flex-1 truncate px-2 font-mono text-[12px] text-muted-foreground md:block"
         >
           {compilerNote}
         </p>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="icon-lg"
           onClick={() => void share()}
           aria-live="polite"
           aria-label={shared ? "Link copied" : "Copy a link to this program"}
+          title="Copy a link to this program"
           data-checked={shared ? "" : undefined}
-          className="blossom-button ml-auto grid size-9 shrink-0 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:border-strong hover:text-foreground"
+          className="blossom-button ml-auto size-10 text-muted-foreground sm:size-9"
         >
-          <Link2 className="size-4" />
-        </button>
-        <button
+          <Link2 />
+        </Button>
+        <Button
           type="button"
           onClick={() => void run()}
           disabled={compilerState !== "ready"}
           title="Run (Ctrl or ⌘ + Enter)"
-          className="inline-flex h-9 w-[7.25rem] shrink-0 items-center justify-center gap-2 rounded-md bg-primary px-3 text-[14px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="h-10 w-[7.25rem] gap-2 sm:h-9"
         >
           {running ? (
             <Square className="size-3.5 fill-current" />
           ) : compilerState === "loading" ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Loader2 className="animate-spin" />
           ) : (
             <Play className="size-3.5 fill-current" />
           )}
           {running ? "Stop" : "Run"}
-        </button>
+        </Button>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
@@ -512,7 +531,7 @@ export function Playground({
           <button
             type="button"
             onClick={() => (atCaret ? jump(atCaret) : setTab("problems"))}
-            className="flex h-9 shrink-0 items-center gap-2 border-t border-border px-3 text-left font-mono text-[12px] text-muted-foreground sm:px-5"
+            className="flex h-9 shrink-0 items-center gap-2 border-t border-border px-3 text-left font-mono text-[12px] text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset sm:px-5"
           >
             {atCaret ? (
               <>
@@ -526,7 +545,7 @@ export function Playground({
                 {problems.length === 0
                   ? check
                     ? "No problems"
-                    : " "
+                    : compilerNote
                   : `${problems.length} ${problems.length === 1 ? "problem" : "problems"}`}
               </span>
             )}
@@ -541,38 +560,33 @@ export function Playground({
           aria-label="Output"
           className="flex min-h-[40dvh] flex-col border-t border-border lg:min-h-0 lg:border-t-0"
         >
-          <div
-            role="tablist"
-            className="flex h-10 shrink-0 items-center gap-1 border-b border-border px-2 sm:px-3"
+          <Tabs
+            value={tab}
+            onValueChange={(t) => setTab(t === "problems" ? "problems" : "output")}
+            className="min-h-0 flex-1 flex-col gap-0"
           >
-            {(["output", "problems"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === t}
-                onClick={() => setTab(t)}
-                className={`rounded-md px-2.5 py-1 text-[13px] transition-colors ${tab === t ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                {t === "output" ? "Output" : "Problems"}
-                {t === "problems" ? (
+            <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3 sm:px-4">
+              <TabsList aria-label="Results">
+                <TabsTrigger value="output" className="px-2.5 text-[13px]">
+                  Output
+                </TabsTrigger>
+                <TabsTrigger value="problems" className="px-2.5 text-[13px]">
+                  Problems
                   <span
-                    className={`ml-1.5 inline-block min-w-4 font-mono text-[11px] tabular-nums ${errorCount ? "text-fail" : ""}`}
+                    className={`min-w-4 text-[11.5px] tabular-nums ${errorCount ? "text-fail" : "text-muted-foreground"}`}
                   >
                     {problems.length}
                   </span>
-                ) : null}
-              </button>
-            ))}
-            <span
-              aria-live="polite"
-              className={`ml-auto truncate font-mono text-[12px] ${status ? (STATUS[status].tone === "ok" ? "text-ok" : STATUS[status].tone === "fail" ? "text-fail" : "text-muted-foreground") : "text-muted-foreground"}`}
-            >
-              {running ? "running…" : status ? STATUS[status].label : ""}
-            </span>
-          </div>
-          <div role="tabpanel" className="min-h-0 flex-1 overflow-auto">
-            {tab === "output" ? (
+                </TabsTrigger>
+              </TabsList>
+              <span
+                aria-live="polite"
+                className={`ml-auto truncate rounded-md px-2 py-0.5 font-mono text-[12px] ${status && !running ? (STATUS[status].tone === "ok" ? "bg-ok-wash text-ok" : STATUS[status].tone === "fail" ? "bg-fail-wash text-fail" : "bg-muted text-muted-foreground") : "text-muted-foreground"}`}
+              >
+                {running ? "running…" : status ? STATUS[status].label : ""}
+              </span>
+            </div>
+            <TabsContent value="output" className="min-h-0 overflow-auto">
               <pre className="m-0 px-4 py-3 font-mono text-[13px] leading-[1.6] whitespace-pre-wrap [overflow-wrap:anywhere] sm:px-5">
                 {output.length === 0 && !running ? (
                   <span className="text-muted-foreground">
@@ -586,40 +600,39 @@ export function Playground({
                   ))
                 )}
               </pre>
-            ) : (
-              <div className="px-2 py-2 sm:px-3">
-                {problems.length > 0 ? (
-                  <ul className="mb-2">
-                    {problems.map((p, i) => (
-                      <li key={i}>
-                        <button
-                          type="button"
-                          onClick={() => jump(p)}
-                          className="flex w-full items-baseline gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-muted"
+            </TabsContent>
+            <TabsContent value="problems" className="min-h-0 overflow-auto px-2 py-2 sm:px-3">
+              {problems.length > 0 ? (
+                <ul className="mb-2">
+                  {problems.map((p, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        onClick={() => jump(p)}
+                        className="flex w-full items-baseline gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        <span
+                          className={`shrink-0 font-mono text-[12px] ${p.severity === "error" ? "text-fail" : "text-sakura-text"}`}
                         >
-                          <span
-                            className={`shrink-0 font-mono text-[12px] ${p.severity === "error" ? "text-fail" : "text-sakura-text"}`}
-                          >
-                            {p.code}
-                          </span>
-                          <span className="min-w-0 flex-1">{p.message}</span>
-                          <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground tabular-nums">
-                            {p.line}:{p.col}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <p className="px-2 pt-1 font-mono text-[11.5px] text-muted-foreground">
-                  $ sakura check main.sak
-                </p>
-                <pre className="m-0 px-2 py-2 font-mono text-[12.5px] leading-[1.6] whitespace-pre-wrap [overflow-wrap:anywhere]">
-                  {check?.answer.human ?? "…"}
-                </pre>
-              </div>
-            )}
-          </div>
+                          {p.code}
+                        </span>
+                        <span className="min-w-0 flex-1">{p.message}</span>
+                        <span className="shrink-0 font-mono text-[11.5px] text-muted-foreground tabular-nums">
+                          {p.line}:{p.col}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="px-2 pt-1 font-mono text-[11.5px] text-muted-foreground">
+                $ sakura check main.sak
+              </p>
+              <pre className="m-0 px-2 py-2 font-mono text-[12.5px] leading-[1.6] whitespace-pre-wrap [overflow-wrap:anywhere]">
+                {check?.answer.human ?? "…"}
+              </pre>
+            </TabsContent>
+          </Tabs>
         </section>
       </div>
 
