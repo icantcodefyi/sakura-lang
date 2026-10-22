@@ -319,3 +319,30 @@ before → after: `tokenizer` 69.5 M → 10.7 M (1,000), 6,038.8 M → 100.6 M (
 148,895.2 M → 504.4 M (50,000), 1,012.9 M at 100,000 (row M: 595 G); `json_validate` 6.9 M →
 6.4 M (100), 81.3 M → 60.5 M (1,000), 2,775.5 M → 603.6 M (10,000), 21,956.7 M → 1,818.5 M
 (30,000). Both now grow linearly (`tokenizer` 9.4× for 10×, `json_validate` 3.0× for 3×).
+
+## `v1.0.0-beta.5` baseline (`447dce0c`, 2026-10-22)
+
+Counted (§17.264) at the preparation commit `447dce0c1e07e6ce1e3e08d95f1981311ebe8281` in
+`../sakura-counted`, tree clean, every oracle and checksum green, Node 26.12.0 under §17.282's
+flags. Blessed by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design
+§17.310 (1)); the owner can overturn it. `baselines/d88970189598.json`, `wasm/`, `typescript/` and
+`compile-native/` hold the `447dce0c` runs (the `40af20ce` files are in
+`baselines/archive/40af20ce/`), and **`baselines/native/d88970189598.json` is the first native
+run-time baseline** (row M, design §17.308 (2), release.md §2): Sakura's `--target native`
+executable counted beside the Rust, Go, OCaml and Koka ports on the matched lane. The counted
+`compile-native` report grows from 16,384 to 32,768 rows by 1.96× in `frontend`, 2.01× in
+`lowering`, 2.01× in `codegen`, 2.14× in `object` and 1.04× in `link`, so it names `lowering`,
+`codegen` and `object` superlinear (`object` joins the two named at beta.4). Host load was high
+(one-minute load up to 26, other agents' builds; informational for counts): Node spread over 1%
+on 10 Sakura and 7 hand-JS cells of 99 each in the `js` run (largest `shapes` n=100,000, 2.92%)
+and 10 Sakura cells in the `wasm` run (largest `rbtree` n=100,000, 3.58%), against none at beta.4;
+one Wasmtime cell (`countdown` n=1000, 41.85%, as at beta.4 its first process); Sakura native cells
+a median 0.03%, none over 1%; 17 Go cells over 1% (largest `tokenizer` n=100,000, 26.31%); Bun and
+`tsc` as before (advisory). Against the `40af20ce` baseline the `js` run's Sakura/hand-JS ratios
+read `ok` on all 99 Node cells (`compare` flags only advisory Bun rows;
+`2026-10-22-447dce0c-compare-js-beta4.txt`). M4 envelope (wall-time lane, advisory, host load
+26.29): `miss` on 238 of 264 gating cells (absent 4, met 22), against 237 at beta.4; carried under
+§17.265. M5 envelope on instructions (`envelope-m5`): `miss` on 124 of 132 gating cells, met 8, as
+at the advisory `5941d656` run; `rbtree`'s counts are within 0.1% of that run's. Prep `fib` and
+`shapes` compare `ok` on every Node cell (largest move −1.2%). Source:
+`bench/results/2026-10-22-447dce0c-*`.
