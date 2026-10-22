@@ -206,7 +206,7 @@ stay):
 | Item | State | Evidence | Blocks / who |
 |---|---|---|---|
 | (a) `MIGRATION.md` across every beta | **not met** | the six files hold the `v0.1.0` → beta.1 round only; `dogfood.yml` green at each beta | 1.0.0's preparation commit; 2a |
-| (b) agent-DX | **partly met** | (i) pilot numbers recorded; (ii) offline harness 12/12 (`3a7f93fd`); (iv) six programs green; (iii) `judge` built, never run (no `judged.json`) | 1.0.0's preparation commit; 2b |
+| (b) agent-DX | **partly met** | (i) pilot numbers recorded; (ii) offline harness 12/12 (`3a7f93fd`); (iv) six programs green; (iii) run 2026-10-22 at `087dd947`: 12/12 accepted, Claude family, judged offline, second family untested, no task failing in both (iii) and (i) ([report](../../evals/agent-dx/reports/2026-10-23-subscription-episodes.md)) | 1.0.0's preparation commit; 2b |
 | (c) the ledger | **met** | `compiler/fuzz/README.md` at `3a7f93fd`: every target ≥ 24 CPU-h after `611dae4f`; #8–#11, #13 fixed with regressions and ≥ 4 clean hours after; sanitizers clean at `472dea56` | — |
 | (d) the envelope at beta.1 and 1.0.0 | **met as carried** | read at beta.1 (237/264 miss), beta.2 (237), beta.3 (236), beta.4 (237), carried under §17.265 (1); beta.5's bless in flight; beta.6's and 1.0.0's owed | 2c; the carry named in 1.0.0's notes |
 | (e) signed macOS archives | **met** | Developer ID + notarization since beta.4's tag run; beta.5 verified | re-verified at each tag |

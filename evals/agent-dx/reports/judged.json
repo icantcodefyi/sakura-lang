@@ -1,0 +1,247 @@
+{
+ "environment": {
+  "date": "2026-10-22T19:01:07+00:00",
+  "harness": "2",
+  "node": "v26.12.0",
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "python": "3.11.13",
+  "repo_commit": "087dd9475bda2aa661b4d814100563ece69a7c5b",
+  "sakura": "sakura 1.0.0-beta.5"
+ },
+ "episodes": [
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/bounds.sak": true,
+    "oracle/inside.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "01-bounded-clamp"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/empty.sak": true,
+    "oracle/mixed.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "02-positive-summary"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/normalize.sak": true,
+    "oracle/unicode.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "03-path-label"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/configured.sak": true,
+    "oracle/missing.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "04-local-env-handler"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/empty.sak": true,
+    "oracle/order.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "05-stable-unique"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/invalid.sak": true,
+    "oracle/valid.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "06-typed-recovery"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/dispatch.sak": true,
+    "oracle/health.sak": true
+   },
+   "reasons": [],
+   "revision": 3,
+   "skill_loaded": true,
+   "task": "07-health-route"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/errors.sak": true,
+    "oracle/prefix.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "08-cli-prefix"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/nonpositive.sak": true,
+    "oracle/positive.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "09-scripted-reading"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/failure.sak": true,
+    "oracle/invalid.sak": true,
+    "oracle/valid.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "10-http-validation"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/lower.sak": true,
+    "oracle/upper.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "11-successor-contract"
+  },
+  {
+   "accepted": true,
+   "condition": "skill",
+   "diagnostics": [],
+   "family": "claude",
+   "holes": 0,
+   "models": [
+    "claude-opus-5-5"
+   ],
+   "oracles": {
+    "oracle/denied.sak": true,
+    "oracle/granted.sak": true
+   },
+   "reasons": [],
+   "revision": 2,
+   "skill_loaded": true,
+   "task": "12-permitted-mode"
+  }
+ ],
+ "harness": "2",
+ "kind": "subscription episodes, judged offline",
+ "summary": {
+  "claude/skill": {
+   "accepted": [
+    12,
+    12,
+    [
+     0.7575,
+     1.0
+    ]
+   ],
+   "episodes": 12,
+   "failed": [],
+   "skill_not_loaded": 0
+  }
+ }
+}

@@ -1,6 +1,6 @@
 # Reports
 
-No model episodes have run. `ledger.json` is the committed spend ledger for every
+The [2026-10-18 pilot](2026-10-18-pilot.md) is the paid run; the [2026-10-23 subscription episodes](2026-10-23-subscription-episodes.md) ran on a seat and were judged offline by `runner.py judge` ([`judged.json`](judged.json)). `ledger.json` is the committed spend ledger for every
 live run (owner cap: $10 total); the runner refuses to run live without it, so never
 delete or reset it. Commit it after every live run (the workflow does this itself). Do not interpret offline gold/hollow validation as a
 model success rate. Future reviewed reports must include every episode, failed
