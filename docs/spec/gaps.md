@@ -125,7 +125,13 @@ after the tag).
 ### Effects and handlers
 
 - **Order-dependent tails.** Design §5.2 rule 9 records that two distinct flexible tails joined
-  by equality can still depend on order; no test exercises that edge.
+  by equality can still depend on order.
+  [distinct_flexible_tails_joined_first_depend_on_order](../../compiler/crates/sakura_types/tests/rows.rs)
+  exhibits it: in a lambda `fn(h, a)` whose `a` is passed where `fn() -> Int ! {Clock}` is
+  expected, `h(a)` then `h(fn() { Console.print("x") … })` is `V3001`, and the reverse order
+  checks. EF05 states order independence without that exception; the compiler is not changed
+  to match EF05 and EF05 is not narrowed to match the compiler until the designer rules
+  (REQUESTS, 2026-10-22). The false `V3001` rejects a valid program, so it is not unsound.
 - **Source-level finalizer order.** EF19's reverse order is pinned in the Rust runtime
   (`exec.rs`). No `.sak` program can observe it: no std resource's finalizer does anything
   source code can see afterwards (a closed file or channel has left its callback, `V6003`), and

@@ -23,7 +23,10 @@ Failure (`Fail<E>`, `try`, `?`) is the errors chapter (see the [README](README.m
 **EF05** Whether a body checks against its row does not depend on the order of its statements. [statement_order_does_not_matter](../../compiler/crates/sakura_types/tests/order.rs), [bounded_tails_do_not_depend_on_statement_order](../../compiler/crates/sakura_types/tests/rows.rs).
 
 Informative: design §5.2 rule 9 records one order-dependent edge, two distinct flexible tails
-joined by equality; the tests above do not cover it.
+joined by equality.
+[distinct_flexible_tails_joined_first_depend_on_order](../../compiler/crates/sakura_types/tests/rows.rs)
+exhibits it: swapping two statements of one body turns a clean check into `V3001`, so EF05 as
+worded does not hold for that program; the disagreement is open in [gaps](gaps.md).
 
 ## Effects and operations
 

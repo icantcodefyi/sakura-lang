@@ -138,6 +138,31 @@ error A
     assert_eq!(c.value_row("g").0, "{Clock}");
 }
 
+/// §5.2 rule 9's documented edge, which the spec's EF05 does not yet except (REQUESTS,
+/// 2026-10-22): `h(a)` relates `a`'s flexible tail to `h`'s parameter tail by equality. If
+/// that join comes first, `h`'s later `Console` argument reaches `a`'s tail past its
+/// `{Clock}` bound (a false `V3001`); in the other order `h`'s tail holds `Console` before
+/// the join, and the body checks.
+#[test]
+fn distinct_flexible_tails_joined_first_depend_on_order() {
+    let body = |first: &str, second: &str| {
+        format!(
+            "fn use_clock(k: fn() -> Int ! {{Clock}}) -> Int ! {{Clock}} {{ k() }}\n\
+             fn f() -> Int ! {{Clock, Console}} {{\n  let run = fn(h, a) {{\n    \
+             let _ = use_clock(a)\n    {first}\n    {second}\n    0\n  }}\n  \
+             run(fn(k) {{ k() }}, fn() {{ 1 }})\n}}\n"
+        )
+    };
+    let (join, console) = (
+        "let _ = h(a)",
+        "let _ = h(fn() { Console.print(\"x\")\n 1 })",
+    );
+    let joined_first = check(&body(join, console));
+    assert_eq!(joined_first.codes(), ["V3001"], "{}", joined_first.render());
+    let console_first = check(&body(console, join));
+    assert!(console_first.diags.is_empty(), "{}", console_first.render());
+}
+
 #[test]
 fn row_mismatch_names_the_side_with_the_extra_label() {
     // The value performs `Console`; the expected function type does not allow it.
