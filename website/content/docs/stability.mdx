@@ -46,7 +46,8 @@ Each part of Sakura Lang has one level:
 | --- | --- | --- |
 | [CLI](/docs/cli) commands, documented flags, exit codes and environment variables | stable | 1.0.0-beta.1 |
 | `build --emit`, `--layout`, `--dump`; hidden switches | experimental or internal | — |
-| [`sakura.toml`](/docs/manifest): `[package]`, `[permissions]`, `[verify]`; the `V8005` and `V8006` refusals | stable | 1.0.0-beta.1 |
+| [`sakura.toml`](/docs/manifest): `[package]`, `[permissions]`, `[verify]`; the `V8006` rule | stable | 1.0.0-beta.1 |
+| [Packages](/docs/manifest#dependencies-experimental): `[dependencies]`, `[packages]`, `sakura.lock` and `sakura deps` | experimental | — |
 | [Diagnostic codes](/docs/errors): a code is never reused or renumbered | stable | 1.0.0-beta.1 |
 | [`--json` records](/docs/agents/diagnostics#record-kinds): fields are only added within a major | stable | 1.0.0-beta.1 |
 | [Standard library](/docs/stdlib) public signatures | stable | 1.0.0-beta.1 with a listed migration; 1.0.0 within a major |
@@ -61,11 +62,11 @@ Each part of Sakura Lang has one level:
 
 ## When the promises start
 
-The promises above come from [draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md),
-a proposal that is not accepted yet. They bind from the release at which the owner accepts
-it, and in full from `v1.0.0`. Until then the policy in
-[STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md) applies, and
-its inventory is the complete, authoritative list.
+The promises above come from [RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md),
+accepted on 2026-10-23. The machine contracts bind from `v1.0.0-beta.1`, and source and
+standard-library compatibility within a major from `v1.0.0`.
+[STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md) carries the
+policy out, and its inventory is the complete, authoritative list.
 
 ## Changes made before the promises start
 
@@ -82,10 +83,9 @@ promises, so they do not count as breaking changes under them:
 
 ## After 1.0
 
-Packages arrive in 1.x without breaking existing projects; until then `[dependencies]` is
-refused. Native code stays experimental. The current plan, pending the owner's confirmation,
-is that native holds up no release and ships as an experimental flag once its test matrix is
-green.
+Packages are experimental: `path` dependencies work today, and registries follow in 1.x
+without breaking existing projects. Native code stays experimental: the release binaries
+carry it behind `--target native`, and it holds up no release.
 
 After 1.0, a deprecated feature warns, with a migration, for at least two minor releases and
 six months before it is removed.

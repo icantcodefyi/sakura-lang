@@ -146,7 +146,7 @@ signature. The compiler rejects anything else.
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is
 **experimental**: the macOS arm64, Linux x64 and Linux arm64 release binaries carry it from
-`v1.0.0-beta.4` and the Intel macOS one from `v1.0.0-beta.5`, and under the current plan it gates no release. Packages arrive in 1.x; until then `[dependencies]` is refused. Releases are not
+`v1.0.0-beta.4` and the Intel macOS one from `v1.0.0-beta.5`, and under the current plan it gates no release. Packages are experimental: `path` dependencies work today; registries follow in 1.x. Releases are not
 dated; see the [roadmap](website/content/docs/roadmap.mdx) and the
 [road to 1.0](docs/plans/road-to-1.0.md). The [design](docs/design.md) is provisional.
 

@@ -57,7 +57,7 @@ Experimental features are opt-in and may change or go away in any release, witho
 ### Not available today
 
 - PostgreSQL (`Sql.postgres`) is not implemented and has no release planned. Use SQLite.
-- Packages: a `[dependencies]` table in `sakura.toml` is refused.
+- Packages beyond `path` dependencies: nothing is resolved or fetched from a registry yet.
 - A browser host: the WebAssembly backend runs under Node.
 
 ## What comes next: 1.0.0
@@ -86,8 +86,8 @@ the 1.x line; see [Stability](/docs/stability).
 - **Native executables as a stable target.** Native stays experimental until it meets its
   stabilization conditions in a 1.x release.
 - **Faster native code**, from optimizations that are not built yet.
-- **Publishing the compiler on crates.io**, an online playground and GitHub syntax
-  highlighting (Linguist).
+- **Publishing the compiler on crates.io** and GitHub syntax highlighting (Linguist). The
+  [playground](/play) already runs Sakura Lang in the browser.
 
 ## Release history
 

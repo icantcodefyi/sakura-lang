@@ -68,14 +68,14 @@ outside it. See [Capabilities and security](/docs/tour/capabilities).
 
 See [Verify contracts](/docs/agents/verify#solver-and-limits).
 
-## [dependencies] is reserved
+## [dependencies] (experimental)
 
-A program is one package over the standard library. Packages arrive in a later minor
-release, after 1.0, and the key is reserved until then. A manifest that declares
-`[dependencies]` in any form (an empty table, entries, an inline table or a dotted key) is
-refused with [`V8005 dependencies_not_supported`](/docs/errors/V8005) before anything runs.
-Nothing is fetched. Use the standard library instead, and do not copy another package's
-sources into `src/` to stand in for one.
+Packages are experimental ([RFC 0003](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0003-packages.md)):
+they may change in a minor release, with a migration in the changelog. Nothing is resolved or
+fetched, so only a `path` dependency builds today, and the compiler writes `sakura.lock` for it.
+A version floor that nothing has locked is [`V8031`](/docs/errors/V8031), and a form this release
+does not support, such as a `git` entry, is [`V8005`](/docs/errors/V8005). An empty
+`[dependencies]` table compiles. Registries follow in 1.x.
 
 ## Invalid manifests
 
@@ -104,7 +104,7 @@ dependencies it records only its format version. Commit it; do not edit it by ha
 ## Stability
 
 `[package]` with `name`, `version` and `edition`, `[permissions]` with its four keys and the
-reserved `process = []`, `[verify] rlimit`, the `V8005` refusal and the `V8006` rule are
-proposed as **stable from v1.0.0-beta.1**; see [Stability](/docs/stability). Until then the preview carries no
-compatibility promise. Packages will be added without changing the meaning of an existing
-manifest.
+reserved `process = []` and `[verify] rlimit` and the `V8006` rule are **stable from
+v1.0.0-beta.1** under RFC 0001; see [Stability](/docs/stability). `[dependencies]`,
+`[packages]` and the package keys of `[package]` are experimental. Packages will be added
+without changing the meaning of an existing manifest.

@@ -38,8 +38,9 @@ none, they use `src/` when it exists, otherwise the current folder.
 | `sakura lsp` | The language server on stdin/stdout. See [Editor setup](/docs/editors). |
 | `sakura mcp serve` | The compiler as an MCP server on stdin/stdout. See [MCP server](/docs/agents/mcp). |
 
-There is no package command: packages are not part of 1.0, and a manifest that declares
-`[dependencies]` is refused with [`V8005`](/docs/errors/V8005). There is no `--release` flag:
+Packages are experimental: a `path` dependency in `[dependencies]` builds, and a form this
+release does not support, such as a `git` entry, is [`V8005`](/docs/errors/V8005); nothing is
+fetched (see [the manifest](/docs/manifest#dependencies-experimental)). There is no `--release` flag:
 contract checks are removed only where `sakura verify` proved them.
 
 ## Flags
@@ -141,9 +142,9 @@ file only costs the analysis it would have saved. `run` and `test` need Node 26;
 
 ## Stability
 
-The commands, flags, exit codes and environment variables on this page are proposed as
-**stable from v1.0.0-beta.1** under [draft RFC 0001](/docs/stability), with these exceptions:
+The commands, flags, exit codes and environment variables on this page are
+**stable from v1.0.0-beta.1** under [RFC 0001](/docs/stability), with these exceptions:
 `build --emit`, `--layout` and `--dump` are **experimental** or **internal**, and
-`--target native` is **experimental**. Until RFC 0001 is accepted, the preview carries no
-compatibility promise. Help text and human-readable output are never a contract; the
+`--target native` is **experimental**. During the betas a stable item may still change, with
+a migration in the changelog. Help text and human-readable output are never a contract; the
 `--json` records are.

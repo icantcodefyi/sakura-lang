@@ -2,7 +2,7 @@ import { RELEASE } from "@/lib/release";
 import { PipelineFigure } from "./pipeline-figure";
 import { Section, TextLink } from "./section";
 
-// docs/stability ("By area"): what draft RFC 0001 proposes as stable from 1.0.0-beta.1, and what
+// docs/stability ("By area"): what RFC 0001 holds stable from 1.0.0-beta.1, and what
 // stays experimental. During the beta a contract may still change, with a migration.
 const STABLE = [
   "CLI commands, flags and exit codes",
@@ -11,7 +11,7 @@ const STABLE = [
   "WebAssembly runtime interface",
   "Editor (LSP) and agent (MCP) tools",
 ];
-const EXPERIMENTAL = ["--target native", "std/worker and @worker"];
+const EXPERIMENTAL = ["--target native", "[dependencies] packages", "std/worker and @worker"];
 
 export function Status() {
   return (
