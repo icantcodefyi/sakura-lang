@@ -1061,12 +1061,27 @@ impl<'a> BodyCx<'a> {
                 .then(|| self.cx.std_import_fix(self.m, text, true))
                 .flatten()
         });
-        // A std constructor (`Text` of `Payload`) wins over a near spelling (`Test`).
-        let ctor = (import.is_none() && name.kind() == TYPE_NAME)
+        // A std item of that exact name, with no single import, is named but given no fix.
+        let homes = match import {
+            Some(_) => Vec::new(),
+            None => self.cx.std_exporters(self.m, text).0,
+        };
+        // A std constructor (`Text` of `Payload`) wins over a near spelling (`Test`), but not
+        // over a std item (`std/path`'s `Path` over `Matcher.Path`).
+        let ctor = (import.is_none() && homes.is_empty() && name.kind() == TYPE_NAME)
             .then(|| self.cx.std_ctor_hint(self.m, text, range))
             .flatten();
         if let Some(fix) = import {
             d = d.with_fix(fix);
+        } else if homes.len() > 1 {
+            let p = &self.cx.program;
+            let list: Vec<String> = (homes.iter())
+                .map(|&t| format!("`std/{}`", p.module(t).path))
+                .collect();
+            d.message.push_str(&format!(
+                "; `{text}` is exported by {}: import it from the one you mean",
+                list.join(", ")
+            ));
         } else if let Some((hint, fixes)) = ctor {
             d.message.push_str(&format!("; {hint}"));
             d.fixes.extend(fixes);

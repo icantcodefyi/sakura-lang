@@ -1,0 +1,7 @@
+// milestone: M3
+// expect: V1002
+// design §9: `Request` is a type of both `std/llm` and `std/request`, so no single import is the
+// fix. The message names both modules, and the diagnostic carries no fix: neither a guessed
+// import nor a near-spelling rewrite of a name that exists as written.
+
+pub fn main() -> Unit { let _r = Request.new("x") }

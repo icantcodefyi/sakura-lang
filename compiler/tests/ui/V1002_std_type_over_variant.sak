@@ -1,0 +1,9 @@
+// milestone: M3
+// expect: V1002
+// design §9, §17.301 (4) (i): `Path` is `std/path`'s type and also a constructor of `Matcher`
+// (`std/http`). Both modules export the name, but only the type is the item a bare `Path.of`
+// means, so the machine-applicable fix is `import std/path.{Path}`. 1.0.0-beta.5 found two
+// exporters, gave up on the import and offered `import std/http.{Matcher}` with
+// `Matcher.Path` instead (evals/agent-dx/reports/2026-10-23-subscription-episodes.md).
+
+pub fn main() -> Unit { let _p = Path.of("a/b") }

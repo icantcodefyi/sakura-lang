@@ -45,7 +45,7 @@ V1002 cannot find `Http` in this scope
   Primary file0 5:40 `Http`
   fix: Add `import std/http.{Http}` -> `
 import std/http.{Http}`
-V1002 cannot find `host` in this scope
+V1002 cannot find `host` in this scope; `host` is exported by `std/console`, `std/http`: import it from the one you mean
   Primary file0 5:54 `host`
 V1003 cannot find type `Request` in this scope
   Primary file0 6:9 `Request`

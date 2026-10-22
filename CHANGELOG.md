@@ -114,6 +114,14 @@ retains earlier implementation history.
   or code point, so these were quadratic (the `tokenizer` benchmark at size 50,000 now retires
   about 295× fewer instructions). WASM and JS were not affected.
 
+- **`V1002` no longer offers the wrong import for a std name that is also a constructor.**
+  For `Path.of(text)` with no import, `sakura check` and `sakura fix` offered
+  `import std/http.{Matcher}` (because `Path` is also a constructor of `Matcher`). They now
+  offer `import std/path.{Path}`: when one std module exports the name as a type or function,
+  that import wins over any constructor of the same name. When several std modules export
+  the name, the message lists them and offers no fix. The code and the JSON fields are
+  unchanged.
+
 ### Security
 
 - **Revealed key bytes are zeroed when freed on native and WASM** (ABI 1.19.0,

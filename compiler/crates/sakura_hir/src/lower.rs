@@ -2055,8 +2055,8 @@ impl Cx {
     /// The fix adding an import for `name`: `import <pkg>/<path>` when `name` is the last segment
     /// of exactly one module of `m`'s package or its dependencies (design §17.293 PQ-6; two such
     /// modules give no fix), else `import std/<module>.{name}` when exactly one std module
-    /// exports `name`, or `import std/<name>` when `is_module` and that module exists (design §9,
-    /// §17.36).
+    /// exports `name` as an item, or, with none, exactly one as a variant, or `import std/<name>`
+    /// when `is_module` and that module exists (design §9, §17.36).
     pub(crate) fn std_import_fix(&self, m: ModuleId, name: &str, is_module: bool) -> Option<Fix> {
         let pkg = &self.program.packages[self.program.module(m).package.0 as usize];
         let mut own = (std::iter::once(&pkg.modules).chain(
@@ -2083,14 +2083,33 @@ impl Cx {
             std.find(|&t| self.program.module(t).path == name)?;
             format!("import std/{name}")
         } else {
-            let mut exporting = std.filter(|&t| self.program.module(t).exports.contains_key(name));
-            let t = exporting.next()?;
-            if exporting.next().is_some() {
+            // `Path` is `std/path`'s type, not `std/http`'s `Matcher.Path`.
+            let (items, variants) = self.std_exporters(m, name);
+            let (([t], _) | ([], [t])) = (items.as_slice(), variants.as_slice()) else {
                 return None;
-            }
-            format!("import std/{}.{{{name}}}", self.program.module(t).path)
+            };
+            format!("import std/{}.{{{name}}}", self.program.module(*t).path)
         };
         self.import_fix(m, line)
+    }
+
+    /// The std modules other than `m` that export `name`, as `(items, variants)`: a variant is a
+    /// sum type's constructor, which `declare` puts in module scope beside the items.
+    pub(crate) fn std_exporters(&self, m: ModuleId, name: &str) -> (Vec<ModuleId>, Vec<ModuleId>) {
+        let p = &self.program;
+        let (mut items, mut variants) = (Vec::new(), Vec::new());
+        for t in (0..p.modules.len() as u32).map(ModuleId) {
+            if t == m || p.packages[p.module(t).package.0 as usize].name != "std" {
+                continue;
+            }
+            let module = p.module(t);
+            match module.exports.get(name).map(|&i| &module.defs[i].kind) {
+                Some(DefKind::Variant(_)) => variants.push(t),
+                Some(_) => items.push(t),
+                None => {}
+            }
+        }
+        (items, variants)
     }
 
     /// The `MachineApplicable` fix adding `line` after `m`'s last `import`.
