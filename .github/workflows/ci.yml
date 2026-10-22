@@ -783,8 +783,9 @@ jobs:
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add wasm32-unknown-unknown
+      # With `native`, so `exec_native` (plan M5 row S) builds too.
       - name: Build the fuzz crate with --locked
-        run: cargo build --locked --manifest-path fuzz/Cargo.toml
+        run: cargo build --locked --manifest-path fuzz/Cargo.toml --features native
 
   ci-required:
     name: ci-required

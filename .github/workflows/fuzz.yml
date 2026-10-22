@@ -24,12 +24,15 @@ jobs:
   fuzz:
     name: Fuzz ${{ matrix.target }}
     runs-on: ubuntu-latest
-    # A campaign run may take up to the hosted runners' six hours.
-    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 360 || 30 }}
+    # A campaign run may take up to the hosted runners' six hours; `exec_native` also builds
+    # Cranelift and the native driver.
+    timeout-minutes: ${{ github.event_name == 'workflow_dispatch' && 360 || (matrix.target == 'exec_native' && 45 || 30) }}
     strategy:
       fail-fast: false
       matrix:
-        target: [parse, check, fmt_idempotent, row_unify, lir, vc, exec]
+        # `exec_native` (plan M5 row S) is its own ledger target, outside v1.0.0's gate; this
+        # runner is x86_64-unknown-linux-gnu.
+        target: [parse, check, fmt_idempotent, row_unify, lir, vc, exec, exec_native]
     defaults:
       run:
         working-directory: compiler
@@ -39,12 +42,14 @@ jobs:
       FUZZ_TARGET: ${{ matrix.target }}
       CORPUS: ${{ github.workspace }}/compiler/target/fuzz-corpus/${{ matrix.target }}
       MAX_TOTAL_TIME: ${{ inputs.max_total_time || 600 }}
+      # `exec_native` compiles and links every case.
+      INPUT_TIMEOUT: ${{ matrix.target == 'exec_native' && 60 || 10 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # `exec` runs the JS and WASM backends on Node, as the parity job does.
-      - if: matrix.target == 'exec'
+      - if: matrix.target == 'exec' || matrix.target == 'exec_native'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 26
@@ -72,11 +77,12 @@ jobs:
           fi
       - name: Seed the corpus
         run: |
-          cp fuzz/corpus/"$FUZZ_TARGET"/* "$CORPUS"/
+          # `exec_native` starts from `exec`'s seeds.
+          cp fuzz/corpus/"${FUZZ_TARGET%_native}"/* "$CORPUS"/
           case "$FUZZ_TARGET" in
             row_unify) ;;
             # Its programs grow from the semantics seeds (design §17.225 (4b)).
-            exec) cp tests/semantics/*.sak "$CORPUS"/ ;;
+            exec | exec_native) cp tests/semantics/*.sak "$CORPUS"/ ;;
             *) cp tests/ui/*.sak tests/semantics/*.sak "$CORPUS"/ ;;
           esac
       - name: Fuzz
@@ -84,8 +90,15 @@ jobs:
           case "$MAX_TOTAL_TIME" in
             '' | *[!0-9]*) echo "max_total_time must be a whole number of seconds" >&2; exit 2 ;;
           esac
-          cargo +nightly fuzz run "$FUZZ_TARGET" "$CORPUS" -- \
-            "-max_total_time=$MAX_TOTAL_TIME" -max_len=16384 -timeout=10 -rss_limit_mb=2048
+          features=()
+          if [ "$FUZZ_TARGET" = exec_native ]; then
+            features=(--features native)
+            # Its scratch files (one case's object and executable at a time) stay under target/.
+            export TMPDIR="$CARGO_TARGET_DIR/tmp/fuzz"
+            mkdir -p "$TMPDIR"
+          fi
+          cargo +nightly fuzz run "${features[@]}" "$FUZZ_TARGET" "$CORPUS" -- \
+            "-max_total_time=$MAX_TOTAL_TIME" -max_len=16384 "-timeout=$INPUT_TIMEOUT" -rss_limit_mb=2048
       - name: Upload the corpus
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -102,7 +115,7 @@ jobs:
           shopt -s nullglob
           for input in "fuzz/artifacts/$FUZZ_TARGET/"*; do
             minimized="fuzz/minimized/$FUZZ_TARGET/$(basename "$input")"
-            "$bin" -minimize_crash=1 -max_total_time=60 -timeout=10 -rss_limit_mb=2048 \
+            "$bin" -minimize_crash=1 -max_total_time=60 "-timeout=$INPUT_TIMEOUT" -rss_limit_mb=2048 \
               "-exact_artifact_path=$minimized" "$input" || true
             # Hangs and OOMs often cannot be minimized in the budget; keep the original input.
             if [ ! -f "$minimized" ]; then cp "$input" "$minimized"; fi

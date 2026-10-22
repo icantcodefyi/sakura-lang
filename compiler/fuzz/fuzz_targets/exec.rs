@@ -27,6 +27,11 @@
 //! short, the mutator keeps the JS-range edges out of call arguments ([`EDGES`]), and a program
 //! that still allocates without bound ends as libFuzzer's timeout or OOM.
 //! Deterministic: the mutator draws only from libFuzzer's seed, and runs share no state.
+//!
+//! Built as `exec_native` (`exec_native.rs`, the `native` feature), the native backend is a
+//! fifth run: compiled, linked with the driver and run as `sakura run --target native` runs it,
+//! held to WASM's whole run (stdout, ending, defect record and trace) past the JS-range skip,
+//! since both are `i64` (see [`native`]).
 #![no_main]
 
 use libfuzzer_sys::{fuzz_mutator, fuzz_target};
@@ -60,7 +65,13 @@ const ENTRY: BuildOptions = BuildOptions {
 };
 const URI: &str = "file:///fuzz/src/main.sak";
 
-fuzz_target!(|data: &[u8]| {
+#[cfg(not(feature = "native"))]
+fuzz_target!(|data: &[u8]| run(data));
+
+#[cfg(feature = "native")]
+fuzz_target!(init: native::init(), |data: &[u8]| run(data));
+
+fn run(data: &[u8]) {
     if data.len() > MAX_INPUT {
         return;
     }
@@ -70,7 +81,7 @@ fuzz_target!(|data: &[u8]| {
     if let Some(why) = diverge(src) {
         panic!("exec: the backends diverge (a soundness bug)\n{why}\n--- program\n{src}");
     }
-});
+}
 
 fuzz_mutator!(|data: &mut [u8], size: usize, max_size: usize, seed: u32| {
     let mut rng = Rng(u64::from(seed));
@@ -134,6 +145,8 @@ fn diverge(src: &str) -> Option<String> {
         Ok(bytes) => bytes,
         Err(e) => return Some(format!("WASM emission: {e}")),
     };
+    #[cfg(feature = "native")]
+    let object = native::on().then(|| native::emit(&snapshot, &lir));
     if let Some(lir) = run_lir(lir)
         && (&lir.stdout, &lir.end) != (&eval.stdout, &eval.end)
     {
@@ -146,6 +159,21 @@ fn diverge(src: &str) -> Option<String> {
             ("JS", &js),
             ("WASM", &wasm),
         ]));
+    }
+    #[cfg(feature = "native")]
+    if let Some(object) = object {
+        let native = match object.and_then(|o| native::run(&dir, &o)) {
+            Ok(run) => run,
+            Err(e) => return Some(e),
+        };
+        if native != wasm {
+            return Some(report(&[
+                ("evaluator", &eval),
+                ("JS", &js),
+                ("WASM", &wasm),
+                ("native", &native),
+            ]));
+        }
     }
     None
 }
@@ -267,34 +295,30 @@ fn run_wasm(dir: &Path, wasm: &[u8]) -> Run {
 /// Runs node (`SAKURA_NODE`, else `node` on `PATH`, as `sakura_cli` finds it) on `args` with
 /// stdin closed, a trace file and the limits above, and reads the run as the parity test does.
 fn node(dir: &Path, label: &str, args: &[PathBuf]) -> Run {
+    let program = std::env::var_os("SAKURA_NODE").unwrap_or_else(|| "node".into());
+    let mut node = Command::new(program);
+    node.arg(NODE_HEAP).args(args);
+    execute(dir, label, node)
+}
+
+/// Runs `command` as [`node`] does: stdin closed, `SAKURA_TRACE` and [`NODE_TIMEOUT`].
+fn execute(dir: &Path, label: &str, mut command: Command) -> Run {
     let trace = dir.join(format!("{label}.trace"));
     let _ = std::fs::remove_file(&trace);
     let (out_path, err_path) = (
         dir.join(format!("{label}.out")),
         dir.join(format!("{label}.err")),
     );
-    let program = std::env::var_os("SAKURA_NODE").unwrap_or_else(|| "node".into());
-    let mut child = Command::new(program)
-        .arg(NODE_HEAP)
-        .args(args)
+    let mut child = command
         .env("SAKURA_TRACE", &trace)
         .stdin(Stdio::null())
         .stdout(std::fs::File::create(&out_path).unwrap())
         .stderr(std::fs::File::create(&err_path).unwrap())
         .spawn()
-        .expect("the exec target needs node (set SAKURA_NODE or put node on PATH)");
-    let start = Instant::now();
-    let status = loop {
-        if let Some(status) = child.try_wait().unwrap() {
-            break Some(status);
-        }
-        if start.elapsed() >= NODE_TIMEOUT {
-            let _ = child.kill();
-            let _ = child.wait();
-            break None;
-        }
-        std::thread::sleep(Duration::from_millis(5));
-    };
+        .unwrap_or_else(|e| {
+            panic!("cannot start the {label} run: {e} (exec needs node: set SAKURA_NODE or put it on PATH)")
+        });
+    let status = wait(&mut child, NODE_TIMEOUT);
     let read =
         |p: &Path| String::from_utf8_lossy(&std::fs::read(p).unwrap_or_default()).into_owned();
     let (stdout, stderr) = (read(&out_path), read(&err_path));
@@ -313,6 +337,22 @@ fn node(dir: &Path, label: &str, args: &[PathBuf]) -> Run {
         end,
         record: record.map(|(_, message, spans)| (message, spans)),
         trace: read(&trace),
+    }
+}
+
+/// `child`'s status, or `None` after killing it at `timeout`.
+fn wait(child: &mut std::process::Child, timeout: Duration) -> Option<std::process::ExitStatus> {
+    let start = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            return Some(status);
+        }
+        if start.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(5));
     }
 }
 
@@ -579,4 +619,113 @@ fn prev_token(t: &sakura_syntax::SyntaxToken) -> Option<sakura_syntax::SyntaxTok
         p = x.prev_token();
     }
     None
+}
+
+/// The native executor of `exec_native` (plan M5 row S, design §17.308 (1e)): the object
+/// `sakura_codegen_native` emits for the same LIR, linked with the driver staticlib by the system
+/// C linker and run as `sakura run --target native` runs `main` without a manifest (no
+/// `SAKURA_PERMISSIONS`; `main` is at most `{Console}`).
+///
+/// Per case: the object ≤ [`MAX_OBJECT`](native::MAX_OBJECT) bytes, the link ≤
+/// [`LINK_TIMEOUT`](native::LINK_TIMEOUT), the run ≤ [`NODE_TIMEOUT`] (its heap is the offset32
+/// profile's, at most 4 GiB); the object and the executable are deleted after every case, so one
+/// case's files are on disk at a time. The driver is read from `SAKURA_NATIVE_LIB_DIR`, else
+/// built once per process before the first input into `target/fuzz-native-driver` (a no-op when
+/// fresh).
+#[cfg(feature = "native")]
+mod native {
+    use super::*;
+    use std::sync::OnceLock;
+
+    pub const MAX_OBJECT: usize = 64 << 20;
+    pub const LINK_TIMEOUT: Duration = Duration::from_secs(30);
+    static DRIVER: OnceLock<PathBuf> = OnceLock::new();
+
+    /// Whether this binary is `exec_native`: `exec` built with the feature stays `exec`.
+    pub fn on() -> bool {
+        env!("CARGO_BIN_NAME") == "exec_native"
+    }
+
+    /// libFuzzer's initializer, outside every input's timeout.
+    pub fn init() {
+        if on() {
+            // `cargo fuzz run` runs this binary with its sanitizer RUSTFLAGS, which the
+            // driver's cargo build must not inherit. SAFETY: libFuzzer's initializer runs
+            // before it starts a thread, so nothing reads the environment concurrently.
+            unsafe { std::env::remove_var("RUSTFLAGS") };
+            driver();
+        }
+    }
+
+    fn driver() -> &'static Path {
+        DRIVER.get_or_init(|| match std::env::var_os("SAKURA_NATIVE_LIB_DIR") {
+            Some(dir) => dir.into(),
+            None => {
+                let compiler = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+                let target = compiler.join("target/fuzz-native-driver");
+                sakura_codegen_native::build_driver(compiler, &target)
+                    .unwrap_or_else(|e| panic!("exec_native: {e}"))
+            }
+        })
+    }
+
+    pub fn emit(snapshot: &Snapshot, lir: &sakura_lir::lir::Module) -> Result<Vec<u8>, String> {
+        let files = || snapshot.file_ids().map(|f| snapshot.file(f));
+        let options = sakura_codegen_native::Options {
+            direct: ENTRY.direct,
+            sources: files().map(|f| f.uri.clone()).collect(),
+            texts: files().map(|f| f.text.clone()).collect(),
+            root_effects: Analysis::analyze(snapshot)
+                .main_effects()
+                .unwrap_or_default(),
+            ..Default::default()
+        };
+        let object = sakura_codegen_native::emit(lir, &options)
+            .map_err(|e| format!("native emission: {e}"))?;
+        if object.len() > MAX_OBJECT {
+            return Err(format!(
+                "native emission: a {}-byte object from at most {MAX_INPUT} bytes of source",
+                object.len()
+            ));
+        }
+        Ok(object)
+    }
+
+    /// Links and runs `object` in `dir`; `Err` when it does not link.
+    pub fn run(dir: &Path, object: &[u8]) -> Result<Run, String> {
+        // Beside the JS build, whose `main` module is the directory `main`.
+        let (o, exe) = (dir.join("native.o"), dir.join("native.exe"));
+        std::fs::write(&o, object).unwrap();
+        let run = link(dir, &o, &exe).map(|()| execute(dir, "native", Command::new(&exe)));
+        let _ = std::fs::remove_file(&o);
+        let _ = std::fs::remove_file(&exe);
+        run
+    }
+
+    /// `sakura_codegen_native::link`, bounded by [`LINK_TIMEOUT`].
+    fn link(dir: &Path, o: &Path, exe: &Path) -> Result<(), String> {
+        let driver = driver();
+        let libs = std::fs::read_to_string(driver.join(sakura_codegen_native::DRIVER_LIBS))
+            .unwrap_or_else(|e| panic!("exec_native: the driver in {}: {e}", driver.display()));
+        let err = dir.join("link.err");
+        let mut child = Command::new(sakura_codegen_native::LINKER)
+            .arg(o)
+            .arg(driver.join(sakura_codegen_native::DRIVER_LIB))
+            .args(libs.split_whitespace())
+            .arg("-o")
+            .arg(exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(std::fs::File::create(&err).unwrap())
+            .spawn()
+            .unwrap_or_else(|e| panic!("exec_native needs the system C linker `cc`: {e}"));
+        match wait(&mut child, LINK_TIMEOUT) {
+            Some(status) if status.success() => Ok(()),
+            Some(status) => Err(format!(
+                "native link: {status}: {}",
+                String::from_utf8_lossy(&std::fs::read(&err).unwrap_or_default())
+            )),
+            None => Err(format!("native link: timed out after {LINK_TIMEOUT:?}")),
+        }
+    }
 }

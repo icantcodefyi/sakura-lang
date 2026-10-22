@@ -11,6 +11,10 @@ cargo-fuzz = true
 [workspace]
 members = ["."]
 
+# `exec_native` (plan M5 row S): the native backend, kept out of every other target's build.
+[features]
+native = ["dep:sakura_codegen_native", "sakura_codegen_native/native"]
+
 [dependencies]
 libfuzzer-sys = "=0.4.13"
 sakura_syntax = { path = "../crates/sakura_syntax" }
@@ -23,6 +27,7 @@ sakura_codegen_wasm = { path = "../crates/sakura_codegen_wasm" }
 sakura_verify = { path = "../crates/sakura_verify" }
 sakura_core = { path = "../crates/sakura_core" }
 sakura_eval = { path = "../tools/sakura_eval" }
+sakura_codegen_native = { path = "../crates/sakura_codegen_native", optional = true }
 serde_json = "1.0.154"
 
 [[bin]]
@@ -70,6 +75,14 @@ bench = false
 [[bin]]
 name = "exec"
 path = "fuzz_targets/exec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "exec_native"
+path = "fuzz_targets/exec_native.rs"
+required-features = ["native"]
 test = false
 doc = false
 bench = false

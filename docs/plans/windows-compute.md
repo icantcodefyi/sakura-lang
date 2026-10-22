@@ -284,7 +284,7 @@ fixed the same way.
 ### 2.2 The `exec` differential
 
 It is the campaign's own target (§1); its 24 CPU-hours are the "differential of stated size"
-§17.225 (4b) asks for. No separate job.
+§17.225 (4b) asks for. No separate job; its native variant is §2.4.
 
 ### 2.3 Soak and stress loops
 
@@ -296,6 +296,44 @@ cd ~/sakuralang/compiler
 cargo test -p sakura_cli --test parity --locked -- --nocapture       # the JS/WASM parity matrix on Node 26
 cargo test --workspace --locked                                       # the workspace, as CI's rust job
 ```
+
+### 2.4 `exec_native`: native as a fourth `exec` executor (not the gate)
+
+Plan M5 row S: `exec`'s programs and mutator, with the native backend compiled, linked and run
+beside JS, WASM and the evaluators. Its hours go in its own ledger in `compiler/fuzz/README.md`
+(the "`exec_native` ledger" section), count toward native's stabilization (§17.308 (1e)), and
+are **not** part of `v1.0.0`'s gate, so run it on cores the campaign of §1 leaves free, or after
+it. It does not touch §1's targets, corpora or commands: its binary, corpus
+(`target/fuzz-corpus/exec_native`), driver (`target/fuzz-native-driver`, ~250 MB) and scratch
+directory (`target/tmp/fuzz`) are its own. It needs `uname -m` = `x86_64`, `cc` (§0.2's
+`build-essential`) and what `exec` needs.
+
+```sh
+cd ~/sakuralang/compiler
+[ "$(uname -m)" = x86_64 ] || echo "STOP: exec_native's rows are x86_64-unknown-linux-gnu"
+t=exec_native
+w=2; secs=21600                                # 2 workers × 6 h = 12 CPU-h beside §1; after §1: w=$WEXEC
+cargo +nightly fuzz build --features native "$t"     # ~5 min cold; §1's binaries are untouched
+mkdir -p "target/fuzz-corpus/$t" target/tmp/fuzz
+cp fuzz/corpus/exec/* tests/semantics/*.sak "target/fuzz-corpus/$t/"
+start=$(date -u +%FT%TZ)
+TMPDIR="$PWD/target/tmp/fuzz" cargo +nightly fuzz run --features native "$t" "target/fuzz-corpus/$t" -- \
+  -jobs="$w" -workers="$w" -max_total_time="$secs" -max_len=16384 -timeout=60 -rss_limit_mb=2048 \
+  2>&1 | tee "$HOME/fuzz-$t-$(date -u +%Y%m%dT%H%M).log"
+echo "started $start, ended $(date -u +%FT%TZ), exit ${PIPESTATUS[0]}"
+ls fuzz/artifacts/"$t"/ 2>/dev/null | wc -l                  # 0 = clean
+ls "target/fuzz-corpus/$t" | wc -l                            # the Corpus-after column
+rm -rf target/tmp/fuzz
+```
+
+The first input waits for the driver build (a minute or two, once). Each case compiles and
+links an executable (one case's files per worker on disk at a time) and runs three programs, so
+`-timeout` is 60, not 10. Triage is §1.5 with `t=exec_native`, `--features native` after
+`cargo +nightly fuzz run`/`tmin`/`fmt`, and `-timeout=60`; a divergence naming `native` is a
+`soundness` finding like any other (native-only, so it does not block 1.0.0, §2.1's last
+sentence). Report as §1.7, but append the row to the `exec_native` ledger's table and its Total
+line, not the campaign's, with the commit message
+`docs(fuzz): exec_native ledger row, <CPU-h> CPU-h at <commit12>`.
 
 ## 3. Optional extras (run after §1's hours are in, or on spare cores)
 
