@@ -182,7 +182,7 @@ semantics/literal_refinement_checked_at_startup: 6 funcs, 13 blocks, 1 dup, 4 dr
 semantics/literal_refinement_decided: 5 funcs, 29 blocks, 5 dup, 10 drop, valid
 semantics/literal_refinement_passes_once: 6 funcs, 17 blocks, 1 dup, 3 drop, valid
 semantics/literals_and_operators: 2 funcs, 12 blocks, 0 dup, 27 drop, valid
-semantics/llm_anthropic_exchanges: 168 funcs, 1595 blocks, 208 dup, 925 drop, valid
+semantics/llm_anthropic_exchanges: 177 funcs, 1648 blocks, 210 dup, 939 drop, valid
 semantics/log_json_line: 2 funcs, 6 blocks, 0 dup, 2 drop, valid
 semantics/loop_jump_past_inner_var: 2 funcs, 38 blocks, 0 dup, 8 drop, valid
 semantics/loop_resume_bound: 15 funcs, 66 blocks, 0 dup, 32 drop, valid

@@ -97,4 +97,17 @@ reserve 1109 tokens 0.0005205 usd 1 calls
 https://llm.example/v1/messages secrets=1
 {"model":"claude-haiku-5-5","max_tokens":1024,"system":"q","messages":[{"role":"user","content":[{"type":"text","text":"how many?"}]}],"stream":true,"output_config":{"format":{"type":"json_schema","schema":{"type":"object","properties":{"value":{"type":"integer"}},"required":["value"],"additionalProperties":false}}},"fallbacks":"default"}
 Err(HttpError { status: None, reason: "mine" })
+Err(RateLimited { retry_after: Some(Duration(16000)) })
+Err(RateLimited { retry_after: Some(Duration(3000)) })
+Err(RateLimited { retry_after: Some(Duration(7000)) })
+Err(RateLimited { retry_after: Some(Duration(1500)) })
+Err(RateLimited { retry_after: Some(Duration(0)) })
+Err(RateLimited { retry_after: Some(Duration(7000)) })
+Err(RateLimited { retry_after: None })
+Err(RateLimited { retry_after: None })
+Err(RateLimited { retry_after: None })
+Err(RateLimited { retry_after: None })
+Ok(-0.0)
+Ok([-0.0, 0.0, -0.0, -0.0])
+Ok(0)
 Err(BudgetExceeded { kind: Tokens })

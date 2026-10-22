@@ -74,6 +74,21 @@ fn on(rs: List<Response>, run: fn() -> Unit ! {Console, Llm}) -> Unit ! {Console
       ) { run() }
 }
 
+// As `on`, printing nothing but what `run` prints.
+fn quiet(rs: List<Response>, run: fn() -> Unit ! {Console, Llm}) -> Unit ! {Console} {
+  with Http.scripted(List.map(rs, fn(r) { (Any, r) })),
+      Budget.unlimited(),
+      Llm.anthropic_at(
+        "https://llm.example",
+        Secret.of("sk-test-key"),
+        Model.of("claude-haiku-5-5"),
+      ) { run() }
+}
+
+fn limited(after: String) -> Response {
+  Response { ..Response.status(429, "slow down"), headers: [("retry-after", after)] }
+}
+
 fn ask(system: String) -> Request<Int> { Llm.request(system, Prompt.text("how many?")) }
 
 fn sse(events: List<String>) -> Response {
@@ -186,6 +201,24 @@ pub fn main() -> Unit ! {Console} {
     let r = try { Llm.stream(ask("q"), fn(_p) { fail HttpError { status: None, reason: "mine" } }) }
     Console.print("{r}")
   })
+  // `retry-after` reads as JS `Number(s)`: radix prefixes without a sign, white space around,
+  // empty as 0; `Infinity` and other text give no duration.
+  for after in ["0x10", "0B11", "0o7", "\t1.5\n", "", "007", "Infinity", "-0x1", "1_0", "1e"] {
+    quiet([limited(after)], fn() { Console.print("{try { Llm.generate(ask("s")) }}") })
+  }
+  // A model's `-0` keeps its sign as a `Float` and is `0` as an `Int`.
+  quiet([ok("\{\"value\": -0\}")], fn() {
+    let req: Request<Float> = Llm.request("t", Prompt.text("how much?"))
+    Console.print("{try { Llm.generate(req) }}")
+  })
+  quiet(
+    [ok("\{\"value\": [-0, 0, -0.0, -1e-400]\}")],
+    fn() {
+      let req: Request<List<Float>> = Llm.request("u", Prompt.text("how much?"))
+      Console.print("{try { Llm.generate(req) }}")
+    },
+  )
+  quiet([ok("\{\"value\": -0\}")], fn() { Console.print("{try { Llm.generate(ask("v")) }}") })
   // A budget that cannot cover the estimate fails before any request.
   with Http.scripted([]),
       spy(),

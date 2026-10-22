@@ -127,6 +127,10 @@ retains earlier implementation history.
 
 ### Fixed
 
+- **`Llm.anthropic` on `--target native` read a model's `-0` as `0` and a hex `retry-after` as
+  no duration**: the value now decodes from text that keeps its sign, and `retry-after` reads
+  as JS `Number(s)` exactly (`0x`, `0o` and `0b` integers, JS white space, empty as 0), so native
+  agrees with JS and WASM. Fixture `llm_anthropic_exchanges` covers both.
 - **A list passed as `unwrap_or`'s default of a `Map.get` kept later updates** (JS backend):
   the fused `map_get_or(m, k, d)` returns `d` itself when `k` is absent, but the ownership
   pass read every argument of it as borrowed, so `List.set` on `d` afterwards wrote in place

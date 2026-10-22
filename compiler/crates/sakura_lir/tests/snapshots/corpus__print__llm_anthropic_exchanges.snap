@@ -51,7 +51,7 @@ layout 45 shape |  16b ()
 layout 46 shape |  24b (word*)
 layout 47 shape |  32b (word*, i64)
 
-fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 58 slots [%1 word*, %4 bool, %6 word*, %9 bool, %11 word*, %14 bool, %16 word*, %19 bool, %21 word*, %24 bool, %27 word*, %30 word*, %33 bool, %36 word*, %39 word*, %42 bool, %46 word*, %56 bool, %60 word*, %63 bool, %67 word*, %70 bool, %74 word*, %77 bool, %80 bool, %84 word*, %86 word*, %87 word*, %90 bool, %92 word*, %95 bool, %97 word*, %100 bool, %104 word*, %107 bool, %110 word*, %113 bool, %115 word*, %118 bool, %120 word*, %121 word*, %122 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %140 word*, %141 word*, %142 word*, %145 bool, %148 word*, %151 word*, %153 word*]
+fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 72 slots [%1 word*, %4 bool, %6 word*, %9 bool, %11 word*, %14 bool, %16 word*, %19 bool, %21 word*, %24 bool, %27 word*, %30 word*, %33 bool, %36 word*, %39 word*, %42 bool, %46 word*, %56 bool, %60 word*, %63 bool, %67 word*, %70 bool, %74 word*, %77 bool, %80 bool, %84 word*, %86 word*, %87 word*, %90 bool, %92 word*, %95 bool, %97 word*, %100 bool, %104 word*, %107 bool, %110 word*, %113 bool, %115 word*, %118 bool, %132 word*, %135 bool, %137 word*, %140 bool, %142 word*, %145 bool, %147 word*, %148 word*, %149 word*, %156 word*, %157 word*, %158 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 word*, %167 word*, %168 word*, %169 word*, %172 bool, %175 word*, %178 word*, %180 word*, %200 word*, %201 word*, %202 i64, %203 i64, %206 bool, %207 word*, %208 i64, %209 i64]
   b0():
     %0 lit: ptr = const str 0
     call ok#3(%0) -> b1()
@@ -123,8 +123,8 @@ fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 58 slots [%1 wo
     %50 xs: ptr = alloc list(%49)
     %51 status: i64 = proj %46.0 std::response::Response
     %52 body: word = proj %46.2 std::response::Response
-    %157 token: word = $reuse_reset(%46)
-    %53 rec: ptr = alloc std::response::Response(%51, %50, %52) reuse %157
+    %211 token: word = $reuse_reset(%46)
+    %53 rec: ptr = alloc std::response::Response(%51, %50, %52) reuse %211
     %54 xs: ptr = alloc list(%53)
     %55 f: ptr = closure main$8#21[]
     call on#8(%54, %55) -> b18()
@@ -210,58 +210,115 @@ fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 58 slots [%1 wo
     %117 f: ptr = closure main$18#37[]
     call on#8(%116, %117) -> b38()
   b38(%118 r: unit):
-    %119 xs: ptr = alloc list()
-    call scripted#41(%119) -> b39()
-  b39(%120 r: ptr):
-    call spy#42() -> b40(%120)
-  b40(%121 r: ptr, %122 r: ptr):
-    %123 lit: i64 = const 10
-    %124 box: word = box %123
-    %125 r: ptr = alloc std::option::Option.Some(%124)
-    %126 v: ptr = const static std::option::Option.None
-    %127 v: ptr = const static std::option::Option.None
-    %128 rec: ptr = alloc std::budget::Limits(%125, %126, %127)
-    call limits#43(%128) -> b41(%122, %121)
-  b41(%129 r: ptr, %130 r: ptr, %131 r: ptr):
-    %132 lit: ptr = const str 18
-    %133 r: ptr = $secret_wrap(%132)
-    call default#44() -> b42(%130, %131, %129, %133)
-  b42(%134 r: ptr, %135 r: ptr, %136 r: ptr, %137 r: ptr, %138 r: ptr):
-    call anthropic#45(%138, %134) -> b43(%135, %136, %137)
-  b43(%139 r: ptr, %140 r: ptr, %141 r: ptr, %142 r: ptr):
-    handle_push %140
-    handle_push %141
-    handle_push %142
-    handle_push %139
-    try_push -> b46(err, )
-    %150 lit: ptr = const str 19
-    call ask#14(%150) -> b47()
-  b44(%143 v: ptr) [handle, handle, handle, handle]:
-    %144 s: ptr = show %143
-    drop %143
-    perform std::console::Console.print(%144) -> b45()
-  b45(%145 r: unit) [handle, handle, handle, handle]:
-    %146 box: word = box %145
-    %147 unbox: unit = unbox %146
-    drop %146
+    %119 lit: ptr = const str 18
+    %120 lit: ptr = const str 19
+    %121 lit: ptr = const str 20
+    %122 lit: ptr = const str 21
+    %123 lit: ptr = const str 5
+    %124 lit: ptr = const str 22
+    %125 lit: ptr = const str 23
+    %126 lit: ptr = const str 24
+    %127 lit: ptr = const str 25
+    %128 lit: ptr = const str 26
+    %129 xs: ptr = alloc list(%119, %120, %121, %122, %123, %124, %125, %126, %127, %128)
+    dup.candidate %129
+    %130 n: i64 = $list_len(%129)
+    %210 lit: i64 = const 0
+    jump b56(%210, %129, %130)
+  b39():
+    %131 lit: ptr = const str 27
+    call ok#3(%131) -> b40()
+  b40(%132 r: ptr):
+    %133 xs: ptr = alloc list(%132)
+    %134 f: ptr = closure main$20#42[]
+    call quiet#41(%133, %134) -> b41()
+  b41(%135 r: unit):
+    %136 lit: ptr = const str 28
+    call ok#3(%136) -> b42()
+  b42(%137 r: ptr):
+    %138 xs: ptr = alloc list(%137)
+    %139 f: ptr = closure main$21#44[]
+    call quiet#41(%138, %139) -> b43()
+  b43(%140 r: unit):
+    %141 lit: ptr = const str 27
+    call ok#3(%141) -> b44()
+  b44(%142 r: ptr):
+    %143 xs: ptr = alloc list(%142)
+    %144 f: ptr = closure main$22#46[]
+    call quiet#41(%143, %144) -> b45()
+  b45(%145 r: unit):
+    %146 xs: ptr = alloc list()
+    call scripted#49(%146) -> b46()
+  b46(%147 r: ptr):
+    call spy#50() -> b47(%147)
+  b47(%148 r: ptr, %149 r: ptr):
+    %150 lit: i64 = const 10
+    %151 box: word = box %150
+    %152 r: ptr = alloc std::option::Option.Some(%151)
+    %153 v: ptr = const static std::option::Option.None
+    %154 v: ptr = const static std::option::Option.None
+    %155 rec: ptr = alloc std::budget::Limits(%152, %153, %154)
+    call limits#51(%155) -> b48(%149, %148)
+  b48(%156 r: ptr, %157 r: ptr, %158 r: ptr):
+    %159 lit: ptr = const str 29
+    %160 r: ptr = $secret_wrap(%159)
+    call default#52() -> b49(%157, %158, %156, %160)
+  b49(%161 r: ptr, %162 r: ptr, %163 r: ptr, %164 r: ptr, %165 r: ptr):
+    call anthropic#53(%165, %161) -> b50(%162, %163, %164)
+  b50(%166 r: ptr, %167 r: ptr, %168 r: ptr, %169 r: ptr):
+    handle_push %167
+    handle_push %168
+    handle_push %169
+    handle_push %166
+    try_push -> b53(err, )
+    %177 lit: ptr = const str 30
+    call ask#14(%177) -> b54()
+  b51(%170 v: ptr) [handle, handle, handle, handle]:
+    %171 s: ptr = show %170
+    drop %170
+    perform std::console::Console.print(%171) -> b52()
+  b52(%172 r: unit) [handle, handle, handle, handle]:
+    %173 box: word = box %172
+    %174 unbox: unit = unbox %173
+    drop %173
     handle_pop
     handle_pop
     handle_pop
     handle_pop
-    ret %147
-  b46(%148 e: word) [handle, handle, handle, handle]:
-    %149 err: ptr = alloc std::result::Result.Err(%148)
-    jump b44(%149)
-  b47(%151 r: ptr) [handle, handle, handle, handle, try]:
-    %152 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%151, %152) -> b48()
-  b48(%153 r: word) [handle, handle, handle, handle, try]:
-    %154 unbox: i64 = unbox %153
-    drop %153
-    %155 box: word = box %154
-    %156 ok: ptr = alloc std::result::Result.Ok(%155)
+    ret %174
+  b53(%175 e: word) [handle, handle, handle, handle]:
+    %176 err: ptr = alloc std::result::Result.Err(%175)
+    jump b51(%176)
+  b54(%178 r: ptr) [handle, handle, handle, handle, try]:
+    %179 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%178, %179) -> b55()
+  b55(%180 r: word) [handle, handle, handle, handle, try]:
+    %181 unbox: i64 = unbox %180
+    drop %180
+    %182 box: word = box %181
+    %183 ok: ptr = alloc std::result::Result.Ok(%182)
     try_pop
-    jump b44(%156)
+    jump b51(%183)
+  b56(%184 i: i64, %185 xs: ptr, %186 n: i64):
+    %187 more: bool = lt.int %184, %186
+    if %187 then b57(%185, %186, %184) else b58(%185, %186, %184)
+  b57(%188 xs: ptr, %189 n: i64, %190 i: i64):
+    dup.candidate %188
+    %194 x: word = $list_at(%188, %190)
+    call limited#39(%194) -> b60(%188, %189, %190)
+  b58(%191 xs: ptr, %192 n: i64, %193 i: i64):
+    drop %191
+    jump b39()
+  b59(%195 xs: ptr, %196 n: i64, %197 i: i64):
+    %198 lit: i64 = const 1
+    %199 i: i64 = intadd %197, %198
+    jump b56(%199, %195, %196)
+  b60(%200 r: ptr, %201 xs: ptr, %202 n: i64, %203 i: i64):
+    %204 xs: ptr = alloc list(%200)
+    %205 f: ptr = closure main$19#40[]
+    call quiet#41(%204, %205) -> b61(%201, %202, %203)
+  b61(%206 r: unit, %207 xs: ptr, %208 n: i64, %209 i: i64):
+    jump b59(%207, %208, %209)
 
 fn $entry#1 top -> unit ; main::llm_anthropic_exchanges, frame 1 slots [%1 bool]
   b0():
@@ -274,7 +331,7 @@ fn $entry#1 top -> unit ; main::llm_anthropic_exchanges, frame 1 slots [%1 bool]
 
 fn ok#3 top -> ptr ; main::llm_anthropic_exchanges, frame 3 slots [%0 word*, %2 word*, %5 word*]
   b0(%0 text: ptr):
-    %1 lit: ptr = const str 21
+    %1 lit: ptr = const str 32
     call message#17(%0, %1) -> b1()
   b1(%2 r: ptr):
     %3 lit: i64 = const 200
@@ -286,9 +343,9 @@ fn ok#3 top -> ptr ; main::llm_anthropic_exchanges, frame 3 slots [%0 word*, %2 
 fn main$1#4 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %18 word*, %20 word*, %23 bool, %25 word*, %28 word*]
   b0(%0 env: ptr):
     drop %0
-    %1 lit: ptr = const str 22
+    %1 lit: ptr = const str 33
     %2 r: ptr = alloc std::prompt::PromptPart.Text(%1)
-    %3 lit: ptr = const str 23
+    %3 lit: ptr = const str 34
     %4 r: ptr = $untrusted_of(%3)
     %5 r: ptr = alloc std::prompt::PromptPart.Untrusted(%4)
     %6 lit: i64 = const 137
@@ -305,11 +362,11 @@ fn main$1#4 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 6
     %17 xs: ptr = alloc list(%2, %5, %16)
     call of#5(%17) -> b1()
   b1(%18 r: ptr):
-    %19 lit: ptr = const str 24
+    %19 lit: ptr = const str 35
     call request#7(%19, %18) -> b2()
   b2(%20 r: ptr):
     try_push -> b5(err, )
-    %27 schema: ptr = const str 25
+    %27 schema: ptr = const str 36
     perform std::llm::Llm.generate(%20, %27) -> b6()
   b3(%21 v: ptr):
     %22 s: ptr = show %21
@@ -328,25 +385,25 @@ fn main$1#4 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 6
 
 fn on#8 top -> unit ; main::llm_anthropic_exchanges, frame 27 slots [%0 word*, %1 word*, %3 word*, %4 word*, %5 word*, %6 word*, %7 word*, %8 word*, %9 word*, %10 word*, %11 word*, %12 word*, %13 word*, %20 word*, %21 word*, %22 word*, %23 word*, %24 word*, %25 word*, %26 word*, %28 word*, %29 word*, %30 word*, %31 word*, %32 word*, %33 word*, %34 word*]
   b0(%0 rs: ptr, %1 run: ptr):
-    %2 f: ptr = closure on$1#162[]
-    call map#85(%0, %2) -> b1(%1)
+    %2 f: ptr = closure on$1#173[]
+    call map#93(%0, %2) -> b1(%1)
   b1(%3 r: ptr, %4 run: ptr):
-    call scripted#41(%3) -> b2(%4)
+    call scripted#49(%3) -> b2(%4)
   b2(%5 r: ptr, %6 run: ptr):
-    call spy#42() -> b3(%6, %5)
+    call spy#50() -> b3(%6, %5)
   b3(%7 r: ptr, %8 run: ptr, %9 r: ptr):
-    call unlimited#163() -> b4(%8, %9, %7)
+    call unlimited#166() -> b4(%8, %9, %7)
   b4(%10 r: ptr, %11 run: ptr, %12 r: ptr, %13 r: ptr):
-    %14 reserve: ptr = closure ledger$Budget_reserve#166[]
-    %15 settle: ptr = closure ledger$Budget_settle#167[]
+    %14 reserve: ptr = closure ledger$Budget_reserve#175[]
+    %15 settle: ptr = closure ledger$Budget_settle#176[]
     %16 r: ptr = handler std::budget::Budget row 45 state() clauses(%14, %15)
-    %17 lit: ptr = const str 18
+    %17 lit: ptr = const str 29
     %18 r: ptr = $secret_wrap(%17)
-    %19 lit: ptr = const str 26
-    call of#165(%19) -> b5(%11, %12, %13, %10, %16, %18)
+    %19 lit: ptr = const str 37
+    call of#167(%19) -> b5(%11, %12, %13, %10, %16, %18)
   b5(%20 r: ptr, %21 run: ptr, %22 r: ptr, %23 r: ptr, %24 r: ptr, %25 r: ptr, %26 r: ptr):
-    %27 lit: ptr = const str 27
-    call anthropic_at#46(%27, %26, %20) -> b6(%21, %22, %23, %24, %25)
+    %27 lit: ptr = const str 38
+    call anthropic_at#54(%27, %26, %20) -> b6(%21, %22, %23, %24, %25)
   b6(%28 r: ptr, %29 run: ptr, %30 r: ptr, %31 r: ptr, %32 r: ptr, %33 r: ptr):
     handle_push %30
     handle_push %31
@@ -368,7 +425,7 @@ fn main$2#9 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 8
   b0(%0 env: ptr):
     drop %0
     try_push -> b7(err, )
-    %18 lit: ptr = const str 29
+    %18 lit: ptr = const str 40
     call text#10(%18) -> b8()
   b1(%1 v: ptr):
     %2 tag: i64 = tag %1 ctor std::result::Result
@@ -385,7 +442,7 @@ fn main$2#9 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 8
     perform std::console::Console.print(%13) -> b6()
   b4(%6 r: i64):
     %7 s: ptr = show %6
-    %8 lit: ptr = const str 28
+    %8 lit: ptr = const str 39
     %9 s: ptr = concat %8, %7
     drop %7
     perform std::console::Console.print(%9) -> b5()
@@ -412,198 +469,6 @@ fn main$3#13 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 30
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn ask#14 top -> ptr ; main::llm_anthropic_exchanges, frame 4 slots [%0 word*, %2 word*, %3 word*, %4 word*]
-  b0(%0 system: ptr):
-    %1 lit: ptr = const str 31
-    call text#10(%1) -> b1(%0)
-  b1(%2 r: ptr, %3 system: ptr):
-    call request#161(%3, %2) -> b2()
-  b2(%4 r: ptr):
-    ret %4
-
-fn main$4#15 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 32
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn main$5#16 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 33
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn message#17 top -> ptr ; main::llm_anthropic_exchanges, frame 2 slots [%0 word*, %1 word*]
-  b0(%0 text: ptr, %1 stop: ptr):
-    %2 schema: ptr = const str 34
-    %3 r: ptr = $json_encode(%0, %2)
-    %4 s: ptr = show %3
-    drop %3
-    %5 lit: ptr = const str 35
-    %6 s: ptr = concat %5, %4
-    drop %4
-    %7 lit: ptr = const str 36
-    %8 s: ptr = concat %6, %7
-    drop %7
-    %9 s: ptr = show %1
-    drop %1
-    %10 s: ptr = concat %8, %9
-    drop %9
-    %11 lit: ptr = const str 37
-    %12 s: ptr = concat %10, %11
-    drop %11
-    ret %12
-
-fn main$6#19 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 38
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn main$7#20 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 39
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn main$8#21 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 40
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
-    ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
-
-fn main$9#22 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
     %7 lit: ptr = const str 41
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
@@ -617,7 +482,7 @@ fn main$9#22 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 
     %6 err: ptr = alloc std::result::Result.Err(%5)
     jump b1(%6)
   b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
+    %9 schema: ptr = const str 31
     perform std::llm::Llm.generate(%8, %9) -> b5()
   b5(%10 r: word) [try]:
     %11 unbox: i64 = unbox %10
@@ -627,34 +492,16 @@ fn main$9#22 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 
     try_pop
     jump b1(%13)
 
-fn main$10#23 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
-  b0(%0 env: ptr):
-    drop %0
-    try_push -> b3(err, )
-    %7 lit: ptr = const str 42
-    call ask#14(%7) -> b4()
-  b1(%1 v: ptr):
-    %2 s: ptr = show %1
-    drop %1
-    perform std::console::Console.print(%2) -> b2()
-  b2(%3 r: unit):
-    %4 box: word = box %3
+fn ask#14 top -> ptr ; main::llm_anthropic_exchanges, frame 4 slots [%0 word*, %2 word*, %3 word*, %4 word*]
+  b0(%0 system: ptr):
+    %1 lit: ptr = const str 42
+    call text#10(%1) -> b1(%0)
+  b1(%2 r: ptr, %3 system: ptr):
+    call request#172(%3, %2) -> b2()
+  b2(%4 r: ptr):
     ret %4
-  b3(%5 e: word):
-    %6 err: ptr = alloc std::result::Result.Err(%5)
-    jump b1(%6)
-  b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
-    perform std::llm::Llm.generate(%8, %9) -> b5()
-  b5(%10 r: word) [try]:
-    %11 unbox: i64 = unbox %10
-    drop %10
-    %12 box: word = box %11
-    %13 ok: ptr = alloc std::result::Result.Ok(%12)
-    try_pop
-    jump b1(%13)
 
-fn main$11#24 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+fn main$4#15 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
@@ -671,7 +518,7 @@ fn main$11#24 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     %6 err: ptr = alloc std::result::Result.Err(%5)
     jump b1(%6)
   b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
+    %9 schema: ptr = const str 31
     perform std::llm::Llm.generate(%8, %9) -> b5()
   b5(%10 r: word) [try]:
     %11 unbox: i64 = unbox %10
@@ -681,7 +528,7 @@ fn main$11#24 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     try_pop
     jump b1(%13)
 
-fn main$12#25 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+fn main$5#16 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
@@ -698,7 +545,217 @@ fn main$12#25 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     %6 err: ptr = alloc std::result::Result.Err(%5)
     jump b1(%6)
   b4(%8 r: ptr) [try]:
-    %9 schema: ptr = const str 20
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn message#17 top -> ptr ; main::llm_anthropic_exchanges, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 text: ptr, %1 stop: ptr):
+    %2 schema: ptr = const str 45
+    %3 r: ptr = $json_encode(%0, %2)
+    %4 s: ptr = show %3
+    drop %3
+    %5 lit: ptr = const str 46
+    %6 s: ptr = concat %5, %4
+    drop %4
+    %7 lit: ptr = const str 47
+    %8 s: ptr = concat %6, %7
+    drop %7
+    %9 s: ptr = show %1
+    drop %1
+    %10 s: ptr = concat %8, %9
+    drop %9
+    %11 lit: ptr = const str 48
+    %12 s: ptr = concat %10, %11
+    drop %11
+    ret %12
+
+fn main$6#19 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 49
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$7#20 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 50
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$8#21 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 51
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$9#22 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 52
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$10#23 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 53
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$11#24 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 54
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn main$12#25 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 55
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
     perform std::llm::Llm.generate(%8, %9) -> b5()
   b5(%10 r: word) [try]:
     %11 unbox: i64 = unbox %10
@@ -712,23 +769,23 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     %1 v: ptr = const static std::json::Json.Null
-    %2 lit: ptr = const str 45
-    %3 lit: ptr = const str 46
+    %2 lit: ptr = const str 56
+    %3 lit: ptr = const str 57
     %4 rec: ptr = alloc std::llm::ToolSpec(%2, %3, %1)
     %5 r: ptr = $map_empty()
-    %6 lit: ptr = const str 47
+    %6 lit: ptr = const str 58
     %7 r: ptr = alloc std::json::Json.String(%6)
-    %8 lit: ptr = const str 48
+    %8 lit: ptr = const str 59
     %9 r: ptr = $map_insert(%5, %8, %7)
     %10 r: ptr = alloc std::json::Json.Object(%9)
-    %11 lit: ptr = const str 49
-    %12 lit: ptr = const str 50
+    %11 lit: ptr = const str 60
+    %12 lit: ptr = const str 61
     %13 rec: ptr = alloc std::llm::ToolSpec(%11, %12, %10)
     %14 xs: ptr = alloc list(%4, %13)
     %15 r: ptr = $map_empty()
     %16 r: ptr = alloc std::json::Json.Object(%15)
-    %17 lit: ptr = const str 51
-    %18 lit: ptr = const str 45
+    %17 lit: ptr = const str 62
+    %18 lit: ptr = const str 56
     %19 rec: ptr = alloc std::llm::ToolCall(%17, %18, %16)
     %20 xs: ptr = alloc list(%19)
     %21 r: ptr = alloc std::llm::Turn.Asked(%20)
@@ -738,14 +795,14 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     %25 r: ptr = alloc std::json::Json.Bool(%24)
     %26 xs: ptr = alloc list(%23, %25)
     %27 r: ptr = alloc std::json::Json.Array(%26)
-    %28 lit: ptr = const str 51
+    %28 lit: ptr = const str 62
     %29 rec: ptr = alloc std::llm::ToolResult(%28, %27)
     %30 xs: ptr = alloc list(%29)
     %31 r: ptr = alloc std::llm::Turn.Answered(%30)
     %32 xs: ptr = alloc list(%21, %31)
     dup %14
     try_push -> b8(err, %14)
-    %55 lit: ptr = const str 53
+    %55 lit: ptr = const str 64
     call ask#14(%55) -> b9(%14, %32)
   b1(%33 v: ptr, %34 xs: ptr):
     %35 s: ptr = show %33
@@ -755,7 +812,7 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     %38 box: word = box %36
     drop %38
     try_push -> b5(err, )
-    %45 lit: ptr = const str 52
+    %45 lit: ptr = const str 63
     call ask#14(%45) -> b6(%37)
   b3(%39 v: ptr):
     %40 s: ptr = show %39
@@ -769,7 +826,7 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b3(%44)
   b6(%46 r: ptr, %47 xs: ptr) [try]:
     %48 xs: ptr = alloc list()
-    %49 schema: ptr = const str 20
+    %49 schema: ptr = const str 31
     perform std::llm::Llm.step(%46, %47, %48, %49) -> b7()
   b7(%50 r: ptr) [try]:
     %51 ok: ptr = alloc std::result::Result.Ok(%50)
@@ -779,7 +836,7 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     %54 err: ptr = alloc std::result::Result.Err(%52)
     jump b1(%54, %53)
   b9(%56 r: ptr, %57 xs: ptr, %58 xs: ptr) [try]:
-    %59 schema: ptr = const str 20
+    %59 schema: ptr = const str 31
     dup %57
     perform std::llm::Llm.step(%56, %57, %58, %59) -> b10(%57)
   b10(%60 r: ptr, %61 xs: ptr) [try]:
@@ -790,14 +847,14 @@ fn main$13#26 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
 fn streamed#27 top -> ptr ; main::llm_anthropic_exchanges, frame 8 slots [%0 bool, %2 word*, %3 bool, %5 word*, %6 bool, %7 word*, %13 word*, %18 word*]
   b0(%0 stop: bool):
     %1 lit: ptr = const str 7
-    call delta#158(%1) -> b1(%0)
+    call delta#169(%1) -> b1(%0)
   b1(%2 r: ptr, %3 stop: bool):
-    %4 lit: ptr = const str 54
-    call delta#158(%4) -> b2(%3, %2)
+    %4 lit: ptr = const str 65
+    call delta#169(%4) -> b2(%3, %2)
   b2(%5 r: ptr, %6 stop: bool, %7 r: ptr):
-    %8 lit: ptr = const str 55
-    %9 lit: ptr = const str 56
-    %10 lit: ptr = const str 57
+    %8 lit: ptr = const str 66
+    %9 lit: ptr = const str 67
+    %10 lit: ptr = const str 68
     %11 xs: ptr = alloc list(%8, %9, %7, %5, %10)
     if %6 then b5(%11) else b6(%11)
   b3(%12 v: ptr):
@@ -805,9 +862,9 @@ fn streamed#27 top -> ptr ; main::llm_anthropic_exchanges, frame 8 slots [%0 boo
   b4(%13 r: ptr):
     ret %13
   b5(%14 xs: ptr):
-    %16 lit: ptr = const str 58
+    %16 lit: ptr = const str 69
     %17 xs: ptr = alloc list(%16)
-    call concat#159(%14, %17) -> b7()
+    call concat#170(%14, %17) -> b7()
   b6(%15 xs: ptr):
     jump b3(%15)
   b7(%18 r: ptr):
@@ -817,7 +874,7 @@ fn main$14#28 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 59
+    %7 lit: ptr = const str 70
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
     %2 s: ptr = show %1
@@ -831,7 +888,7 @@ fn main$14#28 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b1(%6)
   b4(%8 r: ptr) [try]:
     %9 f: ptr = closure main$14$1#29[]
-    %10 schema: ptr = const str 20
+    %10 schema: ptr = const str 31
     %11 callback: ptr = callback %9
     perform std::llm::Llm.stream(%8, %11, %10) -> b5()
   b5(%12 r: word) [try]:
@@ -849,7 +906,7 @@ fn main$14$1#29 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
     drop %1
     %3 s: ptr = show %2
     drop %2
-    %4 lit: ptr = const str 60
+    %4 lit: ptr = const str 71
     %5 s: ptr = concat %4, %3
     drop %3
     perform std::console::Console.print(%5) -> b1()
@@ -861,7 +918,7 @@ fn main$15#30 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 61
+    %7 lit: ptr = const str 72
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
     %2 s: ptr = show %1
@@ -875,7 +932,7 @@ fn main$15#30 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b1(%6)
   b4(%8 r: ptr) [try]:
     %9 f: ptr = closure main$15$1#31[]
-    %10 schema: ptr = const str 20
+    %10 schema: ptr = const str 31
     %11 callback: ptr = callback %9
     perform std::llm::Llm.stream(%8, %11, %10) -> b5()
   b5(%12 r: word) [try]:
@@ -893,7 +950,7 @@ fn main$15$1#31 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
     drop %1
     %3 s: ptr = show %2
     drop %2
-    %4 lit: ptr = const str 60
+    %4 lit: ptr = const str 71
     %5 s: ptr = concat %4, %3
     drop %3
     perform std::console::Console.print(%5) -> b1()
@@ -905,7 +962,7 @@ fn main$16#32 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 62
+    %7 lit: ptr = const str 73
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
     %2 s: ptr = show %1
@@ -919,7 +976,7 @@ fn main$16#32 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b1(%6)
   b4(%8 r: ptr) [try]:
     %9 f: ptr = closure main$16$1#33[]
-    %10 schema: ptr = const str 20
+    %10 schema: ptr = const str 31
     %11 callback: ptr = callback %9
     perform std::llm::Llm.stream(%8, %11, %10) -> b5()
   b5(%12 r: word) [try]:
@@ -934,7 +991,7 @@ fn main$16$1#33 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
   b0(%0 env: ptr, %1 _p: word):
     drop %0
     drop %1
-    %2 lit: ptr = const str 63
+    %2 lit: ptr = const str 74
     perform std::console::Console.print(%2) -> b1()
   b1(%3 r: unit):
     %4 box: word = box %3
@@ -942,11 +999,11 @@ fn main$16$1#33 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
 
 fn sse#34 top -> ptr ; main::llm_anthropic_exchanges, frame 4 slots [%0 word*, %2 word*, %4 word*, %7 word*]
   b0(%0 events: ptr):
-    %1 f: ptr = closure sse$1#157[]
-    call map#85(%0, %1) -> b1()
+    %1 f: ptr = closure sse$1#168[]
+    call map#93(%0, %1) -> b1()
   b1(%2 r: ptr):
     %3 lit: ptr = const str 5
-    call join#155(%2, %3) -> b2()
+    call join#163(%2, %3) -> b2()
   b2(%4 r: ptr):
     %5 lit: i64 = const 200
     %6 $site: i64 = const 18
@@ -958,7 +1015,7 @@ fn main$17#35 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 64
+    %7 lit: ptr = const str 75
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
     %2 s: ptr = show %1
@@ -972,7 +1029,7 @@ fn main$17#35 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b1(%6)
   b4(%8 r: ptr) [try]:
     %9 f: ptr = closure main$17$1#36[]
-    %10 schema: ptr = const str 20
+    %10 schema: ptr = const str 31
     %11 callback: ptr = callback %9
     perform std::llm::Llm.stream(%8, %11, %10) -> b5()
   b5(%12 r: word) [try]:
@@ -987,7 +1044,7 @@ fn main$17$1#36 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
   b0(%0 env: ptr, %1 _p: word):
     drop %0
     drop %1
-    %2 lit: ptr = const str 63
+    %2 lit: ptr = const str 74
     perform std::console::Console.print(%2) -> b1()
   b1(%3 r: unit):
     %4 box: word = box %3
@@ -997,7 +1054,7 @@ fn main$18#37 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
   b0(%0 env: ptr):
     drop %0
     try_push -> b3(err, )
-    %7 lit: ptr = const str 65
+    %7 lit: ptr = const str 76
     call ask#14(%7) -> b4()
   b1(%1 v: ptr):
     %2 s: ptr = show %1
@@ -1011,7 +1068,7 @@ fn main$18#37 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame
     jump b1(%6)
   b4(%8 r: ptr) [try]:
     %9 f: ptr = closure main$18$1#38[]
-    %10 schema: ptr = const str 20
+    %10 schema: ptr = const str 31
     %11 callback: ptr = callback %9
     perform std::llm::Llm.stream(%8, %11, %10) -> b5()
   b5(%12 r: word) [try]:
@@ -1027,34 +1084,190 @@ fn main$18$1#38 lambda -> word ; main::llm_anthropic_exchanges, captures [], fra
     drop %0
     drop %1
     %2 v: ptr = const static std::option::Option.None
-    %3 lit: ptr = const str 66
+    %3 lit: ptr = const str 77
     %4 rec: ptr = alloc std::response::HttpError(%2, %3)
     fail %4
 
-fn spy#42 top -> ptr ; main::llm_anthropic_exchanges, frame 0 slots []
+fn limited#39 top -> ptr ; main::llm_anthropic_exchanges, frame 3 slots [%0 word*, %4 word*, %5 word*]
+  b0(%0 after: ptr):
+    %1 lit: i64 = const 429
+    %2 lit: ptr = const str 9
+    %3 $site: i64 = const 19
+    call status#18(%1, %2, %3) -> b1(%0)
+  b1(%4 r: ptr, %5 after: ptr):
+    %6 lit: ptr = const str 78
+    %7 tup: ptr = alloc tuple#43(word, word)(%6, %5)
+    %8 xs: ptr = alloc list(%7)
+    %9 status: i64 = proj %4.0 std::response::Response
+    %10 body: word = proj %4.2 std::response::Response
+    %12 token: word = $reuse_reset(%4)
+    %11 rec: ptr = alloc std::response::Response(%9, %8, %10) reuse %12
+    ret %11
+
+fn main$19#40 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 79
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn quiet#41 top -> unit ; main::llm_anthropic_exchanges, frame 19 slots [%0 word*, %1 word*, %3 word*, %4 word*, %5 word*, %6 word*, %7 word*, %8 word*, %9 word*, %13 word*, %14 word*, %15 word*, %16 word*, %17 word*, %19 word*, %20 word*, %21 word*, %22 word*, %23 word*]
+  b0(%0 rs: ptr, %1 run: ptr):
+    %2 f: ptr = closure quiet$1#165[]
+    call map#93(%0, %2) -> b1(%1)
+  b1(%3 r: ptr, %4 run: ptr):
+    call scripted#49(%3) -> b2(%4)
+  b2(%5 r: ptr, %6 run: ptr):
+    call unlimited#166() -> b3(%6, %5)
+  b3(%7 r: ptr, %8 run: ptr, %9 r: ptr):
+    %10 lit: ptr = const str 29
+    %11 r: ptr = $secret_wrap(%10)
+    %12 lit: ptr = const str 37
+    call of#167(%12) -> b4(%8, %9, %7, %11)
+  b4(%13 r: ptr, %14 run: ptr, %15 r: ptr, %16 r: ptr, %17 r: ptr):
+    %18 lit: ptr = const str 38
+    call anthropic_at#54(%18, %17, %13) -> b5(%14, %15, %16)
+  b5(%19 r: ptr, %20 run: ptr, %21 r: ptr, %22 r: ptr):
+    handle_push %21
+    handle_push %22
+    handle_push %19
+    call %20() -> b6()
+  b6(%23 r: word) [handle, handle, handle]:
+    %24 unbox: unit = unbox %23
+    drop %23
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %24
+
+fn main$20#42 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %2 word*, %4 word*, %7 bool, %9 word*, %12 word*]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 80
+    call text#10(%1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: ptr = const str 81
+    call request#43(%3, %2) -> b2()
+  b2(%4 r: ptr):
+    try_push -> b5(err, )
+    %11 schema: ptr = const str 82
+    perform std::llm::Llm.generate(%4, %11) -> b6()
+  b3(%5 v: ptr):
+    %6 s: ptr = show %5
+    drop %5
+    perform std::console::Console.print(%6) -> b4()
+  b4(%7 r: unit):
+    %8 box: word = box %7
+    ret %8
+  b5(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    jump b3(%10)
+  b6(%12 r: word) [try]:
+    %13 unbox: f64 = unbox %12
+    drop %12
+    %14 box: word = box %13
+    %15 ok: ptr = alloc std::result::Result.Ok(%14)
+    try_pop
+    jump b3(%15)
+
+fn main$21#44 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %2 word*, %4 word*, %7 bool, %9 word*, %12 word*]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: ptr = const str 80
+    call text#10(%1) -> b1()
+  b1(%2 r: ptr):
+    %3 lit: ptr = const str 83
+    call request#45(%3, %2) -> b2()
+  b2(%4 r: ptr):
+    try_push -> b5(err, )
+    %11 schema: ptr = const str 84
+    perform std::llm::Llm.generate(%4, %11) -> b6()
+  b3(%5 v: ptr):
+    %6 s: ptr = show %5
+    drop %5
+    perform std::console::Console.print(%6) -> b4()
+  b4(%7 r: unit):
+    %8 box: word = box %7
+    ret %8
+  b5(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    jump b3(%10)
+  b6(%12 r: word) [try]:
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b3(%13)
+
+fn main$22#46 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 5 slots [%0 word*, %3 bool, %5 word*, %8 word*, %10 word*]
+  b0(%0 env: ptr):
+    drop %0
+    try_push -> b3(err, )
+    %7 lit: ptr = const str 85
+    call ask#14(%7) -> b4()
+  b1(%1 v: ptr):
+    %2 s: ptr = show %1
+    drop %1
+    perform std::console::Console.print(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    ret %4
+  b3(%5 e: word):
+    %6 err: ptr = alloc std::result::Result.Err(%5)
+    jump b1(%6)
+  b4(%8 r: ptr) [try]:
+    %9 schema: ptr = const str 31
+    perform std::llm::Llm.generate(%8, %9) -> b5()
+  b5(%10 r: word) [try]:
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn spy#50 top -> ptr ; main::llm_anthropic_exchanges, frame 0 slots []
   b0():
-    %0 send: ptr = closure spy$Http_send#58[]
-    %1 stream: ptr = closure spy$Http_stream#60[]
-    %2 read_chunk: ptr = closure spy$Http_read_chunk#61[]
+    %0 send: ptr = closure spy$Http_send#66[]
+    %1 stream: ptr = closure spy$Http_stream#68[]
+    %2 read_chunk: ptr = closure spy$Http_read_chunk#69[]
     %3 handler: ptr = handler std::http::Http row 45 state() clauses(%0, %1, %2)
     ret %3
 
-fn spy$Http_send#58 clause std::http::Http.send -> ptr ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %3 bool, %4 word*, %5 word*]
+fn spy$Http_send#66 clause std::http::Http.send -> ptr ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %3 bool, %4 word*, %5 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr):
     drop %0
     dup %2
-    call show#59(%2) -> b1(%2)
+    call show#67(%2) -> b1(%2)
   b1(%3 r: unit, %4 req: ptr):
     perform std::http::Http.send(%4) -> b2()
   b2(%5 r: ptr):
     ret %5
 
-fn show#59 top -> unit ; main::llm_anthropic_exchanges, frame 5 slots [%0 word*, %9 bool, %10 word*, %17 bool, %21 bool]
+fn show#67 top -> unit ; main::llm_anthropic_exchanges, frame 5 slots [%0 word*, %9 bool, %10 word*, %17 bool, %21 bool]
   b0(%0 req: ptr):
     %1 url: word = proj %0.1 std::request::Request
     %2 s: ptr = show %1
     drop %1
-    %3 lit: ptr = const str 73
+    %3 lit: ptr = const str 92
     %4 s: ptr = concat %2, %3
     drop %3
     %5 secret_headers: word = proj %0.5 std::request::Request
@@ -1076,7 +1289,7 @@ fn show#59 top -> unit ; main::llm_anthropic_exchanges, frame 5 slots [%0 word*,
     perform std::console::Console.print(%16) -> b4()
   b3(%15 body: ptr):
     drop %15
-    %20 lit: ptr = const str 74
+    %20 lit: ptr = const str 93
     perform std::console::Console.print(%20) -> b5()
   b4(%17 r: unit):
     %18 box: word = box %17
@@ -1089,92 +1302,99 @@ fn show#59 top -> unit ; main::llm_anthropic_exchanges, frame 5 slots [%0 word*,
     drop %22
     ret %23
 
-fn spy$Http_stream#60 clause std::http::Http.stream -> word ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 word*, %4 bool, %5 word*, %6 word*, %8 word*]
+fn spy$Http_stream#68 clause std::http::Http.stream -> word ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 word*, %4 bool, %5 word*, %6 word*, %8 word*]
   b0(%0 env: ptr, %1 inst: id, %2 req: ptr, %3 body: ptr):
     drop %0
     dup %2
-    call show#59(%2) -> b1(%2, %3)
+    call show#67(%2) -> b1(%2, %3)
   b1(%4 r: unit, %5 req: ptr, %6 body: ptr):
     %7 callback: ptr = callback %6
     perform std::http::Http.stream(%5, %7) -> b2()
   b2(%8 r: word):
     ret %8
 
-fn spy$Http_read_chunk#61 clause std::http::Http.read_chunk -> ptr ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %5 bool, %6 word*, %7 i64, %8 word*]
+fn spy$Http_read_chunk#69 clause std::http::Http.read_chunk -> ptr ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 i64, %5 bool, %6 word*, %7 i64, %8 word*]
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
-    %4 $site: i64 = const 19
+    %4 $site: i64 = const 20
     dup.candidate %2
-    call Http.read_chunk#62(%2, %3, %4) -> b1(%2, %3)
+    call Http.read_chunk#70(%2, %3, %4) -> b1(%2, %3)
   b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
     perform std::http::Http.read_chunk(%6, %7) -> b2()
   b2(%8 r: ptr):
     ret %8
 
-fn sse$1#157 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 2 slots [%0 word*, %1 word*]
-  b0(%0 env: ptr, %1 e: word):
-    drop %0
-    %2 s: ptr = show %1
-    drop %1
-    %3 lit: ptr = const str 136
-    %4 s: ptr = concat %3, %2
-    drop %2
-    %5 lit: ptr = const str 137
-    %6 s: ptr = concat %4, %5
-    drop %5
-    ret %6
-
-fn delta#158 top -> ptr ; main::llm_anthropic_exchanges, frame 1 slots [%0 word*]
-  b0(%0 text: ptr):
-    %1 schema: ptr = const str 34
-    %2 r: ptr = $json_encode(%0, %1)
-    %3 s: ptr = show %2
-    drop %2
-    %4 lit: ptr = const str 138
-    %5 s: ptr = concat %4, %3
-    drop %3
-    %6 lit: ptr = const str 139
-    %7 s: ptr = concat %5, %6
-    drop %6
-    ret %7
-
-fn on$1#162 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 2 slots [%0 word*, %1 word*]
+fn quiet$1#165 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 2 slots [%0 word*, %1 word*]
   b0(%0 env: ptr, %1 r: word):
     drop %0
     %2 v: ptr = const static std::http::Matcher.Any
     %3 tup: ptr = alloc tuple#43(word, word)(%2, %1)
     ret %3
 
-fn ledger#164 top -> ptr ; main::llm_anthropic_exchanges, frame 0 slots []
+fn sse$1#168 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 e: word):
+    drop %0
+    %2 s: ptr = show %1
+    drop %1
+    %3 lit: ptr = const str 155
+    %4 s: ptr = concat %3, %2
+    drop %2
+    %5 lit: ptr = const str 156
+    %6 s: ptr = concat %4, %5
+    drop %5
+    ret %6
+
+fn delta#169 top -> ptr ; main::llm_anthropic_exchanges, frame 1 slots [%0 word*]
+  b0(%0 text: ptr):
+    %1 schema: ptr = const str 45
+    %2 r: ptr = $json_encode(%0, %1)
+    %3 s: ptr = show %2
+    drop %2
+    %4 lit: ptr = const str 157
+    %5 s: ptr = concat %4, %3
+    drop %3
+    %6 lit: ptr = const str 158
+    %7 s: ptr = concat %5, %6
+    drop %6
+    ret %7
+
+fn on$1#173 lambda -> word ; main::llm_anthropic_exchanges, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 r: word):
+    drop %0
+    %2 v: ptr = const static std::http::Matcher.Any
+    %3 tup: ptr = alloc tuple#43(word, word)(%2, %1)
+    ret %3
+
+fn ledger#174 top -> ptr ; main::llm_anthropic_exchanges, frame 0 slots []
   b0():
-    %0 reserve: ptr = closure ledger$Budget_reserve#166[]
-    %1 settle: ptr = closure ledger$Budget_settle#167[]
+    %0 reserve: ptr = closure ledger$Budget_reserve#175[]
+    %1 settle: ptr = closure ledger$Budget_settle#176[]
     %2 handler: ptr = handler std::budget::Budget row 45 state() clauses(%0, %1)
     ret %2
 
-fn ledger$Budget_reserve#166 clause std::budget::Budget.reserve -> ptr ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %19 bool, %20 word*, %22 word*]
+fn ledger$Budget_reserve#175 clause std::budget::Budget.reserve -> ptr ; main::llm_anthropic_exchanges, captures [], frame 6 slots [%0 word*, %1 i64, %2 word*, %19 bool, %20 word*, %22 word*]
   b0(%0 env: ptr, %1 inst: id, %2 est: ptr):
     drop %0
     %3 tokens: i64 = proj %2.0 std::budget::Cost
     %4 s: ptr = show %3
-    %5 lit: ptr = const str 140
+    %5 lit: ptr = const str 159
     %6 s: ptr = concat %5, %4
     drop %4
-    %7 lit: ptr = const str 141
+    %7 lit: ptr = const str 160
     %8 s: ptr = concat %6, %7
     drop %7
     %9 usd: f64 = proj %2.1 std::budget::Cost
     %10 s: ptr = show %9
     %11 s: ptr = concat %8, %10
     drop %10
-    %12 lit: ptr = const str 142
+    %12 lit: ptr = const str 161
     %13 s: ptr = concat %11, %12
     drop %12
     %14 calls: i64 = proj %2.2 std::budget::Cost
     %15 s: ptr = show %14
     %16 s: ptr = concat %13, %15
     drop %15
-    %17 lit: ptr = const str 143
+    %17 lit: ptr = const str 162
     %18 s: ptr = concat %16, %17
     drop %17
     perform std::console::Console.print(%18) -> b1(%2)
@@ -1185,29 +1405,29 @@ fn ledger$Budget_reserve#166 clause std::budget::Budget.reserve -> ptr ; main::l
   b2(%22 r: ptr):
     ret %22
 
-fn ledger$Budget_settle#167 clause std::budget::Budget.settle -> unit ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 word*, %20 bool, %21 word*, %22 word*, %24 bool]
+fn ledger$Budget_settle#176 clause std::budget::Budget.settle -> unit ; main::llm_anthropic_exchanges, captures [], frame 8 slots [%0 word*, %1 i64, %2 word*, %3 word*, %20 bool, %21 word*, %22 word*, %24 bool]
   b0(%0 env: ptr, %1 inst: id, %2 r: ptr, %3 actual: ptr):
     drop %0
     %4 tokens: i64 = proj %3.0 std::budget::Cost
     %5 s: ptr = show %4
-    %6 lit: ptr = const str 144
+    %6 lit: ptr = const str 163
     %7 s: ptr = concat %6, %5
     drop %5
-    %8 lit: ptr = const str 141
+    %8 lit: ptr = const str 160
     %9 s: ptr = concat %7, %8
     drop %8
     %10 usd: f64 = proj %3.1 std::budget::Cost
     %11 s: ptr = show %10
     %12 s: ptr = concat %9, %11
     drop %11
-    %13 lit: ptr = const str 142
+    %13 lit: ptr = const str 161
     %14 s: ptr = concat %12, %13
     drop %13
     %15 calls: i64 = proj %3.2 std::budget::Cost
     %16 s: ptr = show %15
     %17 s: ptr = concat %14, %16
     drop %16
-    %18 lit: ptr = const str 143
+    %18 lit: ptr = const str 162
     %19 s: ptr = concat %17, %18
     drop %18
     perform std::console::Console.print(%19) -> b1(%2, %3)

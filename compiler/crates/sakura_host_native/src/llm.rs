@@ -515,24 +515,109 @@ fn text_of(msg: &J) -> String {
     }
 }
 
-/// JS `Number(s)` for a `retry-after` value: NaN unless it reads as a decimal number.
-/// ponytail: no `0x`/`0o`/`0b` literals; add them if a provider ever sends one.
+/// JS `Number(s)` (ECMA-262 StringToNumber) for a `retry-after` value: around the literal,
+/// JS's white space and line terminators (not U+0085); empty is 0; `0x`, `0o` and `0b`
+/// integers take no sign; otherwise a signed `Infinity` or decimal literal; anything else NaN.
 fn js_number(s: &str) -> f64 {
-    let s = s.trim_matches(|c: char| c.is_whitespace() || c == '\u{feff}');
+    let s = s.trim_matches(|c: char| (c.is_whitespace() && c != '\u{85}') || c == '\u{feff}');
     if s.is_empty() {
         return 0.0;
     }
-    let plain = s.trim_start_matches(['+', '-']);
-    if plain.starts_with("Infinity") && plain.len() == 8 {
-        return f64::INFINITY;
+    let radix = match s.get(..2) {
+        Some("0x" | "0X") => 16,
+        Some("0o" | "0O") => 8,
+        Some("0b" | "0B") => 2,
+        _ => 0,
+    };
+    if radix != 0 {
+        return radix_number(&s[2..], radix);
     }
-    if plain
-        .chars()
-        .any(|c| c.is_ascii_alphabetic() && c != 'e' && c != 'E')
+    let (sign, body) = match s.strip_prefix('-') {
+        Some(b) => (-1.0, b),
+        None => (1.0, s.strip_prefix('+').unwrap_or(s)),
+    };
+    if body == "Infinity" {
+        return sign * f64::INFINITY;
+    }
+    // Rust's grammar is JS's StrDecimalLiteral once its `inf` and `nan` spellings are out.
+    if body
+        .bytes()
+        .all(|b| b.is_ascii_digit() || matches!(b, b'.' | b'e' | b'E' | b'+' | b'-'))
     {
+        s.parse().unwrap_or(f64::NAN)
+    } else {
+        f64::NAN
+    }
+}
+
+/// The digits of a `0x`, `0o` or `0b` literal, rounded to the nearest double as JS does: the
+/// top 128 bits, the rest as one sticky bit, then scaled.
+fn radix_number(digits: &str, radix: u32) -> f64 {
+    let width = radix.trailing_zeros();
+    let (mut m, mut extra, mut sticky) = (0u128, 0i32, false);
+    for c in digits.chars() {
+        let Some(d) = c.to_digit(radix) else {
+            return f64::NAN;
+        };
+        for i in (0..width).rev() {
+            let bit = (d >> i) & 1;
+            if m >> 127 == 0 {
+                m = m << 1 | u128::from(bit);
+            } else {
+                extra = extra.saturating_add(1);
+                sticky |= bit == 1;
+            }
+        }
+    }
+    if digits.is_empty() {
         return f64::NAN;
     }
-    s.parse().unwrap_or(f64::NAN)
+    (m | u128::from(sticky)) as f64 * 2f64.powi(extra)
+}
+
+/// The text answer 5 decodes `j` from: JSON that reads back as `j` exactly, so a `-0` keeps
+/// its sign (JS's `fromJs` reads the parsed value, which `JSON.stringify` would write as `0`).
+fn value_text(j: &J, out: &mut String) {
+    match j {
+        J::Null => out.push_str("null"),
+        J::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        // `{:?}` round-trips a finite double, and every form it writes is a JSON number.
+        J::Num(n) => out.push_str(&format!("{n:?}")),
+        J::Str(s) => {
+            out.push('"');
+            for c in s.chars() {
+                match c {
+                    '"' => out.push_str("\\\""),
+                    '\\' => out.push_str("\\\\"),
+                    c if c < ' ' => out.push_str(&format!("\\u{:04x}", c as u32)),
+                    c => out.push(c),
+                }
+            }
+            out.push('"');
+        }
+        J::Arr(xs) => {
+            out.push('[');
+            for (i, x) in xs.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                value_text(x, out);
+            }
+            out.push(']');
+        }
+        J::Obj(ms) => {
+            out.push('{');
+            for (i, (k, v)) in ms.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                value_text(&J::Str(k.clone()), out);
+                out.push(':');
+                value_text(v, out);
+            }
+            out.push('}');
+        }
+    }
 }
 
 /// `TextDecoder`'s streaming UTF-8 decode: an incomplete sequence at the end waits for the next
@@ -1298,9 +1383,8 @@ impl Llm {
                 ));
             }
         };
-        // ponytail: `T` decodes from the value's `JSON.stringify` text, as JS's `fromJs` reads the
-        // parsed value; only a `-0` reads back as `0`.
-        let text = stringify(g, &value)?;
+        let mut text = String::new();
+        value_text(&value, &mut text);
         let schema = st.schema.clone().unwrap_or_default();
         let s = self.session(run, Wait::Decode);
         let mut w = W::default();
@@ -1394,7 +1478,71 @@ mod tests {
         assert_eq!(js_number("1.5e1"), 15.0);
         assert!(js_number("soon").is_nan());
         assert!(js_number("inf").is_nan());
-        assert!(js_number("-Infinity").is_infinite());
+        assert_eq!(js_number("-Infinity"), f64::NEG_INFINITY);
+        assert_eq!(js_number("+Infinity"), f64::INFINITY);
+        assert!(js_number("+-Infinity").is_nan());
+        assert!(js_number("infinity").is_nan());
+        assert!(js_number("NaN").is_nan());
+        assert_eq!(js_number("\u{feff}\t\u{2028}\u{a0}3\r\n\u{3000}"), 3.0);
+        assert!(js_number("\u{85}3").is_nan());
+        assert_eq!(js_number(" \n "), 0.0);
+        assert_eq!(js_number("0x1F"), 31.0);
+        assert_eq!(js_number("0XfF"), 255.0);
+        assert_eq!(js_number("0o17"), 15.0);
+        assert_eq!(js_number("0B101"), 5.0);
+        assert!(js_number("-0x1").is_nan());
+        assert!(js_number("+0x1").is_nan());
+        assert!(js_number("0x").is_nan());
+        assert!(js_number("0o8").is_nan());
+        assert!(js_number("0b2").is_nan());
+        assert!(js_number("0x1.5").is_nan());
+        assert!(js_number("1_000").is_nan());
+        assert_eq!(js_number("1."), 1.0);
+        assert_eq!(js_number(".5"), 0.5);
+        assert_eq!(js_number("+.5e-1"), 0.05);
+        assert!(js_number(".").is_nan());
+        assert!(js_number("1e").is_nan());
+        assert!(js_number("--1").is_nan());
+        assert!(js_number("-0").is_sign_negative());
+        assert_eq!(js_number("007"), 7.0);
+        // Past 2^53 a hex literal rounds to nearest, ties to even, like JS.
+        assert_eq!(js_number("0x20000000000001"), 9007199254740992.0);
+        assert_eq!(js_number("0x20000000000003"), 9007199254740996.0);
+        // A tie past the top 128 bits: the sticky bit breaks it.
+        assert_eq!(
+            js_number("0x2000000000000100000000000000000000"),
+            2f64.powi(133)
+        );
+        assert_eq!(
+            js_number("0x2000000000000100000000000000000001"),
+            2f64.powi(133) + 2f64.powi(81)
+        );
+        assert_eq!(js_number(&format!("0x{}", "f".repeat(256))), f64::INFINITY);
+        assert_eq!(js_number(&format!("0x1{}", "0".repeat(256))), f64::INFINITY);
+        assert_eq!(
+            js_number(&format!("0x1{}", "0".repeat(255))),
+            2f64.powi(1020)
+        );
+    }
+
+    #[test]
+    fn value_text_reads_back_as_the_value() {
+        let j = J::Obj(vec![
+            ("a\"\\\n".into(), J::Num(-0.0)),
+            (
+                "b".into(),
+                J::Arr(vec![
+                    J::Num(1e21),
+                    J::Num(0.1),
+                    J::Num(-2.0),
+                    J::Null,
+                    J::Bool(true),
+                ]),
+            ),
+        ]);
+        let mut s = String::new();
+        value_text(&j, &mut s);
+        assert_eq!(s, r#"{"a\"\\\u000a":-0.0,"b":[1e21,0.1,-2.0,null,true]}"#);
     }
 
     #[test]
