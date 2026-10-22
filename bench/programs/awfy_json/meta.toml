@@ -1,0 +1,23 @@
+family = "AWFY string parsing"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Json: a hand-written recursive-descent parser over the 25,820-byte RapBenchmark
+# constant (no std JSON decoder in any language). run(n) parses it n times and adds the size of
+# the `operations` array verifyResult checks (156 per parse). AWFY's rebench size is
+# inner_iterations; [verify] holds its verifyResult values in that encoding.
+sizes = [1, 10, 100, 500]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Json", inner_iterations = 100, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/json.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "156"
+"100" = "15600"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "156"
+"2" = "312"
+"3" = "468"
+"10" = "1560"
+"100" = "15600"
+"500" = "78000"

@@ -1,0 +1,23 @@
+family = "AWFY f64 records"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's NBody: run(n) is innerBenchmarkLoop(n)'s energy after n advances, times 10^16
+# and rounded half away from zero. AWFY's rebench size is inner_iterations, the largest timed size;
+# [verify] holds its verifyResult values (-0.16907495402506745 and -0.1690859889909308) so encoded.
+sizes = [1000, 10000, 100000, 250000]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "NBody", inner_iterations = 250000, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/nbody.js" }
+
+[verify]  # AWFY's verifyResult, times 10^16, rounded half away from zero
+"1" = "-1690749540250675"
+"250000" = "-1690859889909308"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "-1690751638285245"
+"1" = "-1690749540250675"
+"2" = "-1690747432209780"
+"3" = "-1690745314240226"
+"1000" = "-1690876052346060"
+"10000" = "-1690164412644310"
+"100000" = "-1690798593916589"
+"250000" = "-1690859889909308"

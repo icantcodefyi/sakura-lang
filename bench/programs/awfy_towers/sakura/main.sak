@@ -1,0 +1,83 @@
+// Are We Fast Yet's Towers (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/towers.js;
+// Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks). run(n) runs
+// AWFY's benchmark() n times and sums the results (each is 8191, AWFY's verifyResult value).
+// Deviations, forced by Sakura Lang: objects are immutable and there is no null, so a disk is
+// a record whose `next` is `Option<Disk>`, a pile is `Option<Disk>` (its top), and the piles
+// are a List of three updated with `List.set` inside a record with `moves_done`, threaded
+// through every operation. AWFY relinks a disk's `next` field in place; here pushDisk builds
+// a new disk record on top of the pile and popDiskFrom returns the top with `next` cleared
+// (a new record), so each move allocates one disk record. An illegal move is a defect, where
+// AWFY throws.
+import std/cli.{Cli}
+
+type Disk = { size: Int, next: Option<Disk> }
+
+type Towers = { piles: List<Option<Disk>>, moves_done: Int }
+
+fn pile(t: Towers, p: Int) -> Option<Disk> { Option.expect(t.piles[p], "pile") }
+
+fn push_disk(t: Towers, disk: Disk, p: Int) -> Towers {
+  let top = pile(t, p)
+  match top {
+    Some(d) if disk.size >= d.size => {
+      return Option.expect(None, "Cannot put a big disk on a smaller one")
+    },
+    _ => {},
+  }
+  Towers { ..t, piles: List.set(t.piles, p, Some(Disk { ..disk, next: top })) }
+}
+
+fn pop_disk_from(t: Towers, p: Int) -> (Towers, Disk) {
+  let top = Option.expect(pile(t, p), "Attempting to remove a disk from an empty pile")
+  (Towers { ..t, piles: List.set(t.piles, p, top.next) }, Disk { ..top, next: None })
+}
+
+fn move_top_disk(t: Towers, from_pile: Int, to_pile: Int) -> Towers {
+  let (t1, disk) = pop_disk_from(t, from_pile)
+  let t2 = push_disk(t1, disk, to_pile)
+  Towers { ..t2, moves_done: t2.moves_done + 1 }
+}
+
+fn build_tower_at(start: Towers, p: Int, disks: Int) -> Towers {
+  var t = start
+  var i = disks
+  while i >= 0 {
+    t = push_disk(t, Disk { size: i, next: None }, p)
+    i = i - 1
+  }
+  t
+}
+
+fn move_disks(t: Towers, disks: Int, from_pile: Int, to_pile: Int) -> Towers {
+  if disks == 1 {
+    move_top_disk(t, from_pile, to_pile)
+  } else {
+    let other_pile = 3 - from_pile - to_pile
+    let t1 = move_disks(t, disks - 1, from_pile, other_pile)
+    let t2 = move_top_disk(t1, from_pile, to_pile)
+    move_disks(t2, disks - 1, other_pile, to_pile)
+  }
+}
+
+fn benchmark() -> Int {
+  var t = Towers { piles: [None, None, None], moves_done: 0 }
+  t = build_tower_at(t, 0, 13)
+  t.moves_done = 0
+  t = move_disks(t, 13, 0, 1)
+  t.moves_done
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

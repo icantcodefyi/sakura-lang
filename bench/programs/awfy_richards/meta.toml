@@ -1,0 +1,21 @@
+family = "AWFY object graph"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Richards (fixed workload): run(n) runs benchmark() n times and returns the
+# number of true results, so run(n) = n when every run is correct. AWFY's rebench size is
+# inner_iterations, the largest timed size.
+sizes = [1, 10, 50, 100]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Richards", inner_iterations = 100, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/richards.js" }
+
+[verify]  # AWFY's verifyResult(benchmark()) is true
+"1" = "1"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1"
+"2" = "2"
+"3" = "3"
+"10" = "10"
+"50" = "50"
+"100" = "100"

@@ -1,0 +1,416 @@
+// Richards from Are We Fast Yet (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/
+// richards.js), which says of itself: "The benchmark in its current state is a derivation from
+// the SOM version, which is derived from Mario Wolczko's Smalltalk version of DeltaBlue" [sic:
+// of Richards]; see ../LICENSE. run(n) runs AWFY's benchmark() n times and returns the number of
+// runs whose scheduler ends with AWFY's counts (23246 queued packets, 9297 holds): n when correct.
+// Deviations, all because Sakura Lang has no mutable objects and no bitwise operators:
+// - the object graph is two heaps threaded through every scheduler operation: task control
+//   blocks in a List indexed by identity (AWFY's taskTable; an entry whose identity is -1 is
+//   NO_TASK) and packets in a List indexed by creation order; every reference (link, input,
+//   queue heads, currentTask) is an index, and -1 is NO_TASK / NO_WORK;
+// - AWFY's task functions are closures created with their data record; here the data record is
+//   a variant and run_task calls the function its variant names (a match, not a closure call);
+// - the idler's `control & 1` is `ctrl % 2` and `(control / 2) ^ 53256` is `xor(ctrl / 2,
+//   53256)`, a loop over binary digits (control is non-negative and below 2^16; `control` is a
+//   reserved word in Sakura Lang, so the field is `ctrl`);
+// - TRACING is false in AWFY and its trace code is left out.
+// Every traversal, queue and update is AWFY's, in its order.
+import std/cli.{Cli}
+
+let no_task = -1
+let no_work = -1
+let idler = 0
+let worker = 1
+let handler_a = 2
+let handler_b = 3
+let device_a = 4
+let device_b = 5
+let num_types = 6
+
+let device_packet_kind = 0
+let work_packet_kind = 1
+
+let data_size = 4
+
+type Packet = { link: Int, identity: Int, kind: Int, datum: Int, data: List<Int> }
+
+/// A task's private data record (AWFY's `handle`); its variant selects the task function.
+/// DeviceData(pending), HandlerData(workIn, deviceIn), IdleData(control, count) and
+/// WorkerData(destination, count).
+type Data = DeviceData(Int) | HandlerData(Int, Int) | IdleData(Int, Int) | WorkerData(Int, Int)
+
+/// AWFY's TaskState flags, the initial state a TaskControlBlock copies.
+type TaskState = { packet_pending: Bool, task_waiting: Bool, task_holding: Bool }
+
+type Tcb = {
+  link: Int,
+  identity: Int,
+  priority: Int,
+  input: Int,
+  packet_pending: Bool,
+  task_waiting: Bool,
+  task_holding: Bool,
+  handle: Data,
+}
+
+type Scheduler = {
+  tasks: List<Tcb>,
+  packets: List<Packet>,
+  queue_packet_count: Int,
+  hold_count: Int,
+  task_list: Int,
+  current_task: Int,
+  current_task_identity: Int,
+}
+
+fn task(s: Scheduler, id: Int) -> Tcb { Option.expect(s.tasks[id], "task") }
+
+fn put_task(s: Scheduler, id: Int, t: Tcb) -> Scheduler {
+  Scheduler { ..s, tasks: List.set(s.tasks, id, t) }
+}
+
+fn packet(s: Scheduler, id: Int) -> Packet { Option.expect(s.packets[id], "packet") }
+
+fn put_packet(s: Scheduler, id: Int, p: Packet) -> Scheduler {
+  Scheduler { ..s, packets: List.set(s.packets, id, p) }
+}
+
+/// The current task's data record is replaced.
+fn put_handle(s: Scheduler, handle: Data) -> Scheduler {
+  put_task(s, s.current_task, Tcb { ..task(s, s.current_task), handle })
+}
+
+/// RBObject's append: the queue headed by queue_head with packet at its end; its new head.
+fn append(start: Scheduler, p: Int, queue_head: Int) -> (Scheduler, Int) {
+  var s = put_packet(start, p, Packet { ..packet(start, p), link: no_work })
+  if no_work == queue_head { return (s, p) }
+  var mouse = queue_head
+  var link = packet(s, mouse).link
+  while no_work != link {
+    mouse = link
+    link = packet(s, mouse).link
+  }
+  s = put_packet(s, mouse, Packet { ..packet(s, mouse), link: p })
+  (s, queue_head)
+}
+
+// ---- TaskState
+
+fn is_task_holding_or_waiting(t: Tcb) -> Bool {
+  t.task_holding || (!t.packet_pending && t.task_waiting)
+}
+
+fn is_waiting_with_packet(t: Tcb) -> Bool { t.packet_pending && t.task_waiting && !t.task_holding }
+
+fn create_running() -> TaskState {
+  TaskState { packet_pending: false, task_waiting: false, task_holding: false }
+}
+
+fn create_waiting() -> TaskState {
+  TaskState { packet_pending: false, task_waiting: true, task_holding: false }
+}
+
+fn create_waiting_with_packet() -> TaskState {
+  TaskState { packet_pending: true, task_waiting: true, task_holding: false }
+}
+
+// ---- TaskControlBlock
+
+fn add_input_and_check_priority(s: Scheduler, id: Int, p: Int, old_task: Int) -> (Scheduler, Int) {
+  let t = task(s, id)
+  if no_work == t.input {
+    let s1 = put_task(s, id, Tcb { ..t, input: p, packet_pending: true })
+    if t.priority > task(s1, old_task).priority { return (s1, id) }
+    return (s1, old_task)
+  }
+  let (s1, input) = append(s, p, t.input)
+  (put_task(s1, id, Tcb { ..task(s1, id), input }), old_task)
+}
+
+fn run_task(start: Scheduler, id: Int) -> (Scheduler, Int) {
+  var s = start
+  let t = task(s, id)
+  var message = no_work
+  if is_waiting_with_packet(t) {
+    message = t.input
+    let input = packet(s, message).link
+    s = if no_work == input {
+      // running()
+      put_task(
+        s,
+        id,
+        Tcb { ..t, input, packet_pending: false, task_waiting: false, task_holding: false },
+      )
+    } else {
+      // packetPending()
+      put_task(
+        s,
+        id,
+        Tcb { ..t, input, packet_pending: true, task_waiting: false, task_holding: false },
+      )
+    }
+  }
+  match task(s, id).handle {
+    DeviceData(pending) => device_fn(s, message, pending),
+    HandlerData(work_in, device_in) => handler_fn(s, message, work_in, device_in),
+    IdleData(ctrl, count) => idler_fn(s, ctrl, count),
+    WorkerData(destination, count) => worker_fn(s, message, destination, count),
+  }
+}
+
+// ---- the task functions (AWFY's closures in createDevice, createHandler, createIdler and
+// createWorker); each returns the scheduler and the next task
+
+fn device_fn(s: Scheduler, work: Int, pending: Int) -> (Scheduler, Int) {
+  if no_work == work {
+    if no_work == pending { return mark_waiting(s) }
+    return queue_packet(put_handle(s, DeviceData(no_work)), pending)
+  }
+  hold_self(put_handle(s, DeviceData(work)))
+}
+
+fn handler_fn(start: Scheduler, work: Int, work_in0: Int, device_in0: Int) -> (Scheduler, Int) {
+  var s = start
+  var work_in = work_in0
+  var device_in = device_in0
+  if no_work != work {
+    if work_packet_kind == packet(s, work).kind {
+      let (s1, head) = append(s, work, work_in)
+      s = s1
+      work_in = head
+    } else {
+      let (s1, head) = append(s, work, device_in)
+      s = s1
+      device_in = head
+    }
+    s = put_handle(s, HandlerData(work_in, device_in))
+  }
+  let work_packet = work_in
+  if no_work == work_packet { return mark_waiting(s) }
+  let wp = packet(s, work_packet)
+  let count = wp.datum
+  if count >= data_size {
+    return queue_packet(put_handle(s, HandlerData(wp.link, device_in)), work_packet)
+  }
+  let device_packet = device_in
+  if no_work == device_packet { return mark_waiting(s) }
+  s = put_handle(s, HandlerData(work_in, packet(s, device_packet).link))
+  s = put_packet(
+    s,
+    device_packet,
+    Packet { ..packet(s, device_packet), datum: Option.expect(wp.data[count], "data") },
+  )
+  s = put_packet(s, work_packet, Packet { ..packet(s, work_packet), datum: count + 1 })
+  queue_packet(s, device_packet)
+}
+
+/// a XOR b for 0 <= a, b, digit by binary digit (Sakura Lang has no bitwise operators).
+fn xor(a: Int, b: Int) -> Int {
+  var x = a
+  var y = b
+  var bit = 1
+  var r = 0
+  while x > 0 || y > 0 {
+    if x % 2 != y % 2 { r = r + bit }
+    x = x / 2
+    y = y / 2
+    bit = bit * 2
+  }
+  r
+}
+
+fn idler_fn(s: Scheduler, ctrl: Int, count0: Int) -> (Scheduler, Int) {
+  let count = count0 - 1
+  if 0 == count { return hold_self(put_handle(s, IdleData(ctrl, count))) }
+  if 0 == ctrl % 2 { return release(put_handle(s, IdleData(ctrl / 2, count)), device_a) }
+  release(put_handle(s, IdleData(xor(ctrl / 2, 53256), count)), device_b)
+}
+
+fn worker_fn(s: Scheduler, work: Int, destination0: Int, count0: Int) -> (Scheduler, Int) {
+  if no_work == work { return mark_waiting(s) }
+  let destination = if handler_a == destination0 { handler_b } else { handler_a }
+  let p = packet(s, work)
+  var data = p.data
+  var count = count0
+  var i = 0
+  while i < data_size {
+    count = count + 1
+    if count > 26 { count = 1 }
+    data = List.set(data, i, 65 + count - 1)
+    i = i + 1
+  }
+  let s1 = put_handle(s, WorkerData(destination, count))
+  queue_packet(put_packet(s1, work, Packet { ..p, identity: destination, datum: 0, data }), work)
+}
+
+// ---- Scheduler
+
+fn create_packet(s: Scheduler, link: Int, identity: Int, kind: Int) -> (Scheduler, Int) {
+  let p = Packet { link, identity, kind, datum: 0, data: [0, 0, 0, 0] }
+  (Scheduler { ..s, packets: List.push(s.packets, p) }, List.len(s.packets))
+}
+
+fn create_task(
+  s: Scheduler,
+  identity: Int,
+  priority: Int,
+  work: Int,
+  state: TaskState,
+  handle: Data,
+) -> Scheduler
+{
+  let t = Tcb {
+    link: s.task_list,
+    identity,
+    priority,
+    input: work,
+    packet_pending: state.packet_pending,
+    task_waiting: state.task_waiting,
+    task_holding: state.task_holding,
+    handle,
+  }
+  Scheduler { ..put_task(s, identity, t), task_list: identity }
+}
+
+fn find_task(s: Scheduler, identity: Int) -> Int {
+  if no_task == task(s, identity).identity { return Option.expect(None, "findTask failed") }
+  identity
+}
+
+fn hold_self(s: Scheduler) -> (Scheduler, Int) {
+  let t = task(s, s.current_task)
+  let s1 = put_task(s, s.current_task, Tcb { ..t, task_holding: true })
+  (Scheduler { ..s1, hold_count: s1.hold_count + 1 }, t.link)
+}
+
+fn queue_packet(s: Scheduler, p: Int) -> (Scheduler, Int) {
+  let t = find_task(s, packet(s, p).identity)
+  if no_task == t { return (s, no_task) }
+  let s1 = Scheduler { ..s, queue_packet_count: s.queue_packet_count + 1 }
+  let s2 = put_packet(
+    s1,
+    p,
+    Packet { ..packet(s1, p), link: no_work, identity: s1.current_task_identity },
+  )
+  add_input_and_check_priority(s2, t, p, s2.current_task)
+}
+
+fn release(s: Scheduler, identity: Int) -> (Scheduler, Int) {
+  let id = find_task(s, identity)
+  if no_task == id { return (s, no_task) }
+  let s1 = put_task(s, id, Tcb { ..task(s, id), task_holding: false })
+  if task(s1, id).priority > task(s1, s1.current_task).priority { return (s1, id) }
+  (s1, s1.current_task)
+}
+
+fn mark_waiting(s: Scheduler) -> (Scheduler, Int) {
+  (
+    put_task(s, s.current_task, Tcb { ..task(s, s.current_task), task_waiting: true }),
+    s.current_task,
+  )
+}
+
+fn schedule(start: Scheduler) -> Scheduler {
+  var s = Scheduler { ..start, current_task: start.task_list }
+  while no_task != s.current_task {
+    let t = task(s, s.current_task)
+    if is_task_holding_or_waiting(t) {
+      s = Scheduler { ..s, current_task: t.link }
+    } else {
+      s = Scheduler { ..s, current_task_identity: t.identity }
+      let (s1, next) = run_task(s, s.current_task)
+      s = Scheduler { ..s1, current_task: next }
+    }
+  }
+  s
+}
+
+fn new_scheduler() -> Scheduler {
+  let none = Tcb {
+    link: no_task,
+    identity: no_task,
+    priority: 0,
+    input: no_work,
+    packet_pending: false,
+    task_waiting: false,
+    task_holding: false,
+    handle: DeviceData(no_work),
+  }
+  var tasks: List<Tcb> = []
+  var i = 0
+  while i < num_types {
+    tasks = List.push(tasks, none)
+    i = i + 1
+  }
+  Scheduler {
+    tasks,
+    packets: [],
+    queue_packet_count: 0,
+    hold_count: 0,
+    task_list: no_task,
+    current_task: no_task,
+    current_task_identity: 0,
+  }
+}
+
+fn start() -> Bool {
+  var s = new_scheduler()
+  var work_q = no_work
+
+  s = create_task(s, idler, 0, no_work, create_running(), IdleData(1, 10000))
+  let (s1, q1) = create_packet(s, no_work, worker, work_packet_kind)
+  let (s2, q2) = create_packet(s1, q1, worker, work_packet_kind)
+  s = s2
+  work_q = q2
+
+  s = create_task(s, worker, 1000, work_q, create_waiting_with_packet(), WorkerData(handler_a, 0))
+  let (s3, q3) = create_packet(s, no_work, device_a, device_packet_kind)
+  let (s4, q4) = create_packet(s3, q3, device_a, device_packet_kind)
+  let (s5, q5) = create_packet(s4, q4, device_a, device_packet_kind)
+  s = s5
+  work_q = q5
+
+  s = create_task(
+    s,
+    handler_a,
+    2000,
+    work_q,
+    create_waiting_with_packet(),
+    HandlerData(no_work, no_work),
+  )
+  let (s6, q6) = create_packet(s, no_work, device_b, device_packet_kind)
+  let (s7, q7) = create_packet(s6, q6, device_b, device_packet_kind)
+  let (s8, q8) = create_packet(s7, q7, device_b, device_packet_kind)
+  s = s8
+  work_q = q8
+
+  s = create_task(
+    s,
+    handler_b,
+    3000,
+    work_q,
+    create_waiting_with_packet(),
+    HandlerData(no_work, no_work),
+  )
+  s = create_task(s, device_a, 4000, no_work, create_waiting(), DeviceData(no_work))
+  s = create_task(s, device_b, 5000, no_work, create_waiting(), DeviceData(no_work))
+
+  s = schedule(s)
+
+  s.queue_packet_count == 23246 && s.hold_count == 9297
+}
+
+/// AWFY's benchmark() n times; the number of correct results.
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    if start() { sum = sum + 1 }
+    i = i + 1
+  }
+  sum
+}
+
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

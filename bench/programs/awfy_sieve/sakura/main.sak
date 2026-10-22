@@ -1,0 +1,51 @@
+// Are We Fast Yet's Sieve (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/sieve.js;
+// Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks). run(n) runs
+// AWFY's benchmark() n times and sums the results (each is 669, AWFY's verifyResult value).
+// Deviation, forced by Sakura Lang: arrays are immutable, so the 5000 flags are a List built
+// by pushing `true` 5000 times (AWFY's `new Array(5000).fill(true)`), updated with `List.set`
+// and threaded back out of the inner loop (AWFY writes them in place).
+import std/cli.{Cli}
+
+fn sieve(start: List<Bool>, size: Int) -> Int {
+  var flags = start
+  var prime_count = 0
+
+  var i = 2
+  while i <= size {
+    if Option.expect(flags[i - 1], "flag") {
+      prime_count = prime_count + 1
+      var k = i + i
+      while k <= size {
+        flags = List.set(flags, k - 1, false)
+        k = k + i
+      }
+    }
+    i = i + 1
+  }
+  prime_count
+}
+
+fn benchmark() -> Int {
+  var flags: List<Bool> = []
+  var i = 0
+  while i < 5000 {
+    flags = List.push(flags, true)
+    i = i + 1
+  }
+  sieve(flags, 5000)
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

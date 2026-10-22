@@ -1,0 +1,62 @@
+// Are We Fast Yet's List (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/list.js;
+// Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks). run(n) runs
+// AWFY's benchmark() n times and sums the results (each is 10, AWFY's verifyResult value).
+// Deviations, forced by Sakura Lang: there is no null, so an element's `next` and every list
+// are `Option<Element>` (AWFY's `x.next` on a list known to be non-empty is `next(x)`, a defect
+// on None where JavaScript would throw); elements are immutable records, so makeList builds
+// each element with its tail instead of assigning `e.next` after allocating `e`.
+import std/cli.{Cli}
+
+type Element = { val: Int, next: Option<Element> }
+
+fn length(e: Element) -> Int {
+  match e.next {
+    None => 1,
+    Some(n) => 1 + length(n),
+  }
+}
+
+fn next(x: Option<Element>) -> Option<Element> { Option.expect(x, "element").next }
+
+fn make_list(length: Int) -> Option<Element> {
+  if length == 0 { return None }
+  Some(Element { val: length, next: make_list(length - 1) })
+}
+
+fn is_shorter_than(x: Option<Element>, y: Option<Element>) -> Bool {
+  var x_tail = x
+  var y_tail = y
+  while Option.is_some(y_tail) {
+    if !Option.is_some(x_tail) { return true }
+    x_tail = next(x_tail)
+    y_tail = next(y_tail)
+  }
+  false
+}
+
+fn tail(x: Option<Element>, y: Option<Element>, z: Option<Element>) -> Option<Element> {
+  if is_shorter_than(y, x) {
+    return tail(tail(next(x), y, z), tail(next(y), z, x), tail(next(z), x, y))
+  }
+  z
+}
+
+fn benchmark() -> Int {
+  let result = tail(make_list(15), make_list(10), make_list(6))
+  length(Option.expect(result, "result"))
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

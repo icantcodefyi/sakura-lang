@@ -1,0 +1,20 @@
+family = "AWFY micro: array allocation"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Storage: run(n) runs benchmark() n times and sums the results.
+# AWFY's rebench size (inner_iterations) is a timed size.
+sizes = [2, 20, 1000, 2000]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Storage", inner_iterations = 1000, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/storage.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "5461"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "5461"
+"2" = "10922"
+"3" = "16383"
+"20" = "109220"
+"1000" = "5461000"
+"2000" = "10922000"

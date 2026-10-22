@@ -1,0 +1,19 @@
+[package]
+name = "bench-awfy_queens"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "main"
+path = "main.rs"
+
+[dependencies]
+sakura-bench-ports = { path = "../../_shared/rust" }
+
+[profile.release]
+overflow-checks = false
+
+[profile.checked]
+inherits = "release"
+overflow-checks = true

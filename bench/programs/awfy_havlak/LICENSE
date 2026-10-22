@@ -1,0 +1,36 @@
+Provenance and licence of the Havlak program
+============================================
+
+Havlak is Google's loop-recognition benchmark (Robert Hundt, "Loop Recognition in
+C++/Java/Go/Scala", 2011), as adapted by Are We Fast Yet (Stefan Marr, Benoit Daloze and
+Hanspeter Mössenböck, https://github.com/smarr/are-we-fast-yet at 74306fec). These files port
+benchmarks/JavaScript/havlak.js, whose header reads:
+
+    Adapted based on SOM and Java benchmark.
+     Copyright 2011 Google Inc.
+
+         Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+         You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+         WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+         See the License for the specific language governing permissions and
+             limitations under the License.
+
+and the collection classes of benchmarks/JavaScript/som.js (Vector, Set, IdentitySet,
+Dictionary, IdentityDictionary), which are MIT-licensed:
+
+    Copyright (c) 2015-2016 Stefan Marr <git@stefan-marr.de>
+    (the full MIT notice is kept in js/main.mjs)
+
+Are We Fast Yet's LICENSE.md has no separate section for Havlak; the per-file notices above are
+the licence terms. Every file here is a modified version (Apache-2.0 §4(b)): js/main.mjs is
+AWFY's JavaScript joined into one module with run(n) added; the other files are ports to Sakura
+Lang, C, Rust, Go, OCaml and Koka, each naming its changes in its header comment.
+
+AI involvement: these ports were written by an AI agent (Claude); the human contributor owns the
+result.

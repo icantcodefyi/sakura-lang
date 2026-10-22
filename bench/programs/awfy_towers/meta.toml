@@ -1,0 +1,20 @@
+family = "AWFY micro: linked stacks"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Towers: run(n) runs benchmark() n times and sums the results.
+# AWFY's rebench size (inner_iterations) is a timed size.
+sizes = [3, 30, 600, 2500]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Towers", inner_iterations = 600, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/towers.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "8191"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "8191"
+"2" = "16382"
+"3" = "24573"
+"30" = "245730"
+"600" = "4914600"
+"2500" = "20477500"

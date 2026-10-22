@@ -1,0 +1,729 @@
+// CD (collision detection), ported from Are We Fast Yet's JavaScript version
+// (benchmarks/JavaScript/cd.js at smarr/are-we-fast-yet@74306fec; Copyright (c) 2001-2010,
+// Purdue University; Copyright (C) 2015 Apple Inc.; see ../LICENSE). run(n) = cd(n), the
+// collision count AWFY's innerBenchmarkLoop(n) verifies. Deviations from AWFY:
+// - Sakura Lang has no mutable objects, so RedBlackTree is a persistent red-black tree (Kahrs'
+//   insertion and deletion over Okasaki's balance) instead of AWFY's parent-pointer tree with
+//   in-place rotations and recolouring. Keys compare with the same compareTo functions (passed
+//   as a function, where AWFY dispatches a method), and a descent goes left on a negative
+//   result as AWFY's findNode and treeInsert do; tree shapes differ after rebalancing, which no
+//   result depends on (forEach visits keys in order). put returns the replaced value as AWFY's
+//   does, and remove looks the key up first, as AWFY's remove does with findNode. CD never
+//   removes (every aircraft is in every frame), so remove is ported but never runs.
+// - For the same reason every operation that mutates in AWFY takes and returns the new state:
+//   the detector's state tree, the voxel map and seen sets, and putIntoMap's append (a new List
+//   stored back into the map, where AWFY appends to the Vector the map holds).
+// - SOM's Vector is a List (append = List.push); a CallSign is its Int.
+// - Sakura's std has no sin or cos, so `sin` and `cos` below port fdlibm's (error < 1 ulp),
+//   with the high word computed arithmetically (no bit casts). Node's Math.sin and Math.cos
+//   and the ports' libm differ from them in the last bit at a few of the 200 times used (4 in
+//   the check this was written with); the counts do not depend on it (perturbing every sin
+//   and cos by up to ±4096 ulp left every verified count unchanged).
+// - AWFY's Simulator reads aircraft i + 1 for every even i, so it is defined for even n
+//   only: run(n) uses n - n % 2 aircraft (run(1) = cd(0) = 0, run(3) = cd(2)).
+import std/cli.{Cli}
+
+// ---- fdlibm sin and cos
+
+let two20 = 1048576.0
+
+/// fdlibm's high word of |v| (sign bit clear): biased exponent and top 20 mantissa bits.
+/// Zero, subnormals and |v| < 2^-27 all lie below every threshold the callers test, so they
+/// share the high word 0.
+fn high_word(v: Float) -> Int {
+  var a = if v < 0.0 { -v } else { v }
+  if a < 7.450580596923828e-9 { return 0 }
+  var e = 0
+  while a >= 2.0 {
+    a = a / 2.0
+    e = e + 1
+  }
+  while a < 1.0 {
+    a = a * 2.0
+    e = e - 1
+  }
+  (e + 1023) * 1048576 + Option.expect(Float.to_int_checked((a - 1.0) * two20), "mantissa")
+}
+
+/// The double whose high word is high_word(v) and whose low word is 0, for v > 0.
+fn clear_low_word(v: Float) -> Float {
+  var a = v
+  var s = 1.0
+  while a >= 2.0 {
+    a = a / 2.0
+    s = s * 2.0
+  }
+  while a < 1.0 {
+    a = a * 2.0
+    s = s / 2.0
+  }
+  s
+    * (1.0
+      + Int.to_float(Option.expect(Float.to_int_checked((a - 1.0) * two20), "mantissa")) / two20)
+}
+
+fn kernel_sin(x: Float, y: Float, iy: Int) -> Float {
+  if high_word(x) < 1044381696 { return x }
+  let s1 = -1.66666666666666324348e-01
+  let s2 = 8.33333333332248946124e-03
+  let s3 = -1.98412698298579493134e-04
+  let s4 = 2.75573137070700676789e-06
+  let s5 = -2.50507602534068634195e-08
+  let s6 = 1.58969099521155010221e-10
+  let z = x * x
+  let v = z * x
+  let r = s2 + z * (s3 + z * (s4 + z * (s5 + z * s6)))
+  if iy == 0 { x + v * (s1 + z * r) } else { x - ((z * (0.5 * y - v * r) - y) - v * s1) }
+}
+
+fn kernel_cos(x: Float, y: Float) -> Float {
+  let ix = high_word(x)
+  if ix < 1044381696 { return 1.0 }
+  let c1 = 4.16666666666666019037e-02
+  let c2 = -1.38888888888741095749e-03
+  let c3 = 2.48015872894767294178e-05
+  let c4 = -2.75573143513906633035e-07
+  let c5 = 2.08757232129817482790e-09
+  let c6 = -1.13596475577881948265e-11
+  let z = x * x
+  let r = z * (c1 + z * (c2 + z * (c3 + z * (c4 + z * (c5 + z * c6)))))
+  if ix < 1070805811 { return 1.0 - (0.5 * z - (z * r - x * y)) }
+  let qx = if ix > 1072234496 {
+    0.28125
+  } else {
+    clear_low_word(if x < 0.0 { -x } else { x }) / 4.0
+  }
+  let hz = 0.5 * z - qx
+  let a = 1.0 - qx
+  a - (hz - (z * r - x * y))
+}
+
+let npio2_hw = [
+  1073291771,
+  1074340347,
+  1074977148,
+  1075388923,
+  1075800698,
+  1076025724,
+  1076231611,
+  1076437499,
+  1076643386,
+  1076849274,
+  1076971356,
+  1077074300,
+  1077177244,
+  1077280187,
+  1077383131,
+  1077486075,
+  1077589019,
+  1077691962,
+  1077794906,
+  1077897850,
+  1077968460,
+  1078019932,
+  1078071404,
+  1078122876,
+  1078174348,
+  1078225820,
+  1078277292,
+  1078328763,
+  1078380235,
+  1078431707,
+  1078483179,
+  1078534651,
+]
+
+type Reduced = { n: Int, y0: Float, y1: Float }
+
+/// fdlibm's __ieee754_rem_pio2 for pi/4 < |x| <= 2^19 * pi/2.
+fn rem_pio2(x: Float) -> Reduced {
+  let pio2_1 = 1.57079632673412561417e+00
+  let pio2_1t = 6.07710050650619224932e-11
+  let pio2_2 = 6.07710050630396597660e-11
+  let pio2_2t = 2.02226624879595063154e-21
+  let pio2_3 = 2.02226624871116645580e-21
+  let pio2_3t = 8.47842766036889956997e-32
+  let t = if x < 0.0 { -x } else { x }
+  let ix = high_word(t)
+  var n = 0
+  var y0 = 0.0
+  var y1 = 0.0
+  if ix <= 1073928572 {
+    n = 1
+    var z = t - pio2_1
+    if ix != 1073291771 {
+      y0 = z - pio2_1t
+      y1 = (z - y0) - pio2_1t
+    } else {
+      z = z - pio2_2
+      y0 = z - pio2_2t
+      y1 = (z - y0) - pio2_2t
+    }
+  } else {
+    if ix > 1094263291 { return Option.expect(None, "rem_pio2 argument out of range") }
+    n = Option.expect(Float.to_int_checked(t * 6.36619772367581382433e-01 + 0.5), "quadrant")
+    let fn_ = Int.to_float(n)
+    var r = t - fn_ * pio2_1
+    var w = fn_ * pio2_1t
+    y0 = r - w
+    if n >= 32 || ix == Option.expect(npio2_hw[n - 1], "npio2_hw") {
+      let j = ix / 1048576
+      if j - high_word(y0) / 1048576 > 16 {
+        var t2 = r
+        w = fn_ * pio2_2
+        r = t2 - w
+        w = fn_ * pio2_2t - ((t2 - r) - w)
+        y0 = r - w
+        if j - high_word(y0) / 1048576 > 49 {
+          t2 = r
+          w = fn_ * pio2_3
+          r = t2 - w
+          w = fn_ * pio2_3t - ((t2 - r) - w)
+          y0 = r - w
+        }
+      }
+    }
+    y1 = (r - y0) - w
+  }
+  if x < 0.0 { Reduced { n: 0 - n, y0: -y0, y1: -y1 } } else { Reduced { n, y0, y1 } }
+}
+
+fn cos(x: Float) -> Float {
+  if high_word(x) <= 1072243195 { return kernel_cos(x, 0.0) }
+  let r = rem_pio2(x)
+  match (r.n % 4 + 4) % 4 {
+    0 => kernel_cos(r.y0, r.y1),
+    1 => -kernel_sin(r.y0, r.y1, 1),
+    2 => -kernel_cos(r.y0, r.y1),
+    _ => kernel_sin(r.y0, r.y1, 1),
+  }
+}
+
+fn sin(x: Float) -> Float {
+  if high_word(x) <= 1072243195 { return kernel_sin(x, 0.0, 0) }
+  let r = rem_pio2(x)
+  match (r.n % 4 + 4) % 4 {
+    0 => kernel_sin(r.y0, r.y1, 1),
+    1 => kernel_cos(r.y0, r.y1),
+    2 => -kernel_sin(r.y0, r.y1, 1),
+    _ => -kernel_cos(r.y0, r.y1),
+  }
+}
+
+// ---- vectors
+
+type Vector2D = { x: Float, y: Float }
+
+type Vector3D = { x: Float, y: Float, z: Float }
+
+fn plus2(a: Vector2D, b: Vector2D) -> Vector2D { Vector2D { x: a.x + b.x, y: a.y + b.y } }
+
+fn minus2(a: Vector2D, b: Vector2D) -> Vector2D { Vector2D { x: a.x - b.x, y: a.y - b.y } }
+
+fn compare_numbers(a: Float, b: Float) -> Int {
+  if a == b { return 0 }
+  if a < b { return -1 }
+  if a > b { return 1 }
+  // We say that NaN is smaller than non-NaN.
+  if a == a { 1 } else { -1 }
+}
+
+fn compare_vector2d(a: Vector2D, b: Vector2D) -> Int {
+  let result = compare_numbers(a.x, b.x)
+  if result != 0 { return result }
+  compare_numbers(a.y, b.y)
+}
+
+fn plus3(a: Vector3D, b: Vector3D) -> Vector3D {
+  Vector3D { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z }
+}
+
+fn minus3(a: Vector3D, b: Vector3D) -> Vector3D {
+  Vector3D { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z }
+}
+
+fn dot(a: Vector3D, b: Vector3D) -> Float { a.x * b.x + a.y * b.y + a.z * b.z }
+
+fn squared_magnitude(a: Vector3D) -> Float { dot(a, a) }
+
+fn magnitude(a: Vector3D) -> Float { Float.sqrt(squared_magnitude(a)) }
+
+fn times(a: Vector3D, amount: Float) -> Vector3D {
+  Vector3D { x: a.x * amount, y: a.y * amount, z: a.z * amount }
+}
+
+// ---- red-black tree map
+
+type Color = Red | Black
+
+type Tree<K, V> = Leaf | Node(Color, Tree<K, V>, K, V, Tree<K, V>)
+
+fn tree_get<K, V>(t: Tree<K, V>, key: K, compare: fn(K, K) -> Int) -> Option<V> {
+  match t {
+    Leaf => None,
+    Node(_, l, k, v, r) => {
+      let c = compare(key, k)
+      if c == 0 {
+        Some(v)
+      } else if c < 0 {
+        tree_get(l, key, compare)
+      } else {
+        tree_get(r, key, compare)
+      }
+    },
+  }
+}
+
+/// Restores the invariant under a black node whose child may be red with a red child.
+fn balance<K, V>(l: Tree<K, V>, k: K, v: V, r: Tree<K, V>) -> Tree<K, V> {
+  match (l, r) {
+    (Node(Red, a, xk, xv, b), Node(Red, c, zk, zv, d)) =>
+      Node(Red, Node(Black, a, xk, xv, b), k, v, Node(Black, c, zk, zv, d)),
+    (Node(Red, Node(Red, a, xk, xv, b), yk, yv, c), _) =>
+      Node(Red, Node(Black, a, xk, xv, b), yk, yv, Node(Black, c, k, v, r)),
+    (Node(Red, a, xk, xv, Node(Red, b, yk, yv, c)), _) =>
+      Node(Red, Node(Black, a, xk, xv, b), yk, yv, Node(Black, c, k, v, r)),
+    (_, Node(Red, b, yk, yv, Node(Red, c, zk, zv, d))) =>
+      Node(Red, Node(Black, l, k, v, b), yk, yv, Node(Black, c, zk, zv, d)),
+    (_, Node(Red, Node(Red, b, yk, yv, c), zk, zv, d)) =>
+      Node(Red, Node(Black, l, k, v, b), yk, yv, Node(Black, c, zk, zv, d)),
+    _ => Node(Black, l, k, v, r),
+  }
+}
+
+fn rebuild<K, V>(
+  color: Color,
+  l: Tree<K, V>,
+  k: K,
+  v: V,
+  r: Tree<K, V>,
+  replaced: Bool,
+) -> Tree<K, V>
+{
+  if replaced { return Node(color, l, k, v, r) }
+  match color {
+    Black => balance(l, k, v, r),
+    Red => Node(Red, l, k, v, r),
+  }
+}
+
+fn insert<K, V>(
+  t: Tree<K, V>,
+  key: K,
+  value: V,
+  compare: fn(K, K) -> Int,
+) -> (Tree<K, V>, Option<V>)
+{
+  match t {
+    Leaf => (Node(Red, Leaf, key, value, Leaf), None),
+    Node(color, l, k, v, r) => {
+      let c = compare(key, k)
+      if c < 0 {
+        let (nl, old) = insert(l, key, value, compare)
+        (rebuild(color, nl, k, v, r, Option.is_some(old)), old)
+      } else if c > 0 {
+        let (nr, old) = insert(r, key, value, compare)
+        (rebuild(color, l, k, v, nr, Option.is_some(old)), old)
+      } else {
+        (Node(color, l, k, value, r), Some(v))
+      }
+    },
+  }
+}
+
+fn blacken<K, V>(t: Tree<K, V>) -> Tree<K, V> {
+  match t {
+    Node(Red, l, k, v, r) => Node(Black, l, k, v, r),
+    _ => t,
+  }
+}
+
+/// Stores value under key and returns the new tree and the value it replaced, as AWFY's put.
+fn tree_put<K, V>(
+  t: Tree<K, V>,
+  key: K,
+  value: V,
+  compare: fn(K, K) -> Int,
+) -> (Tree<K, V>, Option<V>)
+{
+  let (nt, old) = insert(t, key, value, compare)
+  (blacken(nt), old)
+}
+
+fn sub1<K, V>(t: Tree<K, V>) -> Tree<K, V> {
+  match t {
+    Node(Black, a, k, v, b) => Node(Red, a, k, v, b),
+    _ => Option.expect(None, "red-black invariant"),
+  }
+}
+
+fn bal_left<K, V>(l: Tree<K, V>, k: K, v: V, r: Tree<K, V>) -> Tree<K, V> {
+  match (l, r) {
+    (Node(Red, a, xk, xv, b), _) => Node(Red, Node(Black, a, xk, xv, b), k, v, r),
+    (_, Node(Black, a, yk, yv, b)) => balance(l, k, v, Node(Red, a, yk, yv, b)),
+    (_, Node(Red, Node(Black, a, yk, yv, b), zk, zv, c)) =>
+      Node(Red, Node(Black, l, k, v, a), yk, yv, balance(b, zk, zv, sub1(c))),
+    _ => Option.expect(None, "red-black invariant"),
+  }
+}
+
+fn bal_right<K, V>(l: Tree<K, V>, k: K, v: V, r: Tree<K, V>) -> Tree<K, V> {
+  match (l, r) {
+    (_, Node(Red, b, yk, yv, c)) => Node(Red, l, k, v, Node(Black, b, yk, yv, c)),
+    (Node(Black, a, xk, xv, b), _) => balance(Node(Red, a, xk, xv, b), k, v, r),
+    (Node(Red, a, xk, xv, Node(Black, b, yk, yv, c)), _) =>
+      Node(Red, balance(sub1(a), xk, xv, b), yk, yv, Node(Black, c, k, v, r)),
+    _ => Option.expect(None, "red-black invariant"),
+  }
+}
+
+fn fuse<K, V>(l: Tree<K, V>, r: Tree<K, V>) -> Tree<K, V> {
+  match (l, r) {
+    (Leaf, _) => r,
+    (_, Leaf) => l,
+    (Node(Red, a, xk, xv, b), Node(Red, c, yk, yv, d)) => match fuse(b, c) {
+      Node(Red, b2, zk, zv, c2) =>
+        Node(Red, Node(Red, a, xk, xv, b2), zk, zv, Node(Red, c2, yk, yv, d)),
+      bc => Node(Red, a, xk, xv, Node(Red, bc, yk, yv, d)),
+    },
+    (Node(Black, a, xk, xv, b), Node(Black, c, yk, yv, d)) => match fuse(b, c) {
+      Node(Red, b2, zk, zv, c2) =>
+        Node(Red, Node(Black, a, xk, xv, b2), zk, zv, Node(Black, c2, yk, yv, d)),
+      bc => bal_left(a, xk, xv, Node(Black, bc, yk, yv, d)),
+    },
+    (_, Node(Red, b, yk, yv, c)) => Node(Red, fuse(l, b), yk, yv, c),
+    (Node(Red, a, xk, xv, b), _) => Node(Red, a, xk, xv, fuse(b, r)),
+  }
+}
+
+fn delete<K, V>(t: Tree<K, V>, key: K, compare: fn(K, K) -> Int) -> Tree<K, V> {
+  match t {
+    Leaf => Leaf,
+    Node(_, a, yk, yv, b) => {
+      let c = compare(key, yk)
+      if c < 0 {
+        match a {
+          Node(Black, _, _, _, _) => bal_left(delete(a, key, compare), yk, yv, b),
+          _ => Node(Red, delete(a, key, compare), yk, yv, b),
+        }
+      } else if c > 0 {
+        match b {
+          Node(Black, _, _, _, _) => bal_right(a, yk, yv, delete(b, key, compare)),
+          _ => Node(Red, a, yk, yv, delete(b, key, compare)),
+        }
+      } else {
+        fuse(a, b)
+      }
+    },
+  }
+}
+
+/// Removes key and returns the new tree and the removed value, as AWFY's remove.
+fn tree_remove<K, V>(t: Tree<K, V>, key: K, compare: fn(K, K) -> Int) -> (Tree<K, V>, Option<V>) {
+  match tree_get(t, key, compare) {
+    None => (t, None),
+    Some(v) => (blacken(delete(t, key, compare)), Some(v)),
+  }
+}
+
+/// AWFY's forEach: every entry in key order.
+fn tree_fold<K, V, A>(t: Tree<K, V>, acc: A, f: fn(A, K, V) -> A) -> A {
+  match t {
+    Leaf => acc,
+    Node(_, l, k, v, r) => tree_fold(r, f(tree_fold(l, acc, f), k, v), f),
+  }
+}
+
+// ---- the simulation
+
+fn compare_call_signs(a: Int, b: Int) -> Int { if a == b { 0 } else if a < b { -1 } else { 1 } }
+
+type Motion = { callsign: Int, pos_one: Vector3D, pos_two: Vector3D }
+type Aircraft = { callsign: Int, position: Vector3D }
+type Collision = { aircraft_a: Int, aircraft_b: Int, position: Vector3D }
+
+let min_x = 0.0
+let min_y = 0.0
+let max_x = 1000.0
+let max_y = 1000.0
+let min_z = 0.0
+let max_z = 10.0
+let proximity_radius = 1.0
+let good_voxel_size = proximity_radius * 2.0
+
+fn is_in_voxel(voxel: Vector2D, motion: Motion) -> Bool {
+  if voxel.x > max_x || voxel.x < min_x || voxel.y > max_y || voxel.y < min_y { return false }
+
+  let init = motion.pos_one
+  let fin = motion.pos_two
+
+  let v_s = good_voxel_size
+  let r = proximity_radius / 2.0
+
+  let v_x = voxel.x
+  let x0 = init.x
+  let xv = fin.x - init.x
+
+  let v_y = voxel.y
+  let y0 = init.y
+  let yv = fin.y - init.y
+
+  var low_x = (v_x - r - x0) / xv
+  var high_x = (v_x + v_s + r - x0) / xv
+
+  if xv < 0.0 {
+    let tmp = low_x
+    low_x = high_x
+    high_x = tmp
+  }
+
+  var low_y = (v_y - r - y0) / yv
+  var high_y = (v_y + v_s + r - y0) / yv
+
+  if yv < 0.0 {
+    let tmp = low_y
+    low_y = high_y
+    high_y = tmp
+  }
+
+  ((xv == 0.0 && v_x <= x0 + r && x0 - r <= v_x + v_s) // no motion in x
+    || ((low_x <= 1.0 && 1.0 <= high_x)
+      || (low_x <= 0.0 && 0.0 <= high_x)
+      || (0.0 <= low_x && high_x <= 1.0)))
+    && ((yv == 0.0 && v_y <= y0 + r && y0 - r <= v_y + v_s) // no motion in y
+      || ((low_y <= 1.0 && 1.0 <= high_y)
+        || (low_y <= 0.0 && 0.0 <= high_y)
+        || (0.0 <= low_y && high_y <= 1.0)))
+    && (xv == 0.0
+      || yv == 0.0 // no motion in x or y or both
+      || (low_y <= high_x && high_x <= high_y)
+      || (low_y <= low_x && low_x <= high_y)
+      || (low_x <= low_y && high_y <= high_x))
+}
+
+type VoxelMap = Tree<Vector2D, List<Motion>>
+
+fn put_into_map(voxel_map: VoxelMap, voxel: Vector2D, motion: Motion) -> VoxelMap {
+  let vec = match tree_get(voxel_map, voxel, compare_vector2d) {
+    Some(vec) => vec,
+    None => [],
+  }
+  tree_put(voxel_map, voxel, List.push(vec, motion), compare_vector2d).0
+}
+
+let horizontal = Vector2D { x: good_voxel_size, y: 0.0 }
+let vertical = Vector2D { x: 0.0, y: good_voxel_size }
+
+type Drawing = { voxel_map: VoxelMap, seen: Tree<Vector2D, Bool> }
+
+fn recurse(d: Drawing, next_voxel: Vector2D, motion: Motion) -> Drawing {
+  if !is_in_voxel(next_voxel, motion) { return d }
+  let (seen, old) = tree_put(d.seen, next_voxel, true, compare_vector2d)
+  if old != None { return Drawing { ..d, seen } }
+
+  var e = Drawing { voxel_map: put_into_map(d.voxel_map, next_voxel, motion), seen }
+
+  e = recurse(e, minus2(next_voxel, horizontal), motion)
+  e = recurse(e, plus2(next_voxel, horizontal), motion)
+  e = recurse(e, minus2(next_voxel, vertical), motion)
+  e = recurse(e, plus2(next_voxel, vertical), motion)
+  e = recurse(e, minus2(minus2(next_voxel, horizontal), vertical), motion)
+  e = recurse(e, plus2(minus2(next_voxel, horizontal), vertical), motion)
+  e = recurse(e, minus2(plus2(next_voxel, horizontal), vertical), motion)
+  recurse(e, plus2(plus2(next_voxel, horizontal), vertical), motion)
+}
+
+fn voxel_hash(position: Vector3D) -> Vector2D {
+  let x_div = Option.expect(Float.to_int_checked(position.x / good_voxel_size), "voxel x")
+  let y_div = Option.expect(Float.to_int_checked(position.y / good_voxel_size), "voxel y")
+
+  var rx = good_voxel_size * Int.to_float(x_div)
+  var ry = good_voxel_size * Int.to_float(y_div)
+
+  if position.x < 0.0 { rx = rx - good_voxel_size }
+  if position.y < 0.0 { ry = ry - good_voxel_size }
+
+  Vector2D { x: rx, y: ry }
+}
+
+fn draw_motion_on_voxel_map(voxel_map: VoxelMap, motion: Motion) -> VoxelMap {
+  recurse(Drawing { voxel_map, seen: Leaf }, voxel_hash(motion.pos_one), motion).voxel_map
+}
+
+fn reduce_collision_set(motions: List<Motion>) -> List<List<Motion>> {
+  var voxel_map: VoxelMap = Leaf
+  for motion in motions { voxel_map = draw_motion_on_voxel_map(voxel_map, motion) }
+
+  tree_fold(voxel_map, [], fn(result: List<List<Motion>>, _voxel: Vector2D, vec: List<Motion>) {
+    if List.len(vec) > 1 { List.push(result, vec) } else { result }
+  })
+}
+
+fn find_intersection(m1: Motion, m2: Motion) -> Option<Vector3D> {
+  let init1 = m1.pos_one
+  let init2 = m2.pos_one
+  let vec1 = minus3(m1.pos_two, m1.pos_one)
+  let vec2 = minus3(m2.pos_two, m2.pos_one)
+  let radius = proximity_radius
+
+  // a = (V2 - V1)^T * (V2 - V1)
+  let a = squared_magnitude(minus3(vec2, vec1))
+
+  if a != 0.0 {
+    // b = 2 * <I1-I2, V1-V2>
+    let b = 2.0 * dot(minus3(init1, init2), minus3(vec1, vec2))
+
+    // c = -r^2 + (I2 - I1)^T * (I2 - I1)
+    let c = -radius * radius + squared_magnitude(minus3(init2, init1))
+
+    let discr = b * b - 4.0 * a * c
+    if discr < 0.0 { return None }
+
+    let v1 = (-b - Float.sqrt(discr)) / (2.0 * a)
+    let v2 = (-b + Float.sqrt(discr)) / (2.0 * a)
+
+    if v1 <= v2
+      && ((v1 <= 1.0 && 1.0 <= v2) || (v1 <= 0.0 && 0.0 <= v2) || (0.0 <= v1 && v2 <= 1.0)) {
+      // Pick a good "time" at which to report the collision: the start of the frame if the
+      // collision started before it, else the moment it started.
+      let v = if v1 <= 0.0 { 0.0 } else { v1 }
+
+      let result1 = plus3(init1, times(vec1, v))
+      let result2 = plus3(init2, times(vec2, v))
+
+      let result = times(plus3(result1, result2), 0.5)
+      if result.x >= min_x
+        && result.x <= max_x
+        && result.y >= min_y
+        && result.y <= max_y
+        && result.z >= min_z
+        && result.z <= max_z { return Some(result) }
+    }
+    return None
+  }
+
+  // The planes have the same speeds and are moving in parallel (or not moving at all): their
+  // distance is constant, so it is computed from the initial points.
+  let dist = magnitude(minus3(init2, init1))
+  if dist <= radius { return Some(times(plus3(init1, init2), 0.5)) }
+  None
+}
+
+type Detector = { state: Tree<Int, Vector3D> }
+
+fn handle_new_frame(detector: Detector, frame: List<Aircraft>) -> (Detector, List<Collision>) {
+  var state = detector.state
+  var motions: List<Motion> = []
+  var seen: Tree<Int, Bool> = Leaf
+
+  for aircraft in frame {
+    let (next_state, old_position) = tree_put(
+      state,
+      aircraft.callsign,
+      aircraft.position,
+      compare_call_signs,
+    )
+    state = next_state
+    let new_position = aircraft.position
+    seen = tree_put(seen, aircraft.callsign, true, compare_call_signs).0
+
+    // Treat newly introduced aircraft as if they were stationary.
+    let old = match old_position {
+      Some(p) => p,
+      None => new_position,
+    }
+    motions = List.push(
+      motions,
+      Motion { callsign: aircraft.callsign, pos_one: old, pos_two: new_position },
+    )
+  }
+
+  // Remove aircraft that are no longer present.
+  let to_remove = tree_fold(state, [], fn(acc: List<Int>, callsign: Int, _position: Vector3D) {
+    if tree_get(seen, callsign, compare_call_signs) == None {
+      List.push(acc, callsign)
+    } else {
+      acc
+    }
+  })
+  for callsign in to_remove { state = tree_remove(state, callsign, compare_call_signs).0 }
+
+  let all_reduced = reduce_collision_set(motions)
+  var collisions: List<Collision> = []
+
+  for reduced in all_reduced {
+    var i = 0
+    while i < List.len(reduced) {
+      let motion1 = Option.expect(reduced[i], "motion")
+      var j = i + 1
+      while j < List.len(reduced) {
+        let motion2 = Option.expect(reduced[j], "motion")
+        match find_intersection(motion1, motion2) {
+          Some(position) => {
+            collisions = List.push(
+              collisions,
+              Collision { aircraft_a: motion1.callsign, aircraft_b: motion2.callsign, position },
+            )
+          },
+          None => {},
+        }
+        j = j + 1
+      }
+      i = i + 1
+    }
+  }
+
+  (Detector { state }, collisions)
+}
+
+fn simulate(aircraft: List<Int>, time: Float) -> List<Aircraft> {
+  var frame: List<Aircraft> = []
+  var i = 0
+  while i < List.len(aircraft) {
+    frame = List.push(
+      frame,
+      Aircraft {
+        callsign: Option.expect(aircraft[i], "aircraft"),
+        position: Vector3D { x: time, y: cos(time) * 2.0 + Int.to_float(i * 3), z: 10.0 },
+      },
+    )
+    frame = List.push(
+      frame,
+      Aircraft {
+        callsign: Option.expect(aircraft[i + 1], "aircraft"),
+        position: Vector3D { x: time, y: sin(time) * 2.0 + Int.to_float(i * 3), z: 10.0 },
+      },
+    )
+    i = i + 2
+  }
+  frame
+}
+
+fn cd(num_aircrafts: Int) -> Int {
+  let num_frames = 200
+  var aircraft: List<Int> = []
+  var i = 0
+  while i < num_aircrafts {
+    aircraft = List.push(aircraft, i)
+    i = i + 1
+  }
+  var detector = Detector { state: Leaf }
+
+  var actual_collisions = 0
+  var frame = 0
+  while frame < num_frames {
+    let time = Int.to_float(frame) / 10.0
+    let (next, collisions) = handle_new_frame(detector, simulate(aircraft, time))
+    detector = next
+    actual_collisions = actual_collisions + List.len(collisions)
+    frame = frame + 1
+  }
+  actual_collisions
+}
+
+pub fn run(n: Int) -> Int { cd(n - n % 2) }
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

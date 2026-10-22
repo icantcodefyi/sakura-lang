@@ -1,0 +1,21 @@
+family = "AWFY micro: record updates"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Bounce: run(n) runs benchmark() n times and sums the results.
+# AWFY's rebench size (inner_iterations) is a timed size.
+sizes = [10, 100, 1500, 10000]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Bounce", inner_iterations = 1500, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/bounce.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "1331"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "1331"
+"2" = "2662"
+"3" = "3993"
+"10" = "13310"
+"100" = "133100"
+"1500" = "1996500"
+"10000" = "13310000"

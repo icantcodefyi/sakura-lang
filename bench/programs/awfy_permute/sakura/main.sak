@@ -1,0 +1,52 @@
+// Are We Fast Yet's Permute (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/permute.js;
+// Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks). run(n) runs
+// AWFY's benchmark() n times and sums the results (each is 8660, AWFY's verifyResult value).
+// Deviation, forced by Sakura Lang: objects and arrays are immutable, so the benchmark's two
+// fields (`count` and the array `v`) are a record threaded through permute() and swap(), and
+// `v` is a List of six zeros updated with `List.set` (AWFY writes it in place).
+import std/cli.{Cli}
+
+type Permute = { count: Int, v: List<Int> }
+
+fn permute(start: Permute, n: Int) -> Permute {
+  var p = start
+  p.count = p.count + 1
+  if n != 0 {
+    let n1 = n - 1
+    p = permute(p, n1)
+    var i = n1
+    while i >= 0 {
+      p = swap(p, n1, i)
+      p = permute(p, n1)
+      p = swap(p, n1, i)
+      i = i - 1
+    }
+  }
+  p
+}
+
+fn swap(p: Permute, i: Int, j: Int) -> Permute {
+  let tmp = Option.expect(p.v[i], "v[i]")
+  let v = List.set(p.v, i, Option.expect(p.v[j], "v[j]"))
+  Permute { ..p, v: List.set(v, j, tmp) }
+}
+
+fn benchmark() -> Int {
+  let p = permute(Permute { count: 0, v: [0, 0, 0, 0, 0, 0] }, 6)
+  p.count
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

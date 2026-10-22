@@ -1,0 +1,21 @@
+family = "AWFY micro: linked-list recursion"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's List: run(n) runs benchmark() n times and sums the results.
+# AWFY's rebench size (inner_iterations) is a timed size.
+sizes = [10, 100, 1500, 6000]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "List", inner_iterations = 1500, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/list.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "10"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "10"
+"2" = "20"
+"3" = "30"
+"10" = "100"
+"100" = "1000"
+"1500" = "15000"
+"6000" = "60000"

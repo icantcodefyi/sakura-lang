@@ -1,0 +1,109 @@
+// Are We Fast Yet's Bounce (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/bounce.js and
+// som.js's Random; Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks).
+// run(n) runs AWFY's benchmark() n times and sums the results (each is 1331, AWFY's
+// verifyResult value). Deviations, forced by Sakura Lang: objects are immutable, so Random's
+// seed is threaded through every next() call, bounce() returns the moved ball with the flag,
+// and the balls are a List updated with `List.set` (AWFY writes fields in place); the List is
+// built by pushing the 100 balls in AWFY's order, as Sakura has no pre-sized array. Sakura has
+// no bitwise operators, so Random's `& 65535` is `% 65536`: the same value, as the operand is
+// never negative.
+import std/cli.{Cli}
+
+// som.js's Random.
+type Random = { seed: Int }
+
+fn random() -> Random { Random { seed: 74755 } }
+
+fn next(r: Random) -> (Random, Int) {
+  let seed = (r.seed * 1309 + 13849) % 65536
+  (Random { seed }, seed)
+}
+
+type Ball = { x: Int, y: Int, x_vel: Int, y_vel: Int }
+
+fn new_ball(r0: Random) -> (Random, Ball) {
+  let (r1, x) = next(r0)
+  let (r2, y) = next(r1)
+  let (r3, x_vel) = next(r2)
+  let (r4, y_vel) = next(r3)
+  (r4, Ball { x: x % 500, y: y % 500, x_vel: x_vel % 300 - 150, y_vel: y_vel % 300 - 150 })
+}
+
+fn bounce(ball: Ball) -> (Ball, Bool) {
+  let x_limit = 500
+  let y_limit = 500
+  var b = ball
+  var bounced = false
+
+  b.x = b.x + b.x_vel
+  b.y = b.y + b.y_vel
+
+  if b.x > x_limit {
+    b.x = x_limit
+    b.x_vel = 0 - Int.abs(b.x_vel)
+    bounced = true
+  }
+
+  if b.x < 0 {
+    b.x = 0
+    b.x_vel = Int.abs(b.x_vel)
+    bounced = true
+  }
+
+  if b.y > y_limit {
+    b.y = y_limit
+    b.y_vel = 0 - Int.abs(b.y_vel)
+    bounced = true
+  }
+
+  if b.y < 0 {
+    b.y = 0
+    b.y_vel = Int.abs(b.y_vel)
+    bounced = true
+  }
+
+  (b, bounced)
+}
+
+fn benchmark() -> Int {
+  var r = random()
+  let ball_count = 100
+  var bounces = 0
+  var balls: List<Ball> = []
+  var i = 0
+
+  while i < ball_count {
+    let (next_r, ball) = new_ball(r)
+    r = next_r
+    balls = List.push(balls, ball)
+    i = i + 1
+  }
+
+  i = 0
+  while i < 50 {
+    var j = 0
+    while j < ball_count {
+      let (ball, bounced) = bounce(Option.expect(balls[j], "ball"))
+      balls = List.set(balls, j, ball)
+      if bounced { bounces = bounces + 1 }
+      j = j + 1
+    }
+    i = i + 1
+  }
+  bounces
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

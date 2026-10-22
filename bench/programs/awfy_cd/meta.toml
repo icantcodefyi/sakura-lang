@@ -1,0 +1,33 @@
+family = "AWFY red-black tree and f64 geometry"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's CD: run(n) is cd(n), the collision count innerBenchmarkLoop(n) verifies (200
+# frames of n aircraft, voxel hashing into AWFY's own red-black tree). AWFY's Simulator is defined
+# for even n only, so run(n) uses n - n % 2 aircraft (run(1) = 0, run(3) = cd(2)). The ladder ends
+# at AWFY's rebench size 250; [verify] adds AWFY's other verified sizes (500 and 1000 put most
+# aircraft beyond MAX_Y, so their counts are equal) to the oracle inputs.
+sizes = [10, 50, 100, 250]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "CD", inner_iterations = 250, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/cd.js" }
+
+[verify]  # AWFY's verifyResult
+"2" = "42"
+"10" = "390"
+"100" = "4305"
+"200" = "8655"
+"250" = "10830"
+"500" = "14484"
+"1000" = "14484"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "0"
+"2" = "42"
+"3" = "42"
+"10" = "390"
+"50" = "2130"
+"100" = "4305"
+"200" = "8655"
+"250" = "10830"
+"500" = "14484"
+"1000" = "14484"

@@ -1,0 +1,73 @@
+// Are We Fast Yet's Storage (smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/storage.js and
+// som.js's Random; Copyright (c) 2015-2016 Stefan Marr, MIT, derived from the SOM benchmarks).
+// run(n) runs AWFY's benchmark() n times and sums the results (each is 5461, AWFY's
+// verifyResult value). Deviations, forced by Sakura Lang: objects are immutable, so the
+// benchmark's `count` field and Random's seed are a record threaded through buildTreeDepth();
+// an array is the variant `Array(List<Node>)`, and AWFY's `new Array(k)` (k empty slots) is a
+// List of k `Empty` nodes built by pushing (`new_array`), since Sakura has no pre-sized array
+// and no null; the four-child arrays are built by pushing each subtree in AWFY's assignment
+// order instead of writing into a pre-sized array. Random's `& 65535` is `% 65536` (Sakura has
+// no bitwise operators): the same value, as the operand is never negative. The tree is
+// discarded, as AWFY's is.
+import std/cli.{Cli}
+
+// som.js's Random.
+type Random = { seed: Int }
+
+fn next(r: Random) -> (Random, Int) {
+  let seed = (r.seed * 1309 + 13849) % 65536
+  (Random { seed }, seed)
+}
+
+type Node = Empty | Array(List<Node>)
+
+type Storage = { count: Int, random: Random }
+
+fn new_array(length: Int) -> List<Node> {
+  var arr: List<Node> = []
+  var i = 0
+  while i < length {
+    arr = List.push(arr, Empty)
+    i = i + 1
+  }
+  arr
+}
+
+fn build_tree_depth(depth: Int, start: Storage) -> (Storage, Node) {
+  var s = start
+  s.count = s.count + 1
+  if depth == 1 {
+    let (random, r) = next(s.random)
+    s.random = random
+    return (s, Array(new_array(r % 10 + 1)))
+  }
+  var arr: List<Node> = []
+  var i = 0
+  while i < 4 {
+    let (next_s, child) = build_tree_depth(depth - 1, s)
+    s = next_s
+    arr = List.push(arr, child)
+    i = i + 1
+  }
+  (s, Array(arr))
+}
+
+fn benchmark() -> Int {
+  let (s, _) = build_tree_depth(7, Storage { count: 0, random: Random { seed: 74755 } })
+  s.count
+}
+
+pub fn run(n: Int) -> Int {
+  var sum = 0
+  var i = 0
+  while i < n {
+    sum = sum + benchmark()
+    i = i + 1
+  }
+  sum
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

@@ -1,0 +1,26 @@
+family = "AWFY object graph"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Havlak: run(n) is innerBenchmarkLoop(n)'s result, LoopTesterApp.main(n, 50, 10,
+# 10, 5) = [loops, nodes], as loops × 1_000_000 + nodes. n only adds dummy loop searches on an
+# 11-node graph (and a quadratic link-up of their loops), so the 51 searches of the 5,213-node graph
+# dominate every size: the ladder is AWFY's verified sizes, up to its rebench size 1500. AWFY's
+# 15000 is not checked: with it the Sakura oracle had not finished after 10 minutes.
+sizes = [1, 15, 150, 1500]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Havlak", inner_iterations = 1500, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/havlak.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "1605005213"
+"15" = "1647005213"
+"150" = "2052005213"
+"1500" = "6102005213"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "1602005213"
+"1" = "1605005213"
+"2" = "1608005213"
+"3" = "1611005213"
+"15" = "1647005213"
+"150" = "2052005213"
+"1500" = "6102005213"

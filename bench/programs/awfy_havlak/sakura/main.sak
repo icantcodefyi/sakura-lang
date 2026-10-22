@@ -1,0 +1,815 @@
+// Havlak loop recognition, ported from Are We Fast Yet's JavaScript version (smarr/are-we-fast-yet@
+// 74306fec benchmarks/JavaScript/havlak.js, Apache-2.0, Copyright 2011 Google Inc., and the som.js
+// collections it uses, MIT, Copyright (c) 2015-2016 Stefan Marr; see ../LICENSE). run(n) is
+// innerBenchmarkLoop(n)'s result, LoopTesterApp.main(n, 50, 10, 10, 5), encoded as
+// result[0] × 1_000_000 + result[1]; AWFY's verifyResult values are the [verify] table.
+//
+// Sakura Lang has no mutable objects, so every AWFY object lives in a persistent list indexed by
+// a dense id (an object heap) and every method takes and returns the object that owns the state:
+// basic blocks in `Cfg.blocks` (id = creation order), loops in `Lsg.heap`, union-find nodes in
+// `Finder.nodes` (id = DFS number, as AWFY's `nodes` array), dictionary entries in
+// `IdentityDictionary.entries`. A reference is the id; AWFY's null is `null_id` (-1). The
+// algorithm, the order of every traversal, the som collections (Vector, Set, IdentitySet,
+// IdentityDictionary with its chained buckets, resizing and bucket splitting) and the work they
+// do are AWFY's. Deviations:
+// - IdentityDictionary is keyed by object identity in AWFY; here it is keyed by the basic block's
+//   id, with AWFY's hash (`customHash()`, the block's name) passed in by the caller.
+// - Vector is a `List` plus AWFY's `firstIdx`; `List.push` grows it, so AWFY's fixed-capacity
+//   storage with copy-on-double is not modelled (the ports use AWFY's doubling arrays).
+// - Set and IdentitySet are one type: on ids, identity and equality coincide.
+// - No bitwise operators: `hash ^ (hash >>> 16)` is `xor` (a loop over the bits of the high half,
+//   which is 0 for these names), `(length - 1) & hash` is `hash % length` and `hash & length` is
+//   `(hash / length) % 2` (equal for the power-of-two lengths and non-negative hashes here).
+// - `forEach` closures that assign state are `for` loops over the vector's live elements, since a
+//   Sakura closure cannot assign an outer variable; `hasSome` is `List.any` with a closure.
+import std/cli.{Cli}
+
+let null_id = -1
+let initial_capacity = 16
+let unvisited = 2147483647 // Marker for uninitialized nodes.
+let max_non_back_preds = 32 * 1024 // Safeguard against pathological algorithm behavior.
+
+// ---- som: Vector
+
+/// som's Vector: `storage` holds every appended element; the live ones start at `first`.
+type Vector<T> = { storage: List<T>, first: Int }
+
+fn vector<T>() -> Vector<T> { Vector { storage: [], first: 0 } }
+
+fn vec_size<T>(v: Vector<T>) -> Int { List.len(v.storage) - v.first }
+
+fn vec_is_empty<T>(v: Vector<T>) -> Bool { List.len(v.storage) == v.first }
+
+fn vec_get<T>(v: Vector<T>, idx: Int) -> T { Option.expect(v.storage[idx], "vector index") }
+
+/// som's `at` on a vector of references: null past the end.
+fn vec_at(v: Vector<Int>, idx: Int) -> Int {
+  match v.storage[idx] {
+    Some(x) => x,
+    None => null_id,
+  }
+}
+
+/// som's `atPut`; the gap up to `idx` is filled with `null`.
+fn vec_at_put<T>(v: Vector<T>, idx: Int, val: T, null: T) -> Vector<T> {
+  if idx < List.len(v.storage) { return Vector { ..v, storage: List.set(v.storage, idx, val) } }
+  var storage = v.storage
+  while List.len(storage) < idx { storage = List.push(storage, null) }
+  Vector { ..v, storage: List.push(storage, val) }
+}
+
+fn vec_append<T>(v: Vector<T>, elem: T) -> Vector<T> {
+  Vector { ..v, storage: List.push(v.storage, elem) }
+}
+
+/// som's `removeFirst` on a non-empty vector: the element and the vector without it.
+fn vec_remove_first<T>(v: Vector<T>) -> (T, Vector<T>) {
+  (vec_get(v, v.first), Vector { ..v, first: v.first + 1 })
+}
+
+fn vec_remove_all<T>(v: Vector<T>) -> Vector<T> { Vector { storage: [], first: 0 } }
+
+/// The live elements, in order: what som's `forEach` visits.
+fn vec_items<T>(v: Vector<T>) -> List<T> {
+  if v.first == 0 { v.storage } else { List.slice(v.storage, v.first, List.len(v.storage)) }
+}
+
+fn vec_has_some<T>(v: Vector<T>, f: fn(T) -> Bool) -> Bool { List.any(vec_items(v), f) }
+
+// ---- som: Set and IdentitySet
+
+type SomSet<T> = { items: Vector<T> }
+
+fn som_set<T>() -> SomSet<T> { SomSet { items: vector() } }
+
+fn set_size<T>(s: SomSet<T>) -> Int { vec_size(s.items) }
+
+fn set_items<T>(s: SomSet<T>) -> List<T> { vec_items(s.items) }
+
+fn set_contains<T: Eq>(s: SomSet<T>, obj: T) -> Bool { vec_has_some(s.items, fn(e) { e == obj }) }
+
+fn set_add<T: Eq>(s: SomSet<T>, obj: T) -> SomSet<T> {
+  if set_contains(s, obj) { s } else { SomSet { items: vec_append(s.items, obj) } }
+}
+
+// ---- som: IdentityDictionary (from a basic block to an Int)
+
+/// A chained entry; `next` is the id of the next entry in its bucket.
+type DictEntry = { hash: Int, key: Int, value: Int, next: Int }
+
+/// `buckets` holds the id of each chain's first entry; entries live in `entries`.
+type IdentityDictionary = { buckets: List<Int>, entries: List<DictEntry>, size: Int }
+
+fn filled<T>(n: Int, x: T) -> List<T> {
+  var xs: List<T> = []
+  while List.len(xs) < n { xs = List.push(xs, x) }
+  xs
+}
+
+fn identity_dictionary() -> IdentityDictionary {
+  IdentityDictionary { buckets: filled(initial_capacity, null_id), entries: [], size: 0 }
+}
+
+/// a XOR b for 0 <= a, b, digit by binary digit of b.
+fn xor(a: Int, b: Int) -> Int {
+  var x = a
+  var y = b
+  var bit = 1
+  var r = 0
+  while y > 0 {
+    if x % 2 != y % 2 { r = r + bit }
+    x = x / 2
+    y = y / 2
+    bit = bit * 2
+  }
+  r + x * bit
+}
+
+fn hash_fn(custom_hash: Int) -> Int { xor(custom_hash, custom_hash / 65536) }
+
+fn entry_of(d: IdentityDictionary, e: Int) -> DictEntry {
+  Option.expect(d.entries[e], "dictionary entry")
+}
+
+fn set_next(d: IdentityDictionary, e: Int, next: Int) -> IdentityDictionary {
+  IdentityDictionary { ..d, entries: List.set(d.entries, e, DictEntry { ..entry_of(d, e), next }) }
+}
+
+fn bucket_idx(d: IdentityDictionary, hash: Int) -> Int { hash % List.len(d.buckets) }
+
+fn bucket(d: IdentityDictionary, hash: Int) -> Int {
+  Option.expect(d.buckets[bucket_idx(d, hash)], "bucket")
+}
+
+/// som's `at`: the value for `key` (whose customHash is `custom_hash`), or null.
+fn dict_at(d: IdentityDictionary, key: Int, custom_hash: Int) -> Int {
+  let hash = hash_fn(custom_hash)
+  var e = bucket(d, hash)
+  while e != null_id {
+    let entry = entry_of(d, e)
+    if entry.hash == hash && entry.key == key { return entry.value }
+    e = entry.next
+  }
+  null_id
+}
+
+fn new_entry(d: IdentityDictionary, key: Int, value: Int, hash: Int) -> (IdentityDictionary, Int) {
+  let e = List.len(d.entries)
+  let entry = DictEntry { hash, key, value, next: null_id }
+  (IdentityDictionary { ..d, entries: List.push(d.entries, entry) }, e)
+}
+
+fn dict_at_put(d: IdentityDictionary, key: Int, custom_hash: Int, value: Int) -> IdentityDictionary
+{
+  let hash = hash_fn(custom_hash)
+  let i = bucket_idx(d, hash)
+  let current = Option.expect(d.buckets[i], "bucket")
+  var r = d
+  if current == null_id {
+    let (with_entry, e) = new_entry(d, key, value, hash)
+    r = with_entry
+    r.buckets = List.set(r.buckets, i, e)
+    r.size = r.size + 1
+  } else {
+    r = insert_bucket_entry(d, key, value, hash, current)
+  }
+  if r.size > List.len(r.buckets) { r = resize(r) }
+  r
+}
+
+fn insert_bucket_entry(
+  d: IdentityDictionary,
+  key: Int,
+  value: Int,
+  hash: Int,
+  head: Int,
+) -> IdentityDictionary
+{
+  var current = head
+  while true {
+    let entry = entry_of(d, current)
+    if entry.hash == hash && entry.key == key {
+      return IdentityDictionary {
+        ..d,
+        entries: List.set(d.entries, current, DictEntry { ..entry, value }),
+      }
+    }
+    if entry.next == null_id {
+      let (with_entry, e) = new_entry(d, key, value, hash)
+      return set_next(IdentityDictionary { ..with_entry, size: d.size + 1 }, current, e)
+    }
+    current = entry.next
+  }
+  d
+}
+
+fn resize(d: IdentityDictionary) -> IdentityDictionary {
+  let old_storage = d.buckets
+  transfer_entries(
+    IdentityDictionary { ..d, buckets: filled(List.len(old_storage) * 2, null_id) },
+    old_storage,
+  )
+}
+
+fn transfer_entries(d: IdentityDictionary, old: List<Int>) -> IdentityDictionary {
+  var r = d
+  var old_storage = old
+  for i in 0..List.len(old_storage) {
+    let current = Option.expect(old_storage[i], "bucket")
+    if current != null_id {
+      old_storage = List.set(old_storage, i, null_id)
+      let entry = entry_of(r, current)
+      if entry.next == null_id {
+        r.buckets = List.set(r.buckets, bucket_idx(r, entry.hash), current)
+      } else {
+        r = split_bucket(r, List.len(old_storage), i, current)
+      }
+    }
+  }
+  r
+}
+
+fn split_bucket(d: IdentityDictionary, old_length: Int, i: Int, head: Int) -> IdentityDictionary {
+  var r = d
+  var lo_head = null_id
+  var lo_tail = null_id
+  var hi_head = null_id
+  var hi_tail = null_id
+  var current = head
+  while current != null_id {
+    let entry = entry_of(r, current)
+    if (entry.hash / old_length) % 2 == 0 {
+      if lo_tail == null_id { lo_head = current } else { r = set_next(r, lo_tail, current) }
+      lo_tail = current
+    } else {
+      if hi_tail == null_id { hi_head = current } else { r = set_next(r, hi_tail, current) }
+      hi_tail = current
+    }
+    current = entry.next
+  }
+  if lo_tail != null_id {
+    r = set_next(r, lo_tail, null_id)
+    r.buckets = List.set(r.buckets, i, lo_head)
+  }
+  if hi_tail != null_id {
+    r = set_next(r, hi_tail, null_id)
+    r.buckets = List.set(r.buckets, i + old_length, hi_head)
+  }
+  r
+}
+
+fn dict_remove_all(d: IdentityDictionary) -> IdentityDictionary {
+  IdentityDictionary { buckets: filled(List.len(d.buckets), null_id), entries: [], size: 0 }
+}
+
+// ---- BasicBlock, BasicBlockEdge, ControlFlowGraph
+
+type BasicBlock = { name: Int, in_edges: Vector<Int>, out_edges: Vector<Int> }
+
+type BasicBlockEdge = { from: Int, to: Int }
+
+/// `blocks` is the heap of basic blocks; `basic_block_map` holds their ids by name.
+type Cfg = {
+  start_node: Int,
+  basic_block_map: Vector<Int>,
+  edge_list: Vector<BasicBlockEdge>,
+  blocks: List<BasicBlock>,
+}
+
+fn control_flow_graph() -> Cfg {
+  Cfg { start_node: null_id, basic_block_map: vector(), edge_list: vector(), blocks: [] }
+}
+
+fn block(cfg: Cfg, bb: Int) -> BasicBlock { Option.expect(cfg.blocks[bb], "basic block") }
+
+fn custom_hash(cfg: Cfg, bb: Int) -> Int { block(cfg, bb).name }
+
+fn num_nodes(cfg: Cfg) -> Int { vec_size(cfg.basic_block_map) }
+
+fn create_node(start: Cfg, name: Int) -> (Cfg, Int) {
+  var cfg = start
+  var node = vec_at(cfg.basic_block_map, name)
+  if node == null_id {
+    node = List.len(cfg.blocks)
+    let bb = BasicBlock { name, in_edges: vector(), out_edges: vector() }
+    cfg.blocks = List.push(cfg.blocks, bb)
+    cfg.basic_block_map = vec_at_put(cfg.basic_block_map, name, node, null_id)
+  }
+  if num_nodes(cfg) == 1 { cfg.start_node = node }
+  (cfg, node)
+}
+
+/// `new BasicBlockEdge(cfg, fromName, toName)`.
+fn basic_block_edge(start: Cfg, from_name: Int, to_name: Int) -> Cfg {
+  let (c1, from) = create_node(start, from_name)
+  let (c2, to) = create_node(c1, to_name)
+  var cfg = c2
+  let f = block(cfg, from)
+  cfg.blocks = List.set(
+    cfg.blocks,
+    from,
+    BasicBlock { ..f, out_edges: vec_append(f.out_edges, to) },
+  )
+  let t = block(cfg, to)
+  cfg.blocks = List.set(cfg.blocks, to, BasicBlock { ..t, in_edges: vec_append(t.in_edges, from) })
+  cfg.edge_list = vec_append(cfg.edge_list, BasicBlockEdge { from, to })
+  cfg
+}
+
+// ---- SimpleLoop, LoopStructureGraph
+
+type SimpleLoop = {
+  basic_blocks: SomSet<Int>,
+  children: SomSet<Int>,
+  parent: Int,
+  header: Int,
+  is_reducible: Bool,
+  is_root: Bool,
+  nesting_level: Int,
+  depth_level: Int,
+  counter: Int,
+}
+
+/// `heap` holds the loops by id; `loops` is AWFY's vector of them.
+type Lsg = { loop_counter: Int, loops: Vector<Int>, root: Int, heap: List<SimpleLoop> }
+
+fn simple_loop(bb: Int, is_reducible: Bool) -> SimpleLoop {
+  let empty: SomSet<Int> = som_set()
+  SimpleLoop {
+    basic_blocks: if bb != null_id { set_add(empty, bb) } else { empty },
+    children: som_set(),
+    parent: null_id,
+    header: bb,
+    is_reducible,
+    is_root: false,
+    nesting_level: 0,
+    depth_level: 0,
+    counter: 0,
+  }
+}
+
+fn loop_of(lsg: Lsg, l: Int) -> SimpleLoop { Option.expect(lsg.heap[l], "loop") }
+
+fn put_loop(lsg: Lsg, l: Int, x: SimpleLoop) -> Lsg {
+  Lsg { ..lsg, heap: List.set(lsg.heap, l, x) }
+}
+
+fn add_node(lsg: Lsg, l: Int, bb: Int) -> Lsg {
+  let x = loop_of(lsg, l)
+  put_loop(lsg, l, SimpleLoop { ..x, basic_blocks: set_add(x.basic_blocks, bb) })
+}
+
+fn set_parent(lsg: Lsg, l: Int, parent: Int) -> Lsg {
+  let with_parent = put_loop(lsg, l, SimpleLoop { ..loop_of(lsg, l), parent })
+  let p = loop_of(with_parent, parent)
+  put_loop(with_parent, parent, SimpleLoop { ..p, children: set_add(p.children, l) })
+}
+
+fn set_nesting_level(lsg: Lsg, l: Int, level: Int) -> Lsg {
+  let x = SimpleLoop { ..loop_of(lsg, l), nesting_level: level }
+  put_loop(lsg, l, if level == 0 { SimpleLoop { ..x, is_root: true } } else { x })
+}
+
+fn loop_structure_graph() -> Lsg {
+  var lsg = Lsg { loop_counter: 0, loops: vector(), root: 0, heap: [simple_loop(null_id, true)] }
+  lsg = set_nesting_level(lsg, lsg.root, 0)
+  lsg = put_loop(lsg, lsg.root, SimpleLoop { ..loop_of(lsg, lsg.root), counter: lsg.loop_counter })
+  lsg.loop_counter = lsg.loop_counter + 1
+  lsg.loops = vec_append(lsg.loops, lsg.root)
+  lsg
+}
+
+fn create_new_loop(start: Lsg, bb: Int, is_reducible: Bool) -> (Lsg, Int) {
+  var lsg = start
+  let l = List.len(lsg.heap)
+  lsg.heap = List.push(
+    lsg.heap,
+    SimpleLoop { ..simple_loop(bb, is_reducible), counter: lsg.loop_counter },
+  )
+  lsg.loop_counter = lsg.loop_counter + 1
+  lsg.loops = vec_append(lsg.loops, l)
+  (lsg, l)
+}
+
+fn calculate_nesting_level(start: Lsg) -> Lsg {
+  var lsg = start
+  // link up all 1st level loops to artificial root node.
+  for liter in vec_items(lsg.loops) {
+    let x = loop_of(lsg, liter)
+    if !x.is_root && x.parent == null_id { lsg = set_parent(lsg, liter, lsg.root) }
+  }
+  // recursively traverse the tree and assign levels.
+  calculate_nesting_level_rec(lsg, lsg.root, 0)
+}
+
+fn calculate_nesting_level_rec(start: Lsg, l: Int, depth: Int) -> Lsg {
+  var lsg = put_loop(start, l, SimpleLoop { ..loop_of(start, l), depth_level: depth })
+  for liter in set_items(loop_of(lsg, l).children) {
+    lsg = calculate_nesting_level_rec(lsg, liter, depth + 1)
+    let level = Int.max(loop_of(lsg, l).nesting_level, 1 + loop_of(lsg, liter).nesting_level)
+    lsg = set_nesting_level(lsg, l, level)
+  }
+  lsg
+}
+
+fn num_loops(lsg: Lsg) -> Int { vec_size(lsg.loops) }
+
+// ---- UnionFindNode
+
+/// `parent` and the node's own id are indices into the finder's `nodes`.
+type UnionFindNode = { parent: Int, bb: Int, dfs_number: Int, loop: Int }
+
+fn union_find_node() -> UnionFindNode {
+  UnionFindNode { parent: null_id, bb: null_id, dfs_number: 0, loop: null_id }
+}
+
+fn node_of(nodes: List<UnionFindNode>, x: Int) -> UnionFindNode {
+  Option.expect(nodes[x], "union-find node")
+}
+
+fn parent_of(nodes: List<UnionFindNode>, x: Int) -> Int { node_of(nodes, x).parent }
+
+/// The union routine: assigning the parent is enough, path compression does the rest.
+fn union(nodes: List<UnionFindNode>, x: Int, basic_block: Int) -> List<UnionFindNode> {
+  List.set(nodes, x, UnionFindNode { ..node_of(nodes, x), parent: basic_block })
+}
+
+/// The find routine of node `me`, with path compression: every node on the path whose parent
+/// is not a root is pointed at `me`'s parent.
+fn find_set(start: List<UnionFindNode>, me: Int) -> (List<UnionFindNode>, Int) {
+  var nodes = start
+  var node_list: Vector<Int> = vector()
+  var node = me
+  while node != parent_of(nodes, node) {
+    let parent = parent_of(nodes, node)
+    if parent != parent_of(nodes, parent) { node_list = vec_append(node_list, node) }
+    node = parent
+  }
+  // Path Compression, all nodes' parents point to the 1st level parent.
+  for iter in vec_items(node_list) { nodes = union(nodes, iter, parent_of(nodes, me)) }
+  (nodes, node)
+}
+
+// ---- HavlakLoopFinder
+
+type BlockClass = BbTop | BbNonHeader | BbReducible | BbSelf | BbIrreducible | BbDead
+
+type Finder = {
+  cfg: Cfg,
+  lsg: Lsg,
+  non_back_preds: Vector<SomSet<Int>>,
+  back_preds: Vector<Vector<Int>>,
+  number: IdentityDictionary,
+  max_size: Int,
+  header: List<Int>,
+  kind: List<BlockClass>,
+  last: List<Int>,
+  nodes: List<UnionFindNode>,
+}
+
+fn havlak_loop_finder(cfg: Cfg, lsg: Lsg) -> Finder {
+  Finder {
+    cfg,
+    lsg,
+    non_back_preds: vector(),
+    back_preds: vector(),
+    number: identity_dictionary(),
+    max_size: 0,
+    header: [],
+    kind: [],
+    last: [],
+    nodes: [],
+  }
+}
+
+fn kind_of(f: Finder, w: Int) -> BlockClass { Option.expect(f.kind[w], "block class") }
+
+fn set_kind(f: Finder, w: Int, k: BlockClass) -> Finder {
+  Finder { ..f, kind: List.set(f.kind, w, k) }
+}
+
+fn ufn(f: Finder, x: Int) -> UnionFindNode { node_of(f.nodes, x) }
+
+fn find_set_of(f: Finder, x: Int) -> (Finder, Int) {
+  let (nodes, rep) = find_set(f.nodes, x)
+  (Finder { ..f, nodes }, rep)
+}
+
+fn non_back_preds_at(f: Finder, w: Int) -> SomSet<Int> { vec_get(f.non_back_preds, w) }
+
+fn add_non_back_pred(f: Finder, w: Int, v: Int) -> Finder {
+  let s = set_add(non_back_preds_at(f, w), v)
+  Finder { ..f, non_back_preds: vec_at_put(f.non_back_preds, w, s, s) }
+}
+
+fn add_back_pred(f: Finder, w: Int, v: Int) -> Finder {
+  let preds = vec_append(vec_get(f.back_preds, w), v)
+  Finder { ..f, back_preds: vec_at_put(f.back_preds, w, preds, preds) }
+}
+
+/// Whether `w` is a "true" ancestor of `v` in the DFS spanning tree (pre-order trick).
+fn is_ancestor(f: Finder, w: Int, v: Int) -> Bool {
+  w <= v && v <= Option.expect(f.last[w], "last")
+}
+
+/// Depth-first traversal along out edges with node numbering.
+fn do_dfs(start: Finder, current_node: Int, current: Int) -> (Finder, Int) {
+  var f = start
+  f.nodes = List.set(
+    f.nodes,
+    current,
+    UnionFindNode { parent: current, bb: current_node, dfs_number: current, loop: null_id },
+  )
+  f.number = dict_at_put(f.number, current_node, custom_hash(f.cfg, current_node), current)
+  var last_id = current
+  let outer_blocks = block(f.cfg, current_node).out_edges
+  for i in 0..vec_size(outer_blocks) {
+    let target = vec_at(outer_blocks, i)
+    if dict_at(f.number, target, custom_hash(f.cfg, target)) == unvisited {
+      let (g, id) = do_dfs(f, target, last_id + 1)
+      f = g
+      last_id = id
+    }
+  }
+  f.last = List.set(f.last, current, last_id)
+  (f, last_id)
+}
+
+fn init_all_nodes(start: Finder) -> Finder {
+  // Step a: initialize all nodes as unvisited, then number them depth-first.
+  var f = start
+  for bb in vec_items(f.cfg.basic_block_map) {
+    f.number = dict_at_put(f.number, bb, custom_hash(f.cfg, bb), unvisited)
+  }
+  do_dfs(f, f.cfg.start_node, 0).0
+}
+
+fn identify_edges(start: Finder, size: Int) -> Finder {
+  // Step b: classify each node's incoming edges as backedges or non-backedges (Tarjan).
+  var f = start
+  for w in 0..size {
+    f.header = List.set(f.header, w, 0)
+    f = set_kind(f, w, BbNonHeader)
+    let node_w = ufn(f, w).bb
+    if node_w == null_id { f = set_kind(f, w, BbDead) } else { f = process_edges(f, node_w, w) }
+  }
+  f
+}
+
+fn process_edges(start: Finder, node_w: Int, w: Int) -> Finder {
+  var f = start
+  let bb = block(f.cfg, node_w)
+  if vec_size(bb.in_edges) > 0 {
+    for node_v in vec_items(bb.in_edges) {
+      let v = dict_at(f.number, node_v, custom_hash(f.cfg, node_v))
+      if v != unvisited {
+        if is_ancestor(f, w, v) {
+          f = add_back_pred(f, w, v)
+        } else {
+          f = add_non_back_pred(f, w, v)
+        }
+      }
+    }
+  }
+  f
+}
+
+/// Find loops and build the loop forest with Havlak's algorithm; returns the loop structure.
+fn find_loops(cfg: Cfg, lsg: Lsg) -> Lsg {
+  var f = havlak_loop_finder(cfg, lsg)
+  if f.cfg.start_node == null_id { return f.lsg }
+  let size = num_nodes(f.cfg)
+  f.non_back_preds = vec_remove_all(f.non_back_preds)
+  f.back_preds = vec_remove_all(f.back_preds)
+  f.number = dict_remove_all(f.number)
+  if size > f.max_size {
+    f.header = filled(size, 0)
+    f.kind = filled(size, BbTop)
+    f.last = filled(size, 0)
+    f.nodes = filled(size, union_find_node())
+    f.max_size = size
+  }
+  for i in 0..size {
+    f.non_back_preds = vec_append(f.non_back_preds, som_set())
+    f.back_preds = vec_append(f.back_preds, vector())
+    f.nodes = List.set(f.nodes, i, union_find_node())
+  }
+  f = init_all_nodes(f)
+  f = identify_edges(f, size)
+  // Start node is root of all other loops.
+  f.header = List.set(f.header, 0, 0)
+
+  // Step c: visit the nodes in reverse DFS preorder, so inner loop headers are processed before
+  // the headers of the loops around them. For a header w, chase backward from the sources of its
+  // backedges, collecting the loop body P (`node_pool`).
+  var w = size - 1
+  while w >= 0 {
+    var node_pool: Vector<Int> = vector()
+    let node_w = ufn(f, w).bb
+    if node_w != null_id {
+      let (g, pool) = step_d(f, w, node_pool)
+      f = g
+      node_pool = pool
+      // Copy nodePool to workList.
+      var work_list: Vector<Int> = vector()
+      for niter in vec_items(node_pool) { work_list = vec_append(work_list, niter) }
+      if vec_size(node_pool) != 0 { f = set_kind(f, w, BbReducible) }
+      // work the list...
+      while !vec_is_empty(work_list) {
+        let (x, rest) = vec_remove_first(work_list)
+        work_list = rest
+        // Step e: a node y' reached that is not a descendant of w makes w the header of an
+        // irreducible loop. The algorithm has degenerated past the safeguard: give up.
+        let non_back_size = set_size(non_back_preds_at(f, ufn(f, x).dfs_number))
+        if non_back_size > max_non_back_preds { return f.lsg }
+        let (g2, pool2, work2) = step_e_process_non_back_preds(f, w, node_pool, work_list, x)
+        f = g2
+        node_pool = pool2
+        work_list = work2
+      }
+      // Collapse the nodes of each SCC found into one, with a loop descriptor linked in.
+      if vec_size(node_pool) > 0 || kind_of(f, w) == BbSelf {
+        let (lsg2, l) = create_new_loop(f.lsg, node_w, kind_of(f, w) != BbIrreducible)
+        f.lsg = lsg2
+        f = set_loop_attributes(f, w, node_pool, l)
+      }
+    }
+    w = w - 1
+  }
+  f.lsg
+}
+
+fn step_e_process_non_back_preds(
+  start: Finder,
+  w: Int,
+  pool: Vector<Int>,
+  work: Vector<Int>,
+  x: Int,
+) -> (Finder, Vector<Int>, Vector<Int>)
+{
+  var f = start
+  var node_pool = pool
+  var work_list = work
+  for iter in set_items(non_back_preds_at(f, ufn(f, x).dfs_number)) {
+    let (g, ydash) = find_set_of(f, iter)
+    f = g
+    let ydash_dfs = ufn(f, ydash).dfs_number
+    if !is_ancestor(f, w, ydash_dfs) {
+      f = set_kind(f, w, BbIrreducible)
+      f = add_non_back_pred(f, w, ydash_dfs)
+    } else if ydash_dfs != w {
+      if !vec_has_some(node_pool, fn(e) { e == ydash }) {
+        work_list = vec_append(work_list, ydash)
+        node_pool = vec_append(node_pool, ydash)
+      }
+    }
+  }
+  (f, node_pool, work_list)
+}
+
+fn set_loop_attributes(start: Finder, w: Int, node_pool: Vector<Int>, l: Int) -> Finder {
+  var f = start
+  f.nodes = List.set(f.nodes, w, UnionFindNode { ..ufn(f, w), loop: l })
+  for node in vec_items(node_pool) {
+    // Add nodes to loop descriptor.
+    f.header = List.set(f.header, ufn(f, node).dfs_number, w)
+    f.nodes = union(f.nodes, node, w)
+    // Nested loops are not added, but linked together.
+    let n = ufn(f, node)
+    if n.loop != null_id {
+      f.lsg = set_parent(f.lsg, n.loop, l)
+    } else {
+      f.lsg = add_node(f.lsg, l, n.bb)
+    }
+  }
+  f
+}
+
+fn step_d(start: Finder, w: Int, pool: Vector<Int>) -> (Finder, Vector<Int>) {
+  var f = start
+  var node_pool = pool
+  for v in vec_items(vec_get(f.back_preds, w)) {
+    if v != w {
+      let (g, rep) = find_set_of(f, v)
+      f = g
+      node_pool = vec_append(node_pool, rep)
+    } else {
+      f = set_kind(f, w, BbSelf)
+    }
+  }
+  (f, node_pool)
+}
+
+// ---- LoopTesterApp
+
+type App = { cfg: Cfg, lsg: Lsg }
+
+fn loop_tester_app() -> App {
+  App { cfg: create_node(control_flow_graph(), 0).0, lsg: loop_structure_graph() }
+}
+
+/// Four basic blocks shaped as an if/then/else diamond; returns the bottom block's name.
+fn build_diamond(app: App, start: Int) -> (App, Int) {
+  let bb0 = start
+  var cfg = basic_block_edge(app.cfg, bb0, bb0 + 1)
+  cfg = basic_block_edge(cfg, bb0, bb0 + 2)
+  cfg = basic_block_edge(cfg, bb0 + 1, bb0 + 3)
+  cfg = basic_block_edge(cfg, bb0 + 2, bb0 + 3)
+  (App { ..app, cfg }, bb0 + 3)
+}
+
+/// Connect two existing nodes.
+fn build_connect(app: App, start: Int, end: Int) -> App {
+  App { ..app, cfg: basic_block_edge(app.cfg, start, end) }
+}
+
+/// A straight connected sequence of n basic blocks.
+fn build_straight(start_app: App, start: Int, n: Int) -> (App, Int) {
+  var app = start_app
+  for i in 0..n { app = build_connect(app, start + i, start + i + 1) }
+  (app, start + n)
+}
+
+/// A simple loop with two diamonds in it.
+fn build_base_loop(start_app: App, from: Int) -> (App, Int) {
+  let (a1, header) = build_straight(start_app, from, 1)
+  let (a2, diamond1) = build_diamond(a1, header)
+  let (a3, d11) = build_straight(a2, diamond1, 1)
+  let (a4, diamond2) = build_diamond(a3, d11)
+  let (a5, footer) = build_straight(a4, diamond2, 1)
+  var app = build_connect(a5, diamond2, d11)
+  app = build_connect(app, diamond1, header)
+  app = build_connect(app, footer, from)
+  build_straight(app, footer, 1)
+}
+
+fn app_main(
+  start: App,
+  num_dummy_loops: Int,
+  find_loop_iterations: Int,
+  par_loops: Int,
+  ppar_loops: Int,
+  pppar_loops: Int,
+) -> (Int, Int)
+{
+  var app = construct_simple_cfg(start)
+  app = add_dummy_loops(app, num_dummy_loops)
+  app = construct_cfg(app, par_loops, ppar_loops, pppar_loops)
+  // Performing Loop Recognition, 1 Iteration, then findLoopIteration
+  app.lsg = find_loops(app.cfg, app.lsg)
+  for _ in 0..find_loop_iterations { let _ = find_loops(app.cfg, loop_structure_graph()) }
+  app.lsg = calculate_nesting_level(app.lsg)
+  (num_loops(app.lsg), num_nodes(app.cfg))
+}
+
+fn construct_cfg(start: App, par_loops: Int, ppar_loops: Int, pppar_loops: Int) -> App {
+  var app = start
+  var n = 2
+  for _ in 0..par_loops {
+    app.cfg = create_node(app.cfg, n + 1).0
+    app = build_connect(app, 2, n + 1)
+    n = n + 1
+    for _ in 0..ppar_loops {
+      let top = n
+      let (a1, n1) = build_straight(app, n, 1)
+      app = a1
+      n = n1
+      for _ in 0..pppar_loops {
+        let (a2, n2) = build_base_loop(app, n)
+        app = a2
+        n = n2
+      }
+      let (a3, bottom) = build_straight(app, n, 1)
+      app = build_connect(a3, n, top)
+      n = bottom
+    }
+    app = build_connect(app, n, 1)
+  }
+  app
+}
+
+fn add_dummy_loops(start: App, num_dummy_loops: Int) -> App {
+  var app = start
+  for _ in 0..num_dummy_loops { app.lsg = find_loops(app.cfg, app.lsg) }
+  app
+}
+
+fn construct_simple_cfg(start: App) -> App {
+  var app = start
+  app.cfg = create_node(app.cfg, 0).0
+  app = build_base_loop(app, 0).0
+  app.cfg = create_node(app.cfg, 1).0
+  app.cfg = basic_block_edge(app.cfg, 0, 2)
+  app
+}
+
+/// Havlak.innerBenchmarkLoop(n): the two numbers verifyResult checks, as one Int.
+pub fn run(n: Int) -> Int {
+  let (loops, nodes) = app_main(loop_tester_app(), n, 50, 10, 10, 5)
+  loops * 1_000_000 + nodes
+}
+
+// `sakura run main.sak -- <n>...` prints run(n) for each argument.
+pub fn main() -> Unit ! {Cli, Console} {
+  for arg in Cli.args() { Console.print("{run(Option.expect(String.parse_int(arg), "size"))}") }
+}

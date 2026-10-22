@@ -1,0 +1,23 @@
+family = "AWFY micro: array writes"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Sieve: run(n) runs benchmark() n times and sums the results.
+# AWFY's rebench size (inner_iterations) is checked, not timed: it exceeds the 1 s per-call
+# budget for Sakura on Node.
+sizes = [2, 20, 200, 1000]
+check_sizes = [3000]  # correctness only, never timed
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Sieve", inner_iterations = 3000, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/sieve.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "669"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "669"
+"2" = "1338"
+"3" = "2007"
+"20" = "13380"
+"200" = "133800"
+"1000" = "669000"
+"3000" = "2007000"

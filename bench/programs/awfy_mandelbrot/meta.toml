@@ -1,0 +1,23 @@
+family = "AWFY f64 loop"
+suite = "are-we-fast-yet"
+# Are We Fast Yet's Mandelbrot: run(n) is innerBenchmarkLoop(n)'s result, the XOR of the bytes of
+# an n×n bitmap. AWFY's rebench size is inner_iterations; [verify] holds its verifyResult values.
+sizes = [100, 250, 500, 750]
+lane = "matched"
+ints = "js-safe"
+awfy = { benchmark = "Mandelbrot", inner_iterations = 500, source = "smarr/are-we-fast-yet@74306fec benchmarks/JavaScript/mandelbrot.js" }
+
+[verify]  # AWFY's verifyResult
+"1" = "128"
+"500" = "191"
+"750" = "50"
+
+[checksums]  # run(n), recorded by `bench oracle --write`
+"0" = "0"
+"1" = "128"
+"2" = "192"
+"3" = "224"
+"100" = "239"
+"250" = "15"
+"500" = "191"
+"750" = "50"

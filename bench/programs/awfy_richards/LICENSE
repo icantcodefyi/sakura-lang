@@ -1,0 +1,49 @@
+Provenance and licence of the Richards program
+==============================================
+
+Richards is Martin Richards's operating-system scheduler simulation benchmark. These files are
+ports of the JavaScript version in Are We Fast Yet (Stefan Marr, Benoit Daloze and Hanspeter
+Mössenböck, https://github.com/smarr/are-we-fast-yet at commit 74306fec,
+benchmarks/JavaScript/richards.js), which says of itself:
+
+    The benchmark in its current state is a derivation from the SOM version,
+    which is derived from Mario Wolczko's Smalltalk version of DeltaBlue.
+
+    The original license details are availble here:
+    http://web.archive.org/web/20050825101121/http://www.sunlabs.com/people/mario/java_benchmarking/index.html
+
+("of DeltaBlue" is AWFY's wording in richards.js; the file is Richards.) Its LICENSE.md says,
+for Richards and DeltaBlue:
+
+    These benchmark are derived from the Smalltalk sources provided by Mario Wolczko.
+    License details are available at:
+      http://web.archive.org/web/20050825101121/http://www.sunlabs.com/people/mario/java_benchmarking/index.html
+    Further information:
+      http://www.wolczko.com/java_benchmarking.html
+
+The harness code AWFY's richards.js extends (benchmark.js) is "Copyright (c) 2015-2016 Stefan
+Marr" under the MIT licence; none of it is copied here. The archived page's licensing terms
+were not retrieved for this commit. A maintainer must confirm those terms before this program
+is redistributed outside this repository, as for bench/programs/deltablue.
+
+Changes from the Are We Fast Yet version
+----------------------------------------
+
+js/main.mjs keeps AWFY's classes, methods and closures, without the Benchmark class. All
+versions:
+
+- return a count instead of a boolean: run(n) runs benchmark() n times and returns the
+  number of runs that end with AWFY's expected counts (23246 queued packets and 9297 holds),
+  so a correct run(n) is n;
+- leave out the trace code, which AWFY disables (TRACING = false); js/main.mjs keeps it.
+
+sakura/main.sak reimplements the same scheduler over two persistent lists, task control
+blocks indexed by identity (AWFY's taskTable) and packets indexed by creation order, threaded
+through every scheduler operation, because Sakura Lang has no mutable objects; every
+reference is an index and -1 is NO_TASK / NO_WORK. The Sakura and native ports (C, Rust, Go,
+OCaml, Koka) dispatch on the task's data-record variant where AWFY calls a closure created
+with that record. Sakura Lang has no bitwise operators, so the idler's `control & 1` and
+`(control / 2) ^ 53256` are a remainder and a digit-by-digit XOR there. The C, Go and OCaml
+ports link mutable objects by pointer; the Rust port keeps them in arenas indexed by
+identity and creation order; the Koka port threads vectors of records as the Sakura program
+does. Every traversal, queue and update keeps AWFY's order.
