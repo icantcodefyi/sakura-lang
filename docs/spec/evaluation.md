@@ -11,7 +11,7 @@ the rule is not normative.
 [Draft conventions](README.md) identify normative material; rules are labelled **EVnn**.
 Types, effects, failures and concurrency have their own chapters, listed in the [README](README.md).
 
-Fixtures under `compiler/tests/semantics` run with `sakura run` on the JS backend under
+Informative: fixtures under `compiler/tests/semantics` run with `sakura run` on the JS backend under
 both call ABIs, and `tests/parity.rs` holds WASM to the same output unless a `.wasm.stdout`
 twin says otherwise.
 

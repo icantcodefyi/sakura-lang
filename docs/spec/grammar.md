@@ -13,7 +13,9 @@ checking, derived from [items](../../compiler/crates/sakura_syntax/src/grammar.r
 
 **G01** Value names use ASCII `[a-z_][A-Za-z0-9_]*`, type names use `[A-Z][A-Za-z0-9_]*`, and a hole is `?` immediately followed by a value name, with `_` alone reserved for a wildcard. [Fixture](../../compiler/crates/sakura_syntax/tests/data/ok/lexical.sak), [names_holes_and_errors](../../compiler/crates/sakura_syntax/src/lexer.rs).
 
-**G02** The keywords are `fn let var type error effect handler with try catch fail if else match for in while return break continue import pub opaque as test property requires ensures where true false`. [Items](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [expressions](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [opaque types](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak). The keyword `error` is a valid field name and not a binding name: it names a field after `.` and before `:` ([fields](../../compiler/tests/semantics/error_field_name.sak)), and a parameter, `let` or `var` name or pattern binding named `error` is `V0016` ([binders](../../compiler/tests/ui/V0016_keyword_binder.sak)).
+**G02** The keywords are `fn let var type error effect handler with try catch fail if else match for in while return break continue import pub opaque as test property requires ensures where true false`. [Items](../../compiler/crates/sakura_syntax/tests/data/ok/items.sak), [expressions](../../compiler/crates/sakura_syntax/tests/data/ok/exprs.sak), [opaque types](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak).
+
+**G25** The keyword `error` is a valid field name after `.` and before `:` but not a binding name, so a parameter, `let` or `var` name or pattern binding named `error` is `V0016`. [Fields](../../compiler/tests/semantics/error_field_name.sak), [binders](../../compiler/tests/ui/V0016_keyword_binder.sak).
 
 **G03** Reserved future words produce `V0007`, except in member positions after `.` and function-name positions after `fn`. [Rejection](../../compiler/tests/ui/V0007_reserved_keyword.sak), [accepted spawn](../../compiler/crates/sakura_syntax/tests/data/ok/types_and_terms.sak), [every word by position](../../compiler/crates/sakura_syntax/tests/data/err/reserved_positions.sak).
 
@@ -48,8 +50,8 @@ that `_`; `_1` is a name and `0x_` is `V0006` for its missing digits.
 An exponent without a fraction (`1e5`), an exponent without digits (`1.5e`), a separator
 inside an exponent, and uppercase or unknown radix prefixes (`0X1`, `0o7`) are `V0006`;
 an uppercase `E` exponent is accepted.
-Because the minus sign is separate, `-9223372036854775808` is `V0003` although design §2.2
-gives `Int` that minimum; whether that spelling should be accepted is open in [gaps](gaps.md).
+Because the minus sign is separate, `-9223372036854775808` is `V0003`; design §17.243 (1)
+keeps the token's range at `[0, 2^63 − 1]` and rewords §2.2 to match ([gaps](gaps.md)).
 The lexer treats digits after a field-access dot as tuple indices rather than a float,
 as exercised by `t.0.1` in the [lexical corpus](../../editors/tree-sitter-sakura/test/corpus/lexical.txt).
 
@@ -64,8 +66,9 @@ ending: Ident TypeName Hole _ Int Float StringEnd ) ] } > ? true false break con
 continuing: . else catch ) ] } , => = -> | .. + * / % == != < <= > >= && ||
 ```
 
-The lexer also treats a keyword following `/` as a module name that can end a statement.
-Nested brace blocks restore newline significance even inside parentheses; the
+**G26** A keyword immediately after `/` is a module name, so it ends a statement as a name does and `import std/test` followed by a newline is a whole item. [newline_rule](../../compiler/crates/sakura_syntax/src/lexer.rs), [plain and braced keyword imports](../../compiler/crates/sakura_hir/tests/snapshots/lower__diag_explicit_imports.snap).
+
+Informative: nested brace blocks restore newline significance even inside parentheses; the
 `newline_rule` unit fixture includes `(fn() {a\nb})`.
 `newline_matrix` checks every listed token, before or after the break, against samples
 of the other side, under LF and CRLF and with line or block comments at the break, plus

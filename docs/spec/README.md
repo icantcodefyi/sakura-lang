@@ -1,6 +1,6 @@
 # Sakura language specification
 
-**Draft (normative at v1.0.0-beta.1).**
+**Draft (normative at v1.0.0-beta.1). Informative.**
 
 This directory contains the stage 6 grammar and diagnostic chapters of the
 [road to 1.0](../plans/road-to-1.0.md), following design §17.225–226, and the semantics
@@ -23,7 +23,9 @@ It does not declare v1.0.0-beta.1 released or replace today's [stability policy]
 Only paragraphs labelled **Gnn** or **Dnn**, the semantics chapters' **EVnn**, **TYnn**,
 **EFnn**, **ERnn**, **CCnn** and **MOnn**, their attached EBNF blocks, and
 fixture-backed active rows in the code table are candidate normative material.
-All other prose, including this page, is **informative**.
+All other prose, including this page, is **informative**, and is marked so: by a paragraph that
+starts `Informative`, a heading that says `(informative)`, or a page whose status line says
+`Informative.`
 Each labelled paragraph is one normative sentence with its fixture links on the same line.
 An EBNF block inherits the fixture links of its introducing rule.
 These links demonstrate cases; they do not prove that every possible production combination
@@ -55,6 +57,9 @@ The generator lives in the existing `compiler/tools/agent_docs` directory for
 SKILL references and error pages; it reuses the diagnostic baseline parser.
 `--check` checks table freshness, local file links, and the presence of fixture citations
 on labelled sentences.
+It also requires each labelled rule to be one sentence on its own line, rejects a citation of a
+`.sak` fixture marked `skip:`, requires a Rust citation labelled with a test name to name a test
+in that file, and requires every other prose paragraph to be marked informative.
 It does not validate URL fragments, external sites, EBNF equivalence, or whether prose
 correctly describes a test assertion.
 The unit test invokes the same drift check and tests baseline and fixture changes.

@@ -85,4 +85,4 @@ Informative: `sakuralang@1.0.0-beta.1` predates TY22 (ABI 1.14.0) and states no 
 why `minLength` is widened (design §17.300). `List.len` counts elements, as `minItems` and
 `maxItems` do, so their bounds are stated as written.
 
-Opaque types and their `Schema` boundary (`V1006`, `V2033`) are in the modules chapter.
+Informative: opaque types and their `Schema` boundary (`V1006`, `V2033`) are in the modules chapter.

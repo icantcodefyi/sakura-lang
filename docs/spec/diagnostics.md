@@ -18,7 +18,7 @@ The broader JSON field baseline is a separate stage 5 task.
 
 **D03** Compile-time violations use error severity and warning diagnostics use warning severity. [Error record](../../compiler/crates/sakura_diagnostics/tests/render.rs), [W7002 warning assertion](../../compiler/crates/sakura_cli/tests/cli.rs).
 
-The [generated code table](diagnostic-codes.md) contains one row per baseline identity,
+Informative: the [generated code table](diagnostic-codes.md) contains one row per baseline identity,
 with its meaning label, category, evidence, and lifecycle status.
 Meaning labels identify a diagnostic family; they are not the complete predicate for emission.
 For explanations and repair examples, see the
@@ -27,7 +27,7 @@ For explanations and repair examples, see the
 `reserved` and `retired` entries are informative identity records.
 Rows labelled **Gap** have no indexed runnable emission fixture and remain informative.
 
-Runtime `D` codes are defects, not additional values of the compile-time `severity` field.
+Informative: runtime `D` codes are defects, not additional values of the compile-time `severity` field.
 Their representation and backend-specific behavior belong to the
 [ABI document](../../compiler/runtime/rt/ABI.md) and the semantics corpus.
 The ABI link is informative here; a complete normative ABI annex is later stage 6 work.

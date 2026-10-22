@@ -78,7 +78,7 @@ class SpecDocsTests(unittest.TestCase):
             root = Path(tmp)
             spec = root / "docs/spec"
             spec.mkdir(parents=True)
-            (spec / "grammar.md").write_text("**G01** A rule.\n[missing](missing.sak)\n")
+            (spec / "grammar.md").write_text("**G01** A rule.\n\nInformative: [missing](missing.sak)\n")
             count, errors = spec_docs.check_links(root)
             self.assertEqual(count, 1)
             self.assertEqual(len(errors), 2)
@@ -92,13 +92,52 @@ class SpecDocsTests(unittest.TestCase):
             fixture.parent.mkdir(parents=True)
             fixture.write_text("")
             (spec / "evaluation.md").write_text(
-                "**EV01** Cited. [ok](../../compiler/tests/semantics/ok.sak)\n"
-                "**MO02** Uncited.\n"
+                "**EV01** Cited. [ok](../../compiler/tests/semantics/ok.sak)\n\n"
+                "**MO02** Uncited.\n\n"
                 "**XY03** Not a rule label.\n"
             )
             count, errors = spec_docs.check_links(root)
             self.assertEqual(count, 2)
-            self.assertEqual(errors, ["evaluation.md:2: rule has no fixture"])
+            self.assertEqual(errors, [
+                "evaluation.md:3: rule has no fixture",
+                "evaluation.md:5: unlabelled prose not marked informative",
+            ])
+
+    def test_prose_is_marked_and_rules_are_single_cited_sentences(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            spec = root / "docs/spec"
+            spec.mkdir(parents=True)
+            semantics = root / "compiler/tests/semantics"
+            semantics.mkdir(parents=True)
+            (semantics / "ok.sak").write_text("// milestone: M3\n")
+            (semantics / "skipped.sak").write_text("// skip: pending\n")
+            tests = root / "compiler/crates/c/tests"
+            tests.mkdir(parents=True)
+            (tests / "t.rs").write_text("#[test]\nfn present() {}\n")
+            ok, rs = "../../compiler/tests/semantics/ok.sak", "../../compiler/crates/c/tests/t.rs"
+            (spec / "evaluation.md").write_text(
+                "# Evaluation\n\n**Draft (normative).**\n\n"
+                "Informative scope: marked by its paragraph.\n\n"
+                f"**EV01** One sentence with `x. Y` in code. [ok]({ok}), [present]({rs}).\n\n"
+                f"**EV02** Two sentences. Here is the second. [ok]({ok})\n\n"
+                f"**EV03** Continued. [ok]({ok})\nand prose under it.\n\n"
+                "**EV04** Skipped. [s](../../compiler/tests/semantics/skipped.sak)\n\n"
+                f"**EV05** Named. [absent]({rs})\n\n"
+                "Unmarked prose.\n\n"
+                "## Notes (informative)\n\nMarked by its heading.\n\n"
+                "```text\nUnmarked code.\n```\n"
+            )
+            (spec / "gaps.md").write_text("# Gaps\n\n**Draft. Informative.**\n\nMarked by its page.\n")
+            count, errors = spec_docs.check_links(root)
+            self.assertEqual(count, 5)
+            self.assertEqual(errors, [
+                "evaluation.md:9: rule has more than one sentence",
+                "evaluation.md:12: prose continues a rule's paragraph",
+                "evaluation.md:14: cites a skipped fixture ../../compiler/tests/semantics/skipped.sak",
+                f"evaluation.md:16: no test absent in {rs}",
+                "evaluation.md:18: unlabelled prose not marked informative",
+            ])
 
 
 if __name__ == "__main__":

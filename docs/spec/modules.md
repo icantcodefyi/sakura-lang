@@ -11,7 +11,7 @@ The import syntax is [grammar G16](grammar.md); dependencies on other packages a
 today (`V8005`) and are out of scope.
 [Draft conventions](README.md) identify normative material; rules are labelled **MOnn**.
 
-Several citations are snapshot tests in `compiler/crates/sakura_hir/tests/lower.rs`, which
+Informative: several citations are snapshot tests in `compiler/crates/sakura_hir/tests/lower.rs`, which
 build a small program of several modules in memory; the link label names the snapshot.
 
 ## Modules and packages

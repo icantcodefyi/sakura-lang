@@ -88,22 +88,57 @@ def check_links(root):
     errors = []
     rules = 0
     for path in sorted((root / "docs/spec").glob("*.md")):
-        for number, line in enumerate(path.read_text().splitlines(), 1):
-            links = re.findall(r"\[[^\]]*\]\(([^)]+)\)", line)
-            for link in links:
+        lines = path.read_text().splitlines()
+        # Unlabelled prose must be marked informative by its paragraph ("Informative…"), its
+        # heading ("(informative)") or its page ("Informative." in the status line); the
+        # generated table is exempt.
+        page = path.name == Path(OUTPUT).name or any("Informative." in l for l in lines[:4])
+        section = fence = False
+        paragraph = None
+        for number, line in enumerate(lines, 1):
+            links = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", line)
+            for _, link in links:
                 if "://" not in link and not link.startswith("#"):
                     target = (path.parent / link.split("#")[0]).resolve()
                     if not target.exists():
                         errors.append(f"{path.name}:{number}: broken link {link}")
-            if RULE.match(line):
-                rules += 1
-                if not any(
-                    "/tests/" in link or "/test/corpus/" in link or "/test_history.py" in link
-                    or (link.endswith(".rs") and (path.parent / link).is_file()
-                        and "#[test]" in (path.parent / link).read_text())
-                    for link in links
-                ):
-                    errors.append(f"{path.name}:{number}: rule has no fixture")
+                    elif target.suffix == ".sak" and re.search(r"//\s*skip:", target.read_text(errors="replace")):
+                        errors.append(f"{path.name}:{number}: cites a skipped fixture {link}")
+            rule = RULE.match(line)
+            if line.startswith("```"):
+                fence = not fence
+            elif fence or line.startswith("#") or not line.strip():
+                if line.startswith("#"):
+                    section = "informative" in line.lower()
+                paragraph = None
+            elif paragraph is None:
+                paragraph = "rule" if rule else "marked"
+                if not (rule or page or section or line.startswith(("Informative", "**Draft"))):
+                    errors.append(f"{path.name}:{number}: unlabelled prose not marked informative")
+            elif paragraph == "rule" and not rule:
+                errors.append(f"{path.name}:{number}: prose continues a rule's paragraph")
+            if not rule:
+                continue
+            rules += 1
+            # One sentence per rule: nothing but citations may follow its first full stop.
+            sentence = re.sub(r"\[[^\]]*\]\([^)]+\)", "L", re.sub(r"`[^`]*`", "C", line))
+            if re.search(r"\.\s+[A-Z]", re.sub(r"(\s*L[,.]?)+\s*$", "", sentence)):
+                errors.append(f"{path.name}:{number}: rule has more than one sentence")
+            fixtures = []
+            for label, link in links:
+                target = path.parent / link.split("#")[0]
+                if "/tests/" in link or "/test/corpus/" in link or "/test_history.py" in link:
+                    fixtures.append(link)
+                elif link.endswith(".rs") and target.is_file() and "#[test]" in target.read_text():
+                    fixtures.append(link)
+                else:
+                    continue
+                # A Rust citation labelled with a test name must name a test in that file.
+                if link.endswith(".rs") and target.is_file() and re.fullmatch(r"[a-z][a-z0-9_]*", label):
+                    if not re.search(rf"\bfn {label}\(", target.read_text()):
+                        errors.append(f"{path.name}:{number}: no test {label} in {link}")
+            if not fixtures:
+                errors.append(f"{path.name}:{number}: rule has no fixture")
     return rules, errors
 
 

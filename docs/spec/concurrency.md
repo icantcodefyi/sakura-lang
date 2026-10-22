@@ -10,7 +10,7 @@ and design §17.171, §17.259 (G23), §17.280 (4) and §17.296.
 Handlers are in [effects](effects.md) and failures in [errors](errors.md).
 [Draft conventions](README.md) identify normative material; rules are labelled **CCnn**.
 
-Every backend runs one Sakura instance on one thread (design §17.171): tasks interleave at
+Informative: every backend runs one Sakura instance on one thread (design §17.171): tasks interleave at
 effect operations, they do not run in parallel, and no mutable value is shared between them.
 
 ## Scopes and fibers

@@ -159,7 +159,8 @@ Pinned since: std's `W1003` exemption (MO17) and the prelude's contents (MO18).
 ## Coverage accounting
 
 `python3 compiler/tools/agent_docs/spec_docs.py --check` counts labelled normative sentences,
-grammar, diagnostic and semantics labels alike, and requires each to carry a fixture citation.
+grammar, diagnostic and semantics labels alike, and requires each to carry a fixture citation
+and to be one sentence; every unlabelled paragraph must be marked informative.
 The four EBNF blocks inherit citations from G16, G17, G18, and G21.
 Generated active rows with a fixture are candidate normative identity rows; active rows
 with a gap and retired or reserved rows are informative.
