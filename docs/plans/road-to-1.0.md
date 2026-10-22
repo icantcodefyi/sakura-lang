@@ -42,7 +42,7 @@ queue** (lane B after its gates, in order: `error` as a field name, the lexer's 
 interpolation hole, `W1003 unused_import` with its fix, `Response.status_json`, `Gen.flat_map`,
 `where` after a newline, `--record` without a `net` list, the snapshot-name check; lane E: a refined
 field's check assumed on projection, the `T.validate` join, `test` bodies skipped by `verify`;
-`Http.is_refused` if a second program asks). **Out of 1.0:** packages (milestone P; 1.x, additive, after its own research and plan); native as a
+`Http.is_refused` if a second program asks). **Out of 1.0:** packages (milestone P; 1.x, additive; research/17, [RFC 0003](../rfcs/0003-packages.md) and [`packages.md`](packages.md) started 2026-10-22, §17.311); native as a
 stable target (the stabilization entry of §17.308 (1e), a 1.x minor); whichever M5 rows are not
 on `main` at the last beta's preparation commit (§17.308 (1): they ship in the 1.x minor they
 land in, Perceus reuse and borrow inference as ABI MINORs); the §17.177 representation windows;
