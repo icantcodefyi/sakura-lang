@@ -999,14 +999,14 @@ fn prim(module: &Module, op: &PrimOp, args: &[Value]) -> R<Value> {
         (Not, [Bool(a)]) => Bool(!a),
         (Eq(_), [a, b]) => Bool(equal(a, b)),
         (Ne(_), [a, b]) => Bool(!equal(a, b)),
-        (Lt(_), [a, b]) => Bool(compare(a, b) == Some(Ordering::Less)),
-        (Le(_), [a, b]) => Bool(matches!(
-            compare(a, b),
+        (Lt(t), [a, b]) => Bool(compare_as(*t, a, b) == Some(Ordering::Less)),
+        (Le(t), [a, b]) => Bool(matches!(
+            compare_as(*t, a, b),
             Some(Ordering::Less | Ordering::Equal)
         )),
-        (Gt(_), [a, b]) => Bool(compare(a, b) == Some(Ordering::Greater)),
-        (Ge(_), [a, b]) => Bool(matches!(
-            compare(a, b),
+        (Gt(t), [a, b]) => Bool(compare_as(*t, a, b) == Some(Ordering::Greater)),
+        (Ge(t), [a, b]) => Bool(matches!(
+            compare_as(*t, a, b),
             Some(Ordering::Greater | Ordering::Equal)
         )),
         (Show(_), [v]) => Str(show(module, v, false).into()),
@@ -1039,13 +1039,40 @@ pub fn equal(a: &Value, b: &Value) -> bool {
     }
 }
 
+/// A comparison operator of class `t`, as the backends compile it: a `Float` operand compares
+/// as IEEE (`None` for a NaN), an `Any` operand (a record, list, tuple, variant, or a generic
+/// `K: Ord`) by the derived total order (design §4.1, §17.259 (G04)).
+pub fn compare_as(t: sakura_core::CmpTy, a: &Value, b: &Value) -> Option<Ordering> {
+    order(a, b, t == sakura_core::CmpTy::Any)
+}
+
 /// Structural ordering (`Ord`): variants by constructor index, then payloads; sequences
-/// lexicographically. `None` for incomparable values (NaN, functions).
+/// lexicographically; a `Float` as IEEE. `None` for incomparable values (NaN, functions).
 pub fn compare(a: &Value, b: &Value) -> Option<Ordering> {
+    order(a, b, false)
+}
+
+/// The derived total `Ord` of an `Any` comparison: every NaN equal to every other and after
+/// every other value, inside a value too.
+pub fn compare_total(a: &Value, b: &Value) -> Option<Ordering> {
+    order(a, b, true)
+}
+
+/// `f64`'s order with every NaN equal to every other and after every other value.
+pub fn total_float(x: f64, y: f64) -> Ordering {
+    match (x.is_nan(), y.is_nan()) {
+        (true, true) => Ordering::Equal,
+        (true, false) => Ordering::Greater,
+        (false, true) => Ordering::Less,
+        (false, false) => x.partial_cmp(&y).expect("neither is NaN"),
+    }
+}
+
+fn order(a: &Value, b: &Value, total: bool) -> Option<Ordering> {
     use Value::*;
     let seq = |xs: &[Value], ys: &[Value]| {
         for (x, y) in xs.iter().zip(ys) {
-            match compare(x, y)? {
+            match order(x, y, true)? {
                 Ordering::Equal => {}
                 o => return Some(o),
             }
@@ -1056,6 +1083,7 @@ pub fn compare(a: &Value, b: &Value) -> Option<Ordering> {
         (Unit, Unit) => Some(Ordering::Equal),
         (Bool(x), Bool(y)) => Some(x.cmp(y)),
         (Int(x), Int(y)) => Some(x.cmp(y)),
+        (Float(x), Float(y)) if total => Some(total_float(*x, *y)),
         (Float(x), Float(y)) => x.partial_cmp(y),
         (Str(x), Str(y)) => Some(x.cmp(y)),
         (Tuple(x), Tuple(y)) | (Record(_, x), Record(_, y)) => seq(x, y),

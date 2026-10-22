@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use sakura_core::Module;
 
-use crate::{Called, Handlers, Machine, R, Stop, Value, compare, defect, equal, int};
+use crate::{Called, Handlers, Machine, R, Stop, Value, compare_total, defect, equal, int};
 
 pub(crate) fn option(module: &Module, v: Option<Value>) -> R<Value> {
     let t = module
@@ -170,7 +170,7 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
         ("list_contains", [List(xs), x]) => Bool(xs.iter().any(|y| equal(x, y))),
         ("list_sort", [List(xs)]) => {
             let mut ys = (**xs).clone();
-            ys.sort_by(|a, b| compare(a, b).unwrap_or(std::cmp::Ordering::Equal));
+            ys.sort_by(|a, b| compare_total(a, b).unwrap_or(std::cmp::Ordering::Equal));
             list(ys)
         }
         ("list_enumerate", [List(xs)]) => list(
@@ -254,7 +254,8 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
                 keyed.push((cb!(f, x.clone()), x.clone()));
             }
             // Stable, like the runtime's index tie-break.
-            keyed.sort_by(|(a, _), (b, _)| compare(a, b).unwrap_or(std::cmp::Ordering::Equal));
+            keyed
+                .sort_by(|(a, _), (b, _)| compare_total(a, b).unwrap_or(std::cmp::Ordering::Equal));
             list(keyed.into_iter().map(|(_, x)| x).collect())
         }
         ("set_empty", []) => Set(Rc::new(vec![])),

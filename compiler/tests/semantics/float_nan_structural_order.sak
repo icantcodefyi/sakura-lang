@@ -1,0 +1,20 @@
+// milestone: M4
+// covers: design §4.1, §17.259 (G04): the derived `Ord` of a value holding a `Float` is total
+
+// A `Float` operand compares as IEEE, so `nan <= nan` is false. Inside a record, tuple or list
+// the derived order is total: every NaN equals every other and sorts after every other value,
+// and `-0.0` equals `0.0`. `==` stays IEEE inside a value too.
+type R = { v: Float }
+
+fn zero() -> Float { 0.0 }
+
+pub fn main() -> Unit ! {Console} {
+  let nan = zero() / zero()
+  Console.print(
+    "{nan <= nan} {R { v: nan } <= R { v: nan }} {R { v: nan } >= R { v: nan }} {R { v: nan } < R { v: nan }} {R { v: nan } == R { v: nan }}",
+  )
+  Console.print(
+    "{[nan] < [1.0]} {[1.0] < [nan]} {[nan] > [1.0]} {(nan, 2) < (nan, 3)} {[-0.0] < [0.0]} {[-0.0] <= [0.0]}",
+  )
+  Console.print("{List.sort([nan, 1.0, 0.5])} {List.sort([R { v: nan }, R { v: 1.0 }])}")
+}

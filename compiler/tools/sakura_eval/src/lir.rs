@@ -1656,19 +1656,21 @@ impl<'m> Vm<'m> {
                 let s = format!("{}{}", self.str_of(*x)?, self.str_of(*y)?);
                 W(self.string(s)?)
             }
-            (Cmp(c, _), [x, y]) => {
+            (Cmp(c, k), [x, y]) => {
                 let (x, y) = (*x, *y);
+                // An `Any` comparison is the derived total order, a `Float` one IEEE.
+                let total = *k == CmpKind::Any;
                 B(match c {
                     CmpOp::Eq => self.equal(x, y)?,
                     CmpOp::Ne => !self.equal(x, y)?,
-                    CmpOp::Lt => self.compare(x, y)? == Some(std::cmp::Ordering::Less),
+                    CmpOp::Lt => self.order(x, y, total)? == Some(std::cmp::Ordering::Less),
                     CmpOp::Le => matches!(
-                        self.compare(x, y)?,
+                        self.order(x, y, total)?,
                         Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
                     ),
-                    CmpOp::Gt => self.compare(x, y)? == Some(std::cmp::Ordering::Greater),
+                    CmpOp::Gt => self.order(x, y, total)? == Some(std::cmp::Ordering::Greater),
                     CmpOp::Ge => matches!(
-                        self.compare(x, y)?,
+                        self.order(x, y, total)?,
                         Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
                     ),
                 })
@@ -1787,12 +1789,15 @@ impl<'m> Vm<'m> {
     }
 
     /// Structural ordering (`Ord`), as `sakura_eval::compare`.
-    fn compare(&self, a: Val, b: Val) -> R<Option<std::cmp::Ordering>> {
+    /// The comparison operators, as `sakura_eval::compare_as`: a `Float` operand compares as
+    /// IEEE when `total` is false; inside a value, and for an `Any` comparison, by the derived
+    /// total order.
+    fn order(&self, a: Val, b: Val, total: bool) -> R<Option<std::cmp::Ordering>> {
         use std::cmp::Ordering;
         let (x, y) = (self.view(a)?, self.view(b)?);
         let seq = |vm: &Self, xs: Vec<Val>, ys: Vec<Val>| -> R<Option<Ordering>> {
             for (x, y) in xs.iter().zip(&ys) {
-                match vm.compare(*x, *y)? {
+                match vm.order(*x, *y, true)? {
                     Some(Ordering::Equal) => {}
                     o => return Ok(o),
                 }
@@ -1804,6 +1809,7 @@ impl<'m> Vm<'m> {
             (View::Unit, View::Unit) => Some(Ordering::Equal),
             (View::Bool(p), View::Bool(q)) => Some(p.cmp(&q)),
             (View::Int(p), View::Int(q)) => Some(p.cmp(&q)),
+            (View::Float(p), View::Float(q)) if total => Some(crate::total_float(p, q)),
             (View::Float(p), View::Float(q)) => p.partial_cmp(&q),
             (View::Str(p), View::Str(q)) => Some(p.cmp(q)),
             (View::Slots(t, i, c, xs), View::Slots(u, j, d, ys)) if t == u => {
