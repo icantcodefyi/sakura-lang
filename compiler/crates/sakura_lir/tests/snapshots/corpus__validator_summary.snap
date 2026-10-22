@@ -11,6 +11,7 @@ semantics/blob_slice_and_text: 23 funcs, 151 blocks, 2 dup, 96 drop, valid
 semantics/blob_source: 42 funcs, 275 blocks, 21 dup, 114 drop, valid
 semantics/blob_text_rejects_invalid_utf8: 19 funcs, 99 blocks, 0 dup, 35 drop, valid
 semantics/blocks_and_let: 2 funcs, 5 blocks, 0 dup, 4 drop, valid
+semantics/borrow_variants_bounded: 5 funcs, 16 blocks, 12 dup, 14 drop, valid
 semantics/bytes_base64_lenient_whitespace: 5 funcs, 23 blocks, 0 dup, 14 drop, valid
 semantics/bytes_base64_rejects_padding: 6 funcs, 27 blocks, 0 dup, 22 drop, valid
 semantics/bytes_base64_vectors: 9 funcs, 50 blocks, 1 dup, 28 drop, valid

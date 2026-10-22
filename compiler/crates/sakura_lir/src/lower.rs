@@ -261,16 +261,26 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         Callee::Closure(_) => false,
     };
     // Plan M5 N4a: the marked sites whose callee takes the argument borrowed lend it; a direct
-    // def's then go to its borrowed variants, at most one per function already there.
-    let lendable = crate::borrow::borrowable(&funcs, &never);
+    // def's then go to its borrowed variants. N4b bounds them per direct component, at one per
+    // parameter the component could take borrowed; a component past it lends nothing.
     let pre = funcs.clone();
-    let mut borrowed = None;
-    for direct_lends in [true, false] {
+    let (comp, comps) = crate::borrow::components(&pre);
+    let mut bound = vec![0; comps];
+    for (g, row) in crate::borrow::borrowable(&pre, &never).iter().enumerate() {
+        bound[comp[g]] += 2 * row.iter().filter(|&&b| b).count();
+    }
+    let mut cut = vec![false; comps];
+    let borrowed = loop {
+        let mut start = never.clone();
+        for (g, row) in start.iter_mut().enumerate() {
+            if cut[comp[g]] {
+                row.fill(false);
+            }
+        }
+        let lendable = crate::borrow::borrowable(&pre, &start);
         let lends = |callee: &Callee, i: usize| match callee {
             Callee::Builtin(name) => crate::borrow::lends(name, i),
-            Callee::Direct(f) => {
-                direct_lends && lendable.get(f.index()).and_then(|a| a.get(i)) == Some(&true)
-            }
+            Callee::Direct(f) => lendable.get(f.index()).and_then(|a| a.get(i)) == Some(&true),
             Callee::Closure(_) => false,
         };
         let mut reset = false;
@@ -283,15 +293,15 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         for f in &mut funcs {
             own(f)?;
         }
-        borrowed = crate::borrow::variants(&mut funcs, &pre, pre.len(), &mut own)?;
+        let made = crate::borrow::variants(&mut funcs, &pre, (&comp, &bound), &mut own)?;
         if reset {
             cx.used_builtins.insert(crate::reuse::RESET.to_owned());
         }
-        if borrowed.is_some() {
-            break;
+        match made {
+            Ok(made) => break made,
+            Err(c) => cut[c] = true,
         }
-    }
-    let borrowed = borrowed.ok_or("borrowed variants without direct lending")?;
+    };
     for &(v, g) in &borrowed {
         cx.facts.alias(g.index(), v.index());
     }

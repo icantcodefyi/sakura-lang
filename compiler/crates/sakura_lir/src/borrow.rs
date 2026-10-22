@@ -256,15 +256,16 @@ pub(crate) fn carriers(f: &Func, p: Var) -> HashSet<Var> {
 /// passing a `ref` at one. `pre` is every function before ownership, and `own` runs ownership
 /// (and reuse) over a new variant. A variant of def `g` lending parameters `L` is `pre[g]` with
 /// those parameters and their carriers `ref`; its own calls may need more. Returns each variant
-/// with its def, or `None` when more than `cap` would be needed (the caller then lends to
-/// builtins only).
+/// with its def, or `Err(c)` when direct component `c` ([`components`]) would need more than
+/// `bound[c]` (plan M5 N4b; the caller then lends nothing to `c`).
 pub fn variants(
     funcs: &mut Vec<Func>,
     pre: &[Func],
-    cap: usize,
+    (comp, bound): (&[usize], &[usize]),
     own: &mut dyn FnMut(&mut Func) -> Result<(), String>,
-) -> Result<Option<Vec<(FuncId, FuncId)>>, String> {
+) -> Result<Result<Vec<(FuncId, FuncId)>, usize>, String> {
     let mut made: BTreeMap<(FuncId, Vec<bool>), FuncId> = BTreeMap::new();
+    let mut count = vec![0; bound.len()];
     let mut out = Vec::new();
     let mut next = 0;
     while next < funcs.len() {
@@ -286,8 +287,10 @@ pub fn variants(
             let v = match made.get(&key) {
                 Some(&v) => v,
                 None => {
-                    if out.len() == cap {
-                        return Ok(None);
+                    let c = comp[key.0.index()];
+                    count[c] += 1;
+                    if count[c] > bound[c] {
+                        return Ok(Err(c));
                     }
                     let mut t = pre[key.0.index()].clone();
                     let params = t.params().to_vec();
@@ -314,7 +317,27 @@ pub fn variants(
         }
         next += 1;
     }
-    Ok(Some(out))
+    Ok(Ok(out))
+}
+
+/// Each function's strongly connected component of the direct call graph, and how many there
+/// are: [`variants`]' unit of bound (plan M5 N4b).
+pub fn components(funcs: &[Func]) -> (Vec<usize>, usize) {
+    let succ: Vec<Vec<usize>> = funcs
+        .iter()
+        .map(|f| {
+            (f.blocks.iter())
+                .filter_map(|b| match &b.term {
+                    Term::Call {
+                        callee: Callee::Direct(g),
+                        ..
+                    } => Some(g.index()),
+                    _ => None,
+                })
+                .collect()
+        })
+        .collect();
+    crate::split::components(&succ)
 }
 
 /// `m` as lowered without the borrowed convention: each [`Inst::Lend`] its `dup.candidate`

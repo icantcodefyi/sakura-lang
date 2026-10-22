@@ -11,6 +11,7 @@ semantics/blob_slice_and_text: unsupported (builtin string_to_bytes)
 semantics/blob_source: unsupported (builtin string_to_bytes)
 semantics/blob_text_rejects_invalid_utf8: unsupported (builtin bytes_from_list)
 semantics/blocks_and_let: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
+semantics/borrow_variants_bounded: ok, 52 allocated, 12 dup, 64 drop, peak 22, live 0/0
 semantics/bytes_base64_lenient_whitespace: unsupported (builtin bytes_from_base64_lenient)
 semantics/bytes_base64_rejects_padding: unsupported (builtin bytes_from_base64)
 semantics/bytes_base64_vectors: unsupported (builtin string_to_bytes)

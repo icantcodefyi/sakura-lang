@@ -1,0 +1,28 @@
+// milestone: M5
+// covers: plan m5-native N4b; design §17.310 (3f) (5) (borrowed variants are bounded per direct component)
+
+// `sum3` only reads its lists' lengths, and the seven calls below lend seven different sets
+// of them (each list read again at the end is lent): more variants than its component's bound
+// of two per parameter, so `sum3` takes every argument owned. `len1`'s component still borrows.
+fn sum3(a: List<Int>, b: List<Int>, c: List<Int>) -> Int {
+  List.len(a) * 100 + List.len(b) * 10 + List.len(c)
+}
+
+fn len1(a: List<Int>) -> Int { List.len(a) }
+
+pub fn main() -> Unit ! {Console} {
+  let a = [1, 2]
+  let b = [10, 20, 30]
+  let c = [100, 200, 300, 400]
+  let s = [
+    sum3(a, [3], [4]),
+    sum3([5], b, [6]),
+    sum3([7], [8], c),
+    sum3(a, b, [9]),
+    sum3(a, [9], c),
+    sum3([9], b, c),
+    sum3(a, b, c),
+  ]
+  Console.print("sums {s} len {len1(a)}")
+  Console.print("kept {a} {b} {c}")
+}

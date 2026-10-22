@@ -375,7 +375,7 @@ fn each_var(b: &mut Block, visit: &mut impl FnMut(&mut Var)) {
 
 /// Each block's strongly connected component of the control-flow graph `succ`, and how many
 /// there are (an iterative Tarjan: a wide function has tens of thousands of blocks).
-fn components(succ: &[Vec<usize>]) -> (Vec<usize>, usize) {
+pub(crate) fn components(succ: &[Vec<usize>]) -> (Vec<usize>, usize) {
     let n = succ.len();
     let (mut index, mut low, mut comp) = (vec![usize::MAX; n], vec![0; n], vec![usize::MAX; n]);
     let (mut on, mut stack, mut next, mut comps) = (vec![false; n], vec![], 0, 0);

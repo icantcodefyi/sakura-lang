@@ -479,6 +479,22 @@ fn borrows_are_read_only_and_their_owner_is_held() {
     });
 }
 
+/// Plan M5 N4b: `sum3`'s seven lent sets pass its component's bound, so it gets no borrowed
+/// variant and takes its arguments owned; `len1`'s component still lends.
+#[test]
+fn borrowed_variants_are_bounded_per_direct_component() {
+    big_stack(|| {
+        let m = lowered("borrow_variants_bounded");
+        assert!(errors(&m).is_empty(), "{:?}", errors(&m));
+        let of = |name: &str| {
+            (m.borrowed.iter())
+                .filter(|(_, g)| m.funcs[g.index()].name.ends_with(name))
+                .count()
+        };
+        assert_eq!((of("sum3"), of("len1")), (0, 1));
+    });
+}
+
 /// Plan M5 N4a: every corpus program validates with borrowing stripped, with no `lend`, no
 /// `ref` and no borrowed variant left.
 #[test]
