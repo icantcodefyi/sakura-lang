@@ -138,3 +138,36 @@ campaign's CPU-hours ledger (design §17.306, `docs/plans/windows-compute.md`), 
 runs. Close-out recorded by Claude Opus 5.5.
 
 **`v1.0.0-beta.4` baseline, 2026-10-22.** `bench/baselines/d88970189598.json`, `wasm/d88970189598.json` and `typescript/d88970189598.json` now hold the counted `js`, `wasm` and `typescript` runs at the preparation commit `40af20ce096074012bbd2344129da441589d3e6c` (Node 26.12.0, the same flags; tree clean, every oracle green); the `472dea56` files are in `bench/baselines/archive/472dea56/`. The first counted `compile-native` report (N2f (iii)) is blessed to `bench/baselines/compile-native/d88970189598.json`; it names `lowering` (2.00×) and `codegen` (2.01×) superlinear from 16,384 to 32,768 rows. Evidence: `bench/results/2026-10-22-40af20ce-*` (native, compile, typescript, envelope `miss` on 237 of 264, against 236 at beta.3, carried; prep `fib`/`shapes` compare `ok` on every Node cell, largest move +0.5%). Blessed by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design §17.310 (1)). **The `v1.0.0-beta.4` tag goes on `40af20ce`**: CI run 39716555522 green on that SHA (attempt 2; attempt 1 failed only `native_counts_the_gauge_sets_frames_and_restarts_as_wasm` on `ubuntu-24.04-arm`, `deep_recursion_defect --no-direct` native exit 2, which the same tree passed at `803a74a3`); dry run 39716569317 green on every row, the native smoke on all three native rows; `sign_test` 39716572125 green.
+
+**`v1.0.0-beta.4` close-out (docs/release.md §7), 2026-10-22.** Tag `v1.0.0-beta.4` (annotated)
+peels to `40af20ce096074012bbd2344129da441589d3e6c`, the preparation commit, so the `40af20ce`
+bless (`63b36b91`) stands; `dab5ab89`, N3c (`1038b9bc`) and `4bd89c49` landed after it and ship
+in beta.5. Gates before the preparation commit (design §17.310 (5)): `868477bc`, `845a3778`,
+`5f818d41`; CI on their head `803a74a3`: run 39713388161, green. CI on the preparation commit: run
+39716555522, green on attempt 2 (attempt 1 failed only the `ubuntu-24.04-arm` native gauge test,
+`deep_recursion_defect --no-direct` native exit 2, passed at `803a74a3` and on the rerun; open
+as a flake to chase). Dry run 39716569317 and `sign_test` 39716572125, green, the native smoke on
+all three native rows. Tag run
+[39724819309](https://github.com/icantcodefyi/sakuralang/actions/runs/39724819309), green
+throughout: five builds, Darwin signed (Developer ID) and notarized, five install smokes, then
+GitHub (prerelease, 19 assets; the tag run's `SHA256SUMS` reviewed before approval), Homebrew
+(`sakuralang-beta`, tap commit `35e5e61b`) and npm (`beta` = `1.0.0-beta.4` for `sakuralang` and
+all five companion packages, provenance; `latest` stays `0.1.0`). The published binary prints
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, `spctl` accepts it as Notarized
+Developer ID, `gh attestation verify` passes, and the installed macOS arm64 `sakura` builds and
+runs `--target native` (ABI 1.18.0). `compat.yml`
+[39724819428](https://github.com/icantcodefyi/sakuralang/actions/runs/39724819428) on the tag
+against `v1.0.0-beta.3`: success (528 same, 0 differ). `verify-published.yml`
+[39730024773](https://github.com/icantcodefyi/sakuralang/actions/runs/39730024773) failed two
+`aarch64-unknown-linux-gnu` rows: `ubuntu-22.04-arm` on npm propagation (the companion not yet
+resolvable), and `debian:bookworm` on `V8007`, the first native release on that row meeting a
+userland with no `cc`; the row now installs `gcc` and `libc6-dev` (`138477fb`), and
+[39736314027](https://github.com/icantcodefyi/sakuralang/actions/runs/39736314027) is green on
+all six rows with the native step on the three native targets — §17.175 (7)'s "A shipped" and
+row B's acceptance (§17.310 (4)). `dogfood.yml`
+[39730028125](https://github.com/icantcodefyi/sakuralang/actions/runs/39730028125): green.
+`rt/tests/fixtures/abi/1.18.0/` captured from the published archive (`b47aea30`); no `1.17.0/`.
+The VS Code extension is not republished for this beta. **Next:** beta.5 (N3c, N4b, row M and
+the first native run-time baseline, C-native); `v1.0.0` stays the owner's, on the Windows fuzz
+ledger (design §17.306). Released by Claude Opus 5.5 under the owner's written delegation of
+2026-10-22.
