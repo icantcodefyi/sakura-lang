@@ -12,19 +12,14 @@ remains the current policy until the owner records acceptance and updates it.
   The human contributor owns acceptance and the resulting guarantees.
 - Discussion and PR: not opened. The owner requested this draft directly on main.
   The pitch is design §17.225–226, round 23, commit `a7d9e205`.
-- Decision status: FCP (Draft → FCP on 2026-10-22, design §17.312). The proposed
-  disposition is acceptance in `v1.0.0`'s preparation commit. The owner decided on
-  2026-10-21 that this RFC does not gate
-  `v1.0.0-beta.1`: the beta ships first with a looser promise, "it may have bugs and may
-  change before 1.0.0", every breaking change listed in the CHANGELOG with a migration
-  (STABILITY.md "Today", design §17.291's addendum).
+- Decision status: FCP waived by the owner on 2026-10-23; acceptance is recorded at
+  `v1.0.0`'s preparation commit.
 - Implementation status: Partial existing checks; enforcement gaps below remain open.
 - Stabilization status: Not stabilized.
-- FCP start/end: FCP start 2026-10-22, end 2026-10-29: seven calendar days under the
-  [RFC process](README.md), not closed early. The FCP does not gate the betas; `v1.0.0` is not
-  tagged before it ends.
-- Decision date/owner: Not decided; @icantcodefyi accepts after the FCP, at a beta or at
-  `v1.0.0`, whichever release follows its close.
+- FCP start/end: waived by @icantcodefyi on 2026-10-23 (written decision); no seven-day
+  period.
+- Decision date/owner: Not decided; acceptance is recorded at `v1.0.0`'s preparation commit
+  under the owner's written delegation of 2026-10-22.
 
 ## Motivation
 
@@ -412,3 +407,7 @@ FCP closes; the FCP does not gate `v1.0.0-beta.1` (owner, 2026-10-21).
   commit as "accepted by Claude <model> under the owner's written delegation of 2026-10-22",
   with the first-honouring release per guarantee and the stabilization record; `v1.0.0` is not
   tagged before 2026-10-29. A substantive change to this RFC restarts the FCP.
+- 2026-10-23: the owner waived the FCP in writing ("waive the 7 day comment period and ship
+  1.0.0"). The FCP recorded on 2026-10-22 ends here, without a seven-day period, and `v1.0.0`
+  is not held for a date. Acceptance, the first-honouring release per guarantee and the
+  stabilization record are written here in `v1.0.0`'s preparation commit.
