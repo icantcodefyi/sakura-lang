@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Full nightly suite or inexpensive unchanged-commit noise sample
+        description: Full nightly suite, the native comparison alone (matched lane), or an unchanged-commit noise sample
         type: choice
-        options: [nightly, noise]
+        options: [nightly, native, noise]
         default: nightly
       repeats:
         description: Independent quick noise runs per runner/engine (2–10)
@@ -186,7 +186,7 @@ jobs:
           if-no-files-found: warn
 
   nightly:
-    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')
     name: Nightly JS (${{ matrix.lane }}, ${{ matrix.engine }})
     strategy:
       fail-fast: false
@@ -246,9 +246,16 @@ jobs:
           if-no-files-found: warn
 
   nightly-native:
+    # Wall time of Sakura --target native beside C, Rust, Go, OCaml and Koka on a hosted runner:
+    # the time numbers anyone can reproduce (the counted baseline is the reference Mac's).
     if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
+    name: Nightly native (${{ matrix.lane }})
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: ${{ fromJSON(inputs.mode == 'native' && '["matched"]' || '["matched", "idiomatic"]') }}
     runs-on: macos-latest
-    timeout-minutes: 180
+    timeout-minutes: 330
     defaults:
       run:
         shell: bash
@@ -309,24 +316,25 @@ jobs:
         env:
           HYPERFINE_VERSION: ${{ steps.pins.outputs.hyperfine }}
         run: cargo install hyperfine --version "=$HYPERFINE_VERSION" --locked
-      - name: Full native suite (both lanes)
+      - name: Full native suite
+        env:
+          BENCH_LANE: ${{ matrix.lane }}
         run: |
           mkdir -p bench-results
-          for lane in matched idiomatic; do
-            bench run --suite native --lane "$lane" --sizes all \
-              --stable --json "bench-results/nightly-${lane}-native.json"
-          done
+          cc --version
+          bench run --suite native --lane "$BENCH_LANE" --sizes all \
+            --stable --json "bench-results/nightly-${BENCH_LANE}-native.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: bench-nightly-macos
+          name: bench-nightly-native-macos-${{ matrix.lane }}
           path: bench-results/
           if-no-files-found: warn
 
   nightly-wasm:
     # The WASM lane (§17.191 (2)) on its own runner: the nightly job above has no time to spare.
     # Trend evidence only: no WASM number is official before a quiet-window bless (§17.153).
-    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')
     runs-on: macos-latest
     timeout-minutes: 150
     defaults:
