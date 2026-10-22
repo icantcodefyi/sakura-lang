@@ -102,7 +102,16 @@ def formula_name(ver):
     return "sakuralang" if tag == "latest" else f"sakuralang-{tag}"
 
 
+def stable(ver):
+    # Road §7 (§17.312): a plain X.Y.Z at or above 1.0 carries RFC 0001's guarantees.
+    return dist_tag(ver) == "latest" and semver(ver)[0] >= 1
+
+
 def promise(ver):
+    if stable(ver):
+        return ("a stable release: what STABILITY.md lists as stable keeps working\n"
+                "across 1.x, and breaking changes wait for 2.0; the native backend, packages and\n"
+                "std/worker are experimental.")
     if dist_tag(ver) == "beta":
         return ("a beta of 1.0. It may have bugs and may change before 1.0.0, and it is not\n"
                 "for production; every breaking change is listed in CHANGELOG.md with a migration.")
@@ -417,7 +426,14 @@ def release_notes(ver, commit, macos_signed=False):
         "Dry run: macOS signing and notarization were skipped; these artifacts have no\n"
         "Developer ID signature or notarization."
     )
-    if dist_tag(ver) == "beta":
+    if stable(ver):
+        status = f"""Sakura Lang {ver}, a stable release from commit {commit}. What STABILITY.md lists
+as stable keeps working across 1.x, and breaking changes wait for 2.0; the native backend,
+packages and std/worker are experimental. The guarantees are RFC 0001's, accepted; a security
+or soundness fix that has to break something comes with a migration in CHANGELOG.md, and
+STABILITY.md lists what each contract covers. Beta users on Homebrew move with
+`brew uninstall sakuralang-beta && brew install sakuralang`."""
+    elif dist_tag(ver) == "beta":
         status = f"""Sakura Lang {ver}, a beta of 1.0 from commit {commit}. It may have bugs and may
 change before 1.0.0, and it is not for production. Every breaking change is listed in
 CHANGELOG.md with a migration; STABILITY.md lists what each contract covers today."""

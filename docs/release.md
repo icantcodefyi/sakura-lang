@@ -537,7 +537,10 @@ and summary before approving, not only the dry run's.
    Publish tested bytes, final hashes, notices, skill assets, provenance and approved
    signatures/attestations. Notes call a 0.x version a pre-1.0 preview with no stability promise
    yet (RFC 0001, STABILITY.md), and a `-beta.N` a beta of 1.0 that may have bugs and may change
-   before 1.0.0, not for production, and state tested platforms/floors, Node 26,
+   before 1.0.0, not for production, and a plain version at or above 1.0 a stable release
+   whose STABILITY.md contracts hold across the major (RFC 0001, accepted), with the
+   native backend, packages and `std/worker` experimental (road §7, §17.312); they
+   state tested platforms/floors, Node 26,
    solver scope and signing/notarization status. Verify downloaded assets. Run
    `gh attestation verify <downloaded-file> --repo icantcodefyi/sakuralang` and
    inspect expected source/workflow identity.

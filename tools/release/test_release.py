@@ -90,6 +90,29 @@ class ReleasePackaging(unittest.TestCase):
         self.assertIn("may have bugs and may change before 1.0.0", readme)
         self.assertNotIn("pre-1.0 preview", readme)
 
+    def test_promise_has_a_beta_a_pre_1_0_and_a_stable_branch(self):
+        for ver, opens, says in (
+                ("1.0.0-beta.6", "a beta of 1.0", "it is not for production"),
+                ("0.1.0", "a pre-1.0 preview release", "no stability\npromise yet"),
+                ("1.0.0-rc.1", "a pre-1.0 preview release", "no stability\npromise yet"),
+                ("1.0.0", "a stable release", "keeps working across 1.x"),
+                ("1.4.2", "a stable release", "keeps working across 1.x")):
+            with self.subTest(ver=ver):
+                notes = release.release_notes(ver, "0" * 40)
+                self.assertTrue(notes.startswith(f"Sakura Lang {ver}, {opens} from commit {'0' * 40}."))
+                self.assertIn(says, notes)
+                readme = release.readme(ver, "x86_64-unknown-linux-gnu")
+                self.assertIn(f"Sakura Lang {ver} is {release.promise(ver)} See STABILITY.md", readme)
+        stable = release.release_notes("1.0.0", "0" * 40)
+        self.assertIn("breaking changes wait for 2.0; the native backend,\npackages and std/worker are experimental.",
+                      stable)
+        self.assertIn("RFC 0001's, accepted", stable)
+        self.assertIn("`brew uninstall sakuralang-beta && brew install sakuralang`", stable)
+        self.assertIn("breaking changes wait for 2.0; the native backend, packages and\nstd/worker are experimental.",
+                      release.promise("1.0.0"))
+        for ver in ("0.1.0", "1.0.0-beta.6", "1.0.0-rc.1"):
+            self.assertNotIn("a stable release", release.promise(ver))
+
     def test_notes_distinguish_unsigned_dry_run_and_notarized_release(self):
         unsigned = release.release_notes("1.2.3", "0" * 40)
         signed = release.release_notes("1.2.3", "0" * 40, True)
