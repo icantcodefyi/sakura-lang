@@ -214,3 +214,34 @@ Native was not run (item 3; outside the round).
 | `src/main.sak` header: `Upgraded to` provenance line names beta.5 | No (provenance) | n/a, not a migration |
 
 **No migration hunk needed.** Prediction and result agree. Migration-list gaps: none.
+
+## v1.0.0-beta.5 → v1.0.0-beta.6
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.6]` at beta.6's preparation commit `70c64513`, the commit the
+  tag names (`git show 70c64513:CHANGELOG.md`): "Migration from v1.0.0-beta.5", items 1–5
+  ("Nothing is breaking for a program without `[dependencies]` that ships its WASM host and
+  module from one release"), and the Added, Changed, Fixed and Security entries, read against
+  the program as of `70c64513`, the beta.5 round's result (`dogfood/` unchanged since it).
+- Compiler: the published `sakuralang@1.0.0-beta.6` from npm in a scratch prefix.
+- Not blind: the author had read the same entries in `[Unreleased]` on `main` and this program's
+  `sakura.toml`, `sakura.lock` and std imports before this was written.
+  Beta.6 had not been run on any program, and `dogfood.yml` had not run on it.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 `[dependencies]` is read; `version = 2` locks | No | `sakura.toml` has no `[dependencies]` ("A project without `[dependencies]` builds as before"); the `version = 1` `sakura.lock` has no packages and is rewritten only with `path` dependencies, so it stays as it is |
+| 2 `V1002` offers `import std/path.{Path}` | No | the program raises no `V1002`: beta.5's `check` was clean; a fix-offer change alone moves no source |
+| 3 a native `main` that declares `WebSocket` runs | No | no `WebSocket`, and the round tests js and wasm only |
+| 4 WASM runtime ABI 1.19.0 | Yes, nothing to change | the Node consumer loads `sakura_wasm_host.js` and the module from one `sakura build --target wasm` output directory, so both come from beta.6; no host from an older release is kept |
+| 5 MCP `check_patch` `interface_delta` keys | No | the round uses no MCP |
+| Added: community benchmark suites, the playground, C/Rust/Go/OCaml/Koka ports, the semver classifier | No | outside the program |
+| Fixed: native `String.split`, `replace`, `chars` and the case maps are linear | No | native is outside the round; JS and WASM were not affected |
+| Security: revealed key bytes zeroed on native and WASM | No | "no program's output changes" |
+| (provenance) `src/main.sak` header `Upgraded to:` line | Yes, not a migration | the line names beta.5; after this round it names beta.6 |
+
+Predicted diff: **none required**; the header's provenance line. `sakura.lock` stays at
+`version = 1`.
