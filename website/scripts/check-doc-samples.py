@@ -21,8 +21,6 @@ PAGES = [
     "website/content/docs/tour/contracts.mdx",
     "website/content/docs/tour/testing.mdx",
 ]
-# These fenced blocks deliberately demonstrate rejection, not executable programs.
-REJECTIONS = {("capabilities", 1): "V6001", ("capabilities", 2): "V6003"}
 
 
 def main():
@@ -34,8 +32,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix="ws7-docs-", dir="/tmp") as tmp:
         for name in PAGES:
             page = ROOT / name
-            blocks = re.findall(r"```sakura[^\n]*\n(.*?)\n```", page.read_text(), re.S)
-            for index, code in enumerate(blocks):
+            blocks = re.findall(r"```sakura([^\n]*)\n(.*?)\n```", page.read_text(), re.S)
+            for index, (info, code) in enumerate(blocks):
                 # The rest of the testing tour contains fragments referring to earlier blocks.
                 if page.stem == "testing" and not (
                     code.startswith("pub fn increment(") or code.startswith("import std/fs.")
@@ -95,7 +93,8 @@ def main():
                     assert result.returncode == 0, result.stdout + result.stderr
                     executed += 1
                     print(f"{label}: contract failure, regression replay, fixed body: PASS")
-                expected = REJECTIONS.get((page.stem, index))
+                # A fence labelled `expect=CODE` demonstrates a rejection, not a program.
+                expected = (re.search(r"expect=(\w+)", info) or [None, None])[1]
                 commands = ["check"]
                 if not expected:
                     if re.search(r"^test ", code, re.M):
