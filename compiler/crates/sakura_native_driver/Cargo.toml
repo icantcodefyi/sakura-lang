@@ -14,6 +14,9 @@ publish.workspace = true
 [features]
 default = []
 native = ["dep:sakura_rt", "dep:sakura_host_native", "sakura_rt/native", "sakura_host_native/native", "dep:target-lexicon"]
+# The bench-only region measurement (design §17.174 (2)): the `region_*` counts in the
+# `SAKURA_NATIVE_STATS` line.
+regions = ["native", "sakura_rt/regions"]
 
 [dependencies]
 sakura_rt = { workspace = true, optional = true }

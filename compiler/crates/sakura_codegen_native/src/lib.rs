@@ -50,6 +50,10 @@ pub struct Options {
     /// `--native-checks` (design §17.173 (4)): every heap load and store first asks the
     /// runtime whether it stays inside its object's live block (`rt_check`).
     pub checks: bool,
+    /// The bench-only region measurement (design §17.174 (2), `SAKURA_NATIVE_REGIONS=1`): each
+    /// twin's entry and exits call `rt_region_enter`/`rt_region_leave`, which only a driver built
+    /// with `sakura_rt`'s `regions` feature has.
+    pub regions: bool,
     /// The std effects of `main`'s row after handling (`Http`, `Console`, …), whose root
     /// handlers the driver installs; it refuses at startup one the native host lacks (RFC 0002
     /// §7, design §17.271 (9)).
@@ -76,6 +80,7 @@ impl Default for Options {
             texts: vec![],
             module_hash: [0; 32],
             checks: false,
+            regions: false,
             root_effects: vec![],
             codegen_only: false,
             tests: false,
@@ -264,6 +269,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
                 twin_of,
                 lines: &mut lines,
                 checks: opts.checks,
+                regions: opts.regions,
             };
             func::compile(&mut env, b, f, twin)?;
         }

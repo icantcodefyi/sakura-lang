@@ -435,8 +435,12 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
     };
     let code = report_spans(inst.host(), &o, &spans);
     inst.host().flush_out();
+    #[cfg(feature = "regions")]
+    let extra = inst.regions().to_vec();
+    #[cfg(not(feature = "regions"))]
+    let extra = vec![];
     if let Some(path) = std::env::var_os("SAKURA_NATIVE_STATS")
-        && let Err(e) = append_stats(&path, inst.stats())
+        && let Err(e) = append_stats(&path, inst.stats(), extra)
     {
         eprintln!("warning: {e}");
     }
@@ -446,7 +450,12 @@ fn run(m: &'static SakuraModule) -> Result<i32, String> {
 
 /// One JSON line of the `stats()` counters (ABI §10) by name, as the WASM host's
 /// `SAKURA_WASM_STATS` writes it, for benchmark records.
-fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), String> {
+/// `extra` follows them: the region measurement in a `regions` build.
+fn append_stats(
+    path: &std::ffi::OsStr,
+    s: sakura_rt::Stats,
+    extra: Vec<(&str, u64)>,
+) -> Result<(), String> {
     use std::io::Write;
     let fields = [
         ("requested", s.requested),
@@ -465,7 +474,11 @@ fn append_stats(path: &std::ffi::OsStr, s: sakura_rt::Stats) -> Result<(), Strin
         ("borrow_candidates", s.borrow_candidates),
         ("borrows", s.borrows),
     ];
-    let body: Vec<String> = fields.iter().map(|(k, v)| format!("\"{k}\":{v}")).collect();
+    let body: Vec<String> = fields
+        .iter()
+        .chain(&extra)
+        .map(|(k, v)| format!("\"{k}\":{v}"))
+        .collect();
     std::fs::OpenOptions::new()
         .create(true)
         .append(true)

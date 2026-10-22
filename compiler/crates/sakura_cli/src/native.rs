@@ -160,6 +160,7 @@ pub fn build(
             .main_effects()
             .unwrap_or_default(),
         codegen_only: stop_after("codegen"),
+        regions: std::env::var("SAKURA_NATIVE_REGIONS").is_ok_and(|v| v == "1"),
         tests,
         split: sakura_lir::split::PIECE,
         ..Default::default()

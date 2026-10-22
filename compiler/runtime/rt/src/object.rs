@@ -35,6 +35,8 @@ impl Rt {
     /// A fresh object: zeroed payload, `rc = 1`, no flags.
     pub fn new_object(&mut self, tag: u16, size: u32) -> Res<u32> {
         let p = self.heap.alloc(size)?;
+        #[cfg(feature = "regions")]
+        self.regions.alloc(p, size);
         self.heap.mem.set_u16(p, tag);
         self.heap.mem.set_u32(p + 4, 1);
         Ok(p)
@@ -166,6 +168,8 @@ impl Rt {
             let obj = head;
             head = self.heap.mem.u32(obj + 4);
             self.release_children(obj, &mut head);
+            #[cfg(feature = "regions")]
+            self.regions.free(obj);
             self.heap.free(obj);
         }
     }

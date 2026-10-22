@@ -32,6 +32,8 @@ native = [
 # links only under `-Zsanitizer=address`, `valgrind` reports only under Memcheck.
 asan = ["native"]
 valgrind = ["native", "dep:crabgrind"]
+# The bench-only region measurement (design §17.174 (2); `regions.rs`).
+regions = ["native"]
 
 [dependencies]
 # Also compiled into the wasm32 object by `sakura_codegen_wasm/build.rs`.

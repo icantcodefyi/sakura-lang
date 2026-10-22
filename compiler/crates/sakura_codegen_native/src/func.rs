@@ -81,6 +81,8 @@ pub struct Env<'a> {
     pub lines: &'a mut crate::debuginfo::Lines,
     /// `--native-checks`: each heap access calls `rt_check` first.
     pub checks: bool,
+    /// Each twin entry and exit calls `rt_region_enter`/`rt_region_leave` ([`Options::regions`]).
+    pub regions: bool,
 }
 
 /// A twin's state, its last result (ABI §5 "direct style", design §17.118): returned,
@@ -567,7 +569,15 @@ impl Gen<'_, '_, '_> {
         self.close_open()?;
         let mut out = self.placeholder();
         out.push(self.iconst32(state));
-        self.b.ins().return_(&out);
+        self.twin_return(&out)
+    }
+
+    /// A twin's `return`, after `rt_region_leave` under [`Options::regions`].
+    fn twin_return(&mut self, out: &[Value]) -> Result<(), String> {
+        if self.e.regions {
+            self.call0("rt_region_leave", &[])?;
+        }
+        self.b.ins().return_(out);
         Ok(())
     }
 
@@ -698,6 +708,9 @@ impl Gen<'_, '_, '_> {
     /// (direct code performs nothing, so the attempt is not observable).
     fn twin_entry(&mut self, params: &[Value]) -> Result<(), String> {
         self.ctx = params[0];
+        if self.e.regions {
+            self.call0("rt_region_enter", &[])?;
+        }
         let cost = i64::from(gauge_cost(self.f));
         self.budget = self.b.ins().iadd_imm_s(params[1], -cost);
         let out = self
@@ -1622,7 +1635,7 @@ impl Gen<'_, '_, '_> {
                     _ => vec![self.val(*v)?],
                 };
                 out.push(self.iconst32(OK));
-                self.b.ins().return_(&out);
+                self.twin_return(&out)?;
             }
             Term::Call {
                 callee: Callee::Direct(g),
@@ -1639,8 +1652,7 @@ impl Gen<'_, '_, '_> {
                     g.close_open()?;
                     let mut out = g.placeholder();
                     out.push(state);
-                    g.b.ins().return_(&out);
-                    Ok(())
+                    g.twin_return(&out)
                 })?;
                 self.continue_at(cont, ret)?;
             }
@@ -1695,8 +1707,7 @@ impl Gen<'_, '_, '_> {
                     g.close_open()?;
                     let mut out = g.placeholder();
                     out.push(state);
-                    g.b.ins().return_(&out);
-                    Ok(())
+                    g.twin_return(&out)
                 })?;
                 self.continue_at(cont, Some(ret))?;
             }

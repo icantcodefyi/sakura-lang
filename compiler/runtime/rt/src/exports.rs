@@ -413,6 +413,20 @@ pub extern "C" fn rt_lend(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>, w: u
     w
 }
 
+/// A direct twin's entry and exit, in code built with `SAKURA_NATIVE_REGIONS=1` (the
+/// bench-only region measurement, design §17.174 (2)).
+#[cfg(feature = "regions")]
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_region_enter(ctx: Ctx<'_>) {
+    cx!(ctx).rt().regions.enter();
+}
+
+#[cfg(feature = "regions")]
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_region_leave(ctx: Ctx<'_>) {
+    cx!(ctx).rt().regions.leave();
+}
+
 /// A twin ran out of gauge and its frame-protocol caller runs the call again through frames.
 #[unsafe(no_mangle)]
 pub extern "C" fn rt_restart(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>) {

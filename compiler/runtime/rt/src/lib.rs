@@ -30,6 +30,8 @@ pub mod mem;
 #[cfg(all(feature = "native", not(target_arch = "wasm32")))]
 pub mod native;
 pub mod object;
+#[cfg(feature = "regions")]
+pub mod regions;
 pub mod scratch;
 pub mod show;
 pub mod task;
@@ -168,6 +170,9 @@ pub struct Rt {
     /// `host_log` is (on wasm32 they go to `sakura_host`).
     #[cfg(not(target_arch = "wasm32"))]
     pub topic_log: alloc::vec::Vec<TopicCall>,
+    /// The bench-only region measurement (design §17.174 (2)).
+    #[cfg(feature = "regions")]
+    pub regions: regions::Regions,
 }
 
 /// A topic import (`std/worker`, ABI 1.15.0) the runtime made: the name, and a message's text.
@@ -216,6 +221,8 @@ impl Rt {
             trace_log: alloc::vec::Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             topic_log: alloc::vec::Vec::new(),
+            #[cfg(feature = "regions")]
+            regions: regions::Regions::default(),
         };
         rt.statics()?;
         Ok(rt)

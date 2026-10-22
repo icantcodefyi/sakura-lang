@@ -354,6 +354,19 @@ impl<H: Host + 'static> Instance<H> {
         self.cx().rt().stats()
     }
 
+    /// The region measurement (design §17.174 (2)).
+    #[cfg(feature = "regions")]
+    pub fn regions(&mut self) -> [(&'static str, u64); 4] {
+        let mut cx = self.cx();
+        let r = &cx.rt().regions;
+        [
+            ("region_requested", r.requested),
+            ("region_inside", r.inside),
+            ("region_objects", r.objects),
+            ("region_objects_inside", r.objects_inside),
+        ]
+    }
+
     /// Live arena slots and requests (the ABI §7.5 counts).
     pub fn exec_counts(&mut self) -> (u32, u32) {
         self.cx().rt().exec_counts()
