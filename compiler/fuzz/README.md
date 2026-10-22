@@ -143,8 +143,14 @@ Not part of `v1.0.0`'s gate. Its CPU-hours count toward native's stabilization c
 
 | Date (UTC) | Commit | Target | Host | Workers | Wall s | CPU-h | Corpus after | Findings |
 |---|---|---|---|---|---|---|---|---|
+| 2026-10-22 | `a2704a6ffaa2` | `exec_native` | github ubuntu-latest run 39742799303 | 1 | 682 | 0.2 | 351 | none |
 
-Total (CPU-h): exec_native 0.0.
+Total (CPU-h): exec_native 0.2.
+
+At about one case a second (each links the debug driver), a 600-second hosted run spends its
+time replaying the corpus (run 39742799303 replayed 697 seeds, all agreeing, and mutated
+nothing), so the nightly entry is a regression replay; the hours that explore come from
+`-max_total_time` dispatches and the WSL2 rows.
 
 Follow-ups for `exec` (2026-10-19):
 
