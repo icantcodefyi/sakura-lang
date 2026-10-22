@@ -1,39 +1,48 @@
 ---
 title: Stability
-description: What the preview promises today, what the v1.0.0-beta.4 beta may still change, what draft RFC 0001 proposes to make stable, and what stays experimental.
+description: What you can rely on in Sakura Lang today, what may still change before 1.0, and what is experimental.
 ---
 
-**Today there is no compatibility promise.** The latest release is the beta `v1.0.0-beta.4`;
-the earlier preview, `0.1.0`, stays on the default channels. Behaviour may change before 1.0.0.
+This page says which parts of Sakura Lang you can build on and which may still change. Read it
+before you depend on Sakura Lang in a script, a CI job or a tool that reads its output.
 
-<Callout type="warn" title="The beta">
-  `v1.0.0-beta.4` is a beta of 1.0 and **not for production**. It may have bugs, and it may
-  change before 1.0.0, including the contracts below. Every breaking change between the beta
-  and 1.0.0 is listed in the [changelog](/changelog) with a migration. It is published as a GitHub
-  prerelease, on npm under the `beta` tag and as the Homebrew formula `sakuralang-beta` ([Install](/docs/install#the-beta)); `npm i -g sakuralang` and
-  `brew install sakuralang` stay on `0.1.0`.
+<Callout type="warn" title="Latest release">
+  **Latest release: `v1.0.0-beta.4`.** It is a beta, a preview of 1.0, and **not for
+  production**. It may have bugs and may still change before 1.0.0. It is published as a GitHub
+  prerelease, on npm under the `beta` tag and as the Homebrew formula `sakuralang-beta`
+  ([Install](/docs/install#the-beta)). `npm i -g sakuralang` and `brew install sakuralang`
+  still install the earlier preview, `0.1.0`.
 </Callout>
 
-[Draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md)
-proposes the guarantees below. Its final comment period does not gate the beta: the guarantees
-bind from the release at which the owner accepts the RFC, and in full from `v1.0.0`. Until then
-the policy in [STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md)
-applies, and that file's inventory is the authoritative list.
+## In short
 
-## Levels
+- **Today there is no compatibility promise.** Anything may change before 1.0.0.
+- **But breaking changes are listed.** Every breaking change between a beta and 1.0.0 is listed
+  in the [changelog](/changelog) with a migration: what to change in your code.
+- **From 1.0.0, compatibility holds within 1.x.** Your source code and its standard-library
+  calls stay compatible across the 1.x releases.
+- **Experimental features carry no promise.** They are opt-in, labelled, and may change or go
+  away in any release.
+- **Wording is never a contract.** Human-readable output, help text, error message wording and
+  generated code can change at any time. A diagnostic's code, fields and fixes are the contract.
 
-- **Stable**: covered by the RFC's compatibility rules from the version named. From
-  `1.0.0-beta.1`, machine contracts (diagnostic codes, `--json` records, exit codes, the WASM
-  ABI) are meant to change only additively, but during the beta they may still change, each
-  with a migration in the changelog; source and standard-library changes come with a listed
-  migration. From `1.0.0`, source and standard-library compatibility hold within a major
-  version.
-- **Experimental**: may change or disappear in any release. Opt-in and labelled.
+## The three levels
+
+Each part of Sakura Lang has one level:
+
+- **Stable**: changes follow the rules below. From `1.0.0-beta.1`, machine-readable
+  contracts (diagnostic codes, `--json` records, exit codes and the WebAssembly runtime
+  interface) are meant to change only by adding things. During the beta they may still change,
+  each with a migration in the changelog. Source and standard-library changes during the beta
+  come with a listed migration. From `1.0.0`, source and standard-library compatibility hold
+  within a major version (all of 1.x).
+- **Experimental**: may change or disappear in any release. You turn it on yourself, and the
+  docs label it.
 - **Internal**: an implementation detail with no promise, even when you can see it.
 
-## By area
+## What each part promises
 
-| Area | Proposed level | From |
+| Part | Level | From |
 | --- | --- | --- |
 | [CLI](/docs/cli) commands, documented flags, exit codes and environment variables | stable | 1.0.0-beta.1 |
 | `build --emit`, `--layout`, `--dump`; hidden switches | experimental or internal | — |
@@ -42,25 +51,30 @@ applies, and that file's inventory is the authoritative list.
 | [`--json` records](/docs/agents/diagnostics#record-kinds): fields are only added within a major | stable | 1.0.0-beta.1 |
 | [Standard library](/docs/stdlib) public signatures | stable | 1.0.0-beta.1 with a listed migration; 1.0.0 within a major |
 | [`std/worker`](/docs/tour/concurrency#workers-experimental) and the `@worker` attribute; live workers on every target | experimental | — |
-| WASM runtime ABI | stable | 1.0.0-beta.1 |
-| JS backend ABI, generated code, LIR and Core, the compiler's Rust crates, cache files | internal | — |
+| WebAssembly runtime interface (the ABI a WebAssembly module and its Node host share) | stable | 1.0.0-beta.1 |
+| The JavaScript backend's internals, generated code, the compiler's internal forms (LIR and Core) and Rust crates, cache files | internal | — |
 | [Language server](/docs/editors) standard protocol features | stable | 1.0.0-beta.1 |
-| The `sakura/holeContext` LSP extension | experimental | — |
+| The `sakura/holeContext` language server extension | experimental | — |
 | [MCP](/docs/agents/mcp) stdio tools and the snapshot and patch protocol | stable | 1.0.0-beta.1 |
 | `--target native` and the native runtime (in the macOS arm64, Linux x64 and Linux arm64 release binaries from v1.0.0-beta.4) | experimental | — |
-| Runtime limits: the JS and WASM hosts read none from the environment; the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` | experimental | — |
+| Runtime limits: the JavaScript and WebAssembly hosts read none from the environment; the experimental native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` | experimental | — |
 
-Human-readable output, help text, diagnostic wording and generated code bytes are never
-contracts. A diagnostic's code, fields and fixes are.
+## When the promises start
 
-## Changes made before the guarantees
+The promises above come from [draft RFC 0001](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/0001-stability-guarantees.md),
+a proposal that is not accepted yet. They bind from the release at which the owner accepts
+it, and in full from `v1.0.0`. Until then the policy in
+[STABILITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/STABILITY.md) applies, and
+its inventory is the complete, authoritative list.
 
-These decisions (design §17.239–§17.243, §17.253) are built, ahead of the first version that
-honours the guarantees, so they are not breaking changes under the RFC:
+## Changes made before the promises start
 
-- **Lexical rules.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
+These changes are already built. They land before the first release that honours the
+promises, so they do not count as breaking changes under them:
+
+- **Number literals.** An `Int` literal is in `[0, 2^63 − 1]`; write the minimum as `Int.min`.
   A digit separator `_` goes only between two digits.
-- **A source file that is not UTF-8** becomes a diagnostic,
+- **A source file that is not UTF-8** is a diagnostic,
   [`V0015 source_not_utf8`](/docs/errors/V0015), instead of a usage error.
 - **`[permissions] process` is reserved.** `process = []` is accepted and grants nothing,
   the same as leaving the key out. A non-empty list, which 0.1.0 accepted and which also
@@ -68,9 +82,10 @@ honours the guarantees, so they are not breaking changes under the RFC:
 
 ## After 1.0
 
-Packages arrive additively in 1.x; until then `[dependencies]` is refused. Native code
-generation stays experimental. The current plan, pending the owner's confirmation, is that it
-gates no release and ships as an experimental flag once its test matrix is green.
+Packages arrive in 1.x without breaking existing projects; until then `[dependencies]` is
+refused. Native code stays experimental. The current plan, pending the owner's confirmation,
+is that native holds up no release and ships as an experimental flag once its test matrix is
+green.
 
-Deprecations after 1.0 get warnings and a migration for at least two minor releases and six
-months before removal.
+After 1.0, a deprecated feature warns, with a migration, for at least two minor releases and
+six months before it is removed.

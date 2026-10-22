@@ -1,102 +1,114 @@
 ---
 title: Roadmap
-description: What is built (JS and WASM backends, contract verification), what is experimental (native code), and the releases on the way to 1.0.
+description: What works in Sakura Lang today, what comes next on the way to 1.0, and what is planned after 1.0.
 ---
 
-<Callout type="info" title="Where things stand">
-  `v1.0.0-beta.4` is published (2026-10-22), a beta that may have bugs and is not for production; `v1.0.0-beta.3`, `v1.0.0-beta.2` and `v1.0.0-beta.1` (all 2026-10-21) came before it; `0.1.0` (2026-10-20) is the earlier preview. **M3 is complete** (signed 2026-10-18). **M4 is complete** (signed 2026-10-20, exit commit `dee11301`) and shipped in `v0.1.0`: the WebAssembly backend runs every corpus program the way JavaScript does, and `sakura verify` proves contracts with Z3. Native code generation (M5) is experimental. Changes on main after `0.1.0` are in the beta, not in that package ([changes since 0.1.0](/docs/changes)). Releases have no dates.
+This page says what you can use today, what is still coming before 1.0, and what is planned
+after 1.0. Read it before you pick Sakura Lang for a project. No release has a date.
+
+<Callout type="info" title="Latest release">
+  **Latest release: `v1.0.0-beta.4` (2026-10-22).** A beta is a preview of 1.0: it may have bugs
+  and may still change before 1.0.0, so it is not for production. See [what changed](/docs/changes)
+  and [what you can rely on](/docs/stability).
 </Callout>
 
-The milestones run **M3 → M4 → M5**; [Toward 1.0](#toward-10) lists the releases. The [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md) defines the gates; [design §17.81–§17.99](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md) defines the provisional M4 decisions. M0–M2 provide the existing parser, type/effect checker, JS backend, handlers, typed holes, formatter and test runner.
+## What works today
 
-<PipelineFlow />
+Everything in this section ships in the latest beta.
 
-## M3: finish the JS language and agent tooling
+- **The language.** Types, effects (a function's type lists what it may do, such as read
+  files or call the network), handlers that supply those effects, pattern matching, typed
+  errors, and contracts: `requires` and `ensures` checks on functions, plus refined types such
+  as `Int where it >= 0`.
+- **Two backends.** A backend is what the compiler turns your program into. JavaScript is the
+  default. WebAssembly (`--target wasm`) runs every program the same way, with Node as the
+  host. CI compares the two on Linux x64 and ARM64, Apple silicon and Intel macOS, and
+  Windows x64.
+- **Contract proofs.** [`sakura verify`](/docs/agents/verify) tries to prove your contracts
+  with the Z3 solver, which you install yourself (it is never downloaded for you). A build
+  drops a runtime check only when a matching proof covers it; every other check stays.
+- **A standard library.** JSON, SQLite, files, HTTP clients and servers, command-line
+  parsing, structured concurrency, model (LLM) calls, tools and agent loops, plus the web
+  platform's byte, text, URL, header, form, crypto, stream, compression and WebSocket APIs.
+  See the [standard library](/docs/stdlib).
+- **Permissions.** `sakura run` checks the files, hosts and environment variables your
+  program declares in [`sakura.toml`](/docs/manifest) and exits with status 75 when one is
+  missing. This is not an operating-system sandbox for arbitrary JavaScript or trusted
+  foreign code.
+- **Tools for coding agents.** A language server, an [MCP server](/docs/agents/mcp), a
+  downloadable skill, [typed holes](/docs/agents/typed-holes) (gaps in your code that the compiler describes), the
+  [trust audit](/docs/agents/audit), [offline API search](/docs/agents/doc),
+  [build manifests](/docs/agents/build-manifest), [recorded test cassettes](/docs/agents/cassettes)
+  and generated contract tests (`sakura test --contracts`).
+- **Install channels.** npm, Homebrew, release archives and an installer script, for macOS
+  (Apple silicon and Intel), Linux (x64 and ARM64) and Windows x64. See [Install](/docs/install).
 
-Working today:
+### Experimental today [#m5-native-code-experimental]
 
-- Runtime contracts and refinements, bounded compile-time literal evaluation (`V5004`, with `V5002` retired), refined-target `Untrusted.validate` (`V5003`) and collection-only `W5005`; opaque constructors and fields rejected outside their module with `V1006`; compiler-known prelude `Trust`, with `@trust("reason")` restricted to trusted sink arguments (`V6001`).
-- Scoped capability/resource escape checks (`V6002`/`V6003`) and `V6001` for user externals receiving or constructing another package's capabilities or any handler.
-- Std data, JSON schemas and codecs, SQLite and memory SQL, filesystem and file callbacks, HTTP, serving, CLI, structured tasks, budgets, tools and agent loops. `sql"…"` arguments use `SqlValue.from` conversions and become bound parameters.
-- `Tool.of` on a named `@tool` function, `@llm` body generation, and effect-row parameters on types: `Tool<e>`, `Agent<T, e>`, `Router<e>`.
-- `sakura new <cli|lib|agent|api> <name>`, `init`, LSP, compiler MCP, impact-aware fixes and frozen-spec checks. Analysis reuses unchanged modules' signatures and bodies; a private-body edit parses, lowers and checks only its module. Item collection, imports and exports remain global. Bodies reachable from a refinement predicate are part of the interface hash, so editing one invalidates reuse.
-- [`sakura audit`](/docs/agents/audit), [`sakura doc`](/docs/agents/doc), [`sakura build --manifest`](/docs/agents/build-manifest), [`sakura test --record`](/docs/agents/cassettes) and `sakura test --contracts` (a generated property per contracted `pub fn`, `W7001` when it gives up).
-- `Html.from` and nested `Html` templates; `Untrusted<T>` in `sql"…"` is a bound parameter, in `html"…"` escaped text and in `url"…"` a percent-encoded `UrlPart` (design §17.101, §17.124). `Http.recording`, `Llm.replay`, `Llm.recording` and `Test.fixtures` for offline cassettes, and streaming HTTP (`Http.stream`, `Http.read_chunk`).
-- `sakura run` checks declared root permissions (exit 75 on denial) and passes `[permissions]` as `SAKURA_PERMISSIONS`; host handlers enforce filesystem, network and environment grants. This is not an OS sandbox for arbitrary JS or trusted FFI.
-- Tests accept escaping typed failures and report them as failed tests. `Llm.anthropic` requests SSE and delivers one partial callback per text delta; local mock tests cover this, not a live-provider guarantee.
+Experimental features are opt-in and may change or go away in any release, without a migration.
 
-All twelve repository examples pass their current harness modes: seven run plus test (`hello`, `contracts`, `counter`, `typed_errors`, `word_count`, `graph`, `secrets`) and five test (`json_api`, `llm_extract`, `property`, `concurrency`, `agent_loop`). None is check-only. `llm_extract`, `agent_loop` and `secrets` replay committed **synthetic** cassettes with the test network denied. Their fixture READMEs describe provenance; this is not live-provider validation.
+- **Native executables** (`--target native`). The macOS arm64, Linux x64 and Linux arm64
+  release binaries include it, and you need a system C compiler (`cc`) to link. It runs every
+  standard service except `WebSocket`. No native performance claim is made yet. See
+  [Native code](/docs/native).
+- **Workers** (`std/worker`): a second copy of your program running in parallel, with its own
+  memory. See [Workers](/docs/tour/concurrency#workers-experimental).
 
-### M3 exit gates
+### Not available today
 
-The original M3 acceptance bar had eleven gates on the default branch on Ubuntu and macOS. The delegated security review has since closed M3. Commands are run in `compiler/` unless stated otherwise. These are acceptance requirements, not a claim that every command or flag is available today.
+- PostgreSQL (`Sql.postgres`) is not implemented and has no release planned. Use SQLite.
+- Packages: a `[dependencies]` table in `sakura.toml` is refused.
+- A browser host: the WebAssembly backend runs under Node.
 
-1. `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, and `cargo test --workspace --locked` pass with both `UI_MILESTONE` and `SEMANTICS_MILESTONE` at 3.
-2. Two-way: every registered diagnostic except `V9999` and retired codes such as `V5002` is constructed by a crate or runtime, and every code constructed in `crates`, `runtime/js` or `runtime/rt` is registered. Every code a program can provoke from source has a passing UI fixture; and `V9001`, `V8020` and the runtime-limit defects are covered by their own tests. Compare `grep -rhoE '\b[VWD][0-9]{3,4}\b' crates runtime/js runtime/rt --exclude-dir=sakura_diagnostics | sort -u` against the registry in both directions.
-3. M3 acceptance tests cover contract blame (`m3.rs::m3_acceptance_contracts`, `D020`/`D010`), CLI exit 75, `tests/ui/V6003_route_handler_returns_file.sak`, stale/Unicode LSP replay matching MCP `hole_context`, and `recheck.rs` counters.
-4. `cargo test -p sakura_cli --test examples`: all twelve examples execute in run or test mode, none only check. `llm_extract`, `agent_loop` and `secrets` replay committed cassettes with network denied.
-5. `sakura test --std` passes; `std/INDEX.md` has no Planned section; `docs/llms.txt` has no remaining M3 items except `Sql.postgres` if the owner defers it.
-6. CLI integration tests cover `sakura audit --json`, `sakura doc --search "fn(List<A>) -> Int"`, `sakura build --manifest`, `sakura test --contracts`, and `sakura test --record`.
-7. `SAKURA_DIFF_PROGRAMS=2000 cargo test -p sakura_eval --test differential` passes with the expanded generator. Each of `parse`, `check`, `fmt_idempotent`, and `row_unify` runs clean via `cargo fuzz run <target> -- -max_total_time=600` on the gate-review day.
-8. `cargo test -p sakura_fmt --test props` and the formatter corpus pass; `cargo test -p sakura_cli --test fmt_clean` passes: `sakura fmt --check` is clean on `std/`, `examples/`, `tests/semantics/` and `tests/ui/`, skipping `tests/fmt/`, parse-error fixtures and fixtures with a `// fmt: exempt covers <productions>` harness directive (not allowed under `std/` or `examples/`).
-9. In `website/`, `bun run fmt:check`, `bun run lint`, `bun run typecheck`, and `bun run build` pass; documentation matches the implemented behavior and this plan.
-10. The named CODEOWNERS maintainer reviews the escape rules, the cassette format and the `Untrusted` template rule (WS8 item 2), because all three affect security. This gate is tracked separately: gates 1–9 and 11 passing make M3 complete pending review, and the signed packet closes M3.
-11. WS8 (design §17.100–§17.102) passes: the `rows.rs` catch cases, `tests/semantics/sql_untrusted_param.sak`, the `std/llm` recording miss, `examples/llm_extract`'s recorded test and the `cli.rs` `--record` environment case.
+## What comes next: 1.0.0
 
-The [gate report](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-gate-report.md) records the latest audit of every gate against a named commit. The re-audit of 2026-10-18 at `a843e60`, after the M3 close-out (WS9), passes gates 1–9 and 11, and gate 10 passed the same day: the [security review](https://github.com/icantcodefyi/sakuralang/blob/main/docs/reviews/m3-security-review.md) was signed by the AI reviewer under the owner's written delegation (design §17.159), not as the owner's personal review, so **M3 is complete** and the escape, cassette and template code is no longer frozen. The review's follow-ups are plan WS12.
+1.0.0 is the first production release. It adds no big features over the betas; it is the
+same language with evidence that it holds up. Before 1.0.0 is tagged:
 
-## M4: WASM and contract verification
+- **Fuzz testing.** Every fuzz target (a test that feeds the compiler random inputs) runs
+  at least 24 CPU-hours with no soundness bug, meaning no case where a program is accepted
+  but behaves wrongly.
+- **Real programs upgraded.** Sample programs written on earlier releases are upgraded through
+  each beta, following only the published migration notes.
+- **Agent results.** Measured results from coding agents writing Sakura Lang.
+- **A complete specification** of the language.
+- **Signed macOS downloads.**
+- **A quiet last beta.** No serious bug and no contract change after the last beta. A
+  contract change means another beta first.
 
-M4 is complete: its exit commit `dee11301` was signed on 2026-10-20, the [instruction-count benchmark baseline](/docs/benchmarks) is blessed, and it shipped in `v0.1.0`. Working today:
+Until 1.0.0, a beta may still change behaviour, and each breaking change is listed in the
+[changelog](/changelog) with a migration. From 1.0.0 your source code keeps working within
+the 1.x line; see [Stability](/docs/stability).
 
-- **WASM (W1/W2):** [`build`, `run` and `test --target wasm`](/docs/tour/memory#backends), with Node as the host. The [runtime ABI](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/runtime/rt/ABI.md) defines bounded linear memory, conservative reference counting, persistent collections, frames, the trampoline and scheduler. LIR lowering makes continuations, closure environments, boxing and balanced `Dup`/`Drop` explicit; `sakura build --emit lir` writes it as text. The [ABI research](https://github.com/icantcodefyi/sakuralang/blob/main/research/09-m4-abi-and-encoding.md) records the design rationale.
-- **Host operations:** HTTP sends and streams, SQLite, `Llm.stream`, `Serve.host()` and `Log.json()` run on WASM, including requests carrying `Secret` headers (`Http.bearer`, and `Llm.anthropic` over `Http.host()`), as approved by the security review (W0). Cassettes still never see a secret header's value. This is not live-provider validation.
-- **Parity:** CI requires the JS/WASM matrix on Linux x64 and ARM64, Apple silicon and Intel macOS, and Windows x64 through `ci-required`. The harness compares the run/test semantics corpus and example runs for output, exits, defects and effect traces, including task numbers. Backend-specific expectations preserve the intentional JS safe-integer / WASM i64 differences. It also reports host-import coverage; local-server tests exercise network and serving operations outside the offline corpus.
-- **Verification:** [`sakura verify`](/docs/agents/verify) runs pinned Z3 workers over Core obligations and reports `proved`, `disproved`, `unknown` or `unsupported`. cvc5 cross-checks `unsat` when installed. JS and WASM builds remove only eligible checks covered by matching authenticated proofs; other checks remain. Body edits invalidate the function's own proofs. See the [verification tour](/docs/tour/verification).
-- **JS performance:** direct calls, bound handler dispatch, interval-proved arithmetic, owned updates and total-predicate `D011` bracket elision have landed in the WS-P work. `sakura build --dump direct`, `--dump core` and `--dump owned` expose compiler facts; the internal `--no-direct` switch exercises the CPS path. These optimizations do not establish the full performance acceptance bar or a WASM speedup.
+## After 1.0
 
-Resumable JS loops, direct WASM calls for eligible local handlers and callbacks,
-removal of total proved predicates, cached-verdict reuse and i64 counterexample
-replay have landed. Tagged layout remains the baseline: `--emit lir --layout niche`
-is refused. Native execution and Perceus reuse are experimental M5 work, not a
-supported backend. The full performance acceptance bar is a separate gate:
-[`bench/bench envelope`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/README.md#m4-envelope-17213-2)
-compares same-commit, same-host WASM runs with the matched native-language ports.
-An advisory or incomplete report is not a pass. See [changes on main](/docs/changes)
-and the [completion plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md).
+- **Packages**, added in a 1.x release without breaking existing projects.
+- **Native executables as a stable target.** Native stays experimental until it meets its
+  stabilization conditions in a 1.x release.
+- **Faster native code**, from optimizations that are not built yet.
+- **Publishing the compiler on crates.io**, an online playground and GitHub syntax
+  highlighting (Linguist).
 
-### Agent development tools (DX0–DX7)
+## Release history
 
-The compiler reports its capabilities through MCP. A downloadable skill, `sakura setup`, generated diagnostic references and eight offline cookbook projects are available. The first owner-approved agent-evaluation pilot ran 48 episodes for $4.20; its [report](https://github.com/icantcodefyi/sakuralang/blob/main/evals/agent-dx/reports/2026-10-18-pilot.md) records small-sample results and input-cap limits. Further evaluation and publication remain owner-controlled; release tooling is prepared. The VS Code client can be packaged locally and is not published. DX8 plugin packaging, the playground and Linguist submission remain planned; see the [agent DX plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/agent-dx.md).
-
-For `scale(p, total) = total * p / 100`, proving `ensures result <= total` on normal return does not prove the multiplication cannot overflow. Overflow is a separate obligation. The wrong `/ 50` body has the counterexample `p = 100, total = 1`.
-
-M4 excludes WasmGC, JSPI, typed continuations, WASI components, browser std support, threads, Perceus reuse/borrow inference, loop/recursion proofs, Float/String solver theories and proof certificates.
-
-## M5: native code (experimental)
-
-A Cranelift backend compiles the same LIR as the WASM backend to a native executable. It is **experimental**: the macOS arm64, Linux x64 and Linux arm64 release binaries carry it from `v1.0.0-beta.4`, and a compiler built from source with the Cargo `native` feature (`cargo build --release -p sakura_cli --features native`) has it too, where `sakura build`, `run` and `test` accept `--target native`. The flag may change or go away in a later release without a migration.
-
-On main, native agrees with JavaScript on every program of the semantics corpus, including direct-style calls, and runs every standard service but `WebSocket` on its own runtime (`Json`, `Cli`, `Sql`, `Http`, serving, `Llm`, test mode and property tests): a program whose `main` declares `WebSocket` exits 75 at startup, and one that installs its host handler itself stops with a `D090` defect at first use (exit 70). Native stays experimental until its stabilization conditions are met in a 1.x minor. See the [M5 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m5-native.md).
-
-The current plan, pending the owner's confirmation, is that native gates no release: `--target native` ships as an experimental flag in the first minor release whose native test matrix is green. `W8001` copy diagnostics are in `sakura check`. Borrow inference, Perceus-style in-place reuse and region optimizations are not built yet. No native performance claim is made.
-
-## Toward 1.0
-
-The order is set in the [road to 1.0](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md). No release has a date; each tag is the owner's.
-
-| Release | What it adds | State |
+| Release | What it brought | Published |
 | --- | --- | --- |
-| `v0.1.0-alpha.1` | M0–M3: the language, std, LSP, MCP, the skill, WASM and `sakura verify`, on npm, Homebrew and the release installer, for Apple silicon macOS and Linux x64 | published 2026-10-18 |
-| `v0.1.0` | M4 exit, the first non-alpha preview: WASM complete, the web platform's byte, URL, header, form and crypto APIs in std, and Linux ARM64, Windows x64 and Intel Mac | published 2026-10-20 |
-| `v1.0.0-beta.1` | A beta of 1.0, not for production: it may have bugs and may change before 1.0.0, and every breaking change until then is listed in the changelog with a migration. RFC 0001's machine contracts are intended from this tag; binary HTTP bodies, the `--json` summary split, web timers, streams, channels, URL patterns and WebSockets; the spec's grammar and diagnostics. A GitHub prerelease, npm under the `beta` tag and the Homebrew formula `sakuralang-beta` | published 2026-10-21 |
-| `v1.0.0-beta.2` | The second beta, not for production: every change since `v1.0.0-beta.1`, with its migration list in the changelog; `std/worker` (experimental), JSON Schema bounds for refined types, a set `SAKURA_PERMISSIONS` denying every key it leaves out, and the draft spec's semantics chapters. The same channels as beta.1 | published 2026-10-21 |
-| `v1.0.0-beta.3` | The third and last feature beta, not for production: every change since `v1.0.0-beta.2`, with its migration list in the changelog; library entries a Node program calls (`callEntry` on WebAssembly, `__entries__.js` on JavaScript), WASM runtime ABI 1.16.0, and `sakura verify` without exponential condition growth. The same channels as beta.1 | published 2026-10-21 |
-| `v1.0.0-beta.4` | The fourth beta, not for production: every change since `v1.0.0-beta.3`, with its migration list in the changelog; `--target native` (experimental) in the macOS arm64, Linux x64 and Linux arm64 release binaries, `W8001` copy-on-write warnings, Perceus reuse and borrowed read-only calls on WebAssembly and native, WASM runtime ABI 1.18.0. The same channels as beta.1 | published 2026-10-22 |
-| `v1.0.0` | Produced under the betas: the fuzz campaign's ledger (at least 24 CPU-hours per target with no soundness finding, design §17.306), upgraded dogfood programs, agent evaluation results, the complete spec, signed macOS archives, and no serious defect or contract change after the last beta | planned |
+| `v1.0.0-beta.4` | Experimental native executables in the release binaries; `W8001` warns when a list or map update copies; memory reuse on WebAssembly and native | 2026-10-22 |
+| `v1.0.0-beta.3` | Node programs can call a Sakura library; faster `sakura verify` | 2026-10-21 |
+| `v1.0.0-beta.2` | Experimental workers; refined types in JSON Schema | 2026-10-21 |
+| `v1.0.0-beta.1` | The first 1.0 beta: binary HTTP bodies, streams, URL patterns, WebSockets, timers; the first stability rules | 2026-10-21 |
+| `v0.1.0` | The WebAssembly backend complete; web byte, URL, header, form and crypto APIs; Linux ARM64, Windows and Intel Mac | 2026-10-20 |
+| `v0.1.0-alpha.1` | The first public preview: the language, standard library, editor and agent tools | 2026-10-18 |
 
-Not part of 1.0: packages (1.x), native as a stable target, crates.io publication, the playground and Linguist support.
+[Changes since 0.1.0](/docs/changes) explains each beta in more detail.
 
-## Decisions still open
+## For contributors
 
-Plan §6 retains questions about package-management placement and real-provider recording ownership. The solver decision is now recorded in §3.5: a pinned external binary on `PATH` or `--solver`, without automatic downloads (V2 pins Z3 5.3.1 and cvc5 1.4.2). The std index records PostgreSQL as deferred past M4; SQLite is implemented and `Sql.postgres` is absent. These are scope decisions, not release dates.
+Internally the work is split into milestones: M3 (the JavaScript language and agent tools)
+and M4 (WebAssembly and contract proofs) are complete, and M5 (native code) is in progress.
+The [road to 1.0](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/road-to-1.0.md)
+sets the release order, the [M3 gate report](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-gate-report.md)
+and [M4 plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m3-completion-and-m4.md)
+record the finished milestones, the [native plan](https://github.com/icantcodefyi/sakuralang/blob/main/docs/plans/m5-native.md)
+tracks M5, and [the design notes](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)
+record each decision.

@@ -1,51 +1,51 @@
 ---
 title: Changes since 0.1.0
-description: What main, 1.0.0-beta.4, 1.0.0-beta.3, 1.0.0-beta.2 and 1.0.0-beta.1 change after the published 0.1.0 preview, and what 0.1.0 changed from 0.1.0-alpha.1, with migration notes for breaking changes.
+description: What changed in each Sakura Lang release since the 0.1.0 preview, in short bullets, with what to change in your code.
 ---
 
-`v0.1.0` is tagged and published (2026-10-20), on npm, Homebrew and GitHub, and its
-published-install check passed on every platform ([Install](/docs/install#platform-claims)).
-`v1.0.0-beta.4` is published (2026-10-22), a beta of 1.0 that is not for production: it may
-have bugs and may change before 1.0.0, and the [stability guarantees](/docs/stability) of RFC 0001
-are intended from the betas. `v1.0.0-beta.3`, `v1.0.0-beta.2` and `v1.0.0-beta.1` (all
-2026-10-21) came before it. These docs track **main**, which may hold later changes that no package has yet; the
-[changelog](/changelog) lists them under Unreleased.
-[1.0.0-beta.4, since 1.0.0-beta.3](#100-beta4-since-100-beta3),
-[1.0.0-beta.3, since 1.0.0-beta.2](#100-beta3-since-100-beta2),
-[1.0.0-beta.2, since 1.0.0-beta.1](#100-beta2-since-100-beta1) and
-[1.0.0-beta.1, since 0.1.0](#100-beta1-since-010) are in the betas and not in the `0.1.0`
-packages: the [1.0.0-beta.4](/changelog#v1.0.0-beta.4), [1.0.0-beta.3](/changelog#v1.0.0-beta.3),
-[1.0.0-beta.2](/changelog#v1.0.0-beta.2)
-and [1.0.0-beta.1](/changelog#v1.0.0-beta.1) sections of the changelog open with their migration
-lists. No release has a compatibility promise; see [Stability](/docs/stability).
-The [changelog](/changelog) is the complete list; this page covers what a program or an agent
-notices. Upgrading from `0.1.0-alpha.1`? Read [0.1.0, from alpha.1](#010-from-alpha1) too.
+This page lists what changed in each release, newest first, and what you may need to change
+in your code when you upgrade. The full detail is in the [changelog](/changelog), whose section
+for each beta opens with a migration list: every change a program may notice.
+
+<Callout type="info" title="Latest release">
+  **Latest release: `v1.0.0-beta.4` (2026-10-22).** The betas may have bugs and are not for
+  production; `0.1.0` (2026-10-20) is the earlier preview and is still what `npm i -g sakuralang`
+  installs. No release has a compatibility promise yet; see [Stability](/docs/stability).
+</Callout>
+
+These docs follow the `main` branch, which may hold changes no release has yet. The
+changelog lists them under Unreleased.
+
+Two words used below:
+
+- **Breaking**: a change that can make a program that worked before behave differently or stop
+  compiling.
+- **WASM runtime ABI**: the interface a WebAssembly module and its Node host share. When its
+  version moves, ship the host and the module from the same release: a newer host still loads
+  older modules, but an older host refuses a newer module with `V8003`.
 
 ## 1.0.0-beta.4, since 1.0.0-beta.3
 
-A program that works on `1.0.0-beta.3` needs no source change, but may print `W8001` warnings,
-and a served handler sees lowercase header names on JS and WASM; the
-[migration list](/changelog#v1.0.0-beta.4) names every item.
+Your code needs no change. You may see new `W8001` warnings, and a server handler sees header
+names in lowercase. [Migration list](/changelog#v1.0.0-beta.4).
 
-### Added in 1.0.0-beta.4
+**Added**
 
-- **`--target native` in the release binaries (experimental).** The macOS arm64, Linux x64 and
-  Linux arm64 archives, npm packages and the Homebrew formula install the native driver beside
-  `bin/`, so `sakura build`, `run` and `test --target native` work from an installed `sakura`.
-  A native build links with the system `cc` (`V8007 native_linker_missing` without one) and
-  runs every standard service but `WebSocket`: `Http`, serving, `Llm`, test mode and property
-  tests. The flag may change or go away without a migration.
-- **`W8001 copy_on_write`.** `sakura check`, the LSP and the MCP `check` tool warn at a `List`,
-  `Map` or `Set` update proven to copy because the earlier version is still held, with the
-  holder as the `cause` span. Exit codes are unchanged.
-- **Perceus reuse and borrowed calls** (WebAssembly and native): a rebuilt record or
-  constructor, and `List.map` over a list nothing else holds, reuse the old storage; a value
-  only read by a call is lent instead of counted. No program's output changes.
+- **Native executables (experimental).** The macOS arm64, Linux x64 and Linux arm64 release
+  archives, npm packages and Homebrew formula include the native driver, so
+  `sakura build`, `run` and `test --target native` work from an installed `sakura`. Linking
+  needs the system `cc` (without it: `V8007 native_linker_missing`). Every standard service
+  but `WebSocket` runs natively. The flag may change or go away without a migration.
+- **`W8001 copy_on_write`.** `sakura check`, the language server and MCP warn where a `List`,
+  `Map` or `Set` update must copy because an earlier version is still in use, and point at
+  what holds it. Exit codes do not change.
+- **Memory reuse on WebAssembly and native.** A rebuilt record or constructor, and `List.map`
+  over a list nothing else holds, reuse the old memory; a value a call only reads is lent, not
+  counted. Output does not change.
 
-### Fixed and changed in 1.0.0-beta.4
+**Fixed and changed**
 
-- **WASM runtime ABI 1.18.0.** A host from `1.0.0-beta.3` (ABI 1.16) refuses a beta.4 module
-  with `V8003`; a 1.18 host still loads older modules. ABI 1.17.0 shipped in no release.
+- WASM runtime ABI 1.18.0 (beta.3 was 1.16; 1.17 was never released).
 - A served `Request.headers` names each header in lowercase on JS and WASM, as native does.
 - `Json.encode` on WASM writes an `Int` beyond ±(2^53 − 1) exactly instead of rounding it.
 - On JS, a `List` passed as `unwrap_or`'s default of a `Map.get` no longer changes when it is
@@ -55,74 +55,69 @@ and a served handler sees lowercase header names on JS and WASM; the
 
 ## 1.0.0-beta.3, since 1.0.0-beta.2
 
-A program that works on `1.0.0-beta.2` needs no source change; the
-[migration list](/changelog#v1.0.0-beta.3) names what a host or a tool notices.
+Your code needs no change. [Migration list](/changelog#v1.0.0-beta.3) (for hosts and tools).
 
-### Added in 1.0.0-beta.3
+**Added**
 
-- **Library entries.** A `pub fn` of the package's root module, other than `main` and a
-  `@worker` function, that is not generic, whose parameters and result have runtime schemas
-  and whose row holds only `Fail` of `error` types and std effects, is an entry a Node program
-  can call: `callEntry(host, name, args)` in `sakura_wasm_host.js` on WebAssembly, and the
-  build's new `__entries__.js` on JavaScript. Each call answers `ok`, `fail`, `defect`, `exit`
-  or `cancelled`. A `pub fn` that fails a clause is silently not an entry. See
-  [Embedding](/docs/tour/embedding).
+- **Node programs can call a Sakura library.** A suitable `pub fn` in your package's root
+  module becomes an entry: `callEntry(host, name, args)` in `sakura_wasm_host.js` on
+  WebAssembly, or the build's `__entries__.js` on JavaScript. Each call answers `ok`, `fail`,
+  `defect`, `exit` or `cancelled`. A `pub fn` qualifies when it is not `main` or a `@worker`
+  function, is not generic, its parameters and result have runtime schemas, and its effects
+  are only std effects and `Fail` of `error` types; one that does not qualify is silently not
+  an entry. See [Embedding](/docs/tour/embedding).
 
-### Fixed and changed in 1.0.0-beta.3
+**Fixed and changed**
 
-- **WASM runtime ABI 1.16.0.** A host built for `1.0.0-beta.2`'s ABI 1.15 refuses a module
-  from beta.3 with `V8003`; a 1.16 host still loads older modules. Ship the host and the module
-  from the same release.
-- `sakura verify` no longer builds verification conditions that grow exponentially with the
-  inlining depth (the `std/crypto` AES-CBC vectors went from 0.85 s to 4 ms before any solver
-  ran). A record's `path_conditions` name a compound guard `|<name>.path|` instead of
-  expanding it; proof statuses do not change, and beta.2 proof-cache entries are solved again
-  once.
-- `sakura` runs its pipeline on a 256 MiB thread, so a deeply nested program no longer
-  overflows the host's main-thread stack (1 MiB on Windows). `MAX_DEPTH` stays 128.
+- WASM runtime ABI 1.16.0 (beta.2 was 1.15).
+- `sakura verify` no longer builds conditions that grow exponentially as calls are inlined (the
+  `std/crypto` AES-CBC vectors went from 0.85 s to 4 ms before the solver ran). A record's
+  `path_conditions` name a compound guard `|<name>.path|` instead of expanding it. Proof
+  results do not change; proofs cached by beta.2 are solved again once.
+- `sakura` runs on a 256 MiB thread, so a deeply nested program no longer overflows the
+  main-thread stack (1 MiB on Windows). The nesting limit `MAX_DEPTH` stays 128.
 
 ## 1.0.0-beta.2, since 1.0.0-beta.1
 
-A program that works on `1.0.0-beta.1` may need a change: the
-[migration list](/changelog#v1.0.0-beta.2) names the five breaking items.
+Some code may need a change: the [migration list](/changelog#v1.0.0-beta.2) names five
+breaking items.
 
-### Added in 1.0.0-beta.2
+**Added**
 
-- **`std/worker`, experimental**: a function declared `@worker` runs as a second instance of
-  the program with its own heap and handlers, started by `Worker.spawn(entry, grants, body)`
-  and reached with `send` and `recv`, and `Worker.close` ends one direction; `Worker.topic`
-  is `BroadcastChannel`. Live workers run on every target: as threads on JavaScript and on
-  WebAssembly under Node, and as OS threads natively. It is outside the 1.0 contract and may change in any release. See
-  [Workers](/docs/tour/concurrency#workers-experimental).
-- **Refined types state their bounds in JSON Schema.** `Json.schema` and a `Tool`'s parameters
-  carry `minLength`/`maxLength`, `minItems`/`maxItems` and `minimum`/`maximum` for the `where`
+- **Workers (experimental).** A function declared `@worker` runs as a second copy of the
+  program with its own memory and handlers. Start it with `Worker.spawn(entry, grants, body)`,
+  talk to it with `send` and `recv`, and end one direction with `Worker.close`. `Worker.topic`
+  is the web's `BroadcastChannel`. Workers run on every target (threads on JavaScript and on
+  WebAssembly under Node, OS threads natively). They are outside the 1.0 promise and may change
+  in any release. See [Workers](/docs/tour/concurrency#workers-experimental).
+- **Refined types in JSON Schema.** `Json.schema` and a `Tool`'s parameters carry
+  `minLength`/`maxLength`, `minItems`/`maxItems` and `minimum`/`maximum` for the `where`
   clauses that can say them. See [Schema keywords of a refinement](/docs/tour/types#schema-keywords-of-a-refinement).
 - `Result.ok(r)` and `Result.err(r)` give one side of a `Result` as an `Option`.
 - `Gen.flat_map(g, f)` in `std/gen` generates a value that depends on another.
 - `Fs.read_up_to(path, limit)` reads a whole file but fails `FsError` past `limit` bytes,
   having read at most `limit + 1`.
-- `Http.sequence(script)` is an in-order test handler: each entry answers once. It records a
-  multi-turn cassette with no hand-written handler; see
+- `Http.sequence(script)` is a test handler that answers each scripted entry once, in order.
+  It records a multi-turn cassette with no hand-written handler; see
   [Multi-turn synthetic cassettes](/docs/agents/cassettes#multi-turn-synthetic-cassettes).
 - [`V7001`](/docs/errors/V7001): `sakura check` reports a literal `expect_snapshot` name the
   test runner would refuse. [`V0016`](/docs/errors/V0016): a binding named `error` is reported
   where it is declared.
-- **WASM runtime ABI 1.15.0.** A host built for `1.0.0-beta.1`'s ABI 1.13 refuses a module
-  from beta.2 with `V8003`. The Node host in the same compiler always matches.
+- WASM runtime ABI 1.15.0 (beta.1 was 1.13).
 
-### Fixed and changed in 1.0.0-beta.2
+**Fixed and changed**
 
 - `sakura test --record` runs when `[permissions] net` lists no host: requests to hosts fail
   closed, and `Http.recording` captures what in-process handlers answer.
-- A `type` item's `where` may start the next line.
-- `sakura doc` given a std name reads std alone, and a bare name reads the current directory's
+- A `type` item's `where` may start on the next line.
+- `sakura doc` given a std name reads std alone; a bare name reads the current directory's
   `.sak` files only inside a project.
-- `sakura verify --json` (a preview) reports a different set of obligations than `0.1.0` did
-  for the same program: a `match` on a refined type's `validate` is decided, and each
-  effect operation's `requires` is a new obligation at the perform site (such as
-  `main requires Cli.exit`), `unsupported` when its arguments are not modelled. A gate that
-  pins the obligation count, or requires no `unsupported`, can change result with no source
-  change.
+- `sakura verify --json` (a preview) may report a different set of obligations (facts to
+  prove) than `0.1.0` did for the same program: a `match` on a refined type's `validate` is
+  decided, and each effect operation's `requires` is a new obligation where it is called (such
+  as `main requires Cli.exit`), `unsupported` when its arguments are not modelled. A CI gate
+  that pins the obligation count, or requires no `unsupported`, can change result with no
+  source change.
 
 ## 1.0.0-beta.1, since 0.1.0
 
@@ -130,62 +125,61 @@ A program that works on `1.0.0-beta.1` may need a change: the
 
 Each of these can change what a program that works on `0.1.0` does.
 
-- **Request and response bodies are a `Payload`.** `Request.body` and `Response.body` are
-  `Payload.Empty | Payload.Text(String) | Payload.Bytes(Bytes)` (import
-  `std/request.{Payload}`), so a body can be binary. Write `body: Payload.Text("s")` (or
-  `.with_payload(Payload.Text("s"))`) where a record set `body: "s"`; a bare `Text("s")` is
-  `V1002`. Read a body with a `match`, `Response.text`, `Response.json` or
-  `Response.bytes(r, limit)`, each with a byte limit. The
-  builders (`Request.of`, `post`, `post_json`, `Response.status`, `ok_json`, `html`) keep
-  their signatures. A replayed cassette delivers its body as `Bytes`.
+- **Request and response bodies are a `Payload`**, so a body can be binary:
+  `Payload.Empty | Payload.Text(String) | Payload.Bytes(Bytes)` (import `std/request.{Payload}`).
+  Where a record set `body: "s"`, write `body: Payload.Text("s")` or
+  `.with_payload(Payload.Text("s"))`; a bare `Text("s")` is `V1002`. Read a body with a `match`,
+  `Response.text`, `Response.json` or `Response.bytes(r, limit)`, each with a byte limit. The
+  builders (`Request.of`, `post`, `post_json`, `Response.status`, `ok_json`, `html`) keep their
+  signatures. A replayed cassette delivers its body as `Bytes`.
 - **`Method` gains `Options` and `Trace`**, so a `match` on `Method` needs two more arms.
-  `Request` gains `redirect: Redirect` (`Follow`, `Manual`, `Error`; `Follow` from every builder).
-- **Redirects are followed in `std/http`.** One Sakura function follows at most 20 hops for
-  every `Http` handler. `Http.scoped` checks each hop against its list, and `authorization`
-  and secret headers are dropped when the scheme, host or port changes. `Manual` returns the
-  3xx response; `Error` fails with `HttpError`.
-- **User `Clock` and `Task` handlers gain operations.** `Clock` has `monotonic_micros()`, and
-  `Task` has `cancel(f)` and `cancelled(s)`; a user `handler Clock` or `handler Task` must add
-  them. Joining a cancelled fiber is the defect [`D095`](/docs/errors/D095).
-- **One `--json` closing kind per shape.** `sakura test --json` ends with `test_summary`,
-  `sakura audit --json` with `audit_summary`, and `sakura verify --json` with `verify_summary`
-  (`schema_version` `"1.0"`). `check`, `fix` and `build` still end with `summary`, now with all
-  eight fields. A consumer that waits for `kind == "summary"` from those three commands
-  matches the new kind. See [Diagnostics](/docs/agents/diagnostics#record-kinds).
+  `Request` gains `redirect: Redirect` (`Follow`, `Manual`, `Error`; every builder sets `Follow`).
+- **`std/http` follows redirects**, at most 20 hops, for every `Http` handler. `Http.scoped`
+  checks each hop against its list, and `authorization` and secret headers are dropped when the
+  scheme, host or port changes. `Manual` returns the 3xx response; `Error` fails with
+  `HttpError`.
+- **User `Clock` and `Task` handlers need new operations**: `Clock` has `monotonic_micros()`,
+  and `Task` has `cancel(f)` and `cancelled(s)`. Joining a cancelled fiber is the defect
+  [`D095`](/docs/errors/D095).
+- **Each `--json` command ends with its own summary kind.** `sakura test --json` ends with
+  `test_summary`, `audit --json` with `audit_summary`, and `verify --json` with
+  `verify_summary` (`schema_version` `"1.0"`). `check`, `fix` and `build` still end with
+  `summary`, now with all eight fields. A tool that waits for `kind == "summary"` from those
+  three commands must match the new kind. See [Diagnostics](/docs/agents/diagnostics#record-kinds).
 - **`Router` routes are URL patterns.** A route `UrlPattern.compile` rejects (a `(…)`, `{…}`,
-  `?`, `+` or `\` in a segment, a `:` or `*` inside one) is the caller defect `D020` at
-  `Router.route`, `get`, `post`, `put` or `delete`; in `0.1.0` it was a literal segment.
-  `*` and `**` routes now match, their segments in `Request.param(req, "0")`, `"1"`, ….
-- **`std/crypto`'s sums gain variants** (`Algorithm`, `Curve`, `Usage`, `KeyFormat`,
-  `KeyReason`, `CryptoReason`), so an exhaustive `match` on one adds arms.
+  `?`, `+` or `\` in a segment, or a `:` or `*` inside one) is the caller defect `D020` at
+  `Router.route`, `get`, `post`, `put` or `delete`; in `0.1.0` it was a literal segment. `*`
+  and `**` routes now match, with their segments in `Request.param(req, "0")`, `"1"`, ….
+- **`std/crypto`'s sum types gain variants** (`Algorithm`, `Curve`, `Usage`, `KeyFormat`,
+  `KeyReason`, `CryptoReason`), so an exhaustive `match` on one needs more arms.
 - **A `Path` with `\` or `:` is refused** by `Path.validate`, `Path.from`, a `Path` literal
-  ([`V5004`](/docs/errors/V5004)), `Cli.parse` and `Json.decode`: write `/`, no drive.
+  ([`V5004`](/docs/errors/V5004)), `Cli.parse` and `Json.decode`: write `/`, with no drive.
 - **`ANTHROPIC_BASE_URL` is no longer read.** Pass the endpoint with
   `Llm.anthropic_at(base, key, model)`.
-- **Log fields render as compact JSON**: `hits=3`, not `hits=Number(3.0)`.
+- **Log fields print as compact JSON**: `hits=3`, not `hits=Number(3.0)`.
 - **`Console` gains `eprint(line)`**, which writes to standard error; a user
   `handler Console` must add it.
 - **A refinement failure names the failing clause**: a `Violation`'s clause is the first false
-  top-level conjunct, such as `it <= 100`, not the whole `where`.
+  top-level part of the `where`, such as `it <= 100`, not the whole `where`.
 - **[`W1003`](/docs/errors/W1003) `unused_import`** warns on an import nothing uses, with a fix
   that removes it.
-- **WASM runtime ABI 1.13.0.** A host built for `0.1.0`'s ABI 1.4 refuses a module from
-  `1.0.0-beta.1` with `V8003`. The Node host in the same compiler always matches.
+- WASM runtime ABI 1.13.0 (0.1.0 was 1.4).
 
 ### Added in 1.0.0-beta.1
 
 - `std/urlpattern`: `UrlPattern.compile(pattern)` and `UrlPattern.exec(p, url)`, the web's
-  `URLPattern` without regular expressions, alike on every backend.
-- `std/stream`: `ReadableStream` and `WritableStream` as values, a `Source` you pull and a
-  `Sink` you write, with bounded `lines`, `chunks` and `to_list`, adapters for text encoding,
-  `Blob`, HTTP bodies and files, and the [line-counting recipe](/docs/cookbook/stream_lines).
-- `std/crypto` runs on `--target wasm` through the Node host. In `0.1.0` a crypto primitive on
-  WASM is the defect `D090`; use `--target js` there.
+  `URLPattern` without regular expressions, the same on every backend.
+- `std/stream`: the web's readable and writable streams as values. A `Source` is something you
+  pull items from and a `Sink` something you write to, with bounded `lines`, `chunks` and
+  `to_list`, and adapters for text encoding, `Blob`, HTTP bodies and files. See the
+  [line-counting recipe](/docs/cookbook/stream_lines).
+- `std/crypto` runs on `--target wasm` through the Node host. (In `0.1.0`, a crypto call on
+  WASM is the defect `D090`; use `--target js` there.)
 - Web timers and dialogs: `std/task.every(period, body)` (`setInterval`), `Console.alert`,
   `Console.confirm` and `Console.prompt`, the test handler `Console.scripted(lines)`, and
   `Json.render(j, indent)` (`JSON.stringify` with an indent).
-- `Request.bytes(req, limit)` and `Request.text(req, limit)` read a server's request body,
-  `BadRequest` past `limit`.
+- `Request.bytes(req, limit)` and `Request.text(req, limit)` read a request body on a server,
+  failing `BadRequest` past `limit`.
 - The `defect` record and the `regression` file are part of the `--json` contract, and MCP's
   `symbol_query` and `test` results are the CLI's records.
 - The [signed webhook recipe](/docs/cookbook/sign_webhook).
@@ -195,17 +189,16 @@ Each of these can change what a program that works on `0.1.0` does.
 
 ### Faster in 1.0.0-beta.1
 
-Performance work after `0.1.0`, mostly on the JavaScript backend, is not in the `0.1.0`
-packages: owned updates through functions that return a fresh list and flat `List<Bool>`
-(`nbody`, `sieve`), `Map<Int, _>` and `Set<Int>` indexed by the key's bits and a `Map.get`
-consumed at once that builds no `Option` (`map_set`), and defects raised inline on cold paths
-(`spectral_norm`). No program's
-output changes. The [benchmarks page](/docs/benchmarks) has the instruction counts.
+Mostly on the JavaScript backend: list updates in place through functions that return a fresh
+list, flat `List<Bool>` (`nbody`, `sieve`), `Map<Int, _>` and `Set<Int>` indexed by the key's
+bits, a `Map.get` used at once that builds no `Option` (`map_set`), and defects raised inline on
+rarely taken paths (`spectral_norm`). Output does not change. The
+[benchmarks page](/docs/benchmarks) has the numbers.
 
 ## 0.1.0, from alpha.1
 
-These changes shipped in `0.1.0` (the
-[0.1.0 section of the changelog](https://github.com/icantcodefyi/sakuralang/blob/main/CHANGELOG.md#010---2026-10-20)).
+These changes shipped in `0.1.0` (see
+[its changelog section](https://github.com/icantcodefyi/sakuralang/blob/main/CHANGELOG.md#010---2026-10-20)).
 `0.1.0` also adds the web platform's byte, text, URL, header, form and crypto APIs as typed
 values: `std/bytes`, `std/encoding`, `std/url`, `std/searchparams`, `std/headers`, `std/blob`,
 `std/form` and `std/crypto` (see the [standard library](/docs/stdlib)).
@@ -217,29 +210,27 @@ Each of these can change what a program that worked on `0.1.0-alpha.1` does.
 - **`[dependencies]` is refused.** A `sakura.toml` that declares it in any form, even empty,
   is [`V8005`](/docs/errors/V8005) before anything runs. Remove the table; packages arrive
   after 1.0.
-- **An invalid manifest is a diagnostic.** An unknown table or key, a value of the wrong
-  type, a missing `[package] name` or malformed TOML is [`V8006`](/docs/errors/V8006) from
-  `check`, `build`, `run`, `test`, `verify` and the LSP, with exit status `1` and a `--json`
-  record, instead of a text usage error with exit `2`. The unused `[targets]` table is now
-  an unknown key: delete it. See [sakura.toml](/docs/manifest).
-- **Line endings do not change meaning.** A `\r\n` inside a string literal is `\n`, and a
-  line comment ends before the `\r`, so a CRLF checkout prints the same strings as an LF one.
+- **An invalid manifest is a diagnostic.** An unknown table or key, a value of the wrong type,
+  a missing `[package] name` or malformed TOML is [`V8006`](/docs/errors/V8006) from `check`,
+  `build`, `run`, `test`, `verify` and the language server, with exit status `1` and a
+  `--json` record, instead of a text usage error with exit `2`. The unused `[targets]` table is
+  now an unknown key: delete it. See [sakura.toml](/docs/manifest).
+- **Line endings do not change meaning.** A `\r\n` inside a string literal is `\n`, and a line
+  comment ends before the `\r`, so a CRLF checkout prints the same strings as an LF one.
   `sakura fmt` writes LF, `fmt --check` names CRLF as the reason a file is listed, and a
   snapshot that differs only in line endings is reported as a line-ending mismatch.
   `sakura new` and `sakura init` also write `.gitattributes` (`*.sak text eol=lf`,
   `*.snap -text`).
-- **A response body cut short is `HttpError`.** When the connection drops while
-  `Http.host()`'s `send` reads the body, `send` fails with `HttpError` on both backends,
-  instead of the defect `D091` on JS or a crash on WASM. A program that retries on
-  `HttpError` now retries this case too.
+- **A response body cut short is `HttpError`.** When the connection drops while `Http.host()`'s
+  `send` reads the body, `send` fails with `HttpError` on both backends, instead of the defect
+  `D091` on JS or a crash on WASM. A program that retries on `HttpError` now retries this too.
 - **`SAKURA_MAX_COPY_BYTES` is strict.** It must be decimal digits from 1 to 2^53−1; any other
   value is the defect `D091` at first use. Unset it for the 256 MiB default.
-- **JS responses are bounded.** On the JS backend, `Http.host()`'s `send` reads at most
+- **JS responses are bounded.** On JS, `Http.host()`'s `send` reads at most
   `SAKURA_MAX_COPY_BYTES` of a response body, as WASM already did; a larger body fails with
-  `HttpError` "response too large". Raise the limit or read large responses with
-  `Http.stream`.
+  `HttpError` "response too large". Raise the limit or read large responses with `Http.stream`.
 - **Recorded responses are bounded.** `sakura test --record` stores at most 16 MiB of a
-  response body; past that, the call fails with `HttpError` and nothing is appended to the
+  response body; past that, the call fails with `HttpError` and nothing is added to the
   cassette.
 
 ### WebAssembly backend complete
@@ -248,15 +239,15 @@ Each of these can change what a program that worked on `0.1.0-alpha.1` does.
 compares the two backends' output, effect traces and defect records on Linux x64 and ARM64,
 Apple silicon and Intel macOS, and Windows x64. On WASM:
 
-- `sakura test --contracts` runs the generated contract properties. `sakura test --record`
-  still needs `--target js`; both backends replay the cassette it writes.
+- `sakura test --contracts` runs the generated contract tests. `sakura test --record` still
+  needs `--target js`; both backends replay the cassette it writes.
 - `sakura build` drops the checks `sakura verify --target wasm` proved, and
   `sakura build --manifest` writes `target/sakura/manifest.json` with `target` naming the backend.
 - `sakura verify --target wasm` replays a disproved obligation with WASM's 64-bit `Int`, where
   an overflow is `D001`.
 - Modules carry runtime ABI 1.4.0. An older 1.2 host refuses them with `V8003`.
 
-`Serve.host()` on WASM no longer ends the process on a host fault:
+A server (`Serve.host()`) on WASM no longer ends the process on a host fault:
 
 | Condition | HTTP response | Diagnostic and lifecycle |
 | --- | --- | --- |
@@ -273,56 +264,55 @@ The 1 MiB request-body limit and its `413` answer are unchanged from `0.1.0-alph
 
 - Every `--json` record carries `kind` and `schema_version`: `sakura doc --json` is a
   `symbol_query` record and `manifest.json` has `kind: "manifest"`. `sakura verify --json`
-  writes schema 1.1 on every record, including a program that does not compile. The fields of
-  every kind are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt).
+  writes schema 1.1 on every record, including for a program that does not compile. The fields
+  of every kind are listed in [`compiler/contracts/json.txt`](https://github.com/icantcodefyi/sakuralang/blob/main/compiler/contracts/json.txt).
   After 0.1.0, the closing summary records split into one kind per command (`summary`,
   `test_summary`, `audit_summary`, `verify_summary`); see [Diagnostics](/docs/agents/diagnostics#record-kinds).
-- [`V4004`](/docs/errors/V4004) limits a `match`, `catch` or `let` pattern decision tree to
-  1,048,576 nodes. Or-patterns and copied wildcard rows can expand the tree. It is reported
-  while lowering (`build`, `run`, `test`), not by `check`. Thousands of flat literal or guarded
-  rows compile and run; split a combinatorial match into one column at a time.
+- [`V4004`](/docs/errors/V4004) limits the decision tree of a `match`, `catch` or `let`
+  pattern to 1,048,576 nodes. Or-patterns and copied wildcard rows can grow the tree. It is
+  reported while lowering (`build`, `run`, `test`), not by `check`. Thousands of flat literal
+  or guarded rows compile and run; split a combinatorial match into one column at a time.
 - `V1002` on `Type.member` suggests the one exported function that is a prefix of the name or
   extends it (`List.lenght` → `len`, `List.fil` → `filter`), as a `suggested` fix.
 - `V2002` names a `Type.member` callee as written (``List.map` (std/list) takes 2 arguments``).
 - The JS and WASM hosts report an OS error by its class, such as `Err("permission denied")`,
   instead of Node's message, as the native host does.
-- A syntax error hides only the diagnostics that point into the body holding it, and its
-  cascading `V3001`. An error in another module used from that body stays visible.
+- A syntax error hides only the diagnostics that point into the body holding it, and the
+  `V3001` errors it causes. An error in another module used from that body stays visible.
 
 ### Analysis cache and check latency
 
-`check`, `build`, `run`, `test`, the LSP and MCP read std's analysis from a disk cache, one
-file per compiler build at `<cache>/sakuralang/std`. The base is `SAKURA_CACHE_DIR`, otherwise
-`XDG_CACHE_HOME` or `~/.cache` on Unix and `LOCALAPPDATA` on Windows. `SAKURA_NO_CACHE=1`
-turns it off. Output is the same with and without it; missing, damaged or foreign files are
-recomputed and have no format guarantee. It is separate from the authenticated
+`check`, `build`, `run`, `test`, the language server and MCP read std's analysis from a disk
+cache, one file per compiler build at `<cache>/sakuralang/std`. The base is `SAKURA_CACHE_DIR`,
+otherwise `XDG_CACHE_HOME` or `~/.cache` on Unix and `LOCALAPPDATA` on Windows.
+`SAKURA_NO_CACHE=1` turns it off. Output is the same with and without it; missing, damaged or
+foreign files are recomputed and have no format guarantee. It is separate from the
 [proof cache](/docs/agents/verify#proof-cache-and-build-behavior). Concurrent test jobs should
-set distinct `SAKURA_CACHE_DIR` directories.
+set different `SAKURA_CACHE_DIR` directories.
 
 ### Filesystem security
 
-On the JS backend and WASM, a write through a dangling symbolic link inside an `fs.write`
-grant is refused with "escapes the directory", even when the link points back inside the
-grant. Writes and reads open the resolved path with `O_NOFOLLOW` and do their I/O through the
-descriptor, so a link planted during the call is refused. **Write to the target path instead
-of the link.** Known limits: a parent directory swapped for a link during the call,
-`Sql.sqlite`'s database file, the names `Fs.list` reads, and Windows are not covered on the JS
-hosts.
+On JS and WASM, a write through a dangling symbolic link inside an `fs.write` grant is refused
+with "escapes the directory", even when the link points back inside the grant. Writes and
+reads open the resolved path with `O_NOFOLLOW` and do their I/O through the open file, so a
+link planted during the call is refused. **Write to the target path instead of the link.**
+Known limits on the JS hosts: a parent directory swapped for a link during the call,
+`Sql.sqlite`'s database file, the names `Fs.list` reads, and Windows are not covered.
 
 ### Native code, experimental
 
 A compiler built from source with the Cargo `native` feature accepts `--target native` on
-`build`, `run` and `test`. It runs `Json`, `Cli` and `Sql` natively; `Http`, serving and `Llm`
-stop with a `D090` defect. Release binaries do not include it, and it carries no
-promise. See [Backends](/docs/tour/memory#backends).
+`build`, `run` and `test`. In `0.1.0` it runs `Json`, `Cli` and `Sql` natively; `Http`,
+serving and `Llm` stop with a `D090` defect. The `0.1.0` release binaries do not include it,
+and it carries no promise. See [Backends](/docs/tour/memory#backends).
 
 ### Distribution and tooling
 
-- **Linux ARM64** (glibc) archives and the `sakuralang-linux-arm64-gnu` npm package are new in
-  v0.1.0. See [Install](/docs/install).
+- **Linux ARM64** (glibc) archives and the `sakuralang-linux-arm64-gnu` npm package are new.
+  See [Install](/docs/install).
 - **Windows x64** (ZIP, npm and a checksum-verifying `install.ps1`) and **Intel macOS**
-  (archive, npm and Homebrew) are published for v0.1.0, supported once their
-  published-install check is green. See [Install](/docs/install).
+  (archive, npm and Homebrew) are published, supported once their published-install check is
+  green. See [Install](/docs/install).
 - New macOS releases are signed with a Developer ID (team `P62B65A837`) and notarized by
   Apple. This does not retroactively sign `0.1.0-alpha.1`.
 - The documented npm install is the plain `npm install --global sakuralang`. The packages
@@ -331,9 +321,8 @@ promise. See [Backends](/docs/tour/memory#backends).
 
 ### Performance advice
 
-For dense integer ids, prefer `List` to `Map`, as the DeltaBlue benchmark now does. Both
-return updated values: assign the result back. Use `Map` for sparse keys. The blessed
-instruction-count baseline is on the [benchmarks page](/docs/benchmarks); this page quotes no
-ratio. The
+For dense integer IDs, prefer `List` to `Map`, as the DeltaBlue benchmark now does. Both
+return updated values: assign the result back. Use `Map` for sparse keys. The
+[benchmarks page](/docs/benchmarks) has the measured baseline, and the
 [benchmark guide](https://github.com/icantcodefyi/sakuralang/blob/main/bench/README.md)
 describes how to measure on your own machine.
