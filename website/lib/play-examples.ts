@@ -6,8 +6,12 @@ export type Example = { name: string; label: string; description: string; code: 
 
 const dir = join(process.cwd(), "..", "compiler", "examples");
 
-/** Services the browser host refuses (components/play/playground.tsx) and runs that need input. */
-const UNRUNNABLE = /^\/\/ args:|^import std\/(http|serve|sql|llm|websocket|worker)\b/m;
+/**
+ * Runs that need input, services the browser host refuses (components/play/playground.tsx), and
+ * imports from outside `std/`: the playground compiles one file, with no other packages.
+ */
+const UNRUNNABLE =
+  /^\/\/ args:|^import std\/(http|serve|sql|llm|websocket|worker)\b|^import (?!std\/)/m;
 /** The fixture harness's header directives (compiler/examples/README.md). */
 const DIRECTIVES = /^(\/\/ (milestone|needs|mode|covers|stdout-regex|spec|known-bug):.*\n)+\n?/;
 
@@ -25,7 +29,7 @@ const ABOUT: Record<string, [label: string, description: string]> = {
 
 /**
  * The repository's runnable examples that need nothing the playground lacks: `mode: run`, no
- * arguments, no network, database or model services. `hello` first, then by name.
+ * arguments, no network, database or model services, no other packages. `hello` first, then by name.
  */
 export const examples: Example[] = readdirSync(dir, { withFileTypes: true })
   .filter((e) => e.isDirectory())
