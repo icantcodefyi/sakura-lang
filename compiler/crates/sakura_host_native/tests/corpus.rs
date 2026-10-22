@@ -803,7 +803,8 @@ fn a_debugger_backtraces_through_native_frames() {
 
 /// Plan M5 N2d: the object's `.eh_frame` (`.pdata` on Windows) has an entry for every function
 /// it defines, each relocated against that function (so unwinding never falls back to
-/// frame-pointer guesses).
+/// frame-pointer guesses); on x86_64 Mach-O, whose FDEs name their function resolved and not
+/// relocated, each FDE's `pc_begin` is the function's address.
 #[test]
 fn every_compiled_function_has_unwind_information() {
     use object::{Object, ObjectSection, ObjectSymbol, RelocationTarget, SymbolKind};
@@ -825,6 +826,19 @@ fn every_compiled_function_has_unwind_information() {
             _ => None,
         })
         .collect();
+    // Each FDE's `pc_begin` (pc-relative `sdata4` at +8), by the address it names.
+    let data = eh.data().unwrap();
+    let word = |at: usize| u32::from_le_bytes(data[at..at + 4].try_into().unwrap());
+    let (mut starts, mut at) = (std::collections::BTreeSet::new(), 0);
+    while at + 12 <= data.len() && word(at) != 0 {
+        if word(at + 4) != 0 {
+            let pc = word(at + 8) as i32 as i64;
+            starts.insert((eh.address() as i64 + at as i64 + 8 + pc) as u64);
+        }
+        at += 4 + word(at) as usize;
+    }
+    let resolved = file.format() == object::BinaryFormat::MachO
+        && file.architecture() == object::Architecture::X86_64;
     let functions: Vec<_> = file
         .symbols()
         .filter(|s| s.kind() == SymbolKind::Text && s.is_definition())
@@ -832,7 +846,11 @@ fn every_compiled_function_has_unwind_information() {
     assert!(functions.len() > 10, "{} functions", functions.len());
     for f in functions {
         assert!(
-            covered.contains(&f.index().0),
+            if resolved {
+                starts.contains(&f.address())
+            } else {
+                covered.contains(&f.index().0)
+            },
             "{} has no unwind entry",
             f.name().unwrap_or("?")
         );

@@ -78,13 +78,13 @@ impl Unwind {
     }
 
     /// Add the `.eh_frame` section (`__TEXT,__eh_frame` on Mach-O), or on Windows `.pdata` and
-    /// `.xdata`, to `product`.
-    pub fn write(self, product: &mut ObjectProduct) -> Result<(), String> {
+    /// `.xdata`, to `product`. On x86_64 Mach-O it returns the FDE fields [`patch`] fills in.
+    pub fn write(self, product: &mut ObjectProduct) -> Result<Vec<Pending>, String> {
         if !self.windows.is_empty() {
-            return write_windows(&self.windows, product);
+            return write_windows(&self.windows, product).map(|()| vec![]);
         }
         if self.funcs.is_empty() {
-            return Ok(());
+            return Ok(vec![]);
         }
         let mut eh = EhFrame(Relocating::new());
         self.table
@@ -94,8 +94,69 @@ impl Unwind {
         product
             .object
             .set_section_data(section, eh.0.data.slice().to_vec(), 8);
-        eh.0.relocate(product, section, &self.funcs, &HashMap::new(), false)
+        // ld64 takes no pc-relative (`X86_64_RELOC_SIGNED`) relocation in `__eh_frame`, and
+        // `object` writes x86_64's that way (arm64's are a subtractor pair it accepts).
+        let pending = if product.object.format() == object::BinaryFormat::MachO
+            && product.object.architecture() == object::Architecture::X86_64
+        {
+            eh.0.take_func_relocs()
+                .into_iter()
+                .map(|(offset, f, addend)| {
+                    let name = product
+                        .object
+                        .symbol(product.function_symbol(self.funcs[f]))
+                        .name
+                        .clone();
+                    (offset, name, addend)
+                })
+                .collect()
+        } else {
+            vec![]
+        };
+        eh.0.relocate(product, section, &self.funcs, &HashMap::new(), false)?;
+        Ok(pending)
     }
+}
+
+/// An `.eh_frame` field left unrelocated: its offset, the function symbol it names and the
+/// addend, a 32-bit pc-relative value.
+pub type Pending = (u64, Vec<u8>, i64);
+
+/// Write each pending field of the emitted Mach-O `object` as the function's address plus the
+/// addend minus the field's own, both in the object's address space: ld64 reads an FDE's
+/// function from that value when the field has no relocation, as for an assembler's local
+/// reference.
+pub fn patch(mut object: Vec<u8>, pending: &[Pending]) -> Result<Vec<u8>, String> {
+    use object::{Object, ObjectSection, ObjectSymbol};
+    if pending.is_empty() {
+        return Ok(object);
+    }
+    let file = object::File::parse(object.as_slice()).map_err(|e| e.to_string())?;
+    let eh = file
+        .section_by_name("__eh_frame")
+        .ok_or("no __eh_frame to patch")?;
+    let (at, base) = (
+        eh.file_range().ok_or("__eh_frame has no data")?.0,
+        eh.address(),
+    );
+    let addresses: HashMap<&[u8], u64> = file
+        .symbols()
+        .filter_map(|s| Some((s.name_bytes().ok()?, s.address())))
+        .collect();
+    let mut writes = vec![];
+    for (offset, name, addend) in pending {
+        let target = addresses
+            .get(name.as_slice())
+            .ok_or("an FDE names a missing symbol")?;
+        let value = (*target as i64 + addend - (base + offset) as i64) as i32;
+        writes.push((at + offset, value));
+    }
+    drop(file);
+    for (at, value) in writes {
+        let at = at as usize;
+        object[at..at + 4].copy_from_slice(&value.to_le_bytes());
+    }
+    Ok(object)
 }
 
 /// `.xdata`, each function's `UNWIND_INFO` at a 4-byte boundary, and `.pdata`, a

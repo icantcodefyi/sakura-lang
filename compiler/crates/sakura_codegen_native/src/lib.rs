@@ -423,13 +423,14 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
         return Ok((vec![], [codegen, Duration::ZERO]));
     }
     let mut product = obj.finish();
-    unwind.write(&mut product)?;
+    let pending = unwind.write(&mut product)?;
     // Windows debuggers read CodeView, not DWARF: no line table there until a CodeView decision
     // (design §17.175 (7)); traces still carry Sakura's own sites (`sakura$debug`).
     if !coff {
         lines.write(&mut product, &opts.sources, &opts.texts)?;
     }
     let object = product.emit().map_err(|e| e.to_string())?;
+    let object = unwind::patch(object, &pending)?;
     Ok((object, [codegen, start.elapsed() - codegen]))
 }
 

@@ -294,6 +294,21 @@ impl Relocating {
         Ok(())
     }
 
+    /// Remove and return the relocations naming a function: `(offset, function index, addend)`.
+    pub fn take_func_relocs(&mut self) -> Vec<(u64, usize, i64)> {
+        let (funcs, rest) = std::mem::take(&mut self.relocs)
+            .into_iter()
+            .partition(|r| matches!(r.1, Target::Func(_)));
+        self.relocs = rest;
+        funcs
+            .into_iter()
+            .map(|(offset, target, addend, _, _)| match target {
+                Target::Func(f) => (offset, f, addend),
+                Target::Section(_) => unreachable!("partitioned out"),
+            })
+            .collect()
+    }
+
     /// Add the relocations to `section` of `product`; `funcs` maps function indices to their
     /// [`FuncId`]s and `sections` the DWARF sections to theirs.
     pub fn relocate(
