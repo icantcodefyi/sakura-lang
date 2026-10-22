@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.18.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.19.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -29,7 +29,8 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 1.15.2 the missing-key permissions erratum (§8.3; design §17.304), 1.16.0 library entries
 (§9; design §17.301 (1c), §17.304 (B1)), 1.17.0 constructor-site reuse (§10; design
 §17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
-§17.176 (4), §17.308; plan M5 N4a). Owned by
+§17.176 (4), §17.308; plan M5 N4a) and 1.19.0 the `wipe` header flag (§3.1, §3.5; design
+§17.288 (7); plan M5 N-S). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -372,6 +373,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   lost. Every function is internal to the linked module (as `rt_dup_candidate`); no byte
   layout, import, export or outcome changes. It is a MINOR by 1.3.0's rule: `borrows` is no
   longer 0, so a 1.17 host refuses a 1.18 module. `sakura_abi_version` is `0x011200`.
+- 1.19.0 (MINOR, design §17.288 (7); plan M5 N-S) adds the header flag bit 2 `wipe` (§3.1).
+  Until 1.18.0 a `Secret`'s destructor zeroed its inner `String` or `Bytes` only when that
+  value died with it, so the bytes `Secret.expose` revealed (`std/crypto`'s `reveal`) were
+  freed unzeroed when they outlived the `Secret`. From 1.19.0 the `Secret` destructor marks a
+  counted inner `wipe` and the release of a `wipe` `String` or `Bytes` overwrites its bytes
+  (§3.5), whenever and wherever it dies; nothing else is zeroed, and an unmarked block is
+  freed as before. `std/crypto` marks its own copies of key material (a scalar slice, a
+  generated scalar, an ECDH shared secret) the same way. The flag is set and read only by
+  `sakura_rt` inside the linked module; no import, export or outcome changes. It is a MINOR by
+  1.3.0's rule (a new header field): a 1.18 host refuses a 1.19 module. On JS nothing is
+  zeroed (JS ABI §7). `sakura_abi_version` is `0x011300`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -591,7 +603,7 @@ and is the only null (research/09 §3 recommendation; needed by the §17.83 nich
 |---|---|---|---|
 | 0 | `u16` | `tag` | object kind (§3.2). Values ≥ 0x8000 are reserved for the runtime (`SomeBox`, frames, activations) and can never be produced by a user type or by FFI |
 | 2 | `u8` | `class` | size class index (§10) or 0xFF for a page-run allocation |
-| 3 | `u8` | `flags` | bit 0 `static` (RC never changes; literals and nullary constructors in the data segment); bit 1 `scoped` (the object is a `@resource` handle, §8.4); bits 2–7 zero |
+| 3 | `u8` | `flags` | bit 0 `static` (RC never changes; literals and nullary constructors in the data segment); bit 1 `scoped` (the object is a `@resource` handle, §8.4); bit 2 `wipe` (1.19.0: a `String` or `Bytes` a `Secret` held; its bytes are overwritten when its block is freed, §3.5); bits 3–7 zero |
 | 4 | `u32` | `rc` | reference count, number of **owning** links (§7). A fresh object has `rc = 1` held by the creating frame's local. Increment is checked: a count may reach 2^32 − 1, and the increment from 2^32 − 1 is `D092 rc_overflow`, leaving the count unchanged. Decrement to 0 releases (§3.5); while an object is being released the field links the destruction worklist |
 | 8 | — | payload | type-specific, below |
 
@@ -676,9 +688,13 @@ with the table.
 `rc`; if nonzero, return. Otherwise push `p` on the **destruction worklist**, a stack threaded
 through the `rc` fields of the objects being released (a count of zero has no other use), so
 destruction never allocates. A loop pops, decrements each owned child by the layout (pushing
-the ones that reach zero), runs the object's runtime destructor for tags 15–17 and 19 (`Secret`
-zeroes the bytes of an inner `String`/`Bytes` that dies with it; `Handle` retires the host
-slot, §8.4; `Channel` drops its queued items and frees its arrays), then frees the block. No recursion anywhere (§17.82; research/09 §3). The
+the ones that reach zero), runs the object's runtime destructor for tags 3, 4, 15–17 and 19
+(`Secret` sets `flags.wipe` on a counted inner `String`/`Bytes`, and a `String` or `Bytes`
+with `flags.wipe` overwrites its bytes, so a revealed value that outlives its `Secret` is
+zeroed when it dies, 1.19.0; `Handle` retires the host slot, §8.4; `Channel` drops its queued
+items and frees its arrays), then frees the block. A copy made from a revealed value (a
+slice, a concatenation) is a new block without the flag; a static inner (a literal) is never
+freed, so it is never zeroed. No recursion anywhere (§17.82; research/09 §3). The
 million-object linked-list destruction test is an M4-RT gate.
 
 ## 4. Boxing at polymorphism boundaries

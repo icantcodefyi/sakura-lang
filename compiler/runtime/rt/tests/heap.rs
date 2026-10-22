@@ -221,6 +221,42 @@ fn handles_retire_and_secrets_zero_on_destruction() {
     assert_eq!(rt.heap.mem.bytes(inner + 12, 4), [0; 4]);
 }
 
+/// Plan M5 N-S (ABI 1.19.0): a revealed `Bytes` or `String` outlives its `Secret` and is still
+/// overwritten when it dies, while a plain one is freed as it is (no zero-on-free for every block).
+#[test]
+fn revealed_bytes_are_zeroed_when_freed_and_plain_bytes_are_not() {
+    let mut rt = Rt::new(64 << 20).unwrap();
+    let key = |rt: &mut Rt| {
+        let b = rt.new_bytes(4).unwrap();
+        rt.heap.mem.bytes_mut(b + 12, 4).copy_from_slice(b"key!");
+        b
+    };
+    let plain = key(&mut rt);
+    rt.drop(plain);
+    rt.heap.mem.unpoison(plain, 16);
+    assert_eq!(rt.heap.mem.bytes(plain + 12, 4), b"key!");
+
+    let inner = key(&mut rt);
+    let secret = rt.secret_wrap(inner).unwrap();
+    rt.dup(secret).unwrap();
+    let revealed = rt.secret_expose(secret).unwrap();
+    assert_eq!(revealed, inner);
+    rt.dup(revealed).unwrap();
+    rt.drop(secret); // the last `Secret` dies; two owners of the revealed bytes remain
+    rt.drop(revealed);
+    assert_eq!(rt.data_bytes(inner), b"key!");
+    rt.drop(revealed);
+    rt.heap.mem.unpoison(inner, 16);
+    assert_eq!(rt.heap.mem.bytes(inner + 12, 4), [0; 4]);
+
+    let s = rt.new_string(b"pass").unwrap();
+    let secret = rt.secret_wrap(s).unwrap();
+    let revealed = rt.secret_expose(secret).unwrap();
+    rt.drop(revealed);
+    rt.heap.mem.unpoison(s, 24);
+    assert_eq!(rt.heap.mem.bytes(s + 16, 4), [0; 4]);
+}
+
 #[test]
 fn handler_state_is_described_by_its_layout_row() {
     use common::Ty;

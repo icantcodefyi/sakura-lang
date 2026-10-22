@@ -11,6 +11,9 @@ use crate::{Defect, Res, Rt, tag};
 /// Header flags (ABI §3.1).
 pub const STATIC: u8 = 1;
 pub const SCOPED: u8 = 2;
+/// A `String` or `Bytes` a `Secret` held (ABI 1.19.0, plan M5 N-S): its bytes are overwritten
+/// when its block is freed, wherever it went after a reveal.
+pub const WIPE: u8 = 4;
 
 /// Generic-word immediates (ABI §4): low bits `01`, bit 2 set for `Bool`, bit 3 its value.
 pub const UNIT: u32 = 0b0001;
@@ -270,11 +273,13 @@ impl Rt {
             }
             tag::SECRET => {
                 let inner = m(self, 8);
-                if self.counted(inner) && self.rc(inner) == 1 {
-                    self.zero_payload(inner);
+                if self.counted(inner) {
+                    let f = self.flags(inner);
+                    self.set_flags(inner, f | WIPE);
                 }
                 self.dec(inner, head);
             }
+            tag::STRING | tag::BYTES if self.flags(obj) & WIPE != 0 => self.zero_payload(obj),
             tag::UNTRUSTED | tag::SOME_BOX => self.dec(m(self, 8), head),
             tag::HANDLE => {
                 let (kind, slot, generation) = (m(self, 8), m(self, 12), m(self, 16));
@@ -285,13 +290,9 @@ impl Rt {
         }
     }
 
-    /// `Secret` destructor: the bytes of a dying `String`/`Bytes` are overwritten.
+    /// A `WIPE` `String`'s or `Bytes`' destructor: its bytes are overwritten.
     fn zero_payload(&mut self, p: u32) {
-        let len = self.heap.mem.u32(p + 8);
-        match self.tag(p) {
-            tag::STRING => self.heap.mem.fill(p + 16, 0, len),
-            tag::BYTES => self.heap.mem.fill(p + 12, 0, len),
-            _ => {}
-        }
+        let (len, at) = self.data(p);
+        self.heap.mem.fill(at, 0, len);
     }
 }
