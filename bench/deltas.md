@@ -124,3 +124,20 @@ AI assistance: GPT-6-Astra prepared this ledger; GPT-6.1-Sol added the WS-S10 bo
 Counted, host loaded (advisory, direction only); every miss carried under §17.265.
 Source: `bench/results/2026-10-21-0a50bbe1-envelope.md`.
 
+
+## `v1.0.0-beta.4` baseline (`40af20ce`, 2026-10-22)
+
+Counted (§17.264) at the preparation commit `40af20ce096074012bbd2344129da441589d3e6c` in
+`../sakura-counted`, tree clean, every oracle green, Node 26.12.0 under §17.282's flags. Blessed
+by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design §17.310 (1)); the
+owner can overturn it. `baselines/d88970189598.json`, `wasm/` and `typescript/` hold the
+`40af20ce` runs (the `472dea56` files are in `baselines/archive/472dea56/`), and
+`baselines/compile-native/d88970189598.json` is the first counted native compile report (N2f
+(iii), §17.308 (2b)): from 16,384 to 32,768 rows the median count grows 1.96× in `frontend`,
+2.00× in `lowering`, 2.01× in `codegen`, 1.83× in `object` and 1.05× in `link`, so the report
+names `lowering` and `codegen` superlinear, each at the 2× line; the round that reads it sets
+§17.175 (4)'s budget. Spreads over 1%: no Node cell; one Wasmtime cell (`countdown` n=1000, the
+first of five processes); 20 native-lane cells, all Go; Bun and `tsc` as before (advisory).
+Envelope (wall-time lane, advisory, host load 4.35): `miss` on 237 of 264 gating cells (absent 4,
+met 23), against 236 at beta.3; carried under §17.265. Prep `fib` and `shapes` compare `ok` on
+every Node cell (largest +0.5%). Source: `bench/results/2026-10-22-40af20ce-*`.
