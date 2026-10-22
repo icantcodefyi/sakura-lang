@@ -46,7 +46,7 @@ const CLAUSES: { label: string; body: ReactNode }[] = [
     label: "Requires",
     body: (
       <>
-        <C>amount &gt; 0</C>. Breaking it is the caller&apos;s defect, <C>D020</C>.
+        <C>amount &gt; 0</C>. Breaking it is the caller&apos;s bug, reported as <C>D020</C>.
       </>
     ),
   },
@@ -54,7 +54,7 @@ const CLAUSES: { label: string; body: ReactNode }[] = [
     label: "Ensures",
     body: (
       <>
-        The new balance, checked on every return; <C>sakura verify</C> proves it with Z3.
+        The new balance, checked on every return; <C>sakura verify</C> proves it ahead of time.
       </>
     ),
   },
@@ -62,7 +62,7 @@ const CLAUSES: { label: string; body: ReactNode }[] = [
     label: "Tests",
     body: (
       <>
-        Live beside the code and install their own handler for <C>Ledger</C>.
+        Live beside the code and bring their own fake <C>Ledger</C>.
       </>
     ),
   },
@@ -76,8 +76,8 @@ export async function CodeSample() {
       title="Read the signature. The compiler reads the body."
       lede={
         <>
-          One file, as it compiles today. A person reviews three lines; <C>check</C>, <C>test</C>{" "}
-          and <C>verify</C> hold the rest to them.{" "}
+          One file that compiles today. You review the three highlighted lines; <C>check</C>,{" "}
+          <C>test</C> and <C>verify</C> make sure the body keeps to them.{" "}
           <TextLink href="/docs/tour/basics">Language tour</TextLink>
         </>
       }

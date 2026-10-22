@@ -87,9 +87,9 @@ function HeroCopy() {
         className="rise-text mt-7 max-w-[31rem] text-[clamp(1.05rem,1.35vw,1.2rem)] leading-relaxed text-pretty"
         style={{ "--i": 2 } as CSSProperties}
       >
-        It compiles to JavaScript and WebAssembly. Effects, errors and contracts live in every
-        signature; the compiler checks them, and{" "}
-        <code className="font-mono text-[0.9em]">sakura verify</code> proves contracts with Z3.
+        Your coding agent writes the code. Each function&apos;s signature says what it may touch and
+        how it can fail, and the compiler holds every change to it. Sakura compiles to JavaScript
+        and WebAssembly.
       </p>
       <div
         className="rise mt-8 flex flex-wrap items-center gap-3"

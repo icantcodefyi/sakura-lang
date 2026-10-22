@@ -45,20 +45,20 @@ export async function Why() {
     <Section
       id="why"
       ask="Why would I use it?"
-      title="An agent can't quietly do more than the signature says."
-      lede="Three checks you would otherwise do by hand in review, each run by the compiler on every change."
+      title="Your agent can't quietly do more than the signature says."
+      lede="Three things you would otherwise catch in code review. The compiler checks them on every change."
     >
       <div className="grid items-center gap-x-14 gap-y-10 border-t border-border pt-10 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1fr)]">
         <Reason
           n="01"
-          title="Effects are part of the type."
+          title="Every function says what it touches."
           href="/docs/tour/effects"
           more="Effects"
         >
-          <C>signup</C> may use the database, the clock and randomness, and fail with a{" "}
-          <C>SignupError</C>; nothing else. When an agent adds a network call, <C>sakura check</C>{" "}
-          stops it with <C>V3001</C>. Widening the signature is a fix marked <C>interface_change</C>
-          , for a person to approve; here the agent removes the call instead.
+          <C>signup</C> may use the database, the clock and randomness, and can fail with{" "}
+          <C>SignupError</C>. Nothing else. When an agent adds a network call, <C>sakura check</C>{" "}
+          stops it with <C>V3001</C>. Allowing the call means changing the signature, and that is
+          for a person to approve; here the agent removes the call instead.
         </Reason>
         <HeroDemo lines={lines} />
       </div>
@@ -66,26 +66,25 @@ export async function Why() {
         <div className="grid content-start gap-8">
           <Reason
             n="02"
-            title="Refinements are checked at compile time."
+            title="Bad values don't compile."
             href="/docs/tour/types"
             more="Refinement types"
           >
-            <C>Cents</C> is an <C>Int</C> with a <C>where</C> clause. A literal that breaks it never
-            compiles, and a plain <C>Int</C> can only become one through <C>Cents.from</C>, checked
-            at run time, or <C>Cents.validate</C>, which returns a <C>Result</C>.
+            <C>Cents</C> is an <C>Int</C> that is never negative. Writing <C>-5</C> where{" "}
+            <C>Cents</C> is expected won&apos;t compile, and an unchecked <C>Int</C> only becomes{" "}
+            <C>Cents</C> through a check: <C>Cents.from</C> or <C>Cents.validate</C>.
           </Reason>
           <RefineFigure />
         </div>
         <div className="grid content-start gap-8">
           <Reason
             n="03"
-            title="Tests are deterministic by default."
+            title="Tests give the same result every run."
             href="/docs/tour/testing"
             more="Testing"
           >
             Under <C>sakura test</C> the clock is fixed, randomness is seeded and output is
-            captured. Any other effect needs a handler in the test, so a unit test can&apos;t reach
-            the network by accident.
+            captured. A test can&apos;t reach the network by accident: it has to supply a fake.
           </Reason>
           <TestsFigure />
         </div>

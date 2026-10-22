@@ -73,29 +73,28 @@ const FACTS: { title: string; body: ReactNode; href: string }[] = [
     href: "/docs/quickstart",
   },
   {
-    title: "A skill, and docs as Markdown",
+    title: "Docs an agent can read",
     body: (
       <>
-        The <code className="font-mono">sakura</code> skill for each client; every docs page is also
-        Markdown, indexed by <code className="font-mono">/llms.txt</code>.
+        Every docs page is also plain Markdown, listed in{" "}
+        <code className="font-mono">/llms.txt</code>.
       </>
     ),
     href: "/docs/agents/llms-txt",
   },
   {
-    title: "Fixes that state their reach",
+    title: "Safe fixes apply themselves",
     body: (
       <>
-        <code className="font-mono">sakura fix</code> applies the machine-applicable ones and never
-        a <code className="font-mono">contract_change</code> or{" "}
-        <code className="font-mono">authority_change</code>.
+        <code className="font-mono">sakura fix</code> applies the safe ones. A fix that changes a
+        contract or what code may do waits for a person.
       </>
     ),
     href: "/docs/agents/diagnostics",
   },
   {
     title: "Tests an agent can rerun",
-    body: "Tests deny the network; HTTP and LLM exchanges replay from cassettes in tests/fixtures.",
+    body: "Tests can't use the network. Recorded HTTP and LLM replies play back from files, so every run matches.",
     href: "/docs/agents/cassettes",
   },
 ];
@@ -110,11 +109,11 @@ export function Agents() {
     <Section
       id="agents"
       ask="How does it work with my coding agent?"
-      title="One command wires your agent to the compiler."
+      title="One command connects your agent to the compiler."
       lede={
         <>
-          Claude Code, Codex and Cursor get the MCP server and the project skill. From then on the
-          agent asks the compiler instead of guessing.{" "}
+          Claude Code, Codex and Cursor get the compiler as an MCP server, plus a skill that teaches
+          them the language. From then on the agent asks the compiler instead of guessing.{" "}
           <TextLink href="/docs/agents">Agent docs</TextLink>
         </>
       }

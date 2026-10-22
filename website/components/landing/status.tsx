@@ -8,8 +8,8 @@ const STABLE = [
   "CLI commands, flags and exit codes",
   "Diagnostic codes and --json records",
   "Standard library signatures",
-  "WASM runtime ABI",
-  "LSP and MCP tools",
+  "WebAssembly runtime interface",
+  "Editor (LSP) and agent (MCP) tools",
 ];
 const EXPERIMENTAL = ["--target native", "std/worker and @worker"];
 
@@ -21,9 +21,9 @@ export function Status() {
       title="A beta of 1.0. Not for production yet."
       lede={
         <>
-          <code className="font-mono text-[0.92em] text-foreground">v{RELEASE}</code> is
-          feature-complete for 1.0, may have bugs and may change before 1.0.0; every breaking change
-          ships with a migration in the <TextLink href="/changelog">changelog</TextLink>.
+          <code className="font-mono text-[0.92em] text-foreground">v{RELEASE}</code> has every 1.0
+          feature. It may have bugs and may still change; every breaking change comes with upgrade
+          steps in the <TextLink href="/changelog">changelog</TextLink>.
         </>
       }
     >
@@ -31,9 +31,7 @@ export function Status() {
         <PipelineFigure />
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
           <div>
-            <h3 className="font-mono text-[12px] text-faint">
-              proposed stable from the beta, draft RFC 0001
-            </h3>
+            <h3 className="font-mono text-[12px] text-faint">proposed stable from the beta</h3>
             <ul className="mt-3 grid border-t border-border">
               {STABLE.map((s) => (
                 <li
