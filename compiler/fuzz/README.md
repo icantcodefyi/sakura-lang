@@ -81,8 +81,27 @@ explains (a program allocating without bound within the reference evaluator's st
 | 2026-10-22 | `523cb84957e5` | `vc` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 10401 | 12.1 | 11,964 | none |
 | 2026-10-22 | `5224d902e369` | `fmt_idempotent` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 8 | 8707 | 19.3 | 116,960 | none |
 | 2026-10-22 | `5224d902e369` | `exec` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 4 | 1980 | 2.2 | 2,452 | #13, limit-hit |
+| 2026-10-22 | `a2704a6ffaa2` | `parse` | github ubuntu-latest run 39742799303 | 1 | 601 | 0.2 | 5,504 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `fmt_idempotent` | github ubuntu-latest run 39742799303 | 1 | 601 | 0.2 | 5,335 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `row_unify` | github ubuntu-latest run 39742799303 | 1 | 601 | 0.2 | 105 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `vc` | github ubuntu-latest run 39742799303 | 1 | 979 | 0.3 | 5,363 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `check` | github ubuntu-latest run 39742799303 | 1 | 1190 | 0.3 | 6,437 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `lir` | github ubuntu-latest run 39742799303 | 1 | 2179 | 0.6 | 4,728 | none |
+| 2026-10-22 | `a2704a6ffaa2` | `exec` | github ubuntu-latest run 39742799303 | 1 | 2218 | 0.6 | 1,594 | none |
+| 2026-10-22 | `df13d5098462` | `exec` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 5 | 15463 | 21.4 | 3,411 | none |
+| 2026-10-22 | `8c73c00b5321` | `lir` | github ubuntu-latest run 39765913686 | 1 | 1523 | 0.4 | 4,755 | none |
+| 2026-10-22 | `8c73c00b5321` | `exec` | github ubuntu-latest run 39765913686 | 1 | 2587 | 0.7 | 1,869 | limit-hit |
+| 2026-10-22 | `8c73c00b5321` | `vc` | github ubuntu-latest run 39765913686 | 1 | 2821 | 0.8 | 5,704 | none |
+| 2026-10-22 | `8c73c00b5321` | `check` | github ubuntu-latest run 39765913686 | 1 | 4195 | 1.2 | 6,888 | none |
+| 2026-10-22 | `8c73c00b5321` | `fmt_idempotent` | github ubuntu-latest run 39765913686 | 1 | 20401 | 5.7 | 6,250 | none |
+| 2026-10-22 | `8c73c00b5321` | `parse` | github ubuntu-latest run 39765913686 | 1 | 20401 | 5.7 | 5,553 | none |
+| 2026-10-22 | `8c73c00b5321` | `row_unify` | github ubuntu-latest run 39765913686 | 1 | 20401 | 5.7 | 106 | none |
+| 2026-10-22 | `df13d5098462` | `vc` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 4664 | 3.4 | 13,282 | none |
+| 2026-10-22 | `df13d5098462` | `lir` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 2852 | 4.7 | 10,346 | none |
+| 2026-10-22 | `df13d5098462` | `fmt_idempotent` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 8 | 1129 | 2.5 | 123,244 | none |
+| 2026-10-22 | `df13d5098462` | `vc` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 3368 | 5.1 | 13,282 | none |
 
-Totals (CPU-h, rows at or after `611dae4f`): parse 36.3 · check 26.5 · fmt_idempotent 21.7 · row_unify 36.3 · lir 22.3 · vc 16.3 · exec 3.6.
+Totals (CPU-h, rows at or after `611dae4f`): parse 42.3 · check 28.0 · fmt_idempotent 30.0 · row_unify 42.3 · lir 27.9 · vc 25.9 · exec 26.4.
 
 The `check`, `lir` and `vc` rows of run 39637860914 each ended at one `oom-` artefact after two
 to four hours: the job's RSS had grown to 2 GiB around a live heap of about 300 MiB, and each
@@ -95,7 +114,9 @@ input alone: under 5 s and 0.9 GiB), and for five local `vc` and two local `exec
 artefacts written while the host was saturated (each input alone: under 5 s). The `exec` rows'
 `limit-hit` artefacts are `List.push` recursions that copy without bound. A crash ends a
 `-jobs` run: the local `exec` row at `5224d902e369` counts its four workers up to the #13
-divergence (1980 s), and its later hours are at or after the fix.
+divergence (1980 s), and its later hours are at or after the fix. One job of the last local `vc`
+row was ended by the WSL2 VM's OOM killer (exit 137, six workers near 1.9 GiB each in 12 GiB),
+with no artefact; its time is not counted.
 
 CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` on this crate
 for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a
