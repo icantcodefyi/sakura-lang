@@ -242,6 +242,7 @@ function compileTable(): Table {
     head: ["Case", "lines", "median", "p95", "budget", "target", "verdict", "instructions"],
     align: ["l", "r", "r", "r", "r", "r", "l", "r"],
     code: [0],
+    ids: compile.results.map((c) => `compile-${c.program.replaceAll("_", "-")}`),
     rows,
     summary: `${over ? `${over} case${over > 1 ? "s are" : " is"} over budget` : "Every case is within its budget"}${
       missed.length
@@ -306,7 +307,7 @@ const verdict = (r: number, c: number) => (r <= c ? "met" : "miss");
 
 function targetsTable(): Table {
   return {
-    head: ["Program", "ceiling", "Node", "verdict", "Bun", "verdict"],
+    head: ["Program", "goal", "Node", "verdict", "Bun", "verdict"],
     align: ["l", "r", "r", "l", "r", "l"],
     code: [0],
     rows: targets.map((t) => [
@@ -317,7 +318,7 @@ function targetsTable(): Table {
       times(t.bun),
       verdict(t.bun, t.ceiling.bun),
     ]),
-    summary: `At the largest size, ${met("node")} of the ${targets.length} programs meet their ceiling on Node and ${met("bun")} on Bun. The median ratio is ${times(targetMedian.node)} on Node and ${times(targetMedian.bun)} on Bun, against a target of at most ${MEDIAN_CEILING.toFixed(1)}×.`,
+    summary: `At the largest size, ${met("node")} of the ${targets.length} programs meet their goal on Node and ${met("bun")} on Bun. The typical (median) program does ${times(targetMedian.node)} the work of hand-written JavaScript on Node and ${times(targetMedian.bun)} on Bun; the goal is at most ${MEDIAN_CEILING.toFixed(1)}×.`,
   };
 }
 
@@ -480,7 +481,7 @@ function winsJsTable(): Table {
       w.everySize ? "yes" : "no",
       w.wallAgrees ? "faster" : "slower",
     ]),
-    summary: `${jsWins.filter((w) => w.engine === "node").length} programs retire fewer instructions per call than their hand-written JavaScript twin on Node at the largest size, and ${jsWins.filter((w) => w.engine === "bun").length} on Bun. The last column is the wall time of the same cells, on a loaded host: direction only, and where it disagrees with the count it says so.`,
+    summary: `${jsWins.filter((w) => w.engine === "node").length} programs run fewer instructions per call than the same program written by hand in JavaScript on Node at the largest size, and ${jsWins.filter((w) => w.engine === "bun").length} on Bun. The last column is the wall time of the same cells, on a busy machine: it shows the direction only, and says so where it disagrees with the count.`,
   };
 }
 
@@ -548,23 +549,6 @@ const compileWins: CompileWin[] = compile.results
   }))
   .toSorted((a, b) => b.budget / b.p95 - a.budget / a.p95);
 const targetMissed = (w: CompileWin) => w.target != null && w.p95 > w.target;
-
-function winsCompileTable(): Table {
-  return {
-    head: ["Case", "lines", "p95", "budget", "headroom", "target"],
-    align: ["l", "r", "r", "r", "r", "l"],
-    code: [0],
-    ids: compileWins.map((w) => `compile-${w.case.replaceAll("_", "-")}`),
-    rows: compileWins.map((w) => [
-      w.case,
-      grouped(w.lines),
-      `${ms(w.p95)} ms`,
-      `${ms(w.budget)} ms`,
-      times(w.budget / w.p95),
-      w.target == null ? DASH : `${ms(w.target)} ms, ${targetMissed(w) ? "missed" : "met"}`,
-    ]),
-  };
-}
 
 // ---------- Sakura beside TypeScript ----------
 // `bench typescript` (bench/README.md): blessed from v1.0.0-beta.3 on. Shown only when the
@@ -635,69 +619,110 @@ function typescriptStartTable(): Table {
       ];
     }),
     summary: typescript
-      ? "Instructions of a fresh Node process that loads the program, prints run(n) for n from 0 to 3 and exits: Sakura's build output, the TypeScript twin through Node's own type stripping, and the same twin bundled first by esbuild. A ratio is Sakura's count over the other's."
+      ? "Instructions of a fresh Node process that loads the program, prints run(n) for n from 0 to 3 and exits: Sakura's build output, the TypeScript version run by Node directly (Node strips the types), and the same version bundled first by esbuild. A ratio is Sakura's count over the other's."
       : undefined, // the check table above carries the notice
   };
 }
 
 // ---------- The callouts ----------
 
+/** What each program does, in a few plain words, for the callouts. */
+const ABOUT: Record<string, string> = {
+  fib: "naive recursive Fibonacci",
+  countdown: "deep recursion",
+  tail_clique: "a state machine of tail calls",
+  sieve: "a prime sieve",
+  nbody: "a planet simulation",
+  spectral_norm: "matrix arithmetic",
+  binary_trees: "building and walking trees",
+  pipeline: "map, filter and sum over a list",
+  rbtree: "a persistent red-black tree",
+  map_set: "building and querying maps",
+  shapes: "updating many small records",
+  tokenizer: "splitting text into words",
+  json_validate: "decoding and checking JSON",
+  deltablue: "a constraint solver",
+  handled_reentry: "an effect used inside a callback",
+  handled_suspend: "an effect loop that sleeps once",
+  contracts: "a loop with contract checks",
+  contracts_plain: "a loop without contract checks",
+};
+const about = (program: string) =>
+  ABOUT[program] ??
+  ABOUT[program.split(":")[0]] ??
+  (program.startsWith("handled") ? "an effect handler in a loop" : program);
+
 const jsCallout = (w: JsWin): Win => ({
   id: jsWinId(w),
   value: times(1 / w.ratio),
-  label: "fewer instructions per call than the hand-written JavaScript",
+  label: "less work than the same program in hand-written JavaScript",
   subject: w.program,
   bars: [
     { label: "Sakura", value: w.sakura.instructions, shown: count(w.sakura.instructions) },
-    { label: "hand JS", value: w.hand.instructions, shown: count(w.hand.instructions) },
+    { label: "JavaScript", value: w.hand.instructions, shown: count(w.hand.instructions) },
   ],
-  note: `${ENGINE[w.engine]}, n = ${grouped(w.n)}${w.everySize ? ", and at every size counted" : ""}`,
+  note: `${about(w.program)}, on ${ENGINE[w.engine]}`,
 });
 
 const memoryCallout = (w: MemoryWin): Win => ({
   id: memoryWinId(w),
   value: times(w.hand / w.sakura),
-  label: "less peak memory than the hand-written JavaScript",
+  label: "less memory than the same program in hand-written JavaScript",
   subject: w.program,
   bars: [
     { label: "Sakura", value: w.sakura, shown: mib(w.sakura) },
-    { label: "hand JS", value: w.hand, shown: mib(w.hand) },
+    { label: "JavaScript", value: w.hand, shown: mib(w.hand) },
   ],
-  note: `${w.backend === "wasm" ? "WebAssembly" : "JavaScript backend"}, one call on Node, n = ${grouped(w.n)}`,
+  note: `${about(w.program)}, built to ${w.backend === "wasm" ? "WebAssembly" : "JavaScript"}`,
 });
 
-const compileCallout = (w: CompileWin): Win => ({
-  id: `compile-${w.case.replaceAll("_", "-")}`,
-  value: `${ms(w.p95)} ms`,
-  label: `p95 to ${w.case.startsWith("build") ? "build" : "check"} ${grouped(w.lines)} lines`,
-  subject: w.case,
-  bars: [
-    { label: "p95", value: w.p95, shown: `${ms(w.p95)} ms` },
-    { label: "budget", value: w.budget, shown: `${ms(w.budget)} ms` },
-  ],
-  note: `${times(w.budget / w.p95)} inside its budget`,
-});
+const compileCallout = (w: CompileWin): Win => {
+  const build = w.case.startsWith("build");
+  return {
+    id: `compile-${w.case.replaceAll("_", "-")}`,
+    value: `${ms(w.p95)} ms`,
+    label: `to ${build ? "build" : "type-check"} a ${grouped(w.lines)}-line project, in 19 of 20 runs`,
+    subject: build ? "sakura build" : "sakura check",
+    bars: [
+      { label: "Sakura", value: w.p95, shown: `${ms(w.p95)} ms` },
+      { label: "budget", value: w.budget, shown: `${ms(w.budget)} ms` },
+    ],
+    note: `${times(w.budget / w.p95)} under its budget`,
+  };
+};
 
-/** `sakura check` against `tsc --noEmit` on the generated 10,000-line package, once blessed. */
+/** `sakura check` against `tsc --noEmit` on the generated 10,000-line package, once blessed,
+ * with the 100,000-line package beside it, whichever way it goes. */
 const tsCallout = (): Win[] => {
-  const cell = (variant: string) =>
+  const cell = (program: string, variant: string) =>
     typescript?.results.find(
-      (c) => c.program === "corpus_10k" && c.variant === variant && c.engine === "check",
+      (c) => c.program === program && c.variant === variant && c.engine === "check",
     );
-  const s = cell("sakura");
-  const t = cell("tsc");
+  const s = cell("corpus_10k", "sakura");
+  const t = cell("corpus_10k", "tsc");
   if (!s || !t || t.instructions <= s.instructions) return [];
+  const bs = cell("corpus_100k", "sakura");
+  const bt = cell("corpus_100k", "tsc");
+  const r = bs && bt ? bt.instructions / bs.instructions : undefined;
+  const larger =
+    !bs || r === undefined
+      ? ""
+      : r >= 1.05
+        ? `; ${times(r)} at ${grouped(bs.size)} lines`
+        : r > 0.95
+          ? `; about even at ${grouped(bs.size)} lines`
+          : `; tsc does ${times(1 / r)} less at ${grouped(bs.size)} lines`;
   return [
     {
       id: "typescript-corpus-10k",
       value: times(t.instructions / s.instructions),
-      label: "fewer instructions to type-check than tsc --noEmit",
-      subject: "corpus_10k",
+      label: `less work than tsc to type-check a ${grouped(s.size)}-line project`,
+      subject: "sakura check",
       bars: [
         { label: "Sakura", value: s.instructions, shown: count(s.instructions) },
         { label: "tsc", value: t.instructions, shown: count(t.instructions) },
       ],
-      note: `${grouped(s.size)} lines, TypeScript ${typescript!.meta.engines.typescript}`,
+      note: `TypeScript ${typescript!.meta.engines.typescript}${larger}`,
     },
   ];
 };
@@ -715,10 +740,53 @@ export const callouts: Win[] = [
   ...memoryWins.slice(0, 1).map(memoryCallout),
 ];
 
+/** The other side of the wins: the median of the fifteen target programs on Node. */
+export const typical: Win = {
+  id: "against-hand-written-javascript",
+  value: times(targetMedian.node),
+  label: "the work of hand-written JavaScript, for the typical program",
+  subject: "",
+  bars: [
+    { label: "Sakura", value: targetMedian.node, shown: times(targetMedian.node) },
+    { label: "JavaScript", value: 1, shown: times(1) },
+  ],
+  note: `the median of ${targets.length} programs on Node; ${met("node")} meet their goal`,
+};
+
+/** The page's answer in four plain sentences, each a bold lead and the numbers behind it. */
+const nodeWins = jsWins.filter((w) => w.engine === "node");
+const wasmMemory = memoryWins.filter((w) => w.backend === "wasm");
+const check = tsCallout()[0];
+const build = compileWins.find((w) => w.case.startsWith("build") && !targetMissed(w));
+export const summary: [lead: string, text: string][] = [
+  [
+    "Checking and building are fast.",
+    [
+      check && `\`sakura check\` does ${check.value} ${check.label}`,
+      build &&
+        `\`sakura build\` builds ${check ? "it" : `a ${grouped(build.lines)}-line project`} in ${ms(build.p95)} ms or less, 19 times out of 20`,
+    ]
+      .filter(Boolean)
+      .join(", and ")
+      .concat("."),
+  ],
+  [
+    "Running code is mixed.",
+    `${nodeWins.length} of ${largest(js).length} programs do less work than the same program written by hand in JavaScript${nodeWins.length ? `, up to ${times(1 / nodeWins[0].ratio)} less` : ""}. The typical program does ${times(targetMedian.node)} the work.`,
+  ],
+  [
+    wasmMemory.length ? "WebAssembly saves memory." : "Memory is no lower yet.",
+    `${wasmMemory.length} programs built to WebAssembly use at least 10% less peak memory than hand-written JavaScript${wasmMemory.length ? `, up to ${times(wasmMemory[0].hand / wasmMemory[0].sakura)} less` : ""}.`,
+  ],
+  [
+    "Native code is experimental.",
+    "Its run-time numbers are counted but not blessed yet; they come in the next release.",
+  ],
+];
+
 export const tables = {
   winsJs: winsJsTable(),
   winsMemory: winsMemoryTable(),
-  winsCompile: winsCompileTable(),
   typescript: typescriptTable(),
   typescriptStart: typescriptStartTable(),
   js: jsTable(),
@@ -802,12 +870,15 @@ export const runMarkdown = () =>
     .join("\n");
 
 export const winsMarkdown = () =>
-  callouts
+  [...callouts, typical]
     .map(
       (w) =>
-        `- **${w.value}** ${w.label}: \`${w.subject}\`, ${w.note} (${w.bars.map((b) => `${b.label} ${b.shown}`).join(", ")}).`,
+        `- **${w.value}** ${w.label}: ${w.subject ? `\`${w.subject}\`, ` : ""}${w.note} (${w.bars.map((b) => `${b.label} ${b.shown}`).join(", ")}).`,
     )
     .join("\n");
+
+export const summaryMarkdown = () =>
+  summary.map(([lead, text]) => `- **${lead}** ${text}`).join("\n");
 
 export const chartMarkdown = () =>
   `**Chart:** Sakura's instructions per call over hand JavaScript's, per program at its largest size, on Node and on Bun, with each program's ceiling. The same data is in the target table below.`;

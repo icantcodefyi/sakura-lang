@@ -7,6 +7,7 @@ import { diagramMarkdown } from "@/components/docs-diagrams";
 import {
   chartMarkdown,
   runMarkdown,
+  summaryMarkdown,
   tableMarkdown,
   tables,
   winsMarkdown,
@@ -30,6 +31,7 @@ const docs = defineDocs({
           // the benchmarks page (components/bench.tsx), printed from lib/bench.ts
           "BenchChart",
           "BenchRun",
+          "BenchSummary",
           "BenchTable",
           "BenchWins",
           // docs diagrams (components/docs-diagrams.tsx), printed as Markdown by diagramMarkdown
@@ -72,6 +74,7 @@ const markdownFor = {
   Step: ({ children }: { children: string }) => children.trim(),
   BenchChart: chartMarkdown,
   BenchRun: runMarkdown,
+  BenchSummary: summaryMarkdown,
   BenchWins: winsMarkdown,
   BenchTable: ({ attributes }: { attributes: Record<string, unknown> }) =>
     tableMarkdown(tables[attributes.table as TableName]),

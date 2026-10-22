@@ -3,12 +3,11 @@ title: Native code (experimental)
 description: What `--target native` builds, where it runs, what it cannot do yet, and what has been measured of it.
 ---
 
-`sakura build --target native` compiles a program to a native executable. A Cranelift backend
-reads the same lowered IR as the WebAssembly backend and links it against the native runtime,
-so a native program needs no Node and no Sakura Lang install to run. Memory is managed by
-reference counting inserted at compile time, as on WebAssembly: non-atomic counts, no collector,
-and an in-place rebuild of a value the program held the last reference to
-([Memory](/docs/tour/memory)).
+`sakura build --target native` compiles a program to a native executable that runs on its own,
+with no Node and no Sakura Lang install. It uses the Cranelift code generator and starts from the
+same compiled form as the WebAssembly backend. Memory works as on WebAssembly: the compiler adds
+reference counting for you, there is no garbage collector, and updating a value nothing else
+holds rewrites it in place instead of copying it ([Memory](/docs/tour/memory)).
 
 <Callout type="warn" title="Experimental">
   `--target native` may change or go away in a later release without a migration. It is outside
@@ -68,33 +67,34 @@ stops with `D003` past 2^53.
   the environment; the JavaScript and WebAssembly hosts read none. Both variables are
   experimental with the target.
 
-## Measured
+## How fast is it?
 
-Every number here is from a blessed counted file on the reference Mac (Apple silicon, macOS), in
-[`bench/baselines`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines).
+**Run time: coming in the next release.** The benchmark suite already counts native executables
+beside Rust, Go, OCaml and Koka versions of the same programs, but those numbers are not blessed
+yet. Until they are, this page shows no run-time number, and Sakura Lang makes no native speed
+claim. When they arrive, they are read against the design's goals, in instructions per call:
 
-**Compile time**, the counted native compile report blessed at `v1.0.0-beta.4`'s preparation
-commit `40af20ce`
-([`baselines/compile-native`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/compile-native/d88970189598.json)),
-p95 of 15 builds per program, wall time on a loaded machine:
-
-| Phase | The 22 benchmark programs |
+| Kind of program | Goal |
 | --- | --- |
-| Front end (check and Core) | 8.7–12.0 ms |
-| Lowering to the native IR | 0.2–3.7 ms |
-| Code generation (Cranelift) | 2.5–48.9 ms |
-| Object file | 0.3–0.7 ms |
-| Link (the system linker) | 69.9–124.6 ms |
+| Number crunching | at most 1.5× Rust's work, and no more than Go's |
+| Text processing | at most 1.5× Rust's |
+| Allocation-heavy | at most 1.2× OCaml's and Koka's |
+| Effect handlers | no more than Koka's |
 
-The system linker is most of a small build. On one function of 32,768 guarded rows the same
-report counts code generation at 2.01× the instructions of 16,384 rows: linear per doubling,
-1.52 s at the larger size.
+**Compile time: measured.** These numbers come from the blessed native compile report of
+`v1.0.0-beta.4`'s preparation commit `40af20ce`
+([`baselines/compile-native`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/compile-native/d88970189598.json)),
+on the reference Mac (Apple silicon, macOS). Each range covers the 22 benchmark programs; each
+time is the p95 of 15 builds (19 of 20 builds are faster), measured on a busy machine.
 
-**Run time** has not been blessed yet. The benchmark harness counts the native executable beside
-Rust, Go, OCaml and Koka ports of the same programs (`bench run --suite native`), and the
-first native run-time baseline is blessed with `v1.0.0-beta.5`'s preparation commit; until then
-this page prints no run-time number, and Sakura Lang makes no native speed claim. The targets it
-will be read against are the design's ceilings on instructions per call
-([Benchmarks](/docs/benchmarks)): the numeric programs at most 1.5× Rust's and 1.0× Go's, the
-text programs 1.5× Rust's, the allocation programs 1.2× OCaml's and Koka's, and handlers 1.0×
-Koka's.
+| Step | Time |
+| --- | --- |
+| Reading and checking the program | 8.7–12.0 ms |
+| Preparing it for native code | 0.2–3.7 ms |
+| Generating machine code (Cranelift) | 2.5–48.9 ms |
+| Writing the object file | 0.3–0.7 ms |
+| Linking (the system linker) | 69.9–124.6 ms |
+
+Most of a small build is the system linker. Machine code generation grows in step with the size
+of a function: on one function of 32,768 guarded rows it counts 2.01× the instructions of 16,384
+rows, 1.52 s at the larger size. [Benchmarks](/docs/benchmarks) has every other number.

@@ -1,126 +1,186 @@
 ---
 title: Benchmarks
-description: Instructions retired per call for every benchmark program on the reference Mac, against hand-written JavaScript on the same engine, with the compile-time budgets and the cross-language envelope.
+description: How fast Sakura Lang is today, in plain numbers. Where it beats hand-written JavaScript and TypeScript's checker, where it is behind, why, and how it is measured.
 ---
 
-Every number on this page is read at build time from the blessed counted baseline
-([`bench/baselines`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines)) and
-the evidence files of the same commit
-([`bench/results`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/results)). None is
-copied by hand. They are **instruction counts, not times**, specific to these workloads and
-this one machine: not a language ranking, and not a speed claim.
+How fast is Sakura Lang today? The short answer:
 
-<BenchRun />
+<BenchSummary />
 
-<Callout type="info" title="What the page says, in one paragraph">
-  On the JavaScript backend, Sakura retires more instructions per call than hand-written
-  JavaScript on most programs, fewer on a few, and meets its design ceiling on some of them; the
-  chart shows which. The WebAssembly backend is further behind. The cross-language envelope
-  against Rust, Go, OCaml and Koka is **not met**, is reported as information, and gates no
-  release (design §17.265). Sakura Lang makes no cross-language speed claim.
-</Callout>
+Every number on this page counts **work**: the CPU instructions a program runs. Seconds change
+from one run to the next, but a count comes out the same each time, so small changes are easy to
+see. Fewer instructions usually means faster, though not always.
+[How we measure](#how-we-measure) has the details. All numbers come straight from the measurement
+files in the repository. None is typed in by hand.
 
-## Where Sakura is ahead
+## The highlights
 
-The cells of the same files where Sakura beats its comparison, found by rule rather than picked:
-every program whose count is below hand JavaScript's at its largest size, every memory reading
-at least 10% below it, and every compile case inside its budget. A re-bless that loses one drops it.
-Each figure links to its row below.
+Each figure compares Sakura with something you already know. They are found by a fixed rule, not
+picked: if a new measurement loses one, it drops off this page. Each one links to its row below.
 
 <BenchWins />
 
-### Fewer instructions than hand-written JavaScript
+## Why it's fast
 
-The mechanism is specific to each program: the `pipeline` stages fuse into one loop, `tokenizer`
-owns the string it consumes, and a `handled` counter compiles to a direct call. It says nothing
-about other programs.
+- **Compiled ahead of time.** `sakura build` turns your program into plain JavaScript or
+  WebAssembly. With [`--target native`](/docs/native) (experimental) it builds an executable
+  using Cranelift. Types are checked once, at compile time, and nothing of them is left in the
+  output.
+- **Effects become plain calls.** A handled effect, such as the counter in the `handled`
+  programs, compiles to a direct function call.
+- **Memory is reused in place.** On WebAssembly and native code, the compiler adds the reference
+  counting for you, so there is no garbage collector. When nothing else holds a value, an update
+  rewrites it where it is and allocates nothing. This technique is called Perceus reuse;
+  [Memory](/docs/tour/memory) explains it.
+- **Reading borrows; it doesn't copy.** A function that only reads its argument borrows it, so
+  the call does no reference-counting work (WebAssembly and native).
+- **Lists are built in place.** `List.map`, `List.filter` and their siblings fill a private buffer
+  and hand back the finished list, so they never copy while they grow it.
+- **No hidden copies.** Values never change behind your back, so sharing one costs nothing. When
+  an update must copy because the old value is still used, `sakura check` tells you with warning
+  [`W8001`](/docs/errors/W8001) and points at the use that forces the copy.
+- **Proved checks are left out.** A `requires` or `ensures` check runs while the program runs,
+  unless [`sakura verify`](/docs/agents/verify) proved it always holds. Then the build leaves it
+  out.
+- **A checker built for the loop.** The compiler is written in Rust and caches its analysis of
+  the standard library, so a check of a small file starts mostly done.
 
-<BenchTable table="winsJs" />
+## Against hand-written JavaScript
 
-### Less peak memory
-
-<BenchTable table="winsMemory" />
-
-### Compile time inside its budget
-
-<BenchTable table="winsCompile" />
-
-### Beside TypeScript
-
-`bench typescript` checks each program's TypeScript twin with TypeScript 7's native
-`tsc --noEmit` (strict, with `@types/node`) beside `sakura check`, and starts each built program
-beside Node running the twin. It is counted and blessed from `v1.0.0-beta.3` on, in the same run
-as the tables above; until that run is blessed this section has no numbers.
-
-<BenchTable table="typescript" />
-
-<BenchTable table="typescriptStart" />
-
-## Sakura against hand-written JavaScript
-
-From here on the page holds every program, the misses as they are. The
-[benchmark suite](https://github.com/icantcodefyi/sakuralang/tree/main/bench) runs each
-workload written in Sakura Lang and written by hand in JavaScript, the same algorithm in the same
-order, and compares the two on one engine, Node or Bun. A ratio is Sakura's count over hand
-JavaScript's: below 1× Sakura retires fewer instructions, above it more. Design §17.109 sets a
-ceiling on that ratio for each program family and asks for a median of at most 1.5× over the
-fifteen.
+Each program is written twice: in Sakura, and by hand in JavaScript, with the same algorithm in
+the same order. Both run on the same engine, Node or Bun. The chart shows how much work Sakura
+does for each program compared with the hand-written version. The design sets a goal for each
+program, and one for the typical program.
 
 <BenchChart />
 
 <BenchTable table="targets" />
 
-Where Sakura is ahead, the cause is one mechanism and says nothing about other programs: the
-`pipeline` stages fuse into one loop, `tokenizer` owns the string it consumes, and a `handled`
-counter compiles to a direct call. Bun rows are [advisory](#what-advisory-means).
+Bun rows are [advisory](#what-advisory-means): they are reported, but they block nothing.
+
+### Programs where Sakura does less work
+
+Every program that runs fewer instructions than its hand-written version at its largest size.
+Each win comes from that program's shape and says nothing about other programs.
+
+<BenchTable table="winsJs" />
 
 ### Every program
 
-Each program at its largest input size `n`. `K`, `M` and `G` are thousands, millions and
+Each program at its largest input size `n`. `K`, `M` and `G` mean thousands, millions and
 billions of instructions per call.
 
 <BenchTable table="js" />
 
-### WebAssembly backend
+### WebAssembly
 
-Sakura compiled with `--target wasm`, run on Node's WebAssembly engine and on Wasmtime, over
-the same hand JavaScript on Node.
+The same programs compiled with `--target wasm`, run by Node and by Wasmtime, against the
+hand-written JavaScript on Node. On work, WebAssembly is further behind than the JavaScript
+build.
 
 <BenchTable table="wasm" />
 
-## How it is measured
+### Memory
 
-The metric is **instructions retired per call**, read from macOS's `/usr/bin/time -l` on the
-reference Mac named above. As with [rustc-perf](https://perf.rust-lang.org), the reason is
-repeatability: a count barely moves when other programs share the machine, so the suite runs
-while other work goes on and needs no idle night (design §17.264).
+On memory, WebAssembly is ahead: it keeps data in one block of memory rather than in many
+JavaScript objects. This table lists every program whose peak memory is at least 10% below the
+hand-written JavaScript's. A program that makes one call runs in a fresh Node process, and the
+highest of its five runs counts.
+
+<BenchTable table="winsMemory" />
+
+## Against TypeScript
+
+`sakura check` beside TypeScript 7's native `tsc --noEmit` (strict, with `@types/node`), on each
+program's TypeScript version and on two generated projects, of about 10,000 and 100,000 lines.
+
+<BenchTable table="typescript" />
+
+How long a built program takes to start: Sakura's output against Node running the TypeScript
+version, and against the same version bundled by esbuild.
+
+<BenchTable table="typescriptStart" />
+
+## Compile time
+
+How long `sakura` takes to check, build and answer an editor, on generated projects and a new
+project. Times are in milliseconds, measured on a busy machine. Each case has a budget, and some
+have a tighter target too. The p95 is the time that 19 of 20 runs beat.
+`test_hello` times the CLI itself, not the Node process it starts.
+
+<BenchTable table="compile" />
+
+## Against Rust, Go, OCaml and Koka
+
+Sakura is far from these languages today. The design sets goals for Sakura's WebAssembly build
+against each of them. Number crunching is compared with Rust and Go, allocation-heavy programs
+with OCaml and Koka, effect handlers with Koka, and text processing with Rust. Most of these goals
+are missed by a wide margin. They are reported as information and gate no release.
+
+<BenchTable table="envelope" />
+
+Native code is where this comparison will be made again. Its run-time numbers are counted but not
+blessed yet, and they come in the next release. Until then this page shows none, and Sakura Lang
+makes no native speed claim. [Native code](/docs/native) has its compile times.
+
+### The other languages' numbers
+
+The same programs in Rust (with overflow checks, to match Sakura), Go, OCaml and Koka, counted in
+the same run. A dash means the program has no version in that language.
+
+<BenchTable table="native" />
+
+## How we measure
+
+<details>
+<summary>Instruction counts, the reference machine and blessed baselines</summary>
+
+### The run
+
+<BenchRun />
+
+Every number above is read when the site is built, from the **blessed** baseline in
+[`bench/baselines`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines) and the
+result files of the same commit in
+[`bench/results`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/results). A baseline
+is blessed when a full counted run at a release's preparation commit is accepted. From then on,
+every change is compared with it. The numbers are specific to these programs and this
+one machine. They are not a ranking of languages.
+
+### Instruction counts
+
+The measure is **instructions retired per call**: how many CPU instructions finish for one call
+of the program, read from macOS's `/usr/bin/time -l` on the reference Mac. As with
+[rustc-perf](https://perf.rust-lang.org), the reason is that a count barely moves when other
+programs share the machine. So the suite can run while other work goes on.
 
 <CountFlow />
 
-Each cell is one program at one input size on one engine. The harness calibrates a call count
-`k`, then runs five pairs of fresh processes: one calls `run(n)` once, the other `1 + k` times.
-Start-up, module loading and the first call's compilation are in both, so their difference over
-`k` is the cost of one warm call. The cell is the median of the five pairs. Every program has an
-oracle: a cell counts only after it returns the recorded checksum for every input.
+Each cell is one program at one input size on one engine. The harness picks a call count `k`,
+then runs five pairs of fresh processes. One process of a pair calls `run(n)` once, the other
+`1 + k` times. Start-up, loading and the first call's compilation are in both, so their
+difference divided by `k` is the cost of one warm call. The cell is the median of the five pairs.
+Every program has an oracle: a cell counts only after the program returns the recorded checksum
+for every input.
 
 Node runs with `--predictable --min-semi-space-size=16 --max-semi-space-size=16`.
-`--predictable` keeps V8's garbage collector and compiler on the main thread, so a count does
-not depend on how threads were scheduled, and the fixed young generation keeps it from depending
-on where the program's files sit on disk (design §17.282).
+`--predictable` keeps V8's garbage collector and compiler on the main thread, so a count does not
+depend on how threads were scheduled. The fixed young generation keeps it from depending on where
+the program's files sit on disk.
 
-An instruction count is not a time. It does not see cache misses, branch mispredictions or how
-many instructions a core retires per cycle, and two engines can retire the same instructions at
+An instruction count is not a time. It does not see cache misses, branch mispredictions, or how
+many instructions a core finishes per cycle, and two engines can run the same instructions at
 different speeds. Every ratio on this page is a ratio of counts.
 
 ### What "advisory" means
 
 A reading is **advisory** when it is reported but blocks nothing. Two kinds are:
 
-- **Bun rows.** Bun's counts spread more than Node's (see [Spread](#spread)), so in a counted
-  comparison a Bun row is flagged above 10% and never blocks a change (design §17.265 (5)).
-- **Wall times on a loaded host.** The cross-language ceilings are time quantities, so the
-  envelope reads them on the wall time of the same runs. The machine was busy while they ran,
-  so those times give the direction only (design §17.265 (2)).
+- **Bun rows.** Bun's counts vary more than Node's (see [Spread](#spread)). So a Bun row is
+  flagged when it moves more than 10%, and it never blocks a change.
+- **Wall times on a busy machine.** The goals against other languages are set in time, so they
+  are read on the wall time of the same runs. The machine was busy while those ran, so the times
+  show the direction only.
 
 The instruction counts themselves are not advisory: they are the baseline every change is
 compared with.
@@ -133,37 +193,7 @@ differ by more than 1%.
 
 <BenchTable table="spread" />
 
-## Compile time
-
-One `sakura` process per run after a warm-up, over generated packages and a new project. The
-budgets are research/10 §6's, on the p95 of fifteen processes; the targets are design §17.195's,
-reported beside the budgets and never an exit. Times are in milliseconds, wall time on the loaded
-reference machine, with each case's median instruction count beside them. `test_hello` counts the CLI's own
-process, not the Node process it starts.
-
-<BenchTable table="compile" />
-
-## The cross-language envelope
-
-Design §17.109 also set ceilings for Sakura's WebAssembly build, on the Node host and on
-Wasmtime, against native controls: numeric kernels against Rust and Go, allocation kernels
-against OCaml and Koka, handlers against Koka, and the text programs against Rust. Each gating
-cell is one program, size, engine and comparison.
-
-<BenchTable table="envelope" />
-
-The envelope is information, not a release gate (design §17.265), and it is far from met.
-The native backend, experimental and in the release binaries from `v1.0.0-beta.4`, is where that comparison will be made
-again.
-
-### Native controls
-
-The same workloads in Rust (with overflow checks, the matched lane), Go, OCaml and Koka, counted
-in the same run. A dash means the program has no port in that language.
-
-<BenchTable table="native" />
-
-## Reproduce
+### Reproduce
 
 On a Mac with the toolchains pinned in
 [`bench/toolchains.toml`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/toolchains.toml),
@@ -178,6 +208,8 @@ bench/bench envelope wasm.json native.json --json envelope.json --md envelope.md
 ```
 
 Counts from another machine are not comparable with these: a different CPU, OS or engine build
-retires different instructions. The baseline files hold every size, every raw count and the wall
-time beside it. The procedure that turns a run into a baseline is
-[`docs/release.md` §2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/release.md#2-instruction-count-baseline-and-bless).
+runs different instructions. The baseline files hold every size, every raw count and the wall
+time beside it. The procedure that turns a run into a baseline is in
+[`docs/release.md`](https://github.com/icantcodefyi/sakuralang/blob/main/docs/release.md#2-instruction-count-baseline-and-bless).
+
+</details>

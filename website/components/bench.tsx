@@ -6,10 +6,12 @@ import { CountUp } from "@/components/count-up";
 import {
   callouts,
   runFacts,
+  summary,
   tables,
   targets,
   targetMedian,
   times,
+  typical,
   type TableName,
   type Win,
 } from "@/lib/bench";
@@ -141,12 +143,12 @@ function Chart({ which, className }: { which: keyof typeof LAYOUT; className: st
       className={`h-auto w-full overflow-visible ${className}`}
       style={{ fontSize: l.font }}
     >
-      <title id={`${id}-title`}>Sakura over hand-written JavaScript, instructions per call</title>
+      <title id={`${id}-title`}>Sakura's work compared with hand-written JavaScript's</title>
       <desc id={`${id}-desc`}>
         {targets
           .map(
             (t) =>
-              `${t.program}: Node ${times(t.node)}, Bun ${times(t.bun)}, ceiling ${t.ceiling.node}.`,
+              `${t.program}: Node ${times(t.node)}, Bun ${times(t.bun)}, goal ${t.ceiling.node}×.`,
           )
           .join(" ")}
       </desc>
@@ -162,7 +164,7 @@ function Chart({ which, className }: { which: keyof typeof LAYOUT; className: st
         </text>
         <line x1={118} x2={118} y1={-6} y2={6} className="stroke-foreground" strokeWidth={2} />
         <text x={126} y={4}>
-          ceiling
+          goal
         </text>
       </g>
       {/* Grid */}
@@ -212,7 +214,7 @@ function Chart({ which, className }: { which: keyof typeof LAYOUT; className: st
                   className="stroke-foreground"
                   strokeWidth={2}
                 >
-                  <title>{`${t.program} ceiling ${c}×${t.ceiling.bun !== t.ceiling.node ? (c === t.ceiling.bun ? " on Bun" : " on Node") : ""}`}</title>
+                  <title>{`${t.program} goal ${c}×${t.ceiling.bun !== t.ceiling.node ? (c === t.ceiling.bun ? " on Bun" : " on Node") : ""}`}</title>
                 </line>
               ),
             )}
@@ -251,10 +253,11 @@ export function BenchChart() {
       <Chart which="wide" className="hidden max-w-[720px] @min-[560px]:block" />
       <Chart which="narrow" className="max-w-[420px] @min-[560px]:hidden" />
       <figcaption className="border-t border-border pt-2.5 text-[13px] text-faint">
-        Sakura's instructions per call over hand-written JavaScript's on the same engine, at each
-        program's largest size, on a log scale. Left of 1× Sakura retires fewer instructions; a mark
-        right of its ceiling misses the design target. Median: {times(targetMedian.node)} on Node,{" "}
-        {times(targetMedian.bun)} on Bun, against {targetMedian.ceiling.toFixed(1)}×.
+        How much work Sakura does for each program, compared with the same program written by hand
+        in JavaScript and run on the same engine. Left of 1× Sakura does less work; a mark right of
+        its program's goal misses it. The scale is logarithmic. Typical program:{" "}
+        {times(targetMedian.node)} on Node, {times(targetMedian.bun)} on Bun; the goal is{" "}
+        {targetMedian.ceiling.toFixed(1)}×.
       </figcaption>
     </figure>
   );
@@ -268,7 +271,7 @@ export function BenchChart() {
 function WinBars({ bars }: { bars: Win["bars"] }) {
   const top = Math.max(...bars.map((b) => b.value));
   return (
-    <span className="mt-5 grid grid-cols-[4rem_1fr_auto] items-center gap-x-3 gap-y-2 font-mono text-[12px]">
+    <span className="mt-5 grid grid-cols-[5.5rem_1fr_auto] items-center gap-x-3 gap-y-2 font-mono text-[12px]">
       {bars.map((b, i) => (
         <span key={b.label} className="contents">
           <span className="text-muted-foreground">{b.label}</span>
@@ -308,7 +311,12 @@ export function WinCallout({
       <WinBars bars={win.bars} />
       <span className="mt-auto flex items-baseline gap-2 pt-5 font-mono text-[12px] text-faint">
         <span className="min-w-0">
-          <code className="text-foreground">{win.subject}</code>, {win.note}
+          {win.subject ? (
+            <>
+              <code className="text-foreground">{win.subject}</code>,{" "}
+            </>
+          ) : null}
+          {win.note}
         </span>
         <span
           aria-hidden
@@ -321,7 +329,8 @@ export function WinCallout({
   );
 }
 
-/** The benchmarks page's wins: the landing page's callouts, two to a row. */
+/** The benchmarks page's wins: the landing page's callouts, two to a row, then the typical
+ * program across both, so the page never shows the wins alone. */
 export function BenchWins() {
   return (
     <div className="not-prose my-8 grid border-t border-border sm:grid-cols-2">
@@ -333,6 +342,26 @@ export function BenchWins() {
           <WinCallout win={w} />
         </div>
       ))}
+      <p className="pt-8 font-mono text-[12px] tracking-[0.14em] text-sakura-text uppercase sm:col-span-2">
+        And where it is behind
+      </p>
+      <div className="border-b border-border pt-4 pb-6 sm:col-span-2">
+        <WinCallout win={typical} />
+      </div>
     </div>
+  );
+}
+
+/** The page's answer first: four plain sentences computed from the same files. */
+export function BenchSummary() {
+  return (
+    <ul className="not-prose my-6 grid border-t border-border">
+      {summary.map(([lead, text]) => (
+        <li key={lead} className="border-b border-border py-3 text-[15px] leading-relaxed">
+          <strong className="font-semibold">{lead}</strong>{" "}
+          <span className="text-muted-foreground">{inlineCode(text)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
