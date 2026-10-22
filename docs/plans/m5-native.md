@@ -606,6 +606,26 @@ defaults of 2026-10-22, the table in ABI §1b and property tests ahead of Llm ar
 before beta.4's preparation commit). The WASI command does not call the codec yet (no Wasmtime
 `json_validate` cell).
 
+**Row M progress (2026-10-22): the native lane is built, its first counted run is advisory.**
+`210648be` puts Sakura's `--target native` executable in `bench run --suite native` beside the
+ports (oracle and negative cases through the program's own `main`; counted as the ports' argv
+form; each cell's `SAKURA_NATIVE_STATS` counters with the reuse rate; `rbtree` with its
+unretained twin, the paired protocol), `bench envelope native.json` for the M5 ceilings on the
+metric the file counts, and `bless` into `baselines/native/` (release.md §2: first at beta.5's
+preparation commit, design §17.308 (2)); `5941d656` adds the docs site's native page. The first
+counted run (`5941d656`, `../sakura-counted`, clean, every oracle green) is **not blessed**, and
+its readings are in `bench/deltas.md`: the M5 envelope misses 124 of 132 gating cells (met: `map_set`
+against Koka, 0.61–0.86), each miss carried under §17.152 (2) with its named cause; the paired
+`rbtree` hit rate is 0.9992–1.0000 retained and 1.0000 unretained with `requested` equal, so its
+7.3× Koka is attempts per insert, which would meet §17.310 (2d)'s inlining condition on a blessed
+baseline; no region counter and no niche prototype exist, so those defaults hold. **For the
+designer:** native `tokenizer` and `json_validate` grow superlinearly where WASM is linear; the
+cause found is `runtime/rt`'s `text()`, which validates the whole string's UTF-8 on every call off
+WASM, called once per piece by `split` (a runtime fix for Opus, not row M's). Left of row M: the
+native `bench_counters.txt` column with REQUESTS N2b (3)'s +1 drop note (the native counters are
+in every native bench cell meanwhile), and the bless at beta.5's preparation commit. AI
+implementation: Claude Opus 5.5; the human contributor owns acceptance.
+
 ### Round 60 (§17.308, 2026-10-21): the lanes that finish M5
 
 The owner's direction: finish all of M5 and M5b now, native on B and C included, and ship

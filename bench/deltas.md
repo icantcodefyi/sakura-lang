@@ -141,3 +141,70 @@ first of five processes); 20 native-lane cells, all Go; Bun and `tsc` as before 
 Envelope (wall-time lane, advisory, host load 4.35): `miss` on 237 of 264 gating cells (absent 4,
 met 23), against 236 at beta.3; carried under §17.265. Prep `fib` and `shapes` compare `ok` on
 every Node cell (largest +0.5%). Source: `bench/results/2026-10-22-40af20ce-*`.
+
+## First counted native run-time lane (`5941d656`, 2026-10-22; advisory, not blessed)
+
+Plan `m5-native.md` row M. `bench run --suite native --lane matched --instructions` at
+`5941d656cfb64baf3e5d5c0fc93efec318a3b503` (the commit that adds the lane) in a clean
+`../sakura-counted`, host `d88970189598`, tree clean, every oracle and checksum green on all 369
+cells (87 Sakura native, 282 ports), Rust 1.99.1, Go 1.27.2, OCaml 5.5.1, Koka 3.2.9; host load
+19.04, informational for counts (§17.264). **Not blessed**: the first native run-time baseline is
+beta.5's, at its preparation commit (design §17.308 (2): "the first native number is beta.5's
+baseline"; release.md §2), so every reading below is direction for the designer and no website
+number. Sakura cells spread a median 0.26%, five over 1% (largest `sieve` n=200,000, 2.19%); 51 port
+cells over 1%, in every port language. Sources: `bench/results/2026-10-22-5941d656-native.{json,md}`
+(the `.md` regenerated from the JSON without the empty `ratio native/native` column) and
+`-envelope-m5.{json,md}`.
+
+**§17.109 M5 envelope, on instructions per call** (`bench envelope` on the one file; ratio
+Sakura native / port, range over the four sizes): `miss`, 124 of 132 gating cells; met 8, all
+`map_set` against Koka. Each miss is carried under §17.152 (2) with the cause this run names; a
+cause marked *unattributed* is one the counters do not explain.
+
+| Program | Against (ceiling): ratio | Carry: named cause |
+|---|---|---|
+| `fib` | Rust (1.5) 2.86–2.87; Go (1.0) 2.13–2.14 | No allocation per call (`requested` flat at 6,168 bytes, 4 frames, 0 boxes): code per direct call; *unattributed* between the call protocol and the checked add. |
+| `countdown` | Rust (1.5) 4.26–4.92; Go (1.0) 2.31–2.61 | No allocation (4 frames, 5 drops); per-iteration code of the self-tail and mutual loops; *unattributed*. `tail_clique` (not gating): Rust 1.75–1.76, Go 1.13. |
+| `sieve` | Rust (1.5) 74.6–103.4; Go (1.0) 46.6–82.1 | §17.152 carry: the `List` trie. Reuse is 1.0000 (2,191,222 of 2,191,223 at 200,000), so the gap is the representation, not misses; §17.177 (1) at its window. |
+| `nbody` | Rust (1.5) 63.8–64.1; Go (1.0) 33.3–33.4 | §17.152 / §17.160 (1) carry: 0 boxes, 1,416 bytes requested and 66 reuse attempts per step at 71.2% hits; carried with the scalar-leaf and record questions (below). |
+| `spectral_norm` | Rust (1.5) 20.4–20.6; Go (1.0) 18.3–18.4 | §17.152 carry: indexed `List` reads (one borrow per read, 6.4 M at 400); §17.177 (1)–(2). |
+| `binary_trees` | OCaml (1.2) 11.5–13.2; Koka (1.2) 7.75–7.94; no-reuse 7.77–7.94 | Allocation and RC traffic (103 MB requested and 6.4 M dups at 14), 0 reuse attempts: nothing is taken apart and rebuilt; region share unmeasured (below). |
+| `rbtree` | OCaml (1.2) 3.55–18.7; Koka (1.2) 7.31–7.44; no-reuse 7.33–7.40 | Hit rate 0.9992–1.0000 but about 1.6 attempts per insert against a rebuilt path of about log₂ n nodes; reuse coverage, not misses (paired reading below). |
+| `pipeline` | OCaml (1.2) 2.55–15.1; Koka (1.2) 17.3–18.5; no-reuse 11.2–15.2 | Reuse 1.0000; 2.5 boxes and 3.5 dups per element: closure calls on boxed elements in the unfused lane; §17.177 (2). |
+| `shapes` | OCaml (1.2) 1.80–13.6; Koka (1.2) 5.66–5.73; no-reuse 5.69–5.77 | 10 boxes per element and reuse 0.76–0.84 (record and `Option` construction); §17.177 record question and the niche default. |
+| `map_set` | OCaml (1.2) 2.28–2.41; Koka **met** 0.61–0.86 (both lanes) | Against OCaml: HAMT nodes, reuse 0.89–0.93; carried with §17.201 (2)'s map question. |
+| `handled_d1`, `_d4`, `_d16` | Koka (1.0) 4.20–4.58 | No allocation (frames 4, 0 boxes): per-perform dispatch; *unattributed*. |
+| `handled_suspend` | Koka (1.0) 2.93–2.94 | No allocation (7 frames); *unattributed*. |
+| `handled_fwd` | Koka (1.0) 13.2–13.4 | Two frames and about 104 bytes per forwarded operation: the frame protocol on the forwarding clause (§17.230 (2)'s cliffs). |
+| `handled_reentry` | Koka (1.0) 28.0–28.2 | Two frames, two boxes and 171 bytes per re-entry through the callback; the same frame cliff. |
+| `tokenizer` | Rust (1.5) 21.6–92.8 | **Superlinear on native**: 69.4 M, 6.03 G, 149 G and 595 G instructions per call at the four sizes, while WASM is linear (beta.4 baseline: 19.0 M → 1.91 G on Wasmtime); separate counts of the same build outside the run give 3.4×, 3.8× and 3.9× per doubling from 2,000 to 16,000, and `String.split` alone 3.8× and 3.9×; on non-WASM targets `runtime/rt`'s `text()` validates the whole string's UTF-8 on every call (`builtins.rs`, `from_utf8`; WASM uses `from_utf8_unchecked`), and `split` calls it once per piece. A runtime fix, not this lane's; the Rust port's own count also grows past linear (3.22 M → 6.41 G), so the ratio understates the native cost. |
+| `json_validate` | Rust (1.5) 7.13–81.7 | Superlinear too: instructions 7.95× from 10,000 to 30,000 while `requested` grows 3.1×; consistent with the same per-call validation over long strings, *not attributed* by this run. |
+
+**The §17.177 windows whose triggers have fired** (read at this run as direction; each keeps its
+default until beta.5's baseline is blessed and its entry written, §17.308 (2l)):
+
+- *`nbody`'s carry (§17.160 (1), the first window after N2):* 64.1× Rust, 33.4× Go at 100,000,
+  flat across sizes, with 0 boxes natively. Default holds: carried with the scalar-leaf question;
+  boxed words stay (ABI §4).
+- *Reuse hit rates (first window after N3):* `sieve` 1.0000, `pipeline` 1.0000, `spectral_norm`
+  0.980–0.998, `map_set` 0.891–0.926, `tokenizer` 0.875, `shapes` 0.762–0.839, `nbody` 0.712,
+  `deltablue` 0.344–0.345, `binary_trees` no attempts. Recorded in every native cell's `stats`.
+- *Record reuse (§17.138):* `reuses` 4,700,006 of 6,600,008 on `nbody` (100,000), 2,599,524 of
+  3,099,525 on `shapes` (100,000), 0 of 0 on `binary_trees`. Default holds: constructor-site reuse
+  only; any layout change is a new profile.
+- *The paired `rbtree` protocol* (the program, and its twin with no version retained): hit rate
+  0.9992 / 0.9999 / 1.0000 / 1.0000 retained against 1.0000 at every size unretained; attempts
+  1,204 / 15,828 / 64,542 / 159,892 against 1,194 / 15,728 / 64,042 / 158,892; `requested` equal
+  within 0.02% (83,941,588 against 83,928,080 bytes at 100,000), peak 52.2 MB against 4.8 MB.
+  Retention costs memory, not reuse: the gap is attempts per insert. On this reading
+  §17.310 (2d)'s condition for size-bounded inlining (`rbtree` outside its ceiling with N3c in)
+  would hold; it is read on beta.5's blessed baseline, not here.
+- *Regions (§17.174), the share of `requested` bytes dying inside the allocating twin:* no
+  counter for it exists (§17.174 (2) names one behind a debug feature, not built). Default holds:
+  no region work.
+- *`Option` niche (§17.199 (1)):* not due. No prototype is built, and row M forbids measuring one
+  before its baseline exists. Default holds: tagged stays.
+- *`List` representation and scalar leaves (§17.177 (1)–(2)):* the second window, not reached.
+
+Footprint, recorded and carried under §17.177 (1)–(2) (no target until a baseline): peak RSS of
+the native executable 7.6–59.8 MB across cells (`rbtree` 100,000 the largest).
