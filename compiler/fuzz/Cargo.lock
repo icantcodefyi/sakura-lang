@@ -387,7 +387,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_analysis"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "postcard",
  "rustix",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_js"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -414,7 +414,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_wasm"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "miniz_oxide",
  "sakura_lir",
@@ -424,7 +424,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "sakura_diagnostics",
  "sakura_hir",
@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core_snapshot"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "sakura_core",
  "sakura_diagnostics",
@@ -447,7 +447,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_diagnostics"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "codespan-reporting",
  "serde",
@@ -457,7 +457,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_eval"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "sakura_core",
  "sakura_lir",
@@ -465,7 +465,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_fmt"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "pretty",
  "sakura_diagnostics",
@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_hir"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -486,7 +486,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_lir"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "sakura_core",
  "sakura_core_snapshot",
@@ -494,7 +494,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_syntax"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "rowan",
  "sakura_diagnostics",
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_types"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "rustc-hash 2.1.3",
  "sakura_diagnostics",
@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_verify"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.4"
 dependencies = [
  "rustix",
  "sakura_core_snapshot",

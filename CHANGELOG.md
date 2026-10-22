@@ -7,6 +7,49 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0-beta.4] - 2026-10-22
+
+A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
+1.0.0, and every breaking change until then is listed here with a migration. This section
+collects everything since `v1.0.0-beta.3` (design §17.310 (5)); it is dated at the preparation
+commit. The Rust MSRV is unchanged (1.99). `--target native` ships in the macOS arm64 and both
+Linux release binaries for the first time, as an experimental flag outside every compatibility
+promise ([STABILITY](STABILITY.md)).
+
+### Migration from v1.0.0-beta.3
+
+Every breaking or behaviour change below, in the order a program meets it; the entries carry
+the details.
+
+1. **`sakura fmt` sorts imports by their printed path and keeps `1 .2` apart** (Fixed, #8,
+   #10): a file whose import paths held whitespace or comments inside them may be reordered
+   once, and `fmt --check` reports it until `sakura fmt` runs; a number literal followed by a
+   `.field` keeps its space. Nothing else formats differently.
+2. **`sakura check` reports `W8001 copy_on_write`** (Added, design §17.172): a `List`, `Map` or
+   `Set` update proven to copy now prints a warning, in the LSP and the MCP `check` tool too.
+   Exit codes are unchanged; a tool that fails on any warning sees the new code.
+3. **The WASM runtime ABI is 1.18.0** (Changed, design §17.310 (3)): a 1.16 host
+   (`sakura_wasm_host.js` from beta.3 or earlier) refuses a module built by beta.4 with
+   `V8003`. Ship the host and the module from the same release; a 1.18 host still loads older
+   modules. ABI 1.17.0 was on `main` only and ships in no release.
+4. **A served `Request.headers` names each header in lowercase on JS and WASM** (Changed,
+   design §17.309 (1c)): a handler that matched a name in the client's spelling matches the
+   lowercase one, as native always gave it. `Request.header` and `Headers` are unchanged.
+5. **`Json.encode` on WASM writes an `Int` beyond ±(2^53 − 1) exactly** (Fixed, design §17.309
+   (3)): output that held the rounded digits now holds the program's value, as native's does.
+6. **A `List` passed as a `Map.get(..)` `unwrap_or` default keeps its value on JS** (Fixed): a
+   later `List.set` on the default no longer changes the value already returned; JS now prints
+   what WASM and native always printed.
+7. **The benchmark counters move** (Added, Changed): `borrow_candidates` counts every managed
+   type, `reuse_attempts` and `reuses` count constructor sites and `List.map`, and `borrows` is
+   no longer 0, with `dups` falling by as much. A tool comparing `stats()` with a beta.3 record
+   re-records it; no program's output changes.
+8. **`--target native` is in the release binaries** (Added, experimental, design §17.308): on
+   macOS arm64 and Linux x64 and arm64 a native build links with the system `cc`, and without
+   one fails with the new `V8007 native_linker_missing` (exit 1); it prints one `note:` line on
+   stderr naming the target experimental. Elsewhere it is refused with exit 2. Nothing changes
+   for `--target js` or `wasm`.
+
 ### Added
 
 - **The Linux arm64 release binary carries `--target native` too** (experimental, platform B,
@@ -32,9 +75,10 @@ retains earlier implementation history.
 - **`--target native` names itself experimental and is refused where it is not built** (design
   §17.175 (6), §17.308 (1d)): `sakura build --target native` prints one line on stderr naming
   the target experimental with its layout profile and ABI (`note: \`--target native\` is
-  experimental (profile offset32-v1, ABI 1.17.0)`). A compiler without the `native` feature, or
-  built for a target other than `aarch64-apple-darwin` and `x86_64-unknown-linux-gnu`, accepts
-  the value and refuses it with exit 2 and one line naming those two targets (it was clap's
+  experimental (profile offset32-v1, ABI 1.18.0)`). A compiler without the `native` feature, or
+  built for a target other than `aarch64-apple-darwin`, `x86_64-unknown-linux-gnu` and
+  `aarch64-unknown-linux-gnu`, accepts the value and refuses it with exit 2 and one line naming
+  those three targets (it was clap's
   "invalid value"; `compiler/contracts/cli.txt` gains the value). MCP `compiler_info` lists
   `native` in `features.backends` only where the binary builds it. `bench compile-native` also reports the wide-function curve (one function
   of 4,096 to 32,768 guarded rows) and names each phase that grows more than 2× per doubling. `bench compile-native --instructions`
@@ -65,7 +109,7 @@ retains earlier implementation history.
   (about 9 ms more on a 10,000-line program).
 - **`sakura test --target native`** (experimental, plan M5 N1b): the module's tests run in a
   native test executable with the same `test` and `test_summary` records, snapshots and
-  `Test.fixtures()` as `--target wasm`. `Llm` is not native yet (it ends `D090`). `Log.json()`
+  `Test.fixtures()` as `--target wasm`. `Log.json()`
   runs natively with the JS backend's JSON lines.
 - **Property tests on `--target native`** (experimental, plan M5 N1): `property` blocks and
   `sakura test --contracts` run natively with the inputs, shrinking and failure messages of
@@ -103,16 +147,16 @@ retains earlier implementation history.
   program that matched a served name case-sensitively matched the client's spelling and now
   matches the lowercase one; `Request.header` and `Headers` already compared names lowercased
   and are unchanged. The list's order stays unspecified on every host.
-- **`borrow_candidates` counts every managed type** (WASM and native counters, ABI 1.17.0
+- **`borrow_candidates` counts every managed type** (WASM and native counters, ABI 1.18.0
   §10): a `Dup` is marked when the reference stays live after a builtin argument the runtime
   only reads or a parameter a direct def never consumes, now for strings, records and every
-  other managed value, not only collections. Benchmark records with `abi_version` 1.17.0 read
+  other managed value, not only collections. Benchmark records with `abi_version` 1.18.0 read
   the wider set; no other counter and no program's output changes.
-- The WASM runtime ABI is 1.17.0 (`sakura_abi_version` `0x011100`; design §17.176 (3), plan
-  `m5-native.md` N3): constructor-site reuse adds two runtime functions internal to the module,
+- The WASM runtime ABI went through 1.17.0 (`sakura_abi_version` `0x011100`; design §17.176
+  (3), plan `m5-native.md` N3), on `main` only and in no release (design §17.310 (3c)), to the
+  1.18.0 below: constructor-site reuse adds two runtime functions internal to the module,
   `List.map` three more, and counts reuse sites in the existing `stats()` counters; no import, export or layout
-  changes. A host built for ABI 1.16 refuses a 1.17 module with `V8003`; rebuild with the
-  matching compiler. A 1.17 host still runs older modules.
+  changes.
 - **Read-only calls borrow their argument** (WASM and native, ABI 1.18.0, `sakura_abi_version`
   `0x011200`; design §17.176 (4), plan `m5-native.md` N4a). Where a value stays live after a
   call that only reads it, compiled code lends it instead of counting a reference: a read-only
@@ -120,7 +164,8 @@ retains earlier implementation history.
   copy of itself that never counts or drops it. `borrows` in the benchmark counters is no
   longer 0, `dups` falls by exactly as much, and `borrow_candidates` is unchanged; host calls
   and parameters held across a closure call stay owned. No program's output changes. A host
-  built for ABI 1.17 refuses a 1.18 module with `V8003`; rebuild with the matching compiler.
+  built for ABI 1.16 (beta.3) refuses a 1.18 module with `V8003`; rebuild with the matching
+  compiler. A 1.18 host still runs older modules.
 
 - **`--target native` compiles a very wide function in pieces** (experimental, plan
   `m5-native.md` N2g): a top-level function of more than 1,024 LIR blocks is cut into functions
@@ -2140,7 +2185,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.4...HEAD
+[1.0.0-beta.4]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...v1.0.0-beta.3
 [1.0.0-beta.2]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.1...v1.0.0-beta.2
 [1.0.0-beta.1]: https://github.com/icantcodefyi/sakuralang/compare/v0.1.0...v1.0.0-beta.1
