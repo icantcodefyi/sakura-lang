@@ -93,6 +93,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends ca-certificates curl git libatomic1 python3 xz-utils
+          # A native build links with the system `cc` (V8007 names `apt install gcc` without one).
+          if [ -n "$NATIVE" ]; then apt-get install -y --no-install-recommends gcc libc6-dev; fi
           test "$(uname -m)" = aarch64
           test "$(cat /sys/fs/cgroup/memory.max)" = 1887436800
           ! command -v gh
