@@ -873,7 +873,8 @@ def summary(res, key=None):
         rows.setdefault((r["program"], r["size"]), {})[cell(r)[1:4]] = r
     cols = sorted({k for v in rows.values() for k in v},
                   key=lambda k: (k[2] == "native", k[1] != "js", k[2], k[0] != "sakura", k[0]))
-    pairs = sorted({(b, e) for v, b, e in cols if v == "sakura"}, key=lambda k: (k[0] != "js", k))
+    # a native Sakura cell has no hand-JS control; the M5 envelope divides it by the ports
+    pairs = sorted({(b, e) for v, b, e in cols if v == "sakura" and b != "native"}, key=lambda k: (k[0] != "js", k))
     name = lambda b, e: e if b == "js" else f"{b}/{e}"
     head = (["Program", "n"] + [f"{v}/{name(b, e)} {unit}" for v, b, e in cols]
             + [f"ratio {name(b, e)}" for b, e in pairs] + (["spread"] if key == "instructions" else []))
