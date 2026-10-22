@@ -11,6 +11,6 @@ was produced. Other `LlmError` and `ToolError` variants remain in the signature.
 `Llm.scripted` consumes responses in order. The successful test asserts both the
 answer and the tool's captured output, so returning a canned answer without calling
 the tool does not pass. A synthetic two-turn cassette exercises the provider shape
-through `Llm.replay`, which denies network fallback. The harness uses test mode.
+through `Llm.replay`, which denies network fallback. Only the tests run.
 The manifest grants no network or key access. Budgets are intentionally unlimited
 here; the budgeted-agent recipe exercises finite accounting.

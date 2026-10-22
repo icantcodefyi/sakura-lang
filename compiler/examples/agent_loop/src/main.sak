@@ -3,7 +3,7 @@
 // mode: test
 // covers: Attribute ErrorDecl TaggedStr Lambda RecordLit
 
-// Design §15.8. `main` calls a real model, so CI runs the offline test only: `research`
+// `main` calls a real model, so CI runs the offline test only: `research`
 // replays `tests/fixtures/research.jsonl` (a synthetic two-step cassette, see
 // `tests/fixtures/README.md`) through `Llm.anthropic`, with the knowledge base scripted; the
 // scripted agent-loop tests are `tests/semantics/std_agent.sak`. Difference from the design text: `Prompt`

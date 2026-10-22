@@ -10,5 +10,5 @@ Tests install `Sql.memory`, a real fresh in-memory SQLite database, so no filesy
 permission or persistent database is needed. One test proves SQL-looking input
 matches only its literal value. Another runs a transaction that writes and then
 fails on an absent table, checks `SqlError`, and proves the first write rolled back.
-The harness uses test mode. For a persistent database, query `sakura doc std::sql::sqlite`
+Only the tests run. For a persistent database, query `sakura doc std::sql::sqlite`
 and supply an appropriately confined filesystem handler and manifest permissions.

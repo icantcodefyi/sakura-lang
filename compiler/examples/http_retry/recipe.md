@@ -13,4 +13,4 @@ The cassette returns 429 then 200 for the identical request. `Http.recording` is
 wrapped by `Http.scripted([])`, so an exchange cannot fall through to the network,
 even in recording mode. `Clock.virtual` advances without sleeping. Tests check
 success after 100 ms, exhaustion after 300 ms, and immediate transport failure.
-The harness uses test mode; the manifest grants no network or environment access.
+Only the tests run; the manifest grants no network or environment access.

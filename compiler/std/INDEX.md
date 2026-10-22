@@ -22,21 +22,21 @@ and its parent reads `Failed(WorkerError(Defect("exit 75")))`.
 
 ## Prelude
 
-In scope in every module without an import (design §9, with the additions marked +):
+These names are in scope in every module without an import:
 
 | Kind | Names |
 |---|---|
 | Compiler-known types | `Unit Bool Int Float String Bytes Never List Map Set Range Handler Secret Untrusted` |
-| Std types | `Option Result` · + `Duration Instant Uuid Json Level` (prelude effects mention them; §15.1 and §15.4 use `Instant.format_iso`, `Level.Warn`, `Json.String` unimported) · + `Violation` (what `validate` returns, §17.292) |
+| Std types | `Option Result Duration Instant Uuid Json Level Violation` (`Violation` is what `validate` returns) |
 | Constructors | `Some None Ok Err` (other variants are used qualified: `Level.Warn`, `Json.String(s)`) |
-| Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task` · + `Test` |
-| Functions | `show` · + `expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (they need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
+| Effects | `Fail` (compiler-known) `Console Clock Random Env Log Task Test` |
+| Functions | `show expect expect_eq expect_fail expect_fails_with expect_defect expect_output expect_snapshot` (the `expect` functions need `Test`, which only `test`/`property` bodies have; elsewhere they are `V3001`) |
 | Tags | `sql html url` (`shell` is reserved by the prelude; no `std/shell` exists yet) |
 
 Not in the prelude, import them: `import std/retry.{Policy, retry}`, `import std/task.{Timeout, timeout}`,
 `import std/gen` (`gen.int(0, 9)`), `import std/graph.{Graph, NodeId}`, and every other std module.
 
-Home modules (design §4.9): `T.f(…)` and `x.f(…)` with `x: T` call `f` in the module that
+Home modules: `T.f(…)` and `x.f(…)` with `x: T` call `f` in the module that
 declares `T`; for compiler-known types it is `std/<lowercase name>` (`List` → `std/list`). An
 effect's home module is the one declaring it, and `Eff.f(…)` calls a home-module function
 when `f` is not an operation (`Console.captured()`, `Clock.fixed(t)`, `Random.seeded(1)`).

@@ -1,24 +1,36 @@
+Small Sakura projects, each solving one everyday task: decoding JSON, reading a file,
+calling an HTTP API, querying SQLite, serving a route or running an LLM agent. Each one is a
+whole project with tests that run offline, so you can copy it, run it and change it.
+
+Every recipe page shows the complete project: the source with its tests, the `sakura.toml`
+manifest (the package name and its permissions, which list the files, network hosts and
+environment variables the program may use) and any data or recorded fixture files.
+
+## How the recipes are checked
+
+Every project runs offline in the repository's tests (`cargo test -p sakura_cli --test examples`),
+against the compiler in the same checkout, on the JavaScript backend. A recipe that talks to an
+HTTP API or a model replays a *cassette* in its tests: a committed file of recorded requests and
+responses. These cassettes are synthetic, so no network access or API key is needed. Running a
+project needs Node 26, whose built-in SQLite the SQLite recipe uses.
+
+To adapt a recipe, build the CLI from the same checkout and run `sakura --version` and
+`sakura prompt` first. Sakura Lang is pre-1.0: read STABILITY.md before depending on an API.
+The initial API baseline is compiler revision
+[5cae349516c21714d90d36e87f1cfd6debe980c6](https://github.com/icantcodefyi/sakuralang/commit/5cae349516c21714d90d36e87f1cfd6debe980c6).
+An installed skill's frontmatter records its compiler version and build revision. These
+teaching examples are separate from the agent evaluation tasks.
+
+Each page is generated from its example's `recipe.md`, `sakura.toml`, `src/main.sak` and
+fixture files. Edit those sources, not the rendered pages, then run `cargo run -p agent_docs`
+from `compiler/` to regenerate the cookbook and the skill reference.
+
+## For agents
+
 Finish only when no holes remain, independent tests pass, the requested target
 builds, and contracts/tests/permissions have not been weakened. Repeat the frozen
 baseline check after the final edits. Report missing prerequisites and failing
 checks explicitly; do not claim a skipped test passed.
-
-These projects teach supported Sakura APIs on the JavaScript backend. Each
-project is exercised offline by `cargo test -p sakura_cli --test examples`;
-HTTP and LLM exchanges are synthetic committed cassettes, with no network or API keys.
-Use Node 26 for execution, including its built-in SQLite implementation.
-
-The initial API baseline is compiler revision
-[5cae349516c21714d90d36e87f1cfd6debe980c6](https://github.com/icantcodefyi/sakuralang/commit/5cae349516c21714d90d36e87f1cfd6debe980c6).
-CI reruns these projects against the compiler in the same checkout. Build that
-checkout's CLI and run `sakura --version` and `sakura prompt` before adapting a recipe.
-Sakura Lang is pre-1.0: read STABILITY.md before depending on an API. An installed
-skill's frontmatter records its compiler version and build revision. These teaching examples are separate from the agent
-evaluation tasks.
-
-The source of each page is its example's `recipe.md`, `sakura.toml`,
-`src/main.sak` and fixture files. Run `cargo run -p agent_docs` from `compiler/`
-to regenerate the cookbook and skill reference. Edit those sources, not the rendered pages.
 
 ## Audit and verify
 
@@ -28,10 +40,11 @@ Exit 0 can include `unknown` or `unsupported`; inspect statuses and
 `path_feasible`, including `W7002` for vacuity. A proof is conditional on its
 recorded assumptions and target profile, not a whole-program guarantee.
 
-## Current APIs since v0.1.0
+## APIs added or changed since v0.1.0
 
-Short checked files for what changed after `v0.1.0`; the CHANGELOG's "Migration from v0.1.0"
-lists every breaking change. Each block is a whole file, tested offline.
+Each block below is a whole file showing an API that was added or changed after `v0.1.0`,
+with tests that run offline. The CHANGELOG's "Migration from v0.1.0" lists every breaking
+change.
 
 ### HTTP bodies, redirects and multi-turn tests
 

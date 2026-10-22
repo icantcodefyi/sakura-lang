@@ -30,10 +30,17 @@ fn read(path: &Path) -> Result<String, String> {
 pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
     let examples = root.join("compiler/examples");
     let intro = read(&examples.join("cookbook.md"))?;
-    // A recipe page repeats only the intro's opening paragraphs; its sections are the index's.
-    let provenance = intro.split("\n## ").next().unwrap_or(&intro);
+    // The index lists the recipes after the intro's opening; a recipe page repeats only how it is checked.
+    let (opening, sections) = intro
+        .split_once("\n## ")
+        .ok_or("cookbook.md needs sections after its opening")?;
+    let checked = sections
+        .split_once("How the recipes are checked\n")
+        .map(|(_, rest)| rest.split("\n## ").next().unwrap().trim())
+        .ok_or("cookbook.md needs a `## How the recipes are checked` section")?;
     let mut index = format!(
-        "---\ntitle: Cookbook\ndescription: Ten small, tested Sakura projects that run offline.\n---\n\n{NOTICE}\n\n{intro}\n"
+        "---\ntitle: Cookbook\ndescription: Small, tested Sakura projects that run offline.\n---\n\n{{/* {NOTICE} */}}\n\n{}\n\n## Recipes\n\n",
+        opening.trim_end()
     );
     let mut skill = format!("# Sakura cookbook\n\n{NOTICE}\n\n{intro}");
     let mut out = Vec::new();
@@ -68,19 +75,21 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
             (false, _) => String::new(),
         };
         let mut body = format!(
-            "{}\n\n[Source project]({SOURCE_URL}/{name}) · harness mode: `{}`.\n\n\
+            "{}\n\n[Source project]({SOURCE_URL}/{name})\n\n### Run it\n\n\
              From the repository root, with this checkout's `sakura` on `PATH`:\n\n\
              ```sh\ncd compiler/examples/{name}\nsakura check --json\n{command}sakura test --json\n```\n\n\
-             ### Manifest and permissions\n\n```toml\n{manifest}```\n\n\
              ### Source and tests\n\n`src/main.sak` includes all required imports and tests.\n\n\
              ```sakura test id=cookbook-{name} project={name}\n{shown}```\n",
             prose.trim(),
-            if run { "run + test" } else { "test" },
         );
         if run {
             let stdout = read(&dir.join("expected.stdout"))?;
             body.push_str(&format!("\n### Expected stdout\n\n```text\n{stdout}```\n"));
         }
+        body.push_str(&format!(
+            "\n### Manifest and permissions\n\n`sakura.toml` names the package and grants what the \
+             program may use.\n\n```toml\n{manifest}```\n"
+        ));
         for folder in ["data", "tests/fixtures"] {
             for (rel, text) in files(&dir, folder)? {
                 let language = if rel.ends_with(".jsonl") {
@@ -98,7 +107,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
         out.push((
             format!("website/content/docs/cookbook/{name}.mdx"),
             format!(
-                "---\ntitle: {}\ndescription: {}\n---\n\n{NOTICE}\n\n{body}\n### Compiler provenance and regeneration\n\n{provenance}",
+                "---\ntitle: {}\ndescription: {}\n---\n\n{{/* {NOTICE} */}}\n\n{body}\n### How this recipe is checked\n\n{checked}\n",
                 serde_json::to_string(title).unwrap(),
                 serde_json::to_string(description).unwrap(),
             ),
@@ -108,6 +117,7 @@ pub fn outputs(root: &Path) -> Result<Vec<(String, String)>, String> {
         .chain(RECIPES.iter().copied())
         .collect();
     let meta = serde_json::json!({"title": "Cookbook", "pages": pages});
+    index.push_str(&format!("\n## {sections}"));
     out.push(("website/content/docs/cookbook/index.mdx".into(), index));
     out.push((
         "website/content/docs/cookbook/meta.json".into(),

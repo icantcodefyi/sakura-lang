@@ -10,5 +10,5 @@ both the nonnegative and upper-bound checks, as `replace_if_present` demonstrate
 
 The tests check changed values, the unchanged original list, empty and singleton
 inputs, and external indices below zero, at the length and inside the list.
-The harness also runs `main` and checks `[3, 0, 7, 0]`. No effects other than its
+The repository's check also runs `main` and expects `[3, 0, 7, 0]`. No effects other than its
 console output, permissions or slice/concat reconstruction are needed.

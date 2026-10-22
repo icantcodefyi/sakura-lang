@@ -11,5 +11,5 @@ which the handler reads as `Request.param(req, "0")`.
 
 The tests call the actual router, not just the endpoint function. They assert the
 successful response body, rejection of malformed JSON, an invalid refinement and
-an oversized body, plus missing-route and wrong-method statuses. The harness uses
-test mode and never starts a server.
+an oversized body, plus missing-route and wrong-method statuses. Only the tests run,
+and no server is started.

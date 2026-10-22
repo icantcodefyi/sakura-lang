@@ -13,5 +13,5 @@ is the typed failure `InvalidOutput`, never a crash. The first two tests script 
 same on every machine; for another endpoint pass it with `Llm.anthropic_at(base, key, model)`
 (no process variable is read).
 
-`main` calls a real model, so the harness runs the tests only. The fixture's bodies, IDs and
+`main` calls a real model, so only the tests are run here. The fixture's bodies, IDs and
 token counts were invented (see its README); this is not live-provider validation.

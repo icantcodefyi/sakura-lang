@@ -21,4 +21,4 @@ needs a call limit of three for its overlapping reservations. A limit of two
 rejects the second provider call. The tests exercise both cases, a token limit that
 rejects before any scripted response is consumed, and the final-turn rule. These
 are local accounting tests, not measured provider prices or a hard billing guarantee.
-The harness uses test mode; no key, paid call or live service is involved.
+Only the tests run; no key, paid call or live service is involved.

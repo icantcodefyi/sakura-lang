@@ -3,9 +3,9 @@
 // mode: test
 // covers: Attribute TypeDecl RecordType FieldDecl WithExpr Lambda MatchExpr
 
-// Design §15.7. `main` calls a real model, so CI runs the offline tests only: two under
+// `main` calls a real model, so CI runs the offline tests only: two under
 // `Llm.scripted`, one replaying `tests/fixtures/extract_ticket.jsonl` with `Llm.replay` and
-// §15.7's recorded test through `Llm.recording` (a synthetic cassette, see
+// the recorded test through `Llm.recording` (a synthetic cassette, see
 // `tests/fixtures/README.md`). Difference from the design text: `extract_ticket` declares
 // `Budget` and the tests install `Budget.unlimited()`, and `Budget.limits` is installed
 // outside `Llm.anthropic`, whose handler performs `Budget` (the first handler in a `with` list
@@ -48,7 +48,7 @@ test "scripted model output is validated against Ticket" {
 }
 
 test "invalid output is a typed failure, not a crash" {
-  // `\{` is a literal brace; a bare `{` would start an interpolation (§2.3).
+  // `\{` is a literal brace; a bare `{` would start an interpolation.
   with Llm.scripted(["\{\"title\": \"\", \"priority\": \"Urgent\"\}"]), Budget.unlimited() {
     expect_fails_with(
       fn() { extract_ticket(Untrusted.of("x")) },
@@ -73,7 +73,7 @@ test "a recorded Messages API exchange replays offline" {
 
 test "a recorded exchange replays offline; sakura test --record fetches it once" {
   // Unset outside `sakura test --record`; the placeholder is a `Secret` too, and secret headers
-  // are never written to the cassette (§17.102). Plain `sakura test` denies the network, so
+  // are never written to the cassette. Plain `sakura test` denies the network, so
   // `Http.host()` is installed but never reached: the exchange replays from the cassette.
   let key = Option.unwrap_or(Env.secret("ANTHROPIC_API_KEY"), Secret.of("replay"))
   with Http.host(),

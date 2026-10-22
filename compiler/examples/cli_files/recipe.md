@@ -10,5 +10,5 @@ whole file; use `Fs.with_file` and bounded `Fs.read_chunk` for large inputs.
 
 `CliError` and `FsError` propagate to the CLI's failure reporter. Tests replace
 arguments and files with `Cli.of` and `Fs.memory`, checking success, missing flags
-and a missing file. The harness also runs `sakura run -- --input note.txt` against
+and a missing file. The repository's check also runs `sakura run -- --input note.txt` against
 the committed data file and expects `4 bytes`.
