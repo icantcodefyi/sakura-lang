@@ -1,37 +1,9 @@
 ---
 title: Effects
-description: How Sakura Lang records every side effect and every expected failure in the function signature, and how effect rows compose.
+description: How Sakura Lang lists every side effect and every expected failure in a function's signature.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
-
-An effect is anything a function does besides compute its return value: read the clock, print, query a database, call the network, fail. In Sakura Lang, every effect a function may perform is listed in its signature, after `!`.
-
-This is a declaration or context-dependent excerpt, not a standalone program.
-
-```sakura fragment
-fn signup(email: Email, pw: Password) -> User ! {Db, Clock, Random, Fail<SignupError>}
-```
-
-The braces hold the function's **effect row**. `signup` returns a `User` and may also use `Db` (a user-defined effect, declared below), the clock, and randomness, and may fail with a `SignupError`. The row is an upper bound: the body may do less, never more.
-
-## Pure functions
-
-A signature with no `!` is pure: `! {}`. This is the one meaning of omission, for top-level signatures and for written function types alike.
-
-```sakura
-fn total(prices: List<Int>) -> Int {
-  List.fold(prices, 0, fn(acc, p) { acc + p })
-}
-```
-
-`! {}` means "no declared operations and no expected failures". It does not mean "cannot crash": overflow and contract violations are [defects](#defects-are-not-effects), which are not effects.
-
-## Performing effects
-
-An operation is performed with `Effect.op(args)`. Calling a function performs that function's row. Creating a closure performs nothing; calling it performs its row.
+An **effect** is anything a function does besides return a value: print, read the clock, query a database, call the network, or fail. In Sakura Lang, a function lists its effects in its signature, after `!`, and the compiler checks the list.
 
 ```sakura
 fn greet(name: String) -> Unit ! {Console, Clock} {
@@ -42,13 +14,80 @@ fn greet(name: String) -> Unit ! {Console, Clock} {
 pub fn main() -> Unit ! {Console, Clock} { greet("Sakura Lang") }
 ```
 
-`main` calls `greet`, so `main`'s row must include `Console` and `Clock`.
+`sakura run` prints something like:
+
+```text
+hello, Sakura Lang; it is 2026-10-22T13:09:10.309Z
+```
+
+- `! {Console, Clock}` says `greet` may print and may read the clock, and nothing else.
+- The list in braces is the function's **effect row**.
+- `main` calls `greet`, so `main` must list `Console` and `Clock` too. Effects can't hide inside a helper.
+
+So you can read a signature and know what a function can touch, without reading its body.
 
 <EffectFlow />
 
-## Declaring effects
+## Pure functions
 
-An `effect` declares operations as function signatures, with no bodies:
+A function with no `!` is **pure**: it only computes its result.
+
+```sakura
+fn total(prices: List<Int>) -> Int {
+  List.fold(prices, 0, fn(acc, p) { acc + p })
+}
+```
+
+No `!` always means "no effects". Pure does not mean "can't crash": overflow and broken contracts are [defects](#defects-are-not-effects), which stop the program either way.
+
+## Calling an effect
+
+You perform an effect operation with `Effect.op(args)`, like `Console.print("hi")` or `Clock.now()`. Calling a function performs all the effects in its row. Creating a lambda performs nothing; calling it performs its effects.
+
+The row is an upper limit. A body may do less than its row says, never more.
+
+## When the signature is missing an effect
+
+If a body performs an effect its signature does not list, `sakura check` stops with `V3001`:
+
+```sakura expect=V3001
+type User = { id: String, name: String, seen: Instant }
+
+effect Db {
+  fn get_user(id: String) -> Option<User>
+}
+
+pub fn load_user(id: String) -> Option<User> ! {Clock} {
+  let now = Clock.now()
+  let found = Db.get_user(id)
+  Option.map(found, fn(u) { User { ..u, seen: now } })
+}
+```
+
+```text
+error[V3001]: function `load_user` performs `Db`, which its signature does not allow (allowed: `{Clock}`)
+  ┌─ src/main.sak:7:8
+  │
+7 │ pub fn load_user(id: String) -> Option<User> ! {Clock} {
+  │        ^^^^^^^^^
+8 │   let now = Clock.now()
+9 │   let found = Db.get_user(id)
+  │               --------------- `Db.get_user` performs `Db` here
+  │
+  = expected: {Clock}
+  =    found: {Clock, Db}
+  = help: Add `Db` to the signature
+  = help: Handle the effect locally with `with`
+  = see `sakura explain V3001`
+
+1 error
+```
+
+There are two honest fixes. If `load_user` really should use the database, add `Db` to its signature; a reviewer sees that change. If it should not, handle `Db` locally with a [handler](/docs/tour/handlers). The compiler never applies the first fix on its own, because it widens what the function may do. `sakura check --json` prints the same error as JSON for agents; see [Diagnostics](/docs/agents/diagnostics).
+
+## Declaring your own effects
+
+An `effect` lists operations as signatures, with no bodies:
 
 ```sakura
 type Table = String
@@ -60,38 +99,11 @@ effect Db {
 }
 ```
 
-An operation's row may contain `Fail<…>`, plus row variables of the operation's own type parameters that also appear in a function-typed parameter, so an operation that runs a callback performs what the callback performs (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Any other label is `V3010`. The declaration says what operations exist, not what they do. That is the job of a [handler](/docs/tour/handlers), chosen by the caller. A handler's clauses run with the handlers outside it: an effect a clause performs resolves where the handler was installed, not where the operation was called.
-
-## Rows are sets
-
-A row is a set of unique labels plus an optional open tail: `{Db, Clock | e}`. A label is an effect plus its type arguments, such as `Fail<SignupError>`. Order does not matter; the formatter sorts labels alphabetically with `Fail<…>` last. Sequencing two expressions takes the union of their rows. See design §5.2 for the unification rules.
-
-## Effect polymorphism
-
-A higher-order function should not fix the effects of the function it receives. A lowercase type parameter is an **effect-row variable**:
-
-This is a declaration or context-dependent excerpt, not a standalone program.
-
-```sakura fragment
-fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
-```
-
-If `f` is pure, the call is pure. If `f` logs and may fail, the call logs and may fail. An **open row** names some labels and leaves the rest to a variable:
-
-```sakura
-fn traced<T, e>(name: String, body: fn() -> T ! e) -> T ! {Log | e} {
-  Log.event(Level.Info, "start {name}", [])
-  let value = body()
-  Log.event(Level.Info, "end {name}", [])
-  value
-}
-```
-
-A top-level function must declare its row variables (`<e>`). A function value with a closed row is accepted where a larger row is expected: `fn() -> Int ! {Clock}` can be passed where `fn() -> Int ! e` is expected, and `e` becomes `{Clock}`. This widening is one of the three places Sakura Lang has subtyping, with error unions and refinement-to-base.
+The declaration only says what operations exist. What they do is decided by a [handler](/docs/tour/handlers), which the caller picks. The same code can run against SQLite in production and an in-memory table in a test.
 
 ## Failure: `Fail<E>` and error unions
 
-There are no exceptions. Expected failure is `Fail<E>`, the one compiler-known effect. `E` is an **error union**: a set of nominal `error` tags.
+There are no exceptions. A function that can fail lists `Fail<E>` in its row. `E` is an **error union**: one or more error tags you declared with `error`.
 
 ```sakura
 type Email = String where String.contains(it, "@")
@@ -100,11 +112,11 @@ error Banned
 type SignupError = EmailTaken | Banned           // union alias: tags only
 ```
 
-`fail EmailTaken { email }` has type `Never` and adds `Fail<EmailTaken>` to the current row. `Fail` occurs at most once in a row. When two failing expressions are sequenced, their unions join: `Fail<A> ∪ Fail<B> = Fail<A | B>`.
+`fail EmailTaken { email }` stops the function with that error.
 
-Propagation is automatic. Calling a function with `Fail<A>` adds `Fail<A>` to the caller's row, with no operator needed. A union `U` is accepted where `V` is expected if `U ⊆ V`. When two different unions meet with no expected type, the compiler asks for an annotation (`V2015`).
+Failures pass up automatically. If you call a function that may fail with `A`, your function may fail with `A` too, and it must say so. No operator is needed.
 
-Recovery uses `try`/`catch`. Arms are patterns over the body's tags. Tags matched by an unguarded arm are removed from the row; unmatched tags propagate:
+To recover, use `try`/`catch`. Each `catch` branch matches error tags. Tags you catch are removed from your row; the rest keep passing up:
 
 ```sakura
 error NotFound(id: String)
@@ -134,40 +146,66 @@ pub fn view_user(caller: String, id: String) -> User ! {Users, Log, Fail<UserErr
 }
 ```
 
-The internal `Unavailable` tag is translated at the boundary, so the public union stays small and stable. Other ways to move between failure and data:
+`view_user` catches the internal `Unavailable` error and turns it into a log line, so callers only see `NotFound` or `Forbidden`. Other ways to move between failures and values:
 
 | Form | Result |
 | --- | --- |
-| `try { body }` with no `catch` | `Result<T, E>` with the body's full union; `Fail` leaves the row |
-| `r?` on `r: Result<T, E>` | `T`, and adds `Fail<E>` to the row |
+| `try { body }` with no `catch` | a `Result<T, E>`: `Ok(value)` or `Err(error)`; the failure is gone from the row |
+| `r?` on `r: Result<T, E>` | the value, or fails with the error |
 | `Option.or_fail(o, err)` | the value, or `fail err` on `None` |
 
-`?` applies only to a `Result`. A call to a function with `Fail<E>` in its row needs no operator; its failure propagates on its own.
+Some rules:
 
-A `try` body cannot assign to a `var` declared outside it (`V2041`), because the body may stop at any failing call and leave the assignment half done. Its value and its error are the only things that leave it: assign after the `try`, or declare the `var` inside.
-
-There is no implicit conversion between error types. A catch-all `_ => …` arm is allowed but discouraged on open unions (`W4010`).
+- `?` works only on a `Result`. A call to a failing function needs no operator.
+- A `try` body cannot assign to a `var` declared outside it (`V2041`), because the body might stop halfway. Assign after the `try` instead.
+- Errors never convert implicitly. A smaller union is accepted where a larger one is expected. When two different unions meet with nothing to say which is wanted, the compiler asks for a type annotation (`V2015`).
+- A catch-all `_ => …` branch is allowed but discouraged on open unions (`W4010`).
 
 ## Defects are not effects
 
-A **defect** is a bug, not an expected failure. It terminates the current task after running resource finalizers. `try` cannot catch it. `Task.scope` and the test runner observe it as `Outcome.Defect(info)`, and `main` ending in a defect exits with status 70 and writes a `defect` record to stderr. By contrast, a typed failure that escapes `main` exits with status 1 and prints `error: main failed with <Show of the error>`.
+A **defect** is a bug, not an expected failure: an integer overflow, a broken contract, `Option.expect` on `None`. A defect stops the current task after cleaning up open resources. `try` cannot catch it.
 
 <FailureFlow />
+
+If `main` ends in a defect, the program exits with status 70 and writes a `defect` record to stderr. If an expected failure escapes `main`, the program exits with status 1 and prints `error: main failed with <the error>`.
 
 | Code | Defect |
 | --- | --- |
 | `D001` | `Int` overflow |
 | `D002` | division by zero |
 | `D003` | `Int` beyond ±(2^53−1) on the JavaScript backend |
-| `D010` | failed checked introduction, such as `Email.from(s)` |
-| `D020` / `D021` | `requires` violated (caller blamed) / `ensures` violated (callee blamed) |
+| `D010` | failed checked conversion, such as `Email.from(s)` |
+| `D020` / `D021` | `requires` broken (the caller's bug) / `ensures` broken (the function's bug) |
 | `D030` | `Option.expect` on `None` |
 
-There is no user-callable way to raise a defect. Express a programming error with `requires` or `Option.expect`.
+You cannot raise a defect yourself. State a programming rule with `requires` or `Option.expect` instead. `Task.scope` and the test runner can observe a defect as `Outcome.Defect(info)`.
+
+## Passing effects through
+
+A function that takes another function, such as `map`, should not fix that function's effects. A lowercase type parameter like `e` is an **effect-row variable**: it stands for "whatever effects the argument has".
+
+This is a declaration, not a standalone program.
+
+```sakura fragment
+fn map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! e
+```
+
+If `f` is pure, the call is pure. If `f` logs and may fail, the call logs and may fail. A row can also name some effects and leave the rest to a variable, written `{Log | e}`:
+
+```sakura
+fn traced<T, e>(name: String, body: fn() -> T ! e) -> T ! {Log | e} {
+  Log.event(Level.Info, "start {name}", [])
+  let value = body()
+  Log.event(Level.Info, "end {name}", [])
+  value
+}
+```
+
+A top-level function declares its row variables (`<e>`). A function with fewer effects can be passed where more are allowed: `fn() -> Int ! {Clock}` fits `fn() -> Int ! e`, and `e` becomes `{Clock}`.
 
 ## Standard effects
 
-From design §10.2. Each effect lives in its own std module (`std/console`, `std/http`, …). The first seven are in the prelude; the rest must be imported by name, for example `import std/http.{Http}`.
+Each standard effect lives in its own std module (`std/console`, `std/http`, …). The first seven are in the prelude; import the rest by name, for example `import std/http.{Http}`.
 
 | Effect | Operations | Purpose |
 | --- | --- | --- |
@@ -183,156 +221,52 @@ From design §10.2. Each effect lives in its own std module (`std/console`, `std
 | `Serve` | `listen` | HTTP server |
 | `Sql` | `query`, `execute`, `transaction` | SQL database |
 | `Cli` | `args`, `exit` | Command-line arguments and exit status |
-| `Budget` | `reserve`, `settle` | Token, cost, and call limits |
+| `Budget` | `reserve`, `settle` | Token, cost and call limits |
 | `Llm` | `generate`, `generate_text`, `stream` | Language model calls |
 | `Fail<E>` | `fail` | Expected failure |
 
-There is no `Async` effect. Every Sakura Lang function may suspend; whether a call suspends is decided by its handler (design §5.6). See [Concurrency](/docs/tour/concurrency).
+There is no `Async` effect. Any function may pause and resume; the handler decides whether a call waits. See [Concurrency](/docs/tour/concurrency).
 
-## Inference
+## Effects say what, handlers say where
 
-Inside a body, the checker infers a row for every expression together with its type (design §5.7):
+`Fs` in a row says "may use the filesystem". It does not say which files. The installed handler decides that, and handlers are built from capability values a program cannot forge. See [Capabilities and security](/docs/tour/capabilities).
+
+## Reference
+
+### Rows are sets
+
+A row is a set of labels plus an optional open tail: `{Db, Clock | e}`. A label is an effect plus its type arguments, such as `Fail<SignupError>`. Order does not matter; the formatter sorts labels alphabetically with `Fail<…>` last. `Fail` appears at most once in a row: when two failing expressions run in sequence, their errors join, `Fail<A>` and `Fail<B>` becoming `Fail<A | B>`.
+
+### What an operation may declare
+
+An operation's row may contain `Fail<…>`, plus row variables of the operation's own type parameters that also appear in a function-typed parameter, so an operation that runs a callback performs what the callback performs (`fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e`). Any other label is `V3010`. A handler's clauses run with the handlers outside it: an effect a clause performs goes to where the handler was installed, not where the operation was called.
+
+### How rows are inferred inside a body
 
 | Form | Row |
 | --- | --- |
 | literal, variable, lambda, constructor, `handler {…}` | `{}` |
-| `f(a1..an)` | rows of `f` and the arguments, plus `f`'s latent row |
-| `Eff.op(args)` | rows of the arguments, plus `{Eff}` and the op's declared `Fail` |
+| `f(a1..an)` | rows of `f` and the arguments, plus `f`'s own row |
+| `Eff.op(args)` | rows of the arguments, plus `{Eff}` and the operation's declared `Fail` |
 | `fail e` | row of `e`, plus `Fail<tag(e)>` |
-| `if` / `match` | condition or scrutinee, plus the union of all branches |
+| `if` / `match` | condition or scrutinee, plus all branches |
 | `with h1..hn { b }` | row of `b` minus the handled effects, plus each handler's row |
-| `try { b } catch { arms }` | row of `b` with matched tags removed, plus the arms' rows |
+| `try { b } catch { arms }` | row of `b` with caught tags removed, plus the branches' rows |
 | `try { b }` | row of `b` minus `Fail` |
 | `r?` | row of `r`, plus `Fail<E>` |
 
-Branch rows join conservatively: an effect in an unreachable branch still counts. Evaluation is strict and left to right.
-
-Top-level rows are never inferred. Every top-level `fn` states its row, so a change in a callee's effects cannot silently change a caller's contract.
-
-## Undeclared effects
-
-If a body performs an effect its signature does not allow, `sakura check` reports `V3001`:
-
-```sakura expect=V3001 title="src/users/repo.sak"
-type User = { id: String, name: String, seen: Instant }
-
-effect Db {
-  fn get_user(id: String) -> Option<User>
-}
-
-pub fn load_user(id: String) -> Option<User> ! {Clock} {
-  let now = Clock.now()
-  let found = Db.get_user(id)
-  Option.map(found, fn(u) { User { ..u, seen: now } })
-}
-```
-
-`sakura check --json` emits one JSON Lines record per diagnostic, in the design §12.2 shape. Pretty-printed, with hashes shortened:
-
-```json
-{
-  "schema_version": "1.0",
-  "kind": "diagnostic",
-  "id": "d:7f3a…",
-  "code": "V3001",
-  "severity": "error",
-  "phase": "effect",
-  "message": "function `load_user` performs `Db`, which its signature does not allow",
-  "snapshot": "sha256:…",
-  "symbol_id": "pkg::users/repo::load_user",
-  "spans": [
-    {
-      "uri": "file:///…/src/users/repo.sak",
-      "content_hash": "sha256:…",
-      "start_byte": 159,
-      "end_byte": 168,
-      "role": "primary",
-      "label": "allowed here: `{Clock}`"
-    },
-    {
-      "uri": "file:///…/src/users/repo.sak",
-      "content_hash": "sha256:…",
-      "start_byte": 209,
-      "end_byte": 224,
-      "role": "cause",
-      "label": "`Db.get_user` introduces `Db` here"
-    }
-  ],
-  "related_ids": [],
-  "expected": {
-    "render": "{Clock}",
-    "row": { "labels": [{ "effect": "std::Clock", "args": [] }], "tail": null }
-  },
-  "actual": {
-    "render": "{Clock, Db}",
-    "row": {
-      "labels": [
-        { "effect": "std::Clock", "args": [] },
-        { "effect": "pkg::users/repo::Db", "args": [] }
-      ],
-      "tail": null
-    }
-  },
-  "obligation": null,
-  "counterexample": null,
-  "explanation_uri": "sakura://explain/V3001",
-  "fixes": [
-    {
-      "id": "f:1",
-      "title": "Add `Db` to the signature of `load_user`",
-      "applicability": "suggested",
-      "impact": "interface_change",
-      "edits": [
-        {
-          "span": {
-            "uri": "file:///…/src/users/repo.sak",
-            "content_hash": "sha256:…",
-            "start_byte": 159,
-            "end_byte": 168,
-            "role": "primary",
-            "label": "signature row"
-          },
-          "replacement": "! {Clock, Db}"
-        }
-      ]
-    },
-    {
-      "id": "f:2",
-      "title": "Handle `Db` locally by installing a handler around the call",
-      "applicability": "incomplete",
-      "impact": "local",
-      "edits": [
-        {
-          "span": {
-            "uri": "file:///…/src/users/repo.sak",
-            "content_hash": "sha256:…",
-            "start_byte": 209,
-            "end_byte": 224,
-            "role": "cause",
-            "label": "call to `Db.get_user`"
-          },
-          "replacement": "with ?db_handler { Db.get_user(id) }"
-        }
-      ]
-    }
-  ]
-}
-```
-
-Byte offsets are zero-based and half-open. There are two honest ways out. If `load_user` really should touch the database, the signature changes; that fix is an `interface_change`, so it is never `machine_applicable` and a reviewer sees it. If it should not, the call is handled locally; that fix leaves a typed hole for the handler, so it is `incomplete`. See [Diagnostics](/docs/agents/diagnostics).
-
-## Effects are requirements
-
-`Fs` in a row says "may perform filesystem operations". It does not say which files. The installed handler decides that, and handlers are built from capability values the program cannot forge. See [Capabilities and security](/docs/tour/capabilities).
+An effect in a branch that never runs still counts. Evaluation is strict and left to right. Top-level rows are never inferred: every top-level `fn` states its row, so a change in a callee cannot silently change a caller's signature.
 
 ## What the compiler checks
 
-- The inferred row of a body is a subset of the declared row. Each extra label is `V3001`, with the call that introduced it.
-- A label that a closed row does not permit is `V3002`.
+- The effects a body performs are a subset of its declared row. Each extra one is `V3001`, pointing at the call that introduced it.
+- A label that a closed row does not allow is `V3002`.
 - Every `Fail` tag is either caught or declared. Union mismatches without an expected type are `V2015`.
-- Effect operations declare only `Fail` and their callbacks' row variables in their rows (`V3010`).
+- Effect operations declare only `Fail` and their callbacks' row variables (`V3010`).
 - Top-level rows and row variables are declared, never inferred.
 
 ## Next
 
-[Handlers](/docs/tour/handlers): how a caller decides what an effect actually does.
+[Handlers](/docs/tour/handlers): how the caller decides what an effect actually does.
+
+Details for contributors: [design §5.2, §5.6, §5.7, §10.2, §12.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

@@ -1,9 +1,9 @@
 ---
 title: Static verification
-description: Check contracts before execution and distinguish proofs from runtime checks.
+description: Prove contracts before the code runs, and tell proofs apart from runtime checks.
 ---
 
-[Contracts and refinements](/docs/tour/contracts) check values at runtime. The CLI also provides `sakura verify`: it asks a separately installed, pinned Z3 **5.3.1** to check contract and arithmetic obligations before execution. It proves individual obligations, not whole-program correctness.
+[Contracts](/docs/tour/contracts) are checked while the code runs. `sakura verify` goes one step further: it tries to **prove**, before the code runs, that a contract can never be broken. It uses the Z3 solver, which you install separately (the pinned version is **5.3.1**).
 
 ```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
@@ -22,22 +22,38 @@ Save this as `main.sak`, then run:
 
 ```sh
 sakura verify main.sak
-sakura verify --json main.sak
-sakura verify --target wasm main.sak
 ```
 
-The example proves two obligations: this call meets `ordered`, and `clamp` meets `bounded` on normal return assuming its precondition. The default profile is JavaScript's safe-integer range; `--target wasm` checks signed i64 arithmetic. It selects a verification profile; [`run --target wasm`](/docs/tour/memory#backends) executes a program.
+It proves two things, called **obligations**:
+
+- the call `clamp(12, 0, 10)` meets `ordered`, and
+- `clamp` meets `bounded` whenever it returns, assuming `ordered` held.
+
+Each obligation is proved on its own. A proof covers that one rule, not the whole program.
 
 ## Read the result, not just the exit code
 
 <VerifyFlow />
 
-- `proved`: holds under the recorded assumptions. `W7002` and `path_feasible: false` flag a vacuous proof whose assumptions cannot hold.
-- `disproved`: a counterexample exists. Inspect `replay` to distinguish a confirmed execution from a candidate; JS-profile counterexamples are replayed on the Core evaluator, i64 ones on the LIR evaluator.
-- `unknown`: the solver could not decide within its limits, or encountered a solver failure.
-- `unsupported`: the obligation is outside the implemented fragment.
+Each obligation gets one of four results:
 
-A completed run exits 1 for any `disproved` obligation and otherwise 0, including `unknown` and `unsupported`. Setup and compilation errors can also fail. Automation requiring all proofs must inspect the JSON Lines records. A postcondition can hold on normal return while a separate multiplication-overflow obligation fails; proving one does not prove the other.
+- `proved`: it holds under the recorded assumptions. Warning `W7002` (and `path_feasible: false`) flags a proof whose assumptions can never be true, so it proves nothing useful.
+- `disproved`: the solver found a counterexample. Check its `replay` field to see whether the counterexample was confirmed by actually running it, or is only a candidate.
+- `unknown`: the solver could not decide within its limits, or failed.
+- `unsupported`: the rule uses something the verifier does not handle yet.
+
+`sakura verify` exits 1 if any obligation is `disproved`, and 0 otherwise, **including** when some are `unknown` or `unsupported`. Setup and compile errors fail too. If your automation needs every rule proved, read the `--json` output instead of the exit code. Note that a postcondition can be proved while a separate overflow check in the same function fails; one proof does not imply the other.
+
+## Integer ranges
+
+By default, `verify` checks integers in JavaScript's safe-integer range. `--target wasm` checks signed 64-bit integers instead:
+
+```sh
+sakura verify --json main.sak
+sakura verify --target wasm main.sak
+```
+
+Here `--target` only picks the integer rules for the proof. To run on WebAssembly, use [`sakura run --target wasm`](/docs/tour/memory#backends).
 
 ## What changes in a build
 
@@ -45,10 +61,12 @@ A completed run exits 1 for any `disproved` obligation and otherwise 0, includin
 sakura build --manifest main.sak
 ```
 
-JS builds can remove eligible `ensures` and non-entry `where` checks using matching authenticated proof records. Missing or stale records retain checks. This does not remove preconditions or `T.from` entry checks, and the predicate's computation remains. `run`, `test` and LIR output retain these checks; a WASM build drops the checks `sakura verify --target wasm` proved, as the JS build does for the `js` profile. Separate interval-based arithmetic optimization does not require the solver.
+A build can drop some runtime checks that `verify` proved: eligible `ensures` checks and `where` checks other than at entry. It drops a check only when a matching, authenticated proof record exists; a missing or stale record keeps the check. Preconditions (`requires`) and `T.from` checks always stay, and the rule's own computation still runs. `run`, `test` and LIR output keep every check. A WebAssembly build drops the checks `sakura verify --target wasm` proved, as a JavaScript build does for the default profile. Simple range-based arithmetic optimizations do not need the solver.
 
-Verification of loops, recursion, termination, quantified collections and Float/String theories remains planned. Proof certificates and `verify fn`, `proof` and `ghost` syntax are not implemented. Read the [verification reference](/docs/agents/verify) for solver budgets, JSON fields, cache authentication and manifest statuses.
+## Not supported yet
+
+Verifying loops, recursion, termination, rules over whole collections, and `Float` or `String` reasoning is planned. Proof certificates and `verify fn`, `proof` and `ghost` syntax are not implemented. The [verification reference](/docs/agents/verify) covers solver limits, JSON fields, cache authentication and manifest statuses.
 
 ## Next
 
-[Testing](/docs/tour/testing): deterministic examples, properties and replay.
+[Testing](/docs/tour/testing): unit tests, property tests and replay.

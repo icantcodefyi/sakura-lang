@@ -1,55 +1,39 @@
 ---
 title: Basics
-description: Lexical rules, bindings, functions, control flow, operators, strings, lambdas, loops, and modules in Sakura Lang.
+description: Variables, functions, if and match, strings, lambdas, loops and modules in Sakura Lang.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
-
-Sakura Lang has a small surface: braces, `fn`, `let`/`var`, `match`, `if`/`else`. The keywords are:
-
-```text
-fn let var type error effect handler with try catch fail if else match for in while
-return break continue import pub opaque as test property requires ensures where true false
-```
-
-`verify proof ghost control resume region spawn actor interface impl` are reserved for later and rejected today (`V0007`). A reserved word is still accepted directly after `.` or `fn`, so `Task.spawn(s, body)` is legal. Two names are special only in one place: `it` inside a `where` refinement and `result` inside an `ensures` clause. There is no `null`, no `class`, no `self`, no exceptions, no `async`/`await`, no macros, and no operator overloading.
-
-## Names and casing
-
-Casing is part of the grammar. Values, functions, modules, fields, and effect-row variables are `snake_case`. Types, variants, error tags, effects, and type variables are `PascalCase`. A `TypeName` is never a value and an `Ident` is never a type; the resolver reports `V1004` on a mismatch.
-
-## Comments and attributes
+This page covers the everyday syntax: variables, functions, branches, loops and files. If you know TypeScript, Go or Rust, most of it will look familiar.
 
 ```sakura
-// A line comment. /* Block comments */ nest.
-
-/// A doc comment. It attaches to the next item and is exported with its signature.
-pub fn double(n: Int) -> Int {
-  n * 2
+/// Add up the positive numbers in a list.
+fn total(xs: List<Int>) -> Int {
+  var sum = 0
+  for x in xs {
+    if x > 0 { sum = sum + x }
+  }
+  sum
 }
+
+pub fn main() -> Unit ! {Console} {
+  let numbers = [3, -1, 4]
+  Console.print("total: {total(numbers)}")
+}
+
+test "skips negatives" { expect_eq(total([3, -1, 4]), 7) }
 ```
 
-`@name(args)` attributes precede items. The v0 set is `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server`, and `@test_only`. Attribute arguments are positional or `name: value`, as in `@llm(system: "…")` or `@contract_test(handlers: [Sql.memory()])`; this is the only place `name: value` appears in an argument list. `@trust("reason")` is the one attribute written as an expression, at a trust sink. An unknown attribute is `V1010`.
+- `fn` declares a function. Parameter types and the return type are always written out.
+- A block's value is its last expression, so `total` returns `sum` without `return`.
+- `var` is a variable you can reassign. `let` is one you cannot.
+- `main` is where the program starts. `! {Console}` says it prints; the [Effects](/docs/tour/effects) page explains this.
+- `test` blocks live next to the code and run with `sakura test`.
 
-## Statements and newlines
-
-There are no mandatory semicolons. The lexer ends a statement at a line break only when **both** hold ([design §2.4](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue`, or `return`.
-2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
-
-In practice:
-
-- A line ending in an operator other than `>`, or in `(`, `[`, `{`, or `,`, continues. `>` ends a line so that `type Ids = List<Int>` terminates; write a continued comparison with `>` at the start of the next line.
-- A line starting with `.`, `else`, or `catch` continues the previous one, so method chains and `} else {` work across lines.
-- `foo` followed by `(bar)` on the next line is **two** statements. So is `foo` followed by `-1`.
-- Newlines inside `(` and `[` are never significant. `;` is always accepted; `sakura fmt` removes redundant ones.
+You do not need semicolons. There is no `null`, no classes, no exceptions and no `async`/`await`.
 
 ## Bindings
 
-`let` binds an immutable name. `var` binds a name that can be reassigned. Local types are inferred.
+`let` binds a name you cannot reassign. `var` binds one you can. You rarely write local types; the compiler works them out.
 
 ```sakura
 fn bindings() -> Int {
@@ -64,11 +48,11 @@ fn bindings() -> Int {
 }
 ```
 
-`()` is the `Unit` value. There is no unary plus; `-5` is unary minus applied to `5`. Reassigning a `var` changes the binding, never a value seen elsewhere ([Memory model](/docs/tour/memory)). Top-level `let` declares a constant; a `pub let` needs a type annotation.
+`()` is the `Unit` value, the "nothing" result of a function that only does something. Reassigning a `var` changes that name only, never a value someone else holds ([Memory model](/docs/tour/memory)). A top-level `let` is a constant; a `pub let` needs a type annotation.
 
 ## Functions
 
-Every top-level function has a full signature: parameter types, `-> Result`, and an effect row unless it is pure.
+Every top-level function has a full signature: parameter types, `-> ResultType`, and the effects it may perform after `!`.
 
 ```sakura
 fn add(a: Int, b: Int) -> Int {
@@ -86,15 +70,15 @@ pub fn greet(name: String) -> Unit ! {Console} {
 }
 ```
 
-- A block's value is its final expression. `return e` exits the enclosing function or lambda early.
-- A signature without `!` is pure (`! {}`). Effects are covered in [Effects](/docs/tour/effects).
+- `return e` exits early. Usually you don't need it.
+- A signature without `!` is **pure**: it only computes its result. [Effects](/docs/tour/effects) covers the rest.
 - `-> Unit` is written out; there is no default return type.
-- Items are private to their module unless marked `pub`.
-- A non-final expression statement whose value is not `Unit` is an error (`V2040`). Write `let _ = e` to discard on purpose.
+- Items are private to their file unless marked `pub`.
+- An expression whose value you ignore must be `Unit`. To throw a value away on purpose, write `let _ = e` (otherwise `V2040`).
 
-## Control flow
+## Branches: if and match
 
-`if` is an expression. With `else`, both branches must have the same type. Without `else`, its type is `Unit`.
+`if` is an expression, so it returns a value. With `else`, both branches have the same type.
 
 ```sakura
 fn label(score: Int) -> String {
@@ -106,7 +90,7 @@ fn can_vote(age: Int, registered: Bool, suspended: Bool) -> Bool {
 }
 ```
 
-`match` branches on the shape of a value. Arms end with a newline or `,`. Guards use `if`. A match must be exhaustive, and a literal pattern on `Int`, `String`, or `Float` needs a `_` arm. See [Types](/docs/tour/types#pattern-matching).
+`match` picks a branch by the shape of a value. It must cover every case; the compiler tells you which one is missing. Branches can have an `if` guard. See [Types](/docs/tour/types#pattern-matching) for every pattern.
 
 ```sakura
 fn describe(n: Option<Int>) -> String {
@@ -119,37 +103,9 @@ fn describe(n: Option<Int>) -> String {
 }
 ```
 
-## Operators
-
-Tightest first ([design §3.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-| Level | Operators | Associativity |
-| --- | --- | --- |
-| 1 | call `f(x)`, field `.x`, tuple index `.0`, index `[i]`, raise `?` | postfix |
-| 2 | `-` `!` | prefix |
-| 3 | `*` `/` `%` | left |
-| 4 | `+` `-` | left |
-| 5 | `..` (range, exclusive end) | none |
-| 6 | `==` `!=` `<` `<=` `>` `>=` | none |
-| 7 | `&&` | left |
-| 8 | `\|\|` | left |
-
-- Both operands must have the same type. `Int + Float` is a type error; convert with `Int.to_float` or `Float.round`.
-- `+` also concatenates `String`. Nothing else is overloaded, and there are no user-defined operators.
-- `Int` arithmetic is checked. Overflow (`D001`) and division by zero (`D002`) are defects, not errors.
-- `a < b < c` is `V0010`. `&&` and `||` short-circuit.
-- `xs[i]` is `List.get(xs, i)` and returns `Option`.
-
-Four parsing rules remove guesswork ([design §3.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-- In expressions, `<` is always comparison. There are no call-site type arguments: `List<Int>.empty()` and `f<T>(x)` are `V0011`. Name the type with a binding annotation instead: `let xs: List<Int> = List.empty()`, `let rows: List<User> = Sql.query(q)`.
-- There are no named arguments: `f(name: v)` is `V0014`. Pass values positionally, or pass a record when there are many options (`Budget.limits(Limits { tokens: Some(20_000), usd: None, calls: None })`).
-- In the header of `if`, `while`, `for`, `match`, and `with`, `Name {` starts the block, not a record literal. Parenthesize record literals there.
-- `if`, `match`, `with`, `try`, `fn`, `handler`, and `fail` expressions are never operands without parentheses: `(match x { … }).len()`, not `match x { … }.len()` (`V0012`).
-
 ## Strings
 
-Strings are UTF-8 and may span lines. `{expr}` interpolates any expression whose type is `Show`. Escapes are `\\ \" \n \r \t \0 \{ \}` and `\u{…}`; write `\{` for a literal brace.
+Strings are UTF-8 and can span lines. `{expr}` inside a string inserts a value. Write `\{` for a literal brace.
 
 ```sakura
 fn inbox(name: String, unread: List<String>) -> String {
@@ -157,11 +113,11 @@ fn inbox(name: String, unread: List<String>) -> String {
 }
 ```
 
-Interpolating a `Secret<T>` is a compile error (`V2031`). Tagged strings `sql"…"`, `html"…"`, `url"…"`, and `shell"…"` pass interpolations to the tag as values and never splice them raw. See [Types](/docs/tour/types#tagged-templates).
+The other escapes are `\\ \" \n \r \t \0 \}` and `\u{…}`. A `Secret<T>` cannot be inserted into a string (`V2031`). Tagged strings such as `sql"…"` and `html"…"` pass inserted values safely, never as raw text; see [Types](/docs/tour/types#tagged-templates).
 
-## Lambdas and function types
+## Lambdas
 
-There is one lambda form: `fn(params) { body }`, with optional parameter and result annotations.
+A lambda is an unnamed function: `fn(params) { body }`. Annotations on its parameters are optional.
 
 ```sakura
 fn twice<e>(f: fn(Int) -> Int ! e, x: Int) -> Int ! e {
@@ -176,11 +132,13 @@ test "twice applies f two times" {
 }
 ```
 
-A function type is `fn(A, B) -> C ! row`; without `!` it is pure. The lowercase `e` is an effect-row variable, so `twice` performs whatever `f` performs. Lambdas capture values, not variables, and cannot assign to an outer `var` (`V2041`). A local lambda cannot call itself (`V1020`); lift it to a top-level function.
+A function type is written `fn(A, B) -> C`. The lowercase `e` stands for "whatever effects `f` has", so `twice` does whatever `f` does ([Effects](/docs/tour/effects)).
 
-## Method-call syntax
+A lambda captures the values of the names it uses at the moment it is created. It cannot assign to an outer `var` (`V2041`), and it cannot call itself (`V1020`); use a top-level function for recursion.
 
-`x.f(a)` means `T.f(x, a)`, where `T` is the type of `x` and `f` is looked up in `T`'s home module. So `xs.map(f)` is `List.map(xs, f)` and `s.len()` is `String.len(s)`. There are no methods, no `self`, and no pipe operator. Chains continue across lines with a leading `.`:
+## Dot calls
+
+`x.f(a)` is short for `T.f(x, a)`, where `T` is the type of `x`. So `xs.map(f)` is `List.map(xs, f)` and `s.len()` is `String.len(s)`. There are no methods or `self`. A chain can continue on the next line with a leading `.`:
 
 ```sakura
 type User = { name: String, active: Bool }
@@ -192,11 +150,11 @@ fn names(users: List<User>) -> List<String> {
 }
 ```
 
-The full lookup order is in [Types](/docs/tour/types#method-call-resolution).
+The exact lookup rules are in [Types](/docs/tour/types#method-call-resolution).
 
 ## Loops
 
-`for pattern in expr { }` iterates a `List`, `Range`, `Set`, or `Map` (as `(key, value)` pairs). `while cond { }` loops while a condition holds. `break` and `continue` work in both. Loops are statements and produce no value; accumulate in a `var`, or use `List.fold`.
+`for x in xs { }` walks a `List`, `Range`, `Set` or `Map` (as `(key, value)` pairs). `while cond { }` loops while a condition holds. `break` and `continue` work in both. Loops produce no value: collect results in a `var`, or use `List.fold`.
 
 ```sakura
 fn total(xs: List<Int>) -> Int {
@@ -219,19 +177,21 @@ fn countdown(n: Int) -> Unit ! {Console} {
 }
 ```
 
-## Holes
+`0..n` counts from `0` up to, but not including, `n`.
 
-`?name` is a typed hole: an unfinished expression. `sakura check` accepts holes and reports each one's expected type, the locals in scope, and ranked candidates. `sakura build` and `sakura run` reject them (`V2050`). See [Typed holes](/docs/agents/typed-holes).
+## Typed holes
+
+A **typed hole** is a placeholder, `?name`, for code you have not written yet. `sakura check` accepts it and tells you what type fits there, which names are in scope and good candidates. `sakura build` and `sakura run` refuse to run code with holes (`V2050`). Agents use holes to ask the compiler what to write; see [Typed holes](/docs/agents/typed-holes).
 
 ```sakura holes
 fn unfinished(x: Int) -> Int { ?result }
 ```
 
-## Modules
+## Modules and imports
 
-One file is one module. The module path is the file path under the package's `src/`: `src/users/repo.sak` is module `users/repo`. The first import segment is a package name (`std`, the current package, or a dependency in `sakura.toml`).
+One file is one module. Its name is its path under `src/`: `src/users/repo.sak` is module `users/repo`. The program starts at `pub fn main()` in `src/main.sak`.
 
-This is a declaration or context-dependent excerpt, not a standalone program.
+This is an excerpt of import lines, not a standalone program.
 
 ```sakura fragment
 import std/http.{Http}                      // bind names directly
@@ -241,22 +201,92 @@ import std/sql                               // bind only the module name `sql`
 import acme/billing/invoices as inv          // rename
 ```
 
-- Nothing outside the prelude is in scope implicitly. `import std/sql` binds `sql` and nothing else, so a row that mentions `Sql` needs `import std/sql.{Sql}`. On an unresolved std name, `V1002` offers the import as a machine-applicable fix.
-- No wildcard imports, no relative imports, no re-exports, and no import cycles (`V1030`).
-- Variants and error tags live directly in their module's namespace (`Some`, `EmailTaken`); `Option.Some` is also accepted.
-- `pub type` exports a type with its constructors and fields. `pub opaque type` exports only the name: other modules can use its values but not construct or destructure them (`V1006`).
-- The prelude needs no import: the built-in types (`Int`, `String`, `List`, `Map`, `Set`, `Secret`, `Untrusted`, …), `Option`, `Result`, `Duration`, `Instant`, `Uuid`, `Json`, `Level`, the constructors `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, `show` and the `expect…` test functions, and the tags `sql html url shell`.
-- The entry point is `pub fn main() -> Unit ! {…}` in `src/main.sak`.
+- Only the prelude is in scope without an import. If you use a std name you did not import, the compiler offers the import as a fix (`V1002`).
+- There are no wildcard imports, relative imports, re-exports or import cycles (`V1030`).
+- `pub type` exports a type with its fields and constructors. `pub opaque type` exports only the name, so other modules cannot build or take apart its values (`V1006`).
+- The prelude includes the built-in types (`Int`, `String`, `List`, `Map`, `Set`, `Secret`, `Untrusted`, …), `Option`, `Result`, `Duration`, `Instant`, `Uuid`, `Json`, `Level`, `Some None Ok Err`, the effects `Fail Console Clock Random Env Log Task Test`, `show`, the `expect…` test functions, and the tags `sql html url shell`.
+
+## Comments and attributes
+
+```sakura
+// A line comment. /* Block comments */ nest.
+
+/// A doc comment. It attaches to the next item and is exported with its signature.
+pub fn double(n: Int) -> Int {
+  n * 2
+}
+```
+
+An attribute such as `@deprecated` goes before an item. The full set is `@tool`, `@llm`, `@external`, `@total`, `@contract_test`, `@deprecated`, `@server` and `@test_only`; an unknown one is `V1010`. Arguments are positional or `name: value`, as in `@llm(system: "…")`. `@trust("reason")` is the one attribute written inside an expression.
+
+## Reference
+
+### Keywords
+
+```text
+fn let var type error effect handler with try catch fail if else match for in while
+return break continue import pub opaque as test property requires ensures where true false
+```
+
+`verify proof ghost control resume region spawn actor interface impl` are reserved for later and rejected today (`V0007`). A reserved word is still fine after `.` or `fn`, so `Task.spawn(s, body)` works. `it` is special only inside a `where` rule, and `result` only inside `ensures`.
+
+### Names and casing
+
+Casing is part of the grammar. Values, functions, modules, fields and effect-row variables are `snake_case`. Types, variants, error tags, effects and type variables are `PascalCase`. A mismatch is `V1004`.
+
+### Where a line ends
+
+There are no required semicolons. A line break ends a statement only when **both** hold:
+
+1. The previous token can end an expression: a name, a hole, a literal, `)`, `]`, `}`, `>`, postfix `?`, `true`, `false`, `break`, `continue` or `return`.
+2. The next token cannot continue one: it is not `.`, `else`, `catch`, `)`, `]`, `}`, `,`, `=>`, `=`, `->`, `|`, `..`, or a binary operator other than `-`.
+
+In practice:
+
+- A line ending in an operator other than `>`, or in `(`, `[`, `{` or `,`, continues. (`>` ends a line so that `type Ids = List<Int>` ends; put a continued `>` comparison at the start of the next line.)
+- A line starting with `.`, `else` or `catch` continues the previous one.
+- `foo` followed by `(bar)` on the next line is **two** statements. So is `foo` followed by `-1`.
+- Newlines inside `(` and `[` never matter. `;` is always accepted; `sakura fmt` removes extra ones.
+
+### Operators
+
+Tightest first:
+
+| Level | Operators | Associativity |
+| --- | --- | --- |
+| 1 | call `f(x)`, field `.x`, tuple index `.0`, index `[i]`, raise `?` | postfix |
+| 2 | `-` `!` | prefix |
+| 3 | `*` `/` `%` | left |
+| 4 | `+` `-` | left |
+| 5 | `..` (range, end not included) | none |
+| 6 | `==` `!=` `<` `<=` `>` `>=` | none |
+| 7 | `&&` | left |
+| 8 | `\|\|` | left |
+
+- Both sides must have the same type. `Int + Float` is a type error; convert with `Int.to_float` or `Float.round`.
+- `+` also joins `String`s. Nothing else is overloaded, and you cannot define operators.
+- `Int` arithmetic is checked. Overflow (`D001`) and division by zero (`D002`) are **defects**: bugs that stop the program, not normal errors.
+- `a < b < c` is `V0010`. `&&` and `||` short-circuit. There is no unary plus.
+- `xs[i]` is `List.get(xs, i)` and returns an `Option`.
+
+### Four parsing rules
+
+- In expressions, `<` is always "less than". You cannot write type arguments at a call: `List<Int>.empty()` is `V0011`. Annotate the binding instead: `let xs: List<Int> = List.empty()`.
+- There are no named arguments: `f(name: v)` is `V0014`. Pass a record when there are many options.
+- In the header of `if`, `while`, `for`, `match` and `with`, `Name {` starts the block, not a record. Put record literals there in parentheses.
+- `if`, `match`, `with`, `try`, `fn`, `handler` and `fail` expressions need parentheses to be used as operands: `(match x { … }).len()` (`V0012`).
 
 ## What the compiler checks
 
 - Every top-level function has a complete signature (`V3001` lists effects a body performs beyond it).
-- Casing matches the namespace (`V1004`). Reserved words cannot be identifiers (`V0007`).
+- Casing matches the kind of name (`V1004`). Reserved words cannot be names (`V0007`).
 - Unused non-`Unit` results are errors (`V2040`).
-- Name conflicts within a module are errors (`V1001`). A local shadowing an import is a warning (`W1002`).
-- Every `match` is exhaustive (`V4001`). Unreachable arms are reported (`V4002`).
-- `sakura fmt` has no options: 2-space indent, width 100, one canonical layout.
+- Name conflicts within a module are errors (`V1001`). A local that hides an import is a warning (`W1002`).
+- Every `match` covers every case (`V4001`). Unreachable branches are reported (`V4002`).
+- `sakura fmt` has no options: 2-space indent, width 100, one layout.
 
 ## Next
 
-[Types](/docs/tour/types): records, variants, refinements, generics, and why there is no null.
+[Types](/docs/tour/types): records, variants, `Option` instead of null, and types with rules.
+
+Details for contributors: [design §2.4, §3.1, §3.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

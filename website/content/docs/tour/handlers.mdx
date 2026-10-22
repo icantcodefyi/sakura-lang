@@ -1,17 +1,11 @@
 ---
 title: Handlers
-description: How handlers give effects their meaning, how to install them with `with`, handler state, and how tests swap handlers.
+description: How a handler decides what an effect does, how to install one with `with`, and how tests swap handlers.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+An [effect](/docs/tour/effects) only names operations. A **handler** is the code that decides what those operations do when the program runs. Your code names the effect; the caller picks the handler. That is how the same function runs against a real database in production and an in-memory one in a test.
 
-An [effect](/docs/tour/effects) declares operations. A **handler** gives them meaning. Code names the effect; the caller picks the handler. The same function can run against SQLite in production and an in-memory table in a test.
-
-## Writing a handler
-
-`handler Eff { … }` is an expression. It produces a value of type `Handler<Eff, r>`, where `r` is the row its clauses perform. `Handler<Eff>` is short for `Handler<Eff, {}>`.
+Here is an effect and a handler that keeps a count:
 
 ```sakura
 effect Counter {
@@ -28,13 +22,7 @@ fn memory_counter(start: Int) -> Handler<Counter> {
 }
 ```
 
-- There is exactly one clause per operation (`V3011`), with the same number of parameters.
-- Clause parameters are not annotated. Their types come from the `effect` declaration.
-- `var` members are **handler state**. They are visible only inside the clauses, initialized once per installation, and updated by assignment. The runtime runs clauses of one instance one at a time.
-
-## Installing handlers with `with`
-
-`with h1, h2 { body }` runs `body` with the handlers installed. Handlers are installed innermost-last: `h2` sits inside `h1`. The `with` expression's row is the body's row minus each handled effect, plus each handler's `r`.
+And here is code that uses it, installed with `with`:
 
 ```sakura context=counter
 fn label_all(items: List<String>) -> List<String> ! {Counter} {
@@ -47,19 +35,23 @@ test "labels count from the handler's start" {
 }
 ```
 
-`label_all` requires `Counter`. The `with` satisfies it, so the test body has no `Counter` left in its row. Using `with` on a value that is not a handler is `V3012`.
+- `label_all` needs `Counter`, so its signature says `! {Counter}`.
+- `with memory_counter(0) { … }` runs the block with that handler installed. Inside, every `Counter.next()` runs the handler's `next`.
+- After the `with`, the test has no `Counter` left to handle.
 
-## Resumption without `resume`
+## Writing a handler
 
-A clause runs in place of the operation call. Its return value is the operation's result. This happens exactly once, in tail position, by construction. Handlers are **tail-resumptive**: there is no `resume`, no multi-shot resumption, and no first-class continuations. `resume` is a reserved keyword (`V0007`).
+`handler Eff { … }` is an expression. It makes a value of type `Handler<Eff>`.
 
-<HandlerFlow />
+- Write exactly one clause per operation, with the same number of parameters (`V3011`).
+- Don't annotate clause parameters. Their types come from the `effect` declaration.
+- `var` members are **handler state**. Only the clauses can see them. They start fresh each time the handler is installed. The clauses of one handler run one at a time.
 
-This keeps handlers cheap and predictable. A handler is a service the body calls, not a construct that can rewind or duplicate the body. Generators and backtracking would need non-tail `control` operations; design §16 lists them as a possible later edition, not v0.
+## Installing handlers with `with`
 
-## Nesting and shadowing
+`with h1, h2 { body }` runs `body` with both handlers installed. `h2` sits inside `h1`. The `with` removes the handled effects from the body's row. Using `with` on something that is not a handler is `V3012`.
 
-For the same effect, the innermost handler wins. There is no masking or injection.
+For the same effect, the innermost handler wins:
 
 ```sakura context=counter
 test "inner handler shadows outer" {
@@ -70,9 +62,15 @@ test "inner handler shadows outer" {
 }
 ```
 
-## Clauses that perform effects
+## A clause returns once
 
-A clause may perform other effects. They go to the handlers installed **outside** the `with`. Calling the same effect inside its own clause reaches the next outer handler, which is how wrappers work:
+A clause runs in place of the operation call, and its return value is the call's result. It always returns exactly once. There is no `resume` and no way to rewind or repeat the body (`resume` is a reserved word, `V0007`). This keeps handlers cheap and easy to follow: a handler is a service the body calls.
+
+<HandlerFlow />
+
+## Handlers that use other effects
+
+A clause may perform other effects. They go to the handlers installed **outside** the `with`. Calling the same effect inside its own clause reaches the next handler out, which is how you write a wrapper:
 
 ```sakura
 fn prefixed(prefix: String) -> Handler<Log, {Log}> {
@@ -82,9 +80,9 @@ fn prefixed(prefix: String) -> Handler<Log, {Log}> {
 }
 ```
 
-`prefixed` handles `Log` and performs `Log` on the outer handler, so its type is `Handler<Log, {Log}>`. A `Db` handler whose clauses call `Http` has type `Handler<Db, {Http}>`, and installing it adds `Http` to the surrounding row. A handler cannot create authority from nothing.
+`prefixed` handles `Log` and itself uses `Log`, so its type is `Handler<Log, {Log}>`: the second part lists what the handler's clauses use. Installing it adds those effects to the surrounding row. A handler cannot create authority from nothing.
 
-A clause may `fail` only with tags declared on its operation. Given this declaration:
+A clause may `fail` only with errors its operation declares:
 
 ```sakura
 type Table = String
@@ -106,21 +104,41 @@ fn memory_db() -> Handler<Db> {
 }
 ```
 
-the `insert` clause may `fail DbUnavailable { … }`, and `exists` may not fail at all.
+Here `insert` may `fail DbUnavailable { … }`, and `exists` may not fail at all.
 
 ## Failure is not handled with handlers
 
-`Fail<E>` is the one compiler-known effect. You recover from it with `try`/`catch`, not with a handler. See [Failure](/docs/tour/effects#failure-faile-and-error-unions).
+`Fail<E>` is built in. You recover from it with `try`/`catch`, not with a handler. See [Failure](/docs/tour/effects#failure-faile-and-error-unions).
 
-## Handlers are values
+## Tests swap handlers
 
-Handlers are first-class. A function can return one, and a record can store one. A handler that captured a capability is a scoped value: it cannot outlive the `with` that produced the capability (`V6002`). When a `with` exits, by normal return, `fail`, defect, or cancellation, its handler state and captured resources are released.
+Tests run with predictable default handlers:
 
-## Root handlers come from the host
+| Effect | Default in tests |
+| --- | --- |
+| `Clock` | `Clock.fixed(Instant.from_unix_millis(0))` |
+| `Random` | `Random.seeded(seed)`, seed from `sakura test --seed` |
+| `Env` | `Env.of(Map.empty())` |
+| `Console` | `Console.captured()`, checked with `expect_output(lines)` |
+| `Log` | `Log.captured()` |
 
-`main` declares the std effects the program needs. The host supplies root handlers for exactly those, limited by `[permissions]` in `sakura.toml`. Only std effects may appear in `main`'s row (`V6010`); user effects such as `Counter` must be handled inside the program. This program reads its arguments, so it declares `Cli`. From design §15.6 (abridged):
+Any other effect must be handled inside the test with `with`, or `sakura check` reports `V3020` ("test uses Db; install a handler with `with`"). Failures are the exception: a test may let a `Fail<E>` escape, and the test then fails with the error. No mocking library is needed, because an effect is already an interface:
 
-This is a declaration or context-dependent excerpt, not a standalone program.
+```sakura context=fetch-both
+test "deterministic under virtual time" {
+  with Http.scripted([(Matcher.Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
+  }
+}
+```
+
+`fetch_both` is the example on the [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets) page. Time, randomness, scheduling and the network are all handlers, so a test controls each one.
+
+## Where root handlers come from
+
+`main` lists the standard effects the program needs. When the program starts, the host supplies a handler for each one, limited by `[permissions]` in `sakura.toml`. Only standard effects may appear in `main`'s row (`V6010`); your own effects, such as `Counter`, must be handled inside the program.
+
+This excerpt reads its arguments, so it declares `Cli`. It is not a standalone program.
 
 ```sakura fragment
 import std/cli.{Cli, CliError}
@@ -137,11 +155,15 @@ pub fn main() -> Unit ! {Console, Cli, Fs, Fail<CliError | FsError>} {
 }
 ```
 
-Effects are requirements; handlers are authority. See [Capabilities and security](/docs/tour/capabilities).
+Effects say what a function needs; handlers decide what it can reach. See [Capabilities and security](/docs/tour/capabilities).
+
+## Handlers are values
+
+A function can return a handler, and a record can store one. A handler that holds a capability cannot outlive the `with` that produced the capability (`V6002`). When a `with` exits, by returning, failing, a defect or cancellation, its handler state and resources are released.
 
 ## Standard handlers
 
-From design §10.2. Each constructor is a function of the effect's home module, so `Console.host()` is `std/console.host`.
+Each constructor lives in the effect's module, so `Console.host()` is `std/console.host`.
 
 | Effect | Handlers |
 | --- | --- |
@@ -159,34 +181,20 @@ From design §10.2. Each constructor is a function of the effect's home module, 
 | `Llm` | `Llm.anthropic(key, model)`, `Llm.scripted(responses)`, `Llm.replay(path)` |
 | `Task` | `Task.host()`, `Task.deterministic(seed)` |
 
-## Tests swap handlers
-
-A `test` runs under deterministic default handlers: `Clock.fixed(Instant.from_unix_millis(0))`, `Random.seeded(seed)` (from `sakura test --seed`), `Env.of(Map.empty())`, `Console.captured()`, and `Log.captured()`. Captured output can be checked with `expect_output(lines)`. Any other effect must be handled inside the test. Otherwise `sakura check` reports `V3020` ("test uses Db; install a handler with `with`"). Typed failures are the exception: by design a test body may let `Fail<E>` escape, and the test then fails with the error's `Show`.
-
-```sakura context=fetch-both
-test "deterministic under virtual time" {
-  with Http.scripted([(Matcher.Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
-    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
-  }
-}
-```
-
-`fetch_both` is the example on the [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets) page. Because time, randomness, scheduling, and the network are all handlers, a test controls every one of them.
-
-## Retry, timeout, budget
-
-`retry` and `timeout` are ordinary std functions over thunks, not handlers. `Budget` is an effect, and `Budget.limits(limits)` is its handler, configured with a `Limits { tokens, usd, calls }` record. See [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets).
+`retry` and `timeout` are ordinary functions, not handlers. `Budget.limits(limits)` is a handler, configured with a `Limits { tokens, usd, calls }` record. See [Concurrency](/docs/tour/concurrency#timeouts-retries-and-budgets).
 
 ## What the compiler checks
 
 - A `handler` has exactly one clause per operation, with matching parameter counts (`V3011`).
-- `with` is applied only to handler values (`V3012`).
-- A `with` removes the effects it handles and adds each handler's row. The result is checked against the signature (`V3001`, reported at the clause when a clause performs an undeclared effect).
-- A clause fails only with tags declared on its operation.
-- A test installs a handler for every effect outside the deterministic defaults (`V3020`).
-- A handler that captured a capability does not escape its scope (`V6002`).
-- `main`'s row contains only std effects (`V6010`).
+- `with` is applied only to handlers (`V3012`).
+- A `with` removes the effects it handles and adds each handler's own row. The result is checked against the signature (`V3001`, reported at the clause when a clause uses an undeclared effect).
+- A clause fails only with errors declared on its operation.
+- A test installs a handler for every effect outside the test defaults (`V3020`).
+- A handler that holds a capability does not escape its scope (`V6002`).
+- `main`'s row contains only standard effects (`V6010`).
 
 ## Next
 
-[Contracts](/docs/tour/contracts): refinement types, `requires`, and `ensures`.
+[Contracts](/docs/tour/contracts): rules about inputs and outputs, checked when the code runs.
+
+Details for contributors: [design §5.5, §5.8, §10.2, §15.6, §16](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

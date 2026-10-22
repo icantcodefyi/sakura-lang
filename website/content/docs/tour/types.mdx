@@ -1,31 +1,44 @@
 ---
 title: Types
-description: Primitive types, records, variants, refinements, generics with derived constraints, inference, method-call resolution, and exhaustive pattern matching in Sakura Lang.
+description: Records, variants, Option instead of null, typed errors, refinements, generics and pattern matching in Sakura Lang.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+Types describe the shape of your data. Sakura Lang has records (named fields), variants (one of several cases) and `Option` instead of `null`, and the compiler makes you handle every case.
 
-Sakura Lang is statically typed with Hindley-Milner inference inside bodies. Top-level signatures are always explicit. There are no implicit conversions, no null, and no subtyping except three narrow cases: refined types coerce to their base, smaller error unions fit larger ones, and closed effect rows widen at function-value use sites.
+```sakura
+type User = { name: String, email: String }
+type Shape = Circle(Float) | Rect(Float, Float) | Empty
 
-## Primitive types
+fn area(s: Shape) -> Float {
+  match s {
+    Circle(r) => 3.14159 * r * r
+    Rect(w, h) => w * h
+    Empty => 0.0
+  }
+}
 
-| Type | Values | Notes |
-| --- | --- | --- |
-| `Unit` | `()` | Result of statement-only functions. |
-| `Bool` | `true`, `false` | `&&` and `\|\|` short-circuit. |
-| `Int` | 64-bit signed | Checked: overflow is defect `D001`, division by zero is `D002`. `/` and `%` truncate toward zero. On the JS backend, values beyond ±(2^53−1) are defect `D003`, never silently wrong. |
-| `Float` | IEEE-754 binary64 | `NaN != NaN`. Not `Hash`, so not a `Map` key. |
-| `String` | immutable UTF-8 text | No integer indexing. `String.len` is the byte length; `String.chars` and `String.graphemes` give lists. |
-| `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`; `Bytes.slice` and `Bytes.concat` copy, never alias. |
-| `Never` | none | Type of `fail e`, `return e`, `break`, `continue`. |
+fn find(users: List<User>, email: String) -> Option<User> {
+  List.find(users, fn(u) { u.email == email })
+}
 
-Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. Parsing never defects: `String.parse_int` returns `None` for text that is not a number and for a number the backend cannot represent, which on JavaScript means beyond ±(2^53−1). `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators in v0.
+test "shapes and lookups" {
+  expect_eq(area(Rect(2.0, 3.0)), 6.0)
+  let ada = User { name: "Ada", email: "ada@x.co" }
+  expect_eq(find([ada], "ada@x.co"), Some(ada))
+  expect_eq(find([ada], "bob@x.co"), None)
+}
+```
+
+- `User` is a **record**: a value with named fields.
+- `Shape` is a **variant** type: a value is exactly one of `Circle`, `Rect` or `Empty`.
+- `match` must handle every case. Add a `Triangle` to `Shape` and every `match` that misses it stops compiling.
+- `find` returns `Option<User>`: either `Some(user)` or `None`. There is no `null`.
+
+Top-level signatures are always written out; inside a function body the compiler infers types. Nothing converts implicitly: an `Int` is never silently a `Float`.
 
 ## Records
 
-Records are nominal. Construction names the type, and a field whose value is a same-named local can be written once (punning). Update copies a record and overrides the listed fields.
+A record type lists its fields. To build one, name the type and give every field. A field whose value is a local of the same name can be written once. `{ ..u, field: x }` copies a record and changes some fields.
 
 ```sakura
 type User = { id: Int, email: String, name: String }
@@ -39,33 +52,19 @@ test "records" {
 }
 ```
 
-Every field must be supplied at construction. Every field named in an update must exist. There are no anonymous records in v0. When `u` is not used again, the native backend can reuse its memory for the update; see [Memory model](/docs/tour/memory).
+The copy never changes `u`. Records are nominal: two record types with the same fields are still different types. There are no anonymous records.
 
 ## Tuples
 
-`(A, B)` is a tuple type, `(1, "one")` a tuple value, and `.0`, `.1` its fields. `(e)` is grouping, `(e,)` is a one-element tuple, and `()` is `Unit`.
+`(A, B)` is a tuple type, `(1, "one")` a tuple value, and `.0`, `.1` its fields. `(e,)` is a one-element tuple and `()` is `Unit`.
 
 ## Variants
 
-A variant type is a nominal sum. Payloads are positional. Constructors are functions: `Circle` has type `fn(Float) -> Shape`.
-
-```sakura
-type Shape = Circle(Float) | Rect(Float, Float) | Empty
-
-fn area(s: Shape) -> Float {
-  match s {
-    Circle(r) => 3.14159 * r * r
-    Rect(w, h) => w * h
-    Empty => 0.0
-  }
-}
-```
-
-Adding a variant makes every `match` on `Shape` that does not handle it a compile error (`V4001`), so the change cannot be half applied.
+A variant type lists its cases with `|`. A case can carry values, by position: `Circle(Float)`. Each case is also a function, so `Circle` has type `fn(Float) -> Shape`. See `area` at the top of this page.
 
 ## No null: Option
 
-A value that may be absent has type `Option<T> = None | Some(T)`.
+A value that may be missing has type `Option<T>`, which is `Some(value)` or `None`.
 
 ```sakura
 type User = { id: Int, email: String, name: String }
@@ -79,35 +78,11 @@ fn display_name(users: List<User>, email: String) -> String {
 }
 ```
 
-The `Option` module has `map`, `unwrap_or`, `is_some`, `or_fail` (turns `None` into a typed failure), and `expect`. `Option.expect` on `None` is defect `D030`; use it only where absence is a bug.
-
-### Bytes and text
-
-`String.to_bytes` and `String.from_bytes` are the strict UTF-8 path (the web's `TextEncoder` and a fatal `TextDecoder`). `std/bytes` adds Base64 and `std/encoding` adds the other encodings, each failure a typed error rather than an exception:
-
-```sakura
-import std/bytes.{Alphabet, Base64Error}
-import std/encoding.{Encoding, EncodingError, Errors}
-
-test "Base64 and decoding are values with typed errors" {
-  let b = String.to_bytes("héllo")
-  let text = Bytes.to_base64(b, Alphabet.Standard, true)          // btoa
-  expect_eq(text, "aMOpbGxv")
-  expect_eq(Bytes.from_base64(text, Alphabet.Standard), Ok(b))    // strict
-  expect_eq(Bytes.from_base64_lenient(" aMOp\nbGxv "), Ok(b))     // atob
-  expect_eq(Bytes.from_base64("aMOpbGx", Alphabet.Standard), Err(Base64Error { offset: 7, reason: "invalid padding" }))
-  let latin1 = Encoding.parse("iso-8859-1").unwrap_or(Encoding.Utf8)
-  expect_eq(Encoding.decode(Bytes.from_list([0x63, 0x61, 0x66, 0xE9]), latin1, Errors.Fatal), Ok("café"))
-  expect_eq(Encoding.decode(Bytes.from_list([0x61, 0xFF]), Encoding.Utf8, Errors.Replace), Ok("a\u{FFFD}"))
-  expect_eq(Encoding.parse("shift_jis").is_err(), true)
-}
-```
-
-`Errors.Fatal` reports the byte offset of the first malformed sequence; `Errors.Replace` substitutes U+FFFD as browsers do. For a stream, thread a `Decoder` through `Encoding.push` and `Encoding.finish`: a character split across chunks comes out whole.
+The `Option` module has `map`, `unwrap_or`, `is_some`, `or_fail` (turns `None` into a typed error) and `expect`. `Option.expect` on `None` is a defect (`D030`), a bug that stops the program, so use it only where a missing value really is a bug.
 
 ## Errors and Result
 
-`Result<T, E> = Ok(T) | Err(E)` exists, but a function that can fail declares `Fail<E>` in its effect row instead of returning `Result`. `E` is a union of nominal `error` tags.
+A function that can fail lists `Fail<E>` after `!`, where `E` names the possible errors. You declare each error with `error`.
 
 ```sakura
 error ParseError(input: String)
@@ -125,21 +100,16 @@ test "bad age is a typed failure" {
 }
 ```
 
-`try { body }` without `catch` turns failures into a `Result`. Postfix `r?` turns a `Result` back into `Fail<E>`. Only error tags can be unioned: `type SignupError = EmailTaken | Banned`. Recovery with `try`/`catch` is covered in [Effects](/docs/tour/effects).
+- `fail ParseError { … }` stops the function with that error.
+- `try { … }` without `catch` turns a failure into a `Result`: `Ok(value)` or `Err(error)`.
+- `r?` turns a `Result` back into a failure.
+- `type SignupError = EmailTaken | Banned` combines error tags. Only error tags can be combined this way.
 
-## Other built-in types
-
-- **Collections**: `List<T>` (`[1, 2, 3]`), `Map<K, V>` and `Set<T>` (keys need `Hash`, iteration is insertion order), and `Range` (`0..n`, exclusive end).
-- **Functions**: `fn(A, B) -> C ! row`. Without `!` the function is pure.
-- **Handlers**: `Handler<Eff, r>`, a handler for `Eff` whose clauses perform `r`. See [Handlers](/docs/tour/handlers).
-- **External types**: a `type` declared without a body, such as `pub type Scope`, has a host representation, no constructors, and no derived constraints. Only `@external` functions produce its values.
-- **Resources**: `Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`. External types that are affine and scope-bound; see [Memory model](/docs/tour/memory#resources). `Dir` is an external capability type. Network attenuation uses `Http.scoped(hosts)`, not `NetScope`.
-- **`Secret<T>` and `Untrusted<T>`**: see [Capabilities](/docs/tour/capabilities).
-- **`Graph<N>`** with `NodeId` keys, for cyclic data; see [Memory model](/docs/tour/memory#cycles-use-graph).
+[Effects](/docs/tour/effects) covers failure and `try`/`catch` in full.
 
 ## Refinement types
 
-A refinement narrows a base type with a predicate. `it` is the value being checked.
+A **refinement** is a type plus a rule. `Percent` below is an `Int` from 0 to 100. Inside the rule, `it` is the value being checked.
 
 ```sakura
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
@@ -147,18 +117,20 @@ type Percent = Int where it >= 0 && it <= 100
 type NonEmpty<T> = List<T> where List.len(it) > 0
 ```
 
-The predicate must be in the contract subset: pure, terminating, no loops or recursion ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). A refined type is a distinct nominal type with the same representation as its base. Values enter it through:
+A value gets into a refined type only through a check:
 
-- `Percent.validate(n) -> Result<Percent, Violation>`, generated for every refined type. Use it for external input.
-- `Percent.from(n) -> Percent`, a checked introduction that is defect `D010` on failure. Use it at trusted boundaries only; `sakura audit` lists each use.
-- Schema decoding (`Json.decode`, `Request.json`, `Llm.generate`), which checks nested refinements and reports a typed `DecodeError`, never a defect.
-- Literals: `let p: Percent = 50` is checked at compile time where possible, otherwise at program start (warning `V5002`).
+- `Percent.validate(n)` returns `Ok(percent)` or `Err(violation)`. Use it for input you don't control.
+- `Percent.from(n)` returns the value, and stops the program with defect `D010` if the rule fails. Use it only where a failure would be a bug; [`sakura audit`](/docs/agents/audit) lists each use.
+- Decoding JSON, a request body or model output checks the rules of every nested field and returns a typed `DecodeError` on failure.
+- A literal, as in `let p: Percent = 50`, is checked at compile time when possible.
 
-A refined value coerces implicitly to its base: a `Percent` works anywhere an `Int` does. The reverse never happens implicitly. Because no value can be mutated, a validated value stays valid. A field assignment through a refined type (`x.n = -1` on `var x: Pos`) would rebuild the base type and skip the predicate, so it is `V2034`: write `x = Pos.from(PosRepr { ..x, n: -1 })`, or `Pos.validate(…)?` for data. Reassigning the whole value is fine. Contracts are covered in [Contracts](/docs/tour/contracts).
+A `Percent` can be used anywhere an `Int` is expected, but not the other way round. Because values never change in place, a checked value stays valid. (Assigning one field of a refined record through a `var`, `x.n = -1`, would skip the check, so it is `V2034`; rebuild it with `Pos.from(…)` or `Pos.validate(…)` instead.)
+
+[Contracts](/docs/tour/contracts) goes further: rules on function inputs and outputs.
 
 ## Generics and constraints
 
-Generics are rank-1. Uppercase type parameters are type variables; lowercase ones are effect-row variables ([Effects](/docs/tour/effects)).
+A type parameter in angle brackets, like `A`, lets one function work for many types. A **constraint** like `A: Ord` says what the type must support.
 
 ```sakura
 type Pair<A, B> = { left: A, right: B }
@@ -176,132 +148,21 @@ fn render<A: Eq + Show>(xs: List<A>, highlight: A) -> String {
 }
 ```
 
-Constraints come from a fixed set that the compiler derives structurally. There are no traits, no interfaces, and no user-written instances in v0.
+There are five constraints, and the compiler derives them from a type's shape. You never write them by hand, and there are no traits or interfaces.
 
-| Constraint | Derived for | Not derived for |
+| Constraint | Gives you | Not available for |
 | --- | --- | --- |
-| `Eq` | all data types, recursively | functions, handlers, resources, `Secret` |
-| `Ord` | `Int`, `Float` (NaN last), `String`, `Bytes`, and tuples, records, variants of `Ord` parts (declaration order) | `Map`, `Set`, functions, `Secret` |
-| `Hash` | `Eq` types except `Float`, `Map`, `Set` | as `Eq`, plus `Float` |
-| `Show` | all data types; records print as `User { id: 1, email: "a@b" }` | functions, handlers, resources, `Secret` |
-| `Schema` | data types made of `Schema` parts, refinements included (JSON Schema plus codec) | functions, handlers, resources, `Secret`, `Graph`, an opaque type outside its module (`V2033`) |
+| `Eq` | `==` and `!=` | functions, handlers, resources, `Secret` |
+| `Ord` | `<`, `<=`, `>`, `>=` (and `Eq`) | `Map`, `Set`, functions, `Secret` |
+| `Hash` | use as a `Map` key or `Set` element | as `Eq`, plus `Float` |
+| `Show` | `"{x}"` and `show(x)` | functions, handlers, resources, `Secret` |
+| `Schema` | `Json.encode` and `Json.decode` | functions, handlers, resources, `Secret`, `Graph`, an opaque type outside its module (`V2033`) |
 
-An unconstrained type parameter can only be passed around and matched through concrete constructors. Each constraint unlocks a fixed set of operations: `Eq` gives `==` and `!=`; `Ord` gives `<`, `<=`, `>`, `>=` and implies `Eq`; `Hash` makes a type usable as a `Map` key or `Set` element; `Show` allows interpolation and `show`; `Schema` allows `Json.encode` and `Json.decode`. A concrete type that lacks a required constraint is `V2032`.
-
-### Schema keywords of a refinement
-
-`Json.schema(witness)` returns a type's JSON Schema (draft 2020-12), and a `Tool`'s parameters use the same schema. A refinement adds the bounds JSON Schema can state, read from the top-level `&&` conjuncts of its `where`: `String.len(it) <= n` and `>= n` become `maxLength` and `minLength`, `List.len(it) <= n` and `>= n` become `maxItems` and `minItems`, and `it <= n` and `it >= n` on `Int` and `Float` become `maximum` and `minimum`. `type Percent = Int where it >= 0 && it <= 100` states `{"type":"integer","minimum":0,"maximum":100}`. Any other conjunct (`it % 2 == 0`, `it < 10`, an `||`) states nothing. `String.len` counts UTF-8 bytes and JSON Schema counts characters, so `maxLength` is the byte bound and `minLength` is ⌈n/4⌉: both admit every string the `where` admits. The schema is a hint to the producer; decoding still checks every `where`.
-
-### Show output
-
-Interpolation uses `Show`. Its output is valid Sakura Lang expression syntax, stable across backends, and the format `sakura test` snapshots use ([design §4.8](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-| Value | Shows as |
-| --- | --- |
-| `Int`, `Bool`, `Unit` | `42`, `true`, `()` |
-| `Float` | always with `.` or an exponent: `2.0`, `0.1`, `1.0e21`, `-0.0`, `NaN`, `Infinity` |
-| `String` | raw at the top level of an interpolation, quoted with escapes inside any container |
-| tuple, `List` | `(1, "a")`, `(1,)`, `[1, 2]` |
-| `Map`, `Set`, `Bytes` | `Map.of([("a", 1)])`, `Set.of([1])`, `Bytes.of([1, 2])` |
-| record | `User { id: 1, email: "a@b" }` |
-| variant | unqualified constructor: `None`, `Some("x")`, `Warn`, `String("x")` |
-| error tag | `Forbidden`, `NotFound { id: "u1" }` |
-
-So `"{name}"` with `name = "Ada"` prints `Ada`, while `"{[name]}"` prints `["Ada"]`.
-
-## Inference
-
-- Top-level functions are fully annotated and the body is checked against the signature.
-- `let`, `var`, and lambda parameters are inferred. Only syntactic values (lambdas, literals, constructors) are generalized; an effectful expression never is.
-- A lambda is checked against the expected `fn` type when one is known, such as an argument position.
-- Top-level functions may be mutually recursive. Local lambdas may not recurse (`V1020`).
-- You must also annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be inferred (`V2010`). There are no call-site type arguments (`V0011`); a type-directed function gets its type from a binding annotation:
-
-```sakura
-import std/json.{DecodeError}
-type User = { id: Int, email: String, name: String }
-
-fn start() -> List<Int> {
-  let xs: List<Int> = List.empty()   // not List<Int>.empty()
-  List.push(xs, 1)
-}
-
-fn load(text: String) -> User ! {Fail<DecodeError>} {
-  let u: User = Json.decode(text)?   // not Json.decode<User>(text)
-  u
-}
-```
-
-## Type aliases and distinct types
-
-`type Meters = Float` is a transparent alias: `Meters` and `Float` are the same type. For a distinct type, use a refinement or a single-variant type:
-
-```sakura
-import std/request.{Request}
-import std/response.{Response}
-import std/sql.{Sql}
-
-type Meters = Float                              // alias
-type UserId = UserId(Int)                        // distinct: UserId(7) is not an Int
-type Route = fn(Request) -> Response ! {Sql, Log} // alias for a function type
-```
-
-A variant may share its type's name, as `UserId` does. Two refined types with identical predicates are still different types. Tuples, functions, lists, maps, sets, options, results, and ranges are structural in their parameters; everything else is nominal.
-
-## Opaque types
-
-`pub type` exports a type together with its constructors and fields. `pub opaque type` exports only the name: other modules can hold, pass, compare, and show its values, but constructing one or reading its fields outside the declaring module is `V1006`.
-
-```sakura
-// src/tokens.sak
-pub opaque type Token = Token(String)
-
-pub fn issue(user: Int) -> Token ! {Random} {
-  Token("{user}-{Random.uuid()}")
-}
-```
-
-Other modules can only get a `Token` from `tokens.issue`. Std uses the same mechanism: a SQL `Query<R>` comes only from the `sql"…"` template, `Html` only from escaping code, and `UrlPart` only from `UrlPart.from`. Opaque types derive `Eq`, `Ord`, `Hash` and `Show`, and `Schema` only inside their declaring module, so `Json.decode`, `Sql.query` rows, `Llm.generate`, `Cli.parse`, `Tool.of` and `property` parameters cannot build one elsewhere (`V2033`); decode the representation and call the constructor instead. To validate by predicate rather than by construction, use a refinement type: `Uuid`, `Path` and `Decimal` are refinements and decode with their check.
-
-## Method-call resolution
-
-`e.f(args)` is resolved in this order; the first match wins ([design §4.9](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-1. `e` is a record and `f` is a field: field access.
-2. `e` names an effect: `Eff.op(args)` performs the operation on the innermost installed handler. If `op` is not an operation, `Eff.f` is a function of the effect's home module, which is how handler constructors such as `Console.host()`, `Clock.fixed(t)`, and `Users.memory([])` are found.
-3. `e` names a type: `Type.f` is function `f` in the type's **home module** (the module that declared it; for compiler-known types, `std/<lowercase name>`, so `List.map` is `std/list.map`). `Type.Name` is a variant of the type or a type declared in its home module: `Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`.
-4. `e` names an imported module: `mod.f` is that module's exported `f`.
-5. Otherwise `e` is a value of type `T`, and `e.f(args)` means `T.f(e, args)` with `f` looked up in `T`'s home module.
-
-There are no methods, no `self`, and no extension methods. A function becomes callable with dot syntax on a type only by living in that type's module:
-
-```sakura
-// src/shapes.sak, the home module of Shape
-pub type Shape = Circle(Float) | Rect(Float, Float) | Empty
-
-pub fn area(s: Shape) -> Float {
-  match s {
-    Circle(r) => 3.14159 * r * r
-    Rect(w, h) => w * h
-    Empty => 0.0
-  }
-}
-```
-
-```sakura context=shapes
-// src/report.sak, in package `app`
-import app/shapes.{Shape}
-
-fn total_area(xs: List<Shape>) -> Float {
-  List.fold(xs, 0.0, fn(acc, s) { acc + s.area() })   // s.area() is Shape.area(s)
-}
-```
-
-On a generic `A` with no constraint, `x.len()` is an error with a fix suggesting a constraint; there is no structural lookup.
+`Ord` orders `Int`, `Float` (NaN last), `String`, `Bytes`, and tuples, records and variants of `Ord` parts in declaration order. A type that lacks a needed constraint is `V2032`. Lowercase type parameters are effect-row variables; see [Effects](/docs/tour/effects).
 
 ## Pattern matching
 
-`match` must be exhaustive. A missing case is `V4001` with a witness value; a redundant arm is `V4002`. Guards never count toward coverage.
+`match` must cover every case. A missing case is `V4001`, and the error shows an example value you missed. A branch that can never match is `V4002`. Guards (`if …`) never count toward coverage.
 
 ```sakura
 type User = { id: Int, email: String, name: String }
@@ -332,15 +193,15 @@ fn is_admin(u: User) -> Bool {
 }
 ```
 
-- Patterns: `_`, names, literals (including `-5`), constructors `Some(x)`, records `User { id, .. }`, tuples `(a, b)`, lists `[]`, `[x, ..rest]`, `[first, second, ..]`, and or-patterns `A | B`.
-- Literal patterns on `Int`, `String`, or `Float` need a `_` arm.
-- Record patterns need `..` to ignore remaining fields.
-- All alternatives of an or-pattern must bind the same names with the same types (`V4003`).
-- Matching on an error union is exhaustive over its tags.
+- Patterns: `_`, names, literals (including `-5`), constructors `Some(x)`, records `User { id, .. }`, tuples `(a, b)`, lists `[]`, `[x, ..rest]`, `[first, second, ..]`, and alternatives `A | B`.
+- Matching on `Int`, `String` or `Float` literals needs a `_` branch.
+- Record patterns need `..` to skip the other fields.
+- Every alternative in `A | B` must bind the same names with the same types (`V4003`).
+- A `match` on an error type covers its error tags.
 
 ## Tagged templates
 
-A tagged string `tag"…"` desugars to `tag.template(parts, values)`, where `tag` resolves to a module that exports `template`. Each interpolated value is checked against the tag's argument type, and the tag receives it as a value, never as spliced text.
+A tagged string like `sql"…"` passes each inserted value to the tag as a value, never as pasted text. That is what stops SQL and HTML injection.
 
 ```sakura
 import std/sql.{Sql, SqlError}
@@ -352,21 +213,183 @@ fn find_by_email(email: Email) -> List<User> ! {Sql, Fail<SqlError>} {
 }
 ```
 
-Here `{email}` becomes a bound parameter. For `sql`, an `Untrusted<String>` or a refined string converts to `SqlValue`, but a raw table name does not. `html"<p>{name}</p>"` escapes text by construction. Because `Query<R>` and `Html` are opaque types, a template is the only way to build one. The prelude tags are `sql`, `html`, `url`, and `shell`. See [Capabilities](/docs/tour/capabilities).
+Here `{email}` becomes a bound query parameter. `html"<p>{name}</p>"` escapes text. The prelude tags are `sql`, `html`, `url` and `shell`. Under the hood, `tag"…"` calls `tag.template(parts, values)` and type-checks each value against what the tag accepts. Because `Query<R>` and `Html` are opaque types, a template is the only way to build one. See [Capabilities](/docs/tour/capabilities).
+
+## Opaque types
+
+`pub type` exports a type with its fields and constructors. `pub opaque type` exports only the name: other modules can hold, pass, compare and show its values, but building one or reading its fields elsewhere is `V1006`.
+
+```sakura
+// src/tokens.sak
+pub opaque type Token = Token(String)
+
+pub fn issue(user: Int) -> Token ! {Random} {
+  Token("{user}-{Random.uuid()}")
+}
+```
+
+Other modules can only get a `Token` from `tokens.issue`. The standard library uses the same trick: a SQL `Query<R>` comes only from `sql"…"`, `Html` only from escaping code, and `UrlPart` only from `UrlPart.from`. Opaque types get `Schema` only inside their own module, so decoding cannot create one elsewhere (`V2033`); decode the plain data and call the constructor instead.
+
+## Aliases and distinct types
+
+`type Meters = Float` is an alias: `Meters` and `Float` are the same type. For a separate type, use a single-case variant or a refinement:
+
+```sakura
+import std/request.{Request}
+import std/response.{Response}
+import std/sql.{Sql}
+
+type Meters = Float                              // alias
+type UserId = UserId(Int)                        // distinct: UserId(7) is not an Int
+type Route = fn(Request) -> Response ! {Sql, Log} // alias for a function type
+```
+
+Two refinements with the same rule are still different types.
+
+## Reference
+
+### Primitive types
+
+| Type | Values | Notes |
+| --- | --- | --- |
+| `Unit` | `()` | Result of a function that only does something. |
+| `Bool` | `true`, `false` | `&&` and `\|\|` short-circuit. |
+| `Int` | 64-bit signed | Checked: overflow is defect `D001`, division by zero `D002`. `/` and `%` round toward zero. On the JavaScript backend, values beyond ±(2^53−1) are defect `D003`, never silently wrong. |
+| `Float` | IEEE-754 binary64 | `NaN != NaN`. Not `Hash`, so not a `Map` key. |
+| `String` | immutable UTF-8 text | No integer indexing. `String.len` is the byte length; `String.chars` and `String.graphemes` give lists. |
+| `Bytes` | immutable bytes | `Bytes.get(b, i) -> Option<Int>`; `Bytes.slice` and `Bytes.concat` copy. |
+| `Never` | none | Type of `fail e`, `return e`, `break`, `continue`. |
+
+Conversions are explicit functions: `Int.to_float`, `Float.round` (defect on NaN or out of range), `Float.to_int_checked -> Option<Int>`, `Int.to_string`, `String.parse_int -> Option<Int>`. Parsing never stops the program: `String.parse_int` returns `None` for text that is not a number and for a number the backend cannot represent. `Decimal` (std) is a library type for money with `Decimal.add` and friends; it has no operators.
+
+### Other built-in types
+
+- **Collections**: `List<T>` (`[1, 2, 3]`), `Map<K, V>` and `Set<T>` (keys need `Hash`, iteration is insertion order), and `Range` (`0..n`, end not included).
+- **Functions**: `fn(A, B) -> C ! row`. Without `!` the function is pure.
+- **Handlers**: `Handler<Eff, r>`; see [Handlers](/docs/tour/handlers).
+- **External types**: a `type` declared without a body, such as `pub type Scope`, belongs to the host. It has no constructors; only `@external` functions produce its values.
+- **Resources**: `Fs.File`, `Sql.Conn`, `Http.Body`, `Task.Fiber<T>`, which only live inside a scope; see [Memory model](/docs/tour/memory#resources). `Dir` is a capability type. To limit network access, use `Http.scoped(hosts)`.
+- **`Secret<T>` and `Untrusted<T>`**: see [Capabilities](/docs/tour/capabilities).
+- **`Graph<N>`** with `NodeId` keys, for data with cycles; see [Memory model](/docs/tour/memory#cycles-use-graph).
+- **Types with effect rows**: `Tool<e>`, `Agent<T, e>` and `Router<e>` carry the effects of the callbacks they store. A concrete row is written `Tool<{Http}>`.
+
+### Bytes and text
+
+`String.to_bytes` and `String.from_bytes` are the strict UTF-8 path (the web's `TextEncoder` and a fatal `TextDecoder`). `std/bytes` adds Base64 and `std/encoding` adds other encodings, each failure a typed error:
+
+```sakura
+import std/bytes.{Alphabet, Base64Error}
+import std/encoding.{Encoding, EncodingError, Errors}
+
+test "Base64 and decoding are values with typed errors" {
+  let b = String.to_bytes("héllo")
+  let text = Bytes.to_base64(b, Alphabet.Standard, true)          // btoa
+  expect_eq(text, "aMOpbGxv")
+  expect_eq(Bytes.from_base64(text, Alphabet.Standard), Ok(b))    // strict
+  expect_eq(Bytes.from_base64_lenient(" aMOp\nbGxv "), Ok(b))     // atob
+  expect_eq(Bytes.from_base64("aMOpbGx", Alphabet.Standard), Err(Base64Error { offset: 7, reason: "invalid padding" }))
+  let latin1 = Encoding.parse("iso-8859-1").unwrap_or(Encoding.Utf8)
+  expect_eq(Encoding.decode(Bytes.from_list([0x63, 0x61, 0x66, 0xE9]), latin1, Errors.Fatal), Ok("café"))
+  expect_eq(Encoding.decode(Bytes.from_list([0x61, 0xFF]), Encoding.Utf8, Errors.Replace), Ok("a\u{FFFD}"))
+  expect_eq(Encoding.parse("shift_jis").is_err(), true)
+}
+```
+
+`Errors.Fatal` reports the byte offset of the first bad sequence; `Errors.Replace` substitutes U+FFFD as browsers do. For a stream, thread a `Decoder` through `Encoding.push` and `Encoding.finish`: a character split across chunks comes out whole.
+
+### Inference
+
+- Top-level functions are fully annotated, and the body is checked against the signature.
+- `let`, `var` and lambda parameters are inferred.
+- Top-level functions may call each other recursively. Local lambdas may not recurse (`V1020`).
+- You must annotate `pub let` constants, `property` parameters, and empty collections whose element type cannot be worked out (`V2010`).
+- You cannot write type arguments at a call (`V0011`). A function that needs a target type gets it from the binding's annotation:
+
+```sakura
+import std/json.{DecodeError}
+type User = { id: Int, email: String, name: String }
+
+fn start() -> List<Int> {
+  let xs: List<Int> = List.empty()   // not List<Int>.empty()
+  List.push(xs, 1)
+}
+
+fn load(text: String) -> User ! {Fail<DecodeError>} {
+  let u: User = Json.decode(text)?   // not Json.decode<User>(text)
+  u
+}
+```
+
+Only three kinds of implicit widening exist: a refined type fits where its base is expected, a smaller set of errors fits a larger one, and a function with fewer effects fits where more are allowed.
+
+### Method-call resolution
+
+`e.f(args)` is resolved in this order; the first match wins:
+
+1. `e` is a record and `f` is a field: field access.
+2. `e` names an effect: `Eff.op(args)` performs the operation. If `op` is not an operation, `Eff.f` is a function of the effect's module, which is how handler constructors such as `Console.host()` and `Clock.fixed(t)` are found.
+3. `e` names a type: `Type.f` is function `f` in the type's **home module** (the module that declared it; for built-in types, `std/<lowercase name>`, so `List.map` is `std/list.map`). `Type.Name` is a variant of the type or a type declared in its home module: `Json.String(s)`, `Level.Warn`, `Task.Fiber<T>`.
+4. `e` names an imported module: `mod.f` is that module's exported `f`.
+5. Otherwise `e` is a value of type `T`, and `e.f(args)` means `T.f(e, args)`, with `f` looked up in `T`'s home module.
+
+So a function gets dot syntax on a type only by living in that type's module:
+
+```sakura
+// src/shapes.sak, the home module of Shape
+pub type Shape = Circle(Float) | Rect(Float, Float) | Empty
+
+pub fn area(s: Shape) -> Float {
+  match s {
+    Circle(r) => 3.14159 * r * r
+    Rect(w, h) => w * h
+    Empty => 0.0
+  }
+}
+```
+
+```sakura context=shapes
+// src/report.sak, in package `app`
+import app/shapes.{Shape}
+
+fn total_area(xs: List<Shape>) -> Float {
+  List.fold(xs, 0.0, fn(acc, s) { acc + s.area() })   // s.area() is Shape.area(s)
+}
+```
+
+On a generic `A` with no constraint, `x.len()` is an error with a fix suggesting a constraint.
+
+### Show output
+
+String interpolation uses `Show`. Its output is valid Sakura Lang syntax, the same on every backend, and the format snapshot tests use:
+
+| Value | Shows as |
+| --- | --- |
+| `Int`, `Bool`, `Unit` | `42`, `true`, `()` |
+| `Float` | always with `.` or an exponent: `2.0`, `0.1`, `1.0e21`, `-0.0`, `NaN`, `Infinity` |
+| `String` | raw at the top level of an interpolation, quoted with escapes inside any container |
+| tuple, `List` | `(1, "a")`, `(1,)`, `[1, 2]` |
+| `Map`, `Set`, `Bytes` | `Map.of([("a", 1)])`, `Set.of([1])`, `Bytes.of([1, 2])` |
+| record | `User { id: 1, email: "a@b" }` |
+| variant | unqualified constructor: `None`, `Some("x")`, `Warn`, `String("x")` |
+| error tag | `Forbidden`, `NotFound { id: "u1" }` |
+
+So `"{name}"` with `name = "Ada"` prints `Ada`, while `"{[name]}"` prints `["Ada"]`.
+
+### Schema keywords of a refinement
+
+`Json.schema(witness)` returns a type's JSON Schema (draft 2020-12), and a `Tool`'s parameters use the same schema. A refinement adds the bounds JSON Schema can state, read from the top-level `&&` parts of its `where`: `String.len(it) <= n` and `>= n` become `maxLength` and `minLength`, `List.len(it) <= n` and `>= n` become `maxItems` and `minItems`, and `it <= n` and `it >= n` on `Int` and `Float` become `maximum` and `minimum`. `type Percent = Int where it >= 0 && it <= 100` states `{"type":"integer","minimum":0,"maximum":100}`. Any other part (`it % 2 == 0`, `it < 10`, an `||`) states nothing. `String.len` counts UTF-8 bytes and JSON Schema counts characters, so `maxLength` is the byte bound and `minLength` is ⌈n/4⌉: both admit every string the `where` admits. The schema is a hint; decoding still checks every `where`.
 
 ## What the compiler checks
 
-- Every expression has one type. No implicit conversions, and `Int` and `Float` never mix.
-- Matches are exhaustive (`V4001`) with no redundant arms (`V4002`).
-- There is no null and no uninitialized value. Absence is `Option`.
-- Record construction supplies every field.
-- Refined values are checked at introduction: `validate` returns a `Result`, `from` defects (`D010`), decoding returns `DecodeError`. They are never silently trusted.
-- Constraints are derived, never declared, so `Secret`, functions, and resources can never be shown, compared, or serialized by accident.
-
-## Row parameters on types
-
-Types can carry effect rows as well as ordinary type arguments: `Tool<e>`, `Agent<T, e>`, and `Router<e>`. A concrete row is written `Tool<{Http}>`; a lowercase `e` denotes a row parameter, not a type parameter. These parameters preserve callback effects through records and collections. Access to opaque constructors and fields outside the defining module is rejected with `V1006`.
+- Every expression has one type. No implicit conversions; `Int` and `Float` never mix.
+- Matches cover every case (`V4001`) with no unreachable branches (`V4002`).
+- There is no null and no uninitialized value. Missing values are `Option`.
+- Building a record supplies every field.
+- Refined values are checked when they are created: `validate` returns a `Result`, `from` stops on failure (`D010`), decoding returns `DecodeError`.
+- Constraints are derived, never declared, so `Secret`, functions and resources can never be shown, compared or serialized by accident.
 
 ## Next
 
-[Effects](/docs/tour/effects): how Sakura Lang puts every side effect and error in the signature.
+[Effects](/docs/tour/effects): how every side effect and error shows up in the signature.
+
+Details for contributors: [design §4.3, §4.8, §4.9, §7.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

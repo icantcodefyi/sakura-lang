@@ -3,52 +3,9 @@ title: Capabilities and security
 description: How Sakura Lang separates effects from authority, limits root handlers with sakura.toml, narrows authority for dependencies, and blocks injection and secret leaks.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+An effect in a signature says **what** a function may do, such as "send HTTP requests". The handler you install, and the permissions in `sakura.toml`, decide **where** it may do it, such as "only to `example.com`".
 
-Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it was never meant to see, a string from a request that reaches a SQL query, a token that ends up in a log. Sakura Lang uses effect checking, scoped handlers and explicit trust boundaries to make authority reviewable. These are language-level checks, not an OS sandbox for trusted FFI.
-
-## Effects are requirements, handlers are authority
-
-`Fs` in a signature says "this function may perform filesystem operations". It does not say which files. The **installed handler** decides that ([design §6.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
-
-A handler for `Fs` is built from a `Dir` capability value. Every path is resolved relative to that directory, and symlink escapes are rejected, including a write through a dangling link inside an `fs.write` grant, even one pointing back inside it ([changes on main](/docs/changes#filesystem-security)). Authority lives in capability values that handlers close over, not in effect labels.
-
-The effect row still matters: a function can only perform the effects in its row, and a pure function cannot touch the outside world at all. But the row is what a function *needs*. What it may actually *reach* is set by whoever installs the handler.
-
-<AuthorityFlow />
-
-## Root authority comes from the host
-
-The entry point is `pub fn main() -> Unit ! {…}`. The host supplies root handlers for exactly the std effects `main` declares, and nothing else. Only std effects may appear in `main`'s row (`V6010`), because only they have host root handlers.
-
-Root handlers are limited by the `[permissions]` table in the project manifest:
-
-```toml title="sakura.toml"
-[permissions]
-fs.read  = ["./data", "./templates"]
-fs.write = ["./data/out"]
-net      = ["api.anthropic.com:443", "localhost:5432"]
-env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
-process  = []          # no subprocesses
-```
-
-`sakura run` passes this table as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP/serving and environment adapters enforce it. Running emitted JS directly without that variable does not establish this ceiling. A table that is set but leaves a key out denies that key (since 1.0.0-beta.2; the beta.1 JS and WASM hosts read a missing `net` or `env` as no limit, native a missing `env`). Trusted FFI is outside this language-level boundary. There is no separate `Net` effect: the `net` list limits the network effects `Http`, `Serve` and `WebSocket` (`Sql.postgres` is not implemented; a `ws` URL without a port means port 80, `wss` 443) and is checked on every redirect hop, not only the first URL (see [Redirects](#redirects)), and `env` limits which variables `Env` can read. A `main` that declares an effect whose permission list is empty, such as `Http` with an empty `net` list, fails at **startup**, not at first use, and exits with status `75` (permission denied). That is a shape check, by effect: exit `75` means `main` declares an effect that `[permissions]` grants no list. A value outside a list, a host spelling the list does not carry (`localhost` is not `127.0.0.1`; the check resolves no name) or a path outside `fs.write` fails at the operation, with the effect's own error, after whatever ran before it. A program that must refuse early checks its configuration at the top of `main`. The refusals read:
-
-- a host outside `net`: `HttpError { status: None, reason: "<host:port> is not in the manifest's net list" }` (`Serve` reports the same text);
-- a host outside `Http.scoped`: `HttpError { status: None, reason: "<host:port> is outside Http.scoped" }`;
-- a path outside `fs.read` or `fs.write`: `FsError` with reason `not in the manifest's fs.read list` (or `fs.write`); `Sql.sqlite` wraps it behind the file's name.
-
-A test matches these texts. [sakura.toml](/docs/manifest) lists every manifest key.
-
-## Narrowing authority
-
-`Dir` and `File` have no public constructors. `Fs.root()` supplies a directory capability, and `Dir.subdir` narrows it. `Http.scoped(hosts: List<String>)` and `Env.only(keys)` attenuate outer handlers by data; `NetScope`, `EnvScope`, and `SecretStore` are not current APIs.
-
-Attenuating handlers are ordinary std functions: `Fs.rooted(dir)`, `Http.scoped(hosts)`, and `Env.only(keys)`.
-
-This test narrows a scripted HTTP handler to one host, without using the network:
+This test lets code send HTTP requests to one host only. It uses a scripted HTTP handler, so it needs no network:
 
 ```sakura
 import std/http.{Matcher, Http}
@@ -67,11 +24,74 @@ test "only the allowed HTTP host is forwarded" {
 }
 ```
 
-The same attenuation wraps a host HTTP handler, which additionally enforces manifest permissions.
+- `Http.scripted` answers every request with a canned `200` response.
+- `Http.scoped(["example.com:443"])` wraps it and refuses any other host.
+- The code inside `with` performs the same `Http` effect either way. Only the installed handlers decide what it can reach.
+
+Most supply-chain attacks and injection bugs rely on code doing more than it should: a dependency that reads files it should not see, request text that reaches a SQL query, a token that ends up in a log. Sakura Lang makes that authority visible and checkable. These are language-level checks, not an operating-system sandbox, and they do not cover trusted foreign (`@external`) code.
+
+## Effects are requirements, handlers are authority
+
+`Fs` in a signature says "this function may use the filesystem". It does not say which files. The installed handler decides that.
+
+A **capability** is a value that grants access, like a handle to one directory. A handler for `Fs` is built from a `Dir` capability. Every path is resolved inside that directory, and symlink escapes are rejected, including a write through a dangling link inside an `fs.write` grant ([changes on main](/docs/changes#filesystem-security)).
+
+So there are two questions, answered in two places:
+
+- **What a function needs** is its effect row. A pure function cannot touch the outside world at all.
+- **What it may reach** is set by whoever installs the handler.
+
+<AuthorityFlow />
+
+## Root authority comes from the host
+
+The program starts at `pub fn main() -> Unit ! {…}`. The host (the runtime `sakura run` starts) gives `main` real handlers, called **root handlers**, for exactly the standard effects `main` declares, and nothing else. Only standard-library effects may appear in `main`'s row (`V6010`).
+
+The `[permissions]` table in `sakura.toml` limits those root handlers:
+
+```toml title="sakura.toml"
+[permissions]
+fs.read  = ["./data", "./templates"]
+fs.write = ["./data/out"]
+net      = ["api.anthropic.com:443", "localhost:5432"]
+env      = ["DATABASE_URL", "ANTHROPIC_API_KEY"]
+process  = []          # no subprocesses
+```
+
+- `net` limits the network effects `Http`, `Serve` and `WebSocket`. It is checked on every redirect hop, not only the first URL (see [Redirects](#redirects)).
+- `env` limits which variables `Env` can read.
+- A key you leave out of the table is denied (since 1.0.0-beta.2; the beta.1 JS and WASM hosts read a missing `net` or `env` as no limit, native a missing `env`).
+
+There are two kinds of refusal:
+
+- **At startup.** If `main` declares an effect whose permission list is empty, such as `Http` with an empty `net` list, the program stops before running and exits with status `75` (permission denied).
+- **At the operation.** A host, path or variable outside its list fails when the code tries it, with the effect's own error. Code that ran before it has already run. A program that must refuse early checks its configuration at the top of `main`.
+
+The exact error texts are in [Reference](#reference). [sakura.toml](/docs/manifest) lists every manifest key.
+
+## Narrowing authority
+
+You can only narrow authority, never create it. `Dir` and `File` have no public constructors: `Fs.root()` gives you the root directory capability, and `Dir.subdir` narrows it.
+
+Three standard functions build narrower handlers around the current one:
+
+| Function | Narrows |
+| --- | --- |
+| `Fs.rooted(dir)` | The filesystem to one directory. |
+| `Http.scoped(hosts)` | HTTP to a list of `host:port` entries. |
+| `Env.only(keys)` | Environment reads to a list of names. |
+
+The example at the top of this page wraps a scripted handler. The same wrapping works around the real host HTTP handler, which also enforces the manifest's permissions. `NetScope`, `EnvScope` and `SecretStore` are not current APIs.
 
 ### Redirects
 
-Redirects are followed by `std/http`, not by the host. A request's `redirect` field is `Follow` by default: every handler in `std/http` follows at most 20 hops, and each hop is its own send, so `Http.host()` checks `net` and `Http.scoped` checks its list on every hop before anything is sent there. A hop to another scheme, host or port drops `authorization` and every `secret_headers` entry. `Manual` returns the 3xx response itself, and `Error` fails with its status. Because the loop is ordinary Sakura code, `Http.scripted` can answer a 3xx, and this test needs no network:
+The standard `std/http` library follows redirects itself, not the host. Each hop is its own send, so `Http.host()` checks `net`, and `Http.scoped` checks its list, on every hop before anything is sent there.
+
+- A request's `redirect` field is `Follow` by default: at most 20 hops.
+- A hop to another scheme, host or port drops `authorization` and every `secret_headers` entry.
+- `Manual` returns the 3xx response itself. `Error` fails with its status.
+
+Because redirects are ordinary Sakura code, `Http.scripted` can answer a 3xx, and this test needs no network:
 
 ```sakura
 import std/http.{Http, Matcher}
@@ -97,65 +117,18 @@ test "a hop outside the scoped list is never sent" {
 }
 ```
 
-Bodies are a `Payload`: `Empty`, `Text(String)` or `Bytes(Bytes)`. The builders make `Text` or `Empty`, `Request.with_payload(Bytes(b))` sends binary data, and a host response arrives as `Bytes`; read it with `Response.text`, `Response.json` or `Response.bytes`, each with a byte limit.
-
-## Forged capabilities are rejected
-
-A user `@external` cannot declare a parameter or result containing a capability from another package, or any `Handler<…>` (`V6001`, design §17.91). The check follows records, collections, options and function types; another package's `@resource` type also counts. An FFI package may declare externals over its own external types.
-
-This declaration is intentionally rejected with `V6001`; no JavaScript is executed:
-
-```sakura expect=V6001
-import std/fs.{Dir}
-
-@external(js, "./forge.js", "root")
-fn forge() -> Dir
-```
-
-## Scoped escape rules
-
-An external type, a handler, an `@resource` type, or a value transitively containing one is **scoped**. Closures also carry the scoped locals they capture ([design §6.3](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). Scoped values may be passed down the call stack, stored in scoped records, and returned from ordinary functions. They may not flow into:
-
-- a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks in v0),
-- a top-level `let`,
-- a value returned from the `with` body that introduced the scope.
-
-A violation is `V6002`, including an explicit `return` out of the `with`. Calls returning function-containing values conservatively retain scoped argument captures.
-
-`V6003` rejects a resource escaping the callback that borrows it, or being stored in handler `var` state. The callback rule also applies to wrapper functions and to a callback parameter whose type contains a resource, such as a record with a `File` field (design §17.89). This example is intentionally rejected:
-
-```sakura expect=V6003
-import std/fs.{File, Fs, FsError, Mode}
-import std/path.{Path}
-
-fn keep_open(path: Path) -> File ! {Fs, Fail<FsError>} {
-  Fs.with_file(path, Mode.Read, fn(file) { file })
-}
-```
-
-Return ordinary data read inside the callback instead. Files are finalized on callback exit. v0 does not check affine use counts; runtime file operations still reject access after closure.
-
-## Dependency authority (design; package tooling planned)
-
-The design calls for computed package authority and `sakura deps capabilities`; that command and multi-package tooling are not implemented. Imports do not grant authority: callers install handlers around dependency calls. Adding an effect to a dependency's signature requires its callers to account for that effect.
-
-The implemented [build manifest](/docs/agents/build-manifest) inventories user externals alongside other trusted components. It is not yet the planned dependency authority graph.
-
 ## Untrusted data
 
-`of`, `check`, `trust`, `len` and refined-target `validate` work today. A validation target must be a known refinement of the wrapped base; otherwise the compiler reports `V5003`. Using `Untrusted.validate` as a function value is also rejected. See [contracts](/docs/tour/contracts#validating-untrusted-input).
+`Untrusted<T>` marks data from outside your deployment. You must check it before you can use it as a plain `T`. These return it:
 
-`Untrusted<T>` wraps data from outside the deployment: raw request bodies, file contents read as text (`Fs.read_text`), response text (`Response.text`), and free-text LLM output (`Llm.generate_text`). Environment variables are not in that list: they are set by the operator and gated by the manifest's `env` list, so `Env.get(key)` returns a plain `Option<String>`. `Untrusted<T>` supports:
+- raw request bodies,
+- file contents read as text (`Fs.read_text`),
+- response text (`Response.text`),
+- free-text model output (`Llm.generate_text`).
 
-| Operation                        | Result                                                            |
-| -------------------------------- | ----------------------------------------------------------------- |
-| `.validate()`                    | `Result<V, Violation>` for any refined type `V`, named by annotation: `let e: Email = Untrusted.validate(u)?`. |
-| `.check(clause, pred)`                   | `Result<T, Violation>`.                                           |
-| `.len()`                         | The length, without trusting the content.                         |
-| `.trust(@trust("reason"))`       | `T`. An explicit, greppable escape hatch.                         |
-| `Untrusted.of(t)`                | Wraps a value, for tests.                                         |
+Environment variables are not on that list. The operator sets them and the manifest's `env` list gates them, so `Env.get(key)` returns a plain `Option<String>`.
 
-Validating against a refinement is the normal path:
+The normal path is to validate against a refined type (see [Contracts](/docs/tour/contracts#validating-untrusted-input)):
 
 ```sakura
 type Email = String where String.len(it) <= 254 && String.contains(it, "@")
@@ -169,20 +142,22 @@ fn read_email(raw: Untrusted<String>) -> Email ! {Fail<InvalidEmail>} {
 }
 ```
 
-`check` and `validate` return a `Violation` with a summary, never the rejected value as data. When an error must carry the rejected value, `trust` it into your own typed error under an audited reason, which [`sakura audit`](/docs/agents/audit) lists: `Err(_) => fail Rejected(raw.trust(@trust("echoed back to the sender only")))`.
+| Operation                        | Result                                                            |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `.validate()`                    | `Result<V, Violation>` for a refined type `V`, named by annotation: `let e: Email = Untrusted.validate(u)?`. |
+| `.check(clause, pred)`           | `Result<T, Violation>`.                                           |
+| `.len()`                         | The length, without trusting the content.                         |
+| `.trust(@trust("reason"))`       | `T`. An explicit escape hatch you can search for.                 |
+| `Untrusted.of(t)`                | Wraps a value, for tests.                                         |
 
-`Untrusted<T>` is `Show`, so it can be logged. Schema-decoded values (`Request.json`, `Json.decode`, `Llm.generate`) are already validated against the target type's refinements and come back as `T`, not `Untrusted<T>`.
+- The `validate` target must be a known refinement of the wrapped type; otherwise the compiler reports `V5003`. Using `Untrusted.validate` as a function value is also rejected.
+- `check` and `validate` return a `Violation` with a summary, never the rejected value. When an error must carry the rejected value, `trust` it under a reason that [`sakura audit`](/docs/agents/audit) lists: `Err(_) => fail Rejected(raw.trust(@trust("echoed back to the sender only")))`.
+- `Untrusted<T>` is `Show`, so you can log it.
+- Values decoded through a schema (`Request.json`, `Json.decode`, `Llm.generate`) are already checked against the target type and come back as `T`, not `Untrusted<T>`.
 
 ## Tagged templates never splice
 
-`sql"…"`, `html"…"` and `url"…"` are implemented tagged templates; `shell` is reserved but has no std module. The design uses tagged templates ([design §4.11](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). A tagged string desugars to a call to the tag module's `template` function, with the literal parts and the interpolated values passed separately:
-
-```text
-sql"select * from users where email = {email}"
-  ==> sql.template(["select * from users where email = ", ""], [SqlValue.from(email)])
-```
-
-Interpolated values are **never spliced raw**. Each one is type checked against the tag's parameter type. For `sql` that is `SqlValue`, which becomes a bound parameter. `html` escapes text by construction. This query binds the contents of an untrusted string as a parameter:
+`sql"…"`, `html"…"` and `url"…"` are **tagged templates**: strings whose `{…}` values are passed to a library as values, never pasted in as raw text. That stops SQL and HTML injection by construction. (`shell` is reserved but has no library yet.)
 
 ```sakura
 import std/sql.{Sql, SqlError}
@@ -203,11 +178,18 @@ test "untrusted SQL input stays a bound parameter" {
 }
 ```
 
-`q` reaches the database as a parameter value, never as SQL text. Direct `Untrusted<T>` interpolation unwraps the value before converting it through `SqlValue.from`; it does not require a trust assertion.
+`q` reaches the database as a bound parameter, never as SQL text, so `x' or 1=1 --` matches nothing. Under the hood, a tagged string becomes a call to the tag module's `template` function, with the text parts and the values passed separately:
 
-HTML interpolations have element type `Html`. Existing `Html` values compose as markup; other `Show` values convert through `Html.from` and are escaped text. Direct `Untrusted<String>` interpolation escapes the contained text, without displaying the wrapper. `Untrusted<Html>` also passes through `Html.from` as escaped text, never raw markup.
+```text
+sql"select * from users where email = {email}"
+  ==> sql.template(["select * from users where email = ", ""], [SqlValue.from(email)])
+```
 
-URL interpolations have element type `UrlPart` from `std/urlpart` (design §17.124). A `String`, `Int`, `Uuid` or `Untrusted<T>` converts through `UrlPart.from`, which percent-encodes its shown value, so `url"https://x.test/u/{id}?q={u}"` with `id = 7` and `u = Untrusted.of("a b&c")` is `https://x.test/u/7?q=a%20b%26c`. An interpolated value cannot add a path segment, a query parameter or a fragment. `UrlPart` is opaque, so an existing `UrlPart` passes through unchanged.
+Each tag checks its values' types:
+
+- **`sql`**: each value becomes a `SqlValue`, a bound parameter. An `Untrusted<T>` is unwrapped and bound; it needs no trust assertion.
+- **`html`**: values are escaped text. An existing `Html` value composes as markup. `Untrusted<String>` and `Untrusted<Html>` are escaped too.
+- **`url`**: each value becomes a percent-encoded `UrlPart`, so it cannot add a path segment, a query parameter or a fragment. `url"https://x.test/u/{id}?q={u}"` with `id = 7` and `u = Untrusted.of("a b&c")` is `https://x.test/u/7?q=a%20b%26c`.
 
 ```sakura
 import std/html.{Html}
@@ -221,13 +203,11 @@ test "HTML composition keeps text escaped" {
 }
 ```
 
-`Html.raw(markup, @trust("reason"))` is the explicit unescaped entry point; there is no `TrustedHtml` type. Its reason is included in the trust audit.
-
-This holds because the template's result types are `pub opaque type`s. `Query<R>` and `Html` are exported by name only: other modules can pass them around, but constructing one outside its declaring module is `V1006`, so callers must use the module APIs. `Html.raw` makes bypassing escaping an explicit trust decision.
+This holds because `Query<R>`, `Html` and `UrlPart` are opaque types: other modules cannot build one except through the template or the module's API (`V1006`). To insert unescaped markup on purpose, call `Html.raw(markup, @trust("reason"))`; the reason shows up in the trust audit.
 
 ## Secrets and keys
 
-`Secret<T>` wraps credentials. `Env.secret("KEY")` returns `Option<Secret<String>>`. A secret is not `Show`, `Eq`, `Ord`, or `Schema`, so it cannot be interpolated, logged, snapshotted, or serialized. Interpolating one is `V2031`. Only std sinks accept it, such as `Http.bearer`:
+`Secret<T>` wraps a credential. `Env.secret("KEY")` returns `Option<Secret<String>>`. A secret cannot be printed, logged, compared, snapshotted or serialized; interpolating one is `V2031`. Only standard sinks accept it, such as `Http.bearer`:
 
 ```sakura
 import std/http.{Http}
@@ -246,11 +226,16 @@ pub fn call_billing(amount: Decimal) -> Unit ! {Env, Http, Log, Fail<HttpError>}
 }
 ```
 
-Adapters that genuinely need the raw value use `Secret.expose(s, @trust("reason"))`, and a derived credential uses `Secret.map(s, f, @trust("reason"))`: the result stays secret, but a defect in `f` can print the clear value, so it is audited too. [`sakura audit`](/docs/agents/audit) lists every user `@trust` site with its reason. This prevents accidental disclosure, not deliberate leakage.
+- Code that really needs the raw value calls `Secret.expose(s, @trust("reason"))`.
+- `Secret.map(s, f, @trust("reason"))` derives a new secret. A defect in `f` can print the clear value, so it is audited too.
+- [`sakura audit`](/docs/agents/audit) lists every `@trust` site with its reason.
+- This prevents accidental disclosure, not deliberate leaks.
 
 ### Keys
 
-[`std/crypto`](/docs/stdlib#stdcrypto) gives the Web Crypto API's SHA-2 digests, HMAC, HKDF, PBKDF2, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519 as pure functions. It has no effect and no manifest key, because nothing in it touches the network or the disk. A `CryptoKey` holds its material as a `Secret<Bytes>`, so a key is not `Show` either (`V2031`) and is never logged or recorded. Each key carries its algorithm, the usages it permits and whether `export_key` may write it. "Not extractable" is a rule the module enforces, not a hardware boundary. The usual source of a key is a secret from `Env`, imported with only the usages the code needs:
+[`std/crypto`](/docs/stdlib#stdcrypto) brings the Web Crypto API to Sakura Lang as pure functions: SHA-2 digests, HMAC, HKDF, PBKDF2, AES-GCM, ECDSA and ECDH over P-256, Ed25519 and X25519. It needs no effect and no manifest key. A `CryptoKey` holds its material as a `Secret<Bytes>`, so a key is never logged either. Each key carries its algorithm and the usages it allows.
+
+This verifies a webhook signature with a key that can only verify:
 
 ```sakura
 import std/bytes.{Alphabet}
@@ -293,73 +278,112 @@ test "only the signed body is authentic" {
 }
 ```
 
-`verify` compares tags in constant time. Passing a key that lacks the operation's usage is a broken `requires` (`D020`): which key a call passes is a fact about the program, not about its input. `derive_bits` takes every bound as an argument, including the output length in bits and PBKDF2's iteration count, and refuses an out-of-range value with a typed `CryptoError`.
+- `verify` compares tags in constant time.
+- Passing a key that lacks the operation's usage is a broken precondition, defect `D020`.
+- `generate_key` draws from `Random`. Under `Random.seeded`, the test default, the same seed makes the same key, so a key made in a test is not secret.
+- AES-GCM needs a fresh 12-byte nonce per message; draw it from `Random`. A changed ciphertext does not decrypt: `decrypt` returns a `CryptoError` with reason `Tag`.
 
-`generate_key` draws its material from `Random`, the one source of entropy. `Random.host()` is the operating system's generator. Under `Random.seeded`, the test default, the same seed makes the same key on every backend, which is why seeded randomness is for tests only: a key made under it is not secret.
+The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint. Backend notes are in [Reference](#reference).
 
-AES-GCM keys encrypt and decrypt with a 12-byte nonce the caller supplies; a key must never seal two messages under one nonce, so draw it from `Random` and send it with the ciphertext. A ciphertext that was changed does not decrypt: `decrypt` returns a `CryptoError` with reason `Tag` and no plaintext. `generate_key_pair` makes an ECDSA, ECDH, Ed25519 or X25519 pair; the private key signs or derives, and the public key verifies or is the peer in `derive_bits`:
+## Capabilities cannot be forged or leak
 
-```sakura
-import std/crypto
-import std/crypto.{AesLength, Algorithm, CryptoError, CryptoKey, Usage}
+The checks above only work if a capability cannot be faked or smuggled out of its scope. The compiler enforces both.
 
-/// `note` sealed under `key`, with its fresh nonce in front of the ciphertext.
-fn seal(key: CryptoKey, note: String) -> Result<Bytes, CryptoError> ! {Random} {
-  let nonce = Random.bytes(12)
-  let sealed = crypto.encrypt(key, nonce, Bytes.from_list([]), String.to_bytes(note))
-  sealed.map(fn(ciphertext) { Bytes.concat([nonce, ciphertext]) })
-}
+### Forged capabilities are rejected
 
-fn unseal(key: CryptoKey, sealed: Bytes) -> Result<Bytes, CryptoError> {
-  let ciphertext = Bytes.slice(sealed, 12, Bytes.len(sealed))
-  crypto.decrypt(key, Bytes.slice(sealed, 0, 12), Bytes.from_list([]), ciphertext)
-}
+A user `@external` (a binding to JavaScript code) cannot take or return a capability from another package, or any `Handler<…>` (`V6001`). The check looks inside records, collections, options and function types; another package's `@resource` type also counts. An FFI package may still declare externals over its own external types.
 
-test "a sealed note opens only unchanged" {
-  let usages = [Usage.Encrypt, Usage.Decrypt]
-  let key = crypto.generate_key(Algorithm.AesGcm(AesLength.Aes256), usages, false)
-  match seal(key, "meet at noon") {
-    Ok(sealed) => {
-      expect_eq(unseal(key, sealed), Ok(String.to_bytes("meet at noon")))
-      expect(unseal(key, Bytes.slice(sealed, 0, Bytes.len(sealed) - 1)).is_err())
-    },
-    Err(_) => expect(false),
-  }
-}
+This declaration is rejected with `V6001`; no JavaScript runs:
 
-test "an Ed25519 signature verifies under its public key" {
-  let pair = crypto.generate_key_pair(Algorithm.Ed25519, [Usage.Sign, Usage.Verify], false)
-  let release = String.to_bytes("v0.2.0")
-  let signature = crypto.sign(pair.private, release)
-  expect(pair.public.verify(signature, release))
-  expect(!pair.public.verify(signature, String.to_bytes("v0.2.1")))
+```sakura expect=V6001
+import std/fs.{Dir}
+
+@external(js, "./forge.js", "root")
+fn forge() -> Dir
+```
+
+### Scoped escape rules
+
+A value is **scoped** when it is, or contains, an external type, a handler or an `@resource` type. Closures also carry the scoped values they capture. You may pass scoped values down the call stack, store them in scoped records and return them from ordinary functions. They may not flow into:
+
+- a `Task.spawn` closure whose `Scope` outlives the `with` that produced the value (there are no detached tasks),
+- a top-level `let`,
+- a value returned from the `with` body that introduced the scope.
+
+A violation is `V6002`, including an explicit `return` out of the `with`. Calls returning values that contain functions conservatively keep the scoped captures of their arguments.
+
+A **resource** (an open file, a connection) may not escape the callback that lends it to you, or be stored in handler `var` state (`V6003`). The rule also covers wrapper functions and callback parameters whose type contains a resource, such as a record with a `File` field. This is rejected:
+
+```sakura expect=V6003
+import std/fs.{File, Fs, FsError, Mode}
+import std/path.{Path}
+
+fn keep_open(path: Path) -> File ! {Fs, Fail<FsError>} {
+  Fs.with_file(path, Mode.Read, fn(file) { file })
 }
 ```
 
-`export_key` writes a pair's halves as `Spki`, `Pkcs8` or `Jwk`, and `import_key` reads them back, refusing material that does not decode with `KeyError(Malformed)`. Ed25519 and HMAC signatures are the same bytes on every backend. ECDSA signatures are not: native signs deterministically (RFC 6979) and JavaScript with a random nonce, so compare them with `verify`, never by value.
+Return ordinary data read inside the callback instead. The file is closed when the callback exits. Use counts are not checked at compile time, but file operations after closing fail at runtime.
 
-The primitives are `node:crypto` on `--target js`, the same functions in the Node host on `--target wasm` (on main; in the `0.1.0` release a crypto primitive on WASM is the defect `D090`), and the RustCrypto and dalek crates on `--target native`. AES-GCM, ECDSA, ECDH, Ed25519, X25519 and the `Pkcs8`, `Spki` and `Jwk` formats run on all three (on `--target wasm` from ABI 1.9.0, on main). The official NIST and RFC vectors hold the backends equal. The [signed webhook recipe](/docs/cookbook/sign_webhook) puts this check behind a router endpoint.
+## Dependency authority
+
+Imports do not grant authority: callers install handlers around dependency calls. If a dependency adds an effect to its signature, its callers must account for that effect.
+
+The design also calls for computed package authority and a `sakura deps capabilities` command. Neither, nor multi-package tooling, is implemented. The [build manifest](/docs/agents/build-manifest) lists user externals with the other trusted components, but it is not yet a dependency authority graph.
 
 ## The trusted computing base
 
-Some things are assumed, and Sakura Lang says so. The trusted computing base is the compiler, the runtime, the std root handlers, FFI bindings marked `@external`, every `@trust` site, the host platform, and later the SMT solver ([design §6.6](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)). [`sakura build --manifest`](/docs/agents/build-manifest) inventories trusted compiler/runtime/std bindings and user trust sites, including a hash of the emitted runtime. It does not hash every trusted component. Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
+Some things are assumed, and Sakura Lang says so. The **trusted computing base** is everything the checks rely on without checking: the compiler, the runtime, the standard root handlers, `@external` bindings, every `@trust` site, the host platform, and the Z3 solver for any check a `sakura verify` proof removed.
 
-Compiler fixes never widen authority silently. A fix that would change authority carries `impact: authority_change` and is never applied by `sakura fix` automatically. See [Diagnostics](/docs/agents/diagnostics).
+- [`sakura build --manifest`](/docs/agents/build-manifest) lists the trusted compiler, runtime and std bindings and your trust sites, with a hash of the emitted runtime. It does not hash every trusted component.
+- Each item has the `trusted` status in the [guarantee model](/docs/tour/contracts#the-guarantee-model).
+- A compiler fix that would change authority carries `impact: authority_change` and is never applied automatically by `sakura fix`. See [Diagnostics](/docs/agents/diagnostics).
 
 ## What the compiler checks
 
 - A function performs only the effects in its row. Every performed operation has an installed handler.
-- `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; a denied permission stops the program at startup (exit `75`).
-- Prelude `Trust` is compiler-known. `@trust("reason")` is accepted only directly in a trusted sink argument; other uses report `V6001`.
-- Scoped capability/resource escape checks (`V6002`/`V6003`) and foreign-capability FFI checks (`V6001`) are implemented. The escape rules, the cassette format and the template rule passed a maintainer security review; see the [roadmap](/docs/roadmap).
+- `main` declares only std effects (`V6010`). Root handlers are limited by `[permissions]`; an effect with no permission stops the program at startup (exit `75`).
+- `@trust("reason")` is accepted only directly as an argument of a trusted sink; other uses report `V6001`.
+- Scoped capabilities and resources do not escape (`V6002`, `V6003`), and FFI cannot forge another package's capability (`V6001`). The escape rules, the cassette format and the template rule passed a maintainer security review; see the [roadmap](/docs/roadmap).
 - `Secret<T>`, and a `CryptoKey` that holds one, is never shown, logged, snapshotted, or serialized (`V2031`).
 - Tagged templates receive interpolations as values, never raw text.
 
 ## Not in v0
 
-- **Information-flow control.** `Secret<T>` stops accidents, not a determined leak (design §1.1).
-- **Declared capability ceilings for packages.** The design calls for computed package authority; package tooling is not implemented. Mandatory ceilings in `sakura.toml` for published packages are planned for v1 (design §16).
+- **Information-flow control.** `Secret<T>` stops accidents, not a determined leak.
+- **Declared capability ceilings for packages.** Package tooling is not implemented. Mandatory ceilings in `sakura.toml` for published packages are planned for v1.
+
+## Reference
+
+### Permission refusals
+
+`sakura run` passes the `[permissions]` table to the program as JSON in `SAKURA_PERMISSIONS`; the host filesystem, HTTP, serving and environment adapters enforce it. Running the emitted JavaScript directly without that variable sets no limit.
+
+- Exit `75` is a shape check by effect: `main` declares an effect that `[permissions]` grants no list for.
+- A host is matched as written. The check resolves no names, so `localhost` is not `127.0.0.1`.
+- A `ws` URL without a port means port 80, `wss` 443. `Sql.postgres` is not implemented.
+
+The refusals read:
+
+- a host outside `net`: `HttpError { status: None, reason: "<host:port> is not in the manifest's net list" }` (`Serve` reports the same text);
+- a host outside `Http.scoped`: `HttpError { status: None, reason: "<host:port> is outside Http.scoped" }`;
+- a path outside `fs.read` or `fs.write`: `FsError` with reason `not in the manifest's fs.read list` (or `fs.write`); `Sql.sqlite` wraps it behind the file's name.
+
+### HTTP bodies
+
+Bodies are a `Payload`: `Empty`, `Text(String)` or `Bytes(Bytes)`. The builders make `Text` or `Empty`; `Request.with_payload(Bytes(b))` sends binary data. A host response arrives as `Bytes`; read it with `Response.text`, `Response.json` or `Response.bytes`, each with a byte limit.
+
+### Crypto backends
+
+- The primitives are `node:crypto` on `--target js` and on `--target wasm` (through the Node host), and the RustCrypto and dalek crates on `--target native`. The official NIST and RFC test vectors hold the backends equal. In the `0.1.0` release, a crypto primitive on WASM is the defect `D090`.
+- `export_key` writes keys as `Spki`, `Pkcs8` or `Jwk`, and `import_key` reads them back, refusing material that does not decode with `KeyError(Malformed)`.
+- `generate_key_pair` makes an ECDSA, ECDH, Ed25519 or X25519 pair: the private key signs or derives, the public key verifies or is the peer in `derive_bits`.
+- `derive_bits` takes every bound as an argument, including the output length and PBKDF2's iteration count, and refuses an out-of-range value with a typed `CryptoError`.
+- "Not extractable" is a rule the module enforces, not a hardware boundary.
+- Ed25519 and HMAC signatures are the same bytes on every backend. ECDSA signatures are not: native signs deterministically (RFC 6979) and JavaScript with a random nonce, so compare them with `verify`, never by value.
 
 ## Next
 
-[Memory model](/docs/tour/memory): value semantics, reference counting, and in-place reuse.
+[Memory model](/docs/tour/memory): how values work without a borrow checker.
+
+Details for contributors: [design §1.1, §4.11, §6.1–§6.6, §16, §17.89, §17.91, §17.124](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

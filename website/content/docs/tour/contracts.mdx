@@ -1,151 +1,9 @@
 ---
 title: Contracts and refinements
-description: Refinement types, requires and ensures clauses, and the honest guarantee model behind them.
+description: Rules about a function's inputs and outputs, and types with rules, checked whenever the code runs.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
-
-Types say what shape a value has. Refinements and contracts say what is true about it. Both are part of the signature, so both are what a reviewer reads.
-
-## The guarantee model
-
-Every claim Sakura Lang makes about a program has exactly one of four statuses ([design §1.2](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-| Status            | Meaning                                                                                | Who establishes it                                                            |
-| ----------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| `proved`          | Holds on all executions under the stated assumptions.                                  | The type and effect checker; SMT-discharged contracts.                 |
-| `runtime_checked` | A violation is detected at the boundary and becomes a defect. The bad value never escapes. | Contract lowering (`requires`, `ensures`, `where`), checked arithmetic.        |
-| `tested`          | Held on the inputs that were executed.                                                 | `sakura test` (unit, property, snapshot, simulation).                            |
-| `trusted`         | Assumed.                                                                               | FFI declarations, host handlers, `@trust` sites, the toolchain itself.        |
-
-The build manifest labels retained contract checks `runtime_checked` and clauses whose checks were all removed using authenticated proofs `proved`. Scalar literal evaluation is separate from SMT verification; compiling a program does not prove every obligation.
-
-## Refinement types
-
-A refinement is a base type plus a predicate, written with `where`. Inside the predicate, `it` is the value.
-
-```sakura
-type Email = String where String.len(it) <= 254 && String.contains(it, "@")
-type Percent = Int where it >= 0 && it <= 100
-type NonEmpty<T> = List<T> where List.len(it) > 0
-```
-
-A refined type is a distinct nominal type with the same representation as its base. It coerces implicitly to the base, so a `Percent` is usable wherever an `Int` is expected. The reverse requires validation or `from`, except for scalar literals in a refined position, described below.
-
-Record fields can carry a refinement inline:
-
-```sakura
-type Priority = Low | Normal | High
-type Ticket = {
-  title: String where String.len(it) > 0 && String.len(it) <= 120,
-  priority: Priority,
-}
-```
-
-Field refinements are checked when the record is constructed.
-
-## Generic refinements
-
-A generic refined type keeps its base type's concrete arguments: `NonEmpty<Int>` coerces to `List<Int>`, while `NonEmpty.validate` can check a list of strings. Use a binding annotation to select the target instantiation:
-
-```sakura
-import std/core.{Violation}
-
-type NonEmpty<T> = List<T> where List.len(it) > 0
-
-test "generic refinements keep their element type" {
-  let xs: NonEmpty<Int> = NonEmpty.from([3, 9, 4])
-  expect_eq(List.fold(xs, 0, fn(sum, n) { sum + n }), 16)
-  let empty: Result<NonEmpty<String>, Violation> = NonEmpty.validate([])
-  expect(empty.is_err())
-}
-```
-
-## How values enter a refined type
-
-A value becomes a `Percent` in one of four ways ([design §4.3](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-| Entry point                               | On failure                                                        |
-| ----------------------------------------- | ----------------------------------------------------------------- |
-| `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
-| `Percent.from(n) -> Percent`               | Defect `D010`. Use at trusted boundaries only; [`sakura audit`](/docs/agents/audit) lists explicit calls. |
-| `let p: T = Json.decode(text)?` and other schema decoding, with the target named by annotation | Typed `DecodeError`, never a defect. Nested field refinements are checked. |
-| A literal, `let p: Percent = 50`          | Decided by the bounded scalar evaluator when possible (`V5004` on rejection); otherwise checked once before `main`, without a warning. |
-
-`validate` is the normal path for input you do not control:
-
-```sakura
-type Percent = Int where it >= 0 && it <= 100
-
-fn describe(input: Int) -> String {
-  match Percent.validate(input) {
-    Ok(p) => "{p}%",
-    Err(_) => "out of range",
-  }
-}
-```
-
-Once a value has type `Percent`, nothing downstream re-checks it. Sakura Lang has no aliasable mutation, so a validated value cannot be invalidated later. Record update `Ticket { ..t, title: x }` with `x` already refined needs no re-check.
-
-## Literal refinements at compile time
-
-The checker evaluates scalar `Int`, `Float`, `String` and `Bool` literals against their target refinement with a deterministic **10,000-step budget per literal** (design §17.87). It supports scalar arithmetic and comparisons, short-circuit booleans, `if`/`let`/blocks, pure functions in that fragment and the string built-ins `len`, `contains`, `starts_with` and `ends_with`. `String.len` counts UTF-8 bytes.
-
-- **True:** the literal is accepted without a startup conversion.
-- **False or an evaluable defect:** `V5004`, with the literal and refinement definition identified. For example, `let p: Percent = 150` is rejected.
-- **Undecidable:** the literal is checked once at module initialization. A failed predicate produces `D010` before `main`, even when the literal is inside a function that would run later. There is no warning.
-
-The evaluator is deliberately smaller than the contract subset. `match`, collection operations such as `String.split`, and exceeding the step budget leave a runtime check. An intermediate integer beyond JS's safe range but within i64 is also undecidable because backends differ. `V5002` is retired and never emitted; its explain page remains for old reports.
-
-`sakura audit` lists each undecidable literal as a `from` site with `reason: "literal"`. See [audit literal conversions](/docs/agents/audit#literal-conversions).
-
-## Validating untrusted input
-
-`Untrusted.validate` is implemented. Its target must be a known refined type over the wrapped base; an unknown target, plain type, wrong base, or using the function as a value produces `V5003`. Name the target with an annotation:
-
-```sakura
-import std/core.{Violation}
-
-type Percent = Int where it >= 0 && it <= 100
-
-fn read_percent(raw: Untrusted<Int>) -> Result<Percent, Violation> {
-  Untrusted.validate(raw)
-}
-
-test "untrusted input is checked" {
-  expect_eq(read_percent(Untrusted.of(50)), Ok(Percent.from(50)))
-  expect(read_percent(Untrusted.of(150)).is_err())
-}
-```
-
-This checks the refinement and returns `Err(Violation)` on failure; it does not silently trust the input.
-
-## The contract subset
-
-Predicates in `where`, `requires`, `ensures`, and `property` clauses must be pure (`! {}`), terminating, and deterministic. v0 enforces this syntactically ([design §7.1](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)):
-
-- No loops and no recursion.
-- Calls only to functions with row `{}` that are marked `@total` or are themselves in the subset, checked transitively. Anything else is `V5001`.
-- Allowed: comparison, checked arithmetic, `&&`, `||`, `!`, field and tuple access, `match` on finite variants, `List.len`, `String.len`, and bounded quantifiers `List.all(xs, fn(x) { … })` and `List.any`.
-
-Arithmetic in a predicate is checked, so a predicate can itself defect. That is reported as `D011` (contract evaluation failed).
-
-`@total` is how a function with recursion or a loop reaches a contract. It is a **trusted** claim that a `{}`-row function terminates on every input; the compiler does not prove it. Std marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs`, and a few more). User code may mark its own functions, and [`sakura audit`](/docs/agents/audit) lists every user `@total` site, like every `@trust`:
-
-```sakura
-@total   // trusted: n / 10 moves toward 0 on every call
-fn digits(n: Int) -> Int {
-  if n > -10 && n < 10 { 1 } else { 1 + digits(n / 10) }
-}
-
-type Pin = Int where it >= 0 && digits(it) == 4
-```
-
-## Preconditions and postconditions
-
-`requires` states what must hold for the arguments. `ensures` states what holds for the result, which is bound to `result`. Both go between the signature and the body, and each clause may have a name.
+A **contract** is a rule about a function's inputs or output, written in its signature. `requires` states what callers must pass. `ensures` states what the function promises to return. Both are checked every time the code runs.
 
 ```sakura
 fn clamp(x: Int, lo: Int, hi: Int) -> Int
@@ -154,15 +12,28 @@ fn clamp(x: Int, lo: Int, hi: Int) -> Int
 {
   if x < lo { lo } else if x > hi { hi } else { x }
 }
+
+test "clamp keeps a value in range" {
+  expect_eq(clamp(12, 0, 10), 10)
+  expect_defect(fn() { clamp(1, 5, 0) })
+}
 ```
 
-- `requires` is checked on entry. A violation is a **caller defect** `D020`, with blame on the call site and the clause name in the report.
-- `ensures` is checked once on normal return. A violation is a **callee defect** `D021`. It is never checked when the function fails or defects, because there is no `result`.
-- There is no `old(expr)`. Arguments are immutable values, so a parameter named in `ensures` is exactly the value that was passed in.
+- `requires ordered: lo <= hi` is checked when `clamp` is called. `ordered` is an optional name that shows up in error reports.
+- `ensures bounded: …` is checked when `clamp` returns. `result` is the return value.
+- `clamp(1, 5, 0)` breaks `ordered`. That is a **defect**: a bug that stops the program, not a normal error. The test checks for it with `expect_defect`.
+
+Types say what shape a value has. Contracts say what is true about it. Both are in the signature, so both are what a reviewer reads.
+
+## Preconditions and postconditions
+
+- `requires` is checked on entry. A violation is defect `D020` and blames the **caller**, pointing at the call.
+- `ensures` is checked once on a normal return. A violation is defect `D021` and blames the **function**. It is not checked when the function fails or stops, because there is no `result`.
+- There is no `old(expr)`. Arguments never change, so a parameter named in `ensures` is exactly what was passed in.
 
 <ContractFlow />
 
-Contracts compose with typed errors:
+Contracts work alongside typed errors:
 
 ```sakura
 error Insufficient
@@ -183,9 +54,97 @@ fn withdraw(from: Account, amount: Int) -> Account ! {Fail<WithdrawError>}
 }
 ```
 
-`Frozen` and `Insufficient` are expected failures in the error union. A negative `amount` is a bug in the caller, so it is a precondition, not an error tag.
+A frozen account or a low balance can happen in normal use, so they are errors the caller handles. A negative `amount` is a bug in the caller, so it is a precondition, not an error.
 
-Bounded quantifiers are allowed in contracts:
+## Refinement types
+
+A **refinement** is a type plus a rule, written with `where`. Inside the rule, `it` is the value.
+
+```sakura
+type Email = String where String.len(it) <= 254 && String.contains(it, "@")
+type Percent = Int where it >= 0 && it <= 100
+type NonEmpty<T> = List<T> where List.len(it) > 0
+```
+
+A `Percent` is its own type, stored like an `Int`. You can use a `Percent` anywhere an `Int` is expected. Going the other way needs a check.
+
+Record fields can carry a rule too. It is checked when the record is built:
+
+```sakura
+type Priority = Low | Normal | High
+type Ticket = {
+  title: String where String.len(it) > 0 && String.len(it) <= 120,
+  priority: Priority,
+}
+```
+
+## How values enter a refined type
+
+A value becomes a `Percent` in one of four ways:
+
+| Entry point | On failure |
+| --- | --- |
+| `Percent.validate(n) -> Result<Percent, Violation>` | Returns `Err(Violation { type_name, clause, value_summary })`. |
+| `Percent.from(n) -> Percent` | Defect `D010`. Use only where failure would be a bug; [`sakura audit`](/docs/agents/audit) lists the calls. |
+| `let p: T = Json.decode(text)?` and other decoding, with the target named by the annotation | A typed `DecodeError`, never a defect. Nested field rules are checked. |
+| A literal, `let p: Percent = 50` | Checked at compile time when possible (`V5004` if it fails); otherwise once before `main` starts. |
+
+Use `validate` for input you don't control:
+
+```sakura
+type Percent = Int where it >= 0 && it <= 100
+
+fn describe(input: Int) -> String {
+  match Percent.validate(input) {
+    Ok(p) => "{p}%",
+    Err(_) => "out of range",
+  }
+}
+```
+
+Once a value is a `Percent`, nothing checks it again. Values never change in place, so a checked value stays valid. Updating a record, `Ticket { ..t, title: x }`, with an already-checked `x` needs no new check.
+
+## Generic refinements
+
+A generic refinement keeps its element type: `NonEmpty<Int>` can be used as a `List<Int>`. Use a type annotation to pick the element type:
+
+```sakura
+import std/core.{Violation}
+
+type NonEmpty<T> = List<T> where List.len(it) > 0
+
+test "generic refinements keep their element type" {
+  let xs: NonEmpty<Int> = NonEmpty.from([3, 9, 4])
+  expect_eq(List.fold(xs, 0, fn(sum, n) { sum + n }), 16)
+  let empty: Result<NonEmpty<String>, Violation> = NonEmpty.validate([])
+  expect(empty.is_err())
+}
+```
+
+## Validating untrusted input
+
+`Untrusted<T>` marks data from outside the program. `Untrusted.validate` checks it against a refined type, named by an annotation, and returns `Err(Violation)` on failure:
+
+```sakura
+import std/core.{Violation}
+
+type Percent = Int where it >= 0 && it <= 100
+
+fn read_percent(raw: Untrusted<Int>) -> Result<Percent, Violation> {
+  Untrusted.validate(raw)
+}
+
+test "untrusted input is checked" {
+  expect_eq(read_percent(Untrusted.of(50)), Ok(Percent.from(50)))
+  expect(read_percent(Untrusted.of(150)).is_err())
+}
+```
+
+The target must be a refined type over the wrapped type. An unknown target, a plain type, a different base type, or using `Untrusted.validate` as a function value is `V5003`.
+
+## Rules over lists
+
+A contract can check every item of a list with `List.all` or `List.any`:
 
 ```sakura
 type NonEmpty<T> = List<T> where List.len(it) > 0
@@ -198,33 +157,79 @@ fn top_score(scores: NonEmpty<Int>) -> Int
 }
 ```
 
-`W5005` warns once per user clause calling `List.all`, `List.any` or `List.contains` on a parameter or `it`. This includes `requires`, `ensures`, `where` and property `requires`; there is no hot-path analysis. Std clauses are exempt. `String.contains` no longer triggers the warning (design §17.90), so the `Email` refinement above is quiet.
+Such a check walks the whole list on every call, so the compiler warns once per clause that calls `List.all`, `List.any` or `List.contains` on a parameter or `it` (`W5005`). `String.contains` does not trigger the warning, so the `Email` type above is quiet.
 
 ## Contracts are always checked
 
-`sakura build` retains runtime contracts, on JS and WASM, unless matching authenticated proofs allow check removal; see [`sakura verify`](/docs/agents/verify) for the exact scope.
+Contracts are checked at runtime in every build, on JavaScript and WebAssembly. `sakura build` removes a check only when [`sakura verify`](/docs/agents/verify) has proved it can never fail; see [Static verification](/docs/tour/verification).
 
-Contract violations are [defects](/docs/tour/effects), not effects. A defect terminates the current task after resource finalizers run. `try` cannot catch it. `Task.scope` and the test runner observe it as an outcome, and a defect in `main` exits with status 70 and a structured report.
+A broken contract is a [defect](/docs/tour/effects#defects-are-not-effects), not an error. It stops the current task after open resources are cleaned up, and `try` cannot catch it. `Task.scope` and the test runner can observe it. A defect in `main` exits with status 70 and a structured report.
 
-Contracts on `pub` functions are part of the signature shown by [`sakura doc`](/docs/agents/doc), the MCP `symbol_query` tool, and editor hover.
+Contracts on `pub` functions are part of the signature shown by [`sakura doc`](/docs/agents/doc), the MCP `symbol_query` tool and editor hover.
+
+## The guarantee model
+
+Every claim Sakura Lang makes about a program has exactly one of four statuses:
+
+| Status | Meaning | Who establishes it |
+| --- | --- | --- |
+| `proved` | Holds on every run, under the stated assumptions. | The type and effect checker; contracts proved by `sakura verify`. |
+| `runtime_checked` | A violation is caught where it happens and becomes a defect. The bad value never escapes. | Contract checks (`requires`, `ensures`, `where`), checked arithmetic. |
+| `tested` | Held on the inputs that were run. | `sakura test` (unit, property, snapshot, simulation). |
+| `trusted` | Assumed. | Foreign-function declarations, host handlers, `@trust` sites, the toolchain itself. |
+
+The [build manifest](/docs/agents/build-manifest) labels contract checks that stay in the program `runtime_checked`, and clauses whose checks were all removed using proofs `proved`. Compiling a program does not prove its contracts.
+
+## The contract subset
+
+The rules in `where`, `requires`, `ensures` and `property` clauses must be pure, must finish, and must give the same answer every time. The compiler enforces this by syntax:
+
+- No loops and no recursion.
+- Calls only to pure functions marked `@total` or themselves in the subset, checked all the way down. Anything else is `V5001`.
+- Allowed: comparisons, checked arithmetic, `&&`, `||`, `!`, field and tuple access, `match` on variants, `List.len`, `String.len`, and `List.all(xs, fn(x) { … })` and `List.any`.
+
+Arithmetic in a rule is checked, so a rule can itself hit a defect. That is reported as `D011` (contract evaluation failed).
+
+`@total` lets a function with recursion or a loop be used in a contract. It is a **trusted** claim that a pure function always finishes; the compiler does not prove it. The standard library marks a fixed list (`List.len`, `List.get`, `List.all`, `List.any`, `List.contains`, `Map.get`, `String.len`, `String.contains`, `Option.is_some`, `Int.abs` and a few more). You can mark your own functions, and [`sakura audit`](/docs/agents/audit) lists every `@total` you write, like every `@trust`:
+
+```sakura
+@total   // trusted: n / 10 moves toward 0 on every call
+fn digits(n: Int) -> Int {
+  if n > -10 && n < 10 { 1 } else { 1 + digits(n / 10) }
+}
+
+type Pin = Int where it >= 0 && digits(it) == 4
+```
+
+## Literal refinements at compile time
+
+When you write a literal where a refined type is expected, such as `let p: Percent = 50`, the compiler tries to check it right away. It evaluates `Int`, `Float`, `String` and `Bool` literals against the rule, with a fixed limit of **10,000 steps per literal**. It understands arithmetic and comparisons, `&&`/`||`, `if`/`let`/blocks, pure functions built from those, and the string functions `len`, `contains`, `starts_with` and `ends_with`. `String.len` counts UTF-8 bytes.
+
+- **True:** the literal is accepted, with no check at startup.
+- **False, or a defect while checking:** `V5004`, naming the literal and the rule. For example, `let p: Percent = 150` is rejected.
+- **Can't decide:** the literal is checked once when the module starts. A failure is defect `D010` before `main` runs, even if the literal is inside a function that would only run later. There is no warning.
+
+`match`, collection functions such as `String.split`, and running past the step limit all leave a runtime check. So does an intermediate integer beyond JavaScript's safe range, because backends differ there. `V5002` is retired and never emitted; its explain page stays for old reports. `sakura audit` lists each literal it could not decide as a `from` site with `reason: "literal"`; see [audit literal conversions](/docs/agents/audit#literal-conversions).
 
 ## Frozen specs during agent repair
 
-An agent fixing a failing build must not "fix" it by weakening the specification. `sakura fix`, the MCP `apply_patch` tool, and `sakura check --frozen-specs <symbols|all>` reject any patch that changes a frozen symbol's signature, effect row, error union, `requires`/`ensures`/`where` clauses, or any `test` or `property` body. The diagnostic is `V8020` (spec frozen) and names the clause.
+An agent fixing a failing build must not "fix" it by weakening the rules. `sakura fix`, the MCP `apply_patch` tool and `sakura check --frozen-specs <symbols|all>` reject any patch that changes a frozen function's signature, effects, errors, `requires`/`ensures`/`where` clauses, or any `test` or `property` body. The error is `V8020` (spec frozen) and names the clause.
 
-Compiler fixes that touch a contract carry `impact: contract_change` and are never `machine_applicable`. See [Diagnostics](/docs/agents/diagnostics).
+Compiler fixes that touch a contract are marked `impact: contract_change` and are never applied automatically. See [Diagnostics](/docs/agents/diagnostics).
 
 ## Property tests from contracts
 
-`sakura test --contracts` synthesizes properties for eligible `pub fn`s with a refined parameter or a `requires` clause. Generated inputs are filtered by refinements and preconditions; calls exercise runtime postconditions and refinement checks. Defects fail the property, and shrunk counterexamples are saved to `tests/regressions/<fn>.json` and replayed first on later `--contracts` runs. See the [worked ensures bug](/docs/tour/testing#catching-an-ensures-bug) and [eligibility limits](/docs/tour/testing#eligibility-and-limits), including effect handlers, skipped generic functions, and `W7001` when input generation gives up.
+`sakura test --contracts` writes tests for you. For each eligible `pub fn` with a refined parameter or a `requires` clause, it generates inputs that pass the rules, calls the function, and checks `ensures` and refinements. A defect fails the test. The smallest failing input is saved to `tests/regressions/<fn>.json` and replayed first on later runs. See the [worked example](/docs/tour/testing#catching-an-ensures-bug) and the [limits](/docs/tour/testing#eligibility-and-limits).
 
-## Not in v0
+## Not supported
 
-- **Termination proofs.** `sakura verify` proves supported obligations conditional on normal return; it does not prove termination ([design §7.5](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md)).
-- **Flow-sensitive refinement.** An `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
-- **`old(expr)`** in postconditions. There is no mutation to snapshot.
-- **Proof-oriented syntax.** The keywords `verify`, `proof`, and `ghost` are reserved and rejected today with `V0007`.
+- **Termination proofs.** `sakura verify` proves rules assuming the function returns; it does not prove that it returns.
+- **Narrowing by `if`.** `if n >= 0` does not turn `n` into a refined type. Use `validate` or `from`.
+- **`old(expr)`** in `ensures`. Nothing changes in place, so there is nothing to snapshot.
+- **Proof syntax.** The keywords `verify`, `proof` and `ghost` are reserved and rejected today (`V0007`).
 
 ## Next
 
-[Testing](/docs/tour/testing): unit tests, property tests, snapshots, and deterministic handlers.
+[Static verification](/docs/tour/verification): prove contracts before the code runs.
+
+Details for contributors: [design §1.2, §4.3, §7.1, §7.5, §17.87, §17.90](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).

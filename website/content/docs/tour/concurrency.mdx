@@ -3,43 +3,36 @@ title: Concurrency
 description: Structured concurrency with the Task effect, cooperative cancellation, timeouts, retries, budgets, and deterministic scheduling in Sakura Lang.
 ---
 
-<Callout type="warn" title="Preview">
-  The compiler runs the whole language on JavaScript and WebAssembly, with contract verification, LSP and MCP; native code generation is experimental. The latest release, `v1.0.0-beta.4`, is a beta: it may have bugs and may change before 1.0.0, so it is not for production. `0.1.0`, the earlier preview, stays on npm's `latest` tag and `brew install sakuralang`. These docs track main ([changes since 0.1.0](/docs/changes)). See [Stability](/docs/stability) and the [roadmap](/docs/roadmap).
-</Callout>
+To do several things at once, you start **tasks** inside a **scope**. A task is a piece of work that runs alongside others. A scope is a block that waits for every task started in it, so no task is ever left running behind your back.
 
-Sakura Lang has no `async`/`await` keywords and no `Async` effect. Every Sakura Lang function may suspend, and nothing in application code can observe whether a call did. Suspension is a property of **handlers**: `Clock.sleep` suspends under the host clock and returns immediately under `Clock.fixed` (design §5.6).
-
-Running work concurrently is a different matter. That uses the `Task` effect from `std/task`, which is in the prelude.
-
-## The `Task` effect
-
-This is a declaration or context-dependent excerpt, not a standalone program.
-
-```sakura fragment
-// std/task
-pub type Scope          // external, scoped
-pub type Fiber<T>       // external, scoped, affine
-pub effect Task {
-  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
-  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
-  fn join<T>(f: Fiber<T>) -> T
-  fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
-  fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
-  fn yield_now() -> Unit
-  fn cancel<T>(f: Fiber<T>) -> Unit
-  fn cancelled(s: Scope) -> Bool
+```sakura
+fn both() -> (Int, Int) ! {Task} {
+  Task.scope(fn(s) {
+    let a = Task.spawn(s, fn() { 1 + 1 })
+    let b = Task.spawn(s, fn() { 2 + 2 })
+    (Task.join(a), Task.join(b))
+  })
 }
-pub fn host() -> Handler<Task>
-pub fn deterministic(seed: Int) -> Handler<Task>
-pub fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e}
-pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
+
+test "both tasks finish before the scope returns" {
+  with Task.deterministic(1) { expect_eq(both(), (2, 4)) }
+}
 ```
 
-`Scope` and `Fiber<T>` are external types: the host runtime owns their representation and user code cannot construct them. A function that uses these operations has `Task` in its row. The child bodies' rows flow into the caller's row through `e`.
+- `Task.scope` opens a scope and passes it to the callback as `s`.
+- `Task.spawn(s, work)` starts a task in that scope and returns a **fiber**, a handle to the running task.
+- `Task.join(fiber)` waits for that task and returns its result.
+- `both` uses tasks, so its signature lists the `Task` effect. The test installs `Task.deterministic(1)`, a scheduler that runs tasks in the same order every time.
+
+## No async/await
+
+Sakura Lang has no `async`/`await` and no `Async` effect. Any function may pause while it waits, for a timer or a network reply, and nothing in your code can tell whether it did. Whether a call waits is decided by its [handler](/docs/tour/handlers): `Clock.sleep` waits under the real clock and returns at once under `Clock.fixed`.
+
+So you never mark functions as async. You only use `Task` when you want work to run at the same time.
 
 ## Scopes
 
-`Task.scope` opens a scope. `Task.spawn` starts a child in it and returns a `Fiber<T>`. `Task.join` waits for the child's result.
+A realistic example fetches two URLs at once:
 
 ```sakura
 import std/http.{Http, RateLimited}
@@ -55,13 +48,15 @@ fn load_both(a: Url, b: Url) -> (Response, Response) ! {Http, Task, Fail<HttpErr
 }
 ```
 
-Children never outlive their `Scope`. This gives three rules:
+The tasks' effects (`Http`, and the failures `HttpError | RateLimited`) become part of `load_both`'s signature. Tasks never outlive their scope, which gives three rules:
 
-- **Failure propagates.** If a child fails or defects, the scope cancels its siblings, joins them, and propagates the first failure. Other failures are attached as `suppressed` in the outcome.
-- **Defects are observed, not caught.** `Task.scope` observes a child's defect as `Outcome.Defect(info)`. `try` cannot catch it (design §5.4).
-- **Resources are released.** A `Fiber<T>` is a resource: affine and bound to its scope (design §8.4).
+- **Failure spreads.** If a task fails or hits a [defect](/docs/tour/effects#defects-are-not-effects) (a bug that stops it), the scope cancels the other tasks, waits for them, and passes the first failure on. Other failures are attached as `suppressed` in the outcome.
+- **Defects are observed, not caught.** `Task.scope` sees a task's defect as `Outcome.Defect(info)`. `try` cannot catch it.
+- **Resources are released.** A fiber is a [resource](/docs/tour/memory#resources): it is used at most once and belongs to its scope.
 
-`Task.all` runs a list of thunks and returns their results in order. `Task.race` returns the result of the first to finish. `Task.par_map`, a function of the `std/task` module, maps in parallel:
+## Running many at once
+
+`Task.all` runs a list of functions and returns their results in order. `Task.race` returns the result of the first to finish. `Task.par_map` maps over a list in parallel:
 
 ```sakura
 import std/http.{Http, RateLimited}
@@ -75,7 +70,7 @@ fn fetch_all(urls: List<Url>) -> List<Response> ! {Http, Task, Fail<HttpError | 
 
 ## Cancellation is cooperative
 
-A cancelled task stops at its next effect operation or at `Task.yield_now()`. Pure loops are not interruptible. A long pure computation that should respond to cancellation calls `Task.yield_now()` now and then:
+A cancelled task stops at its next effect operation or at `Task.yield_now()`. A loop of pure computation cannot be interrupted, so a long one should call `Task.yield_now()` now and then:
 
 ```sakura
 fn total_size(chunks: List<List<Int>>) -> Int ! {Task} {
@@ -90,13 +85,17 @@ fn total_size(chunks: List<List<Int>>) -> Int ! {Task} {
 
 ## Timers: `setTimeout`, `setInterval` and `clearTimeout`
 
-There are no timer ids. A web timer is a fiber or a loop in a scope:
+There are no timer ids. A timer is a task, or a loop, in a scope:
 
-- `setTimeout(work, d)` is a fiber that sleeps first, `Task.spawn(s, fn() { Clock.sleep(d); work() })`; `queueMicrotask` is `Task.spawn` without the sleep.
-- `clearTimeout` (and `AbortController.abort`) is `Task.cancel(f)`. The fiber unwinds through its finalizers before `cancel` returns, and it is used up: a later `Task.join(f)` is the defect `D095`. Cancelling a finished fiber does nothing else.
-- `setInterval(work, period)` is `every(period, body)` from `std/task`. Ticks never overlap: a tick that comes due while `body` runs is skipped, and the next call receives how many were skipped. `clearInterval` is `body` returning `false`, or `Task.cancel` of the fiber running the loop.
-- `AbortSignal.aborted` is `Task.cancelled(s)`: whether a child of `s` failed, so the scope is cancelling the others.
-- `performance.now()` and `console.time` are `Clock.monotonic_micros()`, microseconds on the monotonic clock.
+| In JavaScript | In Sakura Lang |
+| --- | --- |
+| `setTimeout(work, d)` | `Task.spawn(s, fn() { Clock.sleep(d); work() })` |
+| `queueMicrotask(work)` | `Task.spawn(s, work)` |
+| `clearTimeout`, `AbortController.abort` | `Task.cancel(f)` |
+| `setInterval(work, period)` | `every(period, body)` from `std/task` |
+| `clearInterval` | `body` returns `false`, or `Task.cancel` of the task running the loop |
+| `AbortSignal.aborted` | `Task.cancelled(s)` |
+| `performance.now()`, `console.time` | `Clock.monotonic_micros()` |
 
 ```sakura
 import std/task.{every}
@@ -116,19 +115,14 @@ fn heartbeat() -> Unit ! {Clock, Console, Task} {
 }
 ```
 
-Under `Clock.virtual()` the ticks are reproducible, so a test can check what `heartbeat` prints without waiting.
-
-## Handlers in child tasks
-
-Children inherit the handler environment at spawn time. A handler's `var` state is accessed serially, so two children performing the same effect go through the same instance one operation at a time (design §5.5).
-
-## No data races
-
-Values have value semantics and closures capture by value (design §8.1). There is no shared mutable memory, so data races cannot occur. Tasks communicate through their results (`join`, `all`, `race`), through handler state, and through bounded channels.
+- `Task.cancel(f)` runs the task's cleanup before it returns. The fiber is then used up: a later `Task.join(f)` is defect `D095`. Cancelling a finished task does nothing else.
+- `every` never overlaps ticks. A tick that comes due while `body` runs is skipped, and the next call receives how many were skipped.
+- `Task.cancelled(s)` is true when a task in `s` failed, so the scope is cancelling the others.
+- Under `Clock.virtual()` the ticks are reproducible, so a test can check what `heartbeat` prints without waiting.
 
 ## Channels
 
-`std/channel` is `MessageChannel` inside one program. `with_channel(capacity, body)` gives `body` a `Sender` and a `Receiver` for a queue of at most `capacity` items: `send` waits while it is full, `try_send` fails `Full` instead, and `recv` waits while it is empty and returns `None` once the channel is closed and drained. Both ends are resources, so neither can leave the callback (`V6003`), and the channel is closed when the callback returns.
+A **channel** is a queue that one task writes to and another reads from. `std/channel` works like `MessageChannel` inside one program:
 
 ```sakura
 import std/channel
@@ -159,9 +153,92 @@ fn sum_of_squares(n: Int) -> Int ! {Task} {
 }
 ```
 
-The producer runs at most four items ahead of the consumer. Under `Task.deterministic(seed)` the interleaving is the same on every run and every backend. A program in which every task waits, such as a `recv` that no `send` or `close` will answer, ends with the defect `D090` instead of hanging. `Source.buffer(src, capacity, body)` and `Source.tee(src, max_lag, body)` from `std/stream` are built on channels. The source their `body` receives, like the one `decompress_source` hands its body, is `Done` once that callback returns, so read it inside the callback.
+- `with_channel(capacity, body)` gives `body` a `Sender` and a `Receiver` for a queue of at most `capacity` items. Here the producer runs at most four items ahead of the consumer.
+- `send` waits while the queue is full; `try_send` fails with `Full` instead.
+- `recv` waits while the queue is empty, and returns `None` once the channel is closed and drained.
+- Both ends are resources, so neither can leave the callback (`V6003`). The channel closes when the callback returns.
+- If every task is waiting, such as a `recv` that no `send` or `close` will answer, the program ends with defect `D090` instead of hanging.
+- Under `Task.deterministic(seed)` the order is the same on every run and every backend.
 
-Logical races with the outside world, such as two tasks reading and then writing the same database row, are still possible. The type system does not prove their absence.
+`Source.buffer(src, capacity, body)` and `Source.tee(src, max_lag, body)` from `std/stream` are built on channels. The source their `body` receives, like the one `decompress_source` hands its body, is `Done` once that callback returns, so read it inside the callback.
+
+## No data races
+
+Values are copies and closures capture copies (see [Memory model](/docs/tour/memory)). There is no shared mutable memory, so data races cannot happen. Tasks communicate through their results (`join`, `all`, `race`), through handler state, and through channels.
+
+Child tasks inherit the handlers installed when they were spawned. A handler's `var` state is accessed one operation at a time, so two tasks using the same effect take turns.
+
+Logical races with the outside world are still possible, such as two tasks reading and then writing the same database row. The type system does not rule those out.
+
+## Timeouts, retries, and budgets
+
+All three are ordinary library functions or handlers, not syntax:
+
+- **`retry(policy, action)`** runs `action` again when it fails with an error the policy accepts, waiting longer each time.
+- **`timeout(limit, action)`** cancels `action` if it takes longer than `limit`, then fails with `Timeout { limit }`.
+- **`Budget.limits(limits)`** is a handler that caps tokens, cost and calls for the code inside it.
+
+This function fetches two URLs at once, retries rate-limited requests, and gives up after five seconds:
+
+```sakura
+import std/http.{Http, RateLimited, Matcher}
+import std/response.{HttpError, Response}
+import std/url.{Url}
+import std/retry.{Policy, retry}
+import std/task.{Timeout, timeout}
+
+fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
+  let policy: Policy<HttpError | RateLimited> = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
+                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
+  timeout(Duration.seconds(5), fn() {
+    Task.scope(fn(s) {
+      let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
+      let fb = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(b), 1_000_000).trust(@trust("display only")) }) })
+      (Task.join(fa), Task.join(fb))
+    })
+  })
+}
+```
+
+**Retry.**
+
+- Each attempt is a new call; a failed one is never resumed.
+- `retry_on` is a pure function over the action's error type `E`, which is why `Policy` takes `E` as a parameter. `retry.policy(retry_on, max_attempts)` builds a policy with default backoff, or set the record fields yourself.
+- The first retry waits `backoff`, each later wait doubles, `jitter` randomizes the wait, and `deadline` bounds the total time.
+- When attempts run out, the last error propagates.
+- The standard HTTP client refuses to retry non-idempotent methods without an idempotency key.
+
+**Timeout.** `timeout` cancels the action's task at its next effect operation, waits for it to finish its cleanup, then fails with `Timeout { limit }`. `std/task.Timeout` is the only timeout error in the standard library; `LlmError` reuses it.
+
+**Budget.** `Budget` is an effect with `reserve` and `settle`, and `Llm` and `Http` handlers use it when it is installed. Exceeding it fails with `BudgetExceeded`, whose `kind` is `Tokens`, `Usd`, `Calls`, `Bytes`, or `Time`. Child tasks inherit the budget and split it. A budget is installed as a handler with a `Limits` record:
+
+This excerpt is from a larger `main`; it is not a standalone program.
+
+```sakura fragment
+let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
+with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
+  let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
+  Console.print("{t.priority}: {t.title}")
+}
+```
+
+## Determinism
+
+Time, randomness and scheduling are all effects, so a test can replace all three and get the same run every time:
+
+```sakura context=fetch-both
+test "deterministic under virtual time" {
+  with Http.scripted([(Matcher.Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
+    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
+  }
+}
+```
+
+- `Task.deterministic(seed)` makes the task order reproducible.
+- `Clock.virtual()` advances only when told to, so sleeps and timeouts cost no real time.
+- Evaluation is strict and left to right, and `Map` and `Set` iterate in insertion order on every backend.
+
+See [Testing](/docs/tour/testing#deterministic-simulation) for more.
 
 ## Workers (experimental)
 
@@ -169,7 +246,7 @@ Logical races with the outside world, such as two tasks reading and then writing
   `std/worker` and the `@worker` attribute are outside the 1.0 contract and may change in any release. Live workers and topics run on every target: as `node:worker_threads` threads on JavaScript and on WebAssembly under Node, and as OS threads with a second instance on native. `Worker.inline()` runs on every target too.
 </Callout>
 
-A worker is `new Worker` without shared memory: a second instance of the program, running one function declared `@worker` with its own heap and its own root handlers. `Worker.spawn(entry, grants, body)` starts it and gives `body` a handle. `send` (`postMessage`) and `recv` (`onmessage`, as a value) carry messages through the `Schema` codec, so closures, handlers, resources and `Secret` cannot cross. `recv` returns `Message(v)`, `Finished` once the worker's function has returned and its messages are read, or `Failed(WorkerError)` when it ended on a defect (`ErrorEvent`). When `body` returns, the worker is cancelled, as a fiber is.
+A **worker** is like `new Worker` in JavaScript without shared memory: a second copy of the program, running one function marked `@worker`, with its own memory and its own permissions.
 
 ```sakura
 import std/worker.{Grants, Inbox, Message, Outbox, Worker, WorkerError}
@@ -208,21 +285,71 @@ test "a worker measures each part" {
 }
 ```
 
-- **Grants.** A worker's authority is its `Grants`: `Grants.none()`, the isolation `ShadowRealm` would give, or `Grants.of(table)` with lists shaped like `[permissions]`. They must be a subset of the parent's own table, and must give every effect the worker's function declares its permission, or `spawn` returns `Err(WorkerError(GrantExceeded))` and nothing runs. A worker spawns its own workers within its grants.
-- **Rows.** The worker's effects are part of `spawn`'s row, so a parent that spawns a worker declaring `Http` declares `Http` too.
+- `Worker.spawn(entry, grants, body)` starts the worker and gives `body` a handle. When `body` returns, the worker is cancelled.
+- `send` (`postMessage`) and `recv` (`onmessage`) carry messages that are encoded and decoded, so closures, handlers, resources and `Secret` cannot cross.
+- `recv` returns `Message(v)`, `Finished` once the worker's function has returned and its messages are read, or `Failed(WorkerError)` when it ended on a defect.
+- **Grants.** A worker's permissions are its `Grants`: `Grants.none()`, or `Grants.of(table)` with lists shaped like `[permissions]`. They must be a subset of the parent's permissions and must cover every effect the worker declares, or `spawn` returns `Err(WorkerError(GrantExceeded))` and nothing runs. A worker can spawn its own workers within its grants.
+- **Effects.** The worker's effects are part of `spawn`'s effects, so a parent that spawns a worker declaring `Http` declares `Http` too.
 - **Limits.** At most 16 workers are live in an instance (`Limit`), and each direction holds 64 unreceived messages before `send` waits.
-- **Topics.** `Worker.topic(name)` is `BroadcastChannel`: `subscribe(topic, capacity, body)` gives `body` a bounded queue of what is published from then on, in any instance of the process, and `publish` never waits. A subscription in this instance whose queue is full misses the message, and `publish` returns `Err(Full)`.
-- **Tests.** `Worker.inline()` runs the worker as a fiber of the same instance through the same codec, so the test above needs no thread. It refuses any grant but `none()`, and the worker uses the test's own handlers.
+- **Topics.** `Worker.topic(name)` is like `BroadcastChannel`: `subscribe(topic, capacity, body)` gives `body` a bounded queue of what is published from then on, in any instance of the process. `publish` never waits; a subscriber in this instance whose queue is full misses the message, and `publish` returns `Err(Full)`.
+- **Tests.** `Worker.inline()` runs the worker as a task in the same instance, through the same encoding, so the test above needs no thread. It refuses any grant except `none()`, and the worker uses the test's own handlers.
 
 ## Detached work
 
-There is no fire-and-forget spawn and no detached work in v0: every fiber belongs to a scope. A supervisor for long-running work is deferred (design §16.14). A capability, or a handler that captured one, may not flow into a `Task.spawn` closure whose scope outlives the `with` that produced it (`V6002`).
+Every task belongs to a scope. There is no fire-and-forget spawn and no supervisor for long-running work. A capability, or a handler that captured one, may not flow into a `Task.spawn` closure whose scope outlives the `with` that produced it (`V6002`).
 
-## Timeouts, retries, and budgets
+## Runtime model
 
-All three are ordinary std functions over thunks (design §5.9):
+The JavaScript backend is single-threaded. A live host operation, such as `Clock.sleep` or `Http.send`, pauses the program until the host answers. The experimental native backend targets single-thread execution; worker threads and cross-thread reference counting are not a current guarantee.
 
-This is a declaration or context-dependent excerpt, not a standalone program.
+## Not in v0
+
+- An `Async` effect, `async`/`await`, or async-only functions.
+- Durable workflows. They are planned as a later official package, not part of the language.
+- Actors. `spawn` and `actor` are reserved keywords (`Task.spawn` is legal because a reserved word is accepted after `.`).
+- Detached or supervised tasks, and timer ids (`setTimeout` is a task, above).
+- Shared mutable state or locks in user code.
+
+## What the compiler checks
+
+- Code that uses `Task` operations declares `Task` in its effects (`V3001` otherwise).
+- Child tasks' effects flow into the parent's effects.
+- A capability or capturing handler does not escape into a task that outlives its scope (`V6002`).
+- A fiber does not outlive its scope.
+- A channel's `Sender` or `Receiver` is not returned from `with_channel`'s callback or kept in handler state (`V6003`).
+- `Worker.spawn` takes a non-generic function declared `@worker` (`V1010`), and a worker's message types have `Schema` (`V2032`).
+
+## Reference
+
+### The `Task` effect
+
+This is the declaration from `std/task`; it is not a standalone program.
+
+```sakura fragment
+// std/task
+pub type Scope          // external, scoped
+pub type Fiber<T>       // external, scoped, affine
+pub effect Task {
+  fn scope<T, e>(body: fn(Scope) -> T ! e) -> T ! e
+  fn spawn<T, e>(s: Scope, body: fn() -> T ! e) -> Fiber<T> ! e
+  fn join<T>(f: Fiber<T>) -> T
+  fn all<T, e>(bodies: List<fn() -> T ! e>) -> List<T> ! e
+  fn race<T, e>(bodies: List<fn() -> T ! e>) -> T ! e
+  fn yield_now() -> Unit
+  fn cancel<T>(f: Fiber<T>) -> Unit
+  fn cancelled(s: Scope) -> Bool
+}
+pub fn host() -> Handler<Task>
+pub fn deterministic(seed: Int) -> Handler<Task>
+pub fn every<e>(period: Duration, body: fn(Int) -> Bool ! e) -> Unit ! {Clock, Task | e}
+pub fn par_map<A, B, e>(xs: List<A>, f: fn(A) -> B ! e) -> List<B> ! {Task | e}
+```
+
+`Scope` and `Fiber<T>` are external types: the host owns them and your code cannot construct them. The lowercase `e` carries the tasks' effects into the caller's effects.
+
+### Retry, timeout and budget signatures
+
+These are declarations from `std/retry`, `std/task` and `std/budget`; they are not a standalone program.
 
 ```sakura fragment
 // std/retry
@@ -237,79 +364,8 @@ type Limits = { tokens: Option<Int>, usd: Option<Float>, calls: Option<Int> }   
 fn limits(l: Limits) -> Handler<Budget>
 ```
 
-- `retry` starts a **new invocation** per attempt. It never resumes a failed one. `retry_on` is a pure predicate over the action's error union `E`, which is why `Policy` takes the error type as a parameter. `retry.policy(retry_on, max_attempts)` builds a policy with default backoff; the record fields can also be set directly. The first retry waits `backoff`, each later wait doubles, `jitter` randomizes the wait, and `deadline` bounds the total time. When attempts run out, the last error propagates; no extra "exhausted" tag is added. The std HTTP client refuses to retry non-idempotent methods without an idempotency key.
-- `timeout` cancels the action's task at its next effect operation, joins it, then fails with `Timeout { limit }`. Finalizers run. `std/task.Timeout` is the only timeout tag in std; `LlmError` reuses it.
-- `Budget` is an effect with `reserve` and `settle`. `Llm` and `Http` handlers consume it when it is installed. Exceeding it fails with `BudgetExceeded`, whose `kind` is `Tokens`, `Usd`, `Calls`, `Bytes`, or `Time`. Child tasks inherit the budget, split atomically.
-
-A complete retry function, adapted from design §15.10:
-
-```sakura
-import std/http.{Http, RateLimited, Matcher}
-import std/response.{HttpError, Response}
-import std/url.{Url}
-import std/retry.{Policy, retry}
-import std/task.{Timeout, timeout}
-
-fn fetch_both(a: Url, b: Url) -> (String, String) ! {Http, Task, Clock, Random, Fail<HttpError | RateLimited | Timeout>} {
-  let policy: Policy<HttpError | RateLimited> = Policy { retry_on: fn(e) { match e { RateLimited { .. } => true, _ => false } },
-                        max_attempts: 3, backoff: Duration.millis(200), jitter: true, deadline: None }
-  timeout(Duration.seconds(5), fn() {
-    Task.scope(fn(s) {
-      let fa = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(a), 1_000_000).trust(@trust("display only")) }) })
-      let fb = Task.spawn(s, fn() { retry(policy, fn() { Response.text(Http.get(b), 1_000_000).trust(@trust("display only")) }) })
-      (Task.join(fa), Task.join(fb))
-    })
-  })
-}
-```
-
-A budget is installed as a handler and configured with a `Limits` record. From `main` in design §15.7:
-
-This is a declaration or context-dependent excerpt, not a standalone program.
-
-```sakura fragment
-let limits = Limits { tokens: Some(20_000), usd: Some(0.50), calls: None }
-with Llm.anthropic(key, Model.of("claude-sonnet-5-5")), Budget.limits(limits) {
-  let t = extract_ticket(Untrusted.of("Login page 500s since 9am, blocking all customers"))
-  Console.print("{t.priority}: {t.title}")
-}
-```
-
-## Determinism
-
-Evaluation is strict and left to right, arguments before the call. `Map` and `Set` iterate in insertion order on every backend. `Clock`, `Random`, and `Task` are effects, so a test can replace all three (design §8.7):
-
-```sakura context=fetch-both
-test "deterministic under virtual time" {
-  with Http.scripted([(Matcher.Any, Response.status(200, "x"))]), Clock.virtual(), Random.seeded(1), Task.deterministic(1) {
-    expect_eq(fetch_both(Url.from("https://a"), Url.from("https://b")), ("x", "x"))
-  }
-}
-```
-
-Under `Task.deterministic(seed)` scheduling is reproducible. `Clock.virtual()` advances only when told to. This is how `with` doubles as Sakura Lang's deterministic-simulation mechanism. See [Testing](/docs/tour/testing).
-
-## Runtime model
-
-The first backend compiles to JavaScript with a CPS trampoline and is single-threaded. A live host handler, such as `Clock.sleep` or `Http.send`, suspends by returning a step the driver awaits (design §13.3). The experimental native backend targets single-thread execution; worker threads and cross-thread atomic reference counting are not a current guarantee.
-
-## Not in v0
-
-- An `Async` effect, `async`/`await`, or colored functions (design §5.6).
-- Durable workflows. They are a later official package, not part of the language (design §1.1, §11.3).
-- Actors. `spawn` and `actor` are reserved keywords (`Task.spawn` is legal because a reserved word is accepted after `.`).
-- Detached or supervised tasks, and timer ids (`setTimeout` is a fiber, above).
-- Shared mutable state or locks in user code.
-
-## What the compiler checks
-
-- Code that uses `Task` operations declares `Task` in its row (`V3001` otherwise).
-- Child rows flow into the parent's row through the `e` variables of `Task`'s operations.
-- A capability or capturing handler does not escape into a task that outlives its scope (`V6002`).
-- A `Fiber<T>` does not outlive its scope.
-- A channel's `Sender` or `Receiver` is not returned from `with_channel`'s callback or kept in handler state (`V6003`).
-- `Worker.spawn` takes a non-generic function declared `@worker` (`V1010`), and a worker's message types have `Schema` (`V2032`).
-
 ## Next
 
-That is the end of the tour. Continue with [For Agents](/docs/agents) to see how agents work with the toolchain, or the [Standard library](/docs/stdlib).
+[Embedding a library in Node](/docs/tour/embedding): call Sakura Lang functions from a Node program.
+
+Details for contributors: [design §5.4–§5.6, §5.9, §8.1, §8.4, §8.7, §13.3, §15.7, §15.10, §16.14](https://github.com/icantcodefyi/sakuralang/blob/main/docs/design.md).
