@@ -520,6 +520,55 @@ class Bless(unittest.TestCase):
                              ["baselines/wasm/test.json"])
 
 
+class NativeLane(unittest.TestCase):
+    """Plan M5 row M (§17.308 (2k)): Sakura's native executable in `--suite native`."""
+
+    def test_a_native_run_is_blessed_beside_the_js_baseline_not_over_it(self):
+        run = loaded(doc(pair(20.0, 10.0)), load=9.0)  # a counted run needs no quiet host
+        run["meta"]["flags"] = {"suite": "native", "metric": "instructions"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run.json"
+            path.write_text(json.dumps(run))
+            with patch.object(bench, "BENCH", Path(tmp)), patch.object(bench, "ROOT", Path(tmp)), \
+                 contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(bench.main(["bless", str(path)]), bench.EXIT_OK)
+            self.assertEqual([p.relative_to(tmp).as_posix() for p in Path(tmp).rglob("test.json")],
+                             ["baselines/native/test.json"])
+
+    def test_the_unretained_rbtree_twin_retains_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp, patch.object(bench, "TARGET", Path(tmp)), \
+             patch.object(bench, "sh") as sh:
+            exe = bench.unretained_rbtree()
+            source = (Path(tmp) / "rbtree-unretained" / "main.sak").read_text()
+        self.assertIn("if false { kept = List.push(kept, t) }", source)
+        self.assertNotIn("i % 100 == 0", source)
+        self.assertEqual(exe, Path(tmp) / "native-run" / "rbtree-unretained" / "main")
+        self.assertEqual(sh.call_args.args[0][1:4], ["build", "--target", "native"])
+
+    def test_the_m5_envelope_reads_counts_against_the_m5_ceilings(self):
+        """§17.308 (2): the ceilings are on the metric the baseline counts; a loaded host does
+        not make a counted reading advisory (§17.264)."""
+        cells = {(p, v, "native", "native", 100): 10.0 for p in ENVELOPE_PROGRAMS for v in bench.NATIVE}
+        cells.update({(p, "sakura", "native", "native", 100): 11.0 for p in ENVELOPE_PROGRAMS})
+        native = loaded(window_doc("native", cells), load=9.0)
+        native["meta"]["flags"]["metric"] = "instructions"
+        for r in native["results"]:
+            r["instructions"] = r["median_ms"] * 1e6
+        with patch.object(bench, "programs", lambda pattern="*": fnmatch.filter(ENVELOPE_PROGRAMS, pattern)):
+            out = bench.envelope(None, native)
+        got = {(r["program"], r["against"]): (r["ceiling"], r["status"]) for r in out["rows"]}
+        self.assertEqual(got[("fib", "rust")], (1.5, "met"))
+        self.assertEqual(got[("fib", "go")], (1.0, "miss"))
+        self.assertEqual(got[("map_set", "koka-noreuse")], (1.2, "met"))
+        self.assertEqual(got[("handled_d1", "koka")], (1.0, "miss"))
+        self.assertEqual((out["envelope"], out["metric"], out["reading"]), ("M5", "instructions", "miss"))
+        self.assertAlmostEqual(out["rows"][0]["ratio"], 1.1)
+        self.assertIn("M5 envelope on instructions per call", bench.envelope_markdown(out))
+        self.assertIsNone(bench.refusal(None, native))
+        native["meta"]["flags"]["lane"] = "idiomatic"
+        self.assertIn("reads Rust matched", bench.refusal(None, native))
+
+
 class AdvisoryCompare(unittest.TestCase):
     base = doc(pair(20.0, 10.0))
 
@@ -990,7 +1039,7 @@ class Envelope(unittest.TestCase):
 
     def test_the_native_panel_times_both_koka_lanes(self):
         self.assertEqual([v for v, _b, _e in bench.variants("native", [], "rbtree")],
-                         ["rust", "go", "ocaml", "koka", "koka-noreuse"])
+                         ["sakura", "rust", "go", "ocaml", "koka", "koka-noreuse"])
         with patch.object(bench, "sh") as sh, tempfile.TemporaryDirectory() as tmp, \
              patch.object(bench, "TARGET", Path(tmp)):
             bench.NATIVE["koka-noreuse"][2]("rbtree", "matched")

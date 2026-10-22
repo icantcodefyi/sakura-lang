@@ -226,6 +226,8 @@ bench/bench compile-native --instructions --json bench/target/counted-compile-na
 bench/bench typescript --json bench/target/counted-typescript.json > bench/target/counted-typescript.md
 bench/bench envelope bench/target/counted-wasm.json bench/target/counted-native.json \
   --json bench/target/envelope.json --md bench/target/envelope.md
+bench/bench envelope bench/target/counted-native.json \
+  --json bench/target/envelope-m5.json --md bench/target/envelope-m5.md
 ```
 
 `run` prints a table of instructions per call, Sakura/hand-JS ratios of those counts and
@@ -249,7 +251,10 @@ first beta that ships `--target native`, design §17.308 (2b) (iii)) counts the 
 retired per phase of `sakura build --target native` (frontend, lowering, codegen, object, link)
 for every bench program and the wide-function curve, at p95 with wall time beside, and names
 each phase whose count grows more than 2× from 16,384 to 32,768 rows; the round that reads the
-blessed file sets §17.175 (4)'s native compile budget from it.
+blessed file sets §17.175 (4)'s native compile budget from it. The `native` run counts Sakura's own
+native executable (`--target native`, row M of the M5 plan) beside the ports, with each cell's
+`stats()` counters and `rbtree`'s paired unretained twin; `envelope` given that file alone reads
+§17.109's M5 ceilings on its instruction counts (design §17.308 (2)), wall time beside.
 
 **Bless** (the owner's step; `bless` refuses a run with a failed oracle or one made from a dirty
 `compiler/` or `bench/` tree; a counted run needs no quiet host). Under the owner's written
@@ -262,7 +267,12 @@ bench/bench bless bench/target/counted-js.json      # -> bench/baselines/<host-i
 bench/bench bless bench/target/counted-wasm.json    # -> bench/baselines/wasm/<host-id>.json
 bench/bench bless bench/target/counted-typescript.json  # -> bench/baselines/typescript/<host-id>.json
 bench/bench bless bench/target/counted-compile-native.json  # -> bench/baselines/compile-native/<host-id>.json
+bench/bench bless bench/target/counted-native.json  # from beta.5 -> bench/baselines/native/<host-id>.json
 ```
+
+The first native run-time baseline is blessed at `v1.0.0-beta.5`'s preparation commit (design
+§17.308 (2), §17.310: row M, then "the first native number is beta.5's baseline"), not between
+releases; a native run at another commit is evidence in `bench/results/`, read as direction.
 
 The `typescript` run (from `v1.0.0-beta.3` on) puts `sakura check` beside `tsc --noEmit` and a
 built program's cold start beside Node running the TypeScript twin. The website shows its
@@ -290,15 +300,18 @@ the candidate is direction, marked `pending owner bless` in `bench/deltas.md`.
 **Done 2026-10-20:** the baselines are the `3bf2343f` runs under the flags above
 ([checklist](plans/m4-exit-checklist.md)); compares from then on read them.
 
-The native, compile and timed `compile-native` runs are evidence, not baselines, and are not
-blessed; the counted `compile-native` report is blessed with the baseline.
+The compile and timed `compile-native` runs are evidence, not baselines, and are not blessed; the
+counted `compile-native` report is blessed with the baseline, and from beta.5 so is the counted
+`native` run. A native run before then is evidence.
 
 **Evidence files**, committed on `main` (`D` is the date, `C` the short commit, `H` the host id):
 
 - `bench/baselines/H.json` and `bench/baselines/wasm/H.json`: the two blessed runs, and
-  `bench/baselines/typescript/H.json` from `v1.0.0-beta.3` on.
+  `bench/baselines/typescript/H.json` from `v1.0.0-beta.3` on, `bench/baselines/native/H.json`
+  from `v1.0.0-beta.5` on.
 - `bench/results/D-C-js.json`, `D-C-wasm.json`, `D-C-native.json`, `D-C-compile.json`, their
-  `.md` tables, `D-C-envelope.json` and `D-C-envelope.md`.
+  `.md` tables, `D-C-envelope.json` and `D-C-envelope.md`, and `D-C-envelope-m5.json` and
+  `.md` from the native run.
 - `bench/deltas.md`: the envelope's Markdown and each program's reading against its §17.109
   ceiling, every miss with its named decision.
 - The checklist line for the baseline with your name, the date and `meta.commit`, and the

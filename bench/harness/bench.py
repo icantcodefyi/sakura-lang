@@ -167,6 +167,45 @@ def wasmtime(p, entry, inputs, repeat=None):
     return ["wasmtime", "run", str(WASI_BUILT[key])]
 
 
+def build_sakura_native(p, src=None):
+    """programs/<p> with `--target native` (the CLI built by `build_native_cli`): the executable,
+    whose `main` prints run(n) for each argument and `negative(k)` for `negative k`."""
+    out = TARGET / "native-run" / p
+    sh([str(SAKURA), "build", "--target", "native", "--out-dir", str(out), str(src or PROGRAMS / p / "sakura" / "main.sak")])
+    return out / "main"
+
+
+def native_stats(exe, args):
+    """The native executable's `stats()` counters after one `main` with these arguments, the line
+    the driver appends under `SAKURA_NATIVE_STATS` (ABI §10), as `wasm_stats` reads the WASM
+    module's; with the reuse hit rate."""
+    with tempfile.TemporaryDirectory() as d:
+        path = Path(d) / "stats.jsonl"
+        r = run([str(exe), *map(str, args)], env={**os.environ, "SAKURA_NATIVE_STATS": str(path)})
+        if r.returncode != 0 or not path.exists():
+            raise Fail(f"`{exe}` exited {r.returncode}: {r.stderr[-2000:]}")
+        stats = json_lines(path.read_text())[-1]
+    attempts = stats["reuse_attempts"]
+    stats["reuse_rate"] = stats["reuses"] / attempts if attempts else None
+    return stats
+
+
+def unretained_rbtree():
+    """The paired `rbtree` protocol (design §17.118; research/12 §7): `rbtree` with no version
+    retained, its source with the `retain_every` test made false, so every old version dies at
+    the next insert. It is counted for its reuse hit rate beside the program's own, never timed
+    and never a cell: its checksum is the final size alone."""
+    every = meta("rbtree")["retain_every"]
+    source = (PROGRAMS / "rbtree" / "sakura" / "main.sak").read_text()
+    test = f"i % {every} == 0"
+    if source.count(test) != 1:
+        raise Fail(f"rbtree: the retain test `{test}` is not in its source once")
+    path = TARGET / "rbtree-unretained" / "main.sak"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(source.replace(test, "false"))
+    return build_sakura_native("rbtree-unretained", path)
+
+
 # ponytail: reads wasmtime's backtrace text and the backend's D090 message; a structured outcome
 # from the WASI command would replace both.
 def no_wasi(error):
@@ -246,9 +285,16 @@ def variants(suite, engines, p):
         out += [(v, "js", e) for e in engines if e in JS_ENGINES for v in ("sakura", "js")]
     if suite == "wasm":
         out += [("sakura", "wasm", e) for e in engines if e in WASM_ENGINES] + [("js", "js", "node")]
-    if suite in ("native", "all"):
+    if suite in ("native", "all"):  # Sakura with `--target native` (row M), then the ports
+        out += [("sakura", "native", "native")]
         out += [(v, "native", "native") for v, (src, *_rest) in NATIVE.items() if (PROGRAMS / p / src).exists()]
     return out
+
+
+def sakura_native(variant, engine):
+    """A cell of Sakura's native executable, which speaks its program's `main` (a size per
+    argument, `negative k`) and not the ports' JSON-lines protocol."""
+    return variant == "sakura" and engine == "native"
 
 
 def cell(r):
@@ -318,6 +364,8 @@ def json_lines(text):
 
 def values(variant, engine, artefact, inputs, entry="run"):
     """{"<n>": checksum} of entry(n) for each input, from one process."""
+    if sakura_native(variant, engine):  # `run` only: cases are the JS panel's, as for the ports
+        return dict(zip(map(str, inputs), spawn([str(artefact), *map(str, inputs)])[0].splitlines()))
     if engine == "wasmtime":
         r = run(wasmtime(artefact, entry, inputs))
         if r.returncode != 0:
@@ -335,6 +383,10 @@ def defect(variant, engine, artefact, k):
         r = run(wasmtime(artefact, "negative", [k]))
         m = re.match(r"defect (D\d{3}):", r.stderr)
         return m[1] if r.returncode == 70 and m else None
+    if sakura_native(variant, engine):  # exits 70 after the defect record, a JSON line on stderr
+        r = run([str(artefact), "negative", str(k)])
+        record = next((json.loads(l) for l in reversed(r.stderr.splitlines()) if l.startswith("{")), {})
+        return record.get("code") if r.returncode == 70 and record.get("kind") == "defect" else None
     return json_lines(spawn(command(variant, engine, artefact, "negative", k))[0])[-1]["defects"][str(k)]
 
 
@@ -373,6 +425,8 @@ def measure(variant, engine, artefact, n, stable, case=None):
     """One fresh process: nine samples (ms per call), the checksum, peak RSS."""
     if engine == "wasmtime":
         return measure_lines(wasmtime(artefact, f"run_{case}" if case else "run", [n], repeat=FOREVER), stable)
+    if sakura_native(variant, engine):
+        return measure_calls(artefact, n)
     out, rss = spawn(command(variant, engine, artefact, "measure", n, *(["--stable"] if stable else []),
                              *(["--fn", f"run_{case}"] if case else [])))
     lines = json_lines(out)
@@ -382,6 +436,31 @@ def measure(variant, engine, artefact, n, stable, case=None):
     else:
         samples, checksum = lines[-1]["samples_ms"], lines[-1]["checksum"]
     return samples, str(checksum), rss
+
+
+def measure_calls(exe, n):
+    """A Sakura native cell's timed protocol. The native host flushes stdout every 256 lines and
+    when a task ends, as the JS host does, so a process printing until it is killed cannot be timed
+    by when its lines arrive; instead, as a counted cell is: a power-of-two `calls` whose 1 + `calls`
+    process outlasts the one-call process (the median of three after one discarded) by ≥ 30 ms,
+    then nine such processes, each sample (its wall time less the one-call process's) / `calls`. Start-up and the first call are outside every
+    sample; there is no in-process warm-up, which ahead-of-time code does not need."""
+    def wall(calls):
+        t = time.perf_counter()
+        out, rss = spawn([str(exe), *[str(n)] * calls])
+        return time.perf_counter() - t, out, rss
+
+    wall(1)  # a fresh executable's first exec pays macOS's one-time check
+    one = statistics.median(wall(1)[0] for _ in range(3))
+    calls = 1
+    while calls < MAX_CALLS and wall(1 + calls)[0] - one < 0.03:
+        calls *= 2
+    samples, out, rss = [], "", 0
+    for _ in range(9):
+        t, out, peak = wall(1 + calls)
+        samples.append(max(t - one, 0) * 1000 / calls)
+        rss = max(rss, peak)
+    return samples, out.splitlines()[-1], rss
 
 
 def measure_lines(cmd, stable, timeout=PROCESS_TIMEOUT):
@@ -421,7 +500,10 @@ def measure_lines(cmd, stable, timeout=PROCESS_TIMEOUT):
         finally:
             watchdog.cancel()
             proc.kill()
-            _pid, _status, ru = os.wait4(proc.pid, 0)
+            try:
+                _pid, _status, ru = os.wait4(proc.pid, 0)
+            except ChildProcessError:  # it had exited and `kill`'s poll reaped it: a Fail is raised
+                pass
             proc.returncode = -9  # reaped by wait4, not Popen
             proc.stdout.close()
     return samples, last.decode().strip(), ru.ru_maxrss * (1 if sys.platform == "darwin" else 1024)
@@ -474,6 +556,8 @@ def calls_command(variant, engine, artefact, n, calls, case=None):
     entry = f"run_{case}" if case else "run"
     if engine == "wasmtime":
         return wasmtime(artefact, entry, [n], repeat=calls)
+    if sakura_native(variant, engine):  # the ports' argv form: one size per call
+        return [str(artefact), *[n] * calls]
     return command(variant, engine, artefact, "values", *(["--fn", entry] if case else []), *[n] * calls)
 
 
@@ -483,7 +567,8 @@ def count_calls(variant, engine, artefact, n, calls, case=None):
     call's compilation."""
     one = counted(calls_command(variant, engine, artefact, n, 1, case))[1]
     out, many = counted(calls_command(variant, engine, artefact, n, 1 + calls, case))
-    checksum = out.splitlines()[-1] if engine == "wasmtime" else json_lines(out)[-1]["values"][str(n)]
+    plain = engine == "wasmtime" or sakura_native(variant, engine)
+    checksum = out.splitlines()[-1] if plain else json_lines(out)[-1]["values"][str(n)]
     return one, many, str(checksum)
 
 
@@ -634,12 +719,14 @@ def cmd_run(a):
     if a.suite in ("js", "all", "wasm"):
         missing += [e for e in engines if not shutil.which(e)]
     if a.suite in ("native", "all"):
-        missing += [tool for tool in dict.fromkeys(t for _s, t, *_r in NATIVE.values()) if not shutil.which(tool)]
+        missing += [tool for tool in dict.fromkeys(["cc", *(t for _s, t, *_r in NATIVE.values())]) if not shutil.which(tool)]
     for tool in missing:
         log(f"[missing] {tool}: its variants are skipped")
     status = EXIT_TOOLCHAIN if missing else EXIT_OK
 
     build_cli()
+    if a.suite in ("native", "all") and "cc" not in missing:  # the CLI again, with `--target native`
+        os.environ["SAKURA_NATIVE_LIB_DIR"] = str(build_native_cli())
     jobs = []  # (program, case, variant, backend, engine, artefact, size)
     stats = {}  # (program, case, size) → the WASM module's counters, from the Node host (§17.118)
     for p in programs(a.filter):
@@ -647,7 +734,7 @@ def cmd_run(a):
         sizes = m["sizes"][:2] if sizes_flag == "quick" else m["sizes"]
         built, verified, failed = {}, [], False
         for variant, backend, engine in variants(a.suite, engines, p):
-            tool = engine if engine != "native" else NATIVE[variant][1]
+            tool = engine if engine != "native" else "cc" if variant == "sakura" else NATIVE[variant][1]
             if tool in missing:
                 continue
             try:
@@ -657,6 +744,7 @@ def cmd_run(a):
                     if (variant, backend) not in built:  # one build per variant, shared by the engines
                         built[(variant, backend)] = (build_sakura(p) if (variant, backend) == ("sakura", "js") else
                                                      build_wasm(p) if backend == "wasm" else
+                                                     build_sakura_native(p) if variant == "sakura" else
                                                      PROGRAMS / p / "js" / "main.mjs" if variant == "js" else
                                                      NATIVE[variant][2](p, a.lane))
                     art = built[(variant, backend)]
@@ -672,6 +760,12 @@ def cmd_run(a):
                     for c in [None, *cases(m, engine)]:
                         for n in sizes:
                             stats[(p, c, n)] = wasm_stats(built[("sakura", "wasm")], [n] if c is None else [c, n])
+                if sakura_native(variant, engine):  # the native counters, and `rbtree`'s pair (§17.118)
+                    twin = unretained_rbtree() if p == "rbtree" else None
+                    for n in sizes:
+                        stats[(p, "native", n)] = native_stats(art, [n])
+                        if twin:
+                            stats[(p, "native", n)]["unretained"] = native_stats(twin, [n])
                 verified.append((variant, backend, engine, art))
             except NoWasi as e:  # §17.191 (2): the Wasmtime cell of an impure program is absent
                 log(f"[absent] {e}")
@@ -738,7 +832,8 @@ def cmd_run(a):
             "lane": a.lane, "ints": m["ints"], "size": n, **measured,
             "checksum_ok": all(c == expected for c in checksums),
             "checksum": next((c for c in checksums if c != expected), expected),
-            **({"stats": stats.get((p, case, n))} if backend == "wasm" else {})})
+            **({"stats": stats.get((p, case, n))} if backend == "wasm" else {}),
+            **({"stats": stats.get((p, "native", n))} if sakura_native(variant, engine) else {})})
         if not res["results"][-1]["checksum_ok"]:
             status = EXIT_ORACLE
 
@@ -1106,17 +1201,31 @@ M4_ENVELOPE = (
     (("tokenizer", "json_validate"), (("rust", 3.0),)),
 )
 NOT_GATING = {"tail_clique"}  # reported beside `countdown`, not an M4 exit cell (§17.213 (4))
+# §17.109's M5 envelope (§17.308 (2), the native targets): the same families and comparisons with
+# Sakura's native executable on the left, read on the metric the baseline counts.
+M5_ENVELOPE = (
+    (("fib", "countdown", "tail_clique", "sieve", "nbody", "spectral_norm"), (("rust", 1.5), ("go", 1.0))),
+    (("binary_trees", "rbtree", "pipeline", "shapes", "map_set"),
+     (("ocaml", 1.2), ("koka", 1.2), ("koka-noreuse", 1.2))),
+    (("handled_*",), (("koka", 1.0),)),
+    (("tokenizer", "json_validate"), (("rust", 1.5),)),
+)
 
 
 def refusal(wasm, native):
-    """Why two files are not one window's WASM and native runs, or None."""
+    """Why two files are not one window's WASM and native runs (`wasm` None: why a file is not a
+    native run for the M5 envelope), or None."""
     for d, suites, name in ((wasm, ("wasm",), "wasm"), (native, ("native", "all"), "native")):
+        if d is None:
+            continue
         if d.get("schema") != SCHEMA:
             return f"the {name} file is not a {SCHEMA} file"
         if d["meta"].get("flags", {}).get("suite") not in suites:
             return f"the {name} file is not a `--suite {name}` run"
     if native["meta"]["flags"].get("lane") != "matched":
         return f"the native file's lane is {native['meta']['flags'].get('lane')}; the envelope reads Rust matched"
+    if wasm is None:
+        return None
     if reason := flags_refusal(wasm=wasm, native=native):
         return reason
     for field, get in (("meta.commit", lambda d: d["meta"].get("commit")),
@@ -1127,6 +1236,52 @@ def refusal(wasm, native):
 
 
 def envelope(wasm, native):
+    """§17.109's M4 envelope; `wasm` None reads the M5 envelope from the native file alone."""
+    return envelope_m5(native) if wasm is None else envelope_m4(wasm, native)
+
+
+def envelope_m5(native):
+    """§17.109's M5 envelope (§17.308 (2)): Sakura native / each port, from one `--suite native`
+    file, read on the metric the file counts: instructions per call for an `--instructions` run,
+    whose statuses need no quiet host (§17.264), with wall time beside as information; a timed
+    run reads `median_ms` and is advisory on a loaded host, as the M4 envelope is."""
+    key = metric(native)
+    by = {cell(r): r for r in native["results"]}
+    rows = []
+    for patterns, lanes in M5_ENVELOPE:
+        for p in [p for pattern in patterns for p in programs(pattern)]:
+            sizes = sorted({r["size"] for r in native["results"] if r["program"] == p}) or [None]
+            for n in sizes:
+                for against, ceiling in lanes:
+                    s, c = by.get((p, "sakura", "native", "native", n)), by.get((p, against, "native", "native", n))
+                    ratio = time_ratio = None
+                    if not (s and c and (s.get(key) or 0) > 0 and (c.get(key) or 0) > 0):
+                        status = "missing"
+                    elif not (s["checksum_ok"] and c["checksum_ok"]):
+                        status = "checksum"
+                    else:
+                        ratio = s[key] / c[key]
+                        status = "met" if ratio <= ceiling else "miss"
+                    if s and c and (s.get("median_ms") or 0) > 0 and (c.get("median_ms") or 0) > 0:
+                        time_ratio = s["median_ms"] / c["median_ms"]
+                    rows.append({"program": p, "size": n, "engine": "native", "against": against,
+                                 "sakura": s and s.get(key), "native": c and c.get(key), "ratio": ratio,
+                                 "sakura_ms": s and s["median_ms"], "native_ms": c and c["median_ms"],
+                                 "time_ratio": time_ratio, "ceiling": ceiling, "status": status,
+                                 "gating": p not in NOT_GATING})
+    gating = {r["status"] for r in rows if r["gating"]}
+    reading = "miss" if "miss" in gating else "incomplete" if gating & {"missing", "checksum"} else "met"
+    h = native["meta"].get("host", {})
+    load = h.get("load") or {}
+    advisory = (None if key == "instructions" or h.get("quiet") is True
+                else "advisory (CI runner)" if load.get("ci")
+                else f"advisory (host load {load['max_load_1m']:.2f})" if load else "advisory (no quiet verdict)")
+    return {"envelope": "M5", "commit": native["meta"].get("commit"), "host_id": h.get("id"), "metric": key,
+            "reading": advisory or reading, "direction": reading,
+            "reasons": load.get("reasons", []) if advisory else [], "rows": rows}
+
+
+def envelope_m4(wasm, native):
     """One row per program × size × engine × comparison with its ceiling and status, and the
     reading: `met`, `miss` (a gating cell over its ceiling) or `incomplete` (a gating cell
     unmeasured); `advisory (…)` instead when either run is not quiet, with the reading it would
@@ -1180,6 +1335,24 @@ def envelope(wasm, native):
 def envelope_markdown(out):
     num = lambda x, f: "—" if x is None else format(x, f)
     times = lambda x: "—" if x is None else f"{x:.2f}×"
+    if out.get("envelope") == "M5":
+        unit = "instr" if out["metric"] == "instructions" else "ms"
+        lines = [f"| Program | n | Against | Sakura {unit} | Native {unit} | Ratio | Ceiling | Status "
+                 f"| Sakura ms | Native ms | Time ratio |", "|---|---:|---|---:|---:|---:|---:|---|---:|---:|---:|"]
+        for r in out["rows"]:
+            lines.append(f"| {r['program']} | {num(r['size'], '')} | {r['against']} | {num(r['sakura'], '.4g')} "
+                         f"| {num(r['native'], '.4g')} | {times(r['ratio'])} | {r['ceiling']} "
+                         f"| {r['status'] + ('' if r['gating'] else ' (not gating)')} | {num(r['sakura_ms'], '.4g')} "
+                         f"| {num(r['native_ms'], '.4g')} | {times(r['time_ratio'])} |")
+        counts = {}
+        for r in out["rows"]:
+            if r["gating"]:
+                counts[r["status"]] = counts.get(r["status"], 0) + 1
+        direction = f", direction only: {out['direction']}" if out["reading"] != out["direction"] else ""
+        what = "instructions per call (wall time beside, information)" if unit == "instr" else "median_ms"
+        return "\n".join(lines + ["", f"M5 envelope on {what}: {out['reading']}{direction} (gating cells: "
+                                       + ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
+                                       + f"; commit {out['commit']}, host {out['host_id']})"])
     counted = out.get("metric") == "instructions"
     count_head = " Sakura instr | Native instr | Count ratio |" if counted else ""
     lines = [f"| Program | n | Engine | Against | Sakura ms | Native ms | Time ratio | Ceiling | Status |{count_head}",
@@ -1206,7 +1379,11 @@ def envelope_markdown(out):
 
 
 def cmd_envelope(a):
-    wasm, native = (json.loads(Path(f).read_text()) for f in (a.wasm, a.native))
+    if len(a.files) > 2:
+        log("envelope reads one native file (M5) or a wasm and a native file (M4)")
+        return EXIT_BLOCKED
+    docs = [json.loads(Path(f).read_text()) for f in a.files]
+    wasm, native = docs if len(docs) == 2 else (None, docs[0])
     if reason := refusal(wasm, native):
         log(f"refusing: {reason}")
         return EXIT_BLOCKED
@@ -1247,7 +1424,9 @@ def cmd_bless(a):
     if flags.get("command") and suite != "typescript" and not report:
         log(f"refusing to bless: a `{flags['command']}` run is evidence, not a baseline (docs/release.md §2)")
         return EXIT_ORACLE
-    where = "compile-native" if report else suite if suite in ("wasm", "typescript") else ""
+    # A native run (row M: Sakura's executable beside the ports) is blessed beside the others from
+    # the first baseline that carries it, beta.5's (design §17.308 (2), §17.310).
+    where = "compile-native" if report else suite if suite in ("wasm", "typescript", "native") else ""
     dest = BENCH / "baselines" / where / f"{doc['meta']['host']['id']}.json"
     if dest.exists():  # §17.282 (5): a baseline under other flags is archived by hand, not overwritten
         blessed = json.loads(dest.read_text())
@@ -1811,9 +1990,11 @@ def main(argv=None):
     c.add_argument("--no-recount", action="store_true",
                    help="do not re-count blocked Node cells against the baseline commit's artefact (§17.272 (2)(b))")
     c.add_argument("--json")
-    v = sub.add_parser("envelope", help="the §17.109 M4 envelope from one window's wasm and native runs")
-    v.add_argument("wasm", help="a `run --suite wasm` result")
-    v.add_argument("native", help="a `run --suite native --lane matched` result from the same commit and host")
+    v = sub.add_parser("envelope", help="§17.109's M5 envelope from a native run, or its M4 envelope from "
+                                        "one window's wasm and native runs")
+    v.add_argument("files", nargs="+", metavar="[wasm] native",
+                   help="a `run --suite native --lane matched` result (M5), after a `run --suite wasm` result "
+                        "from the same commit and host (M4)")
     v.add_argument("--json")
     v.add_argument("--md")
     b = sub.add_parser("bless", help="copy a reviewed run into baselines/<host-id>.json")

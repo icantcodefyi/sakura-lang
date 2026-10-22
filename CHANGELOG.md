@@ -9,6 +9,14 @@ retains earlier implementation history.
 
 ### Added
 
+- **The benchmark harness counts Sakura's native executable** (plan `m5-native.md` row M, design
+  §17.308 (2k)): `bench run --suite native` builds every program with `--target native` and
+  counts or times it beside the Rust, Go, OCaml and Koka ports, each cell with its `stats()`
+  counters and `rbtree`'s with an unretained twin's (the paired reuse hit rate);
+  `bench envelope native.json` reads §17.109's M5 ceilings from that file; `bench bless` puts a
+  native run in `baselines/native/`, from beta.5's preparation commit. The documentation site
+  has a native page (what `--target native` builds, platforms, limits, the blessed compile
+  report).
 - **`--target native` builds on Intel macOS and Windows x64 from source** (experimental,
   platform C, plan `m5-native.md` row C, design §17.308 (2g)): a compiler built with
   `--features native` for `x86_64-apple-darwin` or `x86_64-pc-windows-msvc` no longer refuses

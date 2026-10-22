@@ -32,10 +32,11 @@ bench/
 bench/bench run --suite js --json out.json                 # Node and Bun, all sizes
 bench/bench run --suite js --instructions --json out.json  # instructions retired per call (macOS, §17.264)
 bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --json out.json
-bench/bench run --suite native --lane idiomatic --json out.json
+bench/bench run --suite native --lane idiomatic --json out.json  # Sakura --target native and the ports
 bench/bench run --suite wasm --sizes quick --json out.json  # Sakura on WASM (Node, Wasmtime)
 bench/bench compare bench/baselines/<host-id>.json head.json [rerun.json] [--json verdict.json]
 bench/bench envelope wasm.json native.json [--json out.json] [--md out.md]  # §17.109 M4 envelope
+bench/bench envelope native.json [--json out.json] [--md out.md]  # §17.109 M5 envelope
 bench/bench bless out.json                                 # → baselines/<host-id>.json, commit by hand
 bench/bench compile --json compile.json
 bench/bench compile-native --json compile-native.json      # plan M5 N2's native compile report
@@ -47,8 +48,8 @@ bench/bench oracle [--filter <glob>] [--write]
 |---|---|---|
 | `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). With `--instructions` (macOS) it counts instead of timing ([Instruction counts](#instruction-counts-17264)): `instructions` per call is the cell's metric, `median_ms` beside it is informational, and the load is recorded but read by nothing. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
 | `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes; in a counted compare, across the one-call processes, the many-call maxima and `calls` printed as a diagnostic, §17.283) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. When every file is an `--instructions` run the ratios are of instructions per call, the absolute floor does not apply and the host's load is not read (§17.264); there a Bun row is advisory (§17.265 (5)): it never blocks, it is `flagged` only when its ratio of ratios moves more than the block threshold (10%), not the flag threshold, and its status carries its four cells' `instruction_spread` (base Sakura, base hand JS → head Sakura, head hand JS); Node rows block as before. A flagged Bun row is confirmed, when it matters, by one rerun of that program with `--processes 9 --filter`. A blocked Node row of a counted compare is then re-counted as an A/A pair against the baseline commit's artefact at the same location, and its status is read from that pair ([Location and the A/A recount](#location-and-the-aa-recount-17272-2)). Otherwise, if the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
-| `envelope` | The §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. Statuses are always read in the wall-time lane, on `median_ms`, the ceilings' unit; when both files are `--instructions` runs the count lane is printed beside it, Sakura/native instructions per call, labelled a ratio of counts and read against no ceiling (§17.265 (2)). When either run is not quiet (a counted run is measured on a loaded host) the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
-| `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree. A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.264). Prints the reasons. | 0; 1 refused |
+| `envelope` | Given one `--suite native` file, §17.109's M5 envelope ([M5 envelope](#m5-envelope-17308-2)). Given two, the §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. Statuses are always read in the wall-time lane, on `median_ms`, the ceilings' unit; when both files are `--instructions` runs the count lane is printed beside it, Sakura/native instructions per call, labelled a ratio of counts and read against no ceiling (§17.265 (2)). When either run is not quiet (a counted run is measured on a loaded host) the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
+| `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree (a `--suite native` run into `baselines/native/`, from beta.5's preparation commit on, docs/release.md §2). A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.264). Prints the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes after one warm-up; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. Also `check_hello` and `test_hello` on the `sakura new cli` project (`target/hello`). A `target_ms` column holds §17.195 (1)'s targets (`check_hello` 10 ms, `check_cold_10k` 45 ms): a miss prints `target missed` and is not an exit; `test_hello` has neither budget nor target, nor has `check_wide_match` (`target/wide_match`: §17.200 (8)'s 3,000-arm `Int` match, guarded rows alternating, and 3,000-constructor enumeration). std's analysis cache is `target/cache` unless `SAKURA_CACHE_DIR` is set. `--instructions` (macOS) also counts each `check`/`build`/`test` process's instructions (median and spread; the LSP case is one server and has none); the budgets stay on time. | 0; 2 over budget |
 | `compile-native` | The native compile report (plan M5 N2, design §17.175 (4)): builds the release CLI with the `native` feature and the driver staticlib (`target/native-driver`), then `sakura build --target native` of every program's `sakura/main.sak` and of one function of 4,096, 8,192, 16,384 and 32,768 `&&`-guarded rows (`wide_<rows>`, design §17.240 (3); the report names each phase whose median grows more than 2× from 16,384 to 32,768 rows, `meta.wide_ratio`), 15 fresh processes after one warm-up, and reports each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines: `frontend` (check and Core), `lowering` (Core → LIR, validated), `codegen` (Cranelift), `object` (unwind, DWARF, the file) and `link` (the system linker). `--instructions` (macOS) also counts each phase's instructions retired as the difference of two processes, one stopping after the phase and one before it (`SAKURA_NATIVE_STOP_AFTER`; the last is the whole build, the linker's process included), and reads the wide curve's ratio on those counts: the counted report the owner blesses with a beta's baseline into `baselines/compile-native/` (design §17.308 (2b) (iii)). No budget yet: the round that reads the first blessed report sets it. | 0; 2 a build failed |
 | `typescript` | `sakura check` beside `tsc --noEmit`, and a built program's cold start beside Node running the TypeScript twin ([TypeScript toolchain lane](#typescript-toolchain-lane)). | 0; 1 an oracle failed |
@@ -91,6 +92,45 @@ compilers are on `PATH`; those two integration tests explicitly skip if unavaila
 One process per cell is a correctness smoke test; timings on a loaded host are advisory.
 The [native integration validation](../research/10-evidence/ws-a/nativeports-validation.md)
 records the original failures, controlled probes and full-run results.
+
+### Native lane (plan M5 row M, §17.308 (2k))
+
+`--suite native` also builds Sakura itself with `--target native` (the CLI rebuilt with the
+`native` feature and the driver staticlib, as `compile-native` builds them; a missing `cc` skips
+it): the variant `sakura` with backend and engine `native`, beside the ports and in the same
+file. Its executable is the program's own `main`, so it speaks the program's protocol rather
+than the ports' JSON lines: `main <n>...` prints `run(n)` per argument (the oracle, and a counted
+cell's 1 + `calls` arguments as the ports take theirs), `main negative <k>` exits 70 with the
+defect record as a JSON line on stderr. The native host flushes stdout every 256 lines and when
+a task ends, as the JS host does, so a timed cell is not read from when lines arrive: it is timed
+as a counted cell is, nine processes of 1 + `calls` arguments (`calls` the power of two that
+outlasts one call by ≥ 30 ms), each less the one-call process, per call. `cases` are the JS panel's and are not native cells. Each Sakura cell
+has `stats`, the `stats()` counters after one `main` with that size (`SAKURA_NATIVE_STATS`, ABI
+§10) with `reuse_rate` = `reuses` / `reuse_attempts`, from one untimed process.
+
+**The paired `rbtree` protocol** (§17.118, research/12 §7): every native `rbtree` cell's `stats`
+also holds `unretained`, the same counters for the program with its `retain_every` test made
+`false`, so no old version outlives the next insert (`target/rbtree-unretained/`). The twin is
+counted for its counters only: it is never timed and its checksum is the final size alone. The
+pair separates reuse lost to retained versions (shared, correctly copied) from reuse the
+compiler misses.
+
+Every program is `ints = "js-safe"`, so the native checksums are the JS ones and the lane needs
+no separate i64 sizes; the exact-i64 lane (values past 2^53, `js` excluded) is the parity
+corpus's, not the benchmarks'. A program with an i64-only size would get its own `ints` and
+checksum table first.
+
+### M5 envelope (§17.308 (2))
+
+`envelope native.json` reads §17.109's M5 ceilings on Sakura native / each port from that one
+file: numeric kernels against Rust matched (1.5) and Go (1.0), allocation kernels against OCaml,
+Koka and Koka no-reuse (1.2 each), `handled_*` against Koka (1.0), `tokenizer` and
+`json_validate` against Rust matched (1.5); `tail_clique` beside `countdown`, not gating. Both
+sides are native processes, so the statuses are read on the metric the file counts (design
+§17.308 (2): instructions retired per call for an `--instructions` run, which needs no quiet host;
+wall time beside it as information). A timed file reads `median_ms` and is advisory on a loaded
+host. Rows, statuses and the reading are the M4 envelope's; it refuses a file that is not a
+`--suite native --lane matched` run.
 
 ### WASM lane (§17.191 (2))
 
