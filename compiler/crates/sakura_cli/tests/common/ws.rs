@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use super::{Output, sakura_env, time_limit};
+use super::{Output, sakura_env};
 
 fn peer_js() -> std::path::PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/js/test/ws_peer.mjs")
@@ -265,7 +265,7 @@ pub fn accept_runs(
         };
         let start = std::time::Instant::now();
         while std::net::TcpStream::connect(("127.0.0.1", port)).is_err() {
-            if start.elapsed() > time_limit() || child.try_wait().unwrap().is_some() {
+            if start.elapsed() > super::time_limit() || child.try_wait().unwrap().is_some() {
                 stop(&mut child);
                 panic!(
                     "{target}: the server did not start\n{}",
