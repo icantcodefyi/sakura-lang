@@ -510,11 +510,11 @@ table at +96/+104, `sakura_lir::image::workers_table`; layout 6, 128 bytes: a te
 test table at +112/+120, the runner's `Test` clauses and WASM's `tests()` payload, empty for a
 program; a test build runs its tests, `sakura test --target native`, and skips this check).
 After the record's check, the driver refuses a root effect whose service the native host does
-not implement (`WebSocket`; `Http` and `Serve` are served since N1b, and `Llm`, never a root
-effect (`V9002`), left the list when its handler ran natively; a live worker's entry by the
-same rule when it starts): one stderr line naming it, "`WebSocket` is not available on target
-`native`", and exit 75, before the
-instance exists or any user code runs. A handler for one that the program installs itself is
+not implement (a live worker's entry by the same rule when it starts): one stderr line naming
+it, "`<Effect>` is not available on target `native`", and exit 75, before the instance exists
+or any user code runs. The list is empty: `Http` and `Serve` are served since N1b, `Llm`, never
+a root effect (`V9002`), left it when its handler ran natively, and `WebSocket` when
+`WebSocket.host()` did. A handler for one that the program installs itself is
 `D090` at first use ("a host operation the native host does not provide yet", exit 70;
 `rt_code_unsupported`). Natively
 `http_send` and `http_stream_open` are requests the host completes with the tuple `(Int
@@ -523,6 +523,22 @@ types as `Response` or `Incoming`; their `secret_headers` cross with their value
 `secret`) and the copy is zeroed; the manifest's `net` refusal answers at once with no
 request, as JS. It is a startup check, not a build-time diagnostic, and no
 diagnostic code.
+
+**WebSocket natively** (RFC 0002 §1, §2.10, §6; design §17.289). `WebSocket.host()` runs on
+the native host in both roles, with the JS runtime's framing, limits, close codes and messages.
+`ws_connect`, `ws_send` and `ws_receive` are requests of kind 4 (as WASM's, §8.5), each
+suspending, which the host (`Host::ws_*`) completes with plain bytes the runtime types by name:
+`i64` id then the subprotocol's UTF-8 for `Result<(Int, String), String>`, one byte for
+`ws_send`'s `Bool`, and `0, text, bytes` or `1, clean, i64 code, reason` for a `Received`;
+status 1 is the `Err(reason)`. `ws_close`, `ws_accept`, `ws_subscribe`, `ws_unsubscribe` and
+`ws_publish` are native builtins (`rt_b_ws_*`) that answer at once; `ws_accept` upgrades the
+served request of the running task, the one `serve_respond` would answer. A client opens over
+the `Http` client (its TLS, platform roots, no proxy, no redirect, `net` checked first); a
+served upgrade request (`connection: upgrade` with an `upgrade` header) reaches the guest with
+body `Empty`, the 101 is `hyper`'s answer to it and the connection becomes the socket's, and any
+other answer to it carries `connection: close`. A socket's id comes from the files' id space
+and `file_close` closes it. Host-protocol text with no version change, as the next paragraph's
+additions: the runtime and the host that speak it are one build.
 
 **JS-built handlers natively** (design §17.308 (3)). `Llm.anthropic`'s clauses
 (`rt_code_js_clause`, `rt_code_js_callback`) speak §8's `js_handler`/`js_clause`/`js_resume`/

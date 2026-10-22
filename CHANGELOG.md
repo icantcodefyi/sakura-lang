@@ -16,7 +16,7 @@ retains earlier implementation history.
   committed with its checksum), and the program in a sandboxed worker with a 5 s limit:
   `Console` prints to the page, `Clock` is virtual from 2026-01-01, `Random` is seeded, `Fs` is
   an empty in-memory directory, and a `main` that leaves `Http`, `Serve`, `Sql`, `Llm`,
-  `WebSocket` or `Worker` to the host is refused as on native ("`Http` is not available on target
+  `WebSocket` or `Worker` to the host is refused at startup ("`Http` is not available on target
   `browser`"). Diagnostics show inline with their codes beside `sakura check`'s output; the
   repository's runnable examples are in a menu (the site's shadcn select, each with a name
   and a one-line description), and a link carries the program compressed in its
@@ -29,6 +29,17 @@ retains earlier implementation history.
   each reproducing the whole checksum table. `bench run --suite native` builds and counts them
   beside Sakura's `--target native` executable; `bench.yml`'s new `native` dispatch mode times the
   same comparison on a GitHub-hosted runner.
+- **`WebSocket` runs on `--target native`** (experimental with the target; RFC 0002 §1, §2.10,
+  §6, design §17.289): `WebSocket.host()`'s client and server (`connect`, `accept`, `send`,
+  `receive`, `close`, `subscribe`, `unsubscribe`, `publish`) run on the native host with the
+  JavaScript runtime's framing, limits and messages: `max_message` checked before a frame's
+  payload is held (1009), invalid UTF-8 text 1007, a protocol error 1002, 1001 when the body
+  returns, a 5 s closing handshake, 64 queued messages before the socket stops reading, pongs,
+  `SAKURA_MAX_SOCKETS` and the `net` list. A served upgrade request reaches the handler with no
+  body read; a refused one is answered with `connection: close`. A `main` or a live worker that
+  declares `WebSocket` no longer exits 75 natively ("`WebSocket` is not available on target
+  `native`"), so the driver refuses no standard effect now. CI holds a client and a served
+  `accept` to JavaScript's output and traces against local peers.
 
 - **Packages, experimental: `path` dependencies, the lock, effect ceilings and the authority
   gate** ([RFC 0003](docs/rfcs/0003-packages.md), plan `packages.md` lane P1, design §17.311).

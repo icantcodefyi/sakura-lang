@@ -144,7 +144,7 @@ fn coded(code: u32, msg: &str) -> Vec<u8> {
     out
 }
 
-fn fault(m: &str) -> HostError {
+pub(super) fn fault(m: &str) -> HostError {
     HostError::Fault(m.into())
 }
 
@@ -386,9 +386,9 @@ fn result<T>(w: &mut W, ids: &Ids, r: Hosted<T>, ok: impl FnOnce(&mut W, T)) -> 
 }
 
 /// A `sakura-vt1` reader over the argument tuple: any shape it does not expect is `D090`.
-struct Reader<'a> {
-    b: &'a [u8],
-    at: usize,
+pub(super) struct Reader<'a> {
+    pub(super) b: &'a [u8],
+    pub(super) at: usize,
 }
 
 impl<'a> Reader<'a> {
@@ -407,12 +407,12 @@ impl<'a> Reader<'a> {
         Ok(s)
     }
 
-    fn u32(&mut self) -> Hosted<u32> {
+    pub(super) fn u32(&mut self) -> Hosted<u32> {
         let s = self.take(4)?;
         Ok(u32::from_le_bytes([s[0], s[1], s[2], s[3]]))
     }
 
-    fn tag(&mut self, want: u8) -> Hosted<()> {
+    pub(super) fn tag(&mut self, want: u8) -> Hosted<()> {
         if self.take(1)?[0] == want {
             Ok(())
         } else {
@@ -420,30 +420,30 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn tuple(&mut self) -> Hosted<u32> {
+    pub(super) fn tuple(&mut self) -> Hosted<u32> {
         self.tag(t::TUPLE)?;
         self.u32()
     }
 
-    fn list(&mut self) -> Hosted<u32> {
+    pub(super) fn list(&mut self) -> Hosted<u32> {
         self.tag(t::LIST)?;
         self.u32()
     }
 
-    fn string(&mut self) -> Hosted<&'a str> {
+    pub(super) fn string(&mut self) -> Hosted<&'a str> {
         self.tag(t::STRING)?;
         let n = self.u32()? as usize;
         core::str::from_utf8(self.take(n)?)
             .map_err(|_| fault("a string the guest passed is not UTF-8"))
     }
 
-    fn bytes(&mut self) -> Hosted<&'a [u8]> {
+    pub(super) fn bytes(&mut self) -> Hosted<&'a [u8]> {
         self.tag(t::BYTES)?;
         let n = self.u32()? as usize;
         self.take(n)
     }
 
-    fn int(&mut self) -> Hosted<i64> {
+    pub(super) fn int(&mut self) -> Hosted<i64> {
         self.tag(t::INT)?;
         let s = self.take(8)?;
         let mut a = [0; 8];
@@ -466,7 +466,7 @@ impl<'a> Reader<'a> {
     }
 
     /// An `Option`'s header: whether it is `Some` (its one payload follows).
-    fn some(&mut self, option: u32) -> Hosted<bool> {
+    pub(super) fn some(&mut self, option: u32) -> Hosted<bool> {
         self.tag(t::VARIANT)?;
         match (self.u32()?, self.u32()?, self.u32()?) {
             (ty, 0, 0) if ty == option => Ok(false),
@@ -491,7 +491,7 @@ impl<'a> Reader<'a> {
 
     /// A variant's constructor, after checking it has `n` payloads (the type id is not checked:
     /// the shape is).
-    fn ctor(&mut self, n: u32) -> Hosted<u32> {
+    pub(super) fn ctor(&mut self, n: u32) -> Hosted<u32> {
         self.tag(t::VARIANT)?;
         let (_, ctor, k) = (self.u32()?, self.u32()?, self.u32()?);
         if k != n {
@@ -502,7 +502,7 @@ impl<'a> Reader<'a> {
 
     /// A `List<(String, String)>`; with `secret`, the second of each pair is a `Secret<String>`
     /// (its value, or `""` where it crossed redacted).
-    fn pairs(&mut self, secret: bool) -> Hosted<Vec<(&'a str, &'a str)>> {
+    pub(super) fn pairs(&mut self, secret: bool) -> Hosted<Vec<(&'a str, &'a str)>> {
         let n = self.list()?;
         let mut out = Vec::new();
         for _ in 0..n {
@@ -581,7 +581,7 @@ impl<'a> Reader<'a> {
         })
     }
 
-    fn end(&self) -> Hosted<()> {
+    pub(super) fn end(&self) -> Hosted<()> {
         if self.at == self.b.len() {
             Ok(())
         } else {
@@ -954,7 +954,7 @@ const HTTP: u32 = 2;
 const ANSWERED: u32 = 1;
 
 /// Return `Ok(ok(data))`, or `Err(reason)` for an ordinary failure; a host failure is `D091`.
-fn ok_or_err(
+pub(super) fn ok_or_err(
     rt: &mut Rt,
     st: u32,
     data: &[u8],
@@ -975,7 +975,7 @@ fn ok_or_err(
 }
 
 /// A new `Bytes` holding `b`.
-fn new_bytes(rt: &mut Rt, b: &[u8]) -> Res<u32> {
+pub(super) fn new_bytes(rt: &mut Rt, b: &[u8]) -> Res<u32> {
     let n = u32::try_from(b.len()).map_err(|_| Defect::HEAP_EXHAUSTED)?;
     let p = rt.new_bytes(n)?;
     rt.heap.mem.bytes_mut(p + 12, n).copy_from_slice(b);

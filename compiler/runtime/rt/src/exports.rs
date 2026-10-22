@@ -1968,12 +1968,14 @@ macro_rules! builtins {
     // the runtime.
     (@body cx_scalar $cx:ident $rt:ident $body:expr) => {{ let $rt = &mut $cx; $body }};
     (@body cx_plain $cx:ident $rt:ident $body:expr) => {{ let $rt = &mut $cx; $body }};
+    (@body cx_ptr $cx:ident $rt:ident $body:expr) => {{ let $rt = &mut $cx; $body }};
     (@body $how:ident $cx:ident $rt:ident $body:expr) => {{ let $rt = $cx.rt(); $body }};
     (@ ptr $cx:ident $r:ident) => { ptr($cx.rt(), $r) };
     (@ scalar $cx:ident $r:ident) => { scalar($cx.rt(), $r) };
     (@ cx_scalar $cx:ident $r:ident) => { scalar($cx.rt(), $r) };
     (@ plain $cx:ident $r:ident) => { $r };
     (@ cx_plain $cx:ident $r:ident) => { $r };
+    (@ cx_ptr $cx:ident $r:ident) => { ptr($cx.rt(), $r) };
 }
 
 /// A builtin called by name with its arguments and result as slots ([`BUILTINS`]).
@@ -2250,5 +2252,25 @@ builtins! {
     #[cfg(feature = "native")]
     rt_b_crypto_cipher(code: i64, key: u32, iv: u32, aad: u32, data: u32) -> u32 = ptr |rt| {
         rt.crypto_cipher(code, key, iv, aad, data)
+    };
+    // `std/websocket`'s direct operations natively (`native::ws`); wasm32 has them as the
+    // Node host's `hosted` imports.
+    #[cfg(feature = "native")]
+    rt_b_ws_close(id: i64, code: i64, reason: u32) -> u32 = cx_ptr |cx| {
+        crate::native::ws::close(cx, id, code, reason)
+    };
+    #[cfg(feature = "native")]
+    rt_b_ws_accept(hs: u32, up: u32) -> u32 = cx_ptr |cx| crate::native::ws::accept(cx, hs, up);
+    #[cfg(feature = "native")]
+    rt_b_ws_subscribe(id: i64, topic: u32) -> u32 = cx_ptr |cx| {
+        crate::native::ws::subscribe(cx, id, topic, true)
+    };
+    #[cfg(feature = "native")]
+    rt_b_ws_unsubscribe(id: i64, topic: u32) -> u32 = cx_ptr |cx| {
+        crate::native::ws::subscribe(cx, id, topic, false)
+    };
+    #[cfg(feature = "native")]
+    rt_b_ws_publish(topic: u32, message: u32, except: u32) -> u32 = cx_ptr |cx| {
+        crate::native::ws::publish(cx, topic, message, except)
     };
 }

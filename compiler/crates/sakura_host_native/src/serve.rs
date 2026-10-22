@@ -4,7 +4,10 @@
 //! with the connection closed and the handler not run (so is a `Request` past
 //! `SAKURA_MAX_COPY_BYTES`, reported as `D091`); a response Node would refuse is a `D091`
 //! defect answered 500; a `D096` is 503; a failure or defect is reported on stderr and answered
-//! 500; once the server stops a request still arriving is 503 with the connection closed.
+//! 500; once the server stops a request still arriving is 503 with the connection closed. An
+//! upgrade request (`connection: upgrade` with an `upgrade` header, Node's `upgrade` event)
+//! reaches the guest with body `Empty`, nothing of it read; `ws_accept` answers it 101 and the
+//! connection becomes the socket's (`ws`), else its answer carries `connection: close`.
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -20,7 +23,7 @@ use sakura_rt::native::{Instance, Outcome};
 use sakura_rt::vt::t;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{Inflight, NativeHost};
+use crate::{HostError, Inflight, NativeHost, ws};
 
 /// The largest request body the server reads (design §17.159 (6)).
 pub const MAX_REQUEST_BODY: usize = 1 << 20;
@@ -45,13 +48,24 @@ pub struct Incoming {
     headers: Vec<(String, String)>,
     body: Vec<u8>,
     reply: oneshot::Sender<Reply>,
+    conn: Option<Conn>,
+}
+
+/// An upgrade request's connection, for `ws_accept`: the `sec-websocket-key` it carried, and
+/// the connection `hyper` hands over after a 101.
+pub(crate) struct Conn {
+    key: Option<String>,
+    upgrade: Option<hyper::upgrade::OnUpgrade>,
+    upgraded: bool,
 }
 
 /// A served request's task: how to reply, and the response once `serve_respond` gave it (or
 /// the `D091` of one past the copy budget).
 pub(crate) struct Pending {
-    reply: oneshot::Sender<Reply>,
+    /// Taken by the 101 of an upgraded connection.
+    reply: Option<oneshot::Sender<Reply>>,
     answer: Option<Result<Vec<u8>, String>>,
+    conn: Option<Conn>,
 }
 
 /// The served requests by task, and the channel requests reach the instance's thread on.
@@ -135,6 +149,8 @@ impl NativeHost {
                 let Ok((stream, _)) = socket.accept().await else {
                     continue;
                 };
+                // As Node's server (`noDelay`), which a WebSocket's small frames need.
+                let _ = stream.set_nodelay(true);
                 let (incoming, open) = (incoming.clone(), flag.clone());
                 tokio::spawn(async move {
                     let service = service_fn(move |req| {
@@ -145,6 +161,7 @@ impl NativeHost {
                     });
                     let _ = hyper::server::conn::http1::Builder::new()
                         .serve_connection(TokioIo::new(stream), service)
+                        .with_upgrades()
                         .await;
                 });
             }
@@ -166,6 +183,43 @@ impl NativeHost {
                 Ok(response.to_vec())
             });
         }
+    }
+
+    /// `ws_accept` (JS `wsAcceptOn`): upgrades the served request answered by `task`, once and
+    /// only for the request whose `sec-websocket-key` `a` read: answers it 101 (`upgrade`,
+    /// `connection`, `sec-websocket-accept`, `sec-websocket-protocol` when one was chosen, then
+    /// `a.headers`) and opens the server socket. Its id and the subprotocol, or why not.
+    pub(crate) fn accept(
+        &mut self,
+        task: u32,
+        a: &sakura_rt::native::WsAccept<'_>,
+    ) -> Result<(i64, String), HostError> {
+        let not = || HostError::Err("not a served upgrade request".into());
+        let p = self.servers.pending.get_mut(&task).ok_or_else(not)?;
+        let conn = (p.conn.as_mut())
+            .filter(|c| !c.upgraded && c.key.as_deref() == Some(a.key))
+            .ok_or_else(not)?;
+        let (chosen, headers) = ws::accept_headers(a).map_err(HostError::Err)?;
+        if p.reply.as_ref().is_none_or(|r| r.is_closed()) {
+            return Err(HostError::Err("the connection is closed".into()));
+        }
+        let id = self.files.reserve_id();
+        let _enter = self.executor.enter();
+        ws::lock(&self.ws).accepted(id, a.max_message)?;
+        conn.upgraded = true;
+        if let Some(reply) = p.reply.take() {
+            let _ = reply.send(Reply {
+                status: 101,
+                headers,
+                body: vec![],
+            });
+        }
+        let shared = self.ws.clone();
+        match conn.upgrade.take() {
+            Some(u) => drop(tokio::spawn(ws::served(shared, id, u))),
+            None => ws::lock(&shared).free(id),
+        }
+        Ok((id, chosen))
     }
 
     /// One `defect` record on stderr, as `serveHttp`'s `report` (no spans).
@@ -210,8 +264,8 @@ impl NativeHost {
         if !self.servers.pending.is_empty() && !self.servers.defected {
             self.report("D090", "server stopped");
         }
-        for (_, p) in self.servers.pending.drain() {
-            let _ = p.reply.send(internal());
+        for p in self.servers.pending.drain().filter_map(|(_, p)| p.reply) {
+            let _ = p.send(internal());
         }
     }
 }
@@ -229,13 +283,42 @@ fn node_listen_error(e: &std::io::Error, at: &str) -> String {
     format!("listen {code}: {what} {at}")
 }
 
-/// Read one request (its body bounded) and wait for the guest's answer.
+/// Whether `h` asks for an upgrade as Node's parser reads it: `connection` names `upgrade` and
+/// an `upgrade` header is present.
+fn upgrade_asked(h: &hyper::HeaderMap) -> bool {
+    h.contains_key(hyper::header::UPGRADE)
+        && h.get_all(hyper::header::CONNECTION).iter().any(|v| {
+            v.to_str().is_ok_and(|v| {
+                v.split(',')
+                    .any(|t| t.trim().eq_ignore_ascii_case("upgrade"))
+            })
+        })
+}
+
+/// Read one request (its body bounded) and wait for the guest's answer. An upgrade request's
+/// body is not read, and an answer other than its 101 closes the connection.
 async fn serve_one(
-    req: hyper::Request<hyper::body::Incoming>,
+    mut req: hyper::Request<hyper::body::Incoming>,
     listener: u32,
     incoming: mpsc::UnboundedSender<Incoming>,
     open: Arc<AtomicBool>,
 ) -> hyper::Response<Full<Bytes>> {
+    if upgrade_asked(req.headers()) {
+        let conn = Conn {
+            key: (req.headers().get("sec-websocket-key"))
+                .map(|v| String::from_utf8_lossy(v.as_bytes()).into_owned()),
+            upgrade: Some(hyper::upgrade::on(&mut req)),
+            upgraded: false,
+        };
+        let (parts, _) = req.into_parts();
+        let mut r = answer_one(parts, vec![], listener, incoming, open, Some(conn)).await;
+        if r.status != 101 {
+            r.headers
+                .retain(|(k, _)| !matches!(k.as_str(), "connection" | "transfer-encoding"));
+            r.headers.push(("connection".into(), b"close".to_vec()));
+        }
+        return http(r);
+    }
     let declared = req
         .headers()
         .get(hyper::header::CONTENT_LENGTH)
@@ -256,11 +339,23 @@ async fn serve_one(
             bytes.extend_from_slice(chunk);
         }
     }
+    http(answer_one(parts, bytes, listener, incoming, open, None).await)
+}
+
+/// The guest's answer to `req` with body `bytes` (`serveHttp`'s `answer`).
+async fn answer_one(
+    parts: hyper::http::request::Parts,
+    bytes: Vec<u8>,
+    listener: u32,
+    incoming: mpsc::UnboundedSender<Incoming>,
+    open: Arc<AtomicBool>,
+    conn: Option<Conn>,
+) -> Reply {
     if !open.load(Ordering::Relaxed) {
-        return http(plain(503, "server stopped", &[("connection", "close")]));
+        return plain(503, "server stopped", &[("connection", "close")]);
     }
     let Some(method) = METHODS.iter().position(|m| *m == parts.method.as_str()) else {
-        return http(plain(405, "method not allowed", &[]));
+        return plain(405, "method not allowed", &[]);
     };
     // ponytail: header names arrive lowercased and grouped by name (hyper's `HeaderMap`), where
     // Node's `rawHeaders` keep the client's case and order; names are case-insensitive.
@@ -285,10 +380,11 @@ async fn serve_one(
         headers,
         body: bytes,
         reply,
+        conn,
     });
     match (sent, answer.await) {
-        (Ok(()), Ok(r)) => http(r),
-        _ => http(internal()),
+        (Ok(()), Ok(r)) => r,
+        _ => internal(),
     }
 }
 
@@ -297,8 +393,10 @@ fn http(r: Reply) -> hyper::Response<Full<Bytes>> {
     for (k, v) in &r.headers {
         out = out.header(k.as_str(), v.as_slice());
     }
-    out.header(hyper::header::CONTENT_LENGTH, r.body.len())
-        .body(Full::new(Bytes::from(r.body)))
+    if r.status != 101 {
+        out = out.header(hyper::header::CONTENT_LENGTH, r.body.len());
+    }
+    out.body(Full::new(Bytes::from(r.body)))
         .unwrap_or_else(|_| hyper::Response::new(Full::new(Bytes::new())))
 }
 
@@ -335,19 +433,13 @@ fn response(v: &[u8]) -> Result<Reply, String> {
     if !(100..=999).contains(&status) {
         return Err(format!("Invalid status code: {status}"));
     }
-    let token = |c: char| c.is_ascii_alphanumeric() || "!#$%&'*+-.^_`|~".contains(c);
     let mut out = vec![];
     for (k, v) in headers {
         if k == "content-length" {
             continue;
         }
-        if k.is_empty() || !k.chars().all(token) {
-            return Err(format!("Header name must be a valid HTTP token [\"{k}\"]"));
-        }
-        let ok =
-            |c: char| c == '\t' || (' '..='~').contains(&c) || ('\u{80}'..='\u{ff}').contains(&c);
-        if !v.chars().all(ok) {
-            return Err(format!("Invalid character in header content [\"{k}\"]"));
+        if let Some(why) = header_error(&k, &v) {
+            return Err(why);
         }
         // Node writes a header value as latin1.
         out.push((k, v.chars().map(|c| c as u8).collect()));
@@ -357,6 +449,15 @@ fn response(v: &[u8]) -> Result<Reply, String> {
         headers: out,
         body,
     })
+}
+
+/// Why Node's `validateHeaderName` or `validateHeaderValue` refuses header `k: v`.
+pub(crate) fn header_error(k: &str, v: &str) -> Option<String> {
+    if !ws::token(k) {
+        return Some(format!("Header name must be a valid HTTP token [\"{k}\"]"));
+    }
+    let ok = |c: char| c == '\t' || (' '..='~').contains(&c) || ('\u{80}'..='\u{ff}').contains(&c);
+    (!v.chars().all(ok)).then(|| format!("Invalid character in header content [\"{k}\"]"))
 }
 
 /// A reader of a `sakura-vt1` value: `head` checks a tag and returns the first `u32` after it,
@@ -412,8 +513,9 @@ pub fn deliver(inst: &mut Instance<NativeHost>, r: Incoming) {
             inst.host().servers.pending.insert(
                 task,
                 Pending {
-                    reply: r.reply,
+                    reply: Some(r.reply),
                     answer: None,
+                    conn: r.conn,
                 },
             );
         }
@@ -447,7 +549,23 @@ pub fn reply(inst: &mut Instance<NativeHost>) {
         let Some(p) = host.servers.pending.remove(&task) else {
             continue;
         };
+        if p.conn.as_ref().is_some_and(|c| c.upgraded) {
+            // The connection is a WebSocket now: the handler's return is discarded, and
+            // `file_close` closed the socket with 1001 (design §17.289 (10)).
+            match o {
+                Outcome::Defect { code, message, .. } => {
+                    host.report(&format!("D{code:03}"), &message);
+                }
+                Outcome::Fail(shown) => {
+                    host.write_err(&format!("error: request failed with {shown}"))
+                }
+                _ => {}
+            }
+            continue;
+        }
         let r = host.answer(o, p.answer);
-        let _ = p.reply.send(r);
+        if let Some(reply) = p.reply {
+            let _ = reply.send(r);
+        }
     }
 }

@@ -102,6 +102,9 @@ hyper = { version = "=1.12.0", default-features = false, features = ["server", "
 # lock through reqwest).
 hyper-util = { version = "=0.1.21", default-features = false, features = ["tokio"] }
 http-body-util = { version = "=0.1.5", default-features = false }
+# The WebSocket handshake's SHA-1 (`sec-websocket-accept`, RFC 6455 §4.2.2) on native; already in
+# the lock through rustls.
+ring = { version = "=0.17.14", default-features = false }
 # `std/crypto` tier 1 on native (RFC 0002 §2.7, plan web-apis phase 7a): audited RustCrypto
 # crates, `no_std`, exact pins; `sha2` is the workspace entry above.
 hmac = { version = "=0.13.0", default-features = false }

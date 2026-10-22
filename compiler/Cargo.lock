@@ -2620,6 +2620,7 @@ dependencies = [
  "hyper-util",
  "object 0.40.0",
  "reqwest",
+ "ring",
  "rusqlite",
  "rustls",
  "sakura_codegen_native",

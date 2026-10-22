@@ -613,6 +613,28 @@ defaults of 2026-10-22, the table in ABI §1b and property tests ahead of Llm ar
 before beta.4's preparation commit). The WASI command does not call the codec yet (no Wasmtime
 `json_validate` cell).
 
+**WebSocket natively (2026-10-22).** `WebSocket.host()` runs on the native host in both roles,
+so ABI §1b's exit-75 list is empty and the driver refuses no standard effect. The guest side is
+`runtime/rt/src/native/ws.rs`: `ws_connect`, `ws_send` and `ws_receive` are requests of kind 4
+(as WASM's), `ws_close`, `ws_accept` and the topic operations native builtins (`rt_b_ws_*`); the
+host's answers are plain bytes the runtime types by name (ABI §1b, "WebSocket natively";
+host-protocol text, no version change). The host side, `sakura_host_native/src/ws.rs`, ports the
+JS runtime's sockets: frames parsed as they arrive (1009 before a payload is held, 1007, 1002),
+64 queued messages or `max_message` queued bytes before the socket stops reading, pongs under
+the write buffer's mark, the close queued after the messages and returned again, 5 s for the
+closing handshake and for the peer's FIN, 1001 at `file_close`, `SAKURA_MAX_SOCKETS`, and topics
+in subscription order. A client opens over the `Http` client (`reqwest`'s upgrade, so its TLS,
+roots, no proxy and no redirect; `net` checked first); a server socket is a served upgrade
+request (`connection: upgrade` and an `upgrade` header, Node's `upgrade` event) that `hyper`
+hands over after `ws_accept`'s 101, any other answer to one carrying `connection: close`; the
+served connections set `TCP_NODELAY`, as Node's server. One new direct dependency, `ring`
+(already in the tree through `rustls`), for the handshake's SHA-1. `parity.rs`'s
+`native_websocket_client_answers_as_js_does` and `native_websocket_accept_answers_as_js_does`
+hold `wasm.rs`'s two WebSocket programs, now in `tests/common/ws.rs`, to JS's output and traces
+against local peers only; a worker declaring `WebSocket` starts natively as on JS. Not ported:
+TCP keepalive on sockets (Node's `setKeepAlive(true)`), and `wss` is not exercised by a test (no
+local TLS peer). AI implementation: Claude Opus 5.5; the human contributor owns acceptance.
+
 **Row M progress (2026-10-22): the native lane is built, its first counted run is advisory.**
 `210648be` puts Sakura's `--target native` executable in `bench run --suite native` beside the
 ports (oracle and negative cases through the program's own `main`; counted as the ports' argv

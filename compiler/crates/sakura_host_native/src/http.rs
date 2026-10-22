@@ -50,7 +50,7 @@ pub(crate) fn client() -> Result<reqwest::Client, String> {
 }
 
 /// JS `failureOf`: the innermost cause's message.
-fn failure(e: &(dyn std::error::Error + 'static)) -> String {
+pub(crate) fn failure(e: &(dyn std::error::Error + 'static)) -> String {
     let mut e = e;
     while let Some(next) = e.source() {
         e = next;

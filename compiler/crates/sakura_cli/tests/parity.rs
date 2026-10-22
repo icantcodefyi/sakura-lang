@@ -1480,6 +1480,51 @@ fn native_serve_answers_as_wasm_does() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// `WebSocket.host()` natively (RFC 0002 §1, §6): the client of `wasm.rs`'s
+/// `websocket_host_on_wasm_as_on_js` against the same local echo peer prints and traces as JS
+/// does: a chosen subprotocol, text and binary echoed, a send over `max_message`, the closing
+/// handshake, the close returned again, and a host outside `net` refused before connecting.
+#[cfg(feature = "native")]
+#[test]
+fn native_websocket_client_answers_as_js_does() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let lib =
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &tmp.join("native-driver"))
+            .unwrap();
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    let runs = common::ws::client_runs("native-ws", &[("js", &[]), ("native", &env)]);
+    let ((js, js_trace), (native, native_trace)) = (&runs[0], &runs[1]);
+    assert_eq!(js.stdout, common::ws::CLIENT_STDOUT, "{}", js.stderr);
+    assert_eq!(
+        (native.code, &native.stdout, native_trace),
+        (js.code, &js.stdout, js_trace),
+        "{}",
+        native.stderr
+    );
+}
+
+/// RFC 0002 §2.10, design §17.289: `wasm.rs`'s `websocket_accept_on_wasm_as_on_js` natively,
+/// the served `accept` on `hyper`'s upgrade driven by Node's global `WebSocket` and raw
+/// connections: the same observations, server output and empty stderr as JS (subprotocol, no
+/// extension, echoes, the close both ways, refused upgrades closing the connection, 426, 403,
+/// the 101's extra header, fragments, a ping, unmasked frames, 1001, 1002, 1009, 1007, topics
+/// and `SAKURA_MAX_SOCKETS=2`'s 503).
+#[cfg(all(feature = "native", unix))]
+#[test]
+fn native_websocket_accept_answers_as_js_does() {
+    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR"));
+    let lib =
+        sakura_codegen_native::build_driver(&manifest.join("../.."), &tmp.join("native-driver"))
+            .unwrap();
+    let env = [("SAKURA_NATIVE_LIB_DIR", lib.as_path())];
+    let runs = common::ws::accept_runs("native-ws-accept", &[("js", &[]), ("native", &env)]);
+    assert_eq!(runs[0].0, common::ws::ACCEPT_DRIVEN, "{}", runs[0].2);
+    assert_eq!(runs[0].1, common::ws::ACCEPT_SERVED);
+    assert_eq!(runs[1], runs[0]);
+}
+
 /// Design §17.173 (4): `sakura build --target native --native-checks` builds the checked
 /// lowering, which runs a correct program unchanged; the flag needs `--target native`.
 #[cfg(feature = "native")]

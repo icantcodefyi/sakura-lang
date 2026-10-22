@@ -399,16 +399,16 @@ pub fn main() -> Unit ! {Console, Worker} {
     );
 }
 
-/// A worker whose entry declares an effect the native host lacks is refused when it starts,
-/// as `main` is (exit 75 and one line naming the effect); its parent reads that end.
-#[cfg(feature = "native")]
+/// A worker whose entry declares `WebSocket` starts on every backend, natively too since the
+/// native host serves it: its root `WebSocket` is the host's, and its parent reads it finish.
 #[test]
-fn a_native_worker_declaring_websocket_is_refused_at_its_start() {
-    let out = run(
-        "refused",
-        "native",
-        &["a.example:443"],
-        r#"import std/websocket.{WebSocket}
+fn a_worker_declaring_websocket_starts_on_every_target() {
+    for t in targets() {
+        let out = run(
+            "ws-worker",
+            t,
+            &["a.example:443"],
+            r#"import std/websocket.{WebSocket}
 import std/worker.{Grants, Inbox, Outbox, Permissions, Worker}
 
 @worker
@@ -422,16 +422,8 @@ pub fn main() -> Unit ! {Console, Worker} {
   }
 }
 "#,
-    );
-    assert_eq!(out.code, Some(0), "{}", out.stderr);
-    assert_eq!(
-        out.stdout,
-        "Ok(Failed(WorkerError { reason: Defect(\"exit 75\") }))\n"
-    );
-    assert!(
-        out.stderr
-            .contains("`WebSocket` is not available on target `native`"),
-        "{}",
-        out.stderr
-    );
+        );
+        assert_eq!(out.code, Some(0), "{t}: {}", out.stderr);
+        assert_eq!(out.stdout, "Ok(Finished)\n", "{t}");
+    }
 }

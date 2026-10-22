@@ -438,8 +438,14 @@ impl Files {
     }
 
     fn add(&mut self, f: Open) -> i64 {
+        let id = self.reserve_id();
+        self.open.insert(id, f);
+        id
+    }
+
+    /// The next id, for a WebSocket: sockets and files share one id space, as in JS.
+    pub(crate) fn reserve_id(&mut self) -> i64 {
         self.next += 1;
-        self.open.insert(self.next, f);
         self.next
     }
 

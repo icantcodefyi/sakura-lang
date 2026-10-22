@@ -10,7 +10,7 @@ publish.workspace = true
 
 [features]
 default = []
-native = ["sakura_rt/native", "dep:sakura_rt", "dep:tokio", "dep:reqwest", "dep:rustls", "dep:rusqlite", "dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:cap-std", "dep:serde_json", "dep:getrandom", "sakura_codegen_native/native"]
+native = ["sakura_rt/native", "dep:sakura_rt", "dep:tokio", "dep:reqwest", "dep:rustls", "dep:rusqlite", "dep:hyper", "dep:hyper-util", "dep:http-body-util", "dep:ring", "dep:cap-std", "dep:serde_json", "dep:getrandom", "sakura_codegen_native/native"]
 
 [dependencies]
 sakura_rt = { workspace = true, optional = true }
@@ -21,6 +21,7 @@ rusqlite = { workspace = true, optional = true }
 hyper = { workspace = true, optional = true }
 hyper-util = { workspace = true, optional = true }
 http-body-util = { workspace = true, optional = true }
+ring = { workspace = true, optional = true }
 cap-std = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 getrandom = { workspace = true, optional = true }

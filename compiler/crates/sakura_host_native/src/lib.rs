@@ -5,7 +5,8 @@
 //! tables, and drives `async` requests on a current-thread Tokio runtime owned by the
 //! instance's thread; each database runs on its own worker thread (`sql`). `Http.host()`'s
 //! sends, streamed bodies and `Http.recording`'s cassettes are `http`'s, `Llm.anthropic`'s
-//! clauses `llm`'s (design §17.308 (3)), and `Serve.host()`'s server `serve`'s.
+//! clauses `llm`'s (design §17.308 (3)), `Serve.host()`'s server `serve`'s, and
+//! `WebSocket.host()`'s sockets `ws`'s.
 //!
 //! Everything here is safe Rust (the workspace forbids `unsafe_code`): the host never receives
 //! the instance context, and its inputs and answers are copied by the runtime.
@@ -19,6 +20,7 @@ mod serve;
 mod sql;
 pub mod test;
 pub mod worker;
+mod ws;
 
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, Write};
@@ -28,7 +30,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use sakura_rt::exec::outcome;
 use sakura_rt::native::{
     FileMode, Guest, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, Instance,
-    Outcome, SqlValue, WorkerGrants,
+    Outcome, SqlValue, WorkerGrants, WsAccept, WsConnect,
 };
 use sakura_rt::vt::{BODY, CALLBACK, DIR, JS_HANDLER, SQL};
 use tokio::sync::mpsc;
@@ -245,6 +247,10 @@ enum Inflight {
     ),
     /// A completion already queued, with nothing to cancel.
     Queued,
+    /// `ws_connect`'s handshake on the executor, for socket `.1`.
+    WsConnect(tokio::task::AbortHandle, i64),
+    /// A receive or send waiting on socket `.0`.
+    Ws(i64),
 }
 
 pub struct NativeHost {
@@ -291,6 +297,8 @@ pub struct NativeHost {
     pub(crate) runner: test::Runner,
     /// `Serve.host()`'s served requests.
     pub(crate) servers: serve::Servers,
+    /// `WebSocket.host()`'s sockets.
+    pub(crate) ws: ws::Shared,
 }
 
 impl NativeHost {
@@ -311,6 +319,7 @@ impl NativeHost {
         };
         let (tx, rx) = mpsc::unbounded_channel();
         let (signal_tx, signals) = mpsc::unbounded_channel();
+        let ws = ws::shared(tx.clone());
         Ok(NativeHost {
             stdin: config.stdin.clone().map(VecDeque::from),
             config,
@@ -343,6 +352,7 @@ impl NativeHost {
             instance: worker::instance_id(),
             runner: test::Runner::default(),
             servers: serve::Servers::default(),
+            ws,
         })
     }
 
@@ -432,6 +442,7 @@ impl NativeHost {
             ..Ledger::default()
         };
         self.close_servers();
+        ws::lock(&self.ws).close_all();
         for request in self.inflight.keys().copied().collect::<Vec<_>>() {
             self.abort(request);
         }
@@ -489,15 +500,26 @@ impl NativeHost {
             .insert(request, Inflight::Task(task.abort_handle()));
     }
 
+    /// A completion now, for `request`.
+    fn queued(&mut self, request: u32, status: u32, payload: Vec<u8>) {
+        self.inflight.insert(request, Inflight::Queued);
+        let _ = self.tx.send((request, status, payload));
+    }
+
+    /// The `Http` client, built at the first send.
+    fn client(&mut self) -> Result<reqwest::Client, String> {
+        Ok(match &self.client {
+            Some(c) => c.clone(),
+            None => self.client.insert(http::client()?).clone(),
+        })
+    }
+
     /// The client (built at the first send) and the `reqwest` request for `req`.
     fn request_of(
         &mut self,
         req: &HttpRequest<'_>,
     ) -> Result<(reqwest::Client, reqwest::Request), String> {
-        let client = match &self.client {
-            Some(c) => c.clone(),
-            None => self.client.insert(http::client()?).clone(),
-        };
+        let client = self.client()?;
         let rq = http::build(&client, req)?;
         Ok((client, rq))
     }
@@ -576,6 +598,12 @@ impl Host for NativeHost {
                 open.store(false, std::sync::atomic::Ordering::Relaxed);
                 h.abort();
             }
+            Some(Inflight::WsConnect(h, id)) => {
+                h.abort();
+                let _enter = self.executor.enter();
+                ws::lock(&self.ws).abandon(id);
+            }
+            Some(Inflight::Ws(id)) => ws::lock(&self.ws).forget(id, request),
             Some(Inflight::Queued) | None => {}
         }
     }
@@ -748,7 +776,14 @@ impl Host for NativeHost {
     }
 
     fn file_close(&mut self, id: i64) {
-        self.files.close(id);
+        let _enter = self.executor.enter();
+        let mut ws = ws::lock(&self.ws);
+        if ws.has(id) {
+            ws.free(id);
+        } else {
+            drop(ws);
+            self.files.close(id);
+        }
     }
 
     fn http_body_of(&mut self, bytes: &[u8]) -> Hosted<HandleId> {
@@ -929,6 +964,103 @@ impl Host for NativeHost {
 
     fn serve_respond(&mut self, task: u32, response: &[u8]) {
         self.respond(task, response);
+    }
+
+    fn ws_connect(&mut self, request: u32, c: &WsConnect<'_>) {
+        let client = match self.client() {
+            Ok(c) => c,
+            Err(m) => return self.queued(request, sakura_rt::exec::status::ERR, m.into_bytes()),
+        };
+        let net = self
+            .config
+            .permissions
+            .as_ref()
+            .and_then(|p| p.net.as_deref());
+        let prepared = ws::prepare(&mut ws::lock(&self.ws), net, &client, c);
+        let (rq, key) = match prepared {
+            Ok(p) => p,
+            Err(HostError::Err(m)) => {
+                return self.queued(request, sakura_rt::exec::status::ERR, m.into_bytes());
+            }
+            Err(e) => {
+                let m = match e {
+                    HostError::Err(m) | HostError::Failure(m) | HostError::Fault(m) => m,
+                };
+                return self.queued(
+                    request,
+                    sakura_rt::exec::status::HOST_FAILURE,
+                    m.into_bytes(),
+                );
+            }
+        };
+        let id = self.files.reserve_id();
+        ws::lock(&self.ws).connecting(id);
+        let dial = ws::Dial {
+            request,
+            id,
+            key,
+            offered: c.subprotocols.iter().map(|p| p.to_string()).collect(),
+            max: c.max_message,
+        };
+        let task = self
+            .executor
+            .spawn(ws::connect(self.ws.clone(), client, rq, dial));
+        self.inflight
+            .insert(request, Inflight::WsConnect(task.abort_handle(), id));
+    }
+
+    fn ws_send(&mut self, request: u32, id: i64, text: bool, payload: &[u8]) {
+        let sent = {
+            let _enter = self.executor.enter();
+            ws::lock(&self.ws).send(id, text, payload, request)
+        };
+        match sent {
+            Some(b) => self.queued(request, sakura_rt::exec::status::OK, vec![b]),
+            None => {
+                self.inflight.insert(request, Inflight::Ws(id));
+            }
+        }
+    }
+
+    fn ws_receive(&mut self, request: u32, id: i64) {
+        let got = {
+            let _enter = self.executor.enter();
+            ws::lock(&self.ws).receive(id, request)
+        };
+        match got {
+            Some((st, payload)) => self.queued(request, st, payload),
+            None => {
+                self.inflight.insert(request, Inflight::Ws(id));
+            }
+        }
+    }
+
+    fn ws_close(&mut self, id: i64, code: i64, reason: &str) -> Hosted<()> {
+        let _enter = self.executor.enter();
+        ws::lock(&self.ws).close(id, code, reason);
+        Ok(())
+    }
+
+    fn ws_accept(&mut self, task: u32, a: &WsAccept<'_>) -> Hosted<(i64, String)> {
+        self.accept(task, a)
+    }
+
+    fn ws_subscribe(&mut self, id: i64, topic: &str) -> Hosted<bool> {
+        Ok(ws::lock(&self.ws).subscribe(id, topic, true))
+    }
+
+    fn ws_unsubscribe(&mut self, id: i64, topic: &str) -> Hosted<bool> {
+        Ok(ws::lock(&self.ws).subscribe(id, topic, false))
+    }
+
+    fn ws_publish(
+        &mut self,
+        topic: &str,
+        text: bool,
+        payload: &[u8],
+        except: Option<i64>,
+    ) -> Hosted<i64> {
+        Ok(ws::lock(&self.ws).publish(topic, text, payload, except))
     }
 
     fn test_record_failure(&mut self, message: &str) {

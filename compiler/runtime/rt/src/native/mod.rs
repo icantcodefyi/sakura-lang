@@ -16,6 +16,7 @@ pub(crate) mod prop;
 pub mod serve;
 pub mod sql;
 pub mod test;
+pub(crate) mod ws;
 
 use alloc::boxed::Box;
 use alloc::rc::Rc;
@@ -26,7 +27,7 @@ use core::ptr::NonNull;
 
 pub use host::{
     FileMode, Guest, HandleId, Host, HostError, Hosted, HttpRequest, HttpResponse, SqlValue,
-    WorkerGrants,
+    WorkerGrants, WsAccept, WsConnect, WsReceived,
 };
 pub use hosted::{HOSTED, rt_hosted};
 
@@ -469,9 +470,8 @@ pub use crate::exports::{BUILTINS, BuiltinFn};
 
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
-/// `sakura_codegen_wasm`), with the function each resolves to. The standard services N1b has
-/// not reached yet (WebSocket) resolve to `rt_code_unsupported`, a `D090` when performed;
-/// Http's operations are `hosted`'s.
+/// `sakura_codegen_wasm`), with the function each resolves to. Http's operations are
+/// `hosted`'s, WebSocket's `ws`'s.
 pub static CODES: &[(&str, SakuraCode)] = {
     use crate::exports as e;
     &[
@@ -542,9 +542,9 @@ pub static CODES: &[(&str, SakuraCode)] = {
         ("rt_k_worker_closing", crate::worker::rt_k_worker_closing),
         ("rt_k_worker_post", crate::worker::rt_k_worker_post),
         ("rt_k_worker_take", crate::worker::rt_k_worker_take),
-        ("rt_k_ws_connect", e::rt_code_unsupported),
-        ("rt_k_ws_receive", e::rt_code_unsupported),
-        ("rt_k_ws_send", e::rt_code_unsupported),
+        ("rt_k_ws_connect", ws::rt_k_ws_connect),
+        ("rt_k_ws_receive", ws::rt_k_ws_receive),
+        ("rt_k_ws_send", ws::rt_k_ws_send),
     ]
 };
 

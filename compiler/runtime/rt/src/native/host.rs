@@ -79,6 +79,60 @@ pub struct HttpResponse {
     pub body: Vec<u8>,
 }
 
+/// `ws_connect`'s arguments: the serialized URL and `std::websocket::Options`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WsConnect<'a> {
+    pub url: &'a str,
+    pub subprotocols: Vec<&'a str>,
+    pub headers: Vec<(&'a str, &'a str)>,
+    pub max_message: i64,
+}
+
+/// `ws_accept`'s arguments: the `Handshake`'s key and the `Upgrade`'s choice, extra headers and
+/// bound.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WsAccept<'a> {
+    pub key: &'a str,
+    pub subprotocol: Option<&'a str>,
+    pub headers: Vec<(&'a str, &'a str)>,
+    pub max_message: i64,
+}
+
+/// A `std::websocket::Received` as `ws_receive` completes with it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WsReceived {
+    /// `Data(Text(…))` when `text` (UTF-8 checked by the host), else `Data(Binary(…))`.
+    Message { text: bool, data: Vec<u8> },
+    Closed {
+        code: i64,
+        reason: String,
+        clean: bool,
+    },
+}
+
+impl WsReceived {
+    /// The completion payload: `0, text, data…` or `1, clean, code (i64 LE), reason…`.
+    pub fn encode(&self) -> Vec<u8> {
+        match self {
+            WsReceived::Message { text, data } => {
+                let mut out = alloc::vec![0, u8::from(*text)];
+                out.extend_from_slice(data);
+                out
+            }
+            WsReceived::Closed {
+                code,
+                reason,
+                clean,
+            } => {
+                let mut out = alloc::vec![1, u8::from(*clean)];
+                out.extend_from_slice(&code.to_le_bytes());
+                out.extend_from_slice(reason.as_bytes());
+                out
+            }
+        }
+    }
+}
+
 /// What the runtime answers a JS-built handler's host while it runs a clause (design §17.308
 /// (3)): the host names types and never learns a layout id or touches the heap.
 pub trait Guest {
@@ -318,6 +372,43 @@ pub trait Host {
     /// The response of the served request answered by `task`: the `sakura-vt1` tuple of the
     /// `Response`.
     fn serve_respond(&mut self, _task: u32, _response: &[u8]) {}
+
+    /// `WebSocket.host()` (JS `ws_*`): a socket is an `Int` id from the files' id space, closed
+    /// by `file_close`. `async`: open a connection and complete `request` with status 0 and the
+    /// socket's id (`i64` LE) then the chosen subprotocol's UTF-8, or 1 and the reason.
+    fn ws_connect(&mut self, _request: u32, _c: &WsConnect<'_>) {}
+    /// `async`: send one message on socket `id`; complete `request` with status 0 and one byte,
+    /// 1 when sent and 0 once the socket is closing or closed.
+    fn ws_send(&mut self, _request: u32, _id: i64, _text: bool, _payload: &[u8]) {}
+    /// `async`: complete `request` with status 0 and the next [`WsReceived`] (encoded), or 1 and
+    /// the reason once the socket's entry is closed.
+    fn ws_receive(&mut self, _request: u32, _id: i64) {}
+    /// Start the closing handshake of socket `id` with `code` and `reason`.
+    fn ws_close(&mut self, _id: i64, _code: i64, _reason: &str) -> Hosted<()> {
+        Err(unsupported())
+    }
+    /// Upgrade the served request answered by `task` (the one `serve_respond` would answer):
+    /// the socket's id and the chosen subprotocol, or `Err(reason)`.
+    fn ws_accept(&mut self, _task: u32, _a: &WsAccept<'_>) -> Hosted<(i64, String)> {
+        Err(unsupported())
+    }
+    /// Whether socket `id` joined `topic` (false once it is closing or closed).
+    fn ws_subscribe(&mut self, _id: i64, _topic: &str) -> Hosted<bool> {
+        Err(unsupported())
+    }
+    fn ws_unsubscribe(&mut self, _id: i64, _topic: &str) -> Hosted<bool> {
+        Err(unsupported())
+    }
+    /// Write the message to every open socket subscribed to `topic` but `except`: how many.
+    fn ws_publish(
+        &mut self,
+        _topic: &str,
+        _text: bool,
+        _payload: &[u8],
+        _except: Option<i64>,
+    ) -> Hosted<i64> {
+        Err(unsupported())
+    }
 
     /// The test runner's `std::test::Test` operations (`sakura test --target native`, as the
     /// WASM host's `test_*` imports): the running test's failures and captured output, its
