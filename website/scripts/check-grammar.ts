@@ -1,4 +1,6 @@
 // Smoke check for the Sakura Lang grammar against docs/design.md §2–§3: key tokens must get the expected scopes.
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { createHighlighter } from "shiki";
 import { sakuraGrammar } from "../lib/sakura/grammar";
 import { sakuraDark, sakuraLight } from "../lib/sakura/themes";
@@ -82,5 +84,29 @@ for (const [text, scope, nth] of expect) {
     console.error(`✗ ${text}: expected ${scope}, got ${got}`);
   }
 }
-console.log(bad ? `${bad} grammar checks failed` : "grammar ok");
+// Every tracked `.sak` file (GitHub Linguist highlights with this grammar, docs/linguist-submission.md):
+// no `invalid` scope except the reserved words, and no file slow enough to suggest backtracking.
+const files = execFileSync("git", ["ls-files", "*.sak"], { cwd: "..", encoding: "utf8" })
+  .trim()
+  .split("\n");
+for (const file of files) {
+  const start = performance.now();
+  const invalid = hl
+    .codeToTokens(readFileSync(`../${file}`, "utf8"), {
+      lang: sakuraGrammar.name as "text",
+      theme: "sakura-dark",
+      includeExplanation: true,
+    })
+    .tokens.flat()
+    .flatMap((t) => t.explanation ?? [])
+    .map((e) => e.scopes.at(-1)!.scopeName)
+    .filter((s) => s.startsWith("invalid") && s !== "invalid.illegal.reserved.sakura");
+  const ms = performance.now() - start;
+  if (invalid.length || ms > 1000) {
+    bad++;
+    console.error(`✗ ${file}: ${invalid.length} invalid tokens, ${ms.toFixed(0)} ms`);
+  }
+}
+
+console.log(bad ? `${bad} grammar checks failed` : `grammar ok (${files.length} .sak files)`);
 process.exit(bad ? 1 : 0);
