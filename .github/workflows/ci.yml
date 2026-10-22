@@ -762,6 +762,38 @@ jobs:
       - name: Check authored documentation examples
         run: python3 website/scripts/check-doc-sweep.py
 
+  # The website's /play compiles in the browser with compiler/crates/sakura_playground built for
+  # wasm32 and committed (Vercel has no Rust). Building it here keeps the crate building for
+  # wasm32 and its ABI answering; a committed artifact older than the tree is a notice, not a
+  # failure, since compiler changes do not have to republish it.
+  playground:
+    needs: changes
+    if: needs.changes.outputs.compiler == 'true' || needs.changes.outputs.website == 'true' || needs.changes.outputs.workflows == 'true'
+    name: Playground wasm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup target add wasm32-unknown-unknown
+      - name: Check the committed playground wasm
+        run: node website/scripts/check-playground.mjs
+      - name: Build the playground wasm
+        run: website/scripts/playground-wasm.sh
+      - name: Check the fresh build
+        run: |
+          node website/scripts/check-playground.mjs
+          if ! git diff --quiet -- website/public/play; then
+            echo "::notice::website/public/play/sakura_playground.wasm differs from a build of this tree; run website/scripts/playground-wasm.sh to republish it"
+          fi
+
   # Design §17.285 (2)(a): a stale compiler/fuzz/Cargo.lock fails here, not at the next nightly.
   # A plain stable build of the fuzz crate; fuzz.yml does the fuzzing.
   fuzz-build:
@@ -791,7 +823,7 @@ jobs:
     name: ci-required
     if: always()
     # The rust result requires every matrix child, including both partitions on each OS.
-    needs: [changes, website, rust, msrv, native, parity, vscode, tree-sitter, contracts, release-tooling, doc-checks, fuzz-build]
+    needs: [changes, website, rust, msrv, native, parity, vscode, tree-sitter, contracts, release-tooling, doc-checks, fuzz-build, playground]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
