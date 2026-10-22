@@ -9,8 +9,9 @@ The latest release is **`v1.0.0-beta.5`** (after `v1.0.0-beta.4`, `v1.0.0-beta.3
 §17.291 and its 2026-10-21 addendum). Its promise is deliberately loose: **it may have bugs
 and it may change before 1.0.0**, including the contracts the inventory below lists; every
 breaking change between the beta and 1.0.0 is listed in the [CHANGELOG](CHANGELOG.md) with a
-migration. RFC 0001's final comment period does not gate the beta; its guarantees bind from
-the release at which the owner accepts it, and in full from `v1.0.0`. Release-specific platform evidence is listed
+migration. [RFC 0001](docs/rfcs/0001-stability-guarantees.md) was accepted on 2026-10-23: its
+machine contracts bind from `v1.0.0-beta.1`, and source and std compatibility within a major
+from `v1.0.0`. Release-specific platform evidence is listed
 on the [install page](website/content/docs/install.mdx).
 [The design](docs/design.md) is provisional; examples are illustrative unless
 explicitly backed by a runnable test. Research and performance goals do not imply
@@ -20,9 +21,8 @@ verified soundness, production readiness, or measured efficiency.
 
 The first preview was `0.1.0-alpha.1`; the current release is `0.1.0`.
 Preview behavior may change between prereleases.
-[Draft RFC 0001](docs/rfcs/0001-stability-guarantees.md) proposes stronger guarantees
-for owner acceptance after its final comment period, which does not gate `v1.0.0-beta.1`;
-it does not change this policy until accepted.
+[RFC 0001](docs/rfcs/0001-stability-guarantees.md), accepted on 2026-10-23, sets the
+stronger guarantees below; its final comment period did not gate `v1.0.0-beta.1`.
 Once numbered non-prerelease versions exist, reserve **minor releases** for
 deliberate breaking language/API changes and **patch releases** for compatible
 fixes. Describe affected programs, rationale, and migration steps in release notes.
@@ -52,16 +52,15 @@ files are per-build artefacts with no compatibility promise: their format, name 
 may change in any release, any of them may be deleted at any time, and a missing, damaged or
 foreign file only costs the analysis it would have saved.
 
-## Draft public-interface inventory
+## Public-interface inventory
 
-**Draft until RFC 0001 is accepted.** These are proposed classifications,
-not stability guarantees for the current preview. `stable` means intended for the
-RFC's compatibility contract; `experimental` means no compatibility promise;
-`internal` means an implementation or development interface. The first-honouring
-column is conditional on acceptance: `1.0.0-beta.1` starts the machine-contract rules, which
-may still change during the beta with a CHANGELOG migration (owner, 2026-10-21), and a
-listed-migration promise for source and std; `1.0.0` starts full source/std compatibility
-within a major. `—` makes no stabilization commitment.
+**RFC 0001 was accepted on 2026-10-23** ([decision record](docs/rfcs/0001-stability-guarantees.md#decision-record)).
+`stable` means covered by the RFC's compatibility contract; `experimental` means no
+compatibility promise; `internal` means an implementation or development interface. In the
+first-honouring column, `1.0.0-beta.1` starts the machine-contract rules, which could still
+change during the beta with a CHANGELOG migration (owner, 2026-10-21), and a listed-migration
+promise for source and std; `1.0.0` starts full source/std compatibility within a major. `—`
+makes no stabilization commitment.
 
 This inventory follows design §17.232 and the actual parser, emitters and hosts.
 The [generated CLI baseline](compiler/contracts/cli.txt) pins commands, arguments,
@@ -71,7 +70,7 @@ drift test. Human wording, diagnostic prose, help layout and generated code byte
 are not contracts. Flags below belong only to their named command; positionals
 and built-in help commands are also captured in the baseline.
 
-| Surface | Item (implemented unless explicitly qualified) | Draft level | First honouring version |
+| Surface | Item (implemented unless explicitly qualified) | Level | First honouring version |
 | --- | --- | --- | --- |
 | CLI | Root `-h`/`--help`, `-V`/`--version`; `help [COMMAND]`; per-command `-h`/`--help` | stable | 1.0.0-beta.1 |
 | CLI | `check [PATHS]`: `--json`, `--frozen-specs`, `--since` | stable | 1.0.0-beta.1 |
@@ -116,16 +115,15 @@ and built-in help commands are also captured in the baseline.
 | Exit codes | `0` success; `1` diagnostics/errors, disproved verification, formatting differences, or failed `main`; `2` usage/setup/I/O invocation failures; `3` test failures; `70` runtime defect; `75` startup permission denial. `run` forwards the child program's status; these are driver meanings, not an exhaustive set of possible program exit values | stable | 1.0.0-beta.1 |
 
 The table deliberately records current gaps: verify's diagnostic schema differs; native
-help labels and the history gate are separate work. Acceptance must settle the
-experimental LSP extension and unconsumed manifest keys before claiming that
-these are stable. No package resolution, native CLI target, or environment switch
+help labels and the history gate are separate work. RFC 0001's acceptance left the
+LSP extension experimental and the unconsumed manifest keys unlisted; a later decision
+must settle them before claiming that these are stable. No package resolution, native CLI target, or environment switch
 is promised merely because it appears in a design document.
 
 ## Contracts to define at 1.0
 
-[RFC 0001](docs/rfcs/0001-stability-guarantees.md) drafts these guarantees for
-owner acceptance after its final comment period, which does not gate `v1.0.0-beta.1`. It
-remains Draft and does not change this policy.
+[RFC 0001](docs/rfcs/0001-stability-guarantees.md), accepted on 2026-10-23, sets these
+guarantees; the inventory above is their scope.
 
 Before 1.0, enumerate guarantees for source semantics, standard-library APIs,
 CLI flags and exit codes, configuration formats, structured diagnostic schemas,

@@ -1,8 +1,10 @@
 # RFC 0001: Stability guarantees
 
-This draft defines the compatibility contract that begins at `v1.0.0-beta.1` and is enforced
-for 1.0 (design §17.291, which folds the planned `v0.2.0` into the beta). It does not stabilize today's implementation. [STABILITY.md](../../STABILITY.md)
-remains the current policy until the owner records acceptance and updates it.
+This RFC defines the compatibility contract that begins at `v1.0.0-beta.1` and is enforced
+for 1.0 (design §17.291, which folds the planned `v0.2.0` into the beta). It was accepted on
+2026-10-23; the [decision record](#decision-record) names the first release that honours each
+guarantee and the rows still unfinished. [STABILITY.md](../../STABILITY.md) is the policy that
+carries it out.
 
 ## Metadata
 
@@ -12,14 +14,16 @@ remains the current policy until the owner records acceptance and updates it.
   The human contributor owns acceptance and the resulting guarantees.
 - Discussion and PR: not opened. The owner requested this draft directly on main.
   The pitch is design §17.225–226, round 23, commit `a7d9e205`.
-- Decision status: FCP waived by the owner on 2026-10-23; acceptance is recorded at
-  `v1.0.0`'s preparation commit.
-- Implementation status: Partial existing checks; enforcement gaps below remain open.
-- Stabilization status: Not stabilized.
-- FCP start/end: waived by @icantcodefyi on 2026-10-23 (written decision); no seven-day
-  period.
-- Decision date/owner: Not decided; acceptance is recorded at `v1.0.0`'s preparation commit
-  under the owner's written delegation of 2026-10-22.
+- Decision status: **Accepted** 2026-10-23, by Claude Opus 5.5 under the owner's written
+  delegation of 2026-10-22; FCP waived by the owner 2026-10-23.
+- Implementation status: the enforcement rows below are in CI; the unfinished ones are named in
+  the [decision record](#decision-record).
+- Stabilization status: the machine contracts from `1.0.0-beta.1`; source and std from `1.0.0`
+  (the [decision record](#decision-record)).
+- FCP start/end: started 2026-10-22; waived by @icantcodefyi on 2026-10-23 (written decision),
+  with no seven-day period.
+- Decision date/owner: 2026-10-23; accepted by Claude Opus 5.5 under the delegation of
+  @icantcodefyi.
 
 ## Motivation
 
@@ -397,10 +401,8 @@ text above is unchanged and the owner then planned to accept at `v0.2.0`, which 
 
 ## Decision record
 
-Draft requested for roadmap stage 5. No acceptance has been recorded.
-The owner will record disposition, rationale, objections, and implementation and
-stabilization references here. The planned acceptance point is the first release after the
-FCP closes; the FCP does not gate `v1.0.0-beta.1` (owner, 2026-10-21).
+Draft requested for roadmap stage 5. Accepted on 2026-10-23 (the last entry below). The
+FCP did not gate `v1.0.0-beta.1` (owner, 2026-10-21).
 
 - 2026-10-22: FCP started (design §17.312, plan `road-to-1.0.md` §7 row 1e). FCP start
   2026-10-22, end 2026-10-29. Proposed disposition: accept, recorded in `v1.0.0`'s preparation
@@ -411,3 +413,40 @@ FCP closes; the FCP does not gate `v1.0.0-beta.1` (owner, 2026-10-21).
   1.0.0"). The FCP recorded on 2026-10-22 ends here, without a seven-day period, and `v1.0.0`
   is not held for a date. Acceptance, the first-honouring release per guarantee and the
   stabilization record are written here in `v1.0.0`'s preparation commit.
+- 2026-10-23: **Accepted**, by Claude Opus 5.5 under the owner's written delegation of
+  2026-10-22; FCP waived by the owner 2026-10-23. Disposition as proposed on 2026-10-22, with
+  no change to the text above. Rationale: the betas have honoured the machine contracts since
+  `1.0.0-beta.1` under the enforcement rows' CI gates, and the stage-6 audit
+  (`road-to-1.0.md` §7) found no P1 defect or open `soundness` issue. No objection was recorded
+  during the FCP.
+
+  First release that honours each guarantee (the stabilization record):
+
+  | Guarantee | First honouring release | Enforced by |
+  |---|---|---|
+  | Diagnostic identity: a code is never reused or renumbered, a retired code stays reserved | `1.0.0-beta.1` | `compiler/diagnostics/check_history.py` in the `contracts` CI job |
+  | Additive JSON per record `kind` and `schema_version` | `1.0.0-beta.1` | `compiler/contracts/json.txt`, `check_json.py` in the `contracts` CI job |
+  | WASM runtime ABI versioning (ABI §0) | `1.0.0-beta.1` | the cross-version fixtures in `compiler/runtime/rt/tests/fixtures/abi/` |
+  | CLI commands, flags, exit codes and environment reads listed stable in STABILITY.md | `1.0.0-beta.1` | `compiler/contracts/cli.txt` and its drift test |
+  | `V8006` and `sakura.toml`'s stable tables; the `V8005` refusal of every `[dependencies]` table, which RFC 0003 (experimental, design §17.311) narrowed on `main` to the forms a release does not support | `1.0.0-beta.1` | `tests/ui` manifest fixtures |
+  | MSRV from `workspace.package.rust-version`, CI-tested | `1.0.0-beta.1` | the required `msrv` CI job |
+  | Deprecation metadata and the two-minor/six-month rule | `1.0.0-beta.1` (recording); removals counted from `1.0.0` | `compiler/deprecations.toml`, `release.py prepare` |
+  | Source compatibility within a major | `1.0.0` (a listed CHANGELOG migration from `1.0.0-beta.1`) | `compat.yml` over the previous release's corpus |
+  | Std public signatures within a major | `1.0.0` (a listed CHANGELOG migration from `1.0.0-beta.1`) | `compat.yml`, `compiler/std/INDEX.md` |
+
+  Excluded, as the RFC says: `--target native` and its runtime, packages (RFC 0003, until its
+  §12), `std/worker`, `--emit lir`, `--layout niche`, the `sakura/holeContext` LSP extension,
+  internal compiler crates and the caches; each stays experimental or internal in STABILITY.md.
+
+  Unfinished at acceptance, each a release blocker of `v1.0.0` or named as open:
+  - `road-to-1.0.md` §7 rows 2a (beta.6's migration round), 2c (the counted baselines at beta.6
+    and 1.0.0) and `verify-published.yml` green for beta.6 and for `v1.0.0`; they gate `v1.0.0`.
+  - The ABI 1.19.0 fixture: no release has shipped 1.19.0 yet, so `fixtures/abi/1.19.0/` is
+    captured from the first release that does.
+  - STABILITY.md's recorded gaps: verify's post-solver `diagnostic` is schema `1.1` beside the
+    other commands' `1.0`, the native help labels, and the `sakura/holeContext` schema decision.
+    They are open, not blockers: none is listed stable.
+  - Unresolved questions above: the boundary (listed migration during the beta, full within a
+    major from 1.0) is confirmed by design §17.291 (1b); V8005 is allocated (§17.232); the CLI,
+    configuration and LSP inventory is STABILITY.md's table; the MSRV job is required in
+    `ci-required`.

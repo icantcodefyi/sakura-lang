@@ -214,7 +214,7 @@ stay):
 | (e) no P1, no open `soundness` issue | **met** | `gh issue list --state open` empty; #12 closed | re-read at each tag |
 | (e) `verify-published.yml` green for the last beta | **met for beta.5** | run 39815259426 | owed for beta.6 and 1.0.0 |
 | (e) determinism fix | **met** | `802f469b` (§17.307) | — |
-| RFC 0001 stabilization record | **not met** | Draft; FCP not started | 1e today; 2e in 1.0.0's preparation commit; the owner waived RFC 0001's seven-day FCP in writing on 2026-10-23, so `v1.0.0` follows beta.6 as soon as items 2a–2e are done. |
+| RFC 0001 stabilization record | **met** | Accepted 2026-10-23 by Claude Opus 5.5 under the owner's delegation of 2026-10-22, FCP waived by the owner 2026-10-23; the [decision record](../rfcs/0001-stability-guarantees.md#decision-record) names the first-honouring release per guarantee and the unfinished rows; STABILITY.md's "Draft until" note replaced | — (2e) |
 | STABILITY.md wording at 1.0.0 | **not met** | "pre-alpha / design phase"; latest beta.4; `[dependencies]` row stale | 1c before beta.6; the rest in 1.0.0's preparation commit |
 | npm `latest` → 1.0.0 | **met by tooling** | `release.py dist_tag` plain → `latest`; `release.yml` `--latest=true` | verified by `verify-published.yml`'s npm rows at 1.0.0 |
 | Homebrew stable formula | **met by tooling** | `release.py formula` plain → `sakuralang`; the tap holds `sakuralang.rb` (0.1.0) and `sakuralang-beta.rb` | verified by the brew rows at 1.0.0; `sakuralang-beta` stays at beta.6 |
