@@ -140,6 +140,11 @@ retains earlier implementation history.
 
 ### Fixed
 
+- **`Json.encode` on WASM wrote an `Int` beyond ±(2^53 − 1) rounded** (design §17.309 (3)):
+  `[9007199254740993]` printed `[9007199254740992]` and `i64::MAX` printed
+  `9223372036854776000`. The Node host now keeps such an `Int` a `BigInt` as it crosses from
+  the guest (ABI §8.1) and the encoder writes its exact digits, as native does. Decoding one is
+  still the same `Err` on every backend; the JS backend still stops with `D003`.
 - **`Bytes.concat` past 4 GiB leaked its parts** (WASM and native): the overflow now drops the
   list before it fails with the heap defect.
 - **`Llm.anthropic` on `--target native` read a model's `-0` as `0` and a hex `retry-after` as

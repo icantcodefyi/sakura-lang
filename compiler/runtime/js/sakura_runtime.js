@@ -856,6 +856,8 @@ function showIn(v, h, env) {
   switch (typeof v) {
     case "number":
       return h === "F" || (h !== "I" && !Number.isInteger(v)) ? showFloat(v) : String(v);
+    case "bigint":
+      return String(v);
     case "string":
       return quote(v);
     case "boolean":
@@ -3435,7 +3437,8 @@ function pointer(path, key) {
 function toJs(v, s) {
   if (s === "U") return null;
   if (s === "B" || s === "S") return v;
-  if (s === "I") return v;
+  // A `BigInt` is a WASM `Int` beyond ±(2^53 − 1), written exactly (design §17.309 (3)).
+  if (s === "I") return typeof v === "bigint" ? JSON.rawJSON(String(v)) : v;
   if (s === "F") return Number.isFinite(v) ? v : null;
   if (s === "Y") return base64(v);
   if (s === null) return dynamicJs(v);
@@ -3489,6 +3492,8 @@ function dynamicJs(v) {
   switch (typeof v) {
     case "number":
       return Number.isFinite(v) ? v : null;
+    case "bigint":
+      return JSON.rawJSON(String(v));
     case "string":
     case "boolean":
       return v;

@@ -1,12 +1,11 @@
 // milestone: M3
-// backends: native
-// covers: design §17.80, §17.294 SS-8a, §17.308 (2b) (i) (the exact-i64 lane); spec: §4.1
+// backends: wasm native
+// covers: design §17.80, §17.294 SS-8a, §17.308 (2b) (i) (the exact-i64 lane), §17.309 (3); spec: §4.1
 
-// JSON integers beyond ±(2^53 − 1): native writes each exactly and agrees with the LIR evaluator,
-// and decoding one is the same `Err` on every backend (SS-8a). JS stops at the first such value
-// with `D003` (`exact_i64_json.js.jsonl`). WASM's Node host encodes through JavaScript numbers
-// today, so `exact_i64_json.wasm.stdout` records its rounded digits: a divergence reported in
-// `compiler/REQUESTS.md` (2026-10-22, lane N2f); WASM joins `backends` when it is fixed.
+// JSON integers beyond ±(2^53 − 1): WASM and native write each exactly and agree with the LIR
+// evaluator, and decoding one is the same `Err` on every backend (SS-8a). JS stops at the first
+// such value with `D003` (`exact_i64_json.js.jsonl`). WASM's Node host keeps such an `Int` a
+// `BigInt` (ABI §8.1) and its encoder prints it exactly (design §17.309 (3)).
 import std/json.{DecodeError, Json}
 
 type Row = { id: Int }

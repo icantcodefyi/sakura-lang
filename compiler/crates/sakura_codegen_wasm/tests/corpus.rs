@@ -148,8 +148,8 @@ const KNOWN: &[(&str, Option<Host>, &str)] = &[
     (
         "semantics/exact_i64_json",
         None,
-        "the Node host encodes JSON through JavaScript numbers, which round an `Int` beyond \
-         ±(2^53 − 1) (REQUESTS 2026-10-22, lane N2f); WASI does not call the codec yet",
+        "`Json.encode` of a record needs the program's JS type descriptors, which a bare corpus \
+         module lacks; `sakura_cli/tests/parity.rs` holds WASM to `.stdout` (design §17.309 (3))",
     ),
     (
         "semantics/exact_i64_sql",

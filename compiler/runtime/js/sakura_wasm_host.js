@@ -202,6 +202,7 @@ const T = Object.freeze({
 const DIR = 0;
 const BODY = 2;
 const MAX_DEPTH = 64;
+const SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 const utf8out = new TextEncoder();
 
 class Writer {
@@ -1265,8 +1266,11 @@ export class Host {
         return undefined;
       case T.bool:
         return r.u8() === 1;
-      case T.int:
-        return Number(r.i64());
+      case T.int: {
+        // An `Int` beyond ±(2^53 − 1) stays a `BigInt`, never rounded (ABI §8.1, design §17.309 (3)).
+        const n = r.i64();
+        return n >= -SAFE && n <= SAFE ? Number(n) : n;
+      }
       case T.float:
         return r.f64();
       case T.string:
