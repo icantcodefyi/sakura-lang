@@ -69,15 +69,32 @@ impl Write for Sink<'_> {
 impl Rt {
     /// The text of string `s` (borrowed).
     fn text(&self, s: u32) -> &str {
-        let (len, at) = self.data(s);
-        let bytes = self.heap.mem.bytes(at, len);
+        self.text_checked(s, self.utf8(s))
+    }
+
+    /// Whether string `s`'s bytes are UTF-8. On WASM every constructor writes UTF-8 (literals
+    /// from the compiler, `new_string`'s callers, `string_from_bytes` after validation); native
+    /// code may write heap bytes (ABI §1b), so other targets check.
+    fn utf8(&self, s: u32) -> bool {
         #[cfg(target_arch = "wasm32")]
-        // SAFETY: a `String` object's bytes are UTF-8: every constructor writes UTF-8 (literals
-        // from the compiler, `new_string`'s callers, `string_from_bytes` after validation).
-        // Native code may write heap bytes (ABI §1b), so other targets check instead.
-        return unsafe { core::str::from_utf8_unchecked(bytes) };
+        return true;
         #[cfg(not(target_arch = "wasm32"))]
-        core::str::from_utf8(bytes).unwrap_or("")
+        {
+            let (len, at) = self.data(s);
+            core::str::from_utf8(self.heap.mem.bytes(at, len)).is_ok()
+        }
+    }
+
+    /// `text` with `utf8(s)` already taken: a loop that allocates between reads of `s` checks
+    /// once, not once per read (which made `split` quadratic off WASM). `s` is live and no
+    /// runtime write reaches its bytes, so the answer holds for the whole call.
+    fn text_checked(&self, s: u32, utf8: bool) -> &str {
+        if !utf8 {
+            return "";
+        }
+        let (len, at) = self.data(s);
+        // SAFETY: `utf8` is `self.utf8(s)` for these bytes, or the target writes only UTF-8.
+        unsafe { core::str::from_utf8_unchecked(self.heap.mem.bytes(at, len)) }
     }
 
     /// A new string of `len` bytes copied from `at` (inside a live string).
@@ -120,7 +137,8 @@ impl Rt {
     fn map_case(&mut self, s: u32, upper: bool, keep: u32) -> Res<u32> {
         let r = self.build(|rt, buf| {
             let mut i = 0;
-            while let Some(c) = rt.text(s)[i..].chars().next() {
+            let ok = rt.utf8(s);
+            while let Some(c) = rt.text_checked(s, ok)[i..].chars().next() {
                 i += c.len_utf8();
                 let mut tmp = [0u8; 4];
                 if upper {
@@ -171,8 +189,9 @@ impl Rt {
         let (_, at) = self.data(s);
         let mut out = self.empty_list;
         let mut i = from;
+        let ok = self.utf8(s);
         while i < to {
-            let n = self.text(s)[i as usize..]
+            let n = self.text_checked(s, ok)[i as usize..]
                 .chars()
                 .next()
                 .map_or(1, char::len_utf8) as u32;
@@ -207,9 +226,10 @@ impl Rt {
         }
         let mut out = self.empty_list;
         let mut start = 0u32;
+        let ok = (self.utf8(s), self.utf8(sep));
         loop {
-            let found = self.text(s)[start as usize..]
-                .find(self.text(sep))
+            let found = self.text_checked(s, ok.0)[start as usize..]
+                .find(self.text_checked(sep, ok.1))
                 .map(|k| start + k as u32);
             let end = found.unwrap_or(len);
             let piece = self
@@ -231,10 +251,11 @@ impl Rt {
             let (to_len, to_at) = rt.data(to);
             let n = rt.data(from).0;
             let mut start = 0u32;
+            let ok = (rt.utf8(s), rt.utf8(from));
             if n == 0 {
                 rt.put_mem(buf, to_at, to_len)?;
                 while start < len {
-                    let c = rt.text(s)[start as usize..]
+                    let c = rt.text_checked(s, ok.0)[start as usize..]
                         .chars()
                         .next()
                         .map_or(1, char::len_utf8) as u32;
@@ -245,8 +266,8 @@ impl Rt {
                 return Ok(());
             }
             loop {
-                let found = rt.text(s)[start as usize..]
-                    .find(rt.text(from))
+                let found = rt.text_checked(s, ok.0)[start as usize..]
+                    .find(rt.text_checked(from, ok.1))
                     .map(|k| start + k as u32);
                 let end = found.unwrap_or(len);
                 rt.put_mem(buf, at + start, end - start)?;
