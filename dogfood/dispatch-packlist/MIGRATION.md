@@ -117,3 +117,29 @@ test` 24/24 on js and 24/24 on `--target wasm`. A js build writes no `__entries_
 root module's only `pub fn`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
+
+## v1.0.0-beta.3 → v1.0.0-beta.4
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.4]` as tagged (`git show v1.0.0-beta.4:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.3", items 1–8, and the Added, Changed and Fixed entries, read
+  against the program as of `v1.0.0-beta.4` (`40af20ce`), the beta.3 round's result
+  (`dogfood/` unchanged since `v1.0.0-beta.3`).
+- Compiler: the published `sakuralang@1.0.0-beta.4` from npm in a scratch prefix.
+- Not blind: `dogfood.yml` had passed on beta.4 (run 39730028125) before this was written.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 `sakura fmt` sorts imports by printed path; `1 .2` keeps its space | No | no import path holds whitespace or a comment, and no number literal is followed by `.field`; `fmt --check` stays clean |
+| 2 `sakura check` reports `W8001 copy_on_write` | **Possible, no required edit** | the test "a 100-line delivery passes and a 101-line delivery fails" stores `hundred` in `a.json`'s delivery and then builds `List.push(hundred, ("tea", 1))` while that delivery is live, a `stored` witness, unless `hundred` (a `List.map` result) counts as "a call result", which is never warned about. The `var` updates in `report_of` hold no earlier version. Exit codes are unchanged, so the round's `check` passes either way |
+| 3 the WASM runtime ABI is 1.18.0 | No | host and module come from one install |
+| 4 a served `Request.headers` is lowercase on JS and WASM | No | the program serves nothing |
+| 5 `Json.encode` on WASM writes an `Int` beyond ±(2^53 − 1) exactly | No | the report prints item quantities and line counts, small `Int`s |
+| 6 a `List` default of `Map.get(..)` `unwrap_or` keeps its value on JS | No | `report_of`'s `Option.unwrap_or(Map.get(routes, d.route), Map.empty())` passes a `Map`, not a `List`, and its later `add` updates replace `route`, so the JS output is unchanged |
+| 7 the benchmark counters move | No | the program reads no `stats()` |
+| 8 `--target native` is in the release binaries | No | the round and `dogfood.yml` test on js and wasm only; nothing changes for those, by the item |
+
+Predicted diff: **none required**; possibly one `W8001` warning in a test, which needs no edit.

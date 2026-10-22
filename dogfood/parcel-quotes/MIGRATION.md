@@ -136,3 +136,30 @@ Predicted diff: **none**; the consumer runs from this release.
 and `render_outcome`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
+
+## v1.0.0-beta.3 → v1.0.0-beta.4
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a), in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.4]` as tagged (`git show v1.0.0-beta.4:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.3", items 1–8, and the Added, Changed and Fixed entries, read
+  against the program as of `v1.0.0-beta.4` (`40af20ce`), the beta.3 round's result
+  (`dogfood/` unchanged since `v1.0.0-beta.3`).
+- Compiler: the published `sakuralang@1.0.0-beta.4` from npm in a scratch prefix.
+- Not blind: `dogfood.yml` had passed on beta.4 (run 39730028125) before this was written.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 `sakura fmt` sorts imports by printed path; `1 .2` keeps its space | No | no import path holds whitespace or a comment, and no number literal is followed by `.field`; `fmt --check` stays clean |
+| 2 `sakura check` reports `W8001 copy_on_write` | Unlikely, no required edit | every update is `x = List.push(x, …)` or `seen = Set.insert(seen, …)` on a `var` not read again before it is replaced |
+| 3 the WASM runtime ABI is 1.18.0 | No | host and module come from one install; the consumer loads the host from the build's own `--out-dir` |
+| 4 a served `Request.headers` is lowercase on JS and WASM | No | the program serves nothing |
+| 5 `Json.encode` on WASM writes an `Int` beyond ±(2^53 − 1) exactly | No | prices and weights are small `Int`s |
+| 6 a `List` default of `Map.get(..)` `unwrap_or` keeps its value on JS | No | no `Map.get` with an `unwrap_or` default |
+| 7 the benchmark counters move | No | the program reads no `stats()` |
+| 8 `--target native` is in the release binaries | No | the round and `dogfood.yml` test on js and wasm only; nothing changes for those, by the item |
+| Fixed: `Fs.host()`, `Test.fixtures()` and cassettes under Node 26.12.1 | No edit | a host fix; this round's Node is 26.12.0 |
+
+Predicted diff: **none**.
