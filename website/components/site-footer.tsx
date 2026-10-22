@@ -88,9 +88,15 @@ export function SiteFooter() {
             <Wordmark />
           </Link>
           <p className="mt-4 max-w-[17rem] text-[14px] leading-relaxed text-muted-foreground">
-            The language agents write. In beta:{" "}
-            <span className="whitespace-nowrap">v{RELEASE}</span> is published, not for production,
-            and nothing is stable before 1.0.
+            The language agents write. <span className="whitespace-nowrap">v{RELEASE}</span> is
+            published; see{" "}
+            <Link
+              href="/docs/stability"
+              className="text-foreground underline decoration-sakura underline-offset-4 transition-colors duration-150 hover:text-sakura-text"
+            >
+              Stability
+            </Link>{" "}
+            for what it promises.
           </p>
         </div>
         {COLUMNS.map((c) => (

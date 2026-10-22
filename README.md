@@ -24,8 +24,9 @@ small changes. The compiler is written in Rust and targets JavaScript and
 WebAssembly.
 
 > [!NOTE]
-> `0.1.0` is a published **preview** with no stable language or API
-> contract yet. See [Status and roadmap](#status-and-roadmap) and [STABILITY.md](STABILITY.md).
+> `v1.0.0` is the first stable release: what [STABILITY.md](STABILITY.md) lists as stable
+> keeps working across 1.x. The native backend, packages and `std/worker` are experimental.
+> See [Status and roadmap](#status-and-roadmap).
 
 ## Install
 
@@ -34,7 +35,7 @@ WebAssembly.
 **npm**
 
 ```sh
-npm install --global sakuralang@0.1.0
+npm install --global sakuralang
 ```
 
 **Homebrew** (installs Node with it)
@@ -46,8 +47,8 @@ brew tap icantcodefyi/sakuralang && brew install sakuralang
 **install.sh** (checks `SHA256SUMS`; verifies attestations when `gh` is installed)
 
 ```sh
-curl -fsSLO https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0/install.sh
-sh install.sh --version 0.1.0
+curl -fsSLO https://github.com/icantcodefyi/sakuralang/releases/download/v1.0.0/install.sh
+sh install.sh --version 1.0.0
 ```
 
 | Platform | Target | Release |
@@ -143,7 +144,7 @@ signature. The compiler rejects anything else.
 | `v1.0.0-beta.4` | The fourth beta, not production: `--target native` (experimental) in the macOS arm64, Linux x64 and Linux arm64 release binaries, `W8001` copy-on-write warnings, Perceus reuse and borrowed read-only calls, WASM runtime ABI 1.18.0; migrations in the CHANGELOG | **shipped** 2026-10-22 (npm `beta`, `sakuralang-beta`) |
 | `v1.0.0-beta.5` | The fifth beta, not production: `--target native` (experimental) in the Intel macOS release binary too, a `match` on a tuple literal allocates nothing, runtime release fixes on out-of-memory paths, WASM runtime ABI unchanged at 1.18.0; migrations in the CHANGELOG | **shipped** 2026-10-22 (npm `beta`, `sakuralang-beta`) |
 | `v1.0.0-beta.6` | The sixth beta, not production, and the one 1.0.0 is cut from: packages (experimental) with `path` dependencies, effect ceilings and the authority gate, `WebSocket` on `--target native`, revealed key bytes zeroed when freed (WASM runtime ABI 1.19.0), linear-time native string builtins; migrations in the CHANGELOG | **shipped** 2026-10-23 (npm `beta`, `sakuralang-beta`) |
-| `v1.0.0` | Production: the fuzz campaign's ledger (≥ 24 CPU-hours per target, zero soundness findings; design §17.306) and no P1 defect, then 1.0; packages follow in 1.x | planned |
+| `v1.0.0` | The first stable release: the language, std, CLI, JSON records and WASM runtime ABI keep working across 1.x (RFC 0001); the fuzz campaign's ledger (≥ 24 CPU-hours per target, zero soundness findings) and no P1 defect; native, packages and `std/worker` stay experimental | **shipped** 2026-10-23 (npm `latest`, `sakuralang`) |
 
 The JavaScript and WebAssembly backends ship. The Cranelift native backend is
 **experimental**: the macOS arm64, Linux x64 and Linux arm64 release binaries carry it from

@@ -1,8 +1,9 @@
 # Contributing to Sakura Lang
 
-Sakura Lang is in **pre-alpha / design phase**. Research, design discussion, documentation,
-and the website are useful contributions today. The Rust compiler workspace in `compiler/` builds from source and executes on JavaScript.
-The `0.1.0` preview is published; there is no stable compatibility guarantee yet.
+Sakura Lang has a stable 1.0 release. What STABILITY.md lists as stable keeps working across
+1.x; the native backend, packages and `std/worker` are experimental and may change in a minor.
+Research, design discussion, documentation, the website and the Rust compiler workspace in
+`compiler/` are all useful contributions.
 Start with the [design](docs/design.md), [research](research/),
 [stability policy](STABILITY.md), and [Code of Conduct](CODE_OF_CONDUCT.md).
 

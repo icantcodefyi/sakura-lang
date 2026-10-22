@@ -7,13 +7,13 @@ import { Tabs } from "./tabs";
 
 // Commands from /docs/install (content/docs/install.mdx); platforms and claim levels live there.
 const CHANNELS: { name: string; lines: string[]; note: string }[] = [
-  { name: "npm", lines: ["npm i -g sakuralang@beta"], note: "the npm beta tag; needs Node 26" },
+  { name: "npm", lines: ["npm i -g sakuralang"], note: "needs Node 26" },
   {
     name: "Homebrew",
     lines: [
       "brew tap icantcodefyi/sakuralang",
       "brew trust --tap icantcodefyi/sakuralang",
-      "brew install sakuralang-beta",
+      "brew install sakuralang",
     ],
     note: "installs Node with it",
   },

@@ -1,33 +1,31 @@
 # Stability and compatibility
 
-## Today: pre-alpha / design phase
+## Today: 1.0, stable
 
-Sakura Lang has a published `0.1.0` preview and a source-buildable compiler,
-but no stable language/API contract.
-
-The latest release is **`v1.0.0-beta.6`** (after `v1.0.0-beta.5`, `v1.0.0-beta.4`, `v1.0.0-beta.3`, `v1.0.0-beta.2` and `v1.0.0-beta.1`), a beta of 1.0 and not for production (design
-§17.291 and its 2026-10-21 addendum). Its promise is deliberately loose: **it may have bugs
-and it may change before 1.0.0**, including the contracts the inventory below lists; every
-breaking change between the beta and 1.0.0 is listed in the [CHANGELOG](CHANGELOG.md) with a
-migration. [RFC 0001](docs/rfcs/0001-stability-guarantees.md) was accepted on 2026-10-23: its
-machine contracts bind from `v1.0.0-beta.1`, and source and std compatibility within a major
-from `v1.0.0`. Release-specific platform evidence is listed
-on the [install page](website/content/docs/install.mdx).
-[The design](docs/design.md) is provisional; examples are illustrative unless
-explicitly backed by a runnable test. Research and performance goals do not imply
-verified soundness, production readiness, or measured efficiency.
+The latest release is `v1.0.0`, the first stable release. The language, the standard library
+modules marked stable below, the CLI, the JSON records, the exit codes and the WASM runtime ABI
+follow the rules in this file and [RFC 0001](docs/rfcs/0001-stability-guarantees.md) (accepted
+2026-10-23). A breaking change to any of them waits for 2.0; a security or soundness fix may
+break behaviour in a patch, with a migration in the [CHANGELOG](CHANGELOG.md). `--target
+native`, packages and `std/worker` are experimental: no compatibility promise, and they may
+change in a minor with a migration line. Release-specific platform evidence is listed on the
+[install page](website/content/docs/install.mdx). [The design](docs/design.md) is the
+rationale, not the specification; examples are illustrative unless explicitly backed by a
+runnable test. Performance goals do not imply measured efficiency.
 
 ## Before 1.0
 
-The first preview was `0.1.0-alpha.1`; the current release is `0.1.0`.
-Preview behavior may change between prereleases.
+Before 1.0, the previews (`0.1.0-alpha.1`, `0.1.0`) and the six betas (`1.0.0-beta.1` to
+`1.0.0-beta.6`) made no full compatibility promise: preview behaviour could change between
+prereleases, and each beta listed every breaking change in the CHANGELOG with a migration.
 [RFC 0001](docs/rfcs/0001-stability-guarantees.md), accepted on 2026-10-23, sets the
-stronger guarantees below; its final comment period did not gate `v1.0.0-beta.1`.
-Once numbered non-prerelease versions exist, reserve **minor releases** for
-deliberate breaking language/API changes and **patch releases** for compatible
-fixes. Describe affected programs, rationale, and migration steps in release notes.
-Security or correctness fixes may exceptionally break behavior in a patch; explain
-why and document the smallest practical migration.
+guarantees this file carries out; its final comment period did not gate `v1.0.0-beta.1`.
+
+From 1.0, a breaking change to a stable surface waits for the next major; **minor releases**
+add features and **patch releases** carry compatible fixes. Describe affected programs,
+rationale, and migration steps in release notes. Security or correctness fixes may
+exceptionally break behavior in a patch; explain why and document the smallest practical
+migration.
 
 Experimental features must be opt-in and explicitly labeled outside compatibility
 guarantees. RFC acceptance is not stabilization. Record implementation and
@@ -39,7 +37,7 @@ The development toolchain is pinned in `compiler/rust-toolchain.toml`, and
 the minimum supported Rust version (MSRV) is `workspace.package.rust-version`
 in `compiler/Cargo.toml`. The required `msrv` CI job installs that toolchain,
 checks all workspace targets with the lockfile, and runs workspace tests on Linux.
-MSRV increases may occur in pre-1.0 minor releases and must be announced in notes.
+MSRV increases may ship only in a minor release and must be announced in notes (RFC 0001).
 The release binaries' floors are glibc 2.35 on Linux (x64 and arm64), macOS 12.0 and
 Windows 10 x64; a `--target native` executable needs the same floors as the `sakura` that
 built it. Native smoke tests run on the release rows marked native in

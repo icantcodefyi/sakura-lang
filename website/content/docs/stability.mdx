@@ -1,26 +1,24 @@
 ---
 title: Stability
-description: What you can rely on in Sakura Lang today, what may still change before 1.0, and what is experimental.
+description: What you can rely on in Sakura Lang 1.x, what is experimental, and what is internal.
 ---
 
 This page says which parts of Sakura Lang you can build on and which may still change. Read it
 before you depend on Sakura Lang in a script, a CI job or a tool that reads its output.
 
-<Callout type="warn" title="Latest release">
-  **Latest release: `v1.0.0-beta.6`.** It is a beta, a preview of 1.0, and **not for
-  production**. It may have bugs and may still change before 1.0.0. It is published as a GitHub
-  prerelease, on npm under the `beta` tag and as the Homebrew formula `sakuralang-beta`
-  ([Install](/docs/install#the-beta)). `npm i -g sakuralang` and `brew install sakuralang`
-  still install the earlier preview, `0.1.0`.
+<Callout type="info" title="Latest release">
+  `v1.0.0` is the current release, and it is stable: what the [Stability](/docs/stability) page
+  lists keeps working across 1.x, and a breaking change waits for 2.0. A security fix that has to
+  break something comes with a migration in the [changelog](/changelog). Native, packages and
+  workers are experimental and may change.
 </Callout>
 
 ## In short
 
-- **Today there is no compatibility promise.** Anything may change before 1.0.0.
-- **But breaking changes are listed.** Every breaking change between a beta and 1.0.0 is listed
-  in the [changelog](/changelog) with a migration: what to change in your code.
-- **From 1.0.0, compatibility holds within 1.x.** Your source code and its standard-library
-  calls stay compatible across the 1.x releases.
+- **Compatibility holds within 1.x.** Your source code, its standard-library calls and the
+  stable parts below keep working across the 1.x releases. A breaking change waits for 2.0.
+- **A security fix may break something in a patch.** If it has to, the
+  [changelog](/changelog) lists it with a migration: what to change in your code.
 - **Experimental features carry no promise.** They are opt-in, labelled, and may change or go
   away in any release.
 - **Wording is never a contract.** Human-readable output, help text, error message wording and
@@ -32,10 +30,9 @@ Each part of Sakura Lang has one level:
 
 - **Stable**: changes follow the rules below. From `1.0.0-beta.1`, machine-readable
   contracts (diagnostic codes, `--json` records, exit codes and the WebAssembly runtime
-  interface) are meant to change only by adding things. During the beta they may still change,
-  each with a migration in the changelog. Source and standard-library changes during the beta
-  come with a listed migration. From `1.0.0`, source and standard-library compatibility hold
-  within a major version (all of 1.x).
+  interface) change only by adding things (during the betas a breaking change still came with
+  a migration in the changelog). From `1.0.0`, source and standard-library compatibility also
+  hold within a major version (all of 1.x).
 - **Experimental**: may change or disappear in any release. You turn it on yourself, and the
   docs label it.
 - **Internal**: an implementation detail with no promise, even when you can see it.

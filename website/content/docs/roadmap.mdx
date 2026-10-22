@@ -1,20 +1,21 @@
 ---
 title: Roadmap
-description: What works in Sakura Lang today, what comes next on the way to 1.0, and what is planned after 1.0.
+description: What works in Sakura Lang today, how 1.0 was checked, and what is planned after 1.0.
 ---
 
-This page says what you can use today, what is still coming before 1.0, and what is planned
+This page says what you can use today, what 1.0.0 was checked against, and what is planned
 after 1.0. Read it before you pick Sakura Lang for a project. No release has a date.
 
 <Callout type="info" title="Latest release">
-  **Latest release: `v1.0.0-beta.6` (2026-10-23).** A beta is a preview of 1.0: it may have bugs
-  and may still change before 1.0.0, so it is not for production. See [what changed](/docs/changes)
-  and [what you can rely on](/docs/stability).
+  `v1.0.0` is the current release, and it is stable: what the [Stability](/docs/stability) page
+  lists keeps working across 1.x, and a breaking change waits for 2.0. A security fix that has to
+  break something comes with a migration in the [changelog](/changelog). Native, packages and
+  workers are experimental and may change.
 </Callout>
 
 ## What works today
 
-Everything in this section ships in the latest beta.
+Everything in this section ships in the latest release.
 
 - **The language.** Types, effects (a function's type lists what it may do, such as read
   files or call the network), handlers that supply those effects, pattern matching, typed
@@ -60,25 +61,26 @@ Experimental features are opt-in and may change or go away in any release, witho
 - Packages beyond `path` dependencies: nothing is resolved or fetched from a registry yet.
 - A browser host: the WebAssembly backend runs under Node.
 
-## What comes next: 1.0.0
+## How 1.0.0 was checked
 
-1.0.0 is the first production release. It adds no big features over the betas; it is the
-same language with evidence that it holds up. Before 1.0.0 is tagged:
+1.0.0 is the first stable release. It adds no big features over the betas; it is the same
+language with evidence that it holds up. Before 1.0.0 was tagged:
 
-- **Fuzz testing.** Every fuzz target (a test that feeds the compiler random inputs) runs
+- **Fuzz testing.** Every fuzz target (a test that feeds the compiler random inputs) ran
   at least 24 CPU-hours with no soundness bug, meaning no case where a program is accepted
   but behaves wrongly.
-- **Real programs upgraded.** Sample programs written on earlier releases are upgraded through
+- **Real programs upgraded.** Sample programs written on earlier releases were upgraded through
   each beta, following only the published migration notes.
 - **Agent results.** Measured results from coding agents writing Sakura Lang.
 - **A complete specification** of the language.
 - **Signed macOS downloads.**
-- **A quiet last beta.** No serious bug and no contract change after the last beta. A
-  contract change means another beta first.
+- **A quiet last beta.** No serious bug and no contract change after the last beta: only
+  documentation and the version number changed between `v1.0.0-beta.6` and `v1.0.0`.
 
-Until 1.0.0, a beta may still change behaviour, and each breaking change is listed in the
-[changelog](/changelog) with a migration. From 1.0.0 your source code keeps working within
-the 1.x line; see [Stability](/docs/stability).
+`v1.0.0` is the current release, and it is stable: what the [Stability](/docs/stability) page
+lists keeps working across 1.x, and a breaking change waits for 2.0. A security fix that has to
+break something comes with a migration in the [changelog](/changelog). Native, packages and
+workers are experimental and may change.
 
 ## After 1.0
 

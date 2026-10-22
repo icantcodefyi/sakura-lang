@@ -130,7 +130,7 @@ function HeroCopy() {
         style={{ "--i": 4 } as CSSProperties}
       >
         <span className="text-faint select-none">$ </span>
-        <code className="text-foreground select-all">npm i -g sakuralang@beta</code>
+        <code className="text-foreground select-all">npm i -g sakuralang</code>
         <span className="mx-2 text-faint">·</span>
         agents: GET{" "}
         {/* oxlint-disable-next-line nextjs/no-html-link-for-pages -- plain-text route, not a page */}

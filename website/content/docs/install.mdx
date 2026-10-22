@@ -9,14 +9,14 @@ First install [Node 26](https://nodejs.org). `sakura run` and `sakura test` need
 your program. Then:
 
 ```bash title="npm (macOS, Linux, Windows)"
-npm install --global sakuralang@beta
+npm install --global sakuralang
 sakura --version
 ```
 
 ```bash title="Homebrew (macOS, Linux x64)"
 brew tap icantcodefyi/sakuralang
 brew trust --tap icantcodefyi/sakuralang
-brew install sakuralang-beta
+brew install sakuralang
 sakura --version
 ```
 
@@ -33,21 +33,26 @@ Good to know:
 - Homebrew installs Node as a dependency. It installs the formula's current version, not a
   pinned one, so check the printed version before you report a problem.
 
-## The beta
+## The release
 
-`v1.0.0-beta.6` is a beta of 1.0. **It is not for production**: it may have bugs and may change
-before 1.0.0. Every breaking change until then is listed in the [changelog](/changelog) with a
-migration ([Stability](/docs/stability)). It is a
-[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.6).
+`v1.0.0` is the current release, and it is stable: what the [Stability](/docs/stability) page
+lists keeps working across 1.x, and a breaking change waits for 2.0. A security fix that has to
+break something comes with a migration in the [changelog](/changelog). Native, packages and
+workers are experimental and may change.
 
-The beta is not on the default channels. Until `v1.0.0`, `npm install --global sakuralang` (the
-`latest` tag) and `brew install sakuralang` install `0.1.0`, the earlier preview. These docs
+It is a [GitHub release](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0) marked
+latest, on npm under the `latest` tag and as the Homebrew formula `sakuralang`. These docs
 track `main`; see [changes since 0.1.0](/docs/changes).
 
-The two Homebrew formulas both install `sakura`. Remove one (`brew uninstall sakuralang`)
-before you install the other.
+If you installed a beta with Homebrew, switch formulas: both install `sakura`, so remove the
+beta one first.
 
-To install `0.1.0` with npm instead, run `npm install --global sakuralang@0.1.0`.
+```bash title="From the beta formula"
+brew uninstall sakuralang-beta
+brew install sakuralang
+```
+
+With npm, `npm install --global sakuralang` replaces a beta.
 
 ## Release installer
 
@@ -55,15 +60,13 @@ Use this on macOS or Linux if you would rather not use npm or Homebrew. Download
 read it, then run it:
 
 ```bash title="Release installer"
-version=0.1.0
+version=1.0.0
 curl -fsSL "https://github.com/icantcodefyi/sakuralang/releases/download/v${version}/install.sh" -o install.sh
 less install.sh
 sh install.sh --version "$version"
 export PATH="$HOME/.local/bin:$PATH"
 sakura --version
 ```
-
-For the beta, set `version=1.0.0-beta.6`.
 
 The installer:
 
@@ -82,12 +85,10 @@ by Apple. `0.1.0-alpha.1` was not signed.
 Use npm (above), or the PowerShell installer. Download it, read it, then run it:
 
 ```powershell title="install.ps1"
-Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v0.1.0/install.ps1" -OutFile install.ps1
+Invoke-WebRequest "https://github.com/icantcodefyi/sakuralang/releases/download/v1.0.0/install.ps1" -OutFile install.ps1
 Get-Content install.ps1
-./install.ps1 -Version 0.1.0
+./install.ps1 -Version 1.0.0
 ```
-
-For the beta, take `install.ps1` from that release and pass `-Version 1.0.0-beta.6`.
 
 It checks the ZIP against `SHA256SUMS` and installs `sakura.exe` to
 `%LOCALAPPDATA%\Programs\sakuralang\bin`. Add that folder to `PATH` yourself. Use Windows 10

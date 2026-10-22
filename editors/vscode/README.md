@@ -1,6 +1,6 @@
 # Sakura Lang for VS Code
 
-Pre-alpha. A thin client over the compiler's language server, `sakura lsp`: everything it shows
+The extension is experimental; the compiler it wraps is stable from 1.0. A thin client over the compiler's language server, `sakura lsp`: everything it shows
 comes from the compiler you have installed.
 
 - Highlighting for `.sak` files (the grammar the website uses), comments, brackets and

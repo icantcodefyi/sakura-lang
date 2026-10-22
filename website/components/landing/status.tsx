@@ -2,8 +2,8 @@ import { RELEASE } from "@/lib/release";
 import { PipelineFigure } from "./pipeline-figure";
 import { Section, TextLink } from "./section";
 
-// docs/stability ("By area"): what RFC 0001 holds stable from 1.0.0-beta.1, and what
-// stays experimental. During the beta a contract may still change, with a migration.
+// docs/stability ("By area"): what RFC 0001 holds stable across 1.x, and what stays
+// experimental.
 const STABLE = [
   "CLI commands, flags and exit codes",
   "Diagnostic codes and --json records",
@@ -18,12 +18,13 @@ export function Status() {
     <Section
       id="status"
       ask="Is it ready?"
-      title="A beta of 1.0. Not for production yet."
+      title="1.0 is out."
       lede={
         <>
-          <code className="font-mono text-[0.92em] text-foreground">v{RELEASE}</code> has every 1.0
-          feature. It may have bugs and may still change; every breaking change comes with upgrade
-          steps in the <TextLink href="/changelog">changelog</TextLink>.
+          <code className="font-mono text-[0.92em] text-foreground">v{RELEASE}</code> is the first
+          stable release. The language, standard library, CLI, JSON output and runtime ABI keep
+          working across 1.x; breaking changes wait for 2.0. Native, packages and workers are
+          experimental.
         </>
       }
     >
@@ -31,7 +32,7 @@ export function Status() {
         <PipelineFigure />
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
           <div>
-            <h3 className="font-mono text-[12px] text-faint">proposed stable from the beta</h3>
+            <h3 className="font-mono text-[12px] text-faint">stable in 1.x</h3>
             <ul className="mt-3 grid border-t border-border">
               {STABLE.map((s) => (
                 <li
@@ -62,7 +63,7 @@ export function Status() {
             </ul>
             <p className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-[14.5px]">
               <TextLink href="/docs/stability">Stability</TextLink>
-              <TextLink href="/docs/roadmap">Road to 1.0</TextLink>
+              <TextLink href="/docs/roadmap">Roadmap</TextLink>
             </p>
           </div>
         </div>
