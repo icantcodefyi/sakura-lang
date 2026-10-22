@@ -50,6 +50,10 @@ def build(program, language, lane, reuse):
                  f'--builddir={TARGET / ("koka-" + reuse)}',
                  f'--include={PROGRAMS / "_shared/koka"}', '-o', output, 'main.kk'],
                 cwd=program / 'koka')
+    elif language == 'c':
+        shared = PROGRAMS / '_shared/c'
+        execute(['cc', '-std=c17', '-O2', '-I', shared, shared / 'runner.c', program / 'c/main.c',
+                 '-lm', '-o', output])
     elif language == 'python':
         return ['python3', program / 'python/main.py']
     elif language == 'typescript':
@@ -60,23 +64,18 @@ def build(program, language, lane, reuse):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--language', required=True,
-                        choices=['rust', 'go', 'python', 'typescript', 'ocaml', 'koka'])
+                        choices=['rust', 'go', 'python', 'typescript', 'ocaml', 'koka', 'c'])
     parser.add_argument('--lane', choices=['matched', 'idiomatic'], default='matched')
     parser.add_argument('--reuse', choices=['reuse', 'no-reuse'], default='reuse')
     parser.add_argument('--filter', default='*')
     options = parser.parse_args()
-    allocation = {'binary_trees', 'pipeline', 'rbtree', 'map_set', 'shapes'}
     entries = sorted(p for p in PROGRAMS.iterdir()
                      if (p / 'meta.toml').exists() and fnmatch.fnmatch(p.name, options.filter))
     checked = 0
     missing = []
     for program in entries:
-        if options.language == 'ocaml' and program.name not in allocation:
-            continue
-        if options.language == 'koka' and program.name not in allocation and not program.name.startswith('handled_'):
-            continue
         suffix = {'rust': 'rs', 'go': 'go', 'python': 'py', 'typescript': 'ts',
-                  'ocaml': 'ml', 'koka': 'kk'}[options.language]
+                  'ocaml': 'ml', 'koka': 'kk', 'c': 'c'}[options.language]
         if not (program / options.language / f'main.{suffix}').exists():
             port = f'{program.name}/{options.language}'
             missing.append(port)

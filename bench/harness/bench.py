@@ -262,6 +262,19 @@ def build_koka(p, _lane, reuse=True):
     return d / "main"
 
 
+def build_c(p, _lane):
+    d = TARGET / "c" / p
+    d.mkdir(parents=True, exist_ok=True)
+    shared = PROGRAMS / "_shared" / "c"
+    sh(["cc", *C_FLAGS, "-I", str(shared), str(shared / "runner.c"), str(PROGRAMS / p / "c" / "main.c"),
+        "-lm", "-o", str(d / "main")])
+    return d / "main"
+
+
+# C is plain release C: no -march=native, no -ffast-math, no overflow checks (as Go and OCaml).
+C_FLAGS = ["-std=c17", "-O2"]
+
+
 # Native variants (plan §2.2): source marker, toolchain, builder. The `matched` lane builds Rust
 # with overflow checks, `idiomatic` without; Koka is built with and without reuse (§17.109's two
 # Koka lanes); the other languages have one build.
@@ -271,6 +284,7 @@ NATIVE = {
     "ocaml": ("ocaml/main.ml", "ocamlopt", build_ocaml, ["ocamlopt", "-version"]),
     "koka": ("koka/main.kk", "koka", build_koka, ["koka", "--version"]),
     "koka-noreuse": ("koka/main.kk", "koka", lambda p, lane: build_koka(p, lane, reuse=False), ["koka", "--version"]),
+    "c": ("c/main.c", "cc", build_c, ["cc", "--version"]),
 }
 
 
@@ -680,7 +694,7 @@ def host_load(doc):
 
 ENGINE_VERSIONS = {"node": ["node", "--version"], "bun": ["bun", "--version"], "rustc": ["rustc", "--version"],
                    "go": ["go", "version"], "ocaml": ["ocamlopt", "-version"], "koka": ["koka", "--version"],
-                   "hyperfine": ["hyperfine", "--version"], "wasmtime": ["wasmtime", "--version"]}
+                   "c": ["cc", "--version"], "hyperfine": ["hyperfine", "--version"], "wasmtime": ["wasmtime", "--version"]}
 
 
 def engines_meta():

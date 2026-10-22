@@ -3,7 +3,7 @@
 The §17.109 suite and the §17.110 harness, routed by
 [docs/plans/performance-r1.md](../docs/plans/performance-r1.md) §2–§3. Ownership (plan §4.2):
 WS-B owns this directory except the comparison ports
-(`programs/*/{rust,go,ocaml,koka}`), `toolchains.toml` and `.github/workflows/bench.yml`
+(`programs/*/{c,rust,go,ocaml,koka}`), `toolchains.toml` and `.github/workflows/bench.yml`
 (WS-S), and `baselines/`, `deltas.md` and the methodology section below (WS-A). The hand-JS
 controls `programs/*/js` were written by WS-B as the oracles and are WS-S's from now on.
 
@@ -22,7 +22,7 @@ bench/
     meta.toml               # family, sizes, lane, ints, [checksums], optional extras
     sakura/main.sak      # pub fn run(n: Int) -> Int; main prints run(n) for each CLI argument
     js/main.mjs             # export function run(n) → checksum (async allowed)
-    rust/ go/ ocaml/ koka/  # WS-S ports, protocol below
+    c/ rust/ go/ ocaml/ koka/  # native ports, protocol below
   target/                   # build output (ignored)
 ```
 
@@ -66,7 +66,15 @@ machines with the same configuration can share the id.
 | `rust` | `rust/Cargo.toml`, a package with a binary named `main` | `cargo build --locked --profile checked` (matched lane; the package defines `[profile.checked]` inheriting `release` with `overflow-checks = true`) or `--profile release` (idiomatic), target dir `target/rust/<name>` |
 | `go` | `go/main.go` (+ `go.mod` if wanted) | `go build -o target/go/<name>/main .` in `go/` |
 | `ocaml` | `ocaml/main.ml` + `_shared/ocaml/{runner,kernels}.ml` | Copy all three modules to `target/ocaml/<name>`, then `ocamlopt -I +unix unix.cmxa runner.ml kernels.ml main.ml -o main` (`-O3` when the compiler has flambda) |
+| `c` | `c/main.c` + `_shared/c/runner.{h,c}` | `cc -std=c17 -O2 -I _shared/c _shared/c/runner.c main.c -lm -o target/c/<name>/main`: plain release C, no `-march=native`, `-ffast-math` or overflow checks (as Go and OCaml); float ports set `FP_CONTRACT OFF`, as Go materialises products |
 | `koka` | `koka/main.kk` + `_shared/koka/{runner,kernels}.kk` | From the entry's `koka/` directory: `koka -O2 --target=c --stack=67108864 --include=<absolute-shared-koka-dir> --builddir=<absolute-target/koka/name/build> -o <absolute-target/koka/name/main> main.kk` |
+
+Every program has all five ports (C, Rust, Go, OCaml and Koka) since 2026-10-22. Ports added then
+keep their kernel in the program's own `main.ml` or `main.kk` beside the shared runner; the
+C ports are one `main.c` each. A port may differ from the Sakura source only where its header
+comment says so (an in-place array where Sakura has an owned `List.set`, OCaml 5 effect handlers
+for `handled_*`, a hand-written JSON parser where Rust uses `serde_json`); every one reproduces the
+whole `[checksums]` table (`_shared/python/verify.py --language <c|rust|go|ocaml|koka>`).
 
 OCaml's runner uses the bundled Unix library; no opam package or special switch is
 needed with the pinned compiler. Copying shared sources keeps `.cmi`, `.cmx` and `.o`
@@ -131,6 +139,15 @@ sides are native processes, so the statuses are read on the metric the file coun
 wall time beside it as information). A timed file reads `median_ms` and is advisory on a loaded
 host. Rows, statuses and the reading are the M4 envelope's; it refuses a file that is not a
 `--suite native --lane matched` run.
+
+### Native wall time on a hosted runner
+
+Counts are the blessed numbers; time is what people read. `gh workflow run bench.yml --ref main
+-f mode=native` runs the nightly native job alone, matched lane, on a GitHub-hosted `macos-latest`
+(`--stable`, five fresh processes per cell, each cell's median and every process median kept).
+Its JSON goes into `results/<date>-<commit8>-hosted-<run id>-native.json`, which the website's
+benchmarks page reads beside the counted baseline. A hosted runner is shared, so it is never a
+baseline; it is the time anyone can reproduce.
 
 ### WASM lane (§17.191 (2))
 

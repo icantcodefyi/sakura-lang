@@ -6,6 +6,8 @@ rust = "1.99.1"
 go = "1.27.2"
 ocaml = "5.5.1"
 koka = "3.2.9"
+# The C ports' `cc`: Apple clang on the reference Mac (clang-2100.3.34.2); a hosted runner records its own.
+clang = "21.0.0"
 hyperfine = "2.0.0"
 wasmtime = "49.0.3"
 # `bench typescript`: installed by `npm ci` from bench/typescript/package-lock.json, which must agree.

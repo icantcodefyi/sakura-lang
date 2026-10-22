@@ -22,6 +22,12 @@ retains earlier implementation history.
   hash. Documentation blocks holding a whole program link to it. `sakura verify` (Z3) does not run
   in the browser. With no host `process`, the JS runtime's `Fs.host()` is that memory directory
   (`compiler/runtime/js/ABI.md` §7, memory directories).
+- **Every benchmark program has a C, Rust, Go, OCaml and Koka port**: a new C port of each of
+  the 22 programs (`bench/programs/*/c`, plain `cc -std=c17 -O2`, Apple clang 21.0.0 pinned in
+  `bench/toolchains.toml`), and OCaml and Koka ports of the 17 and 11 programs that had none,
+  each reproducing the whole checksum table. `bench run --suite native` builds and counts them
+  beside Sakura's `--target native` executable; `bench.yml`'s new `native` dispatch mode times the
+  same comparison on a GitHub-hosted runner.
 
 ## [1.0.0-beta.5] - 2026-10-22
 

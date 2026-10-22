@@ -1039,11 +1039,15 @@ class Envelope(unittest.TestCase):
 
     def test_the_native_panel_times_both_koka_lanes(self):
         self.assertEqual([v for v, _b, _e in bench.variants("native", [], "rbtree")],
-                         ["sakura", "rust", "go", "ocaml", "koka", "koka-noreuse"])
+                         ["sakura", "rust", "go", "ocaml", "koka", "koka-noreuse", "c"])
         with patch.object(bench, "sh") as sh, tempfile.TemporaryDirectory() as tmp, \
              patch.object(bench, "TARGET", Path(tmp)):
             bench.NATIVE["koka-noreuse"][2]("rbtree", "matched")
-        self.assertIn("--fno-reuse", sh.call_args.args[0])
+            self.assertIn("--fno-reuse", sh.call_args.args[0])
+            # the C port is plain release C, on every lane
+            bench.NATIVE["c"][2]("rbtree", "matched")
+            self.assertEqual(sh.call_args.args[0][1:3], ["-std=c17", "-O2"])
+            self.assertFalse({"-ffast-math", "-march=native"} & set(sh.call_args.args[0]))
 
     def cli(self, wasm, native, *flags):
         with tempfile.TemporaryDirectory() as tmp:
