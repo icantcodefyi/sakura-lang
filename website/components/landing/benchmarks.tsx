@@ -130,14 +130,20 @@ export function Benchmarks() {
         >
           {run.short}
         </a>
-        , {run.date}. Wall time on a GitHub runner:{" "}
-        <a
-          href={hostedRun.url}
-          className="underline decoration-border underline-offset-[3px] hover:text-foreground"
-        >
-          run {hostedRun.id}
-        </a>
-        .
+        , {run.date}.
+        {hostedRun && (
+          <>
+            {" "}
+            Wall time on a GitHub runner:{" "}
+            <a
+              href={hostedRun.url}
+              className="underline decoration-border underline-offset-[3px] hover:text-foreground"
+            >
+              run {hostedRun.id}
+            </a>
+            .
+          </>
+        )}
       </p>
     </Section>
   );

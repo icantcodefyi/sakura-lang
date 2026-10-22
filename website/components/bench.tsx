@@ -88,6 +88,7 @@ const inlineCode = (s: string) =>
 /** The counted run: commit, date, machine, engines and flags, as a flat definition list. */
 export function BenchRun({ hosted = false }: { hosted?: boolean }) {
   const facts = hosted ? hostedFacts : runFacts;
+  if (!facts.length) return null;
   return (
     <dl className="not-prose my-6 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 border-y border-border py-4 text-[14px] leading-relaxed">
       {facts.map(([label, value, href]) => (
@@ -418,7 +419,7 @@ export function NativeChart() {
           <figure
             key={p.program}
             id={`native-chart-${p.program.replaceAll("_", "-")}`}
-            className="scroll-mt-24 border-b border-border py-5"
+            className="min-w-0 scroll-mt-24 border-b border-border py-5"
           >
             <figcaption className="flex items-baseline gap-2 text-[14px]">
               <code className="font-mono font-semibold text-foreground">{p.program}</code>
@@ -427,7 +428,7 @@ export function NativeChart() {
                 n = {p.n.toLocaleString("en-US")}
               </span>
             </figcaption>
-            <div className="mt-3 grid grid-cols-[3.5rem_1fr_auto_4.75rem] items-center gap-x-3 gap-y-1.5 font-mono text-[12px]">
+            <div className="mt-3 grid grid-cols-[3.5rem_1fr_auto_auto] items-center gap-x-3 gap-y-1.5 font-mono text-[12px]">
               {bars.map((b, i) => (
                 <span key={b.name} className="contents">
                   <span className={i === 0 ? "text-foreground" : "text-muted-foreground"}>
@@ -442,7 +443,9 @@ export function NativeChart() {
                   <span className="text-right text-foreground tabular-nums">
                     {countOf(b.value)}
                   </span>
-                  <span className="text-right text-faint tabular-nums">{b.note}</span>
+                  <span className="text-right whitespace-nowrap text-faint tabular-nums">
+                    {b.note}
+                  </span>
                 </span>
               ))}
             </div>

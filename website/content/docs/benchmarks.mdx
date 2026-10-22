@@ -52,8 +52,10 @@ The same comparison in milliseconds, from a GitHub-hosted Mac that anyone can re
   `nbody` read and write through it where C indexes an array. Every effect operation pays for
   a handler dispatch, where the C, Rust and Go versions make a plain function call (the `handled`
   programs). `deltablue`'s persistent maps copy
-  where the other languages mutate. And the runtime re-checks a string's UTF-8 on every text
-  call, so `tokenizer` and `json_validate` grow faster than their input.
+  where the other languages mutate. And in these numbers the runtime re-checks a string's UTF-8
+  on every text call, so `tokenizer` and `json_validate` grow faster than their input. That is
+  fixed on `main` since they were counted: `tokenizer` at 100,000 drops from about 595 billion
+  to about 1 billion instructions per call, and the next release's baseline will show it.
 
 ### Every count
 

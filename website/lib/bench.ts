@@ -67,12 +67,12 @@ const NATIVE_PORTS = "2026-10-22-49c49e2a-native-ports.json";
 const nativePorts = read<Run>("results", NATIVE_PORTS);
 if (nativePorts.meta.host.id !== HOST) throw new Error("the native ports were counted elsewhere");
 // Wall time of the same programs on a GitHub-hosted runner (bench.yml, mode native): the time
-// anyone can reproduce. Its run id is in the file name.
-const HOSTED = "TEMP-hosted-1-native.json";
-const hosted = read<Run>("results", HOSTED);
+// anyone can reproduce. Its run id is in the file name; none until the first run finishes.
+const HOSTED = undefined as string | undefined;
+const hosted = HOSTED ? read<Run>("results", HOSTED) : undefined;
 const compile = evidence<Run>("compile");
 const envelope = evidence<Envelope>("envelope");
-for (const run of [js, wasm, native, nativePorts, hosted, compile])
+for (const run of [js, wasm, native, nativePorts, ...(hosted ? [hosted] : []), compile])
   if (run.results.some((c) => !c.checksum_ok)) throw new Error("a counted cell failed its oracle");
 
 // ---------- Formatting ----------
@@ -879,16 +879,16 @@ function nativeSummaryTable(): Table {
 
 // ---------- Native wall time, on a GitHub-hosted runner ----------
 
-const hostedCells = index(hosted);
+const hostedCells = hosted ? index(hosted) : new Map<string, Cell>();
 const spreadOf = (c: Cell) => {
   const xs = c.process_medians_ms ?? [];
   return xs.length ? (Math.max(...xs) - Math.min(...xs)) / median(xs) : 0;
 };
 const msWithSpread = (c?: Cell) =>
   c?.median_ms == null ? DASH : `${ms(c.median_ms)} ±${Math.round((spreadOf(c) * 100) / 2)}%`;
-export const hostedRun = {
-  id: HOSTED.match(/hosted-(\d+)/)![1],
-  url: `${site.github}/actions/runs/${HOSTED.match(/hosted-(\d+)/)![1]}`,
+export const hostedRun = hosted && {
+  id: HOSTED!.match(/hosted-(\d+)/)![1],
+  url: `${site.github}/actions/runs/${HOSTED!.match(/hosted-(\d+)/)![1]}`,
   commit: hosted.meta.commit.slice(0, 8),
   commitUrl: `${site.github}/commit/${hosted.meta.commit}`,
   date: day(hosted.meta.started),
@@ -898,28 +898,40 @@ export const hostedRun = {
   engines: hosted.meta.engines,
 };
 
-export const hostedTypical = NATIVE_LANGUAGES.map(([lang, name]) => {
-  const ratios = largest(hosted).flatMap(([p, n]) => {
-    const s = get(hostedCells, p, "sakura", "native", n);
-    const o = get(hostedCells, p, lang, "native", n);
-    return FAMILIES.has(p) && s?.median_ms && o?.median_ms ? [s.median_ms / o.median_ms] : [];
-  });
-  return { name, families: ratios.length, typical: ratios.length ? geomean(ratios) : undefined };
-}).filter((r) => r.typical !== undefined);
+export const hostedTypical = (hosted ? NATIVE_LANGUAGES : [])
+  .map(([lang, name]) => {
+    const ratios = largest(hosted!).flatMap(([p, n]) => {
+      const s = get(hostedCells, p, "sakura", "native", n);
+      const o = get(hostedCells, p, lang, "native", n);
+      return FAMILIES.has(p) && s?.median_ms && o?.median_ms ? [s.median_ms / o.median_ms] : [];
+    });
+    return { name, families: ratios.length, typical: ratios.length ? geomean(ratios) : undefined };
+  })
+  .filter((r) => r.typical !== undefined);
 
-export const hostedFacts: [label: string, value: string, href?: string][] = [
-  ["Workflow run", hostedRun.id, hostedRun.url],
-  ["Commit", hostedRun.commit, hostedRun.commitUrl],
-  ["Measured", hostedRun.date],
-  ["Machine", `GitHub-hosted macos-latest, ${hostedRun.cpu}, ${hostedRun.os}`],
-  [
-    "Toolchains",
-    `Apple clang ${hostedRun.engines.c}, Rust ${hostedRun.engines.rustc}, Go ${hostedRun.engines.go}, OCaml ${hostedRun.engines.ocaml}, Koka ${hostedRun.engines.koka}`,
-  ],
-  ["Processes", `${hostedRun.processes} fresh processes per cell, the median reported`],
-];
+export const hostedFacts: [label: string, value: string, href?: string][] = !hostedRun
+  ? []
+  : [
+      ["Workflow run", hostedRun.id, hostedRun.url],
+      ["Commit", hostedRun.commit, hostedRun.commitUrl],
+      ["Measured", hostedRun.date],
+      ["Machine", `GitHub-hosted macos-latest, ${hostedRun.cpu}, ${hostedRun.os}`],
+      [
+        "Toolchains",
+        `Apple clang ${hostedRun.engines.c}, Rust ${hostedRun.engines.rustc}, Go ${hostedRun.engines.go}, OCaml ${hostedRun.engines.ocaml}, Koka ${hostedRun.engines.koka}`,
+      ],
+      ["Processes", `${hostedRun.processes} fresh processes per cell, the median reported`],
+    ];
 
 function nativeTimeTable(): Table {
+  if (!hosted)
+    return {
+      head: [],
+      align: [],
+      rows: [],
+      summary:
+        "The first hosted run is still measuring; its times appear here when it finishes. Until then this page shows counts only.",
+    };
   return {
     head: ["Program", "n", "Sakura", ...NATIVE_LANGUAGES.map(([, name]) => name)],
     align: ["l", "r", "r", ...NATIVE_LANGUAGES.map(() => "r" as const)],
@@ -1035,7 +1047,15 @@ export const runFacts: [label: string, value: string, href?: string][] = [
     `results/${NATIVE_PORTS}`,
     `${site.github}/blob/main/bench/results/${NATIVE_PORTS}`,
   ],
-  ["Hosted wall time", `results/${HOSTED}`, `${site.github}/blob/main/bench/results/${HOSTED}`],
+  ...(HOSTED
+    ? [
+        [
+          "Hosted wall time",
+          `results/${HOSTED}`,
+          `${site.github}/blob/main/bench/results/${HOSTED}`,
+        ] as [string, string, string],
+      ]
+    : []),
 ];
 
 // ---------- Markdown, for the .md and llms routes ----------
