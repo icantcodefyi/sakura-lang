@@ -67,3 +67,31 @@ both (exit codes on WASM were D090/70 on 0.1.0).
 **Migration-list gaps: none.** Every required hunk was on the list. One near-gap in wording:
 item 3 says "choose `Manual`" without naming the type's module or the record-update form a
 builder needs (`Request { ..Request.of(…), redirect: Redirect.Manual }`); `sakura doc` filled it.
+
+## v1.0.0-beta.1 → v1.0.0-beta.2
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a). Astra was unavailable, so Opus wrote the list, in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.2]` as tagged (`git show v1.0.0-beta.2:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.1", items 1–5, and every Added, Changed, Security and Fixed
+  entry that reaches this program, read against its source as of `v1.0.0-beta.2`
+  (`611dae4f`), which is the beta.1 round's.
+- Compiler: the published `sakuralang@1.0.0-beta.2` from npm in a scratch prefix.
+- Not blind: this round was written after `dogfood.yml` had run on beta.2 (run 39603442654
+  failed in maintenance-triage only; `6bd16751` migrated its cassettes) and had passed on
+  beta.3, beta.4 and beta.5. The author knew those outcomes. Each row below says what in the
+  section supports it.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 a set `SAKURA_PERMISSIONS` denies every key it leaves out | No | the library and its tests set nothing. (The Node consumer, which does set it, was written after this tag and needs library entries, beta.3.) |
+| 2 a binder named `error` is `V0016` | No | `error` appears only in `error` declarations, strings and comments; no parameter, `let`, `var` or pattern binds it |
+| 3 an anonymous record literal is `V0017` | No | the program compiled on beta.1, and nothing matches a `V1002` |
+| 4 `@worker` of another shape is `V1013` | No | no `@worker` |
+| 5 `verify --json` obligation set | No | the program is not verified |
+| Added: `Http.sequence` | No (optional) | the tests use `Http.scripted` and two user handlers; not a migration |
+| Fixed: `sakura init` names the package | No | the program exists |
+
+Predicted diff: **none**.

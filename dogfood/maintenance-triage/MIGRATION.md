@@ -63,3 +63,34 @@ provider, no network) gives byte-identical files, so item 3 changed nothing reco
 **Migration-list gaps: none.** Listed items that applied without a code edit: 10 (docs only).
 Listed items checked and not needed: 1 (`synthetic_provider`'s
 `Response { ..Response.status(200, body), … }` compiles unchanged), 3, 14.
+
+## v1.0.0-beta.1 → v1.0.0-beta.2
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a). Astra was unavailable, so Opus wrote the list, in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.2]` as tagged (`git show v1.0.0-beta.2:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.1", items 1–5, and every Added, Changed, Security and Fixed
+  entry that reaches this program, read against its source as of `v1.0.0-beta.2`
+  (`611dae4f`), which is the beta.1 round's.
+- Compiler: the published `sakuralang@1.0.0-beta.2` from npm in a scratch prefix.
+- Not blind: this round was written after `dogfood.yml` had run on beta.2 (run 39603442654
+  failed in maintenance-triage only; `6bd16751` migrated its cassettes) and had passed on
+  beta.3, beta.4 and beta.5. The author knew those outcomes. Each row below says what in the
+  section supports it.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 a set `SAKURA_PERMISSIONS` denies every key it leaves out | No | nothing in the program sets the variable; `sakura run` and `sakura test` write every key |
+| 2 a binder named `error` is `V0016` | No | `error` appears only in `error` declarations, strings and comments; no parameter, `let`, `var` or pattern binds it |
+| 3 an anonymous record literal is `V0017` | No | the program compiled on beta.1, and nothing matches a `V1002` |
+| 4 `@worker` of another shape is `V1013` | No | no `@worker` |
+| 5 `verify --json` obligation set | No | the program is not verified |
+| Added: `Json.schema` (so a `Tool`'s schema) states a refinement's bounds | **Yes** | `search_manual(query: Query)` and `fetch_entry(id: EntryId)` are `Tool.of` over `Query` (`String.len` 1..200) and `EntryId` (`String.len` 1..32 `&& is_id_text(it)`), so each `input_schema` gains `minLength`/`maxLength`. Every provider request that offers the tools carries those schemas, so its body changes; `tests/fixtures/README.md` says a changed tool description or answer schema "changes the request bodies; replay then fails as a cassette miss". The answer's structured output (`Summary`, `NextStep`, `Citations`) drops "the keywords the API rejects"; the entry does not say which stay, so it may change too. Hunk: the request bodies of the seven fixtures and the three `data/` replay copies, re-derived from beta.2's adapter with no network (not `--record`). **Not in the migration list**: the tagged items 1–5 do not name it; it is an Added entry. |
+| Added: `Fs.read_up_to` | No (optional) | `read_bounded` over `with_file`/`read_chunk` could use it; not a migration |
+| Added: `Http.sequence` | No (optional) | `synthetic_provider` is a hand-written in-order handler; not a migration |
+| Fixed: a failing `expect_output` shows plain braces | No | changes a failure's message only |
+
+Predicted diff: the request bodies of `tests/fixtures/*.jsonl` and `data/*-replay.jsonl`
+(Added: `Json.schema`), outside the tagged migration list.

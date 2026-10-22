@@ -74,3 +74,31 @@ no change there, since that reader already accepted both kinds. One verify-outpu
 list does not name: a new obligation, `requires Cli.exit` at `main`, which is `unsupported`.
 A gate that requires "zero unsupported", or pins the obligation count, would change result
 with no source change. It comes from a `Fixed` entry, not a `Breaking` one.
+
+## v1.0.0-beta.1 → v1.0.0-beta.2
+
+- Author: Claude Opus 5.5, 2026-10-23 (design §17.255 (3), §17.301 (3d); plan `road-to-1.0.md`
+  row 2a). Astra was unavailable, so Opus wrote the list, in a commit before the upgrade.
+- Source: CHANGELOG `[1.0.0-beta.2]` as tagged (`git show v1.0.0-beta.2:CHANGELOG.md`):
+  "Migration from v1.0.0-beta.1", items 1–5, and every Added, Changed, Security and Fixed
+  entry that reaches this program, read against its source as of `v1.0.0-beta.2`
+  (`611dae4f`), which is the beta.1 round's.
+- Compiler: the published `sakuralang@1.0.0-beta.2` from npm in a scratch prefix.
+- Not blind: this round was written after `dogfood.yml` had run on beta.2 (run 39603442654
+  failed in maintenance-triage only; `6bd16751` migrated its cassettes) and had passed on
+  beta.3, beta.4 and beta.5. The author knew those outcomes. Each row below says what in the
+  section supports it.
+
+### Prediction (written before the upgrade)
+
+| Entry | Applies? | Why |
+| ----- | -------- | --- |
+| 1 a set `SAKURA_PERMISSIONS` denies every key it leaves out | No | nothing in the program sets the variable; `sakura run` and `sakura test` write every key |
+| 2 a binder named `error` is `V0016` | No | `error` appears only in `error` declarations, strings and comments; no parameter, `let`, `var` or pattern binds it |
+| 3 an anonymous record literal is `V0017` | No | the program compiled on beta.1, and nothing matches a `V1002` |
+| 4 `@worker` of another shape is `V1013` | No | no `@worker` |
+| 5 `verify --json` obligation set | **Check, outside the source** | the verification gate reads `sakura verify --json`. The beta.1 round's set was 95 obligations, 94 proved, 1 `unsupported` (`main requires Cli.exit`) per profile, kernel 45/45 proved. Changed: that set is what this item describes, already seen on beta.1. Fixed: "`verify` decides a callee's `requires` at a call whose arguments are all literals" does not reach `main`, whose call is `Cli.exit(code)` with a computed `code`, so it stays `unsupported`. Predicted: the same counts as beta.1 on both profiles. |
+| Fixed: `MIN % -1` is `0` on WASM | No | no `%` in the program |
+| Added: `Gen.flat_map` | No | no property test |
+
+Predicted diff: none in the source; the verify gate re-read with the same counts.
