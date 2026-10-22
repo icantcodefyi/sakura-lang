@@ -1,3 +1,66 @@
+awfy_bounce n=10
+  direct: frames 4, boxes 0, dups 0, drops 55026, restarts 0, reuse_attempts 281520, reuses 231510, borrow_candidates 100002, borrows 100002
+  all-frame: frames 119285, boxes 0, dups 0, drops 55026, restarts 0, reuse_attempts 281520, reuses 231510, borrow_candidates 100002, borrows 100002
+awfy_cd n=10
+  direct: frames 199465, boxes 127486, dups 1015116, drops 1086079, restarts 0, reuse_attempts 138229, reuses 123815, borrow_candidates 176154, borrows 176154
+  all-frame: frames 737402, boxes 127486, dups 1015116, drops 1086079, restarts 0, reuse_attempts 138229, reuses 123815, borrow_candidates 176154, borrows 176154
+awfy_havlak n=1
+  direct: frames 265971, boxes 5581700, dups 102299307, drops 34538275, restarts 104, reuse_attempts 33580499, reuses 18657050, borrow_candidates 32743762, borrows 32743762
+  all-frame: frames 48602877, boxes 3285403, dups 74817975, drops 28869527, restarts 0, reuse_attempts 20126907, reuses 9942330, borrow_candidates 23588397, borrows 23588397
+awfy_json n=1
+  direct: frames 4, boxes 5622, dups 127042, drops 83034, restarts 0, reuse_attempts 41352, reuses 37982, borrow_candidates 13037, borrows 13037
+  all-frame: frames 82861, boxes 5622, dups 127042, drops 83034, restarts 0, reuse_attempts 41352, reuses 37982, borrow_candidates 13037, borrows 13037
+awfy_list n=10
+  direct: frames 4, boxes 0, dups 834530, drops 848606, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 410152, borrows 410152
+  all-frame: frames 827785, boxes 0, dups 834530, drops 848606, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 410152, borrows 410152
+awfy_mandelbrot n=100
+  direct: frames 4, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1406, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+awfy_nbody n=1000
+  direct: frames 4, boxes 0, dups 6000, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 37026
+  all-frame: frames 52039, boxes 0, dups 6000, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 37026
+awfy_permute n=5
+  direct: frames 4, boxes 100810, dups 194470, drops 100791, restarts 0, reuse_attempts 244890, reuses 194495, borrow_candidates 100782, borrows 100782
+  all-frame: frames 194480, boxes 100810, dups 194470, drops 100791, restarts 0, reuse_attempts 244890, reuses 194495, borrow_candidates 100782, borrows 100782
+awfy_queens n=10
+  direct: frames 4, boxes 11400, dups 282400, drops 157006, restarts 0, reuse_attempts 114600, reuses 37500, borrow_candidates 164302, borrows 164302
+  all-frame: frames 197915, boxes 11400, dups 282400, drops 157006, restarts 0, reuse_attempts 114600, reuses 37500, borrow_candidates 164302, borrows 164302
+awfy_richards n=1
+  direct: frames 4, boxes 9340, dups 1690966, drops 621201, restarts 0, reuse_attempts 803606, reuses 390066, borrow_candidates 1053077, borrows 1053077
+  all-frame: frames 2041620, boxes 9340, dups 1690966, drops 621201, restarts 0, reuse_attempts 803606, reuses 390066, borrow_candidates 1053077, borrows 1053077
+awfy_sieve n=2
+  direct: frames 4, boxes 0, dups 0, drops 10006, restarts 0, reuse_attempts 98488, reuses 98486, borrow_candidates 32138, borrows 32138
+  all-frame: frames 22147, boxes 0, dups 0, drops 10006, restarts 0, reuse_attempts 98488, reuses 98486, borrow_candidates 32138, borrows 32138
+awfy_storage n=2
+  direct: frames 4, boxes 0, dups 19114, drops 19124, restarts 0, reuse_attempts 83066, reuses 63952, borrow_candidates 2, borrows 2
+  all-frame: frames 27313, boxes 0, dups 19114, drops 19124, restarts 0, reuse_attempts 83066, reuses 63952, borrow_candidates 2, borrows 2
+awfy_towers n=3
+  direct: frames 4, boxes 0, dups 171756, drops 48813, restarts 0, reuse_attempts 172149, reuses 122958, borrow_candidates 98378, borrows 98378
+  all-frame: frames 184436, boxes 0, dups 171756, drops 48813, restarts 0, reuse_attempts 172149, reuses 122958, borrow_candidates 98378, borrows 98378
+bg_binary_trees n=10
+  direct: frames 4, boxes 0, dups 271708, drops 273340, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 227, borrows 227
+  all-frame: frames 408937, boxes 0, dups 271708, drops 273340, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 227, borrows 227
+bg_fannkuch_redux n=6
+  direct: frames 4, boxes 12317, dups 727, drops 16627, restarts 0, reuse_attempts 23903, reuses 23181, borrow_candidates 28186, borrows 28186
+  all-frame: frames 28890, boxes 12317, dups 727, drops 16627, restarts 0, reuse_attempts 23903, reuses 23181, borrow_candidates 28186, borrows 28186
+bg_fasta n=10000
+  direct: frames 4, boxes 80000, dups 335, drops 351015, restarts 0, reuse_attempts 83377, reuses 82038, borrow_candidates 430982, borrows 430982
+  all-frame: frames 3354, boxes 80000, dups 335, drops 351015, restarts 0, reuse_attempts 83377, reuses 82038, borrow_candidates 430982, borrows 430982
+bg_k_nucleotide n=1000
+  direct: frames 46, boxes 82954, dups 22479, drops 353350, restarts 0, reuse_attempts 149894, reuses 140283, borrow_candidates 339265, borrows 339263
+  all-frame: frames 75657, boxes 82954, dups 22417, drops 353288, restarts 0, reuse_attempts 149894, reuses 140283, borrow_candidates 339265, borrows 339263
+bg_mandelbrot n=200
+  direct: frames 4, boxes 5000, dups 0, drops 5024, restarts 0, reuse_attempts 5201, reuses 5000, borrow_candidates 5015, borrows 5015
+  all-frame: frames 208, boxes 5000, dups 0, drops 5024, restarts 0, reuse_attempts 5201, reuses 5000, borrow_candidates 5015, borrows 5015
+bg_nbody n=1000
+  direct: frames 4, boxes 0, dups 6000, drops 7076, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37071, borrows 37071
+  all-frame: frames 52057, boxes 0, dups 6000, drops 7076, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37071, borrows 37071
+bg_reverse_complement n=10000
+  direct: frames 4, boxes 180288, dups 336, drops 551059, restarts 0, reuse_attempts 188737, reuses 185725, borrow_candidates 634415, borrows 634415
+  all-frame: frames 6729, boxes 180288, dups 336, drops 551059, restarts 0, reuse_attempts 188737, reuses 185725, borrow_candidates 634415, borrows 634415
+bg_spectral_norm n=100
+  direct: frames 4, boxes 4100, dups 1, drops 400465, restarts 0, reuse_attempts 4100, reuses 4059, borrow_candidates 400426, borrows 400426
+  all-frame: frames 800469, boxes 4100, dups 1, drops 400465, restarts 0, reuse_attempts 4100, reuses 4059, borrow_candidates 400426, borrows 400426
 binary_trees n=8
   direct: frames 4, boxes 0, dups 51548, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
   all-frame: frames 77669, boxes 0, dups 51548, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
