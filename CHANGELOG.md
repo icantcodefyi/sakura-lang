@@ -9,6 +9,18 @@ retains earlier implementation history.
 
 ### Added
 
+- **Benchmark suites the community already reads** (`bench/README.md`, "Community suites"): 8
+  Benchmarks Game programs (`bench/programs/bg_*`: n-body, spectral-norm, binary-trees,
+  fannkuch-redux, mandelbrot, fasta, k-nucleotide, reverse-complement), each md5-checked against
+  the suite's own expected output for every language, and 13 Are We Fast Yet programs
+  (`awfy_*`, beside the existing `deltablue`), each checked against the suite's own
+  `verifyResult` values. Every program has Sakura, hand-JS, C, Rust, Go, OCaml and Koka versions,
+  so `bench run --suite js|wasm|native` times them all; `--exclude <glob>` is new, and
+  `bench.yml`'s `suites` mode (also nightly) runs them per group and backend. `pidigits` is not
+  ported (no arbitrary-precision integers) nor `regex-redux` (no regex engine in std).
+  TechEmpower-style plaintext and JSON tests of `Serve` (`bench/web/`) put Sakura on Node, Bun and
+  native beside Bun, Node, Go net/http and Rust hyper under the pinned `oha`. Sources and
+  licences: `bench/NOTICES.md`. No baseline is blessed from these yet.
 - **A playground at [sakuralang.com/play](https://www.sakuralang.com/play)** (plan
   `agent-dx.md` DX8, not a gate): write Sakura Lang and run it in the browser with nothing
   installed. The front end and JS code generation run as WebAssembly

@@ -34,6 +34,7 @@ bench/bench run --suite js --instructions --json out.json  # instructions retire
 bench/bench run --suite js --engine node --sizes quick --filter 'handled_*' --json out.json
 bench/bench run --suite native --lane idiomatic --json out.json  # Sakura --target native and the ports
 bench/bench run --suite wasm --sizes quick --json out.json  # Sakura on WASM (Node, Wasmtime)
+bench/bench run --suite native --filter 'bg_*' --json out.json  # one community suite (`awfy_*` for Are We Fast Yet)
 bench/bench compare bench/baselines/<host-id>.json head.json [rerun.json] [--json verdict.json]
 bench/bench envelope wasm.json native.json [--json out.json] [--md out.md]  # §17.109 M4 envelope
 bench/bench envelope native.json [--json out.json] [--md out.md]  # §17.109 M5 envelope
@@ -46,14 +47,14 @@ bench/bench oracle [--filter <glob>] [--write]
 
 | Command | Behaviour | Exit |
 |---|---|---|
-| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). With `--instructions` (macOS) it counts instead of timing ([Instruction counts](#instruction-counts-17264)): `instructions` per call is the cell's metric, `median_ms` beside it is informational, and the load is recorded but read by nothing. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
+| `run` | Builds the release CLI and every variant, runs the oracle for each (variant, engine), then times every (program, variant, engine, size) in `--processes` (5) fresh processes, in an order shuffled with `--seed` (20261018), serially, GC on. Each process warms up 250 ms (2 s with `--stable`), calibrates a ≥ 30 ms batch and records nine samples; peak RSS comes from `wait4`. Prints a Markdown table of medians and Sakura/hand-JS ratios on stdout and writes the `sakura-bench-v1` JSON. `--sizes quick` times the first two sizes; `--exclude <glob>` (repeatable) skips programs. Samples host load every 15 s while timing and records the quiet verdict in `meta.host.quiet` and `meta.host.load` ([Quiet window](#quiet-window-17153)). With `--instructions` (macOS) it counts instead of timing ([Instruction counts](#instruction-counts-17264)): `instructions` per call is the cell's metric, `median_ms` beside it is informational, and the load is recorded but read by nothing. | 0; 1 an oracle or checksum failed (that program is not timed); 3 a toolchain is missing (its variants are skipped and listed in `meta.missing`) |
 | `compare` | Per (program, engine, size), the head's ratio Sakura/hand JS against the base's: worse by > `--flag` (5%) flags; worse by > `--block` (10%) **and** by ≥ `--abs-ms` (0.1) ms per workload beyond the base ratio blocks, but only if every head file given agrees (pass the CI's confirmation rerun of the blocked programs as a second head). Peak RSS up > 25% (maximum across fresh processes; in a counted compare, across the one-call processes, the many-call maxima and `calls` printed as a diagnostic, §17.283) blocks on Node only when the first and confirmation groups cross in the same cell; a single crossing warns. Bun RSS crossings only warn (§17.136). Immediate failures: a failed oracle or checksum, a checksum different from the base, malformed RSS samples, a log-log slope across the size sweep up by > 0.5 (a complexity-class change); native RSS crossings retain the immediate block. An improvement > 10% is reported for the pull request to explain. When every file is an `--instructions` run the ratios are of instructions per call, the absolute floor does not apply and the host's load is not read (§17.264); there a Bun row is advisory (§17.265 (5)): it never blocks, it is `flagged` only when its ratio of ratios moves more than the block threshold (10%), not the flag threshold, and its status carries its four cells' `instruction_spread` (base Sakura, base hand JS → head Sakura, head hand JS); Node rows block as before. A flagged Bun row is confirmed, when it matters, by one rerun of that program with `--processes 9 --filter`. A blocked Node row of a counted compare is then re-counted as an A/A pair against the baseline commit's artefact at the same location, and its status is read from that pair ([Location and the A/A recount](#location-and-the-aa-recount-17272-2)). Otherwise, if the base or any head was measured on a loaded host (`meta.host.quiet: false`, not CI), the verdict is `advisory (host load L)` instead of `ok`, `flagged` or `blocked`: rows keep their statuses as direction only, no confirmation is requested, and only correctness failures (oracle, checksum, malformed samples) still block (§17.153). | 0 ok, flagged or advisory; 2 blocked |
 | `envelope` | Given one `--suite native` file, §17.109's M5 envelope ([M5 envelope](#m5-envelope-17308-2)). Given two, the §17.109 M4 envelope from a `--suite wasm` file and a `--suite native --lane matched` file of the same commit and host ([M4 envelope](#m4-envelope-17213-2)): one row per program × size × engine × comparison with its ratio, ceiling and status, a reading line, and the same report as JSON with `--json` and Markdown with `--md`. Refuses files of different `meta.commit` or `meta.host.id`, the wrong suites, or a native `idiomatic` lane. Statuses are always read in the wall-time lane, on `median_ms`, the ceilings' unit; when both files are `--instructions` runs the count lane is printed beside it, Sakura/native instructions per call, labelled a ratio of counts and read against no ceiling (§17.265 (2)). When either run is not quiet (a counted run is measured on a loaded host) the reading is `advisory (host load L)` (or `advisory (CI runner)`), with the reading it would have been as `direction`. | 0 a report, whatever its reading; 2 refused |
 | `bless` | Copies a run into `baselines/<host-id>.json` (a `--suite wasm` run into `baselines/wasm/`); refuses a run with failures or made from a dirty `compiler/` or `bench/` tree (a `--suite native` run into `baselines/native/`, from beta.5's preparation commit on, docs/release.md §2). A timed run must also have `meta.host.quiet: true` (not a loaded host, a CI runner, or a run recorded before §17.153); an `--instructions` run needs no quiet host (§17.264). Prints the reasons. | 0; 1 refused |
 | `compile` | The research/10 §6 budgets on generated packages (`target/corpus/<lines>`, 50-function modules): `check` of 10k and 100k lines and `build` of 10k lines, each 15 fresh processes after one warm-up; `sakura lsp` edit → `publishDiagnostics` on the 10k package, 15 edits in one warm server alternating a type error in a private body and its fix (the server publishes nothing for a clean file it has never reported). p95 against 1 s / 3 s / 500 ms / 100 ms. Also `check_hello` and `test_hello` on the `sakura new cli` project (`target/hello`). A `target_ms` column holds §17.195 (1)'s targets (`check_hello` 10 ms, `check_cold_10k` 45 ms): a miss prints `target missed` and is not an exit; `test_hello` has neither budget nor target, nor has `check_wide_match` (`target/wide_match`: §17.200 (8)'s 3,000-arm `Int` match, guarded rows alternating, and 3,000-constructor enumeration). std's analysis cache is `target/cache` unless `SAKURA_CACHE_DIR` is set. `--instructions` (macOS) also counts each `check`/`build`/`test` process's instructions (median and spread; the LSP case is one server and has none); the budgets stay on time. | 0; 2 over budget |
 | `compile-native` | The native compile report (plan M5 N2, design §17.175 (4)): builds the release CLI with the `native` feature and the driver staticlib (`target/native-driver`), then `sakura build --target native` of every program's `sakura/main.sak` and of one function of 4,096, 8,192, 16,384 and 32,768 `&&`-guarded rows (`wide_<rows>`, design §17.240 (3); the report names each phase whose median grows more than 2× from 16,384 to 32,768 rows, `meta.wide_ratio`), 15 fresh processes after one warm-up, and reports each phase's p95 from the CLI's `SAKURA_NATIVE_TIMINGS` lines: `frontend` (check and Core), `lowering` (Core → LIR, validated), `codegen` (Cranelift), `object` (unwind, DWARF, the file) and `link` (the system linker). `--instructions` (macOS) also counts each phase's instructions retired as the difference of two processes, one stopping after the phase and one before it (`SAKURA_NATIVE_STOP_AFTER`; the last is the whole build, the linker's process included), and reads the wide curve's ratio on those counts: the counted report the owner blesses with a beta's baseline into `baselines/compile-native/` (design §17.308 (2b) (iii)). No budget yet: the round that reads the first blessed report sets it. | 0; 2 a build failed |
 | `typescript` | `sakura check` beside `tsc --noEmit`, and a built program's cold start beside Node running the TypeScript twin ([TypeScript toolchain lane](#typescript-toolchain-lane)). | 0; 1 an oracle failed |
-| `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write`. | 0; 1 a mismatch |
+| `oracle` | Checks Sakura and hand JS on Node against `meta.toml`, or records it with `--write` (which refuses values that contradict a suite's `[verify]` table, then checks). Every oracle, `run`'s too, also checks a community program's `[verify]` results and `official` output MD5 ([Community suites](#community-suites)). | 0; 1 a mismatch |
 
 The host id is the first 12 hex digits of SHA-256 over CPU brand, OS name and architecture,
 and total memory. The kernel release is recorded separately, outside that hash; different
@@ -299,7 +300,8 @@ whole table.
 
 Fifteen §17.109 families; `handled` is six entries, `contracts` has its companion and
 `tail_clique` joins `countdown`'s family (§17.208 (3)), so there are 22 program directories.
-All use `ints = "js-safe"`.
+All use `ints = "js-safe"`. The 21 `bg_*` and `awfy_*` directories are the
+[community suites](#community-suites), not §17.109 families.
 
 | Program | Sizes | `run(n)` returns |
 |---|---|---|
@@ -326,6 +328,74 @@ All use `ints = "js-safe"`.
 
 JS controls for `handled_*` are closure calls on a stateful object (research/10
 `native.mjs`), with no handler stack, resumption or cancellation.
+
+## Community suites
+
+Two suites the language community already reads, ported program by program: **The Computer
+Language Benchmarks Game** (`bg_*`, [task pages](https://benchmarksgame-team.pages.debian.net/benchmarksgame/))
+and **Are We Fast Yet** (`awfy_*`; Marr, Daloze and Mössenböck, DLS 2016,
+[smarr/are-we-fast-yet](https://github.com/smarr/are-we-fast-yet) at `74306fec`). Each program has
+Sakura, hand JS and C, Rust, Go, OCaml and Koka ports, so `run --suite js|wasm|native --filter
+'bg_*'` (or `'awfy_*'`) times every backend against them; `bench.yml`'s `suites` job (nightly and
+`gh workflow run bench.yml -f mode=suites`) runs each group × backend on its own runner, and the
+other jobs `--exclude` them. No baseline is blessed from them yet. TechEmpower-style web tests of
+`Serve` are a separate harness, [web/README.md](web/README.md). Credits and licences:
+[NOTICES.md](NOTICES.md).
+
+**Checks beyond the checksums.** A Benchmarks Game program's `meta.toml` has `official = { size,
+md5, output, performance_size }`: the oracle (in `run` and `oracle` alike) md5-checks every
+variant's output for the suite's own command line `size` against the suite's expected output file,
+byte for byte, as the suite does. A port's `main output <n>` writes those bytes raw; Sakura's
+`output(n)` and hand JS's return them as base64, because `Console` writes lines of UTF-8 text and
+has no raw byte output. `run(n)` builds the same complete output in memory and returns its digest,
+`h = (31·h + byte) mod 1,000,000,007` over every byte, the same work in every language. An Are We
+Fast Yet program's `[verify]` table holds the suite's own `verifyResult` values (in the encoding
+of `run`), which the oracle adds to its inputs and `--write` never rewrites: a variant whose
+result differs from the suite's fails.
+
+**Sizes.** The timed sizes are ladders a CI runner can afford, chosen so the slowest common cell
+(Sakura on Node) stays near or under 1 s a call. The Benchmarks Game's performance sizes
+(`performance_size`, e.g. n-body 50,000,000) take seconds to minutes a call and are recorded, not
+timed. Are We Fast Yet's own sizes (rebench `inner_iterations`) are timed where they fit; `awfy_sieve`'s
+3,000 is a check size only.
+
+| Program | Suite task | Timed sizes | Suite check (official output or verifyResult) | `run(n)` |
+|---|---|---|---|---|
+| `bg_nbody` | n-body | 1e3, 1e4, 1e5, 5e5 | output md5 at 1,000 | digest of the two `%.9f` energies |
+| `bg_spectral_norm` | spectral-norm | 100, 400, 1000, 2000 | output md5 at 100 | digest of the `%.9f` norm |
+| `bg_binary_trees` | binary-trees | 10, 12, 14, 16 | output md5 at 10 | digest of the report lines |
+| `bg_fannkuch_redux` | fannkuch-redux | 6, 7, 8, 9 | output md5 at 7 | digest of checksum and `Pfannkuchen(n)` |
+| `bg_mandelbrot` | mandelbrot | 200, 500, 1000, 2000 | output md5 at 200 | digest of the PBM (P4) bitmap |
+| `bg_fasta` | fasta | 1e4, 5e4, 1e5, 2.5e5 | output md5 at 1,000 | digest of the three sequences |
+| `bg_k_nucleotide` | k-nucleotide | 1e3, 5e3, 2.5e4, 5e4 | output md5 for `fasta 1000`'s output | digest of frequencies and counts; the input, `fasta n`, is generated in memory and timed |
+| `bg_reverse_complement` | reverse-complement | 1e4, 2.5e4, 5e4, 1e5 | output md5 for `fasta 1000`'s output | as k-nucleotide |
+| `awfy_bounce`, `_list`, `_permute`, `_queens`, `_sieve`, `_storage`, `_towers` | the micro benchmarks | up to 1e4 | `verifyResult` at 1 | n × `benchmark()`, results summed |
+| `awfy_richards`, `awfy_json` | Richards, Json | 1–100, 1–500 | `verifyResult` at 1 (Json also 100) | n × `benchmark()`; Json counts the 156 `operations` |
+| `awfy_mandelbrot` | Mandelbrot | 100–750 | 1, 500, 750 | `mandelbrot(n)` |
+| `awfy_nbody` | NBody | 1e3–2.5e5 | 1, 250,000 | energy after n steps × 10^16, rounded |
+| `awfy_havlak` | Havlak | 1–1500 | 1, 15, 150, 1500 | loops × 1,000,000 + non-back edges |
+| `awfy_cd` | CD | 10–250 | 2, 10, 100, 200, 250, 500, 1000 | collisions over n aircraft |
+
+`deltablue` (above) is Are We Fast Yet's DeltaBlue and keeps its own name; the existing `nbody`,
+`spectral_norm` and `binary_trees` implement the Benchmarks Game algorithms with a checksum
+instead of the report, and stay for §17.109's envelope.
+
+**Not ported.** `pidigits` is not expressible: the task requires arbitrary-precision integers, and
+Sakura Lang has none (`Int` is 64-bit and checked; `Decimal` holds its digits in `Int`). A
+hand-written bignum would measure that bignum, not the language beside GMP. `regex-redux` is not
+applicable: there is no regular-expression engine in std.
+
+**Deviations every Sakura port shares**, each named in its file header: no mutable objects or
+arrays, so state is threaded through persistent records and `List` (`List.set`), with Are We Fast
+Yet's object graphs held as `List`s of records indexed by id (not `Map`, the built-in hash table
+the suite excludes); no bitwise operators, so bit packing and masks are arithmetic (`* 2`, `% 2^k`,
+an `xor` loop in Richards and Mandelbrot); bytes are read with `Bytes.get` (an `Option` per
+byte), strings have no constant-time character access, and output is built as `List<Bytes>`
+joined once. The other ports follow the suites' own (mutable) structure. Float ports keep one
+operation order: C under `FP_CONTRACT OFF`, Go's products materialised with `float64()`, OCaml's
+products bound with `let` (ocamlopt fuses `a +. b *. c` on arm64 with no flag to stop it). Koka
+3.2.9's std has no hash table, so `bg_k_nucleotide`'s Koka port has its own (the suite would not
+accept that from a contributor); C's uses klib's `khash.h`, as the suite's C programs do.
 
 ## Deviations from the plan (also posted in compiler/REQUESTS.md)
 
@@ -879,6 +949,8 @@ All programs were written for this suite and are licensed like the repository. `
 follows Okasaki's insertion (*Red-black trees in a functional setting*, JFP 1999).
 `deltablue` is ported from Are We Fast Yet (Marr, Daloze and Mössenböck, DLS 2016), derived
 from Mario Wolczko's Smalltalk version of John Maloney's benchmark; see its `LICENSE`.
+The `bg_*` and `awfy_*` programs and their sources' licences are credited in
+[NOTICES.md](NOTICES.md).
 
 AI involvement: written by Claude (Opus 5.5) as WS-B; GPT-6.1-Sol implemented and tested
 the §17.136 RSS confirmation policy and updated this methodology; Claude (Opus 5.5) wrote the
