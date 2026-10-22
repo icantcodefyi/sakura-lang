@@ -61,6 +61,14 @@ minor carrying P1–P4 labels packages experimental; the stabilization entry is 
 
 ## 3. Lane P1's brief
 
+**Progress (2026-10-22): P1 landed on `main`** (the `feat(packages)` commits of that date): every
+item below, with the readings and the places it went beyond the file list in
+`compiler/REQUESTS.md`'s P1 entry. `V8031` is registered as `lockfile_invalid` for both its
+causes; `V8005`'s git fixture is `tests/ui/V8005_git_dependency`, for P5 to flip. P2's CLI
+integration may start: `sakura_analysis::lock` holds the lock shape and the `path` graph walk it
+extends, and `sync` replaces `disk::lock_path_dependencies`, the stand-in that writes a path-only
+project's lock.
+
 Files: the P1 row above and nothing else (`sakura_hir` only if the plumbing needs it; say so
 in the commit message). Everything is offline.
 

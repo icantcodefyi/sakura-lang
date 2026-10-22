@@ -29,6 +29,51 @@ retains earlier implementation history.
   beside Sakura's `--target native` executable; `bench.yml`'s new `native` dispatch mode times the
   same comparison on a GitHub-hosted runner.
 
+- **Packages, experimental: `path` dependencies, the lock, effect ceilings and the authority
+  gate** ([RFC 0003](docs/rfcs/0003-packages.md), plan `packages.md` lane P1, design §17.311).
+  Packages are **experimental**: the manifest keys, lock format, CLI and JSON kinds below may
+  change in the next minor with a migration here. A program without `[dependencies]` is
+  unaffected. Everything is offline; nothing is resolved or fetched.
+  - `sakura.toml` accepts `[dependencies]` entries (`name = "1.2.0"`, `{ version }`,
+    `{ path = "../util" }`, each with optional `effects = [...]` and `trusted = true`), a
+    `[packages]` table (`registry`, `vendor`, `min_age`, read by later lanes) and the
+    `[package]` keys `sakura`, `effects`, `description`, `license`, `repository` and `keywords`.
+    A malformed entry is the new `V8030 dependency_invalid` at the entry.
+  - `sakura.lock` is `version = 2` (RFC 0003 §3.1); `version = 1` still reads as a lock with no
+    packages, and `sakura new`/`init` now write `version = 2`. Every compiler command, the LSP
+    and the MCP server load exactly the packages the lock lists, each `path` package's
+    `sakura.toml` and `src/` as its own package (`import util/label`). A lock that contradicts
+    the manifests (a dependency added or removed, a changed `path`, `trusted` or ceiling, a
+    floor above the locked version) or is not a lock is `V8031 lockfile_invalid`; a locked
+    package whose files are absent is `V8034 package_missing`. Until `sakura sync` exists
+    (plan P2), `check`, `build`, `run`, `test` and the other commands that read a project write
+    the lock themselves when every dependency is a `path` dependency that exists and
+    `sakura.lock` is absent or says `version = 1`; delete the lock to have it rewritten. This
+    stand-in is removed when `sakura sync` lands.
+  - `[package] effects` is the package's ceiling: a `pub fn` whose row has a std effect beyond
+    it is `V3030 effect_ceiling_exceeded`, in every package of the build. A dependency whose
+    ceiling the consumer's line does not accept (`effects`, `[]` when absent) is
+    `V8032 dependency_effects_exceeded`, with a suggested `authority_change` fix rewriting the
+    line.
+  - A dependency that calls a std `host()` constructor or declares an `@external` binding is
+    `V6020 dependency_acquires_authority` at the site, unless the root's line for it (or a
+    trusted dependency's) says `trusted = true`. Then `sakura audit --json` lists the site
+    with a `package` field (`audit` 1.1; a `host()` call is the new `host` site) and
+    `build --manifest`'s `trusted` entries carry `package` (`manifest` 1.2, only for a build
+    with such a site). A dependency's `test` bodies are not compiled by its consumers.
+  - `sakura deps tree [--json]` prints the build as a tree (`dependency` records) and
+    `sakura deps capabilities [--json]` each package's ceiling, trust and authority sites
+    (`capabilities` records); both close with a `deps_summary` record.
+  - `examples/packages_two` runs a root and a `path` dependency with a `Clock` ceiling on JS,
+    WASM and native.
+
+### Changed
+
+- **`V8005 dependencies_not_supported` names only an unsupported dependency form** (RFC 0003
+  §1.4): a `[dependencies]` table that is empty, or whose entries are all supported, compiles
+  instead of being refused; a `git` entry is still `V8005`, at the entry, until git sources
+  land (plan P5). The `V8005` explain text is rewritten for the new meaning.
+
 ## [1.0.0-beta.5] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

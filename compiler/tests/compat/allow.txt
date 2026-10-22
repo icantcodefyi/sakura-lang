@@ -4,3 +4,7 @@
 # and the anchor is `CHANGELOG.md#<heading>`. An unlisted difference fails the `compat` job; so
 # does a listed fixture that matches again or is not in that release. The harness is
 # `crates/sakura_cli/tests/compat.rs`.
+ui/V8005_dependencies_table RFC 0003 P1: an empty `[dependencies]` table compiles CHANGELOG.md#changed
+ui/V8005_dependencies_table_inline RFC 0003 P1: `dependencies = {}` compiles CHANGELOG.md#changed
+ui/V8005_dependencies_table_populated RFC 0003 P1: the floor `1.2` is `V8030`, not `MAJOR.MINOR.PATCH` CHANGELOG.md#changed
+ui/V8005_dependencies_table_unknown_key RFC 0003 P1: the floor `1.2` is `V8030` beside `V8006` CHANGELOG.md#changed
