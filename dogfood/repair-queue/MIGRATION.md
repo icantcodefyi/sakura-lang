@@ -112,3 +112,10 @@ Listed items checked and not needed: 3, 7 (routes are literal and `:id`), 10 (`i
 | Fixed: the bare std constructor hint (`Payload.Text`) | No | the beta.1 round already writes `Payload.Text`/`Payload.Bytes` qualified |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 32/32 on js and 32/32 on `--target wasm`.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

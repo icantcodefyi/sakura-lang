@@ -102,3 +102,18 @@ with no source change. It comes from a `Fixed` entry, not a `Breaking` one.
 | Added: `Gen.flat_map` | No | no property test |
 
 Predicted diff: none in the source; the verify gate re-read with the same counts.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 28/28 on js and 28/28 on `--target wasm`.
+
+Verification gate, `sakura verify --json --target js|wasm src/kernel.sak src/input.sak
+src/policy.sak src/main.sak`, z3 5.3.1 at the default limits, read by a throwaway reader in
+`/tmp` (not committed): exit 0 on both profiles; 95 obligations, 94 proved, 0 disproved, 0
+unknown, 1 `unsupported` (`main requires Cli.exit`) on each, as on beta.1; the kernel's 45
+obligations all `proved` and `path_feasible: true`; the closing record
+`{"kind":"verify_summary","schema_version":"1.0"}`.
+
+**No hunk needed.** Prediction and result agree (item 5 checked, counts unchanged).
+Migration-list gaps: none.

@@ -94,3 +94,41 @@ Listed items checked and not needed: 1 (`synthetic_provider`'s
 
 Predicted diff: the request bodies of `tests/fixtures/*.jsonl` and `data/*-replay.jsonl`
 (Added: `Json.schema`), outside the tagged migration list.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`. On the program as of `v1.0.0-beta.2`: `sakura check` no problems; `sakura fmt
+--check` clean; `sakura test` 22/31 on js and 22/31 on `--target wasm`. The nine failures are
+tests 14, 15, 17, 18, 22, 26, 28, 29 and 30, every one a cassette miss: `ProviderError
+{ status: 0, reason: "no recording for POST https://api.anthropic.com/v1/messages in
+two_turn.jsonl; run sakura test --record" }` (and `injection.jsonl`, `hazard.jsonl`, …). The CLI's
+offline `--replay drill-replay.jsonl` exits 4, `provider error (status 0)`, for the same reason.
+This is the beta.2 failure `dogfood.yml` saw (run 39603442654).
+
+On the program as on `main` (cassettes from `6bd16751`): `sakura check` no problems; `sakura fmt
+--check` clean; `sakura test` 31/31 on js and 31/31 on `--target wasm`; `sakura run -- manual.json
+incident-drill.txt --replay drill-replay.jsonl` exits 0 with the cited report on js and wasm. No
+live call and no `--record` was made.
+
+**The cassette change (`6bd16751`).** beta.2's `Json.schema` writes a refined type's `String.len`
+bounds into the schema (Added; design §17.293 MT-3). The two tools take `Query` (1..200) and
+`EntryId` (1..32), so every request that offers the tools gains, in its `tools[*].input_schema`,
+`query.minLength: 1`, `query.maxLength: 200`, `id.minLength: 1` and `id.maxLength: 32`, and
+nothing else. A cassette entry matches on the request body, so the beta.1 recordings missed.
+The answer's output schema did not change. `6bd16751` migrated the request bodies by script, with
+no network or key: each new body was taken from beta.2's own adapter over the synthetic provider
+and checked to equal the old one once those keywords are removed; the responses are
+byte-identical. Measured here, field by field against `6bd16751^`, it changed 15 request bodies:
+10 in the seven fixtures (`two_turn` 2, `hazard` 2, `injection` 2, `malformed`, `refusal`,
+`tool_error`, `truncated` 1 each) and 5 in the three `data/` replay copies (`drill-replay` 2,
+`smoke-replay` 2, `refusal-replay` 1). Each changed by those four keywords only. `hazard`'s third
+turn offers no tools and is unchanged. (The commit message says 13 bodies; the files hold 15.)
+
+| Hunk | Required? | Predicted by the list? |
+| ---- | --------- | ---------------------- |
+| `tests/fixtures/*.jsonl` and `data/*-replay.jsonl`: request bodies gain the four schema keywords (already on `main` in `6bd16751`) | Yes (9 tests on each target, and `--replay`) | **No by the tagged list; yes by this round's reading of the Added entry.** Items 1–5 of `[1.0.0-beta.2]` as published do not name it. `6bd16751` added item 6 to `main`'s CHANGELOG after publication. |
+| `tests/fixtures/README.md`: the beta.2 note (already on `main` in `6bd16751`) | No (docs) | n/a |
+
+**Migration-list gap: one, already fixed on `main`.** The beta.2 list as tagged left out that an
+`Llm` cassette whose tools take refined types misses. It is item 6 of `[1.0.0-beta.2]` on `main`
+from `6bd16751`, but the tag's notes still lack it.

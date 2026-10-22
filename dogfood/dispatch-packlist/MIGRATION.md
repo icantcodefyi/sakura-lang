@@ -80,3 +80,10 @@ defence in depth).
 | Fixed: a failing `expect_output` shows plain braces | No | changes a failure's message only |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean;
+`sakura test` 24/24 on js and 24/24 on `--target wasm`, the usage line unchanged.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

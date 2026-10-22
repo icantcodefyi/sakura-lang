@@ -88,3 +88,10 @@ After the upgrade: `sakura check` no problems; `sakura fmt --check` clean; `saku
 | Added: `Json.schema` states refinement bounds | No | the program decodes with `Json.decode` and validates; it builds no schema or `Tool` |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 27/27 on js and 27/27 on `--target wasm`.
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.

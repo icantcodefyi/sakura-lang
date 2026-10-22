@@ -95,3 +95,11 @@ builder needs (`Request { ..Request.of(…), redirect: Redirect.Manual }`); `sak
 | Fixed: `sakura init` names the package | No | the program exists |
 
 Predicted diff: **none**.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
+test` 31/31 on js and 31/31 on `--target wasm`. The Node consumer is not run on beta.2: it needs
+library entries, which ship in beta.3 (`dogfood.yml` skips it before beta.3).
+
+**No hunk needed.** Prediction and result agree. Migration-list gaps: none.
