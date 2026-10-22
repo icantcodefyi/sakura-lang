@@ -27,6 +27,15 @@ poster per theme; `tree-scene.ts` (three.js, loaded by dynamic import only) draw
 live through the same camera. Keep three.js out of every static import. The figures loop in CSS
 (`globals.css`, Landing), only inside `play.tsx` and only without reduced motion.
 
+## Playground
+
+`/play` (`components/play/`) compiles in the browser with `public/play/sakura_playground.wasm`,
+built from `compiler/crates/sakura_playground` by `scripts/playground-wasm.sh` and committed with
+its `.sha256` (Vercel has no Rust); `bun run build` runs `scripts/check-playground.mjs` on it.
+Rebuild and commit it when a compiler change should reach the playground. Programs run in
+`public/play/sandbox.html` (opaque-origin iframe, no network), whose worker is the browser host.
+The wasm, the worker and Shiki's client highlighter load only on `/play`; keep them there.
+
 ## CI coverage
 
 Website changes select the website build, documentation examples and Tree-sitter

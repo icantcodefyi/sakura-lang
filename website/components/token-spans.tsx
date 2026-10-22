@@ -3,6 +3,20 @@ import type { CSSProperties } from "react";
 export type Token = { text: string; light: string; dark: string; italic?: boolean };
 export type TokenLine = Token[];
 
+/** Shiki's dual-theme tokens (`defaultColor: false`) as token lines. */
+export function toTokenLines(
+  tokens: { content: string; htmlStyle?: Record<string, string> }[][],
+): TokenLine[] {
+  return tokens.map((line) =>
+    line.map((t) => ({
+      text: t.content,
+      light: t.htmlStyle?.["--shiki-light"] ?? "inherit",
+      dark: t.htmlStyle?.["--shiki-dark"] ?? "inherit",
+      italic: t.htmlStyle?.["--shiki-light-font-style"] === "italic" || undefined,
+    })),
+  );
+}
+
 /** Renders highlighted tokens, characters `from` to `upTo`; colors switch with the theme via CSS vars. */
 export function TokenSpans({
   line,

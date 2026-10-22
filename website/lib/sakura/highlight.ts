@@ -3,7 +3,7 @@ import { createHighlighter, type BundledLanguage, type Highlighter } from "shiki
 import { sakuraGrammar } from "./grammar";
 import { sakuraDark, sakuraLight } from "./themes";
 
-import type { TokenLine } from "@/components/token-spans";
+import { toTokenLines, type TokenLine } from "@/components/token-spans";
 
 let highlighter: Promise<Highlighter> | undefined;
 
@@ -24,12 +24,5 @@ export async function tokenize(code: string, lang = "sakura"): Promise<TokenLine
     themes: { light: "sakura-light", dark: "sakura-dark" },
     defaultColor: false,
   });
-  return tokens.map((line) =>
-    line.map((t) => ({
-      text: t.content,
-      light: t.htmlStyle?.["--shiki-light"] ?? "inherit",
-      dark: t.htmlStyle?.["--shiki-dark"] ?? "inherit",
-      italic: t.htmlStyle?.["--shiki-light-font-style"] === "italic" || undefined,
-    })),
-  );
+  return toTokenLines(tokens);
 }

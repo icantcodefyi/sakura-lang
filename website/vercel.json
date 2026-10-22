@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "git fetch --quiet --unshallow \"https://github.com/$VERCEL_GIT_REPO_OWNER/$VERCEL_GIT_REPO_SLUG.git\" 2>/dev/null; git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- . ../CHANGELOG.md ../bench/baselines 2>/dev/null || exit 1",
+  "ignoreCommand": "git fetch --quiet --unshallow \"https://github.com/$VERCEL_GIT_REPO_OWNER/$VERCEL_GIT_REPO_SLUG.git\" 2>/dev/null; git diff --quiet \"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\" HEAD -- . ../CHANGELOG.md ../bench/baselines ../compiler/examples 2>/dev/null || exit 1",
   "buildCommand": "git fetch --quiet --unshallow \"https://github.com/$VERCEL_GIT_REPO_OWNER/$VERCEL_GIT_REPO_SLUG.git\" 2>/dev/null; bun run build"
 }

@@ -1,0 +1,178 @@
+<!doctype html>
+<!--
+  The playground's sandbox. /play loads it in an iframe with sandbox="allow-scripts" (an opaque
+  origin: no cookies, storage or same-origin requests) and this policy refuses every network
+  request, which a worker made from a blob inherits. One page per run: /play removes it when the
+  program ends or overruns its time limit, which ends the worker too.
+-->
+<meta charset="utf-8" />
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'none'; script-src 'unsafe-inline' blob:; worker-src blob:"
+/>
+<script type="text/plain" id="runner">
+  // The browser host. Before the program's modules load: the console goes to the page, the
+  // clock is virtual and random numbers are seeded, so a program prints the same thing on every
+  // run. The JS runtime finds no `process` here, so `Fs.host()` is an empty memory directory.
+
+  const EPOCH = Date.UTC(2026, 0, 1); // the virtual clock's start, 2026-01-01T00:00:00Z
+  const OUTPUT_LIMIT = 1 << 20;
+  let written = 0;
+  const send = (stream, text) => {
+    written += text.length;
+    if (written > OUTPUT_LIMIT) {
+      postMessage({ type: "done", status: "output" });
+      close();
+      return;
+    }
+    postMessage({ type: "write", stream, text });
+  };
+  console.log = (text) => send("out", `${text}\n`);
+  console.error = (text) => send("err", `${text}\n`);
+
+  // Virtual time: a timer fires in due order after everything already runnable (one real
+  // macrotask per timer), and the clock jumps to its due time, so `Clock.sleep` takes none.
+  let now = EPOCH;
+  let timers = [];
+  let seq = 0;
+  const tick = new MessageChannel();
+  let armed = false;
+  let onIdle = null;
+  const arm = () => {
+    if (armed) return;
+    armed = true;
+    tick.port2.postMessage(0);
+  };
+  tick.port1.onmessage = () => {
+    armed = false;
+    if (timers.length === 0) return onIdle?.();
+    timers.sort((a, b) => a.at - b.at || a.id - b.id);
+    const t = timers.shift();
+    now = Math.max(now, t.at);
+    arm();
+    t.fn(...t.args);
+  };
+  globalThis.setTimeout = (fn, ms = 0, ...args) => {
+    const id = ++seq;
+    timers.push({ id, at: now + Math.max(0, Number(ms) || 0), fn, args });
+    arm();
+    return id;
+  };
+  globalThis.clearTimeout = (id) => {
+    timers = timers.filter((t) => t.id !== id);
+  };
+  Date.now = () => now;
+  performance.now = () => now - EPOCH;
+
+  // Seeded random words (sfc32 from a fixed seed) behind the Web Crypto calls the runtime makes.
+  let a = 0x9e3779b9, b = 0x243f6a88, c = 0xb7e15162, d = 1;
+  const word = () => {
+    const t = (((a + b) | 0) + d) | 0;
+    d = (d + 1) | 0;
+    a = b ^ (b >>> 9);
+    b = (c + (c << 3)) | 0;
+    c = (c << 21) | (c >>> 11);
+    c = (c + t) | 0;
+    return t >>> 0;
+  };
+  for (let i = 0; i < 12; i++) word();
+  crypto.getRandomValues = (array) => {
+    const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+    for (let i = 0; i < bytes.length; i += 4) {
+      const w = word();
+      for (let j = 0; j < 4 && i + j < bytes.length; j++) bytes[i + j] = w >>> (8 * j);
+    }
+    return array;
+  };
+  crypto.randomUUID = () => {
+    const h = [...crypto.getRandomValues(new Uint8Array(16))].map((x, i) =>
+      (i === 6 ? (x & 0x0f) | 0x40 : i === 8 ? (x & 0x3f) | 0x80 : x).toString(16).padStart(2, "0"),
+    );
+    return `${h.slice(0, 4).join("")}-${h.slice(4, 6).join("")}-${h.slice(6, 8).join("")}-${h.slice(8, 10).join("")}-${h.slice(10).join("")}`;
+  };
+
+  // The runtime builds a few constants with Node's `Buffer.from(hex, "hex")` as it loads; that is
+  // the one `Buffer` call answered here. Any other (`std/crypto`, base64) fails as unsupported.
+  globalThis.Buffer = {
+    from(value, encoding) {
+      if (typeof value !== "string" || encoding !== "hex") {
+        throw new Error("Node's Buffer is not available in the browser");
+      }
+      return Uint8Array.from(value.match(/../g) ?? [], (h) => parseInt(h, 16));
+    },
+  };
+
+  // The emitted files as modules: each relative import names another file's blob, so they load
+  // dependencies first (Sakura Lang module graphs have no cycles, design §17.307).
+  async function load(files) {
+    const texts = new Map(files);
+    const urls = new Map();
+    const IMPORT = /^(import\b[^"\n]*")(\.{1,2}\/[^"]+)(";)$/gm;
+    const resolve = (from, spec) => new URL(spec, `file:///${from}`).pathname.slice(1);
+    const visit = (path, stack) => {
+      if (urls.has(path)) return urls.get(path);
+      if (stack.includes(path)) throw new Error(`module cycle at ${path}`);
+      let text = texts.get(path);
+      if (text === undefined) throw new Error(`no emitted file ${path}`);
+      text = text.replace(IMPORT, (_, head, spec, tail) => {
+        return head + visit(resolve(path, spec), [...stack, path]) + tail;
+      });
+      if (path === "__main__.js") text = text.replace(/^runMain\(/m, "globalThis.$run = runMain(");
+      const url = URL.createObjectURL(new Blob([text], { type: "text/javascript" }));
+      urls.set(path, url);
+      return url;
+    };
+    await import(visit("__main__.js", []));
+  }
+
+  let stderrTail = "";
+  const status = () =>
+    stderrTail.startsWith("error: main failed") ? "failed"
+    : stderrTail.startsWith('{"schema_version"') ? "defect"
+    : "ok";
+  const realError = console.error;
+  console.error = (text) => {
+    stderrTail = String(text);
+    realError(text);
+  };
+
+  onmessage = async ({ data: { files } }) => {
+    try {
+      await load(files);
+      let settled = false;
+      const finish = (s) => {
+        if (settled) return;
+        settled = true;
+        postMessage({ type: "done", status: s ?? status() });
+      };
+      // Nothing outside the program can wake it here: with no timer left and `main` unfinished,
+      // every task waits on another (the CLI's `D090`).
+      onIdle = () =>
+        Promise.resolve().then(() => {
+          if (settled || timers.length > 0) return;
+          console.error(JSON.stringify({ schema_version: "1.0", kind: "defect", code: "D090", message: "every task is waiting" }));
+          finish("defect");
+        });
+      await globalThis.$run;
+      finish();
+    } catch (e) {
+      // The runtime reached for a Node API the browser does not have (`node:crypto`, stdin).
+      console.error(`error: the playground cannot run this: ${e?.message ?? e}`);
+      postMessage({ type: "done", status: "unsupported" });
+    }
+  };
+</script>
+<script>
+  const source = document.getElementById("runner").textContent;
+  const worker = new Worker(URL.createObjectURL(new Blob([source], { type: "text/javascript" })));
+  worker.onmessage = (e) => parent.postMessage(e.data, "*");
+  worker.onerror = (e) => {
+    e.preventDefault();
+    parent.postMessage({ type: "write", stream: "err", text: `error: ${e.message}\n` }, "*");
+    parent.postMessage({ type: "done", status: "unsupported" }, "*");
+  };
+  onmessage = (e) => {
+    if (e.source === parent) worker.postMessage(e.data);
+  };
+  parent.postMessage({ type: "ready" }, "*");
+</script>

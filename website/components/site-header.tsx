@@ -6,6 +6,8 @@ export const navLinks = [
   { href: "/docs", label: "Docs" },
   { href: "/docs/tour/basics", label: "Tour" },
   { href: "/docs/agents", label: "For agents" },
+  // Not prefetched: its client code would load on every page that shows the header.
+  { href: "/play", label: "Playground", prefetch: false },
   { href: "/docs/roadmap", label: "Roadmap" },
 ];
 
@@ -35,6 +37,7 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
               <Link
                 key={l.href}
                 href={l.href}
+                prefetch={"prefetch" in l ? l.prefetch : undefined}
                 className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors duration-150 hover:bg-muted hover:text-foreground"
               >
                 {l.label}

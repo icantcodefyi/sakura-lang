@@ -7,6 +7,22 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Added
+
+- **A playground at [sakuralang.com/play](https://www.sakuralang.com/play)** (plan
+  `agent-dx.md` DX8, not a gate): write Sakura Lang and run it in the browser with nothing
+  installed. The front end and JS code generation run as WebAssembly
+  (`compiler/crates/sakura_playground`, built by `website/scripts/playground-wasm.sh` and
+  committed with its checksum), and the program in a sandboxed worker with a 5 s limit:
+  `Console` prints to the page, `Clock` is virtual from 2026-01-01, `Random` is seeded, `Fs` is
+  an empty in-memory directory, and a `main` that leaves `Http`, `Serve`, `Sql`, `Llm`,
+  `WebSocket` or `Worker` to the host is refused as on native ("`Http` is not available on target
+  `browser`"). Diagnostics show inline with their codes beside `sakura check`'s output; the
+  repository's runnable examples are in a menu, and a link carries the program compressed in its
+  hash. Documentation blocks holding a whole program link to it. `sakura verify` (Z3) does not run
+  in the browser. With no host `process`, the JS runtime's `Fs.host()` is that memory directory
+  (`compiler/runtime/js/ABI.md` §7, memory directories).
+
 ## [1.0.0-beta.5] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

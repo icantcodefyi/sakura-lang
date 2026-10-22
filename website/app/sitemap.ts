@@ -13,6 +13,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     { url: absolute("/changelog"), changeFrequency: "weekly", priority: 0.6 },
+    { url: absolute("/play"), changeFrequency: "weekly", priority: 0.6 },
     ...pages.map((page) => ({
       url: absolute(page.url),
       lastModified: page.data.lastModified,
