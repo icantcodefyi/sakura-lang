@@ -210,7 +210,8 @@ and close-out line are another agent's, in flight. **Cut:** `v1.0.0-beta.6` is `
 preparation commit after secret hygiene N-S, the release tool's 1.x notes branch, STABILITY's
 `[dependencies]` row and EF05's wording are on it (P2-pure and P4 if there by the cutoff);
 `v1.0.0` is beta.6 plus documentation-only commits plus its preparation commit, the shipped set
-frozen in between, and **not before 2026-10-29** (RFC 0001's FCP, 2026-10-22 to 2026-10-29).
+frozen in between, and it follows beta.6 as soon as road §7's items 2a–2e are done (the owner
+waived RFC 0001's seven-day FCP in writing on 2026-10-23).
 **Owner decision, 2026-10-22 ("u do this as well"):** the `v1.0.0` tag and its channel approvals
 are Claude's under the written delegation of 2026-10-22, extending §17.310 (1); nothing on this
 list is the owner's. Items (one line each; close with name and date):
@@ -224,7 +225,7 @@ list is the owner's. Items (one line each; close with name and date):
 | 24 | (d) the envelope read at every beta, the miss carried under §17.265 (1); beta.5's bless; beta.6's and 1.0.0's counted baselines blessed | [deltas](../../bench/deltas.md) | beta.1–beta.4 read; beta.5 in flight; beta.6, 1.0.0: open |
 | 25 | (a) the per-beta migration rounds, beta.2 … beta.6, in every `MIGRATION.md` | [road §7, 2a](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
 | 26 | (b) the subscription episodes judged, verdicts in `evals/agent-dx/reports/` | [road §7, 2b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (offline harness 12/12 at `3a7f93fd`: done) |
-| 27 | RFC 0001: FCP recorded 2026-10-22 → 2026-10-29; acceptance and the stabilization record in 1.0.0's preparation commit | [RFC 0001](../rfcs/0001-stability-guarantees.md) | open |
+| 27 | RFC 0001: FCP waived by the owner on 2026-10-23; acceptance and the stabilization record in 1.0.0's preparation commit | [RFC 0001](../rfcs/0001-stability-guarantees.md) | open |
 | 28 | STABILITY.md, README, AGENTS.md, CONTRIBUTING.md, the site and the VS Code README carry the 1.0 texts of road §7; every experimental label kept | [road §7, banner texts](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (the `[dependencies]` row before beta.6) |
 | 29 | `release.py`'s notes for a plain 1.x version, with its test | [road §7, 1b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
 | 30 | `v1.0.0-beta.6`: preparation commit, bless, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out line here | [release.md](../release.md) | open |

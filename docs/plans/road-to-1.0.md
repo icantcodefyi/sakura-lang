@@ -73,8 +73,8 @@ and `v1.0.0-beta.2` are published.
 | 3–5 | fixes for any finding with their regressions, then that target's ≥ 4 clean CPU-hours at the fix; **`v1.0.0-beta.3`** (the last feature beta) once row 3 and row 21 are on `main`; the sanitizer lanes at its commit (`windows-compute.md` §2) | bless, dry-run approval, tag, channel approvals, `verify-published.yml` dispatch |
 | 5–8 | the ledger complete (every target ≥ 24 CPU-hours, zero open `soundness` issues), the notes, `v1.0.0`'s preparation commit (the only difference from beta.3), its counted baseline on the Mac; **`v1.0.0`** | bless, dry-run approval, tag, channel approvals, `verify-published.yml` dispatch, RFC 0001's stabilization record |
 
-| 2026-10-22 on (§17.312) | beta.5's close-out; (1a)–(1d) of §7 land; the cutoff; **`v1.0.0-beta.6`** (preparation commit, counted baselines blessed, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out); then the beta.2–beta.6 migration rounds, the subscription episodes, the 1.0 banners' texts ready; RFC 0001's FCP runs 2026-10-22 to 2026-10-29 | none (all delegated) |
-| not before 2026-10-29 | **`v1.0.0`**: the preparation commit (versions, CHANGELOG `[1.0.0]`, the banners, STABILITY's 1.0 text, RFC 0001's acceptance and stabilization record, `release.ts`), its counted baselines and bless, the dry run with `sign_test`, the tag, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, `verify-published.yml`, `dogfood.yml`, `compat.yml`, the close-out | none (delegated 2026-10-22) |
+| 2026-10-22 on (§17.312) | beta.5's close-out; (1a)–(1d) of §7 land; the cutoff; **`v1.0.0-beta.6`** (preparation commit, counted baselines blessed, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out); then the beta.2–beta.6 migration rounds, the subscription episodes, the 1.0 banners' texts ready; RFC 0001's FCP waived by the owner on 2026-10-23 | none (all delegated) |
+| after beta.6, once 2a–2e are done | **`v1.0.0`**: the preparation commit (versions, CHANGELOG `[1.0.0]`, the banners, STABILITY's 1.0 text, RFC 0001's acceptance and stabilization record, `release.ts`), its counted baselines and bless, the dry run with `sign_test`, the tag, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, `verify-published.yml`, `dogfood.yml`, `compat.yml`, the close-out | none (delegated 2026-10-22) |
 
 The critical path to beta.3 is row 3 → the preparation commit; to 1.0.0 it is the campaign's
 hours, which run in parallel with it. A finding delays only its target (its fix plus 4 CPU-hours)
@@ -120,8 +120,8 @@ preparation commit nothing under `compiler/` (but the version strings), `std/`, 
 `tools/release/`, `tools/install/`, `skills/`, `.github/workflows/release.yml` or
 `verify-published.yml` changes; a change there is a beta.7. Docs, the website, `bench/`,
 `dogfood/`, `evals/`, `CHANGELOG.md`, `README.md`, `STABILITY.md` and `REQUESTS.md` may change.
-`v1.0.0` is not tagged before 2026-10-29 (RFC 0001's seven-day FCP, started by today's status
-block edit).
+The owner waived RFC 0001's seven-day FCP in writing on 2026-10-23, so `v1.0.0` follows beta.6
+as soon as items 2a–2e are done.
 
 **Before beta.6's preparation commit** (the cutoff is the first green `ci.yml` on `main` after
 these; the agent making the preparation commit names the cutoff commit in REQUESTS):
@@ -132,7 +132,7 @@ these; the agent making the preparation commit names the cutoff commit in REQUES
 | 1b | release notes for 1.x | Opus or Sol | `tools/release/release.py`: a third branch in `promise()` and the notes for a plain `X.Y.Z` at or above 1.0 (text under "Banner texts" below), the archive READMEs through it, one unit test covering the beta, pre-1.0 and 1.x branches |
 | 1c | STABILITY `[dependencies]` row | P lane (Opus) | the row says packages are experimental: `path` dependencies, the lock, ceilings and the gate as on `main`; `V8005` only for unsupported forms; no compatibility promise until RFC 0003 §12 |
 | 1d | EF05 wording | Opus (spec pass) | `docs/spec/effects.md` EF05 reads: "A body's check does not depend on the order of its statements, except that two distinct flexible effect tails first joined by equality (§5.2 rule 9) take the bound of the tail bounded first, which can reject a program another order accepts", citing `rows.rs` `distinct_flexible_tails_joined_first_depend_on_order`; `gaps.md` says the exception goes with the 1.x checker fix, which inverts the test |
-| 1e | RFC 0001 FCP start | any docs lane, today | the status block: Decision status Review → FCP; "FCP start 2026-10-22, end 2026-10-29"; the decision record gets the line |
+| 1e | RFC 0001 FCP start | any docs lane, today | the status block: Decision status Review → FCP; "FCP start 2026-10-22, end 2026-10-29"; the decision record gets the line. Amended 2026-10-23: the owner waived the FCP, so the status block records the waiver instead |
 | ride | P2-pure, P4 | P lane | in beta.6 if on `main` by the cutoff, else 1.1 (experimental) |
 | any time | §17.177 report, native headline, AWFY and Benchmarks Game suites, beta.5's close-out line | their lanes | never a gate; docs and `bench/` may land between beta.6 and 1.0.0 |
 
@@ -214,7 +214,7 @@ stay):
 | (e) no P1, no open `soundness` issue | **met** | `gh issue list --state open` empty; #12 closed | re-read at each tag |
 | (e) `verify-published.yml` green for the last beta | **met for beta.5** | run 39815259426 | owed for beta.6 and 1.0.0 |
 | (e) determinism fix | **met** | `802f469b` (§17.307) | — |
-| RFC 0001 stabilization record | **not met** | Draft; FCP not started | 1e today; 2e in 1.0.0's preparation commit; tag not before 2026-10-29 |
+| RFC 0001 stabilization record | **not met** | Draft; FCP not started | 1e today; 2e in 1.0.0's preparation commit; the owner waived RFC 0001's seven-day FCP in writing on 2026-10-23, so `v1.0.0` follows beta.6 as soon as items 2a–2e are done. |
 | STABILITY.md wording at 1.0.0 | **not met** | "pre-alpha / design phase"; latest beta.4; `[dependencies]` row stale | 1c before beta.6; the rest in 1.0.0's preparation commit |
 | npm `latest` → 1.0.0 | **met by tooling** | `release.py dist_tag` plain → `latest`; `release.yml` `--latest=true` | verified by `verify-published.yml`'s npm rows at 1.0.0 |
 | Homebrew stable formula | **met by tooling** | `release.py formula` plain → `sakuralang`; the tap holds `sakuralang.rb` (0.1.0) and `sakuralang-beta.rb` | verified by the brew rows at 1.0.0; `sakuralang-beta` stays at beta.6 |
