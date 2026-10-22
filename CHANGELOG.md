@@ -7,6 +7,16 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Changed
+
+- **A `match` on a tuple literal allocates nothing** (every backend; design §17.310 (2d), plan
+  `m5-native.md` N3c): `match (c, l, r) { … }` tests the three values directly instead of
+  building a tuple to take apart, so on WASM and native the values are not held by it and the
+  arms can reuse and lend them. An arm that binds the whole scrutinee (`p => p`) still builds
+  it. In `bench_counters.txt` only `rbtree` moves (`dups` 118,623 → 91,803, `drops`
+  107,885 → 72,028, reuses 1,106 → 1,203). No program's output changes, and there is no ABI
+  change.
+
 ## [1.0.0-beta.4] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

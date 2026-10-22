@@ -1243,21 +1243,33 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 )
             }
             hir::Expr::Match { scrutinee, arms } => {
-                let v = self.expr(*scrutinee)?;
                 let sty = self.ty_of(*scrutinee);
                 let ty = self.ty_of(e);
-                let v = self.local_atom(v, "x", sty.clone());
+                // A tuple literal scrutinee is never built: its components are the columns
+                // (design §17.310 (2d)).
+                let occ = match (&body.exprs[*scrutinee], &sty) {
+                    (hir::Expr::Tuple(es), Ty::Tuple(ts))
+                        if es.len() > 1
+                            && es.len() == ts.len()
+                            && arms
+                                .iter()
+                                .all(|a| super::matchc::splits(body, a.pat, es.len())) =>
+                    {
+                        let vs = self.exprs(es)?;
+                        (vs.into_iter().zip(ts))
+                            .map(|(v, t)| (self.local_atom(v, "x", t.clone()), t.clone()))
+                            .collect()
+                    }
+                    _ => {
+                        let v = self.expr(*scrutinee)?;
+                        vec![(self.local_atom(v, "x", sty.clone()), sty)]
+                    }
+                };
                 let after = self.b.label();
                 let (r, vs) = self.join_params(Some(ty));
                 let site = TextRange::at(self.range(e).start(), TextSize::of("match"));
-                let inner = self.match_arms(
-                    v,
-                    sty,
-                    arms,
-                    after,
-                    super::matchc::Fallback::Unreachable,
-                    site,
-                );
+                let inner =
+                    self.match_arms(occ, arms, after, super::matchc::Fallback::Unreachable, site);
                 Some(self.merge(after, r, vs, inner))
             }
             hir::Expr::Loop { body: lb } => self.loop_(*lb),
@@ -2024,8 +2036,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 s.jump_with(after, Some(v))
             }
             Some(arms) => s.match_arms(
-                local(err),
-                err_ty.clone(),
+                vec![(local(err), err_ty.clone())],
                 arms,
                 after,
                 super::matchc::Fallback::Fail(local(err)),

@@ -47,8 +47,8 @@ pipeline n=1000
   direct: frames 4, boxes 2501, dups 3501, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 2505
   all-frame: frames 2509, boxes 2501, dups 3501, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 2505
 rbtree n=1000
-  direct: frames 4, boxes 0, dups 118623, drops 107885, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 14
-  all-frame: frames 21969, boxes 0, dups 118623, drops 107885, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 14
+  direct: frames 4, boxes 0, dups 91803, drops 72028, restarts 0, reuse_attempts 1204, reuses 1203, borrow_candidates 14, borrows 14
+  all-frame: frames 21969, boxes 0, dups 91803, drops 72028, restarts 0, reuse_attempts 1204, reuses 1203, borrow_candidates 14, borrows 14
 shapes n=1000
   direct: frames 4, boxes 10184, dups 33716, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 10012
   all-frame: frames 21010, boxes 10184, dups 33716, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 10012

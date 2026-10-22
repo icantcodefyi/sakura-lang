@@ -24,8 +24,7 @@ layout 18 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 19 shape |  32b (word*, word*)
 layout 20 shape |  32b (i64, word*)
 layout 21 shape |  40b (word*, word*, word*)
-layout 22 shape |  32b (bool, word*)
-layout 23 shape |  40b (i64, i64, i64)
+layout 22 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%64 word*, %65 word*, %66 i64, %67 i64, %82 word*, %83 word*, %84 i64, %85 i64, %86 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 word*, %99 bool, %100 word*, %101 i64, %102 i64, %106 bool, %107 word*, %108 i64, %109 i64]
   b0():

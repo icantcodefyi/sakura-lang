@@ -26,10 +26,9 @@ layout 20 shape |  32b (word*, word*)
 layout 21 shape |  32b (i64, word*)
 layout 22 shape |  24b (i64)
 layout 23 shape |  64b (i64, word*, word*, word*, word*, word*)
-layout 24 shape |  32b (bool, word*)
-layout 25 shape |  40b (i64, i64, i64)
+layout 24 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 word*, %33 word*, %36 word*, %37 word*, %38 word*, %39 word*, %42 word*, %70 word*, %71 word*, %72 i64, %73 i64, %74 i64, %83 word*, %84 word*, %85 i64, %86 i64, %87 i64, %88 word*, %89 word*, %104 bool, %105 word*, %106 i64, %107 i64, %108 word*, %109 word*, %110 word*, %111 word*, %117 bool, %118 word*, %119 i64, %120 i64, %121 word*, %124 bool, %125 word*, %126 i64, %127 i64, %131 word*, %132 word*, %133 i64, %134 i64, %135 i64, %136 word*, %137 word*, %138 word*, %139 word*, %140 i64, %141 i64, %142 i64, %148 word*, %149 word*, %150 i64, %151 i64, %152 i64, %187 word*, %188 word*, %189 i64, %190 i64, %191 i64, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %200 word*, %201 word*, %202 i64, %203 i64, %204 i64, %205 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %214 word*, %215 word*, %216 i64, %217 i64, %218 i64, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %227 word*, %228 word*, %229 i64, %230 i64, %231 i64, %232 word*, %233 word*, %234 word*, %235 word*, %236 word*, %237 word*, %238 word*, %241 word*, %242 word*, %243 i64, %244 i64, %245 i64, %246 word*, %247 word*, %248 word*, %249 word*, %297 word*, %298 word*, %299 i64, %300 i64, %301 i64, %302 word*, %303 word*, %304 word*, %305 word*, %307 word*, %308 word*, %309 i64, %310 i64, %311 i64, %312 word*, %313 word*, %314 word*, %315 word*, %316 word*, %335 word*, %336 word*, %337 i64, %338 i64, %339 word*, %340 word*, %341 word*, %342 word*, %344 bool, %345 word*, %346 i64, %347 i64, %348 word*, %349 word*, %350 word*, %351 word*, %362 bool, %363 word*, %364 i64, %365 i64, %366 word*, %367 word*, %368 word*, %369 word*, %374 bool, %375 word*, %376 i64, %377 i64, %378 word*, %381 bool, %382 word*, %383 i64, %384 i64, %387 word*, %388 word*, %389 i64, %390 i64, %391 i64, %392 word*, %393 word*, %394 word*, %395 word*, %408 bool, %409 word*, %410 i64, %411 i64, %425 bool, %426 word*, %427 i64, %428 i64]
+fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 word*, %33 word*, %36 word*, %37 word*, %38 word*, %39 word*, %42 word*, %70 word*, %71 word*, %72 i64, %73 i64, %74 i64, %83 word*, %84 word*, %85 i64, %86 i64, %87 i64, %88 word*, %89 word*, %104 bool, %105 word*, %106 i64, %107 i64, %108 word*, %109 word*, %110 word*, %111 word*, %117 bool, %118 word*, %119 i64, %120 i64, %121 word*, %124 bool, %125 word*, %126 i64, %127 i64, %131 word*, %132 word*, %133 i64, %134 i64, %135 i64, %136 word*, %137 word*, %138 word*, %139 word*, %140 i64, %141 i64, %142 i64, %148 word*, %149 word*, %150 i64, %151 i64, %152 i64, %187 word*, %188 word*, %189 i64, %190 i64, %191 i64, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %200 word*, %201 word*, %202 i64, %203 i64, %204 i64, %205 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %214 word*, %215 word*, %216 i64, %217 i64, %218 i64, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %227 word*, %228 word*, %229 i64, %230 i64, %231 i64, %232 word*, %233 word*, %234 word*, %235 word*, %236 word*, %237 word*, %238 word*, %241 word*, %242 word*, %243 i64, %244 i64, %245 i64, %246 word*, %247 word*, %248 word*, %249 word*, %294 word*, %295 word*, %296 i64, %297 i64, %298 i64, %299 word*, %300 word*, %301 word*, %302 word*, %304 word*, %305 word*, %306 i64, %307 i64, %308 i64, %309 word*, %310 word*, %311 word*, %312 word*, %313 word*, %332 word*, %333 word*, %334 i64, %335 i64, %336 word*, %337 word*, %338 word*, %339 word*, %341 bool, %342 word*, %343 i64, %344 i64, %345 word*, %346 word*, %347 word*, %348 word*, %359 bool, %360 word*, %361 i64, %362 i64, %363 word*, %364 word*, %365 word*, %366 word*, %371 bool, %372 word*, %373 i64, %374 i64, %375 word*, %378 bool, %379 word*, %380 i64, %381 i64, %384 word*, %385 word*, %386 i64, %387 i64, %388 i64, %389 word*, %390 word*, %391 word*, %392 word*, %405 bool, %406 word*, %407 i64, %408 i64, %422 bool, %423 word*, %424 i64, %425 i64]
   b0():
     %0 lit: i64 = const 384
     %1 lit: ptr = const str 0
@@ -60,10 +59,10 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %26 lit: ptr = const str 11
     %27 tup: ptr = alloc tuple#23(i64, word, word, word, word, word)(%21, %22, %23, %24, %25, %26)
     %28 xs: ptr = alloc list(%6, %13, %20, %27)
-    %437 xs.lent: ref = lend %28
-    %29 n: i64 = $list_len(%437)
-    %436 lit: i64 = const 0
-    jump b25(%436, %28, %29)
+    %434 xs.lent: ref = lend %28
+    %29 n: i64 = $list_len(%434)
+    %433 lit: i64 = const 0
+    jump b25(%433, %28, %29)
   b1():
     %30 v: ptr = const static std::crypto::KeyFormat.Raw
     %31 lit: i64 = const 384
@@ -88,8 +87,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %47 lit: i64 = const 521
     %48 box: word = box %47
     %49 xs: ptr = alloc list(%46, %48)
-    %438 xs.lent: ref = lend %49
-    %50 n: i64 = $list_len(%438)
+    %435 xs.lent: ref = lend %49
+    %50 n: i64 = $list_len(%435)
     %153 lit: i64 = const 0
     jump b9(%153, %49, %50)
   b7():
@@ -102,8 +101,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %55 more: bool = lt.int %52, %54
     if %55 then b10(%53, %54, %52) else b11(%53, %54, %52)
   b10(%56 xs: ptr, %57 n: i64, %58 i: i64):
-    %439 xs.lent: ref = lend %56
-    %62 x: word = $list_at(%439, %58)
+    %436 xs.lent: ref = lend %56
+    %62 x: word = $list_at(%436, %58)
     %63 unbox: i64 = unbox %62
     drop %62
     %69 lit: i64 = const 9
@@ -190,16 +189,16 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %165 more: bool = lt.int %162, %164
     if %165 then b26(%163, %164, %162) else b27(%163, %164, %162)
   b26(%166 xs: ptr, %167 n: i64, %168 i: i64):
-    %440 xs.lent: ref = lend %166
-    %172 x: word = $list_at(%440, %168)
-    %430 p: i64 = tuple_get %172.0
-    %431 p: ptr = tuple_get %172.1
-    %432 p: ptr = tuple_get %172.2
-    %433 p: ptr = tuple_get %172.3
-    %434 p: ptr = tuple_get %172.4
-    %435 p: ptr = tuple_get %172.5
+    %437 xs.lent: ref = lend %166
+    %172 x: word = $list_at(%437, %168)
+    %427 p: i64 = tuple_get %172.0
+    %428 p: ptr = tuple_get %172.1
+    %429 p: ptr = tuple_get %172.2
+    %430 p: ptr = tuple_get %172.3
+    %431 p: ptr = tuple_get %172.4
+    %432 p: ptr = tuple_get %172.5
     drop %172
-    jump b29(%430, %431, %432, %433, %434, %435, %166, %167, %168)
+    jump b29(%427, %428, %429, %430, %431, %432, %166, %167, %168)
   b27(%169 xs: ptr, %170 n: i64, %171 i: i64):
     drop %169
     jump b1()
@@ -229,148 +228,144 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_p384_p521, frame 175 slots [%32 w
     %240 lit: bool = const true
     call import_key#4(%237, %235, %238, %240, %239) -> b34(%228, %229, %230, %231, %232, %233, %234, %236)
   b34(%241 r: ptr, %242 xs: ptr, %243 n: i64, %244 i: i64, %245 bits: i64, %246 message: ptr, %247 data: ptr, %248 signature: ptr, %249 r: ptr):
-    %250 tup: ptr = alloc tuple#20(word, word)(%249, %241)
-    %255 p: ptr = tuple_get %250.0
-    %256 p: ptr = tuple_get %250.1
+    %254 tag: i64 = tag %249 ctor std::result::Result
+    switch %254 0 => b36(%242, %243, %244, %245, %246, %247, %248, %249, %241) 1 => b37(%242, %243, %244, %245, %246, %247, %248, %249, %241)
+  b35(%250 v: word, %251 xs: ptr, %252 n: i64, %253 i: i64):
     drop %250
-    %257 tag: i64 = tag %255 ctor std::result::Result
-    switch %257 0 => b36(%242, %243, %244, %245, %246, %247, %248, %255, %256) 1 => b37(%242, %243, %244, %245, %246, %247, %248, %255, %256)
-  b35(%251 v: word, %252 xs: ptr, %253 n: i64, %254 i: i64):
-    drop %251
-    jump b28(%252, %253, %254)
-  b36(%258 xs: ptr, %259 n: i64, %260 i: i64, %261 bits: i64, %262 message: ptr, %263 data: ptr, %264 signature: ptr, %265 p: ptr, %266 p: ptr):
-    %276 p: word = proj %265.0 std::result::Result.Ok
-    drop %265
-    %277 tag: i64 = tag %266 ctor std::result::Result
-    switch %277 0 => b38(%258, %259, %260, %261, %262, %263, %264, %266, %276) 1 => b39(%258, %259, %260, %261, %262, %263, %264, %266, %276)
-  b37(%267 xs: ptr, %268 n: i64, %269 i: i64, %270 bits: i64, %271 message: ptr, %272 data: ptr, %273 signature: ptr, %274 p: ptr, %275 p: ptr):
+    jump b28(%251, %252, %253)
+  b36(%255 xs: ptr, %256 n: i64, %257 i: i64, %258 bits: i64, %259 message: ptr, %260 data: ptr, %261 signature: ptr, %262 r: ptr, %263 r: ptr):
+    %273 p: word = proj %262.0 std::result::Result.Ok
+    drop %262
+    %274 tag: i64 = tag %263 ctor std::result::Result
+    switch %274 0 => b38(%255, %256, %257, %258, %259, %260, %261, %263, %273) 1 => b39(%255, %256, %257, %258, %259, %260, %261, %263, %273)
+  b37(%264 xs: ptr, %265 n: i64, %266 i: i64, %267 bits: i64, %268 message: ptr, %269 data: ptr, %270 signature: ptr, %271 r: ptr, %272 r: ptr):
+    drop %269
+    drop %270
     drop %272
-    drop %273
-    drop %275
-    %413 p: word = proj %274.0 std::result::Result.Err
-    drop %274
-    %414 s: ptr = show %270
-    %415 lit: ptr = const str 13
-    %416 s: ptr = concat %415, %414
-    drop %414
-    %417 lit: ptr = const str 16
-    %418 s: ptr = concat %416, %417
-    drop %417
-    %419 s: ptr = show %271
+    %410 p: word = proj %271.0 std::result::Result.Err
     drop %271
-    %420 s: ptr = concat %418, %419
-    drop %419
-    %421 lit: ptr = const str 16
-    %422 s: ptr = concat %420, %421
-    drop %421
-    %423 s: ptr = show %413
-    drop %413
-    %424 s: ptr = concat %422, %423
-    drop %423
-    perform std::console::Console.print(%424) -> b50(%267, %268, %269)
-  b38(%278 xs: ptr, %279 n: i64, %280 i: i64, %281 bits: i64, %282 message: ptr, %283 data: ptr, %284 signature: ptr, %285 p: ptr, %286 p: ptr):
-    %296 p: word = proj %285.0 std::result::Result.Ok
-    drop %285
-    call unhex#3(%283) -> b40(%278, %279, %280, %281, %282, %284, %286, %296)
-  b39(%287 xs: ptr, %288 n: i64, %289 i: i64, %290 bits: i64, %291 message: ptr, %292 data: ptr, %293 signature: ptr, %294 p: ptr, %295 p: ptr):
+    %411 s: ptr = show %267
+    %412 lit: ptr = const str 13
+    %413 s: ptr = concat %412, %411
+    drop %411
+    %414 lit: ptr = const str 16
+    %415 s: ptr = concat %413, %414
+    drop %414
+    %416 s: ptr = show %268
+    drop %268
+    %417 s: ptr = concat %415, %416
+    drop %416
+    %418 lit: ptr = const str 16
+    %419 s: ptr = concat %417, %418
+    drop %418
+    %420 s: ptr = show %410
+    drop %410
+    %421 s: ptr = concat %419, %420
+    drop %420
+    perform std::console::Console.print(%421) -> b50(%264, %265, %266)
+  b38(%275 xs: ptr, %276 n: i64, %277 i: i64, %278 bits: i64, %279 message: ptr, %280 data: ptr, %281 signature: ptr, %282 r: ptr, %283 p: ptr):
+    %293 p: word = proj %282.0 std::result::Result.Ok
+    drop %282
+    call unhex#3(%280) -> b40(%275, %276, %277, %278, %279, %281, %283, %293)
+  b39(%284 xs: ptr, %285 n: i64, %286 i: i64, %287 bits: i64, %288 message: ptr, %289 data: ptr, %290 signature: ptr, %291 r: ptr, %292 p: ptr):
+    drop %289
+    drop %290
     drop %292
-    drop %293
-    drop %295
-    %396 p: word = proj %294.0 std::result::Result.Err
-    drop %294
-    %397 s: ptr = show %290
-    %398 lit: ptr = const str 13
-    %399 s: ptr = concat %398, %397
-    drop %397
-    %400 lit: ptr = const str 16
-    %401 s: ptr = concat %399, %400
-    drop %400
-    %402 s: ptr = show %291
+    %393 p: word = proj %291.0 std::result::Result.Err
     drop %291
-    %403 s: ptr = concat %401, %402
-    drop %402
-    %404 lit: ptr = const str 16
-    %405 s: ptr = concat %403, %404
-    drop %404
-    %406 s: ptr = show %396
-    drop %396
-    %407 s: ptr = concat %405, %406
-    drop %406
-    perform std::console::Console.print(%407) -> b49(%287, %288, %289)
-  b40(%297 r: ptr, %298 xs: ptr, %299 n: i64, %300 i: i64, %301 bits: i64, %302 message: ptr, %303 signature: ptr, %304 k: ptr, %305 p: ptr):
-    %306 lit: i64 = const 0
-    call seeded#5(%306) -> b41(%298, %299, %300, %301, %302, %303, %304, %305, %297)
-  b41(%307 r: ptr, %308 xs: ptr, %309 n: i64, %310 i: i64, %311 bits: i64, %312 message: ptr, %313 signature: ptr, %314 k: ptr, %315 p: ptr, %316 r: ptr):
-    handle_push %307
-    %386 $site: i64 = const 13
-    dup %316
-    call sign#6(%314, %316, %386) -> b48(%308, %309, %310, %311, %312, %313, %315, %316)
-  b42(%317 v: ptr, %318 xs: ptr, %319 n: i64, %320 i: i64, %321 bits: i64, %322 message: ptr, %323 signature: ptr, %324 p: ptr, %325 r: ptr):
-    %326 s: ptr = show %321
-    %327 lit: ptr = const str 13
-    %328 s: ptr = concat %327, %326
+    %394 s: ptr = show %287
+    %395 lit: ptr = const str 13
+    %396 s: ptr = concat %395, %394
+    drop %394
+    %397 lit: ptr = const str 16
+    %398 s: ptr = concat %396, %397
+    drop %397
+    %399 s: ptr = show %288
+    drop %288
+    %400 s: ptr = concat %398, %399
+    drop %399
+    %401 lit: ptr = const str 16
+    %402 s: ptr = concat %400, %401
+    drop %401
+    %403 s: ptr = show %393
+    drop %393
+    %404 s: ptr = concat %402, %403
+    drop %403
+    perform std::console::Console.print(%404) -> b49(%284, %285, %286)
+  b40(%294 r: ptr, %295 xs: ptr, %296 n: i64, %297 i: i64, %298 bits: i64, %299 message: ptr, %300 signature: ptr, %301 k: ptr, %302 p: ptr):
+    %303 lit: i64 = const 0
+    call seeded#5(%303) -> b41(%295, %296, %297, %298, %299, %300, %301, %302, %294)
+  b41(%304 r: ptr, %305 xs: ptr, %306 n: i64, %307 i: i64, %308 bits: i64, %309 message: ptr, %310 signature: ptr, %311 k: ptr, %312 p: ptr, %313 r: ptr):
+    handle_push %304
+    %383 $site: i64 = const 13
+    dup %313
+    call sign#6(%311, %313, %383) -> b48(%305, %306, %307, %308, %309, %310, %312, %313)
+  b42(%314 v: ptr, %315 xs: ptr, %316 n: i64, %317 i: i64, %318 bits: i64, %319 message: ptr, %320 signature: ptr, %321 p: ptr, %322 r: ptr):
+    %323 s: ptr = show %318
+    %324 lit: ptr = const str 13
+    %325 s: ptr = concat %324, %323
+    drop %323
+    %326 lit: ptr = const str 16
+    %327 s: ptr = concat %325, %326
     drop %326
-    %329 lit: ptr = const str 16
-    %330 s: ptr = concat %328, %329
-    drop %329
-    %331 s: ptr = show %322
-    drop %322
-    %332 s: ptr = concat %330, %331
-    drop %331
-    %333 lit: ptr = const str 17
-    %334 s: ptr = concat %332, %333
-    drop %333
-    call unhex#3(%323) -> b43(%318, %319, %320, %324, %325, %317, %334)
-  b43(%335 r: ptr, %336 xs: ptr, %337 n: i64, %338 i: i64, %339 p: ptr, %340 r: ptr, %341 v: ptr, %342 s: ptr):
-    %343 $site: i64 = const 11
-    %441 p.lent: ref = lend %339
-    dup.candidate %340
-    call verify#111(%441, %335, %340, %343) -> b44(%336, %337, %338, %339, %340, %341, %342)
-  b44(%344 r: bool, %345 xs: ptr, %346 n: i64, %347 i: i64, %348 p: ptr, %349 r: ptr, %350 v: ptr, %351 s: ptr):
-    %352 s: ptr = show %344
-    %353 s: ptr = concat %351, %352
-    drop %352
-    %354 lit: ptr = const str 18
-    %355 s: ptr = concat %353, %354
+    %328 s: ptr = show %319
+    drop %319
+    %329 s: ptr = concat %327, %328
+    drop %328
+    %330 lit: ptr = const str 17
+    %331 s: ptr = concat %329, %330
+    drop %330
+    call unhex#3(%320) -> b43(%315, %316, %317, %321, %322, %314, %331)
+  b43(%332 r: ptr, %333 xs: ptr, %334 n: i64, %335 i: i64, %336 p: ptr, %337 r: ptr, %338 v: ptr, %339 s: ptr):
+    %340 $site: i64 = const 11
+    %438 p.lent: ref = lend %336
+    dup.candidate %337
+    call verify#111(%438, %332, %337, %340) -> b44(%333, %334, %335, %336, %337, %338, %339)
+  b44(%341 r: bool, %342 xs: ptr, %343 n: i64, %344 i: i64, %345 p: ptr, %346 r: ptr, %347 v: ptr, %348 s: ptr):
+    %349 s: ptr = show %341
+    %350 s: ptr = concat %348, %349
+    drop %349
+    %351 lit: ptr = const str 18
+    %352 s: ptr = concat %350, %351
+    drop %351
+    %440 v.lent: ref = lend %347
+    %353 r: i64 = $bytes_len(%440)
+    %354 s: ptr = show %353
+    %355 s: ptr = concat %352, %354
     drop %354
-    %443 v.lent: ref = lend %350
-    %356 r: i64 = $bytes_len(%443)
-    %357 s: ptr = show %356
-    %358 s: ptr = concat %355, %357
-    drop %357
-    %359 lit: ptr = const str 16
-    %360 s: ptr = concat %358, %359
-    drop %359
-    %361 $site: i64 = const 12
-    %442 p.lent: ref = lend %348
-    dup.candidate %349
-    dup.candidate %350
-    call verify#111(%442, %350, %349, %361) -> b45(%345, %346, %347, %348, %349, %350, %360)
-  b45(%362 r: bool, %363 xs: ptr, %364 n: i64, %365 i: i64, %366 p: ptr, %367 r: ptr, %368 v: ptr, %369 s: ptr):
-    %370 s: ptr = show %362
-    %371 s: ptr = concat %369, %370
-    drop %370
-    %372 lit: ptr = const str 15
-    %373 s: ptr = concat %371, %372
-    drop %372
-    call refused#8(%366, %368, %367) -> b46(%363, %364, %365, %373)
-  b46(%374 r: bool, %375 xs: ptr, %376 n: i64, %377 i: i64, %378 s: ptr):
-    %379 s: ptr = show %374
-    %380 s: ptr = concat %378, %379
-    drop %379
-    perform std::console::Console.print(%380) -> b47(%375, %376, %377)
-  b47(%381 r: unit, %382 xs: ptr, %383 n: i64, %384 i: i64):
-    %385 box: word = box %381
-    jump b35(%385, %382, %383, %384)
-  b48(%387 r: ptr, %388 xs: ptr, %389 n: i64, %390 i: i64, %391 bits: i64, %392 message: ptr, %393 signature: ptr, %394 p: ptr, %395 r: ptr) [handle]:
+    %356 lit: ptr = const str 16
+    %357 s: ptr = concat %355, %356
+    drop %356
+    %358 $site: i64 = const 12
+    %439 p.lent: ref = lend %345
+    dup.candidate %346
+    dup.candidate %347
+    call verify#111(%439, %347, %346, %358) -> b45(%342, %343, %344, %345, %346, %347, %357)
+  b45(%359 r: bool, %360 xs: ptr, %361 n: i64, %362 i: i64, %363 p: ptr, %364 r: ptr, %365 v: ptr, %366 s: ptr):
+    %367 s: ptr = show %359
+    %368 s: ptr = concat %366, %367
+    drop %367
+    %369 lit: ptr = const str 15
+    %370 s: ptr = concat %368, %369
+    drop %369
+    call refused#8(%363, %365, %364) -> b46(%360, %361, %362, %370)
+  b46(%371 r: bool, %372 xs: ptr, %373 n: i64, %374 i: i64, %375 s: ptr):
+    %376 s: ptr = show %371
+    %377 s: ptr = concat %375, %376
+    drop %376
+    perform std::console::Console.print(%377) -> b47(%372, %373, %374)
+  b47(%378 r: unit, %379 xs: ptr, %380 n: i64, %381 i: i64):
+    %382 box: word = box %378
+    jump b35(%382, %379, %380, %381)
+  b48(%384 r: ptr, %385 xs: ptr, %386 n: i64, %387 i: i64, %388 bits: i64, %389 message: ptr, %390 signature: ptr, %391 p: ptr, %392 r: ptr) [handle]:
     handle_pop
-    jump b42(%387, %388, %389, %390, %391, %392, %393, %394, %395)
-  b49(%408 r: unit, %409 xs: ptr, %410 n: i64, %411 i: i64):
-    %412 box: word = box %408
-    jump b35(%412, %409, %410, %411)
-  b50(%425 r: unit, %426 xs: ptr, %427 n: i64, %428 i: i64):
-    %429 box: word = box %425
-    jump b35(%429, %426, %427, %428)
+    jump b42(%384, %385, %386, %387, %388, %389, %390, %391, %392)
+  b49(%405 r: unit, %406 xs: ptr, %407 n: i64, %408 i: i64):
+    %409 box: word = box %405
+    jump b35(%409, %406, %407, %408)
+  b50(%422 r: unit, %423 xs: ptr, %424 n: i64, %425 i: i64):
+    %426 box: word = box %422
+    jump b35(%426, %423, %424, %425)
 
 fn $entry#1 top -> unit ; main::crypto_ecdsa_p384_p521, frame 1 slots [%1 bool]
   b0():

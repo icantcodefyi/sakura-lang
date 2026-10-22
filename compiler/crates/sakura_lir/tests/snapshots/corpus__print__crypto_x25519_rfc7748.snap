@@ -29,10 +29,9 @@ layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 24 shape |  32b (word*, word*)
 layout 25 shape |  32b (i64, word*)
 layout 26 shape |  48b (word*, word*, word*, word*)
-layout 27 shape |  32b (bool, word*)
-layout 28 shape |  40b (i64, i64, i64)
+layout 27 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 word*, %26 word*, %30 word*, %31 word*, %32 word*, %33 word*, %36 bool, %56 word*, %58 word*, %62 bool, %88 word*, %89 word*, %90 i64, %91 i64, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 i64, %98 i64, %99 word*, %100 word*, %101 word*, %114 bool, %115 word*, %116 i64, %117 i64, %156 word*, %157 word*, %158 i64, %159 i64, %160 word*, %161 word*, %162 word*, %163 word*, %241 word*, %164 word*, %165 word*, %166 i64, %167 i64, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %242 word*, %177 word*, %178 word*, %179 i64, %180 i64, %181 word*, %182 word*, %183 word*, %184 word*, %185 bool, %186 word*, %187 word*, %188 i64, %189 i64, %190 word*, %191 word*, %192 word*, %193 bool, %194 word*, %213 word*, %214 word*, %215 i64, %216 i64, %217 word*, %219 word*, %220 word*, %221 i64, %222 i64, %223 word*, %226 bool, %227 word*, %228 i64, %229 i64]
+fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 word*, %26 word*, %30 word*, %31 word*, %32 word*, %33 word*, %35 bool, %53 word*, %55 word*, %59 bool, %85 word*, %86 word*, %87 i64, %88 i64, %89 word*, %90 word*, %91 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 word*, %97 word*, %98 word*, %110 bool, %111 word*, %112 i64, %113 i64, %150 word*, %151 word*, %152 i64, %153 i64, %154 word*, %155 word*, %156 word*, %157 word*, %237 word*, %158 word*, %159 word*, %160 i64, %161 i64, %162 word*, %163 word*, %164 word*, %165 word*, %166 word*, %238 word*, %171 word*, %172 word*, %173 i64, %174 i64, %175 word*, %176 word*, %177 word*, %178 word*, %179 bool, %180 word*, %181 word*, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 bool, %188 word*, %207 word*, %208 word*, %209 i64, %210 i64, %211 word*, %213 word*, %214 word*, %215 i64, %216 i64, %217 word*, %220 bool, %221 word*, %222 i64, %223 i64]
   b0():
     %0 lit: ptr = const str 0
     %1 lit: ptr = const str 1
@@ -55,10 +54,10 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
     %18 lit: ptr = const str 10
     %19 tup: ptr = alloc tuple#26(word, word, word, word)(%15, %16, %17, %18)
     %20 xs: ptr = alloc list(%4, %9, %14, %19)
-    %236 xs.lent: ref = lend %20
-    %21 n: i64 = $list_len(%236)
-    %235 lit: i64 = const 0
-    jump b15(%235, %20, %21)
+    %230 xs.lent: ref = lend %20
+    %21 n: i64 = $list_len(%230)
+    %229 lit: i64 = const 0
+    jump b15(%229, %20, %21)
   b1():
     %22 lit: ptr = const str 14
     %23 lit: i64 = const 32
@@ -74,177 +73,169 @@ fn main#0 pub top -> unit ; main::crypto_x25519_rfc7748, frame 79 slots [%25 wor
   b4(%30 r: ptr, %31 r: ptr):
     call public_key#3(%30) -> b5(%31)
   b5(%32 r: ptr, %33 r: ptr):
-    %34 tup: ptr = alloc tuple#24(word, word)(%33, %32)
-    %39 p: ptr = tuple_get %34.0
-    %40 p: ptr = tuple_get %34.1
-    drop %34
-    %41 tag: i64 = tag %39 ctor std::result::Result
-    switch %41 0 => b8(%39, %40) _ => b9(%39, %40)
+    %38 tag: i64 = tag %33 ctor std::result::Result
+    switch %38 0 => b8(%33, %32) _ => b9(%33, %32)
   b6():
-    %35 lit: ptr = const str 16
-    perform std::console::Console.print(%35) -> b7()
-  b7(%36 r: unit):
-    %37 box: word = box %36
-    %38 unbox: unit = unbox %37
-    drop %37
-    ret %38
-  b8(%42 p: ptr, %43 p: ptr):
-    %46 p: word = proj %42.0 std::result::Result.Ok
+    %34 lit: ptr = const str 16
+    perform std::console::Console.print(%34) -> b7()
+  b7(%35 r: unit):
+    %36 box: word = box %35
+    %37 unbox: unit = unbox %36
+    drop %36
+    ret %37
+  b8(%39 r: ptr, %40 r: ptr):
+    %43 p: word = proj %39.0 std::result::Result.Ok
+    drop %39
+    %44 tag: i64 = tag %40 ctor std::result::Result
+    switch %44 0 => b10(%40, %43) _ => b11(%40, %43)
+  b9(%41 r: ptr, %42 r: ptr):
+    drop %41
     drop %42
-    %47 tag: i64 = tag %43 ctor std::result::Result
-    switch %47 0 => b10(%43, %46) _ => b11(%43, %46)
-  b9(%44 p: ptr, %45 p: ptr):
-    drop %44
+    jump b6()
+  b10(%45 r: ptr, %46 p: ptr):
+    %49 p: word = proj %45.0 std::result::Result.Ok
     drop %45
-    jump b6()
-  b10(%48 p: ptr, %49 p: ptr):
-    %52 p: word = proj %48.0 std::result::Result.Ok
+    %50 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%49)
+    %51 lit: i64 = const 256
+    %52 $site: i64 = const 5
+    call derive_bits#4(%46, %50, %51, %52) -> b12()
+  b11(%47 r: ptr, %48 p: ptr):
+    drop %47
     drop %48
-    %53 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%52)
-    %54 lit: i64 = const 256
-    %55 $site: i64 = const 5
-    call derive_bits#4(%49, %53, %54, %55) -> b12()
-  b11(%50 p: ptr, %51 p: ptr):
-    drop %50
-    drop %51
     jump b6()
-  b12(%56 r: ptr):
-    %57 fn: ptr = const static closure $bytes_len$value#88
-    call map#6(%56, %57) -> b13()
-  b13(%58 r: ptr):
-    %59 s: ptr = show %58
-    drop %58
-    %60 lit: ptr = const str 17
-    %61 s: ptr = concat %60, %59
-    drop %59
-    perform std::console::Console.print(%61) -> b14()
-  b14(%62 r: unit):
-    %63 box: word = box %62
-    %64 unbox: unit = unbox %63
-    drop %63
-    ret %64
-  b15(%65 i: i64, %66 xs: ptr, %67 n: i64):
-    %68 more: bool = lt.int %65, %67
-    if %68 then b16(%66, %67, %65) else b17(%66, %67, %65)
-  b16(%69 xs: ptr, %70 n: i64, %71 i: i64):
-    %237 xs.lent: ref = lend %69
-    %75 x: word = $list_at(%237, %71)
-    %231 p: ptr = tuple_get %75.0
-    %232 p: ptr = tuple_get %75.1
-    %233 p: ptr = tuple_get %75.2
-    %234 p: ptr = tuple_get %75.3
-    drop %75
-    jump b19(%231, %232, %233, %234, %69, %70, %71)
-  b17(%72 xs: ptr, %73 n: i64, %74 i: i64):
+  b12(%53 r: ptr):
+    %54 fn: ptr = const static closure $bytes_len$value#88
+    call map#6(%53, %54) -> b13()
+  b13(%55 r: ptr):
+    %56 s: ptr = show %55
+    drop %55
+    %57 lit: ptr = const str 17
+    %58 s: ptr = concat %57, %56
+    drop %56
+    perform std::console::Console.print(%58) -> b14()
+  b14(%59 r: unit):
+    %60 box: word = box %59
+    %61 unbox: unit = unbox %60
+    drop %60
+    ret %61
+  b15(%62 i: i64, %63 xs: ptr, %64 n: i64):
+    %65 more: bool = lt.int %62, %64
+    if %65 then b16(%63, %64, %62) else b17(%63, %64, %62)
+  b16(%66 xs: ptr, %67 n: i64, %68 i: i64):
+    %231 xs.lent: ref = lend %66
+    %72 x: word = $list_at(%231, %68)
+    %225 p: ptr = tuple_get %72.0
+    %226 p: ptr = tuple_get %72.1
+    %227 p: ptr = tuple_get %72.2
+    %228 p: ptr = tuple_get %72.3
     drop %72
+    jump b19(%225, %226, %227, %228, %66, %67, %68)
+  b17(%69 xs: ptr, %70 n: i64, %71 i: i64):
+    drop %69
     jump b1()
-  b18(%76 xs: ptr, %77 n: i64, %78 i: i64):
-    %79 lit: i64 = const 1
-    %80 i: i64 = intadd %78, %79
-    jump b15(%80, %76, %77)
-  b19(%81 case: ptr, %82 k: ptr, %83 u: ptr, %84 out: ptr, %85 xs: ptr, %86 n: i64, %87 i: i64):
-    call private_key#2(%82) -> b20(%85, %86, %87, %81, %83, %84)
-  b20(%88 r: ptr, %89 xs: ptr, %90 n: i64, %91 i: i64, %92 case: ptr, %93 u: ptr, %94 out: ptr):
-    call public_key#3(%93) -> b21(%89, %90, %91, %92, %94, %88)
-  b21(%95 r: ptr, %96 xs: ptr, %97 n: i64, %98 i: i64, %99 case: ptr, %100 out: ptr, %101 r: ptr):
-    %102 tup: ptr = alloc tuple#24(word, word)(%101, %95)
-    %119 p: ptr = tuple_get %102.0
-    %120 p: ptr = tuple_get %102.1
-    drop %102
-    %121 tag: i64 = tag %119 ctor std::result::Result
-    switch %121 0 => b25(%96, %97, %98, %99, %100, %119, %120) _ => b26(%96, %97, %98, %99, %100, %119, %120)
-  b22(%103 v: word, %104 xs: ptr, %105 n: i64, %106 i: i64):
-    drop %103
-    jump b18(%104, %105, %106)
-  b23(%107 xs: ptr, %108 n: i64, %109 i: i64, %110 case: ptr):
-    %111 s: ptr = show %110
-    drop %110
-    %112 lit: ptr = const str 18
-    %113 s: ptr = concat %111, %112
-    drop %112
-    perform std::console::Console.print(%113) -> b24(%107, %108, %109)
-  b24(%114 r: unit, %115 xs: ptr, %116 n: i64, %117 i: i64):
-    %118 box: word = box %114
-    jump b22(%118, %115, %116, %117)
-  b25(%122 xs: ptr, %123 n: i64, %124 i: i64, %125 case: ptr, %126 out: ptr, %127 p: ptr, %128 p: ptr):
-    %136 p: word = proj %127.0 std::result::Result.Ok
+  b18(%73 xs: ptr, %74 n: i64, %75 i: i64):
+    %76 lit: i64 = const 1
+    %77 i: i64 = intadd %75, %76
+    jump b15(%77, %73, %74)
+  b19(%78 case: ptr, %79 k: ptr, %80 u: ptr, %81 out: ptr, %82 xs: ptr, %83 n: i64, %84 i: i64):
+    call private_key#2(%79) -> b20(%82, %83, %84, %78, %80, %81)
+  b20(%85 r: ptr, %86 xs: ptr, %87 n: i64, %88 i: i64, %89 case: ptr, %90 u: ptr, %91 out: ptr):
+    call public_key#3(%90) -> b21(%86, %87, %88, %89, %91, %85)
+  b21(%92 r: ptr, %93 xs: ptr, %94 n: i64, %95 i: i64, %96 case: ptr, %97 out: ptr, %98 r: ptr):
+    %115 tag: i64 = tag %98 ctor std::result::Result
+    switch %115 0 => b25(%93, %94, %95, %96, %97, %98, %92) _ => b26(%93, %94, %95, %96, %97, %98, %92)
+  b22(%99 v: word, %100 xs: ptr, %101 n: i64, %102 i: i64):
+    drop %99
+    jump b18(%100, %101, %102)
+  b23(%103 xs: ptr, %104 n: i64, %105 i: i64, %106 case: ptr):
+    %107 s: ptr = show %106
+    drop %106
+    %108 lit: ptr = const str 18
+    %109 s: ptr = concat %107, %108
+    drop %108
+    perform std::console::Console.print(%109) -> b24(%103, %104, %105)
+  b24(%110 r: unit, %111 xs: ptr, %112 n: i64, %113 i: i64):
+    %114 box: word = box %110
+    jump b22(%114, %111, %112, %113)
+  b25(%116 xs: ptr, %117 n: i64, %118 i: i64, %119 case: ptr, %120 out: ptr, %121 r: ptr, %122 r: ptr):
+    %130 p: word = proj %121.0 std::result::Result.Ok
+    drop %121
+    %131 tag: i64 = tag %122 ctor std::result::Result
+    switch %131 0 => b27(%116, %117, %118, %119, %120, %122, %130) _ => b28(%116, %117, %118, %119, %120, %122, %130)
+  b26(%123 xs: ptr, %124 n: i64, %125 i: i64, %126 case: ptr, %127 out: ptr, %128 r: ptr, %129 r: ptr):
     drop %127
-    %137 tag: i64 = tag %128 ctor std::result::Result
-    switch %137 0 => b27(%122, %123, %124, %125, %126, %128, %136) _ => b28(%122, %123, %124, %125, %126, %128, %136)
-  b26(%129 xs: ptr, %130 n: i64, %131 i: i64, %132 case: ptr, %133 out: ptr, %134 p: ptr, %135 p: ptr):
-    drop %133
-    drop %134
-    drop %135
-    jump b23(%129, %130, %131, %132)
-  b27(%138 xs: ptr, %139 n: i64, %140 i: i64, %141 case: ptr, %142 out: ptr, %143 p: ptr, %144 p: ptr):
-    %152 p: word = proj %143.0 std::result::Result.Ok
-    %240 token: word = $reuse_reset(%143)
-    %153 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%152)
-    %154 lit: i64 = const 256
-    %155 $site: i64 = const 6
-    %238 p.lent: ref = lend %144
-    dup %153
-    call derive_bits#90(%238, %153, %154, %155) -> b29(%138, %139, %140, %141, %142, %144, %153, %240)
-  b28(%145 xs: ptr, %146 n: i64, %147 i: i64, %148 case: ptr, %149 out: ptr, %150 p: ptr, %151 p: ptr):
-    drop %149
-    drop %150
-    drop %151
-    jump b23(%145, %146, %147, %148)
-  b29(%156 r: ptr, %157 xs: ptr, %158 n: i64, %159 i: i64, %160 case: ptr, %161 out: ptr, %162 s: ptr, %163 r: ptr, %241 token: word):
-    dup %161
-    call unhex#5(%161) -> b30(%157, %158, %159, %160, %161, %162, %163, %156, %241)
-  b30(%164 r: ptr, %165 xs: ptr, %166 n: i64, %167 i: i64, %168 case: ptr, %169 out: ptr, %170 s: ptr, %171 r: ptr, %172 r: ptr, %242 token: word):
-    %173 r: ptr = alloc std::result::Result.Ok(%164) reuse %242
-    %174 t: bool = eq.any %172, %173
-    drop %172
-    drop %173
-    %175 lit: i64 = const 128
-    %176 $site: i64 = const 7
-    %239 s.lent: ref = lend %170
-    dup %171
-    call derive_bits#90(%239, %171, %175, %176) -> b31(%165, %166, %167, %168, %169, %170, %171, %174)
-  b31(%177 r: ptr, %178 xs: ptr, %179 n: i64, %180 i: i64, %181 case: ptr, %182 out: ptr, %183 s: ptr, %184 r: ptr, %185 t: bool):
-    call unhex#5(%182) -> b32(%178, %179, %180, %181, %183, %184, %185, %177)
-  b32(%186 r: ptr, %187 xs: ptr, %188 n: i64, %189 i: i64, %190 case: ptr, %191 s: ptr, %192 r: ptr, %193 t: bool, %194 r: ptr):
-    %195 lit: i64 = const 0
-    %196 lit: i64 = const 16
-    %197 r: ptr = $bytes_slice(%186, %195, %196)
-    %198 r: ptr = alloc std::result::Result.Ok(%197)
-    %199 t: bool = eq.any %194, %198
-    drop %194
-    drop %198
-    %200 s: ptr = show %190
-    drop %190
-    %201 lit: ptr = const str 19
+    drop %128
+    drop %129
+    jump b23(%123, %124, %125, %126)
+  b27(%132 xs: ptr, %133 n: i64, %134 i: i64, %135 case: ptr, %136 out: ptr, %137 r: ptr, %138 p: ptr):
+    %146 p: word = proj %137.0 std::result::Result.Ok
+    %236 token: word = $reuse_reset(%137)
+    %147 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%146)
+    %148 lit: i64 = const 256
+    %149 $site: i64 = const 6
+    %232 p.lent: ref = lend %138
+    %233 r.lent: ref = lend %147
+    call derive_bits#90(%232, %233, %148, %149) -> b29(%132, %133, %134, %135, %136, %138, %147, %236)
+  b28(%139 xs: ptr, %140 n: i64, %141 i: i64, %142 case: ptr, %143 out: ptr, %144 r: ptr, %145 p: ptr):
+    drop %143
+    drop %144
+    drop %145
+    jump b23(%139, %140, %141, %142)
+  b29(%150 r: ptr, %151 xs: ptr, %152 n: i64, %153 i: i64, %154 case: ptr, %155 out: ptr, %156 s: ptr, %157 r: ptr, %237 token: word):
+    dup %155
+    call unhex#5(%155) -> b30(%151, %152, %153, %154, %155, %156, %157, %150, %237)
+  b30(%158 r: ptr, %159 xs: ptr, %160 n: i64, %161 i: i64, %162 case: ptr, %163 out: ptr, %164 s: ptr, %165 r: ptr, %166 r: ptr, %238 token: word):
+    %167 r: ptr = alloc std::result::Result.Ok(%158) reuse %238
+    %168 t: bool = eq.any %166, %167
+    drop %166
+    drop %167
+    %169 lit: i64 = const 128
+    %170 $site: i64 = const 7
+    %234 s.lent: ref = lend %164
+    %235 r.lent: ref = lend %165
+    call derive_bits#90(%234, %235, %169, %170) -> b31(%159, %160, %161, %162, %163, %164, %165, %168)
+  b31(%171 r: ptr, %172 xs: ptr, %173 n: i64, %174 i: i64, %175 case: ptr, %176 out: ptr, %177 s: ptr, %178 r: ptr, %179 t: bool):
+    call unhex#5(%176) -> b32(%172, %173, %174, %175, %177, %178, %179, %171)
+  b32(%180 r: ptr, %181 xs: ptr, %182 n: i64, %183 i: i64, %184 case: ptr, %185 s: ptr, %186 r: ptr, %187 t: bool, %188 r: ptr):
+    %189 lit: i64 = const 0
+    %190 lit: i64 = const 16
+    %191 r: ptr = $bytes_slice(%180, %189, %190)
+    %192 r: ptr = alloc std::result::Result.Ok(%191)
+    %193 t: bool = eq.any %188, %192
+    drop %188
+    drop %192
+    %194 s: ptr = show %184
+    drop %184
+    %195 lit: ptr = const str 19
+    %196 s: ptr = concat %194, %195
+    drop %195
+    %197 s: ptr = show %187
+    %198 s: ptr = concat %196, %197
+    drop %197
+    %199 lit: ptr = const str 19
+    %200 s: ptr = concat %198, %199
+    drop %199
+    %201 s: ptr = show %193
     %202 s: ptr = concat %200, %201
     drop %201
-    %203 s: ptr = show %193
+    %203 lit: ptr = const str 19
     %204 s: ptr = concat %202, %203
     drop %203
-    %205 lit: ptr = const str 19
-    %206 s: ptr = concat %204, %205
-    drop %205
-    %207 s: ptr = show %199
-    %208 s: ptr = concat %206, %207
-    drop %207
-    %209 lit: ptr = const str 19
-    %210 s: ptr = concat %208, %209
-    drop %209
-    %211 lit: i64 = const 264
-    %212 $site: i64 = const 8
-    call derive_bits#4(%191, %192, %211, %212) -> b33(%187, %188, %189, %210)
-  b33(%213 r: ptr, %214 xs: ptr, %215 n: i64, %216 i: i64, %217 s: ptr):
-    %218 fn: ptr = const static closure $bytes_len$value#88
-    call map#6(%213, %218) -> b34(%214, %215, %216, %217)
-  b34(%219 r: ptr, %220 xs: ptr, %221 n: i64, %222 i: i64, %223 s: ptr):
-    %224 s: ptr = show %219
-    drop %219
-    %225 s: ptr = concat %223, %224
-    drop %224
-    perform std::console::Console.print(%225) -> b35(%220, %221, %222)
-  b35(%226 r: unit, %227 xs: ptr, %228 n: i64, %229 i: i64):
-    %230 box: word = box %226
-    jump b22(%230, %227, %228, %229)
+    %205 lit: i64 = const 264
+    %206 $site: i64 = const 8
+    call derive_bits#4(%185, %186, %205, %206) -> b33(%181, %182, %183, %204)
+  b33(%207 r: ptr, %208 xs: ptr, %209 n: i64, %210 i: i64, %211 s: ptr):
+    %212 fn: ptr = const static closure $bytes_len$value#88
+    call map#6(%207, %212) -> b34(%208, %209, %210, %211)
+  b34(%213 r: ptr, %214 xs: ptr, %215 n: i64, %216 i: i64, %217 s: ptr):
+    %218 s: ptr = show %213
+    drop %213
+    %219 s: ptr = concat %217, %218
+    drop %218
+    perform std::console::Console.print(%219) -> b35(%214, %215, %216)
+  b35(%220 r: unit, %221 xs: ptr, %222 n: i64, %223 i: i64):
+    %224 box: word = box %220
+    jump b22(%224, %221, %222, %223)
 
 fn $entry#1 top -> unit ; main::crypto_x25519_rfc7748, frame 1 slots [%1 bool]
   b0():

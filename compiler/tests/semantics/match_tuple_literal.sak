@@ -1,0 +1,49 @@
+// milestone: M5
+// covers: design §17.310 (2d) (a match on a tuple literal allocates nothing), plan m5-native.md N3c
+// spec: §17.310
+
+// A tuple literal written as a scrutinee is matched component by component and never built,
+// so `balance` takes `l` and `r` apart without a tuple holding them. An or-pattern of tuples
+// splits the same way; an arm that binds the whole tuple still builds it.
+type Color = Red | Black
+
+type Tree = E | T(Color, Tree, Int, Tree)
+
+fn balance(c: Color, l: Tree, k: Int, r: Tree) -> Tree {
+  match (c, l, r) {
+    (Black, T(Red, T(Red, a, x, b), y, d), _) => T(Red, T(Black, a, x, b), y, T(Black, d, k, r)),
+    (Black, _, T(Red, b, y, T(Red, d, z, e))) => T(Red, T(Black, l, k, b), y, T(Black, d, z, e)),
+    _ => T(c, l, k, r),
+  }
+}
+
+fn depth(t: Tree) -> Int {
+  match t {
+    E => 0,
+    T(_, l, _, r) => 1 + Int.max(depth(l), depth(r)),
+  }
+}
+
+fn same(a: Int, b: Int) -> String {
+  match (a, b) {
+    (0, 0) | (1, 1) => "small pair",
+    (x, y) if x == y => "pair {x}",
+    _ => "apart",
+  }
+}
+
+fn whole(a: Int, b: Int) -> (Int, Int) {
+  match (a, b) {
+    (0, _) => (b, a),
+    p => p,
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let leaf = T(Red, T(Red, E, 1, E), 2, E)
+  Console.print("{depth(balance(Black, leaf, 3, E))}")
+  Console.print("{depth(balance(Black, E, 1, T(Red, E, 2, T(Red, E, 3, E))))}")
+  Console.print("{depth(balance(Red, leaf, 3, E))}")
+  Console.print("{same(1, 1)} {same(4, 4)} {same(4, 5)}")
+  Console.print("{whole(0, 7)} {whole(3, 7)}")
+}

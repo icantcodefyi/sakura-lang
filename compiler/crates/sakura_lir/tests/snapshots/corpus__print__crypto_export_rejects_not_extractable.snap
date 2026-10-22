@@ -23,9 +23,7 @@ layout 17 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 18 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 19 shape |  32b (word*, word*)
 layout 20 shape |  32b (i64, word*)
-layout 21 shape |  40b (word*, word*, word*)
-layout 22 shape |  32b (bool, word*)
-layout 23 shape |  40b (i64, i64, i64)
+layout 21 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 53 slots [%105 word*, %106 word*, %107 word*, %108 i64, %109 i64, %110 word*, %111 word*, %112 word*, %113 i64, %114 i64, %150 bool, %151 word*, %152 word*, %153 i64, %154 i64, %155 word*, %156 word*, %157 word*, %158 i64, %159 i64, %160 word*, %161 word*, %167 word*, %168 word*, %169 word*, %170 i64, %171 i64, %172 word*, %173 word*, %174 word*, %175 i64, %176 i64, %177 word*, %180 bool, %181 word*, %182 word*, %183 i64, %184 i64, %185 word*, %186 word*, %187 word*, %188 i64, %189 i64, %197 bool, %198 word*, %199 word*, %200 i64, %201 i64, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64]
   b0():

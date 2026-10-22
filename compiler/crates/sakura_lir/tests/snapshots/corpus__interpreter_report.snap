@@ -139,7 +139,7 @@ semantics/fused_get_or: ok, 97 allocated, 42 dup, 139 drop, peak 20, live 0/0
 semantics/fused_get_or_default_kept: ok, 25 allocated, 11 dup, 36 drop, peak 12, live 0/0
 semantics/gen_flat_map: ok, 280 allocated, 382 dup, 662 drop, peak 51, live 0/0
 semantics/generic_refinement: ok, 29 allocated, 11 dup, 40 drop, peak 7, live 0/0
-semantics/generics: ok, 74 allocated, 99 dup, 173 drop, peak 12, live 0/0
+semantics/generics: ok, 70 allocated, 91 dup, 161 drop, peak 11, live 0/0
 semantics/handler_callback_context: ok, 34 allocated, 29 dup, 63 drop, peak 16, live 0/0
 semantics/handler_cancel_bound: unsupported (builtin task_deterministic)
 semantics/handler_cancel_in_loop: unsupported (builtin task_deterministic)
@@ -195,6 +195,7 @@ semantics/map_int_keys: unsupported (builtin map_remove)
 semantics/map_int_shared: unsupported (builtin map_remove)
 semantics/match_guard_run_regions: ok, 73 allocated, 13 dup, 86 drop, peak 6, live 0/0
 semantics/match_literal_switch: ok, 53 allocated, 0 dup, 53 drop, peak 4, live 0/0
+semantics/match_tuple_literal: ok, 31 allocated, 9 dup, 40 drop, peak 6, live 0/0
 semantics/match_wide_dispatch: ok, 75 allocated, 18 dup, 93 drop, peak 14, live 0/0
 semantics/million_operations: ok, 4 allocated, 1000000 dup, 1000004 drop, peak 4, live 0/0
 semantics/mutual_recursion: ok, 8 allocated, 0 dup, 8 drop, peak 4, live 0/0
@@ -203,7 +204,7 @@ semantics/mutual_tail_dispatch: ok, 309574 allocated, 0 dup, 309574 drop, peak 5
 semantics/mutual_tail_dispatch_blame: D020, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 semantics/mutual_tail_loop: ok, 28 allocated, 0 dup, 28 drop, peak 4, live 0/0
 semantics/native_coverage_handled_http_runs: ok, 47 allocated, 42 dup, 89 drop, peak 24, live 0/0
-semantics/nested_options: ok, 287 allocated, 368 dup, 655 drop, peak 47, live 0/0
+semantics/nested_options: ok, 282 allocated, 358 dup, 640 drop, peak 47, live 0/0
 semantics/nested_options_json: unsupported (builtin json_encode)
 semantics/newline_rule: ok, 34 allocated, 35 dup, 69 drop, peak 8, live 0/0
 semantics/operation_ensures_blames_handler: D021, 3 allocated, 1 dup, 4 drop, peak 3, live 0/0
@@ -228,7 +229,7 @@ semantics/owned_record_recursive: ok, 235 allocated, 749 dup, 984 drop, peak 33,
 semantics/owned_record_retained: ok, 252 allocated, 467 dup, 719 drop, peak 21, live 0/0
 semantics/owned_record_unsettled: ok, 31 allocated, 34 dup, 65 drop, peak 17, live 0/0
 semantics/owned_retained_version: unsupported (builtin map_remove)
-semantics/owned_tuple_threaded: ok, 220 allocated, 448 dup, 668 drop, peak 22, live 0/0
+semantics/owned_tuple_threaded: ok, 206 allocated, 420 dup, 626 drop, peak 22, live 0/0
 semantics/path_validate_rejects_windows_forms: ok, 28 allocated, 0 dup, 28 drop, peak 6, live 0/0
 semantics/random_bytes_rejects_negative: unsupported (builtin bytes_from_list)
 semantics/random_int_rejects_reversed_range: D020, 7 allocated, 1 dup, 8 drop, peak 7, live 0/0
@@ -264,7 +265,7 @@ semantics/show_format: ok, 37 allocated, 5 dup, 42 drop, peak 7, live 0/0
 semantics/sql_cancel_committed: unsupported (builtin clock_host)
 semantics/sql_rows: unsupported (builtin sql_memory)
 semantics/sql_untrusted_param: unsupported (builtin sql_memory)
-semantics/std_collections: ok, 191 allocated, 243 dup, 434 drop, peak 16, live 0/0
+semantics/std_collections: ok, 186 allocated, 233 dup, 419 drop, peak 16, live 0/0
 semantics/stream_buffer_backpressure: unsupported (builtin task_host)
 semantics/stream_buffer_propagates_failure: unsupported (builtin task_host)
 semantics/stream_chunks_bytes: unsupported (builtin bytes_from_list)
@@ -328,7 +329,7 @@ diff/diff_0003: D002, 19 allocated, 15 dup, 34 drop, peak 7, live 0/0
 diff/diff_0004: ok, 64 allocated, 47 dup, 111 drop, peak 12, live 0/0
 diff/diff_0005: ok, 27 allocated, 22 dup, 49 drop, peak 8, live 0/0
 diff/diff_0006: ok, 4 allocated, 0 dup, 4 drop, peak 3, live 0/0
-diff/diff_0007: ok, 140 allocated, 57 dup, 197 drop, peak 14, live 0/0
+diff/diff_0007: ok, 139 allocated, 55 dup, 194 drop, peak 13, live 0/0
 diff/diff_0008: ok, 6 allocated, 0 dup, 6 drop, peak 2, live 0/0
 diff/diff_0009: ok, 5 allocated, 0 dup, 5 drop, peak 4, live 0/0
 diff/diff_0010: ok, 11 allocated, 1 dup, 12 drop, peak 8, live 0/0
@@ -349,15 +350,15 @@ diff/diff_0025: D020, 5 allocated, 0 dup, 5 drop, peak 5, live 0/0
 diff/diff_0026: ok, 12 allocated, 0 dup, 12 drop, peak 6, live 0/0
 diff/diff_0027: ok, 10 allocated, 3 dup, 13 drop, peak 5, live 0/0
 diff/diff_0028: ok, 32 allocated, 29 dup, 61 drop, peak 10, live 0/0
-diff/diff_0029: ok, 123 allocated, 82 dup, 205 drop, peak 14, live 0/0
+diff/diff_0029: ok, 121 allocated, 78 dup, 199 drop, peak 14, live 0/0
 diff/diff_0030: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 diff/diff_0031: ok, 11 allocated, 10 dup, 21 drop, peak 7, live 0/0
 diff/diff_0032: ok, 23 allocated, 10 dup, 33 drop, peak 13, live 0/0
 diff/diff_0033: ok, 8 allocated, 0 dup, 8 drop, peak 6, live 0/0
 diff/diff_0034: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
-diff/diff_0035: ok, 36 allocated, 36 dup, 72 drop, peak 10, live 0/0
+diff/diff_0035: ok, 35 allocated, 34 dup, 69 drop, peak 9, live 0/0
 diff/diff_0036: ok, 26 allocated, 9 dup, 35 drop, peak 10, live 0/0
-diff/diff_0037: ok, 121 allocated, 99 dup, 220 drop, peak 11, live 0/0
+diff/diff_0037: ok, 120 allocated, 97 dup, 217 drop, peak 11, live 0/0
 diff/diff_0038: ok, 120 allocated, 120 dup, 240 drop, peak 15, live 0/0
 diff/diff_0039: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 diff/diff_0040: ok, 10 allocated, 2 dup, 12 drop, peak 7, live 0/0

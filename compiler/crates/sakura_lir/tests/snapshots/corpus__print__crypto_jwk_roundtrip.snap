@@ -26,9 +26,7 @@ layout 20 shape |  32b (word*, word*)
 layout 21 shape |  32b (i64, word*)
 layout 22 shape |  24b (i64)
 layout 23 shape |  48b (word*, word*, word*, bool)
-layout 24 shape |  40b (word*, word*, word*)
-layout 25 shape |  32b (bool, word*)
-layout 26 shape |  40b (i64, i64, i64)
+layout 24 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word*, %9 word*, %11 bool, %12 word*, %19 word*, %20 word*, %22 bool, %23 word*, %30 word*, %31 word*, %33 bool, %34 word*, %64 word*, %65 word*, %66 word*, %71 word*, %72 word*, %73 word*, %74 word*, %76 word*, %77 word*, %78 word*, %79 word*, %81 word*, %82 word*, %83 word*, %84 word*, %168 word*, %169 word*, %172 word*, %173 word*, %181 word*, %182 word*, %183 word*, %185 word*, %186 word*, %187 word*, %191 bool, %192 word*, %193 word*, %202 word*, %203 word*, %205 word*, %206 word*, %210 bool, %211 word*, %219 word*, %221 word*, %225 bool, %233 word*, %236 word*, %237 word*, %239 word*, %240 word*, %244 bool, %245 word*, %249 word*, %251 word*, %255 bool, %293 word*, %294 word*, %295 word*, %296 word*, %297 i64, %298 i64, %299 word*, %300 word*, %301 bool, %305 word*, %306 word*, %307 word*, %308 word*, %309 i64, %310 i64, %311 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 i64, %321 i64, %322 word*, %325 bool, %326 word*, %327 word*, %328 word*, %329 i64, %330 i64, %365 word*, %366 word*, %367 word*, %368 i64, %369 i64, %372 bool, %373 word*, %374 word*, %375 i64, %376 i64, %377 word*, %380 bool, %381 word*, %382 word*, %383 i64, %384 i64]
   b0():

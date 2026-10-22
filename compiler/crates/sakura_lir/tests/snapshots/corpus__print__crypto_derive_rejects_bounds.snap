@@ -29,10 +29,9 @@ layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 24 shape |  32b (word*, word*)
 layout 25 shape |  32b (i64, word*)
 layout 26 shape |  40b (word*, word*, i64)
-layout 27 shape |  32b (bool, word*)
-layout 28 shape |  40b (i64, i64, i64)
+layout 27 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 173 slots [%9 word*, %10 word*, %11 word*, %16 word*, %17 word*, %20 bool, %40 word*, %41 word*, %42 word*, %43 word*, %44 word*, %45 word*, %46 word*, %47 word*, %48 word*, %49 word*, %53 word*, %54 word*, %55 word*, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %61 word*, %62 word*, %63 word*, %64 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %78 word*, %79 word*, %80 word*, %81 word*, %82 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %91 word*, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %99 word*, %100 word*, %101 word*, %109 word*, %110 word*, %111 word*, %112 word*, %113 word*, %114 word*, %115 word*, %116 word*, %117 word*, %118 word*, %119 word*, %120 word*, %121 word*, %122 word*, %123 word*, %124 word*, %125 word*, %126 word*, %131 word*, %132 word*, %133 word*, %134 word*, %135 word*, %136 word*, %137 word*, %138 word*, %139 word*, %140 word*, %145 word*, %146 word*, %147 word*, %148 word*, %149 word*, %150 word*, %151 word*, %152 word*, %153 word*, %154 word*, %155 word*, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 word*, %167 word*, %168 word*, %169 word*, %170 word*, %171 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %201 word*, %202 word*, %203 word*, %204 word*, %205 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 word*, %215 word*, %216 word*, %217 word*, %218 word*, %225 word*, %226 word*, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 word*, %234 word*, %235 word*, %236 word*, %265 word*, %266 word*, %267 i64, %268 i64, %270 word*, %271 word*, %272 i64, %273 i64, %275 bool, %276 word*, %277 i64, %278 i64]
+fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 173 slots [%9 word*, %10 word*, %11 word*, %16 word*, %17 word*, %19 bool, %37 word*, %38 word*, %39 word*, %40 word*, %41 word*, %42 word*, %43 word*, %44 word*, %45 word*, %46 word*, %50 word*, %51 word*, %52 word*, %53 word*, %54 word*, %55 word*, %56 word*, %57 word*, %58 word*, %59 word*, %60 word*, %61 word*, %66 word*, %67 word*, %68 word*, %69 word*, %70 word*, %71 word*, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 word*, %78 word*, %79 word*, %83 word*, %84 word*, %85 word*, %86 word*, %87 word*, %88 word*, %89 word*, %90 word*, %91 word*, %92 word*, %93 word*, %94 word*, %95 word*, %96 word*, %97 word*, %98 word*, %106 word*, %107 word*, %108 word*, %109 word*, %110 word*, %111 word*, %112 word*, %113 word*, %114 word*, %115 word*, %116 word*, %117 word*, %118 word*, %119 word*, %120 word*, %121 word*, %122 word*, %123 word*, %128 word*, %129 word*, %130 word*, %131 word*, %132 word*, %133 word*, %134 word*, %135 word*, %136 word*, %137 word*, %142 word*, %143 word*, %144 word*, %145 word*, %146 word*, %147 word*, %148 word*, %149 word*, %150 word*, %151 word*, %152 word*, %157 word*, %158 word*, %159 word*, %160 word*, %161 word*, %162 word*, %163 word*, %164 word*, %165 word*, %166 word*, %167 word*, %168 word*, %173 word*, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %189 word*, %190 word*, %191 word*, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %201 word*, %202 word*, %203 word*, %204 word*, %205 word*, %206 word*, %207 word*, %208 word*, %209 word*, %210 word*, %211 word*, %212 word*, %213 word*, %214 word*, %215 word*, %222 word*, %223 word*, %224 word*, %225 word*, %226 word*, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 word*, %262 word*, %263 word*, %264 i64, %265 i64, %267 word*, %268 word*, %269 i64, %270 i64, %272 bool, %273 word*, %274 i64, %275 i64]
   b0():
     %0 lit: ptr = const str 0
     %1 r: ptr = $string_to_bytes(%0)
@@ -53,175 +52,171 @@ fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 173 slots 
     %15 lit: bool = const false
     call import_key#2(%12, %14, %11, %15, %10) -> b2(%9)
   b2(%16 r: ptr, %17 r: ptr):
-    %18 tup: ptr = alloc tuple#24(word, word)(%17, %16)
-    %23 p: ptr = tuple_get %18.0
-    %24 p: ptr = tuple_get %18.1
-    drop %18
-    %25 tag: i64 = tag %23 ctor std::result::Result
-    switch %25 0 => b5(%23, %24) _ => b6(%23, %24)
+    %22 tag: i64 = tag %17 ctor std::result::Result
+    switch %22 0 => b5(%17, %16) _ => b6(%17, %16)
   b3():
-    %19 lit: ptr = const str 1
-    perform std::console::Console.print(%19) -> b4()
-  b4(%20 r: unit):
-    %21 box: word = box %20
-    %22 unbox: unit = unbox %21
-    drop %21
-    ret %22
-  b5(%26 p: ptr, %27 p: ptr):
-    %30 p: word = proj %26.0 std::result::Result.Ok
+    %18 lit: ptr = const str 1
+    perform std::console::Console.print(%18) -> b4()
+  b4(%19 r: unit):
+    %20 box: word = box %19
+    %21 unbox: unit = unbox %20
+    drop %20
+    ret %21
+  b5(%23 r: ptr, %24 r: ptr):
+    %27 p: word = proj %23.0 std::result::Result.Ok
+    drop %23
+    %28 tag: i64 = tag %24 ctor std::result::Result
+    switch %28 0 => b7(%24, %27) _ => b8(%24, %27)
+  b6(%25 r: ptr, %26 r: ptr):
+    drop %25
     drop %26
-    %31 tag: i64 = tag %27 ctor std::result::Result
-    switch %31 0 => b7(%27, %30) _ => b8(%27, %30)
-  b6(%28 p: ptr, %29 p: ptr):
-    drop %28
+    jump b3()
+  b7(%29 r: ptr, %30 p: ptr):
+    %33 p: word = proj %29.0 std::result::Result.Ok
     drop %29
-    jump b3()
-  b7(%32 p: ptr, %33 p: ptr):
-    %36 p: word = proj %32.0 std::result::Result.Ok
+    %34 f: ptr = closure main$1#3[]
+    %35 f: ptr = closure main$2#5[]
+    %36 lit: i64 = const 0
+    call zeros#4(%36) -> b9(%30, %33, %34, %35)
+  b8(%31 r: ptr, %32 p: ptr):
+    drop %31
     drop %32
-    %37 f: ptr = closure main$1#3[]
-    %38 f: ptr = closure main$2#5[]
-    %39 lit: i64 = const 0
-    call zeros#4(%39) -> b9(%33, %36, %37, %38)
-  b8(%34 p: ptr, %35 p: ptr):
-    drop %34
-    drop %35
     jump b3()
-  b9(%40 r: ptr, %41 hkdf: ptr, %42 pbkdf2: ptr, %43 f: ptr, %44 f: ptr):
+  b9(%37 r: ptr, %38 hkdf: ptr, %39 pbkdf2: ptr, %40 f: ptr, %41 f: ptr):
+    dup %40
+    call %40(%37) -> b10(%38, %39, %40, %41)
+  b10(%42 r: word, %43 hkdf: ptr, %44 pbkdf2: ptr, %45 f: ptr, %46 f: ptr):
+    %47 lit: i64 = const 0
     dup %43
-    call %43(%40) -> b10(%41, %42, %43, %44)
-  b10(%45 r: word, %46 hkdf: ptr, %47 pbkdf2: ptr, %48 f: ptr, %49 f: ptr):
-    %50 lit: i64 = const 0
-    dup %46
-    %51 tup: ptr = alloc tuple#26(word, word, i64)(%46, %45, %50)
-    %52 lit: i64 = const 0
-    call zeros#4(%52) -> b11(%46, %47, %48, %49, %51)
-  b11(%53 r: ptr, %54 hkdf: ptr, %55 pbkdf2: ptr, %56 f: ptr, %57 f: ptr, %58 tup: ptr):
-    dup %56
-    call %56(%53) -> b12(%54, %55, %56, %57, %58)
-  b12(%59 r: word, %60 hkdf: ptr, %61 pbkdf2: ptr, %62 f: ptr, %63 f: ptr, %64 tup: ptr):
-    %65 lit: i64 = const 8
-    %66 t: i64 = intneg %65
-    dup %60
-    %67 tup: ptr = alloc tuple#26(word, word, i64)(%60, %59, %66)
-    %68 lit: i64 = const 0
-    call zeros#4(%68) -> b13(%60, %61, %62, %63, %64, %67)
-  b13(%69 r: ptr, %70 hkdf: ptr, %71 pbkdf2: ptr, %72 f: ptr, %73 f: ptr, %74 tup: ptr, %75 tup: ptr):
-    dup %72
-    call %72(%69) -> b14(%70, %71, %72, %73, %74, %75)
-  b14(%76 r: word, %77 hkdf: ptr, %78 pbkdf2: ptr, %79 f: ptr, %80 f: ptr, %81 tup: ptr, %82 tup: ptr):
-    %83 lit: i64 = const 12
-    dup %77
-    %84 tup: ptr = alloc tuple#26(word, word, i64)(%77, %76, %83)
-    %85 lit: i64 = const 0
-    call zeros#4(%85) -> b15(%77, %78, %79, %80, %81, %82, %84)
-  b15(%86 r: ptr, %87 hkdf: ptr, %88 pbkdf2: ptr, %89 f: ptr, %90 f: ptr, %91 tup: ptr, %92 tup: ptr, %93 tup: ptr):
-    dup %89
-    call %89(%86) -> b16(%87, %88, %89, %90, %91, %92, %93)
-  b16(%94 r: word, %95 hkdf: ptr, %96 pbkdf2: ptr, %97 f: ptr, %98 f: ptr, %99 tup: ptr, %100 tup: ptr, %101 tup: ptr):
-    %102 lit: i64 = const 255
-    %103 lit: i64 = const 256
-    %104 t: i64 = intmul %102, %103
-    %105 lit: i64 = const 8
-    %106 t: i64 = intadd %104, %105
-    dup %95
-    %107 tup: ptr = alloc tuple#26(word, word, i64)(%95, %94, %106)
-    %108 lit: i64 = const 1025
-    call zeros#4(%108) -> b17(%95, %96, %97, %98, %99, %100, %101, %107)
-  b17(%109 r: ptr, %110 hkdf: ptr, %111 pbkdf2: ptr, %112 f: ptr, %113 f: ptr, %114 tup: ptr, %115 tup: ptr, %116 tup: ptr, %117 tup: ptr):
-    dup %112
-    call %112(%109) -> b18(%110, %111, %112, %113, %114, %115, %116, %117)
-  b18(%118 r: word, %119 hkdf: ptr, %120 pbkdf2: ptr, %121 f: ptr, %122 f: ptr, %123 tup: ptr, %124 tup: ptr, %125 tup: ptr, %126 tup: ptr):
-    %127 lit: i64 = const 256
+    %48 tup: ptr = alloc tuple#26(word, word, i64)(%43, %42, %47)
+    %49 lit: i64 = const 0
+    call zeros#4(%49) -> b11(%43, %44, %45, %46, %48)
+  b11(%50 r: ptr, %51 hkdf: ptr, %52 pbkdf2: ptr, %53 f: ptr, %54 f: ptr, %55 tup: ptr):
+    dup %53
+    call %53(%50) -> b12(%51, %52, %53, %54, %55)
+  b12(%56 r: word, %57 hkdf: ptr, %58 pbkdf2: ptr, %59 f: ptr, %60 f: ptr, %61 tup: ptr):
+    %62 lit: i64 = const 8
+    %63 t: i64 = intneg %62
+    dup %57
+    %64 tup: ptr = alloc tuple#26(word, word, i64)(%57, %56, %63)
+    %65 lit: i64 = const 0
+    call zeros#4(%65) -> b13(%57, %58, %59, %60, %61, %64)
+  b13(%66 r: ptr, %67 hkdf: ptr, %68 pbkdf2: ptr, %69 f: ptr, %70 f: ptr, %71 tup: ptr, %72 tup: ptr):
+    dup %69
+    call %69(%66) -> b14(%67, %68, %69, %70, %71, %72)
+  b14(%73 r: word, %74 hkdf: ptr, %75 pbkdf2: ptr, %76 f: ptr, %77 f: ptr, %78 tup: ptr, %79 tup: ptr):
+    %80 lit: i64 = const 12
+    dup %74
+    %81 tup: ptr = alloc tuple#26(word, word, i64)(%74, %73, %80)
+    %82 lit: i64 = const 0
+    call zeros#4(%82) -> b15(%74, %75, %76, %77, %78, %79, %81)
+  b15(%83 r: ptr, %84 hkdf: ptr, %85 pbkdf2: ptr, %86 f: ptr, %87 f: ptr, %88 tup: ptr, %89 tup: ptr, %90 tup: ptr):
+    dup %86
+    call %86(%83) -> b16(%84, %85, %86, %87, %88, %89, %90)
+  b16(%91 r: word, %92 hkdf: ptr, %93 pbkdf2: ptr, %94 f: ptr, %95 f: ptr, %96 tup: ptr, %97 tup: ptr, %98 tup: ptr):
+    %99 lit: i64 = const 255
+    %100 lit: i64 = const 256
+    %101 t: i64 = intmul %99, %100
+    %102 lit: i64 = const 8
+    %103 t: i64 = intadd %101, %102
+    dup %92
+    %104 tup: ptr = alloc tuple#26(word, word, i64)(%92, %91, %103)
+    %105 lit: i64 = const 1025
+    call zeros#4(%105) -> b17(%92, %93, %94, %95, %96, %97, %98, %104)
+  b17(%106 r: ptr, %107 hkdf: ptr, %108 pbkdf2: ptr, %109 f: ptr, %110 f: ptr, %111 tup: ptr, %112 tup: ptr, %113 tup: ptr, %114 tup: ptr):
+    dup %109
+    call %109(%106) -> b18(%107, %108, %109, %110, %111, %112, %113, %114)
+  b18(%115 r: word, %116 hkdf: ptr, %117 pbkdf2: ptr, %118 f: ptr, %119 f: ptr, %120 tup: ptr, %121 tup: ptr, %122 tup: ptr, %123 tup: ptr):
+    %124 lit: i64 = const 256
+    dup %116
+    %125 tup: ptr = alloc tuple#26(word, word, i64)(%116, %115, %124)
+    %126 lit: i64 = const 0
+    %127 box: word = box %126
     dup %119
-    %128 tup: ptr = alloc tuple#26(word, word, i64)(%119, %118, %127)
-    %129 lit: i64 = const 0
-    %130 box: word = box %129
-    dup %122
-    call %122(%130) -> b19(%119, %120, %121, %122, %123, %124, %125, %126, %128)
-  b19(%131 r: word, %132 hkdf: ptr, %133 pbkdf2: ptr, %134 f: ptr, %135 f: ptr, %136 tup: ptr, %137 tup: ptr, %138 tup: ptr, %139 tup: ptr, %140 tup: ptr):
-    %141 lit: i64 = const 256
-    dup %133
-    %142 tup: ptr = alloc tuple#26(word, word, i64)(%133, %131, %141)
-    %143 lit: i64 = const 2147483648
-    %144 box: word = box %143
-    dup %135
-    call %135(%144) -> b20(%132, %133, %134, %135, %136, %137, %138, %139, %140, %142)
-  b20(%145 r: word, %146 hkdf: ptr, %147 pbkdf2: ptr, %148 f: ptr, %149 f: ptr, %150 tup: ptr, %151 tup: ptr, %152 tup: ptr, %153 tup: ptr, %154 tup: ptr, %155 tup: ptr):
-    %156 lit: i64 = const 256
-    dup %147
-    %157 tup: ptr = alloc tuple#26(word, word, i64)(%147, %145, %156)
-    %158 lit: i64 = const 1
-    %159 box: word = box %158
-    dup %149
-    call %149(%159) -> b21(%146, %147, %148, %149, %150, %151, %152, %153, %154, %155, %157)
-  b21(%160 r: word, %161 hkdf: ptr, %162 pbkdf2: ptr, %163 f: ptr, %164 f: ptr, %165 tup: ptr, %166 tup: ptr, %167 tup: ptr, %168 tup: ptr, %169 tup: ptr, %170 tup: ptr, %171 tup: ptr):
-    %172 lit: i64 = const 7
-    dup %162
-    %173 tup: ptr = alloc tuple#26(word, word, i64)(%162, %160, %172)
-    %174 lit: i64 = const 1
-    %175 box: word = box %174
-    dup %164
-    call %164(%175) -> b22(%161, %162, %163, %164, %165, %166, %167, %168, %169, %170, %171, %173)
-  b22(%176 r: word, %177 hkdf: ptr, %178 pbkdf2: ptr, %179 f: ptr, %180 f: ptr, %181 tup: ptr, %182 tup: ptr, %183 tup: ptr, %184 tup: ptr, %185 tup: ptr, %186 tup: ptr, %187 tup: ptr, %188 tup: ptr):
-    %189 lit: i64 = const 8388616
-    dup %178
-    %190 tup: ptr = alloc tuple#26(word, word, i64)(%178, %176, %189)
-    %191 lit: i64 = const 1024
-    call zeros#4(%191) -> b23(%177, %178, %179, %180, %181, %182, %183, %184, %185, %186, %187, %188, %190)
-  b23(%192 r: ptr, %193 hkdf: ptr, %194 pbkdf2: ptr, %195 f: ptr, %196 f: ptr, %197 tup: ptr, %198 tup: ptr, %199 tup: ptr, %200 tup: ptr, %201 tup: ptr, %202 tup: ptr, %203 tup: ptr, %204 tup: ptr, %205 tup: ptr):
-    call %195(%192) -> b24(%193, %194, %196, %197, %198, %199, %200, %201, %202, %203, %204, %205)
-  b24(%206 r: word, %207 hkdf: ptr, %208 pbkdf2: ptr, %209 f: ptr, %210 tup: ptr, %211 tup: ptr, %212 tup: ptr, %213 tup: ptr, %214 tup: ptr, %215 tup: ptr, %216 tup: ptr, %217 tup: ptr, %218 tup: ptr):
-    %219 lit: i64 = const 255
-    %220 lit: i64 = const 256
-    %221 t: i64 = intmul %219, %220
-    %222 tup: ptr = alloc tuple#26(word, word, i64)(%207, %206, %221)
-    %223 lit: i64 = const 1
-    %224 box: word = box %223
-    call %209(%224) -> b25(%208, %210, %211, %212, %213, %214, %215, %216, %217, %218, %222)
-  b25(%225 r: word, %226 pbkdf2: ptr, %227 tup: ptr, %228 tup: ptr, %229 tup: ptr, %230 tup: ptr, %231 tup: ptr, %232 tup: ptr, %233 tup: ptr, %234 tup: ptr, %235 tup: ptr, %236 tup: ptr):
-    %237 lit: i64 = const 8388608
-    %238 tup: ptr = alloc tuple#26(word, word, i64)(%226, %225, %237)
-    %239 xs: ptr = alloc list(%227, %228, %229, %230, %231, %232, %233, %234, %235, %236, %238)
-    %284 xs.lent: ref = lend %239
-    %240 n: i64 = $list_len(%284)
-    %283 lit: i64 = const 0
-    jump b27(%283, %239, %240)
+    call %119(%127) -> b19(%116, %117, %118, %119, %120, %121, %122, %123, %125)
+  b19(%128 r: word, %129 hkdf: ptr, %130 pbkdf2: ptr, %131 f: ptr, %132 f: ptr, %133 tup: ptr, %134 tup: ptr, %135 tup: ptr, %136 tup: ptr, %137 tup: ptr):
+    %138 lit: i64 = const 256
+    dup %130
+    %139 tup: ptr = alloc tuple#26(word, word, i64)(%130, %128, %138)
+    %140 lit: i64 = const 2147483648
+    %141 box: word = box %140
+    dup %132
+    call %132(%141) -> b20(%129, %130, %131, %132, %133, %134, %135, %136, %137, %139)
+  b20(%142 r: word, %143 hkdf: ptr, %144 pbkdf2: ptr, %145 f: ptr, %146 f: ptr, %147 tup: ptr, %148 tup: ptr, %149 tup: ptr, %150 tup: ptr, %151 tup: ptr, %152 tup: ptr):
+    %153 lit: i64 = const 256
+    dup %144
+    %154 tup: ptr = alloc tuple#26(word, word, i64)(%144, %142, %153)
+    %155 lit: i64 = const 1
+    %156 box: word = box %155
+    dup %146
+    call %146(%156) -> b21(%143, %144, %145, %146, %147, %148, %149, %150, %151, %152, %154)
+  b21(%157 r: word, %158 hkdf: ptr, %159 pbkdf2: ptr, %160 f: ptr, %161 f: ptr, %162 tup: ptr, %163 tup: ptr, %164 tup: ptr, %165 tup: ptr, %166 tup: ptr, %167 tup: ptr, %168 tup: ptr):
+    %169 lit: i64 = const 7
+    dup %159
+    %170 tup: ptr = alloc tuple#26(word, word, i64)(%159, %157, %169)
+    %171 lit: i64 = const 1
+    %172 box: word = box %171
+    dup %161
+    call %161(%172) -> b22(%158, %159, %160, %161, %162, %163, %164, %165, %166, %167, %168, %170)
+  b22(%173 r: word, %174 hkdf: ptr, %175 pbkdf2: ptr, %176 f: ptr, %177 f: ptr, %178 tup: ptr, %179 tup: ptr, %180 tup: ptr, %181 tup: ptr, %182 tup: ptr, %183 tup: ptr, %184 tup: ptr, %185 tup: ptr):
+    %186 lit: i64 = const 8388616
+    dup %175
+    %187 tup: ptr = alloc tuple#26(word, word, i64)(%175, %173, %186)
+    %188 lit: i64 = const 1024
+    call zeros#4(%188) -> b23(%174, %175, %176, %177, %178, %179, %180, %181, %182, %183, %184, %185, %187)
+  b23(%189 r: ptr, %190 hkdf: ptr, %191 pbkdf2: ptr, %192 f: ptr, %193 f: ptr, %194 tup: ptr, %195 tup: ptr, %196 tup: ptr, %197 tup: ptr, %198 tup: ptr, %199 tup: ptr, %200 tup: ptr, %201 tup: ptr, %202 tup: ptr):
+    call %192(%189) -> b24(%190, %191, %193, %194, %195, %196, %197, %198, %199, %200, %201, %202)
+  b24(%203 r: word, %204 hkdf: ptr, %205 pbkdf2: ptr, %206 f: ptr, %207 tup: ptr, %208 tup: ptr, %209 tup: ptr, %210 tup: ptr, %211 tup: ptr, %212 tup: ptr, %213 tup: ptr, %214 tup: ptr, %215 tup: ptr):
+    %216 lit: i64 = const 255
+    %217 lit: i64 = const 256
+    %218 t: i64 = intmul %216, %217
+    %219 tup: ptr = alloc tuple#26(word, word, i64)(%204, %203, %218)
+    %220 lit: i64 = const 1
+    %221 box: word = box %220
+    call %206(%221) -> b25(%205, %207, %208, %209, %210, %211, %212, %213, %214, %215, %219)
+  b25(%222 r: word, %223 pbkdf2: ptr, %224 tup: ptr, %225 tup: ptr, %226 tup: ptr, %227 tup: ptr, %228 tup: ptr, %229 tup: ptr, %230 tup: ptr, %231 tup: ptr, %232 tup: ptr, %233 tup: ptr):
+    %234 lit: i64 = const 8388608
+    %235 tup: ptr = alloc tuple#26(word, word, i64)(%223, %222, %234)
+    %236 xs: ptr = alloc list(%224, %225, %226, %227, %228, %229, %230, %231, %232, %233, %235)
+    %281 xs.lent: ref = lend %236
+    %237 n: i64 = $list_len(%281)
+    %280 lit: i64 = const 0
+    jump b27(%280, %236, %237)
   b26():
-    %241 lit: unit = const ()
-    ret %241
-  b27(%242 i: i64, %243 xs: ptr, %244 n: i64):
-    %245 more: bool = lt.int %242, %244
-    if %245 then b28(%243, %244, %242) else b29(%243, %244, %242)
-  b28(%246 xs: ptr, %247 n: i64, %248 i: i64):
-    %285 xs.lent: ref = lend %246
-    %252 x: word = $list_at(%285, %248)
-    %280 p: ptr = tuple_get %252.0
-    %281 p: ptr = tuple_get %252.1
-    %282 p: i64 = tuple_get %252.2
-    drop %252
-    jump b31(%280, %281, %282, %246, %247, %248)
-  b29(%249 xs: ptr, %250 n: i64, %251 i: i64):
+    %238 lit: unit = const ()
+    ret %238
+  b27(%239 i: i64, %240 xs: ptr, %241 n: i64):
+    %242 more: bool = lt.int %239, %241
+    if %242 then b28(%240, %241, %239) else b29(%240, %241, %239)
+  b28(%243 xs: ptr, %244 n: i64, %245 i: i64):
+    %282 xs.lent: ref = lend %243
+    %249 x: word = $list_at(%282, %245)
+    %277 p: ptr = tuple_get %249.0
+    %278 p: ptr = tuple_get %249.1
+    %279 p: i64 = tuple_get %249.2
     drop %249
+    jump b31(%277, %278, %279, %243, %244, %245)
+  b29(%246 xs: ptr, %247 n: i64, %248 i: i64):
+    drop %246
     jump b26()
-  b30(%253 xs: ptr, %254 n: i64, %255 i: i64):
-    %256 lit: i64 = const 1
-    %257 i: i64 = intadd %255, %256
-    jump b27(%257, %253, %254)
-  b31(%258 key: ptr, %259 params: ptr, %260 bits: i64, %261 xs: ptr, %262 n: i64, %263 i: i64):
-    %264 $site: i64 = const 2
-    call derive_bits#6(%258, %259, %260, %264) -> b32(%261, %262, %263)
-  b32(%265 r: ptr, %266 xs: ptr, %267 n: i64, %268 i: i64):
-    %269 fn: ptr = const static closure $bytes_len$value#88
-    call map#7(%265, %269) -> b33(%266, %267, %268)
-  b33(%270 r: ptr, %271 xs: ptr, %272 n: i64, %273 i: i64):
-    %274 s: ptr = show %270
-    drop %270
-    perform std::console::Console.print(%274) -> b34(%271, %272, %273)
-  b34(%275 r: unit, %276 xs: ptr, %277 n: i64, %278 i: i64):
-    %279 box: word = box %275
-    drop %279
-    jump b30(%276, %277, %278)
+  b30(%250 xs: ptr, %251 n: i64, %252 i: i64):
+    %253 lit: i64 = const 1
+    %254 i: i64 = intadd %252, %253
+    jump b27(%254, %250, %251)
+  b31(%255 key: ptr, %256 params: ptr, %257 bits: i64, %258 xs: ptr, %259 n: i64, %260 i: i64):
+    %261 $site: i64 = const 2
+    call derive_bits#6(%255, %256, %257, %261) -> b32(%258, %259, %260)
+  b32(%262 r: ptr, %263 xs: ptr, %264 n: i64, %265 i: i64):
+    %266 fn: ptr = const static closure $bytes_len$value#88
+    call map#7(%262, %266) -> b33(%263, %264, %265)
+  b33(%267 r: ptr, %268 xs: ptr, %269 n: i64, %270 i: i64):
+    %271 s: ptr = show %267
+    drop %267
+    perform std::console::Console.print(%271) -> b34(%268, %269, %270)
+  b34(%272 r: unit, %273 xs: ptr, %274 n: i64, %275 i: i64):
+    %276 box: word = box %272
+    drop %276
+    jump b30(%273, %274, %275)
 
 fn $entry#1 top -> unit ; main::crypto_derive_rejects_bounds, frame 1 slots [%1 bool]
   b0():

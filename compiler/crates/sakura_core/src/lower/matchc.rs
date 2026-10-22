@@ -75,12 +75,34 @@ type Occ = Vec<(Atom, Ty)>;
 /// or-patterns expand into; past it the tree is abandoned with `V4004` (design §17.193).
 pub(crate) const MAX_MATCH_NODES: usize = 1 << 20;
 
+/// Whether `p` matches a tuple literal of `n` components column by column: it never binds the
+/// whole tuple, so the tuple need not exist (design §17.310 (2d)).
+pub(crate) fn splits(body: &hir::Body, p: hir::PatId, n: usize) -> bool {
+    match &body.pats[p] {
+        hir::Pat::Missing | hir::Pat::Wild => true,
+        hir::Pat::Tuple(ps) => ps.len() == n,
+        hir::Pat::Or(ps) => ps.iter().all(|p| splits(body, *p, n)),
+        hir::Pat::Ctor { res, .. } => !matches!(res, Res::Def(_)),
+        hir::Pat::Record { ty, .. } => !matches!(ty, hir::TypeRes::Def(_)),
+        hir::Pat::Bind(_) | hir::Pat::Lit(_) | hir::Pat::List { .. } => false,
+    }
+}
+
+/// A normalized pattern that `splits`, as one row of columns per alternative.
+fn columns(p: P, n: usize, out: &mut Vec<Vec<P>>) {
+    match p {
+        P::Tuple(ps) => out.push(ps),
+        P::Or(alts) => alts.into_iter().for_each(|a| columns(a, n, out)),
+        _ => out.push(vec![P::Any; n]),
+    }
+}
+
 impl FnLower<'_, '_> {
-    /// Arms as join points jumping to `after(value, vars…)`, then the decision tree.
+    /// Arms as join points jumping to `after(value, vars…)`, then the decision tree. `scrut` is
+    /// one occurrence, or a tuple literal's components when every arm `splits` on them.
     pub(crate) fn match_arms(
         &mut self,
-        scrut: Atom,
-        ty: Ty,
+        scrut: Occ,
         arms: &[hir::MatchArm],
         after: Label,
         fallback: Fallback,
@@ -116,17 +138,24 @@ impl FnLower<'_, '_> {
                 guard: arm.guard,
             });
         }
-        let rows = arms
-            .iter()
-            .enumerate()
-            .map(|(i, a)| Row {
-                pats: vec![self.norm(a.pat)],
+        let mut rows = Vec::new();
+        for (i, a) in arms.iter().enumerate() {
+            let p = self.norm(a.pat);
+            let mut pats = Vec::new();
+            match scrut.len() {
+                1 => pats.push(vec![p]),
+                n => columns(p, n, &mut pats),
+            }
+            rows.extend(pats.into_iter().map(|pats| Row {
+                pats,
                 binds: vec![],
                 arm: i,
-            })
-            .collect();
+            }));
+        }
         let mut e = self.budgeted(site, |s| {
-            s.compile(vec![(scrut, ty)], rows, &infos, &fallback)
+            // The alternatives `columns` split are the nodes `compile` would have spent on them.
+            s.spend(rows.len() - arms.len());
+            s.compile(scrut, rows, &infos, &fallback)
         });
         // An arm one leaf reaches is that leaf's code, so arms on distinct literals are a
         // `Switch`'s cases and not one join each, nested (design §17.200 (1)). A jump inside a

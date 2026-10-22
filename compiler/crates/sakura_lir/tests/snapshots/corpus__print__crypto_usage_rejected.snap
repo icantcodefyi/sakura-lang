@@ -23,8 +23,7 @@ layout 17 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 18 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 19 shape |  32b (word*, word*)
 layout 20 shape |  32b (i64, word*)
-layout 21 shape |  32b (bool, word*)
-layout 22 shape |  40b (i64, i64, i64)
+layout 21 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_usage_rejected, frame 12 slots [%9 word*, %15 bool, %16 word*, %21 bool, %22 word*, %23 word*, %26 bool, %27 word*, %32 word*, %35 bool, %38 bool, %43 bool]
   b0():

@@ -29,8 +29,7 @@ layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 24 shape |  32b (word*, word*)
 layout 25 shape |  32b (i64, word*)
 layout 26 shape |  56b (word*, word*, word*, word*, i64)
-layout 27 shape |  32b (bool, word*)
-layout 28 shape |  40b (i64, i64, i64)
+layout 27 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_hkdf_rfc5869, frame 53 slots [%50 word*, %51 word*, %52 i64, %53 i64, %54 word*, %55 word*, %56 word*, %57 i64, %58 word*, %59 word*, %60 word*, %63 word*, %64 word*, %65 i64, %66 i64, %67 word*, %68 word*, %69 word*, %70 i64, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %98 word*, %99 i64, %100 word*, %101 word*, %102 word*, %103 i64, %104 i64, %105 word*, %106 i64, %107 word*, %108 word*, %117 word*, %118 word*, %119 i64, %120 i64, %121 word*, %123 word*, %124 word*, %125 i64, %126 i64, %127 word*, %130 bool, %131 word*, %132 i64, %133 i64, %141 bool, %142 word*, %143 i64, %144 i64]
   b0():

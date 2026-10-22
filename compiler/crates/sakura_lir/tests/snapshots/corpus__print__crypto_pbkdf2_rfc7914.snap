@@ -29,8 +29,7 @@ layout 23 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 24 shape |  32b (word*, word*)
 layout 25 shape |  32b (i64, word*)
 layout 26 shape |  48b (word*, word*, i64, i64)
-layout 27 shape |  32b (bool, word*)
-layout 28 shape |  40b (i64, i64, i64)
+layout 27 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 word*, %45 word*, %46 i64, %47 i64, %48 word*, %49 word*, %50 i64, %51 i64, %87 word*, %88 word*, %89 i64, %90 i64, %91 word*, %93 word*, %94 word*, %95 i64, %96 i64, %97 word*, %100 bool, %101 word*, %102 i64, %103 i64, %111 bool, %112 word*, %113 i64, %114 i64]
   b0():

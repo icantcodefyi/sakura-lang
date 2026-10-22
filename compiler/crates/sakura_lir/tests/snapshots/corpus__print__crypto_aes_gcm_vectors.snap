@@ -26,8 +26,7 @@ layout 20 error std::string::Utf8Error | Utf8Error 24b (offset: i64)
 layout 21 shape |  32b (word*, word*)
 layout 22 shape |  32b (i64, word*)
 layout 23 shape |  56b (i64, word*, word*, word*, word*)
-layout 24 shape |  32b (bool, word*)
-layout 25 shape |  40b (i64, i64, i64)
+layout 24 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 i64, %127 word*, %128 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 i64, %140 word*, %141 word*, %142 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 i64, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 i64, %193 i64, %194 i64, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %239 word*, %240 word*, %241 word*, %242 i64, %243 i64, %244 i64, %245 word*, %246 word*, %247 word*, %248 word*, %354 word*, %249 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 word*, %258 word*, %355 word*, %260 word*, %261 word*, %262 word*, %263 i64, %264 i64, %265 i64, %266 word*, %267 word*, %356 word*, %268 word*, %269 word*, %270 word*, %271 i64, %272 i64, %273 i64, %274 word*, %275 word*, %357 word*, %281 word*, %282 word*, %283 word*, %284 i64, %285 i64, %286 bool, %287 word*, %294 bool, %295 word*, %296 word*, %297 i64, %298 i64, %306 bool, %307 word*, %308 word*, %309 i64, %310 i64, %318 bool, %319 word*, %320 word*, %321 i64, %322 i64]
   b0():

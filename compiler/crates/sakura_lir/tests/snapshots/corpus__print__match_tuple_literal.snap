@@ -1,0 +1,430 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant main::match_tuple_literal::Color | Red 16b () | Black 16b ()
+layout 1 variant main::match_tuple_literal::Tree | E 16b () | T 48b (word*, word*, i64, word*)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+layout 6 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::match_tuple_literal, frame 25 slots [%12 word*, %13 word*, %14 i64, %15 word*, %17 bool, %18 word*, %32 word*, %33 word*, %34 i64, %35 word*, %37 bool, %38 word*, %43 word*, %44 i64, %46 bool, %50 word*, %56 word*, %57 word*, %64 word*, %65 word*, %68 bool, %72 word*, %78 word*, %79 word*, %82 bool]
+  b0():
+    %0 v: ptr = const static main::match_tuple_literal::Color.Red
+    %1 v: ptr = const static main::match_tuple_literal::Color.Red
+    %2 v: ptr = const static main::match_tuple_literal::Tree.E
+    %3 v: ptr = const static main::match_tuple_literal::Tree.E
+    %4 lit: i64 = const 1
+    %5 r: ptr = alloc main::match_tuple_literal::Tree.T(%1, %2, %4, %3)
+    %6 v: ptr = const static main::match_tuple_literal::Tree.E
+    %7 lit: i64 = const 2
+    %8 r: ptr = alloc main::match_tuple_literal::Tree.T(%0, %5, %7, %6)
+    %9 v: ptr = const static main::match_tuple_literal::Color.Black
+    %10 v: ptr = const static main::match_tuple_literal::Tree.E
+    %11 lit: i64 = const 3
+    dup %8
+    call balance#2(%9, %8, %11, %10) -> b1(%8)
+  b1(%12 r: ptr, %13 r: ptr):
+    call depth#3(%12) -> b2(%13)
+  b2(%14 r: i64, %15 r: ptr):
+    %16 s: ptr = show %14
+    perform std::console::Console.print(%16) -> b3(%15)
+  b3(%17 r: unit, %18 r: ptr):
+    %19 box: word = box %17
+    drop %19
+    %20 v: ptr = const static main::match_tuple_literal::Color.Black
+    %21 v: ptr = const static main::match_tuple_literal::Tree.E
+    %22 v: ptr = const static main::match_tuple_literal::Color.Red
+    %23 v: ptr = const static main::match_tuple_literal::Tree.E
+    %24 v: ptr = const static main::match_tuple_literal::Color.Red
+    %25 v: ptr = const static main::match_tuple_literal::Tree.E
+    %26 v: ptr = const static main::match_tuple_literal::Tree.E
+    %27 lit: i64 = const 3
+    %28 r: ptr = alloc main::match_tuple_literal::Tree.T(%24, %25, %27, %26)
+    %29 lit: i64 = const 2
+    %30 r: ptr = alloc main::match_tuple_literal::Tree.T(%22, %23, %29, %28)
+    %31 lit: i64 = const 1
+    call balance#2(%20, %21, %31, %30) -> b4(%18)
+  b4(%32 r: ptr, %33 r: ptr):
+    call depth#3(%32) -> b5(%33)
+  b5(%34 r: i64, %35 r: ptr):
+    %36 s: ptr = show %34
+    perform std::console::Console.print(%36) -> b6(%35)
+  b6(%37 r: unit, %38 r: ptr):
+    %39 box: word = box %37
+    drop %39
+    %40 v: ptr = const static main::match_tuple_literal::Color.Red
+    %41 v: ptr = const static main::match_tuple_literal::Tree.E
+    %42 lit: i64 = const 3
+    call balance#2(%40, %38, %42, %41) -> b7()
+  b7(%43 r: ptr):
+    call depth#3(%43) -> b8()
+  b8(%44 r: i64):
+    %45 s: ptr = show %44
+    perform std::console::Console.print(%45) -> b9()
+  b9(%46 r: unit):
+    %47 box: word = box %46
+    drop %47
+    %48 lit: i64 = const 1
+    %49 lit: i64 = const 1
+    call same#4(%48, %49) -> b10()
+  b10(%50 r: ptr):
+    %51 s: ptr = show %50
+    drop %50
+    %52 lit: ptr = const str 0
+    %53 s: ptr = concat %51, %52
+    drop %52
+    %54 lit: i64 = const 4
+    %55 lit: i64 = const 4
+    call same#4(%54, %55) -> b11(%53)
+  b11(%56 r: ptr, %57 s: ptr):
+    %58 s: ptr = show %56
+    drop %56
+    %59 s: ptr = concat %57, %58
+    drop %58
+    %60 lit: ptr = const str 0
+    %61 s: ptr = concat %59, %60
+    drop %60
+    %62 lit: i64 = const 4
+    %63 lit: i64 = const 5
+    call same#4(%62, %63) -> b12(%61)
+  b12(%64 r: ptr, %65 s: ptr):
+    %66 s: ptr = show %64
+    drop %64
+    %67 s: ptr = concat %65, %66
+    drop %66
+    perform std::console::Console.print(%67) -> b13()
+  b13(%68 r: unit):
+    %69 box: word = box %68
+    drop %69
+    %70 lit: i64 = const 0
+    %71 lit: i64 = const 7
+    call whole#5(%70, %71) -> b14()
+  b14(%72 r: ptr):
+    %73 s: ptr = show %72
+    drop %72
+    %74 lit: ptr = const str 0
+    %75 s: ptr = concat %73, %74
+    drop %74
+    %76 lit: i64 = const 3
+    %77 lit: i64 = const 7
+    call whole#5(%76, %77) -> b15(%75)
+  b15(%78 r: ptr, %79 s: ptr):
+    %80 s: ptr = show %78
+    drop %78
+    %81 s: ptr = concat %79, %80
+    drop %80
+    perform std::console::Console.print(%81) -> b16()
+  b16(%82 r: unit):
+    %83 box: word = box %82
+    %84 unbox: unit = unbox %83
+    drop %83
+    ret %84
+
+fn $entry#1 top -> unit ; main::match_tuple_literal, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn balance#2 top -> ptr ; main::match_tuple_literal, frame 4 slots [%0 word*, %1 word*, %2 i64, %3 word*]
+  b0(%0 c: ptr, %1 l: ptr, %2 k: i64, %3 r: ptr):
+    %22 tag: i64 = tag %0 ctor main::match_tuple_literal::Color
+    switch %22 1 => b3(%0, %1, %2, %3) _ => b4(%0, %1, %2, %3)
+  b1(%4 b: ptr, %5 y: i64, %6 d: ptr, %7 z: i64, %8 e: ptr, %9 l: ptr, %10 k: i64):
+    %11 v: ptr = const static main::match_tuple_literal::Color.Red
+    %12 v: ptr = const static main::match_tuple_literal::Color.Black
+    %13 r: ptr = alloc main::match_tuple_literal::Tree.T(%12, %9, %10, %4)
+    %14 v: ptr = const static main::match_tuple_literal::Color.Black
+    %15 r: ptr = alloc main::match_tuple_literal::Tree.T(%14, %6, %7, %8)
+    %16 r: ptr = alloc main::match_tuple_literal::Tree.T(%11, %13, %5, %15)
+    ret %16
+  b2(%17 c: ptr, %18 l: ptr, %19 k: i64, %20 r: ptr):
+    %21 r: ptr = alloc main::match_tuple_literal::Tree.T(%17, %18, %19, %20)
+    ret %21
+  b3(%23 c: ptr, %24 l: ptr, %25 k: i64, %26 r: ptr):
+    %31 tag: i64 = tag %24 ctor main::match_tuple_literal::Tree
+    switch %31 1 => b5(%23, %24, %25, %26) _ => b6(%23, %24, %25, %26)
+  b4(%27 c: ptr, %28 l: ptr, %29 k: i64, %30 r: ptr):
+    jump b2(%27, %28, %29, %30)
+  b5(%32 c: ptr, %33 l: ptr, %34 k: i64, %35 r: ptr):
+    %40 p: word = proj %33.0 main::match_tuple_literal::Tree.T
+    %41 p: word = proj %33.1 main::match_tuple_literal::Tree.T
+    %42 p: i64 = proj %33.2 main::match_tuple_literal::Tree.T
+    %43 p: word = proj %33.3 main::match_tuple_literal::Tree.T
+    %44 tag: i64 = tag %40 ctor main::match_tuple_literal::Color
+    drop %40
+    switch %44 0 => b7(%32, %33, %34, %35, %41, %42, %43) _ => b8(%32, %33, %34, %35, %41, %42, %43)
+  b6(%36 c: ptr, %37 l: ptr, %38 k: i64, %39 r: ptr):
+    %301 tag: i64 = tag %39 ctor main::match_tuple_literal::Tree
+    switch %301 1 => b37(%36, %37, %38, %39) _ => b38(%36, %37, %38, %39)
+  b7(%45 c: ptr, %46 l: ptr, %47 k: i64, %48 r: ptr, %49 p: ptr, %50 p: i64, %51 p: ptr):
+    %59 tag: i64 = tag %49 ctor main::match_tuple_literal::Tree
+    switch %59 1 => b9(%45, %46, %47, %48, %49, %50, %51) _ => b10(%45, %46, %47, %48, %49, %50, %51)
+  b8(%52 c: ptr, %53 l: ptr, %54 k: i64, %55 r: ptr, %56 p: ptr, %57 p: i64, %58 p: ptr):
+    drop %56
+    drop %58
+    %235 tag: i64 = tag %55 ctor main::match_tuple_literal::Tree
+    switch %235 1 => b29(%52, %53, %54, %55) _ => b30(%52, %53, %54, %55)
+  b9(%60 c: ptr, %61 l: ptr, %62 k: i64, %63 r: ptr, %64 p: ptr, %65 p: i64, %66 p: ptr):
+    %74 p: word = proj %64.0 main::match_tuple_literal::Tree.T
+    %75 p: word = proj %64.1 main::match_tuple_literal::Tree.T
+    %76 p: i64 = proj %64.2 main::match_tuple_literal::Tree.T
+    %77 p: word = proj %64.3 main::match_tuple_literal::Tree.T
+    drop %64
+    %78 tag: i64 = tag %74 ctor main::match_tuple_literal::Color
+    drop %74
+    switch %78 0 => b11(%60, %61, %62, %63, %65, %66, %75, %76, %77) _ => b12(%60, %61, %62, %63, %65, %66, %75, %76, %77)
+  b10(%67 c: ptr, %68 l: ptr, %69 k: i64, %70 r: ptr, %71 p: ptr, %72 p: i64, %73 p: ptr):
+    drop %71
+    drop %73
+    %169 tag: i64 = tag %70 ctor main::match_tuple_literal::Tree
+    switch %169 1 => b21(%67, %68, %69, %70) _ => b22(%67, %68, %69, %70)
+  b11(%79 c: ptr, %80 l: ptr, %81 k: i64, %82 r: ptr, %83 p: i64, %84 p: ptr, %85 p: ptr, %86 p: i64, %87 p: ptr):
+    drop %79
+    %367 token: word = $reuse_reset(%80)
+    %97 v: ptr = const static main::match_tuple_literal::Color.Red
+    %98 v: ptr = const static main::match_tuple_literal::Color.Black
+    %99 r: ptr = alloc main::match_tuple_literal::Tree.T(%98, %85, %86, %87) reuse %367
+    %100 v: ptr = const static main::match_tuple_literal::Color.Black
+    %101 r: ptr = alloc main::match_tuple_literal::Tree.T(%100, %84, %81, %82)
+    %102 r: ptr = alloc main::match_tuple_literal::Tree.T(%97, %99, %83, %101)
+    ret %102
+  b12(%88 c: ptr, %89 l: ptr, %90 k: i64, %91 r: ptr, %92 p: i64, %93 p: ptr, %94 p: ptr, %95 p: i64, %96 p: ptr):
+    drop %93
+    drop %94
+    drop %96
+    %103 tag: i64 = tag %91 ctor main::match_tuple_literal::Tree
+    switch %103 1 => b13(%88, %89, %90, %91) _ => b14(%88, %89, %90, %91)
+  b13(%104 c: ptr, %105 l: ptr, %106 k: i64, %107 r: ptr):
+    %112 p: word = proj %107.0 main::match_tuple_literal::Tree.T
+    %113 p: word = proj %107.1 main::match_tuple_literal::Tree.T
+    %114 p: i64 = proj %107.2 main::match_tuple_literal::Tree.T
+    %115 p: word = proj %107.3 main::match_tuple_literal::Tree.T
+    %116 tag: i64 = tag %112 ctor main::match_tuple_literal::Color
+    drop %112
+    switch %116 0 => b15(%104, %105, %106, %107, %113, %114, %115) _ => b16(%104, %105, %106, %107, %113, %114, %115)
+  b14(%108 c: ptr, %109 l: ptr, %110 k: i64, %111 r: ptr):
+    jump b2(%108, %109, %110, %111)
+  b15(%117 c: ptr, %118 l: ptr, %119 k: i64, %120 r: ptr, %121 p: ptr, %122 p: i64, %123 p: ptr):
+    %131 tag: i64 = tag %123 ctor main::match_tuple_literal::Tree
+    switch %131 1 => b17(%117, %118, %119, %120, %121, %122, %123) _ => b18(%117, %118, %119, %120, %121, %122, %123)
+  b16(%124 c: ptr, %125 l: ptr, %126 k: i64, %127 r: ptr, %128 p: ptr, %129 p: i64, %130 p: ptr):
+    drop %128
+    drop %130
+    jump b2(%124, %125, %126, %127)
+  b17(%132 c: ptr, %133 l: ptr, %134 k: i64, %135 r: ptr, %136 p: ptr, %137 p: i64, %138 p: ptr):
+    %146 p: word = proj %138.0 main::match_tuple_literal::Tree.T
+    %147 p: word = proj %138.1 main::match_tuple_literal::Tree.T
+    %148 p: i64 = proj %138.2 main::match_tuple_literal::Tree.T
+    %149 p: word = proj %138.3 main::match_tuple_literal::Tree.T
+    drop %138
+    %150 tag: i64 = tag %146 ctor main::match_tuple_literal::Color
+    drop %146
+    switch %150 0 => b19(%132, %133, %134, %135, %136, %137, %147, %148, %149) _ => b20(%132, %133, %134, %135, %136, %137, %147, %148, %149)
+  b18(%139 c: ptr, %140 l: ptr, %141 k: i64, %142 r: ptr, %143 p: ptr, %144 p: i64, %145 p: ptr):
+    drop %143
+    drop %145
+    jump b2(%139, %140, %141, %142)
+  b19(%151 c: ptr, %152 l: ptr, %153 k: i64, %154 r: ptr, %155 p: ptr, %156 p: i64, %157 p: ptr, %158 p: i64, %159 p: ptr):
+    drop %151
+    drop %154
+    jump b1(%155, %156, %157, %158, %159, %152, %153)
+  b20(%160 c: ptr, %161 l: ptr, %162 k: i64, %163 r: ptr, %164 p: ptr, %165 p: i64, %166 p: ptr, %167 p: i64, %168 p: ptr):
+    drop %164
+    drop %166
+    drop %168
+    jump b2(%160, %161, %162, %163)
+  b21(%170 c: ptr, %171 l: ptr, %172 k: i64, %173 r: ptr):
+    %178 p: word = proj %173.0 main::match_tuple_literal::Tree.T
+    %179 p: word = proj %173.1 main::match_tuple_literal::Tree.T
+    %180 p: i64 = proj %173.2 main::match_tuple_literal::Tree.T
+    %181 p: word = proj %173.3 main::match_tuple_literal::Tree.T
+    %182 tag: i64 = tag %178 ctor main::match_tuple_literal::Color
+    drop %178
+    switch %182 0 => b23(%170, %171, %172, %173, %179, %180, %181) _ => b24(%170, %171, %172, %173, %179, %180, %181)
+  b22(%174 c: ptr, %175 l: ptr, %176 k: i64, %177 r: ptr):
+    jump b2(%174, %175, %176, %177)
+  b23(%183 c: ptr, %184 l: ptr, %185 k: i64, %186 r: ptr, %187 p: ptr, %188 p: i64, %189 p: ptr):
+    %197 tag: i64 = tag %189 ctor main::match_tuple_literal::Tree
+    switch %197 1 => b25(%183, %184, %185, %186, %187, %188, %189) _ => b26(%183, %184, %185, %186, %187, %188, %189)
+  b24(%190 c: ptr, %191 l: ptr, %192 k: i64, %193 r: ptr, %194 p: ptr, %195 p: i64, %196 p: ptr):
+    drop %194
+    drop %196
+    jump b2(%190, %191, %192, %193)
+  b25(%198 c: ptr, %199 l: ptr, %200 k: i64, %201 r: ptr, %202 p: ptr, %203 p: i64, %204 p: ptr):
+    %212 p: word = proj %204.0 main::match_tuple_literal::Tree.T
+    %213 p: word = proj %204.1 main::match_tuple_literal::Tree.T
+    %214 p: i64 = proj %204.2 main::match_tuple_literal::Tree.T
+    %215 p: word = proj %204.3 main::match_tuple_literal::Tree.T
+    drop %204
+    %216 tag: i64 = tag %212 ctor main::match_tuple_literal::Color
+    drop %212
+    switch %216 0 => b27(%198, %199, %200, %201, %202, %203, %213, %214, %215) _ => b28(%198, %199, %200, %201, %202, %203, %213, %214, %215)
+  b26(%205 c: ptr, %206 l: ptr, %207 k: i64, %208 r: ptr, %209 p: ptr, %210 p: i64, %211 p: ptr):
+    drop %209
+    drop %211
+    jump b2(%205, %206, %207, %208)
+  b27(%217 c: ptr, %218 l: ptr, %219 k: i64, %220 r: ptr, %221 p: ptr, %222 p: i64, %223 p: ptr, %224 p: i64, %225 p: ptr):
+    drop %217
+    drop %220
+    jump b1(%221, %222, %223, %224, %225, %218, %219)
+  b28(%226 c: ptr, %227 l: ptr, %228 k: i64, %229 r: ptr, %230 p: ptr, %231 p: i64, %232 p: ptr, %233 p: i64, %234 p: ptr):
+    drop %230
+    drop %232
+    drop %234
+    jump b2(%226, %227, %228, %229)
+  b29(%236 c: ptr, %237 l: ptr, %238 k: i64, %239 r: ptr):
+    %244 p: word = proj %239.0 main::match_tuple_literal::Tree.T
+    %245 p: word = proj %239.1 main::match_tuple_literal::Tree.T
+    %246 p: i64 = proj %239.2 main::match_tuple_literal::Tree.T
+    %247 p: word = proj %239.3 main::match_tuple_literal::Tree.T
+    %248 tag: i64 = tag %244 ctor main::match_tuple_literal::Color
+    drop %244
+    switch %248 0 => b31(%236, %237, %238, %239, %245, %246, %247) _ => b32(%236, %237, %238, %239, %245, %246, %247)
+  b30(%240 c: ptr, %241 l: ptr, %242 k: i64, %243 r: ptr):
+    jump b2(%240, %241, %242, %243)
+  b31(%249 c: ptr, %250 l: ptr, %251 k: i64, %252 r: ptr, %253 p: ptr, %254 p: i64, %255 p: ptr):
+    %263 tag: i64 = tag %255 ctor main::match_tuple_literal::Tree
+    switch %263 1 => b33(%249, %250, %251, %252, %253, %254, %255) _ => b34(%249, %250, %251, %252, %253, %254, %255)
+  b32(%256 c: ptr, %257 l: ptr, %258 k: i64, %259 r: ptr, %260 p: ptr, %261 p: i64, %262 p: ptr):
+    drop %260
+    drop %262
+    jump b2(%256, %257, %258, %259)
+  b33(%264 c: ptr, %265 l: ptr, %266 k: i64, %267 r: ptr, %268 p: ptr, %269 p: i64, %270 p: ptr):
+    %278 p: word = proj %270.0 main::match_tuple_literal::Tree.T
+    %279 p: word = proj %270.1 main::match_tuple_literal::Tree.T
+    %280 p: i64 = proj %270.2 main::match_tuple_literal::Tree.T
+    %281 p: word = proj %270.3 main::match_tuple_literal::Tree.T
+    drop %270
+    %282 tag: i64 = tag %278 ctor main::match_tuple_literal::Color
+    drop %278
+    switch %282 0 => b35(%264, %265, %266, %267, %268, %269, %279, %280, %281) _ => b36(%264, %265, %266, %267, %268, %269, %279, %280, %281)
+  b34(%271 c: ptr, %272 l: ptr, %273 k: i64, %274 r: ptr, %275 p: ptr, %276 p: i64, %277 p: ptr):
+    drop %275
+    drop %277
+    jump b2(%271, %272, %273, %274)
+  b35(%283 c: ptr, %284 l: ptr, %285 k: i64, %286 r: ptr, %287 p: ptr, %288 p: i64, %289 p: ptr, %290 p: i64, %291 p: ptr):
+    drop %283
+    drop %286
+    jump b1(%287, %288, %289, %290, %291, %284, %285)
+  b36(%292 c: ptr, %293 l: ptr, %294 k: i64, %295 r: ptr, %296 p: ptr, %297 p: i64, %298 p: ptr, %299 p: i64, %300 p: ptr):
+    drop %296
+    drop %298
+    drop %300
+    jump b2(%292, %293, %294, %295)
+  b37(%302 c: ptr, %303 l: ptr, %304 k: i64, %305 r: ptr):
+    %310 p: word = proj %305.0 main::match_tuple_literal::Tree.T
+    %311 p: word = proj %305.1 main::match_tuple_literal::Tree.T
+    %312 p: i64 = proj %305.2 main::match_tuple_literal::Tree.T
+    %313 p: word = proj %305.3 main::match_tuple_literal::Tree.T
+    %314 tag: i64 = tag %310 ctor main::match_tuple_literal::Color
+    drop %310
+    switch %314 0 => b39(%302, %303, %304, %305, %311, %312, %313) _ => b40(%302, %303, %304, %305, %311, %312, %313)
+  b38(%306 c: ptr, %307 l: ptr, %308 k: i64, %309 r: ptr):
+    jump b2(%306, %307, %308, %309)
+  b39(%315 c: ptr, %316 l: ptr, %317 k: i64, %318 r: ptr, %319 p: ptr, %320 p: i64, %321 p: ptr):
+    %329 tag: i64 = tag %321 ctor main::match_tuple_literal::Tree
+    switch %329 1 => b41(%315, %316, %317, %318, %319, %320, %321) _ => b42(%315, %316, %317, %318, %319, %320, %321)
+  b40(%322 c: ptr, %323 l: ptr, %324 k: i64, %325 r: ptr, %326 p: ptr, %327 p: i64, %328 p: ptr):
+    drop %326
+    drop %328
+    jump b2(%322, %323, %324, %325)
+  b41(%330 c: ptr, %331 l: ptr, %332 k: i64, %333 r: ptr, %334 p: ptr, %335 p: i64, %336 p: ptr):
+    %344 p: word = proj %336.0 main::match_tuple_literal::Tree.T
+    %345 p: word = proj %336.1 main::match_tuple_literal::Tree.T
+    %346 p: i64 = proj %336.2 main::match_tuple_literal::Tree.T
+    %347 p: word = proj %336.3 main::match_tuple_literal::Tree.T
+    drop %336
+    %348 tag: i64 = tag %344 ctor main::match_tuple_literal::Color
+    drop %344
+    switch %348 0 => b43(%330, %331, %332, %333, %334, %335, %345, %346, %347) _ => b44(%330, %331, %332, %333, %334, %335, %345, %346, %347)
+  b42(%337 c: ptr, %338 l: ptr, %339 k: i64, %340 r: ptr, %341 p: ptr, %342 p: i64, %343 p: ptr):
+    drop %341
+    drop %343
+    jump b2(%337, %338, %339, %340)
+  b43(%349 c: ptr, %350 l: ptr, %351 k: i64, %352 r: ptr, %353 p: ptr, %354 p: i64, %355 p: ptr, %356 p: i64, %357 p: ptr):
+    drop %349
+    drop %352
+    jump b1(%353, %354, %355, %356, %357, %350, %351)
+  b44(%358 c: ptr, %359 l: ptr, %360 k: i64, %361 r: ptr, %362 p: ptr, %363 p: i64, %364 p: ptr, %365 p: i64, %366 p: ptr):
+    drop %362
+    drop %364
+    drop %366
+    jump b2(%358, %359, %360, %361)
+
+fn depth#3 top -> i64 ; main::match_tuple_literal, frame 6 slots [%0 word*, %9 i64, %10 word*, %11 i64, %12 i64, %13 i64]
+  b0(%0 t: ptr):
+    %1 tag: i64 = tag %0 ctor main::match_tuple_literal::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ptr):
+    drop %2
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 t: ptr):
+    %5 p: word = proj %3.0 main::match_tuple_literal::Tree.T
+    drop %5
+    %6 p: word = proj %3.1 main::match_tuple_literal::Tree.T
+    %7 p: i64 = proj %3.2 main::match_tuple_literal::Tree.T
+    %8 p: word = proj %3.3 main::match_tuple_literal::Tree.T
+    drop %3
+    call depth#3(%6) -> b3(%8)
+  b3(%9 r: i64, %10 r: ptr):
+    call depth#3(%10) -> b4(%9)
+  b4(%11 r: i64, %12 r: i64):
+    call max#6(%12, %11) -> b5()
+  b5(%13 r: i64):
+    %14 lit: i64 = const 1
+    %15 t: i64 = intadd %14, %13
+    ret %15
+
+fn same#4 top -> ptr ; main::match_tuple_literal, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 a: i64, %1 b: i64):
+    switch %0 0 => b5(%0, %1) 1 => b6(%0, %1) _ => b7(%0, %1)
+  b1():
+    %2 lit: ptr = const str 1
+    ret %2
+  b2(%3 a: i64, %4 b: i64):
+    %5 t: bool = eq.int %3, %4
+    if %5 then b3(%3, %4) else b4(%3, %4)
+  b3(%6 a: i64, %7 b: i64):
+    %10 s: ptr = show %6
+    %11 lit: ptr = const str 2
+    %12 s: ptr = concat %11, %10
+    drop %10
+    ret %12
+  b4(%8 a: i64, %9 b: i64):
+    %13 lit: ptr = const str 3
+    ret %13
+  b5(%14 a: i64, %15 b: i64):
+    switch %15 0 => b8(%14, %15) _ => b9(%14, %15)
+  b6(%16 a: i64, %17 b: i64):
+    switch %17 1 => b10(%16, %17) _ => b11(%16, %17)
+  b7(%18 a: i64, %19 b: i64):
+    jump b2(%18, %19)
+  b8(%20 a: i64, %21 b: i64):
+    jump b1()
+  b9(%22 a: i64, %23 b: i64):
+    jump b2(%22, %23)
+  b10(%24 a: i64, %25 b: i64):
+    jump b1()
+  b11(%26 a: i64, %27 b: i64):
+    jump b2(%26, %27)
+
+fn whole#5 top -> ptr ; main::match_tuple_literal, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 a: i64, %1 b: i64):
+    %2 tup: ptr = alloc tuple#6(i64, i64)(%0, %1)
+    %3 p: i64 = tuple_get %2.0
+    %4 p: i64 = tuple_get %2.1
+    switch %3 0 => b1(%0, %1, %2) _ => b2(%0, %1, %2)
+  b1(%5 a: i64, %6 b: i64, %7 tup: ptr):
+    drop %7
+    %11 tup: ptr = alloc tuple#6(i64, i64)(%6, %5)
+    ret %11
+  b2(%8 a: i64, %9 b: i64, %10 tup: ptr):
+    ret %10

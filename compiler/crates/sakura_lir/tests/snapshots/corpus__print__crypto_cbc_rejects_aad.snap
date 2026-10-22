@@ -20,8 +20,7 @@ layout 14 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
 layout 15 shape |  32b (word*, word*)
 layout 16 shape |  32b (i64, word*)
 layout 17 shape |  24b (i64)
-layout 18 shape |  32b (bool, word*)
-layout 19 shape |  40b (i64, i64, i64)
+layout 18 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_cbc_rejects_aad, frame 12 slots [%1 word*, %5 word*, %6 word*, %8 word*, %9 word*, %12 bool, %13 word*, %14 word*, %21 word*, %23 word*, %27 bool, %36 word*]
   b0():

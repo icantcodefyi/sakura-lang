@@ -25,10 +25,9 @@ layout 19 shape |  32b (word*, word*)
 layout 20 shape |  32b (i64, word*)
 layout 21 shape |  24b (i64)
 layout 22 shape |  64b (word*, i64, word*, word*, word*, word*)
-layout 23 shape |  32b (bool, word*)
-layout 24 shape |  40b (i64, i64, i64)
+layout 23 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 word*, %93 word*, %94 word*, %95 word*, %98 word*, %99 word*, %104 word*, %105 word*, %106 word*, %107 word*, %108 word*, %111 word*, %112 word*, %131 word*, %132 word*, %133 word*, %134 word*, %145 bool, %146 word*, %147 word*, %148 word*, %149 word*, %157 bool, %158 word*, %159 word*, %160 word*, %161 word*, %167 word*, %168 word*, %169 word*, %170 word*, %172 bool, %173 word*, %176 bool, %180 word*, %181 word*, %182 word*, %187 bool, %194 bool, %222 word*, %223 word*, %224 i64, %225 i64, %226 word*, %227 i64, %228 word*, %229 word*, %230 word*, %231 word*, %236 word*, %237 word*, %238 i64, %239 i64, %240 word*, %241 i64, %242 word*, %243 word*, %244 word*, %245 word*, %246 word*, %247 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 word*, %255 i64, %256 word*, %257 word*, %258 word*, %294 word*, %295 word*, %296 i64, %297 i64, %298 word*, %299 word*, %300 word*, %301 word*, %302 word*, %303 i64, %304 i64, %305 word*, %306 word*, %307 word*, %309 bool, %310 word*, %311 i64, %312 i64, %313 word*, %316 bool, %317 word*, %318 i64, %319 i64, %331 bool, %332 word*, %333 i64, %334 i64]
+fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 word*, %93 word*, %94 word*, %95 word*, %98 word*, %99 word*, %104 word*, %105 word*, %106 word*, %107 word*, %108 word*, %111 word*, %112 word*, %128 word*, %129 word*, %130 word*, %131 word*, %142 bool, %143 word*, %144 word*, %145 word*, %146 word*, %154 bool, %155 word*, %156 word*, %157 word*, %158 word*, %164 word*, %165 word*, %166 word*, %167 word*, %169 bool, %170 word*, %173 bool, %177 word*, %178 word*, %179 word*, %184 bool, %191 bool, %219 word*, %220 word*, %221 i64, %222 i64, %223 word*, %224 i64, %225 word*, %226 word*, %227 word*, %228 word*, %233 word*, %234 word*, %235 i64, %236 i64, %237 word*, %238 i64, %239 word*, %240 word*, %241 word*, %242 word*, %243 word*, %244 word*, %247 word*, %248 word*, %249 i64, %250 i64, %251 word*, %252 i64, %253 word*, %254 word*, %255 word*, %291 word*, %292 word*, %293 i64, %294 i64, %295 word*, %296 word*, %297 word*, %298 word*, %299 word*, %300 i64, %301 i64, %302 word*, %303 word*, %304 word*, %306 bool, %307 word*, %308 i64, %309 i64, %310 word*, %313 bool, %314 word*, %315 i64, %316 i64, %328 bool, %329 word*, %330 i64, %331 i64]
   b0():
     %0 lit: ptr = const str 0
     %1 lit: i64 = const 1
@@ -115,10 +114,10 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %82 lit: ptr = const str 22
     %83 tup: ptr = alloc tuple#22(word, i64, word, word, word, word)(%77, %78, %79, %80, %81, %82)
     %84 xs: ptr = alloc list(%6, %13, %20, %27, %34, %41, %48, %55, %62, %69, %76, %83)
-    %343 xs.lent: ref = lend %84
-    %85 n: i64 = $list_len(%343)
-    %342 lit: i64 = const 0
-    jump b20(%342, %84, %85)
+    %340 xs.lent: ref = lend %84
+    %85 n: i64 = $list_len(%340)
+    %339 lit: i64 = const 0
+    jump b20(%339, %84, %85)
   b1():
     %86 v: ptr = const static std::crypto::Digest.Sha256
     %87 r: ptr = alloc std::crypto::Algorithm.RsaPss(%86)
@@ -143,212 +142,208 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %110 lit: bool = const true
     call import_key#4(%107, %105, %108, %110, %109) -> b5(%106)
   b5(%111 r: ptr, %112 r: ptr):
-    %113 tup: ptr = alloc tuple#19(word, word)(%112, %111)
-    %114 p: ptr = tuple_get %113.0
-    %115 p: ptr = tuple_get %113.1
-    drop %113
-    %116 tag: i64 = tag %114 ctor std::result::Result
-    switch %116 0 => b6(%114, %115) 1 => b7(%114, %115)
-  b6(%117 p: ptr, %118 p: ptr):
-    %121 p: word = proj %117.0 std::result::Result.Ok
+    %113 tag: i64 = tag %112 ctor std::result::Result
+    switch %113 0 => b6(%112, %111) 1 => b7(%112, %111)
+  b6(%114 r: ptr, %115 r: ptr):
+    %118 p: word = proj %114.0 std::result::Result.Ok
+    drop %114
+    %119 tag: i64 = tag %115 ctor std::result::Result
+    switch %119 0 => b8(%115, %118) 1 => b9(%115, %118)
+  b7(%116 r: ptr, %117 r: ptr):
     drop %117
-    %122 tag: i64 = tag %118 ctor std::result::Result
-    switch %122 0 => b8(%118, %121) 1 => b9(%118, %121)
-  b7(%119 p: ptr, %120 p: ptr):
-    drop %120
-    %190 p: word = proj %119.0 std::result::Result.Err
-    drop %119
-    %191 s: ptr = show %190
-    drop %190
-    %192 lit: ptr = const str 25
-    %193 s: ptr = concat %192, %191
-    drop %191
-    perform std::console::Console.print(%193) -> b19()
-  b8(%123 p: ptr, %124 p: ptr):
-    %127 p: word = proj %123.0 std::result::Result.Ok
-    drop %123
-    %128 lit: ptr = const str 24
-    %129 r: ptr = $string_to_bytes(%128)
-    %130 lit: i64 = const 0
-    call seeded#6(%130) -> b10(%124, %127, %129)
-  b9(%125 p: ptr, %126 p: ptr):
-    drop %126
-    %183 p: word = proj %125.0 std::result::Result.Err
-    drop %125
-    %184 s: ptr = show %183
-    drop %183
-    %185 lit: ptr = const str 25
-    %186 s: ptr = concat %185, %184
-    drop %184
-    perform std::console::Console.print(%186) -> b18()
-  b10(%131 r: ptr, %132 k: ptr, %133 p: ptr, %134 r: ptr):
-    handle_push %131
-    %179 $site: i64 = const 9
-    dup %134
-    call sign#7(%132, %134, %179) -> b17(%133, %134)
-  b11(%135 v: ptr, %136 p: ptr, %137 r: ptr):
-    %344 v.lent: ref = lend %135
-    %138 r: i64 = $bytes_len(%344)
-    %139 s: ptr = show %138
-    %140 lit: ptr = const str 25
-    %141 s: ptr = concat %140, %139
-    drop %139
-    %142 lit: ptr = const str 26
-    %143 s: ptr = concat %141, %142
-    drop %142
-    %144 $site: i64 = const 6
-    dup.candidate %135
-    %345 p.lent: ref = lend %136
-    dup.candidate %137
-    call verify#102(%345, %135, %137, %144) -> b12(%136, %137, %135, %143)
-  b12(%145 r: bool, %146 p: ptr, %147 r: ptr, %148 v: ptr, %149 s: ptr):
-    %150 s: ptr = show %145
-    %151 s: ptr = concat %149, %150
-    drop %150
-    %152 lit: ptr = const str 27
-    %153 s: ptr = concat %151, %152
-    drop %152
-    %154 lit: ptr = const str 28
-    %155 r: ptr = $string_to_bytes(%154)
-    %156 $site: i64 = const 7
-    %346 p.lent: ref = lend %146
-    dup.candidate %148
-    call verify#102(%346, %148, %155, %156) -> b13(%146, %147, %148, %153)
-  b13(%157 r: bool, %158 p: ptr, %159 r: ptr, %160 v: ptr, %161 s: ptr):
-    %162 s: ptr = show %157
-    %163 s: ptr = concat %161, %162
-    drop %162
-    %164 lit: ptr = const str 29
-    %165 s: ptr = concat %163, %164
-    drop %164
-    %166 lit: i64 = const 9
-    call flip#8(%160, %166) -> b14(%158, %159, %165)
-  b14(%167 r: ptr, %168 p: ptr, %169 r: ptr, %170 s: ptr):
-    %171 $site: i64 = const 8
-    call verify#5(%168, %167, %169, %171) -> b15(%170)
-  b15(%172 r: bool, %173 s: ptr):
-    %174 s: ptr = show %172
-    %175 s: ptr = concat %173, %174
-    drop %174
-    perform std::console::Console.print(%175) -> b16()
-  b16(%176 r: unit):
-    %177 box: word = box %176
-    %178 unbox: unit = unbox %177
-    drop %177
-    ret %178
-  b17(%180 r: ptr, %181 p: ptr, %182 r: ptr) [handle]:
-    handle_pop
-    jump b11(%180, %181, %182)
-  b18(%187 r: unit):
-    %188 box: word = box %187
-    %189 unbox: unit = unbox %188
+    %187 p: word = proj %116.0 std::result::Result.Err
+    drop %116
+    %188 s: ptr = show %187
+    drop %187
+    %189 lit: ptr = const str 25
+    %190 s: ptr = concat %189, %188
     drop %188
-    ret %189
-  b19(%194 r: unit):
-    %195 box: word = box %194
-    %196 unbox: unit = unbox %195
-    drop %195
-    ret %196
-  b20(%197 i: i64, %198 xs: ptr, %199 n: i64):
-    %200 more: bool = lt.int %197, %199
-    if %200 then b21(%198, %199, %197) else b22(%198, %199, %197)
-  b21(%201 xs: ptr, %202 n: i64, %203 i: i64):
-    %347 xs.lent: ref = lend %201
-    %207 x: word = $list_at(%347, %203)
-    %336 p: ptr = tuple_get %207.0
-    %337 p: i64 = tuple_get %207.1
-    %338 p: ptr = tuple_get %207.2
-    %339 p: ptr = tuple_get %207.3
-    %340 p: ptr = tuple_get %207.4
-    %341 p: ptr = tuple_get %207.5
-    drop %207
-    jump b24(%336, %337, %338, %339, %340, %341, %201, %202, %203)
-  b22(%204 xs: ptr, %205 n: i64, %206 i: i64):
+    perform std::console::Console.print(%190) -> b19()
+  b8(%120 r: ptr, %121 p: ptr):
+    %124 p: word = proj %120.0 std::result::Result.Ok
+    drop %120
+    %125 lit: ptr = const str 24
+    %126 r: ptr = $string_to_bytes(%125)
+    %127 lit: i64 = const 0
+    call seeded#6(%127) -> b10(%121, %124, %126)
+  b9(%122 r: ptr, %123 p: ptr):
+    drop %123
+    %180 p: word = proj %122.0 std::result::Result.Err
+    drop %122
+    %181 s: ptr = show %180
+    drop %180
+    %182 lit: ptr = const str 25
+    %183 s: ptr = concat %182, %181
+    drop %181
+    perform std::console::Console.print(%183) -> b18()
+  b10(%128 r: ptr, %129 k: ptr, %130 p: ptr, %131 r: ptr):
+    handle_push %128
+    %176 $site: i64 = const 9
+    dup %131
+    call sign#7(%129, %131, %176) -> b17(%130, %131)
+  b11(%132 v: ptr, %133 p: ptr, %134 r: ptr):
+    %341 v.lent: ref = lend %132
+    %135 r: i64 = $bytes_len(%341)
+    %136 s: ptr = show %135
+    %137 lit: ptr = const str 25
+    %138 s: ptr = concat %137, %136
+    drop %136
+    %139 lit: ptr = const str 26
+    %140 s: ptr = concat %138, %139
+    drop %139
+    %141 $site: i64 = const 6
+    dup.candidate %132
+    %342 p.lent: ref = lend %133
+    dup.candidate %134
+    call verify#102(%342, %132, %134, %141) -> b12(%133, %134, %132, %140)
+  b12(%142 r: bool, %143 p: ptr, %144 r: ptr, %145 v: ptr, %146 s: ptr):
+    %147 s: ptr = show %142
+    %148 s: ptr = concat %146, %147
+    drop %147
+    %149 lit: ptr = const str 27
+    %150 s: ptr = concat %148, %149
+    drop %149
+    %151 lit: ptr = const str 28
+    %152 r: ptr = $string_to_bytes(%151)
+    %153 $site: i64 = const 7
+    %343 p.lent: ref = lend %143
+    dup.candidate %145
+    call verify#102(%343, %145, %152, %153) -> b13(%143, %144, %145, %150)
+  b13(%154 r: bool, %155 p: ptr, %156 r: ptr, %157 v: ptr, %158 s: ptr):
+    %159 s: ptr = show %154
+    %160 s: ptr = concat %158, %159
+    drop %159
+    %161 lit: ptr = const str 29
+    %162 s: ptr = concat %160, %161
+    drop %161
+    %163 lit: i64 = const 9
+    call flip#8(%157, %163) -> b14(%155, %156, %162)
+  b14(%164 r: ptr, %165 p: ptr, %166 r: ptr, %167 s: ptr):
+    %168 $site: i64 = const 8
+    call verify#5(%165, %164, %166, %168) -> b15(%167)
+  b15(%169 r: bool, %170 s: ptr):
+    %171 s: ptr = show %169
+    %172 s: ptr = concat %170, %171
+    drop %171
+    perform std::console::Console.print(%172) -> b16()
+  b16(%173 r: unit):
+    %174 box: word = box %173
+    %175 unbox: unit = unbox %174
+    drop %174
+    ret %175
+  b17(%177 r: ptr, %178 p: ptr, %179 r: ptr) [handle]:
+    handle_pop
+    jump b11(%177, %178, %179)
+  b18(%184 r: unit):
+    %185 box: word = box %184
+    %186 unbox: unit = unbox %185
+    drop %185
+    ret %186
+  b19(%191 r: unit):
+    %192 box: word = box %191
+    %193 unbox: unit = unbox %192
+    drop %192
+    ret %193
+  b20(%194 i: i64, %195 xs: ptr, %196 n: i64):
+    %197 more: bool = lt.int %194, %196
+    if %197 then b21(%195, %196, %194) else b22(%195, %196, %194)
+  b21(%198 xs: ptr, %199 n: i64, %200 i: i64):
+    %344 xs.lent: ref = lend %198
+    %204 x: word = $list_at(%344, %200)
+    %333 p: ptr = tuple_get %204.0
+    %334 p: i64 = tuple_get %204.1
+    %335 p: ptr = tuple_get %204.2
+    %336 p: ptr = tuple_get %204.3
+    %337 p: ptr = tuple_get %204.4
+    %338 p: ptr = tuple_get %204.5
     drop %204
+    jump b24(%333, %334, %335, %336, %337, %338, %198, %199, %200)
+  b22(%201 xs: ptr, %202 n: i64, %203 i: i64):
+    drop %201
     jump b1()
-  b23(%208 xs: ptr, %209 n: i64, %210 i: i64):
-    %211 lit: i64 = const 1
-    %212 i: i64 = intadd %210, %211
-    jump b20(%212, %208, %209)
-  b24(%213 hash: ptr, %214 id: i64, %215 result: ptr, %216 spki: ptr, %217 data: ptr, %218 signature: ptr, %219 xs: ptr, %220 n: i64, %221 i: i64):
-    %348 hash.lent: ref = lend %213
-    call digest#103(%348) -> b25(%219, %220, %221, %213, %214, %215, %216, %217, %218)
-  b25(%222 r: ptr, %223 xs: ptr, %224 n: i64, %225 i: i64, %226 hash: ptr, %227 id: i64, %228 result: ptr, %229 spki: ptr, %230 data: ptr, %231 signature: ptr):
-    %232 r: ptr = alloc std::crypto::Algorithm.RsaPss(%222)
-    %233 v: ptr = const static std::crypto::KeyFormat.Spki
-    %234 v: ptr = const static std::crypto::Usage.Verify
-    %235 xs: ptr = alloc list(%234)
-    call unhex#3(%229) -> b26(%223, %224, %225, %226, %227, %228, %230, %231, %232, %233, %235)
-  b26(%236 r: ptr, %237 xs: ptr, %238 n: i64, %239 i: i64, %240 hash: ptr, %241 id: i64, %242 result: ptr, %243 data: ptr, %244 signature: ptr, %245 r: ptr, %246 v: ptr, %247 xs: ptr):
-    %248 r: ptr = $secret_wrap(%236)
-    %249 lit: bool = const true
-    call import_key#4(%246, %245, %247, %249, %248) -> b27(%237, %238, %239, %240, %241, %242, %243, %244)
-  b27(%250 r: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 hash: ptr, %255 id: i64, %256 result: ptr, %257 data: ptr, %258 signature: ptr):
-    %263 tag: i64 = tag %250 ctor std::result::Result
-    switch %263 0 => b29(%251, %252, %253, %254, %255, %256, %257, %258, %250) 1 => b30(%251, %252, %253, %254, %255, %256, %257, %258, %250)
-  b28(%259 v: word, %260 xs: ptr, %261 n: i64, %262 i: i64):
-    drop %259
-    jump b23(%260, %261, %262)
-  b29(%264 xs: ptr, %265 n: i64, %266 i: i64, %267 hash: ptr, %268 id: i64, %269 result: ptr, %270 data: ptr, %271 signature: ptr, %272 r: ptr):
-    %282 p: word = proj %272.0 std::result::Result.Ok
-    drop %272
-    %283 s: ptr = show %267
-    drop %267
-    %284 lit: ptr = const str 30
-    %285 s: ptr = concat %283, %284
-    drop %284
-    %286 s: ptr = show %268
-    %287 s: ptr = concat %285, %286
-    drop %286
-    %288 lit: ptr = const str 26
-    %289 s: ptr = concat %287, %288
-    drop %288
-    %290 s: ptr = show %269
+  b23(%205 xs: ptr, %206 n: i64, %207 i: i64):
+    %208 lit: i64 = const 1
+    %209 i: i64 = intadd %207, %208
+    jump b20(%209, %205, %206)
+  b24(%210 hash: ptr, %211 id: i64, %212 result: ptr, %213 spki: ptr, %214 data: ptr, %215 signature: ptr, %216 xs: ptr, %217 n: i64, %218 i: i64):
+    %345 hash.lent: ref = lend %210
+    call digest#103(%345) -> b25(%216, %217, %218, %210, %211, %212, %213, %214, %215)
+  b25(%219 r: ptr, %220 xs: ptr, %221 n: i64, %222 i: i64, %223 hash: ptr, %224 id: i64, %225 result: ptr, %226 spki: ptr, %227 data: ptr, %228 signature: ptr):
+    %229 r: ptr = alloc std::crypto::Algorithm.RsaPss(%219)
+    %230 v: ptr = const static std::crypto::KeyFormat.Spki
+    %231 v: ptr = const static std::crypto::Usage.Verify
+    %232 xs: ptr = alloc list(%231)
+    call unhex#3(%226) -> b26(%220, %221, %222, %223, %224, %225, %227, %228, %229, %230, %232)
+  b26(%233 r: ptr, %234 xs: ptr, %235 n: i64, %236 i: i64, %237 hash: ptr, %238 id: i64, %239 result: ptr, %240 data: ptr, %241 signature: ptr, %242 r: ptr, %243 v: ptr, %244 xs: ptr):
+    %245 r: ptr = $secret_wrap(%233)
+    %246 lit: bool = const true
+    call import_key#4(%243, %242, %244, %246, %245) -> b27(%234, %235, %236, %237, %238, %239, %240, %241)
+  b27(%247 r: ptr, %248 xs: ptr, %249 n: i64, %250 i: i64, %251 hash: ptr, %252 id: i64, %253 result: ptr, %254 data: ptr, %255 signature: ptr):
+    %260 tag: i64 = tag %247 ctor std::result::Result
+    switch %260 0 => b29(%248, %249, %250, %251, %252, %253, %254, %255, %247) 1 => b30(%248, %249, %250, %251, %252, %253, %254, %255, %247)
+  b28(%256 v: word, %257 xs: ptr, %258 n: i64, %259 i: i64):
+    drop %256
+    jump b23(%257, %258, %259)
+  b29(%261 xs: ptr, %262 n: i64, %263 i: i64, %264 hash: ptr, %265 id: i64, %266 result: ptr, %267 data: ptr, %268 signature: ptr, %269 r: ptr):
+    %279 p: word = proj %269.0 std::result::Result.Ok
     drop %269
-    %291 s: ptr = concat %289, %290
-    drop %290
-    %292 lit: ptr = const str 26
-    %293 s: ptr = concat %291, %292
-    drop %292
-    call unhex#3(%271) -> b31(%264, %265, %266, %270, %282, %293)
-  b30(%273 xs: ptr, %274 n: i64, %275 i: i64, %276 hash: ptr, %277 id: i64, %278 result: ptr, %279 data: ptr, %280 signature: ptr, %281 r: ptr):
-    drop %278
-    drop %279
-    drop %280
-    %321 p: word = proj %281.0 std::result::Result.Err
+    %280 s: ptr = show %264
+    drop %264
+    %281 lit: ptr = const str 30
+    %282 s: ptr = concat %280, %281
     drop %281
-    %322 s: ptr = show %276
+    %283 s: ptr = show %265
+    %284 s: ptr = concat %282, %283
+    drop %283
+    %285 lit: ptr = const str 26
+    %286 s: ptr = concat %284, %285
+    drop %285
+    %287 s: ptr = show %266
+    drop %266
+    %288 s: ptr = concat %286, %287
+    drop %287
+    %289 lit: ptr = const str 26
+    %290 s: ptr = concat %288, %289
+    drop %289
+    call unhex#3(%268) -> b31(%261, %262, %263, %267, %279, %290)
+  b30(%270 xs: ptr, %271 n: i64, %272 i: i64, %273 hash: ptr, %274 id: i64, %275 result: ptr, %276 data: ptr, %277 signature: ptr, %278 r: ptr):
+    drop %275
     drop %276
-    %323 lit: ptr = const str 30
-    %324 s: ptr = concat %322, %323
-    drop %323
-    %325 s: ptr = show %277
-    %326 s: ptr = concat %324, %325
-    drop %325
-    %327 lit: ptr = const str 26
-    %328 s: ptr = concat %326, %327
-    drop %327
-    %329 s: ptr = show %321
-    drop %321
-    %330 s: ptr = concat %328, %329
-    drop %329
-    perform std::console::Console.print(%330) -> b35(%273, %274, %275)
-  b31(%294 r: ptr, %295 xs: ptr, %296 n: i64, %297 i: i64, %298 data: ptr, %299 p: ptr, %300 s: ptr):
-    call unhex#3(%298) -> b32(%295, %296, %297, %299, %300, %294)
-  b32(%301 r: ptr, %302 xs: ptr, %303 n: i64, %304 i: i64, %305 p: ptr, %306 s: ptr, %307 r: ptr):
-    %308 $site: i64 = const 10
-    call verify#5(%305, %307, %301, %308) -> b33(%302, %303, %304, %306)
-  b33(%309 r: bool, %310 xs: ptr, %311 n: i64, %312 i: i64, %313 s: ptr):
-    %314 s: ptr = show %309
-    %315 s: ptr = concat %313, %314
-    drop %314
-    perform std::console::Console.print(%315) -> b34(%310, %311, %312)
-  b34(%316 r: unit, %317 xs: ptr, %318 n: i64, %319 i: i64):
-    %320 box: word = box %316
-    jump b28(%320, %317, %318, %319)
-  b35(%331 r: unit, %332 xs: ptr, %333 n: i64, %334 i: i64):
-    %335 box: word = box %331
-    jump b28(%335, %332, %333, %334)
+    drop %277
+    %318 p: word = proj %278.0 std::result::Result.Err
+    drop %278
+    %319 s: ptr = show %273
+    drop %273
+    %320 lit: ptr = const str 30
+    %321 s: ptr = concat %319, %320
+    drop %320
+    %322 s: ptr = show %274
+    %323 s: ptr = concat %321, %322
+    drop %322
+    %324 lit: ptr = const str 26
+    %325 s: ptr = concat %323, %324
+    drop %324
+    %326 s: ptr = show %318
+    drop %318
+    %327 s: ptr = concat %325, %326
+    drop %326
+    perform std::console::Console.print(%327) -> b35(%270, %271, %272)
+  b31(%291 r: ptr, %292 xs: ptr, %293 n: i64, %294 i: i64, %295 data: ptr, %296 p: ptr, %297 s: ptr):
+    call unhex#3(%295) -> b32(%292, %293, %294, %296, %297, %291)
+  b32(%298 r: ptr, %299 xs: ptr, %300 n: i64, %301 i: i64, %302 p: ptr, %303 s: ptr, %304 r: ptr):
+    %305 $site: i64 = const 10
+    call verify#5(%302, %304, %298, %305) -> b33(%299, %300, %301, %303)
+  b33(%306 r: bool, %307 xs: ptr, %308 n: i64, %309 i: i64, %310 s: ptr):
+    %311 s: ptr = show %306
+    %312 s: ptr = concat %310, %311
+    drop %311
+    perform std::console::Console.print(%312) -> b34(%307, %308, %309)
+  b34(%313 r: unit, %314 xs: ptr, %315 n: i64, %316 i: i64):
+    %317 box: word = box %313
+    jump b28(%317, %314, %315, %316)
+  b35(%328 r: unit, %329 xs: ptr, %330 n: i64, %331 i: i64):
+    %332 box: word = box %328
+    jump b28(%332, %329, %330, %331)
 
 fn $entry#1 top -> unit ; main::crypto_rsa_pss_vectors, frame 1 slots [%1 bool]
   b0():

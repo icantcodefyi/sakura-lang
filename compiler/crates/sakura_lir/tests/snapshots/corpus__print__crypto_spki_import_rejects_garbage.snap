@@ -26,9 +26,7 @@ layout 20 shape |  32b (word*, word*)
 layout 21 shape |  32b (i64, word*)
 layout 22 shape |  24b (i64)
 layout 23 shape |  56b (word*, word*, word*, word*, word*)
-layout 24 shape |  40b (word*, word*, word*)
-layout 25 shape |  32b (bool, word*)
-layout 26 shape |  40b (i64, i64, i64)
+layout 24 shape |  40b (i64, i64, i64)
 
 fn main#0 pub top -> unit ; main::crypto_spki_import_rejects_garbage, frame 197 slots [%3 word*, %4 word*, %9 word*, %10 word*, %13 word*, %14 word*, %21 word*, %22 word*, %23 word*, %24 i64, %40 word*, %41 word*, %42 word*, %43 i64, %44 word*, %52 word*, %53 word*, %54 word*, %55 i64, %56 word*, %59 word*, %60 word*, %61 word*, %62 i64, %63 word*, %70 word*, %71 word*, %72 word*, %73 i64, %74 word*, %75 word*, %76 word*, %167 word*, %168 word*, %169 word*, %170 word*, %171 word*, %172 word*, %173 word*, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 word*, %182 word*, %183 word*, %184 word*, %185 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 word*, %193 word*, %194 word*, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %201 word*, %202 word*, %203 word*, %204 word*, %205 word*, %206 word*, %215 word*, %216 word*, %217 word*, %218 word*, %219 word*, %220 word*, %221 word*, %222 word*, %223 word*, %224 word*, %225 word*, %226 word*, %227 word*, %228 word*, %229 word*, %230 word*, %231 word*, %232 word*, %233 word*, %234 word*, %247 word*, %248 word*, %249 word*, %250 word*, %251 word*, %252 word*, %253 word*, %254 word*, %255 word*, %256 word*, %257 word*, %258 word*, %259 word*, %260 word*, %261 word*, %262 word*, %263 word*, %264 word*, %265 word*, %266 word*, %267 word*, %270 word*, %271 word*, %272 word*, %273 word*, %274 word*, %275 word*, %276 word*, %277 word*, %278 word*, %279 word*, %280 word*, %281 word*, %282 word*, %283 word*, %284 word*, %285 word*, %286 word*, %287 word*, %288 word*, %289 word*, %290 word*, %299 word*, %300 word*, %301 word*, %302 word*, %303 word*, %304 word*, %305 word*, %306 word*, %307 word*, %308 word*, %309 word*, %310 word*, %311 word*, %312 word*, %313 word*, %314 word*, %315 word*, %316 word*, %317 word*, %318 word*, %319 word*, %320 word*, %325 word*, %326 word*, %327 word*, %328 word*, %329 word*, %330 word*, %331 word*, %332 word*, %333 word*, %334 word*, %335 word*, %336 word*, %337 word*, %338 word*, %339 word*, %340 word*, %341 word*, %342 word*, %343 word*, %344 word*, %345 word*, %346 word*, %378 word*, %379 word*, %380 i64, %381 i64, %382 word*, %387 word*, %388 word*, %389 i64, %390 i64, %391 word*, %394 bool, %395 word*, %396 i64, %397 i64, %410 word*, %411 word*, %412 word*, %413 i64, %414 word*, %420 word*, %421 word*]
   b0():
@@ -413,7 +411,7 @@ fn main$1#10 lambda -> word ; main::crypto_spki_import_rejects_garbage, captures
   b0(%0 env: ptr, %1 k: word):
     drop %0
     %7 k.lent: ref = lend %1
-    call kind#122(%7) -> b1(%1)
+    call kind#123(%7) -> b1(%1)
   b1(%2 r: ptr, %3 k: ptr):
     call usages#12(%3) -> b2(%2)
   b2(%4 r: ptr, %5 r: ptr):
