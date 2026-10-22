@@ -9,6 +9,7 @@ const LINE = [
   "1.0.0-beta.3",
   "1.0.0-beta.4",
   "1.0.0-beta.5",
+  "1.0.0-beta.6",
   "1.0.0",
 ] as const;
 export type Version = (typeof LINE)[number];

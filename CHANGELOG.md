@@ -7,6 +7,43 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0-beta.6] - 2026-10-23
+
+A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
+1.0.0, and every breaking change until then is listed here with a migration. This section
+collects everything since `v1.0.0-beta.5` (design §17.310 (5)); it is dated at the preparation
+commit, and `v1.0.0` is cut from it (road-to-1.0 §7, design §17.312). The Rust MSRV is
+unchanged (1.99). The WASM runtime ABI is **1.19.0**. `--target native` and packages are
+experimental, outside every compatibility promise ([STABILITY](STABILITY.md)).
+
+### Migration from v1.0.0-beta.5
+
+Every behaviour change below, in the order a program meets it; the entries carry the details.
+Nothing is breaking for a program without `[dependencies]` that ships its WASM host and module
+from one release.
+
+1. **`[dependencies]` is read** (Added and Changed, packages experimental, RFC 0003): a
+   `sakura.toml` whose `[dependencies]` table is empty, or whose entries are all `version` or
+   `path` entries, compiles instead of being refused with `V8005`; only a `git` entry is still
+   `V8005`. A malformed entry is the new `V8030`, and `[package]` accepts `sakura`, `effects`,
+   `description`, `license`, `repository` and `keywords`. With `path` dependencies and no lock
+   (or a `version = 1` one), `check`, `build`, `run`, `test` and the other project commands
+   write a `version = 2` `sakura.lock`. `sakura new` and `init` write `version = 2`; a
+   `version = 1` lock still reads as a lock with no packages. A project without
+   `[dependencies]` builds as before.
+2. **`V1002` offers `import std/path.{Path}` for `Path.of(..)`** (Fixed): where beta.5 offered
+   `import std/http.{Matcher}` (a constructor of the same name), `check` and `fix` now offer the
+   std module that exports the name as a type or function, and offer no fix when several do.
+   The code and JSON fields are unchanged.
+3. **A native `main` or worker that declares `WebSocket` runs** (Added, experimental with the
+   target): beta.5 exited 75 ("`WebSocket` is not available on target `native`").
+4. **The WASM runtime ABI is 1.19.0** (Security): a 1.18 host (`sakura_wasm_host.js` from
+   beta.5 or earlier) refuses a module built by beta.6. Ship the host and the module from the
+   same release; a 1.19 host still loads older modules. No program's output changes.
+5. **The MCP `check_patch` tool's `interface_delta` entries gain `effects`, `errors` and
+   `schema`** (Added, packages P4): the keys are optional and additive, and a change to a
+   private alias or type that a public item names now shows in `changed`.
+
 ### Added
 
 - **Benchmark suites the community already reads** (`bench/README.md`, "Community suites"): 8
@@ -2414,7 +2451,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.5...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.6...HEAD
+[1.0.0-beta.6]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.5...v1.0.0-beta.6
 [1.0.0-beta.5]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.4...v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...v1.0.0-beta.4
 [1.0.0-beta.3]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.2...v1.0.0-beta.3
