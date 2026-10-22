@@ -62,14 +62,40 @@ explains (a program allocating without bound within the reference evaluator's st
 | 2026-10-21 | `472dea56e094` | sanitizers (miri, asan, memcheck) | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | — | 1351 | — | — | none |
 | 2026-10-21 | `5b1f9430763e` | `parse` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 8 | 8703 | 19.3 | 108,681 | none |
 | 2026-10-21 | `a3e540779ac2` | `row_unify` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 12 | 5792 | 19.3 | 1,420 | none |
+| 2026-10-21 | `48b6fee9d1ba` | `exec` | github ubuntu-latest run 39687371934 | 1 | 2707 | 0.8 | 1,574 | limit-hit |
+| 2026-10-21 | `48b6fee9d1ba` | `fmt_idempotent` | github ubuntu-latest run 39687371934 | 1 | 5545 | 1.5 | 5,174 | #10 |
+| 2026-10-21 | `48b6fee9d1ba` | `lir` | github ubuntu-latest run 39687371934 | 1 | 2602 | 0.7 | 4,417 | none |
+| 2026-10-21 | `48b6fee9d1ba` | `vc` | github ubuntu-latest run 39687371934 | 1 | 4518 | 1.3 | 5,488 | none |
+| 2026-10-21 | `48b6fee9d1ba` | `check` | github ubuntu-latest run 39687371934 | 1 | 6715 | 1.9 | 6,466 | none |
+| 2026-10-21 | `48b6fee9d1ba` | `parse` | github ubuntu-latest run 39687371934 | 1 | 20401 | 5.7 | 4,989 | none |
+| 2026-10-21 | `48b6fee9d1ba` | `row_unify` | github ubuntu-latest run 39687371934 | 1 | 20401 | 5.7 | 102 | none |
+| 2026-10-21 | `a3e540779ac2` | `check` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 11612 | 19.3 | 14,407 | none |
+| 2026-10-22 | `a3e540779ac2` | `lir` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 11653 | 18.5 | 10,346 | none |
+| 2026-10-22 | `40af20ce0960` | `fmt_idempotent` | github ubuntu-latest run 39721807267 | 1 | 1197 | 0.3 | 5,351 | #11 |
+| 2026-10-22 | `40af20ce0960` | `exec` | github ubuntu-latest run 39721807267 | 1 | 2035 | 0.6 | 1,703 | limit-hit |
+| 2026-10-22 | `40af20ce0960` | `vc` | github ubuntu-latest run 39721807267 | 1 | 2510 | 0.7 | 5,519 | none |
+| 2026-10-22 | `40af20ce0960` | `lir` | github ubuntu-latest run 39721807267 | 1 | 3811 | 1.1 | 4,991 | none |
+| 2026-10-22 | `40af20ce0960` | `check` | github ubuntu-latest run 39721807267 | 1 | 5247 | 1.5 | 6,738 | none |
+| 2026-10-22 | `40af20ce0960` | `parse` | github ubuntu-latest run 39721807267 | 1 | 20401 | 5.7 | 5,389 | none |
+| 2026-10-22 | `40af20ce0960` | `row_unify` | github ubuntu-latest run 39721807267 | 1 | 20401 | 5.7 | 110 | none |
+| 2026-10-22 | `523cb84957e5` | `vc` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 6 | 10401 | 12.1 | 11,964 | none |
+| 2026-10-22 | `5224d902e369` | `fmt_idempotent` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 8 | 8707 | 19.3 | 116,960 | none |
+| 2026-10-22 | `5224d902e369` | `exec` | windows-wsl2 (AMD Ryzen 5 7500F, 12 cores) | 4 | 1980 | 2.2 | 2,452 | #13, limit-hit |
 
-Totals (CPU-h, rows at or after `611dae4f`): parse 25.0 · check 3.8 · fmt_idempotent 0.5 · row_unify 25.0 · lir 1.9 · vc 2.2 · exec 0.1.
+Totals (CPU-h, rows at or after `611dae4f`): parse 36.3 · check 26.5 · fmt_idempotent 21.7 · row_unify 36.3 · lir 22.3 · vc 16.3 · exec 3.6.
 
 The `check`, `lir` and `vc` rows of run 39637860914 each ended at one `oom-` artefact after two
 to four hours: the job's RSS had grown to 2 GiB around a live heap of about 300 MiB, and each
 input alone runs in under 5 s and 0.9 GiB on `main` of 2026-10-21, so they are stale (not findings). The
-local rows from `check` on run their workers' time as four shorter jobs each
-(`-jobs=4×workers`), which restarts a process before its RSS grows that far.
+local rows from `check` on run their workers' time as shorter jobs (`-jobs=k×workers`), which
+restarts a process before its RSS grows that far; their CPU-h sums the jobs' own `Done … in S
+second(s)` lines, so a job that stopped at an artefact adds nothing. The same holds for the
+`oom-` artefacts of runs 39687371934 and 39721807267 and of the local `lir` and `vc` rows (each
+input alone: under 5 s and 0.9 GiB), and for five local `vc` and two local `exec` `timeout-`
+artefacts written while the host was saturated (each input alone: under 5 s). The `exec` rows'
+`limit-hit` artefacts are `List.push` recursions that copy without bound. A crash ends a
+`-jobs` run: the local `exec` row at `5224d902e369` counts its four workers up to the #13
+divergence (1980 s), and its later hours are at or after the fix.
 
 CI's `fuzz-build` job (`.github/workflows/ci.yml`) runs `cargo build --locked` on this crate
 for every push and pull request that touches `compiler/Cargo.lock` or `compiler/fuzz/**`, so a
