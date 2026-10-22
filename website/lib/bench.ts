@@ -68,7 +68,7 @@ const nativePorts = read<Run>("results", NATIVE_PORTS);
 if (nativePorts.meta.host.id !== HOST) throw new Error("the native ports were counted elsewhere");
 // Wall time of the same programs on a GitHub-hosted runner (bench.yml, mode native): the time
 // anyone can reproduce. Its run id is in the file name; none until the first run finishes.
-const HOSTED = undefined as string | undefined;
+const HOSTED = "2026-10-22-8ad07545-hosted-39810593780-native.json" as string | undefined;
 const hosted = HOSTED ? read<Run>("results", HOSTED) : undefined;
 const compile = evidence<Run>("compile");
 const envelope = evidence<Envelope>("envelope");
@@ -885,7 +885,9 @@ const spreadOf = (c: Cell) => {
   return xs.length ? (Math.max(...xs) - Math.min(...xs)) / median(xs) : 0;
 };
 const msWithSpread = (c?: Cell) =>
-  c?.median_ms == null ? DASH : `${ms(c.median_ms)} ±${Math.round((spreadOf(c) * 100) / 2)}%`;
+  c?.median_ms == null
+    ? DASH
+    : `${c.median_ms < 1 ? c.median_ms.toPrecision(2) : ms(c.median_ms)} ±${Math.round((spreadOf(c) * 100) / 2)}%`;
 export const hostedRun = hosted && {
   id: HOSTED!.match(/hosted-(\d+)/)![1],
   url: `${site.github}/actions/runs/${HOSTED!.match(/hosted-(\d+)/)![1]}`,
@@ -942,7 +944,7 @@ function nativeTimeTable(): Table {
       msWithSpread(get(hostedCells, p, "sakura", "native", n)),
       ...NATIVE_LANGUAGES.map(([lang]) => msWithSpread(get(hostedCells, p, lang, "native", n))),
     ]),
-    summary: `Milliseconds per call at the largest size: the median of ${hosted.meta.flags.processes} fresh processes, ± half their range. Typical (geometric mean over the families), Sakura's time over: ${hostedTypical.map((r) => `${r.name} ${factor(r.typical!)}`).join(", ")}. Measured on a GitHub-hosted ${hosted.meta.host.cpu} runner, which other jobs may share, so expect a few percent of noise.`,
+    summary: `Milliseconds per call at the largest size: the median of ${hosted.meta.flags.processes} fresh processes, ± half their range. Typical (geometric mean over the families), Sakura's time over: ${hostedTypical.map((r) => `${r.name} ${factor(r.typical!)}`).join(", ")}. Measured on a GitHub-hosted ${hosted.meta.host.cpu} runner, a shared virtual machine: its processes spread a median ${Math.round(median(hosted.results.filter((c) => c.process_medians_ms?.length).map(spreadOf)) * 100)}% per cell, so read small differences as noise. The counts above are the steadier comparison.`,
   };
 }
 

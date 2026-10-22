@@ -397,3 +397,14 @@ cause row M names above; this run adds no new cause.
 Both this run and the beta.5 baseline predate `f6be3c1d` (`text()` checks UTF-8 once per builtin
 call), so their native `tokenizer` and `json_validate` cells, and every ratio against them, are the
 superlinear ones; the website says so, and the next preparation commit's counted run reads the fix.
+
+**Wall time on a hosted runner** (bench.yml `mode=native`, run 39810593780, `8ad07545`: `49c49e2a`
+plus the harness's `--color never` fix; GitHub `macos-latest`, Apple M1 (Virtual), `--stable`, five
+fresh processes per cell; all 609 cells and every oracle green; the runner's rustc was 1.99.0, not
+the pinned 1.99.1). Sakura native time ÷ each language, geometric mean over the families: C 82.0×,
+Rust 19.8×, Go 11.6×, OCaml 7.4×, Koka 3.8×. Faster in time than: Rust, Go, OCaml and Koka on
+`tail_clique` (9.9 ms against 15.4, 15.9, 11.6, 18.4), OCaml on `handled_d1`, `d4` and `d16`, Koka
+on `map_set` and, within noise, `nbody`. A shared virtual machine: process medians spread a median
+20% per cell (90th percentile 52%), so a time ratio is direction; the counts are the comparison.
+`results/2026-10-22-8ad07545-hosted-39810593780-native.json`; the website's time table reads it.
+
