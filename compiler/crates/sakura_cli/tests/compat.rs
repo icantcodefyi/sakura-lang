@@ -181,6 +181,9 @@ fn semantics_on(
     if out.timed_out {
         return Err(format!("`sakura {mode}` timed out"));
     }
+    if backends(d).is_some_and(|listed| !listed.contains(&backend)) {
+        return excluded_on(path, backend, &out, &trace);
+    }
     let want = expectation(path, d, backend);
     if out.code != Some(want.exit) {
         return Err(format!(
@@ -204,6 +207,49 @@ fn semantics_on(
                 "stdout differs from {}\n--- expected\n{expected}\n--- actual\n{}",
                 want.stdout.display(),
                 out.stdout
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// A backend the fixture's `// backends:` leaves out, as common's [`excluded`] reads it but with
+/// compat's contract: its own `<name>.<backend>.stdout` and exit 0 when the release has one, else
+/// exit 70 after a prefix of `.stdout` with the defect codes of `<name>.<backend>.jsonl` (not
+/// their messages) on stderr or in the trace.
+fn excluded_on(path: &Path, backend: &str, out: &Output, trace: &Path) -> Result<(), String> {
+    let own = path.with_extension(format!("{backend}.stdout"));
+    let want_exit = if own.exists() { 0 } else { 70 };
+    if out.code != Some(want_exit) {
+        return Err(format!(
+            "exited {:?}, expected {want_exit} (not in `// backends:`)\nstdout:\n{}\nstderr:\n{}",
+            out.code, out.stdout, out.stderr
+        ));
+    }
+    if own.exists() {
+        return compare_file(&own, &out.stdout);
+    }
+    let prefix = std::fs::read_to_string(path.with_extension("stdout")).unwrap_or_default();
+    if !prefix.starts_with(&out.stdout) {
+        return Err(format!(
+            "stdout is not a prefix of .stdout:\n{}",
+            out.stdout
+        ));
+    }
+    let jsonl = std::fs::read_to_string(path.with_extension(format!("{backend}.jsonl")))
+        .unwrap_or_default();
+    let traced = trace_defects(&std::fs::read_to_string(trace).unwrap_or_default());
+    let codes = (jsonl.lines().filter(|l| l.contains("\"kind\":\"defect\""))).filter_map(|l| {
+        let at = l.find("\"code\":\"")? + 8;
+        l.get(at..at + 4)
+    });
+    for code in codes {
+        if !out.stderr.contains(&format!("\"code\":\"{code}\""))
+            && !traced.iter().any(|t| t == code)
+        {
+            return Err(format!(
+                "expected defect {code} on stderr or in the trace:\n{}",
+                out.stderr
             ));
         }
     }
