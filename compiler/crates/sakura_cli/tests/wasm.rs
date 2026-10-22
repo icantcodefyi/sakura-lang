@@ -591,14 +591,19 @@ fn sql_sqlite_opens_on_first_use_on_wasm_as_on_js() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// `GET path` (with `x-name: ann`) on `port`: the status code and the body.
+/// `/names`'s answer to `http_get`'s request: sorted lowercase names and the `Headers` view.
+#[cfg(unix)]
+const NAMES: &str = "200 [\"connection\", \"host\", \"x-name\"] \
+    Ok([(\"connection\", \"close\"), (\"host\", \"127.0.0.1\"), (\"x-name\", \"ann\")])";
+
+/// `GET path` (with `X-Name: ann`, names in mixed case) on `port`: the status code and the body.
 #[cfg(unix)]
 fn http_get(port: u16, path: &str) -> String {
     use std::io::{Read, Write};
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
     write!(
         s,
-        "GET {path} HTTP/1.1\r\nhost: 127.0.0.1\r\nx-name: ann\r\nconnection: close\r\n\r\n"
+        "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Name: ann\r\nConnection: close\r\n\r\n"
     )
     .unwrap();
     let mut out = String::new();
@@ -640,12 +645,13 @@ fn serve_host_answers_on_wasm_as_on_js() {
         std::fs::write(
             dir.join("src/main.sak"),
             format!(
-                "import std/request.{{Request}}\nimport std/response.{{Response}}\n\
-                 import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
+                "import std/headers.{{Headers}}\nimport std/request.{{Request}}\n\
+                 import std/response.{{Response}}\nimport std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
                  pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
                  \x20 let router = Router.new()\n\
                  \x20   .get(\"/hi\", fn(req) {{ Response.status(200, \"hello {{Request.header(req, \"x-name\")}}\") }})\n\
                  \x20   .get(\"/boom\", fn(_req) {{ Response.status(200, List.first([]).expect(\"boom\")) }})\n\
+                 \x20   .get(\"/names\", fn(req) {{ Response.status(200, \"{{List.sort(List.map(req.headers, fn(h) {{ h.0 }}))}} {{Headers.of(req.headers).map(fn(h) {{ Headers.entries(h) }})}}\") }})\n\
                  \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
             ),
         )
@@ -676,7 +682,7 @@ fn serve_host_answers_on_wasm_as_on_js() {
             );
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
-        let got: Vec<String> = ["/hi", "/boom", "/hi", "/missing"]
+        let got: Vec<String> = ["/hi", "/boom", "/hi", "/missing", "/names"]
             .iter()
             .map(|p| http_get(port, p))
             .collect();
@@ -696,6 +702,9 @@ fn serve_host_answers_on_wasm_as_on_js() {
     }
     assert_eq!(answers[0].0[0], "200 hello Some(\"ann\")");
     assert_eq!(answers[0].0[1], "500 internal error");
+    // Served names are lowercase on every host (design §17.309 (1c)); sorted, since the
+    // list's order is not a contract.
+    assert_eq!(answers[0].0[4], NAMES);
     assert_eq!(answers[0].1, ["\"code\":\"D030\""]);
     assert_eq!(answers[1], answers[0]);
     let _ = std::fs::remove_dir_all(&dir);

@@ -98,6 +98,11 @@ retains earlier implementation history.
 
 ### Changed
 
+- **A served `Request.headers` names each header in ASCII lowercase on JS and WASM** (design
+  §17.309 (1c)), as native already did: the JS host passed Node's raw spelling through. A
+  program that matched a served name case-sensitively matched the client's spelling and now
+  matches the lowercase one; `Request.header` and `Headers` already compared names lowercased
+  and are unchanged. The list's order stays unspecified on every host.
 - **`borrow_candidates` counts every managed type** (WASM and native counters, ABI 1.17.0
   §10): a `Dup` is marked when the reference stays live after a builtin argument the runtime
   only reads or a parameter a direct def never consumes, now for strings, records and every

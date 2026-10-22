@@ -5872,7 +5872,9 @@ export function serveHttp(addr, run) {
     const tag = methods.indexOf(req.method);
     if (tag < 0) return plain(send, 405, "method not allowed");
     const headers = [];
-    for (let i = 0; i < req.rawHeaders.length; i += 2) headers.push([req.rawHeaders[i], req.rawHeaders[i + 1]]);
+    // Names lowercased as `hyper` gives them on native (design §17.309 (1c)).
+    for (let i = 0; i < req.rawHeaders.length; i += 2)
+      headers.push([asciiLower(req.rawHeaders[i]), req.rawHeaders[i + 1]]);
     const body = payloadOf(new Uint8Array(Buffer.concat(chunks)));
     const follow = variant("std::request::Redirect", 0, []);
     const value = new Request(new Method(tag, []), req.url, list(headers), body, follow, list([]), list([]));

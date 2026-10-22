@@ -1177,8 +1177,8 @@ fn http_send(port: u16, method: &str, path: &str, body: &str) -> String {
     let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
     write!(
         s,
-        "{method} {path} HTTP/1.1\r\nhost: 127.0.0.1\r\nx-name: ann\r\ncontent-length: {}\r\n\
-         connection: close\r\n\r\n{body}",
+        "{method} {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Name: ann\r\nContent-Length: {}\r\n\
+         Connection: close\r\n\r\n{body}",
         body.len()
     )
     .unwrap();
@@ -1360,7 +1360,8 @@ fn native_serve_answers_as_wasm_does() {
     std::fs::write(
         dir.join("src/main.sak"),
         format!(
-            "import std/request.{{Bytes, Request}}\nimport std/response.{{Response}}\n\
+            "import std/headers.{{Headers}}\nimport std/request.{{Bytes, Request}}\n\
+             import std/response.{{Response}}\n\
              import std/router.{{Router}}\nimport std/serve.{{Address, Serve, ServeError}}\n\n\
              pub fn main() -> Unit ! {{Console, Serve, Fail<ServeError>}} {{\n\
              \x20 let router = Router.new()\n\
@@ -1371,6 +1372,7 @@ fn native_serve_answers_as_wasm_does() {
              \x20     Response.status(200, \"{{n}}\")\n\
              \x20   }})\n\
              \x20   .get(\"/big\", fn(_req) {{ Response.status(200, String.repeat(\"y\", 2048)) }})\n\
+             \x20   .get(\"/names\", fn(req) {{ Response.status(200, \"{{List.sort(List.map(req.headers, fn(h) {{ h.0 }}))}} {{Headers.of(req.headers).map(fn(h) {{ Headers.entries(h) }})}}\") }})\n\
              \x20 Serve.listen(router, Address.of(\"127.0.0.1\", {port}))\n}}\n"
         ),
     )
@@ -1421,6 +1423,7 @@ fn native_serve_answers_as_wasm_does() {
         http_send(port, "POST", "/echo", "small"),
         http_send(port, "GET", "/big", ""),
         http_send(port, "GET", "/hi", ""),
+        http_send(port, "GET", "/names", ""),
     ]
     .map(|a| a.replace(&"y".repeat(2048), "y*2048"));
     let alive = child.try_wait().unwrap().is_none();
@@ -1448,6 +1451,10 @@ fn native_serve_answers_as_wasm_does() {
             "200 true 5",
             "500 true internal error",
             "200 true hello Some(\"ann\")",
+            // Lowercase names as on JS and WASM (design §17.309 (1c), `wasm.rs`'s `NAMES`).
+            "200 true [\"connection\", \"content-length\", \"host\", \"x-name\"] \
+             Ok([(\"connection\", \"close\"), (\"content-length\", \"0\"), \
+             (\"host\", \"127.0.0.1\"), (\"x-name\", \"ann\")])",
         ],
         "{stderr}"
     );
