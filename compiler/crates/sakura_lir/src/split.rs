@@ -14,7 +14,8 @@
 //! [`ENTRIES`] blocks are entered from the blocks placed so far (so no loop is cut and no code
 //! is copied more than that many times), and none of them has an open `with` or `try` region (a
 //! new function starts with none) or an execution-state id parameter (ABI §7: never a call
-//! argument) or a reuse token. A function with no such place stays whole.
+//! argument), a reuse token or a parameter whose shape a reset relies on. A function with no
+//! such place stays whole.
 
 use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
@@ -114,11 +115,15 @@ fn parts(f: &Func, piece: usize) -> Option<(Vec<usize>, Vec<BlockId>)> {
         }
     }
     // A reuse token is never a call argument either (`crate::reuse`), and a borrowed word
-    // crosses only calls of borrowed variants (`crate::borrow`).
+    // crosses only calls of borrowed variants (`crate::borrow`). A parameter whose shape its one
+    // predecessor projected (`reuse::entry_shapes`) may be reset there, and a function entry
+    // knows no shape, so that block is not entered either.
     let tokens = crate::reuse::token_params(f);
-    let enterable = |b: usize| {
-        let b = &f.blocks[b];
+    let shapes = crate::reuse::entry_shapes(f);
+    let enterable = |i: usize| {
+        let b = &f.blocks[i];
         b.regions.is_empty()
+            && shapes[i].is_empty()
             && b.params
                 .iter()
                 .all(|&v| !matches!(f.repr(v), Repr::Id | Repr::Ref) && !tokens.contains_key(&v))
