@@ -83,8 +83,9 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean;
-`sakura test` 24/24 on js and 24/24 on `--target wasm`, the usage line unchanged.
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 24/24 on js and 24/24 on
+`--target wasm`, the usage line unchanged.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -112,9 +113,10 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
-test` 24/24 on js and 24/24 on `--target wasm`. A js build writes no `__entries__.js`: `main` is the
-root module's only `pub fn`.
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 24/24 on js and 24/24 on
+`--target wasm`. A js build writes no `__entries__.js`: `main` is the root module's only `pub
+fn`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -146,13 +148,14 @@ Predicted diff: **none required**; possibly one `W8001` warning in a test, which
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
-warnings); `sakura fmt --check` clean; `sakura test` 24/24 on js and 24/24 on `--target
-wasm`. Native was not run (item 8; outside the round).
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura
+check` no problems (no `W8001`; `check --json` counts 0 warnings); `sakura fmt --check` clean;
+`sakura test` 24/24 on js and 24/24 on `--target wasm`. Native was not run (item 8; outside the
+round).
 
-**No hunk needed.** The prediction allowed one possible `W8001` in a test; none was reported, so
-the test's `hundred` (a `List.map` result) is not warned about, as the entry's "a call result
-is never warned about" reads. Migration-list gaps: none.
+**No hunk needed.** The prediction allowed one possible `W8001` in a test; none was reported,
+so the test's `hundred` (a `List.map` result) is not warned about, as the entry's "a call
+result is never warned about" reads. Migration-list gaps: none.
 
 ## v1.0.0-beta.4 → v1.0.0-beta.5
 
@@ -183,9 +186,9 @@ Predicted diff: **none required**; the header's provenance line.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0 warnings); `sakura fmt --check` clean; `sakura test`
-24/24 on js and 24/24 on `--target wasm`. Native was not run (item 3; outside the
-round).
+`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0
+warnings); `sakura fmt --check` clean; `sakura test` 24/24 on js and 24/24 on `--target wasm`.
+Native was not run (item 3; outside the round).
 
 | Hunk | Required? | Predicted by the list? |
 | ---- | --------- | ---------------------- |

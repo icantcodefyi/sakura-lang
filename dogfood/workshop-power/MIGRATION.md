@@ -105,8 +105,9 @@ Predicted diff: none in the source; the verify gate re-read with the same counts
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
-test` 28/28 on js and 28/28 on `--target wasm`.
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 28/28 on js and 28/28 on
+`--target wasm`.
 
 Verification gate, `sakura verify --json --target js|wasm src/kernel.sak src/input.sak
 src/policy.sak src/main.sak`, z3 5.3.1 at the default limits, read by a throwaway reader in
@@ -145,10 +146,10 @@ Predicted diff: none in the source; the verify gate unchanged.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura test`
-28/28 on js and 28/28 on `--target wasm`. A js build also writes `__entries__.js`, with the
-entries `error_json`, `evaluate`, `input_failure_code`, `render_error`, `run_cli` and
-`to_report`.
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 28/28 on js and 28/28 on
+`--target wasm`. A js build also writes `__entries__.js`, with the entries `error_json`,
+`evaluate`, `input_failure_code`, `render_error`, `run_cli` and `to_report`.
 
 Verification gate, as on beta.2: exit 0 on both profiles; 95 obligations, 94 proved, 1
 `unsupported` (`main requires Cli.exit`); kernel 45/45 `proved`, all `path_feasible`. Item 3
@@ -188,10 +189,11 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
-warnings); `sakura fmt --check` clean; `sakura test` 28/28 on js and 28/28 on `--target
-wasm`. `verify` as on beta.3: exit 0 on both profiles, 95
-obligations, 94 proved, 1 `unsupported` (`main requires Cli.exit`), kernel 45/45 proved. Native was not run (item 8; outside the round).
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura
+check` no problems (no `W8001`; `check --json` counts 0 warnings); `sakura fmt --check` clean;
+`sakura test` 28/28 on js and 28/28 on `--target wasm`. `verify` as on beta.3: exit 0 on both
+profiles, 95 obligations, 94 proved, 1 `unsupported` (`main requires Cli.exit`), kernel 45/45
+proved. Native was not run (item 8; outside the round).
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -224,9 +226,10 @@ Predicted diff: **none required**; the header's provenance line.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0 warnings); `sakura fmt --check` clean; `sakura test`
-28/28 on js and 28/28 on `--target wasm`. `verify` as on beta.4: exit 0 on both profiles, 95
-obligations, 94 proved, 1 `unsupported` (`main requires Cli.exit`), kernel 45/45 proved. Native was not run (item 3; outside the
+`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0
+warnings); `sakura fmt --check` clean; `sakura test` 28/28 on js and 28/28 on `--target wasm`.
+`verify` as on beta.4: exit 0 on both profiles, 95 obligations, 94 proved, 1 `unsupported`
+(`main requires Cli.exit`), kernel 45/45 proved. Native was not run (item 3; outside the
 round).
 
 | Hunk | Required? | Predicted by the list? |

@@ -115,8 +115,9 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
-test` 32/32 on js and 32/32 on `--target wasm`.
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 32/32 on js and 32/32 on
+`--target wasm`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -144,9 +145,10 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
-test` 32/32 on js and 32/32 on `--target wasm`. A js build also writes `__entries__.js`, with the entries
-`listen_host` and `listen_port`, as predicted.
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 32/32 on js and 32/32 on
+`--target wasm`. A js build also writes `__entries__.js`, with the entries `listen_host` and
+`listen_port`, as predicted.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -179,12 +181,12 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
-warnings); `sakura fmt --check` clean; `sakura test` 32/32 on js and 32/32 on `--target
-wasm`. `./integration.sh` with beta.4 first on `PATH`: "all
-integration checks passed" (the ticket survives a restart; the 404/405/400/409/200 matrix;
-the four missing-grant runs refused with 75, 75, 1 and 1), so item 4's lowercase served headers
-do not reach the program. Native was not run (item 8; outside the round).
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura
+check` no problems (no `W8001`; `check --json` counts 0 warnings); `sakura fmt --check` clean;
+`sakura test` 32/32 on js and 32/32 on `--target wasm`. `./integration.sh` with beta.4 first on
+`PATH`: "all integration checks passed" (the ticket survives a restart; the 404/405/400/409/200
+matrix; the four missing-grant runs refused with 75, 75, 1 and 1), so item 4's lowercase served
+headers do not reach the program. Native was not run (item 8; outside the round).
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -217,10 +219,10 @@ Predicted diff: **none required**; the header's provenance line.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0 warnings); `sakura fmt --check` clean; `sakura test`
-32/32 on js and 32/32 on `--target wasm`. `./integration.sh` with beta.5 first on `PATH`: "all
-integration checks passed". Native was not run (item 3; outside the
-round).
+`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0
+warnings); `sakura fmt --check` clean; `sakura test` 32/32 on js and 32/32 on `--target wasm`.
+`./integration.sh` with beta.5 first on `PATH`: "all integration checks passed". Native was not
+run (item 3; outside the round).
 
 | Hunk | Required? | Predicted by the list? |
 | ---- | --------- | ---------------------- |

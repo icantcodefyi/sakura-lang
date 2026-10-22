@@ -98,9 +98,10 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura
-test` 31/31 on js and 31/31 on `--target wasm`. The Node consumer is not run on beta.2: it needs
-library entries, which ship in beta.3 (`dogfood.yml` skips it before beta.3).
+`sakura 1.0.0-beta.2 (611dae4faf5e4f9524a8544911b9ecf695525d1b)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on
+`--target wasm`. The Node consumer is not run on beta.2: it needs library entries, which ship
+in beta.3 (`dogfood.yml` skips it before beta.3).
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -128,12 +129,12 @@ Predicted diff: **none**; the consumer runs from this release.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura check` no problems; `sakura fmt --check` clean; `sakura test`
-31/31 on js and 31/31 on `--target wasm`. The Node consumer, as `dogfood.yml` runs it
-(`sakura build --target wasm|js --out-dir …`, then `node consumer/consumer.mjs <dir>`, Node
-26.12.0): exit 0 and "all checks passed" on both builds, 24 checks each, the `--denied` and
-`--empty` children included. The js build's `__entries__.js` lists `describe_problem`, `quote`
-and `render_outcome`.
+`sakura 1.0.0-beta.3 (472dea56e094017df4c9313170a1bf249c3878b8)`, unchanged source: `sakura
+check` no problems; `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on
+`--target wasm`. The Node consumer, as `dogfood.yml` runs it (`sakura build --target wasm|js
+--out-dir …`, then `node consumer/consumer.mjs <dir>`, Node 26.12.0): exit 0 and "all checks
+passed" on both builds, 24 checks each, the `--denied` and `--empty` children included. The js
+build's `__entries__.js` lists `describe_problem`, `quote` and `render_outcome`.
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -166,10 +167,11 @@ Predicted diff: **none**.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura check` no problems (no `W8001`; `check --json` counts 0
-warnings); `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on `--target
-wasm`. The Node consumer on the wasm and js builds: exit 0, "all
-checks passed", 24 checks each. Native was not run (item 8; outside the round).
+`sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)`, unchanged source: `sakura
+check` no problems (no `W8001`; `check --json` counts 0 warnings); `sakura fmt --check` clean;
+`sakura test` 31/31 on js and 31/31 on `--target wasm`. The Node consumer on the wasm and js
+builds: exit 0, "all checks passed", 24 checks each. Native was not run (item 8; outside the
+round).
 
 **No hunk needed.** Prediction and result agree. Migration-list gaps: none.
 
@@ -202,10 +204,10 @@ Predicted diff: **none required**; the header's provenance line.
 
 ### Result (after the upgrade)
 
-`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0 warnings); `sakura fmt --check` clean; `sakura test`
-31/31 on js and 31/31 on `--target wasm`. The Node consumer on the wasm and js builds: exit 0, "all
-checks passed", 24 checks each. Native was not run (item 3; outside the
-round).
+`sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`: `sakura check` no problems (0
+warnings); `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on `--target wasm`.
+The Node consumer on the wasm and js builds: exit 0, "all checks passed", 24 checks each.
+Native was not run (item 3; outside the round).
 
 | Hunk | Required? | Predicted by the list? |
 | ---- | --------- | ---------------------- |
