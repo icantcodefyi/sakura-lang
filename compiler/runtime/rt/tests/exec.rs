@@ -268,7 +268,7 @@ fn text_defect(rt: &mut Rt, _env: u32, f: u32) -> u32 {
     }
     let none = ok!(rt, rt.new_variant(0, 0));
     let msg = ok!(rt, rt.new_string(b"no key k"));
-    match rt.option_expect(none, msg) {
+    match rt.option_expect(none, msg, 0) {
         Ok(_) => RETURN,
         Err(d) => rt.raise(d),
     }

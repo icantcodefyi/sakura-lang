@@ -83,8 +83,8 @@ fn main$1#9 lambda -> word ; main::http_read_chunk_rejects_zero, captures [], fr
     %2 body: word = proj %1.2 std::http::Incoming
     %3 lit: i64 = const 1
     %4 $site: i64 = const 11
-    dup.candidate %2
-    call Http.read_chunk#10(%2, %3, %4) -> b1(%1, %2)
+    %23 body.lent: ref = lend %2
+    call Http.read_chunk#109(%23, %3, %4) -> b1(%1, %2)
   b1(%5 pre: unit, %6 i: ptr, %7 body: ptr):
     %8 lit: i64 = const 1
     perform std::http::Http.read_chunk(%7, %8) -> b2(%6)
@@ -99,8 +99,8 @@ fn main$1#9 lambda -> word ; main::http_read_chunk_rejects_zero, captures [], fr
     drop %14
     %17 lit: i64 = const 0
     %18 $site: i64 = const 12
-    dup.candidate %16
-    call Http.read_chunk#10(%16, %17, %18) -> b4(%16)
+    %24 body.lent: ref = lend %16
+    call Http.read_chunk#109(%24, %17, %18) -> b4(%16)
   b4(%19 pre: unit, %20 body: ptr):
     %21 lit: i64 = const 0
     perform std::http::Http.read_chunk(%20, %21) -> b5()

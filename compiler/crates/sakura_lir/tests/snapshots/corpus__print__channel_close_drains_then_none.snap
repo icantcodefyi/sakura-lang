@@ -114,8 +114,8 @@ fn main$1$1#3 lambda -> word ; main::channel_close_drains_then_none, captures [w
     %58 lit: i64 = const 4
     call range#8(%57, %58) -> b10(%54, %55)
   b10(%59 r: ptr, %60 tx: ptr, %61 rx: ptr):
-    dup.candidate %59
-    %62 n: i64 = $list_len(%59)
+    %115 r.lent: ref = lend %59
+    %62 n: i64 = $list_len(%115)
     %114 lit: i64 = const 0
     jump b15(%114, %60, %61, %59, %62)
   b11(%63 tx: ptr, %64 rx: ptr):
@@ -136,8 +136,8 @@ fn main$1$1#3 lambda -> word ; main::channel_close_drains_then_none, captures [w
     %78 more: bool = lt.int %73, %77
     if %78 then b16(%74, %75, %76, %77, %73) else b17(%74, %75, %76, %77, %73)
   b16(%79 tx: ptr, %80 rx: ptr, %81 r: ptr, %82 n: i64, %83 i: i64):
-    dup.candidate %81
-    %89 x: word = $list_at(%81, %83)
+    %116 r.lent: ref = lend %81
+    %89 x: word = $list_at(%116, %83)
     %90 unbox: i64 = unbox %89
     drop %89
     dup %80

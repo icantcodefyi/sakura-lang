@@ -667,11 +667,11 @@ impl Rt {
     /// `map_entries` and `set_to_list` without consuming the collection.
     fn map_entries_b(&mut self, m: u32) -> Res<u32> {
         self.dup(m)?;
-        self.map_entries(m)
+        self.map_entries(m, 0)
     }
 
     fn set_to_list_b(&mut self, s: u32) -> Res<u32> {
         self.dup(s)?;
-        self.set_to_list(s)
+        self.set_to_list(s, 0)
     }
 }

@@ -12,8 +12,8 @@ fn main#0 pub top -> unit ; main::function_values, frame 10 slots [%0 word*, %28
   b0():
     call table#2() -> b1()
   b1(%0 r: ptr):
-    dup.candidate %0
-    %1 n: i64 = $list_len(%0)
+    %42 r.lent: ref = lend %0
+    %1 n: i64 = $list_len(%42)
     %41 lit: i64 = const 0
     jump b3(%41, %0, %1)
   b2():
@@ -23,8 +23,8 @@ fn main#0 pub top -> unit ; main::function_values, frame 10 slots [%0 word*, %28
     %6 more: bool = lt.int %3, %5
     if %6 then b4(%4, %5, %3) else b5(%4, %5, %3)
   b4(%7 r: ptr, %8 n: i64, %9 i: i64):
-    dup.candidate %7
-    %13 x: word = $list_at(%7, %9)
+    %43 r.lent: ref = lend %7
+    %13 x: word = $list_at(%43, %9)
     %19 name: word = proj %13.0 main::function_values::Op
     %20 s: ptr = show %19
     drop %19

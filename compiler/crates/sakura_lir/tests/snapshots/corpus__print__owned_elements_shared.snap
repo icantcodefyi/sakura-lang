@@ -50,8 +50,8 @@ fn main#0 pub top -> unit ; main::owned_elements_shared, frame 13 slots [%5 word
     %26 rec: ptr = alloc main::owned_elements_shared::Body(%24, %25)
     %27 xs: ptr = alloc list(%26)
     %28 lit: i64 = const 0
-    dup.candidate %27
-    call at#4(%27, %28) -> b4(%27)
+    %56 xs.lent: ref = lend %27
+    call at#6(%56, %28) -> b4(%27)
   b4(%29 r: ptr, %30 xs: ptr):
     %31 r: ptr = $list_push(%30, %29)
     %32 lit: i64 = const 1
@@ -103,15 +103,15 @@ fn $entry#1 top -> unit ; main::owned_elements_shared, frame 1 slots [%1 bool]
 
 fn kick#2 top -> ptr ; main::owned_elements_shared, frame 6 slots [%0 word*, %1 i64, %2 word*, %3 word*, %4 i64, %11 word*]
   b0(%0 start: ptr, %1 j: i64):
-    dup.candidate %0
-    call at#4(%0, %1) -> b1(%0, %1)
+    %12 start.lent: ref = lend %0
+    call at#6(%12, %1) -> b1(%0, %1)
   b1(%2 r: ptr, %3 start: ptr, %4 j: i64):
     %5 v: i64 = proj %2.1 main::owned_elements_shared::Body
     %6 lit: i64 = const 10
     %7 t: i64 = intadd %5, %6
     %8 x: i64 = proj %2.0 main::owned_elements_shared::Body
-    %12 token: word = $reuse_reset(%2)
-    %9 rec: ptr = alloc main::owned_elements_shared::Body(%8, %7) reuse %12
+    %13 token: word = $reuse_reset(%2)
+    %9 rec: ptr = alloc main::owned_elements_shared::Body(%8, %7) reuse %13
     %10 $site: i64 = const 2
     call set#5(%3, %4, %9, %10) -> b2()
   b2(%11 r: ptr):
@@ -119,8 +119,8 @@ fn kick#2 top -> ptr ; main::owned_elements_shared, frame 6 slots [%0 word*, %1 
 
 fn show#3 top -> ptr ; main::owned_elements_shared, frame 1 slots [%0 word*]
   b0(%0 bs: ptr):
-    dup.candidate %0
-    %1 n: i64 = $list_len(%0)
+    %35 bs.lent: ref = lend %0
+    %1 n: i64 = $list_len(%35)
     %33 lit: i64 = const 0
     %34 lit: ptr = const str 6
     jump b1(%33, %34, %0, %1)
@@ -128,8 +128,8 @@ fn show#3 top -> ptr ; main::owned_elements_shared, frame 1 slots [%0 word*]
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 bs: ptr, %8 n: i64, %9 i: i64, %10 out: ptr):
-    dup.candidate %7
-    %15 x: word = $list_at(%7, %9)
+    %36 bs.lent: ref = lend %7
+    %15 x: word = $list_at(%36, %9)
     %22 s: ptr = show %10
     drop %10
     %23 lit: ptr = const str 5
@@ -158,6 +158,12 @@ fn show#3 top -> ptr ; main::owned_elements_shared, frame 1 slots [%0 word*]
 
 fn at#4 top -> ptr ; main::owned_elements_shared, frame 2 slots [%0 word*, %1 i64]
   b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 7
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3
+
+fn at#6 borrowed variant of #4 -> ptr ; main::owned_elements_shared, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 bs: ref, %1 i: i64):
     %2 lit: ptr = const str 7
     %3 r: word = $list_get_expect(%0, %1, %2)
     ret %3

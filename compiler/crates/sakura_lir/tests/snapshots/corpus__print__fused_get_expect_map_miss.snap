@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::fused_get_expect_map_miss, frame 7 slots [%6 i
     %3 box: word = box %2
     %4 r: ptr = $map_insert(%0, %1, %3)
     %5 lit: ptr = const str 0
-    dup.candidate %4
-    call price#2(%4, %5) -> b1(%4)
+    %21 r.lent: ref = lend %4
+    call price#3(%21, %5) -> b1(%4)
   b1(%6 r: i64, %7 r: ptr):
     %8 s: ptr = show %6
     perform std::console::Console.print(%8) -> b2(%7)
@@ -50,6 +50,14 @@ fn $entry#1 top -> unit ; main::fused_get_expect_map_miss, frame 1 slots [%1 boo
 
 fn price#2 top -> i64 ; main::fused_get_expect_map_miss, frame 2 slots [%0 word*, %1 word*]
   b0(%0 m: ptr, %1 k: ptr):
+    %2 lit: ptr = const str 3
+    %3 r: word = $map_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn price#3 borrowed variant of #2 -> i64 ; main::fused_get_expect_map_miss, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 m: ref, %1 k: ptr):
     %2 lit: ptr = const str 3
     %3 r: word = $map_get_expect(%0, %1, %2)
     %4 unbox: i64 = unbox %3

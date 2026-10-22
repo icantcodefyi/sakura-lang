@@ -794,6 +794,9 @@ impl<'p, 'c> Run<'p, 'c> {
                 }
                 self.live.add(*v);
             }
+            Inst::Lend { dst, src } => {
+                self.vals[dst.index()] = u64::from(rt::rt_lend(self.ctx, self.word(*src)));
+            }
             Inst::Drop(v) => {
                 rt::drop(ctx, self.word(*v));
                 self.live.consume(*v);
@@ -1027,7 +1030,16 @@ impl<'p, 'c> Run<'p, 'c> {
             self.take_result(dst);
             return Ok(());
         }
-        let Some(f) = self.p.builtins.get(format!("rt_b_{name}").as_str()) else {
+        // A borrowed call (plan M5 N4a) names the `ref` arguments it lends in its mask.
+        let mask = (args.iter().enumerate())
+            .filter(|(_, a)| self.repr(**a) == Repr::Ref)
+            .fold(0u64, |m, (i, _)| m | 1 << i);
+        let (symbol, bits) = if mask == 0 {
+            (format!("rt_b_{name}"), bits)
+        } else {
+            (format!("rt_bb_{name}"), [vec![mask], bits].concat())
+        };
+        let Some(f) = self.p.builtins.get(symbol.as_str()) else {
             for &a in args {
                 if self.repr(a).is_managed() {
                     self.live.add(a);

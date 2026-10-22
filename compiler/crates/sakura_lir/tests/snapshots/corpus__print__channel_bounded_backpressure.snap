@@ -66,8 +66,8 @@ fn main$1$1#3 lambda -> word ; main::channel_bounded_backpressure, captures [wor
     %3 lit: i64 = const 5
     call range#4(%2, %3) -> b1(%1)
   b1(%4 r: ptr, %5 tx: ptr):
-    dup.candidate %4
-    %6 n: i64 = $list_len(%4)
+    %63 r.lent: ref = lend %4
+    %6 n: i64 = $list_len(%63)
     %62 lit: i64 = const 0
     jump b4(%62, %5, %4, %6)
   b2(%7 tx: ptr):
@@ -80,8 +80,8 @@ fn main$1$1#3 lambda -> word ; main::channel_bounded_backpressure, captures [wor
     %15 more: bool = lt.int %11, %14
     if %15 then b5(%12, %13, %14, %11) else b6(%12, %13, %14, %11)
   b5(%16 tx: ptr, %17 r: ptr, %18 n: i64, %19 i: i64):
-    dup.candidate %17
-    %24 x: word = $list_at(%17, %19)
+    %64 r.lent: ref = lend %17
+    %24 x: word = $list_at(%64, %19)
     %25 unbox: i64 = unbox %24
     drop %24
     %32 s: ptr = show %25

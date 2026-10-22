@@ -20,8 +20,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %228 lit: i64 = const 0
     jump b46(%158, %228, %157)
   b1(%3 v: ptr):
-    dup.candidate %3
-    %4 r: i64 = $list_len(%3)
+    %229 v.lent: ref = lend %3
+    %4 r: i64 = $list_len(%229)
     %5 s: ptr = show %4
     %6 lit: ptr = const str 0
     %7 s: ptr = concat %6, %5
@@ -39,8 +39,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %16 s: ptr = concat %14, %15
     drop %15
     %17 lit: i64 = const 0
-    dup.candidate %11
-    %18 item: ptr = $list_get(%11, %17)
+    %230 v.lent: ref = lend %11
+    %18 item: ptr = $list_get(%230, %17)
     %19 s: ptr = show %18
     drop %18
     %20 s: ptr = concat %16, %19
@@ -70,8 +70,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
     %144 $site: i64 = const 4
     call set#4(%31, %141, %143, %144) -> b32()
   b5(%32 v: ptr):
-    dup.candidate %32
-    %33 r: i64 = $list_len(%32)
+    %231 v.lent: ref = lend %32
+    %33 r: i64 = $list_len(%231)
     %34 s: ptr = show %33
     %35 lit: ptr = const str 2
     %36 s: ptr = concat %35, %34
@@ -263,8 +263,8 @@ fn main#0 pub top -> unit ; main::owned_effects, frame 49 slots [%10 i64, %11 wo
   b40(%169 v: unit, %170 xs: ptr, %171 i: i64, %172 $act: id) [handle]:
     jump b39(%170, %171, %172)
   b41(%173 xs: ptr, %174 i: i64, %175 $act: id) [handle]:
-    dup.candidate %173
-    %179 item: ptr = $list_get(%173, %174)
+    %232 xs.lent: ref = lend %173
+    %179 item: ptr = $list_get(%232, %174)
     %180 lit: i64 = const 0
     %181 box: word = box %180
     call unwrap_or#3(%179, %181) -> b43(%173, %174, %175)

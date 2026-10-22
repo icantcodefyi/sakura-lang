@@ -183,8 +183,8 @@ fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 173 slots 
     %237 lit: i64 = const 8388608
     %238 tup: ptr = alloc tuple#26(word, word, i64)(%226, %225, %237)
     %239 xs: ptr = alloc list(%227, %228, %229, %230, %231, %232, %233, %234, %235, %236, %238)
-    dup.candidate %239
-    %240 n: i64 = $list_len(%239)
+    %284 xs.lent: ref = lend %239
+    %240 n: i64 = $list_len(%284)
     %283 lit: i64 = const 0
     jump b27(%283, %239, %240)
   b26():
@@ -194,8 +194,8 @@ fn main#0 pub top -> unit ; main::crypto_derive_rejects_bounds, frame 173 slots 
     %245 more: bool = lt.int %242, %244
     if %245 then b28(%243, %244, %242) else b29(%243, %244, %242)
   b28(%246 xs: ptr, %247 n: i64, %248 i: i64):
-    dup.candidate %246
-    %252 x: word = $list_at(%246, %248)
+    %285 xs.lent: ref = lend %246
+    %252 x: word = $list_at(%285, %248)
     %280 p: ptr = tuple_get %252.0
     %281 p: ptr = tuple_get %252.1
     %282 p: i64 = tuple_get %252.2

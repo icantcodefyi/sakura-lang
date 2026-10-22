@@ -29,8 +29,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_truncated, frame 47 slots [
     %6 v: ptr = const static std::compress::Format.Deflate
     %7 v: ptr = const static std::compress::Format.DeflateRaw
     %8 xs: ptr = alloc list(%5, %6, %7)
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %205 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%205)
     %204 lit: i64 = const 0
     jump b3(%204, %4, %8, %9)
   b2():
@@ -40,13 +40,13 @@ fn main#0 pub top -> unit ; main::decompress_rejects_truncated, frame 47 slots [
     %15 more: bool = lt.int %11, %14
     if %15 then b4(%12, %13, %14, %11) else b5(%12, %13, %14, %11)
   b4(%16 r: ptr, %17 xs: ptr, %18 n: i64, %19 i: i64):
-    dup.candidate %17
-    %24 x: word = $list_at(%17, %19)
+    %207 xs.lent: ref = lend %17
+    %24 x: word = $list_at(%207, %19)
     %31 lit: i64 = const 6
     %32 $site: i64 = const 7
-    dup.candidate %16
-    dup.candidate %24
-    call compress#3(%16, %24, %31, %32) -> b7(%16, %17, %18, %19, %24)
+    %206 r.lent: ref = lend %16
+    %208 x.lent: ref = lend %24
+    call compress#41(%206, %208, %31, %32) -> b7(%16, %17, %18, %19, %24)
   b5(%20 r: ptr, %21 xs: ptr, %22 n: i64, %23 i: i64):
     drop %20
     drop %21
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_truncated, frame 47 slots [
     %30 i: i64 = intadd %28, %29
     jump b3(%30, %25, %26, %27)
   b7(%33 r: ptr, %34 r: ptr, %35 xs: ptr, %36 n: i64, %37 i: i64, %38 x: ptr):
-    dup.candidate %33
-    %39 r: i64 = $bytes_len(%33)
+    %209 r.lent: ref = lend %33
+    %39 r: i64 = $bytes_len(%209)
     %165 tag: i64 = tag %38 ctor std::compress::Format
     switch %165 0 => b18(%34, %35, %36, %37, %38, %33, %39) 1 => b19(%34, %35, %36, %37, %38, %33, %39) 2 => b20(%34, %35, %36, %37, %38, %33, %39)
   b8(%40 v: ptr, %41 r: ptr, %42 xs: ptr, %43 n: i64, %44 i: i64, %45 x: ptr, %46 r: ptr, %47 r: i64):
@@ -77,8 +77,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_truncated, frame 47 slots [
     %61 xs: ptr = alloc list(%50, %54, %58, %60)
     call concat#4(%40, %61) -> b9(%41, %42, %43, %44, %45, %46)
   b9(%62 r: ptr, %63 r: ptr, %64 xs: ptr, %65 n: i64, %66 i: i64, %67 x: ptr, %68 r: ptr):
-    dup.candidate %62
-    %69 n: i64 = $list_len(%62)
+    %210 r.lent: ref = lend %62
+    %69 n: i64 = $list_len(%210)
     %164 lit: i64 = const 0
     jump b11(%164, %63, %64, %65, %66, %67, %68, %62, %69)
   b10(%70 r: ptr, %71 xs: ptr, %72 n: i64, %73 i: i64):
@@ -87,8 +87,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_truncated, frame 47 slots [
     %83 more: bool = lt.int %74, %82
     if %83 then b12(%75, %76, %77, %78, %79, %80, %81, %82, %74) else b13(%75, %76, %77, %78, %79, %80, %81, %82, %74)
   b12(%84 r: ptr, %85 xs: ptr, %86 n: i64, %87 i: i64, %88 x: ptr, %89 r: ptr, %90 r: ptr, %91 n: i64, %92 i: i64):
-    dup.candidate %90
-    %102 x: word = $list_at(%90, %92)
+    %211 r.lent: ref = lend %90
+    %102 x: word = $list_at(%211, %92)
     %114 s: ptr = show %88
     %115 lit: ptr = const str 5
     %116 s: ptr = concat %114, %115

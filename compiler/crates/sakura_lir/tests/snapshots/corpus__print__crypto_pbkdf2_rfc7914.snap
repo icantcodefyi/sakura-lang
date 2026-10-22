@@ -45,8 +45,8 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     %8 lit: i64 = const 64
     %9 tup: ptr = alloc tuple#26(word, word, i64, i64)(%5, %6, %7, %8)
     %10 xs: ptr = alloc list(%4, %9)
-    dup.candidate %10
-    %11 n: i64 = $list_len(%10)
+    %121 xs.lent: ref = lend %10
+    %11 n: i64 = $list_len(%121)
     %120 lit: i64 = const 0
     jump b2(%120, %10, %11)
   b1():
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
     %16 more: bool = lt.int %13, %15
     if %16 then b3(%14, %15, %13) else b4(%14, %15, %13)
   b3(%17 xs: ptr, %18 n: i64, %19 i: i64):
-    dup.candidate %17
-    %23 x: word = $list_at(%17, %19)
+    %122 xs.lent: ref = lend %17
+    %23 x: word = $list_at(%122, %19)
     %116 p: ptr = tuple_get %23.0
     %117 p: ptr = tuple_get %23.1
     %118 p: i64 = tuple_get %23.2
@@ -74,8 +74,8 @@ fn main#0 pub top -> unit ; main::crypto_pbkdf2_rfc7914, frame 26 slots [%44 wor
   b6(%29 password: ptr, %30 salt: ptr, %31 iterations: i64, %32 len: i64, %33 xs: ptr, %34 n: i64, %35 i: i64):
     %36 v: ptr = const static std::crypto::Digest.Sha256
     %37 r: ptr = alloc std::crypto::Algorithm.Pbkdf2(%36)
-    dup.candidate %29
-    %38 r: ptr = $string_to_bytes(%29)
+    %123 password.lent: ref = lend %29
+    %38 r: ptr = $string_to_bytes(%123)
     %39 r: ptr = $secret_wrap(%38)
     %40 v: ptr = const static std::crypto::KeyFormat.Raw
     %41 v: ptr = const static std::crypto::Usage.DeriveBits
@@ -150,8 +150,8 @@ fn $entry#1 top -> unit ; main::crypto_pbkdf2_rfc7914, frame 1 slots [%1 bool]
 
 fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup.candidate %0
-    %1 r: i64 = $bytes_len(%0)
+    %50 b.lent: ref = lend %0
+    %1 r: i64 = $bytes_len(%50)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 6
     jump b1(%48, %49, %0, %1)
@@ -159,8 +159,8 @@ fn hex#4 top -> ptr ; main::crypto_pbkdf2_rfc7914, frame 6 slots [%0 word*, %24 
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup.candidate %7
-    %21 r: ptr = $bytes_get(%7, %9)
+    %51 b.lent: ref = lend %7
+    %21 r: ptr = $bytes_get(%51, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22
     call unwrap_or#6(%21, %23) -> b5(%7, %8, %9, %10)

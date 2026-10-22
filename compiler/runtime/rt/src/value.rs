@@ -99,9 +99,9 @@ impl Rt {
     }
 
     /// `String.len`: UTF-8 bytes (as JS).
-    pub fn string_len(&mut self, s: u32) -> i64 {
+    pub fn string_len(&mut self, s: u32, keep: u32) -> i64 {
         let n = self.heap.mem.u32(s + 8);
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         n as i64
     }
 
@@ -153,17 +153,19 @@ impl Rt {
     }
 
     /// `String.to_bytes`.
-    pub fn string_to_bytes(&mut self, s: u32) -> Res<u32> {
+    pub fn string_to_bytes(&mut self, s: u32, keep: u32) -> Res<u32> {
         let (len, at) = self.data(s);
-        let b = self.new_bytes(len).inspect_err(|_| self.drop(s))?;
+        let b = self
+            .new_bytes(len)
+            .inspect_err(|_| self.drop_arg(keep, 0, s))?;
         self.heap.mem.copy(b + 12, at, len);
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         Ok(b)
     }
 
     /// `String.from_bytes`: `Ok(string)`, or `Err(offset)` of the first byte that is not UTF-8.
     /// The std wrapper builds `Utf8Error { offset }`.
-    pub fn string_from_utf8(&mut self, b: u32) -> Res<Result<u32, i64>> {
+    pub fn string_from_utf8(&mut self, b: u32, keep: u32) -> Res<Result<u32, i64>> {
         let (len, at) = self.data(b);
         let r = match core::str::from_utf8(self.heap.mem.bytes(at, len)) {
             Ok(_) => self
@@ -175,23 +177,23 @@ impl Rt {
                 }),
             Err(e) => Ok(Err(e.valid_up_to() as i64)),
         };
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         r
     }
 
-    pub fn bytes_len(&mut self, b: u32) -> i64 {
+    pub fn bytes_len(&mut self, b: u32, keep: u32) -> i64 {
         let n = self.heap.mem.u32(b + 8);
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         n as i64
     }
 
     /// `Bytes.get(b, i) -> Option<Int>`.
-    pub fn bytes_get(&mut self, b: u32, i: i64) -> Res<u32> {
+    pub fn bytes_get(&mut self, b: u32, i: i64, keep: u32) -> Res<u32> {
         let n = self.heap.mem.u32(b + 8) as i64;
         let byte = (0..n)
             .contains(&i)
             .then(|| self.heap.mem.u8(b + 12 + i as u32));
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         match byte {
             Some(v) => {
                 let x = self.new_int(v as i64)?;
@@ -202,7 +204,7 @@ impl Rt {
     }
 
     /// `Bytes.from_list(xs: List<Int>)`; an element outside 0..=255 is `D020` (as JS).
-    pub fn bytes_from_list(&mut self, xs: u32) -> Res<u32> {
+    pub fn bytes_from_list(&mut self, xs: u32, keep: u32) -> Res<u32> {
         let n = self.list_n(xs);
         let r = self.new_bytes(n).and_then(|b| {
             for i in 0..n {
@@ -215,7 +217,7 @@ impl Rt {
             }
             Ok(b)
         });
-        self.drop(xs);
+        self.drop_arg(keep, 0, xs);
         r
     }
 

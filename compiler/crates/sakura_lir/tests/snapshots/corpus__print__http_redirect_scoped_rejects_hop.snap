@@ -40,8 +40,8 @@ fn main#0 pub top -> unit ; main::http_redirect_scoped_rejects_hop, frame 41 slo
     %10 xs: ptr = alloc list(%9)
     %11 status: i64 = proj %5.0 std::response::Response
     %12 body: word = proj %5.2 std::response::Response
-    %101 token: word = $reuse_reset(%5)
-    %13 rec: ptr = alloc std::response::Response(%11, %10, %12) reuse %101
+    %103 token: word = $reuse_reset(%5)
+    %13 rec: ptr = alloc std::response::Response(%11, %10, %12) reuse %103
     %14 tup: ptr = alloc tuple#18(word, word)(%6, %13)
     %15 lit: ptr = const str 4
     %16 r: ptr = alloc std::http::Matcher.Path(%15)
@@ -66,8 +66,8 @@ fn main#0 pub top -> unit ; main::http_redirect_scoped_rejects_hop, frame 41 slo
     %33 lit: ptr = const str 7
     %34 lit: ptr = const str 3
     %35 xs: ptr = alloc list(%33, %34)
-    dup.candidate %35
-    %36 n: i64 = $list_len(%35)
+    %101 xs.lent: ref = lend %35
+    %36 n: i64 = $list_len(%101)
     %100 lit: i64 = const 0
     jump b7(%100, %35, %36)
   b6() [handle, handle, handle]:
@@ -80,8 +80,8 @@ fn main#0 pub top -> unit ; main::http_redirect_scoped_rejects_hop, frame 41 slo
     %41 more: bool = lt.int %38, %40
     if %41 then b8(%39, %40, %38) else b9(%39, %40, %38)
   b8(%42 xs: ptr, %43 n: i64, %44 i: i64) [handle, handle, handle]:
-    dup.candidate %42
-    %48 x: word = $list_at(%42, %44)
+    %102 xs.lent: ref = lend %42
+    %48 x: word = $list_at(%102, %44)
     dup %42
     dup %48
     try_push -> b14(err, %42, %43, %44, %48)
@@ -180,8 +180,8 @@ fn logged$Http_read_chunk#103 clause std::http::Http.read_chunk -> ptr ; main::h
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
     %4 $site: i64 = const 21
-    dup.candidate %2
-    call Http.read_chunk#21(%2, %3, %4) -> b1(%2, %3)
+    %9 b.lent: ref = lend %2
+    call Http.read_chunk#121(%9, %3, %4) -> b1(%2, %3)
   b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
     perform std::http::Http.read_chunk(%6, %7) -> b2()
   b2(%8 r: ptr):

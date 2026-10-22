@@ -65,6 +65,13 @@ fn every_program_lowers_and_validates() {
 
 /// Plan §3.5 L2: the LIR interpreter agrees with the expectations stored beside every snapshot
 /// (stdout and how the program ends), and every run releases every object and arena slot.
+///
+/// Plan M5 N4a, design §17.176 (4): borrowing changes no result and reconciles site by site with
+/// the program lowered without it ([`sakura_lir::borrow::strip`], which validates): the marked
+/// sites are the same (`borrow_candidates`), and each `lend` removes one `Dup` and one decrement,
+/// the runtime's own drops included (the interpreter counts neither for a static object, so
+/// `dups` and `drops` fall alike, by at most `borrows`); the other marked sites are the ones a
+/// host call or a closure keeps owned.
 #[test]
 fn interpreter_agrees_with_the_corpus_expectations() {
     big_stack(|| {
@@ -85,7 +92,23 @@ fn interpreter_agrees_with_the_corpus_expectations() {
                 "{}: {ending}, {} allocated, {} dup, {} drop, peak {}, live {}/{}\n",
                 p.name, s.allocated, s.dups, s.drops, s.peak_objects, s.live_objects, s.live_arena
             ));
-            if ending == p.ending && out.stdout == p.stdout && s.balanced() {
+            let mut stripped = m.clone();
+            sakura_lir::borrow::strip(&mut stripped);
+            let errors = validate::validate(&stripped, validate::Options::default());
+            let off = interp::run_main(&stripped, interp::Limits::default());
+            let b = &off.stats;
+            let reconciled = errors.is_empty()
+                && off.ending.summary() == ending
+                && off.stdout == out.stdout
+                && b.balanced()
+                && b.borrows == 0
+                && s.borrow_candidates == b.borrow_candidates
+                && b.dups - s.dups == b.drops - s.drops
+                && b.dups - s.dups <= s.borrows
+                && s.borrows <= s.borrow_candidates;
+            if !reconciled {
+                failures.push(format!("{}: borrowed {s:?}\n  stripped {b:?}", p.name));
+            } else if ending == p.ending && out.stdout == p.stdout && s.balanced() {
                 agree += 1;
             } else {
                 failures.push(format!(

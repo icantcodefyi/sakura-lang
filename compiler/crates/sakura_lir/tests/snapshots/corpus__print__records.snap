@@ -14,8 +14,8 @@ fn main#0 pub top -> unit ; main::records, frame 11 slots [%4 word*, %5 word*, %
     %1 lit: ptr = const str 0
     %2 lit: bool = const false
     %3 rec: ptr = alloc main::records::User(%0, %1, %2)
-    dup.candidate %3
-    call promote#2(%3) -> b1(%3)
+    %50 rec.lent: ref = lend %3
+    call promote#3(%50) -> b1(%3)
   b1(%4 r: ptr, %5 rec: ptr):
     %6 admin: bool = proj %5.2 main::records::User
     %7 s: ptr = show %6
@@ -95,4 +95,12 @@ fn promote#2 top -> ptr ; main::records, frame 1 slots [%0 word*]
     %5 token: word = $reuse_reset(%0)
     %3 lit: bool = const true
     %4 rec: ptr = alloc main::records::User(%1, %2, %3) reuse %5
+    ret %4
+
+fn promote#3 borrowed variant of #2 -> ptr ; main::records, frame 1 slots [%0 i64]
+  b0(%0 u: ref):
+    %1 id: i64 = proj %0.0 main::records::User
+    %2 name: word = proj %0.1 main::records::User
+    %3 lit: bool = const true
+    %4 rec: ptr = alloc main::records::User(%1, %2, %3)
     ret %4

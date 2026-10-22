@@ -203,6 +203,6 @@ impl Rt {
             self.drop(s);
             return r;
         }
-        self.string_to_bytes(s)
+        self.string_to_bytes(s, 0)
     }
 }

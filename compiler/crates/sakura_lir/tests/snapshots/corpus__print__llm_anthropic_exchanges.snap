@@ -123,8 +123,8 @@ fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 72 slots [%1 wo
     %50 xs: ptr = alloc list(%49)
     %51 status: i64 = proj %46.0 std::response::Response
     %52 body: word = proj %46.2 std::response::Response
-    %211 token: word = $reuse_reset(%46)
-    %53 rec: ptr = alloc std::response::Response(%51, %50, %52) reuse %211
+    %213 token: word = $reuse_reset(%46)
+    %53 rec: ptr = alloc std::response::Response(%51, %50, %52) reuse %213
     %54 xs: ptr = alloc list(%53)
     %55 f: ptr = closure main$8#21[]
     call on#8(%54, %55) -> b18()
@@ -221,8 +221,8 @@ fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 72 slots [%1 wo
     %127 lit: ptr = const str 25
     %128 lit: ptr = const str 26
     %129 xs: ptr = alloc list(%119, %120, %121, %122, %123, %124, %125, %126, %127, %128)
-    dup.candidate %129
-    %130 n: i64 = $list_len(%129)
+    %211 xs.lent: ref = lend %129
+    %130 n: i64 = $list_len(%211)
     %210 lit: i64 = const 0
     jump b56(%210, %129, %130)
   b39():
@@ -303,8 +303,8 @@ fn main#0 pub top -> unit ; main::llm_anthropic_exchanges, frame 72 slots [%1 wo
     %187 more: bool = lt.int %184, %186
     if %187 then b57(%185, %186, %184) else b58(%185, %186, %184)
   b57(%188 xs: ptr, %189 n: i64, %190 i: i64):
-    dup.candidate %188
-    %194 x: word = $list_at(%188, %190)
+    %212 xs.lent: ref = lend %188
+    %194 x: word = $list_at(%212, %190)
     call limited#39(%194) -> b60(%188, %189, %190)
   b58(%191 xs: ptr, %192 n: i64, %193 i: i64):
     drop %191
@@ -1317,8 +1317,8 @@ fn spy$Http_read_chunk#69 clause std::http::Http.read_chunk -> ptr ; main::llm_a
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
     %4 $site: i64 = const 20
-    dup.candidate %2
-    call Http.read_chunk#70(%2, %3, %4) -> b1(%2, %3)
+    %9 b.lent: ref = lend %2
+    call Http.read_chunk#178(%9, %3, %4) -> b1(%2, %3)
   b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
     perform std::http::Http.read_chunk(%6, %7) -> b2()
   b2(%8 r: ptr):

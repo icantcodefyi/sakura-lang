@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.17.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.18.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -27,8 +27,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 1.15.0 `std/worker`'s live workers and topics (§1b, §8.2, §8.5, §9; design §17.299, RFC 0002
 §2.9), 1.15.1 the `Int` row's remainder erratum (§2; design §17.260 (G05), §17.303),
 1.15.2 the missing-key permissions erratum (§8.3; design §17.304), 1.16.0 library entries
-(§9; design §17.301 (1c), §17.304 (B1)) and 1.17.0 constructor-site reuse (§10; design
-§17.176 (3), §17.308; plan M5 N3). Owned by
+(§9; design §17.301 (1c), §17.304 (B1)), 1.17.0 constructor-site reuse (§10; design
+§17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
+§17.176 (4), §17.308; plan M5 N4a). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -352,6 +353,25 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   and counted as `List.set`'s updates are. Until index `i` is written its slot holds the source
   element, so a defect in the mapped function drops a list of results and source elements, each
   an ordinary owned word. These three are internal too. `sakura_abi_version` is `0x011100`.
+- 1.18.0 (MINOR, design §17.176 (4), §17.308; plan M5 N4a) adds the borrowed convention. At a
+  site the LIR marks (§10 `borrow_candidates`: the reference stays live after a call that only
+  reads it), compiled code lends the reference instead of duplicating it, when the callee takes
+  that argument borrowed: `rt_lend(w) -> w` counts the site (`borrow_candidates` and `borrows`)
+  and increments nothing. A builtin takes it borrowed through `rt_bb_<name>(keep, args…)`, the
+  same builtin with a first `i32` whose bit `i` lends argument `i`, which it then neither
+  retains nor drops; there is one for each read-only argument `sakura_lir::borrow::lends`
+  names, never a host call (a hosted builtin's and a host handler's arguments stay owned). A
+  direct top-level def takes it borrowed through a *borrowed variant*: another function of the
+  module, the def's body with the lent parameters (and the block parameters that carry them)
+  never counted or dropped, called with the frame protocol or as a twin like any direct def
+  (§5). A lent word's frame slot is unowned (kind 1, as an id's), so an unwinding frame, a twin
+  that aborts and a cancelled task release nothing for it; its owner is the caller's, held in
+  a frame slot or a twin local across the whole call. No lent word crosses a `perform`, a
+  closure call, a callback builtin or a `with`/`try` region, and an argument that is not live
+  after the call is still passed owned, so no call gains a `drop` after it and no tail call is
+  lost. Every function is internal to the linked module (as `rt_dup_candidate`); no byte
+  layout, import, export or outcome changes. It is a MINOR by 1.3.0's rule: `borrows` is no
+  longer 0, so a 1.17 host refuses a 1.18 module. `sakura_abi_version` is `0x011200`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -700,6 +720,11 @@ by default, plan §3.1 M4-OPT).
   function that needs it after its first call or suspension keeps it, counted, in a slot. The
   `frame` argument is the frame's address, a transient borrow for that one call; every stored
   link is an id (§7.2).
+- **Borrowed parameters** (1.18.0, design §17.176 (4), plan M5 N4a): arguments are owned
+  except where the caller lends one (§0's 1.18.0 entry): to `rt_bb_<name>` at a bit of its
+  `keep` mask, or to a parameter of a borrowed variant (`sakura_lir::lir::Module::borrowed`),
+  which the variant reads and never counts. The caller holds the owner across the call, so
+  the lent word is valid until the callee returns, unwinds or is abandoned.
 - **Direct style** (as JS `f$d`): a top-level function with row `{}` that the transitive
   no-suspend analysis (research/08 §3.2 item 6) proves never performs, installs, fails or
   calls a non-direct function may additionally be emitted as `(args…) -> result` in native
@@ -1406,14 +1431,17 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   it had room, so a HAMT node that grows for a new key is a miss; a node below a copied one is
   copied without a test, so a wrapper hit never hides copied descendants; a remove copies its
   index path without testing it, which N0b does not count),
-  `borrow_candidates` (executed `Dup`s the LIR marked: the reference stays live after a call
+  `borrow_candidates` (executed sites the LIR marked: the reference stays live after a call
   that only reads it, so borrowing would remove the `Dup` and the callee's `Drop`; each is
-  also counted in `dups`. Since 1.17.0 (design §17.247 (1)) the call is a builtin argument
+  also counted in `dups` when it duplicates. Since 1.17.0 (design §17.247 (1)) the call is a builtin argument
   the runtime only reads (`sakura_lir::borrow::reads`) or a parameter a direct def never
   consumes on any path, for every managed type; before, a read-only collection builtin or a
   direct def whose ownership summary borrows a collection, carrier or function. The set of
-  marked sites may grow in a later version; a benchmark record's `abi_version` names it) and `borrows` (calls that passed an argument under a borrowed convention: 0 until
-  plan N4). A benchmark record adds `reuse_rate = reuses / reuse_attempts` (`null` when
+  marked sites may grow in a later version; a benchmark record's `abi_version` names it) and `borrows` (the marked sites that lent the reference instead, 1.18.0's
+  `rt_lend`, §0; 0 before 1.18.0: each removes the site's `Dup` from `dups` and, where the
+  callee would have dropped the reference in compiled code, a decrement from `drops`; a
+  builtin's own drop was never counted. A marked site that is not lent, a host call's or a
+  parameter a closure call holds, still duplicates). A benchmark record adds `reuse_rate = reuses / reuse_attempts` (`null` when
   attempts are 0) and the module's `abi_version`, which names the counter set. The interface is
   `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the module's `abi_version` and the
   counters by name as one JSON line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no

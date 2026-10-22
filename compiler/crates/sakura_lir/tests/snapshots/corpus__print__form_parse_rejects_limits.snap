@@ -41,13 +41,13 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %15 $site: i64 = const 2
     call encode_multipart#2(%13, %14, %15) -> b1()
   b1(%16 r: ptr):
-    dup.candidate %16
-    %17 r: i64 = $bytes_len(%16)
+    %111 r.lent: ref = lend %16
+    %17 r: i64 = $bytes_len(%111)
     %18 lit: i64 = const 3
     %19 lit: i64 = const 8
     %20 rec: ptr = alloc std::form::FormLimits(%18, %17, %19)
-    dup.candidate %16
-    %21 r: i64 = $bytes_len(%16)
+    %112 r.lent: ref = lend %16
+    %21 r: i64 = $bytes_len(%112)
     %22 s: ptr = show %21
     %23 lit: ptr = const str 7
     %24 s: ptr = concat %23, %22
@@ -61,8 +61,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     drop %30
     %31 lit: ptr = const str 9
     dup %28
-    dup.candidate %29
-    call parse_multipart#3(%28, %31, %29) -> b3(%28, %29)
+    %113 rec.lent: ref = lend %29
+    call parse_multipart#37(%28, %31, %113) -> b3(%28, %29)
   b3(%32 r: ptr, %33 r: ptr, %34 rec: ptr):
     call outcome#4(%32) -> b4(%33, %34)
   b4(%35 r: ptr, %36 r: ptr, %37 rec: ptr):
@@ -79,8 +79,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %46 max_field_bytes: i64 = proj %43.2 std::form::FormLimits
     %47 lit: i64 = const 2
     %48 rec: ptr = alloc std::form::FormLimits(%47, %45, %46)
-    dup.candidate %42
-    %49 r: i64 = $bytes_len(%42)
+    %114 r.lent: ref = lend %42
+    %49 r: i64 = $bytes_len(%114)
     %50 lit: i64 = const 1
     %51 t: i64 = intsub %49, %50
     %52 max_parts: i64 = proj %43.0 std::form::FormLimits
@@ -88,16 +88,16 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %54 rec: ptr = alloc std::form::FormLimits(%52, %51, %53)
     %55 max_parts: i64 = proj %43.0 std::form::FormLimits
     %56 max_bytes: i64 = proj %43.1 std::form::FormLimits
-    %111 token: word = $reuse_reset(%43)
+    %117 token: word = $reuse_reset(%43)
     %57 lit: i64 = const 7
-    %58 rec: ptr = alloc std::form::FormLimits(%55, %56, %57) reuse %111
+    %58 rec: ptr = alloc std::form::FormLimits(%55, %56, %57) reuse %117
     %59 lit: i64 = const 0
     %60 lit: i64 = const 0
     %61 lit: i64 = const 0
     %62 rec: ptr = alloc std::form::FormLimits(%59, %60, %61)
     %63 xs: ptr = alloc list(%48, %54, %58, %62)
-    dup.candidate %63
-    %64 n: i64 = $list_len(%63)
+    %115 xs.lent: ref = lend %63
+    %64 n: i64 = $list_len(%115)
     %110 lit: i64 = const 0
     jump b7(%110, %42, %63, %64)
   b6():
@@ -107,8 +107,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_limits, frame 30 slots [%16
     %70 more: bool = lt.int %66, %69
     if %70 then b8(%67, %68, %69, %66) else b9(%67, %68, %69, %66)
   b8(%71 r: ptr, %72 xs: ptr, %73 n: i64, %74 i: i64):
-    dup.candidate %72
-    %79 x: word = $list_at(%72, %74)
+    %116 xs.lent: ref = lend %72
+    %79 x: word = $list_at(%116, %74)
     %86 s: ptr = show %79
     %87 lit: ptr = const str 11
     %88 s: ptr = concat %86, %87

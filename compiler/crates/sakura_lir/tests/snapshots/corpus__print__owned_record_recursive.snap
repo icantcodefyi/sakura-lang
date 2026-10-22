@@ -181,8 +181,8 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
     %3 t: bool = eq.int %1, %2
     if %3 then b7(%0, %1) else b8(%0, %1)
   b1(%4 v: unit, %5 p: ptr, %6 i: i64):
-    dup.candidate %5
-    call put_var#6(%5, %6, %6) -> b2(%5, %6)
+    %38 p.lent: ref = lend %5
+    call put_var#12(%38, %6, %6) -> b2(%5, %6)
   b2(%7 r: ptr, %8 p: ptr, %9 i: i64):
     %10 lit: i64 = const 1
     %11 t: i64 = intsub %9, %10
@@ -204,8 +204,8 @@ fn split#5 top -> ptr ; main::owned_record_recursive, frame 16 slots [%0 word*, 
   b6(%27 r: i64, %28 r: ptr, %29 t: i64):
     %30 t: i64 = intadd %29, %27
     %31 vars: word = proj %28.0 main::owned_record_recursive::Planner
-    %38 token: word = $reuse_reset(%28)
-    %32 rec: ptr = alloc main::owned_record_recursive::Planner(%31, %30) reuse %38
+    %39 token: word = $reuse_reset(%28)
+    %32 rec: ptr = alloc main::owned_record_recursive::Planner(%31, %30) reuse %39
     ret %32
   b7(%33 p: ptr, %34 i: i64):
     ret %33
@@ -254,3 +254,14 @@ fn odd#11 top -> ptr ; main::owned_record_recursive, frame 6 slots [%0 word*, %1
     %26 lit: i64 = const 1
     %27 t: i64 = intsub %25, %26
     jump b2(%24, %27)
+
+fn put_var#12 borrowed variant of #6 -> ptr ; main::owned_record_recursive, frame 5 slots [%0 i64, %1 i64, %2 i64, %6 word*, %7 i64]
+  b0(%0 p: ref, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_recursive::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#10(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ref):
+    %8 mark: i64 = proj %7.1 main::owned_record_recursive::Planner
+    %9 rec: ptr = alloc main::owned_record_recursive::Planner(%6, %8)
+    ret %9

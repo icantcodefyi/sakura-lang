@@ -1146,6 +1146,11 @@ impl Gen<'_, '_, '_> {
                 self.pad_if(r, live, None)?;
                 *live.entry(*v).or_default() += 1;
             }
+            Inst::Lend { dst, src } => {
+                let x = self.val(*src)?;
+                let r = self.call1("rt_lend", &[x], types::I32)?;
+                self.set(*dst, r);
+            }
             Inst::Drop(v) => {
                 let x = self.val(*v)?;
                 self.call0("drop", &[x])?;
@@ -1449,10 +1454,22 @@ impl Gen<'_, '_, '_> {
             self.take_result(dst)?;
             return Ok(Flow::Next);
         }
-        let symbol = format!("rt_b_{name}");
+        // A borrowed call (plan M5 N4a) names the `ref` arguments it lends in its mask.
+        let mask = (args.iter().enumerate())
+            .filter(|(_, a)| self.repr(**a) == Repr::Ref)
+            .fold(0u32, |m, (i, _)| m | 1 << i);
+        let symbol = if mask == 0 {
+            format!("rt_b_{name}")
+        } else {
+            format!("rt_bb_{name}")
+        };
         if !BUILTINS.iter().any(|(n, _)| *n == symbol) {
             self.pad(&held, Some((90, &image::unsupported_builtin(name))))?;
             return Ok(Flow::Stop);
+        }
+        let mut vals = vals;
+        if mask != 0 {
+            vals.insert(0, self.iconst32(i64::from(mask)));
         }
         let r = self.call_rt(&symbol, &vals, ty(ret))?;
         if let Some(x) = r {

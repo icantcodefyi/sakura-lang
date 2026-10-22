@@ -25,8 +25,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %0 lit: ptr = const str 0
     call parse#2(%0) -> b1()
   b1(%1 r: ptr):
-    dup.candidate %1
-    call entries#3(%1) -> b2(%1)
+    %131 r.lent: ref = lend %1
+    call entries#97(%131) -> b2(%1)
   b2(%2 r: ptr, %3 r: ptr):
     %4 s: ptr = show %2
     drop %2
@@ -38,8 +38,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %9 box: word = box %7
     drop %9
     %10 lit: ptr = const str 2
-    dup.candidate %8
-    call get#4(%8, %10) -> b4(%8)
+    %132 r.lent: ref = lend %8
+    call get#98(%132, %10) -> b4(%8)
   b4(%11 r: ptr, %12 r: ptr):
     %13 s: ptr = show %11
     drop %11
@@ -50,8 +50,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %17 s: ptr = concat %15, %16
     drop %16
     %18 lit: ptr = const str 2
-    dup.candidate %12
-    call get_all#5(%12, %18) -> b5(%12, %17)
+    %133 r.lent: ref = lend %12
+    call get_all#99(%133, %18) -> b5(%12, %17)
   b5(%19 r: ptr, %20 r: ptr, %21 s: ptr):
     %22 s: ptr = show %19
     drop %19
@@ -62,8 +62,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %26 box: word = box %24
     drop %26
     %27 lit: ptr = const str 5
-    dup.candidate %25
-    call has#6(%25, %27) -> b7(%25)
+    %134 r.lent: ref = lend %25
+    call has#100(%134, %27) -> b7(%25)
   b7(%28 r: bool, %29 r: ptr):
     %30 s: ptr = show %28
     %31 lit: ptr = const str 6
@@ -73,8 +73,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %34 s: ptr = concat %32, %33
     drop %33
     %35 lit: ptr = const str 8
-    dup.candidate %29
-    call has#6(%29, %35) -> b8(%29, %34)
+    %135 r.lent: ref = lend %29
+    call has#100(%135, %35) -> b8(%29, %34)
   b8(%36 r: bool, %37 r: ptr, %38 s: ptr):
     %39 s: ptr = show %36
     %40 s: ptr = concat %38, %39
@@ -85,11 +85,11 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     drop %43
     %44 lit: ptr = const str 2
     %45 lit: ptr = const str 9
-    dup.candidate %42
-    call set#7(%42, %44, %45) -> b10(%42)
+    %136 r.lent: ref = lend %42
+    call set#101(%136, %44, %45) -> b10(%42)
   b10(%46 r: ptr, %47 r: ptr):
-    dup.candidate %46
-    call to_string#8(%46) -> b11(%47, %46)
+    %137 r.lent: ref = lend %46
+    call to_string#102(%137) -> b11(%47, %46)
   b11(%48 r: ptr, %49 r: ptr, %50 r: ptr):
     %51 s: ptr = show %48
     drop %48
@@ -116,8 +116,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %69 box: word = box %67
     drop %69
     %70 lit: ptr = const str 2
-    dup.candidate %68
-    call remove#10(%68, %70) -> b16(%68)
+    %138 r.lent: ref = lend %68
+    call remove#103(%138, %70) -> b16(%68)
   b16(%71 r: ptr, %72 r: ptr):
     call to_string#8(%71) -> b17(%72)
   b17(%73 r: ptr, %74 r: ptr):
@@ -149,8 +149,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
   b22(%90 r: ptr):
     %92 p: word = proj %90.0 std::result::Result.Ok
     drop %90
-    dup.candidate %92
-    call search#12(%92) -> b24(%92)
+    %139 p.lent: ref = lend %92
+    call search#104(%139) -> b24(%92)
   b23(%91 r: ptr):
     %125 p: word = proj %91.0 std::result::Result.Err
     drop %91
@@ -164,8 +164,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
     %96 lit: ptr = const str 17
     call set#7(%93, %95, %96) -> b25(%94)
   b25(%97 r: ptr, %98 p: ptr):
-    dup.candidate %98
-    call with_search#13(%98, %97) -> b26(%98)
+    %140 p.lent: ref = lend %98
+    call with_search#105(%140, %97) -> b26(%98)
   b26(%99 r: ptr, %100 p: ptr):
     call to_string#14(%99) -> b27(%100)
   b27(%101 r: ptr, %102 p: ptr):
@@ -178,8 +178,8 @@ fn main#0 pub top -> unit ; main::searchparams_order_and_repeats, frame 62 slots
   b28(%106 r: unit, %107 p: ptr):
     %108 box: word = box %106
     drop %108
-    dup.candidate %107
-    call search#12(%107) -> b29(%107)
+    %141 p.lent: ref = lend %107
+    call search#104(%141) -> b29(%107)
   b29(%109 r: ptr, %110 p: ptr):
     %111 lit: ptr = const str 2
     call remove#10(%109, %111) -> b30(%110)

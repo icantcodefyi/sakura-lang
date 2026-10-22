@@ -20,8 +20,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %2 lit: ptr = const str 1
     call of#2(%1, %2) -> b1()
   b1(%3 r: ptr):
-    dup.candidate %3
-    call size#3(%3) -> b2(%3)
+    %240 r.lent: ref = lend %3
+    call size#20(%240) -> b2(%3)
   b2(%4 r: i64, %5 r: ptr):
     %6 s: ptr = show %4
     %7 lit: ptr = const str 2
@@ -65,8 +65,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %40 lit: i64 = const 100
     %41 tup: ptr = alloc tuple#8(i64, i64)(%39, %40)
     %42 xs: ptr = alloc list(%20, %23, %27, %31, %35, %38, %41)
-    dup.candidate %42
-    %43 n: i64 = $list_len(%42)
+    %241 xs.lent: ref = lend %42
+    %43 n: i64 = $list_len(%241)
     %239 lit: i64 = const 0
     jump b20(%239, %16, %42, %43)
   b4(%44 r: ptr):
@@ -81,8 +81,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %53 lit: ptr = const str 12
     %54 lit: ptr = const str 13
     %55 xs: ptr = alloc list(%45, %46, %47, %48, %49, %50, %51, %52, %53, %54)
-    dup.candidate %55
-    %56 n: i64 = $list_len(%55)
+    %242 xs.lent: ref = lend %55
+    %56 n: i64 = $list_len(%242)
     %166 lit: i64 = const 0
     jump b14(%166, %44, %55, %56)
   b5(%57 r: ptr):
@@ -105,8 +105,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %74 lit: ptr = const str 14
     call of#2(%73, %74) -> b6(%57)
   b6(%75 r: ptr, %76 r: ptr):
-    dup.candidate %75
-    call text#5(%75) -> b7(%76, %75)
+    %243 r.lent: ref = lend %75
+    call text#21(%243) -> b7(%76, %75)
   b7(%77 r: ptr, %78 r: ptr, %79 r: ptr):
     %80 s: ptr = show %77
     drop %77
@@ -173,8 +173,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %128 more: bool = lt.int %124, %127
     if %128 then b15(%125, %126, %127, %124) else b16(%125, %126, %127, %124)
   b15(%129 r: ptr, %130 xs: ptr, %131 n: i64, %132 i: i64):
-    dup.candidate %130
-    %137 x: word = $list_at(%130, %132)
+    %245 xs.lent: ref = lend %130
+    %137 x: word = $list_at(%245, %132)
     dup %137
     %144 xs: ptr = alloc list(%137)
     %145 s: ptr = show %144
@@ -184,8 +184,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     drop %146
     %148 lit: i64 = const 0
     %149 lit: i64 = const 4
-    dup.candidate %129
-    call slice#4(%129, %148, %149, %137) -> b18(%129, %130, %131, %132, %147)
+    %244 r.lent: ref = lend %129
+    call slice#22(%244, %148, %149, %137) -> b18(%129, %130, %131, %132, %147)
   b16(%133 r: ptr, %134 xs: ptr, %135 n: i64, %136 i: i64):
     drop %134
     jump b5(%133)
@@ -210,8 +210,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %171 more: bool = lt.int %167, %170
     if %171 then b21(%168, %169, %170, %167) else b22(%168, %169, %170, %167)
   b21(%172 r: ptr, %173 xs: ptr, %174 n: i64, %175 i: i64):
-    dup.candidate %173
-    %180 x: word = $list_at(%173, %175)
+    %246 xs.lent: ref = lend %173
+    %180 x: word = $list_at(%246, %175)
     %237 p: i64 = tuple_get %180.0
     %238 p: i64 = tuple_get %180.1
     drop %180
@@ -225,8 +225,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     jump b20(%186, %181, %182, %183)
   b24(%187 start: i64, %188 end: i64, %189 r: ptr, %190 xs: ptr, %191 n: i64, %192 i: i64):
     %193 lit: ptr = const str 14
-    dup.candidate %189
-    call slice#4(%189, %187, %188, %193) -> b25(%189, %190, %191, %192, %187, %188)
+    %247 r.lent: ref = lend %189
+    call slice#22(%247, %187, %188, %193) -> b25(%189, %190, %191, %192, %187, %188)
   b25(%194 r: ptr, %195 r: ptr, %196 xs: ptr, %197 n: i64, %198 i: i64, %199 start: i64, %200 end: i64):
     %201 s: ptr = show %199
     %202 lit: ptr = const str 22
@@ -241,8 +241,8 @@ fn main#0 pub top -> unit ; main::blob_slice_and_text, frame 59 slots [%3 word*,
     %208 lit: ptr = const str 23
     %209 s: ptr = concat %207, %208
     drop %208
-    dup.candidate %194
-    call text#5(%194) -> b26(%195, %196, %197, %198, %194, %209)
+    %248 r.lent: ref = lend %194
+    call text#21(%248) -> b26(%195, %196, %197, %198, %194, %209)
   b26(%210 r: ptr, %211 r: ptr, %212 xs: ptr, %213 n: i64, %214 i: i64, %215 r: ptr, %216 s: ptr):
     %217 s: ptr = show %210
     drop %210

@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%
     %35 xs: ptr = alloc list(%33, %34)
     %36 tup: ptr = alloc tuple#21(word, word, word)(%7, %35, %2)
     %37 xs: ptr = alloc list(%11, %15, %19, %24, %29, %32, %36)
-    dup.candidate %37
-    %38 n: i64 = $list_len(%37)
+    %115 xs.lent: ref = lend %37
+    %38 n: i64 = $list_len(%115)
     %114 lit: i64 = const 0
     jump b2(%114, %37, %38)
   b1():
@@ -86,8 +86,8 @@ fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%
     %43 more: bool = lt.int %40, %42
     if %43 then b3(%41, %42, %40) else b4(%41, %42, %40)
   b3(%44 xs: ptr, %45 n: i64, %46 i: i64):
-    dup.candidate %44
-    %50 x: word = $list_at(%44, %46)
+    %116 xs.lent: ref = lend %44
+    %50 x: word = $list_at(%116, %46)
     %111 p: ptr = tuple_get %50.0
     %112 p: ptr = tuple_get %50.1
     %113 p: ptr = tuple_get %50.2
@@ -113,8 +113,8 @@ fn main#0 pub top -> unit ; main::crypto_import_rejects_usage, frame 22 slots [%
   b9(%73 xs: ptr, %74 n: i64, %75 i: i64, %76 r: ptr):
     %81 p: word = proj %76.0 std::result::Result.Ok
     drop %76
-    dup.candidate %81
-    call algorithm#3(%81) -> b11(%73, %74, %75, %81)
+    %117 p.lent: ref = lend %81
+    call algorithm#79(%117) -> b11(%73, %74, %75, %81)
   b10(%77 xs: ptr, %78 n: i64, %79 i: i64, %80 r: ptr):
     %104 p: word = proj %80.0 std::result::Result.Err
     drop %80

@@ -29,8 +29,8 @@ fn main#0 pub top -> unit ; main::error_field_name, frame 15 slots [%7 bool, %8 
   b3(%13 r: unit, %14 rec: ptr):
     %15 box: word = box %13
     drop %15
-    dup.candidate %14
-    call describe#2(%14) -> b4(%14)
+    %46 rec.lent: ref = lend %14
+    call describe#3(%46) -> b4(%14)
   b4(%16 r: ptr, %17 rec: ptr):
     perform std::console::Console.print(%16) -> b5(%17)
   b5(%18 r: unit, %19 rec: ptr):
@@ -92,6 +92,31 @@ fn describe#2 top -> ptr ; main::error_field_name, frame 1 slots [%0 word*]
     %1 p: word = proj %0.0 main::error_field_name::ErrorView
     %2 p: word = proj %0.1 main::error_field_name::ErrorView
     drop %0
+    %3 lit: ptr = const str 0
+    %4 is: bool = eq.string %1, %3
+    drop %3
+    if %4 then b1(%1, %2) else b2(%1, %2)
+  b1(%5 p: ptr, %6 p: ptr):
+    drop %5
+    drop %6
+    %9 lit: ptr = const str 0
+    ret %9
+  b2(%7 p: ptr, %8 p: ptr):
+    %10 s: ptr = show %7
+    drop %7
+    %11 lit: ptr = const str 7
+    %12 s: ptr = concat %10, %11
+    drop %11
+    %13 s: ptr = show %8
+    drop %8
+    %14 s: ptr = concat %12, %13
+    drop %13
+    ret %14
+
+fn describe#3 borrowed variant of #2 -> ptr ; main::error_field_name, frame 1 slots [%0 i64]
+  b0(%0 v: ref):
+    %1 p: word = proj %0.0 main::error_field_name::ErrorView
+    %2 p: word = proj %0.1 main::error_field_name::ErrorView
     %3 lit: ptr = const str 0
     %4 is: bool = eq.string %1, %3
     drop %3

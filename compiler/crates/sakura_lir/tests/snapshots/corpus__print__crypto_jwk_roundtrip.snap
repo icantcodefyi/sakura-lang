@@ -92,8 +92,8 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %53 xs: ptr = alloc list(%52)
     %54 tup: ptr = alloc tuple#20(word, word)(%51, %53)
     %55 xs: ptr = alloc list(%40, %45, %50, %54)
-    dup.candidate %55
-    %56 n: i64 = $list_len(%55)
+    %388 xs.lent: ref = lend %55
+    %56 n: i64 = $list_len(%388)
     %387 lit: i64 = const 0
     jump b41(%387, %34, %55, %56)
   b8(%57 r: ptr) [handle]:
@@ -208,8 +208,8 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %161 lit: bool = const true
     %162 tup: ptr = alloc tuple#23(word, word, word, bool)(%160, %157, %159, %161)
     %163 xs: ptr = alloc list(%92, %101, %112, %121, %130, %139, %148, %155, %162)
-    dup.candidate %163
-    %164 n: i64 = $list_len(%163)
+    %389 xs.lent: ref = lend %163
+    %164 n: i64 = $list_len(%389)
     %336 lit: i64 = const 0
     jump b32(%336, %82, %83, %163, %164)
   b13(%165 r: ptr, %166 r: ptr) [handle]:
@@ -331,8 +331,8 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %263 more: bool = lt.int %258, %262
     if %263 then b33(%259, %260, %261, %262, %258) else b34(%259, %260, %261, %262, %258)
   b33(%264 r: ptr, %265 r: ptr, %266 xs: ptr, %267 n: i64, %268 i: i64) [handle]:
-    dup.candidate %266
-    %274 x: word = $list_at(%266, %268)
+    %390 xs.lent: ref = lend %266
+    %274 x: word = $list_at(%390, %268)
     %332 p: ptr = tuple_get %274.0
     %333 p: ptr = tuple_get %274.1
     %334 p: ptr = tuple_get %274.2
@@ -378,8 +378,8 @@ fn main#0 pub top -> unit ; main::crypto_jwk_roundtrip, frame 104 slots [%1 word
     %341 more: bool = lt.int %337, %340
     if %341 then b42(%338, %339, %340, %337) else b43(%338, %339, %340, %337)
   b42(%342 r: ptr, %343 xs: ptr, %344 n: i64, %345 i: i64) [handle]:
-    dup.candidate %343
-    %350 x: word = $list_at(%343, %345)
+    %391 xs.lent: ref = lend %343
+    %350 x: word = $list_at(%391, %345)
     %385 p: ptr = tuple_get %350.0
     %386 p: ptr = tuple_get %350.1
     drop %350
@@ -445,11 +445,11 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %31 lit: ptr = const str 10
     %32 r: ptr = $map_get(%26, %31)
     %33 v: ptr = const static std::crypto::KeyFormat.Jwk
-    dup.candidate %27
-    call algorithm#112(%27) -> b8(%27, %28, %29, %30, %32, %33)
+    %157 key.lent: ref = lend %27
+    call algorithm#136(%157) -> b8(%27, %28, %29, %30, %32, %33)
   b8(%34 r: ptr, %35 key: ptr, %36 via: ptr, %37 jwk: ptr, %38 r: ptr, %39 r: ptr, %40 v: ptr):
-    dup.candidate %35
-    call usages#113(%35) -> b9(%35, %36, %37, %38, %39, %40, %34)
+    %158 key.lent: ref = lend %35
+    call usages#137(%158) -> b9(%35, %36, %37, %38, %39, %40, %34)
   b9(%41 r: ptr, %42 key: ptr, %43 via: ptr, %44 jwk: ptr, %45 r: ptr, %46 r: ptr, %47 v: ptr, %48 r: ptr):
     %49 r: ptr = $secret_wrap(%44)
     %50 lit: bool = const true
@@ -458,8 +458,8 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %90 tag: i64 = tag %51 ctor std::result::Result
     switch %90 0 => b15(%52, %53, %54, %55, %51) 1 => b16(%52, %53, %54, %55, %51)
   b11(%56 v: bool, %57 key: ptr, %58 r: ptr, %59 r: ptr):
-    dup.candidate %57
-    call algorithm#112(%57) -> b12(%57, %58, %59, %56)
+    %159 key.lent: ref = lend %57
+    call algorithm#136(%159) -> b12(%57, %58, %59, %56)
   b12(%60 r: ptr, %61 key: ptr, %62 r: ptr, %63 r: ptr, %64 v: bool):
     %65 s: ptr = show %60
     drop %60
@@ -501,8 +501,8 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
   b15(%91 key: ptr, %92 via: ptr, %93 r: ptr, %94 r: ptr, %95 r: ptr):
     %101 p: word = proj %95.0 std::result::Result.Ok
     drop %95
-    dup.candidate %101
-    call kind#10(%101) -> b17(%91, %92, %93, %94, %101)
+    %160 p.lent: ref = lend %101
+    call kind#138(%160) -> b17(%91, %92, %93, %94, %101)
   b16(%96 key: ptr, %97 via: ptr, %98 r: ptr, %99 r: ptr, %100 r: ptr):
     drop %97
     %144 p: word = proj %100.0 std::result::Result.Err
@@ -511,8 +511,8 @@ fn roundtrip#4 top -> unit ; main::crypto_jwk_roundtrip, frame 79 slots [%0 word
     %145 lit: bool = const false
     jump b11(%145, %96, %98, %99)
   b17(%102 r: ptr, %103 key: ptr, %104 via: ptr, %105 r: ptr, %106 r: ptr, %107 k: ptr):
-    dup.candidate %103
-    call kind#10(%103) -> b18(%103, %104, %105, %106, %107, %102)
+    %161 key.lent: ref = lend %103
+    call kind#138(%161) -> b18(%103, %104, %105, %106, %107, %102)
   b18(%108 r: ptr, %109 key: ptr, %110 via: ptr, %111 r: ptr, %112 r: ptr, %113 k: ptr, %114 r: ptr):
     %115 tag: i64 = tag %114 ctor std::crypto::KeyKind
     drop %114

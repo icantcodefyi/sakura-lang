@@ -56,15 +56,15 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %31 $site: i64 = const 2
     call encode_multipart#3(%29, %30, %31) -> b4()
   b4(%32 r: ptr):
-    dup.candidate %32
-    %33 r: ptr = $string_from_bytes(%32)
+    %179 r.lent: ref = lend %32
+    %33 r: ptr = $string_from_bytes(%179)
     %34 lit: ptr = const str 11
     call unwrap_or#4(%33, %34) -> b5(%32)
   b5(%35 r: word, %36 r: ptr):
     %37 lit: ptr = const str 14
     %38 r: ptr = $string_split(%35, %37)
-    dup.candidate %38
-    %39 n: i64 = $list_len(%38)
+    %180 r.lent: ref = lend %38
+    %39 n: i64 = $list_len(%180)
     %178 lit: i64 = const 0
     jump b31(%178, %36, %38, %39)
   b6(%40 r: ptr):
@@ -73,26 +73,26 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %43 lit: i64 = const 1024
     %44 rec: ptr = alloc std::form::FormLimits(%41, %42, %43)
     %45 lit: ptr = const str 15
-    dup.candidate %44
-    call parse_multipart#5(%40, %45, %44) -> b7(%44)
+    %181 rec.lent: ref = lend %44
+    call parse_multipart#44(%40, %45, %181) -> b7(%44)
   b7(%46 r: ptr, %47 rec: ptr):
     call describe#6(%46) -> b8(%47)
   b8(%48 r: ptr, %49 rec: ptr):
-    dup.candidate %48
-    %50 n: i64 = $list_len(%48)
+    %182 r.lent: ref = lend %48
+    %50 n: i64 = $list_len(%182)
     %151 lit: i64 = const 0
     jump b26(%151, %49, %48, %50)
   b9(%51 rec: ptr):
     %52 lit: ptr = const str 16
     %53 r: ptr = $string_to_bytes(%52)
     %54 lit: ptr = const str 15
-    dup.candidate %51
-    call parse_multipart#5(%53, %54, %51) -> b10(%51)
+    %183 rec.lent: ref = lend %51
+    call parse_multipart#44(%53, %54, %183) -> b10(%51)
   b10(%55 r: ptr, %56 rec: ptr):
     call describe#6(%55) -> b11(%56)
   b11(%57 r: ptr, %58 rec: ptr):
-    dup.candidate %57
-    %59 n: i64 = $list_len(%57)
+    %184 r.lent: ref = lend %57
+    %59 n: i64 = $list_len(%184)
     %124 lit: i64 = const 0
     jump b21(%124, %58, %57, %59)
   b12(%60 rec: ptr):
@@ -106,8 +106,8 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
   b13(%66 r: ptr):
     call describe#6(%66) -> b14()
   b14(%67 r: ptr):
-    dup.candidate %67
-    %68 n: i64 = $list_len(%67)
+    %185 r.lent: ref = lend %67
+    %68 n: i64 = $list_len(%185)
     %94 lit: i64 = const 0
     jump b16(%94, %67, %68)
   b15():
@@ -117,8 +117,8 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %73 more: bool = lt.int %70, %72
     if %73 then b17(%71, %72, %70) else b18(%71, %72, %70)
   b17(%74 r: ptr, %75 n: i64, %76 i: i64):
-    dup.candidate %74
-    %80 x: word = $list_at(%74, %76)
+    %186 r.lent: ref = lend %74
+    %80 x: word = $list_at(%186, %76)
     %86 s: ptr = show %80
     drop %80
     %87 lit: ptr = const str 18
@@ -140,8 +140,8 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %99 more: bool = lt.int %95, %98
     if %99 then b22(%96, %97, %98, %95) else b23(%96, %97, %98, %95)
   b22(%100 rec: ptr, %101 r: ptr, %102 n: i64, %103 i: i64):
-    dup.candidate %101
-    %108 x: word = $list_at(%101, %103)
+    %187 r.lent: ref = lend %101
+    %108 x: word = $list_at(%187, %103)
     %115 s: ptr = show %108
     drop %108
     %116 lit: ptr = const str 19
@@ -163,8 +163,8 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %129 more: bool = lt.int %125, %128
     if %129 then b27(%126, %127, %128, %125) else b28(%126, %127, %128, %125)
   b27(%130 rec: ptr, %131 r: ptr, %132 n: i64, %133 i: i64):
-    dup.candidate %131
-    %138 x: word = $list_at(%131, %133)
+    %188 r.lent: ref = lend %131
+    %138 x: word = $list_at(%188, %133)
     perform std::console::Console.print(%138) -> b30(%130, %131, %132, %133)
   b28(%134 rec: ptr, %135 r: ptr, %136 n: i64, %137 i: i64):
     drop %135
@@ -181,8 +181,8 @@ fn main#0 pub top -> unit ; main::form_multipart_roundtrip, frame 41 slots [%7 w
     %156 more: bool = lt.int %152, %155
     if %156 then b32(%153, %154, %155, %152) else b33(%153, %154, %155, %152)
   b32(%157 r: ptr, %158 r: ptr, %159 n: i64, %160 i: i64):
-    dup.candidate %158
-    %165 x: word = $list_at(%158, %160)
+    %189 r.lent: ref = lend %158
+    %165 x: word = $list_at(%189, %160)
     perform std::console::Console.print(%165) -> b35(%157, %158, %159, %160)
   b33(%161 r: ptr, %162 r: ptr, %163 n: i64, %164 i: i64):
     drop %162

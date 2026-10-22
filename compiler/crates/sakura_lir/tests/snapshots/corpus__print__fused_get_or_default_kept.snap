@@ -26,9 +26,9 @@ fn main#0 pub top -> unit ; main::fused_get_or_default_kept, frame 7 slots [%22 
     %14 xs: ptr = alloc list(%11, %13)
     %15 lit: i64 = const 1
     %16 box: word = box %15
-    dup.candidate %10
+    %47 r.lent: ref = lend %10
     dup %14
-    %17 r: word = $map_get_or(%10, %16, %14)
+    %17 r: word = $map_get_or(%47, %16, %14)
     %18 lit: i64 = const 0
     %19 lit: i64 = const 9
     %20 box: word = box %19

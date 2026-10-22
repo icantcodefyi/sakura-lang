@@ -1,5 +1,6 @@
 //! Which call arguments are only read (design §17.176 (1), §17.247 (1)): the marking behind
-//! [`Inst::DupCandidate`], for every managed type.
+//! [`Inst::DupCandidate`], for every managed type, and the borrowed convention that removes the
+//! pair (plan M5 N4a, design §17.176 (4)).
 //!
 //! A builtin only reads argument `i` when the runtime retains nothing of the argument itself
 //! (it may return a duplicated child), never writes it in place and drops it once ([`reads`],
@@ -12,8 +13,20 @@
 //! `perform`, a closure call or a callback builtin consumes it. A projection is a new reference
 //! (the field is duplicated), so a def returning a field keeps nothing of the parameter.
 //! Read before ownership inserts `Dup`/`Drop`.
+//!
+//! **The borrowed convention.** At a marked site the owner stays live after the call, so
+//! ownership lends it instead ([`Inst::Lend`]: a `ref` the call reads while the caller holds the
+//! owner) when the callee takes that argument borrowed: a builtin the runtime has a borrowed
+//! entry for ([`lends`]: `rt_bb_<name>`, which drops none of the arguments its mask names; never
+//! a host call), or a parameter of a direct def that [`borrowable`] keeps: never consumed, and
+//! no carrier of it crosses a `perform`, a closure call, a callback builtin or a `with`/`try`
+//! region. Such a call goes to the def's *borrowed variant* ([`variants`]): a copy of its body
+//! whose lent parameters and their carriers are `ref`, so the variant neither counts nor drops
+//! them. A variant is made per set of lent parameters that a site passes, so an argument that
+//! is not live after the call is still passed owned: no call gains a `Drop` after it and no
+//! tail call is lost. Any other marked site keeps its `dup.candidate`. [`strip`] undoes it all.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 
 use crate::lir::*;
 
@@ -89,6 +102,14 @@ const READS: &[(&str, &[usize])] = &[
     ("crypto_sign_verify", &[1, 2, 3]),
 ];
 
+/// Builtin `name` takes its argument `i` borrowed (`rt_bb_<name>`, ABI 1.18.0): it only reads it
+/// and is no host call (a hosted builtin's arguments cross to the host, which design §17.176 (4)
+/// keeps owned).
+pub fn lends(name: &str, i: usize) -> bool {
+    use crate::image::{HOSTED, WASM_HOSTED};
+    reads(name, i) && !HOSTED.iter().chain(WASM_HOSTED).any(|(n, _)| *n == name)
+}
+
 /// Per function, per parameter: the def never consumes it. Every entry of a function `direct`
 /// rejects is false.
 pub fn never_consumes(funcs: &[Func], direct: &dyn Fn(FuncId) -> bool) -> Vec<Vec<bool>> {
@@ -107,7 +128,7 @@ pub fn never_consumes(funcs: &[Func], direct: &dyn Fn(FuncId) -> bool) -> Vec<Ve
         changed = false;
         for (fi, f) in funcs.iter().enumerate() {
             for i in 0..nc[fi].len() {
-                if nc[fi][i] && consumes(f, f.params()[i], &nc) {
+                if nc[fi][i] && consumes(f, f.params()[i], &nc, reads) {
                     nc[fi][i] = false;
                     changed = true;
                 }
@@ -117,7 +138,49 @@ pub fn never_consumes(funcs: &[Func], direct: &dyn Fn(FuncId) -> bool) -> Vec<Ve
     nc
 }
 
-fn consumes(f: &Func, p: Var, nc: &[Vec<bool>]) -> bool {
+/// Per function, per parameter: the def may take it borrowed (module docs). A subset of
+/// [`never_consumes`]'s, from it down.
+pub fn borrowable(funcs: &[Func], never: &[Vec<bool>]) -> Vec<Vec<bool>> {
+    let mut ok = never.to_vec();
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (fi, f) in funcs.iter().enumerate() {
+            for i in 0..ok[fi].len() {
+                if ok[fi][i] && (consumes(f, f.params()[i], &ok, lends) || held(f, f.params()[i])) {
+                    ok[fi][i] = false;
+                    changed = true;
+                }
+            }
+        }
+    }
+    ok
+}
+
+/// A carrier of `p` is held where a borrow may not be: across a `perform`, a closure call or a
+/// callback builtin, or inside a `with`/`try` region.
+fn held(f: &Func, p: Var) -> bool {
+    let c = carriers(f, p);
+    f.blocks.iter().any(|b| {
+        let here = b.params.iter().any(|q| c.contains(q));
+        here && (!b.regions.is_empty()
+            || (b.insts.iter()).any(|i| {
+                matches!(
+                    i,
+                    Inst::HandlePush { .. } | Inst::Bound { .. } | Inst::TryPush { .. }
+                )
+            })
+            || matches!(&b.term,
+                Term::Perform { cont, .. }
+                | Term::Call {
+                    callee: Callee::Closure(_) | Callee::Builtin(_),
+                    cont,
+                    ..
+                } if cont.args.iter().any(|a| c.contains(a))))
+    })
+}
+
+fn consumes(f: &Func, p: Var, nc: &[Vec<bool>], only: fn(&str, usize) -> bool) -> bool {
     let c = carriers(f, p);
     if !c.contains(&p) {
         return true;
@@ -128,7 +191,7 @@ fn consumes(f: &Func, p: Var, nc: &[Vec<bool>]) -> bool {
             for (k, (v, u)) in inst.uses().into_iter().enumerate() {
                 if u == Use::Consume && c.contains(&v) {
                     match inst {
-                        Inst::Builtin { name, .. } if reads(name, k) => {}
+                        Inst::Builtin { name, .. } if only(name, k) => {}
                         _ => return true,
                     }
                 }
@@ -159,7 +222,7 @@ fn consumes(f: &Func, p: Var, nc: &[Vec<bool>]) -> bool {
 
 /// `p` and every block parameter all of whose incoming edges pass a carrier (none: a catch
 /// entry's, filled by a `fail`).
-fn carriers(f: &Func, p: Var) -> HashSet<Var> {
+pub(crate) fn carriers(f: &Func, p: Var) -> HashSet<Var> {
     let mut entered = HashSet::new();
     for b in &f.blocks {
         for (e, _) in b.term.edges() {
@@ -187,4 +250,102 @@ fn carriers(f: &Func, p: Var) -> HashSet<Var> {
         }
     }
     c
+}
+
+/// Makes the borrowed variants the calls of `funcs` need (module docs) and points each call
+/// passing a `ref` at one. `pre` is every function before ownership, and `own` runs ownership
+/// (and reuse) over a new variant. A variant of def `g` lending parameters `L` is `pre[g]` with
+/// those parameters and their carriers `ref`; its own calls may need more. Returns each variant
+/// with its def, or `None` when more than `cap` would be needed (the caller then lends to
+/// builtins only).
+pub fn variants(
+    funcs: &mut Vec<Func>,
+    pre: &[Func],
+    cap: usize,
+    own: &mut dyn FnMut(&mut Func) -> Result<(), String>,
+) -> Result<Option<Vec<(FuncId, FuncId)>>, String> {
+    let mut made: BTreeMap<(FuncId, Vec<bool>), FuncId> = BTreeMap::new();
+    let mut out = Vec::new();
+    let mut next = 0;
+    while next < funcs.len() {
+        for b in 0..funcs[next].blocks.len() {
+            let f = &funcs[next];
+            let Term::Call {
+                callee: Callee::Direct(g),
+                args,
+                ..
+            } = &f.blocks[b].term
+            else {
+                continue;
+            };
+            let lent: Vec<bool> = args.iter().map(|&a| f.repr(a) == Repr::Ref).collect();
+            if !lent.contains(&true) {
+                continue;
+            }
+            let key = (*g, lent);
+            let v = match made.get(&key) {
+                Some(&v) => v,
+                None => {
+                    if out.len() == cap {
+                        return Ok(None);
+                    }
+                    let mut t = pre[key.0.index()].clone();
+                    let params = t.params().to_vec();
+                    for (&p, _) in params.iter().zip(&key.1).filter(|(_, l)| **l) {
+                        for c in carriers(&t, p) {
+                            t.vars[c.index()].repr = Repr::Ref;
+                        }
+                    }
+                    // The def's own name: a contract's defect message names it.
+                    if let FuncKind::Top { export } = &mut t.kind {
+                        *export = false;
+                    }
+                    own(&mut t)?;
+                    let v = FuncId(funcs.len() as u32);
+                    funcs.push(t);
+                    out.push((v, key.0));
+                    made.insert(key, v);
+                    v
+                }
+            };
+            if let Term::Call { callee, .. } = &mut funcs[next].blocks[b].term {
+                *callee = Callee::Direct(v);
+            }
+        }
+        next += 1;
+    }
+    Ok(Some(out))
+}
+
+/// `m` as lowered without the borrowed convention: each [`Inst::Lend`] its `dup.candidate`
+/// again, each call of a borrowed variant a call of its def, and the variants gone. The
+/// `m5-stress` set runs with and without borrowing (plan M5 §4).
+pub fn strip(m: &mut Module) {
+    let of: BTreeMap<FuncId, FuncId> = m.borrowed.iter().copied().collect();
+    if let Some(&(first, _)) = m.borrowed.first() {
+        m.funcs.truncate(first.index());
+        m.direct.truncate(first.index());
+    }
+    m.borrowed.clear();
+    for f in &mut m.funcs {
+        for b in &mut f.blocks {
+            let mut lent: BTreeMap<Var, Var> = BTreeMap::new();
+            for i in &mut b.insts {
+                if let Inst::Lend { dst, src } = *i {
+                    lent.insert(dst, src);
+                    *i = Inst::DupCandidate(src);
+                } else if let Inst::Builtin { args, .. } = i {
+                    args.iter_mut().for_each(|a| *a = *lent.get(a).unwrap_or(a));
+                }
+            }
+            if let Term::Call { callee, args, .. } = &mut b.term {
+                args.iter_mut().for_each(|a| *a = *lent.get(a).unwrap_or(a));
+                if let Callee::Direct(g) = callee
+                    && let Some(&d) = of.get(g)
+                {
+                    *g = d;
+                }
+            }
+        }
+    }
 }

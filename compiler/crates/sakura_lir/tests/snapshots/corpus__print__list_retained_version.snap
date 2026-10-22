@@ -26,8 +26,8 @@ fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word
     %11 box: word = box %10
     dup %8
     %12 r: ptr = $list_push(%8, %11)
-    dup.candidate %8
-    %13 r: i64 = $list_len(%8)
+    %83 r.lent: ref = lend %8
+    %13 r: i64 = $list_len(%83)
     %14 s: ptr = show %13
     %15 lit: ptr = const str 0
     %16 s: ptr = concat %14, %15
@@ -49,8 +49,8 @@ fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word
   b5(%30 r: unit, %31 r: ptr, %32 r: ptr, %33 r: ptr, %34 r: ptr):
     %35 box: word = box %30
     drop %35
-    dup.candidate %32
-    %36 r: i64 = $list_len(%32)
+    %84 r.lent: ref = lend %32
+    %36 r: i64 = $list_len(%84)
     %37 s: ptr = show %36
     %38 lit: ptr = const str 0
     %39 s: ptr = concat %37, %38
@@ -64,8 +64,8 @@ fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word
   b7(%47 r: unit, %48 r: ptr, %49 r: ptr, %50 r: ptr):
     %51 box: word = box %47
     drop %51
-    dup.candidate %49
-    %52 r: i64 = $list_len(%49)
+    %85 r.lent: ref = lend %49
+    %52 r: i64 = $list_len(%85)
     %53 s: ptr = show %52
     %54 lit: ptr = const str 0
     %55 s: ptr = concat %53, %54
@@ -79,8 +79,8 @@ fn main#0 pub top -> unit ; main::list_retained_version, frame 37 slots [%2 word
   b9(%62 r: unit, %63 r: ptr, %64 r: ptr):
     %65 box: word = box %62
     drop %65
-    dup.candidate %64
-    %66 r: i64 = $list_len(%64)
+    %86 r.lent: ref = lend %64
+    %66 r: i64 = $list_len(%86)
     %67 s: ptr = show %66
     %68 lit: ptr = const str 0
     %69 s: ptr = concat %67, %68

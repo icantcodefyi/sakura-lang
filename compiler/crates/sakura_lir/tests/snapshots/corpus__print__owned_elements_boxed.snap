@@ -18,8 +18,8 @@ fn main#0 pub top -> unit ; main::owned_elements_boxed, frame 2 slots [%5 word*,
     %4 lit: i64 = const 3
     call fill#2(%3, %4) -> b1()
   b1(%5 r: ptr):
-    dup.candidate %5
-    %6 n: i64 = $list_len(%5)
+    %43 r.lent: ref = lend %5
+    %6 n: i64 = $list_len(%43)
     %41 lit: i64 = const 0
     %42 lit: ptr = const str 2
     jump b4(%41, %42, %5, %6)
@@ -39,8 +39,8 @@ fn main#0 pub top -> unit ; main::owned_elements_boxed, frame 2 slots [%5 word*,
     %18 more: bool = lt.int %14, %17
     if %18 then b5(%16, %17, %14, %15) else b6(%16, %17, %14, %15)
   b5(%19 r: ptr, %20 n: i64, %21 i: i64, %22 out: ptr):
-    dup.candidate %19
-    %27 x: word = $list_at(%19, %21)
+    %44 r.lent: ref = lend %19
+    %27 x: word = $list_at(%44, %21)
     %34 s: ptr = show %22
     drop %22
     %35 lit: ptr = const str 1

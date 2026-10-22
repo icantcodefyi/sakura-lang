@@ -41,8 +41,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %26 lit: i64 = const 40000000000
     %27 box: word = box %26
     %28 r: ptr = $map_remove(%25, %27)
-    dup.candidate %19
-    %29 r: i64 = $map_len(%19)
+    %353 m.lent: ref = lend %19
+    %29 r: i64 = $map_len(%353)
     %30 s: ptr = show %29
     %31 lit: ptr = const str 0
     %32 s: ptr = concat %31, %30
@@ -50,8 +50,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %33 lit: ptr = const str 1
     %34 s: ptr = concat %32, %33
     drop %33
-    dup.candidate %19
-    call sum_values#2(%19) -> b4(%19, %17, %28, %34)
+    %354 m.lent: ref = lend %19
+    call sum_values#3(%354) -> b4(%19, %17, %28, %34)
   b4(%35 r: i64, %36 m: ptr, %37 m: ptr, %38 r: ptr, %39 s: ptr):
     %40 s: ptr = show %35
     %41 s: ptr = concat %39, %40
@@ -61,8 +61,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %42
     %44 lit: i64 = const 3
     %45 box: word = box %44
-    dup.candidate %36
-    %46 r: ptr = $map_get(%36, %45)
+    %355 m.lent: ref = lend %36
+    %46 r: ptr = $map_get(%355, %45)
     %47 s: ptr = show %46
     drop %46
     %48 s: ptr = concat %43, %47
@@ -72,8 +72,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %49
     %51 lit: i64 = const 40000000000
     %52 box: word = box %51
-    dup.candidate %36
-    %53 r: ptr = $map_get(%36, %52)
+    %356 m.lent: ref = lend %36
+    %53 r: ptr = $map_get(%356, %52)
     %54 s: ptr = show %53
     drop %53
     %55 s: ptr = concat %50, %54
@@ -84,8 +84,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %58 lit: i64 = const 5
     %59 t: i64 = intneg %58
     %60 box: word = box %59
-    dup.candidate %36
-    %61 r: ptr = $map_get(%36, %60)
+    %357 m.lent: ref = lend %36
+    %61 r: ptr = $map_get(%357, %60)
     %62 s: ptr = show %61
     drop %61
     %63 s: ptr = concat %57, %62
@@ -94,8 +94,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
   b5(%64 r: unit, %65 m: ptr, %66 m: ptr, %67 r: ptr):
     %68 box: word = box %64
     drop %68
-    dup.candidate %66
-    %69 r: i64 = $map_len(%66)
+    %358 m.lent: ref = lend %66
+    %69 r: i64 = $map_len(%358)
     %70 s: ptr = show %69
     %71 lit: ptr = const str 2
     %72 s: ptr = concat %71, %70
@@ -103,8 +103,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %73 lit: ptr = const str 1
     %74 s: ptr = concat %72, %73
     drop %73
-    dup.candidate %66
-    call sum_values#2(%66) -> b6(%65, %66, %67, %74)
+    %359 m.lent: ref = lend %66
+    call sum_values#3(%359) -> b6(%65, %66, %67, %74)
   b6(%75 r: i64, %76 m: ptr, %77 m: ptr, %78 r: ptr, %79 s: ptr):
     %80 s: ptr = show %75
     %81 s: ptr = concat %79, %80
@@ -114,8 +114,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %82
     %84 lit: i64 = const 3
     %85 box: word = box %84
-    dup.candidate %77
-    %86 r: ptr = $map_get(%77, %85)
+    %360 m.lent: ref = lend %77
+    %86 r: ptr = $map_get(%360, %85)
     %87 s: ptr = show %86
     drop %86
     %88 s: ptr = concat %83, %87
@@ -125,8 +125,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %89
     %91 lit: i64 = const 40000000000
     %92 box: word = box %91
-    dup.candidate %77
-    %93 r: ptr = $map_get(%77, %92)
+    %361 m.lent: ref = lend %77
+    %93 r: ptr = $map_get(%361, %92)
     %94 s: ptr = show %93
     drop %93
     %95 s: ptr = concat %90, %94
@@ -146,8 +146,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
   b7(%104 r: unit, %105 m: ptr, %106 r: ptr):
     %107 box: word = box %104
     drop %107
-    dup.candidate %106
-    %108 r: i64 = $map_len(%106)
+    %362 r.lent: ref = lend %106
+    %108 r: i64 = $map_len(%362)
     %109 s: ptr = show %108
     %110 lit: ptr = const str 3
     %111 s: ptr = concat %110, %109
@@ -155,8 +155,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %112 lit: ptr = const str 1
     %113 s: ptr = concat %111, %112
     drop %112
-    dup.candidate %106
-    call sum_values#2(%106) -> b8(%105, %106, %113)
+    %363 r.lent: ref = lend %106
+    call sum_values#3(%363) -> b8(%105, %106, %113)
   b8(%114 r: i64, %115 m: ptr, %116 r: ptr, %117 s: ptr):
     %118 s: ptr = show %114
     %119 s: ptr = concat %117, %118
@@ -166,8 +166,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %120
     %122 lit: i64 = const 4
     %123 box: word = box %122
-    dup.candidate %116
-    %124 r: ptr = $map_get(%116, %123)
+    %364 r.lent: ref = lend %116
+    %124 r: ptr = $map_get(%364, %123)
     %125 s: ptr = show %124
     drop %124
     %126 s: ptr = concat %121, %125
@@ -177,8 +177,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %127
     %129 lit: i64 = const 40000000000
     %130 box: word = box %129
-    dup.candidate %116
-    %131 r: ptr = $map_get(%116, %130)
+    %365 r.lent: ref = lend %116
+    %131 r: ptr = $map_get(%365, %130)
     %132 s: ptr = show %131
     drop %131
     %133 s: ptr = concat %128, %132
@@ -189,8 +189,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %136 lit: i64 = const 6
     %137 t: i64 = intneg %136
     %138 box: word = box %137
-    dup.candidate %116
-    %139 r: ptr = $map_get(%116, %138)
+    %366 r.lent: ref = lend %116
+    %139 r: ptr = $map_get(%366, %138)
     %140 s: ptr = show %139
     drop %139
     %141 s: ptr = concat %135, %140
@@ -224,8 +224,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %163
     %165 lit: i64 = const 7
     %166 box: word = box %165
-    dup.candidate %150
-    %167 r: ptr = $map_get(%150, %166)
+    %367 r.lent: ref = lend %150
+    %167 r: ptr = $map_get(%367, %166)
     %168 s: ptr = show %167
     drop %167
     %169 s: ptr = concat %164, %168
@@ -235,8 +235,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     drop %170
     %172 lit: i64 = const 7
     %173 box: word = box %172
-    dup.candidate %158
-    %174 r: ptr = $map_get(%158, %173)
+    %368 r.lent: ref = lend %158
+    %174 r: ptr = $map_get(%368, %173)
     %175 s: ptr = show %174
     drop %174
     %176 s: ptr = concat %171, %175
@@ -274,8 +274,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     jump b14(%195, %265, %197, %197)
   b12(%198 m: ptr, %199 i: i64, %200 s: ptr, %201 s: ptr):
     drop %198
-    dup.candidate %201
-    %202 r: i64 = $set_len(%201)
+    %371 s.lent: ref = lend %201
+    %202 r: i64 = $set_len(%371)
     %203 s: ptr = show %202
     %204 lit: ptr = const str 4
     %205 s: ptr = concat %204, %203
@@ -293,8 +293,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %214 lit: ptr = const str 1
     %215 s: ptr = concat %213, %214
     drop %214
-    dup.candidate %200
-    %216 r: i64 = $set_len(%200)
+    %369 s.lent: ref = lend %200
+    %216 r: i64 = $set_len(%369)
     %217 s: ptr = show %216
     %218 s: ptr = concat %215, %217
     drop %217
@@ -304,8 +304,8 @@ fn main#0 pub top -> unit ; main::map_int_shared, frame 27 slots [%35 i64, %36 w
     %221 lit: i64 = const 295
     %222 t: i64 = intneg %221
     %223 box: word = box %222
-    dup.candidate %200
-    %224 r: bool = $set_contains(%200, %223)
+    %370 s.lent: ref = lend %200
+    %224 r: bool = $set_contains(%370, %223)
     %225 s: ptr = show %224
     %226 s: ptr = concat %220, %225
     drop %225
@@ -423,8 +423,8 @@ fn $entry#1 top -> unit ; main::map_int_shared, frame 1 slots [%1 bool]
 fn sum_values#2 top -> i64 ; main::map_int_shared, frame 1 slots [%0 word*]
   b0(%0 m: ptr):
     %1 r: ptr = $map_entries(%0)
-    dup.candidate %1
-    %2 n: i64 = $list_len(%1)
+    %33 r.lent: ref = lend %1
+    %2 n: i64 = $list_len(%33)
     %31 lit: i64 = const 0
     %32 lit: i64 = const 0
     jump b1(%31, %32, %1, %2)
@@ -432,8 +432,37 @@ fn sum_values#2 top -> i64 ; main::map_int_shared, frame 1 slots [%0 word*]
     %7 more: bool = lt.int %3, %6
     if %7 then b2(%5, %6, %3, %4) else b3(%5, %6, %3, %4)
   b2(%8 r: ptr, %9 n: i64, %10 i: i64, %11 t: i64):
-    dup.candidate %8
-    %16 x: word = $list_at(%8, %10)
+    %34 r.lent: ref = lend %8
+    %16 x: word = $list_at(%34, %10)
+    %29 p: i64 = tuple_get %16.0
+    %30 p: i64 = tuple_get %16.1
+    drop %16
+    jump b5(%30, %8, %9, %10, %11)
+  b3(%12 r: ptr, %13 n: i64, %14 i: i64, %15 t: i64):
+    drop %12
+    ret %15
+  b4(%17 t: i64, %18 r: ptr, %19 n: i64, %20 i: i64):
+    %21 lit: i64 = const 1
+    %22 i: i64 = intadd %20, %21
+    jump b1(%22, %17, %18, %19)
+  b5(%23 v: i64, %24 r: ptr, %25 n: i64, %26 i: i64, %27 t: i64):
+    %28 t: i64 = intadd %27, %23
+    jump b4(%28, %24, %25, %26)
+
+fn sum_values#3 borrowed variant of #2 -> i64 ; main::map_int_shared, frame 1 slots [%0 i64]
+  b0(%0 m: ref):
+    %1 r: ptr = $map_entries(%0)
+    %33 r.lent: ref = lend %1
+    %2 n: i64 = $list_len(%33)
+    %31 lit: i64 = const 0
+    %32 lit: i64 = const 0
+    jump b1(%31, %32, %1, %2)
+  b1(%3 i: i64, %4 t: i64, %5 r: ptr, %6 n: i64):
+    %7 more: bool = lt.int %3, %6
+    if %7 then b2(%5, %6, %3, %4) else b3(%5, %6, %3, %4)
+  b2(%8 r: ptr, %9 n: i64, %10 i: i64, %11 t: i64):
+    %34 r.lent: ref = lend %8
+    %16 x: word = $list_at(%34, %10)
     %29 p: i64 = tuple_get %16.0
     %30 p: i64 = tuple_get %16.1
     drop %16

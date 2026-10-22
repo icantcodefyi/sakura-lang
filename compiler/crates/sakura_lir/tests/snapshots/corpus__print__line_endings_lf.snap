@@ -21,8 +21,8 @@ fn main#0 pub top -> unit ; main::line_endings_lf, frame 5 slots [%1 word*, %4 b
   b2(%4 r: unit, %5 r: ptr) [handle]:
     %6 box: word = box %4
     drop %6
-    dup.candidate %5
-    %7 r: i64 = $string_len(%5)
+    %28 r.lent: ref = lend %5
+    %7 r: i64 = $string_len(%28)
     %8 s: ptr = show %7
     %9 lit: ptr = const str 1
     %10 s: ptr = concat %8, %9

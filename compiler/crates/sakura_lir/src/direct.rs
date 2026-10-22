@@ -63,6 +63,25 @@ impl Facts {
         self.direct(d) && self.first_order[d as usize]
     }
 
+    /// Gives function `to` (a borrowed variant, after the adapters, which have no facts) the
+    /// facts of def `from` (plan M5 N4a).
+    pub fn alias(&mut self, from: usize, to: usize) {
+        let n = self.verdicts.len().max(to + 1);
+        self.verdicts.resize(n, Err("an adapter".into()));
+        self.first_order.resize(n, false);
+        self.recursive.resize(n, false);
+        self.verdicts[to] = self.verdicts[from].clone();
+        self.first_order[to] = self.first_order[from];
+        self.recursive[to] = self.recursive[from];
+    }
+
+    /// Forgets the facts of functions `n` and after ([`crate::borrow::strip`]).
+    pub fn truncate(&mut self, n: usize) {
+        self.verdicts.truncate(n);
+        self.first_order.truncate(n);
+        self.recursive.truncate(n);
+    }
+
     fn holds(&self, n: Need) -> bool {
         match n {
             Need::Direct(d) => self.direct(d),

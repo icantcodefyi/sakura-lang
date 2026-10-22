@@ -117,7 +117,7 @@ impl Rt {
     /// `toUpperCase`/`toLowerCase` by code point (`char::to_uppercase`, Unicode's unconditional
     /// mappings, as JS). ponytail: no final-sigma rule in `to_lower` (JS maps a word-final `Σ`
     /// to `ς`); add it with a cased-letter table when a fixture needs it.
-    fn map_case(&mut self, s: u32, upper: bool) -> Res<u32> {
+    fn map_case(&mut self, s: u32, upper: bool, keep: u32) -> Res<u32> {
         let r = self.build(|rt, buf| {
             let mut i = 0;
             while let Some(c) = rt.text(s)[i..].chars().next() {
@@ -135,34 +135,35 @@ impl Rt {
             }
             Ok(())
         });
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         r
     }
 
-    pub fn string_to_upper(&mut self, s: u32) -> Res<u32> {
-        self.map_case(s, true)
+    pub fn string_to_upper(&mut self, s: u32, keep: u32) -> Res<u32> {
+        self.map_case(s, true, keep)
     }
 
-    pub fn string_to_lower(&mut self, s: u32) -> Res<u32> {
-        self.map_case(s, false)
+    pub fn string_to_lower(&mut self, s: u32, keep: u32) -> Res<u32> {
+        self.map_case(s, false, keep)
     }
 
-    fn string_test(&mut self, s: u32, p: u32, f: fn(&str, &str) -> bool) -> bool {
+    fn string_test(&mut self, s: u32, p: u32, keep: u32, f: fn(&str, &str) -> bool) -> bool {
         let r = f(self.text(s), self.text(p));
-        self.drop2(s, p);
+        self.drop_arg(keep, 0, s);
+        self.drop_arg(keep, 1, p);
         r
     }
 
-    pub fn string_contains(&mut self, s: u32, p: u32) -> bool {
-        self.string_test(s, p, |s, p| s.contains(p))
+    pub fn string_contains(&mut self, s: u32, p: u32, keep: u32) -> bool {
+        self.string_test(s, p, keep, |s, p| s.contains(p))
     }
 
-    pub fn string_starts_with(&mut self, s: u32, p: u32) -> bool {
-        self.string_test(s, p, |s, p| s.starts_with(p))
+    pub fn string_starts_with(&mut self, s: u32, p: u32, keep: u32) -> bool {
+        self.string_test(s, p, keep, |s, p| s.starts_with(p))
     }
 
-    pub fn string_ends_with(&mut self, s: u32, p: u32) -> bool {
-        self.string_test(s, p, |s, p| s.ends_with(p))
+    pub fn string_ends_with(&mut self, s: u32, p: u32, keep: u32) -> bool {
+        self.string_test(s, p, keep, |s, p| s.ends_with(p))
     }
 
     /// The code points of `s` (borrowed) between byte offsets `from..to`, one string each.
@@ -183,17 +184,18 @@ impl Rt {
     }
 
     /// `String.chars`: code points (JS `[...s]`).
-    pub fn string_chars(&mut self, s: u32) -> Res<u32> {
+    pub fn string_chars(&mut self, s: u32, keep: u32) -> Res<u32> {
         let len = self.data(s).0;
         let r = self.chars_list(s, 0, len);
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         r
     }
 
     /// `String.split`: JS `s.split(sep)`, or code points for an empty separator.
-    pub fn string_split(&mut self, s: u32, sep: u32) -> Res<u32> {
+    pub fn string_split(&mut self, s: u32, sep: u32, keep: u32) -> Res<u32> {
         let r = self.split(s, sep);
-        self.drop2(s, sep);
+        self.drop_arg(keep, 0, s);
+        self.drop_arg(keep, 1, sep);
         r
     }
 
@@ -223,7 +225,7 @@ impl Rt {
 
     /// `String.replace`: every occurrence; an empty `from` inserts `to` between code points and
     /// at both ends (as JS).
-    pub fn string_replace(&mut self, s: u32, from: u32, to: u32) -> Res<u32> {
+    pub fn string_replace(&mut self, s: u32, from: u32, to: u32, keep: u32) -> Res<u32> {
         let r = self.build(|rt, buf| {
             let (len, at) = rt.data(s);
             let (to_len, to_at) = rt.data(to);
@@ -257,8 +259,9 @@ impl Rt {
                 }
             }
         });
-        self.drop2(s, from);
-        self.drop(to);
+        self.drop_arg(keep, 0, s);
+        self.drop_arg(keep, 1, from);
+        self.drop_arg(keep, 2, to);
         r
     }
 
@@ -292,13 +295,13 @@ impl Rt {
     }
 
     /// `String.parse_int`: `^[+-]?[0-9]+$` within i64, else `None`.
-    pub fn string_parse_int(&mut self, s: u32) -> Res<u32> {
+    pub fn string_parse_int(&mut self, s: u32, keep: u32) -> Res<u32> {
         let t = self.text(s);
         let digits = t.strip_prefix(['+', '-']).unwrap_or(t);
         let n = (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
             .then(|| t.parse::<i64>().ok())
             .flatten();
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         match n {
             Some(i) => {
                 let b = self.new_int(i)?;
@@ -309,7 +312,7 @@ impl Rt {
     }
 
     /// `String.parse_float`: JS's decimal syntax, or `NaN`, `inf`, `+inf`, `-inf`.
-    pub fn string_parse_float(&mut self, s: u32) -> Res<u32> {
+    pub fn string_parse_float(&mut self, s: u32, keep: u32) -> Res<u32> {
         let t = self.text(s);
         let v = match t {
             "NaN" => Some(f64::NAN),
@@ -318,7 +321,7 @@ impl Rt {
             _ if decimal(t) => t.parse::<f64>().ok(),
             _ => None,
         };
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         match v {
             Some(f) => {
                 let b = self.new_float(f)?;
@@ -411,14 +414,15 @@ impl Rt {
         self.build(|rt, buf| to_fixed(rt, buf, f, digits))
     }
 
-    pub fn option_expect(&mut self, o: u32, msg: u32) -> Res<u32> {
+    pub fn option_expect(&mut self, o: u32, msg: u32, keep: u32) -> Res<u32> {
         if self.heap.mem.u32(o + 12) == 1 {
             let x = self.heap.mem.u32(o + 16);
             let r = self.dup(x).map(|_| x);
-            self.drop2(o, msg);
+            self.drop_arg(keep, 0, o);
+            self.drop(msg);
             return r;
         }
-        self.drop(o);
+        self.drop_arg(keep, 0, o);
         // The program's own message (design §17.162), as JS.
         Err(self.with_text(
             Defect {
@@ -431,24 +435,26 @@ impl Rt {
 
     /// `option_expect(list_get(xs, i), msg)`, fused by `opt` (design §17.151): the element is
     /// read in place, so no `Option` is built (M4-OPT).
-    pub fn list_get_expect(&mut self, xs: u32, i: i64, msg: u32) -> Res<u32> {
+    pub fn list_get_expect(&mut self, xs: u32, i: i64, msg: u32, keep: u32) -> Res<u32> {
         let v = self.list_value(xs, i);
-        self.drop(xs);
+        self.drop_arg(keep, 0, xs);
         self.expected(v, msg)
     }
 
     /// `option_expect(map_get(m, k), msg)` (design §17.151), read in place as above.
-    pub fn map_get_expect(&mut self, m: u32, k: u32, msg: u32) -> Res<u32> {
+    pub fn map_get_expect(&mut self, m: u32, k: u32, msg: u32, keep: u32) -> Res<u32> {
         let v = self.map_value(m, k);
-        self.drop2(m, k);
+        self.drop_arg(keep, 0, m);
+        self.drop_arg(keep, 1, k);
         self.expected(v, msg)
     }
 
     /// `Option.unwrap_or(map_get(m, k), d)`, fused by `opt` (design §17.275 (4)): no `Option`
     /// is built, and `d` is returned or released.
-    pub fn map_get_or(&mut self, m: u32, k: u32, d: u32) -> Res<u32> {
+    pub fn map_get_or(&mut self, m: u32, k: u32, d: u32, keep: u32) -> Res<u32> {
         let v = self.map_value(m, k);
-        self.drop2(m, k);
+        self.drop_arg(keep, 0, m);
+        self.drop_arg(keep, 1, k);
         match v {
             Ok(None) => Ok(d),
             r => {
@@ -523,8 +529,8 @@ impl Rt {
 
     /// `String.from_bytes`: `Ok(string)` or `Err(Utf8Error { offset })` at the first byte that
     /// is not UTF-8 (as JS).
-    pub fn string_from_bytes(&mut self, b: u32) -> Res<u32> {
-        match self.string_from_utf8(b)? {
+    pub fn string_from_bytes(&mut self, b: u32, keep: u32) -> Res<u32> {
+        match self.string_from_utf8(b, keep)? {
             Ok(s) => self.ok(s),
             Err(offset) => {
                 let t = self

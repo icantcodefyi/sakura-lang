@@ -279,6 +279,38 @@ tokenizer 1,004 → 3,005; this is the baseline N4's bar is read against.
 0 before). ABI 1.17.0's §10 text says so (unreleased, so no MINOR). AI implementation: Claude
 Opus 5.5; the human contributor owns acceptance.
 
+**N4a progress (2026-10-22): the borrowed convention, ABI 1.18.0 (§17.176 (4)).** Round 62 had
+not landed, so the plan's defaults hold: 1.18.0, and REQUESTS N4a reading 5's per-site bar. At a
+marked site whose callee takes the argument borrowed, ownership emits `lend` (a `ref`, the new
+unowned representation) instead of `dup.candidate`, and the call no longer consumes the owner,
+which its continuation or a later instruction still holds. A builtin takes it through
+`rt_bb_<name>(keep, …)`, which drops none of the arguments its mask names (every read-only
+argument `borrow::lends` names, never a host call: `json_encode`, `json_parse` and, for WASM,
+`crypto_*` stay owned). A direct def takes it through a borrowed variant (`borrow::variants`),
+its body with the lent parameters and their carriers `ref`, one per set of lent parameters a
+site passes, so an argument not live after the call is still owned: no call gains a `drop`
+after it and no tail call is lost (`countdown`'s and `fib`'s frames are unchanged). A variant's
+marked reads of its `ref` lend it on, so every marked site still counts once. `borrowable`
+keeps a parameter only when no carrier is held across a `perform`, a closure call, a callback
+builtin or a region; the validator holds the same rules, the owner held after the call that
+reads the lent `ref` and the lent `ref` inside its block. A `ref` frame slot is unowned (kind
+1), so pads, aborted twins and cancelled tasks release nothing for it; N2g's split never cuts at
+a `ref` parameter. **The bar as measured:** `bench_counters.txt` re-recorded: `borrow_candidates`
+unchanged on every program, `dups` fall by exactly `borrows` on every program (`nbody` 43,026 →
+6,000, `deltablue` 297,025 → 180,900), `borrows` is `borrow_candidates` minus the promotions,
+each named: `json_validate` 87 (`json_encode`, a host call), `contracts` 124 and
+`contracts_plain` 62 (`total`'s list, held across `List.all`'s and `List.fold`'s closure calls),
+`deltablue` 1 (`sum_values`'s list, the same through `fold`). `drops` fall by the lent calls
+whose callee dropped the reference in compiled code (`deltablue` 223,154 → 151,289); a builtin's
+own drop was never counted (reading 5). `reuse_attempts` fall only where a borrowed variant no
+longer resets a parameter its caller still held (`reuse_constructor` 216/213 → 213/213, the 3
+misses). The LIR corpus checks it site by site: every program runs with borrowing and with
+`borrow::strip`, with the same ending, stdout and marked sites, `dups` and `drops` falling alike by
+at most `borrows` (the interpreter counts neither for a static object), both balanced. The
+`m5-stress` set runs with borrowing stripped too. Corpus print snapshots: each lent
+`dup.candidate` becomes `lend` and each borrowed variant appears. AI implementation: Claude
+Opus 5.5; the human contributor owns acceptance.
+
 **N2 progress (2026-10-19), in landable slices.** Each keeps the gates green, never lowers the
 native corpus count and leaves JS and WASM output unchanged. **N2a, frame-protocol code (landed):**
 `sakura_codegen_native::emit` lowers every LIR function to a CLIF function `(ctx, env, frame) ->
@@ -516,7 +548,7 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 | B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run; **code and CI done** (2026-10-22, the owner's direction to run it now; see the B-native note) | `verify-published.yml` green on the B row with the native step |
 | C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
 | N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) — **constructor sites done** (`e55977f8`, ABI 1.17.0, in beta.4; §17.309 (2)); **N3b**: `List.map` leaf/tail reuse, the `m5-stress` set under the lanes, then tokens across direct calls as ordinary object words in frame slots (no new slot kind, no ABI change unless the frame protocol needs one, then a MINOR at landing) — **N3b done** (2026-10-22, still 1.17.0; no slot kind needed) | Opus | now | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
-| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1); **done** 2026-10-22, still 1.17.0); ABI MINOR at landing | Opus | after N3b | the row's |
+| N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1); **done** 2026-10-22, still 1.17.0); ABI MINOR at landing — **N4a's convention done** (2026-10-22, ABI 1.18.0; see the N4a progress text) | Opus | after N3b | the row's |
 | N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses); **N5.5 done** (2026-10-22), 54 ms on a 10,000-line edit, so on every edit |
 | M | `bench run --suite native` counted as the JS and WASM lanes are; paired `rbtree`; `bench envelope` on the native lane; a native `bench_counters.txt` column with the +1 drop note | Opus (code), Astra (docs, readings) | now; before the first baseline meant to carry a native number | no native number is read before it exists |
 

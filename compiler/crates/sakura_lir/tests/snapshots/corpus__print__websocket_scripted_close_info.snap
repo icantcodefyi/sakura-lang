@@ -80,9 +80,9 @@ fn main#0 pub top -> unit ; main::websocket_scripted_close_info, frame 16 slots 
     %26 f: ptr = closure main$2#9[]
     %27 lit: ptr = const str 5
     %28 $site: i64 = const 6
-    dup.candidate %25
-    dup.candidate %26
-    call WebSocket.connect#8(%27, %25, %26, %28) -> b8(%25, %26)
+    %55 r.lent: ref = lend %25
+    %56 f.lent: ref = lend %26
+    call WebSocket.connect#124(%27, %55, %56, %28) -> b8(%25, %26)
   b8(%29 pre: unit, %30 r: ptr, %31 f: ptr) [handle, try]:
     %32 lit: ptr = const str 5
     %33 callback: ptr = callback %31
@@ -109,9 +109,9 @@ fn main#0 pub top -> unit ; main::websocket_scripted_close_info, frame 16 slots 
     %45 f: ptr = closure main$1#7[]
     %46 lit: ptr = const str 5
     %47 $site: i64 = const 7
-    dup.candidate %44
-    dup.candidate %45
-    call WebSocket.connect#8(%46, %44, %45, %47) -> b14(%44, %45)
+    %57 r.lent: ref = lend %44
+    %58 f.lent: ref = lend %45
+    call WebSocket.connect#124(%46, %57, %58, %47) -> b14(%44, %45)
   b14(%48 pre: unit, %49 r: ptr, %50 f: ptr) [handle, try]:
     %51 lit: ptr = const str 5
     %52 callback: ptr = callback %50
@@ -173,8 +173,8 @@ fn main$2#9 lambda -> word ; main::websocket_scripted_close_info, captures [], f
     %2 lit: i64 = const 1000
     %3 lit: ptr = const str 12
     %4 $site: i64 = const 8
-    dup.candidate %1
-    call WebSocket.close#10(%1, %2, %3, %4) -> b1(%1)
+    %32 sock.lent: ref = lend %1
+    call WebSocket.close#125(%32, %2, %3, %4) -> b1(%1)
   b1(%5 pre: unit, %6 sock: ptr):
     %7 lit: i64 = const 1000
     %8 lit: ptr = const str 12
@@ -186,8 +186,8 @@ fn main$2#9 lambda -> word ; main::websocket_scripted_close_info, captures [], f
     %12 lit: i64 = const 3000
     %13 lit: ptr = const str 13
     %14 $site: i64 = const 9
-    dup.candidate %10
-    call WebSocket.close#10(%10, %12, %13, %14) -> b3(%10)
+    %33 sock.lent: ref = lend %10
+    call WebSocket.close#125(%33, %12, %13, %14) -> b3(%10)
   b3(%15 pre: unit, %16 sock: ptr):
     %17 lit: i64 = const 3000
     %18 lit: ptr = const str 13

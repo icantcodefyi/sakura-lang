@@ -78,17 +78,17 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %39 lit: ptr = const str 3
     %40 r: ptr = $string_to_bytes(%39)
     %41 $site: i64 = const 3
-    dup.candidate %35
+    %190 p.lent: ref = lend %35
     dup.candidate %40
-    call hmac#3(%35, %40, %41) -> b9(%35, %38, %40)
+    call hmac#82(%190, %40, %41) -> b9(%35, %38, %40)
   b8(%36 p: ptr, %37 p: ptr):
     drop %36
     drop %37
     jump b3()
   b9(%42 r: ptr, %43 k: ptr, %44 k2: ptr, %45 r: ptr):
     %46 lit: i64 = const 0
-    dup.candidate %42
-    %47 r: ptr = $bytes_get(%42, %46)
+    %191 r.lent: ref = lend %42
+    %47 r: ptr = $bytes_get(%191, %46)
     %48 lit: i64 = const 0
     %49 box: word = box %48
     call unwrap_or#4(%47, %49) -> b10(%43, %44, %45, %42)
@@ -104,24 +104,24 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %65 box: word = box %60
     %66 xs: ptr = alloc list(%65)
     %67 r: ptr = $bytes_from_list(%66)
-    dup.candidate %64
-    %68 r: i64 = $bytes_len(%64)
+    %193 r.lent: ref = lend %64
+    %68 r: i64 = $bytes_len(%193)
     %69 lit: i64 = const 1
     dup %64
     %70 r: ptr = $bytes_slice(%64, %69, %68)
     %71 xs: ptr = alloc list(%67, %70)
     %72 r: ptr = $bytes_concat(%71)
-    dup.candidate %64
-    %73 r: i64 = $bytes_len(%64)
+    %194 r.lent: ref = lend %64
+    %73 r: i64 = $bytes_len(%194)
     %74 s: ptr = show %73
     %75 lit: ptr = const str 4
     %76 s: ptr = concat %74, %75
     drop %75
     %77 $site: i64 = const 4
-    dup.candidate %61
+    %192 k.lent: ref = lend %61
     dup.candidate %63
     dup.candidate %64
-    call verify#5(%61, %64, %63, %77) -> b12(%61, %62, %63, %64, %72, %76)
+    call verify#83(%192, %64, %63, %77) -> b12(%61, %62, %63, %64, %72, %76)
   b12(%78 r: bool, %79 k: ptr, %80 k2: ptr, %81 r: ptr, %82 r: ptr, %83 r: ptr, %84 s: ptr):
     %85 s: ptr = show %78
     %86 s: ptr = concat %84, %85
@@ -131,9 +131,9 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %93 box: word = box %87
     drop %93
     %94 $site: i64 = const 5
-    dup.candidate %88
+    %195 k.lent: ref = lend %88
     dup.candidate %90
-    call verify#5(%88, %92, %90, %94) -> b14(%88, %89, %90, %91)
+    call verify#83(%195, %92, %90, %94) -> b14(%88, %89, %90, %91)
   b14(%95 r: bool, %96 k: ptr, %97 k2: ptr, %98 r: ptr, %99 r: ptr):
     %100 s: ptr = show %95
     perform std::console::Console.print(%100) -> b15(%96, %97, %98, %99)
@@ -145,9 +145,9 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     dup %105
     %109 r: ptr = $bytes_slice(%105, %107, %108)
     %110 $site: i64 = const 6
-    dup.candidate %102
+    %196 k.lent: ref = lend %102
     dup.candidate %104
-    call verify#5(%102, %109, %104, %110) -> b16(%102, %103, %104, %105)
+    call verify#83(%196, %109, %104, %110) -> b16(%102, %103, %104, %105)
   b16(%111 r: bool, %112 k: ptr, %113 k2: ptr, %114 r: ptr, %115 r: ptr):
     %116 s: ptr = show %111
     perform std::console::Console.print(%116) -> b17(%112, %113, %114, %115)
@@ -162,9 +162,9 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %127 xs: ptr = alloc list(%121, %126)
     %128 r: ptr = $bytes_concat(%127)
     %129 $site: i64 = const 7
-    dup.candidate %118
+    %197 k.lent: ref = lend %118
     dup.candidate %120
-    call verify#5(%118, %128, %120, %129) -> b18(%118, %119, %120, %121)
+    call verify#83(%197, %128, %120, %129) -> b18(%118, %119, %120, %121)
   b18(%130 r: bool, %131 k: ptr, %132 k2: ptr, %133 r: ptr, %134 r: ptr):
     %135 s: ptr = show %130
     perform std::console::Console.print(%135) -> b19(%131, %132, %133, %134)
@@ -174,9 +174,9 @@ fn main#0 pub top -> unit ; main::crypto_verify_rejects_tampered, frame 78 slots
     %142 xs: ptr = alloc list()
     %143 r: ptr = $bytes_from_list(%142)
     %144 $site: i64 = const 8
-    dup.candidate %137
+    %198 k.lent: ref = lend %137
     dup.candidate %139
-    call verify#5(%137, %143, %139, %144) -> b20(%137, %138, %139, %140)
+    call verify#83(%198, %143, %139, %144) -> b20(%137, %138, %139, %140)
   b20(%145 r: bool, %146 k: ptr, %147 k2: ptr, %148 r: ptr, %149 r: ptr):
     %150 s: ptr = show %145
     perform std::console::Console.print(%150) -> b21(%146, %147, %148, %149)

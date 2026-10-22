@@ -19,16 +19,16 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     jump b10(%2, %124, %2)
   b2(%3 xs: ptr, %4 i: i64, %5 r: ptr):
     %6 lit: i64 = const 0
-    dup.candidate %3
-    %7 item: ptr = $list_get(%3, %6)
+    %125 xs.lent: ref = lend %3
+    %7 item: ptr = $list_get(%125, %6)
     %8 s: ptr = show %7
     drop %7
     %9 lit: ptr = const str 0
     %10 s: ptr = concat %8, %9
     drop %9
     %11 lit: i64 = const 1
-    dup.candidate %3
-    %12 item: ptr = $list_get(%3, %11)
+    %126 xs.lent: ref = lend %3
+    %12 item: ptr = $list_get(%126, %11)
     %13 s: ptr = show %12
     drop %12
     %14 s: ptr = concat %10, %13
@@ -37,8 +37,8 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %16 s: ptr = concat %14, %15
     drop %15
     %17 lit: i64 = const 3
-    dup.candidate %3
-    %18 item: ptr = $list_get(%3, %17)
+    %127 xs.lent: ref = lend %3
+    %18 item: ptr = $list_get(%127, %17)
     %19 s: ptr = show %18
     drop %18
     %20 s: ptr = concat %16, %19
@@ -47,8 +47,8 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %22 s: ptr = concat %20, %21
     drop %21
     %23 lit: i64 = const 1998
-    dup.candidate %3
-    %24 item: ptr = $list_get(%3, %23)
+    %128 xs.lent: ref = lend %3
+    %24 item: ptr = $list_get(%128, %23)
     %25 s: ptr = show %24
     drop %24
     %26 s: ptr = concat %22, %25
@@ -57,8 +57,8 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %28 s: ptr = concat %26, %27
     drop %27
     %29 lit: i64 = const 1999
-    dup.candidate %3
-    %30 item: ptr = $list_get(%3, %29)
+    %129 xs.lent: ref = lend %3
+    %30 item: ptr = $list_get(%129, %29)
     %31 s: ptr = show %30
     drop %30
     %32 s: ptr = concat %28, %31
@@ -75,16 +75,16 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %40 box: word = box %38
     drop %40
     %41 lit: i64 = const 3
-    dup.candidate %39
-    %42 item: ptr = $list_get(%39, %41)
+    %130 r.lent: ref = lend %39
+    %42 item: ptr = $list_get(%130, %41)
     %43 s: ptr = show %42
     drop %42
     %44 lit: ptr = const str 0
     %45 s: ptr = concat %43, %44
     drop %44
     %46 lit: i64 = const 1998
-    dup.candidate %39
-    %47 item: ptr = $list_get(%39, %46)
+    %131 r.lent: ref = lend %39
+    %47 item: ptr = $list_get(%131, %46)
     %48 s: ptr = show %47
     drop %47
     %49 s: ptr = concat %45, %48
@@ -118,8 +118,8 @@ fn main#0 pub top -> unit ; main::list_set, frame 19 slots [%2 word*, %38 bool, 
     %71 s: ptr = concat %69, %70
     drop %70
     %72 lit: i64 = const 1999
-    dup.candidate %66
-    %73 item: ptr = $list_get(%66, %72)
+    %132 r.lent: ref = lend %66
+    %73 item: ptr = $list_get(%132, %72)
     %74 s: ptr = show %73
     drop %73
     %75 s: ptr = concat %71, %74

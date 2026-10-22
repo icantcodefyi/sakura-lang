@@ -578,7 +578,7 @@ impl Rt {
         r
     }
 
-    pub fn map_remove(&mut self, m: u32, k: u32) -> Res<u32> {
+    pub fn map_remove(&mut self, m: u32, k: u32, keep: u32) -> Res<u32> {
         let r = if self.reusable(m) {
             self.without_owned(m, k, true)
         } else {
@@ -586,17 +586,18 @@ impl Rt {
             self.drop(m);
             r
         };
-        self.drop(k);
+        self.drop_arg(keep, 1, k);
         r
     }
 
     /// `Map.get(m, k) -> Option<V>`.
-    pub fn map_get(&mut self, m: u32, k: u32) -> Res<u32> {
+    pub fn map_get(&mut self, m: u32, k: u32, keep: u32) -> Res<u32> {
         let r = self.map_value(m, k).and_then(|v| match v {
             Some(v) => self.some(v),
             None => Ok(self.none()),
         });
-        self.drop2(m, k);
+        self.drop_arg(keep, 0, m);
+        self.drop_arg(keep, 1, k);
         r
     }
 
@@ -612,22 +613,23 @@ impl Rt {
         Ok(Some(v))
     }
 
-    pub fn map_contains(&mut self, m: u32, k: u32) -> Res<bool> {
+    pub fn map_contains(&mut self, m: u32, k: u32, keep: u32) -> Res<bool> {
         let r = self.find(m, k, true).map(|(_, s)| s.is_some());
-        self.drop2(m, k);
+        self.drop_arg(keep, 0, m);
+        self.drop_arg(keep, 1, k);
         r
     }
 
-    pub fn map_len(&mut self, m: u32) -> i64 {
+    pub fn map_len(&mut self, m: u32, keep: u32) -> i64 {
         let n = self.mfields(m).0;
-        self.drop(m);
+        self.drop_arg(keep, 0, m);
         n as i64
     }
 
     /// `Map.entries`: the entry pairs themselves (immutable, so sharing them is a copy).
-    pub fn map_entries(&mut self, m: u32) -> Res<u32> {
+    pub fn map_entries(&mut self, m: u32, keep: u32) -> Res<u32> {
         let r = self.live(m, |_, e| e);
-        self.drop(m);
+        self.drop_arg(keep, 0, m);
         r
     }
 
@@ -705,19 +707,20 @@ impl Rt {
         r
     }
 
-    pub fn set_contains(&mut self, s: u32, x: u32) -> Res<bool> {
+    pub fn set_contains(&mut self, s: u32, x: u32, keep: u32) -> Res<bool> {
         let r = self.set_has(s, x);
-        self.drop2(s, x);
+        self.drop_arg(keep, 0, s);
+        self.drop_arg(keep, 1, x);
         r
     }
 
-    pub fn set_len(&mut self, s: u32) -> i64 {
-        self.map_len(s)
+    pub fn set_len(&mut self, s: u32, keep: u32) -> i64 {
+        self.map_len(s, keep)
     }
 
-    pub fn set_to_list(&mut self, s: u32) -> Res<u32> {
+    pub fn set_to_list(&mut self, s: u32, keep: u32) -> Res<u32> {
         let r = self.live(s, |_, e| e);
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         r
     }
 }

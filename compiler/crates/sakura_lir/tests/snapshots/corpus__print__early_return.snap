@@ -88,8 +88,8 @@ fn main$1#2 lambda -> word ; main::early_return, captures [], frame 2 slots [%0 
 
 fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*]
   b0(%0 xs: ptr, %1 target: ptr):
-    dup.candidate %0
-    %2 n: i64 = $list_len(%0)
+    %52 xs.lent: ref = lend %0
+    %2 n: i64 = $list_len(%52)
     %50 lit: i64 = const 0
     %51 lit: i64 = const 0
     jump b2(%50, %51, %0, %1, %2)
@@ -101,8 +101,8 @@ fn index_of#3 top -> i64 ; main::early_return, frame 2 slots [%0 word*, %1 word*
     %11 more: bool = lt.int %6, %10
     if %11 then b3(%8, %9, %10, %6, %7) else b4(%8, %9, %10, %6, %7)
   b3(%12 xs: ptr, %13 target: ptr, %14 n: i64, %15 i: i64, %16 i: i64):
-    dup.candidate %12
-    %22 x: word = $list_at(%12, %15)
+    %53 xs.lent: ref = lend %12
+    %22 x: word = $list_at(%53, %15)
     %30 t: bool = eq.string %22, %13
     drop %22
     if %30 then b7(%12, %13, %14, %15, %16) else b8(%12, %13, %14, %15, %16)

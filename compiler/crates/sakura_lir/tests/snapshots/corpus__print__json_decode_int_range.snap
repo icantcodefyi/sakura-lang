@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::json_decode_int_range, frame 4 slots [%30 bool
     %2 lit: ptr = const str 2
     %3 lit: ptr = const str 3
     %4 xs: ptr = alloc list(%0, %1, %2, %3)
-    dup.candidate %4
-    %5 n: i64 = $list_len(%4)
+    %36 xs.lent: ref = lend %4
+    %5 n: i64 = $list_len(%36)
     %35 lit: i64 = const 0
     jump b2(%35, %4, %5)
   b1():
@@ -26,8 +26,8 @@ fn main#0 pub top -> unit ; main::json_decode_int_range, frame 4 slots [%30 bool
     %10 more: bool = lt.int %7, %9
     if %10 then b3(%8, %9, %7) else b4(%8, %9, %7)
   b3(%11 xs: ptr, %12 n: i64, %13 i: i64):
-    dup.candidate %11
-    %17 x: word = $list_at(%11, %13)
+    %37 xs.lent: ref = lend %11
+    %17 x: word = $list_at(%37, %13)
     %23 schema: ptr = const str 4
     dup %17
     %24 r: ptr = $json_decode(%17, %23)

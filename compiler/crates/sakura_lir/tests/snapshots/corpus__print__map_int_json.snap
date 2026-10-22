@@ -25,8 +25,8 @@ fn main#0 pub top -> unit ; main::map_int_json, frame 3 slots [%34 bool, %46 wor
     %13 box: word = box %12
     %14 box: word = box %4
     %15 xs: ptr = alloc list(%6, %7, %9, %11, %13, %14)
-    dup.candidate %15
-    %16 n: i64 = $list_len(%15)
+    %79 xs.lent: ref = lend %15
+    %16 n: i64 = $list_len(%79)
     %78 lit: i64 = const 0
     jump b5(%78, %0, %15, %16)
   b1(%17 m: ptr):
@@ -74,8 +74,8 @@ fn main#0 pub top -> unit ; main::map_int_json, frame 3 slots [%34 bool, %46 wor
     %56 more: bool = lt.int %52, %55
     if %56 then b6(%54, %55, %52, %53) else b7(%54, %55, %52, %53)
   b6(%57 xs: ptr, %58 n: i64, %59 i: i64, %60 m: ptr):
-    dup.candidate %57
-    %65 x: word = $list_at(%57, %59)
+    %80 xs.lent: ref = lend %57
+    %65 x: word = $list_at(%80, %59)
     %66 unbox: i64 = unbox %65
     drop %65
     %73 lit: i64 = const 7

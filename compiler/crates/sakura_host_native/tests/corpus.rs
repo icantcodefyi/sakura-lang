@@ -469,9 +469,10 @@ const M5_STRESS: &[&str] = &[
 ];
 
 /// Plan M5 §4: the `m5-stress` set compiled natively agrees with its expectation under each
-/// toggle, twins and `--no-direct` by reuse and with reuse stripped (`sakura_lir::reuse::strip`;
-/// the borrow toggle joins with N4), and ends with the evaluator's live objects, which is the
-/// runtime's static baseline (`live 0/0` in the evaluator's report).
+/// toggle, twins and `--no-direct` by reuse and borrowing, with reuse stripped
+/// (`sakura_lir::reuse::strip`) and with borrowing stripped (`sakura_lir::borrow::strip`, N4a),
+/// and ends with the evaluator's live objects, which is the runtime's static baseline (`live
+/// 0/0` in the evaluator's report).
 #[test]
 fn the_m5_stress_set_agrees_under_each_toggle() {
     use sakura_codegen_native::Options;
@@ -494,8 +495,14 @@ fn the_m5_stress_set_agrees_under_each_toggle() {
         for f in &mut stripped.funcs {
             sakura_lir::reuse::strip(f);
         }
+        let mut owned = lowered.clone();
+        sakura_lir::borrow::strip(&mut owned);
         let mut runs = vec![];
-        for (reuse, m) in [("reuse", &lowered), ("no reuse", &stripped)] {
+        for (reuse, m) in [
+            ("reuse", &lowered),
+            ("no reuse", &stripped),
+            ("no borrow", &owned),
+        ] {
             for direct in [true, false] {
                 let name = format!("{}-{}", p.name, reuse.replace(' ', "-"));
                 let opts = Options {

@@ -46,8 +46,8 @@ fn $entry#1 top -> unit ; main::json_schema_refinement_keywords, frame 1 slots [
 fn Name$check#2 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %13 it.lent: ref = lend %0
+    %2 r: i64 = $string_len(%13)
     %3 lit: i64 = const 1
     %4 t: bool = ge.int %2, %3
     if %4 then b2(%0) else b3(%0)
@@ -67,8 +67,8 @@ fn Name$check#2 top -> bool ; main::json_schema_refinement_keywords, frame 1 slo
 fn Tags$check#3 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $list_len(%0)
+    %13 it.lent: ref = lend %0
+    %2 r: i64 = $list_len(%13)
     %3 lit: i64 = const 8
     %4 t: bool = le.int %2, %3
     if %4 then b2(%0) else b3(%0)
@@ -177,8 +177,8 @@ fn Form.code$check#9 top -> bool ; main::json_schema_refinement_keywords, frame 
 fn Form.handle$check#10 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %13 it.lent: ref = lend %0
+    %2 r: i64 = $string_len(%13)
     %3 lit: i64 = const 8
     %4 t: bool = ge.int %2, %3
     if %4 then b2(%0) else b3(%0)
@@ -198,8 +198,8 @@ fn Form.handle$check#10 top -> bool ; main::json_schema_refinement_keywords, fra
 fn Form.loose$check#11 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %14 it.lent: ref = lend %0
+    %2 r: i64 = $string_len(%14)
     %3 lit: i64 = const 1
     %4 t: i64 = intneg %3
     %5 t: bool = ge.int %2, %4
@@ -220,8 +220,8 @@ fn Form.loose$check#11 top -> bool ; main::json_schema_refinement_keywords, fram
 fn Form.picks$check#12 top -> bool ; main::json_schema_refinement_keywords, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $list_len(%0)
+    %13 it.lent: ref = lend %0
+    %2 r: i64 = $list_len(%13)
     %3 lit: i64 = const 1
     %4 t: bool = ge.int %2, %3
     if %4 then b2(%0) else b3(%0)

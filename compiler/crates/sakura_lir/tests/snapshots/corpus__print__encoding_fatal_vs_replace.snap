@@ -59,8 +59,8 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     %41 box: word = box %40
     %42 xs: ptr = alloc list(%29, %31, %33, %35, %37, %39, %41)
     %43 xs: ptr = alloc list(%6, %13, %20, %27, %42)
-    dup.candidate %43
-    %44 n: i64 = $list_len(%43)
+    %181 xs.lent: ref = lend %43
+    %44 n: i64 = $list_len(%181)
     %180 lit: i64 = const 0
     jump b12(%180, %43, %44)
   b1():
@@ -90,8 +90,8 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     %68 box: word = box %67
     %69 xs: ptr = alloc list(%64, %66, %68)
     %70 xs: ptr = alloc list(%53, %62, %69)
-    dup.candidate %70
-    %71 n: i64 = $list_len(%70)
+    %182 xs.lent: ref = lend %70
+    %71 n: i64 = $list_len(%182)
     %132 lit: i64 = const 0
     jump b4(%132, %70, %71)
   b2():
@@ -116,8 +116,8 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     %88 more: bool = lt.int %85, %87
     if %88 then b5(%86, %87, %85) else b6(%86, %87, %85)
   b5(%89 xs: ptr, %90 n: i64, %91 i: i64):
-    dup.candidate %89
-    %95 x: word = $list_at(%89, %91)
+    %183 xs.lent: ref = lend %89
+    %95 x: word = $list_at(%183, %91)
     %101 r: ptr = $bytes_from_list(%95)
     %102 v: ptr = const static std::encoding::Encoding.Utf16Le
     %103 v: ptr = const static std::encoding::Errors.Replace
@@ -156,8 +156,8 @@ fn main#0 pub top -> unit ; main::encoding_fatal_vs_replace, frame 39 slots [%82
     %136 more: bool = lt.int %133, %135
     if %136 then b13(%134, %135, %133) else b14(%134, %135, %133)
   b13(%137 xs: ptr, %138 n: i64, %139 i: i64):
-    dup.candidate %137
-    %143 x: word = $list_at(%137, %139)
+    %184 xs.lent: ref = lend %137
+    %143 x: word = $list_at(%184, %139)
     %149 r: ptr = $bytes_from_list(%143)
     %150 v: ptr = const static std::encoding::Encoding.Utf8
     %151 v: ptr = const static std::encoding::Errors.Replace

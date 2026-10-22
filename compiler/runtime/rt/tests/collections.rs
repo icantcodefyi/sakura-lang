@@ -199,7 +199,7 @@ fn show_follows_design_4_8() {
     assert_eq!(show(&mut rt, ql), r#"["a\"\\\{\}\n\r\t\0\u{1b}\u{7f}é😀"]"#);
     rt.drop(ql);
     let bs = ints(&mut rt, &[1, 2, 255]);
-    let b = rt.bytes_from_list(bs).unwrap();
+    let b = rt.bytes_from_list(bs, 0).unwrap();
     assert_eq!(show(&mut rt, b), "Bytes.of([1, 2, 255])");
     rt.drop(b);
     let elems = ints(&mut rt, &[3, 1, 3]);
@@ -291,14 +291,14 @@ fn eq_ord_and_keys_are_structural() {
     let m = rt.map_insert(rt.map_empty(), k1, x1).unwrap();
     let (k2, y1) = (key(&mut rt), s(&mut rt, "y"));
     let m = rt.map_insert(m, k2, y1).unwrap();
-    assert_eq!(kept!(rt.map_len(m)), 1);
+    assert_eq!(kept!(rt.map_len(m, 0)), 1);
     let k3 = key(&mut rt);
-    let got = kept!(rt.map_get(m, k3)).unwrap();
+    let got = kept!(rt.map_get(m, k3, 0)).unwrap();
     assert_eq!(show(&mut rt, got), r#"Some("y")"#);
     // The same tuple value built generically (boxed slot) is the same key.
     let (one, a) = (int(&mut rt, 1), s(&mut rt, "a"));
     let generic = rt.pair(one, a).unwrap();
-    assert!(kept!(rt.map_contains(m, generic)).unwrap());
+    assert!(kept!(rt.map_contains(m, generic, 0)).unwrap());
     // Maps and sets are not Ord, maps are not Hash.
     assert_eq!(rt.cmp(m1, m2), Err(Defect::NOT_ORD));
     assert_eq!(rt.hash(m1), Err(Defect::NOT_HASH));
@@ -331,7 +331,7 @@ fn list_versions_stay_independent_while_appends_stay_in_place() {
         "b appended to a's tail in place"
     );
     assert_ne!(tail(&rt, a), tail(&rt, c));
-    let got = kept!(rt.list_get(b, 2)).unwrap();
+    let got = kept!(rt.list_get(b, 2, 0)).unwrap();
     assert_eq!(show(&mut rt, got), "Some(3)");
     let n = scale(1_000_000);
     let mut xs = rt.list_empty();
@@ -395,7 +395,7 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
     let one = int(&mut rt, 1);
     let pushed = kept!(rt.list_push(big, one)).unwrap();
     assert_eq!(rt.list_n(pushed), n + 1);
-    let last = kept!(rt.list_get(big, n as i64 - 1)).unwrap();
+    let last = kept!(rt.list_get(big, n as i64 - 1, 0)).unwrap();
     assert_eq!(show(&mut rt, last), format!("Some({})", n - 1));
     let mid = (n / 2) as i64;
     let sl = kept!(rt.list_slice(big, mid, mid + 3)).unwrap();
@@ -432,7 +432,7 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
             let k = rand.below(500);
             let key = mk(&mut rt, k);
             if rand.below(3) == 0 {
-                m = rt.map_remove(m, key).unwrap();
+                m = rt.map_remove(m, key, 0).unwrap();
                 model.retain(|e| e.0 != k);
             } else {
                 let v = int(&mut rt, i);
@@ -448,8 +448,8 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
         }
         olds.push((m, model));
         for (mm, model) in &olds {
-            assert_eq!(kept!(rt.map_len(*mm)), model.len() as i64);
-            let entries = kept!(rt.map_entries(*mm)).unwrap();
+            assert_eq!(kept!(rt.map_len(*mm, 0)), model.len() as i64);
+            let entries = kept!(rt.map_entries(*mm, 0)).unwrap();
             let want: Vec<String> = model
                 .iter()
                 .map(|(k, v)| format!("({}, {v})", shown(*k)))
@@ -458,7 +458,7 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
             rt.drop(entries);
             for (k, v) in model {
                 let key = mk(&mut rt, *k);
-                let got = kept!(rt.map_get(*mm, key)).unwrap();
+                let got = kept!(rt.map_get(*mm, key, 0)).unwrap();
                 assert_eq!(show(&mut rt, got), format!("Some({v})"));
                 rt.drop(got);
             }
@@ -476,8 +476,8 @@ fn list_map_and_set_agree_with_a_model_under_random_persistent_updates() {
         let x = int(&mut rt, i);
         set = rt.set_remove(set, x).unwrap();
     }
-    assert_eq!(kept!(rt.set_len(set)), 500);
-    let items = rt.set_to_list(set).unwrap();
+    assert_eq!(kept!(rt.set_len(set, 0)), 500);
+    let items = rt.set_to_list(set, 0).unwrap();
     assert_eq!(to_ints(&rt, items)[..3], [1, 3, 5]);
     rt.drop(items);
     assert_eq!(baseline(&rt), base);
@@ -525,7 +525,7 @@ fn owned_updates_write_in_place_and_keep_retained_versions() {
         }
         let key = int(&mut rt, k);
         if rand.below(3) == 0 {
-            m = rt.map_remove(m, key).unwrap();
+            m = rt.map_remove(m, key, 0).unwrap();
             model.retain(|e| e.0 != k);
         } else {
             let v = int(&mut rt, i);
@@ -538,13 +538,13 @@ fn owned_updates_write_in_place_and_keep_retained_versions() {
     }
     kept.push((m, model));
     for (mm, model) in &kept {
-        let entries = kept!(rt.map_entries(*mm)).unwrap();
+        let entries = kept!(rt.map_entries(*mm, 0)).unwrap();
         let want: Vec<String> = model.iter().map(|(k, v)| format!("({k}, {v})")).collect();
         assert_eq!(show(&mut rt, entries), format!("[{}]", want.join(", ")));
         rt.drop(entries);
         for (k, v) in model {
             let key = int(&mut rt, *k);
-            let got = kept!(rt.map_get(*mm, key)).unwrap();
+            let got = kept!(rt.map_get(*mm, key, 0)).unwrap();
             assert_eq!(show(&mut rt, got), format!("Some({v})"));
             rt.drop(got);
         }
@@ -567,9 +567,9 @@ fn owned_updates_write_in_place_and_keep_retained_versions() {
         set = rt.set_remove(set, x).unwrap();
     }
     for (s, len) in &kept {
-        assert_eq!(kept!(rt.set_len(*s)), *len);
+        assert_eq!(kept!(rt.set_len(*s, 0)), *len);
     }
-    assert_eq!(kept!(rt.set_len(set)), scale(3_000) as i64 * 2 / 3);
+    assert_eq!(kept!(rt.set_len(set, 0)), scale(3_000) as i64 * 2 / 3);
     for (s, _) in kept {
         rt.drop(s);
     }
@@ -591,12 +591,12 @@ fn map_and_set_keep_insertion_order() {
     let keys = kept!(rt.map_keys(m)).unwrap();
     assert_eq!(show(&mut rt, keys), r#"["b", "a", "c"]"#);
     let a = s(&mut rt, "a");
-    let without = rt.map_remove(m, a).unwrap();
+    let without = rt.map_remove(m, a, 0).unwrap();
     let values = rt.map_values(without).unwrap();
     assert_eq!(show(&mut rt, values), r#"["B2", "C"]"#);
     let xs = ints(&mut rt, &[3, 1, 3]);
     let set = rt.set_of(xs).unwrap();
-    let l = rt.set_to_list(set).unwrap();
+    let l = rt.set_to_list(set, 0).unwrap();
     assert_eq!(to_ints(&rt, l), [3, 1]);
     // Removing more than half of a large map compacts the log; order is kept.
     let mut big = rt.map_empty();
@@ -606,7 +606,7 @@ fn map_and_set_keep_insertion_order() {
     }
     for i in 0..150 {
         let k = int(&mut rt, i);
-        big = rt.map_remove(big, k).unwrap();
+        big = rt.map_remove(big, k, 0).unwrap();
     }
     // As JS: compaction ran at the 101st removal, and 49 holes never outnumber 50 entries.
     assert_eq!(rt.heap.mem.u32(big + 20), 49);
@@ -691,23 +691,23 @@ fn strings_and_bytes_are_utf8_bytes() {
     let mut rt = rt();
     let base = baseline(&rt);
     let text = s(&mut rt, "aé€😀");
-    assert_eq!(kept!(rt.string_len(text)), 1 + 2 + 3 + 4);
+    assert_eq!(kept!(rt.string_len(text, 0)), 1 + 2 + 3 + 4);
     let tail = s(&mut rt, "!");
     let cat = kept!(rt.string_concat(text, tail)).unwrap();
     assert_eq!(rt.data_bytes(cat), "aé€😀!".as_bytes());
-    let bytes = kept!(rt.string_to_bytes(cat)).unwrap();
-    assert_eq!(kept!(rt.bytes_len(bytes)), 11);
-    let back = kept!(rt.string_from_utf8(bytes)).unwrap().unwrap();
+    let bytes = kept!(rt.string_to_bytes(cat, 0)).unwrap();
+    assert_eq!(kept!(rt.bytes_len(bytes, 0)), 11);
+    let back = kept!(rt.string_from_utf8(bytes, 0)).unwrap().unwrap();
     assert!(rt.eq(back, cat).unwrap());
     let bad = ints(&mut rt, &[0x61, 0xc3, 0x28]);
-    let bad = rt.bytes_from_list(bad).unwrap();
-    assert_eq!(rt.string_from_utf8(bad).unwrap(), Err(1));
-    let got = kept!(rt.bytes_get(bytes, 1)).unwrap();
+    let bad = rt.bytes_from_list(bad, 0).unwrap();
+    assert_eq!(rt.string_from_utf8(bad, 0).unwrap(), Err(1));
+    let got = kept!(rt.bytes_get(bytes, 1, 0)).unwrap();
     assert_eq!(show(&mut rt, got), "Some(195)");
-    let out = kept!(rt.bytes_get(bytes, 11)).unwrap();
+    let out = kept!(rt.bytes_get(bytes, 11, 0)).unwrap();
     assert_eq!(out, rt.none());
     let wide = ints(&mut rt, &[1, 256]);
-    assert_eq!(rt.bytes_from_list(wide), Err(Defect::BYTES_FROM_LIST));
+    assert_eq!(rt.bytes_from_list(wide, 0), Err(Defect::BYTES_FROM_LIST));
     assert_eq!(Defect::BYTES_FROM_LIST.code, 20);
     for v in [text, cat, bytes, back, got] {
         rt.drop(v);

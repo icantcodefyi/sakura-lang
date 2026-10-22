@@ -50,8 +50,8 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 24 slots [%6 word
     %10 lit: ptr = const str 5
     %11 lit: ptr = const str 6
     %12 xs: ptr = alloc list(%7, %8, %9, %10, %11)
-    dup.candidate %12
-    %13 n: i64 = $list_len(%12)
+    %85 xs.lent: ref = lend %12
+    %13 n: i64 = $list_len(%85)
     %84 lit: i64 = const 0
     jump b15(%84, %12, %13)
   b2() [handle]:
@@ -89,9 +89,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 24 slots [%6 word
     %30 f: ptr = closure main$2#10[]
     %31 lit: ptr = const str 9
     %32 $site: i64 = const 5
-    dup.candidate %29
-    dup.candidate %30
-    call WebSocket.connect#9(%31, %29, %30, %32) -> b9(%29, %30)
+    %86 r.lent: ref = lend %29
+    %87 f.lent: ref = lend %30
+    call WebSocket.connect#124(%31, %86, %87, %32) -> b9(%29, %30)
   b9(%33 pre: unit, %34 r: ptr, %35 f: ptr) [handle, try]:
     %36 lit: ptr = const str 9
     %37 callback: ptr = callback %35
@@ -107,9 +107,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 24 slots [%6 word
     %43 f: ptr = closure main$1#8[]
     %44 lit: ptr = const str 9
     %45 $site: i64 = const 6
-    dup.candidate %42
-    dup.candidate %43
-    call WebSocket.connect#9(%44, %42, %43, %45) -> b13(%42, %43)
+    %88 r.lent: ref = lend %42
+    %89 f.lent: ref = lend %43
+    call WebSocket.connect#124(%44, %88, %89, %45) -> b13(%42, %43)
   b13(%46 pre: unit, %47 r: ptr, %48 f: ptr) [handle, try]:
     %49 lit: ptr = const str 9
     %50 callback: ptr = callback %48
@@ -122,8 +122,8 @@ fn main#0 pub top -> unit ; main::websocket_rejects_url, frame 24 slots [%6 word
     %56 more: bool = lt.int %53, %55
     if %56 then b16(%54, %55, %53) else b17(%54, %55, %53)
   b16(%57 xs: ptr, %58 n: i64, %59 i: i64) [handle]:
-    dup.candidate %57
-    %63 x: word = $list_at(%57, %59)
+    %90 xs.lent: ref = lend %57
+    %63 x: word = $list_at(%90, %59)
     %69 s: ptr = show %63
     %70 lit: ptr = const str 10
     %71 s: ptr = concat %69, %70
@@ -166,10 +166,10 @@ fn open#6 top -> ptr ; main::websocket_rejects_url, frame 9 slots [%0 word*, %1 
   b2(%3 r: ptr, %4 url: ptr) [try]:
     %5 f: ptr = closure open$1#11[]
     %6 $site: i64 = const 7
-    dup.candidate %3
-    dup.candidate %4
-    dup.candidate %5
-    call WebSocket.connect#9(%4, %3, %5, %6) -> b3(%4, %3, %5)
+    %16 r.lent: ref = lend %3
+    %17 url.lent: ref = lend %4
+    %18 f.lent: ref = lend %5
+    call WebSocket.connect#125(%17, %16, %18, %6) -> b3(%4, %3, %5)
   b3(%7 pre: unit, %8 url: ptr, %9 r: ptr, %10 f: ptr) [try]:
     %11 callback: ptr = callback %10
     perform std::websocket::WebSocket.connect(%8, %9, %11) -> b4()

@@ -17,8 +17,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     dup %1
     call bump_all#2(%1) -> b2(%1)
   b2(%3 r: ptr, %4 xs: ptr):
-    dup.candidate %4
-    %5 r: i64 = $list_len(%4)
+    %432 xs.lent: ref = lend %4
+    %5 r: i64 = $list_len(%432)
     %6 s: ptr = show %5
     %7 lit: ptr = const str 0
     %8 s: ptr = concat %7, %6
@@ -36,8 +36,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %18 s: ptr = concat %16, %17
     drop %17
     %19 lit: i64 = const 0
-    dup.candidate %12
-    %20 item: ptr = $list_get(%12, %19)
+    %433 xs.lent: ref = lend %12
+    %20 item: ptr = $list_get(%433, %19)
     %21 s: ptr = show %20
     drop %20
     %22 s: ptr = concat %18, %21
@@ -46,8 +46,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %24 s: ptr = concat %22, %23
     drop %23
     %25 lit: i64 = const 39
-    dup.candidate %12
-    %26 item: ptr = $list_get(%12, %25)
+    %434 xs.lent: ref = lend %12
+    %26 item: ptr = $list_get(%434, %25)
     %27 s: ptr = show %26
     drop %26
     %28 s: ptr = concat %24, %27
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
   b4(%29 r: unit, %30 xs: ptr, %31 r: ptr):
     %32 box: word = box %29
     drop %32
-    dup.candidate %31
-    %33 r: i64 = $list_len(%31)
+    %435 r.lent: ref = lend %31
+    %33 r: i64 = $list_len(%435)
     %34 s: ptr = show %33
     %35 lit: ptr = const str 2
     %36 s: ptr = concat %35, %34
@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %46 s: ptr = concat %44, %45
     drop %45
     %47 lit: i64 = const 0
-    dup.candidate %41
-    %48 item: ptr = $list_get(%41, %47)
+    %436 r.lent: ref = lend %41
+    %48 item: ptr = $list_get(%436, %47)
     %49 s: ptr = show %48
     drop %48
     %50 s: ptr = concat %46, %49
@@ -130,8 +130,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %96 lit: ptr = const str 4
     %97 s: ptr = concat %95, %96
     drop %96
-    dup.candidate %86
-    %98 r: i64 = $list_len(%86)
+    %437 ws.lent: ref = lend %86
+    %98 r: i64 = $list_len(%437)
     %99 s: ptr = show %98
     %100 s: ptr = concat %97, %99
     drop %99
@@ -148,8 +148,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %111 s: ptr = concat %109, %110
     drop %110
     %112 lit: i64 = const 0
-    dup.candidate %106
-    %113 item: ptr = $list_get(%106, %112)
+    %438 ws.lent: ref = lend %106
+    %113 item: ptr = $list_get(%438, %112)
     %114 s: ptr = show %113
     drop %113
     %115 s: ptr = concat %111, %114
@@ -158,8 +158,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %117 s: ptr = concat %115, %116
     drop %116
     %118 lit: i64 = const 49
-    dup.candidate %106
-    %119 item: ptr = $list_get(%106, %118)
+    %439 ws.lent: ref = lend %106
+    %119 item: ptr = $list_get(%439, %118)
     %120 s: ptr = show %119
     drop %119
     %121 s: ptr = concat %117, %120
@@ -180,8 +180,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     dup %123
     call set#5(%123, %132, %133, %134) -> b14(%123, %124, %125, %129)
   b14(%135 r: ptr, %136 xs: ptr, %137 xs: ptr, %138 ws: ptr, %139 r: ptr):
-    dup.candidate %136
-    %140 r: i64 = $list_len(%136)
+    %441 xs.lent: ref = lend %136
+    %140 r: i64 = $list_len(%441)
     %141 s: ptr = show %140
     %142 lit: ptr = const str 1
     %143 s: ptr = concat %141, %142
@@ -195,8 +195,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %148 lit: ptr = const str 1
     %149 s: ptr = concat %147, %148
     drop %148
-    dup.candidate %139
-    %150 r: i64 = $list_len(%139)
+    %442 r.lent: ref = lend %139
+    %150 r: i64 = $list_len(%442)
     %151 s: ptr = show %150
     %152 s: ptr = concat %149, %151
     drop %151
@@ -213,8 +213,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %160 s: ptr = concat %158, %159
     drop %159
     %161 lit: i64 = const 1
-    dup.candidate %135
-    %162 item: ptr = $list_get(%135, %161)
+    %440 r.lent: ref = lend %135
+    %162 item: ptr = $list_get(%440, %161)
     %163 s: ptr = show %162
     drop %162
     %164 s: ptr = concat %160, %163
@@ -253,8 +253,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %198 box: word = box %197
     dup %196
     %199 r: ptr = $list_push(%196, %198)
-    dup.candidate %196
-    %200 n: i64 = $list_len(%196)
+    %443 r.lent: ref = lend %196
+    %200 n: i64 = $list_len(%443)
     %327 lit: i64 = const 0
     %328 lit: i64 = const 0
     dup %196
@@ -263,15 +263,15 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     drop %201
     drop %203
     drop %204
-    dup.candidate %206
-    %209 r: i64 = $list_len(%206)
+    %444 r.lent: ref = lend %206
+    %209 r: i64 = $list_len(%444)
     %210 s: ptr = show %209
     %211 lit: ptr = const str 1
     %212 s: ptr = concat %210, %211
     drop %211
     %213 lit: i64 = const 1
-    dup.candidate %206
-    %214 item: ptr = $list_get(%206, %213)
+    %445 r.lent: ref = lend %206
+    %214 item: ptr = $list_get(%445, %213)
     %215 s: ptr = show %214
     drop %214
     %216 s: ptr = concat %212, %215
@@ -297,8 +297,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %229 lit: ptr = const str 1
     %230 s: ptr = concat %228, %229
     drop %229
-    dup.candidate %208
-    %231 r: i64 = $list_len(%208)
+    %446 r.lent: ref = lend %208
+    %231 r: i64 = $list_len(%446)
     %232 s: ptr = show %231
     %233 s: ptr = concat %230, %232
     drop %232
@@ -327,8 +327,8 @@ fn main#0 pub top -> unit ; main::owned_fresh_result, frame 60 slots [%3 word*, 
     %257 more: bool = lt.int %247, %256
     if %257 then b22(%253, %254, %255, %256, %247, %248, %249, %250, %251, %252) else b23(%253, %254, %255, %256, %247, %248, %249, %250, %251, %252)
   b22(%258 r: ptr, %259 r: ptr, %260 r: ptr, %261 n: i64, %262 i: i64, %263 xs: ptr, %264 i: i64, %265 ws: ptr, %266 flags: ptr, %267 count: i64):
-    dup.candidate %258
-    %278 x: word = $list_at(%258, %262)
+    %447 r.lent: ref = lend %258
+    %278 x: word = $list_at(%447, %262)
     %279 unbox: bool = unbox %278
     drop %278
     if %279 then b26(%258, %259, %260, %261, %262, %263, %264, %265, %266, %267) else b27(%258, %259, %260, %261, %262, %263, %264, %265, %266, %267)
@@ -432,15 +432,15 @@ fn bump_all#2 top -> ptr ; main::owned_fresh_result, frame 7 slots [%0 word*, %4
   b2(%4 r: ptr):
     ret %4
   b3(%5 xs: ptr, %6 i: i64):
-    dup.candidate %5
-    %7 r: i64 = $list_len(%5)
+    %33 xs.lent: ref = lend %5
+    %7 r: i64 = $list_len(%33)
     %8 t: bool = lt.int %6, %7
     if %8 then b5(%5, %6) else b6(%5, %6)
   b4(%9 v: unit, %10 xs: ptr, %11 i: i64):
     jump b3(%10, %11)
   b5(%12 xs: ptr, %13 i: i64):
-    dup.candidate %12
-    %16 item: ptr = $list_get(%12, %13)
+    %34 xs.lent: ref = lend %12
+    %16 item: ptr = $list_get(%34, %13)
     %17 lit: i64 = const 0
     %18 box: word = box %17
     call unwrap_or#10(%16, %18) -> b7(%12, %13)

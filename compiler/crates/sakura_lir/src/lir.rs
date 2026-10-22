@@ -86,6 +86,10 @@ pub enum Repr {
     Word,
     /// A non-owning generational id of execution state (ABI §7.2): a handler activation.
     Id,
+    /// A borrowed reference (plan M5 N4, design §17.176 (4)): a word the function reads but
+    /// does not own, never counted, stored or returned; the caller holds its owner for the
+    /// whole call.
+    Ref,
 }
 
 impl Repr {
@@ -112,6 +116,7 @@ impl Repr {
             Repr::Ptr => "ptr",
             Repr::Word => "word",
             Repr::Id => "id",
+            Repr::Ref => "ref",
         }
     }
 }
@@ -155,6 +160,9 @@ pub struct Module {
     pub direct: crate::direct::Facts,
     /// The type descriptors the native JSON and SQL codecs read ([`crate::schema::descriptors`]).
     pub schemas: String,
+    /// Each borrowed variant of a direct def (plan M5 N4a, [`crate::borrow::variants`]) and the
+    /// def it was made from; the variants are the last functions.
+    pub borrowed: Vec<(FuncId, FuncId)>,
 }
 
 /// A `@worker` function: `fun` is the code a value of it holds (its adapter), by which
@@ -575,6 +583,13 @@ pub enum Inst {
     /// A `Dup` before a call that only reads the reference, which stays live after the call:
     /// the pair borrowing would remove (design §17.176 (1)). Counted in `borrow_candidates`.
     DupCandidate(Var),
+    /// The borrowed form of a [`Inst::DupCandidate`] (plan M5 N4a): `dst` is `src` lent, a
+    /// `ref` the next call passes to a read-only builtin or a borrowed variant while `src`
+    /// (borrowed) stays held across it. Counted in `borrow_candidates` and `borrows`.
+    Lend {
+        dst: Var,
+        src: Var,
+    },
     Drop(Var),
     /// A typed hole: evaluating it is a defect.
     Hole {
@@ -672,7 +687,8 @@ impl Inst {
             | MakeCallback { dst, .. }
             | StateGet { dst, .. }
             | Bound { dst, .. }
-            | Builtin { dst, .. } => Some(*dst),
+            | Builtin { dst, .. }
+            | Lend { dst, .. } => Some(*dst),
             HandlePush { act, .. } => *act,
             StateSet { .. }
             | Check { .. }
@@ -713,7 +729,8 @@ impl Inst {
             | Unbox { src, .. }
             | Tag { src, .. }
             | Proj { src, .. }
-            | TupleGet { src, .. } => {
+            | TupleGet { src, .. }
+            | Lend { src, .. } => {
                 vec![(*src, Borrow)]
             }
             Alloc { args, reuse, .. } => {

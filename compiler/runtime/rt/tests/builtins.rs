@@ -121,32 +121,32 @@ fn trim_uses_the_js_whitespace_set() {
 fn split_replace_chars_and_case() {
     balanced(|rt| {
         let (a, b) = (s(rt, "a,b,,c"), s(rt, ","));
-        let r = rt.string_split(a, b).unwrap();
+        let r = rt.string_split(a, b, 0).unwrap();
         assert_eq!(texts(rt, r), ["a", "b", "", "c"]);
         let (a, b) = (s(rt, "hé😀"), s(rt, ""));
-        let r = rt.string_split(a, b).unwrap();
+        let r = rt.string_split(a, b, 0).unwrap();
         assert_eq!(texts(rt, r), ["h", "é", "😀"]);
         let a = s(rt, "hé😀");
-        let r = rt.string_chars(a).unwrap();
+        let r = rt.string_chars(a, 0).unwrap();
         assert_eq!(texts(rt, r), ["h", "é", "😀"]);
         let (a, f, t) = (s(rt, "a-b-c"), s(rt, "-"), s(rt, "+"));
-        let r = rt.string_replace(a, f, t).unwrap();
+        let r = rt.string_replace(a, f, t, 0).unwrap();
         assert_eq!(text(rt, r), "a+b+c");
         let (a, f, t) = (s(rt, "ab"), s(rt, ""), s(rt, "."));
-        let r = rt.string_replace(a, f, t).unwrap();
+        let r = rt.string_replace(a, f, t, 0).unwrap();
         assert_eq!(text(rt, r), ".a.b.");
         let a = s(rt, "Straße");
-        let r = rt.string_to_upper(a).unwrap();
+        let r = rt.string_to_upper(a, 0).unwrap();
         assert_eq!(text(rt, r), "STRASSE");
         let a = s(rt, "ÀB");
-        let r = rt.string_to_lower(a).unwrap();
+        let r = rt.string_to_lower(a, 0).unwrap();
         assert_eq!(text(rt, r), "àb");
         let (a, p) = (s(rt, "hello"), s(rt, "ell"));
-        assert!(rt.string_contains(a, p));
+        assert!(rt.string_contains(a, p, 0));
         let (a, p) = (s(rt, "hello"), s(rt, "lo"));
-        assert!(rt.string_ends_with(a, p));
+        assert!(rt.string_ends_with(a, p, 0));
         let (a, p) = (s(rt, "hello"), s(rt, "lo"));
-        assert!(!rt.string_starts_with(a, p));
+        assert!(!rt.string_starts_with(a, p, 0));
     });
 }
 
@@ -178,7 +178,7 @@ fn number_parsing_and_printing_match_js() {
             ("9223372036854775808", None),
         ] {
             let p = s(rt, input);
-            let o = rt.string_parse_int(p).unwrap();
+            let o = rt.string_parse_int(p, 0).unwrap();
             assert_eq!(int_option(rt, o), want, "{input:?}");
         }
         for (input, some) in [
@@ -193,7 +193,7 @@ fn number_parsing_and_printing_match_js() {
             ("Infinity", false),
         ] {
             let p = s(rt, input);
-            let o = rt.string_parse_float(p).unwrap();
+            let o = rt.string_parse_float(p, 0).unwrap();
             assert_eq!(rt.heap.mem.u32(o + 12) == 1, some, "{input:?}");
             rt.drop(o);
         }
@@ -260,11 +260,11 @@ fn wrappers_and_option_expect() {
         let x = s(rt, "inner");
         let o = rt.some(x).unwrap();
         let m = s(rt, "msg");
-        let v = rt.option_expect(o, m).unwrap();
+        let v = rt.option_expect(o, m, 0).unwrap();
         assert_eq!(text(rt, v), "inner");
         let none = rt.none();
         let m = s(rt, "msg");
-        assert_eq!(rt.option_expect(none, m).unwrap_err().code, 30);
+        assert_eq!(rt.option_expect(none, m, 0).unwrap_err().code, 30);
     });
 }
 
@@ -279,12 +279,12 @@ fn fused_get_expect() {
         rt.dup(xs).unwrap();
         let m = s(rt, "msg");
         let before = rt.stats().requested;
-        let v = rt.list_get_expect(xs, 0, m).unwrap();
+        let v = rt.list_get_expect(xs, 0, m, 0).unwrap();
         assert_eq!(rt.stats().requested, before, "no Option is built");
         assert_eq!(text(rt, v), "x");
         rt.dup(xs).unwrap();
         let m = s(rt, "msg");
-        assert_eq!(rt.list_get_expect(xs, 1, m).unwrap_err().code, 30);
+        assert_eq!(rt.list_get_expect(xs, 1, m, 0).unwrap_err().code, 30);
         let k = s(rt, "tea");
         let v = s(rt, "3");
         let e = rt.map_empty();
@@ -292,12 +292,12 @@ fn fused_get_expect() {
         rt.dup(map).unwrap();
         let (k, m) = (s(rt, "tea"), s(rt, "msg"));
         let before = rt.stats().requested;
-        let v = rt.map_get_expect(map, k, m).unwrap();
+        let v = rt.map_get_expect(map, k, m, 0).unwrap();
         assert_eq!(rt.stats().requested, before, "no Option is built");
         assert_eq!(text(rt, v), "3");
         rt.drop(xs);
         let (k, m) = (s(rt, "coffee"), s(rt, "msg"));
-        assert_eq!(rt.map_get_expect(map, k, m).unwrap_err().code, 30);
+        assert_eq!(rt.map_get_expect(map, k, m, 0).unwrap_err().code, 30);
     });
 }
 
@@ -312,17 +312,17 @@ fn fused_get_or() {
         rt.dup(map).unwrap();
         let (k, d) = (s(rt, "tea"), s(rt, "none"));
         let before = rt.stats().requested;
-        let v = rt.map_get_or(map, k, d).unwrap();
+        let v = rt.map_get_or(map, k, d, 0).unwrap();
         assert_eq!(rt.stats().requested, before, "no Option is built");
         assert_eq!(text(rt, v), "3");
         rt.dup(map).unwrap();
         let (k, d) = (s(rt, "coffee"), s(rt, "none"));
-        let v = rt.map_get_or(map, k, d).unwrap();
+        let v = rt.map_get_or(map, k, d, 0).unwrap();
         assert_eq!(text(rt, v), "none");
         rt.dup(map).unwrap();
         let k = s(rt, "tea");
-        assert!(rt.map_contains(map, k).unwrap());
+        assert!(rt.map_contains(map, k, 0).unwrap());
         let k = s(rt, "coffee");
-        assert!(!rt.map_contains(map, k).unwrap());
+        assert!(!rt.map_contains(map, k, 0).unwrap());
     });
 }

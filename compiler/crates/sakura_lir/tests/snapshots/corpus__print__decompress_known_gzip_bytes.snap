@@ -49,8 +49,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %29 tup: ptr = alloc tuple#16(word, word, word)(%28, %27, %23)
     %30 xs: ptr = alloc list(%24, %25, %26, %29)
     %31 v: ptr = const static std::option::Option.None
-    dup.candidate %30
-    %32 n: i64 = $list_len(%30)
+    %227 xs.lent: ref = lend %30
+    %32 n: i64 = $list_len(%227)
     %226 lit: i64 = const 0
     jump b17(%226, %31, %30, %32)
   b5(%33 first: ptr):
@@ -73,8 +73,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
   b9(%44 r: word, %45 first: ptr):
     %46 lit: ptr = const str 10
     %47 r: ptr = $string_split(%44, %46)
-    dup.candidate %47
-    %48 r: i64 = $list_len(%47)
+    %228 r.lent: ref = lend %47
+    %48 r: i64 = $list_len(%228)
     %49 lit: i64 = const 1
     %50 t: i64 = intsub %48, %49
     %51 s: ptr = show %50
@@ -88,8 +88,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %58 lit: i64 = const 0
     %59 lit: i64 = const 3
     %60 r: ptr = $list_slice(%56, %58, %59)
-    dup.candidate %60
-    %61 n: i64 = $list_len(%60)
+    %229 r.lent: ref = lend %60
+    %61 n: i64 = $list_len(%229)
     %90 lit: i64 = const 0
     jump b12(%90, %55, %60, %61)
   b11(%62 first: ptr):
@@ -100,8 +100,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %68 more: bool = lt.int %64, %67
     if %68 then b13(%66, %67, %64, %65) else b14(%66, %67, %64, %65)
   b13(%69 r: ptr, %70 n: i64, %71 i: i64, %72 first: ptr):
-    dup.candidate %69
-    %77 x: word = $list_at(%69, %71)
+    %230 r.lent: ref = lend %69
+    %77 x: word = $list_at(%230, %71)
     perform std::console::Console.print(%77) -> b16(%69, %70, %71, %72)
   b14(%73 r: ptr, %74 n: i64, %75 i: i64, %76 first: ptr):
     drop %73
@@ -118,8 +118,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %95 more: bool = lt.int %91, %94
     if %95 then b18(%93, %94, %91, %92) else b19(%93, %94, %91, %92)
   b18(%96 xs: ptr, %97 n: i64, %98 i: i64, %99 first: ptr):
-    dup.candidate %96
-    %104 x: word = $list_at(%96, %98)
+    %231 xs.lent: ref = lend %96
+    %104 x: word = $list_at(%231, %98)
     %223 p: ptr = tuple_get %104.0
     %224 p: ptr = tuple_get %104.1
     %225 p: ptr = tuple_get %104.2
@@ -172,8 +172,8 @@ fn main#0 pub top -> unit ; main::decompress_known_gzip_bytes, frame 50 slots [%
     %161 lit: ptr = const str 12
     %162 s: ptr = concat %160, %161
     drop %161
-    dup.candidate %159
-    %163 r: i64 = $bytes_len(%159)
+    %232 b.lent: ref = lend %159
+    %163 r: i64 = $bytes_len(%232)
     %164 s: ptr = show %163
     %165 s: ptr = concat %162, %164
     drop %164

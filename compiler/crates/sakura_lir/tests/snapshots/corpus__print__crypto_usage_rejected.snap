@@ -45,8 +45,8 @@ fn main#0 pub top -> unit ; main::crypto_usage_rejected, frame 12 slots [%9 word
     %13 p: word = proj %11.0 std::result::Result.Ok
     drop %11
     %14 v: ptr = const static std::crypto::Usage.Verify
-    dup.candidate %13
-    call permits#3(%13, %14) -> b4(%13)
+    %46 p.lent: ref = lend %13
+    call permits#80(%46, %14) -> b4(%13)
   b3(%12 r: ptr):
     %41 p: word = proj %12.0 std::result::Result.Err
     drop %12
@@ -59,8 +59,8 @@ fn main#0 pub top -> unit ; main::crypto_usage_rejected, frame 12 slots [%9 word
     %19 s: ptr = concat %17, %18
     drop %18
     %20 v: ptr = const static std::crypto::Usage.Sign
-    dup.candidate %16
-    call permits#3(%16, %20) -> b5(%16, %19)
+    %47 k.lent: ref = lend %16
+    call permits#80(%47, %20) -> b5(%16, %19)
   b5(%21 r: bool, %22 k: ptr, %23 s: ptr):
     %24 s: ptr = show %21
     %25 s: ptr = concat %23, %24

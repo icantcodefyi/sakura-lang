@@ -39,9 +39,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 
   b1(%0 r: ptr):
     %1 subprotocols: word = proj %0.0 std::websocket::Options
     %2 headers: word = proj %0.1 std::websocket::Options
-    %75 token: word = $reuse_reset(%0)
+    %79 token: word = $reuse_reset(%0)
     %3 lit: i64 = const 5
-    %4 rec: ptr = alloc std::websocket::Options(%1, %2, %3) reuse %75
+    %4 rec: ptr = alloc std::websocket::Options(%1, %2, %3) reuse %79
     %5 lit: ptr = const str 0
     %6 r: ptr = alloc std::websocket::Message.Text(%5)
     %7 lit: i64 = const 0
@@ -69,9 +69,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 
     %64 f: ptr = closure main$1#7[]
     %65 lit: ptr = const str 3
     %66 $site: i64 = const 6
-    dup.candidate %25
-    dup.candidate %64
-    call WebSocket.connect#8(%65, %25, %64, %66) -> b13(%25, %64)
+    %75 rec.lent: ref = lend %25
+    %76 f.lent: ref = lend %64
+    call WebSocket.connect#122(%65, %75, %76, %66) -> b13(%25, %64)
   b3(%26 v: word, %27 rec: ptr):
     drop %26
     %28 lit: ptr = const str 1
@@ -85,9 +85,9 @@ fn main#0 pub top -> unit ; main::websocket_rejects_message_too_large, frame 20 
     %43 f: ptr = closure main$2#9[]
     %44 lit: ptr = const str 3
     %45 $site: i64 = const 5
-    dup.candidate %33
-    dup.candidate %43
-    call WebSocket.connect#8(%44, %33, %43, %45) -> b8(%33, %43)
+    %77 rec.lent: ref = lend %33
+    %78 f.lent: ref = lend %43
+    call WebSocket.connect#122(%44, %77, %78, %45) -> b8(%33, %43)
   b5(%34 v: ptr) [handle]:
     %35 s: ptr = show %34
     drop %34

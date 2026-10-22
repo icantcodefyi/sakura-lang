@@ -42,8 +42,8 @@ fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %
     %133 lit: i64 = const 0
     jump b18(%21, %133, %19)
   b4(%22 t: ptr, %23 i: i64, %24 r: i64):
-    dup.candidate %22
-    call sum#5(%22) -> b5(%24, %22)
+    %134 t.lent: ref = lend %22
+    call sum#8(%134) -> b5(%24, %22)
   b5(%25 r: i64, %26 r: i64, %27 t: ptr):
     %28 s: ptr = show %25
     %29 lit: ptr = const str 4
@@ -52,8 +52,8 @@ fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %
     %31 lit: ptr = const str 3
     %32 s: ptr = concat %30, %31
     drop %31
-    dup.candidate %27
-    call blacks#6(%27) -> b6(%26, %27, %32)
+    %135 t.lent: ref = lend %27
+    call blacks#9(%135) -> b6(%26, %27, %32)
   b6(%33 r: i64, %34 r: i64, %35 t: ptr, %36 s: ptr):
     %37 s: ptr = show %33
     %38 s: ptr = concat %36, %37
@@ -61,8 +61,8 @@ fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %
     %39 lit: ptr = const str 3
     %40 s: ptr = concat %38, %39
     drop %39
-    dup.candidate %35
-    call bump#7(%35) -> b7(%34, %35, %40)
+    %136 t.lent: ref = lend %35
+    call bump#10(%136) -> b7(%34, %35, %40)
   b7(%41 r: ptr, %42 r: i64, %43 t: ptr, %44 s: ptr):
     call sum#5(%41) -> b8(%42, %43, %44)
   b8(%45 r: i64, %46 r: i64, %47 t: ptr, %48 s: ptr):
@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %
     drop %54
     %55 lit: i64 = const 7
     %56 rec: ptr = alloc main::reuse_constructor::P(%52, %55)
-    dup.candidate %56
-    call shift#2(%56) -> b10(%53, %56)
+    %137 rec.lent: ref = lend %56
+    call shift#11(%137) -> b10(%53, %56)
   b10(%57 r: ptr, %58 t: ptr, %59 rec: ptr):
     %60 x: i64 = proj %59.0 main::reuse_constructor::P
     %61 s: ptr = show %60
@@ -110,13 +110,13 @@ fn main#0 pub top -> unit ; main::reuse_constructor, frame 48 slots [%5 word*, %
   b11(%79 r: unit, %80 t: ptr):
     %81 box: word = box %79
     drop %81
-    dup.candidate %80
-    call blacken#4(%80) -> b12(%80)
+    %138 t.lent: ref = lend %80
+    call blacken#12(%138) -> b12(%80)
   b12(%82 r: ptr, %83 t: ptr):
     call bump#7(%82) -> b13(%83)
   b13(%84 r: ptr, %85 t: ptr):
-    dup.candidate %85
-    call sum#5(%85) -> b14(%85, %84)
+    %139 t.lent: ref = lend %85
+    call sum#8(%139) -> b14(%85, %84)
   b14(%86 r: i64, %87 t: ptr, %88 r: ptr):
     %89 s: ptr = show %86
     %90 lit: ptr = const str 6
@@ -306,3 +306,99 @@ fn bump#7 top -> ptr ; main::reuse_constructor, frame 1 slots [%0 word*]
     %10 t: i64 = intadd %7, %9
     %11 r: ptr = alloc main::reuse_constructor::Tree.T(%5, %6, %10, %8) reuse %12
     ret %11
+
+fn sum#8 borrowed variant of #5 -> i64 ; main::reuse_constructor, frame 6 slots [%0 i64, %9 i64, %10 i64, %11 word*, %13 i64, %14 i64]
+  b0(%0 t: ref):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ref):
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 t: ref):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    drop %5
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    call sum#5(%6) -> b3(%7, %8)
+  b3(%9 r: i64, %10 v: i64, %11 r: ptr):
+    %12 t: i64 = intadd %9, %10
+    call sum#5(%11) -> b4(%12)
+  b4(%13 r: i64, %14 t: i64):
+    %15 t: i64 = intadd %14, %13
+    ret %15
+
+fn blacks#9 borrowed variant of #6 -> i64 ; main::reuse_constructor, frame 9 slots [%0 i64, %14 i64, %15 word*, %16 i64, %17 i64, %19 i64, %20 word*, %23 i64, %24 i64]
+  b0(%0 t: ref):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ref):
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 t: ref):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    %9 tag: i64 = tag %5 ctor main::reuse_constructor::Color
+    drop %5
+    switch %9 0 => b3(%6, %8) 1 => b4(%6, %8)
+  b3(%10 p: ptr, %11 p: ptr):
+    call blacks#6(%10) -> b5(%11)
+  b4(%12 p: ptr, %13 p: ptr):
+    call blacks#6(%12) -> b7(%13)
+  b5(%14 r: i64, %15 r: ptr):
+    call blacks#6(%15) -> b6(%14)
+  b6(%16 r: i64, %17 r: i64):
+    %18 t: i64 = intadd %17, %16
+    ret %18
+  b7(%19 r: i64, %20 r: ptr):
+    %21 lit: i64 = const 1
+    %22 t: i64 = intadd %21, %19
+    call blacks#6(%20) -> b8(%22)
+  b8(%23 r: i64, %24 t: i64):
+    %25 t: i64 = intadd %24, %23
+    ret %25
+
+fn bump#10 borrowed variant of #7 -> ptr ; main::reuse_constructor, frame 1 slots [%0 i64]
+  b0(%0 t: ref):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ref):
+    %4 v: ptr = const static main::reuse_constructor::Tree.E
+    ret %4
+  b2(%3 t: ref):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    %9 lit: i64 = const 1
+    %10 t: i64 = intadd %7, %9
+    %11 r: ptr = alloc main::reuse_constructor::Tree.T(%5, %6, %10, %8)
+    ret %11
+
+fn shift#11 borrowed variant of #2 -> ptr ; main::reuse_constructor, frame 1 slots [%0 i64]
+  b0(%0 p: ref):
+    %1 x: i64 = proj %0.0 main::reuse_constructor::P
+    %2 lit: i64 = const 1
+    %3 t: i64 = intadd %1, %2
+    %4 y: i64 = proj %0.1 main::reuse_constructor::P
+    %5 rec: ptr = alloc main::reuse_constructor::P(%3, %4)
+    ret %5
+
+fn blacken#12 borrowed variant of #4 -> ptr ; main::reuse_constructor, frame 1 slots [%0 i64]
+  b0(%0 t: ref):
+    %1 tag: i64 = tag %0 ctor main::reuse_constructor::Tree
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 t: ref):
+    %4 v: ptr = const static main::reuse_constructor::Tree.E
+    ret %4
+  b2(%3 t: ref):
+    %5 p: word = proj %3.0 main::reuse_constructor::Tree.T
+    drop %5
+    %6 p: word = proj %3.1 main::reuse_constructor::Tree.T
+    %7 p: i64 = proj %3.2 main::reuse_constructor::Tree.T
+    %8 p: word = proj %3.3 main::reuse_constructor::Tree.T
+    %9 v: ptr = const static main::reuse_constructor::Color.Black
+    %10 r: ptr = alloc main::reuse_constructor::Tree.T(%9, %6, %7, %8)
+    ret %10

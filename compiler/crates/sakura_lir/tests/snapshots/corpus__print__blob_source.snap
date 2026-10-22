@@ -27,11 +27,11 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
   b1(%3 r: ptr):
     %4 lit: i64 = const 4
     %5 $site: i64 = const 3
-    dup.candidate %3
-    call source#3(%3, %4, %5) -> b2(%3)
+    %80 r.lent: ref = lend %3
+    call source#40(%80, %4, %5) -> b2(%3)
   b2(%6 r: ptr, %7 r: ptr):
-    dup.candidate %7
-    call size#4(%7) -> b3(%7, %6)
+    %81 r.lent: ref = lend %7
+    call size#41(%81) -> b3(%7, %6)
   b3(%8 r: i64, %9 r: ptr, %10 r: ptr):
     %11 s: ptr = show %8
     %12 lit: ptr = const str 2
@@ -62,8 +62,8 @@ fn main#0 pub top -> unit ; main::blob_source, frame 35 slots [%3 word*, %6 word
     drop %31
     %32 lit: i64 = const 100
     %33 $site: i64 = const 4
-    dup.candidate %30
-    call source#3(%30, %32, %33) -> b7(%30)
+    %82 r.lent: ref = lend %30
+    call source#40(%82, %32, %33) -> b7(%30)
   b7(%34 r: ptr, %35 r: ptr):
     call sizes#5(%34) -> b8(%35)
   b8(%36 r: ptr, %37 r: ptr):

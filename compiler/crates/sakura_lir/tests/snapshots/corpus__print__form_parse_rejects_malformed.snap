@@ -46,8 +46,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %19 lit: ptr = const str 2
     %20 lit: ptr = const str 7
     %21 xs: ptr = alloc list(%15, %16, %17, %18, %19, %14, %20)
-    dup.candidate %21
-    %22 n: i64 = $list_len(%21)
+    %136 xs.lent: ref = lend %21
+    %22 n: i64 = $list_len(%136)
     %135 lit: i64 = const 0
     jump b11(%135, %10, %11, %21, %22)
   b2(%23 rec: ptr):
@@ -62,8 +62,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %32 lit: ptr = const str 16
     %33 lit: ptr = const str 17
     %34 xs: ptr = alloc list(%24, %25, %26, %27, %28, %29, %30, %31, %32, %33)
-    dup.candidate %34
-    %35 n: i64 = $list_len(%34)
+    %137 xs.lent: ref = lend %34
+    %35 n: i64 = $list_len(%137)
     %83 lit: i64 = const 0
     jump b4(%83, %23, %34, %35)
   b3():
@@ -73,8 +73,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %41 more: bool = lt.int %37, %40
     if %41 then b5(%38, %39, %40, %37) else b6(%38, %39, %40, %37)
   b5(%42 rec: ptr, %43 xs: ptr, %44 n: i64, %45 i: i64):
-    dup.candidate %43
-    %50 x: word = $list_at(%43, %45)
+    %139 xs.lent: ref = lend %43
+    %50 x: word = $list_at(%139, %45)
     dup %50
     %57 xs: ptr = alloc list(%50)
     %58 s: ptr = show %57
@@ -84,8 +84,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     drop %59
     %61 r: ptr = $string_to_bytes(%50)
     %62 lit: ptr = const str 3
-    dup.candidate %42
-    call parse_multipart#3(%61, %62, %42) -> b8(%42, %43, %44, %45, %60)
+    %138 rec.lent: ref = lend %42
+    call parse_multipart#35(%61, %62, %138) -> b8(%42, %43, %44, %45, %60)
   b6(%46 rec: ptr, %47 xs: ptr, %48 n: i64, %49 i: i64):
     drop %46
     drop %47
@@ -110,8 +110,8 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %89 more: bool = lt.int %84, %88
     if %89 then b12(%85, %86, %87, %88, %84) else b13(%85, %86, %87, %88, %84)
   b12(%90 rec: ptr, %91 r: ptr, %92 xs: ptr, %93 n: i64, %94 i: i64):
-    dup.candidate %92
-    %100 x: word = $list_at(%92, %94)
+    %141 xs.lent: ref = lend %92
+    %100 x: word = $list_at(%141, %94)
     dup %100
     %108 xs: ptr = alloc list(%100)
     %109 s: ptr = show %108
@@ -119,9 +119,9 @@ fn main#0 pub top -> unit ; main::form_parse_rejects_malformed, frame 40 slots [
     %110 lit: ptr = const str 18
     %111 s: ptr = concat %109, %110
     drop %110
-    dup.candidate %90
+    %140 rec.lent: ref = lend %90
     dup %91
-    call parse_multipart#3(%91, %100, %90) -> b15(%90, %91, %92, %93, %94, %111)
+    call parse_multipart#35(%91, %100, %140) -> b15(%90, %91, %92, %93, %94, %111)
   b13(%95 rec: ptr, %96 r: ptr, %97 xs: ptr, %98 n: i64, %99 i: i64):
     drop %96
     drop %97

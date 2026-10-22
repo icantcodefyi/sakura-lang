@@ -29,7 +29,7 @@ layout 23 shape |  56b (i64, word*, word*, word*, word*)
 layout 24 shape |  32b (bool, word*)
 layout 25 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 i64, %127 word*, %128 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 i64, %140 word*, %141 word*, %142 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 i64, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 i64, %193 i64, %194 i64, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %239 word*, %240 word*, %241 word*, %242 i64, %243 i64, %244 i64, %245 word*, %246 word*, %247 word*, %248 word*, %351 word*, %249 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 word*, %258 word*, %352 word*, %260 word*, %261 word*, %262 word*, %263 i64, %264 i64, %265 i64, %266 word*, %267 word*, %353 word*, %268 word*, %269 word*, %270 word*, %271 i64, %272 i64, %273 i64, %274 word*, %275 word*, %354 word*, %281 word*, %282 word*, %283 word*, %284 i64, %285 i64, %286 bool, %287 word*, %294 bool, %295 word*, %296 word*, %297 i64, %298 i64, %306 bool, %307 word*, %308 word*, %309 i64, %310 i64, %318 bool, %319 word*, %320 word*, %321 i64, %322 i64]
+fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 word*, %122 word*, %123 word*, %124 i64, %125 i64, %126 i64, %127 word*, %128 word*, %129 word*, %130 word*, %131 word*, %134 word*, %135 word*, %136 word*, %137 i64, %138 i64, %139 i64, %140 word*, %141 word*, %142 word*, %168 word*, %169 word*, %170 word*, %171 i64, %172 i64, %173 i64, %174 word*, %175 word*, %176 word*, %177 word*, %178 word*, %179 word*, %180 word*, %181 i64, %182 i64, %183 i64, %184 word*, %185 word*, %186 word*, %187 word*, %188 word*, %189 word*, %190 word*, %191 word*, %192 i64, %193 i64, %194 i64, %195 word*, %196 word*, %197 word*, %198 word*, %199 word*, %200 word*, %202 word*, %203 word*, %204 word*, %205 i64, %206 i64, %207 i64, %208 word*, %209 word*, %210 word*, %211 word*, %239 word*, %240 word*, %241 word*, %242 i64, %243 i64, %244 i64, %245 word*, %246 word*, %247 word*, %248 word*, %354 word*, %249 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 word*, %258 word*, %355 word*, %260 word*, %261 word*, %262 word*, %263 i64, %264 i64, %265 i64, %266 word*, %267 word*, %356 word*, %268 word*, %269 word*, %270 word*, %271 i64, %272 i64, %273 i64, %274 word*, %275 word*, %357 word*, %281 word*, %282 word*, %283 word*, %284 i64, %285 i64, %286 bool, %287 word*, %294 bool, %295 word*, %296 word*, %297 i64, %298 i64, %306 bool, %307 word*, %308 word*, %309 i64, %310 i64, %318 bool, %319 word*, %320 word*, %321 i64, %322 i64]
   b0():
     %0 v: ptr = const static std::crypto::Usage.Encrypt
     %1 v: ptr = const static std::crypto::Usage.Decrypt
@@ -107,8 +107,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 
     %73 lit: ptr = const str 40
     %74 tup: ptr = alloc tuple#23(i64, word, word, word, word)(%69, %70, %71, %72, %73)
     %75 xs: ptr = alloc list(%8, %14, %20, %26, %32, %38, %44, %50, %56, %62, %68, %74)
-    dup.candidate %75
-    %76 n: i64 = $list_len(%75)
+    %350 xs.lent: ref = lend %75
+    %76 n: i64 = $list_len(%350)
     %349 lit: i64 = const 0
     jump b2(%349, %2, %75, %76)
   b1():
@@ -118,8 +118,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 
     %82 more: bool = lt.int %78, %81
     if %82 then b3(%79, %80, %81, %78) else b4(%79, %80, %81, %78)
   b3(%83 xs: ptr, %84 xs: ptr, %85 n: i64, %86 i: i64):
-    dup.candidate %84
-    %91 x: word = $list_at(%84, %86)
+    %351 xs.lent: ref = lend %84
+    %91 x: word = $list_at(%351, %86)
     %344 p: i64 = tuple_get %91.0
     %345 p: ptr = tuple_get %91.1
     %346 p: ptr = tuple_get %91.2
@@ -182,8 +182,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 
     call unhex#2(%185) -> b15(%179, %180, %181, %182, %183, %184, %185, %186, %187, %188, %178)
   b15(%189 r: ptr, %190 xs: ptr, %191 xs: ptr, %192 n: i64, %193 i: i64, %194 bits: i64, %195 iv: ptr, %196 pt: ptr, %197 aad: ptr, %198 k: ptr, %199 r: ptr, %200 r: ptr):
     %201 $site: i64 = const 3
-    dup.candidate %198
-    call encrypt#4(%198, %199, %200, %189, %201) -> b16(%190, %191, %192, %193, %194, %195, %196, %197, %198)
+    %352 k.lent: ref = lend %198
+    call encrypt#93(%352, %199, %200, %189, %201) -> b16(%190, %191, %192, %193, %194, %195, %196, %197, %198)
   b16(%202 r: ptr, %203 xs: ptr, %204 xs: ptr, %205 n: i64, %206 i: i64, %207 bits: i64, %208 iv: ptr, %209 pt: ptr, %210 aad: ptr, %211 k: ptr):
     %217 tag: i64 = tag %202 ctor std::result::Result
     switch %217 0 => b18(%203, %204, %205, %206, %207, %208, %209, %210, %211, %202) 1 => b19(%203, %204, %205, %206, %207, %208, %209, %210, %211, %202)
@@ -191,8 +191,8 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 
     jump b10(%212, %213, %214, %215, %216)
   b18(%218 xs: ptr, %219 xs: ptr, %220 n: i64, %221 i: i64, %222 bits: i64, %223 iv: ptr, %224 pt: ptr, %225 aad: ptr, %226 k: ptr, %227 r: ptr):
     %238 p: word = proj %227.0 std::result::Result.Ok
-    %350 token: word = $reuse_reset(%227)
-    call unhex#2(%223) -> b20(%218, %219, %220, %221, %222, %224, %225, %226, %238, %350)
+    %353 token: word = $reuse_reset(%227)
+    call unhex#2(%223) -> b20(%218, %219, %220, %221, %222, %224, %225, %226, %238, %353)
   b19(%228 xs: ptr, %229 xs: ptr, %230 n: i64, %231 i: i64, %232 bits: i64, %233 iv: ptr, %234 pt: ptr, %235 aad: ptr, %236 k: ptr, %237 r: ptr):
     drop %233
     drop %234
@@ -209,16 +209,16 @@ fn main#0 pub top -> unit ; main::crypto_aes_gcm_vectors, frame 125 slots [%121 
     %305 s: ptr = concat %303, %304
     drop %304
     perform std::console::Console.print(%305) -> b26(%228, %229, %230, %231)
-  b20(%239 r: ptr, %240 xs: ptr, %241 xs: ptr, %242 n: i64, %243 i: i64, %244 bits: i64, %245 pt: ptr, %246 aad: ptr, %247 k: ptr, %248 ct: ptr, %351 token: word):
-    call unhex#2(%246) -> b21(%240, %241, %242, %243, %244, %245, %247, %248, %239, %351)
-  b21(%249 r: ptr, %250 xs: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 pt: ptr, %256 k: ptr, %257 ct: ptr, %258 r: ptr, %352 token: word):
+  b20(%239 r: ptr, %240 xs: ptr, %241 xs: ptr, %242 n: i64, %243 i: i64, %244 bits: i64, %245 pt: ptr, %246 aad: ptr, %247 k: ptr, %248 ct: ptr, %354 token: word):
+    call unhex#2(%246) -> b21(%240, %241, %242, %243, %244, %245, %247, %248, %239, %354)
+  b21(%249 r: ptr, %250 xs: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 pt: ptr, %256 k: ptr, %257 ct: ptr, %258 r: ptr, %355 token: word):
     %259 $site: i64 = const 4
     dup.candidate %257
-    call decrypt#5(%256, %258, %249, %257, %259) -> b22(%250, %251, %252, %253, %254, %255, %257, %352)
-  b22(%260 r: ptr, %261 xs: ptr, %262 xs: ptr, %263 n: i64, %264 i: i64, %265 bits: i64, %266 pt: ptr, %267 ct: ptr, %353 token: word):
-    call unhex#2(%266) -> b23(%261, %262, %263, %264, %265, %267, %260, %353)
-  b23(%268 r: ptr, %269 xs: ptr, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 bits: i64, %274 ct: ptr, %275 r: ptr, %354 token: word):
-    %276 r: ptr = alloc std::result::Result.Ok(%268) reuse %354
+    call decrypt#5(%256, %258, %249, %257, %259) -> b22(%250, %251, %252, %253, %254, %255, %257, %355)
+  b22(%260 r: ptr, %261 xs: ptr, %262 xs: ptr, %263 n: i64, %264 i: i64, %265 bits: i64, %266 pt: ptr, %267 ct: ptr, %356 token: word):
+    call unhex#2(%266) -> b23(%261, %262, %263, %264, %265, %267, %260, %356)
+  b23(%268 r: ptr, %269 xs: ptr, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 bits: i64, %274 ct: ptr, %275 r: ptr, %357 token: word):
+    %276 r: ptr = alloc std::result::Result.Ok(%268) reuse %357
     %277 t: bool = eq.any %275, %276
     drop %275
     drop %276
@@ -267,8 +267,8 @@ fn $entry#1 top -> unit ; main::crypto_aes_gcm_vectors, frame 1 slots [%1 bool]
 fn unhex#2 top -> ptr ; main::crypto_aes_gcm_vectors, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %59 s.lent: ref = lend %0
+    %2 r: i64 = $string_len(%59)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
     %58 lit: i64 = const 0
@@ -318,8 +318,8 @@ fn unhex#2 top -> ptr ; main::crypto_aes_gcm_vectors, frame 12 slots [%0 word*, 
 
 fn hex#6 top -> ptr ; main::crypto_aes_gcm_vectors, frame 6 slots [%0 word*, %24 word*, %25 word*, %26 i64, %27 i64, %28 word*]
   b0(%0 b: ptr):
-    dup.candidate %0
-    %1 r: i64 = $bytes_len(%0)
+    %50 b.lent: ref = lend %0
+    %1 r: i64 = $bytes_len(%50)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 2
     jump b1(%48, %49, %0, %1)
@@ -327,8 +327,8 @@ fn hex#6 top -> ptr ; main::crypto_aes_gcm_vectors, frame 6 slots [%0 word*, %24
     %6 more: bool = lt.int %2, %5
     if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
   b2(%7 b: ptr, %8 r: i64, %9 i: i64, %10 out: ptr):
-    dup.candidate %7
-    %21 r: ptr = $bytes_get(%7, %9)
+    %51 b.lent: ref = lend %7
+    %21 r: ptr = $bytes_get(%51, %9)
     %22 lit: i64 = const 0
     %23 box: word = box %22
     call unwrap_or#7(%21, %23) -> b5(%7, %8, %9, %10)

@@ -157,8 +157,8 @@ fn main$1#27 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %6 lit: i64 = const 5
     %7 box: word = box %6
     %8 xs: ptr = alloc list(%3, %5, %7)
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %105 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%105)
     %104 lit: i64 = const 0
     jump b9(%104, %1, %8, %9)
   b1(%10 w: ptr):
@@ -169,8 +169,8 @@ fn main$1#27 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %15 lit: i64 = const 3
     %16 box: word = box %15
     %17 xs: ptr = alloc list(%12, %14, %16)
-    dup.candidate %17
-    %18 n: i64 = $list_len(%17)
+    %106 xs.lent: ref = lend %17
+    %18 n: i64 = $list_len(%106)
     %55 lit: i64 = const 0
     jump b3(%55, %10, %17, %18)
   b2():
@@ -180,8 +180,8 @@ fn main$1#27 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %24 more: bool = lt.int %20, %23
     if %24 then b4(%21, %22, %23, %20) else b5(%21, %22, %23, %20)
   b4(%25 w: ptr, %26 xs: ptr, %27 n: i64, %28 i: i64):
-    dup.candidate %26
-    %33 x: word = $list_at(%26, %28)
+    %107 xs.lent: ref = lend %26
+    %33 x: word = $list_at(%107, %28)
     %34 unbox: i64 = unbox %33
     drop %33
     dup %25
@@ -209,8 +209,8 @@ fn main$1#27 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %60 more: bool = lt.int %56, %59
     if %60 then b10(%57, %58, %59, %56) else b11(%57, %58, %59, %56)
   b10(%61 w: ptr, %62 xs: ptr, %63 n: i64, %64 i: i64):
-    dup.candidate %62
-    %69 x: word = $list_at(%62, %64)
+    %108 xs.lent: ref = lend %62
+    %69 x: word = $list_at(%108, %64)
     %70 unbox: i64 = unbox %69
     drop %69
     %77 lit: i64 = const 0
@@ -256,8 +256,8 @@ fn main$2#33 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %8 lit: i64 = const 4
     %9 box: word = box %8
     %10 xs: ptr = alloc list(%3, %5, %7, %9)
-    dup.candidate %10
-    %11 n: i64 = $list_len(%10)
+    %50 xs.lent: ref = lend %10
+    %11 n: i64 = $list_len(%50)
     %49 lit: i64 = const 0
     jump b2(%49, %1, %10, %11)
   b1():
@@ -268,8 +268,8 @@ fn main$2#33 lambda -> word ; main::worker_inline_roundtrip, captures [], frame 
     %18 more: bool = lt.int %14, %17
     if %18 then b3(%15, %16, %17, %14) else b4(%15, %16, %17, %14)
   b3(%19 w: ptr, %20 xs: ptr, %21 n: i64, %22 i: i64):
-    dup.candidate %20
-    %27 x: word = $list_at(%20, %22)
+    %51 xs.lent: ref = lend %20
+    %27 x: word = $list_at(%51, %22)
     %28 unbox: i64 = unbox %27
     drop %27
     dup %19

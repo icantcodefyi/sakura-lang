@@ -113,14 +113,15 @@ fn parts(f: &Func, piece: usize) -> Option<(Vec<usize>, Vec<BlockId>)> {
             }
         }
     }
-    // A reuse token is never a call argument either (`crate::reuse`).
+    // A reuse token is never a call argument either (`crate::reuse`), and a borrowed word
+    // crosses only calls of borrowed variants (`crate::borrow`).
     let tokens = crate::reuse::token_params(f);
     let enterable = |b: usize| {
         let b = &f.blocks[b];
         b.regions.is_empty()
             && b.params
                 .iter()
-                .all(|&v| f.repr(v) != Repr::Id && !tokens.contains_key(&v))
+                .all(|&v| !matches!(f.repr(v), Repr::Id | Repr::Ref) && !tokens.contains_key(&v))
     };
     let mut part = vec![usize::MAX; n];
     let mut entered = BTreeSet::new();
@@ -311,7 +312,8 @@ fn each_var(b: &mut Block, visit: &mut impl FnMut(&mut Var)) {
             | LoadCapture { dst, env: src, .. }
             | MakeCallback { dst, f: src }
             | StateGet { dst, inst: src, .. }
-            | Bound { dst, act: src, .. } => {
+            | Bound { dst, act: src, .. }
+            | Lend { dst, src } => {
                 visit(dst);
                 visit(src);
             }

@@ -31,8 +31,8 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %12 lit: ptr = const str 12
     %13 lit: ptr = const str 13
     %14 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6, %7, %8, %9, %10, %11, %12, %13)
-    dup.candidate %14
-    %15 n: i64 = $list_len(%14)
+    %208 xs.lent: ref = lend %14
+    %15 n: i64 = $list_len(%208)
     %207 lit: i64 = const 0
     jump b31(%207, %14, %15)
   b1():
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %27 lit: ptr = const str 18
     %28 lit: ptr = const str 19
     %29 xs: ptr = alloc list(%25, %26, %27, %28)
-    dup.candidate %29
-    %30 n: i64 = $list_len(%29)
+    %209 xs.lent: ref = lend %29
+    %30 n: i64 = $list_len(%209)
     %102 lit: i64 = const 0
     jump b14(%102, %24, %29, %30)
   b6(%23 r: ptr):
@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %32 lit: i64 = const 70000
     %33 box: word = box %32
     %34 r: ptr = alloc std::option::Option.Some(%33)
-    dup.candidate %31
-    call with_port#10(%31, %34) -> b8(%31)
+    %210 p.lent: ref = lend %31
+    call with_port#77(%210, %34) -> b8(%31)
   b8(%35 r: ptr, %36 p: ptr):
     %37 f: ptr = closure main$4#11[]
     call map#6(%35, %37) -> b9(%36)
@@ -111,11 +111,11 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %60 more: bool = lt.int %56, %59
     if %60 then b15(%57, %58, %59, %56) else b16(%57, %58, %59, %56)
   b15(%61 p: ptr, %62 xs: ptr, %63 n: i64, %64 i: i64):
-    dup.candidate %62
-    %69 x: word = $list_at(%62, %64)
-    dup.candidate %61
-    dup.candidate %69
-    call with_scheme#8(%61, %69) -> b18(%61, %62, %63, %64, %69)
+    %212 xs.lent: ref = lend %62
+    %69 x: word = $list_at(%212, %64)
+    %211 p.lent: ref = lend %61
+    %213 x.lent: ref = lend %69
+    call with_scheme#78(%211, %213) -> b18(%61, %62, %63, %64, %69)
   b16(%65 p: ptr, %66 xs: ptr, %67 n: i64, %68 i: i64):
     drop %66
     jump b7(%65)
@@ -201,10 +201,10 @@ fn main#0 pub top -> unit ; main::url_rejects_malformed, frame 57 slots [%17 wor
     %146 more: bool = lt.int %143, %145
     if %146 then b32(%144, %145, %143) else b33(%144, %145, %143)
   b32(%147 xs: ptr, %148 n: i64, %149 i: i64):
-    dup.candidate %147
-    %153 x: word = $list_at(%147, %149)
-    dup.candidate %153
-    call parse#2(%153) -> b35(%147, %148, %149, %153)
+    %214 xs.lent: ref = lend %147
+    %153 x: word = $list_at(%214, %149)
+    %215 x.lent: ref = lend %153
+    call parse#79(%215) -> b35(%147, %148, %149, %153)
   b33(%150 xs: ptr, %151 n: i64, %152 i: i64):
     drop %150
     jump b1()

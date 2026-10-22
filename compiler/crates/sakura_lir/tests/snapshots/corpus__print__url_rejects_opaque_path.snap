@@ -22,8 +22,8 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %3 lit: ptr = const str 3
     %4 lit: ptr = const str 4
     %5 xs: ptr = alloc list(%0, %1, %2, %3, %4)
-    dup.candidate %5
-    %6 n: i64 = $list_len(%5)
+    %115 xs.lent: ref = lend %5
+    %6 n: i64 = $list_len(%115)
     %114 lit: i64 = const 0
     jump b2(%114, %5, %6)
   b1():
@@ -33,10 +33,10 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %11 more: bool = lt.int %8, %10
     if %11 then b3(%9, %10, %8) else b4(%9, %10, %8)
   b3(%12 xs: ptr, %13 n: i64, %14 i: i64):
-    dup.candidate %12
-    %18 x: word = $list_at(%12, %14)
-    dup.candidate %18
-    call parse#2(%18) -> b6(%12, %13, %14, %18)
+    %116 xs.lent: ref = lend %12
+    %18 x: word = $list_at(%116, %14)
+    %117 x.lent: ref = lend %18
+    call parse#72(%117) -> b6(%12, %13, %14, %18)
   b4(%15 xs: ptr, %16 n: i64, %17 i: i64):
     drop %15
     jump b1()
@@ -58,8 +58,8 @@ fn main#0 pub top -> unit ; main::url_rejects_opaque_path, frame 48 slots [%24 w
     %47 s: ptr = concat %45, %46
     drop %46
     %48 lit: ptr = const str 6
-    dup.candidate %44
-    call with_path#3(%44, %48) -> b10(%34, %35, %36, %37, %44, %47)
+    %118 p.lent: ref = lend %44
+    call with_path#73(%118, %48) -> b10(%34, %35, %36, %37, %44, %47)
   b9(%39 xs: ptr, %40 n: i64, %41 i: i64, %42 x: ptr, %43 r: ptr):
     %102 p: word = proj %43.0 std::result::Result.Err
     drop %43

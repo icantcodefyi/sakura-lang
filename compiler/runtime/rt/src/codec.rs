@@ -129,7 +129,7 @@ impl Rt {
     }
 
     /// `Bytes.to_base64(b, alphabet, padded)` with `url`/`padded` as 0 or 1.
-    pub fn bytes_to_base64(&mut self, b: u32, url: i64, padded: i64) -> Res<u32> {
+    pub fn bytes_to_base64(&mut self, b: u32, url: i64, padded: i64, keep: u32) -> Res<u32> {
         const STD: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
         const URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         let digits = if url == 1 { URL } else { STD };
@@ -158,21 +158,21 @@ impl Rt {
                 o += w;
             }
         });
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         r
     }
 
     /// `Bytes.from_base64(text, alphabet)` (strict): `Ok(bytes)` or `Err(offset * 4 + reason)`.
-    pub fn bytes_from_base64(&mut self, text: u32, url: i64) -> Res<u32> {
-        self.base64_decode(text, url == 1, false)
+    pub fn bytes_from_base64(&mut self, text: u32, url: i64, keep: u32) -> Res<u32> {
+        self.base64_decode(text, url == 1, false, keep)
     }
 
     /// `Bytes.from_base64_lenient(text)` (forgiving-base64, `atob`).
-    pub fn bytes_from_base64_lenient(&mut self, text: u32) -> Res<u32> {
-        self.base64_decode(text, false, true)
+    pub fn bytes_from_base64_lenient(&mut self, text: u32, keep: u32) -> Res<u32> {
+        self.base64_decode(text, false, true, keep)
     }
 
-    fn base64_decode(&mut self, text: u32, url: bool, lenient: bool) -> Res<u32> {
+    fn base64_decode(&mut self, text: u32, url: bool, lenient: bool, keep: u32) -> Res<u32> {
         let (n, at) = self.data(text);
         let checked = base64_check(self.heap.mem.bytes(at, n), url, lenient);
         let r = match checked {
@@ -198,7 +198,7 @@ impl Rt {
                 self.ok(p)
             }),
         };
-        self.drop(text);
+        self.drop_arg(keep, 0, text);
         r
     }
 

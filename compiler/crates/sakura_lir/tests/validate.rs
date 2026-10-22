@@ -374,3 +374,127 @@ fn every_corpus_program_validates_with_reuse_stripped() {
         }
     });
 }
+
+/// Plan M5 N4a, design §17.176 (4): a `ref` is only read, the owner of a `lend` is held across
+/// the call that reads it, and no `ref` crosses a call that may suspend.
+#[test]
+fn borrows_are_read_only_and_their_owner_is_held() {
+    big_stack(|| {
+        // `owned_record_retained` lends its planner to `show` and `put_var` and reads it after.
+        let m = lowered("owned_record_retained");
+        assert!(errors(&m).is_empty(), "{:?}", errors(&m));
+        assert!(!m.borrowed.is_empty(), "no borrowed variant");
+        let lend = |f: &Func, b: &Block| {
+            b.insts.iter().find_map(|i| match i {
+                Inst::Lend { dst, src } if f.repr(*src).is_managed() => Some((*dst, *src)),
+                _ => None,
+            })
+        };
+        let (fi, bi) = (m.funcs.iter().enumerate())
+            .find_map(|(fi, f)| {
+                (f.blocks.iter())
+                    .position(|b| lend(f, b).is_some() && matches!(b.term, Term::Call { .. }))
+                    .map(|bi| (fi, bi))
+            })
+            .expect("a lending call");
+        let (r, owner) = lend(&m.funcs[fi], &m.funcs[fi].blocks[bi]).unwrap();
+
+        // The owner dropped before the call and not passed on: the call is its last use.
+        let mut bad = m.clone();
+        let b = &mut bad.funcs[fi].blocks[bi];
+        let k = b.insts.len();
+        b.insts.insert(k, Inst::Drop(owner));
+        if let Term::Call { cont, .. } = &mut b.term {
+            cont.args.retain(|&a| a != owner);
+        }
+        rejected(&bad, "is lent to a call that is its last use");
+
+        // The lent `ref` passed on instead of its owner.
+        let mut bad = m.clone();
+        if let Term::Call { cont, .. } = &mut bad.funcs[fi].blocks[bi].term {
+            for a in &mut cont.args {
+                if *a == owner {
+                    *a = r;
+                }
+            }
+        }
+        rejected(&bad, "leaves its block");
+
+        // Given to the owned def instead of its borrowed variant.
+        let mut bad = m.clone();
+        if let Term::Call {
+            callee: Callee::Direct(g),
+            ..
+        } = &mut bad.funcs[fi].blocks[bi].term
+        {
+            *g = m
+                .borrowed
+                .iter()
+                .find(|(v, _)| v == g)
+                .expect("a variant")
+                .1;
+        }
+        rejected(&bad, "is ref, expected");
+
+        // A variant's `ref` parameter stored in an object.
+        let (vi, _) = m.borrowed[0];
+        let f = &m.funcs[vi.index()];
+        let p = f.params().iter().copied().find(|&p| f.repr(p) == Repr::Ref);
+        let p = p.expect("a borrowed parameter");
+        let mut bad = m.clone();
+        let dst = Var(f.vars.len() as u32);
+        bad.funcs[vi.index()].vars.push(VarDecl {
+            name: "boxed".into(),
+            repr: Repr::Ptr,
+        });
+        let entry = &mut bad.funcs[vi.index()].blocks[0];
+        entry.insts.insert(
+            0,
+            Inst::Alloc {
+                dst,
+                shape: Shape::List,
+                args: vec![p],
+                reuse: None,
+            },
+        );
+        entry.insts.insert(1, Inst::Drop(dst));
+        rejected(&bad, "expected a reference");
+
+        // A `ref` held across a callback builtin (a call that may suspend).
+        let (fi, bi) = (m.funcs.iter().enumerate())
+            .find_map(|(fi, f)| {
+                (f.blocks.iter())
+                    .position(|b| {
+                        matches!(&b.term, Term::Call { cont, .. }
+                            if cont.args.iter().any(|&a| f.repr(a) == Repr::Ref))
+                    })
+                    .map(|bi| (fi, bi))
+            })
+            .expect("a `ref` across a direct call");
+        let mut bad = m.clone();
+        if let Term::Call { callee, .. } = &mut bad.funcs[fi].blocks[bi].term {
+            *callee = Callee::Builtin("list_map".into());
+        }
+        rejected(&bad, "is held across a call that may suspend");
+    });
+}
+
+/// Plan M5 N4a: every corpus program validates with borrowing stripped, with no `lend`, no
+/// `ref` and no borrowed variant left.
+#[test]
+fn every_corpus_program_validates_with_borrowing_stripped() {
+    big_stack(|| {
+        for p in common::programs() {
+            let mut m = lower::lower(&p.core, &sigs()).unwrap();
+            sakura_lir::borrow::strip(&mut m);
+            assert_eq!(errors(&m), Vec::<String>::new(), "{}", p.name);
+            let used = (m.funcs.iter())
+                .flat_map(|f| f.blocks.iter().map(move |b| (f, b)))
+                .any(|(f, b)| {
+                    b.params.iter().any(|&v| f.repr(v) == Repr::Ref)
+                        || b.insts.iter().any(|i| matches!(i, Inst::Lend { .. }))
+                });
+            assert!(!used && m.borrowed.is_empty(), "{}: borrowing left", p.name);
+        }
+    });
+}

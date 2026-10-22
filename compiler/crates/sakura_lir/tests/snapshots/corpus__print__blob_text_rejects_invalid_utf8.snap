@@ -54,8 +54,8 @@ fn main#0 pub top -> unit ; main::blob_text_rejects_invalid_utf8, frame 23 slots
     %35 box: word = box %34
     %36 xs: ptr = alloc list(%33, %35)
     %37 xs: ptr = alloc list(%6, %17, %24, %31, %36)
-    dup.candidate %37
-    %38 n: i64 = $list_len(%37)
+    %92 xs.lent: ref = lend %37
+    %38 n: i64 = $list_len(%92)
     %91 lit: i64 = const 0
     jump b2(%91, %37, %38)
   b1():
@@ -65,8 +65,8 @@ fn main#0 pub top -> unit ; main::blob_text_rejects_invalid_utf8, frame 23 slots
     %43 more: bool = lt.int %40, %42
     if %43 then b3(%41, %42, %40) else b4(%41, %42, %40)
   b3(%44 xs: ptr, %45 n: i64, %46 i: i64):
-    dup.candidate %44
-    %50 x: word = $list_at(%44, %46)
+    %93 xs.lent: ref = lend %44
+    %50 x: word = $list_at(%93, %46)
     %56 r: ptr = $bytes_from_list(%50)
     %57 lit: ptr = const str 0
     call of#2(%56, %57) -> b6(%44, %45, %46)

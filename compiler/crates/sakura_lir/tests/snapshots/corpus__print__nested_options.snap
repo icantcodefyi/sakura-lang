@@ -269,8 +269,8 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
   b31(%239 r: unit, %240 xs: ptr, %241 xs: ptr):
     %242 box: word = box %239
     drop %242
-    dup.candidate %241
-    %243 n: i64 = $list_len(%241)
+    %382 xs.lent: ref = lend %241
+    %243 n: i64 = $list_len(%382)
     %381 lit: i64 = const 0
     jump b39(%381, %240, %241, %243)
   b32(%244 xs: ptr):
@@ -278,16 +278,16 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %246 f: ptr = closure main$5#13[]
     call fold#14(%244, %245, %246) -> b33()
   b33(%247 r: word):
-    dup.candidate %247
-    %248 r: i64 = $map_len(%247)
+    %383 r.lent: ref = lend %247
+    %248 r: i64 = $map_len(%383)
     %249 s: ptr = show %248
     %250 lit: ptr = const str 0
     %251 s: ptr = concat %249, %250
     drop %250
     %252 v: ptr = const static std::option::Option.None
     %253 r: ptr = alloc std::option::Option.Some(%252)
-    dup.candidate %247
-    %254 r: ptr = $map_get(%247, %253)
+    %384 r.lent: ref = lend %247
+    %254 r: ptr = $map_get(%384, %253)
     %255 s: ptr = show %254
     drop %254
     %256 s: ptr = concat %251, %255
@@ -296,8 +296,8 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %258 s: ptr = concat %256, %257
     drop %257
     %259 v: ptr = const static std::option::Option.None
-    dup.candidate %247
-    %260 r: ptr = $map_get(%247, %259)
+    %385 r.lent: ref = lend %247
+    %260 r: ptr = $map_get(%385, %259)
     %261 s: ptr = show %260
     drop %260
     %262 s: ptr = concat %258, %261
@@ -365,8 +365,8 @@ fn main#0 pub top -> unit ; main::nested_options, frame 120 slots [%18 bool, %19
     %312 more: bool = lt.int %308, %311
     if %312 then b40(%309, %310, %311, %308) else b41(%309, %310, %311, %308)
   b40(%313 xs: ptr, %314 xs: ptr, %315 n: i64, %316 i: i64):
-    dup.candidate %314
-    %321 x: word = $list_at(%314, %316)
+    %386 xs.lent: ref = lend %314
+    %321 x: word = $list_at(%386, %316)
     %328 value: word = proj %321.1 main::nested_options::Cell
     %347 tag: i64 = tag %328 ctor std::option::Option
     switch %347 0 => b45(%313, %314, %315, %316, %321, %328) 1 => b46(%313, %314, %315, %316, %321, %328)
@@ -538,9 +538,49 @@ fn main$4#12 lambda -> word ; main::nested_options, captures [word*], frame 1 sl
 fn main$5#13 lambda -> word ; main::nested_options, captures [], frame 6 slots [%0 word*, %1 word*, %2 word*, %3 i64, %4 word*, %5 word*]
   b0(%0 env: ptr, %1 acc: word, %2 o: word):
     drop %0
-    dup.candidate %2
-    call depth#3(%2) -> b1(%1, %2)
+    %8 o.lent: ref = lend %2
+    call depth#21(%8) -> b1(%1, %2)
   b1(%3 r: i64, %4 acc: ptr, %5 o: ptr):
     %6 box: word = box %3
     %7 r: ptr = $map_insert(%4, %5, %6)
     ret %7
+
+fn depth#21 borrowed variant of #3 -> i64 ; main::nested_options, frame 1 slots [%0 i64]
+  b0(%0 o: ref):
+    %1 tag: i64 = tag %0 ctor std::option::Option
+    switch %1 0 => b1(%0) 1 => b2(%0)
+  b1(%2 o: ref):
+    %4 lit: i64 = const 0
+    ret %4
+  b2(%3 o: ref):
+    %5 p: word = proj %3.0 std::option::Option.Some
+    %6 tag: i64 = tag %5 ctor std::option::Option
+    switch %6 0 => b3(%5) 1 => b4(%5)
+  b3(%7 p: ptr):
+    drop %7
+    %9 lit: i64 = const 1
+    ret %9
+  b4(%8 p: ptr):
+    %10 p: word = proj %8.0 std::option::Option.Some
+    drop %8
+    %11 tag: i64 = tag %10 ctor std::option::Option
+    switch %11 0 => b5(%10) 1 => b6(%10)
+  b5(%12 p: ptr):
+    drop %12
+    %14 lit: i64 = const 2
+    ret %14
+  b6(%13 p: ptr):
+    %15 p: word = proj %13.0 std::option::Option.Some
+    drop %13
+    %16 tag: i64 = tag %15 ctor std::option::Option
+    switch %16 0 => b7(%15) 1 => b8(%15)
+  b7(%17 p: ptr):
+    drop %17
+    %19 lit: i64 = const 3
+    ret %19
+  b8(%18 p: ptr):
+    %20 p: word = proj %18.0 std::option::Option.Some
+    drop %18
+    drop %20
+    %21 lit: i64 = const 4
+    ret %21

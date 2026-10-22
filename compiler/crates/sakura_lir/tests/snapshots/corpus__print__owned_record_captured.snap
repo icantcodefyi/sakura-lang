@@ -100,8 +100,8 @@ fn main#0 pub top -> unit ; main::owned_record_captured, frame 38 slots [%1 word
   b12(%63 r: unit, %64 r: ptr):
     %65 box: word = box %63
     drop %65
-    dup.candidate %64
-    call two_views#8(%64) -> b13(%64)
+    %137 r.lent: ref = lend %64
+    call two_views#19(%137) -> b13(%64)
   b13(%66 r: ptr, %67 r: ptr):
     %133 p: ptr = tuple_get %66.0
     %134 p: i64 = tuple_get %66.1
@@ -265,8 +265,8 @@ fn keep_start#7 top -> ptr ; main::owned_record_captured, frame 9 slots [%0 word
     %9 s: ptr = concat %7, %8
     drop %8
     %10 lit: i64 = const 0
-    dup.candidate %6
-    call var_of#11(%6, %10) -> b3(%6, %9)
+    %41 p.lent: ref = lend %6
+    call var_of#20(%41, %10) -> b3(%6, %9)
   b3(%11 r: i64, %12 p: ptr, %13 s: ptr):
     %14 s: ptr = show %11
     %15 s: ptr = concat %13, %14
@@ -331,8 +331,8 @@ fn keep_for_handler#10 top -> ptr ; main::owned_record_captured, frame 8 slots [
     ret %5
   b3(%6 p: ptr, %7 i: i64) [try]:
     %8 lit: i64 = const 0
-    dup.candidate %6
-    call var_of#11(%6, %8) -> b4(%6)
+    %36 p.lent: ref = lend %6
+    call var_of#20(%36, %8) -> b4(%6)
   b4(%9 r: i64, %10 p: ptr) [try]:
     %11 lit: i64 = const 200
     %12 t: bool = eq.int %9, %11
@@ -400,3 +400,33 @@ fn total$1#15 lambda -> word ; main::owned_record_captured, captures [word*], fr
     %8 t: i64 = intadd %7, %6
     %9 box: word = box %8
     ret %9
+
+fn two_views#19 borrowed variant of #8 -> ptr ; main::owned_record_captured, frame 6 slots [%0 i64, %7 word*, %8 i64, %9 word*, %12 i64, %13 word*]
+  b0(%0 p: ref):
+    %1 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %2 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %3 lit: i64 = const 0
+    %4 lit: i64 = const 555
+    %5 box: word = box %4
+    %6 $site: i64 = const 3
+    call set#14(%2, %3, %5, %6) -> b1(%0, %1)
+  b1(%7 r: ptr, %8 p: ref, %9 vars: ptr):
+    %10 mark: i64 = proj %8.1 main::owned_record_captured::Planner
+    %11 rec: ptr = alloc main::owned_record_captured::Planner(%7, %10)
+    call sum#4(%9) -> b2(%11)
+  b2(%12 r: i64, %13 rec: ptr):
+    %14 tup: ptr = alloc tuple#7(word, i64)(%13, %12)
+    ret %14
+
+fn var_of#20 borrowed variant of #11 -> i64 ; main::owned_record_captured, frame 3 slots [%0 i64, %1 i64, %7 word*]
+  b0(%0 p: ref, %1 i: i64):
+    %2 vars: word = proj %0.0 main::owned_record_captured::Planner
+    %3 r: ptr = $list_get(%2, %1)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intneg %4
+    %6 box: word = box %5
+    call unwrap_or#12(%3, %6) -> b1()
+  b1(%7 r: word):
+    %8 unbox: i64 = unbox %7
+    drop %7
+    ret %8

@@ -77,8 +77,8 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     %36 v: ptr = const static std::crypto::Digest.Sha384
     %37 v: ptr = const static std::crypto::Digest.Sha512
     %38 xs: ptr = alloc list(%35, %36, %37)
-    dup.candidate %38
-    %39 n: i64 = $list_len(%38)
+    %74 xs.lent: ref = lend %38
+    %39 n: i64 = $list_len(%74)
     %73 lit: i64 = const 0
     jump b10(%73, %38, %39)
   b9():
@@ -88,8 +88,8 @@ fn main#0 pub top -> unit ; main::crypto_generate_under_seeded_random_is_determi
     %44 more: bool = lt.int %41, %43
     if %44 then b11(%42, %43, %41) else b12(%42, %43, %41)
   b11(%45 xs: ptr, %46 n: i64, %47 i: i64):
-    dup.candidate %45
-    %51 x: word = $list_at(%45, %47)
+    %75 xs.lent: ref = lend %45
+    %51 x: word = $list_at(%75, %47)
     %57 s: ptr = show %51
     %58 lit: ptr = const str 0
     %59 s: ptr = concat %57, %58

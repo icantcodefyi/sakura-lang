@@ -24,8 +24,8 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %217 lit: i64 = const 0
     jump b27(%4, %217)
   b2(%6 p: ptr, %7 i: i64):
-    dup.candidate %6
-    call show#3(%6) -> b3(%6, %7)
+    %239 p.lent: ref = lend %6
+    call show#14(%239) -> b3(%6, %7)
   b3(%8 r: ptr, %9 p: ptr, %10 i: i64):
     %11 s: ptr = show %8
     drop %8
@@ -39,8 +39,8 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %18 lit: i64 = const 1
     %19 t: i64 = intneg %18
     %20 lit: i64 = const 0
-    dup.candidate %15
-    call put_var#4(%15, %20, %19) -> b5(%15, %16)
+    %240 p.lent: ref = lend %15
+    call put_var#15(%240, %20, %19) -> b5(%15, %16)
   b5(%21 r: ptr, %22 p: ptr, %23 i: i64):
     %24 lit: i64 = const 9
     call bump#2(%21, %24) -> b6(%22, %23)
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
   b8(%34 r: unit, %35 i: i64, %36 r: ptr):
     %37 box: word = box %34
     drop %37
-    dup.candidate %36
-    call show#3(%36) -> b9(%35, %36)
+    %241 r.lent: ref = lend %36
+    call show#14(%241) -> b9(%35, %36)
   b9(%38 r: ptr, %39 i: i64, %40 r: ptr):
     %41 s: ptr = show %38
     drop %38
@@ -181,24 +181,24 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %133 r: ptr = $list_push(%130, %132)
     %134 vars: word = proj %128.0 main::owned_record_retained::Planner
     %135 mark: i64 = proj %128.2 main::owned_record_retained::Planner
-    %239 token: word = $reuse_reset(%128)
-    %136 rec: ptr = alloc main::owned_record_retained::Planner(%134, %133, %135) reuse %239
+    %245 token: word = $reuse_reset(%128)
+    %136 rec: ptr = alloc main::owned_record_retained::Planner(%134, %133, %135) reuse %245
     %137 cons: word = proj %136.1 main::owned_record_retained::Planner
     %138 r: i64 = $list_len(%137)
     %139 lit: i64 = const 2
-    dup.candidate %136
-    call put_var#4(%136, %139, %138) -> b17(%136)
+    %242 rec.lent: ref = lend %136
+    call put_var#15(%242, %139, %138) -> b17(%136)
   b17(%140 r: ptr, %141 rec: ptr):
     %142 mark: i64 = proj %141.2 main::owned_record_retained::Planner
-    %240 token: word = $reuse_reset(%141)
+    %246 token: word = $reuse_reset(%141)
     %143 lit: i64 = const 1
     %144 t: i64 = intadd %142, %143
     %145 vars: word = proj %140.0 main::owned_record_retained::Planner
     %146 cons: word = proj %140.1 main::owned_record_retained::Planner
     drop %140
-    %147 rec: ptr = alloc main::owned_record_retained::Planner(%145, %146, %144) reuse %240
-    dup.candidate %147
-    call show#3(%147) -> b18(%147)
+    %147 rec: ptr = alloc main::owned_record_retained::Planner(%145, %146, %144) reuse %246
+    %243 rec.lent: ref = lend %147
+    call show#14(%243) -> b18(%147)
   b18(%148 r: ptr, %149 rec: ptr):
     %150 s: ptr = show %148
     drop %148
@@ -266,8 +266,8 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %193 p: i64 = proj %190.0 main::owned_record_retained::Stop
     drop %190
     %194 lit: i64 = const 9
-    dup.candidate %192
-    call put_var#4(%192, %194, %193) -> b25(%191, %192)
+    %244 r.lent: ref = lend %192
+    call put_var#15(%244, %194, %193) -> b25(%191, %192)
   b25(%195 r: ptr, %196 i: i64, %197 r: ptr):
     jump b15(%195, %197, %196)
   b26(%198 r: ptr, %199 i: i64, %200 r: ptr) [try]:
@@ -300,8 +300,8 @@ fn main#0 pub top -> unit ; main::owned_record_retained, frame 57 slots [%8 word
     %231 r: ptr = $list_push(%229, %230)
     %232 cons: word = proj %225.1 main::owned_record_retained::Planner
     %233 mark: i64 = proj %225.2 main::owned_record_retained::Planner
-    %241 token: word = $reuse_reset(%225)
-    %234 rec: ptr = alloc main::owned_record_retained::Planner(%231, %232, %233) reuse %241
+    %247 token: word = $reuse_reset(%225)
+    %234 rec: ptr = alloc main::owned_record_retained::Planner(%231, %232, %233) reuse %247
     %235 lit: i64 = const 1
     %236 t: i64 = intadd %226, %235
     %237 lit: unit = const ()
@@ -320,8 +320,8 @@ fn $entry#1 top -> unit ; main::owned_record_retained, frame 1 slots [%1 bool]
 
 fn bump#2 top -> ptr ; main::owned_record_retained, frame 6 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64, %7 word*]
   b0(%0 p: ptr, %1 i: i64):
-    dup.candidate %0
-    call var_of#10(%0, %1) -> b1(%0, %1)
+    %8 p.lent: ref = lend %0
+    call var_of#16(%8, %1) -> b1(%0, %1)
   b1(%2 r: i64, %3 p: ptr, %4 i: i64):
     %5 lit: i64 = const 1
     %6 t: i64 = intadd %2, %5
@@ -386,8 +386,8 @@ fn put_then_fail#5 top -> ptr ; main::owned_record_retained, frame 4 slots [%0 w
     call put_var#4(%0, %1, %2) -> b1()
   b1(%3 r: ptr):
     %4 lit: i64 = const 0
-    dup.candidate %3
-    call var_of#10(%3, %4) -> b2(%3)
+    %16 r.lent: ref = lend %3
+    call var_of#16(%16, %4) -> b2(%3)
   b2(%5 r: i64, %6 r: ptr):
     %7 lit: i64 = const 42
     %8 t: bool = eq.int %5, %7
@@ -438,6 +438,67 @@ fn var_of#10 top -> i64 ; main::owned_record_retained, frame 3 slots [%0 word*, 
   b0(%0 p: ptr, %1 i: i64):
     %2 vars: word = proj %0.0 main::owned_record_retained::Planner
     drop %0
+    %3 r: ptr = $list_get(%2, %1)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intneg %4
+    %6 box: word = box %5
+    call unwrap_or#9(%3, %6) -> b1()
+  b1(%7 r: word):
+    %8 unbox: i64 = unbox %7
+    drop %7
+    ret %8
+
+fn show#14 borrowed variant of #3 -> ptr ; main::owned_record_retained, frame 4 slots [%0 i64, %7 i64, %8 i64, %9 word*]
+  b0(%0 p: ref):
+    %1 vars: word = proj %0.0 main::owned_record_retained::Planner
+    %2 r: i64 = $list_len(%1)
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 4
+    %5 s: ptr = concat %3, %4
+    drop %4
+    %6 vars: word = proj %0.0 main::owned_record_retained::Planner
+    call sum#11(%6) -> b1(%0, %5)
+  b1(%7 r: i64, %8 p: ref, %9 s: ptr):
+    %10 s: ptr = show %7
+    %11 s: ptr = concat %9, %10
+    drop %10
+    %12 lit: ptr = const str 4
+    %13 s: ptr = concat %11, %12
+    drop %12
+    %14 vars: word = proj %8.0 main::owned_record_retained::Planner
+    %15 lit: i64 = const 0
+    %16 item: ptr = $list_get(%14, %15)
+    %17 s: ptr = show %16
+    drop %16
+    %18 s: ptr = concat %13, %17
+    drop %17
+    %19 lit: ptr = const str 4
+    %20 s: ptr = concat %18, %19
+    drop %19
+    %21 vars: word = proj %8.0 main::owned_record_retained::Planner
+    %22 lit: i64 = const 9
+    %23 item: ptr = $list_get(%21, %22)
+    %24 s: ptr = show %23
+    drop %23
+    %25 s: ptr = concat %20, %24
+    drop %24
+    ret %25
+
+fn put_var#15 borrowed variant of #4 -> ptr ; main::owned_record_retained, frame 5 slots [%0 i64, %1 i64, %2 i64, %6 word*, %7 i64]
+  b0(%0 p: ref, %1 i: i64, %2 v: i64):
+    %3 vars: word = proj %0.0 main::owned_record_retained::Planner
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#8(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 p: ref):
+    %8 cons: word = proj %7.1 main::owned_record_retained::Planner
+    %9 mark: i64 = proj %7.2 main::owned_record_retained::Planner
+    %10 rec: ptr = alloc main::owned_record_retained::Planner(%6, %8, %9)
+    ret %10
+
+fn var_of#16 borrowed variant of #10 -> i64 ; main::owned_record_retained, frame 3 slots [%0 i64, %1 i64, %7 word*]
+  b0(%0 p: ref, %1 i: i64):
+    %2 vars: word = proj %0.0 main::owned_record_retained::Planner
     %3 r: ptr = $list_get(%2, %1)
     %4 lit: i64 = const 1
     %5 t: i64 = intneg %4

@@ -36,8 +36,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %18 lit: i64 = const 6
     %19 box: word = box %18
     %20 xs: ptr = alloc list(%9, %11, %13, %15, %17, %19)
-    dup.candidate %20
-    %21 n: i64 = $list_len(%20)
+    %269 xs.lent: ref = lend %20
+    %21 n: i64 = $list_len(%269)
     %253 lit: i64 = const 0
     jump b26(%253, %5, %7, %20, %21)
   b3(%22 total: i64, %23 evens: ptr):
@@ -70,8 +70,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     call of#2(%48) -> b7(%38, %39, %40)
   b7(%49 r: ptr, %50 total: i64, %51 evens: ptr, %52 n: i64):
     %53 xs: ptr = $map_entries(%49)
-    dup.candidate %53
-    %54 n: i64 = $list_len(%53)
+    %270 xs.lent: ref = lend %53
+    %54 n: i64 = $list_len(%270)
     %160 lit: i64 = const 0
     jump b16(%160, %50, %51, %52, %53, %54)
   b8(%55 total: i64, %56 evens: ptr, %57 n: i64):
@@ -82,8 +82,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     call of#3(%61) -> b9(%55, %56, %57)
   b9(%62 r: ptr, %63 total: i64, %64 evens: ptr, %65 n: i64):
     %66 xs: ptr = $set_to_list(%62)
-    dup.candidate %66
-    %67 n: i64 = $list_len(%66)
+    %271 xs.lent: ref = lend %66
+    %67 n: i64 = $list_len(%271)
     %108 lit: i64 = const 0
     jump b11(%108, %63, %64, %65, %66, %67)
   b10(%68 total: i64, %69 evens: ptr, %70 n: i64):
@@ -94,8 +94,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %78 more: bool = lt.int %72, %77
     if %78 then b12(%76, %77, %72, %73, %74, %75) else b13(%76, %77, %72, %73, %74, %75)
   b12(%79 xs: ptr, %80 n: i64, %81 i: i64, %82 total: i64, %83 evens: ptr, %84 n: i64):
-    dup.candidate %79
-    %91 x: word = $list_at(%79, %81)
+    %272 xs.lent: ref = lend %79
+    %91 x: word = $list_at(%272, %81)
     perform std::console::Console.print(%91) -> b15(%79, %80, %81, %82, %83, %84)
   b13(%85 xs: ptr, %86 n: i64, %87 i: i64, %88 total: i64, %89 evens: ptr, %90 n: i64):
     drop %85
@@ -112,8 +112,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %115 more: bool = lt.int %109, %114
     if %115 then b17(%113, %114, %109, %110, %111, %112) else b18(%113, %114, %109, %110, %111, %112)
   b17(%116 xs: ptr, %117 n: i64, %118 i: i64, %119 total: i64, %120 evens: ptr, %121 n: i64):
-    dup.candidate %116
-    %128 x: word = $list_at(%116, %118)
+    %273 xs.lent: ref = lend %116
+    %128 x: word = $list_at(%273, %118)
     %158 p: ptr = tuple_get %128.0
     %159 p: i64 = tuple_get %128.1
     drop %128
@@ -156,8 +156,8 @@ fn main#0 pub top -> unit ; main::loops, frame 31 slots [%4 bool, %5 i64, %27 bo
     %185 more: bool = lt.int %180, %184
     if %185 then b27(%183, %184, %180, %181, %182) else b28(%183, %184, %180, %181, %182)
   b27(%186 xs: ptr, %187 n: i64, %188 i: i64, %189 total: i64, %190 evens: ptr):
-    dup.candidate %186
-    %196 x: word = $list_at(%186, %188)
+    %274 xs.lent: ref = lend %186
+    %196 x: word = $list_at(%274, %188)
     %197 unbox: i64 = unbox %196
     drop %196
     %205 lit: i64 = const 2

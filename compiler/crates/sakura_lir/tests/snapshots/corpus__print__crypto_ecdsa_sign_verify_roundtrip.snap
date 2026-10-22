@@ -50,8 +50,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 
     %16 lit: ptr = const str 10
     %17 tup: ptr = alloc tuple#23(word, word, word, word, word, word, word)(%10, %11, %12, %13, %14, %15, %16)
     %18 xs: ptr = alloc list(%9, %17)
-    dup.candidate %18
-    %19 n: i64 = $list_len(%18)
+    %333 xs.lent: ref = lend %18
+    %19 n: i64 = $list_len(%333)
     %332 lit: i64 = const 0
     jump b11(%332, %1, %18, %19)
   b1(%20 r: ptr):
@@ -113,8 +113,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 
     %68 more: bool = lt.int %64, %67
     if %68 then b12(%65, %66, %67, %64) else b13(%65, %66, %67, %64)
   b12(%69 r: ptr, %70 xs: ptr, %71 n: i64, %72 i: i64):
-    dup.candidate %70
-    %77 x: word = $list_at(%70, %72)
+    %334 xs.lent: ref = lend %70
+    %77 x: word = $list_at(%334, %72)
     %325 p: ptr = tuple_get %77.0
     %326 p: ptr = tuple_get %77.1
     %327 p: ptr = tuple_get %77.2
@@ -221,9 +221,9 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 
     call unhex#2(%257) -> b30(%245, %246, %247, %248, %252, %253, %244, %256)
   b30(%258 r: ptr, %259 r: ptr, %260 xs: ptr, %261 n: i64, %262 i: i64, %263 p: ptr, %264 r: ptr, %265 v: ptr, %266 s: ptr):
     %267 $site: i64 = const 11
-    dup.candidate %263
+    %335 p.lent: ref = lend %263
     dup.candidate %264
-    call verify#6(%263, %258, %264, %267) -> b31(%259, %260, %261, %262, %263, %264, %265, %266)
+    call verify#109(%335, %258, %264, %267) -> b31(%259, %260, %261, %262, %263, %264, %265, %266)
   b31(%268 r: bool, %269 r: ptr, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 p: ptr, %274 r: ptr, %275 v: ptr, %276 s: ptr):
     %277 s: ptr = show %268
     %278 s: ptr = concat %276, %277
@@ -231,8 +231,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 
     %279 lit: ptr = const str 18
     %280 s: ptr = concat %278, %279
     drop %279
-    dup.candidate %275
-    %281 r: i64 = $bytes_len(%275)
+    %337 v.lent: ref = lend %275
+    %281 r: i64 = $bytes_len(%337)
     %282 s: ptr = show %281
     %283 s: ptr = concat %280, %282
     drop %282
@@ -240,10 +240,10 @@ fn main#0 pub top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 136 
     %285 s: ptr = concat %283, %284
     drop %284
     %286 $site: i64 = const 12
-    dup.candidate %273
+    %336 p.lent: ref = lend %273
     dup.candidate %274
     dup.candidate %275
-    call verify#6(%273, %275, %274, %286) -> b32(%269, %270, %271, %272, %273, %274, %275, %285)
+    call verify#109(%336, %275, %274, %286) -> b32(%269, %270, %271, %272, %273, %274, %275, %285)
   b32(%287 r: bool, %288 r: ptr, %289 xs: ptr, %290 n: i64, %291 i: i64, %292 p: ptr, %293 r: ptr, %294 v: ptr, %295 s: ptr):
     %296 s: ptr = show %287
     %297 s: ptr = concat %295, %296
@@ -276,8 +276,8 @@ fn $entry#1 top -> unit ; main::crypto_ecdsa_sign_verify_roundtrip, frame 1 slot
 fn unhex#2 top -> ptr ; main::crypto_ecdsa_sign_verify_roundtrip, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %59 s.lent: ref = lend %0
+    %2 r: i64 = $string_len(%59)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
     %58 lit: i64 = const 0
@@ -328,8 +328,8 @@ fn unhex#2 top -> ptr ; main::crypto_ecdsa_sign_verify_roundtrip, frame 12 slots
 fn refused#7 top -> bool ; main::crypto_ecdsa_sign_verify_roundtrip, frame 17 slots [%0 word*, %1 word*, %2 word*, %7 word*, %8 word*, %9 word*, %10 word*, %31 bool, %32 word*, %33 word*, %34 word*, %35 word*, %51 bool, %63 bool, %64 word*, %65 word*, %66 word*]
   b0(%0 p: ptr, %1 sig: ptr, %2 msg: ptr):
     %3 lit: i64 = const 0
-    dup.candidate %1
-    %4 r: ptr = $bytes_get(%1, %3)
+    %81 sig.lent: ref = lend %1
+    %4 r: ptr = $bytes_get(%81, %3)
     %5 lit: i64 = const 0
     %6 box: word = box %5
     call unwrap_or#15(%4, %6) -> b1(%0, %1, %2)
@@ -345,8 +345,8 @@ fn refused#7 top -> bool ; main::crypto_ecdsa_sign_verify_roundtrip, frame 17 sl
     %20 box: word = box %16
     %21 xs: ptr = alloc list(%20)
     %22 r: ptr = $bytes_from_list(%21)
-    dup.candidate %18
-    %23 r: i64 = $bytes_len(%18)
+    %83 sig.lent: ref = lend %18
+    %23 r: i64 = $bytes_len(%83)
     %24 lit: i64 = const 1
     dup %18
     %25 r: ptr = $bytes_slice(%18, %24, %23)
@@ -355,9 +355,9 @@ fn refused#7 top -> bool ; main::crypto_ecdsa_sign_verify_roundtrip, frame 17 sl
     %28 lit: ptr = const str 20
     %29 r: ptr = $string_to_bytes(%28)
     %30 $site: i64 = const 15
-    dup.candidate %17
+    %82 p.lent: ref = lend %17
     dup.candidate %18
-    call verify#6(%17, %18, %29, %30) -> b3(%17, %18, %19, %27)
+    call verify#109(%82, %18, %29, %30) -> b3(%17, %18, %19, %27)
   b3(%31 r: bool, %32 p: ptr, %33 sig: ptr, %34 msg: ptr, %35 r: ptr):
     %36 t: bool = not %31
     if %36 then b8(%32, %33, %34, %35) else b9(%32, %33, %34, %35)
@@ -380,9 +380,9 @@ fn refused#7 top -> bool ; main::crypto_ecdsa_sign_verify_roundtrip, frame 17 sl
     ret %52
   b8(%54 p: ptr, %55 sig: ptr, %56 msg: ptr, %57 r: ptr):
     %62 $site: i64 = const 17
-    dup.candidate %54
+    %84 p.lent: ref = lend %54
     dup.candidate %56
-    call verify#6(%54, %57, %56, %62) -> b10(%54, %55, %56)
+    call verify#109(%84, %57, %56, %62) -> b10(%54, %55, %56)
   b9(%58 p: ptr, %59 sig: ptr, %60 msg: ptr, %61 r: ptr):
     drop %61
     %68 lit: bool = const false

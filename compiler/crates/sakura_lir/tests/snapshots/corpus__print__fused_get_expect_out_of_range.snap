@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::fused_get_expect_out_of_range, frame 8 slots [
     call range#2(%0, %1) -> b1()
   b1(%2 r: ptr):
     %3 lit: i64 = const 39
-    dup.candidate %2
-    call at#3(%2, %3) -> b2(%2)
+    %19 r.lent: ref = lend %2
+    call at#4(%19, %3) -> b2(%2)
   b2(%4 r: i64, %5 r: ptr):
     %6 s: ptr = show %4
     perform std::console::Console.print(%6) -> b3(%5)
@@ -50,6 +50,14 @@ fn $entry#1 top -> unit ; main::fused_get_expect_out_of_range, frame 1 slots [%1
 
 fn at#3 top -> i64 ; main::fused_get_expect_out_of_range, frame 2 slots [%0 word*, %1 i64]
   b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 1
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn at#4 borrowed variant of #3 -> i64 ; main::fused_get_expect_out_of_range, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 xs: ref, %1 i: i64):
     %2 lit: ptr = const str 1
     %3 r: word = $list_get_expect(%0, %1, %2)
     %4 unbox: i64 = unbox %3

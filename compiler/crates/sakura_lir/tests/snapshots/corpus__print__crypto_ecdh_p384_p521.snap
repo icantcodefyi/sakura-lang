@@ -35,7 +35,7 @@ layout 29 shape |  48b (word*, word*, word*, word*)
 layout 30 shape |  32b (bool, word*)
 layout 31 shape |  40b (i64, i64, i64)
 
-fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 word*, %43 word*, %44 i64, %45 i64, %46 i64, %47 word*, %48 word*, %49 word*, %50 word*, %51 word*, %67 word*, %68 word*, %69 i64, %70 i64, %71 i64, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 i64, %78 word*, %79 word*, %80 word*, %81 word*, %82 i64, %83 i64, %84 i64, %85 word*, %86 word*, %87 word*, %88 word*, %89 i64, %90 word*, %91 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 i64, %97 word*, %98 word*, %99 word*, %100 i64, %101 word*, %102 word*, %103 word*, %104 word*, %105 word*, %106 i64, %107 i64, %108 i64, %109 word*, %110 word*, %111 i64, %112 word*, %113 word*, %114 word*, %129 bool, %130 word*, %131 i64, %132 i64, %236 word*, %237 word*, %238 i64, %239 i64, %240 i64, %241 word*, %242 word*, %243 i64, %244 word*, %245 word*, %246 word*, %247 word*, %458 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 i64, %258 word*, %259 word*, %260 word*, %459 word*, %265 word*, %266 word*, %267 i64, %268 i64, %269 i64, %270 word*, %271 word*, %272 i64, %273 word*, %274 word*, %460 word*, %280 word*, %281 word*, %282 i64, %283 i64, %284 i64, %285 word*, %286 word*, %287 i64, %288 word*, %289 word*, %290 word*, %291 word*, %461 word*, %298 word*, %299 word*, %300 i64, %301 i64, %302 i64, %303 word*, %304 i64, %305 word*, %306 word*, %307 word*, %316 bool, %317 word*, %318 i64, %319 i64, %320 i64, %321 word*, %322 i64, %325 word*, %326 word*, %327 i64, %328 i64, %329 i64, %330 word*, %331 i64, %349 word*, %350 word*, %351 i64, %352 i64, %353 i64, %354 i64, %355 word*, %356 word*, %361 word*, %362 word*, %363 i64, %364 i64, %365 i64, %366 word*, %378 word*, %379 word*, %380 i64, %381 i64, %382 word*, %385 bool, %386 word*, %387 i64, %388 i64, %396 word*, %397 word*, %398 i64, %399 i64, %400 i64, %401 word*, %402 i64, %407 word*, %408 word*, %409 i64, %410 i64, %411 i64, %412 i64, %413 word*, %423 bool, %424 word*, %425 i64, %426 i64]
+fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 word*, %43 word*, %44 i64, %45 i64, %46 i64, %47 word*, %48 word*, %49 word*, %50 word*, %51 word*, %67 word*, %68 word*, %69 i64, %70 i64, %71 i64, %72 word*, %73 word*, %74 word*, %75 word*, %76 word*, %77 i64, %78 word*, %79 word*, %80 word*, %81 word*, %82 i64, %83 i64, %84 i64, %85 word*, %86 word*, %87 word*, %88 word*, %89 i64, %90 word*, %91 word*, %92 word*, %93 word*, %94 i64, %95 i64, %96 i64, %97 word*, %98 word*, %99 word*, %100 i64, %101 word*, %102 word*, %103 word*, %104 word*, %105 word*, %106 i64, %107 i64, %108 i64, %109 word*, %110 word*, %111 i64, %112 word*, %113 word*, %114 word*, %129 bool, %130 word*, %131 i64, %132 i64, %236 word*, %237 word*, %238 i64, %239 i64, %240 i64, %241 word*, %242 word*, %243 i64, %244 word*, %245 word*, %246 word*, %247 word*, %461 word*, %250 word*, %251 word*, %252 i64, %253 i64, %254 i64, %255 word*, %256 word*, %257 i64, %258 word*, %259 word*, %260 word*, %462 word*, %265 word*, %266 word*, %267 i64, %268 i64, %269 i64, %270 word*, %271 word*, %272 i64, %273 word*, %274 word*, %463 word*, %280 word*, %281 word*, %282 i64, %283 i64, %284 i64, %285 word*, %286 word*, %287 i64, %288 word*, %289 word*, %290 word*, %291 word*, %464 word*, %298 word*, %299 word*, %300 i64, %301 i64, %302 i64, %303 word*, %304 i64, %305 word*, %306 word*, %307 word*, %316 bool, %317 word*, %318 i64, %319 i64, %320 i64, %321 word*, %322 i64, %325 word*, %326 word*, %327 i64, %328 i64, %329 i64, %330 word*, %331 i64, %349 word*, %350 word*, %351 i64, %352 i64, %353 i64, %354 i64, %355 word*, %356 word*, %361 word*, %362 word*, %363 i64, %364 i64, %365 i64, %366 word*, %378 word*, %379 word*, %380 i64, %381 i64, %382 word*, %385 bool, %386 word*, %387 i64, %388 i64, %396 word*, %397 word*, %398 i64, %399 i64, %400 i64, %401 word*, %402 i64, %407 word*, %408 word*, %409 i64, %410 i64, %411 i64, %412 i64, %413 word*, %423 bool, %424 word*, %425 i64, %426 i64]
   b0():
     %0 lit: i64 = const 384
     %1 lit: ptr = const str 0
@@ -52,8 +52,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 wo
     %12 lit: ptr = const str 9
     %13 tup: ptr = alloc tuple#28(i64, word, word, word, word, word)(%7, %8, %9, %10, %11, %12)
     %14 xs: ptr = alloc list(%6, %13)
-    dup.candidate %14
-    %15 n: i64 = $list_len(%14)
+    %457 xs.lent: ref = lend %14
+    %15 n: i64 = $list_len(%457)
     %456 lit: i64 = const 0
     jump b2(%456, %14, %15)
   b1():
@@ -63,8 +63,8 @@ fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 wo
     %20 more: bool = lt.int %17, %19
     if %20 then b3(%18, %19, %17) else b4(%18, %19, %17)
   b3(%21 xs: ptr, %22 n: i64, %23 i: i64):
-    dup.candidate %21
-    %27 x: word = $list_at(%21, %23)
+    %458 xs.lent: ref = lend %21
+    %27 x: word = $list_at(%458, %23)
     %450 p: i64 = tuple_get %27.0
     %451 p: ptr = tuple_get %27.1
     %452 p: ptr = tuple_get %27.2
@@ -177,12 +177,12 @@ fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 wo
     jump b14(%198, %199, %200, %201)
   b22(%211 xs: ptr, %212 n: i64, %213 i: i64, %214 bits: i64, %215 shared: ptr, %216 r: ptr, %217 v: i64, %218 p: ptr, %219 p: ptr, %220 p: ptr, %221 p: ptr):
     %233 p: word = proj %218.0 std::result::Result.Ok
-    %457 token: word = $reuse_reset(%218)
+    %460 token: word = $reuse_reset(%218)
     dup %233
     %234 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%233)
     %235 $site: i64 = const 6
-    dup.candidate %219
-    call derive_bits#7(%219, %234, %217, %235) -> b24(%211, %212, %213, %214, %215, %216, %217, %219, %220, %221, %233, %457)
+    %459 p.lent: ref = lend %219
+    call derive_bits#112(%459, %234, %217, %235) -> b24(%211, %212, %213, %214, %215, %216, %217, %219, %220, %221, %233, %460)
   b23(%222 xs: ptr, %223 n: i64, %224 i: i64, %225 bits: i64, %226 shared: ptr, %227 r: ptr, %228 v: i64, %229 p: ptr, %230 p: ptr, %231 p: ptr, %232 p: ptr):
     drop %226
     drop %227
@@ -191,17 +191,17 @@ fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 wo
     drop %231
     drop %232
     jump b14(%222, %223, %224, %225)
-  b24(%236 r: ptr, %237 xs: ptr, %238 n: i64, %239 i: i64, %240 bits: i64, %241 shared: ptr, %242 r: ptr, %243 v: i64, %244 i: ptr, %245 r: ptr, %246 gi: ptr, %247 gr: ptr, %458 token: word):
+  b24(%236 r: ptr, %237 xs: ptr, %238 n: i64, %239 i: i64, %240 bits: i64, %241 shared: ptr, %242 r: ptr, %243 v: i64, %244 i: ptr, %245 r: ptr, %246 gi: ptr, %247 gr: ptr, %461 token: word):
     %248 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%246)
     %249 $site: i64 = const 7
-    call derive_bits#7(%245, %248, %243, %249) -> b25(%237, %238, %239, %240, %241, %242, %243, %244, %247, %236, %458)
-  b25(%250 r: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 shared: ptr, %256 r: ptr, %257 v: i64, %258 i: ptr, %259 gr: ptr, %260 r: ptr, %459 token: word):
+    call derive_bits#7(%245, %248, %243, %249) -> b25(%237, %238, %239, %240, %241, %242, %243, %244, %247, %236, %461)
+  b25(%250 r: ptr, %251 xs: ptr, %252 n: i64, %253 i: i64, %254 bits: i64, %255 shared: ptr, %256 r: ptr, %257 v: i64, %258 i: ptr, %259 gr: ptr, %260 r: ptr, %462 token: word):
     %261 r: ptr = alloc std::crypto::DeriveParams.EcdhWith(%259)
     %262 lit: i64 = const 8
     %263 t: i64 = intadd %257, %262
     %264 $site: i64 = const 8
-    call derive_bits#7(%258, %261, %263, %264) -> b26(%251, %252, %253, %254, %255, %256, %257, %260, %250, %459)
-  b26(%265 r: ptr, %266 xs: ptr, %267 n: i64, %268 i: i64, %269 bits: i64, %270 shared: ptr, %271 r: ptr, %272 v: i64, %273 r: ptr, %274 r: ptr, %460 token: word):
+    call derive_bits#7(%258, %261, %263, %264) -> b26(%251, %252, %253, %254, %255, %256, %257, %260, %250, %462)
+  b26(%265 r: ptr, %266 xs: ptr, %267 n: i64, %268 i: i64, %269 bits: i64, %270 shared: ptr, %271 r: ptr, %272 v: i64, %273 r: ptr, %274 r: ptr, %463 token: word):
     %275 s: ptr = show %269
     %276 lit: ptr = const str 10
     %277 s: ptr = concat %276, %275
@@ -210,9 +210,9 @@ fn main#0 pub top -> unit ; main::crypto_ecdh_p384_p521, frame 176 slots [%42 wo
     %279 s: ptr = concat %277, %278
     drop %278
     dup %270
-    call unhex#4(%270) -> b27(%266, %267, %268, %269, %270, %271, %272, %273, %274, %265, %279, %460)
-  b27(%280 r: ptr, %281 xs: ptr, %282 n: i64, %283 i: i64, %284 bits: i64, %285 shared: ptr, %286 r: ptr, %287 v: i64, %288 r: ptr, %289 r: ptr, %290 r: ptr, %291 s: ptr, %461 token: word):
-    %292 r: ptr = alloc std::result::Result.Ok(%280) reuse %461
+    call unhex#4(%270) -> b27(%266, %267, %268, %269, %270, %271, %272, %273, %274, %265, %279, %463)
+  b27(%280 r: ptr, %281 xs: ptr, %282 n: i64, %283 i: i64, %284 bits: i64, %285 shared: ptr, %286 r: ptr, %287 v: i64, %288 r: ptr, %289 r: ptr, %290 r: ptr, %291 s: ptr, %464 token: word):
+    %292 r: ptr = alloc std::result::Result.Ok(%280) reuse %464
     %293 t: bool = eq.any %288, %292
     drop %288
     drop %292
@@ -359,8 +359,8 @@ fn main$1#3 lambda -> word ; main::crypto_ecdh_p384_p521, captures [word*], fram
 fn unhex#4 top -> ptr ; main::crypto_ecdh_p384_p521, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %59 s.lent: ref = lend %0
+    %2 r: i64 = $string_len(%59)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
     %58 lit: i64 = const 0

@@ -2080,7 +2080,7 @@ fn heap_json(o: &mut HeapOut<'_>, kind: u32, bits: u64, depth: u32) -> Res<()> {
         }
         tag::MAP_ROOT => {
             o.rt.dup(w)?;
-            let es = o.rt.map_entries(w)?;
+            let es = o.rt.map_entries(w, 0)?;
             let r = heap_object(o, es, depth, false);
             o.rt.drop(es);
             r

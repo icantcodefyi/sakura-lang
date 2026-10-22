@@ -227,7 +227,7 @@ pub(crate) fn outcome_bytes(rt: &mut Rt, task: u32) -> Res<u32> {
             let e = value as u32;
             rt.dup(e)?;
             let s = rt.show(e)?;
-            rt.string_to_bytes(s)
+            rt.string_to_bytes(s, 0)
         }
         outcome::DEFECT => {
             let (d, site) = rt.defect(task)?.unwrap_or((Defect::INTERNAL, 0));
@@ -399,6 +399,17 @@ pub extern "C" fn rt_dup_candidate(
     let rt = cx.rt();
     rt.heap.stats.borrow_candidates += 1;
     counted_dup(rt, w)
+}
+
+/// A `Lend` (ABI 1.18.0, plan M5 N4a): the marked site lends `w` to the call instead of
+/// duplicating it, so nothing is counted in `dups`; returns `w`.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_lend(#[cfg(not(target_arch = "wasm32"))] ctx: Ctx<'_>, w: u32) -> u32 {
+    let mut cx = cx!(ctx);
+    let s = &mut cx.rt().heap.stats;
+    s.borrow_candidates += 1;
+    s.borrows += 1;
+    w
 }
 
 /// A twin ran out of gauge and its frame-protocol caller runs the call again through frames.
@@ -2029,9 +2040,12 @@ builtins! {
     };
     // `sakura_lir::reuse`'s token for an `Alloc` of the same constructor (plan M5 N3).
     rt_b_reuse_reset(x: u32) -> u32 = plain |rt| rt.reuse_reset(x);
-    rt_b_list_len(xs: u32) -> i64 = plain |rt| rt.list_len(xs);
-    rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i);
-    rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i);
+    rt_b_list_len(xs: u32) -> i64 = plain |rt| rt.list_len(xs, 0);
+    rt_bb_list_len(keep: u32, xs: u32) -> i64 = plain |rt| rt.list_len(xs, keep);
+    rt_b_list_at(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i, 0);
+    rt_bb_list_at(keep: u32, xs: u32, i: i64) -> u32 = ptr |rt| rt.list_at(xs, i, keep);
+    rt_b_list_get(xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i, 0);
+    rt_bb_list_get(keep: u32, xs: u32, i: i64) -> u32 = ptr |rt| rt.list_get(xs, i, keep);
     rt_b_list_push(xs: u32, x: u32) -> u32 = ptr |rt| rt.list_push_update(xs, x);
     // std/list's transient builders (design §17.116): here a builder is the list it finishes as.
     rt_b_list_builder() -> u32 = plain |rt| rt.list_empty();
@@ -2043,35 +2057,54 @@ builtins! {
     // `List.map` writing each result over the element it came from (plan M5 N3): the builder
     // is the list itself, so these are `list_at` and `list_set`.
     rt_b_list_reuse(xs: u32) -> u32 = ptr |rt| rt.list_reuse(xs);
-    rt_b_list_builder_at(b: u32, i: i64) -> u32 = ptr |rt| rt.list_at(b, i);
+    rt_b_list_builder_at(b: u32, i: i64) -> u32 = ptr |rt| rt.list_at(b, i, 0);
+    rt_bb_list_builder_at(keep: u32, b: u32, i: i64) -> u32 = ptr |rt| rt.list_at(b, i, keep);
     rt_b_list_builder_set(b: u32, i: i64, x: u32) -> u32 = ptr |rt| rt.list_set(b, i, x);
     rt_b_list_set(xs: u32, i: i64, x: u32) -> u32 = ptr |rt| rt.list_set(xs, i, x);
     rt_b_list_slice(xs: u32, a: i64, b: i64) -> u32 = ptr |rt| rt.list_slice(xs, a, b);
-    rt_b_string_len(s: u32) -> i64 = plain |rt| rt.string_len(s);
+    rt_b_string_len(s: u32) -> i64 = plain |rt| rt.string_len(s, 0);
+    rt_bb_string_len(keep: u32, s: u32) -> i64 = plain |rt| rt.string_len(s, keep);
     rt_b_string_trim(s: u32) -> u32 = ptr |rt| rt.string_trim(s);
-    rt_b_string_to_upper(s: u32) -> u32 = ptr |rt| rt.string_to_upper(s);
-    rt_b_string_to_lower(s: u32) -> u32 = ptr |rt| rt.string_to_lower(s);
-    rt_b_string_contains(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_contains(s, p));
-    rt_b_string_starts_with(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_starts_with(s, p));
-    rt_b_string_ends_with(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_ends_with(s, p));
-    rt_b_string_chars(s: u32) -> u32 = ptr |rt| rt.string_chars(s);
-    rt_b_string_split(s: u32, sep: u32) -> u32 = ptr |rt| rt.string_split(s, sep);
-    rt_b_string_replace(s: u32, a: u32, b: u32) -> u32 = ptr |rt| rt.string_replace(s, a, b);
+    rt_b_string_to_upper(s: u32) -> u32 = ptr |rt| rt.string_to_upper(s, 0);
+    rt_bb_string_to_upper(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_to_upper(s, keep);
+    rt_b_string_to_lower(s: u32) -> u32 = ptr |rt| rt.string_to_lower(s, 0);
+    rt_bb_string_to_lower(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_to_lower(s, keep);
+    rt_b_string_contains(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_contains(s, p, 0));
+    rt_bb_string_contains(keep: u32, s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_contains(s, p, keep));
+    rt_b_string_starts_with(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_starts_with(s, p, 0));
+    rt_bb_string_starts_with(keep: u32, s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_starts_with(s, p, keep));
+    rt_b_string_ends_with(s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_ends_with(s, p, 0));
+    rt_bb_string_ends_with(keep: u32, s: u32, p: u32) -> u32 = plain |rt| u32::from(rt.string_ends_with(s, p, keep));
+    rt_b_string_chars(s: u32) -> u32 = ptr |rt| rt.string_chars(s, 0);
+    rt_bb_string_chars(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_chars(s, keep);
+    rt_b_string_split(s: u32, sep: u32) -> u32 = ptr |rt| rt.string_split(s, sep, 0);
+    rt_bb_string_split(keep: u32, s: u32, sep: u32) -> u32 = ptr |rt| rt.string_split(s, sep, keep);
+    rt_b_string_replace(s: u32, a: u32, b: u32) -> u32 = ptr |rt| rt.string_replace(s, a, b, 0);
+    rt_bb_string_replace(keep: u32, s: u32, a: u32, b: u32) -> u32 = ptr |rt| rt.string_replace(s, a, b, keep);
     rt_b_string_slice(s: u32, a: i64, b: i64) -> u32 = ptr |rt| rt.string_slice(s, a, b);
-    rt_b_string_parse_int(s: u32) -> u32 = ptr |rt| rt.string_parse_int(s);
-    rt_b_string_parse_float(s: u32) -> u32 = ptr |rt| rt.string_parse_float(s);
-    rt_b_string_to_bytes(s: u32) -> u32 = ptr |rt| rt.string_to_bytes(s);
-    rt_b_string_from_bytes(b: u32) -> u32 = ptr |rt| rt.string_from_bytes(b);
+    rt_b_string_parse_int(s: u32) -> u32 = ptr |rt| rt.string_parse_int(s, 0);
+    rt_bb_string_parse_int(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_parse_int(s, keep);
+    rt_b_string_parse_float(s: u32) -> u32 = ptr |rt| rt.string_parse_float(s, 0);
+    rt_bb_string_parse_float(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_parse_float(s, keep);
+    rt_b_string_to_bytes(s: u32) -> u32 = ptr |rt| rt.string_to_bytes(s, 0);
+    rt_bb_string_to_bytes(keep: u32, s: u32) -> u32 = ptr |rt| rt.string_to_bytes(s, keep);
+    rt_b_string_from_bytes(b: u32) -> u32 = ptr |rt| rt.string_from_bytes(b, 0);
+    rt_bb_string_from_bytes(keep: u32, b: u32) -> u32 = ptr |rt| rt.string_from_bytes(b, keep);
     rt_b_int_to_string(i: i64) -> u32 = ptr |rt| rt.int_to_string(i);
     rt_b_int_checked_add(a: i64, b: i64) -> u32 = ptr |rt| rt.int_checked_add(a, b);
     rt_b_float_round(f: f64) -> i64 = scalar |rt| rt.float_round(f);
     rt_b_float_to_int_checked(f: f64) -> u32 = ptr |rt| rt.float_to_int_checked(f);
     rt_b_float_format(f: f64, d: i64) -> u32 = ptr |rt| rt.float_format(f, d);
-    rt_b_option_expect(o: u32, msg: u32) -> u32 = ptr |rt| rt.option_expect(o, msg);
-    rt_b_list_get_expect(xs: u32, i: i64, msg: u32) -> u32 = ptr |rt| rt.list_get_expect(xs, i, msg);
-    rt_b_map_get_expect(m: u32, k: u32, msg: u32) -> u32 = ptr |rt| rt.map_get_expect(m, k, msg);
-    rt_b_map_get_or(m: u32, k: u32, d: u32) -> u32 = ptr |rt| rt.map_get_or(m, k, d);
-    rt_b_map_contains(m: u32, k: u32) -> u32 = scalar |rt| rt.map_contains(m, k).map(u32::from);
+    rt_b_option_expect(o: u32, msg: u32) -> u32 = ptr |rt| rt.option_expect(o, msg, 0);
+    rt_bb_option_expect(keep: u32, o: u32, msg: u32) -> u32 = ptr |rt| rt.option_expect(o, msg, keep);
+    rt_b_list_get_expect(xs: u32, i: i64, msg: u32) -> u32 = ptr |rt| rt.list_get_expect(xs, i, msg, 0);
+    rt_bb_list_get_expect(keep: u32, xs: u32, i: i64, msg: u32) -> u32 = ptr |rt| rt.list_get_expect(xs, i, msg, keep);
+    rt_b_map_get_expect(m: u32, k: u32, msg: u32) -> u32 = ptr |rt| rt.map_get_expect(m, k, msg, 0);
+    rt_bb_map_get_expect(keep: u32, m: u32, k: u32, msg: u32) -> u32 = ptr |rt| rt.map_get_expect(m, k, msg, keep);
+    rt_b_map_get_or(m: u32, k: u32, d: u32) -> u32 = ptr |rt| rt.map_get_or(m, k, d, 0);
+    rt_bb_map_get_or(keep: u32, m: u32, k: u32, d: u32) -> u32 = ptr |rt| rt.map_get_or(m, k, d, keep);
+    rt_b_map_contains(m: u32, k: u32) -> u32 = scalar |rt| rt.map_contains(m, k, 0).map(u32::from);
+    rt_bb_map_contains(keep: u32, m: u32, k: u32) -> u32 = scalar |rt| rt.map_contains(m, k, keep).map(u32::from);
     rt_b_untrusted_of(x: u32) -> u32 = ptr |rt| rt.untrusted_of(x);
     rt_b_untrusted_value(u: u32) -> u32 = ptr |rt| rt.untrusted_value(u);
     rt_b_secret_wrap(x: u32) -> u32 = ptr |rt| rt.secret_wrap(x);
@@ -2086,25 +2119,40 @@ builtins! {
     rt_b_list_empty() -> u32 = plain |rt| rt.list_empty();
     rt_b_set_empty() -> u32 = plain |rt| rt.set_empty();
     rt_b_set_insert(s: u32, x: u32) -> u32 = ptr |rt| rt.set_insert(s, x);
-    rt_b_set_contains(s: u32, x: u32) -> u32 = scalar |rt| rt.set_contains(s, x).map(u32::from);
-    rt_b_set_len(s: u32) -> i64 = plain |rt| rt.set_len(s);
-    rt_b_set_to_list(s: u32) -> u32 = ptr |rt| rt.set_to_list(s);
+    rt_b_set_contains(s: u32, x: u32) -> u32 = scalar |rt| rt.set_contains(s, x, 0).map(u32::from);
+    rt_bb_set_contains(keep: u32, s: u32, x: u32) -> u32 = scalar |rt| rt.set_contains(s, x, keep).map(u32::from);
+    rt_b_set_len(s: u32) -> i64 = plain |rt| rt.set_len(s, 0);
+    rt_bb_set_len(keep: u32, s: u32) -> i64 = plain |rt| rt.set_len(s, keep);
+    rt_b_set_to_list(s: u32) -> u32 = ptr |rt| rt.set_to_list(s, 0);
+    rt_bb_set_to_list(keep: u32, s: u32) -> u32 = ptr |rt| rt.set_to_list(s, keep);
     rt_b_map_empty() -> u32 = plain |rt| rt.map_empty();
-    rt_b_map_len(m: u32) -> i64 = plain |rt| rt.map_len(m);
-    rt_b_map_get(m: u32, k: u32) -> u32 = ptr |rt| rt.map_get(m, k);
+    rt_b_map_len(m: u32) -> i64 = plain |rt| rt.map_len(m, 0);
+    rt_bb_map_len(keep: u32, m: u32) -> i64 = plain |rt| rt.map_len(m, keep);
+    rt_b_map_get(m: u32, k: u32) -> u32 = ptr |rt| rt.map_get(m, k, 0);
+    rt_bb_map_get(keep: u32, m: u32, k: u32) -> u32 = ptr |rt| rt.map_get(m, k, keep);
     rt_b_map_insert(m: u32, k: u32, v: u32) -> u32 = ptr |rt| rt.map_insert(m, k, v);
-    rt_b_map_remove(m: u32, k: u32) -> u32 = ptr |rt| rt.map_remove(m, k);
-    rt_b_map_entries(m: u32) -> u32 = ptr |rt| rt.map_entries(m);
-    rt_b_bytes_len(b: u32) -> i64 = plain |rt| rt.bytes_len(b);
-    rt_b_bytes_get(b: u32, i: i64) -> u32 = ptr |rt| rt.bytes_get(b, i);
-    rt_b_bytes_from_list(xs: u32) -> u32 = ptr |rt| rt.bytes_from_list(xs);
+    rt_b_map_remove(m: u32, k: u32) -> u32 = ptr |rt| rt.map_remove(m, k, 0);
+    rt_bb_map_remove(keep: u32, m: u32, k: u32) -> u32 = ptr |rt| rt.map_remove(m, k, keep);
+    rt_b_map_entries(m: u32) -> u32 = ptr |rt| rt.map_entries(m, 0);
+    rt_bb_map_entries(keep: u32, m: u32) -> u32 = ptr |rt| rt.map_entries(m, keep);
+    rt_b_bytes_len(b: u32) -> i64 = plain |rt| rt.bytes_len(b, 0);
+    rt_bb_bytes_len(keep: u32, b: u32) -> i64 = plain |rt| rt.bytes_len(b, keep);
+    rt_b_bytes_get(b: u32, i: i64) -> u32 = ptr |rt| rt.bytes_get(b, i, 0);
+    rt_bb_bytes_get(keep: u32, b: u32, i: i64) -> u32 = ptr |rt| rt.bytes_get(b, i, keep);
+    rt_b_bytes_from_list(xs: u32) -> u32 = ptr |rt| rt.bytes_from_list(xs, 0);
+    rt_bb_bytes_from_list(keep: u32, xs: u32) -> u32 = ptr |rt| rt.bytes_from_list(xs, keep);
     rt_b_bytes_slice(b: u32, s: i64, e: i64) -> u32 = ptr |rt| rt.bytes_slice(b, s, e);
     rt_b_bytes_concat(parts: u32) -> u32 = ptr |rt| rt.bytes_concat(parts);
     rt_b_bytes_to_base64(b: u32, url: i64, padded: i64) -> u32 = ptr |rt| {
-        rt.bytes_to_base64(b, url, padded)
+        rt.bytes_to_base64(b, url, padded, 0)
     };
-    rt_b_bytes_from_base64(t: u32, url: i64) -> u32 = ptr |rt| rt.bytes_from_base64(t, url);
-    rt_b_bytes_from_base64_lenient(t: u32) -> u32 = ptr |rt| rt.bytes_from_base64_lenient(t);
+    rt_bb_bytes_to_base64(keep: u32, b: u32, url: i64, padded: i64) -> u32 = ptr |rt| {
+        rt.bytes_to_base64(b, url, padded, keep)
+    };
+    rt_b_bytes_from_base64(t: u32, url: i64) -> u32 = ptr |rt| rt.bytes_from_base64(t, url, 0);
+    rt_bb_bytes_from_base64(keep: u32, t: u32, url: i64) -> u32 = ptr |rt| rt.bytes_from_base64(t, url, keep);
+    rt_b_bytes_from_base64_lenient(t: u32) -> u32 = ptr |rt| rt.bytes_from_base64_lenient(t, 0);
+    rt_bb_bytes_from_base64_lenient(keep: u32, t: u32) -> u32 = ptr |rt| rt.bytes_from_base64_lenient(t, keep);
     rt_b_encoding_decode(b: u32, enc: i64, fatal: i64) -> u32 = ptr |rt| {
         rt.encoding_decode(b, enc, fatal)
     };
@@ -2133,14 +2181,22 @@ builtins! {
     rt_b_worker_shut(id: i64) -> () = cx_plain |cx| cx.worker_shut(id);
     // `std/compress` (RFC 0002 §2.6, `compress.rs`).
     rt_b_compress_deflate(b: u32, level: i64, last: i64) -> u32 = ptr |rt| {
-        rt.compress_deflate(b, level, last)
+        rt.compress_deflate(b, level, last, 0)
     };
-    rt_b_compress_inflate(b: u32, at: i64, max: i64) -> u32 = ptr |rt| rt.compress_inflate(b, at, max);
+    rt_bb_compress_deflate(keep: u32, b: u32, level: i64, last: i64) -> u32 = ptr |rt| {
+        rt.compress_deflate(b, level, last, keep)
+    };
+    rt_b_compress_inflate(b: u32, at: i64, max: i64) -> u32 = ptr |rt| rt.compress_inflate(b, at, max, 0);
+    rt_bb_compress_inflate(keep: u32, b: u32, at: i64, max: i64) -> u32 = ptr |rt| rt.compress_inflate(b, at, max, keep);
     rt_b_compress_inflater() -> u32 = ptr |rt| rt.compress_inflater();
-    rt_b_compress_inflate_used(s: u32) -> i64 = plain |rt| rt.compress_inflate_used(s);
-    rt_b_compress_inflate_done(s: u32) -> u32 = plain |rt| u32::from(rt.compress_inflate_done(s));
-    rt_b_compress_crc32(crc: i64, b: u32) -> i64 = plain |rt| rt.compress_crc32(crc, b);
-    rt_b_compress_adler32(adler: i64, b: u32) -> i64 = plain |rt| rt.compress_adler32(adler, b);
+    rt_b_compress_inflate_used(s: u32) -> i64 = plain |rt| rt.compress_inflate_used(s, 0);
+    rt_bb_compress_inflate_used(keep: u32, s: u32) -> i64 = plain |rt| rt.compress_inflate_used(s, keep);
+    rt_b_compress_inflate_done(s: u32) -> u32 = plain |rt| u32::from(rt.compress_inflate_done(s, 0));
+    rt_bb_compress_inflate_done(keep: u32, s: u32) -> u32 = plain |rt| u32::from(rt.compress_inflate_done(s, keep));
+    rt_b_compress_crc32(crc: i64, b: u32) -> i64 = plain |rt| rt.compress_crc32(crc, b, 0);
+    rt_bb_compress_crc32(keep: u32, crc: i64, b: u32) -> i64 = plain |rt| rt.compress_crc32(crc, b, keep);
+    rt_b_compress_adler32(adler: i64, b: u32) -> i64 = plain |rt| rt.compress_adler32(adler, b, 0);
+    rt_bb_compress_adler32(keep: u32, adler: i64, b: u32) -> i64 = plain |rt| rt.compress_adler32(adler, b, keep);
     // `std/crypto` (RFC 0002 §2.7), native only (`crypto.rs`).
     #[cfg(feature = "native")]
     rt_b_crypto_digest(alg: i64, data: u32) -> u32 = ptr |rt| rt.crypto_digest(alg, data);

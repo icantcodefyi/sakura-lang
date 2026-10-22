@@ -19,8 +19,8 @@ fn main#0 pub top -> unit ; main::path_validate_rejects_windows_forms, frame 8 s
     %6 lit: ptr = const str 6
     %7 lit: ptr = const str 7
     %8 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6, %7)
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %38 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%38)
     %37 lit: i64 = const 0
     jump b2(%37, %8, %9)
   b1():
@@ -30,8 +30,8 @@ fn main#0 pub top -> unit ; main::path_validate_rejects_windows_forms, frame 8 s
     %14 more: bool = lt.int %11, %13
     if %14 then b3(%12, %13, %11) else b4(%12, %13, %11)
   b3(%15 xs: ptr, %16 n: i64, %17 i: i64):
-    dup.candidate %15
-    %21 x: word = $list_at(%15, %17)
+    %39 xs.lent: ref = lend %15
+    %21 x: word = $list_at(%39, %17)
     call Path$validate#2(%21) -> b6(%15, %16, %17)
   b4(%18 xs: ptr, %19 n: i64, %20 i: i64):
     drop %18

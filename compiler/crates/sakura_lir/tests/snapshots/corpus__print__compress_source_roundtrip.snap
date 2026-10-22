@@ -35,8 +35,8 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2
     call map#4(%2, %3) -> b2()
   b2(%4 r: ptr):
     %5 lit: ptr = const str 0
-    dup.candidate %4
-    call join#5(%4, %5) -> b3(%4)
+    %255 r.lent: ref = lend %4
+    call join#77(%255, %5) -> b3(%4)
   b3(%6 r: ptr, %7 r: ptr):
     %8 fn: ptr = const static closure $string_to_bytes$value#75
     call map#4(%7, %8) -> b4(%6)
@@ -47,8 +47,8 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2
     %14 v: ptr = const static std::compress::Format.Deflate
     %15 v: ptr = const static std::compress::Format.DeflateRaw
     %16 xs: ptr = alloc list(%13, %14, %15)
-    dup.candidate %16
-    %17 n: i64 = $list_len(%16)
+    %256 xs.lent: ref = lend %16
+    %17 n: i64 = $list_len(%256)
     %254 lit: i64 = const 0
     jump b10(%254, %12, %11, %16, %17)
   b6():
@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2
     %35 more: bool = lt.int %30, %34
     if %35 then b11(%31, %32, %33, %34, %30) else b12(%31, %32, %33, %34, %30)
   b11(%36 r: ptr, %37 r: ptr, %38 xs: ptr, %39 n: i64, %40 i: i64):
-    dup.candidate %38
-    %46 x: word = $list_at(%38, %40)
+    %257 xs.lent: ref = lend %38
+    %46 x: word = $list_at(%257, %40)
     %54 f: ptr = closure main$1#7[]
     %55 lit: i64 = const 6
     %56 $site: i64 = const 6
@@ -105,8 +105,8 @@ fn main#0 pub top -> unit ; main::compress_source_roundtrip, frame 135 slots [%2
     %76 f: ptr = closure main$2#12[%68]
     call map#13(%67, %76) -> b16(%68, %69, %70, %71, %72, %73, %74, %75)
   b16(%77 r: ptr, %78 r: ptr, %79 r: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64, %83 x: ptr, %84 r: ptr, %85 r: ptr):
-    dup.candidate %85
-    %86 r: i64 = $bytes_len(%85)
+    %258 r.lent: ref = lend %85
+    %86 r: i64 = $bytes_len(%258)
     %87 lit: i64 = const 3
     %88 t: i64 = intsub %86, %87
     %89 lit: i64 = const 7

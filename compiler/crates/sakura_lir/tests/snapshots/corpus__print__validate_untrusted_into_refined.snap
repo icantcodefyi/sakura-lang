@@ -150,8 +150,8 @@ fn Slug$validate#6 top -> ptr ; main::validate_untrusted_into_refined, frame 1 s
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
     %2 lit: ptr = const str 3
-    dup.candidate %0
-    %3 r: ptr = $string_split(%0, %2)
+    %17 it.lent: ref = lend %0
+    %3 r: ptr = $string_split(%17, %2)
     %4 r: i64 = $list_len(%3)
     %5 lit: i64 = const 1
     %6 t: bool = eq.int %4, %5

@@ -260,11 +260,40 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         Callee::Direct(f) => never.get(f.index()).and_then(|a| a.get(i)) == Some(&true),
         Callee::Closure(_) => false,
     };
-    for f in &mut funcs {
-        ownership(f, &borrows)?;
-        if crate::reuse::reuse(f, &direct) {
+    // Plan M5 N4a: the marked sites whose callee takes the argument borrowed lend it; a direct
+    // def's then go to its borrowed variants, at most one per function already there.
+    let lendable = crate::borrow::borrowable(&funcs, &never);
+    let pre = funcs.clone();
+    let mut borrowed = None;
+    for direct_lends in [true, false] {
+        let lends = |callee: &Callee, i: usize| match callee {
+            Callee::Builtin(name) => crate::borrow::lends(name, i),
+            Callee::Direct(f) => {
+                direct_lends && lendable.get(f.index()).and_then(|a| a.get(i)) == Some(&true)
+            }
+            Callee::Closure(_) => false,
+        };
+        let mut reset = false;
+        let mut own = |f: &mut Func| -> R<()> {
+            ownership(f, &borrows, &lends)?;
+            reset |= crate::reuse::reuse(f, &direct);
+            Ok(())
+        };
+        funcs = pre.clone();
+        for f in &mut funcs {
+            own(f)?;
+        }
+        borrowed = crate::borrow::variants(&mut funcs, &pre, pre.len(), &mut own)?;
+        if reset {
             cx.used_builtins.insert(crate::reuse::RESET.to_owned());
         }
+        if borrowed.is_some() {
+            break;
+        }
+    }
+    let borrowed = borrowed.ok_or("borrowed variants without direct lending")?;
+    for &(v, g) in &borrowed {
+        cx.facts.alias(g.index(), v.index());
     }
     let builtins = cx
         .used_builtins
@@ -319,6 +348,7 @@ pub fn lower(core: &core::Module, sigs: &BTreeMap<String, (Sig, bool)>) -> R<Mod
         entries,
         direct: cx.facts,
         schemas: crate::schema::descriptors(core, &cx.schema_roots),
+        borrowed,
     })
 }
 
@@ -641,7 +671,7 @@ impl FuncBuilder {
             Repr::F64 => lir::Const::F64(0.0),
             Repr::Bool => lir::Const::Bool(false),
             Repr::Unit | Repr::Ptr | Repr::Word => lir::Const::Unit,
-            Repr::Id => return Err("no placeholder for an activation id".into()),
+            Repr::Id | Repr::Ref => return Err(format!("no placeholder for a {r}")),
         };
         let scalar = if r.is_managed() { Repr::Unit } else { r };
         let v = self.fresh(b, "placeholder", scalar, |dst| Inst::Const { dst, value });
@@ -2399,23 +2429,33 @@ fn collect_joins<'e>(
 /// [`Inst::DupCandidate`] (design §17.176 (1), research/12 §3.2's pair `E`): `borrows(callee, i)`
 /// says the callee retains nothing of argument `i`. Only a callee no suspension can reach
 /// qualifies (§17.176 (4)): a read-only builtin or a direct top-level def, never a closure or
-/// a handler clause.
-pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()> {
+/// a handler clause. Where `lends(callee, i)` too, the site lends the reference instead
+/// ([`Inst::Lend`], plan M5 N4a): the argument becomes the lent `ref` and the call no longer
+/// consumes the owner, which its continuation or a later instruction still holds.
+pub fn ownership(
+    f: &mut Func,
+    borrows: &dyn Fn(&Callee, usize) -> bool,
+    lends: &dyn Fn(&Callee, usize) -> bool,
+) -> R<()> {
     let reprs: Vec<Repr> = f.vars.iter().map(|v| v.repr).collect();
     let managed = |v: Var| reprs[v.index()].is_managed();
+    // A borrowed variant's `ref` parameters are not counted, but their marked reads lend them on.
+    let tracked = |v: Var| managed(v) || reprs[v.index()] == Repr::Ref;
+    let vars = &f.vars;
+    let mut fresh: Vec<VarDecl> = Vec::new();
     for (bi, block) in f.blocks.iter_mut().enumerate() {
         let n = block.insts.len();
         // Uses per position (instruction index, `n` for the terminator).
         let mut uses: BTreeMap<Var, Vec<(usize, Use)>> = BTreeMap::new();
         for (k, i) in block.insts.iter().enumerate() {
             for (v, u) in i.uses() {
-                if managed(v) {
+                if tracked(v) {
                     uses.entry(v).or_default().push((k, u));
                 }
             }
         }
         for (v, u) in block.term.uses() {
-            if managed(v) {
+            if tracked(v) {
                 uses.entry(v).or_default().push((n, u));
             }
         }
@@ -2427,7 +2467,7 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
                 }
             }
             for &a in &first.args {
-                if managed(a) {
+                if tracked(a) {
                     uses.entry(a).or_default().push((n, Use::Consume));
                 }
             }
@@ -2436,7 +2476,7 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
         let mut defs: Vec<(Var, Option<usize>)> = block
             .params
             .iter()
-            .filter(|&&p| managed(p))
+            .filter(|&&p| tracked(p))
             .map(|&p| (p, None))
             .collect();
         for (k, i) in block.insts.iter().enumerate() {
@@ -2447,8 +2487,8 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
             }
         }
         // The arguments of the call at `p` that only read `v`, when `v` (last used at `last`)
-        // stays live after it.
-        let reads = |p: usize, v: Var, last: usize| -> usize {
+        // stays live after it, each with whether the callee takes it borrowed.
+        let reads = |p: usize, v: Var, last: usize| -> Vec<(usize, bool)> {
             let (callee, args, live_after) = match (block.insts.get(p), &block.term) {
                 (Some(Inst::Builtin { name, args, .. }), _) => {
                     (Callee::Builtin(name.clone()), args, p < last)
@@ -2456,20 +2496,42 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
                 (None, Term::Call { callee, args, cont }) => {
                     (callee.clone(), args, cont.args.contains(&v))
                 }
-                _ => return 0,
+                _ => return vec![],
             };
             if !live_after {
-                return 0;
+                return vec![];
             }
             (0..args.len())
                 .filter(|&i| args[i] == v && borrows(&callee, i))
-                .count()
+                .map(|i| (i, lends(&callee, i)))
+                .collect()
         };
+        // Argument `i` of the call at position `p` becomes the lent `ref`.
+        let mut lent: Vec<(usize, usize, Var)> = Vec::new();
         let mut before: Vec<Vec<Inst>> = vec![Vec::new(); n + 1];
         let mut after: Vec<Vec<Inst>> = vec![Vec::new(); n];
         let mut at_start: Vec<Inst> = Vec::new();
         for (v, def) in defs {
             let us = uses.get(&v).cloned().unwrap_or_default();
+            if !managed(v) {
+                // A marked read of a `ref` with the `ref` live after it: lent on, so the site
+                // still counts as the candidate it was in the owned def.
+                let last = us.iter().map(|(p, _)| *p).max().unwrap_or(0);
+                let mut positions: Vec<usize> = us.iter().map(|(p, _)| *p).collect();
+                positions.dedup();
+                for p in positions {
+                    for (i, _) in reads(p, v, last).into_iter().filter(|(_, l)| *l) {
+                        let dst = Var((reprs.len() + fresh.len()) as u32);
+                        fresh.push(VarDecl {
+                            name: format!("{}.lent", vars[v.index()].name),
+                            repr: Repr::Ref,
+                        });
+                        lent.push((p, i, dst));
+                        before[p].push(Inst::Lend { dst, src: v });
+                    }
+                }
+                continue;
+            }
             if us.is_empty() {
                 match def {
                     None => at_start.push(Inst::Drop(v)),
@@ -2490,12 +2552,20 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
                 } else {
                     consumes.saturating_sub(1)
                 };
-                let candidates = reads(p, v, last).min(dups);
+                let candidates = reads(p, v, last);
                 for k in 0..dups {
-                    before[p].push(if k < candidates {
-                        Inst::DupCandidate(v)
-                    } else {
-                        Inst::Dup(v)
+                    before[p].push(match candidates.get(k) {
+                        Some(&(i, true)) => {
+                            let dst = Var((reprs.len() + fresh.len()) as u32);
+                            fresh.push(VarDecl {
+                                name: format!("{}.lent", vars[v.index()].name),
+                                repr: Repr::Ref,
+                            });
+                            lent.push((p, i, dst));
+                            Inst::Lend { dst, src: v }
+                        }
+                        Some(_) => Inst::DupCandidate(v),
+                        None => Inst::Dup(v),
                     });
                 }
                 if p == last && consumes == 0 {
@@ -2509,6 +2579,15 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
                 }
             }
         }
+        for (p, i, r) in lent {
+            match block.insts.get_mut(p) {
+                Some(Inst::Builtin { args, .. }) => args[i] = r,
+                _ => match &mut block.term {
+                    Term::Call { args, .. } => args[i] = r,
+                    _ => unreachable!("a lent argument of a call"),
+                },
+            }
+        }
         let old = std::mem::take(&mut block.insts);
         let mut insts = at_start;
         for (k, i) in old.into_iter().enumerate() {
@@ -2519,5 +2598,6 @@ pub fn ownership(f: &mut Func, borrows: &dyn Fn(&Callee, usize) -> bool) -> R<()
         insts.append(&mut before[n]);
         block.insts = insts;
     }
+    f.vars.extend(fresh);
     Ok(())
 }

@@ -132,8 +132,8 @@ fn main$3#12 lambda -> word ; main::stream_pipe_to_file_sink, captures [], frame
     drop %0
     %2 lit: i64 = const 3
     %3 $site: i64 = const 7
-    dup.candidate %1
-    call Fs.read_chunk#13(%1, %2, %3) -> b1(%1)
+    %19 f.lent: ref = lend %1
+    call Fs.read_chunk#51(%19, %2, %3) -> b1(%1)
   b1(%4 pre: unit, %5 f: ptr):
     %6 lit: i64 = const 3
     dup %5

@@ -148,8 +148,8 @@ fn show_age#2 top -> ptr ; main::typed_errors, frame 3 slots [%0 word*, %1 word*
 
 fn parse_age#3 top -> i64 ; main::typed_errors, frame 2 slots [%0 word*, %3 word*]
   b0(%0 s: ptr):
-    dup.candidate %0
-    %1 r: ptr = $string_parse_int(%0)
+    %13 s.lent: ref = lend %0
+    %1 r: ptr = $string_parse_int(%13)
     %2 rec: ptr = alloc main::typed_errors::ParseError(%0)
     call or_fail#6(%1, %2) -> b1()
   b1(%3 r: word):

@@ -168,8 +168,8 @@ fn main#0 pub top -> unit ; main::owned_empty_singleton, frame 18 slots [%14 wor
     %143 lit: ptr = const str 2
     %144 s: ptr = concat %142, %143
     drop %143
-    dup.candidate %140
-    %145 r: i64 = $set_len(%140)
+    %245 r.lent: ref = lend %140
+    %145 r: i64 = $set_len(%245)
     %146 s: ptr = show %145
     %147 s: ptr = concat %144, %146
     drop %146

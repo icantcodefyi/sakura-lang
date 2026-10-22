@@ -17,8 +17,8 @@ fn main#0 pub top -> unit ; main::result_ok_err, frame 33 slots [%6 word*, %7 wo
     %3 lit: i64 = const 7
     %4 rec: ptr = alloc main::result_ok_err::Bad(%3)
     %5 r: ptr = alloc std::result::Result.Err(%4)
-    dup.candidate %2
-    call ok#2(%2) -> b1(%2, %5)
+    %75 r.lent: ref = lend %2
+    call ok#12(%75) -> b1(%2, %5)
   b1(%6 r: ptr, %7 r: ptr, %8 r: ptr):
     %9 s: ptr = show %6
     drop %6
@@ -35,16 +35,16 @@ fn main#0 pub top -> unit ; main::result_ok_err, frame 33 slots [%6 word*, %7 wo
   b3(%17 r: unit, %18 r: ptr):
     %19 box: word = box %17
     drop %19
-    dup.candidate %18
-    call ok#2(%18) -> b4(%18)
+    %76 r.lent: ref = lend %18
+    call ok#12(%76) -> b4(%18)
   b4(%20 r: ptr, %21 r: ptr):
     %22 s: ptr = show %20
     drop %20
     %23 lit: ptr = const str 0
     %24 s: ptr = concat %22, %23
     drop %23
-    dup.candidate %21
-    call err#3(%21) -> b5(%21, %24)
+    %77 r.lent: ref = lend %21
+    call err#13(%77) -> b5(%21, %24)
   b5(%25 r: ptr, %26 r: ptr, %27 s: ptr):
     %28 f: ptr = closure main$1#4[]
     call map#5(%25, %28) -> b6(%26, %27)

@@ -17,8 +17,8 @@ fn main#0 pub top -> unit ; main::variants_and_match, frame 19 slots [%9 word*, 
     %4 r: ptr = alloc main::variants_and_match::Shape.Rect(%2, %3)
     %5 v: ptr = const static main::variants_and_match::Shape.Empty
     %6 xs: ptr = alloc list(%1, %4, %5)
-    dup.candidate %6
-    %7 n: i64 = $list_len(%6)
+    %93 xs.lent: ref = lend %6
+    %7 n: i64 = $list_len(%93)
     %92 lit: i64 = const 0
     jump b16(%92, %6, %7)
   b1():
@@ -111,8 +111,8 @@ fn main#0 pub top -> unit ; main::variants_and_match, frame 19 slots [%9 word*, 
     %64 more: bool = lt.int %61, %63
     if %64 then b17(%62, %63, %61) else b18(%62, %63, %61)
   b17(%65 xs: ptr, %66 n: i64, %67 i: i64):
-    dup.candidate %65
-    %71 x: word = $list_at(%65, %67)
+    %94 xs.lent: ref = lend %65
+    %71 x: word = $list_at(%94, %67)
     %77 s: ptr = show %71
     %78 lit: ptr = const str 3
     %79 s: ptr = concat %77, %78

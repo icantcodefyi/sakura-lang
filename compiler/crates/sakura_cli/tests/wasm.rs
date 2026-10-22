@@ -1285,8 +1285,10 @@ fn a_twin_that_runs_out_of_gauge_restarts_once_per_entry() {
 /// `List.set`'s `requires` reads `len(xs)` once per call, a direct def that only reads its
 /// parameter is one per call with the list live after it, and the last call is none; a def that
 /// returns its parameter, an effectful (CPS) def, a closure and a handler clause called directly
-/// by a bound perform (§17.176 (4)) are never candidates, whatever the parameter's type. `borrows`
-/// is 0 before plan N4. Each tuple is (reuse attempts, reuses, borrow candidates, borrows).
+/// by a bound perform (§17.176 (4)) are never candidates, whatever the parameter's type. Since
+/// ABI 1.18.0 (plan N4a) every candidate here is lent, so `borrows` equals it: none is a host
+/// call or held across a closure call. Each tuple is (reuse attempts, reuses, borrow
+/// candidates, borrows).
 #[test]
 fn reuse_and_borrow_counters_reconcile_by_hand() {
     if !available() {
@@ -1327,7 +1329,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         assert_eq!(out.stdout, stdout, "{name}");
         let line = std::fs::read_to_string(&stats).unwrap();
         let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
-        assert_eq!(v["abi_version"], 0x011100, "{name}");
+        assert_eq!(v["abi_version"], 0x011200, "{name}");
         let n = |k: &str| v[k].as_u64().unwrap_or_else(|| panic!("{name}: no {k}"));
         (
             n("reuse_attempts"),
@@ -1341,10 +1343,10 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
     // Literal 3/2; `List.set` on the dead list: wrapper and tail hit; `requires` reads `xs`.
     let set = "  let xs = [1, 2, 3]\n  let ys = List.set(xs, 0, 9)\n";
     let dead = format!("{set}{}", print("List.len(ys)"));
-    assert_eq!(counters("set_dead", &dead, "3\n"), (5, 4, 1, 0));
+    assert_eq!(counters("set_dead", &dead, "3\n"), (5, 4, 1, 1));
     // The retained `xs` is a miss; no node below it is tested.
     let live = format!("{set}{}", print("List.len(ys) + List.len(xs)"));
-    assert_eq!(counters("set_retained", &live, "6\n"), (4, 2, 1, 0));
+    assert_eq!(counters("set_retained", &live, "6\n"), (4, 2, 1, 1));
     // `List.push` on the retained `xs`: a miss, and `ys` appends into the shared tail. Then
     // `List.set` on `ys`: the wrapper hits, the shared tail misses and is copied.
     let masked =
@@ -1352,7 +1354,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
     let masked = format!("{masked}{}", print("List.len(zs) + List.len(xs)"));
     assert_eq!(
         counters("wrapper_hit_tail_copied", &masked, "7\n"),
-        (6, 3, 1, 0)
+        (6, 3, 1, 1)
     );
     // The static empty map misses; the second insert (same key) hits on the map, its log and
     // the log's tail. Retaining `m1` makes the second insert a miss as well.
@@ -1366,7 +1368,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
         "  let xs = [1, 2, 3]\n{}",
         print("count(xs) + count(xs) + count(xs)")
     );
-    assert_eq!(counters("borrow_candidates", &reads, "9\n"), (3, 2, 2, 0));
+    assert_eq!(counters("borrow_candidates", &reads, "9\n"), (3, 2, 2, 2));
     let none = format!(
         "  let xs = [1, 2, 3]\n  let f = fn(ys: List<Int>) -> Int {{ List.len(ys) }}\n{}",
         print("List.len(keep(xs)) + noisy(xs) + f(xs) + f(xs) + List.len(xs)")
@@ -1386,7 +1388,7 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
             "size(s) + size(s) + sum(p) + sum(p) + String.len(same(s)) + String.len(String.trim(s))"
         )
     );
-    assert_eq!(counters("every_type", &any, "14\n"), (0, 0, 3, 0));
+    assert_eq!(counters("every_type", &any, "14\n"), (0, 0, 3, 3));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -1394,8 +1396,10 @@ fn reuse_and_borrow_counters_reconcile_by_hand() {
 /// attempt, a hit when unique. `reuse_constructor`: 26 resets in their blocks (2 records, 20
 /// `blacken`s, 1 `bump`, then the retained record, `blacken` of the retained tree and `bump` of
 /// its fresh result), and 190 across the recursive call of `ins` (the ascending keys make a
-/// right spine, so insertion `i` rebuilds `i` nodes: 0 + 1 + … + 19), all unique; the retained
-/// record and tree are the 3 misses (`String.split` counts nothing).
+/// right spine, so insertion `i` rebuilds `i` nodes: 0 + 1 + … + 19), all unique (`String.split`
+/// counts nothing). The retained record and tree are lent (ABI 1.18.0, plan N4a) to the borrowed
+/// variants of `shift`, `blacken` and `bump`, which reset nothing, so the 3 resets that missed
+/// before are gone: 216/213 became 213/213.
 #[test]
 fn constructor_reuse_counts_its_hits() {
     if !available() {
@@ -1425,7 +1429,7 @@ fn constructor_reuse_counts_its_hits() {
     let v: serde_json::Value = serde_json::from_str(line.lines().last().unwrap()).unwrap();
     assert_eq!(
         (v["reuse_attempts"].as_u64(), v["reuses"].as_u64()),
-        (Some(216), Some(213)),
+        (Some(213), Some(213)),
         "{v}"
     );
     let _ = std::fs::remove_dir_all(&dir);

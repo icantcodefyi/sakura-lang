@@ -46,8 +46,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %7 xs: ptr = alloc list(%6)
     %8 status: i64 = proj %3.0 std::response::Response
     %9 body: word = proj %3.2 std::response::Response
-    %182 token: word = $reuse_reset(%3)
-    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %182
+    %186 token: word = $reuse_reset(%3)
+    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %186
     %11 v: ptr = const static std::request::Method.Options
     %12 r: ptr = alloc std::http::Matcher.Method(%11)
     dup %10
@@ -68,8 +68,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %103 v: ptr = const static std::request::Method.Trace
     %104 v: ptr = const static std::request::Method.Get
     %105 xs: ptr = alloc list(%102, %103, %104)
-    dup.candidate %105
-    %106 n: i64 = $list_len(%105)
+    %182 xs.lent: ref = lend %105
+    %106 n: i64 = $list_len(%182)
     %181 lit: i64 = const 0
     jump b18(%181, %26, %105, %106)
   b4(%27 v: unit, %28 rec: ptr):
@@ -90,8 +90,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %41 v: ptr = const static std::request::Method.Get
     %42 v: ptr = const static std::request::Method.Trace
     %43 xs: ptr = alloc list(%40, %41, %42)
-    dup.candidate %43
-    %44 n: i64 = $list_len(%43)
+    %183 xs.lent: ref = lend %43
+    %44 n: i64 = $list_len(%183)
     %101 lit: i64 = const 0
     jump b9(%101, %39, %43, %44)
   b8():
@@ -101,8 +101,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %50 more: bool = lt.int %46, %49
     if %50 then b10(%47, %48, %49, %46) else b11(%47, %48, %49, %46)
   b10(%51 r: ptr, %52 xs: ptr, %53 n: i64, %54 i: i64):
-    dup.candidate %52
-    %59 x: word = $list_at(%52, %54)
+    %184 xs.lent: ref = lend %52
+    %59 x: word = $list_at(%184, %54)
     %66 s: ptr = show %59
     %67 lit: ptr = const str 4
     %68 s: ptr = concat %67, %66
@@ -145,8 +145,8 @@ fn main#0 pub top -> unit ; main::request_method_options_trace, frame 70 slots [
     %113 more: bool = lt.int %109, %112
     if %113 then b19(%110, %111, %112, %109) else b20(%110, %111, %112, %109)
   b19(%114 rec: ptr, %115 xs: ptr, %116 n: i64, %117 i: i64) [handle]:
-    dup.candidate %115
-    %122 x: word = $list_at(%115, %117)
+    %185 xs.lent: ref = lend %115
+    %122 x: word = $list_at(%185, %117)
     dup %114
     dup %115
     dup %122

@@ -364,19 +364,19 @@ impl Rt {
         self.empty_list
     }
 
-    pub fn list_len(&mut self, xs: u32) -> i64 {
+    pub fn list_len(&mut self, xs: u32, keep: u32) -> i64 {
         let n = self.list_n(xs);
-        self.drop(xs);
+        self.drop_arg(keep, 0, xs);
         n as i64
     }
 
     /// `List.get(xs, i) -> Option<A>`.
-    pub fn list_get(&mut self, xs: u32, i: i64) -> Res<u32> {
+    pub fn list_get(&mut self, xs: u32, i: i64, keep: u32) -> Res<u32> {
         let r = self.list_value(xs, i).and_then(|v| match v {
             Some(x) => self.some(x),
             None => Ok(self.none()),
         });
-        self.drop(xs);
+        self.drop_arg(keep, 0, xs);
         r
     }
 
@@ -398,14 +398,14 @@ impl Rt {
     }
 
     /// Unchecked index for compiler-generated loops (`list_at`).
-    pub fn list_at(&mut self, xs: u32, i: i64) -> Res<u32> {
+    pub fn list_at(&mut self, xs: u32, i: i64, keep: u32) -> Res<u32> {
         assert!(
             (0..self.list_n(xs) as i64).contains(&i),
             "list_at out of range"
         );
         let x = self.at(xs, i as u32);
         let r = self.dup(x).map(|_| x);
-        self.drop(xs);
+        self.drop_arg(keep, 0, xs);
         r
     }
 

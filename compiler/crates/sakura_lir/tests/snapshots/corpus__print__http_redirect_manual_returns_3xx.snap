@@ -38,8 +38,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %7 xs: ptr = alloc list(%6)
     %8 status: i64 = proj %3.0 std::response::Response
     %9 body: word = proj %3.2 std::response::Response
-    %189 token: word = $reuse_reset(%3)
-    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %189
+    %191 token: word = $reuse_reset(%3)
+    %10 rec: ptr = alloc std::response::Response(%8, %7, %9) reuse %191
     %11 lit: ptr = const str 3
     %12 r: ptr = alloc std::http::Matcher.Path(%11)
     %13 tup: ptr = alloc tuple#18(word, word)(%12, %10)
@@ -72,8 +72,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %46 xs: ptr = alloc list(%45)
     %47 status: i64 = proj %38.0 std::response::Response
     %48 body: word = proj %38.2 std::response::Response
-    %190 token: word = $reuse_reset(%38)
-    %49 rec: ptr = alloc std::response::Response(%47, %46, %48) reuse %190
+    %192 token: word = $reuse_reset(%38)
+    %49 rec: ptr = alloc std::response::Response(%47, %46, %48) reuse %192
     %50 tup: ptr = alloc tuple#18(word, word)(%42, %49)
     %51 lit: ptr = const str 10
     %52 r: ptr = alloc std::http::Matcher.Path(%51)
@@ -88,8 +88,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %65 xs: ptr = alloc list(%64)
     %66 status: i64 = proj %56.0 std::response::Response
     %67 body: word = proj %56.2 std::response::Response
-    %191 token: word = $reuse_reset(%56)
-    %68 rec: ptr = alloc std::response::Response(%66, %65, %67) reuse %191
+    %193 token: word = $reuse_reset(%56)
+    %68 rec: ptr = alloc std::response::Response(%66, %65, %67) reuse %193
     %69 tup: ptr = alloc tuple#18(word, word)(%61, %68)
     %70 xs: ptr = alloc list(%57, %58, %59, %60, %69)
     call scripted#6(%70) -> b6()
@@ -147,8 +147,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %100 lit: ptr = const str 7
     %101 lit: ptr = const str 10
     %102 xs: ptr = alloc list(%99, %100, %101)
-    dup.candidate %102
-    %103 n: i64 = $list_len(%102)
+    %189 xs.lent: ref = lend %102
+    %103 n: i64 = $list_len(%189)
     %170 lit: i64 = const 0
     jump b16(%170, %102, %103)
   b15() [handle, handle, handle]:
@@ -161,8 +161,8 @@ fn main#0 pub top -> unit ; main::http_redirect_manual_returns_3xx, frame 67 slo
     %108 more: bool = lt.int %105, %107
     if %108 then b17(%106, %107, %105) else b18(%106, %107, %105)
   b17(%109 xs: ptr, %110 n: i64, %111 i: i64) [handle, handle, handle]:
-    dup.candidate %109
-    %115 x: word = $list_at(%109, %111)
+    %190 xs.lent: ref = lend %109
+    %115 x: word = $list_at(%190, %111)
     dup %109
     dup %115
     try_push -> b23(err, %109, %110, %111, %115)
@@ -278,8 +278,8 @@ fn logged$Http_read_chunk#103 clause std::http::Http.read_chunk -> ptr ; main::h
   b0(%0 env: ptr, %1 inst: id, %2 b: ptr, %3 max: i64):
     drop %0
     %4 $site: i64 = const 25
-    dup.candidate %2
-    call Http.read_chunk#21(%2, %3, %4) -> b1(%2, %3)
+    %9 b.lent: ref = lend %2
+    call Http.read_chunk#121(%9, %3, %4) -> b1(%2, %3)
   b1(%5 pre: unit, %6 b: ptr, %7 max: i64):
     perform std::http::Http.read_chunk(%6, %7) -> b2()
   b2(%8 r: ptr):

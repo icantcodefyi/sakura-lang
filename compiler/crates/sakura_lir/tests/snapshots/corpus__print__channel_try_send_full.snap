@@ -45,8 +45,8 @@ fn main$1#2 lambda -> word ; main::channel_try_send_full, captures [], frame 65 
     %7 lit: i64 = const 3
     %8 box: word = box %7
     %9 xs: ptr = alloc list(%4, %6, %8)
-    dup.candidate %9
-    %10 n: i64 = $list_len(%9)
+    %137 xs.lent: ref = lend %9
+    %10 n: i64 = $list_len(%137)
     %136 lit: i64 = const 0
     jump b18(%136, %1, %2, %9, %10)
   b1(%11 tx: ptr, %12 rx: ptr):
@@ -134,8 +134,8 @@ fn main$1#2 lambda -> word ; main::channel_try_send_full, captures [], frame 65 
     %87 more: bool = lt.int %82, %86
     if %87 then b19(%83, %84, %85, %86, %82) else b20(%83, %84, %85, %86, %82)
   b19(%88 tx: ptr, %89 rx: ptr, %90 xs: ptr, %91 n: i64, %92 i: i64):
-    dup.candidate %90
-    %98 x: word = $list_at(%90, %92)
+    %138 xs.lent: ref = lend %90
+    %98 x: word = $list_at(%138, %92)
     %99 unbox: i64 = unbox %98
     drop %98
     %107 s: ptr = show %99

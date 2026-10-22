@@ -74,7 +74,7 @@ fn gzip_body(b: &[u8]) -> &[u8] {
 /// Whole-buffer decoding: `(output, rest)` or the error code.
 fn inflate(rt: &mut Rt, input: &[u8], max: i64) -> Result<(Vec<u8>, Vec<u8>), i64> {
     let b = bytes(rt, input);
-    let r = rt.compress_inflate(b, 0, max).unwrap();
+    let r = rt.compress_inflate(b, 0, max, 0).unwrap();
     let out = result(rt, r).map(|pair| {
         let (o, rest) = (rt.slot(pair, 0) as u32, rt.slot(pair, 1) as u32);
         (rt.data_bytes(o).to_vec(), rt.data_bytes(rest).to_vec())
@@ -105,9 +105,9 @@ fn stream(rt: &mut Rt, input: &[u8], piece: usize, max: i64) -> Result<(Vec<u8>,
         let got = got.inspect_err(|_| rt.drop(st))?;
         out.extend(got.iter());
         rt.dup(st).unwrap();
-        let used = rt.compress_inflate_used(st) as usize;
+        let used = rt.compress_inflate_used(st, 0) as usize;
         rt.dup(st).unwrap();
-        done = rt.compress_inflate_done(st);
+        done = rt.compress_inflate_done(st, 0);
         at += used;
         taken += used;
     }
@@ -196,7 +196,7 @@ fn every_level_round_trips_and_segments_concatenate() {
     let base = rt.stats().live_objects;
     for level in 0..=9 {
         let b = bytes(&mut rt, PLAIN);
-        let z = rt.compress_deflate(b, level, 1).unwrap();
+        let z = rt.compress_deflate(b, level, 1, 0).unwrap();
         let packed = rt.data_bytes(z).to_vec();
         rt.drop(z);
         assert_eq!(
@@ -208,7 +208,7 @@ fn every_level_round_trips_and_segments_concatenate() {
         let mut joined = Vec::new();
         for piece in PLAIN.chunks(500) {
             let b = bytes(&mut rt, piece);
-            let z = rt.compress_deflate(b, level, 0).unwrap();
+            let z = rt.compress_deflate(b, level, 0, 0).unwrap();
             joined.extend_from_slice(rt.data_bytes(z));
             rt.drop(z);
         }
@@ -217,7 +217,7 @@ fn every_level_round_trips_and_segments_concatenate() {
         assert_eq!((out.as_slice(), rest.len()), (PLAIN, 0), "level {level}");
     }
     let b = bytes(&mut rt, &[]);
-    let z = rt.compress_deflate(b, 6, 1).unwrap();
+    let z = rt.compress_deflate(b, 6, 1, 0).unwrap();
     let packed = rt.data_bytes(z).to_vec();
     rt.drop(z);
     assert_eq!(inflate(&mut rt, &packed, 0).unwrap().0, b"");

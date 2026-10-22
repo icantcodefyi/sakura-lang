@@ -64,7 +64,9 @@ impl Slot {
     /// The object slot holding a value of representation `r` (a tuple element).
     pub fn field_of_repr(r: Repr) -> Slot {
         match r {
-            Repr::I64 | Repr::Id => Slot::scalar(SlotKind::I64),
+            // A borrowed word is never stored in an object (the validator); a frame slot holds
+            // it unowned, as an id.
+            Repr::I64 | Repr::Id | Repr::Ref => Slot::scalar(SlotKind::I64),
             Repr::F64 => Slot::scalar(SlotKind::F64),
             Repr::Bool => Slot::scalar(SlotKind::Bool),
             Repr::Unit => Slot::UNIT,
@@ -76,7 +78,8 @@ impl Slot {
     /// always owns its word (errata E4).
     pub fn of_repr(r: Repr) -> Slot {
         match r {
-            Repr::I64 | Repr::Id => Slot::scalar(SlotKind::I64),
+            // A borrowed word's slot does not own it (plan M5 N4a): its owner is the caller's.
+            Repr::I64 | Repr::Id | Repr::Ref => Slot::scalar(SlotKind::I64),
             Repr::F64 => Slot::scalar(SlotKind::F64),
             Repr::Bool | Repr::Unit => Slot::scalar(SlotKind::Bool),
             Repr::Ptr | Repr::Word => Slot::WORD,

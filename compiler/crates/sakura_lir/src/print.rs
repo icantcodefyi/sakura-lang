@@ -104,6 +104,9 @@ pub fn func(m: &Module, id: FuncId) -> String {
     let f = m.func(id);
     let mut out = String::new();
     let kind = match &f.kind {
+        FuncKind::Top { .. } if let Some((_, g)) = m.borrowed.iter().find(|(v, _)| *v == id) => {
+            format!("borrowed variant of #{}", g.0)
+        }
         FuncKind::Top { export: true } => "pub top".to_owned(),
         FuncKind::Top { export: false } => "top".to_owned(),
         FuncKind::Test => "test".to_owned(),
@@ -373,6 +376,7 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
         TryPop => "try_pop".into(),
         Dup(v) => format!("dup %{}", v.0),
         DupCandidate(v) => format!("dup.candidate %{}", v.0),
+        Lend { dst, src } => format!("{} = lend %{}", def(dst), src.0),
         Drop(v) => format!("drop %{}", v.0),
         Hole { id } => format!("hole ?{id}"),
         Unsupported { what } => format!("unsupported {what:?}"),

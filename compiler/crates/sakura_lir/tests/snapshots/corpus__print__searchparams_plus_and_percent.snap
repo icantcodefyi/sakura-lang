@@ -21,8 +21,8 @@ fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots 
   b1(%1 r: ptr):
     call entries#3(%1) -> b2()
   b2(%2 r: ptr):
-    dup.candidate %2
-    %3 n: i64 = $list_len(%2)
+    %61 r.lent: ref = lend %2
+    %3 n: i64 = $list_len(%61)
     %60 lit: i64 = const 0
     jump b14(%60, %2, %3)
   b3():
@@ -37,15 +37,15 @@ fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots 
     %10 lit: ptr = const str 5
     call append#4(%8, %9, %10) -> b6()
   b6(%11 r: ptr):
-    dup.candidate %11
-    call to_string#5(%11) -> b7(%11)
+    %62 r.lent: ref = lend %11
+    call to_string#22(%62) -> b7(%11)
   b7(%12 r: ptr, %13 r: ptr):
     perform std::console::Console.print(%12) -> b8(%13)
   b8(%14 r: unit, %15 r: ptr):
     %16 box: word = box %14
     drop %16
-    dup.candidate %15
-    call to_string#5(%15) -> b9(%15)
+    %63 r.lent: ref = lend %15
+    call to_string#22(%63) -> b9(%15)
   b9(%17 r: ptr, %18 r: ptr):
     call parse#2(%17) -> b10(%18)
   b10(%19 r: ptr, %20 r: ptr):
@@ -67,8 +67,8 @@ fn main#0 pub top -> unit ; main::searchparams_plus_and_percent, frame 22 slots 
     %33 more: bool = lt.int %30, %32
     if %33 then b15(%31, %32, %30) else b16(%31, %32, %30)
   b15(%34 r: ptr, %35 n: i64, %36 i: i64):
-    dup.candidate %34
-    %40 x: word = $list_at(%34, %36)
+    %64 r.lent: ref = lend %34
+    %40 x: word = $list_at(%64, %36)
     %46 t: ptr = tuple_get %40.0
     %47 s: ptr = show %46
     drop %46

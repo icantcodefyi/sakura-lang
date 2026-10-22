@@ -227,8 +227,8 @@ fn $entry#1 top -> unit ; main::encoding_decoder_split_sequence, frame 1 slots [
 fn run#3 top -> ptr ; main::encoding_decoder_split_sequence, frame 16 slots [%0 word*, %1 word*, %6 word*, %7 word*, %8 word*, %9 word*, %36 word*, %37 word*, %38 i64, %39 i64, %40 word*, %41 word*, %42 word*, %43 i64, %44 i64, %45 word*]
   b0(%0 d: ptr, %1 chunks: ptr):
     %2 xs: ptr = alloc list()
-    dup.candidate %1
-    %3 n: i64 = $list_len(%1)
+    %50 chunks.lent: ref = lend %1
+    %3 n: i64 = $list_len(%50)
     %49 lit: i64 = const 0
     jump b4(%49, %0, %2, %1, %3)
   b1(%4 dec: ptr, %5 out: ptr):
@@ -242,8 +242,8 @@ fn run#3 top -> ptr ; main::encoding_decoder_split_sequence, frame 16 slots [%0 
     %16 more: bool = lt.int %11, %15
     if %16 then b5(%14, %15, %11, %12, %13) else b6(%14, %15, %11, %12, %13)
   b5(%17 chunks: ptr, %18 n: i64, %19 i: i64, %20 dec: ptr, %21 out: ptr):
-    dup.candidate %17
-    %27 x: word = $list_at(%17, %19)
+    %51 chunks.lent: ref = lend %17
+    %27 x: word = $list_at(%51, %19)
     %35 r: ptr = $bytes_from_list(%27)
     call push#4(%20, %35) -> b8(%17, %18, %19, %21)
   b6(%22 chunks: ptr, %23 n: i64, %24 i: i64, %25 dec: ptr, %26 out: ptr):

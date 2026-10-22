@@ -30,8 +30,8 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     %16 lit: i64 = const 6
     %17 tup: ptr = alloc tuple#5(i64, i64)(%15, %16)
     %18 xs: ptr = alloc list(%4, %8, %11, %14, %17)
-    dup.candidate %18
-    %19 n: i64 = $list_len(%18)
+    %115 xs.lent: ref = lend %18
+    %19 n: i64 = $list_len(%115)
     %114 lit: i64 = const 0
     jump b9(%114, %1, %18, %19)
   b1(%20 r: ptr):
@@ -40,8 +40,8 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     jump b5(%73, %21, %20)
   b2(%22 parts: ptr, %23 r: ptr):
     %24 r: ptr = $bytes_concat(%22)
-    dup.candidate %24
-    %25 r: i64 = $bytes_len(%24)
+    %116 r.lent: ref = lend %24
+    %25 r: i64 = $bytes_len(%116)
     %26 s: ptr = show %25
     %27 lit: ptr = const str 1
     %28 s: ptr = concat %26, %27
@@ -98,8 +98,8 @@ fn main#0 pub top -> unit ; main::bytes_slice_concat, frame 8 slots [%33 bool, %
     %78 more: bool = lt.int %74, %77
     if %78 then b10(%75, %76, %77, %74) else b11(%75, %76, %77, %74)
   b10(%79 r: ptr, %80 xs: ptr, %81 n: i64, %82 i: i64):
-    dup.candidate %80
-    %87 x: word = $list_at(%80, %82)
+    %117 xs.lent: ref = lend %80
+    %87 x: word = $list_at(%117, %82)
     %94 t: i64 = tuple_get %87.0
     %95 s: ptr = show %94
     %96 lit: ptr = const str 2

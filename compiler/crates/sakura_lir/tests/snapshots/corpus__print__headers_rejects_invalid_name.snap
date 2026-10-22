@@ -21,8 +21,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %5 lit: ptr = const str 5
     %6 lit: ptr = const str 6
     %7 xs: ptr = alloc list(%0, %1, %2, %3, %4, %5, %6)
-    dup.candidate %7
-    %8 n: i64 = $list_len(%7)
+    %167 xs.lent: ref = lend %7
+    %8 n: i64 = $list_len(%167)
     %166 lit: i64 = const 0
     jump b26(%166, %7, %8)
   b1():
@@ -33,8 +33,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %13 lit: ptr = const str 10
     %14 lit: ptr = const str 11
     %15 xs: ptr = alloc list(%9, %10, %11, %12, %13, %14)
-    dup.candidate %15
-    %16 n: i64 = $list_len(%15)
+    %168 xs.lent: ref = lend %15
+    %16 n: i64 = $list_len(%168)
     %124 lit: i64 = const 0
     jump b19(%124, %15, %16)
   b2():
@@ -51,8 +51,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %23
     %26 lit: ptr = const str 14
     %27 lit: ptr = const str 15
-    dup.candidate %25
-    call append#5(%25, %26, %27) -> b6(%25)
+    %169 p.lent: ref = lend %25
+    call append#33(%169, %26, %27) -> b6(%25)
   b5(%24 r: ptr):
     %78 p: word = proj %24.0 std::result::Result.Err
     drop %24
@@ -74,8 +74,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     drop %38
     %39 lit: ptr = const str 12
     %40 lit: ptr = const str 17
-    dup.candidate %37
-    call set#6(%37, %39, %40) -> b9(%37)
+    %170 h.lent: ref = lend %37
+    call set#34(%170, %39, %40) -> b9(%37)
   b9(%41 r: ptr, %42 h: ptr):
     %43 fn: ptr = const static closure to_list$value#32
     call map#4(%41, %43) -> b10(%42)
@@ -90,8 +90,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %51 box: word = box %49
     drop %51
     %52 lit: ptr = const str 19
-    dup.candidate %50
-    call get#7(%50, %52) -> b12(%50)
+    %171 h.lent: ref = lend %50
+    call get#35(%171, %52) -> b12(%50)
   b12(%53 r: ptr, %54 h: ptr):
     %55 s: ptr = show %53
     drop %53
@@ -102,8 +102,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %59 s: ptr = concat %57, %58
     drop %58
     %60 lit: ptr = const str 0
-    dup.candidate %54
-    call has#8(%54, %60) -> b13(%54, %59)
+    %172 h.lent: ref = lend %54
+    call has#36(%172, %60) -> b13(%54, %59)
   b13(%61 r: bool, %62 h: ptr, %63 s: ptr):
     %64 s: ptr = show %61
     %65 s: ptr = concat %63, %64
@@ -137,8 +137,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %86 more: bool = lt.int %83, %85
     if %86 then b20(%84, %85, %83) else b21(%84, %85, %83)
   b20(%87 xs: ptr, %88 n: i64, %89 i: i64):
-    dup.candidate %87
-    %93 x: word = $list_at(%87, %89)
+    %173 xs.lent: ref = lend %87
+    %93 x: word = $list_at(%173, %89)
     dup %93
     %99 xs: ptr = alloc list(%93)
     %100 s: ptr = show %99
@@ -174,8 +174,8 @@ fn main#0 pub top -> unit ; main::headers_rejects_invalid_name, frame 52 slots [
     %128 more: bool = lt.int %125, %127
     if %128 then b27(%126, %127, %125) else b28(%126, %127, %125)
   b27(%129 xs: ptr, %130 n: i64, %131 i: i64):
-    dup.candidate %129
-    %135 x: word = $list_at(%129, %131)
+    %174 xs.lent: ref = lend %129
+    %135 x: word = $list_at(%174, %131)
     dup %135
     %141 xs: ptr = alloc list(%135)
     %142 s: ptr = show %141

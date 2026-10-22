@@ -71,8 +71,8 @@ fn main#0 pub top -> unit ; main::form_urlencoded_roundtrip, frame 13 slots [%7 
   b5(%42 r: ptr):
     %43 entries: word = proj %42.0 std::form::Form
     drop %42
-    dup.candidate %43
-    %44 n: i64 = $list_len(%43)
+    %75 entries.lent: ref = lend %43
+    %44 n: i64 = $list_len(%75)
     %74 lit: i64 = const 0
     jump b9(%74, %43, %44)
   b6():
@@ -93,8 +93,8 @@ fn main#0 pub top -> unit ; main::form_urlencoded_roundtrip, frame 13 slots [%7 
     %55 more: bool = lt.int %52, %54
     if %55 then b10(%53, %54, %52) else b11(%53, %54, %52)
   b10(%56 entries: ptr, %57 n: i64, %58 i: i64):
-    dup.candidate %56
-    %62 x: word = $list_at(%56, %58)
+    %76 entries.lent: ref = lend %56
+    %62 x: word = $list_at(%76, %58)
     %68 s: ptr = show %62
     drop %62
     perform std::console::Console.print(%68) -> b13(%56, %57, %58)

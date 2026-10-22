@@ -151,6 +151,15 @@ impl Rt {
         self.release(head);
     }
 
+    /// Drops argument `i` of a builtin unless bit `i` of `keep` lends it to the call: a borrowed
+    /// builtin (`rt_bb_<name>`, ABI 1.18.0, plan M5 N4a) leaves those to the caller, which holds
+    /// them for the whole call.
+    pub(crate) fn drop_arg(&mut self, keep: u32, i: u32, w: u32) {
+        if keep & 1 << i == 0 {
+            self.drop(w);
+        }
+    }
+
     /// Release the objects on the worklist starting at `head`, and everything they alone own.
     pub(crate) fn release(&mut self, mut head: u32) {
         while head != 0 {

@@ -105,6 +105,8 @@ pub struct Stats {
     /// The executed `Dup`s marked as borrow candidates (ABI 1.3.0, design §17.176 (1)), also
     /// counted in `dups`.
     pub borrow_candidates: u64,
+    /// The executed `Lend`s (ABI 1.18.0), each also a borrow candidate.
+    pub borrows: u64,
     pub peak_objects: usize,
     pub frames: u64,
     pub activations: u64,
@@ -163,6 +165,8 @@ enum Val {
     /// A pointer or generic word.
     W(u32),
     Id(u32),
+    /// A borrowed word (`ref`, plan M5 N4a): read as a `W`, never owned.
+    Lent(u32),
 }
 
 /// An 8-byte slot of an object (ABI §3.3).
@@ -613,6 +617,7 @@ impl<'m> Vm<'m> {
             Val::U => Ok(UNIT),
             Val::W(w) => Ok(w),
             Val::Id(_) => internal("boxing an activation id"),
+            Val::Lent(_) => internal("boxing a borrowed word"),
         }
     }
 
@@ -731,9 +736,10 @@ impl<'m> Vm<'m> {
         }
         let mut regs = vec![None; f.vars.len()];
         for (&p, a) in params.iter().zip(args) {
+            let val = lent(f.repr(p), a);
             regs[p.index()] = Some(Reg {
-                val: a,
-                owned: u32::from(matches!(a, Val::W(_))),
+                val,
+                owned: u32::from(matches!(val, Val::W(_))),
             });
         }
         self.stats.frames += 1;
@@ -805,7 +811,10 @@ impl<'m> Vm<'m> {
 
     fn get(&mut self, cur: u32, v: Var) -> R<Val> {
         match self.frame(cur)?.regs.get(v.index()) {
-            Some(Some(r)) if r.owned > 0 || !matches!(r.val, Val::W(_)) => Ok(r.val),
+            Some(Some(r)) if r.owned > 0 || !matches!(r.val, Val::W(_)) => Ok(match r.val {
+                Val::Lent(w) => Val::W(w),
+                v => v,
+            }),
             _ => internal(format!(
                 "%{} has no value (used after it was consumed?)",
                 v.0
@@ -818,7 +827,9 @@ impl<'m> Vm<'m> {
         let val = self.get(cur, v)?;
         if let Val::W(_) = val {
             let slot = &mut self.frame(cur)?.regs[v.index()];
-            if let Some(r) = slot {
+            if let Some(r) = slot
+                && !matches!(r.val, Val::Lent(_))
+            {
                 r.owned -= 1;
                 if r.owned == 0 {
                     *slot = None;
@@ -870,7 +881,7 @@ impl<'m> Vm<'m> {
             .collect::<R<Vec<_>>>()?;
         let params = &f.block(e.block).params;
         for (&p, v) in params[lead..].iter().zip(vals) {
-            self.set(cur, p, v)?;
+            self.set(cur, p, lent(f.repr(p), v))?;
         }
         self.frame(cur)?.block = e.block;
         Ok(())
@@ -1436,14 +1447,23 @@ impl<'m> Vm<'m> {
                     .iter()
                     .map(|&a| self.take(cur, a))
                     .collect::<R<Vec<_>>>()?;
-                // The arguments are released before a defect too: the run must end balanced.
+                // The arguments are released before a defect too: the run must end balanced. A
+                // borrowed argument stays its owner's (`rt_bb_<name>`).
                 let v = self.builtin(name, &vals);
-                for a in vals {
-                    if let Val::W(w) = a {
+                for (a, &x) in vals.into_iter().zip(args) {
+                    if let Val::W(w) = a
+                        && f.repr(x) != Repr::Ref
+                    {
                         self.drop_word(w)?;
                     }
                 }
                 self.set(cur, *dst, v?)
+            }
+            Lend { dst, src } => {
+                self.stats.borrow_candidates += 1;
+                self.stats.borrows += 1;
+                let w = self.word(cur, *src)?;
+                self.set(cur, *dst, Val::Lent(w))
             }
             HandlePush { handler, act } => {
                 let h = self.take_word(cur, *handler)?;
@@ -1668,7 +1688,7 @@ impl<'m> Vm<'m> {
             Val::F(f) => View::Float(f),
             Val::B(b) => View::Bool(b),
             Val::U => View::Unit,
-            Val::Id(_) => View::Opaque,
+            Val::Id(_) | Val::Lent(_) => View::Opaque,
             Val::W(UNIT) => View::Unit,
             Val::W(TRUE) => View::Bool(true),
             Val::W(FALSE) => View::Bool(false),
@@ -2354,6 +2374,7 @@ fn slots(vals: &[Val]) -> R<Vec<Sv>> {
             Val::U => Ok(Sv::W(UNIT)),
             Val::W(w) => Ok(Sv::W(*w)),
             Val::Id(a) => Ok(Sv::I(i64::from(*a))),
+            Val::Lent(_) => internal("storing a borrowed word"),
         })
         .collect()
 }
@@ -2391,4 +2412,13 @@ fn quote(s: &str, out: &mut String) {
         }
     }
     out.push('"');
+}
+
+/// A value arriving in a variable of representation `r`: a word lent to a `ref` stays its
+/// owner's.
+fn lent(r: Repr, v: Val) -> Val {
+    match (r, v) {
+        (Repr::Ref, Val::W(w)) => Val::Lent(w),
+        _ => v,
+    }
 }

@@ -20,8 +20,8 @@ fn main#0 pub top -> unit ; main::owned_elements_option, frame 2 slots [%8 word*
     %7 lit: i64 = const 1
     call kick#2(%6, %7) -> b1()
   b1(%8 r: ptr):
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %50 r.lent: ref = lend %8
+    %9 n: i64 = $list_len(%50)
     %48 lit: i64 = const 0
     %49 lit: ptr = const str 3
     jump b4(%48, %49, %8, %9)
@@ -41,8 +41,8 @@ fn main#0 pub top -> unit ; main::owned_elements_option, frame 2 slots [%8 word*
     %21 more: bool = lt.int %17, %20
     if %21 then b5(%19, %20, %17, %18) else b6(%19, %20, %17, %18)
   b5(%22 r: ptr, %23 n: i64, %24 i: i64, %25 out: ptr):
-    dup.candidate %22
-    %30 x: word = $list_at(%22, %24)
+    %51 r.lent: ref = lend %22
+    %30 x: word = $list_at(%51, %24)
     %37 s: ptr = show %25
     drop %25
     %38 lit: ptr = const str 1
@@ -80,17 +80,17 @@ fn $entry#1 top -> unit ; main::owned_elements_option, frame 1 slots [%1 bool]
 
 fn kick#2 top -> ptr ; main::owned_elements_option, frame 8 slots [%0 word*, %1 i64, %3 word*, %4 word*, %5 i64, %6 word*, %13 word*, %14 word*]
   b0(%0 start: ptr, %1 j: i64):
-    dup.candidate %0
-    %2 item: ptr = $list_get(%0, %1)
-    dup.candidate %0
-    call at#3(%0, %1) -> b1(%0, %1, %2)
+    %29 start.lent: ref = lend %0
+    %2 item: ptr = $list_get(%29, %1)
+    %30 start.lent: ref = lend %0
+    call at#5(%30, %1) -> b1(%0, %1, %2)
   b1(%3 r: ptr, %4 start: ptr, %5 j: i64, %6 item: ptr):
     %7 v: i64 = proj %3.1 main::owned_elements_option::Body
     %8 lit: i64 = const 10
     %9 t: i64 = intadd %7, %8
     %10 x: i64 = proj %3.0 main::owned_elements_option::Body
-    %29 token: word = $reuse_reset(%3)
-    %11 rec: ptr = alloc main::owned_elements_option::Body(%10, %9) reuse %29
+    %31 token: word = $reuse_reset(%3)
+    %11 rec: ptr = alloc main::owned_elements_option::Body(%10, %9) reuse %31
     %12 $site: i64 = const 2
     call set#4(%4, %5, %11, %12) -> b2(%6)
   b2(%13 r: ptr, %14 item: ptr):
@@ -115,6 +115,12 @@ fn kick#2 top -> ptr ; main::owned_elements_option, frame 8 slots [%0 word*, %1 
 
 fn at#3 top -> ptr ; main::owned_elements_option, frame 2 slots [%0 word*, %1 i64]
   b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 4
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3
+
+fn at#5 borrowed variant of #3 -> ptr ; main::owned_elements_option, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 bs: ref, %1 i: i64):
     %2 lit: ptr = const str 4
     %3 r: word = $list_get_expect(%0, %1, %2)
     ret %3

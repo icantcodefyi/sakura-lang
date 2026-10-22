@@ -115,8 +115,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %82 lit: ptr = const str 22
     %83 tup: ptr = alloc tuple#22(word, i64, word, word, word, word)(%77, %78, %79, %80, %81, %82)
     %84 xs: ptr = alloc list(%6, %13, %20, %27, %34, %41, %48, %55, %62, %69, %76, %83)
-    dup.candidate %84
-    %85 n: i64 = $list_len(%84)
+    %343 xs.lent: ref = lend %84
+    %85 n: i64 = $list_len(%343)
     %342 lit: i64 = const 0
     jump b20(%342, %84, %85)
   b1():
@@ -187,8 +187,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     dup %134
     call sign#7(%132, %134, %179) -> b17(%133, %134)
   b11(%135 v: ptr, %136 p: ptr, %137 r: ptr):
-    dup.candidate %135
-    %138 r: i64 = $bytes_len(%135)
+    %344 v.lent: ref = lend %135
+    %138 r: i64 = $bytes_len(%344)
     %139 s: ptr = show %138
     %140 lit: ptr = const str 25
     %141 s: ptr = concat %140, %139
@@ -198,9 +198,9 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     drop %142
     %144 $site: i64 = const 6
     dup.candidate %135
-    dup.candidate %136
+    %345 p.lent: ref = lend %136
     dup.candidate %137
-    call verify#5(%136, %135, %137, %144) -> b12(%136, %137, %135, %143)
+    call verify#102(%345, %135, %137, %144) -> b12(%136, %137, %135, %143)
   b12(%145 r: bool, %146 p: ptr, %147 r: ptr, %148 v: ptr, %149 s: ptr):
     %150 s: ptr = show %145
     %151 s: ptr = concat %149, %150
@@ -211,9 +211,9 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %154 lit: ptr = const str 28
     %155 r: ptr = $string_to_bytes(%154)
     %156 $site: i64 = const 7
-    dup.candidate %146
+    %346 p.lent: ref = lend %146
     dup.candidate %148
-    call verify#5(%146, %148, %155, %156) -> b13(%146, %147, %148, %153)
+    call verify#102(%346, %148, %155, %156) -> b13(%146, %147, %148, %153)
   b13(%157 r: bool, %158 p: ptr, %159 r: ptr, %160 v: ptr, %161 s: ptr):
     %162 s: ptr = show %157
     %163 s: ptr = concat %161, %162
@@ -253,8 +253,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %200 more: bool = lt.int %197, %199
     if %200 then b21(%198, %199, %197) else b22(%198, %199, %197)
   b21(%201 xs: ptr, %202 n: i64, %203 i: i64):
-    dup.candidate %201
-    %207 x: word = $list_at(%201, %203)
+    %347 xs.lent: ref = lend %201
+    %207 x: word = $list_at(%347, %203)
     %336 p: ptr = tuple_get %207.0
     %337 p: i64 = tuple_get %207.1
     %338 p: ptr = tuple_get %207.2
@@ -271,8 +271,8 @@ fn main#0 pub top -> unit ; main::crypto_rsa_pss_vectors, frame 97 slots [%92 wo
     %212 i: i64 = intadd %210, %211
     jump b20(%212, %208, %209)
   b24(%213 hash: ptr, %214 id: i64, %215 result: ptr, %216 spki: ptr, %217 data: ptr, %218 signature: ptr, %219 xs: ptr, %220 n: i64, %221 i: i64):
-    dup.candidate %213
-    call digest#2(%213) -> b25(%219, %220, %221, %213, %214, %215, %216, %217, %218)
+    %348 hash.lent: ref = lend %213
+    call digest#103(%348) -> b25(%219, %220, %221, %213, %214, %215, %216, %217, %218)
   b25(%222 r: ptr, %223 xs: ptr, %224 n: i64, %225 i: i64, %226 hash: ptr, %227 id: i64, %228 result: ptr, %229 spki: ptr, %230 data: ptr, %231 signature: ptr):
     %232 r: ptr = alloc std::crypto::Algorithm.RsaPss(%222)
     %233 v: ptr = const static std::crypto::KeyFormat.Spki
@@ -385,8 +385,8 @@ fn digest#2 top -> ptr ; main::crypto_rsa_pss_vectors, frame 1 slots [%0 word*]
 fn unhex#3 top -> ptr ; main::crypto_rsa_pss_vectors, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %59 s.lent: ref = lend %0
+    %2 r: i64 = $string_len(%59)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
     %58 lit: i64 = const 0
@@ -436,8 +436,8 @@ fn unhex#3 top -> ptr ; main::crypto_rsa_pss_vectors, frame 12 slots [%0 word*, 
 
 fn flip#8 top -> ptr ; main::crypto_rsa_pss_vectors, frame 5 slots [%0 word*, %1 i64, %5 word*, %6 word*, %7 i64]
   b0(%0 b: ptr, %1 at: i64):
-    dup.candidate %0
-    %2 r: ptr = $bytes_get(%0, %1)
+    %39 b.lent: ref = lend %0
+    %2 r: ptr = $bytes_get(%39, %1)
     %3 lit: i64 = const 0
     %4 box: word = box %3
     call unwrap_or#9(%2, %4) -> b1(%0, %1)
@@ -460,8 +460,8 @@ fn flip#8 top -> ptr ; main::crypto_rsa_pss_vectors, frame 5 slots [%0 word*, %1
     %22 r: ptr = $bytes_from_list(%21)
     %23 lit: i64 = const 1
     %24 t: i64 = intadd %17, %23
-    dup.candidate %16
-    %25 r: i64 = $bytes_len(%16)
+    %40 b.lent: ref = lend %16
+    %25 r: i64 = $bytes_len(%40)
     %26 r: ptr = $bytes_slice(%16, %24, %25)
     %27 xs: ptr = alloc list(%19, %22, %26)
     %28 r: ptr = $bytes_concat(%27)
@@ -507,3 +507,24 @@ fn nibble#100 top -> i64 ; main::crypto_rsa_pss_vectors, frame 1 slots [%0 word*
   b7(%29 c: ptr, %30 i: i64, %31 v: i64):
     %33 lit: unit = const ()
     jump b5(%33, %31, %29, %30)
+
+fn digest#103 borrowed variant of #2 -> ptr ; main::crypto_rsa_pss_vectors, frame 1 slots [%0 i64]
+  b0(%0 name: ref):
+    %1 lit: ptr = const str 0
+    %2 is: bool = eq.string %0, %1
+    drop %1
+    if %2 then b1(%0) else b2(%0)
+  b1(%3 name: ref):
+    %7 v: ptr = const static std::crypto::Digest.Sha256
+    ret %7
+  b2(%4 name: ref):
+    %5 lit: ptr = const str 11
+    %6 is: bool = eq.string %4, %5
+    drop %5
+    if %6 then b3() else b4()
+  b3():
+    %8 v: ptr = const static std::crypto::Digest.Sha384
+    ret %8
+  b4():
+    %9 v: ptr = const static std::crypto::Digest.Sha512
+    ret %9

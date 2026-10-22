@@ -1356,6 +1356,11 @@ impl Gen<'_, '_> {
                 self.pad_if(s, live, None)?;
                 *live.entry(*v).or_default() += 1;
             }
+            Inst::Lend { dst, src } => {
+                s.local_get(self.local(*src));
+                self.call_rt(s, "rt_lend")?;
+                s.local_set(self.local(*dst));
+            }
             Inst::Drop(v) => {
                 self.drop_word(s, self.local(*v))?;
                 self.consume(live, *v);
@@ -1728,7 +1733,15 @@ impl Gen<'_, '_> {
             self.pad_if(s, live, Some((90, "a host builtin failed")))?;
             return self.take_result(s, dst, live);
         }
-        let export = format!("rt_b_{name}");
+        // A borrowed call (plan M5 N4a) names the `ref` arguments it lends in its mask.
+        let mask = (args.iter().enumerate())
+            .filter(|(_, a)| self.repr(**a) == Repr::Ref)
+            .fold(0u32, |m, (i, _)| m | 1 << i);
+        let export = if mask == 0 {
+            format!("rt_b_{name}")
+        } else {
+            format!("rt_bb_{name}")
+        };
         let Some(&f) = self.env.rt.get(&export) else {
             // The arguments were consumed by the call that cannot be made.
             let mut held = live.clone();
@@ -1740,6 +1753,9 @@ impl Gen<'_, '_> {
             let msg = format!("builtin {name} is not supported by the WASM backend yet");
             return self.pad(s, &held, Some((90, &msg)));
         };
+        if mask != 0 {
+            s.i32_const(mask as i32);
+        }
         get(s, self);
         s.call(f);
         let ret = self.repr(dst);

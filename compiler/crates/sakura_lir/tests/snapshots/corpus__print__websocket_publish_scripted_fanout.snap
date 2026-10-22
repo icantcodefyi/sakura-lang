@@ -75,10 +75,10 @@ fn main#0 pub top -> unit ; main::websocket_publish_scripted_fanout, frame 12 sl
     dup %25
     %26 f: ptr = closure main$1#8[%25]
     %27 $site: i64 = const 9
-    dup.candidate %24
-    dup.candidate %25
-    dup.candidate %26
-    call WebSocket.accept#13(%24, %25, %26, %27) -> b8(%25, %24, %26)
+    %35 r.lent: ref = lend %24
+    %36 r.lent: ref = lend %25
+    %37 f.lent: ref = lend %26
+    call WebSocket.accept#129(%35, %36, %37, %27) -> b8(%25, %24, %26)
   b8(%28 pre: unit, %29 r: ptr, %30 r: ptr, %31 f: ptr) [handle, try]:
     %32 callback: ptr = callback %31
     perform std::websocket::WebSocket.accept(%30, %29, %32) -> b9()
@@ -102,8 +102,8 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     drop %0
     %3 lit: ptr = const str 21
     %4 $site: i64 = const 11
-    dup.candidate %1
-    call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
+    %58 a.lent: ref = lend %1
+    call WebSocket.subscribe#130(%58, %3, %4) -> b1(%2, %1)
   b1(%5 pre: unit, %6 up: ptr, %7 a: ptr):
     %8 lit: ptr = const str 21
     dup %7
@@ -118,10 +118,10 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     dup %17
     %18 f: ptr = closure main$1$1#10[%17]
     %19 $site: i64 = const 12
-    dup.candidate %15
-    dup.candidate %16
-    dup.candidate %18
-    call WebSocket.accept#13(%15, %16, %18, %19) -> b4(%16, %17, %15, %18)
+    %59 r.lent: ref = lend %15
+    %60 up.lent: ref = lend %16
+    %61 f.lent: ref = lend %18
+    call WebSocket.accept#129(%59, %60, %61, %19) -> b4(%16, %17, %15, %18)
   b4(%20 pre: unit, %21 up: ptr, %22 a: ptr, %23 r: ptr, %24 f: ptr):
     %25 callback: ptr = callback %24
     perform std::websocket::WebSocket.accept(%23, %21, %25) -> b5(%22)
@@ -132,9 +132,9 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     %30 r: ptr = alloc std::option::Option.Some(%27)
     %31 lit: ptr = const str 21
     %32 $site: i64 = const 13
-    dup.candidate %29
-    dup.candidate %30
-    call WebSocket.publish#11(%31, %29, %30, %32) -> b6(%29, %30)
+    %62 r.lent: ref = lend %29
+    %63 r.lent: ref = lend %30
+    call WebSocket.publish#131(%31, %62, %63, %32) -> b6(%29, %30)
   b6(%33 pre: unit, %34 r: ptr, %35 r: ptr):
     %36 lit: ptr = const str 21
     perform std::websocket::WebSocket.publish(%36, %34, %35) -> b7()
@@ -152,9 +152,9 @@ fn main$1#8 lambda -> word ; main::websocket_publish_scripted_fanout, captures [
     %45 v: ptr = const static std::option::Option.None
     %46 lit: ptr = const str 25
     %47 $site: i64 = const 14
-    dup.candidate %44
-    dup.candidate %45
-    call WebSocket.publish#11(%46, %44, %45, %47) -> b9(%44, %45)
+    %64 r.lent: ref = lend %44
+    %65 v.lent: ref = lend %45
+    call WebSocket.publish#131(%46, %64, %65, %47) -> b9(%44, %45)
   b9(%48 pre: unit, %49 r: ptr, %50 v: ptr):
     %51 lit: ptr = const str 25
     perform std::websocket::WebSocket.publish(%51, %49, %50) -> b10()
@@ -174,8 +174,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %0
     %3 lit: ptr = const str 21
     %4 $site: i64 = const 15
-    dup.candidate %1
-    call WebSocket.subscribe#9(%1, %3, %4) -> b1(%2, %1)
+    %120 b.lent: ref = lend %1
+    call WebSocket.subscribe#130(%120, %3, %4) -> b1(%2, %1)
   b1(%5 pre: unit, %6 a: ptr, %7 b: ptr):
     %8 lit: ptr = const str 21
     dup %7
@@ -188,9 +188,9 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %15 v: ptr = const static std::option::Option.None
     %16 lit: ptr = const str 21
     %17 $site: i64 = const 16
-    dup.candidate %14
-    dup.candidate %15
-    call WebSocket.publish#11(%16, %14, %15, %17) -> b3(%10, %11, %14, %15)
+    %121 r.lent: ref = lend %14
+    %122 v.lent: ref = lend %15
+    call WebSocket.publish#131(%16, %121, %122, %17) -> b3(%10, %11, %14, %15)
   b3(%18 pre: unit, %19 a: ptr, %20 b: ptr, %21 r: ptr, %22 v: ptr):
     %23 lit: ptr = const str 21
     perform std::websocket::WebSocket.publish(%23, %21, %22) -> b4(%19, %20)
@@ -209,9 +209,9 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %36 r: ptr = alloc std::option::Option.Some(%31)
     %37 lit: ptr = const str 21
     %38 $site: i64 = const 17
-    dup.candidate %35
-    dup.candidate %36
-    call WebSocket.publish#11(%37, %35, %36, %38) -> b6(%31, %32, %35, %36)
+    %123 r.lent: ref = lend %35
+    %124 r.lent: ref = lend %36
+    call WebSocket.publish#131(%37, %123, %124, %38) -> b6(%31, %32, %35, %36)
   b6(%39 pre: unit, %40 a: ptr, %41 b: ptr, %42 r: ptr, %43 r: ptr):
     %44 lit: ptr = const str 21
     perform std::websocket::WebSocket.publish(%44, %42, %43) -> b7(%40, %41)
@@ -262,8 +262,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %84
     %85 lit: ptr = const str 21
     %86 $site: i64 = const 18
-    dup.candidate %83
-    call WebSocket.unsubscribe#12(%83, %85, %86) -> b15(%82, %83)
+    %125 b.lent: ref = lend %83
+    call WebSocket.unsubscribe#132(%125, %85, %86) -> b15(%82, %83)
   b15(%87 pre: unit, %88 a: ptr, %89 b: ptr):
     %90 lit: ptr = const str 21
     dup %89
@@ -276,9 +276,9 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     %97 r: ptr = alloc std::option::Option.Some(%92)
     %98 lit: ptr = const str 21
     %99 $site: i64 = const 19
-    dup.candidate %96
-    dup.candidate %97
-    call WebSocket.publish#11(%98, %96, %97, %99) -> b17(%93, %96, %97)
+    %126 r.lent: ref = lend %96
+    %127 r.lent: ref = lend %97
+    call WebSocket.publish#131(%98, %126, %127, %99) -> b17(%93, %96, %97)
   b17(%100 pre: unit, %101 b: ptr, %102 r: ptr, %103 r: ptr):
     %104 lit: ptr = const str 21
     perform std::websocket::WebSocket.publish(%104, %102, %103) -> b18(%101)
@@ -293,8 +293,8 @@ fn main$1$1#10 lambda -> word ; main::websocket_publish_scripted_fanout, capture
     drop %112
     %113 lit: ptr = const str 21
     %114 $site: i64 = const 20
-    dup.candidate %111
-    call WebSocket.subscribe#9(%111, %113, %114) -> b20(%111)
+    %128 b.lent: ref = lend %111
+    call WebSocket.subscribe#130(%128, %113, %114) -> b20(%111)
   b20(%115 pre: unit, %116 b: ptr):
     %117 lit: ptr = const str 21
     perform std::websocket::WebSocket.subscribe(%116, %117) -> b21()

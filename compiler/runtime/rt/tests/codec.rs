@@ -59,14 +59,14 @@ fn base64_rfc4648_vectors_in_both_alphabets() {
     for row in rows(include_str!("../../../tests/vectors/base64.txt")) {
         let (plain, want) = (row[0], row[1]);
         let b = bytes(&mut rt, plain.as_bytes());
-        let enc = rt.bytes_to_base64(b, 0, 1).unwrap();
+        let enc = rt.bytes_to_base64(b, 0, 1, 0).unwrap();
         assert_eq!(rt.data_bytes(enc), want.as_bytes());
         let bare = want.trim_end_matches('=');
         let b = bytes(&mut rt, plain.as_bytes());
-        let url = rt.bytes_to_base64(b, 1, 0).unwrap();
+        let url = rt.bytes_to_base64(b, 1, 0, 0).unwrap();
         assert_eq!(rt.data_bytes(url), bare.as_bytes());
         for (t, url) in [(enc, 0), (url, 1)] {
-            let back = rt.bytes_from_base64(t, url).unwrap();
+            let back = rt.bytes_from_base64(t, url, 0).unwrap();
             let want = format!(
                 "Ok(Bytes.of([{}]))",
                 plain

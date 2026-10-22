@@ -32,8 +32,8 @@ fn main#0 pub top -> unit ; main::searchparams_sort_stable, frame 13 slots [%1 w
   b5(%9 r: ptr):
     call entries#5(%9) -> b6()
   b6(%10 r: ptr):
-    dup.candidate %10
-    %11 n: i64 = $list_len(%10)
+    %42 r.lent: ref = lend %10
+    %11 n: i64 = $list_len(%42)
     %41 lit: i64 = const 0
     jump b8(%41, %10, %11)
   b7():
@@ -43,8 +43,8 @@ fn main#0 pub top -> unit ; main::searchparams_sort_stable, frame 13 slots [%1 w
     %16 more: bool = lt.int %13, %15
     if %16 then b9(%14, %15, %13) else b10(%14, %15, %13)
   b9(%17 r: ptr, %18 n: i64, %19 i: i64):
-    dup.candidate %17
-    %23 x: word = $list_at(%17, %19)
+    %43 r.lent: ref = lend %17
+    %23 x: word = $list_at(%43, %19)
     %29 t: ptr = tuple_get %23.0
     %30 s: ptr = show %29
     drop %29

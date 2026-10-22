@@ -21,8 +21,8 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %6 xs: ptr = alloc list(%1, %3, %5)
     %7 lit: ptr = const str 0
     %8 lit: i64 = const 10
-    dup.candidate %6
-    call walk#2(%6, %7, %8) -> b1(%6)
+    %290 xs.lent: ref = lend %6
+    call walk#19(%290, %7, %8) -> b1(%6)
   b1(%9 r: i64, %10 xs: ptr):
     %11 s: ptr = show %9
     %12 lit: ptr = const str 1
@@ -30,8 +30,8 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     drop %12
     %14 lit: ptr = const str 0
     %15 lit: i64 = const 200000
-    dup.candidate %10
-    call walk#2(%10, %14, %15) -> b2(%10, %13)
+    %291 xs.lent: ref = lend %10
+    call walk#19(%291, %14, %15) -> b2(%10, %13)
   b2(%16 r: i64, %17 xs: ptr, %18 s: ptr):
     %19 s: ptr = show %16
     %20 s: ptr = concat %18, %19
@@ -103,8 +103,8 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     %74 s: ptr = concat %72, %73
     drop %73
     %75 lit: i64 = const 3
-    dup.candidate %71
-    call shallow#6(%71, %75) -> b11(%71, %69, %70, %74)
+    %292 xs.lent: ref = lend %71
+    call shallow#20(%292, %75) -> b11(%71, %69, %70, %74)
   b11(%76 r: i64, %77 xs: ptr, %78 i: i64, %79 t: i64, %80 s: ptr):
     %81 s: ptr = show %76
     %82 s: ptr = concat %80, %81
@@ -279,8 +279,8 @@ fn main#0 pub top -> unit ; main::direct_region_restart, frame 117 slots [%9 i64
     jump b37(%270, %271, %272)
   b39(%273 xs: ptr, %274 i: i64, %275 t: i64):
     %279 lit: i64 = const 5000
-    dup.candidate %273
-    call shallow#6(%273, %279) -> b41(%273, %274, %275)
+    %293 xs.lent: ref = lend %273
+    call shallow#20(%293, %279) -> b41(%273, %274, %275)
   b40(%276 xs: ptr, %277 i: i64, %278 t: i64):
     jump b10(%277, %278, %276)
   b41(%280 r: i64, %281 xs: ptr, %282 i: i64, %283 t: i64):
@@ -556,3 +556,31 @@ fn counting$Count_bump#18 clause main::direct_region_restart::Count.bump -> i64 
     %13 hits: i64 = state_get %12[0] row 6
     %14 t: i64 = intadd %11, %13
     ret %14
+
+fn walk#19 borrowed variant of #2 -> i64 ; main::direct_region_restart, frame 4 slots [%0 i64, %1 word*, %2 i64, %16 i64]
+  b0(%0 xs: ref, %1 s: ptr, %2 n: i64):
+    %3 lit: i64 = const 0
+    %4 t: bool = eq.int %2, %3
+    if %4 then b1(%0, %1, %2) else b2(%0, %1, %2)
+  b1(%5 xs: ref, %6 s: ptr, %7 n: i64):
+    %11 r: i64 = $list_len(%5)
+    %12 r: i64 = $string_len(%6)
+    %13 t: i64 = intadd %11, %12
+    ret %13
+  b2(%8 xs: ref, %9 s: ptr, %10 n: i64):
+    %14 lit: i64 = const 1
+    %15 t: i64 = intsub %10, %14
+    call walk#19(%8, %9, %15) -> b3()
+  b3(%16 r: i64):
+    %17 lit: i64 = const 1
+    %18 t: i64 = intadd %16, %17
+    ret %18
+
+fn shallow#20 borrowed variant of #6 -> i64 ; main::direct_region_restart, frame 3 slots [%0 i64, %1 i64, %3 i64]
+  b0(%0 xs: ref, %1 n: i64):
+    %2 lit: ptr = const str 3
+    call walk#19(%0, %2, %1) -> b1()
+  b1(%3 r: i64):
+    %4 lit: i64 = const 2
+    %5 t: i64 = intmul %3, %4
+    ret %5

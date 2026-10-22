@@ -52,8 +52,8 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %20 v: ptr = const static std::crypto::Usage.DeriveBits
     %21 tup: ptr = alloc tuple#19(word, word)(%19, %20)
     %22 xs: ptr = alloc list(%13, %17, %21)
-    dup.candidate %22
-    %23 n: i64 = $list_len(%22)
+    %212 xs.lent: ref = lend %22
+    %23 n: i64 = $list_len(%212)
     %211 lit: i64 = const 0
     jump b2(%211, %9, %22, %23)
   b1():
@@ -63,8 +63,8 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %29 more: bool = lt.int %25, %28
     if %29 then b3(%26, %27, %28, %25) else b4(%26, %27, %28, %25)
   b3(%30 r: ptr, %31 xs: ptr, %32 n: i64, %33 i: i64):
-    dup.candidate %31
-    %38 x: word = $list_at(%31, %33)
+    %213 xs.lent: ref = lend %31
+    %38 x: word = $list_at(%213, %33)
     %209 p: ptr = tuple_get %38.0
     %210 p: ptr = tuple_get %38.1
     drop %38
@@ -83,8 +83,8 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %53 lit: bool = const false
     %54 box: word = box %53
     %55 xs: ptr = alloc list(%52, %54)
-    dup.candidate %55
-    %56 n: i64 = $list_len(%55)
+    %214 xs.lent: ref = lend %55
+    %56 n: i64 = $list_len(%214)
     %208 lit: i64 = const 0
     jump b8(%208, %47, %48, %49, %50, %45, %46, %55, %56)
   b7(%57 r: ptr, %58 xs: ptr, %59 n: i64, %60 i: i64):
@@ -93,8 +93,8 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %70 more: bool = lt.int %61, %69
     if %70 then b9(%62, %63, %64, %65, %66, %67, %68, %69, %61) else b10(%62, %63, %64, %65, %66, %67, %68, %69, %61)
   b9(%71 r: ptr, %72 xs: ptr, %73 n: i64, %74 i: i64, %75 alg: ptr, %76 usage: ptr, %77 xs: ptr, %78 n: i64, %79 i: i64):
-    dup.candidate %77
-    %89 x: word = $list_at(%77, %79)
+    %215 xs.lent: ref = lend %77
+    %89 x: word = $list_at(%215, %79)
     %90 unbox: bool = unbox %89
     drop %89
     %102 v: ptr = const static std::crypto::KeyFormat.Raw
@@ -126,8 +126,8 @@ fn main#0 pub top -> unit ; main::crypto_export_rejects_not_extractable, frame 5
     %148 lit: ptr = const str 0
     %149 s: ptr = concat %147, %148
     drop %148
-    dup.candidate %146
-    call extractable#3(%146) -> b16(%126, %127, %128, %129, %130, %131, %132, %133, %134, %146, %149)
+    %216 p.lent: ref = lend %146
+    call extractable#93(%216) -> b16(%126, %127, %128, %129, %130, %131, %132, %133, %134, %146, %149)
   b15(%136 r: ptr, %137 xs: ptr, %138 n: i64, %139 i: i64, %140 alg: ptr, %141 usage: ptr, %142 xs: ptr, %143 n: i64, %144 i: i64, %145 r: ptr):
     %191 p: word = proj %145.0 std::result::Result.Err
     drop %145

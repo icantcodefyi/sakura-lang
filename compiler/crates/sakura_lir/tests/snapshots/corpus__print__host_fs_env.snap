@@ -416,8 +416,8 @@ fn main$4#18 lambda -> word ; main::host_fs_env, captures [], frame 8 slots [%0 
     drop %0
     %2 lit: i64 = const 2
     %3 $site: i64 = const 17
-    dup.candidate %1
-    call Fs.read_chunk#19(%1, %2, %3) -> b1(%1)
+    %14 f.lent: ref = lend %1
+    call Fs.read_chunk#51(%14, %2, %3) -> b1(%1)
   b1(%4 pre: unit, %5 f: ptr):
     %6 lit: i64 = const 2
     dup %5

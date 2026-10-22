@@ -17,8 +17,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     dup %1
     call bump_all#2(%1) -> b2(%1)
   b2(%3 r: ptr, %4 zs: ptr):
-    dup.candidate %3
-    %5 r: i64 = $list_len(%3)
+    %120 r.lent: ref = lend %3
+    %5 r: i64 = $list_len(%120)
     %6 s: ptr = show %5
     %7 lit: ptr = const str 0
     %8 s: ptr = concat %7, %6
@@ -36,8 +36,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %18 s: ptr = concat %16, %17
     drop %17
     %19 lit: i64 = const 0
-    dup.candidate %13
-    %20 item: ptr = $list_get(%13, %19)
+    %121 r.lent: ref = lend %13
+    %20 item: ptr = $list_get(%121, %19)
     %21 s: ptr = show %20
     drop %20
     %22 s: ptr = concat %18, %21
@@ -46,8 +46,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %24 s: ptr = concat %22, %23
     drop %23
     %25 lit: i64 = const 39
-    dup.candidate %13
-    %26 item: ptr = $list_get(%13, %25)
+    %122 r.lent: ref = lend %13
+    %26 item: ptr = $list_get(%122, %25)
     %27 s: ptr = show %26
     drop %26
     %28 s: ptr = concat %24, %27
@@ -56,8 +56,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
   b4(%29 r: unit, %30 zs: ptr, %31 r: ptr):
     %32 box: word = box %29
     drop %32
-    dup.candidate %30
-    %33 r: i64 = $list_len(%30)
+    %123 zs.lent: ref = lend %30
+    %33 r: i64 = $list_len(%123)
     %34 s: ptr = show %33
     %35 lit: ptr = const str 2
     %36 s: ptr = concat %35, %34
@@ -75,8 +75,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %46 s: ptr = concat %44, %45
     drop %45
     %47 lit: i64 = const 0
-    dup.candidate %40
-    %48 item: ptr = $list_get(%40, %47)
+    %124 zs.lent: ref = lend %40
+    %48 item: ptr = $list_get(%124, %47)
     %49 s: ptr = show %48
     drop %48
     %50 s: ptr = concat %46, %49
@@ -85,8 +85,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %52 s: ptr = concat %50, %51
     drop %51
     %53 lit: i64 = const 39
-    dup.candidate %40
-    %54 item: ptr = $list_get(%40, %53)
+    %125 zs.lent: ref = lend %40
+    %54 item: ptr = $list_get(%125, %53)
     %55 s: ptr = show %54
     drop %54
     %56 s: ptr = concat %52, %55
@@ -104,8 +104,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %67 lit: i64 = const 40
     %68 box: word = box %67
     %69 r: ptr = $list_push(%65, %68)
-    dup.candidate %69
-    %70 r: i64 = $list_len(%69)
+    %126 r.lent: ref = lend %69
+    %70 r: i64 = $list_len(%126)
     %71 s: ptr = show %70
     %72 lit: ptr = const str 2
     %73 s: ptr = concat %72, %71
@@ -123,8 +123,8 @@ fn main#0 pub top -> unit ; main::owned_argument_used_after_call, frame 23 slots
     %83 s: ptr = concat %81, %82
     drop %82
     %84 lit: i64 = const 0
-    dup.candidate %78
-    %85 item: ptr = $list_get(%78, %84)
+    %127 r.lent: ref = lend %78
+    %85 item: ptr = $list_get(%127, %84)
     %86 s: ptr = show %85
     drop %85
     %87 s: ptr = concat %83, %86
@@ -188,15 +188,15 @@ fn bump_all#2 top -> ptr ; main::owned_argument_used_after_call, frame 7 slots [
   b2(%4 r: ptr):
     ret %4
   b3(%5 xs: ptr, %6 i: i64):
-    dup.candidate %5
-    %7 r: i64 = $list_len(%5)
+    %33 xs.lent: ref = lend %5
+    %7 r: i64 = $list_len(%33)
     %8 t: bool = lt.int %6, %7
     if %8 then b5(%5, %6) else b6(%5, %6)
   b4(%9 v: unit, %10 xs: ptr, %11 i: i64):
     jump b3(%10, %11)
   b5(%12 xs: ptr, %13 i: i64):
-    dup.candidate %12
-    %16 item: ptr = $list_get(%12, %13)
+    %34 xs.lent: ref = lend %12
+    %16 item: ptr = $list_get(%34, %13)
     %17 lit: i64 = const 0
     %18 box: word = box %17
     call unwrap_or#7(%16, %18) -> b7(%12, %13)

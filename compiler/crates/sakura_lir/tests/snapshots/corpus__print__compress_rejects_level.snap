@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::compress_rejects_level, frame 7 slots [%5 word
     %2 v: ptr = const static std::compress::Format.Gzip
     %3 lit: i64 = const 9
     %4 $site: i64 = const 2
-    dup.candidate %1
-    call compress#2(%1, %2, %3, %4) -> b1(%1)
+    %28 r.lent: ref = lend %1
+    call compress#8(%28, %2, %3, %4) -> b1(%1)
   b1(%5 r: ptr, %6 r: ptr):
     %7 r: i64 = $bytes_len(%5)
     %8 lit: i64 = const 0

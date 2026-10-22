@@ -137,8 +137,8 @@ fn clause#3 top -> ptr ; main::refinement_validate_clause, frame 1 slots [%0 wor
 fn Name$validate#6 top -> ptr ; main::refinement_validate_clause, frame 1 slots [%0 word*]
   b0(%0 it: ptr):
     %1 enter: unit = $contract_enter()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %15 it.lent: ref = lend %0
+    %2 r: i64 = $string_len(%15)
     %3 lit: i64 = const 1
     %4 t: bool = ge.int %2, %3
     %5 exit: unit = $contract_exit()

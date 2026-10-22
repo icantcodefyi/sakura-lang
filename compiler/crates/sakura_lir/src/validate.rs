@@ -27,7 +27,15 @@
 //!   `If`, `Switch` or the continuation of a call of a direct top-level def, which neither
 //!   performs nor calls a closure, so no token is held across a suspension, a `perform` or an
 //!   unknown callee. A defect's landing pad drops the token as the reference it is (the emptied
-//!   object, or `Unit`), so every exit frees it.
+//!   object, or `Unit`), so every exit frees it;
+//! - **borrows** (plan M5 N4a, design §17.176 (4)): a `ref` is only read: an operand an
+//!   instruction borrows, an argument a builtin takes borrowed (`borrow::lends`), an argument of
+//!   a direct call whose callee's parameter is `ref`, or an edge argument to a `ref` parameter;
+//!   it is never counted, stored, returned or failed with. The owner of a [`Inst::Lend`] is
+//!   still held after the call that reads the lent `ref` (so the call is not its last use and
+//!   no `Drop` follows a call that lends), and the lent `ref` never leaves its block. No `ref`
+//!   crosses a `perform`, a closure call or a callback builtin, and none is a parameter of a
+//!   block in a `with`/`try` region or one that opens a handler.
 //!
 //! Under `--layout=niche` (not enabled in M4) a payload projection of `Option` is rejected
 //! (ABI §4.3); the flag is [`crate::lir::Module`]'s `niche` field.
@@ -126,6 +134,8 @@ struct State {
     /// The shape each variable is projected as in this block, and each live reuse token's.
     shapes: HashMap<Var, Shape>,
     tokens: HashMap<Var, Shape>,
+    /// Each lent `ref` of this block with its owner.
+    lent: HashMap<Var, Var>,
 }
 
 impl<'a> Checker<'a> {
@@ -249,7 +259,18 @@ impl<'a> Checker<'a> {
             bound: None,
             shapes: self.entry_shapes.get(b).cloned().unwrap_or_default(),
             tokens: HashMap::new(),
+            lent: HashMap::new(),
         };
+        let borrowed = (block.params.iter()).any(|&p| self.f.repr(p) == Repr::Ref);
+        let handles = (block.insts.iter()).any(|i| {
+            matches!(
+                i,
+                Inst::HandlePush { .. } | Inst::Bound { .. } | Inst::TryPush { .. }
+            )
+        });
+        ensure(!borrowed || (block.regions.is_empty() && !handles), || {
+            "a `ref` parameter of a block in a region or opening one".into()
+        })?;
         for &p in &block.params {
             self.define(&mut st, p)?;
             if let Some(shape) = self.token_params.get(&p) {
@@ -308,6 +329,35 @@ impl<'a> Checker<'a> {
         ensure(r.is_managed(), || {
             format!("%{} is {r}, expected a reference", v.0)
         })
+    }
+
+    /// An operand the instruction only reads: a reference, owned or borrowed.
+    fn readable(&self, v: Var) -> R {
+        if self.repr(v)? == Repr::Ref {
+            return Ok(());
+        }
+        self.managed(v)
+    }
+
+    /// [`Self::expect`] for an operand the instruction only reads.
+    fn expect_read(&self, v: Var, want: Repr) -> R {
+        if want.is_managed() && self.repr(v)? == Repr::Ref {
+            return Ok(());
+        }
+        self.expect(v, want)
+    }
+
+    /// The owner of each lent `ref` among `args` is still held after the instruction or call.
+    fn held(&self, st: &State, args: &[Var], after: &[Var]) -> R {
+        for a in args {
+            if let Some(o) = st.lent.get(a) {
+                let kept = st.count.get(o).copied().unwrap_or(0) >= 1 || after.contains(o);
+                ensure(kept, || {
+                    format!("%{} is lent to a call that is its last use", o.0)
+                })?;
+            }
+        }
+        Ok(())
     }
 
     fn entry(&self, l: LayoutId) -> Result<&'a crate::layout::Entry, String> {
@@ -467,7 +517,8 @@ impl<'a> Checker<'a> {
                     }
                     P::Concat => {
                         n(2)?;
-                        args.iter().try_for_each(|&a| self.expect(a, Repr::Ptr))?;
+                        self.expect(args[0], Repr::Ptr)?;
+                        self.expect_read(args[1], Repr::Ptr)?;
                         dst_is(Repr::Ptr)?;
                     }
                     P::Cmp(_, kind) => {
@@ -478,7 +529,7 @@ impl<'a> Checker<'a> {
                             CmpKind::Bool => Repr::Bool,
                             CmpKind::String | CmpKind::Any => Repr::Word,
                         };
-                        args.iter().try_for_each(|&a| self.expect(a, want))?;
+                        args.iter().try_for_each(|&a| self.expect_read(a, want))?;
                         dst_is(Repr::Bool)?;
                     }
                     P::Show => {
@@ -494,12 +545,12 @@ impl<'a> Checker<'a> {
                 dst_is(Repr::Word)?;
             }
             Unbox { src, dst } => {
-                self.managed(*src)?;
+                self.readable(*src)?;
                 let r = self.repr(*dst)?;
                 ensure(r.is_scalar(), || format!("unboxing to a {r}"))?;
             }
             Tag { src, of, .. } => {
-                self.managed(*src)?;
+                self.readable(*src)?;
                 match of {
                     TagOf::Ctor(l) => {
                         let e = self.entry(*l)?;
@@ -542,13 +593,13 @@ impl<'a> Checker<'a> {
                 dst_is(Repr::Ptr)?;
             }
             TupleGet { src, dst, .. } => {
-                self.managed(*src)?;
+                self.readable(*src)?;
                 self.not_id(*dst, "is read from a tuple")?;
             }
             Proj {
                 src, shape, index, ..
             } => {
-                self.managed(*src)?;
+                self.readable(*src)?;
                 ensure(!matches!(shape, Shape::Tuple(_)), || {
                     "a tuple element is read with `TupleGet`".into()
                 })?;
@@ -667,8 +718,29 @@ impl<'a> Checker<'a> {
                     .builtins
                     .get(name)
                     .ok_or_else(|| format!("builtin {name} has no signature"))?;
-                self.call_args(args, &sig.params, name)?;
+                let lent: Vec<Repr> = (sig.params.iter().enumerate())
+                    .map(|(i, &p)| {
+                        let r = args.get(i).and_then(|&a| self.repr(a).ok());
+                        if r == Some(Repr::Ref) && crate::borrow::lends(name, i) {
+                            Repr::Ref
+                        } else {
+                            p
+                        }
+                    })
+                    .collect();
+                self.call_args(args, &lent, name)?;
+                self.held(st, args, &[])?;
                 dst_is(sig.ret)?;
+            }
+            Lend { src, dst } => {
+                self.readable(*src)?;
+                ensure(self.repr(*dst)? == Repr::Ref, || {
+                    "a lent value is a `ref`".into()
+                })?;
+                // A `ref` lent on is its caller's to hold.
+                if self.repr(*src)?.is_managed() {
+                    st.lent.insert(*dst, *src);
+                }
             }
             HandlePush { handler, act } => {
                 self.managed(*handler)?;
@@ -836,6 +908,23 @@ impl<'a> Checker<'a> {
         for (v, u) in term.uses() {
             self.use_var(st, v, u)?;
         }
+        // No borrow crosses a suspension, a closure or a callback (design §17.176 (4)).
+        if let Term::Perform { cont, .. }
+        | Term::Call {
+            callee: Callee::Closure(_) | Callee::Builtin(_),
+            cont,
+            ..
+        } = term
+        {
+            for a in &cont.args {
+                ensure(self.repr(*a)? != Repr::Ref, || {
+                    format!("`ref` %{} is held across a call that may suspend", a.0)
+                })?;
+            }
+        }
+        if let Term::Call { args, cont, .. } = term {
+            self.held(st, args, &cont.args)?;
+        }
         // The value a call's continuation receives first.
         let mut result: Option<Repr> = None;
         match term {
@@ -957,8 +1046,12 @@ impl<'a> Checker<'a> {
                 bound: None,
                 shapes: HashMap::new(),
                 tokens: HashMap::new(),
+                lent: HashMap::new(),
             };
             for (&a, &p) in edge.args.iter().zip(&target.params[lead..]) {
+                ensure(!st.lent.contains_key(&a), || {
+                    format!("lent `ref` %{} leaves its block", a.0)
+                })?;
                 self.use_var(&mut edge_st, a, Use::Consume)?;
                 self.expect(a, self.repr(p)?)?;
                 ensure(st.tokens.get(&a) == self.token_params.get(&p), || {

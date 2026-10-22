@@ -40,8 +40,8 @@ fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word
     drop %9
     %12 entries: word = proj %11.0 std::form::Form
     drop %11
-    dup.candidate %12
-    %13 n: i64 = $list_len(%12)
+    %104 entries.lent: ref = lend %12
+    %13 n: i64 = $list_len(%104)
     %97 lit: i64 = const 0
     jump b5(%97, %12, %13)
   b3(%10 r: ptr):
@@ -59,8 +59,8 @@ fn main#0 pub top -> unit ; main::form_filename_is_data, frame 16 slots [%7 word
     %18 more: bool = lt.int %15, %17
     if %18 then b6(%16, %17, %15) else b7(%16, %17, %15)
   b6(%19 entries: ptr, %20 n: i64, %21 i: i64):
-    dup.candidate %19
-    %25 x: word = $list_at(%19, %21)
+    %105 entries.lent: ref = lend %19
+    %25 x: word = $list_at(%105, %21)
     %31 t: ptr = tuple_get %25.1
     %36 tag: i64 = tag %31 ctor std::form::Part
     switch %36 0 => b10(%19, %20, %21, %25, %31) 1 => b11(%19, %20, %21, %25, %31)

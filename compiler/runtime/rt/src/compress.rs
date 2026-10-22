@@ -99,24 +99,24 @@ fn deflate_bound(n: u32) -> usize {
 
 impl Rt {
     /// `compress_crc32(crc, b)`.
-    pub fn compress_crc32(&mut self, crc: i64, b: u32) -> i64 {
+    pub fn compress_crc32(&mut self, crc: i64, b: u32, keep: u32) -> i64 {
         let (n, at) = self.data(b);
         let r = crc32(crc as u32, self.heap.mem.bytes(at, n));
-        self.drop(b);
+        self.drop_arg(keep, 1, b);
         i64::from(r)
     }
 
     /// `compress_adler32(adler, b)`.
-    pub fn compress_adler32(&mut self, adler: i64, b: u32) -> i64 {
+    pub fn compress_adler32(&mut self, adler: i64, b: u32, keep: u32) -> i64 {
         let (n, at) = self.data(b);
         let r = adler32(adler as u32, self.heap.mem.bytes(at, n));
-        self.drop(b);
+        self.drop_arg(keep, 1, b);
         i64::from(r)
     }
 
     /// `compress_deflate(b, level, last)`: raw DEFLATE of `b` at `level` (0..=9), ending with
     /// the final block when `last` is 1, else with a sync flush.
-    pub fn compress_deflate(&mut self, b: u32, level: i64, last: i64) -> Res<u32> {
+    pub fn compress_deflate(&mut self, b: u32, level: i64, last: i64, keep: u32) -> Res<u32> {
         let (n, at) = self.data(b);
         let bound = deflate_bound(n);
         let r = with_arena(self, bound, |rt| {
@@ -140,16 +140,16 @@ impl Rt {
             }
             rt.bytes_of(&out)
         });
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         r
     }
 
     /// `compress_inflate(b, at, max)`: the raw DEFLATE stream at `b[at..]` as `Ok((output,
     /// rest))`, `rest` the input after the stream's end, or `Err(code)`. Two passes, the first
     /// counting, so the output is allocated once at its size.
-    pub fn compress_inflate(&mut self, b: u32, at: i64, max: i64) -> Res<u32> {
+    pub fn compress_inflate(&mut self, b: u32, at: i64, max: i64, keep: u32) -> Res<u32> {
         let r = self.inflate_whole(b, at, max.max(0) as u64);
-        self.drop(b);
+        self.drop_arg(keep, 0, b);
         r
     }
 
@@ -290,16 +290,16 @@ impl Rt {
     }
 
     /// `compress_inflate_used(st)`: the input bytes the last push took.
-    pub fn compress_inflate_used(&mut self, s: u32) -> i64 {
+    pub fn compress_inflate_used(&mut self, s: u32, keep: u32) -> i64 {
         let used = self.heap.mem.u32(s + 12 + USED);
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         i64::from(used)
     }
 
     /// `compress_inflate_done(st)`: whether the DEFLATE stream has ended.
-    pub fn compress_inflate_done(&mut self, s: u32) -> bool {
+    pub fn compress_inflate_done(&mut self, s: u32, keep: u32) -> bool {
         let done = self.heap.mem.u32(s + 12 + DONE) == 1;
-        self.drop(s);
+        self.drop_arg(keep, 0, s);
         done
     }
 

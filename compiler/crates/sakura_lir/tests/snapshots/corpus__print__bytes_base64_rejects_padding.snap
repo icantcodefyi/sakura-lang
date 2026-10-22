@@ -48,8 +48,8 @@ fn main#0 pub top -> unit ; main::bytes_base64_rejects_padding, frame 13 slots [
     %34 lit: ptr = const str 10
     %35 tup: ptr = alloc tuple#4(word, word)(%34, %33)
     %36 xs: ptr = alloc list(%2, %5, %8, %11, %14, %17, %20, %23, %26, %29, %32, %35)
-    dup.candidate %36
-    %37 n: i64 = $list_len(%36)
+    %108 xs.lent: ref = lend %36
+    %37 n: i64 = $list_len(%108)
     %107 lit: i64 = const 0
     jump b2(%107, %36, %37)
   b1():
@@ -59,8 +59,8 @@ fn main#0 pub top -> unit ; main::bytes_base64_rejects_padding, frame 13 slots [
     %42 more: bool = lt.int %39, %41
     if %42 then b3(%40, %41, %39) else b4(%40, %41, %39)
   b3(%43 xs: ptr, %44 n: i64, %45 i: i64):
-    dup.candidate %43
-    %49 x: word = $list_at(%43, %45)
+    %109 xs.lent: ref = lend %43
+    %49 x: word = $list_at(%109, %45)
     %55 t: ptr = tuple_get %49.0
     %56 t: ptr = tuple_get %49.1
     call from_base64#2(%55, %56) -> b6(%43, %44, %45, %49)

@@ -663,8 +663,9 @@ class WasmLane(unittest.TestCase):
                         "reuse_attempts", "reuses", "borrow_candidates", "borrows"):
             self.assertIsInstance(stats[counter], int)
         # ABI 1.3.0's set, named by the record's `abi_version` (design §17.176 (1)).
-        self.assertEqual(stats["abi_version"], 0x011100)
-        self.assertEqual(stats["borrows"], 0)
+        self.assertEqual(stats["abi_version"], 0x011200)
+        # ABI 1.18.0 (plan N4a): fib's two marked sites lend instead of duplicating.
+        self.assertEqual(stats["borrows"], stats["borrow_candidates"])
         rate = stats["reuse_rate"]
         self.assertTrue(rate is None if stats["reuse_attempts"] == 0
                         else rate == stats["reuses"] / stats["reuse_attempts"])

@@ -47,15 +47,15 @@ fn main#0 pub top -> unit ; main::reuse_list_map, frame 17 slots [%13 word*, %14
     %30 f: ptr = closure main$2#5[]
     call map#3(%28, %30) -> b4(%29)
   b4(%31 r: ptr, %32 xs: ptr):
-    dup.candidate %31
-    %33 r: i64 = $list_len(%31)
+    %70 r.lent: ref = lend %31
+    %33 r: i64 = $list_len(%70)
     %34 s: ptr = show %33
     %35 lit: ptr = const str 2
     %36 s: ptr = concat %34, %35
     drop %35
     %37 lit: i64 = const 0
-    dup.candidate %31
-    %38 r: ptr = $list_get(%31, %37)
+    %71 r.lent: ref = lend %31
+    %38 r: ptr = $list_get(%71, %37)
     %39 s: ptr = show %38
     drop %38
     %40 s: ptr = concat %36, %39
@@ -64,8 +64,8 @@ fn main#0 pub top -> unit ; main::reuse_list_map, frame 17 slots [%13 word*, %14
     %42 s: ptr = concat %40, %41
     drop %41
     %43 lit: i64 = const 31
-    dup.candidate %31
-    %44 r: ptr = $list_get(%31, %43)
+    %72 r.lent: ref = lend %31
+    %44 r: ptr = $list_get(%72, %43)
     %45 s: ptr = show %44
     drop %44
     %46 s: ptr = concat %42, %45

@@ -33,8 +33,8 @@ fn main#0 pub top -> unit ; main::compress_roundtrip_formats, frame 17 slots [%3
     %13 lit: ptr = const str 2
     call round_trip#3(%13, %12) -> b3(%8)
   b3(%14 r: unit, %15 r: ptr):
-    dup.candidate %15
-    %16 r: ptr = $string_to_bytes(%15)
+    %65 r.lent: ref = lend %15
+    %16 r: ptr = $string_to_bytes(%65)
     %17 lit: ptr = const str 3
     call round_trip#3(%17, %16) -> b4(%15)
   b4(%18 r: unit, %19 r: ptr):
@@ -62,8 +62,8 @@ fn main#0 pub top -> unit ; main::compress_roundtrip_formats, frame 17 slots [%3
   b9(%38 r: ptr):
     %40 p: word = proj %38.0 std::result::Result.Ok
     drop %38
-    dup.candidate %40
-    %41 r: i64 = $bytes_len(%40)
+    %66 p.lent: ref = lend %40
+    %41 r: i64 = $bytes_len(%66)
     %42 s: ptr = show %41
     %43 lit: ptr = const str 5
     %44 s: ptr = concat %42, %43
@@ -117,8 +117,8 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     %3 v: ptr = const static std::compress::Format.Deflate
     %4 v: ptr = const static std::compress::Format.DeflateRaw
     %5 xs: ptr = alloc list(%2, %3, %4)
-    dup.candidate %5
-    %6 n: i64 = $list_len(%5)
+    %277 xs.lent: ref = lend %5
+    %6 n: i64 = $list_len(%277)
     %276 lit: i64 = const 0
     jump b2(%276, %0, %1, %5, %6)
   b1():
@@ -128,8 +128,8 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     %13 more: bool = lt.int %8, %12
     if %13 then b3(%9, %10, %11, %12, %8) else b4(%9, %10, %11, %12, %8)
   b3(%14 label: ptr, %15 b: ptr, %16 xs: ptr, %17 n: i64, %18 i: i64):
-    dup.candidate %16
-    %24 x: word = $list_at(%16, %18)
+    %278 xs.lent: ref = lend %16
+    %24 x: word = $list_at(%278, %18)
     %32 lit: i64 = const 0
     %33 lit: i64 = const 10
     call range#4(%32, %33) -> b6(%14, %15, %16, %17, %18, %24)
@@ -143,8 +143,8 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     %31 i: i64 = intadd %29, %30
     jump b2(%31, %25, %26, %27, %28)
   b6(%34 r: ptr, %35 label: ptr, %36 b: ptr, %37 xs: ptr, %38 n: i64, %39 i: i64, %40 x: ptr):
-    dup.candidate %34
-    %41 n: i64 = $list_len(%34)
+    %279 r.lent: ref = lend %34
+    %41 n: i64 = $list_len(%279)
     %273 lit: i64 = const 0
     %274 lit: bool = const true
     %275 lit: bool = const true
@@ -179,14 +179,14 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     %81 more: bool = lt.int %70, %80
     if %81 then b10(%73, %74, %75, %76, %77, %78, %79, %80, %70, %71, %72) else b11(%73, %74, %75, %76, %77, %78, %79, %80, %70, %71, %72)
   b10(%82 label: ptr, %83 b: ptr, %84 xs: ptr, %85 n: i64, %86 i: i64, %87 x: ptr, %88 r: ptr, %89 n: i64, %90 i: i64, %91 same: bool, %92 smaller: bool):
-    dup.candidate %88
-    %104 x: word = $list_at(%88, %90)
+    %282 r.lent: ref = lend %88
+    %104 x: word = $list_at(%282, %90)
     %105 unbox: i64 = unbox %104
     drop %104
     %119 $site: i64 = const 7
-    dup.candidate %83
-    dup.candidate %87
-    call compress#5(%83, %87, %105, %119) -> b13(%82, %83, %84, %85, %86, %87, %88, %89, %90, %91, %92, %105)
+    %280 b.lent: ref = lend %83
+    %281 x.lent: ref = lend %87
+    call compress#24(%280, %281, %105, %119) -> b13(%82, %83, %84, %85, %86, %87, %88, %89, %90, %91, %92, %105)
   b11(%93 label: ptr, %94 b: ptr, %95 xs: ptr, %96 n: i64, %97 i: i64, %98 x: ptr, %99 r: ptr, %100 n: i64, %101 i: i64, %102 same: bool, %103 smaller: bool):
     drop %99
     jump b7(%102, %103, %93, %94, %95, %96, %97, %98)
@@ -216,13 +216,13 @@ fn round_trip#3 top -> unit ; main::compress_roundtrip_formats, frame 42 slots [
     jump b18(%223, %209, %210, %199, %200, %201, %202, %203, %204, %205, %206, %207)
   b20(%211 label: ptr, %212 b: ptr, %213 xs: ptr, %214 n: i64, %215 i: i64, %216 x: ptr, %217 r: ptr, %218 n: i64, %219 i: i64, %220 r: ptr, %221 v: bool, %222 smaller: bool):
     %224 r: i64 = $bytes_len(%220)
-    dup.candidate %212
-    %225 r: i64 = $bytes_len(%212)
+    %283 b.lent: ref = lend %212
+    %225 r: i64 = $bytes_len(%283)
     %226 t: bool = lt.int %224, %225
     jump b18(%226, %221, %222, %211, %212, %213, %214, %215, %216, %217, %218, %219)
   b21(%228 label: ptr, %229 b: ptr, %230 xs: ptr, %231 n: i64, %232 i: i64, %233 x: ptr, %234 r: ptr, %235 n: i64, %236 i: i64, %237 same: bool, %238 smaller: bool, %239 x: i64, %240 r: ptr):
-    dup.candidate %229
-    %254 r: i64 = $bytes_len(%229)
+    %284 b.lent: ref = lend %229
+    %254 r: i64 = $bytes_len(%284)
     %255 $site: i64 = const 8
     dup %233
     dup %240

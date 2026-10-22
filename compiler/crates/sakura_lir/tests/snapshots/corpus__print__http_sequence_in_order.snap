@@ -291,8 +291,8 @@ fn main$1#12 lambda -> word ; main::http_sequence_in_order, captures [], frame 5
     drop %1
     %3 lit: i64 = const 64
     %4 $site: i64 = const 18
-    dup.candidate %2
-    call Http.read_chunk#13(%2, %3, %4) -> b1(%2)
+    %10 body.lent: ref = lend %2
+    call Http.read_chunk#122(%10, %3, %4) -> b1(%2)
   b1(%5 pre: unit, %6 body: ptr):
     %7 lit: i64 = const 64
     perform std::http::Http.read_chunk(%6, %7) -> b2()

@@ -68,8 +68,8 @@ fn Slug$from#4 top -> ptr ; main::literal_refinement_passes_once, frame 2 slots 
   b0(%0 it: ptr, %1 $site: i64):
     %2 enter: unit = $contract_enter()
     %3 lit: ptr = const str 0
-    dup.candidate %0
-    %4 r: ptr = $string_split(%0, %3)
+    %10 it.lent: ref = lend %0
+    %4 r: ptr = $string_split(%10, %3)
     %5 r: i64 = $list_len(%4)
     %6 lit: i64 = const 1
     %7 t: bool = eq.int %5, %6

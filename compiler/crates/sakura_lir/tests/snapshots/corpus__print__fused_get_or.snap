@@ -57,8 +57,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     call of#2(%42) -> b3(%35, %36, %34)
   b3(%43 r: ptr, %44 r: ptr, %45 r: ptr, %46 r: ptr):
     %47 lit: i64 = const 1
-    dup.candidate %44
-    call get_int#3(%44, %47) -> b4(%44, %45, %46, %43)
+    %192 r.lent: ref = lend %44
+    call get_int#11(%192, %47) -> b4(%44, %45, %46, %43)
   b4(%48 r: ptr, %49 r: ptr, %50 r: ptr, %51 r: ptr, %52 r: ptr):
     %53 s: ptr = show %48
     drop %48
@@ -67,8 +67,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     drop %54
     %56 lit: i64 = const 2
     %57 t: i64 = intneg %56
-    dup.candidate %49
-    call get_int#3(%49, %57) -> b5(%49, %50, %51, %52, %55)
+    %193 r.lent: ref = lend %49
+    call get_int#11(%193, %57) -> b5(%49, %50, %51, %52, %55)
   b5(%58 r: ptr, %59 r: ptr, %60 r: ptr, %61 r: ptr, %62 r: ptr, %63 s: ptr):
     %64 s: ptr = show %58
     drop %58
@@ -89,16 +89,16 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %80 box: word = box %76
     drop %80
     %81 lit: ptr = const str 2
-    dup.candidate %77
-    call get_str#4(%77, %81) -> b8(%77, %78, %79)
+    %194 r.lent: ref = lend %77
+    call get_str#12(%194, %81) -> b8(%77, %78, %79)
   b8(%82 r: i64, %83 r: ptr, %84 r: ptr, %85 r: ptr):
     %86 s: ptr = show %82
     %87 lit: ptr = const str 6
     %88 s: ptr = concat %86, %87
     drop %87
     %89 lit: ptr = const str 3
-    dup.candidate %83
-    call get_str#4(%83, %89) -> b9(%83, %84, %85, %88)
+    %195 r.lent: ref = lend %83
+    call get_str#12(%195, %89) -> b9(%83, %84, %85, %88)
   b9(%90 r: i64, %91 r: ptr, %92 r: ptr, %93 r: ptr, %94 s: ptr):
     %95 s: ptr = show %90
     %96 s: ptr = concat %94, %95
@@ -107,8 +107,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %98 s: ptr = concat %96, %97
     drop %97
     %99 lit: ptr = const str 7
-    dup.candidate %91
-    call get_str#4(%91, %99) -> b10(%91, %92, %93, %98)
+    %196 r.lent: ref = lend %91
+    call get_str#12(%196, %99) -> b10(%91, %92, %93, %98)
   b10(%100 r: i64, %101 r: ptr, %102 r: ptr, %103 r: ptr, %104 s: ptr):
     %105 s: ptr = show %100
     %106 s: ptr = concat %104, %105
@@ -120,8 +120,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %112 lit: i64 = const 1
     %113 lit: ptr = const str 4
     %114 tup: ptr = alloc tuple#4(i64, word)(%112, %113)
-    dup.candidate %109
-    call get_pair#5(%109, %114) -> b12(%108, %109, %110)
+    %197 r.lent: ref = lend %109
+    call get_pair#13(%197, %114) -> b12(%108, %109, %110)
   b12(%115 r: ptr, %116 r: ptr, %117 r: ptr, %118 r: ptr):
     %119 s: ptr = show %115
     drop %115
@@ -131,8 +131,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %122 lit: i64 = const 2
     %123 lit: ptr = const str 5
     %124 tup: ptr = alloc tuple#4(i64, word)(%122, %123)
-    dup.candidate %117
-    call get_pair#5(%117, %124) -> b13(%116, %117, %118, %121)
+    %198 r.lent: ref = lend %117
+    call get_pair#13(%198, %124) -> b13(%116, %117, %118, %121)
   b13(%125 r: ptr, %126 r: ptr, %127 r: ptr, %128 r: ptr, %129 s: ptr):
     %130 s: ptr = show %125
     drop %125
@@ -157,8 +157,8 @@ fn main#0 pub top -> unit ; main::fused_get_or, frame 77 slots [%17 word*, %18 w
     %147 lit: i64 = const 1
     %148 lit: i64 = const 2
     %149 rec: ptr = alloc main::fused_get_or::Point(%147, %148)
-    dup.candidate %145
-    call has_point#6(%145, %149) -> b16(%144, %145)
+    %199 r.lent: ref = lend %145
+    call has_point#14(%199, %149) -> b16(%144, %145)
   b16(%150 r: bool, %151 r: ptr, %152 r: ptr):
     %153 s: ptr = show %150
     %154 lit: ptr = const str 6
@@ -253,8 +253,8 @@ fn twice#8 top -> i64 ; main::fused_get_or, frame 5 slots [%0 word*, %1 i64, %4 
   b0(%0 m: ptr, %1 k: i64):
     %2 box: word = box %1
     %3 r: ptr = $map_get(%0, %2)
-    dup.candidate %3
-    call is_some#9(%3) -> b1(%3)
+    %16 r.lent: ref = lend %3
+    call is_some#15(%16) -> b1(%3)
   b1(%4 r: bool, %5 r: ptr):
     if %4 then b2(%5) else b3(%5)
   b2(%6 r: ptr):
@@ -272,3 +272,31 @@ fn twice#8 top -> i64 ; main::fused_get_or, frame 5 slots [%0 word*, %1 i64, %4 
     %12 lit: i64 = const 2
     %13 t: i64 = intmul %11, %12
     ret %13
+
+fn get_int#11 borrowed variant of #3 -> ptr ; main::fused_get_or, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 m: ref, %1 k: i64):
+    %2 box: word = box %1
+    %3 lit: ptr = const str 8
+    %4 r: word = $map_get_or(%0, %2, %3)
+    ret %4
+
+fn get_str#12 borrowed variant of #4 -> i64 ; main::fused_get_or, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 m: ref, %1 k: ptr):
+    %2 lit: i64 = const 1
+    %3 t: i64 = intneg %2
+    %4 box: word = box %3
+    %5 r: word = $map_get_or(%0, %1, %4)
+    %6 unbox: i64 = unbox %5
+    drop %5
+    ret %6
+
+fn get_pair#13 borrowed variant of #5 -> ptr ; main::fused_get_or, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 m: ref, %1 k: ptr):
+    %2 xs: ptr = alloc list()
+    %3 r: word = $map_get_or(%0, %1, %2)
+    ret %3
+
+fn has_point#14 borrowed variant of #6 -> bool ; main::fused_get_or, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 m: ref, %1 p: ptr):
+    %2 r: bool = $map_contains(%0, %1)
+    ret %2

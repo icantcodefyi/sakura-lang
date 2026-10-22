@@ -108,6 +108,14 @@ retains earlier implementation history.
   `List.map` three more, and counts reuse sites in the existing `stats()` counters; no import, export or layout
   changes. A host built for ABI 1.16 refuses a 1.17 module with `V8003`; rebuild with the
   matching compiler. A 1.17 host still runs older modules.
+- **Read-only calls borrow their argument** (WASM and native, ABI 1.18.0, `sakura_abi_version`
+  `0x011200`; design §17.176 (4), plan `m5-native.md` N4a). Where a value stays live after a
+  call that only reads it, compiled code lends it instead of counting a reference: a read-only
+  builtin takes it through a borrowed runtime entry, and a direct function through a borrowed
+  copy of itself that never counts or drops it. `borrows` in the benchmark counters is no
+  longer 0, `dups` falls by exactly as much, and `borrow_candidates` is unchanged; host calls
+  and parameters held across a closure call stay owned. No program's output changes. A host
+  built for ABI 1.17 refuses a 1.18 module with `V8003`; rebuild with the matching compiler.
 
 - **`--target native` compiles a very wide function in pieces** (experimental, plan
   `m5-native.md` N2g): a top-level function of more than 1,024 LIR blocks is cut into functions

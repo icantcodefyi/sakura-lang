@@ -33,8 +33,8 @@ fn main#0 pub top -> unit ; main::gen_flat_map, frame 30 slots [%3 word*, %6 wor
     %87 lit: i64 = const 6
     call range#10(%86, %87) -> b18(%11)
   b5(%12 v: ptr, %13 r: ptr):
-    dup.candidate %12
-    %14 n: i64 = $list_len(%12)
+    %93 v.lent: ref = lend %12
+    %14 n: i64 = $list_len(%93)
     %85 lit: i64 = const 0
     jump b12(%85, %13, %12, %14)
   b6(%15 r: ptr, %16 v: ptr):
@@ -66,8 +66,8 @@ fn main#0 pub top -> unit ; main::gen_flat_map, frame 30 slots [%3 word*, %6 wor
     %40 more: bool = lt.int %36, %39
     if %40 then b13(%37, %38, %39, %36) else b14(%37, %38, %39, %36)
   b13(%41 r: ptr, %42 v: ptr, %43 n: i64, %44 i: i64):
-    dup.candidate %42
-    %49 x: word = $list_at(%42, %44)
+    %94 v.lent: ref = lend %42
+    %49 x: word = $list_at(%94, %44)
     %56 t: ptr = tuple_get %49.0
     %57 s: ptr = show %56
     drop %56
@@ -123,8 +123,8 @@ fn $entry#1 top -> unit ; main::gen_flat_map, frame 1 slots [%1 bool]
 fn main$1#4 lambda -> word ; main::gen_flat_map, captures [], frame 7 slots [%0 word*, %1 word*, %4 i64, %5 word*, %10 word*, %11 word*, %13 word*]
   b0(%0 env: ptr, %1 xs: word):
     drop %0
-    dup.candidate %1
-    %2 r: i64 = $list_len(%1)
+    %14 xs.lent: ref = lend %1
+    %2 r: i64 = $list_len(%14)
     %3 lit: i64 = const 1
     call max#5(%2, %3) -> b1(%1)
   b1(%4 r: i64, %5 xs: ptr):

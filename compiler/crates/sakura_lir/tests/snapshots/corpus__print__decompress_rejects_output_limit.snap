@@ -30,8 +30,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_output_limit, frame 47 slot
     %6 v: ptr = const static std::compress::Format.Deflate
     %7 v: ptr = const static std::compress::Format.DeflateRaw
     %8 xs: ptr = alloc list(%5, %6, %7)
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %130 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%130)
     %129 lit: i64 = const 0
     jump b14(%129, %4, %8, %9)
   b2():
@@ -74,8 +74,8 @@ fn main#0 pub top -> unit ; main::decompress_rejects_output_limit, frame 47 slot
     %40 $site: i64 = const 8
     call compress#3(%37, %38, %39, %40) -> b9()
   b9(%41 r: ptr):
-    dup.candidate %41
-    %42 r: i64 = $bytes_len(%41)
+    %131 r.lent: ref = lend %41
+    %42 r: i64 = $bytes_len(%131)
     %43 lit: i64 = const 4096
     %44 t: bool = lt.int %42, %43
     %45 s: ptr = show %44
@@ -111,13 +111,13 @@ fn main#0 pub top -> unit ; main::decompress_rejects_output_limit, frame 47 slot
     %71 more: bool = lt.int %67, %70
     if %71 then b15(%68, %69, %70, %67) else b16(%68, %69, %70, %67)
   b15(%72 r: ptr, %73 xs: ptr, %74 n: i64, %75 i: i64):
-    dup.candidate %73
-    %80 x: word = $list_at(%73, %75)
+    %133 xs.lent: ref = lend %73
+    %80 x: word = $list_at(%133, %75)
     %87 lit: i64 = const 6
     %88 $site: i64 = const 9
-    dup.candidate %72
-    dup.candidate %80
-    call compress#3(%72, %80, %87, %88) -> b18(%72, %73, %74, %75, %80)
+    %132 r.lent: ref = lend %72
+    %134 x.lent: ref = lend %80
+    call compress#37(%132, %134, %87, %88) -> b18(%72, %73, %74, %75, %80)
   b16(%76 r: ptr, %77 xs: ptr, %78 n: i64, %79 i: i64):
     drop %76
     drop %77

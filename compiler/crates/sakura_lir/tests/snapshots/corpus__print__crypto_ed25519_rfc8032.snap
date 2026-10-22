@@ -61,8 +61,8 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
     %28 lit: ptr = const str 24
     %29 tup: ptr = alloc tuple#22(word, word, word, word, word)(%24, %25, %26, %27, %28)
     %30 xs: ptr = alloc list(%5, %11, %17, %23, %29)
-    dup.candidate %30
-    %31 n: i64 = $list_len(%30)
+    %391 xs.lent: ref = lend %30
+    %31 n: i64 = $list_len(%391)
     %390 lit: i64 = const 0
     jump b2(%390, %30, %31)
   b1():
@@ -72,8 +72,8 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
     %36 more: bool = lt.int %33, %35
     if %36 then b3(%34, %35, %33) else b4(%34, %35, %33)
   b3(%37 xs: ptr, %38 n: i64, %39 i: i64):
-    dup.candidate %37
-    %43 x: word = $list_at(%37, %39)
+    %392 xs.lent: ref = lend %37
+    %43 x: word = $list_at(%392, %39)
     %385 p: ptr = tuple_get %43.0
     %386 p: ptr = tuple_get %43.1
     %387 p: ptr = tuple_get %43.2
@@ -159,8 +159,8 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
     call unhex#2(%167) -> b36(%163, %164, %165, %166, %167, %168, %169, %170)
   b19(%171 v: ptr, %172 xs: ptr, %173 n: i64, %174 i: i64, %175 name: ptr, %176 msg: ptr, %177 sig: ptr, %178 p: ptr):
     %179 lit: i64 = const 0
-    dup.candidate %171
-    %180 r: ptr = $bytes_get(%171, %179)
+    %393 v.lent: ref = lend %171
+    %180 r: ptr = $bytes_get(%393, %179)
     %181 lit: i64 = const 0
     %182 box: word = box %181
     call unwrap_or#6(%180, %182) -> b20(%172, %173, %174, %175, %176, %177, %178, %171)
@@ -193,15 +193,15 @@ fn main#0 pub top -> unit ; main::crypto_ed25519_rfc8032, frame 156 slots [%59 w
     call unhex#2(%230) -> b24(%226, %227, %228, %229, %230, %231, %232, %233, %234, %225)
   b24(%235 r: ptr, %236 xs: ptr, %237 n: i64, %238 i: i64, %239 name: ptr, %240 msg: ptr, %241 p: ptr, %242 v: ptr, %243 r: ptr, %244 t: bool, %245 r: ptr):
     %246 $site: i64 = const 6
-    dup.candidate %241
-    call verify#7(%241, %245, %235, %246) -> b25(%236, %237, %238, %239, %240, %241, %242, %243, %244)
+    %394 p.lent: ref = lend %241
+    call verify#100(%394, %245, %235, %246) -> b25(%236, %237, %238, %239, %240, %241, %242, %243, %244)
   b25(%247 r: bool, %248 xs: ptr, %249 n: i64, %250 i: i64, %251 name: ptr, %252 msg: ptr, %253 p: ptr, %254 v: ptr, %255 r: ptr, %256 t: bool):
     dup %252
     call unhex#2(%252) -> b26(%248, %249, %250, %251, %252, %253, %254, %255, %256, %247)
   b26(%257 r: ptr, %258 xs: ptr, %259 n: i64, %260 i: i64, %261 name: ptr, %262 msg: ptr, %263 p: ptr, %264 v: ptr, %265 r: ptr, %266 t: bool, %267 r: bool):
     %268 $site: i64 = const 7
-    dup.candidate %263
-    call verify#7(%263, %265, %257, %268) -> b27(%258, %259, %260, %261, %262, %263, %264, %266, %267)
+    %395 p.lent: ref = lend %263
+    call verify#100(%395, %265, %257, %268) -> b27(%258, %259, %260, %261, %262, %263, %264, %266, %267)
   b27(%269 r: bool, %270 xs: ptr, %271 n: i64, %272 i: i64, %273 name: ptr, %274 msg: ptr, %275 p: ptr, %276 v: ptr, %277 t: bool, %278 r: bool):
     %279 t: bool = not %269
     if %279 then b30(%270, %271, %272, %273, %274, %275, %276, %277, %278) else b31(%270, %271, %272, %273, %274, %275, %276, %277, %278)
@@ -274,8 +274,8 @@ fn $entry#1 top -> unit ; main::crypto_ed25519_rfc8032, frame 1 slots [%1 bool]
 fn unhex#2 top -> ptr ; main::crypto_ed25519_rfc8032, frame 12 slots [%0 word*, %33 i64, %34 word*, %35 i64, %36 i64, %37 word*, %49 i64, %50 word*, %51 i64, %52 i64, %53 word*, %54 i64]
   b0(%0 s: ptr):
     %1 xs: ptr = alloc list()
-    dup.candidate %0
-    %2 r: i64 = $string_len(%0)
+    %59 s.lent: ref = lend %0
+    %2 r: i64 = $string_len(%59)
     %3 lit: i64 = const 2
     %4 t: i64 = intdiv %2, %3
     %58 lit: i64 = const 0

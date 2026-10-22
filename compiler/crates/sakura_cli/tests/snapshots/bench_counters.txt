@@ -1,66 +1,66 @@
 binary_trees n=8
-  direct: frames 4, boxes 0, dups 51550, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 77669, boxes 0, dups 51550, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 51548, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 77669, boxes 0, dups 51548, drops 51892, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 contracts n=1000
-  direct: frames 4, boxes 1070, dups 4220, drops 6270, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 2236, borrows 0
-  all-frame: frames 3176, boxes 1070, dups 4220, drops 6270, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 2236, borrows 0
+  direct: frames 4, boxes 1070, dups 2108, drops 6270, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 2236, borrows 2112
+  all-frame: frames 3176, boxes 1070, dups 2108, drops 6270, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 2236, borrows 2112
 contracts_plain n=1000
-  direct: frames 4, boxes 1070, dups 2110, drops 3169, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 1118, borrows 0
-  all-frame: frames 2122, boxes 1070, dups 2110, drops 3169, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 1118, borrows 0
+  direct: frames 4, boxes 1070, dups 1054, drops 3169, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 1118, borrows 1056
+  all-frame: frames 2122, boxes 1070, dups 1054, drops 3169, restarts 0, reuse_attempts 16, reuses 15, borrow_candidates 1118, borrows 1056
 countdown n=1000
-  direct: frames 4, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 7, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 7, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 deltablue n=100
-  direct: frames 1871, boxes 3663, dups 297025, drops 223154, restarts 0, reuse_attempts 60927, reuses 20966, borrow_candidates 116126, borrows 0
-  all-frame: frames 174507, boxes 3663, dups 295881, drops 222010, restarts 0, reuse_attempts 60927, reuses 20976, borrow_candidates 116126, borrows 0
+  direct: frames 1871, boxes 3663, dups 180900, drops 151289, restarts 0, reuse_attempts 60927, reuses 20966, borrow_candidates 116126, borrows 116125
+  all-frame: frames 174507, boxes 3663, dups 179756, drops 150145, restarts 0, reuse_attempts 60927, reuses 20976, borrow_candidates 116126, borrows 116125
 fib n=20
-  direct: frames 4, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 21896, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 21896, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_d1 n=1000
-  direct: frames 4, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 1005, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_d16 n=1000
-  direct: frames 4, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 1005, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_d4 n=1000
-  direct: frames 4, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 1005, boxes 0, dups 2, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_fwd n=1000
-  direct: frames 2005, boxes 0, dups 2, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 2005, boxes 0, dups 2, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 2005, boxes 0, dups 0, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 2005, boxes 0, dups 0, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_reentry n=1000
-  direct: frames 2006, boxes 2001, dups 2009, drops 4014, restarts 1, reuse_attempts 1000, reuses 999, borrow_candidates 1005, borrows 0
-  all-frame: frames 2007, boxes 2001, dups 2003, drops 4009, restarts 0, reuse_attempts 1000, reuses 999, borrow_candidates 1003, borrows 0
+  direct: frames 2006, boxes 2001, dups 1004, drops 4014, restarts 1, reuse_attempts 1000, reuses 999, borrow_candidates 1005, borrows 1005
+  all-frame: frames 2007, boxes 2001, dups 1000, drops 4009, restarts 0, reuse_attempts 1000, reuses 999, borrow_candidates 1003, borrows 1003
 handled_suspend n=1000
-  direct: frames 7, boxes 0, dups 2, drops 2010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 1012, boxes 0, dups 2, drops 2010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 7, boxes 0, dups 0, drops 2010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1012, boxes 0, dups 0, drops 2010, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 json_validate n=100
-  direct: frames 4, boxes 0, dups 493, drops 1492, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 393, borrows 0
-  all-frame: frames 107, boxes 0, dups 493, drops 1492, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 393, borrows 0
+  direct: frames 4, boxes 0, dups 187, drops 1491, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 393, borrows 306
+  all-frame: frames 107, boxes 0, dups 187, drops 1491, restarts 0, reuse_attempts 200, reuses 198, borrow_candidates 393, borrows 306
 map_set n=1000
-  direct: frames 4, boxes 15834, dups 12011, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11010, borrows 0
-  all-frame: frames 3005, boxes 15834, dups 12011, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11010, borrows 0
+  direct: frames 4, boxes 15834, dups 1001, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11010, borrows 11010
+  all-frame: frames 3005, boxes 15834, dups 1001, drops 18175, restarts 0, reuse_attempts 20423, reuses 18198, borrow_candidates 11010, borrows 11010
 nbody n=1000
-  direct: frames 4, boxes 0, dups 43026, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 0
-  all-frame: frames 52038, boxes 0, dups 43026, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 0
+  direct: frames 4, boxes 0, dups 6000, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 37026
+  all-frame: frames 52038, boxes 0, dups 6000, drops 7027, restarts 0, reuse_attempts 66008, reuses 47006, borrow_candidates 37026, borrows 37026
 pipeline n=1000
-  direct: frames 4, boxes 2501, dups 6006, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 0
-  all-frame: frames 2509, boxes 2501, dups 6006, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 0
+  direct: frames 4, boxes 2501, dups 3501, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 2505
+  all-frame: frames 2509, boxes 2501, dups 3501, drops 7013, restarts 0, reuse_attempts 4493, reuses 4491, borrow_candidates 2505, borrows 2505
 rbtree n=1000
-  direct: frames 4, boxes 0, dups 118637, drops 107886, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 0
-  all-frame: frames 21969, boxes 0, dups 118637, drops 107886, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 0
+  direct: frames 4, boxes 0, dups 118623, drops 107885, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 14
+  all-frame: frames 21969, boxes 0, dups 118623, drops 107885, restarts 0, reuse_attempts 1107, reuses 1106, borrow_candidates 14, borrows 14
 shapes n=1000
-  direct: frames 4, boxes 10184, dups 43728, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 0
-  all-frame: frames 21010, boxes 10184, dups 43728, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 0
+  direct: frames 4, boxes 10184, dups 33716, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 10012
+  all-frame: frames 21010, boxes 10184, dups 33716, drops 43728, restarts 0, reuse_attempts 20965, reuses 15964, borrow_candidates 10012, borrows 10012
 sieve n=1000
-  direct: frames 4, boxes 0, dups 2473, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 0
-  all-frame: frames 1444, boxes 0, dups 2473, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 0
+  direct: frames 4, boxes 0, dups 31, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 2442
+  all-frame: frames 1444, boxes 0, dups 31, drops 1098, restarts 0, reuse_attempts 5217, reuses 5216, borrow_candidates 2442, borrows 2442
 spectral_norm n=50
-  direct: frames 4, boxes 2050, dups 100213, drops 100258, restarts 0, reuse_attempts 2050, reuses 2009, borrow_candidates 100212, borrows 0
-  all-frame: frames 200265, boxes 2050, dups 100213, drops 100258, restarts 0, reuse_attempts 2050, reuses 2009, borrow_candidates 100212, borrows 0
+  direct: frames 4, boxes 2050, dups 1, drops 100248, restarts 0, reuse_attempts 2050, reuses 2009, borrow_candidates 100212, borrows 100212
+  all-frame: frames 200265, boxes 2050, dups 1, drops 100248, restarts 0, reuse_attempts 2050, reuses 2009, borrow_candidates 100212, borrows 100212
 tail_clique n=100000
-  direct: frames 4, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
-  all-frame: frames 6, boxes 0, dups 2, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 6, boxes 0, dups 0, drops 6, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 tokenizer n=1000
-  direct: frames 4, boxes 0, dups 3005, drops 6010, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 3005, borrows 0
-  all-frame: frames 1005, boxes 0, dups 3005, drops 6010, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 3005, borrows 0
+  direct: frames 4, boxes 0, dups 0, drops 6010, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 3005, borrows 3005
+  all-frame: frames 1005, boxes 0, dups 0, drops 6010, restarts 0, reuse_attempts 8000, reuses 7000, borrow_candidates 3005, borrows 3005

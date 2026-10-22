@@ -66,8 +66,8 @@ fn f#2 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 wo
     %12 t: i64 = intsub %8, %11
     call g#3(%10, %6, %12) -> b2()
   b2(%13 r: ptr):
-    dup.candidate %13
-    %14 r: i64 = $list_len(%13)
+    %31 r.lent: ref = lend %13
+    %14 r: i64 = $list_len(%31)
     %15 lit: i64 = const 100
     %16 t: bool = gt.int %14, %15
     if %16 then b3(%13) else b4(%13)
@@ -95,8 +95,8 @@ fn g#3 top -> ptr ; main::owned_record_unsettled, frame 4 slots [%0 word*, %1 wo
     %4 r: ptr = $list_push(%0, %3)
     call f#2(%4, %1, %2) -> b1()
   b1(%5 r: ptr):
-    dup.candidate %5
-    %6 r: i64 = $list_len(%5)
+    %14 r.lent: ref = lend %5
+    %6 r: i64 = $list_len(%14)
     %7 lit: i64 = const 100
     %8 t: bool = gt.int %6, %7
     if %8 then b2(%5) else b3(%5)

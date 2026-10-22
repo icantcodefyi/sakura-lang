@@ -132,8 +132,8 @@ fn main$1#24 lambda -> word ; main::worker_close_finishes_inbox, captures [], fr
     %6 lit: i64 = const 3
     %7 box: word = box %6
     %8 xs: ptr = alloc list(%3, %5, %7)
-    dup.candidate %8
-    %9 n: i64 = $list_len(%8)
+    %61 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%61)
     %60 lit: i64 = const 0
     jump b9(%60, %1, %8, %9)
   b1(%10 w: ptr):
@@ -178,8 +178,8 @@ fn main$1#24 lambda -> word ; main::worker_close_finishes_inbox, captures [], fr
     %38 more: bool = lt.int %34, %37
     if %38 then b10(%35, %36, %37, %34) else b11(%35, %36, %37, %34)
   b10(%39 w: ptr, %40 xs: ptr, %41 n: i64, %42 i: i64):
-    dup.candidate %40
-    %47 x: word = $list_at(%40, %42)
+    %62 xs.lent: ref = lend %40
+    %47 x: word = $list_at(%62, %42)
     %48 unbox: i64 = unbox %47
     drop %47
     dup %39

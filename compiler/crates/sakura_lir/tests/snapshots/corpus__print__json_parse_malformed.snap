@@ -20,8 +20,8 @@ fn main#0 pub top -> unit ; main::json_parse_malformed, frame 5 slots [%0 word*,
   b0():
     call shown#3() -> b1()
   b1(%0 r: ptr):
-    dup.candidate %0
-    %1 n: i64 = $list_len(%0)
+    %25 r.lent: ref = lend %0
+    %1 n: i64 = $list_len(%25)
     %24 lit: i64 = const 0
     jump b3(%24, %0, %1)
   b2():
@@ -31,8 +31,8 @@ fn main#0 pub top -> unit ; main::json_parse_malformed, frame 5 slots [%0 word*,
     %6 more: bool = lt.int %3, %5
     if %6 then b4(%4, %5, %3) else b5(%4, %5, %3)
   b4(%7 r: ptr, %8 n: i64, %9 i: i64):
-    dup.candidate %7
-    %13 x: word = $list_at(%7, %9)
+    %26 r.lent: ref = lend %7
+    %13 x: word = $list_at(%26, %9)
     perform std::console::Console.print(%13) -> b7(%7, %8, %9)
   b5(%10 r: ptr, %11 n: i64, %12 i: i64):
     drop %10
@@ -59,8 +59,8 @@ fn test$0#2 top -> unit ; main::json_parse_malformed, frame 5 slots [%0 word*, %
   b0():
     call shown#3() -> b1()
   b1(%0 r: ptr):
-    dup.candidate %0
-    %1 n: i64 = $list_len(%0)
+    %27 r.lent: ref = lend %0
+    %1 n: i64 = $list_len(%27)
     %26 lit: i64 = const 0
     jump b3(%26, %0, %1)
   b2():
@@ -70,8 +70,8 @@ fn test$0#2 top -> unit ; main::json_parse_malformed, frame 5 slots [%0 word*, %
     %6 more: bool = lt.int %3, %5
     if %6 then b4(%4, %5, %3) else b5(%4, %5, %3)
   b4(%7 r: ptr, %8 n: i64, %9 i: i64):
-    dup.candidate %7
-    %13 x: word = $list_at(%7, %9)
+    %28 r.lent: ref = lend %7
+    %13 x: word = $list_at(%28, %9)
     %19 lit: ptr = const str 0
     %20 r: bool = $string_contains(%13, %19)
     %21 t: bool = not %20

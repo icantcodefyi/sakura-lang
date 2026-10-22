@@ -131,8 +131,8 @@ fn memory$Store_with_default#11 clause main::handler_callback_context::Store.wit
   b0(%0 env: ptr, %1 inst: id, %2 k: ptr, %3 v: i64, %4 body: ptr):
     drop %0
     %5 m: word = state_get %1[0] row 4
-    dup.candidate %2
-    call contains#12(%5, %2) -> b1(%1, %2, %3, %4)
+    %47 k.lent: ref = lend %2
+    call contains#15(%5, %47) -> b1(%1, %2, %3, %4)
   b1(%6 r: bool, %7 inst: id, %8 k: ptr, %9 v: i64, %10 body: ptr):
     %11 t: bool = not %6
     if %11 then b5(%7, %8, %9, %10) else b6(%7, %8, %9, %10)

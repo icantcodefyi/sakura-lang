@@ -15,8 +15,8 @@ fn main#0 pub top -> unit ; main::tuples, frame 6 slots [%3 word*, %4 word*, %15
     %0 lit: i64 = const 1
     %1 lit: ptr = const str 0
     %2 tup: ptr = alloc tuple#3(i64, word)(%0, %1)
-    dup.candidate %2
-    call swap#2(%2) -> b1(%2)
+    %50 tup.lent: ref = lend %2
+    call swap#3(%50) -> b1(%2)
   b1(%3 r: ptr, %4 tup: ptr):
     %48 p: ptr = tuple_get %3.0
     %49 p: i64 = tuple_get %3.1
@@ -98,5 +98,12 @@ fn swap#2 top -> ptr ; main::tuples, frame 1 slots [%0 word*]
     %1 t: ptr = tuple_get %0.1
     %2 t: i64 = tuple_get %0.0
     drop %0
+    %3 tup: ptr = alloc tuple#5(word, i64)(%1, %2)
+    ret %3
+
+fn swap#3 borrowed variant of #2 -> ptr ; main::tuples, frame 1 slots [%0 i64]
+  b0(%0 p: ref):
+    %1 t: ptr = tuple_get %0.1
+    %2 t: i64 = tuple_get %0.0
     %3 tup: ptr = alloc tuple#5(word, i64)(%1, %2)
     ret %3

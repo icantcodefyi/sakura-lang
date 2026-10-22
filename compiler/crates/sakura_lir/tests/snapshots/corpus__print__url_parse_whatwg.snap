@@ -678,8 +678,8 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
     %657 xs: ptr = alloc list(%4, %8, %12, %17, %22, %27, %32, %37, %41, %46, %51, %56, %61, %66, %71, %76, %81, %86, %91, %96, %101, %106, %111, %115, %119, %123, %127, %131, %135, %139, %143, %147, %151, %155, %159, %163, %167, %171, %175, %179, %183, %187, %191, %195, %200, %205, %209, %214, %218, %223, %228, %233, %237, %242, %247, %251, %256, %260, %265, %270, %275, %280, %285, %289, %293, %297, %301, %305, %309, %313, %317, %321, %325, %329, %333, %337, %341, %345, %349, %353, %357, %361, %365, %369, %374, %378, %383, %388, %393, %397, %401, %405, %410, %415, %419, %423, %428, %433, %438, %443, %448, %453, %457, %461, %465, %470, %474, %478, %483, %487, %492, %496, %500, %504, %509, %513, %517, %521, %525, %529, %533, %538, %542, %547, %551, %555, %560, %565, %569, %573, %577, %581, %585, %589, %593, %597, %601, %605, %609, %613, %617, %621, %625, %629, %633, %637, %642, %647, %651, %656)
     call enumerate#2(%657) -> b1()
   b1(%658 r: ptr):
-    dup.candidate %658
-    %659 n: i64 = $list_len(%658)
+    %798 r.lent: ref = lend %658
+    %659 n: i64 = $list_len(%798)
     %797 lit: i64 = const 0
     jump b3(%797, %658, %659)
   b2():
@@ -689,8 +689,8 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
     %664 more: bool = lt.int %661, %663
     if %664 then b4(%662, %663, %661) else b5(%662, %663, %661)
   b4(%665 r: ptr, %666 n: i64, %667 i: i64):
-    dup.candidate %665
-    %671 x: word = $list_at(%665, %667)
+    %799 r.lent: ref = lend %665
+    %671 x: word = $list_at(%799, %667)
     %677 t: ptr = tuple_get %671.1
     %794 p: ptr = tuple_get %677.0
     %795 p: ptr = tuple_get %677.1
@@ -767,8 +767,8 @@ fn main#0 pub top -> unit ; main::url_parse_whatwg, frame 33 slots [%658 word*, 
   b21(%778 r: ptr, %779 n: i64, %780 i: i64, %781 x: ptr, %782 input: ptr, %783 with_origin: bool, %784 r: ptr):
     drop %782
     %792 p: word = proj %784.0 std::result::Result.Err
-    %798 token: word = $reuse_reset(%784)
-    %793 r: ptr = alloc std::result::Result.Err(%792) reuse %798
+    %800 token: word = $reuse_reset(%784)
+    %793 r: ptr = alloc std::result::Result.Err(%792) reuse %800
     jump b19(%793, %778, %779, %780, %781, %783)
   b22(%786 r: ptr, %787 r: ptr, %788 n: i64, %789 i: i64, %790 x: ptr, %791 with_origin: bool):
     jump b19(%786, %787, %788, %789, %790, %791)
@@ -788,8 +788,8 @@ fn row#5 top -> ptr ; main::url_parse_whatwg, frame 83 slots [%0 word*, %1 bool,
     %3 f: ptr = closure row$1#6[]
     call map#8(%2, %3) -> b1(%0, %1)
   b1(%4 r: ptr, %5 p: ptr, %6 with_origin: bool):
-    dup.candidate %5
-    call to_string#9(%5) -> b2(%5, %6, %4)
+    %110 p.lent: ref = lend %5
+    call to_string#77(%110) -> b2(%5, %6, %4)
   b2(%7 r: ptr, %8 p: ptr, %9 with_origin: bool, %10 r: ptr):
     %11 scheme: word = proj %8.0 std::url::UrlParts
     %12 lit: ptr = const str 173
