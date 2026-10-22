@@ -238,6 +238,9 @@ the details.
 - **`sakura fmt` keeps `1 .2` apart** (#10): the field of a number literal was printed as `1.2`,
   a float, so `1 .2 = m` failed with `V9001` and `1 .2` changed meaning. A number keeps the
   space before its `.field`.
+- **`sakura fmt` keeps an external type's `where` on the next line** (#11): `type P` followed
+  by `where …` on the next line was joined into `type P where …`, which does not parse without
+  `=` (`V9001`).
 - Website benchmark fallback text no longer names beta.3 as an upcoming release, and the
   server guide pins beta.3 after rechecking its displayed outputs with the published beta.3.
 - Standard library docs describe native worker shutdown limits, exact grant-path matching

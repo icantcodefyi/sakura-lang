@@ -1069,12 +1069,31 @@ impl Fmt<'_> {
                 matches!(c.kind(), RECORD_TYPE | VARIANT_LIST) || ast::Type::can_cast(c.kind())
             })
             .map_or_else(nil, |b| t(" = ").append(self.node(&b)));
+        // An external type (no body) takes its `where` only on the next line: `type P where t`
+        // does not parse. A comment there keeps the declaration as written.
+        let external = !n.children().any(|c| {
+            matches!(c.kind(), RECORD_TYPE | VARIANT_LIST) || ast::Type::can_cast(c.kind())
+        });
+        let clause = match d.where_clause() {
+            Some(w) if external => {
+                if !leading_comments(w.syntax()).is_empty()
+                    || !comments_before(&w.syntax().clone().into()).is_empty()
+                    || has_stray_comments(w.syntax())
+                {
+                    return self.verbatim(n);
+                }
+                nl().append(t("where "))
+                    .append(self.opt(w.expr()))
+                    .nest(INDENT)
+            }
+            w => self.opt(w),
+        };
         self.item_prefix(&d)
             .append(t("type "))
             .append(name(d.name()))
             .append(self.opt(d.type_params()))
             .append(body)
-            .append(self.opt(d.where_clause()))
+            .append(clause)
     }
 
     /// The parameters, return type, row, contracts and body of `n`, a `fn` declaration, an

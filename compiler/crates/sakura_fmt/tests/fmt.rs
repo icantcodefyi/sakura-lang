@@ -285,6 +285,26 @@ fn a_field_of_a_number_keeps_its_space() {
 }
 
 #[test]
+fn an_external_type_keeps_its_where_on_the_next_line() {
+    // Found by the fmt_idempotent fuzz target: `type P\nwhere t` was joined into
+    // `type P where t`, which does not parse without `=` (V9001).
+    for (src, expected) in [
+        ("type P\nwhere t", "type P\n  where t\n"),
+        ("type P<T>\n    where t > 0\n", "type P<T>\n  where t > 0\n"),
+        ("type P = Int\nwhere t > 0\n", "type P = Int where t > 0\n"),
+    ] {
+        let once = sakura_fmt::format(src).unwrap_or_else(|e| panic!("{src}: {e:?}"));
+        assert_eq!(once, expected);
+        assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+    }
+    // A comment before the clause keeps the declaration as written.
+    let src = "type P\n// why\nwhere t\n";
+    let once = sakura_fmt::format(src).unwrap();
+    assert!(once.contains("// why"), "{once}");
+    assert_eq!(sakura_fmt::format(&once).unwrap(), once);
+}
+
+#[test]
 fn import_sorting_keeps_header_before_inline_comment() {
     for (text, expected) in [
         (
