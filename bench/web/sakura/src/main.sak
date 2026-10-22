@@ -1,0 +1,55 @@
+// TechEmpower-style JSON and plaintext server (bench/web/README.md) on std `Serve` and
+// `Router`. AI-assisted (Claude), reviewed by the contributor.
+//
+// `main <port>` serves on 127.0.0.1:<port> until the process stops. The address must be in
+// `sakura.toml`'s `[permissions] net` list, so `bench/web/web.py` runs a copy of this project
+// whose manifest names the port it chose; this manifest names 8080 for a run by hand.
+//
+// TechEmpower rules: `/json` encodes a fresh `Message` per request with the std JSON codec;
+// `/plaintext` builds its response per request. Both set `server`; the host adds `date`
+// and `content-length` (Node's `node:http` on JS, `hyper` on native).
+
+import std/cli.{Cli}
+import std/request.{Get, Request}
+import std/response.{Response}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/url.{Url}
+
+type Message = { message: String }
+
+fn json(_req: Request) -> Response {
+  let r = Response.ok_json(Message { message: "Hello, World!" })
+  Response { ..r, headers: r.headers.push(("server", "sakura")) }
+}
+
+fn plaintext(_req: Request) -> Response {
+  Response {
+    ..Response.status(200, "Hello, World!"),
+    headers: [("content-type", "text/plain"), ("server", "sakura")],
+  }
+}
+
+pub fn main() -> Unit ! {Cli, Serve, Fail<ServeError>} {
+  let port = match List.first(Cli.args()) {
+    Some(arg) => Option.expect(String.parse_int(arg), "port"),
+    None => 8080,
+  }
+  let router = Router.new().get("/json", json).get("/plaintext", plaintext)
+  Serve.listen(router, Address.of("127.0.0.1", port))
+}
+
+test "json and plaintext answer the TechEmpower bodies" {
+  let router = Router.new().get("/json", json).get("/plaintext", plaintext)
+  let reqs = [Request.of(Get, Url.from("/json")), Request.of(Get, Url.from("/plaintext"))]
+  with Serve.scripted(reqs) {
+    expect_fail(
+      fn() { Serve.listen(router, Address.of("127.0.0.1", 8080)) },
+      ServeError { reason: "no more requests" },
+    )
+  }
+  expect_output([
+    "Get /json -> 200 \{\"message\":\"Hello, World!\"\}",
+    "Get /plaintext -> 200 Hello, World!",
+  ])
+}

@@ -9,6 +9,7 @@ koka = "3.2.9"
 # The C ports' `cc`: Apple clang on the reference Mac (clang-2100.3.34.2); a hosted runner records its own.
 clang = "21.0.0"
 hyperfine = "2.0.0"
+oha = "1.16.0"  # bench/web's load tool: `cargo install oha --version 1.16.0 --locked`
 wasmtime = "49.0.3"
 # `bench typescript`: installed by `npm ci` from bench/typescript/package-lock.json, which must agree.
 typescript = "7.0.2"
