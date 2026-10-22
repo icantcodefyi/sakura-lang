@@ -86,6 +86,13 @@ retains earlier implementation history.
   instead of being refused; a `git` entry is still `V8005`, at the entry, until git sources
   land (plan P5). The `V8005` explain text is rewritten for the new meaning.
 
+### Fixed
+
+- **`--target native`: `String.split`, `String.replace`, `String.chars` and the case maps are
+  linear in the string's length.** The native runtime checked a string's UTF-8 once per piece
+  or code point, so these were quadratic (the `tokenizer` benchmark at size 50,000 now retires
+  about 295× fewer instructions). WASM and JS were not affected.
+
 ## [1.0.0-beta.5] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before

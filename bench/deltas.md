@@ -208,3 +208,114 @@ default until beta.5's baseline is blessed and its entry written, §17.308 (2l))
 
 Footprint, recorded and carried under §17.177 (1)–(2) (no target until a baseline): peak RSS of
 the native executable 7.6–59.8 MB across cells (`rbtree` 100,000 the largest).
+
+## §17.177 representation windows: prototypes and ablations (2026-10-22; advisory, not blessed)
+
+Plan `m5-native.md` §3. Measured on the reference host `d88970189598` at `d954a806` with
+`f6be3c1d`'s `text()` fix in the tree, release CLI, native lane unless named: instructions
+retired per call as `exe n` minus `exe` with no argument, median of 5 processes, with the run's
+`SAKURA_NATIVE_STATS` counters and peak RSS (`/usr/bin/time -l`). No harness change: these are
+side builds (a second driver staticlib per prototype), so every number is direction for the
+designer, not a baseline, and nothing here is blessed. "Copied bytes" is read as `requested`
+(no separate counter exists). The trie numbers agree with row M's counted run (`sieve` 371.6 M
+here against 370.0 M at 200,000; `spectral_norm` 2,296.5 M against 2,292.2 M at 400).
+
+**(2) Scalar leaves.** `nbody` holds a `List<Body>` of records and has 0 boxes at every size:
+unboxed scalar leaves change nothing there. `spectral_norm`'s ablation (the same loops over a
+`List<Bool>`, an immediate word with no box and no count, read back as a `Float` by one branch;
+its checksum differs, its work does not) bounds what unboxed leaves save on reads and pushes:
+
+| `spectral_norm` | n | baseline | immediate leaves | Δ | boxes | `requested` |
+|---|---:|---:|---:|---:|---:|---:|
+| native | 100 | 146.2 M | 129.0 M | −11.8% | 4,100 → 0 | 120,814 → 55,214 |
+| native | 400 | 2,296.5 M | 2,056.5 M | −10.5% | 16,400 → 0 | 472,430 → 210,030 |
+| WASM (Wasmtime, warm) | 400 | 4,464.4 M | 5,070.4 M | +13.6% | | |
+
+`drops` stay 6,401,647 at 400 (one per read either way). On WASM the branch costs more than the
+box load it replaces, so no saving shows. JS lists hold JS numbers: not applicable. `shapes` and
+`map_set` hold no `List<Int>` or `List<Float>` (a `List<Item>`, `Option<Int>`, maps and
+`Map.entries` tuples), so the adapter cost the plan reads there is the per-element kind test
+every generic `List` builtin would gain; it is unmeasured because no prototype was built: the
+read ceiling is at most 10.5% on one of the two deciding programs and 0 on the other, and
+`spectral_norm` stays above 18× Rust either way. **Default holds: boxed words stay (ABI §4).**
+
+**(1) `List`: trie / flat owned sequence / hybrid.** Prototype: the tail never spills into the
+trie, so a list is one flat node with copy-on-shared-write (in place when unique, doubling
+capacity on push, a full copy on a shared write); `runtime/rt/src/list.rs` only, every backend's
+`List` builtins unchanged, never committed. A sampled profile of `sieve` at 200,000 puts about
+59% of the main thread's samples in the trie's paths (`set_unique` 29%, `list_set_in`, `at`,
+`push_fields`, `push_in`, `dup_except`, `node`, `push_leaf`).
+
+| Program | n | trie | flat | Δ | peak RSS (KB) | `requested` |
+|---|---:|---:|---:|---:|---:|---:|
+| `sieve` | 200,000 | 371.6 M | 240.2 M | −35.4% | 8,544 → 9,440 | 3,403,268 → 2,113,932 |
+| `spectral_norm` | 400 | 2,301.2 M | 2,210.5 M | −3.9% | 7,472 → 7,488 | 472,430 → 434,710 |
+| `nbody` | 100,000 | 2,630.7 M | 2,630.1 M | 0.0% | 7,520 → 7,504 | equal |
+| `pipeline` | 300,000 | 919.9 M | 748.0 M | −18.7% | 14,672 → 16,096 | 19,663,700 → 18,297,568 |
+| `shapes` | 100,000 | 1,950.1 M | 1,789.2 M | −8.3% | 20,032 → 20,048 | 70,393,572 → 69,778,924 |
+| `map_set` | 100,000 | 4,419.5 M | 4,206.1 M | −4.8% | 41,424 → 41,872 | 264,803,363 → 262,132,543 |
+| `rbtree` (retained) | 100,000 | 2,550.2 M | 2,540.8 M | −0.4% | 58,400 → 58,384 | equal within 0.01% |
+| `binary_trees` | 14 | 2,376.4 M | 2,378.1 M | +0.1% | 9,312 → 9,344 | equal |
+| **`deltablue`** | 5,000 | 9,239.7 M | 314,153.6 M | **34×** | 10,688 → 10,912 | |
+| **`deltablue`** | 10,000 | 19,198.5 M | 1,246,509.8 M | **64.9×** | 13,904 → 13,728 | |
+
+The suite's `List` port of `deltablue` writes shared lists, and the flat representation turns
+each such write into a whole copy. A retained-versions micro (n `List.set`s on a list of n
+`Int`s, every k-th version kept, as `rbtree` keeps trees; `bench/target`, not committed) shows
+the same cliff: k = 1 at 10,000: 107.8 M → 6,381.7 M (59×), peak RSS 12 MB → 408 MB, and at
+40,000 the flat run exhausts the heap (trie: 520.0 M, 33 MB); k = 10 at 40,000: 312.9 M →
+10,122.4 M (32×), 24 MB → 649 MB; k = 100 at 40,000: 225.3 M → 1,072.2 M (4.8×). A flat
+representation wins only if the persistent workloads stay within their ceilings (§17.177 (1));
+it puts `deltablue` 65× further out. The hybrid that would keep `sieve`'s gain switches
+representation on an ownership fact (flat until the first shared write), which §17.217 rules
+out. **Default holds: the trie stays**; `sieve`, `nbody` and `spectral_norm` are carried again
+under §17.152 (2) with the causes row M named. The 35% on `sieve` is the trie's unique-path
+write (`set_unique`), a lead for an optimisation of the trie, not a representation.
+
+**(5) `Option` niche.** Not built; three `shapes` variants at 100,000 bracket it (outputs equal
+to the program's):
+
+| `shapes` variant | instructions | `requested` | boxes |
+|---|---:|---:|---:|
+| the program | 1,950.1 M | 70,393,572 | 1,018,091 |
+| `Option.unwrap_or(it.tag, 0)` as a `match` (no boxed default) | 1,793.5 M | 62,393,524 | 518,091 |
+| `tag: T` at `Item<Int>`: a boxed word with no `Some` (the niche's `Some(x) = x`), `None` a boxed −1 | 1,639.7 M | 51,269,868 | 600,000 |
+| `tag: Int` with a −1 sentinel (no `Option`, no box) | 1,241.7 M | 41,669,868 | 0 |
+
+The `Some` wrappers are 518,091 objects of 24 bytes, 12.4 MB, **17.7% of `shapes`' `requested`**
+(§17.199 (1)'s bound was 11.8% of a larger pre-N3 total). Without them, 153.8 M fewer
+instructions (8.6% of the `match` variant, 7.9% of the program), though that variant still
+allocates 81,909 `None` boxes the niche would not; the niche's tag test on every projection and
+construction is not charged. The last row is beyond any niche (it also unboxes the `Int`).
+`map_set`: §17.199 (1)'s 3.6% of bytes, not re-measured. **Default holds: tagged stays**; the
+build (universal ABI §4.3 form, schema table, §17.99 parity gate, an ABI MINOR) is put to the
+designer with these numbers (REQUESTS 2026-10-22, the §17.177 windows).
+
+**(§17.174) Regions.** The counter of §17.174 (2), built (`a88a2bd8`, `sakura_rt` feature
+`regions`, `SAKURA_NATIVE_REGIONS=1`): bytes and objects of `new_object` released before the twin
+activation that allocated them returns. Reuse share is `reuses / (reuses + objects allocated)`.
+
+| Program | n | region share (bytes) | (objects) | reuse share (objects) | trigger |
+|---|---:|---:|---:|---:|---|
+| `binary_trees` | 14 | 0.0000 | 0.0000 | 0.0000 | not met |
+| `shapes` | 100,000 | 0.2745 | 0.3157 | 0.4853 | not met |
+| `pipeline` | 300,000 | 0.2832 | 0.0967 | 0.6973 | not met |
+| `rbtree` | 100,000 | 0.0002 | 0.0001 | 0.0838 | not met |
+| `nbody` (not a kernel) | 100,000 | 0.7458 | 0.7619 | 0.6912 | |
+| `map_set` (not a kernel) | 100,000 | 0.9738 | 0.9502 | 0.3899 | |
+| `sieve` (not a kernel) | 200,000 | 0.9997 | 0.9993 | 0.9807 | |
+| `spectral_norm` (not a kernel) | 400 | 0.2834 | 0.1272 | 0.4620 | |
+| `deltablue` (not a kernel) | 10,000 | 0.0124 | 0.0231 | 0.1688 | |
+
+On none of the four allocation kernels does the share exceed what reuse recovers, in bytes or in
+objects. **Default holds: no region work.** Where the share is high, the allocating twin is a
+whole benchmark loop (`run` of `sieve`, `map_set`), so "dies inside" there means "before the
+program ends", the hold-everything region research/12 warns against. Reproduce: build the driver
+with `--features native,regions`, set `SAKURA_NATIVE_LIB_DIR` to it and `SAKURA_NATIVE_REGIONS=1`
+for `sakura build --target native`, then read the `region_*` fields of `SAKURA_NATIVE_STATS`.
+
+**`text()` (row M's superlinear cells), fixed in `f6be3c1d`.** Native instructions per call,
+before → after: `tokenizer` 69.5 M → 10.7 M (1,000), 6,038.8 M → 100.6 M (10,000),
+148,895.2 M → 504.4 M (50,000), 1,012.9 M at 100,000 (row M: 595 G); `json_validate` 6.9 M →
+6.4 M (100), 81.3 M → 60.5 M (1,000), 2,775.5 M → 603.6 M (10,000), 21,956.7 M → 1,818.5 M
+(30,000). Both now grow linearly (`tokenizer` 9.4× for 10×, `json_validate` 3.0× for 3×).
