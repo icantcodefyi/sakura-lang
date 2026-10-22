@@ -20,7 +20,9 @@ const PETALS = [
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-border">
+    // From lg up the hero keeps the poster's shape (1800 × 870, lib/hero-tree.ts) as the screen
+    // widens, up to the screen's height under the header, so `cover` never crops the great limb.
+    <section className="relative overflow-hidden border-b border-border lg:flex lg:min-h-[min(48.33vw,calc(100svh-3.5rem))] lg:flex-col lg:justify-center">
       {/* From lg up the tree fills the hero behind the copy, its limb arching over it. */}
       <div className="absolute inset-0 hidden lg:block">
         <Tree className="size-full" />
@@ -36,7 +38,7 @@ export function Hero() {
       <div className="[--fall:1100px] lg:hidden">
         <FallingPetals petals={PETALS} />
       </div>
-      <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-x-6 px-5 pt-12 sm:px-8 md:pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="relative z-10 mx-auto grid w-full max-w-6xl items-center gap-x-6 px-5 pt-12 sm:px-8 md:pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
         <div className="pb-4 lg:pb-24">
           <HeroCopy />
         </div>
