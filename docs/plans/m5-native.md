@@ -489,6 +489,38 @@ programs and run in that job. **Left of B:** `verify-published.yml` green on the
 native step for the first release carrying it (§17.227); the owner approves that dry run with
 F's. AI implementation: Claude Opus 5.5; the human contributor owns acceptance.
 
+**C-native (2026-10-22): code and CI landed; no C release row carries native yet.**
+`sakura_codegen_native::Options::target` (the host's by default) names the triple, so
+`the_corpus_compiles_for_platform_c` (`sakura_host_native/tests/corpus.rs`, on x86-64 hosts,
+whose Cranelift has the x86 ISA) emits every corpus program for `x86_64-pc-windows-msvc` and
+`x86_64-apple-darwin` and holds every COFF function to a `.pdata` entry. **Windows x64:** COFF
+through `object`, not PIC (COFF has no GOT; driver calls are `ADDR64` that `link.exe`
+relocates), the Windows x64 convention from Cranelift's `triple_default` for every C ABI
+signature, inline stack probes (`enable_probestack`, `probestack_strategy=inline`; Windows
+commits a stack one guard page at a time), `.xdata` (Cranelift's `UNWIND_INFO` per function)
+and `.pdata` (a `RUNTIME_FUNCTION` each, `ADDR32NB`). Cranelift's `tail` convention compiles and
+unwinds on Windows x64, so twins stay on there; the frames-only fallback stays for an ISA
+without it. `link` runs MSVC's `link.exe`, found in the Visual Studio installation
+(`find-msvc-tools`, already locked through `cc`), writes `main.exe`/`tests.exe`, and passes
+the driver directory as `/LIBPATH`, where `build_driver` copies the `windows.0.5x.0.lib` import
+libraries the `windows-targets` crates ship in their source directories (named by
+`native-static-libs`, on no search path). `sakura_rt`'s heap reserves with `VirtualAlloc`; the
+host's entropy is `getrandom`; its `Fs` refuses a rooted or drive-prefixed path as not
+relative and answers "is a directory" for a directory opened as a file. No DWARF is emitted on
+COFF: **Windows debugger symbols are a stated limitation until a CodeView decision**
+(§17.175 (7)); traces carry Sakura's own sites, and the native job skips the debugger and
+profiler smoke there. **Intel macOS:** Mach-O x86_64 at `MACOSX_DEPLOYMENT_TARGET=12.0`; ld64
+takes no pc-relative relocation in `__eh_frame` (`object` writes x86_64's as `SIGNED`), so each
+FDE's function field is written resolved after emission (`unwind::patch`), as an assembler
+writes a local reference; checked by linking with `cc -arch x86_64` on Apple silicon (FDE ranges
+start at the function symbols). `ci.yml`'s native job and `native-sanitizers.yml`'s Miri lane
+add `windows-2025` and `macos-15-intel`; the checked lowering runs in the native job, whose
+controls read Windows' abort (`__fastfail`, `0xC0000409`) as the signal they expect elsewhere.
+The CLI admits both triples for a source build with the feature; the C rows of
+`packaging/targets.json` stay without `native` (row C's release follows B's acceptance;
+`release.py`'s driver files would add the Windows `.lib`s). AI implementation: Claude Opus 5.5;
+the human contributor owns acceptance.
+
 **N1b progress (2026-10-19).** §17.229 (5) landed first (bc61e0c5): both JS hosts answer an OS
 error by its class, as `sakura_host_native` does, and Node chains timers so a sleep of any
 length is honoured. The JSON codec is now written once in `runtime/rt/src/json.rs` (§17.213 (1)):
@@ -589,7 +621,7 @@ unless the lane says otherwise; §17.308 (2) is the ruling text.
 | F | the flag ships (§17.175 (6)): A release binaries built with `--features native`; the driver staticlib at `lib/sakura/native/` in the archive, npm packages and formula; a native `fib` smoke in `release.py smoke`/`accept` and `verify-published.yml`; `--help` label; the one-line profile print; STABILITY row; install page; a missing system linker is one diagnostic (`V8007 native_linker_missing` if free) | Sol | now; **packaging done** (2026-10-22, `647d7ed1`, `V8007`; §17.309 (3)) | dry run green with the native step on both A rows; `verify-published.yml` green for the beta carrying it (= "A shipped" for B-native) |
 | S | `exec-native`: the native backend as a fourth `exec` executor on `x86_64-unknown-linux-gnu`, its own ledger target; not part of 1.0.0's gate | Opus | after F | hours in `compiler/fuzz/README.md`'s ledger; a stabilization condition (§17.308 (1e)) |
 | B-native | row B of §2: `ubuntu-24.04-arm` native job and Miri lane, parity native on ARM Linux, `gdb`/`perf` smoke, B archive with the staticlib and smoke | Sol (CI), Opus (fixes) | after F's `verify-published.yml` run; **code and CI done** (2026-10-22, the owner's direction to run it now; see the B-native note); §17.310 (4): stands ahead of its start, ships in beta.4 with A's rows, one `verify-published.yml` run accepts all three; a red B native smoke in the dry run turns the B row's `native` flag off for beta.4 instead of holding it | `verify-published.yml` green on the B row with the native step |
-| C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green | row C's; Windows debugger symbols a stated limitation |
+| C-native | row C of §2: PE/COFF, Windows x64 convention, stack probes, `.pdata`/`.xdata`, twins on frames where `tail` is unavailable, Mach-O x86_64, `link.exe` smoke, `windows-2025` and `macos-15-intel` native jobs | Opus (codegen), Sol (CI) | after B-native's row is green; **code and CI done** (2026-10-22, the owner's direction to run it now; see the C-native note), release rows not yet | row C's; Windows debugger symbols a stated limitation |
 | N3 | Perceus reuse (row N3); ABI MINOR allocated at landing (1.17.0 if first) — **constructor sites done** (`e55977f8`, ABI 1.17.0, in beta.4; §17.309 (2)); **N3b**: `List.map` leaf/tail reuse, the `m5-stress` set under the lanes, then tokens across direct calls as ordinary object words in frame slots (no new slot kind, no ABI change unless the frame protocol needs one, then a MINOR at landing) — **N3b done** (2026-10-22, still 1.17.0; no slot kind needed; §17.310 (2) ratifies the seven readings); **N3c** (§17.310 (2d)), **done** 2026-10-22: a `match` on a tuple literal allocates nothing (`sakura_core`'s `lower/expr.rs` and `matchc.rs`, every backend, no ABI change; `rbtree`'s `balance` then reuses the nodes it takes apart); size-bounded inlining of small direct defs in the LIR only if the first native run-time baseline shows `rbtree` outside its §17.109 ceiling with N3c in; a token-passing convention for direct calls is rejected | Opus | N3c: now; N4a's convention landed first (`cb0056fb`), so N3c re-records `bench_counters.txt`; in beta.4 if on `main` at its preparation commit | deltas advisory until the first counted baseline containing N3 and row M; `--native-checks` poisons token consumption; `audit_owned` covers tokens |
 | N4 | borrow inference (row N4), N4a then N4b; `E` widened and `bench_counters.txt` re-recorded in N4a's first commit (§17.247 (1); **done** 2026-10-22, still 1.17.0; the five readings ratified by §17.310 (3)); the convention at ABI 1.18.0, its borrowed builtin entries generated from the one `reads` table — **N4a's convention done** (2026-10-22, `cb0056fb`, ABI 1.18.0; see the N4a progress text; its five readings ratified by §17.310 (3f)); **N4b done** (2026-10-22, the bound per direct component, no ABI change; see the N4b progress text) | Opus | after N3b; N4b now | the row's bar as §17.310 (3e) restates it: against `0fb38d52`'s `bench_counters.txt` (or the file as N3c leaves it), `dups` falls by exactly `borrows`, `drops` by exactly the direct-def share of `borrows`, `borrow_candidates − borrows` is the declined set (zero on the isolated set; each benchmark site named with its reason); `borrows` > 0 only at marked sites; parity, the §17.173 lanes, `countdown` and `frames` unchanged. `bytes_concat`'s overflow-path leak (`codec.rs`) is fixed (`5c1a8cd5`); the sweep of `runtime/rt` for the same shape (§17.310 (3d)) is recorded in REQUESTS beside N4b, its fixes beta.5 or later |
 | N5 | `W8001`, built at `299b6fe2`; readings answered in §17.308 (3); lands rebased on `main` | Opus | now | then N5.5: the LSP and the MCP `check` tool report `W8001` (measured against research/10 §6's 100 ms edit budget; on save if it misses); **N5.5 done** (2026-10-22), 54 ms on a 10,000-line edit, so on every edit |

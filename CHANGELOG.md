@@ -7,6 +7,22 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Added
+
+- **`--target native` builds on Intel macOS and Windows x64 from source** (experimental,
+  platform C, plan `m5-native.md` row C, design §17.308 (2g)): a compiler built with
+  `--features native` for `x86_64-apple-darwin` or `x86_64-pc-windows-msvc` no longer refuses
+  the target; no release binary for either carries it yet. On Windows the object is COFF with
+  `.pdata`/`.xdata` unwind records and inline stack probes, linked with MSVC's `link.exe` from
+  the Visual Studio installation (when there is none, `V8007` names the Build Tools), and the
+  executables are `main.exe` and `tests.exe`. Windows executables carry no debugger symbols
+  (Windows debuggers read CodeView, which the backend does not emit); defect traces still name
+  Sakura sites. The native host's `Fs` refuses a rooted or drive-prefixed path (`\x`, `C:\x`,
+  `C:x`) as "not a relative path" and answers "is a directory" for a directory opened as a
+  file, as on Unix, and the host takes its entropy from the OS through `getrandom` on every
+  platform (it read `/dev/urandom`). CI's native job and the Miri lane run on `windows-2025`
+  and `macos-15-intel`.
+
 ### Changed
 
 - **A `match` on a tuple literal allocates nothing** (every backend; design §17.310 (2d), plan

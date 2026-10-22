@@ -88,15 +88,23 @@ above), so a floor is what the binary is built to need, not an OS the project ra
 `sakura build --target native` compiles a program to an executable (`target/sakura/native/main`).
 It is experimental: the flag and its driver may change or go away in a later release without a
 migration. The macOS Apple silicon, Linux x64 and Linux arm64 release binaries carry it from the first
-release after v1.0.0-beta.3; every channel (the release installer, npm and Homebrew) installs its driver,
-`lib/sakura/native/libsakura_native_driver.a`, beside `bin/`, where `sakura` finds it
-(`SAKURA_NATIVE_LIB_DIR` names another directory). On other platforms the target exits 2.
+release after v1.0.0-beta.3; every channel (the release installer, npm and Homebrew) installs
+its driver, `lib/sakura/native/libsakura_native_driver.a`, beside `bin/`, where `sakura` finds
+it (`SAKURA_NATIVE_LIB_DIR` names another directory). Other release binaries refuse the target
+with exit 2. On Intel macOS and Windows x64 a compiler built from source with
+`cargo build --release -p sakura_cli --features native` builds native executables too
+(`main.exe` on Windows); Windows executables carry no debugger symbols, and defect traces still
+name Sakura source positions.
 
-A native build needs a system C linker on `PATH` as `cc`, and Sakura Lang bundles none:
+A native build needs a system linker, and Sakura Lang bundles none; on macOS and Linux it is
+the C compiler on `PATH` as `cc`:
 
 - **macOS:** the Xcode Command Line Tools (`xcode-select --install`).
 - **Linux:** a C compiler, for example `sudo apt install gcc` on Debian or Ubuntu, or
   `sudo dnf install gcc` on Fedora.
+- **Windows (source builds):** MSVC's `link.exe`, from the Visual Studio Build Tools with the
+  "Desktop development with C++" workload; `sakura` finds it in the Visual Studio installation,
+  not on `PATH`.
 
 Without one, the build stops with [`V8007`](/docs/errors/V8007). The executable needs no Node and
 no Sakura Lang install to run; it runs on the floors above.
