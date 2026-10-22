@@ -21,7 +21,7 @@ sakura --version
 ```
 
 ```text
-sakura 1.0.0-beta.4 (40af20ce096074012bbd2344129da441589d3e6c)
+sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)
 ```
 
 That's it. Go to the [Quickstart](/docs/quickstart) to run your first program.
@@ -35,10 +35,10 @@ Good to know:
 
 ## The beta
 
-`v1.0.0-beta.4` is a beta of 1.0. **It is not for production**: it may have bugs and may change
+`v1.0.0-beta.5` is a beta of 1.0. **It is not for production**: it may have bugs and may change
 before 1.0.0. Every breaking change until then is listed in the [changelog](/changelog) with a
 migration ([Stability](/docs/stability)). It is a
-[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.4).
+[GitHub prerelease](https://github.com/icantcodefyi/sakuralang/releases/tag/v1.0.0-beta.5).
 
 The beta is not on the default channels. Until `v1.0.0`, `npm install --global sakuralang` (the
 `latest` tag) and `brew install sakuralang` install `0.1.0`, the earlier preview. These docs
@@ -63,7 +63,7 @@ export PATH="$HOME/.local/bin:$PATH"
 sakura --version
 ```
 
-For the beta, set `version=1.0.0-beta.4`.
+For the beta, set `version=1.0.0-beta.5`.
 
 The installer:
 
@@ -87,7 +87,7 @@ Get-Content install.ps1
 ./install.ps1 -Version 0.1.0
 ```
 
-For the beta, take `install.ps1` from that release and pass `-Version 1.0.0-beta.4`.
+For the beta, take `install.ps1` from that release and pass `-Version 1.0.0-beta.5`.
 
 It checks the ZIP against `SHA256SUMS` and installs `sakura.exe` to
 `%LOCALAPPDATA%\Programs\sakuralang\bin`. Add that folder to `PATH` yourself. Use Windows 10
@@ -183,13 +183,13 @@ migration. See [Native](/docs/native).
 
 Which binaries can do it:
 
-- The macOS Apple silicon, Linux x64 and Linux arm64 release binaries, from v1.0.0-beta.4.
+- The macOS Apple silicon, Linux x64 and Linux arm64 release binaries, from v1.0.0-beta.4,
+  and the Intel macOS release binary, from v1.0.0-beta.5.
   Every channel (installer, npm and Homebrew) installs the driver it needs,
   `lib/sakura/native/libsakura_native_driver.a`, next to `bin/`. Set `SAKURA_NATIVE_LIB_DIR`
   to use another directory.
-- On Intel macOS and Windows x64, a compiler built from source with
-  `cargo build --release -p sakura_cli --features native` (the executable is `main.exe` on
-  Windows). Windows executables carry no debugger symbols; defect traces still name Sakura
+- On Windows x64, a compiler built from source with
+  `cargo build --release -p sakura_cli --features native` (the executable is `main.exe`). Windows executables carry no debugger symbols; defect traces still name Sakura
   source positions.
 - Other release binaries refuse `--target native` with exit code 2.
 

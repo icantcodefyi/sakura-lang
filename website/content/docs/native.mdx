@@ -39,10 +39,10 @@ has the details.
 | macOS, Apple silicon | in the release binaries from `v1.0.0-beta.4` |
 | Linux x64 | in the release binaries from `v1.0.0-beta.4` |
 | Linux arm64 | in the release binaries from `v1.0.0-beta.4` |
-| macOS, Intel | a compiler built from source with `cargo build --release -p sakura_cli --features native` |
-| Windows x64 | a source build as above; `main.exe`, no debugger symbols (defect traces still name Sakura source positions) |
+| macOS, Intel | in the release binaries from `v1.0.0-beta.5` |
+| Windows x64 | a compiler built from source with `cargo build --release -p sakura_cli --features native`; `main.exe`, no debugger symbols (defect traces still name Sakura source positions) |
 
-Other release binaries refuse the target with exit 2 and name the three above. An executable
+The Windows release binary refuses the target with exit 2 and names the four above. An executable
 runs on the [install floors](/docs/install): glibc 2.35 and macOS 12.0 or later, Windows 10 x64.
 
 ## What it runs

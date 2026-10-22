@@ -7,7 +7,7 @@ This page says what you can use today, what is still coming before 1.0, and what
 after 1.0. Read it before you pick Sakura Lang for a project. No release has a date.
 
 <Callout type="info" title="Latest release">
-  **Latest release: `v1.0.0-beta.4` (2026-10-22).** A beta is a preview of 1.0: it may have bugs
+  **Latest release: `v1.0.0-beta.5` (2026-10-22).** A beta is a preview of 1.0: it may have bugs
   and may still change before 1.0.0, so it is not for production. See [what changed](/docs/changes)
   and [what you can rely on](/docs/stability).
 </Callout>
@@ -47,8 +47,8 @@ Everything in this section ships in the latest beta.
 
 Experimental features are opt-in and may change or go away in any release, without a migration.
 
-- **Native executables** (`--target native`). The macOS arm64, Linux x64 and Linux arm64
-  release binaries include it, and you need a system C compiler (`cc`) to link. It runs every
+- **Native executables** (`--target native`). The macOS (Apple silicon and Intel), Linux x64
+  and Linux arm64 release binaries include it, and you need a system C compiler (`cc`) to link. It runs every
   standard service; `WebSocket` from the release after `v1.0.0-beta.5`. No native performance claim is made yet. See
   [Native code](/docs/native).
 - **Workers** (`std/worker`): a second copy of your program running in parallel, with its own
@@ -93,6 +93,7 @@ the 1.x line; see [Stability](/docs/stability).
 
 | Release | What it brought | Published |
 | --- | --- | --- |
+| `v1.0.0-beta.5` | Experimental native executables in the Intel Mac release binary too; a `match` on a tuple allocates nothing; runtime memory fixes on out-of-memory paths | 2026-10-22 |
 | `v1.0.0-beta.4` | Experimental native executables in the release binaries; `W8001` warns when a list or map update copies; memory reuse on WebAssembly and native | 2026-10-22 |
 | `v1.0.0-beta.3` | Node programs can call a Sakura library; faster `sakura verify` | 2026-10-21 |
 | `v1.0.0-beta.2` | Experimental workers; refined types in JSON Schema | 2026-10-21 |

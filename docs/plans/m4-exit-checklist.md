@@ -174,6 +174,34 @@ ledger (design §17.306). Released by Claude Opus 5.5 under the owner's written 
 
 **`v1.0.0-beta.5` baseline, 2026-10-22.** `bench/baselines/d88970189598.json`, `wasm/d88970189598.json`, `typescript/d88970189598.json` and `compile-native/d88970189598.json` now hold the counted `js`, `wasm`, `typescript` and `compile-native` runs at the preparation commit `447dce0c1e07e6ce1e3e08d95f1981311ebe8281` (Node 26.12.0, the same flags; tree clean, every oracle green); the `40af20ce` files are in `bench/baselines/archive/40af20ce/`. The first native run-time baseline (row M) is blessed to `bench/baselines/native/d88970189598.json`. The `compile-native` report names `lowering` (2.01×), `codegen` (2.01×) and `object` (2.14×) superlinear from 16,384 to 32,768 rows. Evidence: `bench/results/2026-10-22-447dce0c-*` (compile, envelope `miss` on 238 of 264, against 237 at beta.4, carried; M5 envelope `miss` on 124 of 132; Node spreads over 1% on 17 `js` and 10 `wasm` cells at host load ~26, reported in `bench/deltas.md`; prep `fib`/`shapes` compare `ok` on every Node cell, largest move −1.2%). Blessed by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design §17.310 (1)). **The `v1.0.0-beta.5` tag goes on `447dce0c`**: dry run 39779111361 green on every row, the native smoke on all four native rows (the Intel macOS row for the first time); `sign_test` 39779116185 green; Native sanitizers 39779047974 green.
 
+**`v1.0.0-beta.5` close-out (docs/release.md §7), 2026-10-22.** Tag `v1.0.0-beta.5` (annotated)
+peels to `447dce0c1e07e6ce1e3e08d95f1981311ebe8281`, the preparation commit, so the `447dce0c`
+bless stands. CI on that SHA: run 39779047970 green on every job but `Native (macos-15-intel)`,
+whose profiler smoke found no `main::fib::fib` frame in `sample`'s report although the program
+ran and printed; its rerun of the failed jobs (attempt 2) was cancelled by a later push to `main`.
+The same step passed on `ecf51ad5` and on run 39788798466, green on every job at `d954a806`,
+whose `compiler/`, `packaging/`, `tools/` and `.github/` are identical to `447dce0c`'s. Dry run
+39779111361 green on every row with the native smoke on all four native rows; `sign_test`
+39779116185 green; Native sanitizers 39779047974 green. Tag run
+[39799909987](https://github.com/icantcodefyi/sakuralang/actions/runs/39799909987), green
+throughout: five builds, Darwin signed (Developer ID P62B65A837) and notarized, five install
+smokes, then GitHub (prerelease, 19 assets; `SHA256SUMS` matches the run's reviewed inventory),
+npm (`beta` = `1.0.0-beta.5` on the wrapper and all five companion packages, `latest` stays
+`0.1.0`) and Homebrew (`sakuralang-beta`, tap commit `10b359c0`). The published macOS arm64 binary
+prints `sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281)`, `spctl` accepts it as
+Notarized Developer ID, and it builds and runs a native `hello, world` with `--target native`.
+`compat.yml` [39799910009](https://github.com/icantcodefyi/sakuralang/actions/runs/39799910009)
+on the tag: success (against `v1.0.0-beta.4`: 551 same, 0 listed, 35 skipped, 0 differ).
+`verify-published.yml`
+[39815259426](https://github.com/icantcodefyi/sakuralang/actions/runs/39815259426): green on all
+six rows, `accept --native` on the four native rows, the Intel macOS row for the first time.
+`dogfood.yml` [39815265106](https://github.com/icantcodefyi/sakuralang/actions/runs/39815265106):
+green (the automatic run 39813170094 failed only because it installed before npm had
+`1.0.0-beta.5`). WASM runtime ABI unchanged at 1.18.0, so no new ABI fixture. The signing approval
+and the tag are Claude Opus 5.5's; the `release-github` publication and the `release-npm` and
+`release-homebrew` approvals were made by another session under the same delegation. Released by
+Claude Opus 5.5 under the owner's written delegation of 2026-10-22.
+
 **`v1.0.0` gate audit and cut (design §17.312), 2026-10-22, at `3a7f93fd`.** The campaign is
 closed (`3a7f93fd`: every target ≥ 24 CPU-h, #8–#11 and #13 fixed with regressions, sanitizers
 clean at `472dea56`, no open `soundness` issue, no open issue at all). `v1.0.0-beta.5` is on
