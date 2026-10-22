@@ -446,8 +446,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, ubuntu-24.04-arm, windows-2025, macos-15-intel]
     runs-on: ${{ matrix.os }}
     # ubuntu-latest needs about 30 minutes since N4a runs the corpus both ways (cb0056fb),
-    # Windows longer.
-    timeout-minutes: 45
+    # Windows longer; the Intel macOS image 30 to 50.
+    timeout-minutes: ${{ matrix.os == 'macos-15-intel' && 75 || 45 }}
     defaults:
       run:
         shell: bash
@@ -455,6 +455,7 @@ jobs:
     env:
       # Miri, ASan and Memcheck with their detection controls: native-sanitizers.yml (§17.173).
       MACOSX_DEPLOYMENT_TARGET: "12.0"
+      SAKURA_TEST_TIME_SCALE: ${{ matrix.os == 'macos-15-intel' && '3' || '1' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
