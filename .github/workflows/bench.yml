@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Full nightly suite, the native comparison alone (matched lane), or an unchanged-commit noise sample
+        description: Full nightly suite, the native comparison alone (matched lane), the community suites alone (Benchmarks Game, Are We Fast Yet, web), or an unchanged-commit noise sample
         type: choice
-        options: [nightly, native, noise]
+        options: [nightly, native, suites, noise]
         default: nightly
       repeats:
         description: Independent quick noise runs per runner/engine (2–10)
@@ -97,7 +97,8 @@ jobs:
               return result.returncode
 
           def measure(path, program=None):
-              args = ["run", "--suite", "js", "--engine", engine,
+              # The community suites have no blessed baseline; the `suites` job times them.
+              args = ["run", "--suite", "js", "--engine", engine, "--exclude", "bg_*", "--exclude", "awfy_*",
                       "--lane", "matched", "--sizes", "quick", "--processes", "5", "--json", path]
               if program is not None:
                   args += ["--filter", program]
@@ -237,7 +238,7 @@ jobs:
         run: |
           mkdir -p bench-results
           bench run --suite js --engine "$BENCH_ENGINE" --lane "$BENCH_LANE" --sizes all \
-            --stable --json "bench-results/nightly-${BENCH_LANE}-${BENCH_ENGINE}.json"
+            --exclude 'bg_*' --exclude 'awfy_*' --stable --json "bench-results/nightly-${BENCH_LANE}-${BENCH_ENGINE}.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -323,7 +324,7 @@ jobs:
           mkdir -p bench-results
           cc --version
           bench run --suite native --lane "$BENCH_LANE" --sizes all \
-            --stable --json "bench-results/nightly-${BENCH_LANE}-native.json"
+            --exclude 'bg_*' --exclude 'awfy_*' --stable --json "bench-results/nightly-${BENCH_LANE}-native.json"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -390,11 +391,202 @@ jobs:
       - name: WASM lane (Node and Wasmtime)
         run: |
           mkdir -p bench-results
-          bench run --suite wasm --lane matched --sizes all --stable --json bench-results/nightly-wasm.json
+          bench run --suite wasm --lane matched --sizes all --stable --exclude 'bg_*' --exclude 'awfy_*' \
+            --json bench-results/nightly-wasm.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: bench-nightly-wasm-macos
+          path: bench-results/
+          if-no-files-found: warn
+
+  suites:
+    # The community suites (bench/README.md, "Community suites"): Benchmarks Game (`bg_*`) and
+    # Are We Fast Yet (`awfy_*`) programs on every backend, one runner per group and backend so each
+    # fits its timeout. Trend evidence only: no baseline is blessed from a CI runner.
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'suites')
+    name: Suites (${{ matrix.group }}, ${{ matrix.suite }}${{ matrix.engine && format(' {0}', matrix.engine) || '' }})
+    strategy:
+      fail-fast: false
+      matrix:
+        group: ["bg", "awfy"]
+        suite: [js, wasm, native]
+        engine: [""]
+        include:
+          - { group: bg, suite: js, engine: node }
+          - { group: bg, suite: js, engine: bun }
+          - { group: awfy, suite: js, engine: node }
+          - { group: awfy, suite: js, engine: bun }
+        exclude:
+          - suite: js
+            engine: ""
+    runs-on: macos-latest
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - name: Read reference pins
+        id: pins
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, version in pins.items():
+                  print(f"{name}={version}", file=output)
+          PY
+          echo "$GITHUB_WORKSPACE/bench" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: matrix.engine == 'bun'
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        env:
+          BENCH_SUITE: ${{ matrix.suite }}
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          if [ "$BENCH_SUITE" = wasm ]; then rustup target add wasm32-unknown-unknown; fi
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          cache-workspace-crates: ${{ matrix.suite == 'wasm' }}
+          key: suites-${{ matrix.suite }}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        if: matrix.suite == 'native'
+        with:
+          go-version: ${{ steps.pins.outputs.go }}
+          cache: false
+      - uses: ocaml/setup-ocaml@93303b622b2522e4411e295f9e77411a24912ac7 # v3.9.0
+        if: matrix.suite == 'native'
+        with:
+          ocaml-compiler: ${{ steps.pins.outputs.ocaml }}
+      - name: Expose OCaml native compiler
+        if: matrix.suite == 'native'
+        run: |
+          eval "$(opam env)"
+          opam var bin >> "$GITHUB_PATH"
+          test "$(ocamlopt -version)" = "${{ steps.pins.outputs.ocaml }}"
+      - name: Install pinned Koka
+        if: matrix.suite == 'native'
+        env:
+          KOKA_VERSION: ${{ steps.pins.outputs.koka }}
+        run: |
+          curl --fail --location --silent --show-error \
+            "https://github.com/koka-lang/koka/releases/download/v${KOKA_VERSION}/install.sh" \
+            --output "$RUNNER_TEMP/install-koka.sh"
+          sh "$RUNNER_TEMP/install-koka.sh" --minimal --force --prefix="$RUNNER_TEMP/koka"
+          echo "$RUNNER_TEMP/koka/bin" >> "$GITHUB_PATH"
+      # Official release archive; the SHA-256 also matches GitHub's asset digest.
+      - name: Install pinned Wasmtime
+        if: matrix.suite == 'wasm'
+        env:
+          WASMTIME_VERSION: ${{ steps.pins.outputs.wasmtime }}
+        run: |
+          test "$RUNNER_OS-$RUNNER_ARCH" = macOS-ARM64
+          archive="wasmtime-v${WASMTIME_VERSION}-aarch64-macos"
+          curl --fail --location --silent --show-error \
+            "https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/${archive}.tar.xz" \
+            --output "$RUNNER_TEMP/wasmtime.tar.xz"
+          echo "d7708ba1cc2da171db2c8273d8602f3e0684935dc7cab40148cdcca1da83c0f8  $RUNNER_TEMP/wasmtime.tar.xz" | shasum -a 256 -c -
+          tar -xJf "$RUNNER_TEMP/wasmtime.tar.xz" -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/$archive" >> "$GITHUB_PATH"
+          test "$("$RUNNER_TEMP/$archive/wasmtime" --version | cut -d' ' -f2)" = "$WASMTIME_VERSION"
+      - name: Time the group on this backend
+        env:
+          BENCH_GROUP: ${{ matrix.group }}
+          BENCH_SUITE: ${{ matrix.suite }}
+          BENCH_ENGINE: ${{ matrix.engine }}
+        run: |
+          mkdir -p bench-results
+          if [ "$BENCH_SUITE" = native ]; then cc --version; fi
+          name="suites-${BENCH_GROUP}-${BENCH_SUITE}${BENCH_ENGINE:+-$BENCH_ENGINE}"
+          bench run --suite "$BENCH_SUITE" ${BENCH_ENGINE:+--engine "$BENCH_ENGINE"} --filter "${BENCH_GROUP}_*" \
+            --lane matched --sizes all --stable --json "bench-results/${name}.json" | tee "bench-results/${name}.md"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bench-suites-${{ matrix.group }}-${{ matrix.suite }}${{ matrix.engine && format('-{0}', matrix.engine) || '' }}
+          path: bench-results/
+          if-no-files-found: warn
+
+  web:
+    # TechEmpower-style plaintext and JSON tests of `Serve` (bench/web/README.md): Sakura on Node, Bun
+    # and native beside Bun, Node, Go net/http and Rust hyper, all on 127.0.0.1, under the pinned oha.
+    # Linux: macOS's default listen backlog (somaxconn 128) drops connections at 1,024.
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'suites')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - name: Read reference pins
+        id: pins
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, version in pins.items():
+                  print(f"{name}={version}", file=output)
+          PY
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: ${{ steps.pins.outputs.go }}
+          cache: false
+      - name: Install pinned Rust toolchain
+        working-directory: compiler
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: compiler
+          key: web
+      - name: Cache pinned oha
+        id: oha
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.oha
+          key: oha-${{ runner.os }}-${{ runner.arch }}-${{ steps.pins.outputs.oha }}
+      - name: Install pinned oha
+        if: steps.oha.outputs.cache-hit != 'true'
+        env:
+          OHA_VERSION: ${{ steps.pins.outputs.oha }}
+        run: cargo install oha --version "=$OHA_VERSION" --locked --root ~/.oha
+      - name: Plaintext and JSON under load
+        run: |
+          mkdir -p bench-results
+          cc --version
+          OHA="$HOME/.oha/bin/oha" python3 bench/web/web.py --build-cli --json bench-results/web.json \
+            | tee bench-results/web.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: bench-web-linux
           path: bench-results/
           if-no-files-found: warn
 

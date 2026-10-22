@@ -2,6 +2,7 @@
 
 import contextlib
 import fnmatch
+import hashlib
 import io
 import json
 import shutil
@@ -373,6 +374,47 @@ class NativeProtocol(unittest.TestCase):
         m["checksums"]["20"] = "1"
         with self.assertRaises(bench.Fail):
             bench.oracle("fib", m, "rust", "native", exe)
+
+
+# A port that also has the Benchmarks Game's own command line, `main output <n>`, writing raw bytes.
+FAKE_OUTPUT = FAKE_NATIVE.replace('if mode == "values":', """if mode == "output":
+    sys.stdout.buffer.write(bytes([0x50, 0x34, 0x0a, 0xff]) * int(args[0]))
+elif mode == "values":""")
+
+
+class SuiteChecks(unittest.TestCase):
+    def setUp(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        self.exe = tmp / "main"
+        self.exe.write_text(FAKE_OUTPUT)
+        self.exe.chmod(0o755)
+
+    def test_official_output_is_checked_byte_for_byte(self):
+        m = bench.meta("fib")
+        m["official"] = {"size": 3, "md5": hashlib.md5(bytes([0x50, 0x34, 0x0a, 0xff]) * 3).hexdigest()}
+        bench.oracle("fib", m, "c", "native", self.exe)
+        m["official"]["md5"] = hashlib.md5(b"P4\n").hexdigest()
+        with self.assertRaisesRegex(bench.Fail, "output\\(3\\) has md5"):
+            bench.oracle("fib", m, "c", "native", self.exe)
+
+    def test_sakura_output_is_read_as_base64(self):
+        with patch.object(bench, "values", return_value={"2": "UDQK/w==\n"}):
+            self.assertEqual(bench.official_output("sakura", "node", "entry.mjs", 2), b"P4\n\xff")
+
+    def test_verify_sizes_are_oracle_inputs_and_bind_the_checksums(self):
+        m = bench.meta("fib")
+        m["verify"] = {"25": "75025"}
+        self.assertIn(25, bench.oracle_inputs(m))
+        m["checksums"]["25"] = "75025"
+        bench.oracle("fib", m, "c", "native", self.exe)
+        m["verify"]["25"] = "1"  # the suite's value wins over a recorded checksum
+        with self.assertRaisesRegex(bench.Fail, "the suite expects 1"):
+            bench.oracle("fib", m, "c", "native", self.exe)
+
+    def test_exclude_skips_programs(self):
+        self.assertIn("fib", bench.programs("f*"))
+        self.assertNotIn("fib", bench.programs("f*", ["fi*"]))
 
 
 class NativeBuilds(unittest.TestCase):
@@ -1183,6 +1225,18 @@ class Workflow(unittest.TestCase):
         self.assertIn("bench run --suite wasm --lane matched --sizes all --stable", job)
         pins = (bench.BENCH / "toolchains.toml").read_text()
         self.assertIn('wasmtime = "', pins)
+
+    def test_the_community_suites_have_their_own_job_and_stay_out_of_the_others(self):
+        workflow = (bench.ROOT / ".github/workflows/bench.yml").read_text()
+        job = workflow[workflow.index("  suites:"):workflow.index("  noise:")]
+        self.assertIn("inputs.mode == 'suites'", job)
+        self.assertIn('--filter "${BENCH_GROUP}_*"', job)
+        for name in ("nightly", "nightly-native", "nightly-wasm"):
+            start = workflow.index(f"  {name}:\n")
+            self.assertIn("--exclude 'bg_*' --exclude 'awfy_*'", workflow[start:start + 6000], name)
+        self.assertIn('"--exclude", "bg_*", "--exclude", "awfy_*"', workflow)
+        for p in bench.programs("bg_*") + bench.programs("awfy_*"):
+            self.assertIn(bench.meta(p)["suite"], ("benchmarks-game", "are-we-fast-yet"), p)
 
 
 class TypeScriptSuite(unittest.TestCase):

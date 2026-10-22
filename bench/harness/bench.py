@@ -3,6 +3,7 @@
 library only; the JS panel is timed in-process by harness/runner.mjs. Run it as `bench/bench`."""
 
 import argparse
+import base64
 import datetime
 import fnmatch
 import hashlib
@@ -80,9 +81,9 @@ def version(cmd):
 # ---------------------------------------------------------------------------------------------
 # Programs and variants
 
-def programs(pattern="*"):
+def programs(pattern="*", exclude=()):
     return [p for p in sorted(d.name for d in PROGRAMS.iterdir() if (d / "meta.toml").exists())
-            if fnmatch.fnmatch(p, pattern)]
+            if fnmatch.fnmatch(p, pattern) and not any(fnmatch.fnmatch(p, x) for x in exclude)]
 
 
 def meta(p):
@@ -90,7 +91,26 @@ def meta(p):
 
 
 def oracle_inputs(m):
-    return SMALL + list(m["sizes"]) + list(m.get("check_sizes", []))
+    listed = SMALL + list(m["sizes"]) + list(m.get("check_sizes", []))
+    return listed + [n for n in map(int, m.get("verify", {})) if n not in listed]
+
+
+def official_output(variant, engine, artefact, n):
+    """The bytes a program writes for the Benchmarks Game's own command line at n (meta.toml
+    `official`). A port's `main output <n>` writes them raw, as a Benchmarks Game program does.
+    Sakura's `output(n)` and hand JS's return them as base64, because `Console` writes lines of
+    text and no raw bytes: through runner.mjs (`--fn output`), as the WASI command's line, or as
+    the line Sakura's native `main output <n>` prints."""
+    if engine == "native" and not sakura_native(variant, engine):
+        r = subprocess.run([str(artefact), "output", str(n)], capture_output=True, timeout=PROCESS_TIMEOUT)
+        if r.returncode != 0:
+            raise Fail(f"`{artefact} output {n}` exited {r.returncode}: {r.stderr.decode(errors='replace')[-2000:]}")
+        return r.stdout
+    if sakura_native(variant, engine):
+        line = spawn([str(artefact), "output", str(n)])[0]
+    else:
+        line = values(variant, engine, artefact, [n], "output")[str(n)]
+    return base64.b64decode(line.strip(), validate=True)
 
 
 def build_cli():
@@ -414,6 +434,13 @@ def oracle(p, m, variant, engine, artefact):
                 for n in inputs if str(got.get(str(n))) != str(want.get(str(n)))]
 
     bad = check("run", m.get("checksums", {}))
+    # The suite's own expected results (Are We Fast Yet's verifyResult), never rewritten by --write.
+    bad += [f"run({n}) = {m['checksums'].get(n)} in [checksums], but the suite expects {v}"
+            for n, v in m.get("verify", {}).items() if str(m.get("checksums", {}).get(n)) != str(v)]
+    if official := m.get("official"):  # the Benchmarks Game's expected output, byte for byte
+        got = hashlib.md5(official_output(variant, engine, artefact, official["size"])).hexdigest()
+        if got != official["md5"]:
+            bad.append(f"output({official['size']}) has md5 {got}, expected {official['md5']}")
     if variant == "sakura":
         for case in m.get("negative", []):
             code = defect(variant, engine, artefact, case["arg"])
@@ -723,7 +750,7 @@ def cmd_run(a):
     engines = [a.engine] if a.engine else list(WASM_ENGINES if a.suite == "wasm" else JS_ENGINES)
     sizes_flag = a.sizes
     flags = {"suite": a.suite, "engines": engines, "lane": a.lane, "sizes": sizes_flag, "stable": a.stable,
-             "filter": a.filter, "processes": a.processes, "seed": a.seed,
+             "filter": a.filter, "exclude": a.exclude, "processes": a.processes, "seed": a.seed,
              "metric": "instructions" if a.instructions else "time", "node": NODE_FLAGS}
     if a.instructions and sys.platform != "darwin":
         log("--instructions reads macOS's `/usr/bin/time -l`")
@@ -743,7 +770,7 @@ def cmd_run(a):
         os.environ["SAKURA_NATIVE_LIB_DIR"] = str(build_native_cli())
     jobs = []  # (program, case, variant, backend, engine, artefact, size)
     stats = {}  # (program, case, size) → the WASM module's counters, from the Node host (§17.118)
-    for p in programs(a.filter):
+    for p in programs(a.filter, a.exclude):
         m = meta(p)
         sizes = m["sizes"][:2] if sizes_flag == "quick" else m["sizes"]
         built, verified, failed = {}, [], False
@@ -1960,12 +1987,14 @@ def cmd_oracle(a):
                         raise Fail(f"{p}: Sakura {label('run', case)} {sk} != JS {hand}")
                     tables[case] = sk
                 sk = tables.pop(None)
+                if wrong := {n: v for n, v in m.get("verify", {}).items() if sk.get(n) != str(v)}:
+                    raise Fail(f"{p}: Sakura run(n) is not the suite's expected result for {wrong}")
                 write_checksums(p, sk, tables)
                 log(f"{p}: wrote {len(sk)} checksums")
-            else:
-                oracle(p, m, "sakura", "node", entry)
-                oracle(p, m, "js", "node", js)
-                log(f"{p}: ok")
+            m = meta(p)
+            oracle(p, m, "sakura", "node", entry)
+            oracle(p, m, "js", "node", js)
+            log(f"{p}: ok")
         except Fail as e:
             log(e)
             status = EXIT_ORACLE
@@ -1992,6 +2021,7 @@ def main(argv=None):
     r.add_argument("--engine", choices=["node", "bun", "wasmtime"])
     r.add_argument("--lane", choices=["matched", "idiomatic"], default="matched")
     r.add_argument("--filter", default="*", help="glob over program names")
+    r.add_argument("--exclude", action="append", default=[], help="glob over program names to skip (repeatable)")
     r.add_argument("--sizes", choices=["all", "quick"], default="all")
     r.add_argument("--stable", action="store_true", help="2 s in-process warmup instead of 250 ms")
     r.add_argument("--instructions", action="store_true",
