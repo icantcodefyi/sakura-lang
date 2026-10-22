@@ -21,7 +21,7 @@ pub const EMERGENCY: u32 = 65_536;
 /// `SAKURA_MAX_HEAP` default.
 pub const DEFAULT_MAX_HEAP: u64 = 1 << 30;
 /// The tag a free block carries; real objects never have tag 0 (ABI §3.2).
-const FREE: u16 = 0;
+pub(crate) const FREE: u16 = 0;
 /// The tag of an allocated block until its constructor writes the real one (reserved range).
 const RAW: u16 = 0xFFFF;
 

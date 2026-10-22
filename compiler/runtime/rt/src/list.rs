@@ -586,10 +586,14 @@ impl Rt {
                 if has {
                     return Ok(());
                 }
+                // Each call consumes what it is given on failure too: the static empties stand
+                // in meanwhile, so the release below drops only what is still owned here.
                 self.dup(x)?;
-                seen = self.set_insert(seen, x)?;
+                let s = core::mem::replace(&mut seen, self.empty_set);
+                seen = self.set_insert(s, x)?;
                 self.dup(x)?;
-                out = self.list_push(out, x)?;
+                let o = core::mem::replace(&mut out, self.empty_list);
+                out = self.list_push(o, x)?;
                 Ok(())
             });
             if let Err(e) = step {

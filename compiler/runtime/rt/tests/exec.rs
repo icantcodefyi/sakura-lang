@@ -7,8 +7,9 @@
 
 mod common;
 
-use common::{CodeDesc, Known, Ty, codes_bytes, layout_bytes};
+use common::{CodeDesc, Known, Ty, codes_bytes, exhaust, layout_bytes};
 use sakura_rt::exec::{Code, callback_stub, outcome, status, step::*};
+use sakura_rt::heap::CLASSES;
 use sakura_rt::layout::{BOOL, I64, WORD};
 use sakura_rt::object::UNIT;
 use sakura_rt::{Defect, HostCall, Rt, tag};
@@ -67,6 +68,9 @@ const FIN_ALLOC: u32 = 25;
 const BAD_OP: u32 = 27;
 const TEXT_DEFECT: u32 = 28;
 const SLEEPER: u32 = 29;
+const TASK_SCOPE: u32 = 30;
+const CANCEL_ALL: u32 = 31;
+const BIG_BODY: u32 = 32;
 
 const TABLE: &[Code] = &[
     callback_stub,
@@ -99,6 +103,9 @@ const TABLE: &[Code] = &[
     bad_op,
     text_defect,
     sleeper,
+    sakura_rt::task::scope,
+    sakura_rt::task::cancel_all,
+    quick,
 ];
 
 fn codes() -> Vec<Option<CodeDesc<'static>>> {
@@ -134,6 +141,9 @@ fn codes() -> Vec<Option<CodeDesc<'static>>> {
         d("bad_op", &[I64], &[]),
         d("text_defect", &[I64], &[]),
         d("sleeper", &[I64], &[]),
+        d("scope", &[WORD, I64, WORD, WORD, I64], &[]),
+        d("cancel_all", &[], &[I64]),
+        d("big_body", &[I64; 120], &[]),
     ]
 }
 
@@ -1067,6 +1077,66 @@ fn scope_exit_with_pending_work() {
         }));
         finish(rt, task);
     });
+}
+
+/// `Task.scope` when the heap runs out while it starts (design §17.310 (3d)): with room for
+/// the group alone the closer cannot be allocated and the group is released at once; with room
+/// for all but the body's frame (120 slots, a 1 KiB block) `call_value` has released the body,
+/// and the finalizer releases the group as the task unwinds. Each ends `D096`, leaving nothing.
+#[test]
+fn scope_releases_its_body_and_group_once_when_the_heap_runs_out() {
+    let mut rt = runtime(4 << 20);
+    rt.sched.cancel_all_code = CANCEL_ALL;
+    let small: Vec<u32> = CLASSES[..8].iter().flat_map(|&c| [c; 4]).collect();
+    for room in [&small[..], &[32]] {
+        ten_times(&mut rt, |rt| {
+            let clause = closure(rt, QUICK, &[]).unwrap();
+            let body = closure(rt, BIG_BODY, &[]).unwrap();
+            let (task, f) = rt.start(TASK_SCOPE, 5, 0).unwrap();
+            rt.set_fslot(f, 0, clause as u64);
+            rt.set_fslot(f, 2, body as u64);
+            let fill = exhaust(rt, room);
+            assert_eq!(rt.run(task, TABLE), outcome::DEFECT);
+            for p in fill {
+                rt.heap.free(p);
+            }
+            assert_eq!(finish(rt, task), (outcome::DEFECT, 96));
+        });
+    }
+}
+
+/// `task_handler` when its second clause closure cannot be made (design §17.310 (3d)): the
+/// generator moved into the first closure goes with the handler, released once; a failed
+/// `Dup` of it releases the closure it was for as well.
+#[test]
+fn task_handler_releases_the_generator_once_on_failure() {
+    use sakura_rt::task::{deterministic_rng, task_handler};
+    let mut rt = Rt::new(2 << 20).unwrap();
+    let base = rt.stats().live_objects;
+    let codes = rt.new_bytes(12).unwrap();
+    let rng = deterministic_rng(&mut rt, 7).unwrap();
+    // Room for the handler (24 + 4 · 3 bytes) and one closure.
+    let fill = exhaust(&mut rt, &[36, 24]);
+    let r = task_handler(&mut rt, 0, codes + 12, 3, rng);
+    assert_eq!(r, Err(Defect::HEAP_EXHAUSTED));
+    for p in fill {
+        rt.heap.free(p);
+    }
+    assert_eq!(rt.stats().live_objects, base + 1, "only the codes are left");
+
+    let rng = deterministic_rng(&mut rt, 7).unwrap();
+    rt.heap.mem.set_u32(rng + 4, u32::MAX);
+    let r = task_handler(&mut rt, 0, codes + 12, 3, rng);
+    assert_eq!(r, Err(Defect::RC_OVERFLOW));
+    assert_eq!(
+        rt.rc(rng),
+        u32::MAX - 1,
+        "the first closure's reference went"
+    );
+    rt.heap.mem.set_u32(rng + 4, 1);
+    rt.drop(rng);
+    rt.drop(codes);
+    assert_eq!(rt.stats().live_objects, base);
 }
 
 #[test]

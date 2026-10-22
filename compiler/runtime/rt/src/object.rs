@@ -175,6 +175,11 @@ impl Rt {
         if !self.counted(w) {
             return;
         }
+        debug_assert_ne!(
+            self.tag(w),
+            crate::heap::FREE,
+            "drop of a freed object at {w}"
+        );
         let rc = self.rc(w);
         assert!(rc > 0, "drop of a dead object at {w}");
         if rc > 1 {

@@ -37,15 +37,20 @@ pub fn task_handler(rt: &mut Rt, effect: u32, codes: u32, n: u32, rng: u32) -> R
         rt.heap.mem.set_u32(h + off, v);
     }
     for i in 0..n {
-        let c = rt.new_object(tag::CLOSURE, 24).inspect_err(|_| {
+        // Closure 0 takes `rng`, each later one a new reference to it.
+        let c = match rt.new_object(tag::CLOSURE, 24) {
+            Ok(c) if i > 0 => rt.dup(rng).map(|()| c).inspect_err(|_| rt.drop(c)),
+            r => r,
+        };
+        // The handler's closures hold every reference to `rng` but the one not yet moved.
+        let c = c.inspect_err(|_| {
             rt.drop(h);
-            rt.drop(rng);
+            if i == 0 {
+                rt.drop(rng);
+            }
         })?;
         rt.heap.mem.set_u32(c + 8, rt.heap.mem.u32(codes + 4 * i));
         rt.heap.mem.set_u32(c + 12, 1);
-        if i > 0 {
-            rt.dup(rng)?;
-        }
         rt.set_slot(c, 0, rng as u64);
         rt.heap.mem.set_u32(h + 24 + 4 * i, c);
     }
@@ -139,24 +144,22 @@ pub fn scope(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
         0 => {
             drop_clause(rt, frame);
             let body = rt.take_fslot(frame, 2) as u32;
-            let r = (|| {
-                let gid = rt.group_new(group::SCOPE)?;
-                rt.set_fslot(frame, 4, gid as u64);
-                let closer = rt.new_object(tag::CLOSURE, 24)?;
-                rt.heap.mem.set_u32(closer + 8, rt.sched.cancel_all_code);
-                rt.heap.mem.set_u32(closer + 12, 1);
-                rt.set_slot(closer, 0, gid as u64);
-                rt.fin_push(closer)?;
-                let h = handle(rt, SCOPE, gid, 0)?;
-                let c = rt.call_value(body, 1).inspect_err(|_| rt.drop(h))?;
-                rt.set_fslot(c, 1, h as u64);
-                rt.set_block(frame, 1);
-                Ok(step::CALL)
-            })();
-            r.unwrap_or_else(|d| {
-                rt.drop(body);
-                rt.raise(d)
-            })
+            // `call_value` consumes `body` on failure too.
+            let r = open_scope(rt, frame)
+                .inspect_err(|_| rt.drop(body))
+                .and_then(|h| {
+                    rt.call_value(body, 1)
+                        .inspect_err(|_| rt.drop(h))
+                        .map(|c| (c, h))
+                });
+            match r {
+                Ok((c, h)) => {
+                    rt.set_fslot(c, 1, h as u64);
+                    rt.set_block(frame, 1);
+                    step::CALL
+                }
+                Err(d) => rt.raise(d),
+            }
         }
         1 => {
             let v = rt.take_ret();
@@ -194,6 +197,22 @@ pub fn scope(rt: &mut Rt, _env: u32, frame: u32) -> u32 {
             ret(rt, v)
         }
     }
+}
+
+/// `scope`'s group (slot 4) with the finalizer that cancels and releases it registered, and the
+/// `Scope` value naming it. Before the finalizer is registered a failure releases the group
+/// here; after, the finalizer does as the task unwinds.
+fn open_scope(rt: &mut Rt, frame: u32) -> Res<u32> {
+    let gid = rt.group_new(group::SCOPE)?;
+    rt.set_fslot(frame, 4, gid as u64);
+    let closer = rt
+        .new_object(tag::CLOSURE, 24)
+        .inspect_err(|_| rt.group_free(gid))?;
+    rt.heap.mem.set_u32(closer + 8, rt.sched.cancel_all_code);
+    rt.heap.mem.set_u32(closer + 12, 1);
+    rt.set_slot(closer, 0, gid as u64);
+    rt.fin_push(closer).inspect_err(|_| rt.group_free(gid))?;
+    handle(rt, SCOPE, gid, 0)
 }
 
 /// `Task.scope`'s finalizer: cancel the members still running and release the group.

@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 
 use sakura_rt::Rt;
+use sakura_rt::heap::{CLASSES, RUN_PAGE};
 use sakura_rt::layout::{I64, NONE_ID, WORD};
 
 /// A type of the test program, in layout-table order (the index is the `type_id`).
@@ -172,3 +173,20 @@ pub fn rt_with(types: &[Ty], known: Known) -> Rt {
 
 /// The list-of-`Int` record used by the destruction tests: `Cons { head: Int, tail: word }`.
 pub const CONS: &[Ty] = &[Ty::Record("Cons", &[("head", I64), ("tail", WORD)])];
+
+/// Run the heap out: every page to the limit, the current chunk and every free list taken,
+/// then one block of each size in `room` handed back, so the next allocations are served by
+/// those alone and fail with `D096` past them. Free the returned blocks to undo it.
+pub fn exhaust(rt: &mut Rt, room: &[u32]) -> Vec<u32> {
+    let held: Vec<u32> = room.iter().map(|&s| rt.heap.alloc(s).unwrap()).collect();
+    let mut fill = vec![];
+    for size in [RUN_PAGE + 1].into_iter().chain(CLASSES) {
+        while let Ok(p) = rt.heap.alloc(size) {
+            fill.push(p);
+        }
+    }
+    for p in held {
+        rt.heap.free(p);
+    }
+    fill
+}

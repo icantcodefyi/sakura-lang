@@ -4,7 +4,8 @@
 
 mod common;
 
-use common::{Known, Ty, rt_with};
+use common::{Known, Ty, exhaust, rt_with};
+use sakura_rt::heap::CLASSES;
 use sakura_rt::layout::{F64, I64, WORD};
 use sakura_rt::object::UNIT;
 use sakura_rt::{Defect, Rt, tag};
@@ -684,6 +685,32 @@ fn list_builtins_match_js() {
         rt.drop(v);
     }
     assert_eq!(baseline(&rt), base);
+}
+
+/// `List.unique` when the heap runs out part way (design §17.310 (3d)): `set_insert` and
+/// `list_push` consume the set and the list they fail on, so each is released exactly once.
+#[test]
+fn unique_releases_its_partial_result_once_when_the_heap_runs_out() {
+    let mut failed_part_way = false;
+    for n in 0..8 {
+        let mut rt = Rt::new(2 << 20).unwrap();
+        let base = baseline(&rt);
+        let xs = ints(&mut rt, &(0..64).collect::<Vec<_>>());
+        let room: Vec<u32> = CLASSES.iter().flat_map(|&c| vec![c; n]).collect();
+        let fill = exhaust(&mut rt, &room);
+        match rt.list_unique(xs) {
+            Ok(u) => rt.drop(u),
+            Err(d) => {
+                assert_eq!(d, Defect::HEAP_EXHAUSTED);
+                failed_part_way |= n > 0;
+            }
+        }
+        for p in fill {
+            rt.heap.free(p);
+        }
+        assert_eq!(baseline(&rt), base, "room {n}");
+    }
+    assert!(failed_part_way);
 }
 
 #[test]

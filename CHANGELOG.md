@@ -41,6 +41,17 @@ retains earlier implementation history.
   107,885 → 72,028, reuses 1,106 → 1,203). No program's output changes, and there is no ABI
   change.
 
+### Security
+
+- **`Task.scope` and `Task.deterministic` released a value twice when the heap ran out**
+  (WASM and native, [#12](https://github.com/icantcodefyi/sakuralang/issues/12), design
+  §17.310 (3d)). If the scope body's frame could not be allocated, the body closure was
+  dropped twice. If the handler's second clause closure could not be allocated, the
+  generator was dropped twice. Either drop corrupted the allocator's free list, which
+  finalizers, `expect_defect` and a server's later requests could go on using after the
+  `D096`. Each is now released once. A debug assertion in the runtime's drop now catches
+  any drop of a freed block. The JS backend was not affected.
+
 ## [1.0.0-beta.4] - 2026-10-22
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
