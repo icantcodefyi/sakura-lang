@@ -249,7 +249,7 @@ jobs:
   nightly-native:
     # Wall time of Sakura --target native beside C, Rust, Go, OCaml and Koka on a hosted runner:
     # the time numbers anyone can reproduce (the counted baseline is the reference Mac's).
-    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && inputs.mode != 'noise')
+    if: github.event.schedule == '17 2 * * *' || (github.event_name == 'workflow_dispatch' && (inputs.mode == 'nightly' || inputs.mode == 'native'))
     name: Nightly native (${{ matrix.lane }})
     strategy:
       fail-fast: false
