@@ -1,0 +1,100 @@
+---
+title: Native code (experimental)
+description: What `--target native` builds, where it runs, what it cannot do yet, and what has been measured of it.
+---
+
+`sakura build --target native` compiles a program to a native executable. A Cranelift backend
+reads the same lowered IR as the WebAssembly backend and links it against the native runtime,
+so a native program needs no Node and no Sakura Lang install to run. Memory is managed by
+reference counting inserted at compile time, as on WebAssembly: non-atomic counts, no collector,
+and an in-place rebuild of a value the program held the last reference to
+([Memory](/docs/tour/memory)).
+
+<Callout type="warn" title="Experimental">
+  `--target native` may change or go away in a later release without a migration. It is outside
+  every compatibility promise of [Stability](/docs/stability) until its stabilization conditions
+  are met in a 1.x minor release. Each build prints one line saying so, with the pointer profile
+  and runtime ABI it targets.
+</Callout>
+
+## Use it
+
+```sh
+sakura build --target native main.sak   # writes target/sakura/native/main
+./target/sakura/native/main
+sakura run --target native main.sak     # build, then run
+sakura test --target native             # the test suite on the native runtime
+```
+
+The build links with the system linker, and Sakura Lang bundles none: `cc` on macOS and Linux
+(the Xcode Command Line Tools, or `gcc` from the distribution), MSVC's `link.exe` on Windows.
+Without one the build stops with [`V8007`](/docs/errors/V8007). The driver library it links,
+`libsakura_native_driver.a`, ships in `lib/sakura/native/` beside `bin/` in every channel;
+`SAKURA_NATIVE_LIB_DIR` names another directory. [Install](/docs/install#native-builds-experimental)
+has the details.
+
+## Platforms
+
+| Platform | `--target native` |
+| --- | --- |
+| macOS, Apple silicon | in the release binaries from `v1.0.0-beta.4` |
+| Linux x64 | in the release binaries from `v1.0.0-beta.4` |
+| Linux arm64 | in the release binaries from `v1.0.0-beta.4` |
+| macOS, Intel | a compiler built from source with `cargo build --release -p sakura_cli --features native` |
+| Windows x64 | a source build as above; `main.exe`, no debugger symbols (defect traces still name Sakura source positions) |
+
+Other release binaries refuse the target with exit 2 and name the three above. An executable
+runs on the [install floors](/docs/install): glibc 2.35 and macOS 12.0 or later, Windows 10 x64.
+
+## What it runs
+
+Native agrees with the JavaScript backend on every program of the semantics corpus: stdout,
+effect traces and defect records, checked in CI beside JavaScript and WebAssembly. Every standard service but `WebSocket` runs on the native runtime: `Console`,
+`Clock`, `Random`, `Env`, `Fs`, `Json`, `Cli`, `Sql`, `Http` and serving, `Llm`, test mode and
+property tests. Integers are exact 64-bit values, as on WebAssembly; the JavaScript backend
+stops with `D003` past 2^53.
+
+## Limits
+
+- **`WebSocket`.** A program whose `main` declares it exits 75 at startup, before any of its code
+  runs, with "`WebSocket` is not available on target `native`". A host handler for it installed
+  inside the program stops with a `D090` defect at first use (exit 70).
+- **Very wide functions are compiled in pieces.** A function of more than 1,024 IR blocks (a
+  `match` of thousands of guarded rows, say) is cut into functions of about that size so that
+  code generation stays linear in its size. The output is unchanged; the cut function runs on
+  heap frames instead of the direct calls a smaller function gets. No benchmark or corpus
+  function is that wide.
+- **Resource limits.** The native driver reads `SAKURA_MAX_HEAP` and `SAKURA_MAX_REQUESTS` from
+  the environment; the JavaScript and WebAssembly hosts read none. Both variables are
+  experimental with the target.
+
+## Measured
+
+Every number here is from a blessed counted file on the reference Mac (Apple silicon, macOS), in
+[`bench/baselines`](https://github.com/icantcodefyi/sakuralang/tree/main/bench/baselines).
+
+**Compile time**, the counted native compile report blessed at `v1.0.0-beta.4`'s preparation
+commit `40af20ce`
+([`baselines/compile-native`](https://github.com/icantcodefyi/sakuralang/blob/main/bench/baselines/compile-native/d88970189598.json)),
+p95 of 15 builds per program, wall time on a loaded machine:
+
+| Phase | The 22 benchmark programs |
+| --- | --- |
+| Front end (check and Core) | 8.7–12.0 ms |
+| Lowering to the native IR | 0.2–3.7 ms |
+| Code generation (Cranelift) | 2.5–48.9 ms |
+| Object file | 0.3–0.7 ms |
+| Link (the system linker) | 69.9–124.6 ms |
+
+The system linker is most of a small build. On one function of 32,768 guarded rows the same
+report counts code generation at 2.01× the instructions of 16,384 rows: linear per doubling,
+1.52 s at the larger size.
+
+**Run time** has not been blessed yet. The benchmark harness counts the native executable beside
+Rust, Go, OCaml and Koka ports of the same programs (`bench run --suite native`), and the
+first native run-time baseline is blessed with `v1.0.0-beta.5`'s preparation commit; until then
+this page prints no run-time number, and Sakura Lang makes no native speed claim. The targets it
+will be read against are the design's ceilings on instructions per call
+([Benchmarks](/docs/benchmarks)): the numeric programs at most 1.5× Rust's and 1.0× Go's, the
+text programs 1.5× Rust's, the allocation programs 1.2× OCaml's and Koka's, and handlers 1.0×
+Koka's.
