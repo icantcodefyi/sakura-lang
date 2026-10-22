@@ -1432,7 +1432,9 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   copied without a test, so a wrapper hit never hides copied descendants; a remove copies its
   index path without testing it, which N0b does not count),
   `borrow_candidates` (executed sites the LIR marked: the reference stays live after a call
-  that only reads it, so borrowing would remove the `Dup` and the callee's `Drop`; each is
+  that only reads it, so borrowing would remove the `Dup` and the callee's `Drop`, counted
+  when the callee is a direct def; a builtin's drop of its argument is the runtime's and is not
+  in `drops`; each is
   also counted in `dups` when it duplicates. Since 1.17.0 (design §17.247 (1)) the call is a builtin argument
   the runtime only reads (`sakura_lir::borrow::reads`) or a parameter a direct def never
   consumes on any path, for every managed type; before, a read-only collection builtin or a
