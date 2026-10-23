@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+reader 6 126
+kept 3 1 66
+logged 6
+effect 6 66

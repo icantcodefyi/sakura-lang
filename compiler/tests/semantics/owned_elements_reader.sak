@@ -1,0 +1,56 @@
+// milestone: M4
+// covers: design §17.273 (1) (c) (a pure def that borrows the list and returns a scalar reads its elements and retains none, so the chain keeps its elements; one with effects or a result that can hold an element does not)
+
+type Body = { x: Int, v: Int }
+
+fn at(bs: List<Body>, i: Int) -> Body { Option.expect(bs[i], "body") }
+
+fn system() -> List<Body> { [Body { x: 1, v: 10 }, Body { x: 2, v: 20 }, Body { x: 3, v: 30 }] }
+
+// Rebuilds every body: in place in its owned entry when the list owns its elements.
+fn kick(start: List<Body>) -> List<Body> {
+  var bs = start
+  var i = 0
+  while i < List.len(bs) {
+    let b = at(bs, i)
+    bs = List.set(bs, i, Body { ..b, x: b.x + b.v })
+    i = i + 1
+  }
+  bs
+}
+
+// Pure, borrows the list, returns an `Int`: a reader.
+fn total(bs: List<Body>) -> Int {
+  var t = 0
+  for b in bs { t = t + b.x }
+  t
+}
+
+// Returns an element inside a tuple: not a reader.
+fn keep(bs: List<Body>) -> (Int, Body) { (List.len(bs), at(bs, 0)) }
+
+// Performs an effect: not a reader.
+fn total_logged(bs: List<Body>) -> Int ! {Console} {
+  let t = total(bs)
+  Console.print("logged {t}")
+  t
+}
+
+pub fn main() -> Unit ! {Console} {
+  var bs = system()
+  let t0 = total(bs)
+  bs = kick(bs)
+  bs = kick(bs)
+  Console.print("reader {t0} {total(bs)}")
+
+  // `first` is the element `cs[0]` the call returned: `kick` must not rebuild it in place.
+  var cs = system()
+  let (n, first) = keep(cs)
+  cs = kick(cs)
+  Console.print("kept {n} {first.x} {total(cs)}")
+
+  var ds = system()
+  let t = total_logged(ds)
+  ds = kick(ds)
+  Console.print("effect {t} {total(ds)}")
+}

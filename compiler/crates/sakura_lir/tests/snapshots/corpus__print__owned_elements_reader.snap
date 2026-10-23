@@ -1,0 +1,247 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_elements_reader::Body | Body 32b (x: i64, v: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_elements_reader, frame 27 slots [%0 word*, %1 i64, %2 word*, %3 word*, %4 i64, %5 word*, %6 i64, %12 i64, %13 word*, %16 bool, %18 word*, %19 word*, %20 word*, %24 word*, %25 i64, %26 word*, %37 i64, %38 word*, %41 bool, %43 word*, %44 i64, %45 word*, %46 word*, %47 i64, %53 i64, %54 word*, %57 bool]
+  b0():
+    call system#2() -> b1()
+  b1(%0 r: ptr):
+    %62 r.lent: ref = lend %0
+    call total#9(%62) -> b2(%0)
+  b2(%1 r: i64, %2 r: ptr):
+    call kick#4(%2) -> b3(%1)
+  b3(%3 r: ptr, %4 r: i64):
+    call kick#4(%3) -> b4(%4)
+  b4(%5 r: ptr, %6 r: i64):
+    %7 s: ptr = show %6
+    %8 lit: ptr = const str 0
+    %9 s: ptr = concat %8, %7
+    drop %7
+    %10 lit: ptr = const str 1
+    %11 s: ptr = concat %9, %10
+    drop %10
+    call total#3(%5) -> b5(%11)
+  b5(%12 r: i64, %13 s: ptr):
+    %14 s: ptr = show %12
+    %15 s: ptr = concat %13, %14
+    drop %14
+    perform std::console::Console.print(%15) -> b6()
+  b6(%16 r: unit):
+    %17 box: word = box %16
+    drop %17
+    call system#2() -> b7()
+  b7(%18 r: ptr):
+    %63 r.lent: ref = lend %18
+    call keep#10(%63) -> b8(%18)
+  b8(%19 r: ptr, %20 r: ptr):
+    %60 p: i64 = tuple_get %19.0
+    %61 p: ptr = tuple_get %19.1
+    drop %19
+    jump b9(%60, %61, %20)
+  b9(%21 n: i64, %22 first: ptr, %23 r: ptr):
+    call kick#4(%23) -> b10(%21, %22)
+  b10(%24 r: ptr, %25 n: i64, %26 first: ptr):
+    %27 s: ptr = show %25
+    %28 lit: ptr = const str 2
+    %29 s: ptr = concat %28, %27
+    drop %27
+    %30 lit: ptr = const str 1
+    %31 s: ptr = concat %29, %30
+    drop %30
+    %32 x: i64 = proj %26.0 main::owned_elements_reader::Body
+    drop %26
+    %33 s: ptr = show %32
+    %34 s: ptr = concat %31, %33
+    drop %33
+    %35 lit: ptr = const str 1
+    %36 s: ptr = concat %34, %35
+    drop %35
+    call total#3(%24) -> b11(%36)
+  b11(%37 r: i64, %38 s: ptr):
+    %39 s: ptr = show %37
+    %40 s: ptr = concat %38, %39
+    drop %39
+    perform std::console::Console.print(%40) -> b12()
+  b12(%41 r: unit):
+    %42 box: word = box %41
+    drop %42
+    call system#2() -> b13()
+  b13(%43 r: ptr):
+    dup %43
+    call total_logged#6(%43) -> b14(%43)
+  b14(%44 r: i64, %45 r: ptr):
+    call kick#4(%45) -> b15(%44)
+  b15(%46 r: ptr, %47 r: i64):
+    %48 s: ptr = show %47
+    %49 lit: ptr = const str 3
+    %50 s: ptr = concat %49, %48
+    drop %48
+    %51 lit: ptr = const str 1
+    %52 s: ptr = concat %50, %51
+    drop %51
+    call total#3(%46) -> b16(%52)
+  b16(%53 r: i64, %54 s: ptr):
+    %55 s: ptr = show %53
+    %56 s: ptr = concat %54, %55
+    drop %55
+    perform std::console::Console.print(%56) -> b17()
+  b17(%57 r: unit):
+    %58 box: word = box %57
+    %59 unbox: unit = unbox %58
+    drop %58
+    ret %59
+
+fn $entry#1 top -> unit ; main::owned_elements_reader, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn system#2 top -> ptr ; main::owned_elements_reader, frame 0 slots []
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: i64 = const 10
+    %2 rec: ptr = alloc main::owned_elements_reader::Body(%0, %1)
+    %3 lit: i64 = const 2
+    %4 lit: i64 = const 20
+    %5 rec: ptr = alloc main::owned_elements_reader::Body(%3, %4)
+    %6 lit: i64 = const 3
+    %7 lit: i64 = const 30
+    %8 rec: ptr = alloc main::owned_elements_reader::Body(%6, %7)
+    %9 xs: ptr = alloc list(%2, %5, %8)
+    ret %9
+
+fn total#3 top -> i64 ; main::owned_elements_reader, frame 1 slots [%0 word*]
+  b0(%0 bs: ptr):
+    %26 bs.lent: ref = lend %0
+    %1 n: i64 = $list_len(%26)
+    %24 lit: i64 = const 0
+    %25 lit: i64 = const 0
+    jump b1(%24, %25, %0, %1)
+  b1(%2 i: i64, %3 t: i64, %4 bs: ptr, %5 n: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 bs: ptr, %8 n: i64, %9 i: i64, %10 t: i64):
+    %27 bs.lent: ref = lend %7
+    %15 x: word = $list_at(%27, %9)
+    %22 x: i64 = proj %15.0 main::owned_elements_reader::Body
+    drop %15
+    %23 t: i64 = intadd %10, %22
+    jump b4(%23, %7, %8, %9)
+  b3(%11 bs: ptr, %12 n: i64, %13 i: i64, %14 t: i64):
+    drop %11
+    ret %14
+  b4(%16 t: i64, %17 bs: ptr, %18 n: i64, %19 i: i64):
+    %20 lit: i64 = const 1
+    %21 i: i64 = intadd %19, %20
+    jump b1(%21, %16, %17, %18)
+
+fn kick#4 top -> ptr ; main::owned_elements_reader, frame 6 slots [%0 word*, %12 word*, %13 word*, %14 i64, %21 word*, %22 i64]
+  b0(%0 start: ptr):
+    %26 lit: i64 = const 0
+    jump b1(%0, %26)
+  b1(%1 bs: ptr, %2 i: i64):
+    %27 bs.lent: ref = lend %1
+    %3 r: i64 = $list_len(%27)
+    %4 t: bool = lt.int %2, %3
+    if %4 then b3(%1, %2) else b4(%1, %2)
+  b2(%5 v: unit, %6 bs: ptr, %7 i: i64):
+    jump b1(%6, %7)
+  b3(%8 bs: ptr, %9 i: i64):
+    %28 bs.lent: ref = lend %8
+    call at#11(%28, %9) -> b5(%8, %9)
+  b4(%10 bs: ptr, %11 i: i64):
+    ret %10
+  b5(%12 r: ptr, %13 bs: ptr, %14 i: i64):
+    %15 x: i64 = proj %12.0 main::owned_elements_reader::Body
+    %16 v: i64 = proj %12.1 main::owned_elements_reader::Body
+    %17 t: i64 = intadd %15, %16
+    %18 v: i64 = proj %12.1 main::owned_elements_reader::Body
+    %29 token: word = $reuse_reset(%12)
+    %19 rec: ptr = alloc main::owned_elements_reader::Body(%17, %18) reuse %29
+    %20 $site: i64 = const 2
+    call set#8(%13, %14, %19, %20) -> b6(%14)
+  b6(%21 r: ptr, %22 i: i64):
+    %23 lit: i64 = const 1
+    %24 t: i64 = intadd %22, %23
+    %25 lit: unit = const ()
+    jump b2(%25, %21, %24)
+
+fn keep#5 top -> ptr ; main::owned_elements_reader, frame 3 slots [%0 word*, %3 word*, %4 i64]
+  b0(%0 bs: ptr):
+    %6 bs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%6)
+    %2 lit: i64 = const 0
+    call at#7(%0, %2) -> b1(%1)
+  b1(%3 r: ptr, %4 r: i64):
+    %5 tup: ptr = alloc tuple#4(i64, word)(%4, %3)
+    ret %5
+
+fn total_logged#6 top -> i64 ; main::owned_elements_reader, frame 4 slots [%0 word*, %1 i64, %5 bool, %6 i64]
+  b0(%0 bs: ptr):
+    call total#3(%0) -> b1()
+  b1(%1 r: i64):
+    %2 s: ptr = show %1
+    %3 lit: ptr = const str 4
+    %4 s: ptr = concat %3, %2
+    drop %2
+    perform std::console::Console.print(%4) -> b2(%1)
+  b2(%5 r: unit, %6 r: i64):
+    %7 box: word = box %5
+    drop %7
+    ret %6
+
+fn at#7 top -> ptr ; main::owned_elements_reader, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 bs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 5
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3
+
+fn total#9 borrowed variant of #3 -> i64 ; main::owned_elements_reader, frame 1 slots [%0 i64]
+  b0(%0 bs: ref):
+    %26 bs.lent: ref = lend %0
+    %1 n: i64 = $list_len(%26)
+    %24 lit: i64 = const 0
+    %25 lit: i64 = const 0
+    jump b1(%24, %25, %0, %1)
+  b1(%2 i: i64, %3 t: i64, %4 bs: ref, %5 n: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 bs: ref, %8 n: i64, %9 i: i64, %10 t: i64):
+    %27 bs.lent: ref = lend %7
+    %15 x: word = $list_at(%27, %9)
+    %22 x: i64 = proj %15.0 main::owned_elements_reader::Body
+    drop %15
+    %23 t: i64 = intadd %10, %22
+    jump b4(%23, %7, %8, %9)
+  b3(%11 bs: ref, %12 n: i64, %13 i: i64, %14 t: i64):
+    ret %14
+  b4(%16 t: i64, %17 bs: ref, %18 n: i64, %19 i: i64):
+    %20 lit: i64 = const 1
+    %21 i: i64 = intadd %19, %20
+    jump b1(%21, %16, %17, %18)
+
+fn keep#10 borrowed variant of #5 -> ptr ; main::owned_elements_reader, frame 3 slots [%0 i64, %3 word*, %4 i64]
+  b0(%0 bs: ref):
+    %6 bs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%6)
+    %2 lit: i64 = const 0
+    call at#11(%0, %2) -> b1(%1)
+  b1(%3 r: ptr, %4 r: i64):
+    %5 tup: ptr = alloc tuple#4(i64, word)(%4, %3)
+    ret %5
+
+fn at#11 borrowed variant of #7 -> ptr ; main::owned_elements_reader, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 bs: ref, %1 i: i64):
+    %2 lit: ptr = const str 5
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3

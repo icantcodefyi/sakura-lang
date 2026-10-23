@@ -220,6 +220,7 @@ semantics/owned_elements_carried: ok, 38 allocated, 42 dup, 80 drop, peak 17, li
 semantics/owned_elements_guard: ok, 58 allocated, 54 dup, 112 drop, peak 8, live 0/0
 semantics/owned_elements_moved: ok, 53 allocated, 30 dup, 83 drop, peak 8, live 0/0
 semantics/owned_elements_option: ok, 33 allocated, 12 dup, 45 drop, peak 8, live 0/0
+semantics/owned_elements_reader: ok, 71 allocated, 79 dup, 150 drop, peak 8, live 0/0
 semantics/owned_elements_shared: ok, 73 allocated, 24 dup, 97 drop, peak 7, live 0/0
 semantics/owned_empty_set_defect: D020, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/owned_empty_singleton: unsupported (builtin map_remove)

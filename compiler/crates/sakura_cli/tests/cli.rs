@@ -2587,6 +2587,21 @@ fn carry consumes start
   r%52 = set(bs%27) shared(join), owned entry owned
 ",
         ),
+        // Design §17.273 (1) (c): `total` is pure, borrows the list and returns an `Int`, so a
+        // call of it between updates keeps the elements owned; `keep` returns an element and
+        // `total_logged` performs, so the chains past them call `kick`'s plain entry.
+        (
+            "owned_elements_reader",
+            "fn main
+  r%2 = kick(r%0) owned
+  r%3 = kick(r%2) owned
+  r%17 = kick(r%11) shared(elements)
+  r%31 = kick(r%29) shared(elements)
+fn kick consumes start with elements
+  rec%15 = Body {..r%10} allocates, owned entry in place
+  r%16 = set(bs%3) shared(join), owned entry owned
+",
+        ),
         // A def returning an `Int` sinks the list it updates: owned arguments take its owned
         // entry, a retained or twice-used one the plain entry.
         (

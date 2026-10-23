@@ -23,8 +23,9 @@
 //!     happens when no version and no element local of the chain is live after it (nothing of
 //!     the chain is updated in place afterwards); a read of a version retains nothing only when
 //!     its result holds no element or is an element local (`list_len`, `list_contains`,
-//!     `list_at`, `list_get_expect`, an element-read def), not `list_get`, whose `Option` holds
-//!     the element where no element local names it (design §17.290 (2)); and
+//!     `list_at`, `list_get_expect`, an element-read def, a pure def borrowing the list that
+//!     returns a scalar), not `list_get`, whose `Option` holds the element where no element
+//!     local names it (design §17.290 (2)); and
 //! (d) an element local only flows into join parameters that are element locals of the chain.
 //!
 //! A call of a def whose owned entry assumes owned elements is proved only when its chain owns
@@ -872,12 +873,29 @@ impl<'a> Elems<'a> {
                 n.as_str(),
                 "list_len" | "list_contains" | "list_at" | "list_get_expect"
             ),
-            Atom::Global(d) => self.sums[d.index()]
-                .elem_read
-                .is_some_and(|(p, _)| at == [p]),
+            Atom::Global(d) => {
+                self.sums[d.index()]
+                    .elem_read
+                    .is_some_and(|(p, _)| at == [p])
+                    || self.reader(*d, &at)
+            }
             _ => false,
         };
         taken || read || self.last(y, root)
+    }
+
+    /// A pure def that borrows the list at every position `at` and returns a scalar retains no
+    /// element: it can keep one only in its result, a failure or a handler (`energy(bs) ->
+    /// Float`).
+    fn reader(&self, d: DefId, at: &[usize]) -> bool {
+        let def = self.m.def(d);
+        let caps = def.captures.len();
+        def.row.is_pure()
+            && matches!(
+                def.ret,
+                Ty::Unit | Ty::Bool | Ty::Int | Ty::Float | Ty::String | Ty::Bytes
+            )
+            && at.iter().all(|p| self.sums[d.index()].borrows(caps + p))
     }
 
     fn elem_use_ok(&self, x: Local, y: Local, root: usize) -> bool {

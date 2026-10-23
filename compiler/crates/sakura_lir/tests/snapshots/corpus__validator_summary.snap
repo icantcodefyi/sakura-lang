@@ -220,6 +220,7 @@ semantics/owned_elements_carried: 6 funcs, 27 blocks, 1 dup, 10 drop, valid
 semantics/owned_elements_guard: 6 funcs, 29 blocks, 0 dup, 11 drop, valid
 semantics/owned_elements_moved: 6 funcs, 31 blocks, 0 dup, 14 drop, valid
 semantics/owned_elements_option: 6 funcs, 22 blocks, 0 dup, 13 drop, valid
+semantics/owned_elements_reader: 12 funcs, 51 blocks, 1 dup, 21 drop, valid
 semantics/owned_elements_shared: 7 funcs, 27 blocks, 2 dup, 21 drop, valid
 semantics/owned_empty_set_defect: 3 funcs, 9 blocks, 0 dup, 2 drop, valid
 semantics/owned_empty_singleton: 3 funcs, 24 blocks, 0 dup, 39 drop, valid
