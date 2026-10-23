@@ -88,6 +88,8 @@ pub struct Env<'a> {
     /// the address of the main pool's free-list heads, of the `stats()` counters, and the
     /// emergency pool's start.
     pub heap: [u32; 3],
+    /// The linker's `sakura$drop`: a `Drop` that does not decrement in place.
+    pub drop: u32,
     /// The static-block offset of the tuple kinds table: per layout id, the scalar kinds of a
     /// tuple row's first 16 slots, two bits each as in the layout table (0 for other entries).
     pub tuple_kinds: u32,
@@ -967,8 +969,9 @@ impl Gen<'_, '_> {
 
     /// `Drop` of the word in local `l` (ABI §3.1, design §17.287 (3)): a counted object
     /// (`is_ptr`, not `static`) with `rc > 1` is decremented in place and counted in
-    /// [`InPlace::drops`]; anything else goes to the `drop` export, which performs the last
-    /// decrement and the release.
+    /// [`InPlace::drops`]; anything else goes to the linker's `sakura$drop`, which frees a
+    /// small object itself and leaves the rest to the `drop` export (the last decrement and the
+    /// release).
     fn drop_word(&self, s: &mut InstructionSink<'_>, l: u32) -> Result<(), String> {
         s.block(BlockType::Empty);
         s.block(BlockType::Empty);
@@ -993,8 +996,7 @@ impl Gen<'_, '_> {
         self.count(s, self.env.in_place.drops);
         s.br(1);
         s.end();
-        s.local_get(l);
-        self.call_rt(s, "drop")?;
+        s.local_get(l).call(self.env.drop);
         s.end();
         Ok(())
     }

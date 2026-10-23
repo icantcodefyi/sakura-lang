@@ -310,6 +310,7 @@ semantics/uuid_decode: 9 funcs, 52 blocks, 1 dup, 32 drop, valid
 semantics/validate_untrusted_into_refined: 9 funcs, 45 blocks, 0 dup, 23 drop, valid
 semantics/variants_and_match: 4 funcs, 38 blocks, 0 dup, 26 drop, valid
 semantics/virtual_timeout_stream_read: 142 funcs, 1991 blocks, 86 dup, 1274 drop, valid
+semantics/wasm_inline_drop: 6 funcs, 27 blocks, 1 dup, 10 drop, valid
 semantics/wasm_inline_paths: 6 funcs, 23 blocks, 1 dup, 29 drop, valid
 semantics/websocket_accept_rejects_max_message: 148 funcs, 2138 blocks, 92 dup, 1288 drop, valid
 semantics/websocket_close_rejects_code: 147 funcs, 2134 blocks, 92 dup, 1291 drop, valid

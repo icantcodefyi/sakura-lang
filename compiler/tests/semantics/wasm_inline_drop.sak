@@ -1,0 +1,40 @@
+// milestone: M4
+// covers: the WASM linker's `sakura$drop` (`sakura_codegen_wasm` `lib.rs`): the last `Drop` of a record of scalars, of a tuple and a variant constructor owning one slot whose child survives (freed inline) or dies with it (the runtime's release), and of rows owning two slots (always the runtime's)
+
+type Flat = { a: Int, b: Int }
+
+type One = { flat: Flat, k: Int }
+
+type Two = { x: Flat, y: Flat }
+
+type Shape = Dot | Circle(Flat) | Pair(Flat, Flat)
+
+fn total(f: Flat) -> Int { f.a + f.b }
+
+fn weigh(s: Shape) -> Int {
+  match s {
+    Dot => 0,
+    Circle(f) => total(f),
+    Pair(f, g) => total(f) * total(g),
+  }
+}
+
+fn split(o: One) -> (Flat, Int) { (o.flat, o.k) }
+
+pub fn main() -> Unit ! {Console} {
+  var sum = 0
+  var i = 0
+  while i < 50 {
+    let flat = Flat { a: i, b: 1 }
+    let kept = Flat { a: 2, b: i }
+    // `one` dies before `kept`, which survives it; `lone` takes its only `Flat` with it.
+    let one = One { flat: kept, k: i }
+    let lone = One { flat: Flat { a: 1, b: 1 }, k: 3 }
+    let (back, k) = split(one)
+    let two = Two { x: flat, y: Flat { a: k, b: k } }
+    sum = sum + total(back) + lone.k + total(two.x) + total(two.y)
+    sum = sum + weigh(Dot) + weigh(Circle(kept)) + weigh(Pair(back, Flat { a: 1, b: 2 }))
+    i = i + 1
+  }
+  Console.print("sum {sum}")
+}

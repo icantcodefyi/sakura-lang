@@ -15,7 +15,7 @@ pub mod wasi;
 
 use sakura_lir::image::{self, Statics};
 use sakura_lir::lir::{Callee, Module, Term};
-use wasm_encoder::{BlockType, ExportKind, Function, MemArg, ValType};
+use wasm_encoder::{BlockType, ExportKind, Function, InstructionSink, MemArg, ValType};
 
 /// The `sakura_rt` wasm object, empty when `build.rs` could not build it.
 pub const RUNTIME: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/sakura_rt.wasm"));
@@ -107,6 +107,7 @@ const FIXED: &[&str] = &[
     "entries",
     "start_entry",
     "entry_value",
+    "sakura$drop",
 ];
 
 fn mem(offset: u64, align: u32) -> MemArg {
@@ -279,6 +280,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .collect();
     let may_abort = sakura_lir::direct::may_abort(m, &regions);
     let tuple_kinds = statics.bytes(&tuple_kinds(m));
+    let (rows, owns) = owned_slots(m);
+    let rows_off = statics.bytes(&rows);
+    let owns_off = statics.bytes(&owns);
+    let classes_off = statics.bytes(&func::CLASSES.map(u32::to_le_bytes).concat());
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -304,6 +309,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             reuses: g + 10,
         },
         heap: [g + 11, g + 12, g + 13],
+        drop: index("sakura$drop"),
         tuple_kinds,
         twin_of: twin_of_off,
         closure_type: rt.added_type(0),
@@ -549,6 +555,130 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .call(rtf("rt_entry_value")?)
         .end();
     funcs.push(added(FIXED[12], i32s(1), i32s(1), f));
+
+    // sakura$drop(word): `Drop` of a word compiled code did not decrement in place
+    // (`func::Gen::drop_word`). A word that is not counted is only counted in `drops`; an
+    // object with `rc = 1` whose row owns at most one slot (`owned_slots`), in a small class
+    // outside the emergency pool, is freed here as `Rt::drop` and `Heap::free` free it, when
+    // its child (if any) survives: the child decremented, the block pushed on its class's
+    // free list, the counters updated. Everything else is the `drop` export's.
+    let p = &env.in_place;
+    let [free, stats, em] = env.heap;
+    let (w, row, mask, class, child, size) = (0, 1, 2, 3, 4, 5);
+    let mut f = Function::new([(4, ValType::I32), (1, ValType::I64)]);
+    let mut s = f.instructions();
+    let count = |s: &mut InstructionSink<'_>| {
+        s.global_get(p.drops)
+            .i64_const(1)
+            .i64_add()
+            .global_set(p.drops);
+    };
+    let counted = |s: &mut InstructionSink<'_>, l: u32| {
+        // 1 when the word in `l` is not a counted object.
+        s.local_get(l)
+            .i32_const(3)
+            .i32_and()
+            .local_get(l)
+            .i32_eqz()
+            .i32_or();
+        s.if_(BlockType::Result(ValType::I32)).i32_const(1).else_();
+        s.local_get(l).i32_load8_u(mem(3, 0)).i32_const(1).i32_and();
+        s.end();
+    };
+    let table = |s: &mut InstructionSink<'_>, off: u32| {
+        s.i32_const(2).i32_shl().global_get(static_base).i32_add();
+        s.i32_load(mem(off as u64, 2));
+    };
+    s.block(BlockType::Empty);
+    counted(&mut s, w);
+    s.if_(BlockType::Empty);
+    count(&mut s);
+    s.return_().end();
+    s.local_get(w)
+        .i32_load(mem(4, 2))
+        .i32_const(1)
+        .i32_ne()
+        .br_if(0);
+    // The row: a tuple's layout at 12, a record's at 8, a variant's type at 8 and its
+    // constructor at 12.
+    s.local_get(w).i32_load16_u(mem(0, 1)).local_set(child);
+    s.local_get(child).i32_const(5).i32_eq();
+    s.if_(BlockType::Result(ValType::I32));
+    s.local_get(w).i32_load(mem(12, 2));
+    table(&mut s, rows_off);
+    s.else_();
+    s.local_get(child).i32_const(6).i32_eq();
+    s.if_(BlockType::Result(ValType::I32));
+    s.local_get(w).i32_load(mem(8, 2));
+    table(&mut s, rows_off);
+    s.else_();
+    s.local_get(child).i32_const(7).i32_ne().br_if(2);
+    s.local_get(w).i32_load(mem(8, 2));
+    table(&mut s, rows_off);
+    s.local_get(w).i32_load(mem(12, 2)).i32_add();
+    s.end();
+    s.end();
+    s.local_set(row);
+    s.local_get(row);
+    table(&mut s, owns_off);
+    s.local_tee(mask).i32_const(-1).i32_eq().br_if(0);
+    s.local_get(w).i32_load8_u(mem(2, 0)).local_tee(class);
+    s.i32_const(func::CLASSES.len() as i32).i32_ge_u().br_if(0);
+    s.local_get(w).global_get(em).i32_sub();
+    s.i32_const(EMERGENCY as i32).i32_lt_u().br_if(0);
+    // The one owned child: a counted one at `rc = 1` would be released too.
+    s.local_get(mask).if_(BlockType::Empty);
+    s.local_get(w)
+        .local_get(mask)
+        .i32_ctz()
+        .i32_const(3)
+        .i32_shl()
+        .i32_add();
+    s.i32_load(mem(16, 2)).local_set(child);
+    counted(&mut s, child);
+    s.i32_eqz().if_(BlockType::Empty);
+    s.local_get(child)
+        .i32_load(mem(4, 2))
+        .i32_const(1)
+        .i32_le_u()
+        .br_if(2);
+    s.local_get(child).local_get(child).i32_load(mem(4, 2));
+    s.i32_const(1).i32_sub().i32_store(mem(4, 2));
+    s.end();
+    s.end();
+    // `Heap::free`: the free tag, the counters, the block on its class's list.
+    s.local_get(w).i32_const(0).i32_store16(mem(0, 1));
+    s.local_get(class)
+        .i32_const(2)
+        .i32_shl()
+        .global_get(static_base)
+        .i32_add();
+    s.i64_load32_u(mem(classes_off as u64, 2)).local_set(size);
+    for (at, delta) in [(16u64, None), (8, Some(false)), (40, Some(true))] {
+        s.global_get(stats).global_get(stats).i64_load(mem(at, 3));
+        match delta {
+            None => s.i64_const(1).i64_sub(),
+            Some(false) => s.local_get(size).i64_sub(),
+            Some(true) => s.local_get(size).i64_add(),
+        };
+        s.i64_store(mem(at, 3));
+    }
+    s.global_get(free)
+        .local_get(class)
+        .i32_const(2)
+        .i32_shl()
+        .i32_add()
+        .local_set(child);
+    s.local_get(w)
+        .local_get(child)
+        .i32_load(mem(0, 2))
+        .i32_store(mem(4, 2));
+    s.local_get(child).local_get(w).i32_store(mem(0, 2));
+    count(&mut s);
+    s.return_();
+    s.end();
+    s.local_get(w).call(rtf("drop")?).end();
+    funcs.push(added(FIXED[13], i32s(1), vec![], f));
     if let Some(t) = &texts {
         funcs.push(wasi::start(&ix, t));
     }
@@ -653,6 +783,33 @@ fn added(name: &str, params: Vec<ValType>, results: Vec<ValType>, body: Function
 fn rt_step_type(rt: &link::Runtime<'_>) -> Result<u32, String> {
     rt.find_type(&[ValType::I32, ValType::I32], &[ValType::I32])
         .ok_or_else(|| "the runtime has no (i32, i32) -> i32 type".into())
+}
+
+/// The emergency pool's size (`runtime/rt/src/heap.rs` `EMERGENCY`): `sakura$drop` leaves its
+/// blocks to `Heap::free`.
+const EMERGENCY: u32 = 65_536;
+
+/// `sakura$drop`'s tables: per layout id the index of its first row in the second, and per row
+/// the bitmap of its owning slots, or `u32::MAX` when it owns more than one (a child held
+/// twice could then reach zero, which only the runtime releases in its order) or has more
+/// than 32 slots.
+fn owned_slots(m: &Module) -> (Vec<u8>, Vec<u8>) {
+    let (mut rows, mut owns) = (vec![], vec![]);
+    for e in &m.layouts.entries {
+        rows.extend_from_slice(&(owns.len() as u32 / 4).to_le_bytes());
+        for row in &e.rows {
+            let mask = (row.slots.iter().enumerate())
+                .filter(|(_, slot)| slot.owns)
+                .fold(0u64, |m, (i, _)| m | 1 << i.min(63));
+            let mask = if row.slots.len() > 32 || mask.count_ones() > 1 {
+                u32::MAX
+            } else {
+                mask as u32
+            };
+            owns.extend_from_slice(&mask.to_le_bytes());
+        }
+    }
+    (rows, owns)
 }
 
 /// The tuple kinds table (`func::Env::tuple_kinds`): per layout id a `u32`, the scalar kinds of
