@@ -3,7 +3,7 @@
 // Node host's constants to it.
 
 /// `sakura_abi_version` (ABI §0): `MAJOR << 16 | MINOR << 8 | PATCH`.
-pub const ABI_VERSION: u32 = 1 << 16 | 19 << 8;
+pub const ABI_VERSION: u32 = 1 << 16 | 20 << 8;
 
 /// The number of `u64` counters `stats()` returns (ABI §10).
 pub const STATS: usize = 15;

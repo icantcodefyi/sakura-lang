@@ -29,6 +29,17 @@ retains earlier implementation history.
   (geometric mean; `awfy_sieve` 23.1 → 3.0 on Node, `bg_nbody` 11.3 → 5.1, `awfy_richards`
   13.6 → 7.3; `bench/deltas.md`). No program's output, defect, contract check or exit code
   changes, and the WASM and native backends are unchanged.
+- **`--target native` (experimental) runs heap-heavy programs in 3–31% fewer instructions.**
+  The runtime decodes each layout row once and zeroes small blocks without `memset`; native code
+  reads no defect flag after a builtin that cannot raise, makes a `Dup`, a `Drop` of a shared
+  object, a `Lend` and the reuse of an object whose slots own nothing in place, and tests a step
+  by a constant for overflow with one compare (`awfy_list` −29%, `awfy_bounce` −31%,
+  `countdown` −18%; advisory). No program's output, defect, exit code or `stats()` counter
+  changes.
+- **The runtime ABI is 1.20.0** (MINOR, design §17.318): the native context gives compiled code
+  six in-place counters at +16 (ABI §1b), which `stats()` adds in. WASM modules change only in
+  their version, `0x011400`: the 1.20 Node host runs every 1.x module up to 1.20, and a 1.19
+  host refuses a 1.20 module, as for every MINOR.
 
 ## [1.0.0] - 2026-10-23
 

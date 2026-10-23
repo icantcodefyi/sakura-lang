@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.19.1**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.20.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -30,8 +30,8 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§9; design §17.301 (1c), §17.304 (B1)), 1.17.0 constructor-site reuse (§10; design
 §17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
 §17.176 (4), §17.308; plan M5 N4a), 1.19.0 the `wipe` header flag (§3.1, §3.5; design
-§17.288 (7); plan M5 N-S) and 1.19.1 the in-place object paths erratum (§3.1; its design §17
-entry is owed). Owned by
+§17.288 (7); plan M5 N-S), 1.19.1 the in-place object paths erratum (§3.1; design §17.314)
+and 1.20.0 the native context's in-place counters (§1b, §10; design §17.318). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -385,10 +385,9 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `sakura_rt` inside the linked module; no import, export or outcome changes. It is a MINOR by
   1.3.0's rule (a new header field): a 1.18 host refuses a 1.19 module. On JS nothing is
   zeroed (JS ABI §7). `sakura_abi_version` is `0x011300`.
-- 1.19.1 is an erratum (the WASM performance lane after `v1.0.0`; its design §17 entry is
-  owed): §3.1 permits compiled code, the linker's synthesised functions included, to do
-  inside the module what the runtime would do for it, when it needs no allocation from a
-  chunk, release of a second object or defect: increment a counted object's `rc` below
+- 1.19.1 is an erratum (the WASM performance lane after `v1.0.0`; design §17.314): §3.1
+  permits compiled code, the linker's synthesised functions included, to do inside the
+  module what the runtime would do for it, when it needs no allocation from a chunk, release of a second object or defect: increment a counted object's `rc` below
   `u32::MAX`; take a block from a small class's free list and write it as `Heap::alloc` and
   `new_object` do (the internal export `rt_heap_cell` gives the main pool's free-list heads,
   the §10 counters and the emergency pool's start, which never move); perform the last
@@ -400,6 +399,16 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `requested`, which includes the static block and grows by the emitter's tables (a few
   hundred bytes). No byte layout, import, export signature or outcome changes, so
   `sakura_abi_version` stays `0x011300`.
+- 1.20.0 (MINOR, native profile; design §17.318) gives the native context six `u64`
+  counters at +16 (§1b) that compiled code adds to: `dups`, `drops`, `reuse_attempts`,
+  `reuses`, `borrow_candidates` and `borrows`, in that order. Native code now makes a `Dup`, a
+  `Drop` of an object above `rc = 1` (§3.1), a `Lend` and the reuse reset of an object whose
+  slots own nothing in place, counting each there, and `stats()` adds the six to the
+  runtime's, so every counter keeps its value for a fixed execution. wasm32 is unchanged (its
+  in-place drops stay the module's global, 1.8.2), as are every import, export, layout and
+  outcome. It is a MINOR by 1.3.0's rule (the counters a module writes are part of what it
+  requires of its host): a 1.19 runtime refuses a 1.20 module. `sakura_abi_version` is
+  `0x011400`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -454,14 +463,16 @@ rely on the fault.
 **Instance context.** Every native runtime function takes `SakuraInstance *ctx` first and uses
 the target's C ABI (System V AArch64/x86-64 on Linux, Apple AArch64 on macOS). One OS thread
 owns an instance and everything reachable from it (§8.5); a process may hold any number. The
-context's prefix is fixed; compiled code may read it and must not write it:
+context's prefix is fixed; compiled code may read it and must not write it, except the counts
+at +16, to which it adds:
 
 | Offset | Type | Field |
 |---|---|---|
 | +0 | `uint8_t *` | heap base (offset 0) |
 | +8 | `uint32_t` | the static block's offset (the module's literals and tables, §9's `rt_alloc_static`) |
 | +12 | `uint32_t` | `sakura_abi_version`'s value |
-| +16 | — | private to the runtime |
+| +16 | `uint64_t[6]` | counts compiled code adds to (1.20.0): `dups`, `drops`, `reuse_attempts`, `reuses`, `borrow_candidates`, `borrows`, which `stats()` adds to the runtime's (§10) |
+| +64 | — | private to the runtime |
 
 **C prototypes.** Written here, never inferred from Rust layout (`stdint.h` types):
 
@@ -1499,7 +1510,9 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   attempts are 0) and the module's `abi_version`, which names the counter set. The interface is
   `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the module's `abi_version` and the
   counters by name as one JSON line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
-  counters. A dlmalloc comparison harness stays in `runtime/rt/bench`.
+  counters. Natively, since 1.20.0, compiled code counts the `Dup`s, `Drop`s, `Lend`s and reuse
+  resets it makes in place in the context's counts (§1b), which `stats()` adds, so each counter
+  has the value it would have had through the runtime's functions. A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency
   region (64 KiB, committed at start, its own free lists, small blocks only, used only while the

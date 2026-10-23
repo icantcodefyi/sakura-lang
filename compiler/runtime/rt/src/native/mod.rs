@@ -38,6 +38,18 @@ use crate::{ABI_VERSION, Defect, Rt, Stats};
 /// The layout profile this build implements (ABI §1b).
 pub const PROFILE: &str = "offset32-v1";
 
+/// The `stats()` counters compiled code adds to in place, in the order of the context's `u64`s
+/// at +16 (ABI §1b, 1.20.0): a `Dup` or `Drop` it makes itself, a `Lend`, and a reuse reset
+/// whose object it writes in place.
+pub const IN_PLACE: [&str; 6] = [
+    "dups",
+    "drops",
+    "reuse_attempts",
+    "reuses",
+    "borrow_candidates",
+    "borrows",
+];
+
 /// The context every native function receives first (ABI §1b `SakuraInstance *ctx`). The
 /// fields before `rt` are the profile's fixed prefix, which compiled code may read; the rest is
 /// private. Rust reaches each field through the raw pointer and never forms a
@@ -50,6 +62,9 @@ pub struct SakuraInstance {
     statics: u32,
     /// +12: `ABI_VERSION`, for debuggers and C embedders.
     abi: u32,
+    /// +16: the counts compiled code makes in place (ABI 1.20.0), which [`Instance::stats`]
+    /// adds to the runtime's: [`IN_PLACE`] in order.
+    counts: [u64; IN_PLACE.len()],
     pub(crate) rt: Rt,
     pub(crate) host: NonNull<dyn Host>,
     pub(crate) module: Rc<dyn Module>,
@@ -60,6 +75,9 @@ pub struct SakuraInstance {
     /// The property searches in progress, by session (`prop`).
     pub(crate) props: Vec<Option<Box<prop::Search>>>,
 }
+
+// The prefix compiled code reads and counts into (ABI §1b).
+const _: () = assert!(core::mem::offset_of!(SakuraInstance, counts) == 16);
 
 /// A native function's handle on its instance (ABI-identical to `SakuraInstance *`). Only the
 /// runtime makes one, for the length of a call: it is higher-ranked in [`SakuraCode`], so code
@@ -210,6 +228,7 @@ impl<H: Host + 'static> Instance<H> {
             base,
             statics,
             abi: ABI_VERSION,
+            counts: [0; IN_PLACE.len()],
             rt,
             host: host_dyn,
             module: module.clone(),
@@ -351,7 +370,17 @@ impl<H: Host + 'static> Instance<H> {
     }
 
     pub fn stats(&mut self) -> Stats {
-        self.cx().rt().stats()
+        // SAFETY: a plain read of the prefix of a live instance, which no reference covers.
+        let [dups, drops, attempts, reuses, candidates, borrows] =
+            unsafe { core::ptr::addr_of!((*self.p.as_ptr()).counts).read() };
+        let mut s = self.cx().rt().stats();
+        s.dups += dups;
+        s.drops += drops;
+        s.reuse_attempts += attempts;
+        s.reuses += reuses;
+        s.borrow_candidates += candidates;
+        s.borrows += borrows;
+        s
     }
 
     /// The region measurement (design §17.174 (2)).

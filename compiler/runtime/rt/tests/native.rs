@@ -17,7 +17,7 @@ use sakura_rt::exports::{
 };
 use sakura_rt::layout::WORD;
 use sakura_rt::native::{
-    CODES, Ctx, HOSTED, HandleId, Host, Hosted, Image, Instance, Limits, Module, Outcome,
+    CODES, Ctx, HOSTED, HandleId, Host, Hosted, IN_PLACE, Image, Instance, Limits, Module, Outcome,
     rt_hosted, sakura_abi_version,
 };
 use sakura_rt::{ABI_VERSION, tag};
@@ -85,7 +85,8 @@ impl Host for TestHost {
 const MAIN: u32 = 0;
 const GROW: u32 = 1;
 const HOSTED_ENV: u32 = 2;
-const N: u32 = 3;
+const COUNT: u32 = 3;
+const N: u32 = 4;
 
 /// The test program: an image built as `sakura_codegen_wasm` lays out its static block, and
 /// three functions written as compiled code would be (one `match` on the resume block).
@@ -114,6 +115,7 @@ fn program() -> Rc<Program> {
         Some(CodeDesc("main", &[WORD], &[])),
         Some(CodeDesc("grow", &[WORD], &[])),
         Some(CodeDesc("hosted_env", &[WORD], &[])),
+        Some(CodeDesc("count", &[WORD], &[])),
     ];
     codes.extend(CODES.iter().map(|_| None));
     let mut bytes = Vec::new();
@@ -156,6 +158,7 @@ impl Module for Program {
             MAIN => main(ctx, frame),
             GROW => grow(ctx, frame),
             HOSTED_ENV => hosted_env(ctx, frame),
+            COUNT => count(ctx),
             _ => (CODES[(code - N) as usize].1)(ctx, env, frame),
         }
     }
@@ -224,6 +227,23 @@ fn hosted_env(ctx: Ctx<'_>, _frame: u32) -> u32 {
     RETURN
 }
 
+/// Adds `i + 1` to the context's in-place counter `i` (ABI §1b, 1.20.0), as compiled code
+/// writes them: through the context pointer, at `+16 + 8i`.
+fn count(ctx: Ctx<'_>) -> u32 {
+    // SAFETY: `Ctx` is the `SakuraInstance *` of a live instance (ABI §1b).
+    let p = unsafe { std::mem::transmute::<Ctx<'_>, *mut u8>(ctx) };
+    for i in 0..IN_PLACE.len() {
+        // SAFETY: the six 8-aligned `u64`s at +16 are the counts compiled code may add to, and
+        // nothing in the runtime holds a reference to them.
+        unsafe {
+            let at = p.add(16 + 8 * i).cast::<u64>();
+            at.write(at.read() + i as u64 + 1);
+        }
+    }
+    rt_set_ret(ctx, 1);
+    RETURN
+}
+
 fn run_code(inst: &mut Instance<TestHost>, code: u32) -> Outcome {
     let task = inst.start(code).unwrap();
     assert_ne!(inst.run(task), 4, "the task is still pending");
@@ -251,6 +271,40 @@ fn two_instances_run_and_close_in_one_process() {
     assert_eq!(a.exec_counts(), (0, 0));
     a.close();
     b.close();
+}
+
+/// ABI 1.20.0: the counts compiled code makes in the context are part of `stats()`.
+#[test]
+fn stats_add_the_counts_compiled_code_makes_in_the_context() {
+    let mut a = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    let before = a.stats();
+    assert_eq!(run_code(&mut a, COUNT), Outcome::Ok);
+    assert_eq!(run_code(&mut a, COUNT), Outcome::Ok);
+    let after = a.stats();
+    let delta = |f: fn(&sakura_rt::Stats) -> u64| f(&after) - f(&before);
+    assert_eq!(
+        IN_PLACE,
+        [
+            "dups",
+            "drops",
+            "reuse_attempts",
+            "reuses",
+            "borrow_candidates",
+            "borrows"
+        ]
+    );
+    assert_eq!(
+        [
+            delta(|s| s.dups),
+            delta(|s| s.drops),
+            delta(|s| s.reuse_attempts),
+            delta(|s| s.reuses),
+            delta(|s| s.borrow_candidates),
+            delta(|s| s.borrows),
+        ],
+        [2, 4, 6, 8, 10, 12]
+    );
+    a.close();
 }
 
 #[test]

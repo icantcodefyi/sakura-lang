@@ -47,6 +47,17 @@ const UNIT: i64 = 0b0001;
 const FALSE: i64 = 0b0101;
 const TRUE: i64 = 0b1101;
 
+/// The context's in-place counters (ABI §1b, 1.20.0; `sakura_rt::native::IN_PLACE`).
+const DUPS: i32 = 16;
+const DROPS: i32 = 24;
+const REUSE_ATTEMPTS: i32 = 32;
+const REUSES: i32 = 40;
+const BORROW_CANDIDATES: i32 = 48;
+const BORROWS: i32 = 56;
+
+/// Header flag `static` (ABI §3.1).
+const STATIC: i64 = 1;
+
 /// Object tags (ABI §3.2).
 const TUPLE: i64 = 5;
 const RECORD: i64 = 6;
@@ -282,6 +293,7 @@ pub fn compile(
         twin,
         budget: Value::from_u32(0),
         open: 0,
+        at: BlockId(0),
     };
     g.body()?;
     let Gen { mut b, .. } = g;
@@ -323,6 +335,8 @@ struct Gen<'e, 'm, 'f> {
     /// The `with` regions a twin has open at the instruction being emitted, which it closes
     /// when it leaves early.
     open: u32,
+    /// The LIR block being emitted.
+    at: BlockId,
 }
 
 impl Gen<'_, '_, '_> {
@@ -641,9 +655,97 @@ impl Gen<'_, '_, '_> {
         self.pad_if(d, live, None)
     }
 
+    /// Add one to the context's in-place counter at `at` (ABI §1b, 1.20.0).
+    fn bump(&mut self, at: i32) {
+        let n = self
+            .b
+            .ins()
+            .load(types::I64, MemFlagsData::trusted(), self.ctx, at);
+        let n = self.b.ins().iadd_imm_s(n, 1);
+        self.b.ins().store(MemFlagsData::trusted(), n, self.ctx, at);
+    }
+
+    /// Branch to `yes` when word `x` is a counted object (a pointer whose `static` flag is
+    /// clear, ABI §3.1), else to `no`.
+    fn branch_counted(&mut self, x: Value, yes: ir::Block, no: ir::Block) {
+        let low = self.b.ins().band_imm_u(x, 3);
+        let tagged = self.b.ins().icmp_imm_s(IntCC::NotEqual, low, 0);
+        let null = self.b.ins().icmp_imm_s(IntCC::Equal, x, 0);
+        let not_ptr = self.b.ins().bor(tagged, null);
+        let ptr = self.b.create_block();
+        self.b.ins().brif(not_ptr, no, &[], ptr, &[]);
+        self.b.switch_to_block(ptr);
+        let flags = self.load(types::I8, x, 3);
+        let fixed = self.b.ins().band_imm_u(flags, STATIC);
+        self.b.ins().brif(fixed, no, &[], yes, &[]);
+    }
+
+    /// `Dup`: a counted object's `rc` goes up in place and `dups` in the context (ABI 1.20.0);
+    /// at 2^32 − 1 `rt_dup` raises `D092`. The checked lowering calls `rt_dup`.
     fn dup(&mut self, x: Value, live: &Live) -> Result<(), String> {
+        if self.e.checks {
+            let r = self.call1("rt_dup", &[x], types::I32)?;
+            return self.pad_if(r, live, None);
+        }
+        let (inc, add, count, full, next) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        self.b.set_cold_block(full);
+        self.branch_counted(x, inc, count);
+        self.b.switch_to_block(inc);
+        let rc = self.load(types::I32, x, 4);
+        let at_max = self.b.ins().icmp_imm_s(IntCC::Equal, rc, -1);
+        self.b.ins().brif(at_max, full, &[], add, &[]);
+        self.b.switch_to_block(add);
+        let rc = self.b.ins().iadd_imm_s(rc, 1);
+        self.store(rc, x, 4);
+        self.b.ins().jump(count, &[]);
+        self.b.switch_to_block(count);
+        self.bump(DUPS);
+        self.b.ins().jump(next, &[]);
+        self.b.switch_to_block(full);
         let r = self.call1("rt_dup", &[x], types::I32)?;
-        self.pad_if(r, live, None)
+        self.pad_if(r, live, None)?;
+        self.b.ins().jump(next, &[]);
+        self.b.switch_to_block(next);
+        Ok(())
+    }
+
+    /// `Drop`: a counted object above `rc = 1` goes down in place and `drops` in the context
+    /// (ABI §3.1, 1.20.0); the last owner's drop releases it through the `drop` export, and the
+    /// checked lowering calls the export for every drop.
+    fn drop_word(&mut self, x: Value) -> Result<(), String> {
+        if self.e.checks {
+            return self.call0("drop", &[x]);
+        }
+        let (dec, sub, count, last, next) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        self.branch_counted(x, dec, count);
+        self.b.switch_to_block(dec);
+        let rc = self.load(types::I32, x, 4);
+        let shared = self.b.ins().icmp_imm_u(IntCC::UnsignedGreaterThan, rc, 1);
+        self.b.ins().brif(shared, sub, &[], last, &[]);
+        self.b.switch_to_block(sub);
+        let rc = self.b.ins().iadd_imm_s(rc, -1);
+        self.store(rc, x, 4);
+        self.b.ins().jump(count, &[]);
+        self.b.switch_to_block(count);
+        self.bump(DROPS);
+        self.b.ins().jump(next, &[]);
+        self.b.switch_to_block(last);
+        self.call0("drop", &[x])?;
+        self.b.ins().jump(next, &[]);
+        self.b.switch_to_block(next);
+        Ok(())
     }
 
     // ---- the function --------------------------------------------------------------------
@@ -797,6 +899,7 @@ impl Gen<'_, '_, '_> {
             self.vals[v.index()] = None;
         }
         let block = self.f.block(b);
+        self.at = b;
         let cb = self.blocks[b.index()];
         self.b.switch_to_block(cb);
         let values: Vec<Value> = self.b.block_params(cb).to_vec();
@@ -1155,18 +1258,25 @@ impl Gen<'_, '_, '_> {
             }
             Inst::DupCandidate(v) => {
                 let x = self.val(*v)?;
-                let r = self.call1("rt_dup_candidate", &[x], types::I32)?;
-                self.pad_if(r, live, None)?;
+                if self.e.checks {
+                    let r = self.call1("rt_dup_candidate", &[x], types::I32)?;
+                    self.pad_if(r, live, None)?;
+                } else {
+                    self.bump(BORROW_CANDIDATES);
+                    self.dup(x, live)?;
+                }
                 *live.entry(*v).or_default() += 1;
             }
             Inst::Lend { dst, src } => {
+                // `rt_lend`'s two counts, in the context (ABI 1.20.0).
                 let x = self.val(*src)?;
-                let r = self.call1("rt_lend", &[x], types::I32)?;
-                self.set(*dst, r);
+                self.bump(BORROW_CANDIDATES);
+                self.bump(BORROWS);
+                self.set(*dst, x);
             }
             Inst::Drop(v) => {
                 let x = self.val(*v)?;
-                self.call0("drop", &[x])?;
+                self.drop_word(x)?;
                 Self::consume(live, *v);
             }
             Inst::Hole { id } => {
@@ -1371,12 +1481,26 @@ impl Gen<'_, '_, '_> {
         let size = self.iconst32(16 + 8 * args.len() as i64);
         // A reuse token's storage (plan M5 N3), else a fresh block.
         let d = match reuse {
+            Some(token) if self.e.checks => {
+                let token = self.val(token)?;
+                self.call0("rt_check_token", &[token, t, size])?;
+                self.call1("rt_reuse", &[token, t, size], types::I32)?
+            }
+            // `rt_reuse`: the token's storage when it is an object, else a fresh block.
             Some(token) => {
                 let token = self.val(token)?;
-                if self.e.checks {
-                    self.call0("rt_check_token", &[token, t, size])?;
-                }
-                self.call1("rt_reuse", &[token, t, size], types::I32)?
+                let (fresh, join) = (self.b.create_block(), self.b.create_block());
+                let d = self.b.append_block_param(join, types::I32);
+                let low = self.b.ins().band_imm_u(token, 3);
+                let tagged = self.b.ins().icmp_imm_s(IntCC::NotEqual, low, 0);
+                self.b
+                    .ins()
+                    .brif(tagged, fresh, &[], join, &[BlockArg::Value(token)]);
+                self.b.switch_to_block(fresh);
+                let n = self.call1("rt_alloc", &[t, size], types::I32)?;
+                self.b.ins().jump(join, &[BlockArg::Value(n)]);
+                self.b.switch_to_block(join);
+                d
             }
             None => self.call1("rt_alloc", &[t, size], types::I32)?,
         };
@@ -1397,6 +1521,27 @@ impl Gen<'_, '_, '_> {
         }
         self.set(dst, d);
         Ok(())
+    }
+
+    /// Whether reuse token `token` goes to an `Alloc` of its block whose row's slots own
+    /// nothing (`sakura_lir::reuse` pairs a token only with its own row).
+    fn owns_nothing(&self, token: Var) -> bool {
+        let rows = &self.e.m.layouts;
+        self.f.block(self.at).insts.iter().any(|i| match i {
+            Inst::Alloc {
+                shape,
+                reuse: Some(t),
+                ..
+            } if *t == token => {
+                let row = match shape {
+                    Shape::Record(l) | Shape::Tuple(l) => rows.entry(*l).rows.first(),
+                    Shape::Variant(l, c) => rows.entry(*l).rows.get(*c as usize),
+                    Shape::List => None,
+                };
+                row.is_some_and(|r| r.slots.iter().all(|s| !s.owns))
+            }
+            _ => false,
+        })
     }
 
     /// The non-`unit` argument values.
@@ -1424,6 +1569,34 @@ impl Gen<'_, '_, '_> {
             "int_wrapping_add" => {
                 let x = self.b.ins().iadd(vals[0], vals[1]);
                 self.set(dst, x);
+                return Ok(Flow::Next);
+            }
+            sakura_lir::reuse::RESET if !self.e.checks && self.owns_nothing(dst) => {
+                // `Rt::reuse_reset` of an object whose slots own nothing: no other reference
+                // reaches it, so it is the token itself (its slots are all written by the
+                // `Alloc`), counted in the context (ABI 1.20.0); else the runtime drops it.
+                let x = vals[0];
+                let (unique, hit, miss, join) = (
+                    self.b.create_block(),
+                    self.b.create_block(),
+                    self.b.create_block(),
+                    self.b.create_block(),
+                );
+                let token = self.b.append_block_param(join, types::I32);
+                self.branch_counted(x, unique, miss);
+                self.b.switch_to_block(unique);
+                let rc = self.load(types::I32, x, 4);
+                let one = self.b.ins().icmp_imm_s(IntCC::Equal, rc, 1);
+                self.b.ins().brif(one, hit, &[], miss, &[]);
+                self.b.switch_to_block(hit);
+                self.bump(REUSE_ATTEMPTS);
+                self.bump(REUSES);
+                self.b.ins().jump(join, &[BlockArg::Value(x)]);
+                self.b.switch_to_block(miss);
+                let t = self.call1("rt_b_reuse_reset", &[x], types::I32)?;
+                self.b.ins().jump(join, &[BlockArg::Value(t)]);
+                self.b.switch_to_block(join);
+                self.set(dst, token);
                 return Ok(Flow::Next);
             }
             _ => {}
