@@ -1,0 +1,43 @@
+// milestone: M4
+// covers: design §17.149, §17.201 (3), §17.290 (6) (an owned record holding a list is rebuilt in place: the consumed parameter of an owned entry and a record carried round a loop; a caller still holding the record, or a record stored or read again, keeps its value)
+
+type Counter = { count: Int, v: List<Int> }
+
+// The `awfy_permute` shape: `swap` consumes `p`, so its owned entry rebuilds `p` itself.
+fn swap(p: Counter, i: Int, j: Int) -> Counter {
+  let tmp = Option.expect(p.v[i], "v[i]")
+  let v = List.set(p.v, i, Option.expect(p.v[j], "v[j]"))
+  Counter { ..p, v: List.set(v, j, tmp) }
+}
+
+fn bump(start: Counter, n: Int) -> Counter {
+  var p = start
+  var i = 0
+  while i < n {
+    p = Counter { ..p, count: p.count + 1 }
+    p = swap(p, 0, i % 3)
+    i = i + 1
+  }
+  p
+}
+
+fn show(p: Counter) -> String { "{p.count} {p.v}" }
+
+pub fn main() -> Unit ! {Console} {
+  // Owned all the way: every rebuild reuses the one record.
+  let a = bump(Counter { count: 0, v: [1, 2, 3] }, 5)
+  Console.print("owned {show(a)}")
+  // `keep` is read after the call: `bump` gets it through its plain entry, which allocates.
+  let keep = Counter { count: 10, v: [4, 5, 6] }
+  let b = bump(keep, 4)
+  Console.print("kept {show(keep)} -> {show(b)}")
+  // Stored in a list before the rebuild: the stored record keeps its fields.
+  let c = Counter { count: 20, v: [7, 8, 9] }
+  let stored = [c]
+  let d = swap(c, 0, 2)
+  Console.print("stored {show(Option.expect(stored[0], "c"))} -> {show(d)}")
+  // Rebuilt, then the original read again: the rebuild copies.
+  let e = Counter { count: 30, v: [1, 1, 2] }
+  let f = Counter { ..e, count: 31 }
+  Console.print("again {show(e)} -> {show(f)}")
+}

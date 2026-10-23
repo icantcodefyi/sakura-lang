@@ -1,0 +1,218 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_record_carrier::Counter | Counter 32b (count: i64, v: word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::owned_record_carrier, frame 22 slots [%10 word*, %11 word*, %15 bool, %27 word*, %28 word*, %29 word*, %30 word*, %36 word*, %37 word*, %40 bool, %54 word*, %55 word*, %59 word*, %60 word*, %66 word*, %67 word*, %70 bool, %84 word*, %85 word*, %91 word*, %92 word*, %95 bool]
+  b0():
+    %0 lit: i64 = const 1
+    %1 box: word = box %0
+    %2 lit: i64 = const 2
+    %3 box: word = box %2
+    %4 lit: i64 = const 3
+    %5 box: word = box %4
+    %6 xs: ptr = alloc list(%1, %3, %5)
+    %7 lit: i64 = const 0
+    %8 rec: ptr = alloc main::owned_record_carrier::Counter(%7, %6)
+    %9 lit: i64 = const 5
+    call bump#2(%8, %9) -> b1()
+  b1(%10 r: ptr):
+    call show#3(%10) -> b2()
+  b2(%11 r: ptr):
+    %12 s: ptr = show %11
+    drop %11
+    %13 lit: ptr = const str 0
+    %14 s: ptr = concat %13, %12
+    drop %12
+    perform std::console::Console.print(%14) -> b3()
+  b3(%15 r: unit):
+    %16 box: word = box %15
+    drop %16
+    %17 lit: i64 = const 4
+    %18 box: word = box %17
+    %19 lit: i64 = const 5
+    %20 box: word = box %19
+    %21 lit: i64 = const 6
+    %22 box: word = box %21
+    %23 xs: ptr = alloc list(%18, %20, %22)
+    %24 lit: i64 = const 10
+    %25 rec: ptr = alloc main::owned_record_carrier::Counter(%24, %23)
+    %26 lit: i64 = const 4
+    dup %25
+    call bump#2(%25, %26) -> b4(%25)
+  b4(%27 r: ptr, %28 rec: ptr):
+    call show#3(%28) -> b5(%27)
+  b5(%29 r: ptr, %30 r: ptr):
+    %31 s: ptr = show %29
+    drop %29
+    %32 lit: ptr = const str 1
+    %33 s: ptr = concat %32, %31
+    drop %31
+    %34 lit: ptr = const str 2
+    %35 s: ptr = concat %33, %34
+    drop %34
+    call show#3(%30) -> b6(%35)
+  b6(%36 r: ptr, %37 s: ptr):
+    %38 s: ptr = show %36
+    drop %36
+    %39 s: ptr = concat %37, %38
+    drop %38
+    perform std::console::Console.print(%39) -> b7()
+  b7(%40 r: unit):
+    %41 box: word = box %40
+    drop %41
+    %42 lit: i64 = const 7
+    %43 box: word = box %42
+    %44 lit: i64 = const 8
+    %45 box: word = box %44
+    %46 lit: i64 = const 9
+    %47 box: word = box %46
+    %48 xs: ptr = alloc list(%43, %45, %47)
+    %49 lit: i64 = const 20
+    %50 rec: ptr = alloc main::owned_record_carrier::Counter(%49, %48)
+    dup %50
+    %51 xs: ptr = alloc list(%50)
+    %52 lit: i64 = const 0
+    %53 lit: i64 = const 2
+    call swap#4(%50, %52, %53) -> b8(%51)
+  b8(%54 r: ptr, %55 xs: ptr):
+    %56 lit: i64 = const 0
+    %57 lit: ptr = const str 3
+    %58 r: word = $list_get_expect(%55, %56, %57)
+    call show#3(%58) -> b9(%54)
+  b9(%59 r: ptr, %60 r: ptr):
+    %61 s: ptr = show %59
+    drop %59
+    %62 lit: ptr = const str 4
+    %63 s: ptr = concat %62, %61
+    drop %61
+    %64 lit: ptr = const str 2
+    %65 s: ptr = concat %63, %64
+    drop %64
+    call show#3(%60) -> b10(%65)
+  b10(%66 r: ptr, %67 s: ptr):
+    %68 s: ptr = show %66
+    drop %66
+    %69 s: ptr = concat %67, %68
+    drop %68
+    perform std::console::Console.print(%69) -> b11()
+  b11(%70 r: unit):
+    %71 box: word = box %70
+    drop %71
+    %72 lit: i64 = const 1
+    %73 box: word = box %72
+    %74 lit: i64 = const 1
+    %75 box: word = box %74
+    %76 lit: i64 = const 2
+    %77 box: word = box %76
+    %78 xs: ptr = alloc list(%73, %75, %77)
+    %79 lit: i64 = const 30
+    %80 rec: ptr = alloc main::owned_record_carrier::Counter(%79, %78)
+    %81 v: word = proj %80.1 main::owned_record_carrier::Counter
+    %82 lit: i64 = const 31
+    %83 rec: ptr = alloc main::owned_record_carrier::Counter(%82, %81)
+    call show#3(%80) -> b12(%83)
+  b12(%84 r: ptr, %85 rec: ptr):
+    %86 s: ptr = show %84
+    drop %84
+    %87 lit: ptr = const str 5
+    %88 s: ptr = concat %87, %86
+    drop %86
+    %89 lit: ptr = const str 2
+    %90 s: ptr = concat %88, %89
+    drop %89
+    call show#3(%85) -> b13(%90)
+  b13(%91 r: ptr, %92 s: ptr):
+    %93 s: ptr = show %91
+    drop %91
+    %94 s: ptr = concat %92, %93
+    drop %93
+    perform std::console::Console.print(%94) -> b14()
+  b14(%95 r: unit):
+    %96 box: word = box %95
+    %97 unbox: unit = unbox %96
+    drop %96
+    ret %97
+
+fn $entry#1 top -> unit ; main::owned_record_carrier, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn bump#2 top -> ptr ; main::owned_record_carrier, frame 5 slots [%0 word*, %1 i64, %24 word*, %25 i64, %26 i64]
+  b0(%0 start: ptr, %1 n: i64):
+    %30 lit: i64 = const 0
+    jump b1(%0, %30, %1)
+  b1(%2 p: ptr, %3 i: i64, %4 n: i64):
+    %5 t: bool = lt.int %3, %4
+    if %5 then b3(%4, %2, %3) else b4(%4, %2, %3)
+  b2(%6 v: unit, %7 p: ptr, %8 i: i64, %9 n: i64):
+    jump b1(%7, %8, %9)
+  b3(%10 n: i64, %11 p: ptr, %12 i: i64):
+    %16 count: i64 = proj %11.0 main::owned_record_carrier::Counter
+    %17 lit: i64 = const 1
+    %18 t: i64 = intadd %16, %17
+    %19 v: word = proj %11.1 main::owned_record_carrier::Counter
+    %31 token: word = $reuse_reset(%11)
+    %20 rec: ptr = alloc main::owned_record_carrier::Counter(%18, %19) reuse %31
+    %21 lit: i64 = const 3
+    %22 t: i64 = intrem %12, %21
+    %23 lit: i64 = const 0
+    call swap#4(%20, %23, %22) -> b5(%10, %12)
+  b4(%13 n: i64, %14 p: ptr, %15 i: i64):
+    ret %14
+  b5(%24 r: ptr, %25 n: i64, %26 i: i64):
+    %27 lit: i64 = const 1
+    %28 t: i64 = intadd %26, %27
+    %29 lit: unit = const ()
+    jump b2(%29, %24, %28, %25)
+
+fn show#3 top -> ptr ; main::owned_record_carrier, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 count: i64 = proj %0.0 main::owned_record_carrier::Counter
+    %2 s: ptr = show %1
+    %3 lit: ptr = const str 6
+    %4 s: ptr = concat %2, %3
+    drop %3
+    %5 v: word = proj %0.1 main::owned_record_carrier::Counter
+    drop %0
+    %6 s: ptr = show %5
+    drop %5
+    %7 s: ptr = concat %4, %6
+    drop %6
+    ret %7
+
+fn swap#4 top -> ptr ; main::owned_record_carrier, frame 9 slots [%0 word*, %1 i64, %2 i64, %14 word*, %15 word*, %16 i64, %17 i64, %20 word*, %21 word*]
+  b0(%0 p: ptr, %1 i: i64, %2 j: i64):
+    %3 v: word = proj %0.1 main::owned_record_carrier::Counter
+    %4 lit: ptr = const str 7
+    %5 r: word = $list_get_expect(%3, %1, %4)
+    %6 unbox: i64 = unbox %5
+    drop %5
+    %7 v: word = proj %0.1 main::owned_record_carrier::Counter
+    %8 v: word = proj %0.1 main::owned_record_carrier::Counter
+    %9 lit: ptr = const str 8
+    %10 r: word = $list_get_expect(%8, %2, %9)
+    %11 unbox: i64 = unbox %10
+    drop %10
+    %12 box: word = box %11
+    %13 $site: i64 = const 2
+    call set#5(%7, %1, %12, %13) -> b1(%0, %2, %6)
+  b1(%14 r: ptr, %15 p: ptr, %16 j: i64, %17 r: i64):
+    %18 box: word = box %17
+    %19 $site: i64 = const 3
+    call set#5(%14, %16, %18, %19) -> b2(%15)
+  b2(%20 r: ptr, %21 p: ptr):
+    %22 count: i64 = proj %21.0 main::owned_record_carrier::Counter
+    %24 token: word = $reuse_reset(%21)
+    %23 rec: ptr = alloc main::owned_record_carrier::Counter(%22, %20) reuse %24
+    ret %23

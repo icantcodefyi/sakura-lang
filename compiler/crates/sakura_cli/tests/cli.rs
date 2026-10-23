@@ -2399,6 +2399,7 @@ fn bump consumes p
   r%4 = put_var(p%0) shared(param), owned entry owned
 fn put_var consumes p
   r%4 = set(vars%3) shared(param), owned entry owned
+  rec%7 = Planner {..p%0} allocates, owned entry in place
 fn put_then_fail consumes p
   r%1 = put_var(p%0) shared(param), owned entry owned
 fn nested
@@ -2413,6 +2414,7 @@ fn nested
   r%57 = put_var(r%52) shared(join)
 fn put_var consumes p
   r%4 = set(vars%3) shared(param), owned entry owned
+  rec%6 = Planner {..p%0} allocates, owned entry in place
 fn keep_start
   r%10 = put_var(p%3) shared(join)
 fn two_views
@@ -2436,9 +2438,11 @@ fn keep_for_handler
   r%20 = list_push(ids%7) owned
 fn new_var consumes p
   r%5 = list_push(vars%4) shared(param), owned entry owned
+  rec%7 = Planner {..p%0} allocates, owned entry in place
 fn new_mark consumes p
 fn sorted consumes p
   r%2 = set(vars%1) shared(param), owned entry owned
+  rec%4 = Planner {..p%0} allocates, owned entry in place
 ",
         ),
         (
@@ -2458,6 +2462,7 @@ fn split
   r%8 = put_var(p%0) shared(param)
 fn put_var consumes p
   r%4 = set(vars%3) shared(param), owned entry owned
+  rec%6 = Planner {..p%0} allocates, owned entry in place
 fn odd consumes p
   r%13 = put_var(p%9) shared(join), owned entry owned
   r%4 = put_var(p%0) shared(join), owned entry owned
@@ -2474,11 +2479,14 @@ fn odd consumes p
   r%48 = grow(r%1) shared(borrowed-after at 1355..1361)
   r%49 = grow(r%48) shared(origin)
 fn grow consumes start
+  rec%38 = Planner {..p%18} allocates, owned entry in place
   r%32 = put_var(p%20) shared(join), owned entry owned
   r%11 = list_push(vars%10) shared(join), owned entry owned
   r%14 = list_push(cons%12) shared(join), owned entry owned
+  rec%16 = Planner {..p%4} allocates, owned entry in place
 fn put_var consumes p
   r%4 = set(vars%3) shared(param), owned entry owned
+  rec%7 = Planner {..p%0} allocates, owned entry in place
 ",
         ),
         (
@@ -2635,12 +2643,16 @@ fn put_and_count consumes s
   r%3 = put(s%0) shared(param), owned entry owned
 fn append consumes s
   r%3 = list_push(xs%2) shared(param), owned entry owned
+  rec%6 = State {..s%0} allocates, owned entry in place
 fn steps consumes start
+  rec%19 = State {..s%4} allocates, owned entry in place
+  rec%24 = State {..s%4} allocates, owned entry in place
   r%26 = put(rec%24) shared(origin), owned entry owned
 fn keep_old
   r%2 = put(s%0) shared(param)
 fn put consumes s
   r%4 = set(xs%3) shared(param), owned entry owned
+  rec%8 = State {..s%0} allocates, owned entry in place
 ",
         ),
         // A def returning an `Int` sinks the list it updates: owned arguments take its owned
@@ -2665,6 +2677,23 @@ fn ints
   r%11 = list_push(xs%4) owned
 fn zero_from consumes xs
   r%6 = set(xs%0) shared(join), owned entry owned
+",
+        ),
+        // An owned carrier is rebuilt in place: `swap`'s consumed parameter and `bump`'s loop
+        // record, in their owned entries. `f = {..e}` with `e` read again allocates.
+        (
+            "owned_record_carrier",
+            "fn main
+  r%2 = bump(rec%1) owned
+  r%9 = bump(rec%8) shared(borrowed-after at 1229..1239)
+  r%21 = swap(rec%19) shared(stored at 1395..1398)
+fn bump consumes start
+  rec%13 = Counter {..p%4} allocates, owned entry in place
+  r%15 = swap(rec%13) shared(origin), owned entry owned
+fn swap consumes p
+  r%10 = set(v%6) shared(param), owned entry owned
+  r%11 = set(r%10) shared(origin), owned entry owned
+  rec%13 = Counter {..p%0} allocates, owned entry in place
 ",
         ),
     ] {

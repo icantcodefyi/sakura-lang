@@ -44,8 +44,10 @@
 //! the first site: no other holder, and no stale read. A fresh `b` needs neither list nor
 //! guard when every use of it is a read, a return, or a jump into joins none of whose code (or
 //! the code of a join they jump on to) holds the rebuild: then nothing else ever references
-//! its object (`b.x = …` round `awfy_bounce`'s branches). Defs with any record local are
-//! analysed for this site.
+//! its object (`b.x = …` round `awfy_bounce`'s branches). Neither does an owned carrier `b`,
+//! whatever the rebuild then flows to: ownership is itself the proof that no other reference
+//! exists (the consumed parameter of an owned entry, `Permute {..p, v: …}` in `awfy_permute`'s
+//! `swap`). Defs with any record local are analysed for this site.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -1018,13 +1020,17 @@ impl<'a> Elems<'a> {
             Expr::Let {
                 local, bind, body, ..
             } => {
-                if let Bind::Alloc(Alloc::Record(t), args) = bind
-                    && self.class[local.index()] == Val::Fresh
-                    && let Some(site) = self
-                        .site(*local, *t, body, scope)
-                        .or_else(|| self.moved_site(*local, *t, args, scope))
-                {
-                    self.in_place.insert(*local, site);
+                if let Bind::Alloc(Alloc::Record(t), args) = bind {
+                    let site = match self.carrier_site(*local, *t, args, scope) {
+                        Some(z) => Some((z, Vec::new())),
+                        None if self.class[local.index()] == Val::Fresh => self
+                            .site(*local, *t, body, scope)
+                            .or_else(|| self.moved_site(*local, *t, args, scope)),
+                        None => None,
+                    };
+                    if let Some(site) = site {
+                        self.in_place.insert(*local, site);
+                    }
                 }
                 scope.push(*local);
                 self.sites(body, scope);
@@ -1171,6 +1177,37 @@ impl<'a> Elems<'a> {
         (guards.len() <= 2).then_some((bj, guards))
     }
 
+    /// Whether an allocation's `args` copy a field of `z`.
+    fn projects(&self, args: &[Atom], z: Local) -> bool {
+        args.iter().any(|a| {
+            matches!(a, Atom::Local(l) if matches!(
+                self.binds.get(l),
+                Some(Bind::Proj(Atom::Local(o), Proj::Field(..))) if *o == z
+            ))
+        })
+    }
+
+    /// `x = T {..z, …}` with `z` an owned carrier dead after it (the consumed parameter of an
+    /// owned entry, a join parameter every jump moves an owned record to): ownership proves no
+    /// other reference to `z`'s object exists, so writing the new fields into it is
+    /// unobservable, whatever `x` then flows to.
+    fn carrier_site(&self, x: Local, t: TypeId, args: &[Atom], scope: &[Local]) -> Option<Local> {
+        let after = self.after.get(&x)?;
+        scope
+            .iter()
+            .rev()
+            .chain(&self.def.params)
+            .copied()
+            .find(|z| {
+                *z != x
+                    && record(self.m, &self.def.local(*z).ty) == Some(t)
+                    && self.owned[z.index()]
+                    && !matches!(self.class[z.index()], Val::Elem(..))
+                    && !after.contains(z)
+                    && self.projects(args, *z)
+            })
+    }
+
     /// The second site (design §17.290 (6)): `x = T {..bj, …}` with `bj` dead after it, where
     /// `bj` holds either a moved fresh record or an element read (its class `Elem`: `var b =
     /// at(bs, i)` rebuilt round a loop), guarded by an identity test against each element read
@@ -1199,14 +1236,6 @@ impl<'a> Elems<'a> {
         scope: &[Local],
     ) -> Option<(Local, Vec<Local>)> {
         let after = self.after.get(&x)?;
-        let projected = |z: Local| {
-            args.iter().any(|a| {
-                matches!(a, Atom::Local(l) if matches!(
-                    self.binds.get(l),
-                    Some(Bind::Proj(Atom::Local(o), Proj::Field(..))) if *o == z
-                ))
-            })
-        };
         let (at, bj) = scope.iter().enumerate().rev().find(|(_, z)| {
             **z != x
                 && record(self.m, &self.def.local(**z).ty) == Some(t)
@@ -1218,7 +1247,7 @@ impl<'a> Elems<'a> {
                     _ => false,
                 }
                 && !after.contains(*z)
-                && projected(**z)
+                && self.projects(args, **z)
         })?;
         let mut path = Path::default();
         if !self.origins(*bj, &mut path) || path.reads.contains(bj) {
