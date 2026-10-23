@@ -74,7 +74,7 @@ and `v1.0.0-beta.2` are published.
 | 5–8 | the ledger complete (every target ≥ 24 CPU-hours, zero open `soundness` issues), the notes, `v1.0.0`'s preparation commit (the only difference from beta.3), its counted baseline on the Mac; **`v1.0.0`** | bless, dry-run approval, tag, channel approvals, `verify-published.yml` dispatch, RFC 0001's stabilization record |
 
 | 2026-10-22 on (§17.312) | beta.5's close-out; (1a)–(1d) of §7 land; the cutoff; **`v1.0.0-beta.6`** (preparation commit, counted baselines blessed, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out); then the beta.2–beta.6 migration rounds, the subscription episodes, the 1.0 banners' texts ready; RFC 0001's FCP waived by the owner on 2026-10-23 | none (all delegated) |
-| after beta.6, once 2a–2e are done | **`v1.0.0`**: the preparation commit (versions, CHANGELOG `[1.0.0]`, the banners, STABILITY's 1.0 text, RFC 0001's acceptance and stabilization record, `release.ts`), its counted baselines and bless, the dry run with `sign_test`, the tag, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, `verify-published.yml`, `dogfood.yml`, `compat.yml`, the close-out | none (delegated 2026-10-22) |
+| after beta.6, once 2a–2e are done (done 2026-10-23, tag on `36e64df4`) | **`v1.0.0`**: the preparation commit (versions, CHANGELOG `[1.0.0]`, the banners, STABILITY's 1.0 text, RFC 0001's acceptance and stabilization record, `release.ts`), its counted baselines and bless, the dry run with `sign_test`, the tag, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, `verify-published.yml`, `dogfood.yml`, `compat.yml`, the close-out | none (delegated 2026-10-22) |
 
 The critical path to beta.3 is row 3 → the preparation commit; to 1.0.0 it is the campaign's
 hours, which run in parallel with it. A finding delays only its target (its fix plus 4 CPU-hours)
@@ -201,21 +201,28 @@ stay):
   the install page's claim levels; the benchmarks page (blessed ratios only); the skill (it has no
   status sentence).
 
-**The audit** (gate items of stage 6, read at `3a7f93fd`):
+**Stage 6 is done (2026-10-23).** `v1.0.0` is tagged on its preparation commit `36e64df4`
+(annotated tag `5b8e15b0`) by Claude Opus 5.5 under the owner's written delegation. It was
+published by release run 39917621190: GitHub release marked latest, npm `latest`, the
+`sakuralang` formula. `compat.yml` 39917621218 against beta.6 passed, `verify-published.yml`
+39931176994 is green on all six rows, and `dogfood.yml` 39931183066 is green. The banner texts
+landed after publication. The rows below are the audit as closed.
+
+**The audit** (gate items of stage 6, read at `3a7f93fd`, closed 2026-10-23):
 
 | Item | State | Evidence | Blocks / who |
 |---|---|---|---|
 | (a) `MIGRATION.md` across every beta | **met** | each of the six files holds the `v0.1.0` → beta.1 round and the beta.2, beta.3, beta.4, beta.5 and beta.6 rounds, each prediction from that beta's CHANGELOG section alone and committed before its upgrade (Opus, §17.301 (3d)), then the result; beta.2's cassette change (`6bd16751`) explained under beta.2; no hunk needed from beta.3 on. beta.6: predicted and found no hunk, `sakura.lock` unchanged, against the published `sakuralang@1.0.0-beta.6`; `dogfood.yml` green on the installed beta.6 (run 39900540785) | — (2a) |
-| (b) agent-DX | **partly met** | (i) pilot numbers recorded; (ii) offline harness 12/12 (`3a7f93fd`); (iv) six programs green; (iii) run 2026-10-22 at `087dd947`: 12/12 accepted, Claude family, judged offline, second family untested, no task failing in both (iii) and (i) ([report](../../evals/agent-dx/reports/2026-10-23-subscription-episodes.md)) | 1.0.0's preparation commit; 2b |
+| (b) agent-DX | **met** | (i) pilot numbers recorded; (ii) offline harness 12/12 (`3a7f93fd`); (iv) six programs green; (iii) run 2026-10-22 at `087dd947`: 12/12 accepted, Claude family, judged offline, second family untested, no task failing in both (iii) and (i) ([report](../../evals/agent-dx/reports/2026-10-23-subscription-episodes.md)) | — (2b) |
 | (c) the ledger | **met** | `compiler/fuzz/README.md` at `3a7f93fd`: every target ≥ 24 CPU-h after `611dae4f`; #8–#11, #13 fixed with regressions and ≥ 4 clean hours after; sanitizers clean at `472dea56` | — |
-| (d) the envelope at beta.1 and 1.0.0 | **met as carried** | read at beta.1 (237/264 miss), beta.2 (237), beta.3 (236), beta.4 (237), carried under §17.265 (1); beta.5's bless in flight; beta.6's and 1.0.0's owed | 2c; the carry named in 1.0.0's notes |
-| (e) signed macOS archives | **met** | Developer ID + notarization since beta.4's tag run; beta.5 verified | re-verified at each tag |
-| (e) spec complete | **met**, one wording open | `spec_docs.py --check`: 172/172 at `3a7f93fd`; EF05 → 1d | 1d before beta.6 |
-| (e) no P1, no open `soundness` issue | **met** | `gh issue list --state open` empty; #12 closed | re-read at each tag |
-| (e) `verify-published.yml` green for the last beta | **met for beta.5** | run 39815259426 | owed for beta.6 and 1.0.0 |
+| (d) the envelope at beta.1 and 1.0.0 | **met as carried** | read at beta.1 (237/264 miss), beta.2 (237), beta.3 (236), beta.4 (237), beta.5 (238), beta.6 (237, blessed at `70c64513`); 1.0.0 carries beta.6's baselines and read (frozen set unchanged; prep `fib`/`shapes` `ok` at `36e64df4`, [deltas](../../bench/deltas.md)), all under §17.265 (1) | — (2c) |
+| (e) signed macOS archives | **met** | Developer ID + notarization since beta.4's tag run; `v1.0.0`'s darwin binary passes `codesign --check-notarization` (team P62B65A837) | — |
+| (e) spec complete | **met** | `spec_docs.py --check`: 172/172 at `3a7f93fd` and at `36e64df4`; EF05 narrowed in `fd297ac1` | — |
+| (e) no P1, no open `soundness` issue | **met** | `gh issue list --state open` empty at `3a7f93fd`, at beta.6 and at the `v1.0.0` tag; #12 closed | — |
+| (e) `verify-published.yml` green for the last beta | **met** | beta.5: 39815259426; beta.6: 39900537819; `v1.0.0`: 39931176994, green on all six rows | — |
 | (e) determinism fix | **met** | `802f469b` (§17.307) | — |
 | RFC 0001 stabilization record | **met** | Accepted 2026-10-23 by Claude Opus 5.5 under the owner's delegation of 2026-10-22, FCP waived by the owner 2026-10-23; the [decision record](../rfcs/0001-stability-guarantees.md#decision-record) names the first-honouring release per guarantee and the unfinished rows; STABILITY.md's "Draft until" note replaced | — (2e) |
-| STABILITY.md wording at 1.0.0 | **not met** | "pre-alpha / design phase"; latest beta.4; `[dependencies]` row stale | 1c before beta.6; the rest in 1.0.0's preparation commit |
-| npm `latest` → 1.0.0 | **met by tooling** | `release.py dist_tag` plain → `latest`; `release.yml` `--latest=true` | verified by `verify-published.yml`'s npm rows at 1.0.0 |
-| Homebrew stable formula | **met by tooling** | `release.py formula` plain → `sakuralang`; the tap holds `sakuralang.rb` (0.1.0) and `sakuralang-beta.rb` | verified by the brew rows at 1.0.0; `sakuralang-beta` stays at beta.6 |
-| release notes for a 1.x version | **not met** | `release.py` has beta and pre-1.0 branches only | 1b before beta.6 |
+| STABILITY.md wording at 1.0.0 | **met** | the `[dependencies]` row (`dc7b1bc4`) before beta.6; "Today: 1.0, stable" and the 1.x paragraph in the banner commit after `v1.0.0` published | — (1c, 2d) |
+| npm `latest` → 1.0.0 | **met** | all six packages publish `1.0.0` under `latest` (release run 39917621190); `beta` stays `1.0.0-beta.6`; `verify-published.yml` 39931176994's npm rows green | — |
+| Homebrew stable formula | **met** | the tap's `Formula/sakuralang.rb` is `1.0.0` (tap commit `6ac35472`); `sakuralang-beta.rb` stays `1.0.0-beta.6`; the brew rows of 39931176994 green | — |
+| release notes for a 1.x version | **met** | `release.py` 1.x branch with its unit test (`9d5298c6`); `v1.0.0`'s notes open "a stable release from commit 36e64df4…" | — (1b) |

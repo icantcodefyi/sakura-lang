@@ -250,13 +250,42 @@ list is the owner's. Items (one line each; close with name and date):
 |---|---|---|---|
 | 20 | (c) the ledger: every target ≥ 24 CPU-h, zero `soundness` findings open | [ledger](../../compiler/fuzz/README.md#campaign-ledger-design-17225-4a-17306) | Claude Fable 5.1 under the owner's delegation, 2026-10-22, at `3a7f93fd` |
 | 21 | (e) signed and notarized macOS archives; `verify-published.yml` green for beta.5 | run 39815259426 | Claude Fable 5.1, 2026-10-22 (re-read at beta.6 and 1.0.0) |
-| 22 | (e) the spec complete: 172/172 rules cite fixtures; EF05 narrowed before beta.6 | [road §7, 1d](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | 172/172 read 2026-10-22; EF05: open |
-| 23 | (e) no P1 and no open `soundness` issue at each tag | `gh issue list --state open` | empty at `3a7f93fd`; re-read at each tag |
+| 22 | (e) the spec complete: 172/172 rules cite fixtures; EF05 narrowed before beta.6 | [road §7, 1d](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | 172/172 read 2026-10-22; EF05 narrowed in `fd297ac1` before beta.6, Claude Opus 5.5, 2026-10-23 |
+| 23 | (e) no P1 and no open `soundness` issue at each tag | `gh issue list --state open` | empty at `3a7f93fd`, at beta.6 and at the `v1.0.0` tag (2026-10-23) |
 | 24 | (d) the envelope read at every beta, the miss carried under §17.265 (1); beta.5's bless; beta.6's and 1.0.0's counted baselines blessed | [deltas](../../bench/deltas.md) | beta.1–beta.5 read; beta.6 blessed at `70c64513` (`5ab07b34`), Claude Opus 5.5, 2026-10-23; 1.0.0: beta.6's baselines carried (frozen set unchanged), prep `fib`/`shapes` `ok` at `36e64df4`, Claude Opus 5.5, 2026-10-23 |
-| 25 | (a) the per-beta migration rounds, beta.2 … beta.6, in every `MIGRATION.md` | [road §7, 2a](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
-| 26 | (b) the subscription episodes judged, verdicts in `evals/agent-dx/reports/` | [road §7, 2b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (offline harness 12/12 at `3a7f93fd`: done) |
-| 27 | RFC 0001: FCP waived by the owner on 2026-10-23; acceptance and the stabilization record in 1.0.0's preparation commit | [RFC 0001](../rfcs/0001-stability-guarantees.md) | open |
-| 28 | STABILITY.md, README, AGENTS.md, CONTRIBUTING.md, the site and the VS Code README carry the 1.0 texts of road §7; every experimental label kept | [road §7, banner texts](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (the `[dependencies]` row before beta.6) |
-| 29 | `release.py`'s notes for a plain 1.x version, with its test | [road §7, 1b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
+| 25 | (a) the per-beta migration rounds, beta.2 … beta.6, in every `MIGRATION.md` | [road §7, 2a](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | met: the beta.2–beta.6 rounds in all six files (`9657c975` predictions, `dd11c7e0` upgrade), `dogfood.yml` 39900540785 on beta.6, Claude Opus 5.5, 2026-10-23 |
+| 26 | (b) the subscription episodes judged, verdicts in `evals/agent-dx/reports/` | [road §7, 2b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | met: 12/12 accepted, Claude family, judged offline, second family untested ([report](../../evals/agent-dx/reports/2026-10-23-subscription-episodes.md), `14026a66`), 2026-10-23 |
+| 27 | RFC 0001: FCP waived by the owner on 2026-10-23; acceptance and the stabilization record in 1.0.0's preparation commit | [RFC 0001](../rfcs/0001-stability-guarantees.md) | Accepted 2026-10-23 by Claude Opus 5.5 under the owner's delegation, FCP waived; the stabilization record in the RFC (`5a85f747`) |
+| 28 | STABILITY.md, README, AGENTS.md, CONTRIBUTING.md, the site and the VS Code README carry the 1.0 texts of road §7; every experimental label kept | [road §7, banner texts](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | the `[dependencies]` row `dc7b1bc4` before beta.6; the rest in the banner commit (held `fa12385d`, cherry-picked) after `v1.0.0` published, Claude Opus 5.5, 2026-10-23 |
+| 29 | `release.py`'s notes for a plain 1.x version, with its test | [road §7, 1b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | `9d5298c6` with its unit test, before beta.6; read in `v1.0.0`'s notes, Claude Opus 5.5, 2026-10-23 |
 | 30 | `v1.0.0-beta.6`: preparation commit, bless, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out line here | [release.md](../release.md) | Claude Opus 5.5 under the owner's written delegation of 2026-10-22, 2026-10-23 (tag on `70c64513`) |
-| 31 | `v1.0.0`: the same, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, the close-out line here; the tag by Claude under the delegation | [release.md](../release.md) | open |
+| 31 | `v1.0.0`: the same, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, the close-out line here; the tag by Claude under the delegation | [release.md](../release.md) | Claude Opus 5.5 under the owner's written delegation of 2026-10-22, 2026-10-23 (tag on `36e64df4`; close-out line below) |
+
+**`v1.0.0` released, 2026-10-23.** Preparation commit `36e64df463e9f59a8174cd49ea54d7dbb9ecf674`
+(versions, CHANGELOG `[1.0.0]`, `allow.txt` emptied, the frozen-set reading in REQUESTS); since
+`v1.0.0-beta.6` the frozen set changed only by the test-only ABI 1.19.0 fixture (`5f1bfbb0`) and,
+in the preparation commit, the version strings and `tests/compat/allow.txt`. Baselines: beta.6's
+counted run at `70c64513`, carried (`bd8d1b21`; prep `fib`/`shapes` `ok` at `36e64df4`). `ci.yml`
+39908818237 green on the preparation commit (attempt 3: attempt 1 was cancelled by the push of
+`bd8d1b21`; attempt 2's `Native (macos-15-intel)` failed three parity cases with exit 2 on WASM
+and native (`cli_files`, `crypto_aes_kw_rfc3394`, `crypto_derive_rejects_bounds`), which pass on
+`b00877f9` and `70c64513` with the same compiler bytes, and passed on rerun). Dry run 39908829548
+and `sign_test` 39908832445 green. Annotated tag `v1.0.0` (`5b8e15b0`) on `36e64df4`; release run
+39917621190: every build and install smoke green, Darwin signed and notarized, `SHA256SUMS`
+(`ff52f315…`) checked against the run's inventory (18 files) before the channel approvals.
+GitHub release `v1.0.0` marked latest, not a prerelease, 19 assets; `gh attestation verify`
+passes (source `refs/tags/v1.0.0` at `36e64df4`, signer `release.yml`). npm: `sakuralang` and its
+five platform packages at `1.0.0` under `latest`, with provenance; `beta` stays `1.0.0-beta.6`.
+Homebrew: `Formula/sakuralang.rb` 1.0.0 (tap commit `6ac354722495735bd58bcb6a6677b3e348c0e8b7`);
+`sakuralang-beta.rb` stays `1.0.0-beta.6`. The published darwin arm64 binary prints
+`sakura 1.0.0 (36e64df463e9f59a8174cd49ea54d7dbb9ecf674)` and passes
+`codesign --check-notarization` (team P62B65A837). `compat.yml`
+[39917621218](https://github.com/icantcodefyi/sakuralang/actions/runs/39917621218) on the tag:
+success against `v1.0.0-beta.6` (locally 566 same, 0 differ). `verify-published.yml`
+[39931176994](https://github.com/icantcodefyi/sakuralang/actions/runs/39931176994): green on all
+six rows. `dogfood.yml` [39931183066](https://github.com/icantcodefyi/sakuralang/actions/runs/39931183066):
+green (the automatic run 39929136436 failed only because npm did not yet serve `1.0.0`). No issue
+is open. The WASM runtime ABI is unchanged at 1.19.0, so no new fixture is owed. The VS Code
+extension is not republished. The nightly `bench.yml` run 39918758715 was cancelled to free the
+macOS runners for the release's install smokes, and re-dispatched after. Released by Claude
+Opus 5.5 under the owner's written delegation of 2026-10-22, the `v1.0.0` tag included.
