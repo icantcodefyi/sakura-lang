@@ -41,7 +41,11 @@
 //! way, so the object a read holds at the rebuild is the one that may have reached `b`. Then
 //! `b` holds a read's current object, which its guard excludes, or a fresh object nothing else
 //! references, and the mutation is unobservable. (i) and (ii) are what the chain fact gives
-//! the first site: no other holder, and no stale read.
+//! the first site: no other holder, and no stale read. A fresh `b` needs neither list nor
+//! guard when every use of it is a read, a return, or a jump into joins none of whose code (or
+//! the code of a join they jump on to) holds the rebuild: then nothing else ever references
+//! its object (`b.x = …` round `awfy_bounce`'s branches). Defs with any record local are
+//! analysed for this site.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
@@ -178,6 +182,10 @@ pub(super) struct Elems<'a> {
     span: HashMap<Local, (usize, usize)>,
     /// Each join's preorder position.
     jpos: HashMap<Label, usize>,
+    /// The joins whose code encloses the binding [`Self::sites`] is at, innermost last.
+    enclosing: Vec<Label>,
+    /// Per join, the joins its code (nested joins included) jumps to.
+    jumps_in: HashMap<Label, BTreeSet<Label>>,
 }
 
 /// What [`Elems::origins`] walks through to reach a site's `bj`.
@@ -203,7 +211,10 @@ impl<'a> Elems<'a> {
         assume: Assume,
     ) -> Option<Self> {
         let seqs: Vec<bool> = def.locals.iter().map(|l| seq(m, &l.ty)).collect();
-        if !seqs.contains(&true) && !elemish(m, &def.ret) {
+        if !seqs.contains(&true)
+            && !elemish(m, &def.ret)
+            && !def.locals.iter().any(|l| record(m, &l.ty).is_some())
+        {
             return None;
         }
         let n = def.locals.len();
@@ -232,6 +243,8 @@ impl<'a> Elems<'a> {
             proofs: BTreeMap::new(),
             span: HashMap::new(),
             jpos: HashMap::new(),
+            enclosing: Vec::new(),
+            jumps_in: HashMap::new(),
         };
         e.collect(&def.body);
         let mut settled = false;
@@ -251,6 +264,7 @@ impl<'a> Elems<'a> {
         e.poison();
         e.prove();
         e.number(&def.body, &mut 0);
+        e.jump_targets(&def.body, &mut Vec::new());
         e.sites(&def.body, &mut Vec::new());
         Some(e)
     }
@@ -498,6 +512,39 @@ impl<'a> Elems<'a> {
 
     /// Whether the record local `x` is moved: every use reads it, or is a store, a jump or a
     /// return after which it is dead, and no use aliases it.
+    /// Every use of `z` reads it and keeps nothing of it, or ends a path that cannot reach the
+    /// binding [`Self::sites`] is at: a return, or a jump into joins none of whose code (nor the
+    /// code of any join it jumps on to) encloses it.
+    fn only_reads(&self, z: Local) -> bool {
+        self.uses[z.index()].iter().all(|u| match u {
+            At::Let(y) => match self.binds[y] {
+                Bind::Proj(..) | Bind::Prim(..) | Bind::Check(..) | Bind::StateGet(..) => true,
+                Bind::Call(Atom::Builtin(n), args) => only_read(n, args, z),
+                _ => false,
+            },
+            At::Ret => true,
+            At::Jump(l, _) => !self.reaches_enclosing(*l),
+            _ => false,
+        })
+    }
+
+    /// Whether join `l`, or a join its code jumps to (transitively), encloses the binding
+    /// [`Self::sites`] is at ([`Self::enclosing`]).
+    fn reaches_enclosing(&self, l: Label) -> bool {
+        let mut seen = BTreeSet::new();
+        let mut work = vec![l];
+        while let Some(j) = work.pop() {
+            if !seen.insert(j) {
+                continue;
+            }
+            if self.enclosing.contains(&j) {
+                return true;
+            }
+            work.extend(self.jumps_in.get(&j).into_iter().flatten().copied());
+        }
+        false
+    }
+
     fn linear(&self, x: Local) -> bool {
         self.uses[x.index()].iter().all(|u| match u {
             At::Let(y) => match self.binds[y] {
@@ -984,11 +1031,16 @@ impl<'a> Elems<'a> {
                 scope.pop();
             }
             Expr::LetJoin {
-                params, join, body, ..
+                label,
+                params,
+                join,
+                body,
             } => {
                 let n = scope.len();
                 scope.extend(params);
+                self.enclosing.push(*label);
                 self.sites(join, scope);
+                self.enclosing.pop();
                 scope.truncate(n);
                 self.sites(body, scope);
             }
@@ -1006,6 +1058,42 @@ impl<'a> Elems<'a> {
             }
             Expr::Handle { body, .. } | Expr::Try { body, .. } => self.sites(body, scope),
             Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
+        }
+    }
+
+    /// [`Self::jumps_in`]: per join, the joins its code jumps to.
+    fn jump_targets(&mut self, e: &Expr, inside: &mut Vec<Label>) {
+        let mut work: Vec<(&Expr, usize)> = vec![(e, inside.len())];
+        while let Some((e, depth)) = work.pop() {
+            inside.truncate(depth);
+            match e {
+                Expr::Let { body, .. } => work.push((body, depth)),
+                Expr::LetJoin {
+                    label, join, body, ..
+                } => {
+                    work.push((body, depth));
+                    inside.push(*label);
+                    // The join's code is walked next, with `label` enclosing it.
+                    let (code, d) = (&**join, depth + 1);
+                    work.push((code, d));
+                    continue;
+                }
+                Expr::Switch { arms, default, .. } => {
+                    work.extend(arms.iter().map(|(_, a)| (a, depth)));
+                    work.extend(default.as_deref().map(|d| (d, depth)));
+                }
+                Expr::If { then, els, .. } => {
+                    work.push((then, depth));
+                    work.push((els, depth));
+                }
+                Expr::Handle { body, .. } | Expr::Try { body, .. } => work.push((body, depth)),
+                Expr::Jump(l, _) => {
+                    for j in &inside[..depth] {
+                        self.jumps_in.entry(*j).or_default().insert(*l);
+                    }
+                }
+                Expr::Ret(_) | Expr::Fail(_) => {}
+            }
         }
     }
 
@@ -1122,7 +1210,13 @@ impl<'a> Elems<'a> {
         let (at, bj) = scope.iter().enumerate().rev().find(|(_, z)| {
             **z != x
                 && record(self.m, &self.def.local(**z).ty) == Some(t)
-                && matches!(self.class[z.index()], Val::Elem(..))
+                && match self.class[z.index()] {
+                    Val::Elem(..) => true,
+                    // A record made here (or a join of such, each moved in) that is only read:
+                    // nothing else references it.
+                    Val::Fresh => self.only_reads(**z),
+                    _ => false,
+                }
                 && !after.contains(*z)
                 && projected(**z)
         })?;

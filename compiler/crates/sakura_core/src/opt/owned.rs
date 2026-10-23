@@ -750,7 +750,7 @@ pub fn display_module(m: &Module, module: &str) -> String {
             let with = if sums[i].elems { " with elements" } else { "" };
             format!(" consumes {}{with}", def.local(def.params[p]).name)
         });
-        if facts.sites.is_empty() && consumes.is_none() {
+        if facts.sites.is_empty() && consumes.is_none() && facts.in_place.is_empty() {
             continue;
         }
         out.push_str(&format!(

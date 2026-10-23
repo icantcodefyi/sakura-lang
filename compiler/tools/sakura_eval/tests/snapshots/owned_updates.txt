@@ -1,4 +1,4 @@
-awfy_bounce n=10: 101000 owned updates
+awfy_bounce n=10: 179520 owned updates
 awfy_cd n=10: 4400 owned updates
 awfy_havlak n=1: skipped, evaluator step limit
 awfy_json n=1: skipped, the evaluator lacks builtin string_to_bytes
@@ -7,7 +7,7 @@ awfy_mandelbrot n=100: 0 owned updates
 awfy_nbody n=1000: 62005 owned updates
 awfy_permute n=5: 201560 owned updates
 awfy_queens n=10: 158200 owned updates
-awfy_richards n=1: 8 owned updates
+awfy_richards n=1: 14 owned updates
 awfy_sieve n=2: 54278 owned updates
 awfy_storage n=2: 55760 owned updates
 awfy_towers n=3: 98376 owned updates

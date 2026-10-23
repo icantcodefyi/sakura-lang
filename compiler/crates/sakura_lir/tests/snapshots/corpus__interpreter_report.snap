@@ -230,6 +230,7 @@ semantics/owned_hoisted_reads: ok, 646 allocated, 4194 dup, 4840 drop, peak 47, 
 semantics/owned_list_literal: ok, 251 allocated, 1095 dup, 1346 drop, peak 48, live 0/0
 semantics/owned_loop_twice: ok, 854 allocated, 8559 dup, 9413 drop, peak 86, live 0/0
 semantics/owned_record_captured: ok, 155 allocated, 199 dup, 354 drop, peak 21, live 0/0
+semantics/owned_record_fresh: ok, 146 allocated, 18 dup, 164 drop, peak 6, live 0/0
 semantics/owned_record_loop_twice: ok, 248 allocated, 519 dup, 767 drop, peak 43, live 0/0
 semantics/owned_record_recursive: ok, 235 allocated, 749 dup, 984 drop, peak 33, live 0/0
 semantics/owned_record_retained: ok, 252 allocated, 467 dup, 719 drop, peak 21, live 0/0

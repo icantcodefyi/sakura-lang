@@ -1,0 +1,398 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_record_fresh::P | P 40b (x: i64, y: i64, v: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (word*, bool)
+layout 6 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::owned_record_fresh, frame 20 slots [%10 bool, %12 word*, %27 bool, %30 word*, %34 word*, %35 i64, %36 i64, %56 bool, %59 word*, %67 word*, %68 word*, %72 bool, %96 word*, %97 word*, %98 i64, %99 i64, %138 bool, %139 word*, %140 i64, %141 i64]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 5
+    %2 lit: i64 = const 4
+    %3 rec: ptr = alloc main::owned_record_fresh::P(%0, %1, %2)
+    %160 lit: i64 = const 0
+    %161 lit: i64 = const 0
+    jump b14(%3, %160, %161)
+  b1(%4 p: ptr, %5 hits: i64, %6 i: i64):
+    drop %4
+    %7 s: ptr = show %5
+    %8 lit: ptr = const str 0
+    %9 s: ptr = concat %8, %7
+    drop %7
+    perform std::console::Console.print(%9) -> b2()
+  b2(%10 r: unit):
+    %11 box: word = box %10
+    drop %11
+    call stored#3() -> b3()
+  b3(%12 r: ptr):
+    %79 p: ptr = tuple_get %12.0
+    %80 p: ptr = tuple_get %12.1
+    drop %12
+    jump b4(%79, %80)
+  b4(%13 xs: ptr, %14 b: ptr):
+    %15 lit: i64 = const 0
+    %16 lit: ptr = const str 1
+    %17 r: word = $list_get_expect(%13, %15, %16)
+    %18 x: i64 = proj %17.0 main::owned_record_fresh::P
+    drop %17
+    %19 s: ptr = show %18
+    %20 lit: ptr = const str 2
+    %21 s: ptr = concat %20, %19
+    drop %19
+    %22 lit: ptr = const str 3
+    %23 s: ptr = concat %21, %22
+    drop %22
+    %24 x: i64 = proj %14.0 main::owned_record_fresh::P
+    drop %14
+    %25 s: ptr = show %24
+    %26 s: ptr = concat %23, %25
+    drop %25
+    perform std::console::Console.print(%26) -> b5()
+  b5(%27 r: unit):
+    %28 box: word = box %27
+    drop %28
+    %29 lit: bool = const true
+    call through_join#4(%29) -> b6()
+  b6(%30 r: ptr):
+    %77 p: i64 = tuple_get %30.0
+    %78 p: i64 = tuple_get %30.1
+    drop %30
+    jump b7(%77, %78)
+  b7(%31 q1: i64, %32 w1: i64):
+    %33 lit: bool = const false
+    call through_join#4(%33) -> b8(%31, %32)
+  b8(%34 r: ptr, %35 q1: i64, %36 w1: i64):
+    %75 p: i64 = tuple_get %34.0
+    %76 p: i64 = tuple_get %34.1
+    drop %34
+    jump b9(%75, %76, %35, %36)
+  b9(%37 q2: i64, %38 w2: i64, %39 q1: i64, %40 w1: i64):
+    %41 s: ptr = show %39
+    %42 lit: ptr = const str 4
+    %43 s: ptr = concat %42, %41
+    drop %41
+    %44 lit: ptr = const str 3
+    %45 s: ptr = concat %43, %44
+    drop %44
+    %46 s: ptr = show %40
+    %47 s: ptr = concat %45, %46
+    drop %46
+    %48 lit: ptr = const str 3
+    %49 s: ptr = concat %47, %48
+    drop %48
+    %50 s: ptr = show %37
+    %51 s: ptr = concat %49, %50
+    drop %50
+    %52 lit: ptr = const str 3
+    %53 s: ptr = concat %51, %52
+    drop %52
+    %54 s: ptr = show %38
+    %55 s: ptr = concat %53, %54
+    drop %54
+    perform std::console::Console.print(%55) -> b10()
+  b10(%56 r: unit):
+    %57 box: word = box %56
+    drop %57
+    %58 lit: bool = const true
+    call either#5(%58) -> b11()
+  b11(%59 r: ptr):
+    %60 y: i64 = proj %59.1 main::owned_record_fresh::P
+    drop %59
+    %61 s: ptr = show %60
+    %62 lit: ptr = const str 5
+    %63 s: ptr = concat %62, %61
+    drop %61
+    %64 lit: ptr = const str 3
+    %65 s: ptr = concat %63, %64
+    drop %64
+    %66 lit: bool = const false
+    call either#5(%66) -> b12(%65)
+  b12(%67 r: ptr, %68 s: ptr):
+    %69 y: i64 = proj %67.1 main::owned_record_fresh::P
+    drop %67
+    %70 s: ptr = show %69
+    %71 s: ptr = concat %68, %70
+    drop %70
+    perform std::console::Console.print(%71) -> b13()
+  b13(%72 r: unit):
+    %73 box: word = box %72
+    %74 unbox: unit = unbox %73
+    drop %73
+    ret %74
+  b14(%81 p: ptr, %82 hits: i64, %83 i: i64):
+    %84 lit: i64 = const 6
+    %85 t: bool = lt.int %83, %84
+    if %85 then b16(%81, %82, %83) else b17(%81, %82, %83)
+  b15(%86 v: unit, %87 p: ptr, %88 hits: i64, %89 i: i64):
+    jump b14(%87, %88, %89)
+  b16(%90 p: ptr, %91 hits: i64, %92 i: i64):
+    %162 p.lent: ref = lend %90
+    call step#6(%162) -> b18(%90, %91, %92)
+  b17(%93 p: ptr, %94 hits: i64, %95 i: i64):
+    jump b1(%93, %94, %95)
+  b18(%96 r: ptr, %97 p: ptr, %98 hits: i64, %99 i: i64):
+    %158 p: ptr = tuple_get %96.0
+    %159 p: bool = tuple_get %96.1
+    drop %96
+    jump b19(%158, %159, %97, %98, %99)
+  b19(%100 n: ptr, %101 hit: bool, %102 p: ptr, %103 hits: i64, %104 i: i64):
+    if %101 then b22(%102, %103, %104, %100) else b23(%102, %103, %104, %100)
+  b20(%105 v: unit, %106 p: ptr, %107 hits: i64, %108 i: i64, %109 p: ptr, %110 n: ptr):
+    drop %106
+    %111 x: i64 = proj %109.0 main::owned_record_fresh::P
+    %112 s: ptr = show %111
+    %113 lit: ptr = const str 6
+    %114 s: ptr = concat %112, %113
+    drop %113
+    %115 y: i64 = proj %109.1 main::owned_record_fresh::P
+    %116 s: ptr = show %115
+    %117 s: ptr = concat %114, %116
+    drop %116
+    %118 lit: ptr = const str 6
+    %119 s: ptr = concat %117, %118
+    drop %118
+    %120 v: i64 = proj %109.2 main::owned_record_fresh::P
+    drop %109
+    %121 s: ptr = show %120
+    %122 s: ptr = concat %119, %121
+    drop %121
+    %123 lit: ptr = const str 7
+    %124 s: ptr = concat %122, %123
+    drop %123
+    %125 x: i64 = proj %110.0 main::owned_record_fresh::P
+    %126 s: ptr = show %125
+    %127 s: ptr = concat %124, %126
+    drop %126
+    %128 lit: ptr = const str 6
+    %129 s: ptr = concat %127, %128
+    drop %128
+    %130 y: i64 = proj %110.1 main::owned_record_fresh::P
+    %131 s: ptr = show %130
+    %132 s: ptr = concat %129, %131
+    drop %131
+    %133 lit: ptr = const str 6
+    %134 s: ptr = concat %132, %133
+    drop %133
+    %135 v: i64 = proj %110.2 main::owned_record_fresh::P
+    %136 s: ptr = show %135
+    %137 s: ptr = concat %134, %136
+    drop %136
+    perform std::console::Console.print(%137) -> b21(%110, %107, %108)
+  b21(%138 r: unit, %139 n: ptr, %140 hits: i64, %141 i: i64):
+    %142 box: word = box %138
+    drop %142
+    %143 lit: i64 = const 1
+    %144 t: i64 = intadd %141, %143
+    %145 lit: unit = const ()
+    jump b15(%145, %139, %140, %144)
+  b22(%146 p: ptr, %147 hits: i64, %148 i: i64, %149 n: ptr):
+    %154 lit: i64 = const 1
+    %155 t: i64 = intadd %147, %154
+    %156 lit: unit = const ()
+    dup %146
+    jump b20(%156, %146, %155, %148, %146, %149)
+  b23(%150 p: ptr, %151 hits: i64, %152 i: i64, %153 n: ptr):
+    %157 lit: unit = const ()
+    dup %150
+    jump b20(%157, %150, %151, %152, %150, %153)
+
+fn $entry#1 top -> unit ; main::owned_record_fresh, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn step#2 top -> ptr ; main::owned_record_fresh, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 x: i64 = proj %0.0 main::owned_record_fresh::P
+    %2 v: i64 = proj %0.2 main::owned_record_fresh::P
+    %3 t: i64 = intadd %1, %2
+    %4 y: i64 = proj %0.1 main::owned_record_fresh::P
+    %5 v: i64 = proj %0.2 main::owned_record_fresh::P
+    %53 token: word = $reuse_reset(%0)
+    %6 rec: ptr = alloc main::owned_record_fresh::P(%3, %4, %5) reuse %53
+    %7 y: i64 = proj %6.1 main::owned_record_fresh::P
+    %8 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %9 t: i64 = intadd %7, %8
+    %10 x: i64 = proj %6.0 main::owned_record_fresh::P
+    %11 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %54 token: word = $reuse_reset(%6)
+    %12 rec: ptr = alloc main::owned_record_fresh::P(%10, %9, %11) reuse %54
+    %13 x: i64 = proj %12.0 main::owned_record_fresh::P
+    %14 lit: i64 = const 10
+    %15 t: bool = gt.int %13, %14
+    if %15 then b5(%12) else b6(%12)
+  b1(%16 v: unit, %17 b: ptr, %18 hit: bool):
+    %19 y: i64 = proj %17.1 main::owned_record_fresh::P
+    %20 lit: i64 = const 0
+    %21 t: bool = lt.int %19, %20
+    if %21 then b3(%17, %18) else b4(%17, %18)
+  b2(%22 v: unit, %23 b: ptr, %24 hit: bool):
+    %25 tup: ptr = alloc tuple#5(word, bool)(%23, %24)
+    ret %25
+  b3(%26 b: ptr, %27 hit: bool):
+    %30 x: i64 = proj %26.0 main::owned_record_fresh::P
+    %31 v: i64 = proj %26.2 main::owned_record_fresh::P
+    %55 token: word = $reuse_reset(%26)
+    %32 lit: i64 = const 0
+    %33 rec: ptr = alloc main::owned_record_fresh::P(%30, %32, %31) reuse %55
+    %34 lit: unit = const ()
+    %35 lit: bool = const true
+    jump b2(%34, %33, %35)
+  b4(%28 b: ptr, %29 hit: bool):
+    %36 lit: unit = const ()
+    jump b2(%36, %28, %29)
+  b5(%37 rec: ptr):
+    %39 y: i64 = proj %37.1 main::owned_record_fresh::P
+    %40 v: i64 = proj %37.2 main::owned_record_fresh::P
+    %56 token: word = $reuse_reset(%37)
+    %41 lit: i64 = const 10
+    %42 rec: ptr = alloc main::owned_record_fresh::P(%41, %39, %40) reuse %56
+    %43 v: i64 = proj %42.2 main::owned_record_fresh::P
+    %44 lit: i64 = const 0
+    %45 t: i64 = intsub %44, %43
+    %46 x: i64 = proj %42.0 main::owned_record_fresh::P
+    %47 y: i64 = proj %42.1 main::owned_record_fresh::P
+    %57 token: word = $reuse_reset(%42)
+    %48 rec: ptr = alloc main::owned_record_fresh::P(%46, %47, %45) reuse %57
+    %49 lit: unit = const ()
+    %50 lit: bool = const true
+    jump b1(%49, %48, %50)
+  b6(%38 rec: ptr):
+    %51 lit: unit = const ()
+    %52 lit: bool = const false
+    jump b1(%51, %38, %52)
+
+fn stored#3 top -> ptr ; main::owned_record_fresh, frame 0 slots []
+  b0():
+    %0 lit: i64 = const 1
+    %1 lit: i64 = const 2
+    %2 lit: i64 = const 3
+    %3 rec: ptr = alloc main::owned_record_fresh::P(%0, %1, %2)
+    dup %3
+    %4 xs: ptr = alloc list(%3)
+    %5 y: i64 = proj %3.1 main::owned_record_fresh::P
+    %6 v: i64 = proj %3.2 main::owned_record_fresh::P
+    %10 token: word = $reuse_reset(%3)
+    %7 lit: i64 = const 100
+    %8 rec: ptr = alloc main::owned_record_fresh::P(%7, %5, %6) reuse %10
+    %9 tup: ptr = alloc tuple#3(word, word)(%4, %8)
+    ret %9
+
+fn through_join#4 top -> ptr ; main::owned_record_fresh, frame 1 slots [%0 bool]
+  b0(%0 c: bool):
+    %1 lit: i64 = const 1
+    %2 lit: i64 = const 2
+    %3 lit: i64 = const 3
+    %4 rec: ptr = alloc main::owned_record_fresh::P(%1, %2, %3)
+    if %0 then b2(%4) else b3(%4)
+  b1(%5 v: ptr, %6 rec: ptr):
+    %7 y: i64 = proj %6.1 main::owned_record_fresh::P
+    %8 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %20 token: word = $reuse_reset(%6)
+    %9 lit: i64 = const 5
+    %10 rec: ptr = alloc main::owned_record_fresh::P(%9, %7, %8) reuse %20
+    %11 x: i64 = proj %5.0 main::owned_record_fresh::P
+    drop %5
+    %12 x: i64 = proj %10.0 main::owned_record_fresh::P
+    drop %10
+    %13 tup: ptr = alloc tuple#6(i64, i64)(%11, %12)
+    ret %13
+  b2(%14 rec: ptr):
+    dup %14
+    jump b1(%14, %14)
+  b3(%15 rec: ptr):
+    %16 lit: i64 = const 7
+    %17 lit: i64 = const 8
+    %18 lit: i64 = const 9
+    %19 rec: ptr = alloc main::owned_record_fresh::P(%16, %17, %18)
+    jump b1(%19, %15)
+
+fn either#5 top -> ptr ; main::owned_record_fresh, frame 1 slots [%0 bool]
+  b0(%0 c: bool):
+    %1 lit: i64 = const 1
+    %2 lit: i64 = const 2
+    %3 lit: i64 = const 3
+    %4 rec: ptr = alloc main::owned_record_fresh::P(%1, %2, %3)
+    if %0 then b2(%4) else b3(%4)
+  b1(%5 v: unit, %6 rec: ptr):
+    %7 x: i64 = proj %6.0 main::owned_record_fresh::P
+    %8 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %14 token: word = $reuse_reset(%6)
+    %9 lit: i64 = const 20
+    %10 rec: ptr = alloc main::owned_record_fresh::P(%7, %9, %8) reuse %14
+    ret %10
+  b2(%11 rec: ptr):
+    ret %11
+  b3(%12 rec: ptr):
+    %13 lit: unit = const ()
+    jump b1(%13, %12)
+
+fn step#6 borrowed variant of #2 -> ptr ; main::owned_record_fresh, frame 1 slots [%0 i64]
+  b0(%0 p: ref):
+    %1 x: i64 = proj %0.0 main::owned_record_fresh::P
+    %2 v: i64 = proj %0.2 main::owned_record_fresh::P
+    %3 t: i64 = intadd %1, %2
+    %4 y: i64 = proj %0.1 main::owned_record_fresh::P
+    %5 v: i64 = proj %0.2 main::owned_record_fresh::P
+    %6 rec: ptr = alloc main::owned_record_fresh::P(%3, %4, %5)
+    %7 y: i64 = proj %6.1 main::owned_record_fresh::P
+    %8 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %9 t: i64 = intadd %7, %8
+    %10 x: i64 = proj %6.0 main::owned_record_fresh::P
+    %11 v: i64 = proj %6.2 main::owned_record_fresh::P
+    %53 token: word = $reuse_reset(%6)
+    %12 rec: ptr = alloc main::owned_record_fresh::P(%10, %9, %11) reuse %53
+    %13 x: i64 = proj %12.0 main::owned_record_fresh::P
+    %14 lit: i64 = const 10
+    %15 t: bool = gt.int %13, %14
+    if %15 then b5(%12) else b6(%12)
+  b1(%16 v: unit, %17 b: ptr, %18 hit: bool):
+    %19 y: i64 = proj %17.1 main::owned_record_fresh::P
+    %20 lit: i64 = const 0
+    %21 t: bool = lt.int %19, %20
+    if %21 then b3(%17, %18) else b4(%17, %18)
+  b2(%22 v: unit, %23 b: ptr, %24 hit: bool):
+    %25 tup: ptr = alloc tuple#5(word, bool)(%23, %24)
+    ret %25
+  b3(%26 b: ptr, %27 hit: bool):
+    %30 x: i64 = proj %26.0 main::owned_record_fresh::P
+    %31 v: i64 = proj %26.2 main::owned_record_fresh::P
+    %54 token: word = $reuse_reset(%26)
+    %32 lit: i64 = const 0
+    %33 rec: ptr = alloc main::owned_record_fresh::P(%30, %32, %31) reuse %54
+    %34 lit: unit = const ()
+    %35 lit: bool = const true
+    jump b2(%34, %33, %35)
+  b4(%28 b: ptr, %29 hit: bool):
+    %36 lit: unit = const ()
+    jump b2(%36, %28, %29)
+  b5(%37 rec: ptr):
+    %39 y: i64 = proj %37.1 main::owned_record_fresh::P
+    %40 v: i64 = proj %37.2 main::owned_record_fresh::P
+    %55 token: word = $reuse_reset(%37)
+    %41 lit: i64 = const 10
+    %42 rec: ptr = alloc main::owned_record_fresh::P(%41, %39, %40) reuse %55
+    %43 v: i64 = proj %42.2 main::owned_record_fresh::P
+    %44 lit: i64 = const 0
+    %45 t: i64 = intsub %44, %43
+    %46 x: i64 = proj %42.0 main::owned_record_fresh::P
+    %47 y: i64 = proj %42.1 main::owned_record_fresh::P
+    %56 token: word = $reuse_reset(%42)
+    %48 rec: ptr = alloc main::owned_record_fresh::P(%46, %47, %45) reuse %56
+    %49 lit: unit = const ()
+    %50 lit: bool = const true
+    jump b1(%49, %48, %50)
+  b6(%38 rec: ptr):
+    %51 lit: unit = const ()
+    %52 lit: bool = const false
+    jump b1(%51, %38, %52)

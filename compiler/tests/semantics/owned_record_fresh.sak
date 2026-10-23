@@ -1,0 +1,66 @@
+// milestone: M4
+// covers: design §17.290 (6) (a record made in the def and only read is rebuilt in place, also through the joins of branches; one stored, or passed into a join whose code holds the rebuild, is copied)
+
+type P = { x: Int, y: Int, v: Int }
+
+// The `awfy_bounce` shape: each field assignment rebuilds `b`; after the first copy of the
+// parameter every rebuild reuses the record, across the joins of the `if`s.
+fn step(p: P) -> (P, Bool) {
+  var b = p
+  var hit = false
+  b.x = b.x + b.v
+  b.y = b.y + b.v
+  if b.x > 10 {
+    b.x = 10
+    b.v = 0 - b.v
+    hit = true
+  }
+  if b.y < 0 {
+    b.y = 0
+    hit = true
+  }
+  (b, hit)
+}
+
+// Stored in a list, then rebuilt: the stored record keeps its fields.
+fn stored() -> (List<P>, P) {
+  let a = P { x: 1, y: 2, v: 3 }
+  let xs = [a]
+  (xs, P { ..a, x: 100 })
+}
+
+// `q` may be `a` itself, and is read after `a` is rebuilt: the rebuild is a copy.
+fn through_join(c: Bool) -> (Int, Int) {
+  let a = P { x: 1, y: 2, v: 3 }
+  let q = if c { a } else { P { x: 7, y: 8, v: 9 } }
+  let w = P { ..a, x: 5 }
+  (q.x, w.x)
+}
+
+// Returned on one path, rebuilt on the other.
+fn either(c: Bool) -> P {
+  let a = P { x: 1, y: 2, v: 3 }
+  if c { return a }
+  P { ..a, y: 20 }
+}
+
+pub fn main() -> Unit ! {Console} {
+  var p = P { x: 0, y: 5, v: 4 }
+  var hits = 0
+  var i = 0
+  while i < 6 {
+    let keep = p
+    let (n, hit) = step(p)
+    if hit { hits = hits + 1 }
+    Console.print("{keep.x},{keep.y},{keep.v} -> {n.x},{n.y},{n.v}")
+    p = n
+    i = i + 1
+  }
+  Console.print("hits {hits}")
+  let (xs, b) = stored()
+  Console.print("stored {Option.expect(xs[0], "a").x} {b.x}")
+  let (q1, w1) = through_join(true)
+  let (q2, w2) = through_join(false)
+  Console.print("join {q1} {w1} {q2} {w2}")
+  Console.print("either {either(true).y} {either(false).y}")
+}

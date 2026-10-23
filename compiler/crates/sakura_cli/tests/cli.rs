@@ -2394,6 +2394,7 @@ fn build_dump_owned_pins_the_record_fixtures() {
   r%75 = put_then_fail(r%55) shared(borrowed-after at 2111..2117)
   r%25 = bump(p%19) owned
   r%12 = list_push(vars%11) owned
+  rec%15 = Planner {..p%5} in place
 fn bump consumes p
   r%4 = put_var(p%0) shared(param), owned entry owned
 fn put_var consumes p
@@ -2602,6 +2603,20 @@ fn carry consumes start
 fn kick consumes start with elements
   rec%15 = Body {..r%10} allocates, owned entry in place
   r%16 = set(bs%3) shared(join), owned entry owned
+",
+        ),
+        // Design §17.290 (6): a record made in the def and only read (or a join of such) is
+        // rebuilt in place; `stored`'s is in a list and `through_join`'s may be `q`, read after
+        // the rebuild, so both allocate and are not listed.
+        (
+            "owned_record_fresh",
+            "fn step
+  rec%12 = P {..rec%6} in place
+  rec%33 = P {..b%16} in place
+  rec%20 = P {..rec%12} in place
+  rec%25 = P {..rec%20} in place
+fn either
+  rec%5 = P {..rec%1} in place
 ",
         ),
         // Reads after a call that takes their value over are bound before it (`hoist_reads`):
