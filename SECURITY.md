@@ -2,10 +2,13 @@
 
 ## Supported versions
 
-Sakura Lang is in pre-alpha design. **No versions are supported yet**, and there is no
-released compiler or security support window. Do not use prototype behavior as a
-security boundary. This policy also covers this repository's website and tooling.
-Future supported release lines will be listed here before publication.
+The current release is **`v1.0.0`**, the first stable release. Report vulnerabilities in it or
+in `main`. A fix is made on `main` and ships in a new 1.x release; under
+[STABILITY.md](STABILITY.md), a security fix that has to break behaviour comes with a migration
+in the CHANGELOG. Earlier releases (the `1.0.0-beta.N` betas and the `0.x` previews) receive no
+fixes, and no release line has a support window yet. Experimental features (the native
+backend, packages, `std/worker`) are not a security boundary. This policy also covers this
+repository's website and tooling.
 
 ## Report privately
 
@@ -33,4 +36,4 @@ date and credit preferences with the reporter, validate the fix, and publish an
 advisory with affected revisions, impact, remediation, and any remaining limits.
 If exploitation is active, prioritize mitigation and communicate an accelerated
 schedule. A disputed severity or timeline should be recorded privately and
-revisited with the evidence; pre-alpha status does not make reports unimportant.
+revisited with the evidence.

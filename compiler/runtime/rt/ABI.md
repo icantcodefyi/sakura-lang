@@ -37,7 +37,7 @@ implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
 (`crates/sakura_codegen_wasm`, `runtime/js/sakura_wasm_host.js`). This document is prose,
 tables and byte layouts; it contains no code and is not itself normative language
-specification (STABILITY.md: pre-alpha). Controlling decisions: design §17.81–§17.83, §17.88,
+specification (STABILITY.md lists the ABI's compatibility rule). Controlling decisions: design §17.81–§17.83, §17.88,
 §17.92–§17.99, §17.103 (fast by default), §17.108 (1.0.1), §17.129 (1.0.2). Evidence: [research/08](../../../research/08-m4-wasm-and-verification.md),
 [research/09](../../../research/09-m4-abi-and-encoding.md) with
 [09-evidence](../../../research/09-evidence/). Every section names the research it rests on or

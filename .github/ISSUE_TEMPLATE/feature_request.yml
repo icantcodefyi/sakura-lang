@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         For language syntax, semantics, effects, or compatibility changes, use the language proposal form and [RFC process](https://github.com/icantcodefyi/sakuralang/blob/main/docs/rfcs/README.md).
-        Sakura Lang is in the design phase; distinguish existing behavior from proposed behavior.
+        Distinguish existing behavior from proposed behavior.
   - type: textarea
     id: problem
     attributes:

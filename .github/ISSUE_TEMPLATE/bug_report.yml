@@ -1,11 +1,11 @@
 name: Bug report
-description: Report a reproducible problem with the website, docs, or future compiler.
+description: Report a reproducible problem with the compiler, the website or the docs.
 title: "bug: "
 body:
   - type: markdown
     attributes:
       value: |
-        Sakura Lang is pre-alpha; no compiler is released yet. Search existing issues first.
+        Include `sakura --version`. Search existing issues first.
         Report security issues privately using [SECURITY.md](https://github.com/icantcodefyi/sakuralang/blob/main/SECURITY.md).
         Remove secrets and private data from all examples and logs.
   - type: input
