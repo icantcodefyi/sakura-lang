@@ -429,7 +429,7 @@ n=50,000, 1.35%); no Wasmtime cell; every native language a median 0.03–0.06%,
 over 1%, Rust one (`bg_binary_trees` n=10, 1.38%), Go 28 (largest `tokenizer` n=100,000, 12.39%);
 Bun as before (advisory). Against the `447dce0c` baseline the `js` run's Sakura/hand-JS ratios read
 `ok` on all 99 shared Node cells (−2.0% to +0.4%; `compare` flags only advisory Bun rows;
-`2026-10-23-70c64513-compare-js-beta5.txt`), and the `wasm` run reads `ok`. Sakura's native counts
+`2026-10-22-70c64513-compare-js-beta5.txt`), and the `wasm` run reads `ok`. Sakura's native counts
 against beta.5's: `f6be3c1d` (`text()` checks UTF-8 once per builtin call) cuts `tokenizer` by
 584× at n=100,000 (6.9×, 60×, 293× at 1,000, 10,000, 50,000) and `json_validate` by 12× at n=30,000;
 the other 79 shared cells move −0.01% to +1.3% (`contracts`, every size). M4 envelope
@@ -440,4 +440,4 @@ at n=10,000, 50,000 and 100,000 now meets its ceiling beside `map_set` against K
 stays carried under §17.152 (2). `compile`: `check_hello` (p95 15.1 ms, target 10) and
 `check_cold_10k` (62.1 ms, target 45) miss §17.195 (1)'s targets as at beta.5; every budget holds.
 Prep `fib` and `shapes` compare `ok` on every Node cell (largest move −1.5%, `shapes`
-n=100,000). Source: `bench/results/2026-10-23-70c64513-*`.
+n=100,000). Source: `bench/results/2026-10-22-70c64513-*`.
