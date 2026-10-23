@@ -301,6 +301,7 @@ semantics/task_every_virtual_clock: 13 funcs, 50 blocks, 1 dup, 17 drop, valid
 semantics/trace_decode_then_spawn: 7 funcs, 33 blocks, 2 dup, 22 drop, valid
 semantics/try_does_not_catch_defect: 3 funcs, 12 blocks, 0 dup, 7 drop, valid
 semantics/try_result_does_not_catch_defect: 4 funcs, 16 blocks, 0 dup, 10 drop, valid
+semantics/tuple_get_slot_kinds: 4 funcs, 12 blocks, 0 dup, 16 drop, valid
 semantics/tuples: 4 funcs, 10 blocks, 0 dup, 19 drop, valid
 semantics/type_aliases: 4 funcs, 9 blocks, 0 dup, 4 drop, valid
 semantics/typed_errors: 8 funcs, 55 blocks, 2 dup, 27 drop, valid

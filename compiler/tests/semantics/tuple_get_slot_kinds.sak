@@ -1,0 +1,23 @@
+// milestone: M5
+// spec: ABI §3.3, §3.4 (a tuple row's slot kinds), §4 (boxing at polymorphism boundaries)
+// covers: TupleGet; native reads a slot in place only when its row's kind is the one wanted:
+// an `Int` or `Bool` read from a tuple a generic function built (boxed slots), and a word read
+// from an `(Int, String)` or `(Float, Bool)` row, take the runtime's conversion
+
+fn swap<A, B>(p: (A, B)) -> (B, A) {
+  let (a, b) = p
+  (b, a)
+}
+
+fn pick<A, B>(p: (A, B)) -> A {
+  let (a, _) = p
+  a
+}
+
+pub fn main() -> Unit ! {Console} {
+  let p = (7, "seven")
+  let (s, n) = swap(p)
+  let q = swap((2.5, true))
+  let (b, f) = q
+  Console.print("{s} {n + 1} {b} {f * 2.0} {pick((40, 2)) + 2}")
+}

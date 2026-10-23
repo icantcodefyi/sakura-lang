@@ -1,0 +1,105 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+layout 4 shape |  32b (f64, bool)
+layout 5 shape |  32b (i64, i64)
+
+fn main#0 pub top -> unit ; main::tuple_get_slot_kinds, frame 7 slots [%3 word*, %9 word*, %10 word*, %11 i64, %38 word*, %39 word*, %45 bool]
+  b0():
+    %0 lit: i64 = const 7
+    %1 lit: ptr = const str 0
+    %2 tup: ptr = alloc tuple#3(i64, word)(%0, %1)
+    call swap#2(%2) -> b1()
+  b1(%3 r: ptr):
+    %50 p: ptr = tuple_get %3.0
+    %51 p: i64 = tuple_get %3.1
+    drop %3
+    jump b2(%50, %51)
+  b2(%4 s: ptr, %5 n: i64):
+    %6 lit: f64 = const 2.5
+    %7 lit: bool = const true
+    %8 tup: ptr = alloc tuple#4(f64, bool)(%6, %7)
+    call swap#2(%8) -> b3(%4, %5)
+  b3(%9 r: ptr, %10 s: ptr, %11 n: i64):
+    %48 p: bool = tuple_get %9.0
+    %49 p: f64 = tuple_get %9.1
+    drop %9
+    jump b4(%48, %49, %10, %11)
+  b4(%12 b: bool, %13 f: f64, %14 s: ptr, %15 n: i64):
+    %16 s: ptr = show %14
+    drop %14
+    %17 lit: ptr = const str 1
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %19 lit: i64 = const 1
+    %20 t: i64 = intadd %15, %19
+    %21 s: ptr = show %20
+    %22 s: ptr = concat %18, %21
+    drop %21
+    %23 lit: ptr = const str 1
+    %24 s: ptr = concat %22, %23
+    drop %23
+    %25 s: ptr = show %12
+    %26 s: ptr = concat %24, %25
+    drop %25
+    %27 lit: ptr = const str 1
+    %28 s: ptr = concat %26, %27
+    drop %27
+    %29 lit: f64 = const 2.0
+    %30 t: f64 = floatmul %13, %29
+    %31 s: ptr = show %30
+    %32 s: ptr = concat %28, %31
+    drop %31
+    %33 lit: ptr = const str 1
+    %34 s: ptr = concat %32, %33
+    drop %33
+    %35 lit: i64 = const 40
+    %36 lit: i64 = const 2
+    %37 tup: ptr = alloc tuple#5(i64, i64)(%35, %36)
+    call pick#3(%37) -> b5(%34)
+  b5(%38 r: word, %39 s: ptr):
+    %40 unbox: i64 = unbox %38
+    drop %38
+    %41 lit: i64 = const 2
+    %42 t: i64 = intadd %40, %41
+    %43 s: ptr = show %42
+    %44 s: ptr = concat %39, %43
+    drop %43
+    perform std::console::Console.print(%44) -> b6()
+  b6(%45 r: unit):
+    %46 box: word = box %45
+    %47 unbox: unit = unbox %46
+    drop %46
+    ret %47
+
+fn $entry#1 top -> unit ; main::tuple_get_slot_kinds, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn swap#2 top -> ptr ; main::tuple_get_slot_kinds, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %4 p: word = tuple_get %0.0
+    %5 p: word = tuple_get %0.1
+    drop %0
+    jump b1(%4, %5)
+  b1(%1 a: word, %2 b: word):
+    %3 tup: ptr = alloc tuple#2(word, word)(%2, %1)
+    ret %3
+
+fn pick#3 top -> word ; main::tuple_get_slot_kinds, frame 1 slots [%0 word*]
+  b0(%0 p: ptr):
+    %1 p: word = tuple_get %0.0
+    %2 p: word = tuple_get %0.1
+    drop %0
+    drop %2
+    ret %1

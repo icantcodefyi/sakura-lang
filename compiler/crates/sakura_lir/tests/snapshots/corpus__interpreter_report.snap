@@ -301,6 +301,7 @@ semantics/task_every_virtual_clock: unsupported (builtin task_host)
 semantics/trace_decode_then_spawn: unsupported (builtin task_host)
 semantics/try_does_not_catch_defect: D030, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/try_result_does_not_catch_defect: D030, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
+semantics/tuple_get_slot_kinds: ok, 23 allocated, 0 dup, 23 drop, peak 5, live 0/0
 semantics/tuples: ok, 24 allocated, 1 dup, 25 drop, peak 6, live 0/0
 semantics/type_aliases: ok, 6 allocated, 0 dup, 6 drop, peak 4, live 0/0
 semantics/typed_errors: ok, 35 allocated, 8 dup, 43 drop, peak 5, live 0/0

@@ -88,6 +88,9 @@ pub struct Env<'a> {
     /// The twin table, when a twin calls a closure: per code, the address of its
     /// closure-convention twin or null (design §17.211 (2)).
     pub twin_of: Option<cranelift_module::DataId>,
+    /// The tuple kinds table: per layout id a `u32`, the scalar kinds of a tuple row's first 16
+    /// slots (two bits each, ABI §3.4's encoding), 0 for other entries.
+    pub tuple_kinds: cranelift_module::DataId,
     /// The source positions instructions are marked with (the DWARF line table).
     pub lines: &'a mut crate::debuginfo::Lines,
     /// `--native-checks`: each heap access calls `rt_check` first.
@@ -715,6 +718,63 @@ impl Gen<'_, '_, '_> {
         Ok(())
     }
 
+    /// `TupleGet` of slot `index` (below 16) of tuple `t` in place when its row's slot kind is
+    /// `want` (the tuple kinds table): the slot's bits to `join`, a word with its `rc` raised
+    /// uncounted, as `rt_tuple_get` makes it. A conversion, or a word at 2^32 − 1 (`D092`),
+    /// goes to `slow`, the call.
+    fn tuple_get_inline(
+        &mut self,
+        t: Value,
+        index: u32,
+        want: i64,
+        slow: ir::Block,
+        join: ir::Block,
+    ) {
+        let id = self.load(types::I32, t, 12);
+        let gv = self
+            .e
+            .obj
+            .declare_data_in_func(self.e.tuple_kinds, self.b.func);
+        let table = self.b.ins().symbol_value(types::I64, gv);
+        let id = self.b.ins().uextend(types::I64, id);
+        let off = self.b.ins().ishl_imm_u(id, 2);
+        let at = self.b.ins().iadd(table, off);
+        let kinds = self
+            .b
+            .ins()
+            .load(types::I32, MemFlagsData::trusted().with_readonly(), at, 0);
+        let kind = self.b.ins().ushr_imm_u(kinds, 2 * i64::from(index));
+        let kind = self.b.ins().band_imm_u(kind, 3);
+        let other = self.b.ins().icmp_imm_s(IntCC::NotEqual, kind, want);
+        let hit = self.b.create_block();
+        self.b.ins().brif(other, slow, &[], hit, &[]);
+        self.b.switch_to_block(hit);
+        let at = 16 + 8 * index as i32;
+        if want != 0 {
+            let bits = self.load(types::I64, t, at);
+            self.b.ins().jump(join, &[BlockArg::Value(bits)]);
+            return;
+        }
+        let w = self.load(types::I32, t, at);
+        let (inc, add, done) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        self.branch_counted(w, inc, done);
+        self.b.switch_to_block(inc);
+        let rc = self.load(types::I32, w, 4);
+        let at_max = self.b.ins().icmp_imm_s(IntCC::Equal, rc, -1);
+        self.b.ins().brif(at_max, slow, &[], add, &[]);
+        self.b.switch_to_block(add);
+        let rc = self.b.ins().iadd_imm_s(rc, 1);
+        self.store(rc, w, 4);
+        self.b.ins().jump(done, &[]);
+        self.b.switch_to_block(done);
+        let bits = self.b.ins().uextend(types::I64, w);
+        self.b.ins().jump(join, &[BlockArg::Value(bits)]);
+    }
+
     /// `Drop`: a counted object above `rc = 1` goes down in place and `drops` in the context
     /// (ABI §3.1, 1.20.0); the last owner's drop releases it through the `drop` export, and the
     /// checked lowering calls the export for every drop.
@@ -1046,14 +1106,25 @@ impl Gen<'_, '_, '_> {
                 };
                 if want >= 0 {
                     let t = self.val(*src)?;
+                    let (slow, join) = (self.b.create_block(), self.b.create_block());
+                    self.b.append_block_param(join, types::I64);
+                    if self.e.checks || *index >= 16 {
+                        self.b.ins().jump(slow, &[]);
+                    } else {
+                        self.tuple_get_inline(t, *index, want, slow, join);
+                    }
+                    self.b.switch_to_block(slow);
                     let i = self.iconst32(i64::from(*index));
                     let k = self.iconst32(want);
                     let bits = self.call1("rt_tuple_get", &[t, i, k], types::I64)?;
-                    self.set_bits(*dst, bits);
                     if want == 0 {
-                        let x = self.val(*dst)?;
+                        let x = self.b.ins().ireduce(types::I32, bits);
                         self.check_zero(x, &before)?;
                     }
+                    self.b.ins().jump(join, &[BlockArg::Value(bits)]);
+                    self.b.switch_to_block(join);
+                    let bits = self.b.block_params(join)[0];
+                    self.set_bits(*dst, bits);
                 }
             }
             Inst::MakeClosure {

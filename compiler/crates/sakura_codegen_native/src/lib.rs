@@ -235,6 +235,9 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
         None
     };
     let twin_of = twin_table.as_ref().map(|(id, _)| *id);
+    let tuple_kinds = obj
+        .declare_data("sakura$tuple_kinds", Linkage::Local, false, false)
+        .map_err(|e| e.to_string())?;
     let mut rt = HashMap::new();
     let mut ctx = obj.make_context();
     let mut fctx = FunctionBuilderContext::new();
@@ -267,6 +270,7 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
                 enter: &enter,
                 may_abort: &may_abort,
                 twin_of,
+                tuple_kinds,
                 lines: &mut lines,
                 checks: opts.checks,
                 regions: opts.regions,
@@ -282,6 +286,11 @@ pub fn emit_timed(m: &Module, opts: &Options) -> Result<(Vec<u8>, [Duration; 2])
     if let Some((id, d)) = twin_table {
         obj.define_data(id, &d).map_err(|e| e.to_string())?;
     }
+    let mut d = DataDescription::new();
+    d.define(tuple_kinds_table(m).into_boxed_slice());
+    d.set_align(4);
+    obj.define_data(tuple_kinds, &d)
+        .map_err(|e| e.to_string())?;
 
     let image = tables.image();
     let data = |obj: &mut ObjectModule, name: &str, writable: bool| {
@@ -640,4 +649,22 @@ fn copy_import_libs(build: &Path, libs: &str, into: &Path) -> Result<(), String>
         }
     }
     Ok(())
+}
+
+/// The tuple kinds table (`func::Env::tuple_kinds`, as `sakura_codegen_wasm`'s): per layout id
+/// a `u32`, the scalar kinds of a tuple row's first 16 slots at two bits each (ABI §3.4's
+/// encoding), 0 for other entries. At least one entry: an empty section is no data object.
+fn tuple_kinds_table(m: &Module) -> Vec<u8> {
+    use sakura_lir::layout::EntryKind;
+    let word = |e: &sakura_lir::layout::Entry| match e.kind {
+        EntryKind::Tuple => (e.rows[0].slots.iter().take(16))
+            .enumerate()
+            .fold(0u32, |w, (i, slot)| w | (slot.kind as u32) << (2 * i)),
+        _ => 0,
+    };
+    let mut out: Vec<u8> = (m.layouts.entries.iter())
+        .flat_map(|e| word(e).to_le_bytes())
+        .collect();
+    out.resize(out.len().max(4), 0);
+    out
 }
