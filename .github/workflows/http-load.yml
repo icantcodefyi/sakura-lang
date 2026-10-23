@@ -1,0 +1,124 @@
+name: HTTP load
+
+# bench/http's load test (bench/http/README.md): the social app on Sakura (JS on Node and Bun,
+# WASM, native) from the published npm package, beside Bun, Node and Go, on one hosted runner.
+# The server and the load generator share the runner, pinned by taskset to separate halves of its
+# CPUs. Manual only; the results are an artifact, never a baseline.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sakura_version:
+        description: sakuralang version to install from npm
+        type: string
+        default: "1.0.0"
+      servers:
+        description: Comma-separated servers (empty = all)
+        type: string
+        default: ""
+      mixes:
+        description: Comma-separated mixes
+        type: string
+        default: read,write,health
+      duration:
+        description: Seconds per run
+        type: number
+        default: 5
+      repeats:
+        description: Runs per point
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.run_id }}
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      SAKURA_VERSION: ${{ inputs.sakura_version }}
+      SERVERS: ${{ inputs.servers }}
+      MIXES: ${{ inputs.mixes }}
+      DURATION: ${{ inputs.duration }}
+      REPEATS: ${{ inputs.repeats }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.14"
+      - name: Check inputs and read reference pins
+        id: pins
+        run: |
+          [[ "$SAKURA_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "bad version"; exit 1; }
+          [[ "$SERVERS" =~ ^[a-z,-]*$ && "$MIXES" =~ ^[a-z,]+$ ]] || { echo "bad server or mix list"; exit 1; }
+          [[ "$DURATION" =~ ^[0-9]+$ && "$REPEATS" =~ ^[0-9]+$ ]] || { echo "bad number"; exit 1; }
+          python3 - <<'PY'
+          import os, tomllib
+          with open("bench/toolchains.toml", "rb") as source:
+              pins = tomllib.load(source)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              for name, version in pins.items():
+                  print(f"{name}={version}", file=output)
+          PY
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: ${{ steps.pins.outputs.bun }}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version: ${{ steps.pins.outputs.go }}
+          cache: false
+      - name: Cache pinned oha
+        id: oha
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.oha
+          key: oha-${{ runner.os }}-${{ runner.arch }}-${{ steps.pins.outputs.oha }}
+      - name: Install pinned oha
+        if: steps.oha.outputs.cache-hit != 'true'
+        env:
+          OHA_VERSION: ${{ steps.pins.outputs.oha }}
+        run: cargo install oha --version "=$OHA_VERSION" --locked --root ~/.oha
+      - name: Install Sakura from npm
+        run: |
+          npm install --global --ignore-scripts "sakuralang@$SAKURA_VERSION"
+          echo "$HOME/.oha/bin" >> "$GITHUB_PATH"
+          "$(npm prefix --global)/bin/sakura" --version
+      - name: Host
+        run: |
+          mkdir -p http-results
+          {
+            uname -a
+            nproc
+            lscpu
+            free -m
+            echo "somaxconn $(sysctl -n net.core.somaxconn)"
+            echo "nofile $(ulimit -n)"
+            cc --version | head -1
+          } | tee http-results/host.txt
+      - name: Load test
+        run: |
+          python3 bench/http/run.py --sakura "$(npm prefix --global)/bin/sakura" \
+            ${SERVERS:+--servers "$SERVERS"} --mixes "$MIXES" --duration "$DURATION" --repeats "$REPEATS" \
+            --json http-results/http.json --md http-results/http.md 2> >(tee http-results/progress.log >&2)
+          cat http-results/http.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Server logs
+        if: always()
+        run: cp -r bench/target/http/logs http-results/ 2>/dev/null || true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: http-load-linux
+          path: http-results/
+          if-no-files-found: warn

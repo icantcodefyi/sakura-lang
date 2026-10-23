@@ -1,0 +1,201 @@
+// A small social app for the HTTP load test (bench/http/README.md) on std `Serve`, `Router`
+// and `Sql`. AI-assisted (Claude), reviewed by the contributor.
+//
+// `main <port>` serves on 127.0.0.1:<port> from one in-memory SQLite database
+// (`Sql.memory()`) until the process stops. The address must be in `sakura.toml`'s
+// `[permissions] net` list; `bench/http/run.py` passes the grant for the port it chose.
+//
+// The other servers in bench/http (Bun, Node, Go) answer the same routes with the same SQL,
+// the same status codes and the same JSON shapes; see the README's table.
+
+import std/cli.{Cli}
+import std/request.{BadRequest, Get, Payload, Request}
+import std/response.{Response, Status}
+import std/router.{Router}
+import std/serve.{Address, Serve, ServeError}
+import std/sql.{Sql, SqlError}
+import std/url.{Url}
+
+type Name = String where String.len(it) >= 1 && String.len(it) <= 64
+type PostBody = String where String.len(it) >= 1 && String.len(it) <= 280
+
+type NewUser = { name: Name }
+type User = { id: Int, name: String }
+type NewPost = { user_id: Int, body: PostBody }
+type Post = { id: Int, user_id: Int, body: String, likes: Int }
+type Feed = { posts: List<Post> }
+type NewLike = { user_id: Int }
+type Likes = { post_id: Int, likes: Int }
+
+/// Bodies are small JSON objects; anything larger is a 400.
+let max_body = 4_096
+
+fn schema() -> Unit ! {Sql, Fail<SqlError>} {
+  Sql.migrate([
+    sql"create table users (id integer primary key, name text not null)",
+    sql"create table posts (id integer primary key, user_id integer not null, body text not null)",
+    sql"create table likes (post_id integer not null, user_id integer not null, primary key (post_id, user_id))",
+  ])
+}
+
+fn db_error(e: SqlError) -> Response { Response.status(500, "database error: {e.message}") }
+
+fn create_user(req: Request) -> Response ! {Sql} {
+  try {
+    let input: NewUser = Request.json(req, max_body)
+    let rows: List<User> = Sql.query(
+      sql"insert into users (name) values ({input.name}) returning id, name",
+    )
+    Response.status_json(201, List.first(rows).expect("insert returning yields one row"))
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
+    SqlError { message } => db_error(SqlError { message }),
+  }
+}
+
+fn create_post(req: Request) -> Response ! {Sql} {
+  try {
+    let input: NewPost = Request.json(req, max_body)
+    let rows: List<Post> = Sql.query(
+      sql"insert into posts (user_id, body) select id, {input.body} from users where id = {input.user_id} returning id, user_id, body, 0 as likes",
+    )
+    match List.first(rows) {
+      Some(post) => Response.status_json(201, post),
+      None => Response.status(404, "no such user"),
+    }
+  } catch {
+    BadRequest { detail } => Response.status(400, detail),
+    SqlError { message } => db_error(SqlError { message }),
+  }
+}
+
+fn int_of(s: Option<String>) -> Option<Int> {
+  match s {
+    Some(text) => String.parse_int(text),
+    None => None,
+  }
+}
+
+/// The path parameter `id` as a positive integer.
+fn post_id(req: Request) -> Option<Int> {
+  match int_of(Request.param(req, "id")) {
+    Some(id) if id > 0 => Some(id),
+    _ => None,
+  }
+}
+
+fn get_post(req: Request) -> Response ! {Sql} {
+  match post_id(req) {
+    None => Response.status(404, "no such post"),
+    Some(id) => try {
+      let rows: List<Post> = Sql.query(
+        sql"select id, user_id, body, (select count(*) from likes where post_id = posts.id) as likes from posts where id = {id}",
+      )
+      match List.first(rows) {
+        Some(post) => Response.ok_json(post),
+        None => Response.status(404, "no such post"),
+      }
+    } catch {
+      SqlError { message } => db_error(SqlError { message }),
+    },
+  }
+}
+
+fn like_post(req: Request) -> Response ! {Sql} {
+  match post_id(req) {
+    None => Response.status(404, "no such post"),
+    Some(id) => try {
+      let input: NewLike = Request.json(req, max_body)
+      let _ = Sql.execute(
+        sql"insert or ignore into likes (post_id, user_id) select posts.id, users.id from posts, users where posts.id = {id} and users.id = {input.user_id}",
+      )
+      let rows: List<Likes> = Sql.query(
+        sql"select id as post_id, (select count(*) from likes where post_id = posts.id) as likes from posts where id = {id}",
+      )
+      match List.first(rows) {
+        Some(likes) => Response.ok_json(likes),
+        None => Response.status(404, "no such post"),
+      }
+    } catch {
+      BadRequest { detail } => Response.status(400, detail),
+      SqlError { message } => db_error(SqlError { message }),
+    },
+  }
+}
+
+/// `?limit=` clamped to 1..100, 20 when absent or not a number.
+fn feed_limit(req: Request) -> Int {
+  match int_of(Url.query_param(req.url, "limit")) {
+    Some(n) if n < 1 => 1,
+    Some(n) if n > 100 => 100,
+    Some(n) => n,
+    None => 20,
+  }
+}
+
+fn feed(req: Request) -> Response ! {Sql} {
+  let limit = feed_limit(req)
+  try {
+    let posts: List<Post> = Sql.query(
+      sql"select id, user_id, body, (select count(*) from likes where post_id = posts.id) as likes from posts order by id desc limit {limit}",
+    )
+    Response.ok_json(Feed { posts })
+  } catch {
+    SqlError { message } => db_error(SqlError { message }),
+  }
+}
+
+fn health(_req: Request) -> Response {
+  Response { ..Response.status(200, "ok"), headers: [("content-type", "text/plain")] }
+}
+
+fn app() -> Router<{Sql}> {
+  Router.new()
+    .post("/users", create_user)
+    .post("/posts", create_post)
+    .get("/posts/:id", get_post)
+    .post("/posts/:id/like", like_post)
+    .get("/feed", feed)
+    .get("/health", health)
+}
+
+pub fn main() -> Unit ! {Cli, Serve, Fail<ServeError | SqlError>} {
+  let port = match List.first(Cli.args()) {
+    Some(arg) => Option.expect(String.parse_int(arg), "port"),
+    None => 8080,
+  }
+  with Sql.memory() {
+    schema()
+    Serve.listen(app(), Address.of("127.0.0.1", port))
+  }
+}
+
+test "the routes answer the documented statuses and shapes" {
+  with Sql.memory() {
+    schema()
+    let r = app()
+    let u = Router.handle(r, Request.post("/users", "\{\"name\":\"ada\"\}"))
+    expect_eq(u.status, Status.from(201))
+    expect_eq(u.body, Payload.Text("\{\"id\":1,\"name\":\"ada\"\}"))
+    let p = Router.handle(r, Request.post("/posts", "\{\"user_id\":1,\"body\":\"hi\"\}"))
+    expect_eq(p.body, Payload.Text("\{\"id\":1,\"user_id\":1,\"body\":\"hi\",\"likes\":0\}"))
+    let l = Router.handle(r, Request.post("/posts/1/like", "\{\"user_id\":1\}"))
+    expect_eq(l.body, Payload.Text("\{\"post_id\":1,\"likes\":1\}"))
+    let again = Router.handle(r, Request.post("/posts/1/like", "\{\"user_id\":1\}"))
+    expect_eq(again.body, Payload.Text("\{\"post_id\":1,\"likes\":1\}"))
+    let g = Router.handle(r, Request.of(Get, Url.from("/posts/1")))
+    expect_eq(g.body, Payload.Text("\{\"id\":1,\"user_id\":1,\"body\":\"hi\",\"likes\":1\}"))
+    let f = Router.handle(r, Request.of(Get, Url.from("/feed?limit=20")))
+    expect_eq(
+      f.body,
+      Payload.Text("\{\"posts\":[\{\"id\":1,\"user_id\":1,\"body\":\"hi\",\"likes\":1\}]\}"),
+    )
+    expect_eq(Router.handle(r, Request.of(Get, Url.from("/posts/9"))).status, Status.from(404))
+    expect_eq(Router.handle(r, Request.of(Get, Url.from("/posts/x"))).status, Status.from(404))
+    let nobody = Router.handle(r, Request.post("/posts", "\{\"user_id\":9,\"body\":\"hi\"\}"))
+    expect_eq(nobody.status, Status.from(404))
+    let empty = Router.handle(r, Request.post("/users", "\{\"name\":\"\"\}"))
+    expect_eq(empty.status, Status.from(400))
+    expect_eq(Router.handle(r, Request.of(Get, Url.from("/health"))).status, Status.from(200))
+  }
+}
