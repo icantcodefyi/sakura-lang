@@ -458,3 +458,28 @@ under §17.265 (1) and §17.152 (2). Prep `fib` and `shapes` (docs/release.md §
 +0.0%, `shapes` +0.0% to +0.8% (largest n=50,000). Blessed (carried) by Claude Opus 5.5 under the
 owner's written delegation of 2026-10-22; the owner can overturn it. Source:
 `bench/results/2026-10-23-36e64df4-*`.
+
+## WASM inline object paths (`2d3f77c1`, 2026-10-23; quick, advisory, not blessed)
+
+Five commits after `v1.0.0` (`9546140b`..`2d3f77c1`, ABI erratum 1.19.1) move the runtime calls
+that dominated heap-heavy WASM programs into the emitted code: scalar memory access without a
+bounds re-check, `Dup`/`Lend`/`TupleGet`/constructor reset, small-object allocation from the
+free lists, the last `Drop` of a small row, and list element and `Option` payload reads.
+Attribution before the work (per-function op counts on an instrumented module, `awfy_bounce`,
+`awfy_richards`, `deltablue`, `binary_trees`): the wasm32 `Mem` bounds check was about 31% of
+executed operators, and the rest was mostly generic runtime `release`/`row` (~130 operators
+each), `Heap::alloc`/`free` (120/89) and one runtime call per `Dup`, `Lend`, `TupleGet`, reset
+and element read. Scalar programs (`fib`) were already near 2× hand JS and do not move.
+
+`bench run --suite wasm --sizes quick --instructions --engine node` on the reference host
+`d88970189598` at `2d3f77c1` (the tree dirty only in `compiler/runtime/rt/ABI.md`; the host was
+loaded, which the instruction counts tolerate), compared with the blessed
+`bench/baselines/wasm/d88970189598.json`: verdict `ok`, 81 of 92 Node cells improved by more than
+10% and none worse; geometric mean of the Sakura/JS instruction ratio 21.08 → 13.11 (−37.8%).
+Selected cells (largest quick n): `awfy_bounce` 86.2 → 32.9, `awfy_richards` 111.4 → 55.8,
+`deltablue` 138.6 → 79.9, `awfy_list` 53.1 → 26.2, `nbody` 38.2 → 18.9, `awfy_json` 20.2 → 9.9,
+`shapes` 11.1 → 6.3, `binary_trees` 7.1 → 4.5, `tokenizer` 3.3 → 2.2, `fib` 2.00 → 1.99. Every
+program's output and §10 counters equal the baseline compiler's, direct and `--no-direct`, except
+`requested`, which grows by the emitter's static tables (120–272 bytes). This is advisory: the
+blessed baseline moves only with a counted run. Source:
+`bench/results/2026-10-23-2d3f77c1-wasm-quick*`.

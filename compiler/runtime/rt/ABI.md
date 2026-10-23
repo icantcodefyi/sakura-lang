@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.19.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.19.1**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -29,8 +29,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 1.15.2 the missing-key permissions erratum (§8.3; design §17.304), 1.16.0 library entries
 (§9; design §17.301 (1c), §17.304 (B1)), 1.17.0 constructor-site reuse (§10; design
 §17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
-§17.176 (4), §17.308; plan M5 N4a) and 1.19.0 the `wipe` header flag (§3.1, §3.5; design
-§17.288 (7); plan M5 N-S). Owned by
+§17.176 (4), §17.308; plan M5 N4a), 1.19.0 the `wipe` header flag (§3.1, §3.5; design
+§17.288 (7); plan M5 N-S) and 1.19.1 the in-place object paths erratum (§3.1; its design §17
+entry is owed). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -384,6 +385,21 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   `sakura_rt` inside the linked module; no import, export or outcome changes. It is a MINOR by
   1.3.0's rule (a new header field): a 1.18 host refuses a 1.19 module. On JS nothing is
   zeroed (JS ABI §7). `sakura_abi_version` is `0x011300`.
+- 1.19.1 is an erratum (the WASM performance lane after `v1.0.0`; its design §17 entry is
+  owed): §3.1 permits compiled code, the linker's synthesised functions included, to do
+  inside the module what the runtime would do for it, when it needs no allocation from a
+  chunk, release of a second object or defect: increment a counted object's `rc` below
+  `u32::MAX`; take a block from a small class's free list and write it as `Heap::alloc` and
+  `new_object` do (the internal export `rt_heap_cell` gives the main pool's free-list heads,
+  the §10 counters and the emergency pool's start, which never move); perform the last
+  decrement and the release of a tuple, record or variant whose row owns at most one slot,
+  outside the emergency pool, when that slot's child survives; reset a constructor for reuse
+  (§3.5); and read a list element or an `Option` payload in place. Each is counted in the §10
+  counters its runtime call would have counted (internal `i64` globals the `stats` export
+  adds in, as 1.8.2's), so every counter keeps its value for a fixed execution except
+  `requested`, which includes the static block and grows by the emitter's tables (a few
+  hundred bytes). No byte layout, import, export signature or outcome changes, so
+  `sakura_abi_version` stays `0x011300`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -612,8 +628,12 @@ and the §17.82 wording `{tag, rc}`; the two spare bytes hold the size class so 
 not need a size lookup, and flags so `Dup`/`Drop` on a static literal is one branch.
 
 Compiled code may decrement a counted object's `rc` in place while it is above 1; the `drop`
-export performs the last decrement and the release (1.8.2, design §17.287 (3)). A counted
-object is a pointer word (§4) whose `static` flag is clear.
+export performs the last decrement and the release (1.8.2, design §17.287 (3)). Since 1.19.1
+compiled code may also increment `rc` in place below `u32::MAX`, allocate a small block from
+its class's free list, and perform the last decrement and the release itself for a tuple,
+record or variant whose row owns at most one slot when that child survives, each as the
+runtime does it (§0, 1.19.1); everything else is the runtime's. A counted object is a pointer
+word (§4) whose `static` flag is clear.
 
 ### 3.2 Tags
 

@@ -7,6 +7,19 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+### Changed
+
+- **The WASM backend runs heap-heavy programs in about 40% fewer instructions.** Reference
+  counting, small allocations and frees, tuple reads, constructor reuse and list element and
+  `Option` payload reads now run in the compiled module instead of calling the runtime, and the
+  runtime's own memory accesses no longer re-check the memory size. On the quick suite the
+  Sakura/JS instruction ratio on Node falls from 21.1 to 13.1 (geometric mean; `awfy_bounce`
+  86 → 33, `deltablue` 139 → 80, `binary_trees` 7.1 → 4.5); scalar code such as `fib` is
+  unchanged (`bench/deltas.md`). No program's output, defect, exit code or import changes. The
+  WASM runtime ABI is **1.19.1**, an erratum: `sakura_abi_version` stays `0x011300`, so 1.19
+  hosts run the new modules, and the `stats()` counters keep their values except `requested`,
+  which also counts the emitter's static tables (a few hundred bytes).
+
 ## [1.0.0] - 2026-10-23
 
 The first stable release. What [STABILITY](STABILITY.md) lists as stable keeps working across
