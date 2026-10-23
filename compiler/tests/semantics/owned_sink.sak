@@ -1,0 +1,79 @@
+// milestone: M4
+// covers: design §17.149, §17.201 (3) (a def whose result holds no collection sinks the list it updates: an owned argument goes to its owned entry, a retained one keeps its value)
+
+// `count_marked` returns an `Int`, so nothing of `start` survives the call: with an owned
+// argument it updates the list in place through `count_marked$o`; a caller still holding the
+// list calls the plain entry, which copies.
+fn count_marked(start: List<Bool>, step: Int) -> Int {
+  var flags = start
+  var count = 0
+  var i = 0
+  while i < List.len(flags) {
+    if Option.unwrap_or(flags[i], false) {
+      count = count + 1
+      var k = i + step
+      while k < List.len(flags) {
+        flags = List.set(flags, k, false)
+        k = k + step
+      }
+    }
+    i = i + 1
+  }
+  count
+}
+
+// A recursive sink: each call updates one element, then passes the list on.
+fn zero_from(xs: List<Int>, i: Int) -> Int {
+  if i >= List.len(xs) { List.sum(xs) } else { zero_from(List.set(xs, i, 0), i + 2) }
+}
+
+// Only reads its list: not a sink, so its argument stays owned in the caller.
+fn total(xs: List<Int>) -> Int { List.sum(xs) }
+
+fn trues(n: Int) -> List<Bool> {
+  var xs: List<Bool> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, true)
+    i = i + 1
+  }
+  xs
+}
+
+fn ints(n: Int) -> List<Int> {
+  var xs: List<Int> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, i + 1)
+    i = i + 1
+  }
+  xs
+}
+
+pub fn main() -> Unit ! {Console} {
+  // Owned: the list dies in the call.
+  Console.print("owned {count_marked(trues(50), 3)}")
+
+  // Retained: `kept` is read after the call, so its flags must all still be true.
+  let kept = trues(50)
+  let c = count_marked(kept, 3)
+  var still = 0
+  for f in kept { if f { still = still + 1 } }
+  Console.print("retained {c} {still}")
+
+  // Twice on one list: the first call cannot take it over.
+  let twice = trues(40)
+  Console.print("twice {count_marked(twice, 2)} {count_marked(twice, 5)}")
+
+  // A small list (one tail) and a long one (a trie), owned and retained.
+  Console.print("recursive {zero_from(ints(10), 0)} {zero_from(ints(70), 1)}")
+  let base = ints(70)
+  let z = zero_from(base, 0)
+  Console.print("recursive retained {z} {List.sum(base)} {total(base)}")
+
+  // A reader between updates leaves the owned list owned.
+  var ys = ints(40)
+  let t = total(ys)
+  ys = List.set(ys, 0, 100)
+  Console.print("reader {t} {List.sum(ys)} {zero_from(ys, 1)}")
+}

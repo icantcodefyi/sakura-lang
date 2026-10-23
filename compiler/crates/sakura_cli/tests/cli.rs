@@ -2587,6 +2587,30 @@ fn carry consumes start
   r%52 = set(bs%27) shared(join), owned entry owned
 ",
         ),
+        // A def returning an `Int` sinks the list it updates: owned arguments take its owned
+        // entry, a retained or twice-used one the plain entry.
+        (
+            "owned_sink",
+            "fn main
+  r%1 = count_marked(r%0) owned
+  r%6 = count_marked(r%5) shared(borrowed-after at 1710..1714)
+  r%25 = count_marked(r%24) shared(borrowed-after at 1920..1942)
+  r%29 = count_marked(r%24) shared(borrowed-after)
+  r%34 = zero_from(r%33) owned
+  r%39 = zero_from(r%38) owned
+  r%44 = zero_from(r%43) shared(borrowed-after at 2192..2206)
+  r%58 = set(r%56) owned
+  r%66 = zero_from(r%58) owned
+fn trues
+  r%10 = list_push(xs%4) owned
+fn count_marked consumes start
+  r%37 = set(flags%26) shared(join), owned entry owned
+fn ints
+  r%11 = list_push(xs%4) owned
+fn zero_from consumes xs
+  r%6 = set(xs%0) shared(join), owned entry owned
+",
+        ),
     ] {
         let out = sakura(&["build", "--dump", "owned", &format!("{name}.sak")], &dir);
         assert_eq!(out.code, Some(0), "{name}: {}", out.stderr);

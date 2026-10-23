@@ -23,7 +23,9 @@
 //!
 //! A top-level def *consumes* parameter `p` ([`summaries`]) when, with `p` owned at entry,
 //! `p` is owned and every return returns an owned local: std's `List.set` borrows `xs` in its
-//! contract and consumes it in `list_set`, so ownership passes through it. Its result is
+//! contract and consumes it in `list_set`, so ownership passes through it. A def whose result
+//! holds no collection or closure consumes (*sinks*) `p` when, with `p` owned at entry, `p` is
+//! owned and more of its sites are (`sieve(flags, size) -> Int`). Its result is
 //! *fresh* when every return returns an owned local with no parameter owned (std's
 //! `List.range`, `List.map`): a call of it is an owned origin, like a `fresh` builtin.
 //! Summaries are computed bottom-up over the call graph; a recursive component iterates from
@@ -540,6 +542,20 @@ impl Summaries<'_> {
             if consumes.is_none() {
                 parts.clear();
             }
+        } else if matches!(def.kind, FnKind::Top { .. }) && !tracked(self.m, &def.ret) {
+            // A result that can hold no collection or closure: the def *sinks* a parameter it
+            // takes over, updating it in place when that gains a site (`sieve(flags, size) ->
+            // Int`). Its callers treat it as consuming; the result is never tracked, so it
+            // promises nothing more.
+            let base = Analysis::run(self.m, def, &self.out, &[]);
+            let caps = def.captures.len();
+            consumes = def.params.iter().enumerate().position(|(i, p)| {
+                if !ownable(self.m, &def.local(*p).ty) || self.out[d.index()].borrows(caps + i) {
+                    return false;
+                }
+                let a = Analysis::run(self.m, def, &self.out, &[*p]);
+                a.owned[p.index()] && a.owned_sites() > base.owned_sites()
+            });
         }
         let s = &mut self.out[d.index()];
         let changed = s.consumes != consumes || s.fresh != fresh || s.weak != parts;
@@ -661,9 +677,12 @@ pub fn copies(m: &Module) -> Vec<Copy> {
             let Bind::Call(callee, args) = bind else {
                 return;
             };
+            // A std def that sinks its list returns no version of it: no copy to report.
             let persistent = match callee {
                 Atom::Builtin(_) => true,
-                Atom::Global(d) => m.def(*d).module.starts_with("std"),
+                Atom::Global(d) => {
+                    m.def(*d).module.starts_with("std") && ownable(m, &m.def(*d).ret)
+                }
                 _ => false,
             };
             let Some(arg) = consumed(bind, &sums) else {

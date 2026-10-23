@@ -232,6 +232,7 @@ semantics/owned_record_recursive: ok, 235 allocated, 749 dup, 984 drop, peak 33,
 semantics/owned_record_retained: ok, 252 allocated, 467 dup, 719 drop, peak 21, live 0/0
 semantics/owned_record_unsettled: ok, 31 allocated, 34 dup, 65 drop, peak 17, live 0/0
 semantics/owned_retained_version: unsupported (builtin map_remove)
+semantics/owned_sink: ok, 1526 allocated, 12461 dup, 13987 drop, peak 110, live 0/0
 semantics/owned_tuple_threaded: ok, 206 allocated, 420 dup, 626 drop, peak 22, live 0/0
 semantics/path_validate_rejects_windows_forms: ok, 28 allocated, 0 dup, 28 drop, peak 6, live 0/0
 semantics/random_bytes_rejects_negative: unsupported (builtin bytes_from_list)

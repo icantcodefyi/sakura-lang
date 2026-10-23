@@ -1,0 +1,6 @@
+owned 3
+retained 3 50
+twice 2 5
+recursive 30 1225
+recursive retained 1260 2485 2485
+reader 820 919 499

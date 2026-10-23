@@ -232,6 +232,7 @@ semantics/owned_record_recursive: 13 funcs, 68 blocks, 5 dup, 35 drop, valid
 semantics/owned_record_retained: 17 funcs, 84 blocks, 4 dup, 86 drop, valid
 semantics/owned_record_unsettled: 4 funcs, 16 blocks, 2 dup, 12 drop, valid
 semantics/owned_retained_version: 6 funcs, 53 blocks, 7 dup, 70 drop, valid
+semantics/owned_sink: 12 funcs, 86 blocks, 7 dup, 39 drop, valid
 semantics/owned_tuple_threaded: 11 funcs, 71 blocks, 7 dup, 53 drop, valid
 semantics/path_validate_rejects_windows_forms: 5 funcs, 57 blocks, 0 dup, 9 drop, valid
 semantics/random_bytes_rejects_negative: 20 funcs, 105 blocks, 1 dup, 24 drop, valid
