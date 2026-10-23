@@ -1190,7 +1190,7 @@ The full design is
   them, wait, and a ping is answered only while the send buffer needs no drain, so a ping
   flood cannot grow it.
 - `net` covers `ws` (port 80) and `wss` (443). The opening handshake follows no redirect.
-- Native refuses a `main` that leaves `WebSocket` to the runtime at startup (exit 75).
+- Native executables run `WebSocket` from `v1.0.0-beta.6` (experimental with the target).
 - The [`websocket_server`](/docs/cookbook/websocket_server) and
   [`websocket_client`](/docs/cookbook/websocket_client) recipes show both roles.
 

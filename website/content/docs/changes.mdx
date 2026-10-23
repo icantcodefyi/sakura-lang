@@ -8,7 +8,7 @@ in your code when you upgrade. The full detail is in the [changelog](/changelog)
 for each beta opens with a migration list: every change a program may notice.
 
 <Callout type="info" title="Latest release">
-  **Latest release: `v1.0.0-beta.5` (2026-10-22).** The betas may have bugs and are not for
+  **Latest release: `v1.0.0-beta.6` (2026-10-23).** The betas may have bugs and are not for
   production; `0.1.0` (2026-10-20) is the earlier preview and is still what `npm i -g sakuralang`
   installs. No release has a compatibility promise yet; see [Stability](/docs/stability).
 </Callout>
@@ -23,6 +23,30 @@ Two words used below:
 - **WASM runtime ABI**: the interface a WebAssembly module and its Node host share. When its
   version moves, ship the host and the module from the same release: a newer host still loads
   older modules, but an older host refuses a newer module with `V8003`.
+
+## 1.0.0-beta.6, since 1.0.0-beta.5
+
+Your code needs no change unless it has a `[dependencies]` table. The WASM runtime ABI moves to
+1.19.0: ship the host and the module from the same release, because a beta.5 host refuses a
+beta.6 module. [Migration list](/changelog#v1.0.0-beta.6).
+
+**Added**
+
+- **Packages (experimental).** `sakura.toml` reads `[dependencies]`: a `path` dependency builds
+  as its own package, `sakura.lock` records it, a package can cap the effects its public
+  functions use, and a dependency that reaches for `host()` or an `@external` needs
+  `trusted = true` in your manifest. `sakura deps tree` and `sakura deps capabilities` show the
+  build. Nothing is fetched yet, and any of this may change in a minor release.
+- **`WebSocket` in native executables (experimental).** A native program can connect and serve
+  WebSockets with the same limits and messages as on JavaScript.
+
+**Fixed and changed**
+
+- Key bytes revealed from a `Secret` are zeroed when they are freed, on WebAssembly and native.
+- Native `String.split`, `String.replace`, `String.chars` and the case maps take time linear in
+  the string's length; they were quadratic.
+- For `Path.of(..)` without an import, `sakura check` and `sakura fix` now suggest
+  `import std/path.{Path}`.
 
 ## 1.0.0-beta.5, since 1.0.0-beta.4
 

@@ -204,6 +204,34 @@ Claude Opus 5.5 under the owner's written delegation of 2026-10-22.
 
 **`v1.0.0-beta.6` baseline, 2026-10-23.** `bench/baselines/d88970189598.json`, `wasm/d88970189598.json`, `typescript/d88970189598.json`, `compile-native/d88970189598.json` and `native/d88970189598.json` now hold the counted `js`, `wasm`, `typescript`, `compile-native` and `native` runs at the preparation commit `70c64513666c3f2d818e722bf9b2b005f3f8b536` (Node 26.12.0, the same flags; tree clean, every oracle green; the community suites and the C, OCaml and Koka ports included); the `447dce0c` files are in `bench/baselines/archive/447dce0c/`. The `compile-native` report names `lowering` (2.01×), `codegen` (2.01×) and `object` (2.07×) superlinear from 16,384 to 32,768 rows. Evidence: `bench/results/2026-10-22-70c64513-*` (compile, envelope `miss` on 237 of 264, against 238 at beta.5, carried under §17.265 (1); M5 envelope `miss` on 121 of 132, met 11, `tokenizer` against Rust meeting its ceiling after `f6be3c1d`; prep `fib`/`shapes` compare `ok` on every Node cell, largest move −1.5%). Blessed by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design §17.310 (1)). **The `v1.0.0-beta.6` tag goes on `70c64513`**: CI 39861137408 green on that SHA (attempt 2; attempt 1 lost only `Rust (macos-15-intel, 2/2)` to its 30-minute job timeout, the rerun took 14 minutes); dry run 39861151467 green on every row; `sign_test` 39861155744 green; Native sanitizers 39861137441 green.
 
+**`v1.0.0-beta.6` close-out (docs/release.md §7), 2026-10-23.** Tag `v1.0.0-beta.6` (annotated)
+peels to `70c64513666c3f2d818e722bf9b2b005f3f8b536`, the preparation commit, so the `70c64513`
+bless (`5ab07b34`, its evidence files renamed to the run's UTC date in `8114c6d6`) stands; the
+cutoff commit is `8287a028` (REQUESTS), and `540fe2ca` (`build_driver` with `--color never`) and
+`7d793e69` (the community suites in the counter snapshots) precede the preparation commit. CI on
+that SHA: run 39861137408, green on attempt 2 (attempt 1 lost only `Rust (macos-15-intel, 2/2)` to
+its 30-minute job timeout; the job took about 27 minutes on beta.5's runs, so it is near the
+limit). Dry run 39861151467 green on every row; `sign_test` 39861155744 green; Native sanitizers
+39861137441 green. Tag run
+[39894159683](https://github.com/icantcodefyi/sakuralang/actions/runs/39894159683), green
+throughout: five builds, Darwin signed (Developer ID P62B65A837) and notarized, five install
+smokes, then GitHub (prerelease, 19 assets; the published `SHA256SUMS` identical to the run's
+reviewed inventory, `gh attestation verify` passes), Homebrew (`sakuralang-beta`, tap commit
+`a9f5f2ff`) and npm (`beta` = `1.0.0-beta.6` on the wrapper and all five companion packages,
+`latest` stays `0.1.0`). The published macOS arm64 binary prints
+`sakura 1.0.0-beta.6 (70c64513666c3f2d818e722bf9b2b005f3f8b536)` and passes
+`codesign --check-notarization` (team P62B65A837). `compat.yml`
+[39894159662](https://github.com/icantcodefyi/sakuralang/actions/runs/39894159662) on the tag:
+success (against `v1.0.0-beta.5`: 547 same, 4 listed, 38 skipped, 0 differ). `verify-published.yml`
+[39900537819](https://github.com/icantcodefyi/sakuralang/actions/runs/39900537819): green on all
+six rows. `dogfood.yml` [39900540785](https://github.com/icantcodefyi/sakuralang/actions/runs/39900540785):
+green (the automatic run 39898772089 and a dispatch 39899219459 failed only because npm did not
+yet serve `1.0.0-beta.6` and its `linux-x64-gnu` companion). No issue is open. WASM runtime ABI
+1.19.0: `rt/tests/fixtures/abi/1.19.0/` captured from the published archive (`wasm_host.test.js`:
+31 pass, 0 skip). The VS Code extension is not republished for this beta. **Next:** road §7's
+2a–2e, then `v1.0.0` from this commit plus documentation-only commits plus its preparation
+commit. Released by Claude Opus 5.5 under the owner's written delegation of 2026-10-22.
+
 **`v1.0.0` gate audit and cut (design §17.312), 2026-10-22, at `3a7f93fd`.** The campaign is
 closed (`3a7f93fd`: every target ≥ 24 CPU-h, #8–#11 and #13 fixed with regressions, sanitizers
 clean at `472dea56`, no open `soundness` issue, no open issue at all). `v1.0.0-beta.5` is on
@@ -224,11 +252,11 @@ list is the owner's. Items (one line each; close with name and date):
 | 21 | (e) signed and notarized macOS archives; `verify-published.yml` green for beta.5 | run 39815259426 | Claude Fable 5.1, 2026-10-22 (re-read at beta.6 and 1.0.0) |
 | 22 | (e) the spec complete: 172/172 rules cite fixtures; EF05 narrowed before beta.6 | [road §7, 1d](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | 172/172 read 2026-10-22; EF05: open |
 | 23 | (e) no P1 and no open `soundness` issue at each tag | `gh issue list --state open` | empty at `3a7f93fd`; re-read at each tag |
-| 24 | (d) the envelope read at every beta, the miss carried under §17.265 (1); beta.5's bless; beta.6's and 1.0.0's counted baselines blessed | [deltas](../../bench/deltas.md) | beta.1–beta.4 read; beta.5 in flight; beta.6, 1.0.0: open |
+| 24 | (d) the envelope read at every beta, the miss carried under §17.265 (1); beta.5's bless; beta.6's and 1.0.0's counted baselines blessed | [deltas](../../bench/deltas.md) | beta.1–beta.5 read; beta.6 blessed at `70c64513` (`5ab07b34`), Claude Opus 5.5, 2026-10-23; 1.0.0: open |
 | 25 | (a) the per-beta migration rounds, beta.2 … beta.6, in every `MIGRATION.md` | [road §7, 2a](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
 | 26 | (b) the subscription episodes judged, verdicts in `evals/agent-dx/reports/` | [road §7, 2b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (offline harness 12/12 at `3a7f93fd`: done) |
 | 27 | RFC 0001: FCP waived by the owner on 2026-10-23; acceptance and the stabilization record in 1.0.0's preparation commit | [RFC 0001](../rfcs/0001-stability-guarantees.md) | open |
 | 28 | STABILITY.md, README, AGENTS.md, CONTRIBUTING.md, the site and the VS Code README carry the 1.0 texts of road §7; every experimental label kept | [road §7, banner texts](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open (the `[dependencies]` row before beta.6) |
 | 29 | `release.py`'s notes for a plain 1.x version, with its test | [road §7, 1b](road-to-1.0.md#7-the-10-cut-and-the-stage-6-audit-17312) | open |
-| 30 | `v1.0.0-beta.6`: preparation commit, bless, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out line here | [release.md](../release.md) | open |
+| 30 | `v1.0.0-beta.6`: preparation commit, bless, dry run with `sign_test`, tag, channels, `verify-published.yml`, `dogfood.yml`, `compat.yml`, close-out line here | [release.md](../release.md) | Claude Opus 5.5 under the owner's written delegation of 2026-10-22, 2026-10-23 (tag on `70c64513`) |
 | 31 | `v1.0.0`: the same, GitHub latest, `Formula/sakuralang.rb`, npm `latest`, the close-out line here; the tag by Claude under the delegation | [release.md](../release.md) | open |
