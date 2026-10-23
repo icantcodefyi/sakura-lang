@@ -1444,6 +1444,25 @@ impl<'a> FnEmit<'a> {
         body: &Expr,
         ctx: &str,
     ) {
+        let Some(rhs) = self.rhs(w, x, bind, pos, ctx) else {
+            return;
+        };
+        if self.fuses(x, bind, body) {
+            self.inlined.insert(x, rhs);
+        } else {
+            w.line(&format!("const {} = {rhs};", self.name(x)));
+        }
+    }
+
+    /// The expression a binding of `x` names, or `None` when it wrote its own statements.
+    fn rhs(
+        &mut self,
+        w: &mut W,
+        x: Local,
+        bind: &Bind,
+        pos: Option<Pos>,
+        ctx: &str,
+    ) -> Option<String> {
         let xs = self.name(x).to_owned();
         let rhs = match bind {
             // A predicate's call into CPS code runs to its value here, inside the bracket's
@@ -1465,10 +1484,10 @@ impl<'a> FnEmit<'a> {
                     && self.def.local(x).name == sakura_core::opt::SITE_MARK =>
             {
                 w.line(&format!("$site = {};", self.site(pos)));
-                return;
+                return None;
             }
             // The `D011` bracket around a predicate that cannot defect (design §17.115).
-            Bind::Call(Atom::Builtin(_), _) if self.unbracketed.contains(&x) => return,
+            Bind::Call(Atom::Builtin(_), _) if self.unbracketed.contains(&x) => return None,
             Bind::Atom(a) => self.atom(a),
             // The inline fast path (design §17.114): an unsafe result means the checked
             // operation defects. The arm throws (design §17.274): `$rt.add_defect` and its
@@ -1487,7 +1506,7 @@ impl<'a> FnEmit<'a> {
                     "if (!Number.isSafeInteger({xs})) throw $rt.{f}_defect({});",
                     self.atoms(args)
                 ));
-                return;
+                return None;
             }
             Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
             Bind::Call(f @ Atom::Global(d), args) => {
@@ -1553,7 +1572,7 @@ impl<'a> FnEmit<'a> {
                     if self.cx.direct.exposes(*d) {
                         w.line(&format!("const {xs} = {f}.bind(null, {caps});"));
                         w.line(&format!("{xs}.$d = {f}$d.bind(null, {caps});"));
-                        return;
+                        return None;
                     }
                     format!("{f}.bind(null, {caps})")
                 }
@@ -1615,11 +1634,7 @@ impl<'a> FnEmit<'a> {
             }
             Bind::Hole(h) => format!("$rt.defect(\"D090\", \"typed hole ?{h} was evaluated\")"),
         };
-        if self.fuses(x, bind, body) {
-            self.inlined.insert(x, rhs);
-        } else {
-            w.line(&format!("const {xs} = {rhs};"));
-        }
+        Some(rhs)
     }
 
     fn jump(&mut self, w: &mut W, l: Label, args: &[Atom], ctx: &str) {
@@ -1743,6 +1758,11 @@ impl<'a> FnEmit<'a> {
             self.expr(w, body, ctx);
             return;
         }
+        if !recursive && let Some(v) = self.select(label, params, body) {
+            w.line(&format!("const {ps} = {v};"));
+            self.expr(w, join, ctx);
+            return;
+        }
         if !params.is_empty() {
             w.line(&format!("let {ps};"));
         }
@@ -1786,6 +1806,111 @@ impl<'a> FnEmit<'a> {
         } else {
             self.expr(w, join, ctx);
         }
+    }
+
+    /// A join `label(v)` entered only by `if c { …; jump label(a) } else { …; jump label(b) }`
+    /// whose arms bind values each read once, by the next binding or the jump: `c ? A : B`
+    /// (`c && A` and `c || B` for a `Bool` arm `false` or `true`), one expression instead of a
+    /// block assigning `v`, in the same order of evaluation. Direct code only. Smaller code is
+    /// inlined more (V8 budgets by bytecode size), and JSC compiles the conditional well.
+    fn select(&mut self, label: Label, params: &[Local], body: &'a Expr) -> Option<String> {
+        if self.mode != Mode::Direct || params.len() != 1 {
+            return None;
+        }
+        let Expr::If { cond, then, els } = body else {
+            return None;
+        };
+        let arms = [self.arm(label, then)?, self.arm(label, els)?];
+        let mut scratch = W {
+            out: String::new(),
+            line: 0,
+            depth: 0,
+            maps: Vec::new(),
+            pending: None,
+            cx: self.cx,
+        };
+        let mut exprs = Vec::new();
+        let mut bound = Vec::new();
+        for (lets, a) in arms {
+            for (x, bind, pos) in lets {
+                match self.rhs(&mut scratch, x, bind, pos, "$ctx") {
+                    Some(rhs) if scratch.out.is_empty() => {
+                        self.inlined.insert(x, rhs);
+                        bound.push(x);
+                    }
+                    _ => {
+                        for x in bound {
+                            self.inlined.remove(&x);
+                        }
+                        return None;
+                    }
+                }
+            }
+            exprs.push(self.atom(a));
+        }
+        let c = self.atom(cond);
+        let boolean = self.def.local(params[0]).ty == Ty::Bool;
+        Some(match (exprs[0].as_str(), exprs[1].as_str()) {
+            (a, "false") if boolean => format!("{c} && {a}"),
+            ("true", b) if boolean => format!("{c} || {b}"),
+            (a, b) => format!("{c} ? {a} : {b}"),
+        })
+    }
+
+    /// An arm of [`Self::select`]: its bindings and the argument it jumps to `label` with.
+    #[allow(clippy::type_complexity)]
+    fn arm(
+        &self,
+        label: Label,
+        mut e: &'a Expr,
+    ) -> Option<(Vec<(Local, &'a Bind, Option<Pos>)>, &'a Atom)> {
+        let mut lets = Vec::new();
+        loop {
+            match e {
+                Expr::Let {
+                    local,
+                    bind,
+                    pos,
+                    body,
+                } => {
+                    if !self.expressible(*local, bind) {
+                        return None;
+                    }
+                    lets.push((*local, bind, *pos));
+                    e = body;
+                }
+                Expr::Jump(l, args) if *l == label && args.len() == 1 => {
+                    for (k, (x, _, _)) in lets.iter().enumerate() {
+                        let next = match lets.get(k + 1) {
+                            Some((_, b, _)) => reads(b, *x),
+                            None => args[0] == Atom::Local(*x),
+                        };
+                        if self.uses.get(x) != Some(&1) || !next {
+                            return None;
+                        }
+                    }
+                    return Some((lets, &args[0]));
+                }
+                _ => return None,
+            }
+        }
+    }
+
+    /// A binding [`Self::rhs`] writes as one expression and no statement.
+    fn expressible(&self, x: Local, bind: &Bind) -> bool {
+        !self.is_cps(x, bind)
+            && !self.exits.contains_key(&x)
+            && !self.unbracketed.contains(&x)
+            && !self.sync_calls.contains(&x)
+            && !is_builtin_call(bind, "contract_enter")
+            && match bind {
+                Bind::Atom(_) => self.def.local(x).name != sakura_core::opt::SITE_MARK,
+                Bind::Prim(PrimOp::IntAdd | PrimOp::IntSub | PrimOp::IntMul, _) => {
+                    self.proved[x.index()]
+                }
+                Bind::Prim(..) | Bind::Proj(..) | Bind::Alloc(..) | Bind::Call(..) => true,
+                _ => false,
+            }
     }
 
     // -----------------------------------------------------------------------------------------
@@ -2463,6 +2588,21 @@ fn count_uses(e: &Expr, out: &mut HashMap<Local, u32>) {
             Expr::Try { body, .. } => count_uses(body, out),
         }
     })
+}
+
+/// Whether `bind` reads `x`.
+fn reads(bind: &Bind, x: Local) -> bool {
+    let a = Atom::Local(x);
+    match bind {
+        Bind::Atom(b) | Bind::Check(_, b) | Bind::Proj(b, _) | Bind::StateGet(b, _) => *b == a,
+        Bind::StateSet(b, _, v) => *b == a || *v == a,
+        Bind::Prim(_, xs) | Bind::Closure(_, xs) | Bind::Alloc(_, xs) | Bind::Perform(_, _, xs) => {
+            xs.contains(&a)
+        }
+        Bind::Call(f, xs) => *f == a || xs.contains(&a),
+        Bind::MakeHandler { state, clauses, .. } => state.contains(&a) || clauses.contains(&a),
+        Bind::Hole(_) => false,
+    }
 }
 
 fn lit_js(lit: &Lit) -> String {

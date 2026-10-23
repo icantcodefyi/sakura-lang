@@ -1,0 +1,43 @@
+---
+source: crates/sakura_codegen_js/tests/source.rs
+expression: "defs.join(\"\\n\")"
+---
+function first_positive$d(xs) {
+  const r = $rt.list_len(xs);
+  const t = (r > 0);
+  const v = t && (at$d(xs, 0) > 0);
+  if (v) {
+    return 1;
+  }
+  return 0;
+}
+function either$d(xs, k) {
+  const t = (k < 0);
+  const v = t || (at$d(xs, k) === 7);
+  if (v) {
+    return 1;
+  }
+  return 0;
+}
+function pick$d(c, xs) {
+  const v = c ? at$d(xs, 1) : $rt.list_len(xs);
+  const t = (v * 2 + 0);
+  if (!Number.isSafeInteger(t)) throw $rt.mul_defect(v, 2);
+  return t;
+}
+function bump$d(c, x) {
+  let v;
+  j0: {
+    if (c) {
+      const t = (x + 1);
+      if (!Number.isSafeInteger(t)) throw $rt.add_defect(x, 1);
+      v = t;
+      break j0;
+    }
+    v = x;
+    break j0;
+  }
+  const t_1 = (v * 2 + 0);
+  if (!Number.isSafeInteger(t_1)) throw $rt.mul_defect(v, 2);
+  return t_1;
+}

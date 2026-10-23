@@ -294,6 +294,57 @@ pub fn main() -> Unit ! {Console} { Console.print("{run(3)}") }
     insta::assert_snapshot!(run);
 }
 
+/// A join entered only by the two arms of an `if`, each binding values read once by the next,
+/// is one conditional expression: `&&` and `||` stay short-circuit (`at(xs, 0)` is not read
+/// for an empty list, the call in the arm runs only when chosen), an `if` expression is
+/// `c ? a : b`, and an arm with a statement (the checked `x + 1`) keeps the block.
+#[test]
+fn short_circuit_joins_are_one_expression() {
+    let src = r#"
+fn at(xs: List<Int>, i: Int) -> Int { Option.expect(xs[i], "index") }
+fn first_positive(xs: List<Int>) -> Int {
+  let ok = List.len(xs) > 0 && at(xs, 0) > 0
+  if ok { 1 } else { 0 }
+}
+fn either(xs: List<Int>, k: Int) -> Int {
+  let ok = k < 0 || at(xs, k) == 7
+  if ok { 1 } else { 0 }
+}
+fn pick(c: Bool, xs: List<Int>) -> Int {
+  let p = if c { at(xs, 1) } else { List.len(xs) }
+  p * 2
+}
+fn bump(c: Bool, x: Int) -> Int {
+  let b = if c { x + 1 } else { x }
+  b * 2
+}
+fn run(n: Int) -> Int {
+  let xs = [n, 7, 3]
+  var t = 0
+  t = t + first_positive(xs) + 10 * first_positive([])
+  t = t + 100 * either([], -1) + 1000 * either(xs, 1)
+  t + pick(true, xs) + pick(false, []) + bump(true, n) + bump(false, n)
+}
+pub fn main() -> Unit ! {Console} { Console.print("{run(5)}") }
+"#;
+    let r = common::run("selects", src).unwrap();
+    assert_eq!((r.stdout.as_str(), r.code), ("1137\n", 0), "{}", r.stderr);
+    let (m, sources) = common::build("selects", src, false).unwrap();
+    let js = sakura_codegen_js::emit(&m, &sakura_codegen_js::Options::new(sources))
+        .into_iter()
+        .find(|f| f.path == "main/main.js")
+        .unwrap()
+        .text;
+    let defs: Vec<&str> = ["first_positive", "either", "pick", "bump"]
+        .iter()
+        .map(|f| {
+            let d = &js[js.find(&format!("function {f}$d")).expect("direct")..];
+            &d[..d.find("\n}\n").unwrap() + 2]
+        })
+        .collect();
+    insta::assert_snapshot!(defs.join("\n"));
+}
+
 /// A loop whose only CPS steps are unbound performs is a `for (;;)` with a resumable entry
 /// (design §17.156 (2)): `handled_suspend`'s iterations run the bound counter inline and leave
 /// the loop only to sleep; `handled_fwd`'s forwarding clause is CPS, so every iteration takes

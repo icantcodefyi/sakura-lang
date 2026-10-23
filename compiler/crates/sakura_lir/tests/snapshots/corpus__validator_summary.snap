@@ -269,6 +269,7 @@ semantics/searchparams_plus_and_percent: 26 funcs, 198 blocks, 4 dup, 65 drop, v
 semantics/searchparams_sort_stable: 36 funcs, 249 blocks, 12 dup, 83 drop, valid
 semantics/secret_map_defect: 4 funcs, 9 blocks, 0 dup, 5 drop, valid
 semantics/short_circuit_and_or: 3 funcs, 26 blocks, 0 dup, 8 drop, valid
+semantics/short_circuit_pure: 14 funcs, 97 blocks, 0 dup, 41 drop, valid
 semantics/show_format: 3 funcs, 13 blocks, 0 dup, 23 drop, valid
 semantics/sql_cancel_committed: 8 funcs, 36 blocks, 0 dup, 11 drop, valid
 semantics/sql_rows: 23 funcs, 231 blocks, 2 dup, 124 drop, valid

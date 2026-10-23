@@ -1,0 +1,490 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::short_circuit_pure::P | P 32b (x: i64, y: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::short_circuit_pure, frame 57 slots [%8 i64, %9 word*, %10 word*, %16 i64, %17 word*, %18 word*, %19 word*, %28 i64, %29 word*, %30 word*, %31 word*, %34 bool, %35 word*, %36 word*, %40 i64, %41 word*, %42 word*, %49 i64, %50 word*, %51 word*, %52 word*, %58 i64, %59 word*, %60 word*, %61 word*, %64 bool, %65 word*, %66 word*, %68 i64, %69 word*, %70 word*, %79 i64, %80 word*, %81 word*, %82 word*, %94 i64, %95 word*, %96 word*, %97 word*, %100 bool, %101 word*, %102 word*, %105 i64, %106 word*, %113 i64, %114 word*, %117 bool, %123 i64, %124 word*, %131 i64, %132 word*, %133 word*, %141 bool, %145 i64, %153 i64, %154 word*, %157 bool]
+  b0():
+    %0 lit: i64 = const 5
+    %1 box: word = box %0
+    %2 lit: i64 = const 7
+    %3 box: word = box %2
+    %4 lit: i64 = const 9
+    %5 box: word = box %4
+    %6 xs: ptr = alloc list(%1, %3, %5)
+    %7 xs: ptr = alloc list()
+    %160 xs.lent: ref = lend %6
+    call first_positive#9(%160) -> b1(%6, %7)
+  b1(%8 r: i64, %9 xs: ptr, %10 xs: ptr):
+    %11 s: ptr = show %8
+    %12 lit: ptr = const str 0
+    %13 s: ptr = concat %12, %11
+    drop %11
+    %14 lit: ptr = const str 1
+    %15 s: ptr = concat %13, %14
+    drop %14
+    %161 xs.lent: ref = lend %10
+    call first_positive#9(%161) -> b2(%9, %10, %15)
+  b2(%16 r: i64, %17 xs: ptr, %18 xs: ptr, %19 s: ptr):
+    %20 s: ptr = show %16
+    %21 s: ptr = concat %19, %20
+    drop %20
+    %22 lit: ptr = const str 1
+    %23 s: ptr = concat %21, %22
+    drop %22
+    %24 lit: i64 = const 1
+    %25 t: i64 = intneg %24
+    %26 box: word = box %25
+    %27 xs: ptr = alloc list(%26)
+    call first_positive#2(%27) -> b3(%17, %18, %23)
+  b3(%28 r: i64, %29 xs: ptr, %30 xs: ptr, %31 s: ptr):
+    %32 s: ptr = show %28
+    %33 s: ptr = concat %31, %32
+    drop %32
+    perform std::console::Console.print(%33) -> b4(%29, %30)
+  b4(%34 r: unit, %35 xs: ptr, %36 xs: ptr):
+    %37 box: word = box %34
+    drop %37
+    %38 lit: i64 = const 1
+    %39 t: i64 = intneg %38
+    %162 xs.lent: ref = lend %36
+    call either#10(%162, %39) -> b5(%35, %36)
+  b5(%40 r: i64, %41 xs: ptr, %42 xs: ptr):
+    %43 s: ptr = show %40
+    %44 lit: ptr = const str 2
+    %45 s: ptr = concat %44, %43
+    drop %43
+    %46 lit: ptr = const str 1
+    %47 s: ptr = concat %45, %46
+    drop %46
+    %48 lit: i64 = const 1
+    %163 xs.lent: ref = lend %41
+    call either#10(%163, %48) -> b6(%41, %42, %47)
+  b6(%49 r: i64, %50 xs: ptr, %51 xs: ptr, %52 s: ptr):
+    %53 s: ptr = show %49
+    %54 s: ptr = concat %52, %53
+    drop %53
+    %55 lit: ptr = const str 1
+    %56 s: ptr = concat %54, %55
+    drop %55
+    %57 lit: i64 = const 0
+    %164 xs.lent: ref = lend %50
+    call either#10(%164, %57) -> b7(%50, %51, %56)
+  b7(%58 r: i64, %59 xs: ptr, %60 xs: ptr, %61 s: ptr):
+    %62 s: ptr = show %58
+    %63 s: ptr = concat %61, %62
+    drop %62
+    perform std::console::Console.print(%63) -> b8(%59, %60)
+  b8(%64 r: unit, %65 xs: ptr, %66 xs: ptr):
+    %67 box: word = box %64
+    drop %67
+    %165 xs.lent: ref = lend %65
+    call chain#11(%165) -> b9(%65, %66)
+  b9(%68 r: i64, %69 xs: ptr, %70 xs: ptr):
+    %71 s: ptr = show %68
+    %72 lit: ptr = const str 3
+    %73 s: ptr = concat %72, %71
+    drop %71
+    %74 lit: ptr = const str 1
+    %75 s: ptr = concat %73, %74
+    drop %74
+    %76 lit: i64 = const 1
+    %77 box: word = box %76
+    %78 xs: ptr = alloc list(%77)
+    call chain#4(%78) -> b10(%69, %70, %75)
+  b10(%79 r: i64, %80 xs: ptr, %81 xs: ptr, %82 s: ptr):
+    %83 s: ptr = show %79
+    %84 s: ptr = concat %82, %83
+    drop %83
+    %85 lit: ptr = const str 1
+    %86 s: ptr = concat %84, %85
+    drop %85
+    %87 lit: i64 = const 3
+    %88 box: word = box %87
+    %89 lit: i64 = const 2
+    %90 box: word = box %89
+    %91 lit: i64 = const 1
+    %92 box: word = box %91
+    %93 xs: ptr = alloc list(%88, %90, %92)
+    call chain#4(%93) -> b11(%80, %81, %86)
+  b11(%94 r: i64, %95 xs: ptr, %96 xs: ptr, %97 s: ptr):
+    %98 s: ptr = show %94
+    %99 s: ptr = concat %97, %98
+    drop %98
+    perform std::console::Console.print(%99) -> b12(%95, %96)
+  b12(%100 r: unit, %101 xs: ptr, %102 xs: ptr):
+    %103 box: word = box %100
+    drop %103
+    %104 lit: bool = const true
+    call pick#5(%104, %101) -> b13(%102)
+  b13(%105 r: i64, %106 xs: ptr):
+    %107 s: ptr = show %105
+    %108 lit: ptr = const str 4
+    %109 s: ptr = concat %108, %107
+    drop %107
+    %110 lit: ptr = const str 1
+    %111 s: ptr = concat %109, %110
+    drop %110
+    %112 lit: bool = const false
+    call pick#5(%112, %106) -> b14(%111)
+  b14(%113 r: i64, %114 s: ptr):
+    %115 s: ptr = show %113
+    %116 s: ptr = concat %114, %115
+    drop %115
+    perform std::console::Console.print(%116) -> b15()
+  b15(%117 r: unit):
+    %118 box: word = box %117
+    drop %118
+    %119 lit: i64 = const 3
+    %120 lit: i64 = const 4
+    %121 rec: ptr = alloc main::short_circuit_pure::P(%119, %120)
+    %122 lit: bool = const true
+    %166 rec.lent: ref = lend %121
+    call moved#12(%122, %166) -> b16(%121)
+  b16(%123 r: i64, %124 rec: ptr):
+    %125 s: ptr = show %123
+    %126 lit: ptr = const str 5
+    %127 s: ptr = concat %126, %125
+    drop %125
+    %128 lit: ptr = const str 1
+    %129 s: ptr = concat %127, %128
+    drop %128
+    %130 lit: bool = const false
+    %167 rec.lent: ref = lend %124
+    call moved#12(%130, %167) -> b17(%124, %129)
+  b17(%131 r: i64, %132 rec: ptr, %133 s: ptr):
+    %134 s: ptr = show %131
+    %135 s: ptr = concat %133, %134
+    drop %134
+    %136 lit: ptr = const str 1
+    %137 s: ptr = concat %135, %136
+    drop %136
+    %138 x: i64 = proj %132.0 main::short_circuit_pure::P
+    drop %132
+    %139 s: ptr = show %138
+    %140 s: ptr = concat %137, %139
+    drop %139
+    perform std::console::Console.print(%140) -> b18()
+  b18(%141 r: unit):
+    %142 box: word = box %141
+    drop %142
+    %143 lit: bool = const true
+    %144 lit: i64 = const 5
+    call bump#7(%143, %144) -> b19()
+  b19(%145 r: i64):
+    %146 s: ptr = show %145
+    %147 lit: ptr = const str 6
+    %148 s: ptr = concat %147, %146
+    drop %146
+    %149 lit: ptr = const str 1
+    %150 s: ptr = concat %148, %149
+    drop %149
+    %151 lit: bool = const false
+    %152 lit: i64 = const 5
+    call bump#7(%151, %152) -> b20(%150)
+  b20(%153 r: i64, %154 s: ptr):
+    %155 s: ptr = show %153
+    %156 s: ptr = concat %154, %155
+    drop %155
+    perform std::console::Console.print(%156) -> b21()
+  b21(%157 r: unit):
+    %158 box: word = box %157
+    %159 unbox: unit = unbox %158
+    drop %158
+    ret %159
+
+fn $entry#1 top -> unit ; main::short_circuit_pure, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn first_positive#2 top -> i64 ; main::short_circuit_pure, frame 2 slots [%0 word*, %10 i64]
+  b0(%0 xs: ptr):
+    %14 xs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%14)
+    %2 lit: i64 = const 0
+    %3 t: bool = gt.int %1, %2
+    if %3 then b4(%0) else b5(%0)
+  b1(%4 v: bool):
+    if %4 then b2() else b3()
+  b2():
+    %5 lit: i64 = const 1
+    ret %5
+  b3():
+    %6 lit: i64 = const 0
+    ret %6
+  b4(%7 xs: ptr):
+    %9 lit: i64 = const 0
+    call at#8(%7, %9) -> b6()
+  b5(%8 xs: ptr):
+    drop %8
+    %13 lit: bool = const false
+    jump b1(%13)
+  b6(%10 r: i64):
+    %11 lit: i64 = const 0
+    %12 t: bool = gt.int %10, %11
+    jump b1(%12)
+
+fn either#3 top -> i64 ; main::short_circuit_pure, frame 3 slots [%0 word*, %1 i64, %12 i64]
+  b0(%0 xs: ptr, %1 k: i64):
+    %2 lit: i64 = const 0
+    %3 t: bool = lt.int %1, %2
+    if %3 then b4(%0, %1) else b5(%0, %1)
+  b1(%4 v: bool):
+    if %4 then b2() else b3()
+  b2():
+    %5 lit: i64 = const 1
+    ret %5
+  b3():
+    %6 lit: i64 = const 0
+    ret %6
+  b4(%7 xs: ptr, %8 k: i64):
+    drop %7
+    %11 lit: bool = const true
+    jump b1(%11)
+  b5(%9 xs: ptr, %10 k: i64):
+    call at#8(%9, %10) -> b6()
+  b6(%12 r: i64):
+    %13 lit: i64 = const 7
+    %14 t: bool = eq.int %12, %13
+    jump b1(%14)
+
+fn chain#4 top -> i64 ; main::short_circuit_pure, frame 10 slots [%0 word*, %12 i64, %13 word*, %15 i64, %16 i64, %22 i64, %23 word*, %25 i64, %26 word*, %27 i64]
+  b0(%0 xs: ptr):
+    %30 xs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%30)
+    %2 lit: i64 = const 2
+    %3 t: bool = gt.int %1, %2
+    if %3 then b9(%0) else b10(%0)
+  b1(%4 v: bool, %5 xs: ptr):
+    if %4 then b5(%5) else b6(%5)
+  b2(%6 v: bool):
+    if %6 then b3() else b4()
+  b3():
+    %7 lit: i64 = const 1
+    ret %7
+  b4():
+    %8 lit: i64 = const 0
+    ret %8
+  b5(%9 xs: ptr):
+    %11 lit: i64 = const 1
+    %31 xs.lent: ref = lend %9
+    call at#13(%31, %11) -> b7(%9)
+  b6(%10 xs: ptr):
+    drop %10
+    %18 lit: bool = const false
+    jump b2(%18)
+  b7(%12 r: i64, %13 xs: ptr):
+    %14 lit: i64 = const 2
+    call at#8(%13, %14) -> b8(%12)
+  b8(%15 r: i64, %16 r: i64):
+    %17 t: bool = lt.int %16, %15
+    jump b2(%17)
+  b9(%19 xs: ptr):
+    %21 lit: i64 = const 0
+    %32 xs.lent: ref = lend %19
+    call at#13(%32, %21) -> b11(%19)
+  b10(%20 xs: ptr):
+    %29 lit: bool = const false
+    jump b1(%29, %20)
+  b11(%22 r: i64, %23 xs: ptr):
+    %24 lit: i64 = const 1
+    %33 xs.lent: ref = lend %23
+    call at#13(%33, %24) -> b12(%23, %22)
+  b12(%25 r: i64, %26 xs: ptr, %27 r: i64):
+    %28 t: bool = lt.int %27, %25
+    jump b1(%28, %26)
+
+fn pick#5 top -> i64 ; main::short_circuit_pure, frame 3 slots [%0 bool, %1 word*, %8 i64]
+  b0(%0 c: bool, %1 xs: ptr):
+    if %0 then b2(%1) else b3(%1)
+  b1(%2 v: i64):
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %2, %3
+    ret %4
+  b2(%5 xs: ptr):
+    %7 lit: i64 = const 1
+    call at#8(%5, %7) -> b4()
+  b3(%6 xs: ptr):
+    %9 r: i64 = $list_len(%6)
+    jump b1(%9)
+  b4(%8 r: i64):
+    jump b1(%8)
+
+fn moved#6 top -> i64 ; main::short_circuit_pure, frame 2 slots [%0 bool, %1 word*]
+  b0(%0 c: bool, %1 p: ptr):
+    if %0 then b2(%1) else b3(%1)
+  b1(%2 v: ptr, %3 p: ptr):
+    %4 x: i64 = proj %2.0 main::short_circuit_pure::P
+    %5 y: i64 = proj %2.1 main::short_circuit_pure::P
+    drop %2
+    %6 t: i64 = intadd %4, %5
+    %7 x: i64 = proj %3.0 main::short_circuit_pure::P
+    drop %3
+    %8 t: i64 = intadd %6, %7
+    ret %8
+  b2(%9 p: ptr):
+    %11 y: i64 = proj %9.1 main::short_circuit_pure::P
+    %12 lit: i64 = const 100
+    %13 rec: ptr = alloc main::short_circuit_pure::P(%12, %11)
+    jump b1(%13, %9)
+  b3(%10 p: ptr):
+    %14 lit: i64 = const 1
+    %15 lit: i64 = const 2
+    %16 rec: ptr = alloc main::short_circuit_pure::P(%14, %15)
+    jump b1(%16, %10)
+
+fn bump#7 top -> i64 ; main::short_circuit_pure, frame 2 slots [%0 bool, %1 i64]
+  b0(%0 c: bool, %1 x: i64):
+    if %0 then b2(%1) else b3(%1)
+  b1(%2 v: i64):
+    %3 lit: i64 = const 2
+    %4 t: i64 = intmul %2, %3
+    ret %4
+  b2(%5 x: i64):
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %5, %7
+    jump b1(%8)
+  b3(%6 x: i64):
+    jump b1(%6)
+
+fn at#8 top -> i64 ; main::short_circuit_pure, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 7
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn first_positive#9 borrowed variant of #2 -> i64 ; main::short_circuit_pure, frame 2 slots [%0 i64, %10 i64]
+  b0(%0 xs: ref):
+    %14 xs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%14)
+    %2 lit: i64 = const 0
+    %3 t: bool = gt.int %1, %2
+    if %3 then b4(%0) else b5(%0)
+  b1(%4 v: bool):
+    if %4 then b2() else b3()
+  b2():
+    %5 lit: i64 = const 1
+    ret %5
+  b3():
+    %6 lit: i64 = const 0
+    ret %6
+  b4(%7 xs: ref):
+    %9 lit: i64 = const 0
+    call at#13(%7, %9) -> b6()
+  b5(%8 xs: ref):
+    %13 lit: bool = const false
+    jump b1(%13)
+  b6(%10 r: i64):
+    %11 lit: i64 = const 0
+    %12 t: bool = gt.int %10, %11
+    jump b1(%12)
+
+fn either#10 borrowed variant of #3 -> i64 ; main::short_circuit_pure, frame 3 slots [%0 i64, %1 i64, %12 i64]
+  b0(%0 xs: ref, %1 k: i64):
+    %2 lit: i64 = const 0
+    %3 t: bool = lt.int %1, %2
+    if %3 then b4(%0, %1) else b5(%0, %1)
+  b1(%4 v: bool):
+    if %4 then b2() else b3()
+  b2():
+    %5 lit: i64 = const 1
+    ret %5
+  b3():
+    %6 lit: i64 = const 0
+    ret %6
+  b4(%7 xs: ref, %8 k: i64):
+    %11 lit: bool = const true
+    jump b1(%11)
+  b5(%9 xs: ref, %10 k: i64):
+    call at#13(%9, %10) -> b6()
+  b6(%12 r: i64):
+    %13 lit: i64 = const 7
+    %14 t: bool = eq.int %12, %13
+    jump b1(%14)
+
+fn chain#11 borrowed variant of #4 -> i64 ; main::short_circuit_pure, frame 10 slots [%0 i64, %12 i64, %13 i64, %15 i64, %16 i64, %22 i64, %23 i64, %25 i64, %26 i64, %27 i64]
+  b0(%0 xs: ref):
+    %30 xs.lent: ref = lend %0
+    %1 r: i64 = $list_len(%30)
+    %2 lit: i64 = const 2
+    %3 t: bool = gt.int %1, %2
+    if %3 then b9(%0) else b10(%0)
+  b1(%4 v: bool, %5 xs: ref):
+    if %4 then b5(%5) else b6(%5)
+  b2(%6 v: bool):
+    if %6 then b3() else b4()
+  b3():
+    %7 lit: i64 = const 1
+    ret %7
+  b4():
+    %8 lit: i64 = const 0
+    ret %8
+  b5(%9 xs: ref):
+    %11 lit: i64 = const 1
+    %31 xs.lent: ref = lend %9
+    call at#13(%31, %11) -> b7(%9)
+  b6(%10 xs: ref):
+    %18 lit: bool = const false
+    jump b2(%18)
+  b7(%12 r: i64, %13 xs: ref):
+    %14 lit: i64 = const 2
+    call at#13(%13, %14) -> b8(%12)
+  b8(%15 r: i64, %16 r: i64):
+    %17 t: bool = lt.int %16, %15
+    jump b2(%17)
+  b9(%19 xs: ref):
+    %21 lit: i64 = const 0
+    %32 xs.lent: ref = lend %19
+    call at#13(%32, %21) -> b11(%19)
+  b10(%20 xs: ref):
+    %29 lit: bool = const false
+    jump b1(%29, %20)
+  b11(%22 r: i64, %23 xs: ref):
+    %24 lit: i64 = const 1
+    %33 xs.lent: ref = lend %23
+    call at#13(%33, %24) -> b12(%23, %22)
+  b12(%25 r: i64, %26 xs: ref, %27 r: i64):
+    %28 t: bool = lt.int %27, %25
+    jump b1(%28, %26)
+
+fn moved#12 borrowed variant of #6 -> i64 ; main::short_circuit_pure, frame 2 slots [%0 bool, %1 i64]
+  b0(%0 c: bool, %1 p: ref):
+    if %0 then b2(%1) else b3(%1)
+  b1(%2 v: ptr, %3 p: ref):
+    %4 x: i64 = proj %2.0 main::short_circuit_pure::P
+    %5 y: i64 = proj %2.1 main::short_circuit_pure::P
+    drop %2
+    %6 t: i64 = intadd %4, %5
+    %7 x: i64 = proj %3.0 main::short_circuit_pure::P
+    %8 t: i64 = intadd %6, %7
+    ret %8
+  b2(%9 p: ref):
+    %11 y: i64 = proj %9.1 main::short_circuit_pure::P
+    %12 lit: i64 = const 100
+    %13 rec: ptr = alloc main::short_circuit_pure::P(%12, %11)
+    jump b1(%13, %9)
+  b3(%10 p: ref):
+    %14 lit: i64 = const 1
+    %15 lit: i64 = const 2
+    %16 rec: ptr = alloc main::short_circuit_pure::P(%14, %15)
+    jump b1(%16, %10)
+
+fn at#13 borrowed variant of #8 -> i64 ; main::short_circuit_pure, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 xs: ref, %1 i: i64):
+    %2 lit: ptr = const str 7
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4

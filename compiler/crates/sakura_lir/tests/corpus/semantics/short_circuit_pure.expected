@@ -1,0 +1,8 @@
+ending: ok
+--- stdout
+and 1 0 0
+or 1 1 0
+chain 1 0 0
+pick 14 0
+moved 107 6 3
+bump 12 10

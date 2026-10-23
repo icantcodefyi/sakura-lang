@@ -269,6 +269,7 @@ semantics/searchparams_plus_and_percent: unsupported (builtin string_to_bytes)
 semantics/searchparams_sort_stable: unsupported (builtin string_to_bytes)
 semantics/secret_map_defect: unsupported (builtin secret_wrap)
 semantics/short_circuit_and_or: ok, 11 allocated, 0 dup, 11 drop, peak 4, live 0/0
+semantics/short_circuit_pure: ok, 70 allocated, 22 dup, 92 drop, peak 12, live 0/0
 semantics/show_format: ok, 37 allocated, 5 dup, 42 drop, peak 7, live 0/0
 semantics/sql_cancel_committed: unsupported (builtin clock_host)
 semantics/sql_rows: unsupported (builtin sql_memory)

@@ -1,0 +1,48 @@
+// milestone: M4
+// covers: design §4.1, §5.7 (in pure code too, `&&` and `||` evaluate the right operand only when needed and an `if` expression only the chosen arm: an operand that would defect is never evaluated)
+
+type P = { x: Int, y: Int }
+
+fn at(xs: List<Int>, i: Int) -> Int { Option.expect(xs[i], "index") }
+
+fn first_positive(xs: List<Int>) -> Int {
+  let ok = List.len(xs) > 0 && at(xs, 0) > 0
+  if ok { 1 } else { 0 }
+}
+
+fn either(xs: List<Int>, k: Int) -> Int {
+  let ok = k < 0 || at(xs, k) == 7
+  if ok { 1 } else { 0 }
+}
+
+fn chain(xs: List<Int>) -> Int {
+  let ok = List.len(xs) > 2 && at(xs, 0) < at(xs, 1) && at(xs, 1) < at(xs, 2)
+  if ok { 1 } else { 0 }
+}
+
+fn pick(c: Bool, xs: List<Int>) -> Int {
+  let p = if c { at(xs, 1) } else { List.len(xs) }
+  p * 2
+}
+
+fn moved(c: Bool, p: P) -> Int {
+  let q = if c { P { ..p, x: 100 } } else { P { x: 1, y: 2 } }
+  q.x + q.y + p.x
+}
+
+fn bump(c: Bool, x: Int) -> Int {
+  let b = if c { x + 1 } else { x }
+  b * 2
+}
+
+pub fn main() -> Unit ! {Console} {
+  let xs = [5, 7, 9]
+  let none: List<Int> = []
+  Console.print("and {first_positive(xs)} {first_positive(none)} {first_positive([-1])}")
+  Console.print("or {either(none, -1)} {either(xs, 1)} {either(xs, 0)}")
+  Console.print("chain {chain(xs)} {chain([1])} {chain([3, 2, 1])}")
+  Console.print("pick {pick(true, xs)} {pick(false, none)}")
+  let p = P { x: 3, y: 4 }
+  Console.print("moved {moved(true, p)} {moved(false, p)} {p.x}")
+  Console.print("bump {bump(true, 5)} {bump(false, 5)}")
+}
