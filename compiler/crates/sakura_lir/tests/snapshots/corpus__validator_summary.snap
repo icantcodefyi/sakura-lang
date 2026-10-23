@@ -81,6 +81,7 @@ semantics/deep_countdown: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/deep_recursion_defect: 4 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/deep_sum: 3 funcs, 9 blocks, 0 dup, 1 drop, valid
 semantics/defect_D001_after_a_kept_bracket: 4 funcs, 11 blocks, 0 dup, 3 drop, valid
+semantics/defect_D001_int_constant_step: 5 funcs, 19 blocks, 0 dup, 13 drop, valid
 semantics/defect_D001_int_min_div: 4 funcs, 10 blocks, 0 dup, 3 drop, valid
 semantics/defect_D001_int_overflow: 3 funcs, 8 blocks, 0 dup, 3 drop, valid
 semantics/defect_D002_division_by_zero: 3 funcs, 8 blocks, 0 dup, 3 drop, valid

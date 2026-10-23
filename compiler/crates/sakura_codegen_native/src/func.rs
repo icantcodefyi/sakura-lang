@@ -1326,6 +1326,22 @@ impl Gen<'_, '_, '_> {
                 .ok_or_else(|| format!("{name}: a primitive operand has no value"))
         };
         let x = match op {
+            PrimOp::IntAdd | PrimOp::IntSub
+                if let Some((x, c)) = self.constant_operand(op, arg(0)?, arg(1)?) =>
+            {
+                // `x + c` with a constant: an immediate add whose overflow is one compare of the
+                // sum against `x` (Cranelift branches on an `icmp` directly, on an overflow flag
+                // only through a `cset`).
+                let r = self.b.ins().iadd_imm_s(x, c);
+                let cc = if c > 0 {
+                    IntCC::SignedLessThan
+                } else {
+                    IntCC::SignedGreaterThan
+                };
+                let of = self.b.ins().icmp(cc, r, x);
+                self.pad_if(of, live, Some(image::OVERFLOW))?;
+                r
+            }
             PrimOp::IntAdd | PrimOp::IntSub | PrimOp::IntMul => {
                 let (p, q) = (arg(0)?, arg(1)?);
                 let (r, of) = match op {
@@ -1392,6 +1408,28 @@ impl Gen<'_, '_, '_> {
         };
         self.set(dst, x);
         Ok(())
+    }
+
+    /// `p + q` or `p - q` as `x + c` when an operand is a nonzero constant `c` (a subtracted
+    /// `i64::MIN` has no negation and stays an overflow-flag subtraction).
+    fn constant_operand(&self, op: &PrimOp, p: Value, q: Value) -> Option<(Value, i64)> {
+        let imm = |v: Value| match self.b.func.dfg.value_def(v) {
+            ir::ValueDef::Result(i, 0) => match self.b.func.dfg.insts[i] {
+                ir::InstructionData::UnaryImm {
+                    opcode: ir::Opcode::Iconst,
+                    imm,
+                } => Some(imm.bits()),
+                _ => None,
+            },
+            _ => None,
+        };
+        let (x, c) = match (op, imm(p), imm(q)) {
+            (PrimOp::IntAdd, _, Some(c)) => (p, c),
+            (PrimOp::IntAdd, Some(c), None) => (q, c),
+            (PrimOp::IntSub, _, Some(c)) => (p, c.checked_neg()?),
+            _ => return None,
+        };
+        (c != 0).then_some((x, c))
     }
 
     fn cmp(

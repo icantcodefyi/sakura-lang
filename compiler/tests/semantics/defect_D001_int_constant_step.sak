@@ -1,0 +1,20 @@
+// milestone: M5
+// needs: 64-bit Int backend (WASM/native); JS reports D003 first (expect-defect@js) after `before`
+// expect-exit: 70
+// expect-defect: D001
+// expect-defect@js: D003
+// covers: Defect; native's overflow test of a step by a constant (the sum against its operand)
+
+fn top() -> Int { 9_223_372_036_854_775_806 }
+
+fn bottom() -> Int { -9_223_372_036_854_775_807 }
+
+fn back(x: Int) -> Int { x + -1 }
+
+pub fn main() -> Unit ! {Console} {
+  Console.print("before")
+  Console.print("{top() + 1} {1 + top()} {top() - -1}")
+  Console.print("{bottom() - 1} {back(bottom())} {-1 + bottom()}")
+  Console.print("{top() + 2}")
+  Console.print("never printed")
+}

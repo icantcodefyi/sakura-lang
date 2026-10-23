@@ -81,6 +81,7 @@ semantics/deep_countdown: ok, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/deep_recursion_defect: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/deep_sum: ok, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
 semantics/defect_D001_after_a_kept_bracket: D001, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
+semantics/defect_D001_int_constant_step: D001, 15 allocated, 0 dup, 15 drop, peak 4, live 0/0
 semantics/defect_D001_int_min_div: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D001_int_overflow: D001, 1 allocated, 0 dup, 1 drop, peak 1, live 0/0
 semantics/defect_D002_division_by_zero: D002, 2 allocated, 0 dup, 2 drop, peak 2, live 0/0
