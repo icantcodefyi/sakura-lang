@@ -441,3 +441,20 @@ stays carried under §17.152 (2). `compile`: `check_hello` (p95 15.1 ms, target 
 `check_cold_10k` (62.1 ms, target 45) miss §17.195 (1)'s targets as at beta.5; every budget holds.
 Prep `fib` and `shapes` compare `ok` on every Node cell (largest move −1.5%, `shapes`
 n=100,000). Source: `bench/results/2026-10-22-70c64513-*`.
+
+## `v1.0.0` baseline (carried from `70c64513`, 2026-10-23)
+
+`v1.0.0`'s blessed baselines are `v1.0.0-beta.6`'s counted run at `70c64513` (above; `5ab07b34`,
+`8114c6d6`), carried under the owner's decision of 2026-10-23 and the written delegation of
+2026-10-22 (design §17.310 (1)). The shipped compiler, std, runtimes and packaging at 1.0.0's
+preparation commit `36e64df463e9f59a8174cd49ea54d7dbb9ecf674` equal beta.6's apart from the
+version string (road-to-1.0 §7, design §17.312: the frozen set is unchanged but for the test-only
+ABI 1.19.0 fixture and `tests/compat/allow.txt`), so there is no new five-hour counted run.
+`bench/baselines/` is unchanged and its files keep `meta.commit` `70c64513`. The M4 envelope read
+(`miss` on 237 of 264 gating cells) and the M5 one (`miss` on 121 of 132) are beta.6's, carried
+under §17.265 (1) and §17.152 (2). Prep `fib` and `shapes` (docs/release.md §2), counted at
+`36e64df4` in `../sakura-counted` (tree clean, Node 26.12.0 under §17.282's flags, started
+2026-10-23T06:00Z), compare `ok` on every Node cell against the `70c64513` baseline: `fib` −0.0% to
++0.0%, `shapes` +0.0% to +0.8% (largest n=50,000). Blessed (carried) by Claude Opus 5.5 under the
+owner's written delegation of 2026-10-22; the owner can overturn it. Source:
+`bench/results/2026-10-23-36e64df4-*`.

@@ -1,0 +1,16 @@
+| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| shapes | js | bun | 1000 | 1.687 | 1.684 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 1.85%, 8.89% → 2.82%, 2.42% |
+| shapes | js | bun | 10000 | 2.234 | 2.222 | -0.6% | ok — Bun advisory (§17.265 (5)); spread 5.21%, 0.94% → 8.35%, 3.27% |
+| shapes | js | bun | 50000 | 2.068 | 2.170 | +4.9% | ok — Bun advisory (§17.265 (5)); spread 14.76%, 10.22% → 9.52%, 13.07% |
+| shapes | js | bun | 100000 | 2.033 | 2.051 | +0.9% | ok — Bun advisory (§17.265 (5)); spread 7.92%, 13.44% → 14.05%, 22.06% |
+| shapes | js | node | 1000 | 1.369 | 1.370 | +0.0% | ok |
+| shapes | js | node | 10000 | 2.812 | 2.830 | +0.6% | ok |
+| shapes | js | node | 50000 | 0.944 | 0.951 | +0.8% | ok |
+| shapes | js | node | 100000 | 2.513 | 2.527 | +0.5% | ok |
+
+RSS detail: shapes js/js/bun n=100000: one-call maximum 93503488 → 93913088 bytes; many-call maximum 222871552 → 319750144 bytes at calls 16 → 16 (diagnostic only, §17.283); process median 90800128 → 88244224 bytes (processes 5 → 5; median is diagnostic only); ok 
+
+RSS detail: shapes js/js/bun n=50000: one-call maximum 52199424 → 51822592 bytes; many-call maximum 101302272 → 132808704 bytes at calls 32 → 32 (diagnostic only, §17.283); process median 51347456 → 51478528 bytes (processes 5 → 5; median is diagnostic only); ok 
+
+verdict: ok (instructions per call, §17.264)
