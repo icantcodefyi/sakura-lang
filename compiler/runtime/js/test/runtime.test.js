@@ -617,6 +617,103 @@ test("owned entries update in place and build what the persistent operations bui
   assert.equal(rt.set_len(rt.set_empty()), 0);
 });
 
+test("edit entries build what the persistent operations build and never write another version (design §17.315)", () => {
+  let seed = 23;
+  const rand = (n) => {
+    seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+    return seed % n;
+  };
+  // One chain each way; every so often the edit chain's version is retained (with its elements
+  // at that moment) and a new chain starts from it with `list_edit`, as after a retaining use.
+  // Every retained version must keep its elements whatever the later chains write.
+  for (const start of [rt.list_empty(), rt.list_range(0, 3000), null]) {
+    let p = start ?? rt.list_empty();
+    let e = start ?? rt.list_empty();
+    if (start === null) {
+      // A flat `List<Bool>` (design §17.265 (6)), built by an owned push loop.
+      for (let i = 0; i < 100; i++) {
+        p = rt.list_push(p, true);
+        e = rt.list_push_owned(e, true);
+      }
+    }
+    const kept = [];
+    e = rt.list_edit(e);
+    for (let i = 0; i < 20_000; i++) {
+      if (rand(50) === 0) {
+        kept.push([e, rt.toArray(e)]);
+        e = rt.list_edit(e);
+      }
+      if (p.n > 0 && rand(3) !== 0) {
+        const j = rand(p.n);
+        const x = start === null ? rand(2) === 0 : -i;
+        p = rt.list_set(p, j, x);
+        e = rt.list_set_edit(e, j, x);
+      } else {
+        const x = start === null ? true : i;
+        p = rt.list_push(p, x);
+        e = rt.list_push_edit(e, x);
+      }
+      const k = rand(e.n);
+      assert.equal(rt.list_at(e, k), rt.list_at(p, k));
+    }
+    assert.deepEqual(rt.toArray(e), rt.toArray(p));
+    for (const [v, items] of kept) assert.deepEqual(rt.toArray(v), items);
+  }
+  // A persistent push onto a chain's version that shares its tail, then the chain goes on.
+  let e = rt.list_edit(rt.list_range(0, 5));
+  e = rt.list_set_edit(e, 0, 9);
+  const shared = rt.list_push(e, 7);
+  e = rt.list_edit(e);
+  e = rt.list_set_edit(e, 1, 8);
+  assert.deepEqual(rt.toArray(shared), [9, 1, 2, 3, 4, 7]);
+  assert.deepEqual(rt.toArray(e), [9, 8, 2, 3, 4]);
+  // The empty singleton is never written.
+  assert.deepEqual(rt.toArray(rt.list_push_edit(rt.list_empty(), 1)), [1]);
+  assert.deepEqual(rt.toArray(rt.list_empty()), []);
+
+  const live = (m) => rt.toArray(rt.map_entries(m));
+  for (const mk of [(i) => i - 250, (i) => `k${i}`, (i) => [i % 7, `x${i}`]]) {
+    let pm = rt.map_empty();
+    let em = rt.map_empty();
+    const kept = [];
+    for (let i = 0; i < 6_000; i++) {
+      if (rand(40) === 0) {
+        kept.push([em, live(em)]);
+        em = rt.map_edit(em);
+      }
+      const k = mk(rand(500));
+      if (rand(3) === 0) {
+        pm = rt.map_remove(pm, k);
+        em = rt.map_remove_edit(em, k);
+      } else {
+        pm = rt.map_insert(pm, k, i);
+        em = rt.map_insert_edit(em, k, i);
+      }
+      const q = mk(rand(500));
+      assert.deepEqual(rt.map_get(em, q), rt.map_get(pm, q));
+    }
+    assert.equal(rt.map_len(em), rt.map_len(pm));
+    assert.deepEqual(live(em), live(pm));
+    for (const [v, entries] of kept) assert.deepEqual(live(v), entries);
+  }
+  assert.equal(rt.map_len(rt.map_empty()), 0);
+
+  let ps = rt.set_empty();
+  let es = rt.set_edit(rt.set_empty());
+  const keptSets = [];
+  for (let i = 0; i < 5_000; i++) {
+    if (rand(40) === 0) {
+      keptSets.push([es, rt.toArray(rt.set_to_list(es))]);
+      es = rt.set_edit(es);
+    }
+    ps = rt.set_insert(ps, i % 1_000);
+    es = rt.set_insert_edit(es, i % 1_000);
+  }
+  assert.deepEqual(rt.toArray(rt.set_to_list(es)), rt.toArray(rt.set_to_list(ps)));
+  for (const [v, items] of keptSets) assert.deepEqual(rt.toArray(rt.set_to_list(v)), items);
+  assert.equal(rt.set_len(rt.set_empty()), 0);
+});
+
 test("Map and Set keep insertion order", () => {
   let m = rt.map_empty();
   for (const k of ["b", "a", "c"]) m = rt.map_insert(m, k, k.toUpperCase());

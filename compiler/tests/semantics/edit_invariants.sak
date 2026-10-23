@@ -1,0 +1,97 @@
+// milestone: M3
+// covers: performance-r1 WS-P22; design §17.315 (4), §17.149 (an edit chain after a capture, a
+// store in a map, the same loop run twice, inside `with` and after a perform, a generic def)
+
+effect Tick {
+  fn tick() -> Int
+}
+
+fn ticks(start: Int) -> Handler<Tick, {}> {
+  handler Tick {
+    var n = start
+    fn tick() {
+      n = n + 1
+      n
+    }
+  }
+}
+
+fn fill<A>(xs: List<A>, x: A, n: Int) -> List<A> {
+  var out = xs
+  var i = 0
+  while i < n {
+    out = List.set(out, i, x)
+    i = i + 1
+  }
+  out
+}
+
+fn twice(xs: List<Int>) -> (List<Int>, List<Int>) {
+  var a = xs
+  var i = 0
+  while i < 5 {
+    a = List.set(a, i, -i)
+    i = i + 1
+  }
+  var b = xs
+  i = 0
+  while i < 5 {
+    b = List.set(b, i, i * i)
+    i = i + 1
+  }
+  (a, b)
+}
+
+pub fn main() -> Unit ! {Console} {
+  // Captured by a closure before the chain.
+  let xs = List.range(0, 40)
+  let total = fn() { List.sum(xs) }
+  var ys = xs
+  var i = 0
+  while i < 40 {
+    ys = List.set(ys, i, 1)
+    i = i + 1
+  }
+  Console.print("captured {total()} {List.sum(ys)}")
+
+  // Stored as a map value before the chain.
+  let vs = List.range(0, 40)
+  let by = Map.insert(Map.empty(), "v", vs)
+  var ws = vs
+  i = 0
+  while i < 10 {
+    ws = List.set(ws, i, 0)
+    i = i + 1
+  }
+  Console.print("map value {Option.map(Map.get(by, "v"), fn(l) { List.sum(l) })} {List.sum(ws)}")
+
+  // The same loop from the same value twice.
+  let (a, b) = twice(List.range(10, 20))
+  Console.print("twice {a} {b}")
+
+  // Inside `with`, each update after a perform.
+  let base = List.range(0, 30)
+  let inside = with ticks(100) {
+    var zs = base
+    var k = 0
+    while k < 30 {
+      zs = List.set(zs, k, Tick.tick())
+      k = k + 1
+    }
+    zs
+  }
+  Console.print("with {List.sum(base)} {List.sum(inside)} {inside[0]} {inside[29]}")
+
+  // After a perform: printed, then updated twice.
+  let ps = List.range(0, 3)
+  var qs = ps
+  Console.print("{qs}")
+  qs = List.set(qs, 0, 7)
+  qs = List.push(qs, 8)
+  Console.print("{qs} {ps}")
+
+  // A generic def.
+  let words = ["a", "b", "c", "d"]
+  let zs = fill(words, "z", 3)
+  Console.print("generic {words} {zs}")
+}

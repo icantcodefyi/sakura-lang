@@ -1315,8 +1315,8 @@ Invariants checked by `sakura_core::validate` after every pass: every `Local` is
 | tuple | array |
 | record | plain object with fields in declaration order, `Object.freeze` in debug builds |
 | variant | `{tag: n, fields: [...]}`; nullary variants are shared singletons; `Option`/`Result` use the same shape in v0 (no null-unboxing until M4) |
-| `List` | persistent vector (32-way trie) in the runtime; `List.set` copies one root-to-leaf path (§17.126), or writes in place when `opt::owned` proves the list owned (§17.149); literals build directly; `for` iterates leaf blocks and std builds results through transient builders that never escape (§17.116). `ponytail:` a copy-on-write JS array was considered and is rejected until measured |
-| `Map`/`Set` | insertion-ordered HAMT in the runtime with structural `Hash`/`Eq`; iteration walks the insertion log (§17.116); inserts and removals write in place when the map is owned (§17.149) |
+| `List` | persistent vector (32-way trie) in the runtime; `List.set` copies one root-to-leaf path (§17.126), or writes in place when `opt::owned` proves the list owned (§17.149); after a retaining use, a chain of updates goes through an edit wrapper (`list_edit`) that copies each node once and writes it in place afterwards (§17.315); literals build directly; `for` iterates leaf blocks and std builds results through transient builders that never escape (§17.116). `ponytail:` a copy-on-write JS array was considered and is rejected until measured |
+| `Map`/`Set` | insertion-ordered HAMT in the runtime with structural `Hash`/`Eq`; iteration walks the insertion log (§17.116); inserts and removals write in place when the map is owned (§17.149), and through an edit wrapper (`map_edit`, `set_edit`) after a retaining use (§17.315) |
 | closure | JS closure over captured values |
 | `Handler` | `{effect_id, clauses: {op: fn}, state: {...}}` |
 | error tag | record with `$error: "pkg::Tag"` |

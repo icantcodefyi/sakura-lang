@@ -87,13 +87,20 @@ pub(crate) fn module(cx: &Cx, module: &str) -> (String, String) {
                     let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool);
                     e.owned_entry();
                     e.def(&mut w);
+                    let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Direct, &ns, &pool);
+                    e.edit_entry();
+                    e.def(&mut w);
                 }
             }
             FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool).def(&mut w);
-            // A consuming def without a direct twin gets a CPS owned entry (design §17.201 (3)).
+            // A consuming def without a direct twin gets a CPS owned entry (design §17.201 (3))
+            // and a CPS edit entry (§17.315).
             if !cx.direct.direct(id) && cx.summaries[i].consumes.is_some() {
                 let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool);
                 e.owned_entry();
+                e.def(&mut w);
+                let mut e = FnEmit::new(cx, id, module, &module_defs, Mode::Cps, &ns, &pool);
+                e.edit_entry();
                 e.def(&mut w);
             }
         }
@@ -421,7 +428,7 @@ struct FnEmit<'a> {
     proved: Vec<bool>,
     /// Consuming sites whose argument is owned: they call the in-place entry (design §17.149).
     owned: owned::Facts,
-    /// `$d`, or `$o` for the owned entry of a consuming def.
+    /// `$d`, or `$o` for the owned entry of a consuming def, `$e` for its edit entry.
     twin: &'static str,
     /// The `contract_enter`/`contract_exit` binds around predicates that cannot defect.
     unbracketed: HashSet<Local>,
@@ -580,6 +587,27 @@ impl<'a> FnEmit<'a> {
         self.twin = "$o";
     }
 
+    /// Make this the edit entry `f$e` (design §17.315): the twin whose consumed parameter is
+    /// the current version of the caller's edit chain.
+    fn edit_entry(&mut self) {
+        if let Some(p) = self.cx.summaries[self.id.index()].consumes {
+            let p = self.def.params[p];
+            self.owned = owned::analyze_edit(self.cx.m, self.def, &self.cx.summaries, p);
+        }
+        self.twin = "$e";
+    }
+
+    /// The entry a consuming call bound to `x` calls: owned, edit or plain.
+    fn entry_of(&self, x: Local) -> &'static str {
+        if self.owned.owned(x) {
+            "$o"
+        } else if self.owned.edit(x) {
+            "$e"
+        } else {
+            "$d"
+        }
+    }
+
     fn name(&self, l: Local) -> &str {
         &self.names[l.index()]
     }
@@ -684,9 +712,9 @@ impl<'a> FnEmit<'a> {
                     params.push("$site".into());
                 }
                 let ps = params.join(", ");
-                // The owned entry's name; the plain CPS entry has none.
+                // The owned or edit entry's name; the plain CPS entry has none.
                 let body_name = match self.twin {
-                    "$o" => format!("{body_name}$o"),
+                    "$o" | "$e" => format!("{body_name}{}", self.twin),
                     _ => body_name,
                 };
                 w.line(&format!("{body_export}function {body_name}({ps}) {{"));
@@ -695,7 +723,7 @@ impl<'a> FnEmit<'a> {
                 self.expr(w, &d.body, "$ctx");
                 w.depth -= 1;
                 w.line("}");
-                if self.twin == "$o" {
+                if self.twin != "$d" {
                     w.line("");
                     return;
                 }
@@ -1396,13 +1424,14 @@ impl<'a> FnEmit<'a> {
     fn cps_callee(&self, x: Local, callee: &Atom) -> String {
         match callee {
             Atom::Builtin(name) => format!("$rt.{name}"),
-            // An owned argument goes to the callee's CPS owned entry.
+            // An owned argument goes to the callee's CPS owned entry, an edit chain's to its
+            // CPS edit entry.
             Atom::Global(d)
-                if self.owned.owned(x)
+                if self.entry_of(x) != "$d"
                     && !self.cx.direct.direct(*d)
                     && self.cx.summaries[d.index()].consumes.is_some() =>
             {
-                format!("{}$o", self.def_ref(*d))
+                format!("{}{}", self.def_ref(*d), self.entry_of(x))
             }
             other => self.atom(other),
         }
@@ -1510,8 +1539,9 @@ impl<'a> FnEmit<'a> {
             }
             Bind::Prim(op, args) => self.prim(op, args, self.proved[x.index()]),
             Bind::Call(f @ Atom::Global(d), args) => {
-                // An owned argument goes to the callee's owned entry (design §17.149).
-                let twin = if self.owned.owned(x) { "$o" } else { "$d" };
+                // An owned argument goes to the callee's owned entry (design §17.149), an edit
+                // chain's to its edit entry (§17.315).
+                let twin = self.entry_of(x);
                 format!(
                     "{}{twin}({}{})",
                     self.def_ref(*d),
@@ -1527,7 +1557,11 @@ impl<'a> FnEmit<'a> {
                 )
             }
             Bind::Call(Atom::Builtin(name), args) => {
-                let owned = if self.owned.owned(x) { "_owned" } else { "" };
+                let owned = match self.entry_of(x) {
+                    "$o" => "_owned",
+                    "$e" => "_edit",
+                    _ => "",
+                };
                 format!("$rt.{name}{owned}({})", self.atoms(args))
             }
             // A closure of a direct def bound in this function, or (in a twin) a function-typed

@@ -107,6 +107,11 @@ semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/direct_region_restart: 21 funcs, 113 blocks, 7 dup, 58 drop, valid
 semantics/dup_static_literal_loop: 3 funcs, 11 blocks, 5 dup, 17 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 1 dup, 16 drop, valid
+semantics/edit_alias_then_update: 10 funcs, 63 blocks, 4 dup, 42 drop, valid
+semantics/edit_flat_bool: 6 funcs, 38 blocks, 1 dup, 19 drop, valid
+semantics/edit_invariants: 14 funcs, 93 blocks, 11 dup, 54 drop, valid
+semantics/edit_segments: 9 funcs, 68 blocks, 15 dup, 74 drop, valid
+semantics/edit_snapshot: 5 funcs, 61 blocks, 4 dup, 73 drop, valid
 semantics/effects_and_handlers: 11 funcs, 51 blocks, 0 dup, 19 drop, valid
 semantics/encoding_decode_source_split_sequence: 38 funcs, 220 blocks, 11 dup, 75 drop, valid
 semantics/encoding_decode_utf16: 17 funcs, 81 blocks, 2 dup, 30 drop, valid

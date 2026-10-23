@@ -44,8 +44,10 @@ use std::fmt;
 use crate::builtins;
 use crate::ir::*;
 
+mod edit;
 mod elems;
 mod hoist;
+pub use edit::edit_heads;
 use elems::{Assume, Elems, callback, elem_read, elemish, seq};
 pub use hoist::hoist_reads;
 
@@ -135,11 +137,22 @@ pub struct Facts {
     /// allocation's local: the element local it reuses, and the live element locals of the same
     /// list it may be at run time (at most two), which the emitter tests first (`bj !== b`).
     pub in_place: BTreeMap<Local, (Local, Vec<Local>)>,
+    /// Design §17.315: consuming sites whose argument is not owned but is the current version of
+    /// an *edit chain*, a chain of versions no other reference reaches that starts at a
+    /// `list_edit`, `map_edit` or `set_edit` (see [`edit_heads`]) or, in an edit entry `f$e`, at
+    /// the consumed parameter. They call the `_edit` entry; their `sites` verdict stays the
+    /// persistent one.
+    pub edit: BTreeSet<Local>,
 }
 
 impl Facts {
     pub fn owned(&self, at: Local) -> bool {
         matches!(self.sites.get(&at), Some(Ok(())))
+    }
+
+    /// The site bound to `at` calls the `_edit` entry (design §17.315).
+    pub fn edit(&self, at: Local) -> bool {
+        self.edit.contains(&at)
     }
 
     /// The element `at`'s record allocation reuses, and the locals it is tested against.
@@ -175,6 +188,20 @@ pub fn borrows_arg(name: &str, i: usize) -> bool {
 
 /// Builtins returning a shared empty singleton, which every owned entry tests for.
 const SINGLETONS: &[&str] = &["list_empty", "map_empty", "set_empty"];
+
+/// Builtins starting an edit chain (design §17.315): a new wrapper with a new token over the
+/// nodes of their argument, which is not an owned origin but heads an edit chain.
+pub const EDITS: &[&str] = &["list_edit", "map_edit", "set_edit"];
+
+/// The edit builtin for a value of type `ty`, when it has one.
+fn edit_builtin(ty: &Ty) -> Option<&'static str> {
+    match ty {
+        Ty::List(_) => Some("list_edit"),
+        Ty::Map(..) => Some("map_edit"),
+        Ty::Set(_) => Some("set_edit"),
+        _ => None,
+    }
+}
 
 /// Passes of the liveness fixpoint before a def proves nothing. ponytail: a flat cap; Core's
 /// join nesting converges in a handful.
@@ -571,7 +598,52 @@ impl Summaries<'_> {
 /// The ownership facts of `def`, with `owned_params` owned at entry (the consumed parameter of
 /// an owned entry of a consuming def; empty otherwise).
 pub fn analyze(m: &Module, def: &FnDef, summaries: &[Summary], owned_params: &[Local]) -> Facts {
-    facts(m, def, summaries, owned_params, false)
+    let mut f = facts(m, def, summaries, owned_params, false);
+    f.edit = edit_sites(m, def, summaries, owned_params, &[]);
+    f
+}
+
+/// The facts of the edit entry `f$e` of a consuming def (design §17.315): its consumed
+/// parameter `p` heads an edit chain (the caller's), so the sites of that chain are `edit`;
+/// every other site has the plain entry's verdict, and no element is assumed owned.
+pub fn analyze_edit(m: &Module, def: &FnDef, summaries: &[Summary], p: Local) -> Facts {
+    let mut f = facts(m, def, summaries, &[], false);
+    f.edit = edit_sites(m, def, summaries, &[], &[p]);
+    f
+}
+
+/// The consuming sites of `def` whose argument is on an edit chain and not owned: owned when
+/// `list_edit` results and `edit_params` are taken as owned origins, but not otherwise.
+fn edit_sites(
+    m: &Module,
+    def: &FnDef,
+    summaries: &[Summary],
+    owned_params: &[Local],
+    edit_params: &[Local],
+) -> BTreeSet<Local> {
+    if edit_params.is_empty() && !has_edit(&def.body) {
+        return BTreeSet::new();
+    }
+    let plain = Analysis::run(m, def, summaries, owned_params);
+    let heads: Vec<Local> = owned_params.iter().chain(edit_params).copied().collect();
+    let e = Analysis::run_mode(m, def, summaries, &heads, true);
+    e.sites
+        .iter()
+        .filter_map(|(at, arg)| {
+            let x = (*arg)?;
+            let full = |a: &Analysis| a.owned[x.index()] && a.weak[x.index()].is_empty();
+            (full(&e) && !full(&plain)).then_some(*at)
+        })
+        .collect()
+}
+
+/// Whether `e` binds an edit builtin's result.
+fn has_edit(e: &Expr) -> bool {
+    let mut found = false;
+    each_bind(e, &mut |b| {
+        found |= matches!(b, Bind::Call(Atom::Builtin(n), _) if EDITS.contains(&n.as_str()));
+    });
+    found
 }
 
 /// [`analyze`] with no parameter owned, each `borrowed-after`, `captured` or `stored` site
@@ -616,6 +688,7 @@ fn facts(
     let mut facts = Facts {
         sites,
         in_place: BTreeMap::new(),
+        edit: BTreeSet::new(),
     };
     // Design §17.273: an owned entry that assumes owned elements is analysed with them.
     let id = m.defs.iter().position(|d| std::ptr::eq(d, def));
@@ -664,10 +737,22 @@ pub struct Copy {
 /// witness ([`witnessed`]); in def order, then binding order.
 pub fn copies(m: &Module) -> Vec<Copy> {
     let sums = summaries(m);
+    // An update on an edit chain copies each node once per chain, not on every execution
+    // (design §17.315 (3)): no `W8001`.
+    let mut edited = m.clone();
+    edit_heads(&mut edited);
+    let edit_sums = summaries(&edited);
     let mut out = Vec::new();
-    for def in m.defs.iter().filter(|d| !d.module.starts_with("std")) {
+    for (i, def) in m.defs.iter().enumerate() {
+        if def.module.starts_with("std") {
+            continue;
+        }
         let facts = witnessed(m, def, &sums);
+        let edits = analyze(&edited, &edited.defs[i], &edit_sums, &[]).edit;
         each_let_at(&def.body, &mut |local, bind, pos| {
+            if edits.contains(&local) {
+                return;
+            }
             let Some(Err(Shared {
                 reason,
                 witness: Some(witness),
@@ -717,9 +802,12 @@ pub fn copies(m: &Module) -> Vec<Copy> {
 
 /// `--dump owned`: [`display_module`] of every module outside std.
 pub fn display(m: &Module) -> String {
-    // The JS backend's facts: on its copy, reads moved.
+    // The JS backend's facts: on its copy, reads moved, then edit chains started; each site
+    // is shown as found before the edit wrappers, `edit` when its chain has one (§17.315).
     let mut h = m.clone();
     hoist_reads(&mut h);
+    let mut e = h.clone();
+    edit_heads(&mut e);
     let m = &h;
     let modules: BTreeSet<&str> = m
         .defs
@@ -727,15 +815,18 @@ pub fn display(m: &Module) -> String {
         .map(|d| d.module.as_str())
         .filter(|module| !module.starts_with("std"))
         .collect();
+    let sums = summaries(&e);
     modules
         .into_iter()
-        .map(|module| display_module(m, module))
+        .map(|module| display_module(m, &e, &sums, module))
         .collect()
 }
 
-/// `--dump owned`: each consuming site of the defs of `module`, `owned` or `shared(<reason>)`;
-/// in a consuming def, then `, owned entry <verdict>`: the same site in the def's owned entry.
-pub fn display_module(m: &Module, module: &str) -> String {
+/// `--dump owned`: each consuming site of the defs of `module`, `owned`, `shared(<reason>)` or,
+/// when `edited` (`m` with [`edit_heads`] applied, `edit_sums` its summaries) calls its `_edit`
+/// entry, `edit(after <reason>)`, naming the retaining use the chain starts after; in a
+/// consuming def, then `, owned entry <verdict>`: the same site in the def's owned entry.
+fn display_module(m: &Module, edited: &Module, edit_sums: &[Summary], module: &str) -> String {
     let sums = summaries(m);
     let mut out = String::new();
     for (i, def) in m.defs.iter().enumerate() {
@@ -746,6 +837,12 @@ pub fn display_module(m: &Module, module: &str) -> String {
         let entry = sums[i]
             .consumes
             .map(|p| analyze(m, def, &sums, &[def.params[p]]));
+        let ed = &edited.defs[i];
+        let edits = analyze(edited, ed, edit_sums, &[]).edit;
+        let entry_edits = edit_sums[i]
+            .consumes
+            .map(|p| analyze(edited, ed, edit_sums, &[ed.params[p]]).edit)
+            .unwrap_or_default();
         let consumes = sums[i].consumes.map(|p| {
             let with = if sums[i].elems { " with elements" } else { "" };
             format!(" consumes {}{with}", def.local(def.params[p]).name)
@@ -758,8 +855,9 @@ pub fn display_module(m: &Module, module: &str) -> String {
             def.name,
             consumes.unwrap_or_default()
         ));
-        let verdict = |v: &Result<(), Shared>| match v {
+        let verdict = |v: &Result<(), Shared>, edit: bool| match v {
             Ok(()) => "owned".to_owned(),
+            Err(r) if edit => format!("edit(after {r})"),
             Err(r) => format!("shared({r})"),
         };
         let in_place = |f: &Facts, x: Local| match f.in_place(x) {
@@ -812,13 +910,16 @@ pub fn display_module(m: &Module, module: &str) -> String {
             let in_entry = entry
                 .as_ref()
                 .and_then(|e| e.sites.get(&local))
-                .map(|e| format!(", owned entry {}", verdict(e)))
+                .map(|e| {
+                    let edit = entry_edits.contains(&local);
+                    format!(", owned entry {}", verdict(e, edit))
+                })
                 .unwrap_or_default();
             out.push_str(&format!(
                 "  {}%{} = {callee}({arg}) {}{in_entry}\n",
                 def.local(local).name,
                 local.0,
-                verdict(v)
+                verdict(v, edits.contains(&local))
             ));
         });
     }
@@ -848,6 +949,10 @@ enum Use {
     Borrow,
     /// The consumed argument of the site bound to this local.
     Consume(Local),
+    /// The argument of the edit builtin bound to this local (design §17.315): in the plain run
+    /// a final use, as a consumed argument is, since the new wrapper shares its nodes; in the
+    /// edit run a borrow, guarded by [`Analysis::wrap_aliases`].
+    Wrap(Local),
     /// A field of the record or tuple allocation bound to this local.
     Into(Local),
     /// An argument of the `k`th jump to this label.
@@ -898,6 +1003,13 @@ struct Analysis<'a> {
     nones: HashSet<Local>,
     /// Locals bound to an empty singleton (`[]`, `Map.empty()`).
     empties: HashSet<Local>,
+    /// The edit run (design §17.315): edit builtins' results are owned origins.
+    edit: bool,
+    /// Each edit builtin's result and the local it wraps.
+    wraps: Vec<(Local, Local)>,
+    /// In the edit run, per version of a wrapped local, the wrappers' versions, which share its
+    /// nodes: each must be dead after its updates (see [`Analysis::wrap_aliases`]).
+    wrapped: HashMap<Local, BTreeSet<Local>>,
     /// Per owned carrier, the components that are not owned (an allocation's shared
     /// argument, a callee's [`Summary::weak`]); a projection of one is not owned, and a
     /// consuming site takes only a carrier with none.
@@ -910,6 +1022,18 @@ impl<'a> Analysis<'a> {
         def: &'a FnDef,
         summaries: &'a [Summary],
         owned_params: &[Local],
+    ) -> Self {
+        Self::run_mode(m, def, summaries, owned_params, false)
+    }
+
+    /// [`Analysis::run`], or with `edit` the edit run: each edit builtin's result is an owned
+    /// origin, so what is owned there and not in the plain run is an edit chain's.
+    fn run_mode(
+        m: &'a Module,
+        def: &'a FnDef,
+        summaries: &'a [Summary],
+        owned_params: &[Local],
+        edit: bool,
     ) -> Self {
         let n = def.locals.len();
         let mut a = Analysis {
@@ -939,6 +1063,9 @@ impl<'a> Analysis<'a> {
             borrowed: vec![false; n],
             nones: HashSet::new(),
             empties: HashSet::new(),
+            edit,
+            wraps: Vec::new(),
+            wrapped: HashMap::new(),
             weak: vec![BTreeSet::new(); n],
         };
         for p in slots(def) {
@@ -958,6 +1085,7 @@ impl<'a> Analysis<'a> {
             }
         }
         a.join_aliases();
+        a.wrap_aliases();
         let mut memo = vec![None; n];
         for x in 0..n {
             a.borrowed[x] = a.is_borrowed(Local(x as u32), &mut memo);
@@ -996,6 +1124,54 @@ impl<'a> Analysis<'a> {
         for (p, a) in found {
             self.derive(p, a, None);
         }
+    }
+
+    /// Design §17.315: in the edit run, a wrapper and every version derived from it share the
+    /// nodes of the value it wraps until they copy them, so the wrapped value's chain keeps
+    /// its ownership exactly when that new chain is dead after each of its updates (`var perm =
+    /// perm1`: `perm1` is updated after `perm`'s loop), and the wrap itself is a borrow. In the
+    /// plain run a wrap is a final use: the value is owned only when dead after it.
+    fn wrap_aliases(&mut self) {
+        if !self.edit {
+            return;
+        }
+        for (w, a) in self.wraps.clone() {
+            let vs = self.versions(w);
+            for v in self.versions(a) {
+                self.wrapped
+                    .entry(v)
+                    .or_default()
+                    .extend(vs.iter().copied());
+            }
+        }
+    }
+
+    /// The versions derived from `from`, itself included: the results of the consuming sites
+    /// taking one, and the join parameters a jump passes one to.
+    fn versions(&self, from: Local) -> BTreeSet<Local> {
+        let mut s = BTreeSet::from([from]);
+        let mut changed = true;
+        while changed {
+            changed = false;
+            for (at, x) in &self.sites {
+                if x.is_some_and(|x| s.contains(&x)) && s.insert(*at) {
+                    changed = true;
+                }
+            }
+            for (label, js) in &self.jumps {
+                let Some(params) = self.params.get(label) else {
+                    continue;
+                };
+                for args in js {
+                    for (arg, p) in args.iter().zip(params) {
+                        if matches!(arg, Atom::Local(x) if s.contains(x)) && s.insert(*p) {
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        s
     }
 
     fn is_borrowed(&self, x: Local, memo: &mut Vec<Option<bool>>) -> bool {
@@ -1183,6 +1359,18 @@ impl<'a> Analysis<'a> {
         match bind {
             Bind::Atom(a) => self.use_atom(a, Use::Other(Reason::Stored)),
             Bind::Prim(_, args) => self.use_all(args, Use::Borrow),
+            Bind::Call(Atom::Builtin(n), args) if EDITS.contains(&n.as_str()) => {
+                self.use_all(args, Use::Wrap(x));
+                self.site(x, args);
+                if let [Atom::Local(a)] = args.as_slice()
+                    && self.tracked[a.index()]
+                {
+                    self.wraps.push((x, *a));
+                }
+                if self.edit {
+                    self.origin[x.index()] = Origin::Owned;
+                }
+            }
             Bind::Call(Atom::Builtin(n), args) => {
                 let b = builtins::lookup(n);
                 // `List.map`'s `list_reuse` hands its list back to be written over only when no
@@ -1516,6 +1704,15 @@ impl<'a> Analysis<'a> {
         if from_origin.is_some() {
             return from_origin;
         }
+        if let Some(ws) = self.wrapped.get(&x) {
+            let update = |u: &&Use| matches!(u, Use::Consume(_) | Use::Into(_));
+            for u in self.uses[x.index()].iter().filter(update) {
+                let others = self.others(u);
+                if ws.iter().any(|w| self.hits(&others, *w)) {
+                    return Some(Reason::BorrowedAfter);
+                }
+            }
+        }
         // Every local aliasing part of `x` only borrows or is owned, and is dead at the final
         // uses of `x`.
         let desc = self.descendants(x);
@@ -1649,7 +1846,8 @@ impl<'a> Analysis<'a> {
     /// What is live or read beside a final use: empty for a borrow or a return.
     fn others(&self, u: &Use) -> BTreeSet<Local> {
         match u {
-            Use::Consume(at) | Use::Into(at) => {
+            Use::Wrap(_) if self.edit => BTreeSet::new(),
+            Use::Consume(at) | Use::Wrap(at) | Use::Into(at) => {
                 let mut s = self.after.get(at).cloned().unwrap_or_default();
                 s.extend(self.atoms.get(at).into_iter().flatten().copied());
                 s
@@ -1758,7 +1956,8 @@ impl<'a> Analysis<'a> {
         for u in &self.uses[x] {
             match u {
                 Use::Borrow | Use::Ret => {}
-                Use::Consume(at) => {
+                Use::Wrap(_) if self.edit => {}
+                Use::Consume(at) | Use::Wrap(at) => {
                     if live_after(at) {
                         return Err(Reason::BorrowedAfter);
                     }

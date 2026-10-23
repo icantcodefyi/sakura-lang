@@ -121,3 +121,71 @@ fn native_compiles_the_entries_and_runs_main() {
     assert_eq!(out.code, Some(0), "{}", out.stderr);
     assert_eq!(out.stdout, "6\n");
 }
+
+/// Design §17.315 (2h): an entry's parameter is never owned or the start of an edit chain, and a
+/// value an entry returns is never written again. `bump` updates its argument along an edit
+/// chain (a wrapper bound inside it, past the entry); the host passes each result back in and
+/// reads every earlier one intact.
+#[test]
+fn an_entry_result_passed_back_is_never_written() {
+    if !node_present() {
+        return;
+    }
+    let pkg = Path::new(env!("CARGO_TARGET_TMPDIR")).join("entries-edit");
+    let _ = std::fs::remove_dir_all(&pkg);
+    std::fs::create_dir_all(pkg.join("src")).unwrap();
+    std::fs::write(
+        pkg.join("sakura.toml"),
+        "[package]\nname = \"edits\"\nversion = \"0.1.0\"\nedition = \"2026\"\n\n[permissions]\n",
+    )
+    .unwrap();
+    std::fs::write(
+        pkg.join("src/main.sak"),
+        "/// Adds one to every element, then appends the old length.\n\
+         pub fn bump(xs: List<Int>) -> List<Int> {\n  \
+           var ys = xs\n  \
+           var i = 0\n  \
+           while i < List.len(ys) {\n    \
+             ys = List.set(ys, i, Option.unwrap_or(ys[i], 0) + 1)\n    \
+             i = i + 1\n  \
+           }\n  \
+           List.push(ys, List.len(xs))\n\
+         }\n\
+         \n\
+         pub fn main() -> Unit ! {Console} { Console.print(\"{bump([1])}\") }\n",
+    )
+    .unwrap();
+    let out = pkg.join("out");
+    let built = sakura(&["build", "--out-dir", out.to_str().unwrap()], &pkg);
+    assert_eq!(built.code, Some(0), "{}", built.stderr);
+    let emitted = std::fs::read_to_string(out.join("edits/main.js")).unwrap();
+    assert!(
+        emitted.contains("$rt.list_edit("),
+        "no edit chain in bump:\n{emitted}"
+    );
+    let script = "const dir = process.argv[1];\n\
+        const { callEntry } = await import(dir + '/__entries__.js');\n\
+        const rt = await import(dir + '/sakura_runtime.js');\n\
+        const seen = [];\n\
+        let xs = rt.list(Array.from({ length: 70 }, (_, i) => i));\n\
+        for (let k = 0; k < 4; k++) {\n  \
+          const o = await callEntry('bump', [xs]);\n  \
+          if (o.kind !== 'ok') throw new Error(JSON.stringify(o));\n  \
+          seen.push([xs, rt.show(xs)]);\n  \
+          xs = o.value;\n\
+        }\n\
+        for (const [v, shown] of seen) if (rt.show(v) !== shown) throw new Error('written: ' + shown);\n\
+        console.log(rt.toArray(xs).slice(0, 3).join(' '), rt.toArray(xs).length);";
+    let run = std::process::Command::new("node")
+        .args(["--input-type=module", "-e", script])
+        .arg(&out)
+        .output()
+        .expect("node runs");
+    assert!(
+        run.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&run.stdout), "4 5 6 74\n");
+}

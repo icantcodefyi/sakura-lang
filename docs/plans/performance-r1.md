@@ -433,6 +433,18 @@ readings of (1) are in the first commit for the review: an element put back at t
 was read from keeps the fact, and a use that may retain elements is allowed when nothing of the
 list is live after it (`List.map` at the end of `advance`, `energy` after `run`'s loop).
 
+**WS-P22 — edit ownership on JS (Opus; design §17.315).** Paths: `opt/owned.rs` (the edit run
+and the `edit` verdict, `--dump owned`, `W8001`'s skip), `opt/owned/edit.rs` (`edit_heads`:
+where wrappers are bound), `emit.rs` (the `$e` entries and `_edit` calls), `sakura_runtime.js`
+(`list_edit`, `map_edit`, `set_edit` and the five `_edit` entries), `tools/sakura_eval`
+(`audit_owned` over the edited module, the generator's edit stream), the `edit_*` semantics
+fixtures and the host entries test. Exit: `bg_fannkuch_redux` at n = 7 on Node within 10% of
+the hand-edited ablation (19.61 M), with `map_set` and `map_set:int` falling on both engines
+and every other quick cell within the flag. **Landed:** 21.40 M (+9.1%); `bg_fannkuch_redux`
+22.6 → 8.94 on Node, 17.7 → 6.99 on Bun; `map_set:int` 3.04 → 2.13 and 12.6 → 6.53
+(`bench/deltas.md` row WS-P22). The runtime keeps one `List` shape with one more field (`ot`);
+the token is the wrapper itself.
+
 ### 4.2 File ownership
 
 | Paths | Owner |

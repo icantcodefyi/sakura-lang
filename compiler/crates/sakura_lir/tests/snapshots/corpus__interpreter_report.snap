@@ -107,6 +107,11 @@ semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, 
 semantics/direct_region_restart: ok, 156 allocated, 73 dup, 229 drop, peak 16, live 0/0
 semantics/dup_static_literal_loop: ok, 6022 allocated, 1499503 dup, 1505525 drop, peak 1006, live 0/0
 semantics/early_return: ok, 16 allocated, 1 dup, 17 drop, peak 5, live 0/0
+semantics/edit_alias_then_update: ok, 11796 allocated, 139737 dup, 151533 drop, peak 125, live 0/0
+semantics/edit_flat_bool: ok, 175 allocated, 1 dup, 176 drop, peak 6, live 0/0
+semantics/edit_invariants: ok, 721 allocated, 5665 dup, 6386 drop, peak 148, live 0/0
+semantics/edit_segments: ok, 9931 allocated, 3238061 dup, 3247992 drop, peak 2649, live 0/0
+semantics/edit_snapshot: unsupported (builtin map_remove)
 semantics/effects_and_handlers: ok, 30 allocated, 27 dup, 57 drop, peak 13, live 0/0
 semantics/encoding_decode_source_split_sequence: unsupported (builtin bytes_from_list)
 semantics/encoding_decode_utf16: unsupported (builtin bytes_from_list)

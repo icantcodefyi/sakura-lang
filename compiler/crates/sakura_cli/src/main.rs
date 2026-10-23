@@ -129,10 +129,12 @@ enum Command {
         /// `shared(too-many-steps(<n>))` (design §17.181 (1)). `core`:
         /// the user modules' Core, each `Int` operation the JS interval pass proves marked
         /// `proved` (design §17.114) and each in-place update `owned`. `owned`: each consuming
-        /// site of an owned-capable update as `owned` or `shared(<reason>)`, reasons `origin`,
-        /// `param`, `borrowed-after`, `captured`, `stored`, `escapes-call <name>`, `join`,
-        /// `field`, `tuple`, `elements`, and in a consuming def `, owned entry <verdict>` for the
-        /// same site called with its parameter owned (design §17.149, §17.201 (3)); a consuming
+        /// site of an owned-capable update as `owned`, `shared(<reason>)` or, on the JS
+        /// backend's edit chain after a retaining use, `edit(after <reason>)` (design §17.315),
+        /// reasons `origin`, `param`, `borrowed-after`, `captured`, `stored`,
+        /// `escapes-call <name>`, `join`, `field`, `tuple`, `elements`, and in a consuming def
+        /// `, owned entry <verdict>` for the same site called with its parameter owned (design
+        /// §17.149, §17.201 (3)); a consuming
         /// def whose owned entry assumes its list owns its elements says `with elements`, and
         /// each record update reusing a list element is `T {..b} in place`, `in place unless b
         /// is c` (the identity guards) or `allocates` (design §17.273); with `--target wasm`

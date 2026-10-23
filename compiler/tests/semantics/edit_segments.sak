@@ -1,0 +1,62 @@
+// milestone: M3
+// covers: performance-r1 WS-P22; design §17.315 (4) (a chain ended by a store and started
+// again, a retained middle version, a loop that runs zero times)
+
+type Box = { items: List<Int> }
+
+fn writes(xs: List<Int>, from: Int, n: Int) -> List<Int> {
+  var ys = xs
+  var i = 0
+  while i < n {
+    ys = List.set(ys, from + i, i * 10)
+    i = i + 1
+  }
+  ys
+}
+
+pub fn main() -> Unit ! {Console} {
+  let base = List.range(0, 50)
+  // A chain ended by a store, then a second chain from the stored version.
+  var ys = base
+  ys = List.set(ys, 0, -1)
+  ys = List.set(ys, 1, -2)
+  let b = Box { items: ys }
+  ys = List.set(ys, 2, -3)
+  ys = List.push(ys, 99)
+  Console.print(
+    "store {List.sum(base)} {b.items[0]} {b.items[1]} {b.items[2]} {List.len(b.items)} {ys[0]} {ys[2]} {List.len(ys)}",
+  )
+
+  // A version retained between two writes in each iteration stays intact.
+  var zs = base
+  var keeps: List<List<Int>> = []
+  var i = 0
+  while i < 4 {
+    zs = List.set(zs, i, 100 + i)
+    let keep = zs
+    zs = List.set(zs, i + 10, 200 + i)
+    keeps = List.push(keeps, keep)
+    i = i + 1
+  }
+  var shown: List<Int> = []
+  for k in keeps { shown = List.push(shown, Option.unwrap_or(k[10], -1)) }
+  Console.print("keep {shown} {zs[10]} {zs[13]} {List.sum(base)}")
+
+  // A loop that runs zero times leaves its alias unwritten.
+  let none = writes(base, 0, 0)
+  let some = writes(base, 20, 5)
+  Console.print("zero {List.sum(none)} {List.sum(some)} {List.sum(base)} {some[21]} {base[21]}")
+
+  // Past the tail: the trie's nodes are copied once, then written.
+  let big = List.range(0, 2000)
+  var bs = big
+  var j = 0
+  while j < 2000 {
+    bs = List.set(bs, j, j * 2)
+    bs = List.push(bs, j)
+    j = j + 7
+  }
+  Console.print(
+    "trie {List.sum(big)} {List.sum(bs)} {List.len(bs)} {bs[1999]} {big[1999]} {bs[2100]}",
+  )
+}

@@ -31,7 +31,9 @@
 //! updates of list elements the JS backend may reuse in place (design §17.273) and the shapes
 //! it must refuse (§17.290 (7): a held `bs[i]` `Option`, a stored moved record, a carried
 //! rebuild), and the evaluator audits ownership (`Limits::audit_owned`), so a reused record read again stops the
-//! run; `SAKURA_DIFF_ELEMENTS=0` turns the reuse off for a control run.
+//! run; `SAKURA_DIFF_ELEMENTS=0` turns the reuse off for a control run. Every program also
+//! ends with the alias-then-update and snapshot-then-update shapes of an edit chain (design
+//! §17.315 (3)), whose wrappers the evaluator runs too, auditing the chains as owned ones.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -211,6 +213,46 @@ fn show_ps(ps: List<P>) -> String {
   var out = \"\"
   for p in ps { out = \"{out} {p.a}{p.s}\" }
   out
+}
+fn alias_l(start: List<Int>, k: Int, rounds: Int) -> String {
+  var base = start
+  var out = \"\"
+  var r = 0
+  while r < rounds {
+    var cur = base
+    var i = 0
+    while i < List.len(cur) {
+      cur = List.set(cur, i, Option.expect(cur[i], \"c\") * k + r)
+      out = \"{out} {Option.expect(base[i], \"b\")}\"
+      i = i + 1
+    }
+    let keep = cur
+    if List.len(base) > 0 { base = List.set(base, r % List.len(base), r) }
+    base = List.push(base, k)
+    out = \"{out} |{List.sum(keep)}\"
+    r = r + 1
+  }
+  \"{out} {List.sum(base)}\"
+}
+fn snap_m(n: Int, k: Int) -> String {
+  var m: Map<Int, Int> = Map.empty()
+  var s: Set<String> = Set.empty()
+  var i = 0
+  while i < n {
+    m = Map.insert(m, i * k % 17, i)
+    s = Set.insert(s, \"s{i % 5}\")
+    i = i + 1
+  }
+  let snap = m
+  let ss = s
+  i = 0
+  while i < n {
+    m = Map.update(m, i % 17, fn(v) { Option.unwrap_or(v, 0) + k })
+    if i % 3 == 0 { m = Map.remove(m, i * 7 % 17) }
+    s = Set.insert(s, \"t{i % 4}\")
+    i = i + 1
+  }
+  \"{Map.len(m)} {Map.len(snap)} {m} {snap} {Set.len(s)} {Set.len(ss)}\"
 }
 ";
 
@@ -1333,6 +1375,7 @@ fn program(seed: u64) -> String {
     src.push_str("pub fn main() -> Unit ! {Console} {\n");
     g.main_items(2, 1, &mut src);
     src.push_str(&elements(seed));
+    src.push_str(&edits(seed));
     src.push_str("}\n");
     src
 }
@@ -1384,6 +1427,25 @@ fn elements(seed: u64) -> String {
         m.join(", ")
     );
     out
+}
+
+/// The shapes of an edit chain (design §17.315 (3)): a list aliased, the alias updated while the
+/// original is read, then the original updated while a version of the alias is held; and a map
+/// and a set retained, then updated and removed from. From their own stream, as `elements`.
+fn edits(seed: u64) -> String {
+    let mut rng = Rng(seed ^ 0xed17_c4a1);
+    let xs: Vec<String> = (0..rng.below(40))
+        .map(|_| rng.below(9).to_string())
+        .collect();
+    format!(
+        "  Console.print(\"alias{{alias_l([{}], {}, {})}}\")\n\
+         \x20 Console.print(\"snap {{snap_m({}, {})}}\")\n",
+        xs.join(", "),
+        1 + rng.below(3),
+        rng.below(4),
+        rng.below(60),
+        1 + rng.below(5)
+    )
 }
 
 /// How a run ended: stdout lines plus `ok` or the defect code.

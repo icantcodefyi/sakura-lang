@@ -1,0 +1,47 @@
+// milestone: M3
+// covers: performance-r1 WS-P22; design §17.315 (4) (fannkuch's alias-then-update shape)
+
+fn at(xs: List<Int>, i: Int) -> Int { Option.expect(xs[i], "index") }
+
+/// Flips like fannkuch: `perm` aliases `perm1`, is updated, and `perm1` is read after each
+/// write to `perm`; then `perm1` is rotated while a copy of `perm` taken before is read.
+fn rounds(n: Int) -> (Int, List<Int>, List<Int>) {
+  var perm1 = List.range(0, n)
+  var total = 0
+  var last: List<Int> = []
+  var r = 0
+  while r < n {
+    var perm = perm1
+    var i = 0
+    while i < n / 2 {
+      let t = at(perm, i)
+      perm = List.set(perm, i, at(perm, n - 1 - i))
+      perm = List.set(perm, n - 1 - i, t)
+      // The version `perm` aliased is intact.
+      total = total + at(perm1, i) * 3 + at(perm, i)
+      i = i + 1
+    }
+    last = perm
+    // Rotate `perm1` left; `last` still holds this round's `perm`.
+    let first = at(perm1, 0)
+    var j = 0
+    while j < n - 1 {
+      perm1 = List.set(perm1, j, at(perm1, j + 1))
+      j = j + 1
+    }
+    perm1 = List.set(perm1, n - 1, first)
+    total = total + at(last, 0) - at(perm1, 0)
+    r = r + 1
+  }
+  (total, perm1, last)
+}
+
+pub fn main() -> Unit ! {Console} {
+  let (total, perm1, last) = rounds(7)
+  Console.print("{total} {perm1} {last}")
+  let (t2, p2, l2) = rounds(40)
+  Console.print("{t2} {List.sum(p2)} {l2[0]} {l2[39]} {p2[0]} {p2[39]}")
+  // No flip at all: the alias is never written.
+  let (t0, p0, l0) = rounds(1)
+  Console.print("{t0} {p0} {l0}")
+}

@@ -49,6 +49,16 @@ retains earlier implementation history.
   six in-place counters at +16 (ABI §1b), which `stats()` adds in. WASM modules change only in
   their version, `0x011400`: the 1.20 Node host runs every 1.x module up to 1.20, and a 1.19
   host refuses a 1.20 module, as for every MINOR.
+- **The JS backend updates a copied list, map or set in place.** After a list is kept and also
+  updated (`var perm = perm1` followed by a loop of `List.set`, or a map snapshot followed by
+  inserts), each later update used to copy a path. Now the first update copies each node once,
+  and the rest of the chain writes in place. `bg_fannkuch_redux` falls from 22.6 to 8.9 times
+  hand JS on Node, and from 17.7 to 7.0 on Bun. `map_set`'s integer case falls from 3.0 to 2.1
+  on Node and from 12.6 to 6.5 on Bun. Over the quick suite the geometric mean falls from 2.46
+  to 2.40 on Node and from 3.49 to 3.35 on Bun (`bench/deltas.md`). `sakura build --dump owned`
+  prints these updates as `edit(after <reason>)`, and `W8001` does not report them. No
+  program's output, defect, contract check or exit code changes, and the WASM and native
+  backends are unchanged.
 
 ## [1.0.0] - 2026-10-23
 

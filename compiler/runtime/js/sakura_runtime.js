@@ -1177,6 +1177,11 @@ export class List {
     // never change.
     this.lb = -1;
     this.lf = null;
+    // Edit chains (design §17.315), set only by `_edit` entries: the tail this wrapper copied
+    // (a field, not a stamp on the array: JSC slows on a named property added to an array).
+    // One field: a ninth cost Bun 11% on `awfy_storage`, and a second List shape (a subclass,
+    // or fields added later) cost it 6× on `bg_fannkuch_redux`.
+    this.ot = null;
   }
 }
 
@@ -1414,6 +1419,110 @@ function pushLeafOwned(node, level, off, leaf) {
   else node[i] = path(level - 5, leaf);
 }
 
+// Edit entries (design §17.315, ABI.md §7): the compiler binds `list_edit(xs)` where a chain of
+// versions that no other reference reaches starts from a shared value, and calls
+// `<builtin>_edit` at that chain's updates, always on the chain's one wrapper. A node the chain
+// copied is written in place; any other node is copied once, so the update builds what the
+// persistent one builds and nothing another version holds is written. The wrapper knows its
+// nodes: the tail it copied (`ot`), and the trie nodes stamped with the wrapper itself as `$e`,
+// a token no other list is. Neither is ever cleared or reused: when the chain ends no compiled code calls an `_edit` entry on its wrapper again,
+// and a later `list_edit` of these nodes is a new wrapper that copies them once more. An
+// `_edit` entry may also get a list the chain did not make (a fresh list in an edit chain): it
+// copies as from any other. The empty singletons are shared: an edit of one allocates.
+
+function stamp(a, t) {
+  a.$e = t;
+  return a;
+}
+
+/** A new wrapper over the nodes of `xs`, owning none; its leaf cache is empty. */
+export function list_edit(xs) {
+  return new List(xs.n, xs.shift, xs.root, xs.tail, xs.tl);
+}
+
+/** The tail of `xs`, which this wrapper did not copy, copied (the leaf cache follows). */
+function editTail(xs) {
+  const c = xs.tail.slice(0, xs.tl);
+  if (xs.lf === xs.tail) xs.lf = c;
+  xs.tail = xs.ot = c;
+  return c;
+}
+
+/** `List.set` on an edit chain: the path's nodes the wrapper copied are written, the others
+ * copied. The tail's case is small, so it inlines into a loop; the trie's is out of line. */
+export function list_set_edit(xs, i, x) {
+  const off = xs.n - xs.tl;
+  // A tail over 32 elements is a flat list's (no trie), which the trie's path spills first.
+  if (i < off || xs.tl > 32) return setEditTrie(xs, i, x);
+  (xs.ot === xs.tail ? xs.tail : editTail(xs))[i - off] = x;
+  return xs;
+}
+
+function setEditTrie(xs, i, x) {
+  if (xs.root === null) {
+    spill(xs);
+    return list_set_edit(xs, i, x);
+  }
+  let node = xs.root;
+  if (node.$e !== xs) node = xs.root = stamp(node.slice(), xs);
+  for (let level = xs.shift; level > 0; level -= 5) {
+    const j = (i >>> level) & 31;
+    let child = node[j];
+    if (child.$e !== xs) {
+      const c = stamp(child.slice(), xs);
+      if (xs.lf === child) xs.lf = c;
+      node[j] = child = c;
+    }
+    node = child;
+  }
+  node[i & 31] = x;
+  return xs;
+}
+
+/** `List.push` on an edit chain: as `list_set_edit`; a full tail joins the trie unchanged,
+ * stamped when the wrapper copied it. */
+export function list_push_edit(xs, x) {
+  if (xs === EMPTY_LIST) {
+    const w = new List(1, 5, null, [x], 1);
+    w.ot = w.tail;
+    return w;
+  }
+  if (xs.root === null && xs.tl > 32) spill(xs);
+  const tl = xs.tl;
+  if (tl < 32) {
+    (xs.ot === xs.tail && xs.tail.length === tl ? xs.tail : editTail(xs)).push(x);
+    xs.tl = tl + 1;
+    xs.n += 1;
+    return xs;
+  }
+  const leaf = xs.ot === xs.tail ? stamp(xs.tail, xs) : xs.tail;
+  const off = xs.n - tl;
+  if (xs.root === null) {
+    xs.root = stamp([leaf], xs);
+  } else if (off >>> 5 >= 1 << xs.shift) {
+    xs.root = stamp([xs.root, pathEdit(xs.shift, leaf, xs)], xs);
+    xs.shift += 5;
+  } else {
+    xs.root = pushLeafEdit(xs.root, xs.shift, off, leaf, xs);
+  }
+  xs.tail = xs.ot = [x];
+  xs.tl = 1;
+  xs.n += 1;
+  return xs;
+}
+
+function pathEdit(level, leaf, t) {
+  return level === 0 ? leaf : stamp([pathEdit(level - 5, leaf, t)], t);
+}
+
+function pushLeafEdit(node, level, off, leaf, t) {
+  if (node.$e !== t) node = stamp(node.slice(), t);
+  const i = (off >>> level) & 31;
+  if (level === 5) node[i] = leaf;
+  else node[i] = i < node.length ? pushLeafEdit(node[i], level - 5, off, leaf, t) : pathEdit(level - 5, leaf, t);
+  return node;
+}
+
 export function list_builder() {
   return new Builder();
 }
@@ -1582,6 +1691,7 @@ export class VMap {
     this.log = log;
     this.idx = idx;
     this.size = size;
+    this.e = null; // the edit token, as a List's (design §17.315)
   }
 }
 
@@ -1590,6 +1700,7 @@ export class VSet {
     this.log = log;
     this.idx = idx;
     this.size = size;
+    this.e = null; // the edit token, as a List's (design §17.315)
   }
 }
 
@@ -1993,6 +2104,140 @@ function iput(ix, k, s, owned) {
   return ix;
 }
 
+// Edit entries for maps and sets (design §17.315 (2f)), as the List ones: the log is a List
+// wrapper of the chain's own, and the index's branch nodes (`HNode`, the integer index's `IIdx` and 32-slot
+// leaves) are stamped and written the same way; leaves and collision nodes are replaced as
+// `hset` and `hdel` replace them.
+
+/** The token of map or set `m`, made on first use with a log wrapper of its own. */
+function mapToken(m) {
+  if (m.e === null) {
+    m.e = {};
+    m.log = list_edit(m.log);
+  }
+  return m.e;
+}
+
+function mapEdit(C, m) {
+  const w = new C(list_edit(m.log), m.idx, m.size);
+  w.e = {};
+  return w;
+}
+
+/** `upsert` on an edit chain. */
+function upsertEdit(m, key, e) {
+  const t = mapToken(m);
+  const h = hashOf(key);
+  const s = slot(m, key, h);
+  if (s >= 0) {
+    list_set_edit(m.log, s, e);
+    return m;
+  }
+  m.log = list_push_edit(m.log, e);
+  const at = m.log.n - 1;
+  m.idx = typeof key === "number" ? iputEdit(m.idx ?? EMPTY_IIDX, key, at, t) : hsetEdit(m.idx, 0, new HLeaf(h, key, at), t);
+  m.size += 1;
+  return m;
+}
+
+/** `without` on an edit chain. */
+function withoutEdit(C, m, key) {
+  const h = hashOf(key);
+  const s = slot(m, key, h);
+  if (s < 0) return m;
+  const t = mapToken(m);
+  list_set_edit(m.log, s, HOLE);
+  m.size -= 1;
+  const holes = m.log.n - m.size;
+  if (holes > 32 && holes > m.size) {
+    const live = items(m.log).filter((e) => e !== HOLE);
+    return rebuild(C, live, C === VMap ? (e) => keyOf(e[0]) : keyOf);
+  }
+  m.idx = typeof key === "number" ? iputEdit(m.idx, key, -1, t) : hdelEdit(m.idx, 0, h, key, t);
+  return m;
+}
+
+/** An `HNode` stamped with `t`: `node`, or a copy of it. */
+function editNode(node, t) {
+  return node.$e === t ? node : stamp(new HNode(node.bm, node.a.slice()), t);
+}
+
+function hsetEdit(node, shift, leaf, t) {
+  if (!(node instanceof HNode)) return hset(node, shift, leaf);
+  node = editNode(node, t);
+  const bit = 1 << ((leaf.h >>> shift) & 31);
+  const i = popcount(node.bm & (bit - 1));
+  if (node.bm & bit) {
+    node.a[i] = hsetEdit(node.a[i], shift + 5, leaf, t);
+  } else {
+    node.a.splice(i, 0, leaf);
+    node.bm |= bit;
+  }
+  return node;
+}
+
+function hdelEdit(node, shift, h, k, t) {
+  if (!(node instanceof HNode)) return hdel(node, shift, h, k);
+  const bit = 1 << ((h >>> shift) & 31);
+  if ((node.bm & bit) === 0) return node;
+  node = editNode(node, t);
+  const i = popcount(node.bm & (bit - 1));
+  const child = hdelEdit(node.a[i], shift + 5, h, k, t);
+  if (child === null) {
+    node.a.splice(i, 1);
+    node.bm &= ~bit;
+  } else {
+    node.a[i] = child;
+  }
+  if (node.a.length === 0) return null;
+  if (node.a.length === 1 && !(node.a[0] instanceof HNode)) return node.a[0];
+  return node;
+}
+
+/** `iput` on an edit chain: the `IIdx` and the path stamped with `t`. */
+function iputEdit(ix, k, s, t) {
+  if (ix.$e !== t) ix = stamp(new IIdx(ix.p, ix.pl, ix.n, ix.nl), t);
+  const neg = k < 0;
+  const u = neg ? -k - 1 : k;
+  const lo = u & (LOW - 1);
+  let node = neg ? ix.n : ix.p;
+  let level = neg ? ix.nl : ix.pl;
+  const need = u < 32 ? 0 : levelOf(u);
+  if (node === null) level = need;
+  else if (need > level) {
+    node = grow(node, level, need);
+    level = need;
+  }
+  node = isetEdit(node, level, u, lo, s, t);
+  if (neg) {
+    ix.n = node;
+    ix.nl = level;
+  } else {
+    ix.p = node;
+    ix.pl = level;
+  }
+  return ix;
+}
+
+function isetEdit(node, level, u, lo, s, t) {
+  if (level === 0) {
+    const leaf = node === null ? stamp(NO_POSITIONS.slice(), t) : node.$e === t ? node : stamp(node.slice(), t);
+    leaf[lo & 31] = s;
+    return leaf;
+  }
+  const bit = 1 << digit(u, lo, level);
+  if (node === null) return stamp(new HNode(bit, [isetEdit(null, level - 1, u, lo, s, t)]), t);
+  node = editNode(node, t);
+  const i = popcount(node.bm & (bit - 1));
+  if (node.bm & bit) {
+    node.a[i] = isetEdit(node.a[i], level - 1, u, lo, s, t);
+  } else {
+    node.a.splice(i, 0, isetEdit(null, level - 1, u, lo, s, t));
+    node.bm |= bit;
+  }
+  return node;
+}
+
 /** The log position of `key` (= keyOf of a key, `h` its hashOf) in map or set `m`, or -1. */
 function slot(m, key, h) {
   return typeof key === "number" ? iget(m.idx, key) : hget(m.idx, h, key);
@@ -2071,6 +2316,15 @@ export function map_insert_owned(m, k, v) {
 export function map_remove_owned(m, k) {
   return withoutOwned(VMap, m, keyOf(k));
 }
+export function map_edit(m) {
+  return mapEdit(VMap, m);
+}
+export function map_insert_edit(m, k, v) {
+  return m === EMPTY_MAP ? map_insert(m, k, v) : upsertEdit(m, keyOf(k), [k, v]);
+}
+export function map_remove_edit(m, k) {
+  return withoutEdit(VMap, m, keyOf(k));
+}
 export function map_contains(m, k) {
   return mapFind(m, k) !== undefined;
 }
@@ -2108,6 +2362,14 @@ export function set_insert_owned(s, x) {
   if (typeof key === "number" && s.idx !== null) return upsertOwnedInt(s, key, x, false);
   if (slot(s, key, hashOf(key)) >= 0) return s;
   return s === EMPTY_SET ? upsert(VSet, s, key, x) : upsertOwned(s, key, x);
+}
+export function set_edit(s) {
+  return mapEdit(VSet, s);
+}
+export function set_insert_edit(s, x) {
+  const key = keyOf(x);
+  if (slot(s, key, hashOf(key)) >= 0) return s;
+  return s === EMPTY_SET ? upsert(VSet, s, key, x) : upsertEdit(s, key, x);
 }
 export function set_remove(s, x) {
   return without(VSet, s, keyOf(x));

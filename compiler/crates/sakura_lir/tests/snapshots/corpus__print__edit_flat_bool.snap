@@ -1,0 +1,199 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 1 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 2 shape |  32b (word*, word*)
+layout 3 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::edit_flat_bool, frame 12 slots [%1 word*, %8 i64, %9 word*, %10 word*, %19 i64, %20 word*, %21 word*, %22 word*, %48 bool, %69 word*, %70 word*, %71 i64]
+  b0():
+    %0 lit: i64 = const 100
+    call sieve#2(%0) -> b1()
+  b1(%1 r: ptr):
+    %75 lit: i64 = const 0
+    dup %1
+    jump b6(%1, %75, %1)
+  b2(%2 odd: ptr, %3 i: i64, %4 r: ptr):
+    %5 lit: bool = const true
+    %6 box: word = box %5
+    %7 r: ptr = $list_push(%2, %6)
+    %76 r.lent: ref = lend %4
+    call count#5(%76) -> b3(%4, %7)
+  b3(%8 r: i64, %9 r: ptr, %10 r: ptr):
+    %11 s: ptr = show %8
+    %12 lit: ptr = const str 0
+    %13 s: ptr = concat %11, %12
+    drop %12
+    %77 r.lent: ref = lend %9
+    %14 r: i64 = $list_len(%77)
+    %15 s: ptr = show %14
+    %16 s: ptr = concat %13, %15
+    drop %15
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %78 r.lent: ref = lend %10
+    call count#5(%78) -> b4(%9, %10, %18)
+  b4(%19 r: i64, %20 r: ptr, %21 r: ptr, %22 s: ptr):
+    %23 s: ptr = show %19
+    %24 s: ptr = concat %22, %23
+    drop %23
+    %25 lit: ptr = const str 0
+    %26 s: ptr = concat %24, %25
+    drop %25
+    %79 r.lent: ref = lend %21
+    %27 r: i64 = $list_len(%79)
+    %28 s: ptr = show %27
+    %29 s: ptr = concat %26, %28
+    drop %28
+    %30 lit: ptr = const str 0
+    %31 s: ptr = concat %29, %30
+    drop %30
+    %32 lit: i64 = const 0
+    %33 item: ptr = $list_get(%20, %32)
+    %34 s: ptr = show %33
+    drop %33
+    %35 s: ptr = concat %31, %34
+    drop %34
+    %36 lit: ptr = const str 0
+    %37 s: ptr = concat %35, %36
+    drop %36
+    %38 lit: i64 = const 0
+    %80 r.lent: ref = lend %21
+    %39 item: ptr = $list_get(%80, %38)
+    %40 s: ptr = show %39
+    drop %39
+    %41 s: ptr = concat %37, %40
+    drop %40
+    %42 lit: ptr = const str 0
+    %43 s: ptr = concat %41, %42
+    drop %42
+    %44 lit: i64 = const 1
+    %45 item: ptr = $list_get(%21, %44)
+    %46 s: ptr = show %45
+    drop %45
+    %47 s: ptr = concat %43, %46
+    drop %46
+    perform std::console::Console.print(%47) -> b5()
+  b5(%48 r: unit):
+    %49 box: word = box %48
+    %50 unbox: unit = unbox %49
+    drop %49
+    ret %50
+  b6(%51 odd: ptr, %52 i: i64, %53 r: ptr):
+    %54 lit: i64 = const 100
+    %55 t: bool = lt.int %52, %54
+    if %55 then b8(%53, %51, %52) else b9(%53, %51, %52)
+  b7(%56 v: unit, %57 odd: ptr, %58 i: i64, %59 r: ptr):
+    jump b6(%57, %58, %59)
+  b8(%60 r: ptr, %61 odd: ptr, %62 i: i64):
+    %66 lit: bool = const false
+    %67 box: word = box %66
+    %68 $site: i64 = const 2
+    call set#3(%61, %62, %67, %68) -> b10(%60, %62)
+  b9(%63 r: ptr, %64 odd: ptr, %65 i: i64):
+    jump b2(%64, %65, %63)
+  b10(%69 r: ptr, %70 r: ptr, %71 i: i64):
+    %72 lit: i64 = const 2
+    %73 t: i64 = intadd %71, %72
+    %74 lit: unit = const ()
+    jump b7(%74, %69, %73, %70)
+
+fn $entry#1 top -> unit ; main::edit_flat_bool, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn sieve#2 top -> ptr ; main::edit_flat_bool, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %1 xs: ptr = alloc list()
+    %22 lit: i64 = const 0
+    jump b1(%1, %22, %0)
+  b1(%2 flags: ptr, %3 i: i64, %4 n: i64):
+    %5 t: bool = lt.int %3, %4
+    if %5 then b3(%4, %2, %3) else b4(%4, %2, %3)
+  b2(%6 v: unit, %7 flags: ptr, %8 i: i64, %9 n: i64):
+    jump b1(%7, %8, %9)
+  b3(%10 n: i64, %11 flags: ptr, %12 i: i64):
+    %16 lit: bool = const true
+    %17 box: word = box %16
+    %18 r: ptr = $list_push(%11, %17)
+    %19 lit: i64 = const 1
+    %20 t: i64 = intadd %12, %19
+    %21 lit: unit = const ()
+    jump b2(%21, %18, %20, %10)
+  b4(%13 n: i64, %14 flags: ptr, %15 i: i64):
+    ret %14
+
+fn count#4 top -> i64 ; main::edit_flat_bool, frame 1 slots [%0 word*]
+  b0(%0 xs: ptr):
+    %42 xs.lent: ref = lend %0
+    %1 n: i64 = $list_len(%42)
+    %40 lit: i64 = const 0
+    %41 lit: i64 = const 0
+    jump b1(%40, %41, %0, %1)
+  b1(%2 i: i64, %3 c: i64, %4 xs: ptr, %5 n: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 xs: ptr, %8 n: i64, %9 i: i64, %10 c: i64):
+    %43 xs.lent: ref = lend %7
+    %15 x: word = $list_at(%43, %9)
+    %16 unbox: bool = unbox %15
+    drop %15
+    if %16 then b6(%7, %8, %9, %10) else b7(%7, %8, %9, %10)
+  b3(%11 xs: ptr, %12 n: i64, %13 i: i64, %14 c: i64):
+    drop %11
+    ret %14
+  b4(%17 c: i64, %18 xs: ptr, %19 n: i64, %20 i: i64):
+    %21 lit: i64 = const 1
+    %22 i: i64 = intadd %20, %21
+    jump b1(%22, %17, %18, %19)
+  b5(%23 v: unit, %24 c: i64, %25 xs: ptr, %26 n: i64, %27 i: i64):
+    jump b4(%24, %25, %26, %27)
+  b6(%28 xs: ptr, %29 n: i64, %30 i: i64, %31 c: i64):
+    %36 lit: i64 = const 1
+    %37 t: i64 = intadd %31, %36
+    %38 lit: unit = const ()
+    jump b5(%38, %37, %28, %29, %30)
+  b7(%32 xs: ptr, %33 n: i64, %34 i: i64, %35 c: i64):
+    %39 lit: unit = const ()
+    jump b5(%39, %35, %32, %33, %34)
+
+fn count#5 borrowed variant of #4 -> i64 ; main::edit_flat_bool, frame 1 slots [%0 i64]
+  b0(%0 xs: ref):
+    %42 xs.lent: ref = lend %0
+    %1 n: i64 = $list_len(%42)
+    %40 lit: i64 = const 0
+    %41 lit: i64 = const 0
+    jump b1(%40, %41, %0, %1)
+  b1(%2 i: i64, %3 c: i64, %4 xs: ref, %5 n: i64):
+    %6 more: bool = lt.int %2, %5
+    if %6 then b2(%4, %5, %2, %3) else b3(%4, %5, %2, %3)
+  b2(%7 xs: ref, %8 n: i64, %9 i: i64, %10 c: i64):
+    %43 xs.lent: ref = lend %7
+    %15 x: word = $list_at(%43, %9)
+    %16 unbox: bool = unbox %15
+    drop %15
+    if %16 then b6(%7, %8, %9, %10) else b7(%7, %8, %9, %10)
+  b3(%11 xs: ref, %12 n: i64, %13 i: i64, %14 c: i64):
+    ret %14
+  b4(%17 c: i64, %18 xs: ref, %19 n: i64, %20 i: i64):
+    %21 lit: i64 = const 1
+    %22 i: i64 = intadd %20, %21
+    jump b1(%22, %17, %18, %19)
+  b5(%23 v: unit, %24 c: i64, %25 xs: ref, %26 n: i64, %27 i: i64):
+    jump b4(%24, %25, %26, %27)
+  b6(%28 xs: ref, %29 n: i64, %30 i: i64, %31 c: i64):
+    %36 lit: i64 = const 1
+    %37 t: i64 = intadd %31, %36
+    %38 lit: unit = const ()
+    jump b5(%38, %37, %28, %29, %30)
+  b7(%32 xs: ref, %33 n: i64, %34 i: i64, %35 c: i64):
+    %39 lit: unit = const ()
+    jump b5(%39, %35, %32, %33, %34)

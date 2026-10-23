@@ -1,0 +1,388 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  24b (i64)
+
+fn main#0 pub top -> unit ; main::edit_invariants, frame 76 slots [%2 word*, %7 word*, %8 word*, %15 i64, %16 word*, %17 word*, %20 bool, %21 word*, %25 word*, %26 word*, %37 word*, %38 word*, %39 i64, %40 word*, %46 i64, %47 word*, %48 i64, %49 word*, %50 word*, %53 bool, %54 word*, %55 i64, %56 word*, %60 word*, %61 word*, %62 i64, %63 word*, %64 word*, %65 word*, %66 i64, %67 word*, %80 bool, %81 word*, %82 i64, %83 word*, %87 word*, %88 word*, %89 i64, %90 word*, %99 i64, %100 word*, %106 i64, %107 word*, %108 word*, %123 bool, %127 word*, %129 bool, %130 word*, %136 word*, %137 word*, %146 bool, %155 word*, %156 word*, %164 bool, %205 i64, %206 word*, %207 word*, %208 i64, %209 word*, %210 word*, %211 i64, %212 i64, %216 word*, %217 word*, %218 word*, %219 i64, %220 word*, %221 i64, %222 i64, %251 word*, %252 word*, %253 word*, %254 i64, %277 word*, %278 word*, %279 i64]
+  b0():
+    %0 lit: i64 = const 0
+    %1 lit: i64 = const 40
+    call range#2(%0, %1) -> b1()
+  b1(%2 r: ptr):
+    dup %2
+    %3 f: ptr = closure main$1#3[%2]
+    %283 lit: i64 = const 0
+    jump b38(%2, %283, %3)
+  b2(%4 ys: ptr, %5 i: i64, %6 f: ptr):
+    call %6() -> b3(%4)
+  b3(%7 r: word, %8 ys: ptr):
+    %9 unbox: i64 = unbox %7
+    drop %7
+    %10 s: ptr = show %9
+    %11 lit: ptr = const str 0
+    %12 s: ptr = concat %11, %10
+    drop %10
+    %13 lit: ptr = const str 1
+    %14 s: ptr = concat %12, %13
+    drop %13
+    dup.candidate %8
+    call sum#4(%8) -> b4(%8, %14)
+  b4(%15 r: i64, %16 ys: ptr, %17 s: ptr):
+    %18 s: ptr = show %15
+    %19 s: ptr = concat %17, %18
+    drop %18
+    perform std::console::Console.print(%19) -> b5(%16)
+  b5(%20 r: unit, %21 ys: ptr):
+    %22 box: word = box %20
+    drop %22
+    %23 lit: i64 = const 0
+    %24 lit: i64 = const 40
+    call range#2(%23, %24) -> b6(%21)
+  b6(%25 r: ptr, %26 ys: ptr):
+    %27 r: ptr = $map_empty()
+    %28 lit: ptr = const str 2
+    dup %25
+    %29 r: ptr = $map_insert(%27, %28, %25)
+    %258 lit: i64 = const 0
+    jump b33(%26, %258, %25, %29)
+  b7(%30 ys: ptr, %31 i: i64, %32 ws: ptr, %33 r: ptr):
+    %34 lit: ptr = const str 2
+    %35 r: ptr = $map_get(%33, %34)
+    %36 f: ptr = closure main$2#6[]
+    call map#7(%35, %36) -> b8(%30, %31, %32)
+  b8(%37 r: ptr, %38 ys: ptr, %39 i: i64, %40 ws: ptr):
+    %41 s: ptr = show %37
+    drop %37
+    %42 lit: ptr = const str 3
+    %43 s: ptr = concat %42, %41
+    drop %41
+    %44 lit: ptr = const str 1
+    %45 s: ptr = concat %43, %44
+    drop %44
+    dup.candidate %40
+    call sum#4(%40) -> b9(%38, %39, %40, %45)
+  b9(%46 r: i64, %47 ys: ptr, %48 i: i64, %49 ws: ptr, %50 s: ptr):
+    %51 s: ptr = show %46
+    %52 s: ptr = concat %50, %51
+    drop %51
+    perform std::console::Console.print(%52) -> b10(%47, %48, %49)
+  b10(%53 r: unit, %54 ys: ptr, %55 i: i64, %56 ws: ptr):
+    %57 box: word = box %53
+    drop %57
+    %58 lit: i64 = const 10
+    %59 lit: i64 = const 20
+    call range#2(%58, %59) -> b11(%54, %55, %56)
+  b11(%60 r: ptr, %61 ys: ptr, %62 i: i64, %63 ws: ptr):
+    call twice#8(%60) -> b12(%61, %62, %63)
+  b12(%64 r: ptr, %65 ys: ptr, %66 i: i64, %67 ws: ptr):
+    %227 p: ptr = tuple_get %64.0
+    %228 p: ptr = tuple_get %64.1
+    drop %64
+    jump b13(%227, %228, %65, %66, %67)
+  b13(%68 a: ptr, %69 b: ptr, %70 ys: ptr, %71 i: i64, %72 ws: ptr):
+    %73 s: ptr = show %68
+    drop %68
+    %74 lit: ptr = const str 4
+    %75 s: ptr = concat %74, %73
+    drop %73
+    %76 lit: ptr = const str 1
+    %77 s: ptr = concat %75, %76
+    drop %76
+    %78 s: ptr = show %69
+    drop %69
+    %79 s: ptr = concat %77, %78
+    drop %78
+    perform std::console::Console.print(%79) -> b14(%70, %71, %72)
+  b14(%80 r: unit, %81 ys: ptr, %82 i: i64, %83 ws: ptr):
+    %84 box: word = box %80
+    drop %84
+    %85 lit: i64 = const 0
+    %86 lit: i64 = const 30
+    call range#2(%85, %86) -> b15(%81, %82, %83)
+  b15(%87 r: ptr, %88 ys: ptr, %89 i: i64, %90 ws: ptr):
+    %91 tick: ptr = closure ticks$Tick_tick#11[]
+    %92 lit: i64 = const 100
+    %93 r: ptr = handler main::edit_invariants::Tick row 5 state(%92) clauses(%91)
+    %167 $act: id = handle_push %93
+    %226 lit: i64 = const 0
+    dup %87
+    jump b27(%88, %89, %90, %87, %226, %87, %167)
+  b16(%94 v: ptr, %95 ys: ptr, %96 i: i64, %97 ws: ptr, %98 r: ptr):
+    drop %95
+    drop %97
+    call sum#4(%98) -> b17(%94)
+  b17(%99 r: i64, %100 v: ptr):
+    %101 s: ptr = show %99
+    %102 lit: ptr = const str 5
+    %103 s: ptr = concat %102, %101
+    drop %101
+    %104 lit: ptr = const str 1
+    %105 s: ptr = concat %103, %104
+    drop %104
+    dup.candidate %100
+    call sum#4(%100) -> b18(%100, %105)
+  b18(%106 r: i64, %107 v: ptr, %108 s: ptr):
+    %109 s: ptr = show %106
+    %110 s: ptr = concat %108, %109
+    drop %109
+    %111 lit: ptr = const str 1
+    %112 s: ptr = concat %110, %111
+    drop %111
+    %113 lit: i64 = const 0
+    %284 v.lent: ref = lend %107
+    %114 item: ptr = $list_get(%284, %113)
+    %115 s: ptr = show %114
+    drop %114
+    %116 s: ptr = concat %112, %115
+    drop %115
+    %117 lit: ptr = const str 1
+    %118 s: ptr = concat %116, %117
+    drop %117
+    %119 lit: i64 = const 29
+    %120 item: ptr = $list_get(%107, %119)
+    %121 s: ptr = show %120
+    drop %120
+    %122 s: ptr = concat %118, %121
+    drop %121
+    perform std::console::Console.print(%122) -> b19()
+  b19(%123 r: unit):
+    %124 box: word = box %123
+    drop %124
+    %125 lit: i64 = const 0
+    %126 lit: i64 = const 3
+    call range#2(%125, %126) -> b20()
+  b20(%127 r: ptr):
+    %128 s: ptr = show %127
+    perform std::console::Console.print(%128) -> b21(%127)
+  b21(%129 r: unit, %130 r: ptr):
+    %131 box: word = box %129
+    drop %131
+    %132 lit: i64 = const 0
+    %133 lit: i64 = const 7
+    %134 box: word = box %133
+    %135 $site: i64 = const 2
+    dup %130
+    call set#5(%130, %132, %134, %135) -> b22(%130)
+  b22(%136 r: ptr, %137 r: ptr):
+    %138 lit: i64 = const 8
+    %139 box: word = box %138
+    %140 r: ptr = $list_push(%136, %139)
+    %141 s: ptr = show %140
+    drop %140
+    %142 lit: ptr = const str 1
+    %143 s: ptr = concat %141, %142
+    drop %142
+    %144 s: ptr = show %137
+    drop %137
+    %145 s: ptr = concat %143, %144
+    drop %144
+    perform std::console::Console.print(%145) -> b23()
+  b23(%146 r: unit):
+    %147 box: word = box %146
+    drop %147
+    %148 lit: ptr = const str 6
+    %149 lit: ptr = const str 7
+    %150 lit: ptr = const str 8
+    %151 lit: ptr = const str 9
+    %152 xs: ptr = alloc list(%148, %149, %150, %151)
+    %153 lit: ptr = const str 10
+    %154 lit: i64 = const 3
+    dup %152
+    call fill#10(%152, %153, %154) -> b24(%152)
+  b24(%155 r: ptr, %156 xs: ptr):
+    %157 s: ptr = show %156
+    drop %156
+    %158 lit: ptr = const str 11
+    %159 s: ptr = concat %158, %157
+    drop %157
+    %160 lit: ptr = const str 1
+    %161 s: ptr = concat %159, %160
+    drop %160
+    %162 s: ptr = show %155
+    drop %155
+    %163 s: ptr = concat %161, %162
+    drop %162
+    perform std::console::Console.print(%163) -> b25()
+  b25(%164 r: unit):
+    %165 box: word = box %164
+    %166 unbox: unit = unbox %165
+    drop %165
+    ret %166
+  b26(%168 ys: ptr, %169 i: i64, %170 ws: ptr, %171 zs: ptr, %172 k: i64, %173 r: ptr) [handle]:
+    handle_pop
+    jump b16(%171, %168, %169, %170, %173)
+  b27(%174 ys: ptr, %175 i: i64, %176 ws: ptr, %177 zs: ptr, %178 k: i64, %179 r: ptr, %180 $act: id) [handle]:
+    %181 lit: i64 = const 30
+    %182 t: bool = lt.int %178, %181
+    if %182 then b29(%179, %174, %175, %176, %177, %178, %180) else b30(%179, %174, %175, %176, %177, %178, %180)
+  b28(%183 v: unit, %184 ys: ptr, %185 i: i64, %186 ws: ptr, %187 zs: ptr, %188 k: i64, %189 r: ptr, %190 $act: id) [handle]:
+    jump b27(%184, %185, %186, %187, %188, %189, %190)
+  b29(%191 r: ptr, %192 ys: ptr, %193 i: i64, %194 ws: ptr, %195 zs: ptr, %196 k: i64, %197 $act: id) [handle]:
+    %213 clause: ptr = bound %197 main::edit_invariants::Tick.tick
+    call ticks$Tick_tick#11(%213, %197) -> b31(%191, %192, %193, %194, %195, %196, %197)
+  b30(%198 r: ptr, %199 ys: ptr, %200 i: i64, %201 ws: ptr, %202 zs: ptr, %203 k: i64, %204 $act: id) [handle]:
+    jump b26(%199, %200, %201, %202, %203, %198)
+  b31(%205 r: i64, %206 r: ptr, %207 ys: ptr, %208 i: i64, %209 ws: ptr, %210 zs: ptr, %211 k: i64, %212 $act: id) [handle]:
+    %214 box: word = box %205
+    %215 $site: i64 = const 3
+    call set#5(%210, %211, %214, %215) -> b32(%206, %207, %208, %209, %211, %212)
+  b32(%216 r: ptr, %217 r: ptr, %218 ys: ptr, %219 i: i64, %220 ws: ptr, %221 k: i64, %222 $act: id) [handle]:
+    %223 lit: i64 = const 1
+    %224 t: i64 = intadd %221, %223
+    %225 lit: unit = const ()
+    jump b28(%225, %218, %219, %220, %216, %224, %217, %222)
+  b33(%229 ys: ptr, %230 i: i64, %231 ws: ptr, %232 r: ptr):
+    %233 lit: i64 = const 10
+    %234 t: bool = lt.int %230, %233
+    if %234 then b35(%232, %229, %230, %231) else b36(%232, %229, %230, %231)
+  b34(%235 v: unit, %236 ys: ptr, %237 i: i64, %238 ws: ptr, %239 r: ptr):
+    jump b33(%236, %237, %238, %239)
+  b35(%240 r: ptr, %241 ys: ptr, %242 i: i64, %243 ws: ptr):
+    %248 lit: i64 = const 0
+    %249 box: word = box %248
+    %250 $site: i64 = const 4
+    call set#5(%243, %242, %249, %250) -> b37(%240, %241, %242)
+  b36(%244 r: ptr, %245 ys: ptr, %246 i: i64, %247 ws: ptr):
+    jump b7(%245, %246, %247, %244)
+  b37(%251 r: ptr, %252 r: ptr, %253 ys: ptr, %254 i: i64):
+    %255 lit: i64 = const 1
+    %256 t: i64 = intadd %254, %255
+    %257 lit: unit = const ()
+    jump b34(%257, %253, %256, %251, %252)
+  b38(%259 ys: ptr, %260 i: i64, %261 f: ptr):
+    %262 lit: i64 = const 40
+    %263 t: bool = lt.int %260, %262
+    if %263 then b40(%261, %259, %260) else b41(%261, %259, %260)
+  b39(%264 v: unit, %265 ys: ptr, %266 i: i64, %267 f: ptr):
+    jump b38(%265, %266, %267)
+  b40(%268 f: ptr, %269 ys: ptr, %270 i: i64):
+    %274 lit: i64 = const 1
+    %275 box: word = box %274
+    %276 $site: i64 = const 5
+    call set#5(%269, %270, %275, %276) -> b42(%268, %270)
+  b41(%271 f: ptr, %272 ys: ptr, %273 i: i64):
+    jump b2(%272, %273, %271)
+  b42(%277 r: ptr, %278 f: ptr, %279 i: i64):
+    %280 lit: i64 = const 1
+    %281 t: i64 = intadd %279, %280
+    %282 lit: unit = const ()
+    jump b39(%282, %277, %281, %278)
+
+fn $entry#1 top -> unit ; main::edit_invariants, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::edit_invariants, captures [word*], frame 2 slots [%0 word*, %2 i64]
+  b0(%0 env: ptr):
+    %1 xs: ptr = capture %0.0
+    drop %0
+    call sum#4(%1) -> b1()
+  b1(%2 r: i64):
+    %3 box: word = box %2
+    ret %3
+
+fn main$2#6 lambda -> word ; main::edit_invariants, captures [], frame 3 slots [%0 word*, %1 word*, %2 i64]
+  b0(%0 env: ptr, %1 l: word):
+    drop %0
+    call sum#4(%1) -> b1()
+  b1(%2 r: i64):
+    %3 box: word = box %2
+    ret %3
+
+fn twice#8 top -> ptr ; main::edit_invariants, frame 7 slots [%0 word*, %26 word*, %27 word*, %28 i64, %51 word*, %52 word*, %53 i64]
+  b0(%0 xs: ptr):
+    %57 lit: i64 = const 0
+    dup %0
+    jump b8(%0, %57, %0)
+  b1(%1 a: ptr, %2 i: i64, %3 xs: ptr):
+    %32 lit: i64 = const 0
+    jump b3(%1, %32, %3)
+  b2(%4 a: ptr, %5 i: i64, %6 b: ptr):
+    %7 tup: ptr = alloc tuple#3(word, word)(%4, %6)
+    ret %7
+  b3(%8 a: ptr, %9 i: i64, %10 b: ptr):
+    %11 lit: i64 = const 5
+    %12 t: bool = lt.int %9, %11
+    if %12 then b5(%8, %9, %10) else b6(%8, %9, %10)
+  b4(%13 v: unit, %14 a: ptr, %15 i: i64, %16 b: ptr):
+    jump b3(%14, %15, %16)
+  b5(%17 a: ptr, %18 i: i64, %19 b: ptr):
+    %23 t: i64 = intmul %18, %18
+    %24 box: word = box %23
+    %25 $site: i64 = const 6
+    call set#5(%19, %18, %24, %25) -> b7(%17, %18)
+  b6(%20 a: ptr, %21 i: i64, %22 b: ptr):
+    jump b2(%20, %21, %22)
+  b7(%26 r: ptr, %27 a: ptr, %28 i: i64):
+    %29 lit: i64 = const 1
+    %30 t: i64 = intadd %28, %29
+    %31 lit: unit = const ()
+    jump b4(%31, %27, %30, %26)
+  b8(%33 a: ptr, %34 i: i64, %35 xs: ptr):
+    %36 lit: i64 = const 5
+    %37 t: bool = lt.int %34, %36
+    if %37 then b10(%35, %33, %34) else b11(%35, %33, %34)
+  b9(%38 v: unit, %39 a: ptr, %40 i: i64, %41 xs: ptr):
+    jump b8(%39, %40, %41)
+  b10(%42 xs: ptr, %43 a: ptr, %44 i: i64):
+    %48 t: i64 = intneg %44
+    %49 box: word = box %48
+    %50 $site: i64 = const 7
+    call set#5(%43, %44, %49, %50) -> b12(%42, %44)
+  b11(%45 xs: ptr, %46 a: ptr, %47 i: i64):
+    jump b1(%46, %47, %45)
+  b12(%51 r: ptr, %52 xs: ptr, %53 i: i64):
+    %54 lit: i64 = const 1
+    %55 t: i64 = intadd %53, %54
+    %56 lit: unit = const ()
+    jump b9(%56, %51, %55, %52)
+
+fn ticks#9 top -> ptr ; main::edit_invariants, frame 1 slots [%0 i64]
+  b0(%0 start: i64):
+    %1 tick: ptr = closure ticks$Tick_tick#11[]
+    %2 handler: ptr = handler main::edit_invariants::Tick row 5 state(%0) clauses(%1)
+    ret %2
+
+fn fill#10 top -> ptr ; main::edit_invariants, frame 7 slots [%0 word*, %1 word*, %2 i64, %22 word*, %23 word*, %24 i64, %25 i64]
+  b0(%0 xs: ptr, %1 x: word, %2 n: i64):
+    %29 lit: i64 = const 0
+    jump b1(%0, %29, %1, %2)
+  b1(%3 out: ptr, %4 i: i64, %5 x: word, %6 n: i64):
+    %7 t: bool = lt.int %4, %6
+    if %7 then b3(%5, %6, %3, %4) else b4(%5, %6, %3, %4)
+  b2(%8 v: unit, %9 out: ptr, %10 i: i64, %11 x: word, %12 n: i64):
+    jump b1(%9, %10, %11, %12)
+  b3(%13 x: word, %14 n: i64, %15 out: ptr, %16 i: i64):
+    %21 $site: i64 = const 8
+    dup %13
+    call set#5(%15, %16, %13, %21) -> b5(%13, %14, %16)
+  b4(%17 x: word, %18 n: i64, %19 out: ptr, %20 i: i64):
+    drop %17
+    ret %19
+  b5(%22 r: ptr, %23 x: word, %24 n: i64, %25 i: i64):
+    %26 lit: i64 = const 1
+    %27 t: i64 = intadd %25, %26
+    %28 lit: unit = const ()
+    jump b2(%28, %22, %27, %23, %24)
+
+fn ticks$Tick_tick#11 clause main::edit_invariants::Tick.tick -> i64 ; main::edit_invariants, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 5
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 5 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 5
+    ret %6

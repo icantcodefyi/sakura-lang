@@ -1,0 +1,58 @@
+// milestone: M3
+// covers: performance-r1 WS-P22; design §17.315 (4) (a map or set retained, then updated and
+// removed from)
+
+pub fn main() -> Unit ! {Console} {
+  var mi: Map<Int, Int> = Map.empty()
+  var ms: Map<String, Int> = Map.empty()
+  var mt: Map<(Int, Int), Int> = Map.empty()
+  var s: Set<Int> = Set.empty()
+  var i = 0
+  while i < 300 {
+    mi = Map.insert(mi, i, i * 2)
+    ms = Map.insert(ms, "k{i}", i)
+    mt = Map.insert(mt, (i % 7, i / 7), i)
+    s = Set.insert(s, i * 3)
+    i = i + 1
+  }
+  let si = mi
+  let ss = ms
+  let st = mt
+  let sset = s
+  i = 0
+  while i < 300 {
+    mi = Map.update(mi, i, fn(v) { Option.unwrap_or(v, 0) + 1 })
+    ms = Map.insert(ms, "k{i}", -i)
+    mt = Map.insert(mt, (i % 7, i / 7), 0)
+    s = Set.insert(s, i * 3 + 1)
+    i = i + 2
+  }
+  i = 0
+  while i < 300 {
+    mi = Map.remove(mi, i)
+    ms = Map.remove(ms, "k{i}")
+    mt = Map.remove(mt, (i % 7, i / 7))
+    i = i + 3
+  }
+  // New keys after the removals, and negative and large integer keys.
+  mi = Map.insert(mi, -5, 5)
+  mi = Map.insert(mi, 1000000, 6)
+  var sum = 0
+  for (_, v) in Map.entries(mi) { sum = sum + v }
+  var snap = 0
+  for (_, v) in Map.entries(si) { snap = snap + v }
+  Console.print(
+    "int {Map.len(mi)} {sum} {Map.len(si)} {snap} {Map.get(si, 0)} {Map.get(mi, 1)} {Map.get(mi, -5)}",
+  )
+  Console.print(
+    "string {Map.len(ms)} {Map.get(ms, "k1")} {Map.get(ss, "k1")} {Map.len(ss)} {Map.get(ms, "k3")}",
+  )
+  Console.print("tuple {Map.len(mt)} {Map.get(mt, (1, 0))} {Map.get(st, (1, 0))} {Map.len(st)}")
+  Console.print("set {Set.len(s)} {Set.len(sset)} {Set.contains(s, 1)} {Set.contains(sset, 1)}")
+  // Order is insertion order, the snapshot's unchanged.
+  var firsts: List<Int> = []
+  for (k, _) in Map.entries(mi) { if List.len(firsts) < 5 { firsts = List.push(firsts, k) } }
+  var sfirsts: List<Int> = []
+  for (k, _) in Map.entries(si) { if List.len(sfirsts) < 5 { sfirsts = List.push(sfirsts, k) } }
+  Console.print("{firsts} {sfirsts}")
+}

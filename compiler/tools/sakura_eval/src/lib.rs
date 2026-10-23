@@ -156,6 +156,8 @@ impl TestOutcome {
 
 /// Runs `module.entry` under native root handlers for the std effects in its row.
 pub fn run_main(module: &Module, limits: Limits) -> Outcome {
+    let edited = audited(module, limits);
+    let module = edited.as_ref().unwrap_or(module);
     let mut m = Machine::new(module, limits);
     let result = match module.entry {
         None => Err(Stop::Internal("module has no entry".into())),
@@ -173,6 +175,8 @@ pub fn run_main(module: &Module, limits: Limits) -> Outcome {
 
 /// Runs every test under the deterministic defaults of design §5.8.
 pub fn run_tests(module: &Module, limits: Limits) -> Vec<TestOutcome> {
+    let edited = audited(module, limits);
+    let module = edited.as_ref().unwrap_or(module);
     module
         .tests
         .iter()
@@ -189,6 +193,16 @@ pub fn run_tests(module: &Module, limits: Limits) -> Vec<TestOutcome> {
             }
         })
         .collect()
+}
+
+/// `Limits::audit_owned`: the module with the JS backend's edit wrappers bound
+/// (`opt::owned::edit_heads`, design §17.315), so their chains are audited as owned ones are.
+fn audited(module: &Module, limits: Limits) -> Option<Module> {
+    limits.audit_owned.then(|| {
+        let mut m = module.clone();
+        sakura_core::opt::owned::edit_heads(&mut m);
+        m
+    })
 }
 
 /// Control leaving an expression other than by producing a value.
@@ -238,14 +252,25 @@ struct Owned {
     summaries: Vec<sakura_core::opt::owned::Summary>,
     facts: Vec<sakura_core::opt::owned::Facts>,
     /// Per consuming def, the facts of its owned entry (`f$o`): the backends call it from an
-    /// owned site, with the consumed parameter owned.
+    /// owned site, with the consumed parameter owned; and of its edit entry (`f$e`), called
+    /// from an edit site (design §17.315).
     entry_facts: Vec<Option<sakura_core::opt::owned::Facts>>,
-    /// Per running frame, whether it runs the owned entry; `enter` marks the next call.
-    frames: Vec<bool>,
-    enter: bool,
+    edit_facts: Vec<Option<sakura_core::opt::owned::Facts>>,
+    /// Per running frame, the entry it runs; `enter` marks the next call.
+    frames: Vec<Entry>,
+    enter: Entry,
     consumed: std::collections::HashSet<usize>,
     pins: Vec<Pin>,
     updates: u64,
+}
+
+/// The entry of a consuming def a frame runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Entry {
+    #[default]
+    Plain,
+    Owned,
+    Edit,
 }
 
 #[allow(dead_code)]
@@ -314,10 +339,26 @@ impl<'m> Machine<'m> {
                             .map(|p| analyze(module, d, &summaries, &[d.params[p]]))
                     })
                     .collect();
+                let edit_facts = module
+                    .defs
+                    .iter()
+                    .zip(&summaries)
+                    .map(|(d, s)| {
+                        s.consumes.map(|p| {
+                            sakura_core::opt::owned::analyze_edit(
+                                module,
+                                d,
+                                &summaries,
+                                d.params[p],
+                            )
+                        })
+                    })
+                    .collect();
                 Owned {
                     summaries,
                     facts,
                     entry_facts,
+                    edit_facts,
                     ..Owned::default()
                 }
             } else {
@@ -326,18 +367,30 @@ impl<'m> Machine<'m> {
         }
     }
 
-    /// `Limits::audit_owned`: the argument an owned update bound to `local` in `def` consumes.
-    fn owned_arg<'b>(&self, def: DefId, local: Local, bind: &'b Bind) -> Option<&'b Atom> {
-        let facts = match self.owned.frames.last() {
-            Some(true) => self.owned.entry_facts.get(def.index())?.as_ref()?,
-            _ => self.owned.facts.get(def.index())?,
-        };
-        if !facts.owned(local) {
-            return None;
+    /// The facts of the entry the running frame of `def` runs.
+    fn frame_facts(&self, def: DefId) -> Option<&sakura_core::opt::owned::Facts> {
+        match self.owned.frames.last() {
+            Some(Entry::Owned) => self.owned.entry_facts.get(def.index())?.as_ref(),
+            Some(Entry::Edit) => self.owned.edit_facts.get(def.index())?.as_ref(),
+            _ => self.owned.facts.get(def.index()),
         }
+    }
+
+    /// `Limits::audit_owned`: the argument an owned or edit update bound to `local` in `def`
+    /// consumes (an edit chain's version is dead after its update as an owned one is, design
+    /// §17.315 (3)), and the entry a call of a consuming def there runs.
+    fn owned_arg<'b>(&self, def: DefId, local: Local, bind: &'b Bind) -> Option<(&'b Atom, Entry)> {
+        let facts = self.frame_facts(def)?;
+        let entry = if facts.owned(local) {
+            Entry::Owned
+        } else if facts.edit(local) {
+            Entry::Edit
+        } else {
+            return None;
+        };
         let p = sakura_core::opt::owned::consumed(bind, &self.owned.summaries)?;
         match bind {
-            Bind::Call(_, args) => args.get(p),
+            Bind::Call(_, args) => args.get(p).map(|a| (a, entry)),
             _ => None,
         }
     }
@@ -346,14 +399,7 @@ impl<'m> Machine<'m> {
     /// reusing an element in place, when its guards pass, consumes that element's record: an
     /// in-place backend would have shown any later read of it the new fields.
     fn reuse(&mut self, def: DefId, local: Local, env: &[Option<Value>]) -> R<()> {
-        let facts = match self.owned.frames.last() {
-            Some(true) => self
-                .owned
-                .entry_facts
-                .get(def.index())
-                .and_then(Option::as_ref),
-            _ => self.owned.facts.get(def.index()),
-        };
+        let facts = self.frame_facts(def);
         let Some((bj, guards)) = facts.and_then(|f| f.in_place(local)).cloned() else {
             return Ok(());
         };
@@ -525,11 +571,11 @@ impl<'m> Machine<'m> {
                     // An owned site is never a tail call: the next frame is the plain entry.
                     Value::Fn(c) => match &**c {
                         Callable::Global(d) => {
-                            *self.owned.frames.last_mut().expect("a frame") = false;
+                            *self.owned.frames.last_mut().expect("a frame") = Entry::Plain;
                             (def, captures, args) = (*d, vec![], next)
                         }
                         Callable::Closure(d, caps) => {
-                            *self.owned.frames.last_mut().expect("a frame") = false;
+                            *self.owned.frames.last_mut().expect("a frame") = Entry::Plain;
                             (def, captures, args) = (*d, caps.clone(), next)
                         }
                         _ => return self.call(&f, next, hs),
@@ -669,15 +715,19 @@ impl<'m> Machine<'m> {
                     local, bind, body, ..
                 } => {
                     self.tick()?;
-                    let consumed = match self.owned_arg(def, *local, bind) {
-                        Some(a) => Some(self.atom(env, a)?),
-                        None => None,
+                    let (consumed, entry) = match self.owned_arg(def, *local, bind) {
+                        Some((a, entry)) => (Some(self.atom(env, a)?), entry),
+                        None => (None, Entry::Plain),
                     };
-                    // An owned call of a consuming def runs its owned entry.
-                    self.owned.enter =
-                        consumed.is_some() && matches!(bind, Bind::Call(Atom::Global(_), _));
+                    // An owned call of a consuming def runs its owned entry, an edit call its
+                    // edit entry.
+                    self.owned.enter = if matches!(bind, Bind::Call(Atom::Global(_), _)) {
+                        entry
+                    } else {
+                        Entry::Plain
+                    };
                     let bound = self.bind(env, bind, hs);
-                    self.owned.enter = false;
+                    self.owned.enter = Entry::Plain;
                     if self.limits.audit_owned && matches!(bind, Bind::Alloc(Alloc::Record(_), _)) {
                         self.reuse(def, *local, env)?;
                     }

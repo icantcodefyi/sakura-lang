@@ -554,3 +554,51 @@ Node 5.3% over (flagged) and was replaced before the commit. The WASM `stats()` 
 clause frame per operation). Every other benchmark's counters are unchanged
 (`tests/snapshots/bench_counters.txt`). This is advisory: the blessed baseline moves only with a
 counted run. Source: `bench/results/2026-10-23-f7ecc4bd-wsp10-*`.
+
+## Edit ownership on JS, WS-P22 (on `625d6bfa`, 2026-10-23; quick, advisory, not blessed)
+
+Design §17.315. After a retaining use, such as `var perm = perm1` in `bg_fannkuch_redux` or
+`let snapshot = mi` in `map_set`, every later `List.set`, `push`, `Map.insert`/`remove` and
+`Set.insert` on the chain copied a path. The JS backend now binds an edit wrapper
+(`list_edit`, `map_edit`, `set_edit`) at the chain's start, and the chain's sites call the
+`_edit` entries. These copy each node the wrapper does not own once, then write in place.
+`audit_owned` and the differential run (500 programs, a new edit stream) are the oracle.
+
+Ablation first (§17.315 (5)): hand-editing `bg_fannkuch_redux`'s emitted JS to write the
+permutation in place after one copy per permutation gives Node 19.61 M instructions per call
+at n = 7 (Bun 11.73 M), from 54.06 M (Bun 28.01 M). The landed change counts Node 21.40 M at
+n = 7 (+9.1% over the ablation, inside its 10%) and Bun 11.30 M. At n = 6, Node counts 2.674 M
+against the ablation's 2.539 M (+5.3%).
+
+Two runtime shapes were measured and rejected before the landed one. Two more fields on every
+`List` (`e`, the token, and `ot`, the copied tail) cost Bun +11.0% on `awfy_storage` n = 2 and
++10.1% on `bg_spectral_norm` n = 400; neither program has an edit chain, and removing the two
+fields from the constructor restores both (15.42 M against base 15.55 M). Keeping plain lists at
+the old shape and giving wrappers the fields (a subclass, or fields added after construction)
+cost Bun 6× on `bg_fannkuch_redux` (74.6 M), since the hot code then sees two List shapes. A
+single field holding an edit record cost Node fannkuch 23.7 M through the extra load. Landed:
+one field, `ot`, and a trie node's stamp `$e` is the wrapper itself, a token no other list is.
+Every list keeps one shape, and an eight-field `List` counts as the seven-field one on
+`awfy_storage` (15.57 M against 15.55 M).
+
+`bench run --suite js --sizes quick --instructions` (Node and Bun) on the reference host
+`d88970189598`, on `625d6bfa` with this change (the run's meta says dirty; the host was loaded,
+one-minute load up to 38.8, which the instruction counts tolerate). Compared with
+`2026-10-23-6e9248d8-js-quick.json`, the last JS lane's run; no compiler or runtime source
+changed between `6e9248d8` and `625d6bfa`. Improved by more than 10% (both engines):
+`bg_fannkuch_redux` (Node 22.6 → 8.94 at n = 7, 20.1 → 8.60 at n = 6; Bun 17.7 → 6.99, 16.5 →
+6.84) and `map_set:int` (Node 3.04 → 2.13 at n = 10,000, 2.30 → 1.96 at n = 1,000; Bun 12.6 →
+6.53, 8.53 → 5.27). `map_set`'s string-key case moves less (Node 3.17 → 3.06, Bun 5.07 → 4.80):
+its cost is hashing. Bun alone improved beyond the threshold on `contracts_plain` (2.22 → 1.40,
+base spread 40%) and `awfy_nbody` n = 10,000 (3.57 → 3.03), neither of which has an edit chain:
+noise. Flagged: `awfy_towers` on Bun at n = 30 (7.39 → 8.13, +10.1%, head spread 18%). It has
+no edit chain, and recounts show Bun bimodal there (about 205 M and 250 M per call) on base and
+head alike: the head build landed in the high mode in 7 of 10 calls in one batch, and the same
+build with its unused edit twin rewritten away in 3 of 10 in the next, so this is not a cost.
+Node is flat on every other cell (`awfy_sieve`, `sieve`, `bg_nbody`, `rbtree` and `pipeline`
+within ±0.3%). Geometric mean of the Sakura/JS instruction ratio over every quick cell: Node
+2.464 → 2.399 (−2.6%), Bun 3.493 → 3.349 (−4.1%). The median at each program's largest quick n
+is Node 2.998 → 2.978 and Bun 3.615 → 3.308. Programs at or below hand JS stay 7 of 46 on Node
+and 2 of 46 on Bun. Re-read (§17.317 (2)): `map_set:int` on Bun is 6.53×, more than twice Node's
+2.13×, so §17.317 (4)'s Bun attribution (WS-P25) runs on it. Source:
+`bench/results/2026-10-23-625d6bfa-ws-p22-js-quick*`.

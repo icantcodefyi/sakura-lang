@@ -2338,6 +2338,33 @@ fn build_dump_core_marks_identity_forwarders() {
     }
 }
 
+/// `--dump owned` names an update on an edit chain `edit(after <reason>)`, the retaining use
+/// the chain starts after (design §17.315 (3)): `ys` aliases `xs`, which is read again.
+#[test]
+fn build_dump_owned_names_edit_chains() {
+    let dir = tmp(
+        "dump-owned-edit",
+        "pub fn main() -> Unit ! {Console} {\n\
+           let xs = List.range(0, 3)\n\
+           var ys = xs\n\
+           ys = List.set(ys, 0, 9)\n\
+           ys = List.push(ys, 1)\n\
+           let zs = List.push(xs, 2)\n\
+           Console.print(\"{xs} {ys} {zs}\")\n\
+         }\n",
+    );
+    let out = sakura(&["build", "--dump", "owned", "main.sak"], &dir);
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    assert_eq!(
+        out.stdout,
+        "fn main
+  r%1 = set(r%0) edit(after borrowed-after at 129..145)
+  r%2 = list_push(r%1) edit(after origin)
+  r%3 = list_push(r%0) shared(borrowed-after at 160..176)
+"
+    );
+}
+
 /// `--dump owned` lists each consuming site of an owned-capable update as `owned` or
 /// `shared(<reason>)` with the fixed reason set and a proving witness's byte range (§17.172),
 /// and each consuming def with its owned entry's verdicts (design §17.149, §17.201 (3)):
@@ -2562,14 +2589,15 @@ fn bump_all consumes start
 ",
         ),
         // Design §17.278: the argument is read after the call, so the call is the plain entry
-        // and the later `set` is shared; under the rule before WS-P14 it was `shared(escapes-call
-        // bump_all)` (the plain entry does not borrow `start`), so no site is lost.
+        // and the later `set` is shared, the start of an edit chain on JS (§17.315); under the
+        // rule before WS-P14 it was `shared(escapes-call bump_all)` (the plain entry does not
+        // borrow `start`), so no site is lost.
         (
             "owned_argument_used_after_call",
             "fn main
   r%11 = bump_all(zs%1) shared(borrowed-after at 860..872)
-  r%44 = set(zs%1) shared(borrowed-after)
-  r%45 = list_push(r%44) shared(origin)
+  r%44 = set(zs%1) edit(after borrowed-after)
+  r%45 = list_push(r%44) edit(after origin)
   r%9 = list_push(zs%3) owned
 fn bump_all consumes start
   r%13 = set(xs%3) shared(join), owned entry owned

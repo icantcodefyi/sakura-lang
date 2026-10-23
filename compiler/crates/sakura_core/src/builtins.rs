@@ -8,9 +8,9 @@
 //! Two columns feed the ownership pass (design §17.149, [`crate::opt::owned`]): `fresh` marks a
 //! result that shares no node with any input or other live value (`[fresh]`), and `consumes`
 //! the argument an owned-capable builtin takes over (`[consumes 0]`). Each owned-capable
-//! builtin `f` has an in-place twin `f_owned` in the runtime. A third, `elems`, says what a
-//! list result does with its elements (design §17.273 (1), "elements fresh when the callback is
-//! fresh").
+//! builtin `f` has an in-place twin `f_owned` in the runtime, and an edit twin `f_edit` (design
+//! §17.315). A third, `elems`, says what a list result does with its elements (design §17.273
+//! (1), "elements fresh when the callback is fresh").
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Abi {
@@ -132,6 +132,9 @@ table! {
     Direct list_builder_finish/1 [fresh built],
     // `List.map` over a list no other reference reaches, in its own storage (design §17.176 (5))
     Direct list_reuse/1, Direct list_builder_at/2, Direct list_builder_set/3 [stores 2 at 1],
+    // The start of an edit chain (design §17.315): bound by `opt::owned::edit_heads` in the JS
+    // backend's copy of a module, never by lowering
+    Direct list_edit/1, Direct map_edit/1, Direct set_edit/1,
     Cps list_map/2 [callback 1], Cps list_filter/2, Cps list_fold/3, Cps list_find/2, Cps list_all/2,
     Cps list_any/2, Cps list_flat_map/2, Cps list_sort_by/2,
     // Map / Set (insertion-ordered)

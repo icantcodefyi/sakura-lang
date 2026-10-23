@@ -41,17 +41,20 @@ fn builtin_table_matches_runtime_exports() {
         })
         .collect();
     let names: Vec<&str> = called().map(|b| b.name).collect();
-    // Each owned-capable builtin has an in-place entry of the same arity (design §17.149).
-    let owned: Vec<String> = BUILTINS
-        .iter()
-        .filter(|b| b.consumes.is_some())
-        .map(|b| format!("{}_owned", b.name))
-        .collect();
+    // Each owned-capable builtin has an in-place entry and an edit entry of the same arity
+    // (design §17.149, §17.315).
+    let twins = || {
+        BUILTINS
+            .iter()
+            .filter(|b| b.consumes.is_some())
+            .flat_map(|b| ["_owned", "_edit"].map(|t| (b, t)))
+    };
+    let owned: Vec<String> = twins().map(|(b, t)| format!("{}{t}", b.name)).collect();
     let expected: Vec<String> = expected
         .into_iter()
-        .chain(BUILTINS.iter().filter(|b| b.consumes.is_some()).map(|b| {
+        .chain(twins().map(|(b, t)| {
             assert_eq!(b.abi, Abi::Direct, "{} is owned-capable", b.name);
-            format!("{}_owned/{}", b.name, b.arity)
+            format!("{}{t}/{}", b.name, b.arity)
         }))
         .collect();
     let names: Vec<&str> = names

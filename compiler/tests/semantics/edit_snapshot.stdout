@@ -1,0 +1,5 @@
+int 202 60111 300 89700 Some(0) Some(2) Some(5)
+string 200 Some(1) Some(1) 300 None
+tuple 200 Some(1) Some(1) 300
+set 450 300 true false
+[1, 2, 4, 5, 7] [0, 1, 2, 3, 4]

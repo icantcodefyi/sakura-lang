@@ -113,6 +113,11 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             list(ys)
         }
         ("list_builder_finish", [b @ List(_)]) => b.clone(),
+        // An edit chain's wrapper (design §17.315): the same elements under a new identity, so
+        // `audit_owned` tells the chain's versions from the value it wraps.
+        ("list_edit", [List(xs)]) => List(Rc::new((**xs).clone())),
+        ("set_edit", [Set(xs)]) => Set(Rc::new((**xs).clone())),
+        ("map_edit", [Map(m)]) => Map(Rc::new((**m).clone())),
         // As the JS runtime: `List.map` never reuses a list here (design §17.176 (5)).
         ("list_reuse", [xs @ List(_)]) => {
             let t = module
@@ -328,6 +333,7 @@ pub(crate) fn call(m: &mut Machine, name: &str, args: Vec<Value>, hs: &Rc<Handle
             .find(|(k2, _)| equal(k, k2))
             .map_or_else(|| d.clone(), |(_, v)| v.clone()),
         ("map_len", [Map(es)]) => Int(es.len() as i64),
+        ("set_len", [Set(xs)]) => Int(xs.len() as i64),
         ("map_keys", [Map(es)]) => list(es.iter().map(|(k, _)| k.clone()).collect()),
         ("map_values", [Map(es)]) => list(es.iter().map(|(_, v)| v.clone()).collect()),
         ("string_len", [Str(s)]) => Int(s.len() as i64),

@@ -1,0 +1,33 @@
+// milestone: M3
+// covers: performance-r1 WS-P22; design §17.315 (2g), §17.265 (6) (a flat `List<Bool>` under an
+// edit chain)
+
+fn sieve(n: Int) -> List<Bool> {
+  var flags: List<Bool> = []
+  var i = 0
+  while i < n {
+    flags = List.push(flags, true)
+    i = i + 1
+  }
+  flags
+}
+
+fn count(xs: List<Bool>) -> Int {
+  var c = 0
+  for x in xs { if x { c = c + 1 } }
+  c
+}
+
+pub fn main() -> Unit ! {Console} {
+  let all = sieve(100)
+  var odd = all
+  var i = 0
+  while i < 100 {
+    odd = List.set(odd, i, false)
+    i = i + 2
+  }
+  odd = List.push(odd, true)
+  Console.print(
+    "{count(all)} {List.len(all)} {count(odd)} {List.len(odd)} {all[0]} {odd[0]} {odd[1]}",
+  )
+}

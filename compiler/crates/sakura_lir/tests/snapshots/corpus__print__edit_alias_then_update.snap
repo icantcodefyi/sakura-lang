@@ -1,0 +1,279 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant std::list::Builder
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  40b (i64, word*, word*)
+
+fn main#0 pub top -> unit ; main::edit_alias_then_update, frame 10 slots [%1 word*, %14 bool, %17 word*, %24 i64, %25 word*, %26 word*, %27 word*, %54 bool, %57 word*, %70 bool]
+  b0():
+    %0 lit: i64 = const 7
+    call rounds#2(%0) -> b1()
+  b1(%1 r: ptr):
+    %79 p: i64 = tuple_get %1.0
+    %80 p: ptr = tuple_get %1.1
+    %81 p: ptr = tuple_get %1.2
+    drop %1
+    jump b2(%79, %80, %81)
+  b2(%2 total: i64, %3 perm1: ptr, %4 last: ptr):
+    %5 s: ptr = show %2
+    %6 lit: ptr = const str 0
+    %7 s: ptr = concat %5, %6
+    drop %6
+    %8 s: ptr = show %3
+    drop %3
+    %9 s: ptr = concat %7, %8
+    drop %8
+    %10 lit: ptr = const str 0
+    %11 s: ptr = concat %9, %10
+    drop %10
+    %12 s: ptr = show %4
+    drop %4
+    %13 s: ptr = concat %11, %12
+    drop %12
+    perform std::console::Console.print(%13) -> b3()
+  b3(%14 r: unit):
+    %15 box: word = box %14
+    drop %15
+    %16 lit: i64 = const 40
+    call rounds#2(%16) -> b4()
+  b4(%17 r: ptr):
+    %76 p: i64 = tuple_get %17.0
+    %77 p: ptr = tuple_get %17.1
+    %78 p: ptr = tuple_get %17.2
+    drop %17
+    jump b5(%76, %77, %78)
+  b5(%18 t2: i64, %19 p2: ptr, %20 l2: ptr):
+    %21 s: ptr = show %18
+    %22 lit: ptr = const str 0
+    %23 s: ptr = concat %21, %22
+    drop %22
+    dup.candidate %19
+    call sum#3(%19) -> b6(%19, %20, %23)
+  b6(%24 r: i64, %25 p2: ptr, %26 l2: ptr, %27 s: ptr):
+    %28 s: ptr = show %24
+    %29 s: ptr = concat %27, %28
+    drop %28
+    %30 lit: ptr = const str 0
+    %31 s: ptr = concat %29, %30
+    drop %30
+    %32 lit: i64 = const 0
+    %83 l2.lent: ref = lend %26
+    %33 item: ptr = $list_get(%83, %32)
+    %34 s: ptr = show %33
+    drop %33
+    %35 s: ptr = concat %31, %34
+    drop %34
+    %36 lit: ptr = const str 0
+    %37 s: ptr = concat %35, %36
+    drop %36
+    %38 lit: i64 = const 39
+    %39 item: ptr = $list_get(%26, %38)
+    %40 s: ptr = show %39
+    drop %39
+    %41 s: ptr = concat %37, %40
+    drop %40
+    %42 lit: ptr = const str 0
+    %43 s: ptr = concat %41, %42
+    drop %42
+    %44 lit: i64 = const 0
+    %82 p2.lent: ref = lend %25
+    %45 item: ptr = $list_get(%82, %44)
+    %46 s: ptr = show %45
+    drop %45
+    %47 s: ptr = concat %43, %46
+    drop %46
+    %48 lit: ptr = const str 0
+    %49 s: ptr = concat %47, %48
+    drop %48
+    %50 lit: i64 = const 39
+    %51 item: ptr = $list_get(%25, %50)
+    %52 s: ptr = show %51
+    drop %51
+    %53 s: ptr = concat %49, %52
+    drop %52
+    perform std::console::Console.print(%53) -> b7()
+  b7(%54 r: unit):
+    %55 box: word = box %54
+    drop %55
+    %56 lit: i64 = const 1
+    call rounds#2(%56) -> b8()
+  b8(%57 r: ptr):
+    %73 p: i64 = tuple_get %57.0
+    %74 p: ptr = tuple_get %57.1
+    %75 p: ptr = tuple_get %57.2
+    drop %57
+    jump b9(%73, %74, %75)
+  b9(%58 t0: i64, %59 p0: ptr, %60 l0: ptr):
+    %61 s: ptr = show %58
+    %62 lit: ptr = const str 0
+    %63 s: ptr = concat %61, %62
+    drop %62
+    %64 s: ptr = show %59
+    drop %59
+    %65 s: ptr = concat %63, %64
+    drop %64
+    %66 lit: ptr = const str 0
+    %67 s: ptr = concat %65, %66
+    drop %66
+    %68 s: ptr = show %60
+    drop %60
+    %69 s: ptr = concat %67, %68
+    drop %68
+    perform std::console::Console.print(%69) -> b10()
+  b10(%70 r: unit):
+    %71 box: word = box %70
+    %72 unbox: unit = unbox %71
+    drop %71
+    ret %72
+
+fn $entry#1 top -> unit ; main::edit_alias_then_update, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn rounds#2 top -> ptr ; main::edit_alias_then_update, frame 94 slots [%0 i64, %2 word*, %3 i64, %40 i64, %41 i64, %42 word*, %43 i64, %44 i64, %45 word*, %46 i64, %60 word*, %61 i64, %62 i64, %63 word*, %64 i64, %66 i64, %67 i64, %68 i64, %69 word*, %70 i64, %71 word*, %74 i64, %75 i64, %76 word*, %77 i64, %78 word*, %79 i64, %126 i64, %127 i64, %128 i64, %129 word*, %130 i64, %131 word*, %132 i64, %133 word*, %134 i64, %135 i64, %138 word*, %139 i64, %140 i64, %141 i64, %142 word*, %143 i64, %144 word*, %145 i64, %146 i64, %183 i64, %184 i64, %185 word*, %186 i64, %187 word*, %188 i64, %189 word*, %190 i64, %194 i64, %195 i64, %196 word*, %197 i64, %198 word*, %199 i64, %200 word*, %201 i64, %202 i64, %205 word*, %206 i64, %207 word*, %208 i64, %209 word*, %210 i64, %211 i64, %212 i64, %218 word*, %219 i64, %220 word*, %221 i64, %222 word*, %223 i64, %224 i64, %225 i64, %226 i64, %227 word*, %228 i64, %229 word*, %230 i64, %231 i64, %232 word*, %236 i64, %237 i64, %238 word*, %239 word*, %240 i64, %241 i64, %242 word*, %243 i64]
+  b0(%0 n: i64):
+    %1 lit: i64 = const 0
+    call range#6(%1, %0) -> b1(%0)
+  b1(%2 r: ptr, %3 n: i64):
+    %4 xs: ptr = alloc list()
+    %249 lit: i64 = const 0
+    %250 lit: i64 = const 0
+    jump b3(%2, %249, %4, %250, %3)
+  b2(%5 perm1: ptr, %6 total: i64, %7 last: ptr, %8 r: i64):
+    %9 tup: ptr = alloc tuple#5(i64, word, word)(%6, %5, %7)
+    ret %9
+  b3(%10 perm1: ptr, %11 total: i64, %12 last: ptr, %13 r: i64, %14 n: i64):
+    %15 t: bool = lt.int %13, %14
+    if %15 then b5(%14, %10, %11, %12, %13) else b6(%14, %10, %11, %12, %13)
+  b4(%16 v: unit, %17 perm1: ptr, %18 total: i64, %19 last: ptr, %20 r: i64, %21 n: i64):
+    jump b3(%17, %18, %19, %20, %21)
+  b5(%22 n: i64, %23 perm1: ptr, %24 total: i64, %25 last: ptr, %26 r: i64):
+    %248 lit: i64 = const 0
+    dup %23
+    jump b19(%23, %24, %25, %26, %23, %248, %22)
+  b6(%27 n: i64, %28 perm1: ptr, %29 total: i64, %30 last: ptr, %31 r: i64):
+    jump b2(%28, %29, %30, %31)
+  b7(%32 perm1: ptr, %33 total: i64, %34 last: ptr, %35 r: i64, %36 perm: ptr, %37 i: i64, %38 n: i64):
+    drop %34
+    %39 lit: i64 = const 0
+    %251 perm1.lent: ref = lend %32
+    call at#9(%251, %39) -> b8(%38, %32, %33, %35, %36, %37)
+  b8(%40 r: i64, %41 n: i64, %42 perm1: ptr, %43 total: i64, %44 r: i64, %45 perm: ptr, %46 i: i64):
+    %150 lit: i64 = const 0
+    dup %45
+    jump b13(%42, %43, %45, %44, %45, %46, %150, %41, %40)
+  b9(%47 perm1: ptr, %48 total: i64, %49 last: ptr, %50 r: i64, %51 perm: ptr, %52 i: i64, %53 j: i64, %54 n: i64, %55 r: i64):
+    drop %51
+    %56 lit: i64 = const 1
+    %57 t: i64 = intsub %54, %56
+    %58 box: word = box %55
+    %59 $site: i64 = const 2
+    call set#8(%47, %57, %58, %59) -> b10(%54, %48, %49, %50)
+  b10(%60 r: ptr, %61 n: i64, %62 total: i64, %63 last: ptr, %64 r: i64):
+    %65 lit: i64 = const 0
+    %252 last.lent: ref = lend %63
+    call at#9(%252, %65) -> b11(%61, %62, %63, %64, %60)
+  b11(%66 r: i64, %67 n: i64, %68 total: i64, %69 last: ptr, %70 r: i64, %71 r: ptr):
+    %72 t: i64 = intadd %68, %66
+    %73 lit: i64 = const 0
+    %253 r.lent: ref = lend %71
+    call at#9(%253, %73) -> b12(%67, %69, %70, %71, %72)
+  b12(%74 r: i64, %75 n: i64, %76 last: ptr, %77 r: i64, %78 r: ptr, %79 t: i64):
+    %80 t: i64 = intsub %79, %74
+    %81 lit: i64 = const 1
+    %82 t: i64 = intadd %77, %81
+    %83 lit: unit = const ()
+    jump b4(%83, %78, %80, %76, %82, %75)
+  b13(%84 perm1: ptr, %85 total: i64, %86 last: ptr, %87 r: i64, %88 perm: ptr, %89 i: i64, %90 j: i64, %91 n: i64, %92 r: i64):
+    %93 lit: i64 = const 1
+    %94 t: i64 = intsub %91, %93
+    %95 t: bool = lt.int %90, %94
+    if %95 then b15(%91, %92, %84, %85, %86, %87, %88, %89, %90) else b16(%91, %92, %84, %85, %86, %87, %88, %89, %90)
+  b14(%96 v: unit, %97 perm1: ptr, %98 total: i64, %99 last: ptr, %100 r: i64, %101 perm: ptr, %102 i: i64, %103 j: i64, %104 n: i64, %105 r: i64):
+    jump b13(%97, %98, %99, %100, %101, %102, %103, %104, %105)
+  b15(%106 n: i64, %107 r: i64, %108 perm1: ptr, %109 total: i64, %110 last: ptr, %111 r: i64, %112 perm: ptr, %113 i: i64, %114 j: i64):
+    %124 lit: i64 = const 1
+    %125 t: i64 = intadd %114, %124
+    %254 perm1.lent: ref = lend %108
+    call at#9(%254, %125) -> b17(%106, %107, %108, %109, %110, %111, %112, %113, %114)
+  b16(%115 n: i64, %116 r: i64, %117 perm1: ptr, %118 total: i64, %119 last: ptr, %120 r: i64, %121 perm: ptr, %122 i: i64, %123 j: i64):
+    jump b9(%117, %118, %119, %120, %121, %122, %123, %115, %116)
+  b17(%126 r: i64, %127 n: i64, %128 r: i64, %129 perm1: ptr, %130 total: i64, %131 last: ptr, %132 r: i64, %133 perm: ptr, %134 i: i64, %135 j: i64):
+    %136 box: word = box %126
+    %137 $site: i64 = const 3
+    call set#8(%129, %135, %136, %137) -> b18(%127, %128, %130, %131, %132, %133, %134, %135)
+  b18(%138 r: ptr, %139 n: i64, %140 r: i64, %141 total: i64, %142 last: ptr, %143 r: i64, %144 perm: ptr, %145 i: i64, %146 j: i64):
+    %147 lit: i64 = const 1
+    %148 t: i64 = intadd %146, %147
+    %149 lit: unit = const ()
+    jump b14(%149, %138, %141, %142, %143, %144, %145, %148, %139, %140)
+  b19(%151 perm1: ptr, %152 total: i64, %153 last: ptr, %154 r: i64, %155 perm: ptr, %156 i: i64, %157 n: i64):
+    %158 lit: i64 = const 2
+    %159 t: i64 = intdiv %157, %158
+    %160 t: bool = lt.int %156, %159
+    if %160 then b21(%157, %151, %152, %153, %154, %155, %156) else b22(%157, %151, %152, %153, %154, %155, %156)
+  b20(%161 v: unit, %162 perm1: ptr, %163 total: i64, %164 last: ptr, %165 r: i64, %166 perm: ptr, %167 i: i64, %168 n: i64):
+    jump b19(%162, %163, %164, %165, %166, %167, %168)
+  b21(%169 n: i64, %170 perm1: ptr, %171 total: i64, %172 last: ptr, %173 r: i64, %174 perm: ptr, %175 i: i64):
+    %255 perm.lent: ref = lend %174
+    call at#9(%255, %175) -> b23(%169, %170, %171, %172, %173, %174, %175)
+  b22(%176 n: i64, %177 perm1: ptr, %178 total: i64, %179 last: ptr, %180 r: i64, %181 perm: ptr, %182 i: i64):
+    jump b7(%177, %178, %179, %180, %181, %182, %176)
+  b23(%183 r: i64, %184 n: i64, %185 perm1: ptr, %186 total: i64, %187 last: ptr, %188 r: i64, %189 perm: ptr, %190 i: i64):
+    %191 lit: i64 = const 1
+    %192 t: i64 = intsub %184, %191
+    %193 t: i64 = intsub %192, %190
+    %256 perm.lent: ref = lend %189
+    call at#9(%256, %193) -> b24(%184, %185, %186, %187, %188, %189, %190, %183)
+  b24(%194 r: i64, %195 n: i64, %196 perm1: ptr, %197 total: i64, %198 last: ptr, %199 r: i64, %200 perm: ptr, %201 i: i64, %202 r: i64):
+    %203 box: word = box %194
+    %204 $site: i64 = const 4
+    call set#8(%200, %201, %203, %204) -> b25(%195, %196, %197, %198, %199, %201, %202)
+  b25(%205 r: ptr, %206 n: i64, %207 perm1: ptr, %208 total: i64, %209 last: ptr, %210 r: i64, %211 i: i64, %212 r: i64):
+    %213 lit: i64 = const 1
+    %214 t: i64 = intsub %206, %213
+    %215 t: i64 = intsub %214, %211
+    %216 box: word = box %212
+    %217 $site: i64 = const 5
+    call set#8(%205, %215, %216, %217) -> b26(%206, %207, %208, %209, %210, %211)
+  b26(%218 r: ptr, %219 n: i64, %220 perm1: ptr, %221 total: i64, %222 last: ptr, %223 r: i64, %224 i: i64):
+    %257 perm1.lent: ref = lend %220
+    call at#9(%257, %224) -> b27(%219, %220, %221, %222, %223, %224, %218)
+  b27(%225 r: i64, %226 n: i64, %227 perm1: ptr, %228 total: i64, %229 last: ptr, %230 r: i64, %231 i: i64, %232 r: ptr):
+    %233 lit: i64 = const 3
+    %234 t: i64 = intmul %225, %233
+    %235 t: i64 = intadd %228, %234
+    %258 r.lent: ref = lend %232
+    call at#9(%258, %231) -> b28(%226, %227, %229, %230, %231, %232, %235)
+  b28(%236 r: i64, %237 n: i64, %238 perm1: ptr, %239 last: ptr, %240 r: i64, %241 i: i64, %242 r: ptr, %243 t: i64):
+    %244 t: i64 = intadd %243, %236
+    %245 lit: i64 = const 1
+    %246 t: i64 = intadd %241, %245
+    %247 lit: unit = const ()
+    jump b20(%247, %238, %244, %239, %240, %242, %246, %237)
+
+fn at#7 top -> i64 ; main::edit_alias_then_update, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 1
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4
+
+fn at#9 borrowed variant of #7 -> i64 ; main::edit_alias_then_update, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 xs: ref, %1 i: i64):
+    %2 lit: ptr = const str 1
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    %4 unbox: i64 = unbox %3
+    drop %3
+    ret %4

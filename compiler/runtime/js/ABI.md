@@ -458,6 +458,25 @@ never owned afterwards. A def that consumes a parameter (`opt::owned::summaries`
 `List.set`) also gets an owned entry `f$o`, its direct twin with that parameter owned, which
 call sites with an owned argument call instead of `f$d`.
 
+**Edit entries (design §17.315).** Each owned entry also has an edit twin `<name>_edit`, with
+the same arguments, for a chain of versions that starts from a shared value. `list_edit(xs)`,
+`map_edit(m)` and `set_edit(s)` return a new wrapper over the same nodes, which is O(1). The
+compiler binds one (`sakura_core::opt::owned::edit_heads`, on the JS copy of Core only) after a
+retaining use. That is either a consuming site whose argument is not owned, or a jump that passes
+a shared value to a join parameter. The chain's later sites then call `_edit`. An edit entry
+copies each node the wrapper does not own, then writes in place, and so builds what the
+persistent operation builds. A list's trie node is owned when its `$e` is the wrapper itself,
+and a map/set index node when its `$e` is the map wrapper's token `e`, a fresh object. The tail
+is owned when it is the wrapper's `ot`, the tail the wrapper copied: JSC slows down when a named
+property is added to an array. `ot` is the one field the edit path adds to `List`, so every list
+keeps one shape. Nodes are stamped and never unstamped. A retained version never shares the
+wrapper's token, so no write reaches it. A def that consumes a parameter also gets an edit entry `f$e`.
+A call site whose argument belongs to its chain calls `f$e`, and in that entry the chain
+continues through the parameter. The owned entry `f$o` stays as it is, and no value `f$o` owns
+is wrapped. A library entry `$entry$<name>` binds no wrapper, since its arguments are the host's.
+`--dump owned` prints an edit site as `edit(after <reason>)`. W8001 never reports one, since the
+copy it names is paid once per chain.
+
 **Schemas.** A runtime schema describes a Core type (`emit::schema`): `"U" "B" "I" "F" "S"
 "Y"` (Unit, Bool, Int, Float, String, Bytes), `["T", s…]` tuple, `["L", s]` list, `["E", s]`
 set, `["M", sk, sv]` map, `["A", id, [s…]]` a named type by qualified name (`"std::option::Option"`,
