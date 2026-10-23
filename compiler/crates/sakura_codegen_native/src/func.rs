@@ -32,7 +32,7 @@ use cranelift_object::ObjectModule;
 use sakura_lir::direct::{GAUGE_LIMIT, gauge_cost};
 use sakura_lir::layout::{FrameDesc, SlotKind};
 use sakura_lir::lir::*;
-use sakura_rt::native::{BUILTINS, HOSTED};
+use sakura_rt::native::{BUILTINS, HOSTED, is_total};
 
 use crate::image::{self, Tables};
 
@@ -1490,7 +1490,7 @@ impl Gen<'_, '_, '_> {
         }
         if ret.is_managed() {
             self.check_zero(r.expect("a word result"), live)?;
-        } else {
+        } else if !is_total(&symbol) {
             self.check_flag(live)?;
         }
         Ok(Flow::Next)

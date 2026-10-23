@@ -479,7 +479,7 @@ pub(crate) fn dispatch(p: NonNull<SakuraInstance>, code: u32, env: u32, frame: u
     m.dispatch(Ctx(p, PhantomData), code, env, frame)
 }
 
-pub use crate::exports::{BUILTINS, BuiltinFn};
+pub use crate::exports::{BUILTINS, BuiltinFn, is_total};
 
 /// Every native code compiled code's dispatch table names, in the compiler's order (the callback
 /// stub, then `rt_code_*` and the `cps` builtins `rt_k_*`, each sorted: `natives` in
