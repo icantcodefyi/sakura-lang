@@ -19,6 +19,16 @@ retains earlier implementation history.
   WASM runtime ABI is **1.19.1**, an erratum: `sakura_abi_version` stays `0x011300`, so 1.19
   hosts run the new modules, and the `stats()` counters keep their values except `requested`,
   which also counts the emitter's static tables (a few hundred bytes).
+- **The JS backend updates more lists and records in place.** A function that returns no list
+  now updates the list it is given in place when the caller is done with it, a pure function
+  that only reads a list no longer stops its elements from being reused, a read after a call
+  that takes the value over is done before the call, a list literal keeps its array, and a
+  record rebuilt with `{..r, f: v}` reuses `r` when nothing else can see it. Two-way `&&`,
+  `||` and `if` expressions with pure arms are emitted as one JS expression. On the quick suite
+  the Sakura/JS instruction ratio falls from 2.72 to 2.46 on Node and from 4.01 to 3.49 on Bun
+  (geometric mean; `awfy_sieve` 23.1 → 3.0 on Node, `bg_nbody` 11.3 → 5.1, `awfy_richards`
+  13.6 → 7.3; `bench/deltas.md`). No program's output, defect, contract check or exit code
+  changes, and the WASM and native backends are unchanged.
 
 ## [1.0.0] - 2026-10-23
 

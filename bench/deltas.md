@@ -483,3 +483,35 @@ program's output and §10 counters equal the baseline compiler's, direct and `--
 `requested`, which grows by the emitter's static tables (120–272 bytes). This is advisory: the
 blessed baseline moves only with a counted run. Source:
 `bench/results/2026-10-23-2d3f77c1-wasm-quick*`.
+
+## JS ownership and code shape (`6e9248d8`, 2026-10-23; quick, advisory, not blessed)
+
+Seven commits after `v1.0.0` (`61b3d338`..`6e9248d8`) remove the causes found by profiling the
+JS programs furthest behind hand JS. Attribution before the work (CPU profiles of `awfy_sieve`,
+`bg_fannkuch_redux`, `bg_nbody`, `awfy_richards`, `awfy_havlak`, `awfy_bounce`, `awfy_permute`,
+`awfy_towers`): the persistent `List.set` path copy where ownership was lost was 59% of
+`awfy_sieve`, 50% of `bg_fannkuch_redux`, 32% of `bg_nbody` and `awfy_richards` and 22% of
+`awfy_havlak`; the rest was record allocation on state-threading paths and labelled-block joins
+that V8 does not inline and JSC runs slowly. The commits: a def returning no collection sinks the
+list it updates (`sieve`); a pure scalar-returning reader keeps a list's elements owned
+(`nbody`); reads after a consuming call are bound before it (`richards`); a list literal adopts
+its array and `[]` is the empty singleton; a fresh record, and an owned record (an owned entry's
+consumed parameter), is rebuilt in place; a join of two pure arms is one conditional expression.
+
+`bench run --suite js --sizes quick --instructions` (Node and Bun) on the reference host
+`d88970189598` at `6e9248d8` in a clean worktree (the host was loaded, which the instruction
+counts tolerate), compared with the blessed `bench/baselines/d88970189598.json` (`70c64513`):
+verdict `ok`, none worse beyond the flag threshold; improved by more than 10% in 13 of 92 Node
+cells and 17 of 92 Bun cells. Geometric mean of the Sakura/JS instruction ratio over every quick
+cell: Node 2.72 → 2.46 (−9.5%), Bun 4.01 → 3.49 (−12.9%); the median at each program's largest
+quick n moves less (Node 3.12 → 3.00, Bun 3.69 → 3.61), and the programs at or below hand JS stay
+7 of 46 on Node and 2 of 46 on Bun. Selected cells (largest quick n, Node / Bun): `awfy_sieve`
+23.1 → 2.97 / 67.9 → 3.66, `bg_nbody` 11.3 → 5.13 / 8.96 → 3.73, `awfy_richards` 13.6 → 7.32 /
+16.4 → 9.70, `awfy_storage` 8.36 → 6.47 / 13.7 → 7.05, `awfy_permute` 4.07 → 3.23 / 12.1 →
+8.61, `awfy_towers` 3.48 → 3.01 / 8.92 → 7.39, `deltablue` 11.1 → 10.1 / 8.73 → 7.84,
+`awfy_havlak` 7.20 → 6.81 / 7.84 → 7.10, `sieve` 3.05 → 2.98 / 3.38 → 2.71. One cell moved the
+other way within the threshold: `rbtree` on Node at n=10,000, 3.97 → 4.14 (+4.1%; n=1,000 and
+both Bun cells are flat); its JS differs only in `[]` and the runtime file, and the cause is not
+found. Unchanged: `bg_fannkuch_redux` (22.6 / 17.7), whose `var perm = perm1` alias still makes
+every `List.set` copy, as `map_set`'s retained `snapshot` does. This is advisory: the blessed
+baseline moves only with a counted run. Source: `bench/results/2026-10-23-6e9248d8-js-quick*`.
