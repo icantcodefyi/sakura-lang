@@ -1,0 +1,206 @@
+| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| binary_trees | js | bun | 8 | 2.592 | 2.587 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 1.51%, 3.24% → 1.22%, 0.74% |
+| binary_trees | js | bun | 10 | 2.579 | 2.603 | +0.9% | ok — Bun advisory (§17.265 (5)); spread 3.98%, 7.06% → 2.39%, 1.07% |
+| binary_trees | js | bun | 12 | 2.612 | 2.628 | +0.6% | ok — Bun advisory (§17.265 (5)); spread 8.53%, 9.31% → 2.18%, 1.05% |
+| binary_trees | js | bun | 14 | 2.587 | 2.389 | -7.7% | ok — Bun advisory (§17.265 (5)); spread 8.43%, 9.06% → 3.61%, 8.70% |
+| binary_trees | js | node | 8 | 1.530 | 1.526 | -0.3% | ok |
+| binary_trees | js | node | 10 | 1.569 | 1.573 | +0.3% | ok |
+| binary_trees | js | node | 12 | 1.488 | 1.489 | +0.0% | ok |
+| binary_trees | js | node | 14 | 1.493 | 1.495 | +0.1% | ok |
+| contracts | js | bun | 1000 | 2.299 | 2.288 | -0.5% | ok — Bun advisory (§17.265 (5)); spread 1.51%, 7.64% → 2.41%, 10.84% |
+| contracts | js | bun | 10000 | 1.777 | 1.778 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 1.19%, 3.63% → 1.09%, 3.65% |
+| contracts | js | bun | 100000 | 1.718 | 1.783 | +3.8% | ok — Bun advisory (§17.265 (5)); spread 1.21%, 9.43% → 1.03%, 3.80% |
+| contracts | js | bun | 1000000 | 1.734 | 1.778 | +2.6% | ok — Bun advisory (§17.265 (5)); spread 1.27%, 2.99% → 1.08%, 3.71% |
+| contracts | js | node | 1000 | 2.158 | 2.159 | +0.0% | ok |
+| contracts | js | node | 10000 | 2.721 | 2.729 | +0.3% | ok |
+| contracts | js | node | 100000 | 2.783 | 2.783 | -0.0% | ok |
+| contracts | js | node | 1000000 | 2.693 | 2.697 | +0.1% | ok |
+| contracts_plain | js | bun | 1000 | 1.410 | 2.203 | +56.2% | flagged — Bun advisory (§17.265 (5)); spread 61.02%, 4.86% → 40.01%, 6.53% |
+| contracts_plain | js | bun | 10000 | 2.352 | 2.360 | +0.3% | ok — Bun advisory (§17.265 (5)); spread 37.22%, 4.98% → 0.05%, 0.11% |
+| contracts_plain | js | bun | 100000 | 1.437 | 1.437 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 0.80%, 6.54% → 0.05%, 6.05% |
+| contracts_plain | js | bun | 1000000 | 1.579 | 1.489 | -5.7% | ok — Bun advisory (§17.265 (5)); spread 1.31%, 7.41% → 0.63%, 6.33% |
+| contracts_plain | js | node | 1000 | 2.020 | 2.018 | -0.1% | ok |
+| contracts_plain | js | node | 10000 | 2.864 | 2.863 | -0.0% | ok |
+| contracts_plain | js | node | 100000 | 3.000 | 2.999 | -0.0% | ok |
+| contracts_plain | js | node | 1000000 | 2.997 | 2.996 | -0.0% | ok |
+| countdown | js | bun | 1000 | 1.365 | 1.374 | +0.6% | ok — Bun advisory (§17.265 (5)); spread 0.33%, 6.08% → 1.44%, 0.17% |
+| countdown | js | bun | 10000 | 1.205 | 1.209 | +0.4% | ok — Bun advisory (§17.265 (5)); spread 0.62%, 1.55% → 0.18%, 0.04% |
+| countdown | js | bun | 100000 | 1.058 | 1.058 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 0.35%, 0.12% → 0.02%, 0.05% |
+| countdown | js | bun | 300000 | 1.058 | 1.056 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 0.12%, 1.31% → 0.07%, 0.04% |
+| countdown | js | node | 1000 | 1.152 | 1.148 | -0.4% | ok |
+| countdown | js | node | 10000 | 1.555 | 1.554 | -0.1% | ok |
+| countdown | js | node | 100000 | 1.386 | 1.385 | -0.1% | ok |
+| countdown | js | node | 300000 | 1.474 | 1.475 | +0.0% | ok |
+| deltablue | js | bun | 100 | 9.131 | 8.632 | -5.5% | ok — Bun advisory (§17.265 (5)); spread 2.00%, 8.80% → 2.66%, 11.55% |
+| deltablue | js | bun | 1000 | 8.457 | 8.729 | +3.2% | ok — Bun advisory (§17.265 (5)); spread 1.23%, 4.89% → 0.31%, 6.81% |
+| deltablue | js | bun | 5000 | 7.222 | 7.250 | +0.4% | ok — Bun advisory (§17.265 (5)); spread 2.26%, 1.00% → 1.54%, 0.81% |
+| deltablue | js | bun | 10000 | 6.357 | 6.267 | -1.4% | ok — Bun advisory (§17.265 (5)); spread 7.40%, 6.02% → 1.73%, 5.99% |
+| deltablue | js | node | 100 | 13.564 | 13.548 | -0.1% | ok |
+| deltablue | js | node | 1000 | 11.068 | 11.068 | +0.0% | ok |
+| deltablue | js | node | 5000 | 9.939 | 9.930 | -0.1% | ok |
+| deltablue | js | node | 10000 | 6.103 | 6.114 | +0.2% | ok |
+| fib | js | bun | 20 | 2.308 | 2.237 | -3.1% | ok — Bun advisory (§17.265 (5)); spread 3.31%, 0.76% → 3.27%, 0.74% |
+| fib | js | bun | 24 | 2.261 | 2.239 | -1.0% | ok — Bun advisory (§17.265 (5)); spread 3.28%, 0.79% → 3.31%, 0.04% |
+| fib | js | bun | 27 | 2.230 | 2.242 | +0.5% | ok — Bun advisory (§17.265 (5)); spread 3.31%, 0.92% → 3.31%, 0.76% |
+| fib | js | bun | 30 | 2.241 | 2.240 | -0.1% | ok — Bun advisory (§17.265 (5)); spread 3.39%, 0.30% → 3.43%, 0.77% |
+| fib | js | node | 20 | 1.395 | 1.395 | -0.0% | ok |
+| fib | js | node | 24 | 1.394 | 1.394 | -0.0% | ok |
+| fib | js | node | 27 | 1.394 | 1.392 | -0.1% | ok |
+| fib | js | node | 30 | 1.393 | 1.392 | -0.0% | ok |
+| handled_d1 | js | bun | 1000 | 1.331 | 1.337 | +0.5% | ok — Bun advisory (§17.265 (5)); spread 1.61%, 2.35% → 4.10%, 0.79% |
+| handled_d1 | js | bun | 10000 | 1.230 | 1.231 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 0.92%, 0.50% → 0.13%, 0.11% |
+| handled_d1 | js | bun | 100000 | 1.169 | 1.169 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 12.04%, 0.90% → 0.06%, 1.30% |
+| handled_d1 | js | bun | 1000000 | 1.141 | 1.141 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 0.13%, 0.07% → 0.09%, 0.03% |
+| handled_d1 | js | node | 1000 | 1.044 | 1.045 | +0.1% | ok |
+| handled_d1 | js | node | 10000 | 0.834 | 0.833 | -0.1% | ok |
+| handled_d1 | js | node | 100000 | 0.863 | 0.863 | -0.0% | ok |
+| handled_d1 | js | node | 1000000 | 0.876 | 0.876 | +0.0% | ok |
+| handled_d16 | js | bun | 1000 | 1.642 | 1.648 | +0.4% | ok — Bun advisory (§17.265 (5)); spread 0.32%, 0.59% → 1.27%, 0.49% |
+| handled_d16 | js | bun | 10000 | 1.396 | 1.394 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 2.85%, 0.24% → 0.24%, 0.06% |
+| handled_d16 | js | bun | 100000 | 1.343 | 1.341 | -0.1% | ok — Bun advisory (§17.265 (5)); spread 4.31%, 1.44% → 0.32%, 0.06% |
+| handled_d16 | js | bun | 1000000 | 1.143 | 1.142 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 0.05%, 0.29% → 0.04%, 0.09% |
+| handled_d16 | js | node | 1000 | 1.044 | 1.042 | -0.2% | ok |
+| handled_d16 | js | node | 10000 | 0.842 | 0.841 | -0.0% | ok |
+| handled_d16 | js | node | 100000 | 0.870 | 0.870 | -0.0% | ok |
+| handled_d16 | js | node | 1000000 | 0.882 | 0.882 | -0.0% | ok |
+| handled_d4 | js | bun | 1000 | 1.362 | 1.353 | -0.7% | ok — Bun advisory (§17.265 (5)); spread 2.10%, 1.00% → 3.11%, 1.05% |
+| handled_d4 | js | bun | 10000 | 1.225 | 1.225 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 0.20%, 0.15% → 0.40%, 0.06% |
+| handled_d4 | js | bun | 100000 | 1.172 | 1.170 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 11.22%, 0.11% → 0.23%, 1.38% |
+| handled_d4 | js | bun | 1000000 | 1.141 | 1.142 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 0.15%, 0.08% → 0.09%, 0.08% |
+| handled_d4 | js | node | 1000 | 1.046 | 1.046 | -0.0% | ok |
+| handled_d4 | js | node | 10000 | 0.833 | 0.833 | -0.0% | ok |
+| handled_d4 | js | node | 100000 | 0.864 | 0.863 | -0.1% | ok |
+| handled_d4 | js | node | 1000000 | 0.875 | 0.876 | +0.2% | ok |
+| handled_fwd | js | bun | 1000 | 14.156 | 13.921 | -1.7% | ok — Bun advisory (§17.265 (5)); spread 10.92%, 0.19% → 11.68%, 1.30% |
+| handled_fwd | js | bun | 10000 | 15.937 | 16.077 | +0.9% | ok — Bun advisory (§17.265 (5)); spread 37.16%, 0.04% → 10.24%, 0.09% |
+| handled_fwd | js | bun | 100000 | 11.671 | 11.710 | +0.3% | ok — Bun advisory (§17.265 (5)); spread 0.50%, 0.15% → 0.49%, 0.04% |
+| handled_fwd | js | bun | 1000000 | 11.579 | 11.535 | -0.4% | ok — Bun advisory (§17.265 (5)); spread 3.21%, 0.49% → 2.66%, 0.06% |
+| handled_fwd | js | node | 1000 | 4.945 | 4.948 | +0.1% | ok |
+| handled_fwd | js | node | 10000 | 4.640 | 4.639 | -0.0% | ok |
+| handled_fwd | js | node | 100000 | 4.689 | 4.693 | +0.1% | ok |
+| handled_fwd | js | node | 1000000 | 4.670 | 4.671 | +0.0% | ok |
+| handled_reentry | js | bun | 1000 | 7.446 | 7.074 | -5.0% | ok — Bun advisory (§17.265 (5)); spread 13.40%, 2.83% → 7.81%, 0.46% |
+| handled_reentry | js | bun | 10000 | 8.803 | 9.280 | +5.4% | ok — Bun advisory (§17.265 (5)); spread 20.21%, 0.78% → 16.60%, 0.14% |
+| handled_reentry | js | bun | 100000 | 8.480 | 8.429 | -0.6% | ok — Bun advisory (§17.265 (5)); spread 1.82%, 0.80% → 12.70%, 0.09% |
+| handled_reentry | js | bun | 1000000 | 7.304 | 7.330 | +0.3% | ok — Bun advisory (§17.265 (5)); spread 2.42%, 2.99% → 1.94%, 0.22% |
+| handled_reentry | js | node | 1000 | 0.628 | 0.628 | +0.0% | ok |
+| handled_reentry | js | node | 10000 | 0.620 | 0.619 | -0.1% | ok |
+| handled_reentry | js | node | 100000 | 0.656 | 0.656 | -0.1% | ok |
+| handled_reentry | js | node | 1000000 | 0.702 | 0.700 | -0.4% | ok |
+| handled_suspend | js | bun | 1000 | 0.786 | 0.808 | +2.7% | ok — Bun advisory (§17.265 (5)); spread 9.60%, 0.23% → 9.94%, 0.43% |
+| handled_suspend | js | bun | 10000 | 0.521 | 0.517 | -0.7% | ok — Bun advisory (§17.265 (5)); spread 3.01%, 0.09% → 0.97%, 0.03% |
+| handled_suspend | js | bun | 100000 | 0.224 | 0.224 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 0.71%, 50.87% → 0.26%, 0.02% |
+| handled_suspend | js | bun | 1000000 | 0.212 | 0.213 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 0.06%, 0.66% → 0.05%, 0.07% |
+| handled_suspend | js | node | 1000 | 1.644 | 1.640 | -0.3% | ok |
+| handled_suspend | js | node | 10000 | 1.105 | 1.104 | -0.1% | ok |
+| handled_suspend | js | node | 100000 | 1.061 | 1.058 | -0.2% | ok |
+| handled_suspend | js | node | 1000000 | 1.077 | 1.077 | +0.0% | ok |
+| json_validate | js | bun | 100 | 4.369 | 4.333 | -0.8% | ok — Bun advisory (§17.265 (5)); spread 2.45%, 1.01% → 3.40%, 0.93% |
+| json_validate | js | bun | 1000 | 4.176 | 4.209 | +0.8% | ok — Bun advisory (§17.265 (5)); spread 1.60%, 1.06% → 1.12%, 1.14% |
+| json_validate | js | bun | 10000 | 3.599 | 3.587 | -0.3% | ok — Bun advisory (§17.265 (5)); spread 0.77%, 1.92% → 0.64%, 0.26% |
+| json_validate | js | bun | 30000 | 2.961 | 2.952 | -0.3% | ok — Bun advisory (§17.265 (5)); spread 2.28%, 0.73% → 1.39%, 1.23% |
+| json_validate | js | node | 100 | 1.367 | 1.365 | -0.2% | ok |
+| json_validate | js | node | 1000 | 1.390 | 1.391 | +0.1% | ok |
+| json_validate | js | node | 10000 | 1.573 | 1.572 | -0.1% | ok |
+| json_validate | js | node | 30000 | 1.389 | 1.388 | -0.1% | ok |
+| map_set | js | bun | 1000 | 7.287 | 7.267 | -0.3% | ok — Bun advisory (§17.265 (5)); spread 0.74%, 0.22% → 0.41%, 0.23% |
+| map_set | js | bun | 10000 | 5.023 | 5.082 | +1.2% | ok — Bun advisory (§17.265 (5)); spread 3.27%, 0.49% → 1.19%, 0.15% |
+| map_set | js | bun | 50000 | 3.654 | 3.620 | -0.9% | ok — Bun advisory (§17.265 (5)); spread 8.07%, 3.52% → 5.74%, 1.30% |
+| map_set | js | bun | 100000 | 3.595 | 3.642 | +1.3% | ok — Bun advisory (§17.265 (5)); spread 4.37%, 2.10% → 2.99%, 0.44% |
+| map_set | js | node | 1000 | 1.980 | 1.986 | +0.3% | ok |
+| map_set | js | node | 10000 | 3.184 | 3.175 | -0.3% | ok |
+| map_set | js | node | 50000 | 2.989 | 2.979 | -0.3% | ok |
+| map_set | js | node | 100000 | 2.811 | 2.821 | +0.4% | ok |
+| map_set:int | js | bun | 1000 | 8.578 | 8.523 | -0.6% | ok — Bun advisory (§17.265 (5)); spread 0.83%, 1.71% → 0.43%, 0.60% |
+| map_set:int | js | bun | 10000 | 12.445 | 12.643 | +1.6% | ok — Bun advisory (§17.265 (5)); spread 1.32%, 1.32% → 0.97%, 0.15% |
+| map_set:int | js | bun | 50000 | 11.260 | 11.329 | +0.6% | ok — Bun advisory (§17.265 (5)); spread 0.93%, 0.84% → 1.64%, 0.13% |
+| map_set:int | js | bun | 100000 | 10.692 | 10.702 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 2.24%, 0.57% → 0.87%, 0.23% |
+| map_set:int | js | node | 1000 | 2.308 | 2.310 | +0.1% | ok |
+| map_set:int | js | node | 10000 | 3.055 | 3.058 | +0.1% | ok |
+| map_set:int | js | node | 50000 | 3.828 | 3.839 | +0.3% | ok |
+| map_set:int | js | node | 100000 | 4.070 | 4.069 | -0.0% | ok |
+| map_set:string | js | bun | 1000 | 2.423 | 2.426 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 3.03%, 0.43% → 1.04%, 0.20% |
+| map_set:string | js | bun | 10000 | 2.284 | 2.299 | +0.7% | ok — Bun advisory (§17.265 (5)); spread 5.87%, 1.27% → 4.01%, 0.68% |
+| map_set:string | js | bun | 50000 | 2.124 | 2.105 | -0.9% | ok — Bun advisory (§17.265 (5)); spread 3.60%, 2.57% → 3.90%, 1.55% |
+| map_set:string | js | bun | 100000 | 2.072 | 2.127 | +2.6% | ok — Bun advisory (§17.265 (5)); spread 3.25%, 1.20% → 2.87%, 1.33% |
+| map_set:string | js | node | 1000 | 1.508 | 1.508 | +0.0% | ok |
+| map_set:string | js | node | 10000 | 1.636 | 1.634 | -0.1% | ok |
+| map_set:string | js | node | 50000 | 2.132 | 2.133 | +0.0% | ok |
+| map_set:string | js | node | 100000 | 2.305 | 2.309 | +0.2% | ok |
+| map_set:tuple | js | bun | 1000 | 4.550 | 4.575 | +0.6% | ok — Bun advisory (§17.265 (5)); spread 0.80%, 0.45% → 0.84%, 0.14% |
+| map_set:tuple | js | bun | 10000 | 4.774 | 4.779 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 2.05%, 0.50% → 1.10%, 0.33% |
+| map_set:tuple | js | bun | 50000 | 4.447 | 4.476 | +0.6% | ok — Bun advisory (§17.265 (5)); spread 5.43%, 0.41% → 3.31%, 0.28% |
+| map_set:tuple | js | bun | 100000 | 4.405 | 4.310 | -2.2% | ok — Bun advisory (§17.265 (5)); spread 6.11%, 0.32% → 3.59%, 0.31% |
+| map_set:tuple | js | node | 1000 | 2.077 | 2.074 | -0.2% | ok |
+| map_set:tuple | js | node | 10000 | 2.422 | 2.419 | -0.1% | ok |
+| map_set:tuple | js | node | 50000 | 2.832 | 2.835 | +0.1% | ok |
+| map_set:tuple | js | node | 100000 | 3.002 | 3.000 | -0.1% | ok |
+| nbody | js | bun | 1000 | 3.844 | 3.857 | +0.3% | ok — Bun advisory (§17.265 (5)); spread 1.52%, 0.34% → 0.50%, 0.17% |
+| nbody | js | bun | 5000 | 3.794 | 3.800 | +0.2% | ok — Bun advisory (§17.265 (5)); spread 2.06%, 1.39% → 0.45%, 0.06% |
+| nbody | js | bun | 20000 | 3.676 | 3.675 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 3.52%, 0.48% → 0.48%, 0.20% |
+| nbody | js | bun | 100000 | 3.683 | 3.663 | -0.5% | ok — Bun advisory (§17.265 (5)); spread 0.35%, 0.21% → 0.54%, 0.26% |
+| nbody | js | node | 1000 | 4.974 | 4.965 | -0.2% | ok |
+| nbody | js | node | 5000 | 4.944 | 4.936 | -0.2% | ok |
+| nbody | js | node | 20000 | 5.168 | 5.165 | -0.1% | ok |
+| nbody | js | node | 100000 | 5.184 | 5.186 | +0.0% | ok |
+| pipeline | js | bun | 1000 | 2.464 | 2.457 | -0.3% | ok — Bun advisory (§17.265 (5)); spread 2.73%, 0.69% → 1.55%, 0.50% |
+| pipeline | js | bun | 10000 | 2.950 | 2.952 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 0.58%, 1.82% → 0.43%, 0.21% |
+| pipeline | js | bun | 100000 | 2.930 | 2.972 | +1.4% | ok — Bun advisory (§17.265 (5)); spread 3.08%, 1.44% → 1.92%, 0.38% |
+| pipeline | js | bun | 300000 | 2.887 | 2.902 | +0.5% | ok — Bun advisory (§17.265 (5)); spread 8.43%, 2.57% → 9.67%, 1.59% |
+| pipeline | js | node | 1000 | 0.272 | 0.272 | -0.1% | ok |
+| pipeline | js | node | 10000 | 0.270 | 0.270 | -0.0% | ok |
+| pipeline | js | node | 100000 | 0.271 | 0.271 | +0.0% | ok |
+| pipeline | js | node | 300000 | 0.273 | 0.273 | -0.0% | ok |
+| rbtree | js | bun | 1000 | 2.229 | 2.208 | -0.9% | ok — Bun advisory (§17.265 (5)); spread 3.93%, 1.80% → 0.63%, 0.81% |
+| rbtree | js | bun | 10000 | 2.189 | 2.226 | +1.7% | ok — Bun advisory (§17.265 (5)); spread 2.78%, 2.50% → 1.45%, 1.00% |
+| rbtree | js | bun | 50000 | 2.144 | 2.148 | +0.2% | ok — Bun advisory (§17.265 (5)); spread 6.08%, 5.74% → 5.69%, 4.61% |
+| rbtree | js | bun | 100000 | 2.073 | 2.172 | +4.8% | ok — Bun advisory (§17.265 (5)); spread 9.30%, 4.06% → 11.27%, 9.33% |
+| rbtree | js | node | 1000 | 1.993 | 1.996 | +0.1% | ok |
+| rbtree | js | node | 10000 | 3.977 | 3.974 | -0.1% | ok |
+| rbtree | js | node | 50000 | 2.245 | 2.246 | +0.0% | ok |
+| rbtree | js | node | 100000 | 2.360 | 2.345 | -0.7% | ok |
+| shapes | js | bun | 1000 | 1.693 | 1.687 | -0.3% | ok — Bun advisory (§17.265 (5)); spread 5.65%, 8.19% → 1.85%, 8.89% |
+| shapes | js | bun | 10000 | 2.275 | 2.234 | -1.8% | ok — Bun advisory (§17.265 (5)); spread 6.37%, 2.77% → 5.21%, 0.94% |
+| shapes | js | bun | 50000 | 2.263 | 2.068 | -8.6% | ok — Bun advisory (§17.265 (5)); spread 6.57%, 15.51% → 14.76%, 10.22% |
+| shapes | js | bun | 100000 | 2.307 | 2.033 | -11.9% | improved >10%: explain in the PR — Bun advisory (§17.265 (5)); spread 10.63%, 14.00% → 7.92%, 13.44% |
+| shapes | js | node | 1000 | 1.363 | 1.369 | +0.4% | ok |
+| shapes | js | node | 10000 | 2.811 | 2.812 | +0.0% | ok |
+| shapes | js | node | 50000 | 0.946 | 0.944 | -0.2% | ok |
+| shapes | js | node | 100000 | 2.564 | 2.513 | -2.0% | ok |
+| sieve | js | bun | 1000 | 2.832 | 2.830 | -0.1% | ok — Bun advisory (§17.265 (5)); spread 0.40%, 0.77% → 0.09%, 0.43% |
+| sieve | js | bun | 10000 | 3.348 | 3.375 | +0.8% | ok — Bun advisory (§17.265 (5)); spread 1.29%, 0.97% → 0.44%, 1.38% |
+| sieve | js | bun | 50000 | 3.594 | 3.587 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 0.15%, 1.12% → 0.98%, 0.47% |
+| sieve | js | bun | 200000 | 3.425 | 3.433 | +0.3% | ok — Bun advisory (§17.265 (5)); spread 2.91%, 1.81% → 1.06%, 0.08% |
+| sieve | js | node | 1000 | 2.776 | 2.774 | -0.1% | ok |
+| sieve | js | node | 10000 | 3.040 | 3.046 | +0.2% | ok |
+| sieve | js | node | 50000 | 2.997 | 3.003 | +0.2% | ok |
+| sieve | js | node | 200000 | 3.104 | 3.102 | -0.0% | ok |
+| spectral_norm | js | bun | 50 | 2.202 | 2.202 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 1.97%, 0.30% → 0.13%, 0.08% |
+| spectral_norm | js | bun | 100 | 2.350 | 2.351 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 2.48%, 0.07% → 0.19%, 0.04% |
+| spectral_norm | js | bun | 200 | 2.327 | 2.328 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 1.22%, 0.79% → 0.19%, 0.06% |
+| spectral_norm | js | bun | 400 | 2.423 | 2.419 | -0.2% | ok — Bun advisory (§17.265 (5)); spread 4.00%, 0.48% → 3.31%, 0.08% |
+| spectral_norm | js | node | 50 | 3.301 | 3.295 | -0.2% | ok |
+| spectral_norm | js | node | 100 | 3.282 | 3.289 | +0.2% | ok |
+| spectral_norm | js | node | 200 | 3.287 | 3.287 | -0.0% | ok |
+| spectral_norm | js | node | 400 | 3.312 | 3.313 | +0.0% | ok |
+| tail_clique | js | bun | 100000 | 0.812 | 0.812 | -0.0% | ok — Bun advisory (§17.265 (5)); spread 0.28%, 0.25% → 0.06%, 0.04% |
+| tail_clique | js | bun | 1000000 | 0.807 | 0.807 | +0.1% | ok — Bun advisory (§17.265 (5)); spread 0.20%, 0.42% → 0.08%, 0.08% |
+| tail_clique | js | bun | 10000000 | 0.804 | 0.806 | +0.2% | ok — Bun advisory (§17.265 (5)); spread 0.55%, 0.27% → 0.05%, 0.04% |
+| tail_clique | js | node | 100000 | 0.820 | 0.821 | +0.1% | ok |
+| tail_clique | js | node | 1000000 | 0.820 | 0.822 | +0.2% | ok |
+| tail_clique | js | node | 10000000 | 0.877 | 0.877 | -0.0% | ok |
+| tokenizer | js | bun | 1000 | 1.008 | 1.011 | +0.4% | ok — Bun advisory (§17.265 (5)); spread 0.85%, 1.31% → 0.88%, 1.91% |
+| tokenizer | js | bun | 10000 | 1.131 | 1.127 | -0.4% | ok — Bun advisory (§17.265 (5)); spread 1.99%, 0.41% → 3.52%, 0.20% |
+| tokenizer | js | bun | 50000 | 1.204 | 1.205 | +0.0% | ok — Bun advisory (§17.265 (5)); spread 5.26%, 2.99% → 3.55%, 1.48% |
+| tokenizer | js | bun | 100000 | 1.156 | 1.173 | +1.5% | ok — Bun advisory (§17.265 (5)); spread 4.32%, 3.32% → 3.66%, 1.81% |
+| tokenizer | js | node | 1000 | 0.281 | 0.281 | +0.1% | ok |
+| tokenizer | js | node | 10000 | 0.286 | 0.286 | +0.0% | ok |
+| tokenizer | js | node | 50000 | 0.306 | 0.306 | +0.2% | ok |
+| tokenizer | js | node | 100000 | 0.351 | 0.351 | +0.0% | ok |
+
+RSS detail: rbtree js/js/bun n=100000: one-call maximum 94208000 → 94814208 bytes; many-call maximum 331071488 → 438435840 bytes at calls 8 → 8 (diagnostic only, §17.283); process median 92602368 → 93110272 bytes (processes 5 → 5; median is diagnostic only); ok 
+
+RSS detail: rbtree js/js/bun n=50000: one-call maximum 59424768 → 59916288 bytes; many-call maximum 272760832 → 368427008 bytes at calls 32 → 32 (diagnostic only, §17.283); process median 58408960 → 58605568 bytes (processes 5 → 5; median is diagnostic only); ok 
+
+verdict: flagged (instructions per call, §17.264)

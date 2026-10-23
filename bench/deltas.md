@@ -408,3 +408,36 @@ on `map_set` and, within noise, `nbody`. A shared virtual machine: process media
 20% per cell (90th percentile 52%), so a time ratio is direction; the counts are the comparison.
 `results/2026-10-22-8ad07545-hosted-39810593780-native.json`; the website's time table reads it.
 
+
+## `v1.0.0-beta.6` baseline (`70c64513`, 2026-10-23)
+
+Counted (§17.264) at the preparation commit `70c64513666c3f2d818e722bf9b2b005f3f8b536` in
+`../sakura-counted`, tree clean, every oracle and checksum green, Node 26.12.0 under §17.282's
+flags. Blessed by Claude Opus 5.5 under the owner's written delegation of 2026-10-22 (design
+§17.310 (1)); the owner can overturn it. `baselines/d88970189598.json`, `wasm/`, `typescript/`,
+`compile-native/` and `native/` hold the `70c64513` runs (the `447dce0c` files are in
+`baselines/archive/447dce0c/`). The files now include the community suites (8 Benchmarks Game and
+13 Are We Fast Yet programs) and, in `native/`, the C port and the new OCaml and Koka ports: 732
+`js` cells, 545 `wasm` (one absent: `json_validate` on Wasmtime, whose `json_decode` exists only
+in the Node host), 1,197 `native`; the five runs took about five hours rather than one. The counted
+`compile-native` report grows from 16,384 to 32,768 rows by 1.96× in `frontend`, 2.01× in
+`lowering`, 2.01× in `codegen`, 2.07× in `object` and 1.04× in `link`, naming `lowering`,
+`codegen` and `object` superlinear, as at beta.5. Host load was low (about 1–3): Node spread over
+1% on 2 Sakura and 3 hand-JS cells of 183 each in the `js` run (largest `awfy_havlak` hand JS
+n=1,500, 2.01%; Sakura `shapes` n=100,000, 1.28%) and 1 of each in the `wasm` run (Sakura `rbtree`
+n=50,000, 1.35%); no Wasmtime cell; every native language a median 0.03–0.06%, Sakura native none
+over 1%, Rust one (`bg_binary_trees` n=10, 1.38%), Go 28 (largest `tokenizer` n=100,000, 12.39%);
+Bun as before (advisory). Against the `447dce0c` baseline the `js` run's Sakura/hand-JS ratios read
+`ok` on all 99 shared Node cells (−2.0% to +0.4%; `compare` flags only advisory Bun rows;
+`2026-10-23-70c64513-compare-js-beta5.txt`), and the `wasm` run reads `ok`. Sakura's native counts
+against beta.5's: `f6be3c1d` (`text()` checks UTF-8 once per builtin call) cuts `tokenizer` by
+584× at n=100,000 (6.9×, 60×, 293× at 1,000, 10,000, 50,000) and `json_validate` by 12× at n=30,000;
+the other 79 shared cells move −0.01% to +1.3% (`contracts`, every size). M4 envelope
+(wall-time lane, advisory, host load 3.24): `miss` on 237 of 264 gating cells (absent 4, met 23),
+against 238 at beta.5; carried under §17.265 (1). M5 envelope on instructions (`envelope-m5`):
+`miss` on 121 of 132 gating cells, met 11, against 124 and 8 at beta.5: `tokenizer` against Rust
+at n=10,000, 50,000 and 100,000 now meets its ceiling beside `map_set` against Koka; every miss
+stays carried under §17.152 (2). `compile`: `check_hello` (p95 15.1 ms, target 10) and
+`check_cold_10k` (62.1 ms, target 45) miss §17.195 (1)'s targets as at beta.5; every budget holds.
+Prep `fib` and `shapes` compare `ok` on every Node cell (largest move −1.5%, `shapes`
+n=100,000). Source: `bench/results/2026-10-23-70c64513-*`.
