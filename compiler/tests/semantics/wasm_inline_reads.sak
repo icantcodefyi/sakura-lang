@@ -1,0 +1,41 @@
+// milestone: M4
+// covers: the WASM emitter's inline element reads (`sakura_codegen_wasm` `func.rs` `read`): `xs[i]` expected, `List.len` and `Option.expect` on lists whose index walks a trie of one, two and three levels or reads the tail, on owned and lent arguments, with a literal and a built message, and on payloads held elsewhere
+
+type Cell = { v: Int }
+
+fn build(n: Int) -> List<Cell> {
+  var xs: List<Cell> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, Cell { v: i * 3 })
+    i = i + 1
+  }
+  xs
+}
+
+// Every 37th element and the last, so the reads land in the trie and in the tail.
+fn sum_every(xs: List<Cell>) -> Int {
+  var s = 0
+  var i = 0
+  while i < List.len(xs) {
+    s = s + Option.expect(xs[i], "cell {i}").v
+    i = i + 37
+  }
+  s + Option.expect(xs[List.len(xs) - 1], "last").v
+}
+
+// The list is consumed by the read: the element outlives it.
+fn take(xs: List<Cell>, i: Int) -> Cell { Option.expect(xs[i], "taken") }
+
+fn first(o: Option<Cell>) -> Int { Option.expect(o, "first").v }
+
+pub fn main() -> Unit ! {Console} {
+  for n in [5, 40, 1100, 2000] {
+    let xs = build(n)
+    let kept = Option.expect(xs[n / 2], "middle")
+    Console.print("{n}: {sum_every(xs)} {take(xs, n - 1).v} {kept.v} {List.len(xs)}")
+  }
+  let shared = Some(Cell { v: 9 })
+  let held = [shared]
+  Console.print("payload {first(shared)} {List.len(held)}")
+}

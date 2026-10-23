@@ -527,6 +527,9 @@ const CHUNK: usize = 256;
 /// A function of at most this many variables has a local per variable ([`locals`]).
 const LOCALS: usize = 256;
 
+/// The builtins that read an element or payload in place, run inline ([`Gen::read`]).
+const READS: [&str; 4] = ["list_len", "list_at", "list_get_expect", "option_expect"];
+
 /// A `reuse_reset` of a row with at most this many owning slots runs inline ([`Gen::reuse_reset`]).
 const RESET_SLOTS: usize = 8;
 
@@ -2045,6 +2048,152 @@ impl Gen<'_, '_> {
             self.pad_if(s, live, Some((90, "a host builtin failed")))?;
             return self.take_result(s, dst, live);
         }
+        if READS.contains(&name) {
+            return self.read(s, dst, name, args, live);
+        }
+        self.call_builtin(s, dst, name, args, live)
+    }
+
+    /// The word in local `l` given up without counting it in `drops`, as a runtime builtin's
+    /// own `Rt::drop` of an argument: decremented in place, or released by `sakura$drop`
+    /// with the count it adds taken back.
+    fn release_word(&self, s: &mut InstructionSink<'_>, l: u32) {
+        let drops = self.env.in_place.drops;
+        s.block(BlockType::Empty);
+        s.block(BlockType::Empty);
+        self.br_unless_counted(s, l, 1);
+        s.local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_le_u()
+            .br_if(0);
+        s.local_get(l)
+            .local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_sub()
+            .i32_store(mem(4, 2));
+        s.br(1);
+        s.end();
+        s.local_get(l).call(self.env.drop);
+        s.global_get(drops).i64_const(1).i64_sub().global_set(drops);
+        s.end();
+    }
+
+    /// One of [`READS`] inline, as its runtime builtin computes it (`list_len`, `list_at`,
+    /// `list_value` and `expected`, `option_expect`): the element or payload read in place and
+    /// counted, then each owned argument released. A `None`, an index out of range or a count
+    /// at `u32::MAX` takes the builtin itself, which raises, before anything is written.
+    fn read(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        dst: Var,
+        name: &str,
+        args: &[Var],
+        live: &Live,
+    ) -> Result<(), String> {
+        let d = self.local(dst);
+        let owned: Vec<u32> = (args.iter())
+            .filter(|a| matches!(self.repr(**a), Repr::Ptr | Repr::Word))
+            .map(|&a| self.local(a))
+            .collect();
+        let c = self.local(args[0]);
+        if name == "list_len" {
+            s.local_get(c)
+                .i32_load(mem(8, 2))
+                .i64_extend_i32_u()
+                .local_set(d);
+            for &l in &owned {
+                self.release_word(s, l);
+            }
+            return Ok(());
+        }
+        s.block(BlockType::Empty);
+        s.block(BlockType::Empty);
+        self.depth += 2;
+        if name == "option_expect" {
+            s.local_get(c)
+                .i32_load(mem(12, 2))
+                .i32_const(1)
+                .i32_ne()
+                .br_if(0);
+            s.local_get(c).i32_load(mem(16, 2)).local_set(d);
+        } else {
+            // `Rt::at`: the tail holds the last `tail_len` of `len` elements, the 32-way trie
+            // the rest, `shift` its root's level.
+            let (i, at) = (self.local(args[1]), self.lu);
+            s.local_get(i)
+                .local_get(c)
+                .i32_load(mem(8, 2))
+                .i64_extend_i32_u();
+            s.i64_ge_u().br_if(0);
+            s.local_get(i).i32_wrap_i64().local_set(at);
+            s.local_get(c).i32_load(mem(8, 2));
+            s.local_get(c)
+                .i32_load(mem(24, 2))
+                .i32_sub()
+                .local_set(self.lf2);
+            s.local_get(at).local_get(self.lf2).i32_ge_u();
+            s.if_(BlockType::Empty);
+            s.local_get(c).i32_load(mem(20, 2));
+            s.local_get(at).local_get(self.lf2).i32_sub();
+            s.i32_const(2)
+                .i32_shl()
+                .i32_add()
+                .i32_load(mem(16, 2))
+                .local_set(d);
+            s.else_();
+            s.local_get(c).i32_load(mem(16, 2)).local_set(d);
+            s.local_get(c).i32_load(mem(12, 2)).local_set(self.lf2);
+            s.block(BlockType::Empty).loop_(BlockType::Empty);
+            s.local_get(self.lf2).i32_eqz().br_if(1);
+            s.local_get(d).local_get(at).local_get(self.lf2).i32_shr_u();
+            s.i32_const(31).i32_and().i32_const(2).i32_shl().i32_add();
+            s.i32_load(mem(16, 2)).local_set(d);
+            s.local_get(self.lf2)
+                .i32_const(5)
+                .i32_sub()
+                .local_set(self.lf2);
+            s.br(0).end().end();
+            s.local_get(d).local_get(at).i32_const(31).i32_and();
+            s.i32_const(2)
+                .i32_shl()
+                .i32_add()
+                .i32_load(mem(16, 2))
+                .local_set(d);
+            s.end();
+        }
+        self.inc_inline(s, d, 0);
+        for &l in &owned {
+            self.release_word(s, l);
+        }
+        s.br(1);
+        s.end();
+        self.depth -= 1;
+        self.call_builtin(s, dst, name, args, live)?;
+        self.depth -= 1;
+        s.end();
+        Ok(())
+    }
+
+    /// A builtin as a call of the runtime's `rt_b_<name>`, or `rt_bb_<name>` when it is lent
+    /// arguments.
+    fn call_builtin(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        dst: Var,
+        name: &str,
+        args: &[Var],
+        live: &Live,
+    ) -> Result<(), String> {
+        let d = self.local(dst);
+        let get = |s: &mut InstructionSink<'_>, g: &Self| {
+            for &a in args {
+                if g.repr(a) != Repr::Unit {
+                    s.local_get(g.local(a));
+                }
+            }
+        };
         // A borrowed call (plan M5 N4a) names the `ref` arguments it lends in its mask.
         let mask = (args.iter().enumerate())
             .filter(|(_, a)| self.repr(**a) == Repr::Ref)

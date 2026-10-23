@@ -312,6 +312,7 @@ semantics/variants_and_match: ok, 30 allocated, 3 dup, 33 drop, peak 7, live 0/0
 semantics/virtual_timeout_stream_read: unsupported (builtin task_deterministic)
 semantics/wasm_inline_drop: ok, 553 allocated, 400 dup, 953 drop, peak 7, live 0/0
 semantics/wasm_inline_paths: ok, 40 allocated, 13 dup, 53 drop, peak 10, live 0/0
+semantics/wasm_inline_reads: ok, 6636 allocated, 2607591 dup, 2614227 drop, peak 2010, live 0/0
 semantics/websocket_accept_rejects_max_message: D020, 28 allocated, 7 dup, 35 drop, peak 26, live 0/0
 semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)
 semantics/websocket_connect_rejects_max_message: D020, 17 allocated, 5 dup, 22 drop, peak 17, live 0/0

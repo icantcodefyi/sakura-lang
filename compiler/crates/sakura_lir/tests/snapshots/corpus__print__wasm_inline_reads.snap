@@ -1,0 +1,246 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::wasm_inline_reads::Cell | Cell 24b (v: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::wasm_inline_reads, frame 27 slots [%14 i64, %15 word*, %24 bool, %44 word*, %45 word*, %46 i64, %47 i64, %48 i64, %56 i64, %57 word*, %58 i64, %59 i64, %60 i64, %61 word*, %62 word*, %63 word*, %70 word*, %71 word*, %72 i64, %73 i64, %74 word*, %75 word*, %76 word*, %90 bool, %91 word*, %92 i64, %93 i64]
+  b0():
+    %0 lit: i64 = const 5
+    %1 box: word = box %0
+    %2 lit: i64 = const 40
+    %3 box: word = box %2
+    %4 lit: i64 = const 1100
+    %5 box: word = box %4
+    %6 lit: i64 = const 2000
+    %7 box: word = box %6
+    %8 xs: ptr = alloc list(%1, %3, %5, %7)
+    %96 xs.lent: ref = lend %8
+    %9 n: i64 = $list_len(%96)
+    %95 lit: i64 = const 0
+    jump b4(%95, %8, %9)
+  b1():
+    %10 lit: i64 = const 9
+    %11 rec: ptr = alloc main::wasm_inline_reads::Cell(%10)
+    %12 r: ptr = alloc std::option::Option.Some(%11)
+    dup %12
+    %13 xs: ptr = alloc list(%12)
+    call first#5(%12) -> b2(%13)
+  b2(%14 r: i64, %15 xs: ptr):
+    %16 s: ptr = show %14
+    %17 lit: ptr = const str 0
+    %18 s: ptr = concat %17, %16
+    drop %16
+    %19 lit: ptr = const str 1
+    %20 s: ptr = concat %18, %19
+    drop %19
+    %21 r: i64 = $list_len(%15)
+    %22 s: ptr = show %21
+    %23 s: ptr = concat %20, %22
+    drop %22
+    perform std::console::Console.print(%23) -> b3()
+  b3(%24 r: unit):
+    %25 box: word = box %24
+    %26 unbox: unit = unbox %25
+    drop %25
+    ret %26
+  b4(%27 i: i64, %28 xs: ptr, %29 n: i64):
+    %30 more: bool = lt.int %27, %29
+    if %30 then b5(%28, %29, %27) else b6(%28, %29, %27)
+  b5(%31 xs: ptr, %32 n: i64, %33 i: i64):
+    %97 xs.lent: ref = lend %31
+    %37 x: word = $list_at(%97, %33)
+    %38 unbox: i64 = unbox %37
+    drop %37
+    call build#2(%38) -> b8(%31, %32, %33, %38)
+  b6(%34 xs: ptr, %35 n: i64, %36 i: i64):
+    drop %34
+    jump b1()
+  b7(%39 xs: ptr, %40 n: i64, %41 i: i64):
+    %42 lit: i64 = const 1
+    %43 i: i64 = intadd %41, %42
+    jump b4(%43, %39, %40)
+  b8(%44 r: ptr, %45 xs: ptr, %46 n: i64, %47 i: i64, %48 x: i64):
+    %49 lit: i64 = const 2
+    %50 t: i64 = intdiv %48, %49
+    %51 lit: ptr = const str 2
+    %98 r.lent: ref = lend %44
+    %52 r: word = $list_get_expect(%98, %50, %51)
+    %53 s: ptr = show %48
+    %54 lit: ptr = const str 3
+    %55 s: ptr = concat %53, %54
+    drop %54
+    %99 r.lent: ref = lend %44
+    call sum_every#6(%99) -> b9(%45, %46, %47, %48, %44, %52, %55)
+  b9(%56 r: i64, %57 xs: ptr, %58 n: i64, %59 i: i64, %60 x: i64, %61 r: ptr, %62 r: ptr, %63 s: ptr):
+    %64 s: ptr = show %56
+    %65 s: ptr = concat %63, %64
+    drop %64
+    %66 lit: ptr = const str 1
+    %67 s: ptr = concat %65, %66
+    drop %66
+    %68 lit: i64 = const 1
+    %69 t: i64 = intsub %60, %68
+    %100 r.lent: ref = lend %61
+    call take#7(%100, %69) -> b10(%57, %58, %59, %61, %62, %67)
+  b10(%70 r: ptr, %71 xs: ptr, %72 n: i64, %73 i: i64, %74 r: ptr, %75 r: ptr, %76 s: ptr):
+    %77 v: i64 = proj %70.0 main::wasm_inline_reads::Cell
+    drop %70
+    %78 s: ptr = show %77
+    %79 s: ptr = concat %76, %78
+    drop %78
+    %80 lit: ptr = const str 1
+    %81 s: ptr = concat %79, %80
+    drop %80
+    %82 v: i64 = proj %75.0 main::wasm_inline_reads::Cell
+    drop %75
+    %83 s: ptr = show %82
+    %84 s: ptr = concat %81, %83
+    drop %83
+    %85 lit: ptr = const str 1
+    %86 s: ptr = concat %84, %85
+    drop %85
+    %87 r: i64 = $list_len(%74)
+    %88 s: ptr = show %87
+    %89 s: ptr = concat %86, %88
+    drop %88
+    perform std::console::Console.print(%89) -> b11(%71, %72, %73)
+  b11(%90 r: unit, %91 xs: ptr, %92 n: i64, %93 i: i64):
+    %94 box: word = box %90
+    drop %94
+    jump b7(%91, %92, %93)
+
+fn $entry#1 top -> unit ; main::wasm_inline_reads, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn build#2 top -> ptr ; main::wasm_inline_reads, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %1 xs: ptr = alloc list()
+    %23 lit: i64 = const 0
+    jump b1(%1, %23, %0)
+  b1(%2 xs: ptr, %3 i: i64, %4 n: i64):
+    %5 t: bool = lt.int %3, %4
+    if %5 then b3(%4, %2, %3) else b4(%4, %2, %3)
+  b2(%6 v: unit, %7 xs: ptr, %8 i: i64, %9 n: i64):
+    jump b1(%7, %8, %9)
+  b3(%10 n: i64, %11 xs: ptr, %12 i: i64):
+    %16 lit: i64 = const 3
+    %17 t: i64 = intmul %12, %16
+    %18 rec: ptr = alloc main::wasm_inline_reads::Cell(%17)
+    %19 r: ptr = $list_push(%11, %18)
+    %20 lit: i64 = const 1
+    %21 t: i64 = intadd %12, %20
+    %22 lit: unit = const ()
+    jump b2(%22, %19, %21, %10)
+  b4(%13 n: i64, %14 xs: ptr, %15 i: i64):
+    ret %14
+
+fn sum_every#3 top -> i64 ; main::wasm_inline_reads, frame 1 slots [%0 word*]
+  b0(%0 xs: ptr):
+    %35 lit: i64 = const 0
+    %36 lit: i64 = const 0
+    jump b2(%35, %36, %0)
+  b1(%1 s: i64, %2 i: i64, %3 xs: ptr):
+    %37 xs.lent: ref = lend %3
+    %4 r: i64 = $list_len(%37)
+    %5 lit: i64 = const 1
+    %6 t: i64 = intsub %4, %5
+    %7 lit: ptr = const str 4
+    %8 r: word = $list_get_expect(%3, %6, %7)
+    %9 v: i64 = proj %8.0 main::wasm_inline_reads::Cell
+    drop %8
+    %10 t: i64 = intadd %1, %9
+    ret %10
+  b2(%11 s: i64, %12 i: i64, %13 xs: ptr):
+    %38 xs.lent: ref = lend %13
+    %14 r: i64 = $list_len(%38)
+    %15 t: bool = lt.int %12, %14
+    if %15 then b4(%13, %11, %12) else b5(%13, %11, %12)
+  b3(%16 v: unit, %17 s: i64, %18 i: i64, %19 xs: ptr):
+    jump b2(%17, %18, %19)
+  b4(%20 xs: ptr, %21 s: i64, %22 i: i64):
+    %26 s: ptr = show %22
+    %27 lit: ptr = const str 5
+    %28 s: ptr = concat %27, %26
+    drop %26
+    %39 xs.lent: ref = lend %20
+    %29 r: word = $list_get_expect(%39, %22, %28)
+    %30 v: i64 = proj %29.0 main::wasm_inline_reads::Cell
+    drop %29
+    %31 t: i64 = intadd %21, %30
+    %32 lit: i64 = const 37
+    %33 t: i64 = intadd %22, %32
+    %34 lit: unit = const ()
+    jump b3(%34, %31, %33, %20)
+  b5(%23 xs: ptr, %24 s: i64, %25 i: i64):
+    jump b1(%24, %25, %23)
+
+fn take#4 top -> ptr ; main::wasm_inline_reads, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 xs: ptr, %1 i: i64):
+    %2 lit: ptr = const str 6
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3
+
+fn first#5 top -> i64 ; main::wasm_inline_reads, frame 1 slots [%0 word*]
+  b0(%0 o: ptr):
+    %1 lit: ptr = const str 7
+    %2 r: word = $option_expect(%0, %1)
+    %3 v: i64 = proj %2.0 main::wasm_inline_reads::Cell
+    drop %2
+    ret %3
+
+fn sum_every#6 borrowed variant of #3 -> i64 ; main::wasm_inline_reads, frame 1 slots [%0 i64]
+  b0(%0 xs: ref):
+    %35 lit: i64 = const 0
+    %36 lit: i64 = const 0
+    jump b2(%35, %36, %0)
+  b1(%1 s: i64, %2 i: i64, %3 xs: ref):
+    %37 xs.lent: ref = lend %3
+    %4 r: i64 = $list_len(%37)
+    %5 lit: i64 = const 1
+    %6 t: i64 = intsub %4, %5
+    %7 lit: ptr = const str 4
+    %8 r: word = $list_get_expect(%3, %6, %7)
+    %9 v: i64 = proj %8.0 main::wasm_inline_reads::Cell
+    drop %8
+    %10 t: i64 = intadd %1, %9
+    ret %10
+  b2(%11 s: i64, %12 i: i64, %13 xs: ref):
+    %38 xs.lent: ref = lend %13
+    %14 r: i64 = $list_len(%38)
+    %15 t: bool = lt.int %12, %14
+    if %15 then b4(%13, %11, %12) else b5(%13, %11, %12)
+  b3(%16 v: unit, %17 s: i64, %18 i: i64, %19 xs: ref):
+    jump b2(%17, %18, %19)
+  b4(%20 xs: ref, %21 s: i64, %22 i: i64):
+    %26 s: ptr = show %22
+    %27 lit: ptr = const str 5
+    %28 s: ptr = concat %27, %26
+    drop %26
+    %39 xs.lent: ref = lend %20
+    %29 r: word = $list_get_expect(%39, %22, %28)
+    %30 v: i64 = proj %29.0 main::wasm_inline_reads::Cell
+    drop %29
+    %31 t: i64 = intadd %21, %30
+    %32 lit: i64 = const 37
+    %33 t: i64 = intadd %22, %32
+    %34 lit: unit = const ()
+    jump b3(%34, %31, %33, %20)
+  b5(%23 xs: ref, %24 s: i64, %25 i: i64):
+    jump b1(%24, %25, %23)
+
+fn take#7 borrowed variant of #4 -> ptr ; main::wasm_inline_reads, frame 2 slots [%0 i64, %1 i64]
+  b0(%0 xs: ref, %1 i: i64):
+    %2 lit: ptr = const str 6
+    %3 r: word = $list_get_expect(%0, %1, %2)
+    ret %3
