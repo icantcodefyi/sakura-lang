@@ -1,0 +1,12 @@
+ending: ok
+--- stdout
+one: 10506
+two: 10506
+mixed: 20606
+around: 105060
+literal: 10506
+Ok(2)
+Err(Boom { value: 2 })
+Ok(1000)
+loop: 3003
+relayed

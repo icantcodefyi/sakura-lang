@@ -1,0 +1,173 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::handler_forward_cancel::Stop | Stop 16b ()
+layout 1 variant std::duration::Duration | Duration 24b (i64)
+layout 2 variant std::instant::Instant | Instant 24b (i64)
+layout 3 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 4 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 5 variant std::task::Fiber
+layout 6 variant std::task::Scope
+layout 7 shape |  32b (word*, word*)
+layout 8 shape |  32b (i64, word*)
+layout 9 shape |  24b (i64)
+layout 10 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::handler_forward_cancel, frame 4 slots [%10 bool, %13 bool, %16 word*, %21 word*]
+  b0():
+    %0 now: ptr = closure virtual$Clock_now#10[]
+    %1 monotonic: ptr = closure virtual$Clock_monotonic#12[]
+    %2 sleep: ptr = closure virtual$Clock_sleep#13[]
+    %3 monotonic_micros: ptr = closure virtual$Clock_monotonic_micros#15[]
+    %4 lit: i64 = const 0
+    %5 r: ptr = handler std::clock::Clock row 9 state(%4) clauses(%0, %1, %2, %3)
+    %6 lit: i64 = const 7
+    %7 r: ptr = $task_deterministic(%6)
+    handle_push %5
+    handle_push %7
+    try_push -> b4(err, )
+    %18 f: ptr = closure main$1#3[]
+    %19 f: ptr = closure main$2#7[]
+    %20 xs: ptr = alloc list(%18, %19)
+    perform std::task::Task.all(%20) -> b5()
+  b1(%8 v: ptr) [handle, handle]:
+    %9 s: ptr = show %8
+    drop %8
+    perform std::console::Console.print(%9) -> b2()
+  b2(%10 r: unit) [handle, handle]:
+    %11 box: word = box %10
+    drop %11
+    %12 lit: ptr = const str 0
+    perform std::console::Console.print(%12) -> b3()
+  b3(%13 r: unit) [handle, handle]:
+    %14 box: word = box %13
+    %15 unbox: unit = unbox %14
+    drop %14
+    handle_pop
+    handle_pop
+    ret %15
+  b4(%16 e: word) [handle, handle]:
+    %17 err: ptr = alloc std::result::Result.Err(%16)
+    jump b1(%17)
+  b5(%21 r: ptr) [handle, handle, try]:
+    %22 ok: ptr = alloc std::result::Result.Ok(%21)
+    try_pop
+    jump b1(%22)
+
+fn $entry#1 top -> unit ; main::handler_forward_cancel, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn main$1#3 lambda -> word ; main::handler_forward_cancel, captures [], frame 14 slots [%0 word*, %10 bool, %11 i64, %26 i64, %27 i64, %38 bool, %39 i64, %40 i64, %43 word*, %44 i64, %45 i64, %46 bool, %47 i64, %48 i64]
+  b0(%0 env: ptr):
+    drop %0
+    %1 next: ptr = closure counter$Counter_next#9[]
+    %2 lit: i64 = const 0
+    %3 r: ptr = handler main::handler_forward_cancel::Counter row 9 state(%2) clauses(%1)
+    %4 next: ptr = closure forward$Counter_next#8[]
+    %5 r: ptr = handler main::handler_forward_cancel::Counter row 10 state() clauses(%4) forwards(0x1)
+    %6 next: ptr = closure forward$Counter_next#8[]
+    %7 r: ptr = handler main::handler_forward_cancel::Counter row 10 state() clauses(%6) forwards(0x1)
+    handle_push %3
+    handle_push %5
+    handle_push %7
+    %52 lit: i64 = const 0
+    %53 lit: i64 = const 0
+    jump b3(%52, %53)
+  b1(%8 n: i64) [handle, handle, handle]:
+    %9 lit: ptr = const str 1
+    perform std::console::Console.print(%9) -> b2(%8)
+  b2(%10 r: unit, %11 n: i64) [handle, handle, handle]:
+    %12 box: word = box %10
+    drop %12
+    %13 box: word = box %11
+    handle_pop
+    handle_pop
+    handle_pop
+    ret %13
+  b3(%14 i: i64, %15 n: i64) [handle, handle, handle]:
+    %16 lit: i64 = const 1000000
+    %17 more: bool = lt.int %14, %16
+    if %17 then b4(%14, %15) else b5(%14, %15)
+  b4(%18 i: i64, %19 n: i64) [handle, handle, handle]:
+    perform main::handler_forward_cancel::Counter.next() -> b7(%18)
+  b5(%20 i: i64, %21 n: i64) [handle, handle, handle]:
+    jump b1(%21)
+  b6(%22 n: i64, %23 i: i64) [handle, handle, handle]:
+    %24 lit: i64 = const 1
+    %25 i: i64 = intadd %23, %24
+    jump b3(%25, %22)
+  b7(%26 r: i64, %27 i: i64) [handle, handle, handle]:
+    %28 lit: i64 = const 1
+    %29 t: bool = eq.int %26, %28
+    if %29 then b9(%27, %26) else b10(%27, %26)
+  b8(%30 v: word, %31 n: i64, %32 i: i64) [handle, handle, handle]:
+    drop %30
+    jump b6(%31, %32)
+  b9(%33 i: i64, %34 r: i64) [handle, handle, handle]:
+    %37 lit: ptr = const str 2
+    perform std::console::Console.print(%37) -> b11(%33, %34)
+  b10(%35 i: i64, %36 r: i64) [handle, handle, handle]:
+    %50 lit: unit = const ()
+    %51 box: word = box %50
+    jump b8(%51, %36, %35)
+  b11(%38 r: unit, %39 i: i64, %40 r: i64) [handle, handle, handle]:
+    %41 box: word = box %38
+    drop %41
+    %42 lit: i64 = const 10
+    call millis#6(%42) -> b12(%39, %40)
+  b12(%43 r: ptr, %44 i: i64, %45 r: i64) [handle, handle, handle]:
+    perform std::clock::Clock.sleep(%43) -> b13(%44, %45)
+  b13(%46 r: unit, %47 i: i64, %48 r: i64) [handle, handle, handle]:
+    %49 box: word = box %46
+    jump b8(%49, %48, %47)
+
+fn counter#4 top -> ptr ; main::handler_forward_cancel, frame 0 slots []
+  b0():
+    %0 next: ptr = closure counter$Counter_next#9[]
+    %1 lit: i64 = const 0
+    %2 handler: ptr = handler main::handler_forward_cancel::Counter row 9 state(%1) clauses(%0)
+    ret %2
+
+fn forward#5 top -> ptr ; main::handler_forward_cancel, frame 0 slots []
+  b0():
+    %0 next: ptr = closure forward$Counter_next#8[]
+    %1 handler: ptr = handler main::handler_forward_cancel::Counter row 10 state() clauses(%0) forwards(0x1)
+    ret %1
+
+fn main$2#7 lambda -> word ; main::handler_forward_cancel, captures [], frame 3 slots [%0 word*, %2 word*, %3 bool]
+  b0(%0 env: ptr):
+    drop %0
+    %1 lit: i64 = const 1
+    call millis#6(%1) -> b1()
+  b1(%2 r: ptr):
+    perform std::clock::Clock.sleep(%2) -> b2()
+  b2(%3 r: unit):
+    %4 box: word = box %3
+    drop %4
+    %5 err: ptr = alloc main::handler_forward_cancel::Stop()
+    fail %5
+
+fn forward$Counter_next#8 clause main::handler_forward_cancel::Counter.next -> i64 ; main::handler_forward_cancel, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_cancel::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn counter$Counter_next#9 clause main::handler_forward_cancel::Counter.next -> i64 ; main::handler_forward_cancel, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 9
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 9 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 9
+    ret %6

@@ -2,7 +2,28 @@
 // its own `sakura build --target wasm`, and the module it emits must keep running, with this
 // output, on every later host of the same ABI MAJOR. Persistent lists, closures and string
 // interpolation, so the run allocates, shares and frees heap objects; no host import beyond
-// `Console`, so a later host lacks nothing the module needs.
+// `Console`, so a later host lacks nothing the module needs. From ABI 1.21.0 a handler with an
+// identity-forwarding clause (the `Handler` object's `forwards` flag and mask, ABI §3.2).
+
+effect Tick {
+  fn next() -> Int
+}
+
+fn ticks() -> Handler<Tick> {
+  handler Tick {
+    var n = 0
+    fn next() {
+      n = n + 3
+      n
+    }
+  }
+}
+
+fn forward() -> Handler<Tick, {Tick}> {
+  handler Tick {
+    fn next() { Tick.next() }
+  }
+}
 
 fn squares(n: Int) -> List<Int> { List.map(List.range(0, n), fn(i) { i * i }) }
 
@@ -16,4 +37,5 @@ pub fn main() -> Unit ! {Console} {
   }
   Console.print("{List.len(xs)} {List.sum(old)} {List.sum(xs)} {xs[7]} {old[7]}")
   Console.print("{List.sum(squares(20))} {squares(4)}")
+  with ticks(), forward() { Console.print("{Tick.next() + Tick.next() * 10}") }
 }

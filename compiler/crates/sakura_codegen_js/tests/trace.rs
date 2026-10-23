@@ -59,3 +59,57 @@ fn nap(ms: Int, v: Int) -> Int ! {Clock} {
         .unwrap();
     assert!(!path.exists());
 }
+
+/// WS-P10 (design §17.181 (2)): traced, dispatch runs an identity-forwarding clause, so each
+/// perform through `forward` writes the forwarder's record and then the counter's, the trace an
+/// unmarked forwarder writes; untraced, dispatch passes it by and the output is the same.
+#[test]
+fn a_forwarding_clause_runs_and_is_traced_when_tracing_is_on() {
+    let src = r#"effect Tick {
+  fn next() -> Int
+}
+fn counter() -> Handler<Tick> {
+  handler Tick {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+  }
+}
+fn forward() -> Handler<Tick, {Tick}> {
+  handler Tick {
+    fn next() { Tick.next() }
+  }
+}
+pub fn main() -> Unit ! {Console} {
+  with counter(), forward() { Console.print("{Tick.next() * 10 + Tick.next()}") }
+}
+"#;
+    let (m, sources) = common::build("forward", src, false).unwrap();
+    let dir = std::path::PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join("trace-forward");
+    common::write(&m, sources, &dir);
+    let path = dir.join("trace.jsonl");
+    let _ = std::fs::remove_file(&path);
+    let run = |trace: bool| {
+        let mut cmd = std::process::Command::new("node");
+        cmd.arg(dir.join("__main__.js"));
+        if trace {
+            cmd.env("SAKURA_TRACE", &path);
+        } else {
+            cmd.env_remove("SAKURA_TRACE");
+        }
+        let out = cmd.output().unwrap();
+        assert_eq!(out.status.code(), Some(0));
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    assert_eq!(run(true), "12\n");
+    let tick = r#""effect":"main::main::Tick","op":"next"}"#;
+    let want: Vec<String> = (0..4)
+        .map(|seq| format!(r#"{{"seq":{seq},"task":0,{tick}"#))
+        .chain([r#"{"seq":4,"task":0,"effect":"std::console::Console","op":"print"}"#.into()])
+        .collect();
+    let trace = std::fs::read_to_string(&path).unwrap();
+    assert_eq!(trace.lines().collect::<Vec<_>>(), want, "{trace}");
+    assert_eq!(run(false), "12\n");
+}

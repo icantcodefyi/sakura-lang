@@ -117,19 +117,21 @@ function internal(message) {
 
 /**
  * ctx = { h: handler frames (linked list, innermost first), c: catcher, t: task }.
- * A frame is { e: effect id, i: instance, n: next }. A catcher is { j: join(e), m: fins mark }.
+ * A frame is { e: effect id, i: instance, n: next, w: forwarders }. A catcher is
+ * { j: join(e), m: fins mark }.
  */
 
 export class Handler {
-  constructor(e, c, s) {
+  constructor(e, c, s, w = 0) {
     this.e = e; // effect id, e.g. "std::console::Console"
     this.c = c; // clauses, in operation order: clause(inst, ...args, ctx, k)
     this.s = s; // initial state values
+    this.w = w; // bit `op`: clause `op` is an identity forwarder (design §17.181 (2))
   }
 }
 
-export function makeHandler(e, s, c) {
-  return new Handler(e, c, s);
+export function makeHandler(e, s, c, w = 0) {
+  return new Handler(e, c, s, w);
 }
 
 /**
@@ -144,16 +146,41 @@ export function instance(h) {
 
 /** `Handle`: a fresh instance on top of `ctx`. */
 export function install(ctx, h) {
-  return { h: { e: h.e, i: instance(h), n: ctx.h }, c: ctx.c, t: ctx.t };
+  return { h: { e: h.e, i: instance(h), n: ctx.h, w: h.w }, c: ctx.c, t: ctx.t };
 }
 
-/** The innermost frame handling effect `e`, for performing its operation `op`. */
+/**
+ * Set when a `find` has passed a forwarder by and not yet read by `cctx`, which then gives the
+ * clause the performer frames (`p`, read by host clauses that start tasks) the last passed
+ * forwarder's own perform would have. Only a hint: `cctx` recomputes them, so a flag left by a
+ * `find` whose clause ran direct (no `cctx`) costs a walk, never a wrong answer, and `find`'s
+ * path without forwarders writes nothing.
+ */
+let passed = false;
+
+/**
+ * The innermost frame handling effect `e`, for performing its operation `op`. With tracing off,
+ * a frame whose clause `op` is an identity forwarder is passed by (design §17.181 (2)): the
+ * clause would perform the same operation with the same arguments from the next frame out, so
+ * only its trace record differs, and that is written when tracing is on.
+ */
 export function find(ctx, e, op) {
   if (ctx.t.cancelled) throw CANCEL;
   let f = ctx.h;
   while (f !== null && f.e !== e) f = f.n;
   if (f === null) throw internal(`no handler installed for ${e}`);
   if (traceFd !== null) trace(ctx.t, { effect: e, op: opNames.get(e)?.[op] ?? op });
+  else if ((f.w >>> op) & 1) return forwarded(f, e, op);
+  return f;
+}
+
+function forwarded(f, e, op) {
+  passed = true;
+  do {
+    f = f.n;
+    while (f !== null && f.e !== e) f = f.n;
+    if (f === null) throw internal(`no handler installed for ${e}`);
+  } while ((f.w >>> op) & 1);
   return f;
 }
 
@@ -225,7 +252,19 @@ if (globalThis.process?.env?.SAKURA_TRACE) globalThis.process.on("exit", flushTr
  * `p` keeps the performer's own frames for host clauses that start fibers (`Task`).
  */
 export function cctx(ctx, f) {
-  return { h: f.n, c: ctx.c, t: ctx.t, p: ctx.h };
+  return { h: f.n, c: ctx.c, t: ctx.t, p: passed ? performer(ctx.h, f) : ctx.h };
+}
+
+/**
+ * The frames the last forwarder `find` passed by between `h` and `f` would have performed under:
+ * every frame of `f`'s effect before `f` was passed (`find` returns the first that does not
+ * forward), so the last one's `n`, or `h` when there is none.
+ */
+function performer(h, f) {
+  passed = false;
+  let p = h;
+  for (let g = h; g !== f; g = g.n) if (g.e === f.e) p = g.n;
+  return p;
 }
 
 /**
@@ -2530,7 +2569,7 @@ export function property_run(seed, schemas, names, kase, rec, fails, nops, regre
         return perform(c, TEST, j, rest, kk);
       };
     });
-    const frames = { e: TEST, i: { e: TEST, c: clauses, s: [] }, n: ctx.h };
+    const frames = { e: TEST, i: { e: TEST, c: clauses, s: [] }, n: ctx.h, w: 0 };
     const done = (o) => then(caseResult(o, msgs));
     const o = runTask(kase, values, frames);
     return o instanceof Promise ? suspend(o, done) : done(o);

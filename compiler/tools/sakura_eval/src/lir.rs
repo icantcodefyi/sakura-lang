@@ -1336,12 +1336,14 @@ impl<'m> Vm<'m> {
                 let v = self.load(s, f.repr(*dst))?;
                 self.set(cur, *dst, v)
             }
+            // The reference runs every clause: forwarding is a runtime's shortcut.
             MakeHandler {
                 dst,
                 effect,
                 row,
                 state,
                 clauses,
+                ..
             } => {
                 let vals = state
                     .iter()

@@ -1,0 +1,117 @@
+// milestone: M3
+// covers: performance-r1 WS-P10; design §17.181 (2) (clauses that are not identity forwarders
+// stay unmarked in `--dump core` and run on every perform: a different operation, reordered or
+// changed arguments, another effect, a perform inside `try`, a handler with state, and an
+// operation with a function-typed parameter; `forward` is the marked control)
+
+error Boom(value: Int)
+
+effect Counter {
+  fn next() -> Int
+  fn peek() -> Int
+  fn pair(a: Int, b: Int) -> Int
+  fn read() -> Int ! {Fail<Boom>}
+  fn each(f: fn(Int) -> Int) -> Int
+}
+
+effect Other {
+  fn next() -> Int
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+    fn peek() { n * 100 }
+    fn pair(a, b) { a * 10 + b }
+    fn read() {
+      if n > 2 { fail Boom { value: n } }
+      n
+    }
+    fn each(f) { f(n) }
+  }
+}
+
+fn forward() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() }
+    fn peek() { Counter.peek() }
+    fn pair(a, b) { Counter.pair(a, b) }
+    fn read() { Counter.read() }
+    fn each(f) { Counter.each(f) }
+  }
+}
+
+fn renamed() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.peek() }
+    fn peek() { Counter.next() }
+    fn pair(a, b) { Counter.pair(b, a) }
+    fn read() { Counter.read() + 0 }
+    fn each(f) { Counter.each(fn(x) { f(x) + 1 }) }
+  }
+}
+
+fn changed() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() + 0 }
+    fn peek() { Counter.peek() }
+    fn pair(a, b) { Counter.pair(a, a) }
+    fn read() {
+      match try { Counter.read() } {
+        Ok(v) => v,
+        Err(e) => fail e,
+      }
+    }
+    fn each(f) { Counter.each(f) }
+  }
+}
+
+fn elsewhere() -> Handler<Counter, {Counter, Other}> {
+  handler Counter {
+    fn next() { Other.next() }
+    fn peek() { Counter.peek() }
+    fn pair(a, b) { Counter.pair(a, b) }
+    fn read() { Counter.read() }
+    fn each(f) { Counter.each(f) }
+  }
+}
+
+fn stateful() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    var calls = 0
+    fn next() { Counter.next() }
+    fn peek() { Counter.peek() }
+    fn pair(a, b) { Counter.pair(a, b) }
+    fn read() { Counter.read() }
+    fn each(f) { Counter.each(f) }
+  }
+}
+
+fn other() -> Handler<Other> {
+  handler Other {
+    fn next() { 7 }
+  }
+}
+
+fn steps() -> String ! {Counter} {
+  let a = Counter.next()
+  let b = Counter.peek()
+  let c = Counter.pair(1, 2)
+  let d = Counter.each(fn(x) { x * 3 })
+  let e = try { Counter.read() }
+  let f = Counter.next()
+  let g = try { Counter.read() }
+  "{a} {b} {c} {d} {e} {f} {g}"
+}
+
+pub fn main() -> Unit ! {Console} {
+  with counter(), forward() { Console.print("forward: {steps()}") }
+  with counter(), renamed() { Console.print("renamed: {steps()}") }
+  with counter(), changed() { Console.print("changed: {steps()}") }
+  with other(), counter(), elsewhere() { Console.print("elsewhere: {steps()}") }
+  with counter(), stateful() { Console.print("stateful: {steps()}") }
+}

@@ -656,8 +656,13 @@ impl<'a> Checker<'a> {
                 row,
                 state,
                 clauses,
+                forwards,
                 ..
             } => {
+                ensure(
+                    clauses.len() >= 32 || forwards >> clauses.len() == 0,
+                    || format!("forwarding mask {forwards:#x} past the clauses"),
+                )?;
                 let e = self
                     .m
                     .effects

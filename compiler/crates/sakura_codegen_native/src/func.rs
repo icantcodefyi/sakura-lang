@@ -64,6 +64,9 @@ const RECORD: i64 = 6;
 const VARIANT: i64 = 7;
 const CLOSURE: i64 = 8;
 const HANDLER: i64 = 14;
+/// The header's `forwards` flag (ABI §3.1, 1.21.0): a `Handler` whose forwarding mask follows
+/// its clauses.
+const FORWARDS: i64 = 8;
 
 /// The site a raised defect carries: a contract check's blame and its clause's own site id.
 type Site = Option<(Option<(Var, u32)>, u32)>;
@@ -1159,8 +1162,10 @@ impl Gen<'_, '_, '_> {
                 row,
                 state,
                 clauses,
+                forwards,
             } => {
-                let size = 24 + 8 * state.len() + 4 * clauses.len();
+                let mask = if *forwards == 0 { 0 } else { 4 };
+                let size = 24 + 8 * state.len() + 4 * clauses.len() + mask;
                 let tag = self.iconst32(HANDLER);
                 let sz = self.iconst32(size as i64);
                 let d = self.call1("rt_alloc", &[tag, sz], types::I32)?;
@@ -1181,6 +1186,14 @@ impl Gen<'_, '_, '_> {
                 for (i, &c) in clauses.iter().enumerate() {
                     let x = self.val(c)?;
                     self.store(x, d, base + 4 * i as i32);
+                }
+                // Identity forwarders (design §17.181 (2)): the header's `forwards` flag (ABI
+                // §3.1, 1.21.0), then the mask word after the clauses.
+                if *forwards != 0 {
+                    let flag = self.b.ins().iconst(types::I8, FORWARDS);
+                    self.store(flag, d, 3);
+                    let x = self.iconst32(i64::from(*forwards));
+                    self.store(x, d, base + 4 * clauses.len() as i32);
                 }
                 self.set(*dst, d);
             }

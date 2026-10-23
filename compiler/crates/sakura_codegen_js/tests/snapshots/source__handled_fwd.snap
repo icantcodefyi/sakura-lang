@@ -8,7 +8,7 @@ export function run(n, $ctx, $k) {
   const r = $rt.makeHandler("main::main::Tick", [0], [next]);
   const $ctx1 = $rt.install($ctx, r);
   const next_1 = forward$Tick_next;
-  const r_1 = $rt.makeHandler("main::main::Tick", [], [next_1]);
+  const r_1 = $rt.makeHandler("main::main::Tick", [], [next_1], 1);
   const $ctx2 = $rt.install($ctx1, r_1);
   const $i2 = $ctx2.h.i;
   const j3 = (acc_1, i_1) => {

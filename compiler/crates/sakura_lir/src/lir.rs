@@ -514,6 +514,10 @@ pub enum Inst {
         row: LayoutId,
         state: Vec<Var>,
         clauses: Vec<Var>,
+        /// Identity-forwarding clauses by operation bit (design §17.181 (2); never set for an
+        /// effect with more than 32 operations): nonzero sets the object's `forwards` flag and
+        /// appends this word after the clauses (ABI §3.2 tag 14).
+        forwards: u32,
     },
     /// Wraps a function-typed operation argument so it runs under the perform site's handlers
     /// (ABI §6.3): a closure of the runtime callback stub owning `f` and holding the current

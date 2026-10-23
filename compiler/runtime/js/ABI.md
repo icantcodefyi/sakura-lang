@@ -129,8 +129,10 @@ Direct code has no context. A `Handle` there only builds the instance its bound 
 
 - Effect id: the qualified name, `"<package>::<module>::<Effect>"`, e.g.
   `"std::console::Console"`.
-- Handler value: `new $rt.Handler(e, clauses, initialState)`; `clauses[op]` in declaration
-  order is `clause(inst, a1, …, an, $ctx, $k)`.
+- Handler value: `new $rt.Handler(e, clauses, initialState, forwards = 0)`, emitted as
+  `$rt.makeHandler(e, initialState, clauses[, forwards])`; `clauses[op]` in declaration order is
+  `clause(inst, a1, …, an, $ctx, $k)`, and bit `op` of `forwards` marks clause `op` an
+  identity forwarder (below).
 - `with h { body }`: `const $ctx1 = $rt.install($ctx, h)` creates a fresh **instance**
   `{ e, c, s }` with `s` copied from the handler's initial state, so each installation starts
   from the initial values and nested instances are independent.
@@ -154,6 +156,16 @@ Direct code has no context. A `Handle` there only builds the instance its bound 
   (`Task.all(bodies)`) are ordinary values; host clauses run those under `cctx.p`. `$rt.perform`
   (performs from runtime code) passes no callbacks and does not wrap.
 - A missing handler cannot happen in checked programs; the runtime reports defect `D090`.
+- Identity forwarders (design §17.181 (2), WS-P10): Core marks clause `op` in its
+  `MakeHandler`'s `forwards` (`--dump core` prints `forwards[op, …]`) when the handler has no
+  state and the body is exactly `Eff.op(p1, …, pn)` of its own effect with the clause's
+  parameters in order, the operation has no function-typed parameter and the effect at most 32
+  operations. A frame carries the mask as `w`. With tracing off, `find` passes such a frame by
+  and returns the next frame out for `E` (again passing forwarders), and `cctx` gives the
+  clause the performer frames (`p`) the last passed forwarder's own perform would have given;
+  with tracing on every clause runs and writes its record, so traces do not change. The
+  cancellation test stays first in `find`. The WASM runtime's dispatch does the same (WASM ABI
+  §6.3, 1.21.0).
 
 **Bound performs (design §17.113).** `sakura_core::opt` inlines calls of handler constructors
 (a `{}`-row top-level def without row variables whose body only binds atoms, clause closures and

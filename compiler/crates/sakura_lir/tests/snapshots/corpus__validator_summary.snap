@@ -150,6 +150,9 @@ semantics/handler_cancel_bound: 14 funcs, 40 blocks, 0 dup, 15 drop, valid
 semantics/handler_cancel_in_loop: 15 funcs, 42 blocks, 0 dup, 15 drop, valid
 semantics/handler_cancel_twin: 16 funcs, 39 blocks, 0 dup, 18 drop, valid
 semantics/handler_clause_fail: 6 funcs, 17 blocks, 0 dup, 6 drop, valid
+semantics/handler_forward_cancel: 16 funcs, 43 blocks, 0 dup, 16 drop, valid
+semantics/handler_forward_direct: 26 funcs, 89 blocks, 0 dup, 39 drop, valid
+semantics/handler_forward_ineligible: 43 funcs, 103 blocks, 1 dup, 69 drop, valid
 semantics/handler_forwarding: 6 funcs, 13 blocks, 0 dup, 7 drop, valid
 semantics/handler_lexical_bind: 7 funcs, 26 blocks, 1 dup, 10 drop, valid
 semantics/handler_reinstall_fresh_state: 3 funcs, 12 blocks, 3 dup, 6 drop, valid

@@ -14,6 +14,9 @@ pub const SCOPED: u8 = 2;
 /// A `String` or `Bytes` a `Secret` held (ABI 1.19.0, plan M5 N-S): its bytes are overwritten
 /// when its block is freed, wherever it went after a reveal.
 pub const WIPE: u8 = 4;
+/// A `Handler` whose identity-forwarding mask (one `u32`, bit `op` per clause) follows its
+/// clause closures (ABI 1.21.0, design §17.181 (2)).
+pub const FORWARDS: u8 = 8;
 
 /// Generic-word immediates (ABI §4): low bits `01`, bit 2 set for `Bool`, bit 3 its value.
 pub const UNIT: u32 = 0b0001;

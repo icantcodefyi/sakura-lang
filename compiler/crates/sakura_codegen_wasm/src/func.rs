@@ -48,6 +48,9 @@ const TRUE: i32 = 0b1101;
 
 /// The header's `static` flag (ABI §3.1).
 const STATIC: i32 = 1;
+/// The header's `forwards` flag (ABI §3.1, 1.21.0): a `Handler` whose forwarding mask follows
+/// its clauses.
+const FORWARDS: i32 = 8;
 
 /// Object tags (ABI §3.2).
 const TUPLE: i32 = 5;
@@ -1391,9 +1394,11 @@ impl Gen<'_, '_> {
                 row,
                 state,
                 clauses,
+                forwards,
             } => {
                 let d = self.local(*dst);
-                let size = 24 + 8 * state.len() + 4 * clauses.len();
+                let mask = if *forwards == 0 { 0 } else { 4 };
+                let size = 24 + 8 * state.len() + 4 * clauses.len() + mask;
                 s.i32_const(HANDLER).i32_const(size as i32);
                 self.call_rt(s, "rt_alloc")?;
                 s.local_set(d);
@@ -1414,6 +1419,13 @@ impl Gen<'_, '_> {
                     s.local_get(d)
                         .local_get(self.local(c))
                         .i32_store(mem(base + 4 * i as u64, 2));
+                }
+                // Identity forwarders (design §17.181 (2)): the flag, then the mask word.
+                if *forwards != 0 {
+                    s.local_get(d).i32_const(FORWARDS).i32_store8(mem(3, 0));
+                    s.local_get(d)
+                        .i32_const(*forwards as i32)
+                        .i32_store(mem(base + 4 * clauses.len() as u64, 2));
                 }
             }
             Inst::MakeCallback { dst, f } => {

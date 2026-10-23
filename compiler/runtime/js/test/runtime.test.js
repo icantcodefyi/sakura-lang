@@ -118,6 +118,26 @@ test("nested instances: innermost wins and each install starts fresh", () => {
   assert.deepEqual(rt.runTask(body), ok([101, 102, 1, 101]));
 });
 
+test("find passes an identity forwarder by, and cctx keeps the performer frames its perform would have", () => {
+  // design §17.181 (2): `fwd`'s clause 0 forwards (mask 1); `other` is a frame of another effect.
+  const fwd = rt.makeHandler(COUNTER, [], [(_inst, ctx, k) => next(ctx, k)], 1);
+  const other = rt.makeHandler("test::Other", [], [(_inst, _ctx, k) => ret(k, 0)]);
+  const base = { h: null, c: null, t: { cancelled: false } };
+  const outer = rt.install(base, counter(0));
+  const through = rt.install(rt.install(outer, fwd), other);
+  const f = rt.find(through, COUNTER, 0);
+  assert.equal(f, outer.h); // the counter's frame, past the forwarder
+  // The forwarder's own perform ran under `fwd`'s frame's `n`, the counter's frame.
+  assert.equal(rt.cctx(through, f).p, outer.h);
+  // A pass whose clause then runs direct (no `cctx`) leaves nothing a later perform sees.
+  rt.find(through, COUNTER, 0);
+  const plain = rt.install(outer, other);
+  assert.equal(rt.cctx(plain, rt.find(plain, COUNTER, 0)).p, plain.h);
+  // An operation whose bit is clear is not passed.
+  const unmarked = rt.install(outer, rt.makeHandler(COUNTER, [], [(_i, _c, k) => ret(k, 7)], 2));
+  assert.equal(rt.find(unmarked, COUNTER, 0), unmarked.h);
+});
+
 test("a clause performing its own effect reaches the next outer handler", () => {
   // inner handler's `next` = outer next * 10
   const wrapper = rt.makeHandler(COUNTER, [], [

@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.20.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.21.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -30,8 +30,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 (§9; design §17.301 (1c), §17.304 (B1)), 1.17.0 constructor-site reuse (§10; design
 §17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
 §17.176 (4), §17.308; plan M5 N4a), 1.19.0 the `wipe` header flag (§3.1, §3.5; design
-§17.288 (7); plan M5 N-S), 1.19.1 the in-place object paths erratum (§3.1; design §17.314)
-and 1.20.0 the native context's in-place counters (§1b, §10; design §17.318). Owned by
+§17.288 (7); plan M5 N-S), 1.19.1 the in-place object paths erratum (§3.1; design §17.314),
+1.20.0 the native context's in-place counters (§1b, §10; design §17.318) and 1.21.0
+identity-forwarding clauses (§3.1, §3.2, §6.3; design §17.181 (2), §17.317 (3)). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -409,6 +410,17 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   outcome. It is a MINOR by 1.3.0's rule (the counters a module writes are part of what it
   requires of its host): a 1.19 runtime refuses a 1.20 module. `sakura_abi_version` is
   `0x011400`.
+- 1.21.0 (MINOR, design §17.181 (2), §17.317 (3); plan performance-r1 WS-P10) adds the
+  header flag bit 3 `forwards` (§3.1) and, on a `Handler` that has it, one `u32` mask after the clause pointers (§3.2, tag 14): bit `op` set
+  says clause `op` is an identity forwarder, a body that is exactly a perform of the same
+  operation of the handler's own effect with the clause's parameters in order, in a handler
+  without state. Performing (§6.3) passes such an activation by while tracing is off, as the
+  JS runtime's `find` does (JS ABI §3); traced, every clause runs and writes its record, so
+  the §17.80 trace is unchanged. Compiled code sets the flag; `sakura_rt` reads it; a handler
+  without it (every host-built one) is laid out and dispatched as before, and no import,
+  export or outcome changes. It is a MINOR by 1.3.0's rule (a new header field and a layout
+  with the old ones unchanged): a 1.20 host refuses a 1.21 module. `sakura_abi_version` is
+  `0x011500`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -637,7 +649,7 @@ and is the only null (research/09 §3 recommendation; needed by the §17.83 nich
 |---|---|---|---|
 | 0 | `u16` | `tag` | object kind (§3.2). Values ≥ 0x8000 are reserved for the runtime (`SomeBox`, frames, activations) and can never be produced by a user type or by FFI |
 | 2 | `u8` | `class` | size class index (§10) or 0xFF for a page-run allocation |
-| 3 | `u8` | `flags` | bit 0 `static` (RC never changes; literals and nullary constructors in the data segment); bit 1 `scoped` (the object is a `@resource` handle, §8.4); bit 2 `wipe` (1.19.0: a `String` or `Bytes` a `Secret` held; its bytes are overwritten when its block is freed, §3.5); bits 3–7 zero |
+| 3 | `u8` | `flags` | bit 0 `static` (RC never changes; literals and nullary constructors in the data segment); bit 1 `scoped` (the object is a `@resource` handle, §8.4); bit 2 `wipe` (1.19.0: a `String` or `Bytes` a `Secret` held; its bytes are overwritten when its block is freed, §3.5); bit 3 `forwards` (1.21.0: a `Handler` whose identity-forwarding mask follows its clauses, §3.2, §6.3); bits 4–7 zero |
 | 4 | `u32` | `rc` | reference count, number of **owning** links (§7). A fresh object has `rc = 1` held by the creating frame's local. Increment is checked: a count may reach 2^32 − 1, and the increment from 2^32 − 1 is `D092 rc_overflow`, leaving the count unchanged. Decrement to 0 releases (§3.5); while an object is being released the field links the destruction worklist |
 | 8 | — | payload | type-specific, below |
 
@@ -676,7 +688,7 @@ runtime's call.
 | 10 | `ListRoot` | `u32 len`, `u32 shift`, `ptr root`, `ptr tail`, `u32 tail_len` (JS `$rt.List` shape) |
 | 11 | `MapRoot`, 12 `SetRoot` | `u32 len`, `ptr log` (a `ListRoot` of entries), `ptr hamt`, `u32 holes` (JS `$rt.VMap`/`VSet` shape) |
 | 13 | `HamtNode` | `u32 bitmap`, children |
-| 14 | `Handler` | `u32 effect_id`, `u32 type_id` (the layout row of its state), `u32 n_state`, `u32 n_clauses`, state slots (initial values) at offset 24, then `n_clauses` 4-byte clause closure pointers. The state's types are known where the `handler` expression is compiled, so an `Int`/`Float` state is an unboxed slot and `StateGet`/`StateSet` never box (design §17.108); a type-variable state is kind 0 as everywhere |
+| 14 | `Handler` | `u32 effect_id`, `u32 type_id` (the layout row of its state), `u32 n_state`, `u32 n_clauses`, state slots (initial values) at offset 24, then `n_clauses` 4-byte clause closure pointers, then, when the header's `forwards` flag is set (1.21.0), one `u32` mask whose bit `op` marks clause `op` an identity forwarder (§6.3; never set for an effect of more than 32 operations). The state's types are known where the `handler` expression is compiled, so an `Int`/`Float` state is an unboxed slot and `StateGet`/`StateSet` never box (design §17.108); a type-variable state is kind 0 as everywhere |
 | 15 | `Secret` | `ptr inner` (a `String` or `Bytes`), never readable by `Show`, `Eq` (`V2032` already forbids), JSON or the host import copy-out (§8.3: the import kind `secret` is the only way out) |
 | 16 | `Untrusted` | `ptr inner` |
 | 17 | `Handle` | `u32 kind`, `u32 slot`, `u32 generation` (§8.4, kinds as listed there): `Dir`, `Body`, a JS value; `flags.scoped = 1` for `Body` |
@@ -915,7 +927,10 @@ slots as JS `install` does), `outer` (non-owning id of the enclosing activation)
 (non-owning id of the frame that installed it), and the live state slots (owned), described by the
 handler's layout row so scalar state stays unboxed here too (P1). Performing
 `E.op(args)` walks `outer` from the frame's `activation` to the first activation with that
-`effect_id` (as JS `find`; after checking `task.cancelled`, §7.4) and calls the clause closure
+`effect_id` (as JS `find`; after checking `task.cancelled`, §7.4), passing by, while tracing is
+off, one whose handler marks clause `op` in its `forwards` mask (1.21.0, §3.2: that clause would
+perform the same operation with the same arguments from its own `outer`; traced, it runs and
+writes its §17.80 record as any clause), and calls the clause closure
 with a **clause frame** whose `activation` is the found activation's `outer` (design §5.5:
 the clause sees the handlers outside its own frame) and whose `catch` is the performer's.
 Operation callbacks (`runtime/js/ABI.md` §3) are closures of tag 8 whose `code` is a runtime

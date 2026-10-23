@@ -1,0 +1,546 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::handler_forward_direct::Boom | Boom 24b (value: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  24b (i64)
+layout 6 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::handler_forward_direct, frame 26 slots [%101 bool, %109 bool, %122 i64, %123 i64, %124 i64, %135 bool, %137 word*, %140 i64, %143 i64, %144 i64, %147 bool, %151 bool, %153 word*, %156 i64, %159 word*, %162 i64, %170 i64, %174 bool, %176 i64, %180 bool, %182 i64, %186 bool, %188 i64, %192 bool, %194 i64, %198 bool]
+  b0():
+    %0 next: ptr = closure counter$Counter_next#23[]
+    %1 add: ptr = closure counter$Counter_add#24[]
+    %2 read: ptr = closure counter$Counter_read#25[]
+    %3 lit: i64 = const 0
+    %4 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%3) clauses(%0, %1, %2)
+    %5 next: ptr = closure forward$Counter_next#20[]
+    %6 add: ptr = closure forward$Counter_add#21[]
+    %7 read: ptr = closure forward$Counter_read#22[]
+    %8 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%5, %6, %7) forwards(0x7)
+    handle_push %4
+    handle_push %8
+    call steps#4() -> b40()
+  b1(%9 v: word):
+    drop %9
+    %10 next: ptr = closure counter$Counter_next#23[]
+    %11 add: ptr = closure counter$Counter_add#24[]
+    %12 read: ptr = closure counter$Counter_read#25[]
+    %13 lit: i64 = const 0
+    %14 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%13) clauses(%10, %11, %12)
+    %15 next: ptr = closure forward$Counter_next#20[]
+    %16 add: ptr = closure forward$Counter_add#21[]
+    %17 read: ptr = closure forward$Counter_read#22[]
+    %18 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%15, %16, %17) forwards(0x7)
+    %19 next: ptr = closure forward$Counter_next#20[]
+    %20 add: ptr = closure forward$Counter_add#21[]
+    %21 read: ptr = closure forward$Counter_read#22[]
+    %22 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%19, %20, %21) forwards(0x7)
+    handle_push %14
+    handle_push %18
+    handle_push %22
+    call steps#4() -> b38()
+  b2(%23 v: word):
+    drop %23
+    %24 next: ptr = closure counter$Counter_next#23[]
+    %25 add: ptr = closure counter$Counter_add#24[]
+    %26 read: ptr = closure counter$Counter_read#25[]
+    %27 lit: i64 = const 0
+    %28 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%27) clauses(%24, %25, %26)
+    %29 next: ptr = closure mixed$Counter_next#17[]
+    %30 add: ptr = closure mixed$Counter_add#18[]
+    %31 read: ptr = closure mixed$Counter_read#19[]
+    %32 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%29, %30, %31) forwards(0x1)
+    handle_push %28
+    handle_push %32
+    call steps#4() -> b36()
+  b3(%33 v: word):
+    drop %33
+    %34 next: ptr = closure counter$Counter_next#23[]
+    %35 add: ptr = closure counter$Counter_add#24[]
+    %36 read: ptr = closure counter$Counter_read#25[]
+    %37 lit: i64 = const 0
+    %38 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%37) clauses(%34, %35, %36)
+    %39 next: ptr = closure forward$Counter_next#20[]
+    %40 add: ptr = closure forward$Counter_add#21[]
+    %41 read: ptr = closure forward$Counter_read#22[]
+    %42 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%39, %40, %41) forwards(0x7)
+    %43 next: ptr = closure scaled$Counter_next#14[]
+    %44 add: ptr = closure scaled$Counter_add#15[]
+    %45 read: ptr = closure scaled$Counter_read#16[]
+    %46 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%43, %44, %45)
+    %47 next: ptr = closure forward$Counter_next#20[]
+    %48 add: ptr = closure forward$Counter_add#21[]
+    %49 read: ptr = closure forward$Counter_read#22[]
+    %50 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%47, %48, %49) forwards(0x7)
+    handle_push %38
+    handle_push %42
+    handle_push %46
+    handle_push %50
+    call steps#4() -> b34()
+  b4(%51 v: word):
+    drop %51
+    %52 next: ptr = closure counter$Counter_next#23[]
+    %53 add: ptr = closure counter$Counter_add#24[]
+    %54 read: ptr = closure counter$Counter_read#25[]
+    %55 lit: i64 = const 0
+    %56 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%55) clauses(%52, %53, %54)
+    handle_push %56
+    %165 next: ptr = closure main$Counter_next#7[]
+    %166 add: ptr = closure main$Counter_add#8[]
+    %167 read: ptr = closure main$Counter_read#9[]
+    %168 handler: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%165, %166, %167) forwards(0x7)
+    handle_push %168
+    call steps#4() -> b32()
+  b5(%57 v: word):
+    drop %57
+    %58 next: ptr = closure counter$Counter_next#23[]
+    %59 add: ptr = closure counter$Counter_add#24[]
+    %60 read: ptr = closure counter$Counter_read#25[]
+    %61 lit: i64 = const 0
+    %62 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%61) clauses(%58, %59, %60)
+    %63 next: ptr = closure forward$Counter_next#20[]
+    %64 add: ptr = closure forward$Counter_add#21[]
+    %65 read: ptr = closure forward$Counter_read#22[]
+    %66 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%63, %64, %65) forwards(0x7)
+    %67 next: ptr = closure forward$Counter_next#20[]
+    %68 add: ptr = closure forward$Counter_add#21[]
+    %69 read: ptr = closure forward$Counter_read#22[]
+    %70 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%67, %68, %69) forwards(0x7)
+    handle_push %62
+    handle_push %66
+    handle_push %70
+    perform main::handler_forward_direct::Counter.next() -> b21()
+  b6(%71 v: word):
+    drop %71
+    %72 next: ptr = closure counter$Counter_next#23[]
+    %73 add: ptr = closure counter$Counter_add#24[]
+    %74 read: ptr = closure counter$Counter_read#25[]
+    %75 lit: i64 = const 0
+    %76 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%75) clauses(%72, %73, %74)
+    %77 next: ptr = closure mixed$Counter_next#17[]
+    %78 add: ptr = closure mixed$Counter_add#18[]
+    %79 read: ptr = closure mixed$Counter_read#19[]
+    %80 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%77, %78, %79) forwards(0x1)
+    handle_push %76
+    handle_push %80
+    try_push -> b19(err, )
+    %139 lit: i64 = const 5
+    perform main::handler_forward_direct::Counter.read(%139) -> b20()
+  b7(%81 v: word):
+    drop %81
+    %82 next: ptr = closure counter$Counter_next#23[]
+    %83 add: ptr = closure counter$Counter_add#24[]
+    %84 read: ptr = closure counter$Counter_read#25[]
+    %85 lit: i64 = const 0
+    %86 r: ptr = handler main::handler_forward_direct::Counter row 5 state(%85) clauses(%82, %83, %84)
+    %87 next: ptr = closure forward$Counter_next#20[]
+    %88 add: ptr = closure forward$Counter_add#21[]
+    %89 read: ptr = closure forward$Counter_read#22[]
+    %90 r: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%87, %88, %89) forwards(0x7)
+    handle_push %86
+    handle_push %90
+    %131 lit: i64 = const 0
+    %132 lit: i64 = const 0
+    jump b12(%131, %132)
+  b8(%91 v: word):
+    drop %91
+    %92 print: ptr = closure relay$Console_print#11[]
+    %93 read_line: ptr = closure relay$Console_read_line#12[]
+    %94 eprint: ptr = closure relay$Console_eprint#13[]
+    %95 r: ptr = handler std::console::Console row 6 state() clauses(%92, %93, %94) forwards(0x7)
+    %96 print: ptr = closure relay$Console_print#11[]
+    %97 read_line: ptr = closure relay$Console_read_line#12[]
+    %98 eprint: ptr = closure relay$Console_eprint#13[]
+    %99 r: ptr = handler std::console::Console row 6 state() clauses(%96, %97, %98) forwards(0x7)
+    handle_push %95
+    handle_push %99
+    %100 lit: ptr = const str 0
+    perform std::console::Console.print(%100) -> b9()
+  b9(%101 r: unit) [handle, handle]:
+    %102 box: word = box %101
+    %103 unbox: unit = unbox %102
+    drop %102
+    handle_pop
+    handle_pop
+    ret %103
+  b10(%104 acc: i64, %105 i: i64) [handle, handle]:
+    %106 s: ptr = show %104
+    %107 lit: ptr = const str 1
+    %108 s: ptr = concat %107, %106
+    drop %106
+    perform std::console::Console.print(%108) -> b11()
+  b11(%109 r: unit) [handle, handle]:
+    %110 box: word = box %109
+    handle_pop
+    handle_pop
+    jump b8(%110)
+  b12(%111 acc: i64, %112 i: i64) [handle, handle]:
+    %113 lit: i64 = const 1000
+    %114 t: bool = lt.int %112, %113
+    if %114 then b14(%111, %112) else b15(%111, %112)
+  b13(%115 v: unit, %116 acc: i64, %117 i: i64) [handle, handle]:
+    jump b12(%116, %117)
+  b14(%118 acc: i64, %119 i: i64) [handle, handle]:
+    perform main::handler_forward_direct::Counter.next() -> b16(%118, %119)
+  b15(%120 acc: i64, %121 i: i64) [handle, handle]:
+    jump b10(%120, %121)
+  b16(%122 r: i64, %123 acc: i64, %124 i: i64) [handle, handle]:
+    %125 lit: i64 = const 7
+    %126 t: i64 = intrem %122, %125
+    %127 t: i64 = intadd %123, %126
+    %128 lit: i64 = const 1
+    %129 t: i64 = intadd %124, %128
+    %130 lit: unit = const ()
+    jump b13(%130, %127, %129)
+  b17(%133 v: ptr) [handle, handle]:
+    %134 s: ptr = show %133
+    drop %133
+    perform std::console::Console.print(%134) -> b18()
+  b18(%135 r: unit) [handle, handle]:
+    %136 box: word = box %135
+    handle_pop
+    handle_pop
+    jump b7(%136)
+  b19(%137 e: word) [handle, handle]:
+    %138 err: ptr = alloc std::result::Result.Err(%137)
+    jump b17(%138)
+  b20(%140 r: i64) [handle, handle, try]:
+    %141 box: word = box %140
+    %142 ok: ptr = alloc std::result::Result.Ok(%141)
+    try_pop
+    jump b17(%142)
+  b21(%143 r: i64) [handle, handle, handle]:
+    perform main::handler_forward_direct::Counter.next() -> b22()
+  b22(%144 r: i64) [handle, handle, handle]:
+    try_push -> b29(err, )
+    %161 lit: i64 = const 5
+    perform main::handler_forward_direct::Counter.read(%161) -> b30()
+  b23(%145 v: ptr) [handle, handle, handle]:
+    %146 s: ptr = show %145
+    drop %145
+    perform std::console::Console.print(%146) -> b24()
+  b24(%147 r: unit) [handle, handle, handle]:
+    %148 box: word = box %147
+    drop %148
+    try_push -> b27(err, )
+    %155 lit: i64 = const 1
+    perform main::handler_forward_direct::Counter.read(%155) -> b28()
+  b25(%149 v: ptr) [handle, handle, handle]:
+    %150 s: ptr = show %149
+    drop %149
+    perform std::console::Console.print(%150) -> b26()
+  b26(%151 r: unit) [handle, handle, handle]:
+    %152 box: word = box %151
+    handle_pop
+    handle_pop
+    handle_pop
+    jump b6(%152)
+  b27(%153 e: word) [handle, handle, handle]:
+    %154 err: ptr = alloc std::result::Result.Err(%153)
+    jump b25(%154)
+  b28(%156 r: i64) [handle, handle, handle, try]:
+    %157 box: word = box %156
+    %158 ok: ptr = alloc std::result::Result.Ok(%157)
+    try_pop
+    jump b25(%158)
+  b29(%159 e: word) [handle, handle, handle]:
+    %160 err: ptr = alloc std::result::Result.Err(%159)
+    jump b23(%160)
+  b30(%162 r: i64) [handle, handle, handle, try]:
+    %163 box: word = box %162
+    %164 ok: ptr = alloc std::result::Result.Ok(%163)
+    try_pop
+    jump b23(%164)
+  b31(%169 v: word) [handle]:
+    handle_pop
+    jump b5(%169)
+  b32(%170 r: i64) [handle, handle]:
+    %171 s: ptr = show %170
+    %172 lit: ptr = const str 2
+    %173 s: ptr = concat %172, %171
+    drop %171
+    perform std::console::Console.print(%173) -> b33()
+  b33(%174 r: unit) [handle, handle]:
+    %175 box: word = box %174
+    handle_pop
+    jump b31(%175)
+  b34(%176 r: i64) [handle, handle, handle, handle]:
+    %177 s: ptr = show %176
+    %178 lit: ptr = const str 3
+    %179 s: ptr = concat %178, %177
+    drop %177
+    perform std::console::Console.print(%179) -> b35()
+  b35(%180 r: unit) [handle, handle, handle, handle]:
+    %181 box: word = box %180
+    handle_pop
+    handle_pop
+    handle_pop
+    handle_pop
+    jump b4(%181)
+  b36(%182 r: i64) [handle, handle]:
+    %183 s: ptr = show %182
+    %184 lit: ptr = const str 4
+    %185 s: ptr = concat %184, %183
+    drop %183
+    perform std::console::Console.print(%185) -> b37()
+  b37(%186 r: unit) [handle, handle]:
+    %187 box: word = box %186
+    handle_pop
+    handle_pop
+    jump b3(%187)
+  b38(%188 r: i64) [handle, handle, handle]:
+    %189 s: ptr = show %188
+    %190 lit: ptr = const str 5
+    %191 s: ptr = concat %190, %189
+    drop %189
+    perform std::console::Console.print(%191) -> b39()
+  b39(%192 r: unit) [handle, handle, handle]:
+    %193 box: word = box %192
+    handle_pop
+    handle_pop
+    handle_pop
+    jump b2(%193)
+  b40(%194 r: i64) [handle, handle]:
+    %195 s: ptr = show %194
+    %196 lit: ptr = const str 6
+    %197 s: ptr = concat %196, %195
+    drop %195
+    perform std::console::Console.print(%197) -> b41()
+  b41(%198 r: unit) [handle, handle]:
+    %199 box: word = box %198
+    handle_pop
+    handle_pop
+    jump b1(%199)
+
+fn $entry#1 top -> unit ; main::handler_forward_direct, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn counter#2 top -> ptr ; main::handler_forward_direct, frame 0 slots []
+  b0():
+    %0 next: ptr = closure counter$Counter_next#23[]
+    %1 add: ptr = closure counter$Counter_add#24[]
+    %2 read: ptr = closure counter$Counter_read#25[]
+    %3 lit: i64 = const 0
+    %4 handler: ptr = handler main::handler_forward_direct::Counter row 5 state(%3) clauses(%0, %1, %2)
+    ret %4
+
+fn forward#3 top -> ptr ; main::handler_forward_direct, frame 0 slots []
+  b0():
+    %0 next: ptr = closure forward$Counter_next#20[]
+    %1 add: ptr = closure forward$Counter_add#21[]
+    %2 read: ptr = closure forward$Counter_read#22[]
+    %3 handler: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%0, %1, %2) forwards(0x7)
+    ret %3
+
+fn steps#4 top -> i64 ; main::handler_forward_direct, frame 6 slots [%0 i64, %3 i64, %4 i64, %5 i64, %6 i64, %7 i64]
+  b0():
+    perform main::handler_forward_direct::Counter.next() -> b1()
+  b1(%0 r: i64):
+    %1 lit: i64 = const 2
+    %2 lit: ptr = const str 7
+    perform main::handler_forward_direct::Counter.add(%1, %2) -> b2(%0)
+  b2(%3 r: i64, %4 r: i64):
+    perform main::handler_forward_direct::Counter.next() -> b3(%4, %3)
+  b3(%5 r: i64, %6 r: i64, %7 r: i64):
+    %8 lit: i64 = const 10000
+    %9 t: i64 = intmul %6, %8
+    %10 lit: i64 = const 100
+    %11 t: i64 = intmul %7, %10
+    %12 t: i64 = intadd %9, %11
+    %13 t: i64 = intadd %12, %5
+    ret %13
+
+fn mixed#5 top -> ptr ; main::handler_forward_direct, frame 0 slots []
+  b0():
+    %0 next: ptr = closure mixed$Counter_next#17[]
+    %1 add: ptr = closure mixed$Counter_add#18[]
+    %2 read: ptr = closure mixed$Counter_read#19[]
+    %3 handler: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%0, %1, %2) forwards(0x1)
+    ret %3
+
+fn scaled#6 top -> ptr ; main::handler_forward_direct, frame 0 slots []
+  b0():
+    %0 next: ptr = closure scaled$Counter_next#14[]
+    %1 add: ptr = closure scaled$Counter_add#15[]
+    %2 read: ptr = closure scaled$Counter_read#16[]
+    %3 handler: ptr = handler main::handler_forward_direct::Counter row 6 state() clauses(%0, %1, %2)
+    ret %3
+
+fn main$Counter_next#7 clause main::handler_forward_direct::Counter.next -> i64 ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_direct::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn main$Counter_add#8 clause main::handler_forward_direct::Counter.add -> i64 ; main::handler_forward_direct, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 by: i64, %3 label: ptr):
+    drop %0
+    perform main::handler_forward_direct::Counter.add(%2, %3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn main$Counter_read#9 clause main::handler_forward_direct::Counter.read -> i64 ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 limit: i64):
+    drop %0
+    perform main::handler_forward_direct::Counter.read(%2) -> b1()
+  b1(%3 r: i64):
+    ret %3
+
+fn relay#10 top -> ptr ; main::handler_forward_direct, frame 0 slots []
+  b0():
+    %0 print: ptr = closure relay$Console_print#11[]
+    %1 read_line: ptr = closure relay$Console_read_line#12[]
+    %2 eprint: ptr = closure relay$Console_eprint#13[]
+    %3 handler: ptr = handler std::console::Console row 6 state() clauses(%0, %1, %2) forwards(0x7)
+    ret %3
+
+fn relay$Console_print#11 clause std::console::Console.print -> unit ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 bool]
+  b0(%0 env: ptr, %1 inst: id, %2 line: ptr):
+    drop %0
+    perform std::console::Console.print(%2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    %5 unbox: unit = unbox %4
+    drop %4
+    ret %5
+
+fn relay$Console_read_line#12 clause std::console::Console.read_line -> ptr ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 word*]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform std::console::Console.read_line() -> b1()
+  b1(%2 r: ptr):
+    ret %2
+
+fn relay$Console_eprint#13 clause std::console::Console.eprint -> unit ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %3 bool]
+  b0(%0 env: ptr, %1 inst: id, %2 line: ptr):
+    drop %0
+    perform std::console::Console.eprint(%2) -> b1()
+  b1(%3 r: unit):
+    %4 box: word = box %3
+    %5 unbox: unit = unbox %4
+    drop %4
+    ret %5
+
+fn scaled$Counter_next#14 clause main::handler_forward_direct::Counter.next -> i64 ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_direct::Counter.next() -> b1()
+  b1(%2 r: i64):
+    %3 lit: i64 = const 10
+    %4 t: i64 = intmul %2, %3
+    ret %4
+
+fn scaled$Counter_add#15 clause main::handler_forward_direct::Counter.add -> i64 ; main::handler_forward_direct, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 by: i64, %3 label: ptr):
+    drop %0
+    perform main::handler_forward_direct::Counter.add(%2, %3) -> b1()
+  b1(%4 r: i64):
+    %5 lit: i64 = const 10
+    %6 t: i64 = intmul %4, %5
+    ret %6
+
+fn scaled$Counter_read#16 clause main::handler_forward_direct::Counter.read -> i64 ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 limit: i64):
+    drop %0
+    perform main::handler_forward_direct::Counter.read(%2) -> b1()
+  b1(%3 r: i64):
+    %4 lit: i64 = const 10
+    %5 t: i64 = intmul %3, %4
+    ret %5
+
+fn mixed$Counter_next#17 clause main::handler_forward_direct::Counter.next -> i64 ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_direct::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn mixed$Counter_add#18 clause main::handler_forward_direct::Counter.add -> i64 ; main::handler_forward_direct, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 word*, %6 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 by: i64, %3 label: ptr):
+    drop %0
+    %4 lit: i64 = const 100
+    %5 t: i64 = intadd %2, %4
+    perform main::handler_forward_direct::Counter.add(%5, %3) -> b1()
+  b1(%6 r: i64):
+    ret %6
+
+fn mixed$Counter_read#19 clause main::handler_forward_direct::Counter.read -> i64 ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 limit: i64):
+    drop %0
+    perform main::handler_forward_direct::Counter.read(%2) -> b1()
+  b1(%3 r: i64):
+    %4 lit: i64 = const 1000
+    %5 t: i64 = intadd %3, %4
+    ret %5
+
+fn forward$Counter_next#20 clause main::handler_forward_direct::Counter.next -> i64 ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_direct::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn forward$Counter_add#21 clause main::handler_forward_direct::Counter.add -> i64 ; main::handler_forward_direct, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 by: i64, %3 label: ptr):
+    drop %0
+    perform main::handler_forward_direct::Counter.add(%2, %3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn forward$Counter_read#22 clause main::handler_forward_direct::Counter.read -> i64 ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 limit: i64):
+    drop %0
+    perform main::handler_forward_direct::Counter.read(%2) -> b1()
+  b1(%3 r: i64):
+    ret %3
+
+fn counter$Counter_next#23 clause main::handler_forward_direct::Counter.next -> i64 ; main::handler_forward_direct, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 5
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 5 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 5
+    ret %6
+
+fn counter$Counter_add#24 clause main::handler_forward_direct::Counter.add -> i64 ; main::handler_forward_direct, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 by: i64, %3 label: ptr):
+    drop %0
+    %4 n: i64 = state_get %1[0] row 5
+    %5 t: i64 = intadd %4, %2
+    %6 r: i64 = $string_len(%3)
+    %7 t: i64 = intadd %5, %6
+    state_set %1[0] row 5 = %7
+    %8 set: unit = const ()
+    %9 n: i64 = state_get %1[0] row 5
+    ret %9
+
+fn counter$Counter_read#25 clause main::handler_forward_direct::Counter.read -> i64 ; main::handler_forward_direct, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 limit: i64):
+    drop %0
+    %3 n: i64 = state_get %1[0] row 5
+    %4 t: bool = gt.int %3, %2
+    if %4 then b2(%1) else b3(%1)
+  b1(%5 v: unit, %6 inst: id):
+    %7 n: i64 = state_get %6[0] row 5
+    ret %7
+  b2(%8 inst: id):
+    %10 n: i64 = state_get %8[0] row 5
+    %11 rec: ptr = alloc main::handler_forward_direct::Boom(%10)
+    fail %11
+  b3(%9 inst: id):
+    %12 lit: unit = const ()
+    jump b1(%12, %9)

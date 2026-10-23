@@ -1,0 +1,109 @@
+// milestone: M3
+// covers: performance-r1 WS-P10; design §17.181 (2), §17.317 (3) (an identity-forwarding clause
+// is marked `forwards` and dispatch passes it by when tracing is off; traced, every clause runs
+// and writes its record, so the trace is the one an unmarked forwarder writes)
+
+error Boom(value: Int)
+
+effect Counter {
+  fn next() -> Int
+  fn add(by: Int, label: String) -> Int
+  fn read(limit: Int) -> Int ! {Fail<Boom>}
+}
+
+fn counter() -> Handler<Counter> {
+  handler Counter {
+    var n = 0
+    fn next() {
+      n = n + 1
+      n
+    }
+    fn add(by, label) {
+      n = n + by + String.len(label)
+      n
+    }
+    fn read(limit) {
+      if n > limit { fail Boom { value: n } }
+      n
+    }
+  }
+}
+
+// Every clause forwards.
+fn forward() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() }
+    fn add(by, label) { Counter.add(by, label) }
+    fn read(limit) { Counter.read(limit) }
+  }
+}
+
+// `next` forwards; `add` changes its argument and `read` its result, so they run.
+fn mixed() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() }
+    fn add(by, label) { Counter.add(by + 100, label) }
+    fn read(limit) { Counter.read(limit) + 1000 }
+  }
+}
+
+// Not a forwarder: the result is scaled.
+fn scaled() -> Handler<Counter, {Counter}> {
+  handler Counter {
+    fn next() { Counter.next() * 10 }
+    fn add(by, label) { Counter.add(by, label) * 10 }
+    fn read(limit) { Counter.read(limit) * 10 }
+  }
+}
+
+// A forwarder over a host handler.
+fn relay() -> Handler<Console, {Console}> {
+  handler Console {
+    fn print(line) { Console.print(line) }
+    fn read_line() { Console.read_line() }
+    fn eprint(line) { Console.eprint(line) }
+  }
+}
+
+fn steps() -> Int ! {Counter} {
+  let a = Counter.next()
+  let b = Counter.add(2, "ab")
+  let c = Counter.next()
+  a * 10_000 + b * 100 + c
+}
+
+pub fn main() -> Unit ! {Console} {
+  with counter(), forward() { Console.print("one: {steps()}") }
+  // A forwarder nested in a forwarder.
+  with counter(), forward(), forward() { Console.print("two: {steps()}") }
+  with counter(), mixed() { Console.print("mixed: {steps()}") }
+  // Forwarders on either side of a clause that runs.
+  with counter(), forward(), scaled(), forward() { Console.print("around: {steps()}") }
+  // A handler literal, not a constructor call.
+  with counter() {
+    with handler Counter {
+          fn next() { Counter.next() }
+          fn add(by, label) { Counter.add(by, label) }
+          fn read(limit) { Counter.read(limit) }
+        } { Console.print("literal: {steps()}") }
+  }
+  // The outer clause's `fail` reaches the performer's `try` through the forwarders.
+  with counter(), forward(), forward() {
+    let _ = Counter.next()
+    let _ = Counter.next()
+    Console.print("{try { Counter.read(5) }}")
+    Console.print("{try { Counter.read(1) }}")
+  }
+  with counter(), mixed() { Console.print("{try { Counter.read(5) }}") }
+  // A loop through the forwarder, as `handled_fwd` runs it.
+  with counter(), forward() {
+    var acc = 0
+    var i = 0
+    while i < 1_000 {
+      acc = acc + Counter.next() % 7
+      i = i + 1
+    }
+    Console.print("loop: {acc}")
+  }
+  with relay(), relay() { Console.print("relayed") }
+}

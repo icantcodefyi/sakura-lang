@@ -581,9 +581,13 @@ impl Validator<'_> {
                 effect,
                 state,
                 clauses,
+                forwards,
             } => {
                 self.atoms(state);
                 self.atoms(clauses);
+                if clauses.len() < 32 && forwards >> clauses.len() != 0 {
+                    self.err(format!("forwarding mask {forwards:#x} past the clauses"));
+                }
                 match self.m.effects.get(effect.index()) {
                     Some(e) if e.ops.len() == clauses.len() => {}
                     Some(e) => self.err(format!(

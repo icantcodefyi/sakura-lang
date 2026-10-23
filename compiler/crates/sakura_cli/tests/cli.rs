@@ -2292,6 +2292,52 @@ fn build_dump_core_marks_proved_operations() {
     );
 }
 
+/// `--dump core` marks identity-forwarding clauses `forwards[…]` on their handler (design §17.181
+/// (2), WS-P10): `forward`'s clauses but not `each`, whose callback parameter leaves it out, and
+/// every ineligible shape of `handler_forward_ineligible.sak` unmarked.
+#[test]
+fn build_dump_core_marks_identity_forwarders() {
+    let semantics = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
+    let out_dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("dump-forwards");
+    let out = sakura(
+        &[
+            "build",
+            "--out-dir",
+            out_dir.to_str().unwrap(),
+            "--dump",
+            "core",
+            "handler_forward_ineligible.sak",
+        ],
+        &semantics,
+    );
+    assert_eq!(out.code, Some(0), "{}", out.stderr);
+    let marks = |name: &str| -> String {
+        let def: Vec<&str> = out
+            .stdout
+            .lines()
+            .skip_while(|l| !l.starts_with(&format!("fn {name}#")))
+            .take_while(|l| *l != "}")
+            .collect();
+        let line = def
+            .iter()
+            .find(|l| l.contains("= handler Counter"))
+            .unwrap_or_else(|| panic!("{name}: no handler\n{}", out.stdout));
+        line.split_once("forwards")
+            .map_or("", |(_, m)| m)
+            .to_owned()
+    };
+    for (name, want) in [
+        ("counter", ""),
+        ("forward", "[next, peek, pair, read]"),
+        ("renamed", ""),
+        ("changed", "[peek]"),
+        ("elsewhere", "[peek, pair, read]"),
+        ("stateful", ""),
+    ] {
+        assert_eq!(marks(name), want, "{name}");
+    }
+}
+
 /// `--dump owned` lists each consuming site of an owned-capable update as `owned` or
 /// `shared(<reason>)` with the fixed reason set and a proving witness's byte range (§17.172),
 /// and each consuming def with its owned entry's verdicts (design §17.149, §17.201 (3)):

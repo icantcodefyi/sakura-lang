@@ -328,6 +328,7 @@ fn handler_state_and_a_million_operations() {
             effect: COUNTER,
             state: vec![local(start)],
             clauses: vec![local(c)],
+            forwards: 0,
         },
     );
     let counter = top(

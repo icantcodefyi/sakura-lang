@@ -69,7 +69,7 @@ fn doubled#4 top -> ptr ; main::handler_callback_context, frame 0 slots []
     %0 get: ptr = closure doubled$Store_get#6[]
     %1 put: ptr = closure doubled$Store_put#7[]
     %2 with_default: ptr = closure doubled$Store_with_default#8[]
-    %3 handler: ptr = handler main::handler_callback_context::Store row 5 state() clauses(%0, %1, %2)
+    %3 handler: ptr = handler main::handler_callback_context::Store row 5 state() clauses(%0, %1, %2) forwards(0x1)
     ret %3
 
 fn main$2#5 lambda -> word ; main::handler_callback_context, captures [], frame 2 slots [%0 word*, %3 bool]

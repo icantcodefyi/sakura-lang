@@ -263,6 +263,7 @@ fn counter_module() -> (Module, DefId) {
             effect: counter,
             state: vec![int(0)],
             clauses: vec![local(c)],
+            forwards: 0,
         },
     );
     let body = blk.finish(Expr::Ret(local(h)));

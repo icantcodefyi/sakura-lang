@@ -1838,6 +1838,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                 effect,
                 state,
                 clauses,
+                forwards,
             } => {
                 let row = self
                     .cx
@@ -1861,6 +1862,7 @@ impl<'c, 'a> Fl<'c, 'a> {
                     row,
                     state: st,
                     clauses: cl,
+                    forwards: *forwards,
                 }))
             }
             Bind::StateGet(i, k) => {

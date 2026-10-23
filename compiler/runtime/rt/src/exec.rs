@@ -846,12 +846,15 @@ impl Rt {
     /// The innermost activation of `effect` in scope at the frame `f` (its id and address) and
     /// its handler's clause closure `op` (borrowed). An `op` past the handler's clause count is
     /// `D090`: compiled code never makes one, but a host answer naming an operation
-    /// (`js_perform`) is not trusted to stay in range (security review W1).
+    /// (`js_perform`) is not trusted to stay in range (security review W1). With tracing off,
+    /// an activation whose clause `op` is an identity forwarder is passed by (ABI §6.3, design
+    /// §17.181 (2)): that clause would perform the same operation with the same arguments from
+    /// the next activation out, so its own trace record is the only thing skipping it changes.
     fn clause_for(&self, f: u32, effect: u32, op: u32) -> Res<(u32, u32, u32)> {
         let mut id = self.u(f, F_ACT);
         let a = loop {
             let a = self.arena_get(id, tag::ACTIVATION)?;
-            if self.u(a, A_EFFECT) == effect {
+            if self.u(a, A_EFFECT) == effect && !self.forwards(a, op) {
                 break a;
             }
             id = self.u(a, A_OUTER);
@@ -864,6 +867,21 @@ impl Rt {
             return Err(crate::vt::MALFORMED);
         }
         Ok((id, a, self.heap.mem.u32(self.handler_clause(h, op))))
+    }
+
+    /// Whether activation `a`'s clause `op` is passed by: tracing is off and its handler marks
+    /// the clause an identity forwarder (the header's `forwards` flag and the mask word after
+    /// the clauses, ABI §3.1, §3.2 tag 14).
+    fn forwards(&self, a: u32, op: u32) -> bool {
+        if self.sched.trace || op >= 32 {
+            return false;
+        }
+        let h = self.u(a, A_HANDLER);
+        self.flags(h) & crate::object::FORWARDS != 0 && {
+            let (n_state, n_clauses) = (self.heap.mem.u32(h + 16), self.heap.mem.u32(h + 20));
+            let mask = h + crate::object::HANDLER_STATE + 8 * n_state + 4 * n_clauses;
+            self.heap.mem.u32(mask) >> op & 1 == 1
+        }
     }
 
     /// `E.op(args…)` from the frame at `f`: a clause frame with `n_slots` (slot 0 is the

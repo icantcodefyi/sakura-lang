@@ -89,8 +89,8 @@ handled_d4 n=1000
   direct: frames 4, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
   all-frame: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_fwd n=1000
-  direct: frames 2005, boxes 0, dups 0, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
-  all-frame: frames 2005, boxes 0, dups 0, drops 2006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  direct: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
+  all-frame: frames 1005, boxes 0, dups 0, drops 1006, restarts 0, reuse_attempts 0, reuses 0, borrow_candidates 2, borrows 2
 handled_reentry n=1000
   direct: frames 2006, boxes 2001, dups 1004, drops 4014, restarts 1, reuse_attempts 1000, reuses 999, borrow_candidates 1005, borrows 1005
   all-frame: frames 2007, boxes 2001, dups 1000, drops 4009, restarts 0, reuse_attempts 1000, reuses 999, borrow_candidates 1003, borrows 1003

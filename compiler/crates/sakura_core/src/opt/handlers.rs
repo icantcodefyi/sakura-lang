@@ -9,6 +9,8 @@
 //!   dynamic interposition is possible there, so a backend may call the clause on the instance.
 //!   The result is a side table rather than a field of `Perform`/`Handle`, so Core and its
 //!   snapshot are unchanged by it.
+//! - [`forwarders`] marks the identity-forwarding clauses of each `MakeHandler` (design §17.181
+//!   (2), WS-P10), which a runtime's dispatch passes by when tracing is off.
 
 use std::collections::HashMap;
 
@@ -152,10 +154,12 @@ fn splice(
                 effect,
                 state,
                 clauses,
+                forwards,
             } => Bind::MakeHandler {
                 effect: *effect,
                 state: all(state),
                 clauses: all(clauses),
+                forwards: *forwards,
             },
             _ => unreachable!("not a constructor binding"),
         };
@@ -249,6 +253,117 @@ fn performs(
                 b.performs.insert(*local, h);
             }
             children(e, |c| performs(m, def, c, scope, b))
+        }
+    })
+}
+
+/// Marks each `MakeHandler`'s identity forwarders in `forwards` (design §17.181 (2)). Clause
+/// `op` is one when its handler has no state and the clause's body is exactly `let r = perform
+/// E.op(p1, …, pn); ret r` for the handler's own effect `E`, the same operation and the clause's
+/// parameters in order: no state access, no other binding, no `try`, no `fail`. An operation with
+/// a function-typed parameter is left out (its callbacks are bound at each perform site, design
+/// §5.5, and its host clauses read the performer's handlers), and so is every operation of an
+/// effect with more than 32, so a mask bit always names an operation. Run last: the mark
+/// describes the clause bodies backends emit.
+pub fn forwarders(m: &mut Module) {
+    let forwards: Vec<bool> = m.defs.iter().map(|d| is_forwarder(m, d)).collect();
+    if !forwards.contains(&true) {
+        return;
+    }
+    for def in &mut m.defs {
+        let mut closures = HashMap::new();
+        closure_defs(&def.body, &mut closures);
+        mark(&mut def.body, &closures, &forwards);
+    }
+}
+
+fn is_forwarder(m: &Module, d: &FnDef) -> bool {
+    let FnKind::Clause { effect, op } = d.kind else {
+        return false;
+    };
+    let Expr::Let {
+        local,
+        bind: Bind::Perform(e, o, args),
+        body,
+        ..
+    } = &d.body
+    else {
+        return false;
+    };
+    m.effect(effect).ops.len() <= 32
+        && *e == effect
+        && *o == op
+        && matches!(&**body, Expr::Ret(Atom::Local(r)) if r == local)
+        && d.params.len() == args.len() + 1
+        && args
+            .iter()
+            .zip(&d.params[1..])
+            .all(|(a, p)| *a == Atom::Local(*p))
+        && !m.effect(effect).ops[op as usize]
+            .params
+            .iter()
+            .any(|p| matches!(p, Ty::Fn(_)))
+}
+
+/// Locals bound to a closure in this def, with the def each closes over.
+fn closure_defs(e: &Expr, out: &mut HashMap<Local, DefId>) {
+    crate::ensure_stack(|| {
+        if let Expr::Let {
+            local,
+            bind: Bind::Closure(d, _),
+            ..
+        } = e
+        {
+            out.insert(*local, *d);
+        }
+        children(e, |c| closure_defs(c, out))
+    })
+}
+
+fn mark(e: &mut Expr, closures: &HashMap<Local, DefId>, forwards: &[bool]) {
+    crate::ensure_stack(|| {
+        if let Expr::Let {
+            bind:
+                Bind::MakeHandler {
+                    state,
+                    clauses,
+                    forwards: bits,
+                    ..
+                },
+            ..
+        } = e
+            && state.is_empty()
+        {
+            for (op, c) in clauses.iter().enumerate().take(32) {
+                if let Atom::Local(l) = c
+                    && closures.get(l).is_some_and(|d| forwards[d.index()])
+                {
+                    *bits |= 1 << op;
+                }
+            }
+        }
+        match e {
+            Expr::Let { body, .. } | Expr::Handle { body, .. } | Expr::Try { body, .. } => {
+                mark(body, closures, forwards)
+            }
+            Expr::LetJoin { join, body, .. }
+            | Expr::If {
+                then: join,
+                els: body,
+                ..
+            } => {
+                mark(join, closures, forwards);
+                mark(body, closures, forwards);
+            }
+            Expr::Switch { arms, default, .. } => {
+                for (_, a) in arms {
+                    mark(a, closures, forwards);
+                }
+                if let Some(d) = default {
+                    mark(d, closures, forwards);
+                }
+            }
+            Expr::Ret(_) | Expr::Jump(..) | Expr::Fail(_) => {}
         }
     })
 }

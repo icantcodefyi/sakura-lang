@@ -462,6 +462,67 @@ enum Job {
     Example(PathBuf, BTreeMap<String, String>, String),
 }
 
+/// WS-P10 (design §17.181 (2)): every run above is traced, and traced dispatch runs each
+/// identity-forwarding clause, so the untraced dispatch that passes them by is held here. The
+/// forwarding fixtures (`handler_forward*.sak`, and `handler_callback_context.sak`, whose `doubled`
+/// forwards `get` beside clauses that run) run untraced on JS and WASM, and on native in a build
+/// with it, with direct regions and under `--no-direct`, and each prints its `.stdout`.
+#[test]
+fn forwarding_fixtures_agree_untraced() {
+    let node = std::process::Command::new("node").arg("--version").output();
+    if !node.is_ok_and(|out| out.status.success()) {
+        assert!(
+            std::env::var("SAKURA_REQUIRE_WASM").as_deref() != Ok("1")
+                && std::env::var_os("CI").is_none(),
+            "node is missing"
+        );
+        eprintln!("skipped: node is missing");
+        return;
+    }
+    assert!(sakura_codegen_wasm::available(), "WASM runtime is missing");
+    let tmp = Path::new(env!("CARGO_TARGET_TMPDIR")).join("untraced");
+    #[allow(unused_mut)]
+    let mut targets: Vec<(&str, Vec<(&str, PathBuf)>)> = vec![("js", vec![]), ("wasm", vec![])];
+    #[cfg(feature = "native")]
+    {
+        let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let target = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-driver");
+        let lib = sakura_codegen_native::build_driver(&manifest.join("../.."), &target).unwrap();
+        targets.push(("native", vec![("SAKURA_NATIVE_LIB_DIR", lib)]));
+    }
+    let mut jobs = vec![];
+    for path in fixtures("semantics") {
+        let name = path.file_name().unwrap().to_str().unwrap().to_owned();
+        if name.starts_with("handler_forward") || name == "handler_callback_context.sak" {
+            for (target, env) in &targets {
+                for flags in [&[][..], &["--no-direct"][..]] {
+                    jobs.push((path.clone(), name.clone(), *target, env, flags));
+                }
+            }
+        }
+    }
+    assert!(jobs.len() >= 8, "the forwarding fixtures are missing");
+    let failures: Vec<String> = par_map(&jobs, |(path, name, target, env, flags)| {
+        let out_dir = tmp.join(format!("{name}.{target}{}", flags.concat()));
+        let mut args = vec!["run", "--target", target, "--out-dir", out_dir.to_str().unwrap()];
+        args.extend(*flags);
+        args.push(name);
+        let env: Vec<(&str, &Path)> = env.iter().map(|(k, v)| (*k, v.as_path())).collect();
+        let out = sakura_env(&args, path.parent().unwrap(), &env);
+        let want = std::fs::read_to_string(path.with_extension("stdout")).unwrap();
+        (out.code != Some(0) || out.stdout != want).then(|| {
+            format!(
+                "{name} on {target} {flags:?}: exit {:?}\n--- stdout\n{}--- want\n{want}--- stderr\n{}",
+                out.code, out.stdout, out.stderr
+            )
+        })
+    })
+    .into_iter()
+    .flatten()
+    .collect();
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 #[test]
 fn js_and_wasm_agree_on_the_semantics_corpus() {
     let node = std::process::Command::new("node").arg("--version").output();

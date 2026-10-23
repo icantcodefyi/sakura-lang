@@ -669,8 +669,10 @@ impl<'p, 'c> Run<'p, 'c> {
                 row,
                 state,
                 clauses,
+                forwards,
             } => {
-                let size = 24 + 8 * state.len() + 4 * clauses.len();
+                let mask = if *forwards == 0 { 0 } else { 4 };
+                let size = 24 + 8 * state.len() + 4 * clauses.len() + mask;
                 let d = rt::rt_alloc(ctx, HANDLER, size as u32);
                 self.check_zero(d, true)?;
                 for (off, v) in [
@@ -687,6 +689,11 @@ impl<'p, 'c> Run<'p, 'c> {
                 let base = 24 + 8 * state.len() as u32;
                 for (i, &c) in clauses.iter().enumerate() {
                     ctx.store_u32(d + base + 4 * i as u32, self.word(c));
+                }
+                // The header's `forwards` flag (byte 3, bit 3) and the mask (ABI 1.21.0).
+                if *forwards != 0 {
+                    ctx.store_u32(d, ctx.load_u32(d) | 8 << 24);
+                    ctx.store_u32(d + base + 4 * clauses.len() as u32, *forwards);
                 }
                 self.vals[dst.index()] = u64::from(d);
             }

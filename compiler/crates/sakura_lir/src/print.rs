@@ -300,13 +300,19 @@ fn inst(m: &Module, f: &Func, i: &Inst) -> String {
             row,
             state,
             clauses,
+            forwards,
         } => format!(
-            "{} = handler {} row {} state({}) clauses({})",
+            "{} = handler {} row {} state({}) clauses({}){}",
             def(dst),
             m.effects[*effect as usize].name,
             row.0,
             vars(state),
-            vars(clauses)
+            vars(clauses),
+            if *forwards == 0 {
+                String::new()
+            } else {
+                format!(" forwards({forwards:#x})")
+            }
         ),
         MakeCallback { dst, f: g } => format!("{} = callback %{}", def(dst), g.0),
         StateGet {

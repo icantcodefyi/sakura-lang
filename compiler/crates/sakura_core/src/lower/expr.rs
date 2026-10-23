@@ -2135,6 +2135,7 @@ impl<'a, 'p> FnLower<'a, 'p> {
                 effect: eff,
                 state,
                 clauses,
+                forwards: 0,
             },
             pos,
         ))

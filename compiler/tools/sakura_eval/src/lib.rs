@@ -895,10 +895,12 @@ impl<'m> Machine<'m> {
                     ));
                 }
             },
+            // The reference runs every clause: forwarding is a runtime's shortcut.
             Bind::MakeHandler {
                 effect,
                 state,
                 clauses,
+                ..
             } => Value::Handler(Rc::new(HandlerValue {
                 effect: *effect,
                 state: self.atoms(env, state)?,

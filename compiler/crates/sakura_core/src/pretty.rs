@@ -520,12 +520,24 @@ impl<'a> Printer<'a> {
                 effect,
                 state,
                 clauses,
-            } => format!(
-                "handler {} state[{}] clauses[{}]",
-                self.effect_name(*effect),
-                self.atoms(state),
-                self.atoms(clauses)
-            ),
+                forwards,
+            } => {
+                let mut s = format!(
+                    "handler {} state[{}] clauses[{}]",
+                    self.effect_name(*effect),
+                    self.atoms(state),
+                    self.atoms(clauses)
+                );
+                if *forwards != 0 {
+                    let ops = &self.m.effect(*effect).ops;
+                    let names: Vec<&str> = (0..ops.len().min(32))
+                        .filter(|op| forwards >> op & 1 == 1)
+                        .map(|op| ops[op].name.as_str())
+                        .collect();
+                    s.push_str(&format!(" forwards[{}]", names.join(", ")));
+                }
+                s
+            }
             Bind::StateGet(i, s) => format!("state_get {}[{s}]", self.atom(i)),
             Bind::StateSet(i, s, v) => {
                 format!("state_set {}[{s}] = {}", self.atom(i), self.atom(v))

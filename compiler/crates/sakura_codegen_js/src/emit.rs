@@ -1617,15 +1617,22 @@ impl<'a> FnEmit<'a> {
                 ));
                 "undefined".into()
             }
+            // Identity forwarders' bits follow (design §17.181 (2)); `find` passes them by.
             Bind::MakeHandler {
                 effect,
                 state,
                 clauses,
+                forwards,
             } => format!(
-                "$rt.makeHandler({}, [{}], [{}])",
+                "$rt.makeHandler({}, [{}], [{}]{})",
                 js_string(&self.cx.m.effect(*effect).qualified_name()),
                 self.atoms(state),
-                self.atoms(clauses)
+                self.atoms(clauses),
+                if *forwards == 0 {
+                    String::new()
+                } else {
+                    format!(", {forwards}")
+                }
             ),
             Bind::StateGet(inst, i) => format!("{}.s{i}", self.atom(inst)),
             Bind::StateSet(inst, i, v) => {

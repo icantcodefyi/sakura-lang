@@ -584,10 +584,14 @@ pub enum Bind {
     /// A runtime contract check: defect if `cond` is false.
     Check(ContractId, Atom),
     /// A handler value: initial state values and one clause closure per operation, in op order.
+    /// Bit `op` of `forwards` marks clause `op` an identity forwarder (design §17.181 (2),
+    /// [`crate::opt::handlers::forwarders`]); a handler of an effect with more than 32
+    /// operations is never marked.
     MakeHandler {
         effect: EffectId,
         state: Vec<Atom>,
         clauses: Vec<Atom>,
+        forwards: u32,
     },
     /// Read handler state slot `index` of the instance.
     StateGet(Atom, u32),

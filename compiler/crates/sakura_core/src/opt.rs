@@ -13,7 +13,8 @@
 //!   in constant stack (design §17.160 (5)). A cycle whose copies cannot nest, such as three
 //!   defs each calling both others, takes them as arms of one dispatch join (design §17.192 (2)).
 //! - Calls of handler constructors are inlined, and performs bound to a handler literal are
-//!   found by [`handlers::bind`] (design §17.113).
+//!   found by [`handlers::bind`] (design §17.113). Identity-forwarding clauses are marked on
+//!   their `MakeHandler` by [`handlers::forwarders`] (design §17.181 (2)).
 //! - `list_get`/`map_get` whose `Option` only feeds the next binding's `option_expect` become
 //!   one checked read, `list_get_expect`/`map_get_expect` (design §17.151); a `map_get` feeding
 //!   `Option.unwrap_or` or `Option.is_some` becomes `map_get_or` or `map_contains` (§17.275 (4)).
@@ -64,6 +65,7 @@ pub fn optimize(m: &mut Module) {
             site,
         );
     }
+    handlers::forwarders(m);
 }
 
 /// Does `e` check a contract that blames the caller (`requires`, `T.from`'s `where`)? Such a

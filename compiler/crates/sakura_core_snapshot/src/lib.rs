@@ -344,7 +344,16 @@ impl Ctx<'_> {
                 Self::ok((*c as usize) < self.m.contracts.len(), "contract")?;
                 self.atom(a)
             }
-            Bind::MakeHandler { state, clauses, .. } => {
+            Bind::MakeHandler {
+                state,
+                clauses,
+                forwards,
+                ..
+            } => {
+                Self::ok(
+                    clauses.len() >= 32 || forwards >> clauses.len() == 0,
+                    "forwarding mask",
+                )?;
                 atoms(state)?;
                 atoms(clauses)
             }
@@ -610,10 +619,18 @@ pub enum Bind {
         effect: EffectId,
         state: Vec<Atom>,
         clauses: Vec<Atom>,
+        /// Identity-forwarding clauses by operation bit (design §17.181 (2)); absent is none,
+        /// so a snapshot without forwarders reads and writes as before.
+        #[serde(default, skip_serializing_if = "is_zero")]
+        forwards: u32,
     },
     StateGet(Atom, u32),
     StateSet(Atom, u32, Atom),
     Hole(u32),
+}
+
+fn is_zero(x: &u32) -> bool {
+    *x == 0
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

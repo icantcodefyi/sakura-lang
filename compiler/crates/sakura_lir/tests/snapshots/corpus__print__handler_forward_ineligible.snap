@@ -1,0 +1,619 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 error main::handler_forward_ineligible::Boom | Boom 24b (value: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  24b (i64)
+layout 6 shape |  16b ()
+
+fn main#0 pub top -> unit ; main::handler_forward_ineligible, frame 10 slots [%72 word*, %76 bool, %79 word*, %83 bool, %85 word*, %89 bool, %91 word*, %95 bool, %97 word*, %101 bool]
+  b0():
+    %0 next: ptr = closure counter$Counter_next#38[]
+    %1 peek: ptr = closure counter$Counter_peek#39[]
+    %2 pair: ptr = closure counter$Counter_pair#40[]
+    %3 read: ptr = closure counter$Counter_read#41[]
+    %4 each: ptr = closure counter$Counter_each#42[]
+    %5 lit: i64 = const 0
+    %6 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%5) clauses(%0, %1, %2, %3, %4)
+    %7 next: ptr = closure forward$Counter_next#33[]
+    %8 peek: ptr = closure forward$Counter_peek#34[]
+    %9 pair: ptr = closure forward$Counter_pair#35[]
+    %10 read: ptr = closure forward$Counter_read#36[]
+    %11 each: ptr = closure forward$Counter_each#37[]
+    %12 r: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%7, %8, %9, %10, %11) forwards(0xf)
+    handle_push %6
+    handle_push %12
+    call steps#4() -> b13()
+  b1(%13 v: word):
+    drop %13
+    %14 next: ptr = closure counter$Counter_next#38[]
+    %15 peek: ptr = closure counter$Counter_peek#39[]
+    %16 pair: ptr = closure counter$Counter_pair#40[]
+    %17 read: ptr = closure counter$Counter_read#41[]
+    %18 each: ptr = closure counter$Counter_each#42[]
+    %19 lit: i64 = const 0
+    %20 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%19) clauses(%14, %15, %16, %17, %18)
+    %21 next: ptr = closure renamed$Counter_next#26[]
+    %22 peek: ptr = closure renamed$Counter_peek#27[]
+    %23 pair: ptr = closure renamed$Counter_pair#28[]
+    %24 read: ptr = closure renamed$Counter_read#29[]
+    %25 each: ptr = closure renamed$Counter_each#30[]
+    %26 r: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%21, %22, %23, %24, %25)
+    handle_push %20
+    handle_push %26
+    call steps#4() -> b11()
+  b2(%27 v: word):
+    drop %27
+    %28 next: ptr = closure counter$Counter_next#38[]
+    %29 peek: ptr = closure counter$Counter_peek#39[]
+    %30 pair: ptr = closure counter$Counter_pair#40[]
+    %31 read: ptr = closure counter$Counter_read#41[]
+    %32 each: ptr = closure counter$Counter_each#42[]
+    %33 lit: i64 = const 0
+    %34 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%33) clauses(%28, %29, %30, %31, %32)
+    %35 next: ptr = closure changed$Counter_next#21[]
+    %36 peek: ptr = closure changed$Counter_peek#22[]
+    %37 pair: ptr = closure changed$Counter_pair#23[]
+    %38 read: ptr = closure changed$Counter_read#24[]
+    %39 each: ptr = closure changed$Counter_each#25[]
+    %40 r: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%35, %36, %37, %38, %39) forwards(0x2)
+    handle_push %34
+    handle_push %40
+    call steps#4() -> b9()
+  b3(%41 v: word):
+    drop %41
+    %42 next: ptr = closure other$Other_next#20[]
+    %43 r: ptr = handler main::handler_forward_ineligible::Other row 6 state() clauses(%42)
+    %44 next: ptr = closure counter$Counter_next#38[]
+    %45 peek: ptr = closure counter$Counter_peek#39[]
+    %46 pair: ptr = closure counter$Counter_pair#40[]
+    %47 read: ptr = closure counter$Counter_read#41[]
+    %48 each: ptr = closure counter$Counter_each#42[]
+    %49 lit: i64 = const 0
+    %50 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%49) clauses(%44, %45, %46, %47, %48)
+    %51 next: ptr = closure elsewhere$Counter_next#15[]
+    %52 peek: ptr = closure elsewhere$Counter_peek#16[]
+    %53 pair: ptr = closure elsewhere$Counter_pair#17[]
+    %54 read: ptr = closure elsewhere$Counter_read#18[]
+    %55 each: ptr = closure elsewhere$Counter_each#19[]
+    %56 r: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%51, %52, %53, %54, %55) forwards(0xe)
+    handle_push %43
+    handle_push %50
+    handle_push %56
+    call steps#4() -> b7()
+  b4(%57 v: word):
+    drop %57
+    %58 next: ptr = closure counter$Counter_next#38[]
+    %59 peek: ptr = closure counter$Counter_peek#39[]
+    %60 pair: ptr = closure counter$Counter_pair#40[]
+    %61 read: ptr = closure counter$Counter_read#41[]
+    %62 each: ptr = closure counter$Counter_each#42[]
+    %63 lit: i64 = const 0
+    %64 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%63) clauses(%58, %59, %60, %61, %62)
+    %65 next: ptr = closure stateful$Counter_next#10[]
+    %66 peek: ptr = closure stateful$Counter_peek#11[]
+    %67 pair: ptr = closure stateful$Counter_pair#12[]
+    %68 read: ptr = closure stateful$Counter_read#13[]
+    %69 each: ptr = closure stateful$Counter_each#14[]
+    %70 lit: i64 = const 0
+    %71 r: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%70) clauses(%65, %66, %67, %68, %69)
+    handle_push %64
+    handle_push %71
+    call steps#4() -> b5()
+  b5(%72 r: ptr) [handle, handle]:
+    %73 s: ptr = show %72
+    drop %72
+    %74 lit: ptr = const str 0
+    %75 s: ptr = concat %74, %73
+    drop %73
+    perform std::console::Console.print(%75) -> b6()
+  b6(%76 r: unit) [handle, handle]:
+    %77 box: word = box %76
+    %78 unbox: unit = unbox %77
+    drop %77
+    handle_pop
+    handle_pop
+    ret %78
+  b7(%79 r: ptr) [handle, handle, handle]:
+    %80 s: ptr = show %79
+    drop %79
+    %81 lit: ptr = const str 1
+    %82 s: ptr = concat %81, %80
+    drop %80
+    perform std::console::Console.print(%82) -> b8()
+  b8(%83 r: unit) [handle, handle, handle]:
+    %84 box: word = box %83
+    handle_pop
+    handle_pop
+    handle_pop
+    jump b4(%84)
+  b9(%85 r: ptr) [handle, handle]:
+    %86 s: ptr = show %85
+    drop %85
+    %87 lit: ptr = const str 2
+    %88 s: ptr = concat %87, %86
+    drop %86
+    perform std::console::Console.print(%88) -> b10()
+  b10(%89 r: unit) [handle, handle]:
+    %90 box: word = box %89
+    handle_pop
+    handle_pop
+    jump b3(%90)
+  b11(%91 r: ptr) [handle, handle]:
+    %92 s: ptr = show %91
+    drop %91
+    %93 lit: ptr = const str 3
+    %94 s: ptr = concat %93, %92
+    drop %92
+    perform std::console::Console.print(%94) -> b12()
+  b12(%95 r: unit) [handle, handle]:
+    %96 box: word = box %95
+    handle_pop
+    handle_pop
+    jump b2(%96)
+  b13(%97 r: ptr) [handle, handle]:
+    %98 s: ptr = show %97
+    drop %97
+    %99 lit: ptr = const str 4
+    %100 s: ptr = concat %99, %98
+    drop %98
+    perform std::console::Console.print(%100) -> b14()
+  b14(%101 r: unit) [handle, handle]:
+    %102 box: word = box %101
+    handle_pop
+    handle_pop
+    jump b1(%102)
+
+fn $entry#1 top -> unit ; main::handler_forward_ineligible, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn counter#2 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure counter$Counter_next#38[]
+    %1 peek: ptr = closure counter$Counter_peek#39[]
+    %2 pair: ptr = closure counter$Counter_pair#40[]
+    %3 read: ptr = closure counter$Counter_read#41[]
+    %4 each: ptr = closure counter$Counter_each#42[]
+    %5 lit: i64 = const 0
+    %6 handler: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%5) clauses(%0, %1, %2, %3, %4)
+    ret %6
+
+fn forward#3 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure forward$Counter_next#33[]
+    %1 peek: ptr = closure forward$Counter_peek#34[]
+    %2 pair: ptr = closure forward$Counter_pair#35[]
+    %3 read: ptr = closure forward$Counter_read#36[]
+    %4 each: ptr = closure forward$Counter_each#37[]
+    %5 handler: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%0, %1, %2, %3, %4) forwards(0xf)
+    ret %5
+
+fn steps#4 top -> ptr ; main::handler_forward_ineligible, frame 40 slots [%0 i64, %1 i64, %2 i64, %5 i64, %6 i64, %7 i64, %10 i64, %11 i64, %12 i64, %13 i64, %19 i64, %20 i64, %21 i64, %22 i64, %23 i64, %24 word*, %57 word*, %58 i64, %59 i64, %60 i64, %61 i64, %62 word*, %63 i64, %65 i64, %66 i64, %67 i64, %68 i64, %69 i64, %70 word*, %71 i64, %74 word*, %75 i64, %76 i64, %77 i64, %78 i64, %80 i64, %81 i64, %82 i64, %83 i64, %84 i64]
+  b0():
+    perform main::handler_forward_ineligible::Counter.next() -> b1()
+  b1(%0 r: i64):
+    perform main::handler_forward_ineligible::Counter.peek() -> b2(%0)
+  b2(%1 r: i64, %2 r: i64):
+    %3 lit: i64 = const 1
+    %4 lit: i64 = const 2
+    perform main::handler_forward_ineligible::Counter.pair(%3, %4) -> b3(%2, %1)
+  b3(%5 r: i64, %6 r: i64, %7 r: i64):
+    %8 f: ptr = closure steps$1#32[]
+    %9 callback: ptr = callback %8
+    perform main::handler_forward_ineligible::Counter.each(%9) -> b4(%6, %7, %5)
+  b4(%10 r: i64, %11 r: i64, %12 r: i64, %13 r: i64):
+    try_push -> b10(err, %11, %12, %13, %10)
+    perform main::handler_forward_ineligible::Counter.read() -> b11(%11, %12, %13, %10)
+  b5(%14 v: ptr, %15 r: i64, %16 r: i64, %17 r: i64, %18 r: i64):
+    perform main::handler_forward_ineligible::Counter.next() -> b6(%15, %16, %17, %18, %14)
+  b6(%19 r: i64, %20 r: i64, %21 r: i64, %22 r: i64, %23 r: i64, %24 v: ptr):
+    dup %24
+    try_push -> b8(err, %20, %21, %22, %23, %24, %19)
+    perform main::handler_forward_ineligible::Counter.read() -> b9(%20, %21, %22, %23, %24, %19)
+  b7(%25 v: ptr, %26 r: i64, %27 r: i64, %28 r: i64, %29 r: i64, %30 v: ptr, %31 r: i64):
+    %32 s: ptr = show %26
+    %33 lit: ptr = const str 5
+    %34 s: ptr = concat %32, %33
+    drop %33
+    %35 s: ptr = show %27
+    %36 s: ptr = concat %34, %35
+    drop %35
+    %37 lit: ptr = const str 5
+    %38 s: ptr = concat %36, %37
+    drop %37
+    %39 s: ptr = show %28
+    %40 s: ptr = concat %38, %39
+    drop %39
+    %41 lit: ptr = const str 5
+    %42 s: ptr = concat %40, %41
+    drop %41
+    %43 s: ptr = show %29
+    %44 s: ptr = concat %42, %43
+    drop %43
+    %45 lit: ptr = const str 5
+    %46 s: ptr = concat %44, %45
+    drop %45
+    %47 s: ptr = show %30
+    drop %30
+    %48 s: ptr = concat %46, %47
+    drop %47
+    %49 lit: ptr = const str 5
+    %50 s: ptr = concat %48, %49
+    drop %49
+    %51 s: ptr = show %31
+    %52 s: ptr = concat %50, %51
+    drop %51
+    %53 lit: ptr = const str 5
+    %54 s: ptr = concat %52, %53
+    drop %53
+    %55 s: ptr = show %25
+    drop %25
+    %56 s: ptr = concat %54, %55
+    drop %55
+    ret %56
+  b8(%57 e: word, %58 r: i64, %59 r: i64, %60 r: i64, %61 r: i64, %62 v: ptr, %63 r: i64):
+    %64 err: ptr = alloc std::result::Result.Err(%57)
+    jump b7(%64, %58, %59, %60, %61, %62, %63)
+  b9(%65 r: i64, %66 r: i64, %67 r: i64, %68 r: i64, %69 r: i64, %70 v: ptr, %71 r: i64) [try]:
+    %72 box: word = box %65
+    %73 ok: ptr = alloc std::result::Result.Ok(%72)
+    try_pop
+    jump b7(%73, %66, %67, %68, %69, %70, %71)
+  b10(%74 e: word, %75 r: i64, %76 r: i64, %77 r: i64, %78 r: i64):
+    %79 err: ptr = alloc std::result::Result.Err(%74)
+    jump b5(%79, %75, %76, %77, %78)
+  b11(%80 r: i64, %81 r: i64, %82 r: i64, %83 r: i64, %84 r: i64) [try]:
+    %85 box: word = box %80
+    %86 ok: ptr = alloc std::result::Result.Ok(%85)
+    try_pop
+    jump b5(%86, %81, %82, %83, %84)
+
+fn renamed#5 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure renamed$Counter_next#26[]
+    %1 peek: ptr = closure renamed$Counter_peek#27[]
+    %2 pair: ptr = closure renamed$Counter_pair#28[]
+    %3 read: ptr = closure renamed$Counter_read#29[]
+    %4 each: ptr = closure renamed$Counter_each#30[]
+    %5 handler: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%0, %1, %2, %3, %4)
+    ret %5
+
+fn changed#6 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure changed$Counter_next#21[]
+    %1 peek: ptr = closure changed$Counter_peek#22[]
+    %2 pair: ptr = closure changed$Counter_pair#23[]
+    %3 read: ptr = closure changed$Counter_read#24[]
+    %4 each: ptr = closure changed$Counter_each#25[]
+    %5 handler: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%0, %1, %2, %3, %4) forwards(0x2)
+    ret %5
+
+fn other#7 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure other$Other_next#20[]
+    %1 handler: ptr = handler main::handler_forward_ineligible::Other row 6 state() clauses(%0)
+    ret %1
+
+fn elsewhere#8 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure elsewhere$Counter_next#15[]
+    %1 peek: ptr = closure elsewhere$Counter_peek#16[]
+    %2 pair: ptr = closure elsewhere$Counter_pair#17[]
+    %3 read: ptr = closure elsewhere$Counter_read#18[]
+    %4 each: ptr = closure elsewhere$Counter_each#19[]
+    %5 handler: ptr = handler main::handler_forward_ineligible::Counter row 6 state() clauses(%0, %1, %2, %3, %4) forwards(0xe)
+    ret %5
+
+fn stateful#9 top -> ptr ; main::handler_forward_ineligible, frame 0 slots []
+  b0():
+    %0 next: ptr = closure stateful$Counter_next#10[]
+    %1 peek: ptr = closure stateful$Counter_peek#11[]
+    %2 pair: ptr = closure stateful$Counter_pair#12[]
+    %3 read: ptr = closure stateful$Counter_read#13[]
+    %4 each: ptr = closure stateful$Counter_each#14[]
+    %5 lit: i64 = const 0
+    %6 handler: ptr = handler main::handler_forward_ineligible::Counter row 5 state(%5) clauses(%0, %1, %2, %3, %4)
+    ret %6
+
+fn stateful$Counter_next#10 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn stateful$Counter_peek#11 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.peek() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn stateful$Counter_pair#12 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 i64, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.pair(%2, %3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn stateful$Counter_read#13 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.read() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn stateful$Counter_each#14 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 callback: ptr = callback %2
+    perform main::handler_forward_ineligible::Counter.each(%3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn elsewhere$Counter_next#15 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Other.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn elsewhere$Counter_peek#16 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.peek() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn elsewhere$Counter_pair#17 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 i64, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.pair(%2, %3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn elsewhere$Counter_read#18 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.read() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn elsewhere$Counter_each#19 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 callback: ptr = callback %2
+    perform main::handler_forward_ineligible::Counter.each(%3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn other$Other_next#20 clause main::handler_forward_ineligible::Other.next -> i64 ; main::handler_forward_ineligible, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 lit: i64 = const 7
+    ret %2
+
+fn changed$Counter_next#21 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.next() -> b1()
+  b1(%2 r: i64):
+    %3 lit: i64 = const 0
+    %4 t: i64 = intadd %2, %3
+    ret %4
+
+fn changed$Counter_peek#22 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.peek() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn changed$Counter_pair#23 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 i64, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.pair(%2, %2) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn changed$Counter_read#24 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %9 word*, %11 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    try_push -> b4(err, )
+    perform main::handler_forward_ineligible::Counter.read() -> b5()
+  b1(%2 v: ptr):
+    %3 tag: i64 = tag %2 ctor std::result::Result
+    switch %3 0 => b2(%2) 1 => b3(%2)
+  b2(%4 v: ptr):
+    %6 p: word = proj %4.0 std::result::Result.Ok
+    drop %4
+    %7 unbox: i64 = unbox %6
+    drop %6
+    ret %7
+  b3(%5 v: ptr):
+    %8 p: word = proj %5.0 std::result::Result.Err
+    drop %5
+    fail %8
+  b4(%9 e: word):
+    %10 err: ptr = alloc std::result::Result.Err(%9)
+    jump b1(%10)
+  b5(%11 r: i64) [try]:
+    %12 box: word = box %11
+    %13 ok: ptr = alloc std::result::Result.Ok(%12)
+    try_pop
+    jump b1(%13)
+
+fn changed$Counter_each#25 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 callback: ptr = callback %2
+    perform main::handler_forward_ineligible::Counter.each(%3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn renamed$Counter_next#26 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.peek() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn renamed$Counter_peek#27 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn renamed$Counter_pair#28 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 i64, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.pair(%3, %2) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn renamed$Counter_read#29 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.read() -> b1()
+  b1(%2 r: i64):
+    %3 lit: i64 = const 0
+    %4 t: i64 = intadd %2, %3
+    ret %4
+
+fn renamed$Counter_each#30 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %5 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 f: ptr = closure renamed$Counter_each$1#31[%2]
+    %4 callback: ptr = callback %3
+    perform main::handler_forward_ineligible::Counter.each(%4) -> b1()
+  b1(%5 r: i64):
+    ret %5
+
+fn renamed$Counter_each$1#31 lambda -> word ; main::handler_forward_ineligible, captures [word*], frame 3 slots [%0 word*, %1 word*, %5 word*]
+  b0(%0 env: ptr, %1 x: word):
+    %2 f: ptr = capture %0.0
+    drop %0
+    %3 unbox: i64 = unbox %1
+    drop %1
+    %4 box: word = box %3
+    call %2(%4) -> b1()
+  b1(%5 r: word):
+    %6 unbox: i64 = unbox %5
+    drop %5
+    %7 lit: i64 = const 1
+    %8 t: i64 = intadd %6, %7
+    %9 box: word = box %8
+    ret %9
+
+fn steps$1#32 lambda -> word ; main::handler_forward_ineligible, captures [], frame 2 slots [%0 word*, %1 word*]
+  b0(%0 env: ptr, %1 x: word):
+    drop %0
+    %2 unbox: i64 = unbox %1
+    drop %1
+    %3 lit: i64 = const 3
+    %4 t: i64 = intmul %2, %3
+    %5 box: word = box %4
+    ret %5
+
+fn forward$Counter_next#33 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.next() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn forward$Counter_peek#34 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.peek() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn forward$Counter_pair#35 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 5 slots [%0 word*, %1 i64, %2 i64, %3 i64, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.pair(%2, %3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn forward$Counter_read#36 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 3 slots [%0 word*, %1 i64, %2 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    perform main::handler_forward_ineligible::Counter.read() -> b1()
+  b1(%2 r: i64):
+    ret %2
+
+fn forward$Counter_each#37 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %4 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 callback: ptr = callback %2
+    perform main::handler_forward_ineligible::Counter.each(%3) -> b1()
+  b1(%4 r: i64):
+    ret %4
+
+fn counter$Counter_next#38 clause main::handler_forward_ineligible::Counter.next -> i64 ; main::handler_forward_ineligible, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 5
+    %3 lit: i64 = const 1
+    %4 t: i64 = intadd %2, %3
+    state_set %1[0] row 5 = %4
+    %5 set: unit = const ()
+    %6 n: i64 = state_get %1[0] row 5
+    ret %6
+
+fn counter$Counter_peek#39 clause main::handler_forward_ineligible::Counter.peek -> i64 ; main::handler_forward_ineligible, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 5
+    %3 lit: i64 = const 100
+    %4 t: i64 = intmul %2, %3
+    ret %4
+
+fn counter$Counter_pair#40 clause main::handler_forward_ineligible::Counter.pair -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 i64, %3 i64]
+  b0(%0 env: ptr, %1 inst: id, %2 a: i64, %3 b: i64):
+    drop %0
+    %4 lit: i64 = const 10
+    %5 t: i64 = intmul %2, %4
+    %6 t: i64 = intadd %5, %3
+    ret %6
+
+fn counter$Counter_read#41 clause main::handler_forward_ineligible::Counter.read -> i64 ; main::handler_forward_ineligible, captures [], frame 2 slots [%0 word*, %1 i64]
+  b0(%0 env: ptr, %1 inst: id):
+    drop %0
+    %2 n: i64 = state_get %1[0] row 5
+    %3 lit: i64 = const 2
+    %4 t: bool = gt.int %2, %3
+    if %4 then b2(%1) else b3(%1)
+  b1(%5 v: unit, %6 inst: id):
+    %7 n: i64 = state_get %6[0] row 5
+    ret %7
+  b2(%8 inst: id):
+    %10 n: i64 = state_get %8[0] row 5
+    %11 rec: ptr = alloc main::handler_forward_ineligible::Boom(%10)
+    fail %11
+  b3(%9 inst: id):
+    %12 lit: unit = const ()
+    jump b1(%12, %9)
+
+fn counter$Counter_each#42 clause main::handler_forward_ineligible::Counter.each -> i64 ; main::handler_forward_ineligible, captures [], frame 4 slots [%0 word*, %1 i64, %2 word*, %5 word*]
+  b0(%0 env: ptr, %1 inst: id, %2 f: ptr):
+    drop %0
+    %3 n: i64 = state_get %1[0] row 5
+    %4 box: word = box %3
+    call %2(%4) -> b1()
+  b1(%5 r: word):
+    %6 unbox: i64 = unbox %5
+    drop %5
+    ret %6
