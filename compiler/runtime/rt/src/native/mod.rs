@@ -500,6 +500,19 @@ pub extern "C" fn rt_check_token(ctx: Ctx<'_>, token: u32, t: u32, size: u32) {
     }
 }
 
+/// `--native-checks` after a builtin the table marks `total` ([`is_total`], design §17.318
+/// (2f)): `index` is its row of [`BUILTINS`]. The plain lowering reads no defect flag after
+/// such a call, so one raised here would be lost; it stops the process instead.
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_check_total(ctx: Ctx<'_>, index: u32) {
+    let mut cx = Cx::native(ctx);
+    if core::mem::take(&mut cx.rt().sched.raised) {
+        let name = BUILTINS.get(index as usize).map_or("?", |(n, _)| *n);
+        std::eprintln!("native-checks: builtin {name} is total but raised a defect");
+        std::process::abort();
+    }
+}
+
 /// The module's dispatch for `Cx`: the `Rc` is cloned out of the field first, so no borrow of
 /// the instance spans the call into code.
 pub(crate) fn dispatch(p: NonNull<SakuraInstance>, code: u32, env: u32, frame: u32) -> u32 {

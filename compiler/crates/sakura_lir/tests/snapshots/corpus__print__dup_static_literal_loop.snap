@@ -1,0 +1,115 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 variant main::dup_static_literal_loop::Tag | Plain 16b () | Named 24b (word*)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::dup_static_literal_loop, frame 5 slots [%5 word*, %15 bool, %16 word*, %17 word*, %40 bool]
+  b0():
+    %0 xs: ptr = alloc list()
+    %1 xs: ptr = alloc list()
+    %2 v: ptr = const static main::dup_static_literal_loop::Tag.Plain
+    %3 lit: ptr = const str 0
+    %4 lit: i64 = const 1000
+    call fill#2(%0, %1, %3, %2, %4) -> b1()
+  b1(%5 r: ptr):
+    %43 p: ptr = tuple_get %5.0
+    %44 p: ptr = tuple_get %5.1
+    drop %5
+    jump b2(%43, %44)
+  b2(%6 xs: ptr, %7 tags: ptr):
+    %45 xs.lent: ref = lend %6
+    %8 r: i64 = $list_len(%45)
+    %9 s: ptr = show %8
+    %10 lit: ptr = const str 1
+    %11 s: ptr = concat %9, %10
+    drop %10
+    %46 tags.lent: ref = lend %7
+    %12 r: i64 = $list_len(%46)
+    %13 s: ptr = show %12
+    %14 s: ptr = concat %11, %13
+    drop %13
+    perform std::console::Console.print(%14) -> b3(%6, %7)
+  b3(%15 r: unit, %16 xs: ptr, %17 tags: ptr):
+    %18 box: word = box %15
+    drop %18
+    %19 lit: i64 = const 0
+    %47 xs.lent: ref = lend %16
+    %20 r: ptr = $list_get(%47, %19)
+    %21 s: ptr = show %20
+    drop %20
+    %22 lit: ptr = const str 1
+    %23 s: ptr = concat %21, %22
+    drop %22
+    %24 lit: i64 = const 1999
+    %25 r: ptr = $list_get(%16, %24)
+    %26 s: ptr = show %25
+    drop %25
+    %27 s: ptr = concat %23, %26
+    drop %26
+    %28 lit: ptr = const str 1
+    %29 s: ptr = concat %27, %28
+    drop %28
+    %30 lit: i64 = const 0
+    %48 tags.lent: ref = lend %17
+    %31 r: ptr = $list_get(%48, %30)
+    %32 s: ptr = show %31
+    drop %31
+    %33 s: ptr = concat %29, %32
+    drop %32
+    %34 lit: ptr = const str 1
+    %35 s: ptr = concat %33, %34
+    drop %34
+    %36 lit: i64 = const 2999
+    %37 r: ptr = $list_get(%17, %36)
+    %38 s: ptr = show %37
+    drop %37
+    %39 s: ptr = concat %35, %38
+    drop %38
+    perform std::console::Console.print(%39) -> b4()
+  b4(%40 r: unit):
+    %41 box: word = box %40
+    %42 unbox: unit = unbox %41
+    drop %41
+    ret %42
+
+fn $entry#1 top -> unit ; main::dup_static_literal_loop, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn fill#2 top -> ptr ; main::dup_static_literal_loop, frame 5 slots [%0 word*, %1 word*, %2 word*, %3 word*, %4 i64]
+  b0(%0 xs: ptr, %1 tags: ptr, %2 word: ptr, %3 tag: ptr, %4 n: i64):
+    jump b1(%0, %1, %2, %3, %4)
+  b1(%5 xs: ptr, %6 tags: ptr, %7 word: ptr, %8 tag: ptr, %9 n: i64):
+    %10 lit: i64 = const 0
+    %11 t: bool = eq.int %9, %10
+    if %11 then b2(%5, %6, %7, %8, %9) else b3(%5, %6, %7, %8, %9)
+  b2(%12 xs: ptr, %13 tags: ptr, %14 word: ptr, %15 tag: ptr, %16 n: i64):
+    drop %14
+    drop %15
+    %22 tup: ptr = alloc tuple#3(word, word)(%12, %13)
+    ret %22
+  b3(%17 xs: ptr, %18 tags: ptr, %19 word: ptr, %20 tag: ptr, %21 n: i64):
+    dup %19
+    %23 r: ptr = $list_push(%17, %19)
+    dup %19
+    %24 r: ptr = $list_push(%23, %19)
+    dup %20
+    %25 r: ptr = $list_push(%18, %20)
+    dup %20
+    %26 r: ptr = $list_push(%25, %20)
+    dup %19
+    %27 r: ptr = alloc main::dup_static_literal_loop::Tag.Named(%19)
+    %28 r: ptr = $list_push(%26, %27)
+    %29 lit: i64 = const 1
+    %30 t: i64 = intsub %21, %29
+    jump b1(%24, %28, %19, %20, %30)

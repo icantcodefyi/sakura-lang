@@ -216,6 +216,25 @@ fn rows_past_64_slots_and_a_new_layout_table_release_what_they_own() {
     assert_eq!(rt.stats().live_objects, base);
 }
 
+/// Design §17.318 (2d): native code resets a uniquely owned object whose row owns no slot in
+/// place by writing nothing, so the runtime's reset must leave the header word for word.
+#[test]
+fn a_reset_of_a_row_owning_nothing_leaves_the_header_as_it_was() {
+    use common::Ty;
+    use sakura_rt::layout::{F64, I64};
+    let mut rt = rt_with(
+        &[Ty::Record("Point", &[("x", I64), ("y", F64)])],
+        Known::default(),
+    );
+    let w = rt.new_record(0).unwrap();
+    rt.set_slot(w, 0, 7);
+    rt.set_slot(w, 1, 2.5f64.to_bits());
+    let header = [rt.heap.mem.u64(w), rt.heap.mem.u64(w + 8)];
+    assert_eq!(rt.reuse_reset(w), w);
+    assert_eq!([rt.heap.mem.u64(w), rt.heap.mem.u64(w + 8)], header);
+    rt.drop(w);
+}
+
 #[test]
 fn rc_overflow_is_d092() {
     let mut rt = Rt::new(64 << 20).unwrap();

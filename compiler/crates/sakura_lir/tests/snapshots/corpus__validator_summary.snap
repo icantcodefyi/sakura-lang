@@ -105,6 +105,7 @@ semantics/direct_higher_order: 21 funcs, 67 blocks, 9 dup, 49 drop, valid
 semantics/direct_inlined_bind_blame: 5 funcs, 12 blocks, 0 dup, 3 drop, valid
 semantics/direct_inlined_bind_defect: 5 funcs, 13 blocks, 0 dup, 3 drop, valid
 semantics/direct_region_restart: 21 funcs, 113 blocks, 7 dup, 58 drop, valid
+semantics/dup_static_literal_loop: 3 funcs, 11 blocks, 5 dup, 17 drop, valid
 semantics/early_return: 4 funcs, 21 blocks, 1 dup, 16 drop, valid
 semantics/effects_and_handlers: 11 funcs, 51 blocks, 0 dup, 19 drop, valid
 semantics/encoding_decode_source_split_sequence: 38 funcs, 220 blocks, 11 dup, 75 drop, valid

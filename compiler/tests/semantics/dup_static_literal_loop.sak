@@ -1,0 +1,27 @@
+// milestone: M5
+// spec: ABI §3.1 (a counted object's `static` flag is clear), design §17.318 (2b)
+// covers: Dup; native's in-place `Dup` writes only a counted object, so a literal duplicated
+// on every iteration keeps its static count, with and without `--native-checks`
+
+type Tag = Plain | Named(String)
+
+fn fill(
+  xs: List<String>,
+  tags: List<Tag>,
+  word: String,
+  tag: Tag,
+  n: Int,
+) -> (List<String>, List<Tag>)
+{
+  if n == 0 {
+    (xs, tags)
+  } else {
+    fill(xs.push(word).push(word), tags.push(tag).push(tag).push(Named(word)), word, tag, n - 1)
+  }
+}
+
+pub fn main() -> Unit ! {Console} {
+  let (xs, tags) = fill([], [], "sakura", Plain, 1000)
+  Console.print("{List.len(xs)} {List.len(tags)}")
+  Console.print("{xs.get(0)} {xs.get(1999)} {tags.get(0)} {tags.get(2999)}")
+}

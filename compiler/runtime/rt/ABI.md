@@ -462,7 +462,11 @@ rely on the fault.
 
 **Instance context.** Every native runtime function takes `SakuraInstance *ctx` first and uses
 the target's C ABI (System V AArch64/x86-64 on Linux, Apple AArch64 on macOS). One OS thread
-owns an instance and everything reachable from it (§8.5); a process may hold any number. The
+owns an instance and everything reachable from it (§8.5); a process may hold any number. No
+object is reachable from two instances (`std/worker` messages cross as copied text). That is
+what lets compiled code and the runtime update `rc` and the counts below without atomics
+(1.20.0; design §17.171, §17.318 (2e)); a shared heap (design §13.5's promotion to atomic
+counts on a cross-thread send) must revisit every in-place path of §3.1 before it exists. The
 context's prefix is fixed; compiled code may read it and must not write it, except the counts
 at +16, to which it adds:
 
@@ -491,11 +495,14 @@ against the runtime object) has its wasm32 signature with `ctx` prepended: `i32`
 `void`; names are unchanged (`rt_set_ret`, `rt_call`, `rt_vt_result`, …). Two differ in
 meaning, not type: `rt_raise(ctx, code, ptr, len, site)` takes its message as a heap slice
 that must be UTF-8 (invalid text is `D090` instead of the defect); and `drop`, a wasm32 export,
-is `sakura_drop`. One has no wasm32 counterpart: `void rt_check(ctx, obj, offset, len)`,
-which only the checked lowering calls (`--native-checks`, design §17.173 (4)) before each heap
-load and store, and which aborts the process when the `len` bytes at `obj + offset` leave
-`obj`'s live block (bounded by its header's class or run size; a freed block's tag is 0) or the
-static block. A host-delegated builtin (§8.2 shape `hosted`) is `rt_hosted` with the
+is `sakura_drop`. Two have no wasm32 counterpart, and only the checked lowering
+(`--native-checks`, design §17.173 (4)) calls them: `void rt_check(ctx, obj, offset, len)`
+before each heap load and store, which aborts the process when the `len` bytes at
+`obj + offset` leave `obj`'s live block (bounded by its header's class or run size; a freed
+block's tag is 0) or the static block; and since 1.20.0 `void rt_check_total(ctx, row)` after
+each call of a builtin the runtime's table marks `total` (one that never raises, so the plain
+lowering reads no defect flag after it), `row` being its index in that table, which aborts
+naming the builtin when the call raised (design §17.318 (2f)). A host-delegated builtin (§8.2 shape `hosted`) is `rt_hosted` with the
 builtin's index in the compiler's `HOSTED` list (sorted by name) instead of a `sakura_host`
 import; arguments and answers are §8.1 bytes exactly as on wasm32, so `rt_vt_result` checks
 both targets' answers the same way (W2). The host-side calls (`run`, `start`, `complete`,
@@ -644,7 +651,13 @@ compiled code may also increment `rc` in place below `u32::MAX`, allocate a smal
 its class's free list, and perform the last decrement and the release itself for a tuple,
 record or variant whose row owns at most one slot when that child survives, each as the
 runtime does it (§0, 1.19.1); everything else is the runtime's. A counted object is a pointer
-word (§4) whose `static` flag is clear.
+word (§4) whose `static` flag is clear. Since 1.20.0 native code (§1b) may increment a counted
+object's `rc` in place below `u32::MAX` (`rt_dup` at `u32::MAX`, `D092`), decrement it in
+place while it is above 1 (the last decrement and the release are `sakura_drop`'s), and reset
+a constructor for reuse in place when its count is 1 and its row owns no slot, writing no
+header byte, as the runtime's reset leaves the header (§3.5; otherwise `rt_b_reuse_reset`),
+each counted in the context's counts (§10); under `--native-checks` every one of them is the
+runtime's call.
 
 ### 3.2 Tags
 

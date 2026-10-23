@@ -1703,6 +1703,11 @@ impl Gen<'_, '_, '_> {
             self.check_zero(r.expect("a word result"), live)?;
         } else if !is_total(&symbol) {
             self.check_flag(live)?;
+        } else if self.e.checks {
+            // The `total` table's oracle (design §17.318 (2f)).
+            let row = BUILTINS.iter().position(|(n, _)| *n == symbol);
+            let row = self.iconst32(row.expect("a builtin row") as i64);
+            self.call0("rt_check_total", &[row])?;
         }
         Ok(Flow::Next)
     }

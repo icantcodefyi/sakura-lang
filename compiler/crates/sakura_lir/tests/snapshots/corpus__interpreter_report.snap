@@ -105,6 +105,7 @@ semantics/direct_higher_order: ok, 3000082 allocated, 39 dup, 3000121 drop, peak
 semantics/direct_inlined_bind_blame: D020, 3 allocated, 0 dup, 3 drop, peak 2, live 0/0
 semantics/direct_inlined_bind_defect: D021, 4 allocated, 0 dup, 4 drop, peak 2, live 0/0
 semantics/direct_region_restart: ok, 156 allocated, 73 dup, 229 drop, peak 16, live 0/0
+semantics/dup_static_literal_loop: ok, 6022 allocated, 1499503 dup, 1505525 drop, peak 1006, live 0/0
 semantics/early_return: ok, 16 allocated, 1 dup, 17 drop, peak 5, live 0/0
 semantics/effects_and_handlers: ok, 30 allocated, 27 dup, 57 drop, peak 13, live 0/0
 semantics/encoding_decode_source_split_sequence: unsupported (builtin bytes_from_list)
