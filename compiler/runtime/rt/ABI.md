@@ -655,7 +655,8 @@ word (§4) whose `static` flag is clear. Since 1.20.0 native code (§1b) may inc
 object's `rc` in place below `u32::MAX` (`rt_dup` at `u32::MAX`, `D092`), decrement it in
 place while it is above 1 (the last decrement and the release are `sakura_drop`'s), and reset
 a constructor for reuse in place when its count is 1 and its row owns no slot, writing no
-header byte, as the runtime's reset leaves the header (§3.5; otherwise `rt_b_reuse_reset`),
+header byte, as the runtime's reset leaves the header, or, when its count is above 1, by
+decrementing it for a `Unit` token (§3.5; otherwise `rt_b_reuse_reset`),
 each counted in the context's counts (§10); under `--native-checks` every one of them is the
 runtime's call.
 

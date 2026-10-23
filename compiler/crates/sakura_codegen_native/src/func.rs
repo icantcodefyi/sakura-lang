@@ -1680,28 +1680,43 @@ impl Gen<'_, '_, '_> {
                 self.set(dst, x);
                 return Ok(Flow::Next);
             }
-            sakura_lir::reuse::RESET if !self.e.checks && self.owns_nothing(dst) => {
-                // `Rt::reuse_reset` of an object whose slots own nothing: no other reference
-                // reaches it, so it is the token itself (its slots are all written by the
-                // `Alloc`), counted in the context (ABI 1.20.0); else the runtime drops it.
+            sakura_lir::reuse::RESET if !self.e.checks => {
+                // `Rt::reuse_reset` in place (ABI 1.20.0, counted in the context): a shared
+                // object loses one owner and the token is `Unit`; one no other reference reaches
+                // is the token itself when its slots own nothing (the `Alloc` writes them all).
+                // A unique object owning slots, and a static one, take the runtime's call.
                 let x = vals[0];
-                let (unique, hit, miss, join) = (
+                let (counted, unique, shared, hit, call, join) = (
+                    self.b.create_block(),
+                    self.b.create_block(),
                     self.b.create_block(),
                     self.b.create_block(),
                     self.b.create_block(),
                     self.b.create_block(),
                 );
                 let token = self.b.append_block_param(join, types::I32);
-                self.branch_counted(x, unique, miss);
-                self.b.switch_to_block(unique);
+                self.branch_counted(x, counted, call);
+                self.b.switch_to_block(counted);
                 let rc = self.load(types::I32, x, 4);
                 let one = self.b.ins().icmp_imm_s(IntCC::Equal, rc, 1);
-                self.b.ins().brif(one, hit, &[], miss, &[]);
+                self.b.ins().brif(one, unique, &[], shared, &[]);
+                self.b.switch_to_block(shared);
+                let rc = self.b.ins().iadd_imm_s(rc, -1);
+                self.store(rc, x, 4);
+                self.bump(REUSE_ATTEMPTS);
+                let unit = self.iconst32(UNIT);
+                self.b.ins().jump(join, &[BlockArg::Value(unit)]);
+                self.b.switch_to_block(unique);
+                if self.owns_nothing(dst) {
+                    self.b.ins().jump(hit, &[]);
+                } else {
+                    self.b.ins().jump(call, &[]);
+                }
                 self.b.switch_to_block(hit);
                 self.bump(REUSE_ATTEMPTS);
                 self.bump(REUSES);
                 self.b.ins().jump(join, &[BlockArg::Value(x)]);
-                self.b.switch_to_block(miss);
+                self.b.switch_to_block(call);
                 let t = self.call1("rt_b_reuse_reset", &[x], types::I32)?;
                 self.b.ins().jump(join, &[BlockArg::Value(t)]);
                 self.b.switch_to_block(join);
