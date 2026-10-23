@@ -47,7 +47,7 @@ dependencies = [
 
 [[package]]
 name = "agent_docs"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "sakura_analysis",
  "sakura_diagnostics",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_analysis"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "postcard",
  "rustix",
@@ -2470,7 +2470,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_cli"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "agent_docs",
  "clap",
@@ -2496,7 +2496,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_js"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "sakura_core",
@@ -2509,7 +2509,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_native"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_codegen_wasm"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "miniz_oxide",
  "sakura_analysis",
@@ -2538,7 +2538,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "sakura_diagnostics",
@@ -2550,7 +2550,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_core_snapshot"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "sakura_analysis",
  "sakura_core",
@@ -2563,7 +2563,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_diagnostics"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "codespan-reporting",
  "insta",
@@ -2575,7 +2575,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_eval"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "sakura_analysis",
  "sakura_codegen_js",
@@ -2587,7 +2587,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_fmt"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "pretty",
@@ -2598,7 +2598,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_hir"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "rowan",
@@ -2611,7 +2611,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_host_native"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "cap-std",
  "getrandom 0.4.3",
@@ -2632,7 +2632,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_lir"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "sakura_analysis",
@@ -2644,7 +2644,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_lsp"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "lsp-server",
  "lsp-types",
@@ -2656,7 +2656,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_mcp"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "rmcp",
  "sakura_analysis",
@@ -2669,7 +2669,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_native_driver"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "sakura_host_native",
  "sakura_rt",
@@ -2678,7 +2678,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_packages"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "miniz_oxide",
  "proptest",
@@ -2689,7 +2689,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_playground"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "sakura_analysis",
  "sakura_diagnostics",
@@ -2698,7 +2698,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_rt"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "aes-gcm",
  "crabgrind",
@@ -2718,7 +2718,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_syntax"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "proptest",
@@ -2729,7 +2729,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_types"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "proptest",
@@ -2743,7 +2743,7 @@ dependencies = [
 
 [[package]]
 name = "sakura_verify"
-version = "1.0.0-beta.6"
+version = "1.0.0"
 dependencies = [
  "insta",
  "rustix",

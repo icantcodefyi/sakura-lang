@@ -505,7 +505,8 @@ corresponding approval.
 **Only afterward**, the owner creates/pushes an annotated tag on that commit. From
 `v1.0.0-beta.4` the dry-run, environment and channel approvals and the beta tags are made by
 Claude under the owner's written delegation of 2026-10-22 (design §17.310 (1)), recorded as such
-in the run's notes and REQUESTS; **the `v1.0.0` tag stays the owner's.**
+in the run's notes and REQUESTS; the owner extended it the same day to the `v1.0.0` tag and its
+channel approvals (design §17.312 (1)).
 This is a future command template, not an instruction for the research agent:
 
 ```sh

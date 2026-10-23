@@ -7,6 +7,37 @@ retains earlier implementation history.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-23
+
+The first stable release. What [STABILITY](STABILITY.md) lists as stable keeps working across
+1.x, and breaking changes wait for 2.0; a security or soundness fix that has to break something
+comes with a migration here. The guarantees are [RFC 0001](docs/rfcs/0001-stability-guarantees.md)'s,
+accepted on 2026-10-23. `--target native`, packages (RFC 0003), `std/worker`, `--emit lir` and
+`--layout niche` are experimental, outside every compatibility promise. `v1.0.0` is
+`v1.0.0-beta.6` with documentation-only commits and this preparation commit (road-to-1.0 §7,
+design §17.312): the compiler, standard library, runtimes and packaging are beta.6's, but for the
+version string. The Rust MSRV is unchanged (1.99). The WASM runtime ABI is unchanged at
+**1.19.0**.
+
+### Migration from v1.0.0-beta.6
+
+Nothing. No program, diagnostic, JSON record, exit code or runtime ABI changes; `sakura --version`
+prints `1.0.0`.
+
+### Changed
+
+- **Source and std compatibility are now RFC 0001's 1.x promise.** From `1.0.0`, a program that
+  is valid under a 1.x release stays valid under every later 1.x release without source edits and
+  keeps its specified behaviour, public std signatures included (RFC 0001, "Source
+  compatibility"; experimental features excluded); `compat.yml` runs the previous release's
+  corpus under each tag. During the betas these were listed migrations instead. The machine
+  contracts (diagnostic codes, JSON records, the CLI and its exit codes, the
+  WASM runtime ABI, the MSRV rule and deprecation metadata) have held since `1.0.0-beta.1`.
+- **Channels:** the GitHub release is marked latest, npm `latest` is `1.0.0`, and the Homebrew
+  formula is `sakuralang`. Beta users on Homebrew move with
+  `brew uninstall sakuralang-beta && brew install sakuralang`; `sakuralang-beta` stays at
+  `1.0.0-beta.6`.
+
 ## [1.0.0-beta.6] - 2026-10-23
 
 A beta of 1.0, not for production (design §17.291): it may have bugs and may change before
@@ -2451,7 +2482,8 @@ development log as it stood at the tag, including the implementation history bef
 - A non-exhaustive `match` on a refined list type reports `V4001` with the missing case instead
   of an internal compiler error.
 
-[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.6...HEAD
+[Unreleased]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.6...v1.0.0
 [1.0.0-beta.6]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.5...v1.0.0-beta.6
 [1.0.0-beta.5]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.4...v1.0.0-beta.5
 [1.0.0-beta.4]: https://github.com/icantcodefyi/sakuralang/compare/v1.0.0-beta.3...v1.0.0-beta.4
