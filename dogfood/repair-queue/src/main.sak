@@ -6,7 +6,7 @@
 // public website https://www.sakuralang.com and BRIEF.md.
 // Built and tested against the installed release, whose `sakura --version` is:
 //   sakura 0.1.0 (2014e821b87a0d30cb8061b6158f99723f0f676d)
-// Upgraded to sakura 1.0.0-beta.5 (447dce0c1e07e6ce1e3e08d95f1981311ebe8281); see MIGRATION.md.
+// Upgraded to sakura 1.0.0-beta.6 (70c64513666c3f2d818e722bf9b2b005f3f8b536); see MIGRATION.md.
 //
 // The service listens on 127.0.0.1:8787 only and stores its queue in
 // ./data/repair-queue.sqlite. It is unauthenticated and meant for loopback use.

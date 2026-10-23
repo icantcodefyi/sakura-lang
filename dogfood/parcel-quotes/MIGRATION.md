@@ -245,3 +245,17 @@ Native was not run (item 3; outside the round).
 
 Predicted diff: **none required**; the header's provenance line. `sakura.lock` stays at
 `version = 1`.
+
+### Result (after the upgrade)
+
+`sakura 1.0.0-beta.6 (70c64513666c3f2d818e722bf9b2b005f3f8b536)`: `sakura check` no problems (0
+warnings); `sakura fmt --check` clean; `sakura test` 31/31 on js and 31/31 on `--target wasm`. The
+Node consumer on the wasm and js builds: exit 0, "all checks passed", 24 checks each; the wasm
+build's own `sakura_wasm_host.js` loads its ABI 1.19.0 module (item 4). `sakura.lock` is unchanged
+at `version = 1` (item 1). Native was not run (outside the round).
+
+| Hunk | Required? | Predicted by the list? |
+| ---- | --------- | ---------------------- |
+| `src/main.sak` header: `Upgraded to` provenance line names beta.6 | No (provenance) | n/a, not a migration |
+
+**No migration hunk needed.** Prediction and result agree. Migration-list gaps: none.
