@@ -47,7 +47,7 @@ const jsonLd = {
       codeRepository: site.github,
       programmingLanguage: "Rust",
       license: ["https://spdx.org/licenses/MIT.html", "https://spdx.org/licenses/Apache-2.0.html"],
-      creativeWorkStatus: "Preview",
+      creativeWorkStatus: "Published",
       version: RELEASE,
       author: { "@id": ids.author },
       maintainer: { "@id": ids.author },

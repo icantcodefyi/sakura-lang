@@ -25,6 +25,13 @@ Two words used below:
   version moves, ship the host and the module from the same release: a newer host still loads
   older modules, but an older host refuses a newer module with `V8003`.
 
+## 1.0.0, since 1.0.0-beta.6
+
+Your code needs no change. `v1.0.0` is beta.6 with a new version number: the compiler, the
+standard library and the WASM runtime ABI (1.19.0) are the same. What changes is the promise:
+from 1.0.0, a program that works on a 1.x release keeps working on later 1.x releases.
+[Changelog](/changelog#v1.0.0).
+
 ## 1.0.0-beta.6, since 1.0.0-beta.5
 
 Your code needs no change unless it has a `[dependencies]` table. The WASM runtime ABI moves to

@@ -1,7 +1,8 @@
 # The Sakura Lang MCP server
 
-> **Pre-alpha.** Tool names, parameters and result shapes may change between commits until the
-> first release (see [STABILITY.md](../STABILITY.md)). Design: [design.md §12.6](design.md).
+> **Stable from `v1.0.0-beta.1`.** The stdio server, its tools, their parameters and result shapes
+> follow [STABILITY.md](../STABILITY.md) and RFC 0001 across 1.x. Design:
+> [design.md §12.6](design.md).
 
 `sakura mcp serve` runs the compiler as a [Model Context Protocol](https://modelcontextprotocol.io)
 server on stdin/stdout, so an agent can check, query, patch and test a Sakura Lang workspace through
