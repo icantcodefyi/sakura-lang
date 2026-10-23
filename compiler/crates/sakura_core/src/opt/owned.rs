@@ -1268,7 +1268,7 @@ impl<'a> Analysis<'a> {
                     self.empties.insert(x);
                 }
                 if *alloc == Alloc::List {
-                    // `$rt.list([…])` copies its array; `[]` is the empty singleton.
+                    // `$rt.list_of([…])` adopts a fresh array; `[]` is the empty singleton.
                     self.origin[x.index()] = Origin::Owned;
                 }
             }

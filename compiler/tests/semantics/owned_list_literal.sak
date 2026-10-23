@@ -1,0 +1,58 @@
+// milestone: M4
+// covers: design §17.149 (a list literal is a fresh list: owned updates of it never reach another value, a constant's literal included)
+
+let primes = [2, 3, 5, 7]
+
+fn grown(n: Int) -> List<Int> {
+  var xs = [1, 2, 3]
+  var i = 0
+  while i < n {
+    xs = List.push(xs, i)
+    i = i + 1
+  }
+  xs
+}
+
+fn from_empty(n: Int) -> List<Bool> {
+  var xs: List<Bool> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, i % 2 == 0)
+    i = i + 1
+  }
+  xs
+}
+
+pub fn main() -> Unit ! {Console} {
+  // Past one tail of 32: the adopted array moves into the trie.
+  let g = grown(40)
+  Console.print("grown {List.len(g)} {List.sum(g)} {g[0]} {g[42]}")
+
+  // Each iteration's literal is a new list.
+  var total = 0
+  var k = 0
+  while k < 3 {
+    var ys = [k, k, k]
+    ys = List.set(ys, 1, 10)
+    ys = List.push(ys, 100)
+    total = total + List.sum(ys)
+    k = k + 1
+  }
+  Console.print("loop {total}")
+
+  // A retained literal keeps its elements; so does the constant every call returns.
+  let a = [4, 5, 6]
+  let b = List.push(a, 7)
+  let c = List.set(a, 0, 0)
+  var p = primes
+  p = List.push(p, 11)
+  p = List.set(p, 0, 1)
+  Console.print("kept {a} {b} {c} {p} {primes}")
+
+  let e: List<Int> = []
+  let f = List.push(e, 1)
+  let empty_again: List<Int> = []
+  Console.print(
+    "empty {List.len(e)} {f} {List.len(empty_again)} {List.len(from_empty(5))} {from_empty(3)}",
+  )
+}

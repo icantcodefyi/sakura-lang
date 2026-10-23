@@ -1151,6 +1151,11 @@ export function list(arr) {
   return fromLeaves(leaves, arr.slice(Math.max(body, 0)));
 }
 
+/** A list literal's elements, a fresh array the emitted code gives up (`own`). */
+export function list_of(arr) {
+  return own(arr);
+}
+
 /** A list of the elements of `arr`, a fresh array the caller gives up: up to 32 are not copied. */
 function own(arr) {
   return arr.length > 0 && arr.length <= 32 ? new List(arr.length, 5, null, arr, arr.length) : list(arr);
@@ -1339,7 +1344,7 @@ export function list_set_owned(xs, i, x) {
 /** `List.push` in place: the wrapper is reused and a full tail joins the trie unchanged; a
  * `List<Bool>` with no trie stays flat. */
 export function list_push_owned(xs, x) {
-  if (xs === EMPTY_LIST) return push(xs, x);
+  if (xs === EMPTY_LIST) return new List(1, 5, null, [x], 1);
   const tl = xs.tl;
   if (tl < 32 || (xs.root === null && (tl > 32 || typeof x === "boolean"))) {
     if (xs.tail.length !== tl) xs.tail = xs.tail.slice(0, tl);

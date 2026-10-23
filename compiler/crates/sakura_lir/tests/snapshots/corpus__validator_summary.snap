@@ -227,6 +227,7 @@ semantics/owned_empty_singleton: 3 funcs, 24 blocks, 0 dup, 39 drop, valid
 semantics/owned_fresh_result: 12 funcs, 91 blocks, 15 dup, 90 drop, valid
 semantics/owned_generic: 10 funcs, 48 blocks, 4 dup, 34 drop, valid
 semantics/owned_hoisted_reads: 15 funcs, 71 blocks, 1 dup, 46 drop, valid
+semantics/owned_list_literal: 9 funcs, 46 blocks, 5 dup, 45 drop, valid
 semantics/owned_loop_twice: 12 funcs, 69 blocks, 3 dup, 35 drop, valid
 semantics/owned_record_captured: 21 funcs, 92 blocks, 7 dup, 67 drop, valid
 semantics/owned_record_loop_twice: 7 funcs, 39 blocks, 3 dup, 48 drop, valid

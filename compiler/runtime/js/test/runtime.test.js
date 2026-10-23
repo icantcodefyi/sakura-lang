@@ -511,6 +511,24 @@ test("a flat Bool list is one array until a persistent update spills it, unchang
   assert.notEqual(ns.root, null);
 });
 
+test("a literal adopts its array; an owned push onto the empty singleton leaves it empty", () => {
+  const arr = [1, 2, 3];
+  const xs = rt.list_of(arr);
+  assert.equal(xs.tail, arr);
+  assert.deepEqual(rt.toArray(rt.list_push(xs, 4)), [1, 2, 3, 4]);
+  assert.deepEqual(rt.toArray(xs), [1, 2, 3]);
+  const long = Array.from({ length: 70 }, (_, i) => i);
+  assert.deepEqual(rt.toArray(rt.list_of(long.slice())), long);
+  const e = rt.list_empty();
+  const one = rt.list_push_owned(e, 7);
+  assert.notEqual(one, e);
+  assert.equal(one.tail.length, 1);
+  assert.deepEqual(rt.toArray(e), []);
+  assert.equal(e.n, 0);
+  assert.equal(e.tl, 0);
+  assert.deepEqual(rt.toArray(rt.list_push_owned(rt.list_push_owned(e, true), false)), [true, false]);
+});
+
 test("owned entries update in place and build what the persistent operations build (design §17.149)", () => {
   let seed = 11;
   const rand = (n) => {

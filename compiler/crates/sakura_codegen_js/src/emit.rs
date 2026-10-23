@@ -1888,7 +1888,9 @@ impl<'a> FnEmit<'a> {
         let a = self.atoms(args);
         match alloc {
             Alloc::Tuple => format!("[{a}]"),
-            Alloc::List => format!("$rt.list([{a}])"),
+            // `[]` is the empty singleton; a literal's fresh array is adopted, not copied.
+            Alloc::List if args.is_empty() => "$rt.list_empty()".into(),
+            Alloc::List => format!("$rt.list_of([{a}])"),
             Alloc::Record(t) => format!("new {}({a})", self.type_ref(*t)),
             Alloc::Variant(t, c) => {
                 let td = self.cx.m.ty(*t);
