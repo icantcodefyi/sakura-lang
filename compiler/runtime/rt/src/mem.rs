@@ -320,7 +320,8 @@ impl Mem {
     }
 }
 
-/// Little-endian scalar access shared by both backends.
+/// Little-endian scalar access on the host heaps.
+#[cfg(not(target_arch = "wasm32"))]
 impl Mem {
     pub fn u8(&self, addr: u32) -> u8 {
         self.bytes(addr, 1)[0]
@@ -363,12 +364,64 @@ impl Mem {
     }
 }
 
+/// Scalar access on wasm32: one load or store each, little-endian as the target is. The engine
+/// bounds every access by the linear memory (one past it traps, which the host reports as `D090`,
+/// as it does a runtime panic), so `bytes`' check would only repeat it, at a `memory.size` and a
+/// compare per access in every runtime call.
+#[cfg(target_arch = "wasm32")]
+impl Mem {
+    pub fn u8(&self, addr: u32) -> u8 {
+        // SAFETY: a load of linear memory; the engine traps outside it. Single-threaded, and no
+        // Rust reference into the heap is live across it (as in `bytes`).
+        unsafe { (addr as usize as *const u8).read() }
+    }
+
+    pub fn set_u8(&mut self, addr: u32, v: u8) {
+        // SAFETY: as in `u8`; `&mut self` makes this the only access.
+        unsafe { (addr as usize as *mut u8).write(v) }
+    }
+
+    pub fn u16(&self, addr: u32) -> u16 {
+        // SAFETY: as in `u8`.
+        unsafe { (addr as usize as *const u16).read_unaligned() }
+    }
+
+    pub fn set_u16(&mut self, addr: u32, v: u16) {
+        // SAFETY: as in `set_u8`.
+        unsafe { (addr as usize as *mut u16).write_unaligned(v) }
+    }
+
+    pub fn u32(&self, addr: u32) -> u32 {
+        // SAFETY: as in `u8`.
+        unsafe { (addr as usize as *const u32).read_unaligned() }
+    }
+
+    pub fn set_u32(&mut self, addr: u32, v: u32) {
+        // SAFETY: as in `set_u8`.
+        unsafe { (addr as usize as *mut u32).write_unaligned(v) }
+    }
+
+    pub fn u64(&self, addr: u32) -> u64 {
+        // SAFETY: as in `u8`.
+        unsafe { (addr as usize as *const u64).read_unaligned() }
+    }
+
+    pub fn set_u64(&mut self, addr: u32, v: u64) {
+        // SAFETY: as in `set_u8`.
+        unsafe { (addr as usize as *mut u64).write_unaligned(v) }
+    }
+
+    pub fn fill(&mut self, addr: u32, byte: u8, len: u32) {
+        // SAFETY: `memory.fill`, which traps outside the linear memory as a load does.
+        unsafe { core::ptr::write_bytes(addr as usize as *mut u8, byte, len as usize) }
+    }
+}
+
 /// Allocator annotations (design §17.173 (2), (3)). In an `asan` or `valgrind` build the
 /// allocator tells the tool which heap bytes belong to a live block, so an access of a freed
 /// block is reported although the heap is one mapping; elsewhere they compile to nothing. A
 /// free block is closed whole except while the allocator reads its free-list link; a free page
-/// run keeps its 8-byte header open, since the run list walks it. (At the end of the file: the
-/// wasm32 runtime embeds its panic locations, so nothing above may move.)
+/// run keeps its 8-byte header open, since the run list walks it.
 impl Mem {
     /// Open `len` bytes at `addr` and fill them with `byte`: a block being handed out.
     pub fn init(&mut self, addr: u32, byte: u8, len: u32) {
