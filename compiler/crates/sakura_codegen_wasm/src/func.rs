@@ -84,6 +84,10 @@ pub struct Env<'a> {
     /// The `i64` globals counting what compiled code did in place of a runtime call, which
     /// `stats()` adds to the runtime's counters (ABI §10, design §17.287 (3)): see [`InPlace`].
     pub in_place: InPlace,
+    /// The `i32` globals holding the allocator's cells (`rt_heap_cell`, set by `sakura$init`):
+    /// the address of the main pool's free-list heads, of the `stats()` counters, and the
+    /// emergency pool's start.
+    pub heap: [u32; 3],
     /// The static-block offset of the tuple kinds table: per layout id, the scalar kinds of a
     /// tuple row's first 16 slots, two bits each as in the layout table (0 for other entries).
     pub tuple_kinds: u32,
@@ -93,6 +97,19 @@ pub struct Env<'a> {
     /// The type of a closure twin taking `k` words (the closure first) is `closure_type + k - 1`.
     pub closure_type: u32,
 }
+
+/// The runtime allocator's small classes (`runtime/rt/src/heap.rs` `CLASSES`; the
+/// `runtime_object` test holds the two equal): a block's `class` byte indexes this table.
+pub const CLASSES: [u32; 16] = [
+    16, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096,
+];
+
+/// `Stats` field offsets (`heap.rs`, `repr(C)`, every field a `u64`).
+const REQUESTED: u64 = 0;
+const LIVE: u64 = 8;
+const LIVE_OBJECTS: u64 = 16;
+const PEAK: u64 = 32;
+const FREE_LIST_BYTES: u64 = 40;
 
 /// The `i64` globals of [`Env::in_place`], each added to `stats()` counters by the linker's
 /// `stats` export: the operations below run inline when they need no allocation, release or
@@ -1053,6 +1070,79 @@ impl Gen<'_, '_> {
         self.dup_as(s, l, live, "rt_dup", None)
     }
 
+    /// `rt_alloc(tag, size)` into local `d`, with a landing pad on `D096`: inline when the
+    /// small class holding `size` has a free block, as `Heap::alloc` and `Rt::new_object` do it
+    /// (the block popped, the counters updated, the header written with `rc = 1` and the rest
+    /// zeroed); the call when the list is empty (a chunk to carve, the emergency pool, growth).
+    fn alloc_block(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        tag: i32,
+        size: u32,
+        d: u32,
+        live: &Live,
+    ) -> Result<(), String> {
+        let Some(c) = CLASSES.iter().position(|&k| k >= size.max(8)) else {
+            s.i32_const(tag).i32_const(size as i32);
+            self.call_rt(s, "rt_alloc")?;
+            s.local_set(d);
+            return self.check_zero(s, d, live);
+        };
+        let (block, [free, stats, _]) = (CLASSES[c], self.env.heap);
+        let head = mem(4 * c as u64, 2);
+        s.block(BlockType::Empty);
+        s.block(BlockType::Empty);
+        self.depth += 2;
+        s.global_get(free)
+            .i32_load(head)
+            .local_tee(d)
+            .i32_eqz()
+            .br_if(0);
+        s.global_get(free)
+            .local_get(d)
+            .i32_load(mem(4, 2))
+            .i32_store(head);
+        let add = |s: &mut InstructionSink<'_>, at: u64, by: i64| {
+            s.global_get(stats).global_get(stats).i64_load(mem(at, 3));
+            s.i64_const(by).i64_add().i64_store(mem(at, 3));
+        };
+        add(s, REQUESTED, size as i64);
+        add(s, LIVE_OBJECTS, 1);
+        add(s, FREE_LIST_BYTES, -(block as i64));
+        s.global_get(stats)
+            .i64_load(mem(LIVE, 3))
+            .i64_const(block as i64)
+            .i64_add();
+        s.local_set(self.lt);
+        s.global_get(stats)
+            .local_get(self.lt)
+            .i64_store(mem(LIVE, 3));
+        s.local_get(self.lt)
+            .global_get(stats)
+            .i64_load(mem(PEAK, 3))
+            .i64_gt_u();
+        s.if_(BlockType::Empty);
+        s.global_get(stats)
+            .local_get(self.lt)
+            .i64_store(mem(PEAK, 3));
+        s.end();
+        let header = tag as i64 | (c as i64) << 16 | 1 << 32;
+        s.local_get(d).i64_const(header).i64_store(mem(0, 3));
+        for off in (8..block).step_by(8) {
+            s.local_get(d).i64_const(0).i64_store(mem(off as u64, 3));
+        }
+        s.br(1);
+        s.end();
+        self.depth -= 1;
+        s.i32_const(tag).i32_const(size as i32);
+        self.call_rt(s, "rt_alloc")?;
+        s.local_set(d);
+        self.check_zero(s, d, live)?;
+        self.depth -= 1;
+        s.end();
+        Ok(())
+    }
+
     // ---- cases ----------------------------------------------------------------------------
 
     fn resume(&mut self, s: &mut InstructionSink<'_>, b: BlockId) -> Result<(), String> {
@@ -1275,11 +1365,7 @@ impl Gen<'_, '_> {
                 captures,
             } => {
                 let d = self.local(*dst);
-                s.i32_const(CLOSURE)
-                    .i32_const(16 + 8 * captures.len() as i32);
-                self.call_rt(s, "rt_alloc")?;
-                s.local_set(d);
-                self.check_zero(s, d, &before)?;
+                self.alloc_block(s, CLOSURE, 16 + 8 * captures.len() as u32, d, &before)?;
                 s.local_get(d).i32_const(func.0 as i32).i32_store(mem(8, 2));
                 s.local_get(d)
                     .i32_const(captures.len() as i32)
@@ -1778,22 +1864,20 @@ impl Gen<'_, '_> {
             }
         };
         // A reuse token's storage (plan M5 N3, `rt_reuse`), else a fresh block.
+        let size = 16 + 8 * args.len() as u32;
         if let Some(t) = reuse {
             let t = self.local(t);
+            s.local_get(t).local_set(d);
             s.local_get(t).i32_const(3).i32_and();
             s.local_get(t).i32_eqz().i32_or();
-            s.if_(BlockType::Result(ValType::I32));
-            s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
-            self.call_rt(s, "rt_alloc")?;
-            s.else_();
-            s.local_get(t);
+            s.if_(BlockType::Empty);
+            self.depth += 1;
+            self.alloc_block(s, tag, size, d, live)?;
+            self.depth -= 1;
             s.end();
         } else {
-            s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
-            self.call_rt(s, "rt_alloc")?;
+            self.alloc_block(s, tag, size, d, live)?;
         }
-        s.local_set(d);
-        self.check_zero(s, d, live)?;
         for (off, v) in header {
             s.local_get(d).i32_const(v as i32).i32_store(mem(off, 2));
         }

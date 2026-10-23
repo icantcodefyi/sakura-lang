@@ -37,6 +37,7 @@ mod abi {
     include!("../../../runtime/rt/src/abi.rs");
 }
 pub use abi::{ABI_VERSION, STATS};
+pub use func::CLASSES;
 
 /// `SAKURA_MAX_HEAP` default (ABI §10).
 pub const DEFAULT_MAX_HEAP: u64 = 1 << 30;
@@ -302,6 +303,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
             attempts: g + 9,
             reuses: g + 10,
         },
+        heap: [g + 11, g + 12, g + 13],
         tuple_kinds,
         twin_of: twin_of_off,
         closure_type: rt.added_type(0),
@@ -391,6 +393,12 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .i32_add();
     s.call(rtf("rt_init")?);
     s.if_(BlockType::Empty).i32_const(0).return_().end();
+    // The allocator's cells, for compiled code's inline allocation (`func::Gen::alloc_block`).
+    for (k, &global) in env.heap.iter().enumerate() {
+        s.i32_const(k as i32)
+            .call(rtf("rt_heap_cell")?)
+            .global_set(global);
+    }
     s.i32_const(1).global_set(inited).i32_const(1).end();
     funcs.push(added(FIXED[1], vec![], i32s(1), f));
 
@@ -617,6 +625,10 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 (ValType::I64, true, 0),
                 (ValType::I64, true, 0),
                 (ValType::I64, true, 0),
+                // The allocator's cells (`func::Env::heap`).
+                (ValType::I32, true, 0),
+                (ValType::I32, true, 0),
+                (ValType::I32, true, 0),
             ],
             data: statics.bytes.clone(),
             exports,

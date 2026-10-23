@@ -26,7 +26,10 @@ pub(crate) const FREE: u16 = 0;
 const RAW: u16 = 0xFFFF;
 
 /// `stats()` counters (ABI §10). Byte counts are block sizes, so `live` includes class slack.
+/// `repr(C)`: on wasm32 compiled code updates `requested`, `live`, `live_objects`, `peak` and
+/// `free_list_bytes` in place when it allocates or frees a small block itself ([`Heap::cells`]).
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub struct Stats {
     /// Bytes requested by every allocation so far (cumulative).
     pub requested: u64,
@@ -64,7 +67,9 @@ pub struct Stats {
     pub borrows: u64,
 }
 
+/// `repr(C)`: on wasm32 compiled code pops and pushes the main pool's free lists ([`Heap::cells`]).
 #[derive(Default)]
+#[repr(C)]
 struct Pool {
     free: [u32; 16],
     bump: u32,
@@ -120,6 +125,20 @@ impl Heap {
         };
         h.em_start = start;
         Ok(h)
+    }
+
+    /// What compiled code needs to allocate and free a small block inline (wasm32,
+    /// `sakura_codegen_wasm`): the address of the main pool's sixteen free-list heads, of
+    /// [`Stats`], and the start of the emergency pool, whose blocks it leaves to [`Heap::free`].
+    /// Inline it does exactly what [`Heap::alloc`] does for a small class whose free list is not
+    /// empty, and [`Heap::free`] for a small block outside the emergency pool.
+    #[cfg(target_arch = "wasm32")]
+    pub fn cells(&self) -> [u32; 3] {
+        [
+            self.main.free.as_ptr() as usize as u32,
+            &self.stats as *const Stats as usize as u32,
+            self.em_start,
+        ]
     }
 
     pub fn stats(&self) -> Stats {

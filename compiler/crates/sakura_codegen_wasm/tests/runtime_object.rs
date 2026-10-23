@@ -46,3 +46,21 @@ fn scalar_memory_access_does_not_ask_the_memory_size() {
         "the runtime object has {sizes} `memory.size` operators: a scalar access checks its bounds again"
     );
 }
+
+#[test]
+fn the_emitter_allocates_in_the_runtime_classes() {
+    // Compiled code pops a small block of class `c` itself, so its table is the allocator's.
+    let heap = include_str!("../../../runtime/rt/src/heap.rs");
+    let start = heap
+        .find("pub const CLASSES")
+        .expect("heap.rs declares CLASSES");
+    let table = &heap[start..];
+    let table = &table[table.find('=').unwrap() + 1..];
+    let classes: Vec<u32> = table[..table.find(';').unwrap()]
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']')
+        .split(',')
+        .filter_map(|n| n.trim().parse().ok())
+        .collect();
+    assert_eq!(classes, sakura_codegen_wasm::CLASSES);
+}

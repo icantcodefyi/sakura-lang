@@ -303,6 +303,15 @@ pub extern "C" fn rt_stats() -> u32 {
     at as usize as u32
 }
 
+/// The allocator's cells compiled code allocates and frees small blocks with (`Heap::cells`):
+/// cell `k` is the address of the main pool's free-list heads (0), of the `stats()` counters
+/// (1), or the emergency pool's start (2). Internal to the linked module; they never change.
+#[cfg(target_arch = "wasm32")]
+#[unsafe(no_mangle)]
+pub extern "C" fn rt_heap_cell(k: u32) -> u32 {
+    Cx::wasm().rt().heap.cells()[k as usize % 3]
+}
+
 /// Live objects and arena slots, for the leak checks of the test harness.
 #[cfg(target_arch = "wasm32")]
 #[unsafe(no_mangle)]
