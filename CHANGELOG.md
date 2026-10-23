@@ -9,6 +9,15 @@ retains earlier implementation history.
 
 ### Changed
 
+- **A handler that only passes an operation on to the next handler out no longer costs a call.**
+  A clause like `fn next() { Tick.next() }`, which performs the same operation with the same
+  arguments, is now skipped, so the operation goes straight to the handler that answers it. On
+  the forwarding benchmark (`handled_fwd`) this cuts instructions by 56% on Node, 82% on Bun
+  and 41% on WASM and native (`bench/deltas.md`). With `SAKURA_TRACE` set, the forwarding clause
+  still runs, so traces do not change. No program's output, defect, exit code or trace changes.
+  `sakura build --dump core` shows the skipped clauses as `forwards[…]`. The runtime ABI is
+  **1.21.0**, a MINOR: a handler can carry a new header flag and a mask word, so a 1.20 host
+  refuses a 1.21 module. Ship the host and the module from the same release, as for every MINOR.
 - **The WASM backend runs heap-heavy programs in about 40% fewer instructions.** Reference
   counting, small allocations and frees, tuple reads, constructor reuse and list element and
   `Option` payload reads now run in the compiled module instead of calling the runtime, and the

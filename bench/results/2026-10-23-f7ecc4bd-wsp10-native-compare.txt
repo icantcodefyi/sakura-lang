@@ -1,0 +1,6 @@
+| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---|---:|---:|---:|---:|---|
+
+RSS detail: handled_reentry go/native/native n=10000: one-call maximum 5308416 → 5341184 bytes; many-call maximum 12091392 → 24920064 bytes at calls 16384 → 16384 (diagnostic only, §17.283); process median 5308416 → 5324800 bytes (processes 5 → 5; median is diagnostic only); ok 
+
+verdict: ok (instructions per call, §17.264)

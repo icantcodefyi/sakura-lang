@@ -515,3 +515,42 @@ both Bun cells are flat); its JS differs only in `[]` and the runtime file, and 
 found. Unchanged: `bg_fannkuch_redux` (22.6 / 17.7), whose `var perm = perm1` alias still makes
 every `List.set` copy, as `map_set`'s retained `snapshot` does. This is advisory: the blessed
 baseline moves only with a counted run. Source: `bench/results/2026-10-23-6e9248d8-js-quick*`.
+
+## Forwarding clauses (WS-P10, 2026-10-23; quick, advisory, not blessed)
+
+One commit builds WS-P10 as design §17.181 (2) specifies (§17.317 (3)): a
+clause that only performs the same operation outward with its own arguments is marked in Core,
+and with tracing off the JS runtime's `find` and the WASM and native runtime's dispatch go past
+it to the next handler out. `handled_fwd` wraps every operation in such a forwarder; traced runs
+still run the clause, so traces are unchanged. ABI 1.21.0 carries the mark on WASM and native.
+
+`bench run --sizes quick --instructions --filter 'handled_*'` for `--suite js` (Node and Bun),
+`--suite wasm` (Node and Wasmtime) and `--suite native --lane matched`, before at `625d6bfa` in a
+clean worktree and after at `f7ecc4bd`, the commit built on `625d6bfa` (WASM and native at
+`29206691`, an earlier build of it whose WASM and native code are the same; the later one changed
+only the JS runtime), so the pair isolates WS-P10. It then landed rebased onto the native lane's
+ABI 1.20.0 commits, whose own effect is recorded with them. The host was loaded, which
+instruction counts tolerate. `bench compare` verdict `ok` on all three.
+
+| Program | Backend / engine | Before | After | Change |
+|---|---|---:|---:|---:|
+| `handled_fwd` n=10,000 | JS / Node, ratio to hand JS | 4.64× | 2.04× | −56% |
+| `handled_fwd` n=10,000 | JS / Bun, ratio to hand JS | 15.9× | 2.94× | −82% |
+| `handled_fwd` n=1,000 | JS / Node, ratio to hand JS | 4.96× | 2.73× | −45% |
+| `handled_fwd` n=1,000 | JS / Bun, ratio to hand JS | 14.2× | 2.62× | −82% |
+| `handled_fwd` n=10,000 | WASM / Node, ratio to hand JS | 38.4× | 22.6× | −41% |
+| `handled_fwd` n=10,000 | WASM / Wasmtime, ratio to hand JS | 41.8× | 24.9× | −41% |
+| `handled_fwd` n=10,000 | native, Sakura instructions per call | 3.44e7 | 2.04e7 | −41% |
+
+The other `handled_*` programs (`d1`, `d4`, `d16`, `reentry`, `suspend`) are within ±0.3% on
+WASM and native. On JS they are within the flag threshold, but two Node cells are higher:
+`handled_reentry` at n=10,000 is up 3.8% (its unbound performs go through `find`, which now
+tests the forwarding mask), and `handled_d16` at n=10,000 is up 4.9%. The `handled_d16` loop is
+a bound perform that calls neither `find` nor `cctx`, and its emitted module is byte-identical,
+so that cell moved because the runtime file changed, not because of the dispatch path. Its cause
+is not found. A first version stored a register in every `find`; it put `handled_reentry` on
+Node 5.3% over (flagged) and was replaced before the commit. The WASM `stats()` counters for
+`handled_fwd` at n=1,000 go from 2,005 to 1,005 frames and from 2,006 to 1,006 drops (one
+clause frame per operation). Every other benchmark's counters are unchanged
+(`tests/snapshots/bench_counters.txt`). This is advisory: the blessed baseline moves only with a
+counted run. Source: `bench/results/2026-10-23-f7ecc4bd-wsp10-*`.

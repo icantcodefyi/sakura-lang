@@ -1,0 +1,28 @@
+| Program | Backend | Engine | n | Base ratio | Head ratio | Δ | Status |
+|---|---|---|---:|---:|---:|---:|---|
+| handled_d1 | wasm | node | 1000 | 12.411 | 12.434 | +0.2% | ok |
+| handled_d1 | wasm | node | 10000 | 10.735 | 10.743 | +0.1% | ok |
+| handled_d1 | wasm | wasmtime | 1000 | 12.202 | 12.228 | +0.2% | ok |
+| handled_d1 | wasm | wasmtime | 10000 | 11.360 | 11.360 | +0.0% | ok |
+| handled_d16 | wasm | node | 1000 | 12.461 | 12.453 | -0.1% | ok |
+| handled_d16 | wasm | node | 10000 | 10.521 | 10.509 | -0.1% | ok |
+| handled_d16 | wasm | wasmtime | 1000 | 12.504 | 12.551 | +0.4% | ok |
+| handled_d16 | wasm | wasmtime | 10000 | 11.393 | 11.388 | -0.0% | ok |
+| handled_d4 | wasm | node | 1000 | 12.472 | 12.463 | -0.1% | ok |
+| handled_d4 | wasm | node | 10000 | 10.756 | 10.752 | -0.0% | ok |
+| handled_d4 | wasm | wasmtime | 1000 | 12.233 | 12.261 | +0.2% | ok |
+| handled_d4 | wasm | wasmtime | 10000 | 11.363 | 11.365 | +0.0% | ok |
+| handled_fwd | wasm | node | 1000 | 41.620 | 24.996 | -39.9% | improved >10%: explain in the PR |
+| handled_fwd | wasm | node | 10000 | 38.364 | 22.636 | -41.0% | improved >10%: explain in the PR |
+| handled_fwd | wasm | wasmtime | 1000 | 43.770 | 26.182 | -40.2% | improved >10%: explain in the PR |
+| handled_fwd | wasm | wasmtime | 10000 | 41.846 | 24.872 | -40.6% | improved >10%: explain in the PR |
+| handled_reentry | wasm | node | 1000 | 5.927 | 5.928 | +0.0% | ok |
+| handled_reentry | wasm | node | 10000 | 5.749 | 5.746 | -0.1% | ok |
+| handled_reentry | wasm | wasmtime | 1000 | 5.970 | 5.990 | +0.3% | ok |
+| handled_reentry | wasm | wasmtime | 10000 | 6.044 | 6.057 | +0.2% | ok |
+| handled_suspend | wasm | node | 1000 | 9.466 | 9.453 | -0.1% | ok |
+| handled_suspend | wasm | node | 10000 | 8.829 | 8.825 | -0.0% | ok |
+| handled_suspend | wasm | wasmtime | 1000 | 9.322 | 9.350 | +0.3% | ok |
+| handled_suspend | wasm | wasmtime | 10000 | 9.210 | 9.207 | -0.0% | ok |
+
+verdict: ok (instructions per call, §17.264)
