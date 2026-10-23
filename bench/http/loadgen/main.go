@@ -169,22 +169,27 @@ func main() {
 
 	var n atomic.Uint64
 
+	// Setup is bounded: a connection still unopened after 10 s overall is dialed again by its
+	// worker on its first request, inside the window.
 	opened := make([]*conn, workers)
 	setupFailures := 0
+	setupStart := time.Now()
+	setupEnd := setupStart.Add(10 * time.Second)
 	for w := range opened {
-		k := &conn{addr: u.Host, host: u.Host, timeout: *timeout}
+		k := &conn{addr: u.Host, host: u.Host, timeout: min(*timeout, time.Second)}
 		opened[w] = k
-		for try := 0; ; try++ {
+		for time.Now().Before(setupEnd) {
 			if k.dial() == nil {
-				break
-			}
-			if try == 50 {
-				setupFailures++ // the worker dials again on its first request
 				break
 			}
 			time.Sleep(20 * time.Millisecond)
 		}
+		if k.c == nil {
+			setupFailures++
+		}
+		k.timeout = *timeout
 	}
+	setupSeconds := time.Since(setupStart).Seconds()
 
 	start := time.Now()
 	end := start.Add(*dur)
@@ -316,21 +321,23 @@ func main() {
 		status[fmt.Sprint(k)] = v
 	}
 	out := map[string]any{
-		"mode":          map[bool]string{true: "rate", false: "closed"}[*rate > 0],
-		"mix":           *mixName,
-		"connections":   workers,
-		"rate":          *rate,
-		"duration_s":    dur.Seconds(),
-		"elapsed_s":     elapsed.Seconds(),
-		"scheduled":     scheduled,
-		"ok":            ok2xx,
-		"non_2xx":       non2xx,
-		"errors":        errs,
-		"error_kinds":   all.errs,
-		"status_codes":  status,
-		"error_rate":    ratio(non2xx+errs, attempts),
-		"rps":           float64(all.inWindow) / dur.Seconds(),
-		"ok_per_second": all.perSec[:secs],
+		"mode":                   map[bool]string{true: "rate", false: "closed"}[*rate > 0],
+		"mix":                    *mixName,
+		"connections":            workers,
+		"rate":                   *rate,
+		"duration_s":             dur.Seconds(),
+		"elapsed_s":              elapsed.Seconds(),
+		"scheduled":              scheduled,
+		"ok":                     ok2xx,
+		"non_2xx":                non2xx,
+		"errors":                 errs,
+		"error_kinds":            all.errs,
+		"setup_connect_failures": setupFailures,
+		"setup_s":                setupSeconds,
+		"status_codes":           status,
+		"error_rate":             ratio(non2xx+errs, attempts),
+		"rps":                    float64(all.inWindow) / dur.Seconds(),
+		"ok_per_second":          all.perSec[:secs],
 		"latency_ms": map[string]float64{
 			"p50": pct(0.50), "p90": pct(0.90), "p99": pct(0.99), "p999": pct(0.999),
 			"max": pct(1),

@@ -405,6 +405,39 @@ def markdown(doc):
     return "\n".join(lines)
 
 
+def summary(doc):
+    """One compact table per mix: the numbers bench/http/README.md quotes."""
+    lines = []
+    for mix in doc["meta"]["flags"]["mixes"]:
+        lines += [f"Mix `{mix}`", "",
+                  "| Server | Max sustained RPS (connections) | p50 / p99 ms there | Knee RPS (p99 ms) "
+                  "| Past the knee: offered → done, p99, errors | Peak RSS MiB | Max load |",
+                  "|---|---|---|---|---|---|---|"]
+        for cell in (c for c in doc["results"] if c["mix"] == mix):
+            if cell.get("problems") and not cell["closed"]:
+                lines.append(f"| {cell['server']} | {'; '.join(cell['problems'])} | | | | | |")
+                continue
+            ok = [p for p in cell["closed"] if passes(p)]
+            best = max(ok, key=lambda p: p["rps"], default=None)
+            points = cell["closed"] + cell["rate"]
+            knee = f"{cell['knee_rps']:,} ({cell['knee_p99_ms']:.1f})" if cell.get("knee_rps") else "none"
+            fb = cell.get("first_failing_rate")
+            if fb:
+                kinds = dict(fb["non_2xx"], **fb["error_kinds"])
+                past = (f"{fb['rate']:,} → {fb['rps']:,.0f}/s, {fb['p99_ms']:,.0f} ms, "
+                        + (", ".join(f"{k} ×{v:,}" for k, v in sorted(kinds.items())) or "none")
+                        + ("" if fb["server_alive"] else ", **server died**"))
+            else:
+                past = "kept up at every rate"
+            lines.append(
+                f"| {cell['server']} | {best['rps']:,.0f} ({best['rps_min']:,.0f}–{best['rps_max']:,.0f}) at {best['connections']} "
+                f"| {best['p50_ms']:.1f} / {best['p99_ms']:.1f} | {knee} | {past} "
+                f"| {max(p['rss_peak_mib'] for p in points):.0f} | {max(p['load_1m_max'] for p in points):.1f} |"
+                if best else f"| {cell['server']} | none under {MAX_ERROR_RATE:.1%} errors | | {knee} | {past} | | |")
+        lines.append("")
+    return "\n".join(lines)
+
+
 def fmt_point(p):
     if not p:
         return "—"
@@ -458,7 +491,11 @@ def main():
     ap.add_argument("--sakura", default=os.environ.get("SAKURA") or shutil.which("sakura"))
     ap.add_argument("--json")
     ap.add_argument("--md")
+    ap.add_argument("--report", metavar="JSON", help="print the summary tables of a result file and exit")
     a = ap.parse_args()
+    if a.report:
+        print(summary(json.loads(Path(a.report).read_text())))
+        return
     a.concurrency = [int(x) for x in a.concurrency.split(",")]
     a.rate_factors = [float(x) for x in a.rate_factors.split(",")]
     names = [n for n in a.servers.split(",") if n]
