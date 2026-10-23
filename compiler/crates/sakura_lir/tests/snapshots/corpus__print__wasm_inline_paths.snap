@@ -1,0 +1,193 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::wasm_inline_paths::Leaf | Leaf 24b (n: i64)
+layout 1 record main::wasm_inline_paths::Node | Node 32b (leaf: word*, k: i64)
+layout 2 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 3 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 4 shape |  32b (word*, word*)
+layout 5 shape |  32b (i64, word*)
+
+fn main#0 pub top -> unit ; main::wasm_inline_paths, frame 17 slots [%3 word*, %8 word*, %9 i64, %10 word*, %25 bool, %43 bool, %44 word*, %47 word*, %48 word*, %53 word*, %54 word*, %55 word*, %82 bool, %96 word*, %97 i64, %101 word*, %102 i64]
+  b0():
+    %0 lit: i64 = const 41
+    %1 box: word = box %0
+    %2 lit: ptr = const str 0
+    call pair#2(%1, %2) -> b1()
+  b1(%3 r: ptr):
+    %109 p: i64 = tuple_get %3.0
+    %110 p: ptr = tuple_get %3.1
+    drop %3
+    jump b2(%109, %110)
+  b2(%4 a: i64, %5 s: ptr):
+    %6 lit: i64 = const 1
+    %7 lit: ptr = const str 1
+    call concrete#3(%6, %7) -> b3(%4, %5)
+  b3(%8 r: ptr, %9 a: i64, %10 s: ptr):
+    %107 p: i64 = tuple_get %8.0
+    %108 p: ptr = tuple_get %8.1
+    drop %8
+    jump b4(%107, %108, %9, %10)
+  b4(%11 b: i64, %12 t: ptr, %13 a: i64, %14 s: ptr):
+    %15 t: i64 = intadd %13, %11
+    %16 s: ptr = show %15
+    %17 lit: ptr = const str 2
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %19 s: ptr = show %14
+    drop %14
+    %20 s: ptr = concat %18, %19
+    drop %19
+    %21 lit: ptr = const str 2
+    %22 s: ptr = concat %20, %21
+    drop %21
+    %23 s: ptr = show %12
+    drop %12
+    %24 s: ptr = concat %22, %23
+    drop %23
+    perform std::console::Console.print(%24) -> b5()
+  b5(%25 r: unit):
+    %26 box: word = box %25
+    drop %26
+    %27 lit: i64 = const 7
+    %28 rec: ptr = alloc main::wasm_inline_paths::Leaf(%27)
+    %29 lit: i64 = const 0
+    %30 rec: ptr = alloc main::wasm_inline_paths::Node(%28, %29)
+    %106 lit: i64 = const 0
+    jump b11(%30, %106)
+  b6(%31 node: ptr, %32 i: i64):
+    %33 leaf: word = proj %31.0 main::wasm_inline_paths::Node
+    %34 n: i64 = proj %33.0 main::wasm_inline_paths::Leaf
+    drop %33
+    %35 s: ptr = show %34
+    %36 lit: ptr = const str 3
+    %37 s: ptr = concat %36, %35
+    drop %35
+    %38 lit: ptr = const str 2
+    %39 s: ptr = concat %37, %38
+    drop %38
+    %40 k: i64 = proj %31.1 main::wasm_inline_paths::Node
+    %41 s: ptr = show %40
+    %42 s: ptr = concat %39, %41
+    drop %41
+    perform std::console::Console.print(%42) -> b7(%31)
+  b7(%43 r: unit, %44 node: ptr):
+    %45 box: word = box %43
+    drop %45
+    dup %44
+    %46 xs: ptr = alloc list(%44)
+    call bump#4(%44) -> b8(%46)
+  b8(%47 r: ptr, %48 xs: ptr):
+    %49 lit: i64 = const 0
+    %50 lit: ptr = const str 4
+    %111 xs.lent: ref = lend %48
+    %51 r: word = $list_get_expect(%111, %49, %50)
+    %52 lit: i64 = const 100
+    call replace#5(%51, %52) -> b9(%48, %47)
+  b9(%53 r: ptr, %54 xs: ptr, %55 r: ptr):
+    %56 k: i64 = proj %55.1 main::wasm_inline_paths::Node
+    %57 s: ptr = show %56
+    %58 lit: ptr = const str 5
+    %59 s: ptr = concat %58, %57
+    drop %57
+    %60 lit: ptr = const str 2
+    %61 s: ptr = concat %59, %60
+    drop %60
+    %62 leaf: word = proj %53.0 main::wasm_inline_paths::Node
+    %63 n: i64 = proj %62.0 main::wasm_inline_paths::Leaf
+    drop %62
+    %64 s: ptr = show %63
+    %65 s: ptr = concat %61, %64
+    drop %64
+    %66 lit: ptr = const str 2
+    %67 s: ptr = concat %65, %66
+    drop %66
+    %68 k: i64 = proj %53.1 main::wasm_inline_paths::Node
+    drop %53
+    %69 s: ptr = show %68
+    %70 s: ptr = concat %67, %69
+    drop %69
+    %71 lit: ptr = const str 2
+    %72 s: ptr = concat %70, %71
+    drop %71
+    %73 leaf: word = proj %55.0 main::wasm_inline_paths::Node
+    drop %55
+    %74 n: i64 = proj %73.0 main::wasm_inline_paths::Leaf
+    drop %73
+    %75 s: ptr = show %74
+    %76 s: ptr = concat %72, %75
+    drop %75
+    %77 lit: ptr = const str 2
+    %78 s: ptr = concat %76, %77
+    drop %77
+    %79 r: i64 = $list_len(%54)
+    %80 s: ptr = show %79
+    %81 s: ptr = concat %78, %80
+    drop %80
+    perform std::console::Console.print(%81) -> b10()
+  b10(%82 r: unit):
+    %83 box: word = box %82
+    %84 unbox: unit = unbox %83
+    drop %83
+    ret %84
+  b11(%85 node: ptr, %86 i: i64):
+    %87 lit: i64 = const 3
+    %88 t: bool = lt.int %86, %87
+    if %88 then b13(%85, %86) else b14(%85, %86)
+  b12(%89 v: unit, %90 node: ptr, %91 i: i64):
+    jump b11(%90, %91)
+  b13(%92 node: ptr, %93 i: i64):
+    call bump#4(%92) -> b15(%93)
+  b14(%94 node: ptr, %95 i: i64):
+    jump b6(%94, %95)
+  b15(%96 r: ptr, %97 i: i64):
+    %98 leaf: word = proj %96.0 main::wasm_inline_paths::Node
+    %99 n: i64 = proj %98.0 main::wasm_inline_paths::Leaf
+    drop %98
+    %100 t: i64 = intadd %99, %97
+    call replace#5(%96, %100) -> b16(%97)
+  b16(%101 r: ptr, %102 i: i64):
+    %103 lit: i64 = const 1
+    %104 t: i64 = intadd %102, %103
+    %105 lit: unit = const ()
+    jump b12(%105, %101, %104)
+
+fn $entry#1 top -> unit ; main::wasm_inline_paths, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn pair#2 top -> ptr ; main::wasm_inline_paths, frame 2 slots [%0 word*, %1 word*]
+  b0(%0 a: word, %1 b: word):
+    %2 tup: ptr = alloc tuple#4(word, word)(%0, %1)
+    ret %2
+
+fn concrete#3 top -> ptr ; main::wasm_inline_paths, frame 2 slots [%0 i64, %1 word*]
+  b0(%0 a: i64, %1 b: ptr):
+    %2 tup: ptr = alloc tuple#5(i64, word)(%0, %1)
+    ret %2
+
+fn bump#4 top -> ptr ; main::wasm_inline_paths, frame 1 slots [%0 word*]
+  b0(%0 node: ptr):
+    %1 k: i64 = proj %0.1 main::wasm_inline_paths::Node
+    %2 lit: i64 = const 1
+    %3 t: i64 = intadd %1, %2
+    %4 leaf: word = proj %0.0 main::wasm_inline_paths::Node
+    %6 token: word = $reuse_reset(%0)
+    %5 rec: ptr = alloc main::wasm_inline_paths::Node(%4, %3) reuse %6
+    ret %5
+
+fn replace#5 top -> ptr ; main::wasm_inline_paths, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 node: ptr, %1 n: i64):
+    %2 rec: ptr = alloc main::wasm_inline_paths::Leaf(%1)
+    %3 k: i64 = proj %0.1 main::wasm_inline_paths::Node
+    %7 token: word = $reuse_reset(%0)
+    %4 lit: i64 = const 1
+    %5 t: i64 = intadd %3, %4
+    %6 rec: ptr = alloc main::wasm_inline_paths::Node(%2, %5) reuse %7
+    ret %6

@@ -271,22 +271,7 @@ fn edge_mut(t: &mut Term, n: usize) -> &mut Edge {
 /// ([`entry_shapes`], then the block's `Proj`s), and a parameter has the shape of the token its
 /// edges pass.
 pub fn token_params(f: &Func) -> HashMap<Var, Shape> {
-    let mut tokens: HashMap<Var, Shape> = HashMap::new();
-    for (b, mut shapes) in f.blocks.iter().zip(entry_shapes(f)) {
-        for i in &b.insts {
-            match i {
-                Inst::Proj { src, shape, .. } => {
-                    shapes.insert(*src, shape.clone());
-                }
-                Inst::Builtin { dst, name, args } if name == RESET => {
-                    if let Some(s) = args.first().and_then(|x| shapes.get(x)) {
-                        tokens.insert(*dst, s.clone());
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
+    let mut tokens = reset_shapes(f);
     let mut params = HashMap::new();
     loop {
         let before = params.len();
@@ -305,6 +290,28 @@ pub fn token_params(f: &Func) -> HashMap<Var, Shape> {
             return params;
         }
     }
+}
+
+/// The token of each `reuse_reset` in `f`, with the shape of the object it resets: the shape
+/// that object is known to have there ([`entry_shapes`], then the block's `Proj`s).
+pub fn reset_shapes(f: &Func) -> HashMap<Var, Shape> {
+    let mut tokens: HashMap<Var, Shape> = HashMap::new();
+    for (b, mut shapes) in f.blocks.iter().zip(entry_shapes(f)) {
+        for i in &b.insts {
+            match i {
+                Inst::Proj { src, shape, .. } => {
+                    shapes.insert(*src, shape.clone());
+                }
+                Inst::Builtin { dst, name, args } if name == RESET => {
+                    if let Some(s) = args.first().and_then(|x| shapes.get(x)) {
+                        tokens.insert(*dst, s.clone());
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    tokens
 }
 
 /// `f` as [`reuse`] found it: each `reuse_reset` its `Drop` again, each `Alloc` allocating, and

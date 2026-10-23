@@ -277,6 +277,7 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         .map(|k| (vec![ValType::I32; k], vec![ValType::I32]))
         .collect();
     let may_abort = sakura_lir::direct::may_abort(m, &regions);
+    let tuple_kinds = statics.bytes(&tuple_kinds(m));
     let env = func::Env {
         m,
         rt: &layout.rt,
@@ -293,7 +294,15 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
         may_abort,
         gauge: g + 3,
         state: g + 4,
-        drops_in_place: g + 5,
+        in_place: func::InPlace {
+            drops: g + 5,
+            dups: g + 6,
+            candidates: g + 7,
+            lends: g + 8,
+            attempts: g + 9,
+            reuses: g + 10,
+        },
+        tuple_kinds,
         twin_of: twin_of_off,
         closure_type: rt.added_type(0),
     };
@@ -454,20 +463,29 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
     s.i32_const(tests_bytes.len() as i32).end();
     funcs.push(added(FIXED[6], vec![], i32s(2), f));
 
-    // stats() -> (ptr, len): the runtime's counters, `drops` (the tenth) plus the decrements
-    // compiled code made in place (ABI §10, design §17.287 (3)).
+    // stats() -> (ptr, len): the runtime's counters plus what compiled code did in place of a
+    // runtime call (ABI §10, design §17.287 (3); `func::InPlace`), each global into the counters
+    // its call would have counted: `dups` 8, `drops` 9, `reuse_attempts` 11, `reuses` 12,
+    // `borrow_candidates` 13, `borrows` 14.
+    let p = &env.in_place;
     let mut f = Function::new([(1, ValType::I32)]);
-    f.instructions()
-        .call(rtf("rt_stats")?)
-        .local_tee(0)
-        .local_get(0)
-        .i64_load(mem(72, 3))
-        .global_get(g + 5)
-        .i64_add()
-        .i64_store(mem(72, 3))
-        .local_get(0)
-        .i32_const(8 * STATS as i32)
-        .end();
+    let mut s = f.instructions();
+    s.call(rtf("rt_stats")?).local_set(0);
+    for (global, counters) in [
+        (p.drops, &[9][..]),
+        (p.dups, &[8]),
+        (p.candidates, &[13]),
+        (p.lends, &[13, 14]),
+        (p.attempts, &[11]),
+        (p.reuses, &[12]),
+    ] {
+        for &k in counters {
+            let at = mem(8 * k, 3);
+            s.local_get(0).local_get(0).i64_load(at);
+            s.global_get(global).i64_add().i64_store(at);
+        }
+    }
+    s.local_get(0).i32_const(8 * STATS as i32).end();
     funcs.push(added(FIXED[7], vec![], i32s(2), f));
 
     // invoke(listener, ptr, len) -> task: a served request (`rt_invoke`; `ptr` is the
@@ -591,7 +609,13 @@ pub fn emit(m: &Module, opts: &Options) -> Result<Vec<u8>, String> {
                 // The twins' gauge and state (`func::compile_twin`).
                 (ValType::I32, true, 0),
                 (ValType::I32, true, 0),
-                // `Drop`'s in-place decrements (`func::Gen::drop_word`).
+                // What compiled code counts in place (`func::InPlace`): drops, dups,
+                // candidates, lends, reuse attempts, reuses.
+                (ValType::I64, true, 0),
+                (ValType::I64, true, 0),
+                (ValType::I64, true, 0),
+                (ValType::I64, true, 0),
+                (ValType::I64, true, 0),
                 (ValType::I64, true, 0),
             ],
             data: statics.bytes.clone(),
@@ -617,6 +641,19 @@ fn added(name: &str, params: Vec<ValType>, results: Vec<ValType>, body: Function
 fn rt_step_type(rt: &link::Runtime<'_>) -> Result<u32, String> {
     rt.find_type(&[ValType::I32, ValType::I32], &[ValType::I32])
         .ok_or_else(|| "the runtime has no (i32, i32) -> i32 type".into())
+}
+
+/// The tuple kinds table (`func::Env::tuple_kinds`): per layout id a `u32`, the scalar kinds of
+/// a tuple row's first 16 slots at two bits each (ABI §3.4's encoding), 0 for other entries.
+fn tuple_kinds(m: &Module) -> Vec<u8> {
+    let layouts = &m.layouts.entries;
+    let word = |e: &sakura_lir::layout::Entry| match e.kind {
+        sakura_lir::layout::EntryKind::Tuple => (e.rows[0].slots.iter().take(16))
+            .enumerate()
+            .fold(0u32, |w, (i, slot)| w | (slot.kind as u32) << (2 * i)),
+        _ => 0,
+    };
+    layouts.iter().flat_map(|e| word(e).to_le_bytes()).collect()
 }
 
 /// `tests()` (ABI §9): `u32 n`, then per test `u32 code` and the name and module (each

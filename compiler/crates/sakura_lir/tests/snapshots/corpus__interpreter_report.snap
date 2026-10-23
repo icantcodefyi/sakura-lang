@@ -310,6 +310,7 @@ semantics/uuid_decode: unsupported (builtin json_decode)
 semantics/validate_untrusted_into_refined: ok, 30 allocated, 7 dup, 37 drop, peak 5, live 0/0
 semantics/variants_and_match: ok, 30 allocated, 3 dup, 33 drop, peak 7, live 0/0
 semantics/virtual_timeout_stream_read: unsupported (builtin task_deterministic)
+semantics/wasm_inline_paths: ok, 40 allocated, 13 dup, 53 drop, peak 10, live 0/0
 semantics/websocket_accept_rejects_max_message: D020, 28 allocated, 7 dup, 35 drop, peak 26, live 0/0
 semantics/websocket_close_rejects_code: unsupported (builtin string_to_bytes)
 semantics/websocket_connect_rejects_max_message: D020, 17 allocated, 5 dup, 22 drop, peak 17, live 0/0

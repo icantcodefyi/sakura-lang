@@ -81,14 +81,37 @@ pub struct Env<'a> {
     /// ([`OK`], [`DEFECTED`], [`ABORTED`], [`CANCELLED`]).
     pub gauge: u32,
     pub state: u32,
-    /// The `i64` global counting the decrements `Drop` made in place, which `stats()` adds to
-    /// `drops` (ABI §10, design §17.287 (3)).
-    pub drops_in_place: u32,
+    /// The `i64` globals counting what compiled code did in place of a runtime call, which
+    /// `stats()` adds to the runtime's counters (ABI §10, design §17.287 (3)): see [`InPlace`].
+    pub in_place: InPlace,
+    /// The static-block offset of the tuple kinds table: per layout id, the scalar kinds of a
+    /// tuple row's first 16 slots, two bits each as in the layout table (0 for other entries).
+    pub tuple_kinds: u32,
     /// The static-block offset of the twin table: per closure `code`, the funcref table index
     /// of the code's closure-convention twin, or 0 (design §17.211 (2)).
     pub twin_of: u32,
     /// The type of a closure twin taking `k` words (the closure first) is `closure_type + k - 1`.
     pub closure_type: u32,
+}
+
+/// The `i64` globals of [`Env::in_place`], each added to `stats()` counters by the linker's
+/// `stats` export: the operations below run inline when they need no allocation, release or
+/// defect, and fall back to the runtime call (which counts itself) otherwise, so every counter
+/// keeps its value for a fixed execution.
+#[derive(Clone, Copy, Debug)]
+pub struct InPlace {
+    /// `Drop`'s decrements of an object still referenced elsewhere: `drops`.
+    pub drops: u32,
+    /// `Dup`s and projections' increments: `dups`.
+    pub dups: u32,
+    /// `DupCandidate`s: `borrow_candidates` (their increments count in `dups`).
+    pub candidates: u32,
+    /// `Lend`s: `borrow_candidates` and `borrows`.
+    pub lends: u32,
+    /// `reuse_reset`s: `reuse_attempts`.
+    pub attempts: u32,
+    /// `reuse_reset`s whose object is the token: `reuses`.
+    pub reuses: u32,
 }
 
 /// A twin's state after it returns (ABI §5 "direct style", design §17.118).
@@ -371,6 +394,7 @@ pub fn compile(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Functio
         cur: BlockId(0),
         open: 0,
         twin: false,
+        resets: sakura_lir::reuse::reset_shapes(f),
     };
     let mut s = func.instructions();
     // $b = n + frame.block (bounded by the dispatch table's default).
@@ -434,6 +458,7 @@ pub fn compile_twin(env: &Env<'_>, statics: &mut Statics, f: &Func) -> Result<Fu
         cur: BlockId(0),
         open: 0,
         twin: true,
+        resets: sakura_lir::reuse::reset_shapes(f),
     };
     let mut s = func.instructions();
     let cost = gauge_cost(f);
@@ -482,6 +507,9 @@ const CHUNK: usize = 256;
 
 /// A function of at most this many variables has a local per variable ([`locals`]).
 const LOCALS: usize = 256;
+
+/// A `reuse_reset` of a row with at most this many owning slots runs inline ([`Gen::reuse_reset`]).
+const RESET_SLOTS: usize = 8;
 
 /// A `Switch` of at most this many arms tests them one after another, as small ones always did.
 const LINEAR: usize = 8;
@@ -563,6 +591,9 @@ struct Gen<'e, 's> {
     /// Compiling the direct twin: arguments and result are native, a defect or an abort
     /// returns a placeholder with the state global set.
     twin: bool,
+    /// The shape of the object each `reuse_reset` token comes from
+    /// (`sakura_lir::reuse::reset_shapes`).
+    resets: HashMap<Var, Shape>,
 }
 
 impl Gen<'_, '_> {
@@ -919,7 +950,7 @@ impl Gen<'_, '_> {
 
     /// `Drop` of the word in local `l` (ABI §3.1, design §17.287 (3)): a counted object
     /// (`is_ptr`, not `static`) with `rc > 1` is decremented in place and counted in
-    /// [`Env::drops_in_place`]; anything else goes to the `drop` export, which performs the last
+    /// [`InPlace::drops`]; anything else goes to the `drop` export, which performs the last
     /// decrement and the release.
     fn drop_word(&self, s: &mut InstructionSink<'_>, l: u32) -> Result<(), String> {
         s.block(BlockType::Empty);
@@ -942,10 +973,7 @@ impl Gen<'_, '_> {
             .i32_const(1)
             .i32_sub()
             .i32_store(mem(4, 2));
-        s.global_get(self.env.drops_in_place)
-            .i64_const(1)
-            .i64_add()
-            .global_set(self.env.drops_in_place);
+        self.count(s, self.env.in_place.drops);
         s.br(1);
         s.end();
         s.local_get(l);
@@ -954,11 +982,75 @@ impl Gen<'_, '_> {
         Ok(())
     }
 
+    /// One more to the `i64` counter global `g`.
+    fn count(&self, s: &mut InstructionSink<'_>, g: u32) {
+        s.global_get(g).i64_const(1).i64_add().global_set(g);
+    }
+
+    /// Branch to `depth` unless the word in local `l` is a counted object (`object.rs`'s
+    /// `counted`: a pointer whose header is not `static`).
+    fn br_unless_counted(&self, s: &mut InstructionSink<'_>, l: u32, depth: u32) {
+        s.local_get(l).i32_const(3).i32_and();
+        s.local_get(l).i32_eqz().i32_or().br_if(depth);
+        s.local_get(l)
+            .i32_load8_u(mem(3, 0))
+            .i32_const(STATIC)
+            .i32_and()
+            .br_if(depth);
+    }
+
+    /// The increment of the counted object in local `l`, inline (`Rt::dup`): branch to `full`
+    /// when its `rc` is at `u32::MAX`, where the runtime raises `D092`; nothing for a word that
+    /// is not counted. Inside one `block` of its own.
+    fn inc_inline(&self, s: &mut InstructionSink<'_>, l: u32, full: u32) {
+        s.block(BlockType::Empty);
+        self.br_unless_counted(s, l, 0);
+        s.local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(-1)
+            .i32_eq()
+            .br_if(full + 1);
+        s.local_get(l)
+            .local_get(l)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_add()
+            .i32_store(mem(4, 2));
+        s.end();
+    }
+
+    /// `rt_dup(v)` inline, counted in [`InPlace::dups`] (and `also`); the runtime's export (name
+    /// `slow`, which counts itself) at `u32::MAX`, with a landing pad on `D092`.
+    fn dup_as(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        l: u32,
+        live: &Live,
+        slow: &str,
+        also: Option<u32>,
+    ) -> Result<(), String> {
+        s.block(BlockType::Empty);
+        s.block(BlockType::Empty);
+        self.depth += 2;
+        self.inc_inline(s, l, 0);
+        self.count(s, self.env.in_place.dups);
+        if let Some(g) = also {
+            self.count(s, g);
+        }
+        s.br(1);
+        s.end();
+        self.depth -= 1;
+        s.local_get(l);
+        self.call_rt(s, slow)?;
+        self.pad_if(s, live, None)?;
+        self.depth -= 1;
+        s.end();
+        Ok(())
+    }
+
     /// `rt_dup(v)`, with a landing pad on `D092`.
     fn dup(&mut self, s: &mut InstructionSink<'_>, l: u32, live: &Live) -> Result<(), String> {
-        s.local_get(l);
-        self.call_rt(s, "rt_dup")?;
-        self.pad_if(s, live, None)
+        self.dup_as(s, l, live, "rt_dup", None)
     }
 
     // ---- cases ----------------------------------------------------------------------------
@@ -1139,13 +1231,41 @@ impl Gen<'_, '_> {
                     _ => 0,
                 };
                 if want >= 0 {
-                    s.local_get(self.local(*src))
-                        .i32_const(*index as i32)
-                        .i32_const(want);
+                    let (t, d) = (self.local(*src), self.local(*dst));
+                    // Inline when the row's slot kind is the one wanted (the tables hold 16
+                    // slots): the slot itself, a word with its increment uncounted, as
+                    // `rt_tuple_get` makes it; a conversion or `D092` takes the call.
+                    let inline = *index < 16;
+                    if inline {
+                        s.block(BlockType::Empty);
+                        s.block(BlockType::Empty);
+                        self.depth += 2;
+                        s.local_get(t).i32_load(mem(12, 2)).i32_const(2).i32_shl();
+                        s.global_get(self.env.static_base).i32_add();
+                        s.i32_load(mem(self.env.tuple_kinds as u64, 2));
+                        s.i32_const(2 * *index as i32).i32_shr_u();
+                        s.i32_const(3).i32_and().i32_const(want).i32_ne().br_if(0);
+                        let off = 16 + 8 * *index as u64;
+                        if want == 0 {
+                            s.local_get(t).i32_load(mem(off, 2)).local_set(d);
+                            self.inc_inline(s, d, 0);
+                        } else {
+                            s.local_get(t).i64_load(mem(off, 3));
+                            self.pop_bits(s, *dst);
+                        }
+                        s.br(1);
+                        s.end();
+                        self.depth -= 1;
+                    }
+                    s.local_get(t).i32_const(*index as i32).i32_const(want);
                     self.call_rt(s, "rt_tuple_get")?;
                     self.pop_bits(s, *dst);
                     if want == 0 {
-                        self.check_zero(s, self.local(*dst), &before)?;
+                        self.check_zero(s, d, &before)?;
+                    }
+                    if inline {
+                        self.depth -= 1;
+                        s.end();
                     }
                 }
             }
@@ -1351,15 +1471,20 @@ impl Gen<'_, '_> {
                 *live.entry(*v).or_default() += 1;
             }
             Inst::DupCandidate(v) => {
-                s.local_get(self.local(*v));
-                self.call_rt(s, "rt_dup_candidate")?;
-                self.pad_if(s, live, None)?;
+                let candidates = self.env.in_place.candidates;
+                self.dup_as(
+                    s,
+                    self.local(*v),
+                    live,
+                    "rt_dup_candidate",
+                    Some(candidates),
+                )?;
                 *live.entry(*v).or_default() += 1;
             }
             Inst::Lend { dst, src } => {
-                s.local_get(self.local(*src));
-                self.call_rt(s, "rt_lend")?;
-                s.local_set(self.local(*dst));
+                // `rt_lend`: the word itself, counted.
+                s.local_get(self.local(*src)).local_set(self.local(*dst));
+                self.count(s, self.env.in_place.lends);
             }
             Inst::Drop(v) => {
                 self.drop_word(s, self.local(*v))?;
@@ -1652,19 +1777,21 @@ impl Gen<'_, '_> {
                 return Ok(());
             }
         };
-        // A reuse token's storage (plan M5 N3), else a fresh block.
+        // A reuse token's storage (plan M5 N3, `rt_reuse`), else a fresh block.
         if let Some(t) = reuse {
-            s.local_get(self.local(t));
+            let t = self.local(t);
+            s.local_get(t).i32_const(3).i32_and();
+            s.local_get(t).i32_eqz().i32_or();
+            s.if_(BlockType::Result(ValType::I32));
+            s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
+            self.call_rt(s, "rt_alloc")?;
+            s.else_();
+            s.local_get(t);
+            s.end();
+        } else {
+            s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
+            self.call_rt(s, "rt_alloc")?;
         }
-        s.i32_const(tag).i32_const(16 + 8 * args.len() as i32);
-        self.call_rt(
-            s,
-            if reuse.is_some() {
-                "rt_reuse"
-            } else {
-                "rt_alloc"
-            },
-        )?;
         s.local_set(d);
         self.check_zero(s, d, live)?;
         for (off, v) in header {
@@ -1673,6 +1800,102 @@ impl Gen<'_, '_> {
         for (i, &a) in args.iter().enumerate() {
             self.store(s, d, 16 + 8 * i as u32, a, true);
         }
+        Ok(())
+    }
+
+    /// `token = reuse_reset(x)` (`Rt::reuse_reset`) inline for an object of a known row with
+    /// at most [`RESET_SLOTS`] owning slots: when `x` is unique and no child it owns would be
+    /// freed, each child is decremented in place and its slot zeroed, and `x` is the token;
+    /// when `x` is shared it is decremented and the token is `Unit`. Releasing a child takes the
+    /// runtime's builtin, which then does all of it, before anything is written.
+    fn reuse_reset(
+        &mut self,
+        s: &mut InstructionSink<'_>,
+        dst: Var,
+        x: Var,
+        live: &Live,
+    ) -> Result<(), String> {
+        let (d, x) = (self.local(dst), self.local(x));
+        let layouts = &self.env.m.layouts;
+        let row = match &self.resets[&dst] {
+            Shape::Tuple(l) | Shape::Record(l) => &layouts.entry(*l).rows[0],
+            Shape::Variant(l, c) => &layouts.entry(*l).rows[*c as usize],
+            Shape::List => unreachable!("a list is never reset (the validator)"),
+        };
+        let owned: Vec<u64> = (row.slots.iter().enumerate())
+            .filter(|(_, slot)| slot.owns)
+            .map(|(i, _)| 16 + 8 * i as u64)
+            .collect();
+        if owned.len() > RESET_SLOTS {
+            s.local_get(x);
+            self.call_rt(s, "rt_b_reuse_reset")?;
+            s.local_set(d);
+            return self.check_zero(s, d, live);
+        }
+        let attempts = self.env.in_place.attempts;
+        s.block(BlockType::Empty); // done
+        s.block(BlockType::Empty); // slow
+        s.block(BlockType::Empty); // shared
+        s.block(BlockType::Empty); // not counted
+        self.depth += 4;
+        self.br_unless_counted(s, x, 0);
+        s.local_get(x)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_ne()
+            .br_if(1);
+        // Unique: a child that would reach zero takes the runtime.
+        for &off in &owned {
+            s.block(BlockType::Empty);
+            s.local_get(x).i32_load(mem(off, 2)).local_set(self.lu);
+            self.br_unless_counted(s, self.lu, 0);
+            s.local_get(self.lu)
+                .i32_load(mem(4, 2))
+                .i32_const(1)
+                .i32_le_u()
+                .br_if(3);
+            s.end();
+        }
+        for &off in &owned {
+            s.block(BlockType::Empty);
+            s.local_get(x).i32_load(mem(off, 2)).local_set(self.lu);
+            self.br_unless_counted(s, self.lu, 0);
+            s.local_get(self.lu)
+                .local_get(self.lu)
+                .i32_load(mem(4, 2))
+                .i32_const(1)
+                .i32_sub()
+                .i32_store(mem(4, 2));
+            s.end();
+            s.local_get(x).i64_const(0).i64_store(mem(off, 3));
+        }
+        self.count(s, attempts);
+        self.count(s, self.env.in_place.reuses);
+        s.local_get(x).local_set(d).br(3);
+        s.end();
+        self.depth -= 1;
+        // Not counted: dropping it does nothing.
+        self.count(s, attempts);
+        s.i32_const(UNIT).local_set(d).br(2);
+        s.end();
+        self.depth -= 1;
+        // Shared: one owner fewer, never the last.
+        s.local_get(x)
+            .local_get(x)
+            .i32_load(mem(4, 2))
+            .i32_const(1)
+            .i32_sub()
+            .i32_store(mem(4, 2));
+        self.count(s, attempts);
+        s.i32_const(UNIT).local_set(d).br(1);
+        s.end();
+        self.depth -= 1;
+        s.local_get(x);
+        self.call_rt(s, "rt_b_reuse_reset")?;
+        s.local_set(d);
+        self.check_zero(s, d, live)?;
+        self.depth -= 1;
+        s.end();
         Ok(())
     }
 
@@ -1707,6 +1930,9 @@ impl Gen<'_, '_> {
                 get(s, self);
                 s.i64_add().local_set(d);
                 return Ok(());
+            }
+            sakura_lir::reuse::RESET if self.resets.contains_key(&dst) => {
+                return self.reuse_reset(s, dst, args[0], live);
             }
             _ if self.env.host_handlers.contains_key(name) => {
                 let (effect, codes, n) = self.env.host_handlers[name];

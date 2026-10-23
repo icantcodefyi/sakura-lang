@@ -1,0 +1,36 @@
+// milestone: M4
+// covers: the WASM emitter's inline paths and their runtime fallbacks (`sakura_codegen_wasm` `func.rs`): a tuple element read at its row's kind and read through a conversion, a constructor reset whose object is unique with a child still held (decremented in place), unique with a child it alone holds (released by the runtime), and shared (decremented, then a fresh block)
+
+type Leaf = { n: Int }
+
+type Node = { leaf: Leaf, k: Int }
+
+// A tuple built where its element types are variables has word slots, the `Int` boxed.
+fn pair<A, B>(a: A, b: B) -> (A, B) { (a, b) }
+
+fn concrete(a: Int, b: String) -> (Int, String) { (a, b) }
+
+// The rebuilt node keeps its leaf: when the node is reset the leaf is still held by the new one.
+fn bump(node: Node) -> Node { Node { ..node, k: node.k + 1 } }
+
+// The rebuilt node drops its leaf: when the node is reset the old leaf has no other holder.
+fn replace(node: Node, n: Int) -> Node { Node { leaf: Leaf { n }, k: node.k + 1 } }
+
+pub fn main() -> Unit ! {Console} {
+  let (a, s) = pair(41, "boxed")
+  let (b, t) = concrete(1, "flat")
+  Console.print("{a + b} {s} {t}")
+  var node = Node { leaf: Leaf { n: 7 }, k: 0 }
+  var i = 0
+  while i < 3 {
+    node = bump(node)
+    node = replace(node, node.leaf.n + i)
+    i = i + 1
+  }
+  Console.print("unique {node.leaf.n} {node.k}")
+  // The list holds the node too, which only the reset sees, at run time.
+  let held = [node]
+  let next = bump(node)
+  let swapped = replace(Option.expect(held[0], "held"), 100)
+  Console.print("shared {next.k} {swapped.leaf.n} {swapped.k} {next.leaf.n} {List.len(held)}")
+}
