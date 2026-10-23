@@ -143,6 +143,8 @@ pub struct Rt {
     pub heap: Heap,
     /// Address of the layout table (ABI §3.4), 0 before `set_layout`.
     pub layout: u32,
+    /// The layout table's rows, decoded on first use.
+    pub(crate) rows: layout::Rows,
     /// Address of the code descriptor table (frames and closure captures), 0 before `set_codes`.
     pub codes: u32,
     /// Address of the effect table (qualified effect names, ABI P3), 0 when none.
@@ -204,6 +206,7 @@ impl Rt {
         let mut rt = Rt {
             heap: Heap::new(max_heap)?,
             layout: 0,
+            rows: layout::Rows::default(),
             codes: 0,
             effects: 0,
             none: 0,

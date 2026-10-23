@@ -166,6 +166,56 @@ fn million_object_destruction() {
     assert_eq!(rt.stats().live_objects, base);
 }
 
+/// Rows are decoded once per instance with their first 64 pointer bits as a mask: a record
+/// wider than that still releases the pointer slots past 64, and a reset of it too; a layout
+/// table installed later replaces the decoded rows.
+#[test]
+fn rows_past_64_slots_and_a_new_layout_table_release_what_they_own() {
+    use common::Ty;
+    use sakura_rt::layout::{I64, WORD};
+    let pointers = [0, 63, 64, 69];
+    let kind = |i| if pointers.contains(&i) { WORD } else { I64 };
+    let fields: Vec<(&str, u32)> = (0..70).map(|i| ("", kind(i))).collect();
+    let cons = [("head", I64), ("tail", WORD)];
+    let mut rt = rt_with(
+        &[Ty::Record("Cons", &cons), Ty::Record("Wide", &fields)],
+        Known::default(),
+    );
+    let base = rt.stats().live_objects;
+    for reset in [false, true] {
+        let w = rt.new_record(1).unwrap();
+        for i in pointers {
+            let c = cons_list(&mut rt, 1, 0);
+            rt.set_slot(w, i, c as u64);
+        }
+        rt.set_slot(w, 1, 0xdead_beef);
+        assert_eq!(rt.stats().live_objects, base + 5);
+        if reset {
+            let token = rt.reuse_reset(w);
+            assert_eq!(token, w);
+            assert_eq!(rt.stats().live_objects, base + 1);
+            assert!((0..70).all(|i| rt.slot(w, i) == 0));
+        }
+        rt.drop(w);
+        assert_eq!(rt.stats().live_objects, base);
+    }
+
+    // The same type id in a second table now owns its slot.
+    let table = rt
+        .install(&common::layout_bytes(
+            &[Ty::Record("Boxed", &[("x", WORD)])],
+            Known::default(),
+        ))
+        .unwrap();
+    rt.set_layout(table).unwrap();
+    let base = rt.stats().live_objects;
+    let child = rt.new_record(0).unwrap();
+    let parent = rt.new_record(0).unwrap();
+    rt.set_slot(parent, 0, child as u64);
+    rt.drop(parent);
+    assert_eq!(rt.stats().live_objects, base);
+}
+
 #[test]
 fn rc_overflow_is_d092() {
     let mut rt = Rt::new(64 << 20).unwrap();

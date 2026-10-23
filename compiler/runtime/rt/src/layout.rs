@@ -50,6 +50,40 @@ pub struct Row {
     /// Address of the row's name (`u32 len`, bytes), 0 when none.
     pub name: u32,
     fields: u32,
+    /// Bits 0..64 of the pointer bitmap; a slot past 64 reads the table.
+    owned: u64,
+}
+
+impl Row {
+    const EMPTY: Row = Row {
+        size: 0,
+        n_slots: 0,
+        bitmap: 0,
+        kinds: 0,
+        name: 0,
+        fields: 0,
+        owned: 0,
+    };
+
+    /// The pointer bitmap as one mask, for a row of at most 64 slots.
+    pub(crate) fn owned_mask(&self) -> Option<u64> {
+        (self.n_slots <= 64).then_some(self.owned)
+    }
+}
+
+/// Entries of [`Rows`].
+const ROWS: usize = 256;
+
+/// Decoded rows (`Rt::row`), direct-mapped by type and constructor; a fixed array, as wasm32
+/// has no allocator for the runtime's own state.
+pub struct Rows([core::cell::Cell<(u64, Row)>; ROWS]);
+
+impl Default for Rows {
+    fn default() -> Rows {
+        Rows(core::array::from_fn(|_| {
+            core::cell::Cell::new((u64::MAX, Row::EMPTY))
+        }))
+    }
 }
 
 /// A code descriptor, with absolute addresses.
@@ -73,6 +107,7 @@ impl Rt {
     /// Use the layout table at `addr` (the module's data segment; host tests use `install`).
     pub fn set_layout(&mut self, addr: u32) -> Res<()> {
         self.layout = addr;
+        self.rows = Rows::default();
         if self.option_id() != NONE_ID {
             let none = self.new_variant(self.option_id(), 0)?;
             self.make_static(none);
@@ -164,7 +199,21 @@ impl Rt {
         self.heap.mem.u32(self.entry(type_id) + 8)
     }
 
+    /// Row `ctor` of type `type_id`, decoded once per instance (every release of a tuple,
+    /// record or variant reads its row).
     pub fn row(&self, type_id: u32, ctor: u32) -> Row {
+        let key = u64::from(type_id) << 32 | u64::from(ctor);
+        let cell = &self.rows.0[(type_id.wrapping_mul(8) ^ ctor) as usize % ROWS];
+        let (k, row) = cell.get();
+        if k == key {
+            return row;
+        }
+        let row = self.decode_row(type_id, ctor);
+        cell.set((key, row));
+        row
+    }
+
+    fn decode_row(&self, type_id: u32, ctor: u32) -> Row {
         let e = self.entry(type_id);
         assert!(
             ctor < self.heap.mem.u32(e + 8),
@@ -174,18 +223,33 @@ impl Rt {
         let m = &self.heap.mem;
         let n_slots = m.u32(r + 4);
         let w = n_slots.div_ceil(32).max(1);
-        Row {
+        let mut row = Row {
             size: m.u32(r),
             n_slots,
             bitmap: r + 8,
             kinds: self.table_at(self.layout, r + 8 + 4 * w),
             name: self.table_at(self.layout, r + 12 + 4 * w),
             fields: self.table_at(self.layout, r + 16 + 4 * w),
+            owned: 0,
+        };
+        for i in 0..n_slots.min(64) {
+            if self.owns_in_table(&row, i) {
+                row.owned |= 1 << i;
+            }
         }
+        row
     }
 
     /// Whether slot `i` of `row` owns a pointer (bit `i` of the pointer bitmap).
     pub fn owns(&self, row: &Row, i: u32) -> bool {
+        if i < 64 {
+            row.owned >> i & 1 == 1
+        } else {
+            self.owns_in_table(row, i)
+        }
+    }
+
+    fn owns_in_table(&self, row: &Row, i: u32) -> bool {
         (self.heap.mem.u32(row.bitmap + i / 32 * 4) >> (i % 32)) & 1 == 1
     }
 

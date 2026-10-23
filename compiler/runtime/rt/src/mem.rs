@@ -360,7 +360,19 @@ impl Mem {
     }
 
     pub fn fill(&mut self, addr: u32, byte: u8, len: u32) {
-        self.bytes_mut(addr, len).fill(byte);
+        let s = self.bytes_mut(addr, len);
+        // Every allocation and reuse token zeroes a few words: constant lengths become stores,
+        // not a call of `memset`.
+        match (byte, s.len()) {
+            (0, 8) => s.copy_from_slice(&[0; 8]),
+            (0, 16) => s.copy_from_slice(&[0; 16]),
+            (0, 24) => s.copy_from_slice(&[0; 24]),
+            (0, 32) => s.copy_from_slice(&[0; 32]),
+            (0, 40) => s.copy_from_slice(&[0; 40]),
+            (0, 48) => s.copy_from_slice(&[0; 48]),
+            (0, 64) => s.copy_from_slice(&[0; 64]),
+            _ => s.fill(byte),
+        }
     }
 }
 

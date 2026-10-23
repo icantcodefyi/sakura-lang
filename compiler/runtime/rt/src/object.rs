@@ -117,11 +117,7 @@ impl Rt {
         ));
         let row = self.obj_row(w);
         let mut head = 0;
-        for i in 0..row.n_slots {
-            if self.owns(&row, i) {
-                self.dec_slot(w + SLOTS + 8 * i, &mut head);
-            }
-        }
+        self.dec_owned(w + SLOTS, &row, &mut head);
         self.heap.mem.fill(w + SLOTS, 0, 8 * row.n_slots);
         self.release(head);
         w
@@ -203,16 +199,32 @@ impl Rt {
         self.dec(w, head);
     }
 
+    /// Decrement the slots at `slots` that `row` says own a pointer.
+    fn dec_owned(&mut self, slots: u32, row: &crate::layout::Row, head: &mut u32) {
+        match row.owned_mask() {
+            Some(mut mask) => {
+                while mask != 0 {
+                    let i = mask.trailing_zeros();
+                    mask &= mask - 1;
+                    self.dec_slot(slots + 8 * i, head);
+                }
+            }
+            None => {
+                for i in 0..row.n_slots {
+                    if self.owns(row, i) {
+                        self.dec_slot(slots + 8 * i, head);
+                    }
+                }
+            }
+        }
+    }
+
     fn release_children(&mut self, obj: u32, head: &mut u32) {
         let m = |rt: &Rt, off: u32| rt.heap.mem.u32(obj + off);
         match self.tag(obj) {
             tag::TUPLE | tag::RECORD | tag::VARIANT => {
                 let row = self.obj_row(obj);
-                for i in 0..row.n_slots {
-                    if self.owns(&row, i) {
-                        self.dec_slot(obj + SLOTS + 8 * i, head);
-                    }
-                }
+                self.dec_owned(obj + SLOTS, &row, head);
             }
             tag::CLOSURE => {
                 // Captures are described by the code descriptor of `code` (ABI §3.4); one
