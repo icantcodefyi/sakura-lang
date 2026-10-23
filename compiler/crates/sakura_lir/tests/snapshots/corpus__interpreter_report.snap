@@ -164,6 +164,7 @@ semantics/handler_reinstall_fresh_state: ok, 10 allocated, 7 dup, 17 drop, peak 
 semantics/handler_state: ok, 14 allocated, 5 dup, 19 drop, peak 6, live 0/0
 semantics/headers_rejects_invalid_name: unsupported (builtin string_to_bytes)
 semantics/headers_validate_and_combine: unsupported (builtin string_to_bytes)
+semantics/heap_exhaustion_unwinds_scopes: unsupported (builtin task_host)
 semantics/hello: ok, 3 allocated, 0 dup, 3 drop, peak 3, live 0/0
 semantics/host_fs_env: unsupported (builtin string_to_bytes)
 semantics/host_root_handlers: unsupported (builtin clock_host)

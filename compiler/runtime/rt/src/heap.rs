@@ -141,6 +141,35 @@ impl Heap {
         ]
     }
 
+    /// What native code needs to allocate a small block itself (ABI §1b +64 and +72, design
+    /// §17.320): the main pool's sixteen free-list heads and [`Stats`], as raw pointers that
+    /// stay valid while the heap stays where it is. Inline it does exactly what [`Heap::alloc`]
+    /// and `Rt::new_object` do for a small class whose list is not empty. Under the sanitizer
+    /// features (and the bench-only `regions`, whose `new_object` records each block) the heads
+    /// are a zero array nothing fills, so every allocation stays the runtime's.
+    #[cfg(all(feature = "native", not(target_arch = "wasm32")))]
+    pub(crate) fn native_cells(heap: *mut Heap) -> (*mut u32, *mut u64) {
+        static HIDDEN: [u32; 16] = [0; 16];
+        // SAFETY: field addresses of a live heap, taken without forming a reference.
+        let (free, stats) = unsafe {
+            (
+                core::ptr::addr_of_mut!((*heap).main.free),
+                core::ptr::addr_of_mut!((*heap).stats),
+            )
+        };
+        let heads = if cfg!(any(
+            feature = "asan",
+            feature = "valgrind",
+            feature = "regions"
+        )) {
+            // Read-only to compiled code: a zero head is never written back.
+            HIDDEN.as_ptr().cast_mut()
+        } else {
+            free.cast()
+        };
+        (heads, stats.cast())
+    }
+
     pub fn stats(&self) -> Stats {
         let mut s = self.stats;
         s.committed = self.mem.size() - self.mem.base() as u64;

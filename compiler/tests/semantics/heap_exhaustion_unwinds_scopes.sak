@@ -1,0 +1,32 @@
+// milestone: M5
+// spec: ABI §10 (one defect path for an exhausted heap), §3.1 (native in-place allocation,
+// 1.22.0); design §17.320 (2b)
+// covers: small tuples fill a list inside a task scope and a channel scope; with the default
+// heap the program ends normally, and the native test
+// `heap_exhaustion_unwinds_alike_plain_and_checked` runs it under a 1 MiB `SAKURA_MAX_HEAP`,
+// where it ends with `D096` alike plain and checked
+
+import std/channel
+import std/channel.{Receiver, Sender}
+import std/task.{Task}
+
+fn fill(n: Int, acc: List<(Int, Int)>) -> List<(Int, Int)> {
+  if n == 0 {
+    acc
+  } else {
+    let spare = (n, n + 1)
+    let (a, b) = spare
+    fill(n - 1, acc.push((a, b * 2)))
+  }
+}
+
+pub fn main() -> Unit ! {Console, Task} {
+  Console.print("start")
+  let total = Task.scope(fn(_s) {
+    channel.with_channel(4, fn(tx: Sender<String>, _rx: Receiver<String>) {
+      let _ = channel.try_send(tx, "queued")
+      List.len(fill(50_000, []))
+    })
+  })
+  Console.print("{total}")
+}

@@ -15,6 +15,7 @@ use sakura_rt::exports::{
     rt_alloc, rt_box_i64, rt_set_ret, rt_show_i64, rt_show_word, rt_vt_begin, rt_vt_end,
     rt_vt_push_word, rt_vt_result, rt_vt_take_word,
 };
+use sakura_rt::heap::CLASSES;
 use sakura_rt::layout::WORD;
 use sakura_rt::native::{
     CODES, Ctx, HOSTED, HandleId, Host, Hosted, IN_PLACE, Image, Instance, Limits, Module, Outcome,
@@ -86,7 +87,9 @@ const MAIN: u32 = 0;
 const GROW: u32 = 1;
 const HOSTED_ENV: u32 = 2;
 const COUNT: u32 = 3;
-const N: u32 = 4;
+const ALLOC_INLINE: u32 = 4;
+const ALLOC_RT: u32 = 5;
+const N: u32 = 6;
 
 /// The test program: an image built as `sakura_codegen_wasm` lays out its static block, and
 /// three functions written as compiled code would be (one `match` on the resume block).
@@ -116,6 +119,8 @@ fn program() -> Rc<Program> {
         Some(CodeDesc("grow", &[WORD], &[])),
         Some(CodeDesc("hosted_env", &[WORD], &[])),
         Some(CodeDesc("count", &[WORD], &[])),
+        Some(CodeDesc("alloc_inline", &[WORD], &[])),
+        Some(CodeDesc("alloc_rt", &[WORD], &[])),
     ];
     codes.extend(CODES.iter().map(|_| None));
     let mut bytes = Vec::new();
@@ -159,6 +164,8 @@ impl Module for Program {
             GROW => grow(ctx, frame),
             HOSTED_ENV => hosted_env(ctx, frame),
             COUNT => count(ctx),
+            ALLOC_INLINE => alloc_each_class(ctx, true),
+            ALLOC_RT => alloc_each_class(ctx, false),
             _ => (CODES[(code - N) as usize].1)(ctx, env, frame),
         }
     }
@@ -242,6 +249,79 @@ fn count(ctx: Ctx<'_>) -> u32 {
     }
     rt_set_ret(ctx, 1);
     RETURN
+}
+
+/// Each class's block in one run of [`alloc_each_class`]: its address and its bytes.
+type Blocks = Vec<(u32, Vec<u64>)>;
+
+thread_local! {
+    static BLOCKS: std::cell::RefCell<Vec<Blocks>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// For each small class: a block of it is freed, so its free list is not empty, then a request
+/// inside the class is allocated through the context's free-list heads and counters as
+/// compiled code does it (ABI §1b +64, +72, 1.22.0), or through `rt_alloc`. The blocks are
+/// recorded in [`BLOCKS`] and dropped again.
+fn alloc_each_class(ctx: Ctx<'_>, inline: bool) -> u32 {
+    let t = tag::BYTES;
+    let mut seen = vec![];
+    for (c, &block) in CLASSES.iter().enumerate() {
+        let size = block - 4;
+        let freed = rt_alloc(ctx, u32::from(t), size);
+        sakura_rt::exports::drop(ctx, freed);
+        let d = if inline {
+            // SAFETY: `ctx` is a live instance's `SakuraInstance *`, whose +64 and +72 point at
+            // its heap's free-list heads and counters, and the block is a free one of class `c`.
+            unsafe { pop(ctx, t, size, c) }
+        } else {
+            rt_alloc(ctx, u32::from(t), size)
+        };
+        assert_eq!(d, freed, "class {c}: the freed block is the one taken");
+        let bytes = (0..block).step_by(8).map(|o| ctx.load_u64(d + o)).collect();
+        seen.push((d, bytes));
+        sakura_rt::exports::drop(ctx, d);
+    }
+    BLOCKS.with(|b| b.borrow_mut().push(seen));
+    rt_set_ret(ctx, 1);
+    RETURN
+}
+
+/// Compiled code's in-place allocation of `size` bytes of class `c` (design §17.320 (2)).
+///
+/// # Safety
+/// `ctx` is a live instance and the class's head is a free block.
+unsafe fn pop(ctx: Ctx<'_>, t: u16, size: u32, c: usize) -> u32 {
+    use sakura_rt::Stats;
+    use std::mem::offset_of;
+    // SAFETY: as the caller promises; the counters are 8-aligned `u64`s of a `repr(C)` struct.
+    unsafe {
+        let p = std::mem::transmute::<Ctx<'_>, *mut u8>(ctx);
+        let heads = p.add(64).cast::<*mut u32>().read();
+        let stats = p.add(72).cast::<*mut u8>().read();
+        let base = ctx.heap_base();
+        let head = heads.add(c).read();
+        assert_ne!(head, 0, "class {c}: an empty list");
+        let at = base.add(head as usize);
+        heads.add(c).write(at.add(4).cast::<u32>().read());
+        let add = |field: usize, by: i64| {
+            let f = stats.add(field).cast::<u64>();
+            f.write(f.read().wrapping_add_signed(by));
+            f.read()
+        };
+        let block = CLASSES[c];
+        add(offset_of!(Stats, requested), i64::from(size));
+        add(offset_of!(Stats, live_objects), 1);
+        add(offset_of!(Stats, free_list_bytes), -i64::from(block));
+        let live = add(offset_of!(Stats, live), i64::from(block));
+        let peak = stats.add(offset_of!(Stats, peak)).cast::<u64>();
+        peak.write(peak.read().max(live));
+        let header = u64::from(t) | (c as u64) << 16 | 1 << 32;
+        at.cast::<u64>().write(header);
+        for o in (8..block as usize).step_by(8) {
+            at.add(o).cast::<u64>().write(0);
+        }
+        head
+    }
 }
 
 fn run_code(inst: &mut Instance<TestHost>, code: u32) -> Outcome {
@@ -377,4 +457,40 @@ fn codes_follow_the_compilers_order() {
     assert!(code.is_sorted() && cps.is_sorted());
     assert!(cps.iter().all(|n| n.starts_with("rt_k_")));
     assert_eq!(names.len(), 1 + code.len() + cps.len());
+}
+
+/// Design §17.320 (2a): a block compiled code takes from a free list, and the counters, end
+/// byte for byte as `Heap::alloc` and `Rt::new_object` leave them, in every class.
+#[test]
+fn an_in_place_allocation_is_the_runtimes_in_every_class() {
+    BLOCKS.with(|b| b.borrow_mut().clear());
+    let mut a = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    let mut b = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    assert_eq!(run_code(&mut a, ALLOC_INLINE), Outcome::Ok);
+    assert_eq!(run_code(&mut b, ALLOC_RT), Outcome::Ok);
+    let runs = BLOCKS.with(|b| b.take());
+    assert_eq!(runs.len(), 2);
+    assert_eq!(runs[0], runs[1]);
+    assert_eq!(a.stats(), b.stats());
+    a.close();
+    b.close();
+}
+
+/// Design §17.320 (2g): two instances on one thread allocating in place in alternation each
+/// keep their own lists and counters.
+#[test]
+fn two_instances_on_one_thread_allocate_in_place_in_alternation() {
+    let mut a = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    let mut b = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    let mut alone = Instance::new(program(), TestHost::default(), Limits::default()).unwrap();
+    for _ in 0..2 {
+        assert_eq!(run_code(&mut a, ALLOC_INLINE), Outcome::Ok);
+        assert_eq!(run_code(&mut b, ALLOC_INLINE), Outcome::Ok);
+        assert_eq!(run_code(&mut alone, ALLOC_RT), Outcome::Ok);
+    }
+    assert_eq!(a.stats(), alone.stats());
+    assert_eq!(b.stats(), alone.stats());
+    a.close();
+    b.close();
+    alone.close();
 }

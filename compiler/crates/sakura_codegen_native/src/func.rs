@@ -32,7 +32,10 @@ use cranelift_object::ObjectModule;
 use sakura_lir::direct::{GAUGE_LIMIT, gauge_cost};
 use sakura_lir::layout::{FrameDesc, SlotKind};
 use sakura_lir::lir::*;
+use sakura_rt::Stats;
+use sakura_rt::heap::CLASSES;
 use sakura_rt::native::{BUILTINS, HOSTED, is_total};
+use std::mem::offset_of;
 
 use crate::image::{self, Tables};
 
@@ -57,6 +60,12 @@ const BORROWS: i32 = 56;
 
 /// Header flag `static` (ABI §3.1).
 const STATIC: i64 = 1;
+/// The context's free-list heads and counters (ABI §1b +64, +72, 1.22.0).
+const HEADS: i32 = 64;
+const STATS: i32 = 72;
+/// The largest small class compiled code allocates itself: its zeroing is `block − 8` bytes of
+/// stores (design §17.320 (2a) leaves the bound to the emitter).
+const INLINE_BLOCK: u32 = 256;
 
 /// Object tags (ABI §3.2).
 const TUPLE: i64 = 5;
@@ -686,6 +695,67 @@ impl Gen<'_, '_, '_> {
         self.b.ins().brif(fixed, no, &[], yes, &[]);
     }
 
+    /// `rt_alloc(tag, size)`: a new object of `size` bytes, 0 on a defect. Outside the checked
+    /// lowering, a small class up to [`INLINE_BLOCK`] bytes pops the main pool's free list
+    /// through the context (ABI §1b +64, +72, 1.22.0) and writes the block as `Heap::alloc` and
+    /// `Rt::new_object` do: the counters, the header with `rc = 1`, the rest zeroed. An empty
+    /// list is the call, which carves, grows, serves the emergency pool or raises `D096`.
+    fn alloc_block(&mut self, tag: i64, size: u32) -> Result<Value, String> {
+        let class = CLASSES.iter().position(|&k| k >= size.max(8));
+        let Some(c) = class.filter(|&c| !self.e.checks && CLASSES[c] <= INLINE_BLOCK) else {
+            let (t, n) = (self.iconst32(tag), self.iconst32(i64::from(size)));
+            return self.call1("rt_alloc", &[t, n], types::I32);
+        };
+        let block = CLASSES[c];
+        let (pop, call, join) = (
+            self.b.create_block(),
+            self.b.create_block(),
+            self.b.create_block(),
+        );
+        let d = self.b.append_block_param(join, types::I32);
+        let trusted = MemFlagsData::trusted();
+        let heads = self.b.ins().load(self.ptr, trusted, self.ctx, HEADS);
+        let head = self.b.ins().load(types::I32, trusted, heads, 4 * c as i32);
+        self.b.ins().brif(head, pop, &[], call, &[]);
+
+        self.b.switch_to_block(pop);
+        let at = self.addr(head);
+        let next = self.b.ins().load(types::I32, trusted, at, 4);
+        self.b.ins().store(trusted, next, heads, 4 * c as i32);
+        let stats = self.b.ins().load(self.ptr, trusted, self.ctx, STATS);
+        let add = |g: &mut Self, field: usize, by: i64| {
+            let n = g.b.ins().load(types::I64, trusted, stats, field as i32);
+            let n = g.b.ins().iadd_imm_s(n, by);
+            g.b.ins().store(trusted, n, stats, field as i32);
+            n
+        };
+        add(self, offset_of!(Stats, requested), i64::from(size));
+        add(self, offset_of!(Stats, live_objects), 1);
+        add(self, offset_of!(Stats, free_list_bytes), -i64::from(block));
+        let live = add(self, offset_of!(Stats, live), i64::from(block));
+        let peak = offset_of!(Stats, peak) as i32;
+        let high = self.b.ins().load(types::I64, trusted, stats, peak);
+        let high = self.b.ins().umax(high, live);
+        self.b.ins().store(trusted, high, stats, peak);
+        let header = self
+            .b
+            .ins()
+            .iconst(types::I64, tag | (c as i64) << 16 | 1 << 32);
+        self.b.ins().store(trusted, header, at, 0);
+        let zero = self.b.ins().iconst(types::I64, 0);
+        for off in (8..block).step_by(8) {
+            self.b.ins().store(trusted, zero, at, off as i32);
+        }
+        self.b.ins().jump(join, &[BlockArg::Value(head)]);
+
+        self.b.switch_to_block(call);
+        let (t, n) = (self.iconst32(tag), self.iconst32(i64::from(size)));
+        let r = self.call1("rt_alloc", &[t, n], types::I32)?;
+        self.b.ins().jump(join, &[BlockArg::Value(r)]);
+        self.b.switch_to_block(join);
+        Ok(d)
+    }
+
     /// `Dup`: a counted object's `rc` goes up in place and `dups` in the context (ABI 1.20.0);
     /// at 2^32 − 1 `rt_dup` raises `D092`. The checked lowering calls `rt_dup`.
     fn dup(&mut self, x: Value, live: &Live) -> Result<(), String> {
@@ -1135,9 +1205,7 @@ impl Gen<'_, '_, '_> {
                 func,
                 captures,
             } => {
-                let tag = self.iconst32(CLOSURE);
-                let size = self.iconst32(16 + 8 * captures.len() as i64);
-                let d = self.call1("rt_alloc", &[tag, size], types::I32)?;
+                let d = self.alloc_block(CLOSURE, 16 + 8 * captures.len() as u32)?;
                 self.check_zero(d, &before)?;
                 let code = self.iconst32(i64::from(func.0));
                 self.store(code, d, 8);
@@ -1166,9 +1234,7 @@ impl Gen<'_, '_, '_> {
             } => {
                 let mask = if *forwards == 0 { 0 } else { 4 };
                 let size = 24 + 8 * state.len() + 4 * clauses.len() + mask;
-                let tag = self.iconst32(HANDLER);
-                let sz = self.iconst32(size as i64);
-                let d = self.call1("rt_alloc", &[tag, sz], types::I32)?;
+                let d = self.alloc_block(HANDLER, size as u32)?;
                 self.check_zero(d, &before)?;
                 for (off, v) in [
                     (8, *effect),
@@ -1599,11 +1665,11 @@ impl Gen<'_, '_, '_> {
                 return Ok(());
             }
         };
-        let t = self.iconst32(tag);
-        let size = self.iconst32(16 + 8 * args.len() as i64);
         // A reuse token's storage (plan M5 N3), else a fresh block.
         let d = match reuse {
             Some(token) if self.e.checks => {
+                let t = self.iconst32(tag);
+                let size = self.iconst32(16 + 8 * args.len() as i64);
                 let token = self.val(token)?;
                 self.call0("rt_check_token", &[token, t, size])?;
                 self.call1("rt_reuse", &[token, t, size], types::I32)?
@@ -1619,12 +1685,12 @@ impl Gen<'_, '_, '_> {
                     .ins()
                     .brif(tagged, fresh, &[], join, &[BlockArg::Value(token)]);
                 self.b.switch_to_block(fresh);
-                let n = self.call1("rt_alloc", &[t, size], types::I32)?;
+                let n = self.alloc_block(tag, 16 + 8 * args.len() as u32)?;
                 self.b.ins().jump(join, &[BlockArg::Value(n)]);
                 self.b.switch_to_block(join);
                 d
             }
-            None => self.call1("rt_alloc", &[t, size], types::I32)?,
+            None => self.alloc_block(tag, 16 + 8 * args.len() as u32)?,
         };
         // The arguments (and the token) are still held until they are stored.
         let mut held = live.clone();

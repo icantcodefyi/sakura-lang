@@ -1431,7 +1431,7 @@ Acceptance (as refined in §17.84 and §17.86): `scale` above is `proved` for `e
 
 **M5 — native with Perceus.** Cranelift backend, RC runtime, reuse, `W8001` copy diagnostics (proven copies only, §17.172); regions deferred (§17.174).
 
-Acceptance: `let original = [1,2,3]; let updated = List.map(original, fn(x) { x + 1 })` leaves `original` intact; the same program with `original` dead reuses the buffer (the `reuse_attempts`/`reuses` counters and `requested` bytes, §17.176 (5)); cancellation, handler state, and deep destruction run sanitizer-clean in the four named lanes of §17.173, each with its detection control; JS/WASM/native agree on the corpus; `rbtree` with and without a retained version reports its reuse hit rate; the §17.109 M5 envelope holds (§17.118).
+Acceptance: `let original = [1,2,3]; let updated = List.map(original, fn(x) { x + 1 })` leaves `original` intact; the same program with `original` dead reuses the buffer (the `reuse_attempts`/`reuses` counters and `requested` bytes, §17.176 (5)); cancellation, handler state, and deep destruction run sanitizer-clean in the four named lanes of §17.173, each with its detection control (in sanitizer builds compiled code allocates through the runtime, §17.320 (2e)); JS/WASM/native agree on the corpus; `rbtree` with and without a retained version reports its reuse hit rate; the §17.109 M5 envelope holds (§17.118).
 
 ### 14.4 Parallel work breakdown for M0–M2 (6 engineers)
 

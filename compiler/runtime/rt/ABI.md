@@ -1,6 +1,6 @@
 # Sakura Lang runtime ABI v1 (WASM, `sakura_rt`)
 
-**Status:** design specification, version **1.21.0**, agreed before `sakura_lir` or `sakura_rt`
+**Status:** design specification, version **1.22.0**, agreed before `sakura_lir` or `sakura_rt`
 emits code (plan §3.1); 1.0.1 folds in the R1 errata that design §17.108 endorsed, 1.0.2 the
 R3 readings P8–P12 that design §17.129 endorsed, P9 amended (both lists are kept as history at
 the end, with the questions still open), and 1.1.0 the four `stats()` counters and the
@@ -31,8 +31,9 @@ followed in `std/http` (§8.2; design §17.263 (4), §17.270 (3), RFC 0002 §2.4
 §17.176 (3), §17.308; plan M5 N3) and 1.18.0 the borrowed parameter convention (§5, §10; design
 §17.176 (4), §17.308; plan M5 N4a), 1.19.0 the `wipe` header flag (§3.1, §3.5; design
 §17.288 (7); plan M5 N-S), 1.19.1 the in-place object paths erratum (§3.1; design §17.314),
-1.20.0 the native context's in-place counters (§1b, §10; design §17.318) and 1.21.0
-identity-forwarding clauses (§3.1, §3.2, §6.3; design §17.181 (2), §17.317 (3)). Owned by
+1.20.0 the native context's in-place counters (§1b, §10; design §17.318), 1.21.0
+identity-forwarding clauses (§3.1, §3.2, §6.3; design §17.181 (2), §17.317 (3)) and 1.22.0
+native in-place allocation (§1b, §3.1, §10; design §17.320). Owned by
 the designer;
 implemented jointly by M4-LIR (`crates/sakura_lir`)
 and M4-RT (`compiler/runtime/rt`, crate `sakura_rt`) and consumed by M4-WASM
@@ -421,6 +422,16 @@ state** is frames, handler activations, finalizer entries, tasks and pending req
   export or outcome changes. It is a MINOR by 1.3.0's rule (a new header field and a layout
   with the old ones unchanged): a 1.20 host refuses a 1.21 module. `sakura_abi_version` is
   `0x011500`.
+- 1.22.0 (MINOR, native profile; design §17.320) gives the native context two pointers (§1b):
+  at +64 the main pool's sixteen free-list heads and at +72 the §10 counters, the private
+  region moving to +80. Native code takes a block from a small class's main-pool free list
+  itself when the class's head is nonzero and writes it, and the five counters an allocation
+  moves, as `Heap::alloc` and `new_object` do (§3.1); an empty head, the emergency pool,
+  growth and `D096` stay `rt_alloc`'s, and every release stays the runtime's. Every counter
+  keeps its value for a fixed execution. wasm32 is unchanged but for its version, as are every
+  import, export, layout and outcome. It is a MINOR by §0's letter (a layout addition, as
+  1.20.0's counts were): a 1.21 runtime refuses a 1.22 module. `sakura_abi_version` is
+  `0x011600`.
 - A change to this document lands with the decision that caused it in design §17 and, after
   the first emitter exists, with the conformance fixtures that pin the changed bytes. Rationale:
   the two implementers start in parallel from this text alone (plan §3.1); without a frozen
@@ -476,11 +487,12 @@ rely on the fault.
 the target's C ABI (System V AArch64/x86-64 on Linux, Apple AArch64 on macOS). One OS thread
 owns an instance and everything reachable from it (§8.5); a process may hold any number. No
 object is reachable from two instances (`std/worker` messages cross as copied text). That is
-what lets compiled code and the runtime update `rc` and the counts below without atomics
-(1.20.0; design §17.171, §17.318 (2e)); a shared heap (design §13.5's promotion to atomic
-counts on a cross-thread send) must revisit every in-place path of §3.1 before it exists. The
-context's prefix is fixed; compiled code may read it and must not write it, except the counts
-at +16, to which it adds:
+what lets compiled code and the runtime update `rc`, the counts below, the free lists and the
+§10 counters without atomics (1.20.0, 1.22.0; design §17.171, §17.318 (2e), §17.320 (2d)); a
+shared heap (design §13.5's promotion to atomic counts on a cross-thread send) must revisit
+every in-place path of §3.1 before it exists. The context's prefix is fixed; compiled code may
+read it and must not write it, except the counts at +16, to which it adds, and what +64 and
++72 point at, which it updates as §3.1's allocation does:
 
 | Offset | Type | Field |
 |---|---|---|
@@ -488,7 +500,15 @@ at +16, to which it adds:
 | +8 | `uint32_t` | the static block's offset (the module's literals and tables, §9's `rt_alloc_static`) |
 | +12 | `uint32_t` | `sakura_abi_version`'s value |
 | +16 | `uint64_t[6]` | counts compiled code adds to (1.20.0): `dups`, `drops`, `reuse_attempts`, `reuses`, `borrow_candidates`, `borrows`, which `stats()` adds to the runtime's (§10) |
-| +64 | — | private to the runtime |
+| +64 | `uint32_t *` | the main pool's sixteen free-list heads (heap offsets, 0 = empty, §10's class order; 1.22.0) |
+| +72 | `uint64_t *` | the §10 counters in `stats()`'s order (1.22.0): an allocation updates `requested` at +0, `live` at +8, `live_objects` at +16, `peak` at +32 and `free_list_bytes` at +40 |
+| +80 | — | private to the runtime |
+
+The two pointers are written once the instance is in its final place and never change. In the
+runtime's sanitizer builds (the `asan` and `valgrind` features, design §17.173) and its
+bench-only `regions` build, +64 points at sixteen zero heads nothing fills, so compiled code
+allocates through `rt_alloc` there and the freed-block poison stays exact (design §17.320
+(2e)).
 
 **C prototypes.** Written here, never inferred from Rust layout (`stdint.h` types):
 
@@ -670,7 +690,11 @@ a constructor for reuse in place when its count is 1 and its row owns no slot, w
 header byte, as the runtime's reset leaves the header, or, when its count is above 1, by
 decrementing it for a `Unit` token (§3.5; otherwise `rt_b_reuse_reset`),
 each counted in the context's counts (§10); under `--native-checks` every one of them is the
-runtime's call.
+runtime's call. Since 1.22.0 native code may also take a block from a small class's free list
+of the main pool and write it as `Heap::alloc` and `new_object` do, when the class's head is
+nonzero (§1b +64, +72); everything else about allocation stays the runtime's, and so does every
+release on native: the last decrement, the release and the free, 1.19.1's single-child path
+included, are `sakura_drop`'s, so `wipe` (§3.5) is set and read only there (design §17.320).
 
 ### 3.2 Tags
 
@@ -1543,8 +1567,9 @@ from the linked module's list, so no host sees them (design §17.314 (2d)).
   `SAKURA_WASM_STATS=<path>`: `sakura_wasm_host.js` appends the module's `abi_version` and the
   counters by name as one JSON line at exit, for benchmark records; there is no CLI flag, and the JS backend reports no
   counters. Natively, since 1.20.0, compiled code counts the `Dup`s, `Drop`s, `Lend`s and reuse
-  resets it makes in place in the context's counts (§1b), which `stats()` adds, so each counter
-  has the value it would have had through the runtime's functions. A dlmalloc comparison harness stays in `runtime/rt/bench`.
+  resets it makes in place in the context's counts (§1b), which `stats()` adds, and since 1.22.0
+  its small allocations in the counters +72 points at (§1b), so each counter has the value it
+  would have had through the runtime's functions. A dlmalloc comparison harness stays in `runtime/rt/bench`.
 - Failed growth or an exhausted limit is **one defect path**: `D096 heap_exhausted` from the
   allocating site, after which the task unwinds (§6.4). The runtime reserves a fixed emergency
   region (64 KiB, committed at start, its own free lists, small blocks only, used only while the

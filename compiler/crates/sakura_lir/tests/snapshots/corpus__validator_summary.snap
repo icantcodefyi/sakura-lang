@@ -164,6 +164,7 @@ semantics/handler_reinstall_fresh_state: 3 funcs, 12 blocks, 3 dup, 6 drop, vali
 semantics/handler_state: 8 funcs, 18 blocks, 1 dup, 7 drop, valid
 semantics/headers_rejects_invalid_name: 44 funcs, 396 blocks, 18 dup, 144 drop, valid
 semantics/headers_validate_and_combine: 49 funcs, 423 blocks, 17 dup, 152 drop, valid
+semantics/heap_exhaustion_unwinds_scopes: 8 funcs, 24 blocks, 1 dup, 11 drop, valid
 semantics/hello: 3 funcs, 6 blocks, 0 dup, 3 drop, valid
 semantics/host_fs_env: 52 funcs, 284 blocks, 28 dup, 122 drop, valid
 semantics/host_root_handlers: 17 funcs, 79 blocks, 1 dup, 36 drop, valid

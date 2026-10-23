@@ -234,6 +234,14 @@ fn run_compiled(
 
 /// Run a built executable: `(ending, stdout, stderr, the stats line)`.
 fn run_exe(built: Result<PathBuf, String>) -> (String, String, String, String) {
+    run_exe_with(built, &[])
+}
+
+/// [`run_exe`] with `env` set for the run.
+fn run_exe_with(
+    built: Result<PathBuf, String>,
+    env: &[(&str, &str)],
+) -> (String, String, String, String) {
     let fail = |e: String| (e, String::new(), String::new(), String::new());
     let exe = match built {
         Ok(exe) => exe,
@@ -257,6 +265,7 @@ fn run_exe(built: Result<PathBuf, String>) -> (String, String, String, String) {
         .env_remove("SAKURA_PERMISSIONS")
         .env_remove("SAKURA_TRACE")
         .env("SAKURA_NATIVE_STATS", &stats)
+        .envs(env.iter().copied())
         .stdin(std::process::Stdio::null())
         .output()
         .unwrap();
@@ -396,6 +405,8 @@ fn the_corpus_compiles_links_and_runs_natively() {
 
 /// Design §17.173 (4): under the checked lowering every corpus program still agrees, with twins
 /// and with `--no-direct`: no generated heap access strays outside its object's live block.
+/// Every `stats()` counter equals the plain build's (design §17.320 (2g)): the in-place paths
+/// the checked lowering leaves to the runtime count exactly as the runtime does.
 #[test]
 fn the_corpus_runs_clean_under_native_checks() {
     use sakura_codegen_native::Options;
@@ -405,22 +416,30 @@ fn the_corpus_runs_clean_under_native_checks() {
     std::fs::create_dir_all(&dir).unwrap();
     let results = big_stack_map(&programs, |p| {
         [true, false].map(|direct| {
-            let opts = Options {
-                direct,
-                checks: true,
-                ..Default::default()
-            };
-            run_compiled(&p.name, opts, &p.core, &dir)
+            [true, false].map(|checks| {
+                let opts = Options {
+                    direct,
+                    checks,
+                    ..Default::default()
+                };
+                run_compiled(&p.name, opts, &p.core, &dir)
+            })
         })
     });
     let mut failures = vec![];
     for (p, runs) in programs.iter().zip(results) {
-        for (mode, (got, stdout, stderr, _)) in ["direct", "--no-direct"].into_iter().zip(runs) {
+        for (mode, [checked, plain]) in ["direct", "--no-direct"].into_iter().zip(runs) {
+            let (got, stdout, stderr, stats) = checked;
             let known = KNOWN_NATIVE.iter().any(|(n, _)| *n == p.name);
             if !known && (got != p.ending || stdout != p.stdout) {
                 failures.push(format!(
                     "{} ({mode}): expected {} got {got}\n--- stderr\n{stderr}",
                     p.name, p.ending
+                ));
+            } else if !known && stats != plain.3 {
+                failures.push(format!(
+                    "{} ({mode}): counters differ from the plain build's\n  checked {stats}\n  plain   {}",
+                    p.name, plain.3
                 ));
             }
         }
@@ -652,6 +671,39 @@ fn two_instances_close_in_one_process() {
         assert_eq!(hb.captured().0, p.stdout);
         assert_eq!((ha.resources(), hb.in_flight()), ((0, 0), 0));
     });
+}
+
+/// Design §17.320 (2b): a program that exhausts a small heap with small objects inside a task
+/// scope and a channel ends with `D096` from the allocating site, its scopes' finalizers run
+/// from the emergency pool, with the same output and every `stats()` counter alike in the plain
+/// build (which pops free lists in place) and the checked one (which calls the runtime).
+#[test]
+fn heap_exhaustion_unwinds_alike_plain_and_checked() {
+    use sakura_codegen_native::Options;
+    let p = programs()
+        .into_iter()
+        .find(|p| p.name == "semantics/heap_exhaustion_unwinds_scopes")
+        .unwrap();
+    driver();
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("native-oom");
+    std::fs::create_dir_all(&dir).unwrap();
+    let [plain, checked] = big_stack(move || {
+        [false, true].map(|checks| {
+            let opts = Options {
+                checks,
+                ..Default::default()
+            };
+            let exe = build(&p.name, opts, &p.core, &dir);
+            run_exe_with(exe, &[("SAKURA_MAX_HEAP", "1048576")])
+        })
+    });
+    assert_eq!(plain.0, "D096", "{}", plain.2);
+    assert_eq!(plain.1, "start\n");
+    assert_eq!(
+        (&plain.0, &plain.1, &plain.3),
+        (&checked.0, &checked.1, &checked.3)
+    );
+    assert!(plain.3.contains("\"live_objects\":"), "{}", plain.3);
 }
 
 fn big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {

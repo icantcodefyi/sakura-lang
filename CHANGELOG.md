@@ -38,17 +38,20 @@ retains earlier implementation history.
   (geometric mean; `awfy_sieve` 23.1 → 3.0 on Node, `bg_nbody` 11.3 → 5.1, `awfy_richards`
   13.6 → 7.3; `bench/deltas.md`). No program's output, defect, contract check or exit code
   changes, and the WASM and native backends are unchanged.
-- **`--target native` (experimental) runs heap-heavy programs in 2–40% fewer instructions.**
+- **`--target native` (experimental) runs heap-heavy programs in 1–46% fewer instructions.**
   The runtime decodes each layout row once and zeroes small blocks without `memset`; native code
   reads no defect flag after a builtin that cannot raise, makes a `Dup`, a `Drop` of a shared
   object, a `Lend`, the reuse of an object whose slots own nothing and a tuple slot read of the
-  row's own kind in place, and tests a step by a constant for overflow with one compare
-  (`awfy_bounce` −40%, `awfy_list` −29%, `awfy_json` −21%, `countdown` −17%; advisory). No
-  program's output, defect, exit code or `stats()` counter changes.
-- **The runtime ABI is 1.20.0** (MINOR, design §17.318): the native context gives compiled code
-  six in-place counters at +16 (ABI §1b), which `stats()` adds in. WASM modules change only in
-  their version, `0x011400`: the 1.20 Node host runs every 1.x module up to 1.20, and a 1.19
-  host refuses a 1.20 module, as for every MINOR.
+  row's own kind in place, takes small blocks from the allocator's free lists itself, and tests
+  a step by a constant for overflow with one compare (`awfy_bounce` −46%, `nbody` −33%,
+  `awfy_list` −29%, `binary_trees` −25%; advisory). No program's output, defect, exit code or
+  `stats()` counter changes.
+- **The runtime ABI is 1.20.0, then 1.22.0** (MINORs, design §17.318, §17.320): the native
+  context gives compiled code six in-place counters at +16, and from 1.22.0 the addresses of
+  the allocator's free-list heads at +64 and of the `stats()` counters at +72 (ABI §1b), so its
+  private part starts at +80. WASM modules change only in their version, `0x011600`: the Node
+  host runs every 1.x module up to 1.22, and an older host refuses a newer module, as for every
+  MINOR.
 - **The JS backend updates a copied list, map or set in place.** After a list is kept and also
   updated (`var perm = perm1` followed by a loop of `List.set`, or a map snapshot followed by
   inserts), each later update used to copy a path. Now the first update copies each node once,

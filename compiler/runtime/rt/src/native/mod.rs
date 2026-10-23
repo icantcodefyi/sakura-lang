@@ -65,6 +65,11 @@ pub struct SakuraInstance {
     /// +16: the counts compiled code makes in place (ABI 1.20.0), which [`Instance::stats`]
     /// adds to the runtime's: [`IN_PLACE`] in order.
     counts: [u64; IN_PLACE.len()],
+    /// +64: the main pool's sixteen free-list heads, and +72: the §10 counters, through which
+    /// compiled code allocates a small block itself (ABI 1.22.0, `Heap::native_cells`); set
+    /// once the instance is in its final place.
+    heads: *mut u32,
+    stats: *mut u64,
     pub(crate) rt: Rt,
     pub(crate) host: NonNull<dyn Host>,
     pub(crate) module: Rc<dyn Module>,
@@ -78,6 +83,9 @@ pub struct SakuraInstance {
 
 // The prefix compiled code reads and counts into (ABI §1b).
 const _: () = assert!(core::mem::offset_of!(SakuraInstance, counts) == 16);
+const _: () = assert!(core::mem::offset_of!(SakuraInstance, heads) == 64);
+const _: () = assert!(core::mem::offset_of!(SakuraInstance, stats) == 72);
+const _: () = assert!(core::mem::offset_of!(SakuraInstance, rt) == 80);
 
 /// A native function's handle on its instance (ABI-identical to `SakuraInstance *`). Only the
 /// runtime makes one, for the length of a call: it is higher-ranked in [`SakuraCode`], so code
@@ -229,6 +237,8 @@ impl<H: Host + 'static> Instance<H> {
             statics,
             abi: ABI_VERSION,
             counts: [0; IN_PLACE.len()],
+            heads: core::ptr::null_mut(),
+            stats: core::ptr::null_mut(),
             rt,
             host: host_dyn,
             module: module.clone(),
@@ -236,6 +246,13 @@ impl<H: Host + 'static> Instance<H> {
             types: None,
             props: Vec::new(),
         })));
+        // SAFETY: the instance was just leaked, so its heap never moves again; only raw
+        // pointers are formed.
+        unsafe {
+            let at = p.as_ptr();
+            let heap = core::ptr::addr_of_mut!((*at).rt.heap);
+            ((*at).heads, (*at).stats) = crate::heap::Heap::native_cells(heap);
+        }
         let inst = Instance { p, host };
         let mut cx = Cx::native(Ctx(p, PhantomData));
         let trace = cx.trace_enabled();
@@ -373,6 +390,15 @@ impl<H: Host + 'static> Instance<H> {
         // SAFETY: a plain read of the prefix of a live instance, which no reference covers.
         let [dups, drops, attempts, reuses, candidates, borrows] =
             unsafe { core::ptr::addr_of!((*self.p.as_ptr()).counts).read() };
+        // The counters compiled code allocates into are the runtime's own (ABI §1b +72).
+        // SAFETY: raw field addresses of a live instance; nothing is read through them here.
+        debug_assert!(unsafe {
+            let at = self.p.as_ptr();
+            core::ptr::eq(
+                (*at).stats,
+                core::ptr::addr_of_mut!((*at).rt.heap.stats).cast(),
+            )
+        });
         let mut s = self.cx().rt().stats();
         s.dups += dups;
         s.drops += drops;
