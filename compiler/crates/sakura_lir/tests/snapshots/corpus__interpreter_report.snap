@@ -226,6 +226,7 @@ semantics/owned_empty_set_defect: D020, 3 allocated, 0 dup, 3 drop, peak 3, live
 semantics/owned_empty_singleton: unsupported (builtin map_remove)
 semantics/owned_fresh_result: ok, 1761 allocated, 22959 dup, 24720 drop, peak 147, live 0/0
 semantics/owned_generic: ok, 301 allocated, 4033 dup, 4334 drop, peak 12, live 0/0
+semantics/owned_hoisted_reads: ok, 646 allocated, 4194 dup, 4840 drop, peak 47, live 0/0
 semantics/owned_loop_twice: ok, 854 allocated, 8559 dup, 9413 drop, peak 86, live 0/0
 semantics/owned_record_captured: ok, 155 allocated, 199 dup, 354 drop, peak 21, live 0/0
 semantics/owned_record_loop_twice: ok, 248 allocated, 519 dup, 767 drop, peak 43, live 0/0

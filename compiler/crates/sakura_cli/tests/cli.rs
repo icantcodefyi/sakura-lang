@@ -2379,6 +2379,8 @@ fn pick consumes xs
 fn build_dump_owned_pins_the_record_fixtures() {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/semantics");
     for (name, expected) in [
+        // `p.mark` after `put_var(p, …)` is read before the call (`hoist_reads`), so `r%103` is
+        // shared for its origin alone.
         (
             "owned_record_retained",
             "fn main
@@ -2387,7 +2389,7 @@ fn build_dump_owned_pins_the_record_fixtures() {
   r%44 = put_var(r%33) shared(origin)
   r%55 = put_var(r%44) shared(stored at 1798..1801)
   r%97 = list_push(cons%96) shared(join)
-  r%103 = put_var(rec%100) shared(borrowed-after at 2303..2309)
+  r%103 = put_var(rec%100) shared(origin)
   r%73 = put_var(r%55) shared(borrowed-after at 2111..2117)
   r%75 = put_then_fail(r%55) shared(borrowed-after at 2111..2117)
   r%25 = bump(p%19) owned
@@ -2489,13 +2491,13 @@ fn g
         (
             "owned_fresh_result",
             "fn main
-  r%11 = bump_all(xs%1) shared(borrowed-after at 991..1005)
+  r%11 = bump_all(xs%1) shared(borrowed-after at 1008..1022)
   r%59 = set(ws%47) owned
   r%97 = list_push(xs%1) shared(borrowed-after at 1459..1480)
-  r%99 = set(xs%1) shared(borrowed-after at 1499..1513)
+  r%99 = set(xs%1) shared(borrowed-after at 1516..1523)
   r%142 = set(flags%127) owned
   r%143 = set(r%142) shared(borrowed-after at 1879..1901)
-  r%144 = list_push(r%142) shared(borrowed-after at 1929..1933)
+  r%144 = list_push(r%142) shared(borrowed-after at 1988..2002)
   r%140 = list_push(flags%131) owned
   r%71 = bump_all(ws%65) owned
   r%56 = list_push(ws%50) owned
@@ -2510,7 +2512,7 @@ fn bump_all consumes start
         (
             "owned_argument_used_after_call",
             "fn main
-  r%11 = bump_all(zs%1) shared(borrowed-after at 845..857)
+  r%11 = bump_all(zs%1) shared(borrowed-after at 860..872)
   r%44 = set(zs%1) shared(borrowed-after)
   r%45 = list_push(r%44) shared(origin)
   r%9 = list_push(zs%3) owned
@@ -2602,13 +2604,37 @@ fn kick consumes start with elements
   r%16 = set(bs%3) shared(join), owned entry owned
 ",
         ),
+        // Reads after a call that takes their value over are bound before it (`hoist_reads`):
+        // `put_and_count`, `append` and `steps` consume; `keep_old` passes the old list on to
+        // `List.sum`, so its read stays after the call and the call is shared.
+        (
+            "owned_hoisted_reads",
+            "fn main
+  r%26 = append(s%1) owned
+  r%39 = steps(r%38) owned
+  r%45 = steps(r%44) owned
+  r%12 = put_and_count(s%4) owned
+fn fresh
+  r%10 = list_push(xs%4) owned
+fn put_and_count consumes s
+  r%3 = put(s%0) shared(param), owned entry owned
+fn append consumes s
+  r%3 = list_push(xs%2) shared(param), owned entry owned
+fn steps consumes start
+  r%26 = put(rec%24) shared(origin), owned entry owned
+fn keep_old
+  r%2 = put(s%0) shared(param)
+fn put consumes s
+  r%4 = set(xs%3) shared(param), owned entry owned
+",
+        ),
         // A def returning an `Int` sinks the list it updates: owned arguments take its owned
         // entry, a retained or twice-used one the plain entry.
         (
             "owned_sink",
             "fn main
   r%1 = count_marked(r%0) owned
-  r%6 = count_marked(r%5) shared(borrowed-after at 1710..1714)
+  r%6 = count_marked(r%5) shared(borrowed-after)
   r%25 = count_marked(r%24) shared(borrowed-after at 1920..1942)
   r%29 = count_marked(r%24) shared(borrowed-after)
   r%34 = zero_from(r%33) owned

@@ -928,6 +928,10 @@ fn build_lir(
 
 /// `--dump core`: the Core of every non-std module, `Int` operations marked for the JS profile.
 fn dump_core(m: &sakura_core::Module) -> String {
+    // The JS backend's copy, reads moved (`opt::owned::hoist_reads`).
+    let mut h = m.clone();
+    sakura_core::opt::owned::hoist_reads(&mut h);
+    let m = &h;
     let modules: std::collections::BTreeSet<&str> = m
         .defs
         .iter()

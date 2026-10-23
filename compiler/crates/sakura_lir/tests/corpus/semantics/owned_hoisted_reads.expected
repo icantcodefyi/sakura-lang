@@ -1,0 +1,6 @@
+ending: ok
+--- stdout
+counted 40 1280 5 0 10
+append 41 1287 5 0 40
+steps 10 75 88 4 40 900 220 10
+kept 40 779 1 0 780

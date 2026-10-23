@@ -45,7 +45,9 @@ use crate::builtins;
 use crate::ir::*;
 
 mod elems;
+mod hoist;
 use elems::{Assume, Elems, callback, elem_read, elemish, seq};
+pub use hoist::hoist_reads;
 
 /// Why a consuming site is not owned: the fixed reason set of `--dump owned`.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -715,6 +717,10 @@ pub fn copies(m: &Module) -> Vec<Copy> {
 
 /// `--dump owned`: [`display_module`] of every module outside std.
 pub fn display(m: &Module) -> String {
+    // The JS backend's facts: on its copy, reads moved.
+    let mut h = m.clone();
+    hoist_reads(&mut h);
+    let m = &h;
     let modules: BTreeSet<&str> = m
         .defs
         .iter()

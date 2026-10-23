@@ -60,6 +60,10 @@ pub struct OutputFile {
 
 /// Emit every module of `m`. The caller must have run [`sakura_core::validate`].
 pub fn emit(m: &Module, opts: &Options) -> Vec<OutputFile> {
+    // Reads moved before the calls they follow, so a call can take the value over (§17.149).
+    let mut hoisted = m.clone();
+    sakura_core::opt::owned::hoist_reads(&mut hoisted);
+    let m = &hoisted;
     let direct = if opts.direct_style {
         direct::analyze(m)
     } else {

@@ -1,0 +1,357 @@
+---
+source: crates/sakura_lir/tests/corpus.rs
+expression: text
+---
+layout 0 record main::owned_hoisted_reads::State | State 40b (xs: word*, count: i64, tag: i64)
+layout 1 variant std::option::Option | None 16b () | Some 24b (word*)
+layout 2 variant std::result::Result | Ok 24b (word*) | Err 24b (word*)
+layout 3 shape |  32b (word*, word*)
+layout 4 shape |  32b (i64, word*)
+layout 5 shape |  32b (word*, i64)
+
+fn main#0 pub top -> unit ; main::owned_hoisted_reads, frame 28 slots [%1 word*, %5 word*, %6 word*, %7 i64, %15 bool, %16 word*, %19 word*, %22 word*, %23 i64, %31 bool, %34 word*, %36 word*, %37 word*, %44 word*, %45 word*, %47 word*, %48 word*, %49 word*, %50 word*, %53 bool, %56 word*, %57 word*, %60 word*, %61 i64, %69 bool, %91 word*, %92 i64, %93 i64]
+  b0():
+    %0 lit: i64 = const 40
+    call fresh#2(%0) -> b1()
+  b1(%1 r: ptr):
+    %104 lit: i64 = const 0
+    %105 lit: i64 = const 0
+    jump b21(%1, %104, %105)
+  b2(%2 s: ptr, %3 i: i64, %4 counts: i64):
+    %106 s.lent: ref = lend %2
+    call show#13(%106) -> b3(%2, %4)
+  b3(%5 r: ptr, %6 s: ptr, %7 counts: i64):
+    %8 s: ptr = show %5
+    drop %5
+    %9 lit: ptr = const str 0
+    %10 s: ptr = concat %9, %8
+    drop %8
+    %11 lit: ptr = const str 1
+    %12 s: ptr = concat %10, %11
+    drop %11
+    %13 s: ptr = show %7
+    %14 s: ptr = concat %12, %13
+    drop %13
+    perform std::console::Console.print(%14) -> b4(%6)
+  b4(%15 r: unit, %16 s: ptr):
+    %17 box: word = box %15
+    drop %17
+    %18 lit: i64 = const 7
+    call append#5(%16, %18) -> b5()
+  b5(%19 r: ptr):
+    %74 p: ptr = tuple_get %19.0
+    %75 p: i64 = tuple_get %19.1
+    drop %19
+    jump b6(%74, %75)
+  b6(%20 a: ptr, %21 len: i64):
+    call show#4(%20) -> b7(%21)
+  b7(%22 r: ptr, %23 len: i64):
+    %24 s: ptr = show %22
+    drop %22
+    %25 lit: ptr = const str 2
+    %26 s: ptr = concat %25, %24
+    drop %24
+    %27 lit: ptr = const str 1
+    %28 s: ptr = concat %26, %27
+    drop %27
+    %29 s: ptr = show %23
+    %30 s: ptr = concat %28, %29
+    drop %29
+    perform std::console::Console.print(%30) -> b8()
+  b8(%31 r: unit):
+    %32 box: word = box %31
+    drop %32
+    %33 lit: i64 = const 10
+    call fresh#2(%33) -> b9()
+  b9(%34 r: ptr):
+    %35 lit: i64 = const 12
+    call steps#6(%34, %35) -> b10()
+  b10(%36 r: ptr):
+    call show#4(%36) -> b11()
+  b11(%37 r: ptr):
+    %38 s: ptr = show %37
+    drop %37
+    %39 lit: ptr = const str 3
+    %40 s: ptr = concat %39, %38
+    drop %38
+    %41 lit: ptr = const str 1
+    %42 s: ptr = concat %40, %41
+    drop %41
+    %43 lit: i64 = const 40
+    call fresh#2(%43) -> b12(%42)
+  b12(%44 r: ptr, %45 s: ptr):
+    %46 lit: i64 = const 30
+    call steps#6(%44, %46) -> b13(%45)
+  b13(%47 r: ptr, %48 s: ptr):
+    call show#4(%47) -> b14(%48)
+  b14(%49 r: ptr, %50 s: ptr):
+    %51 s: ptr = show %49
+    drop %49
+    %52 s: ptr = concat %50, %51
+    drop %51
+    perform std::console::Console.print(%52) -> b15()
+  b15(%53 r: unit):
+    %54 box: word = box %53
+    drop %54
+    %55 lit: i64 = const 40
+    call fresh#2(%55) -> b16()
+  b16(%56 r: ptr):
+    call keep_old#7(%56) -> b17()
+  b17(%57 r: ptr):
+    %72 p: ptr = tuple_get %57.0
+    %73 p: i64 = tuple_get %57.1
+    drop %57
+    jump b18(%72, %73)
+  b18(%58 k: ptr, %59 old: i64):
+    call show#4(%58) -> b19(%59)
+  b19(%60 r: ptr, %61 old: i64):
+    %62 s: ptr = show %60
+    drop %60
+    %63 lit: ptr = const str 4
+    %64 s: ptr = concat %63, %62
+    drop %62
+    %65 lit: ptr = const str 1
+    %66 s: ptr = concat %64, %65
+    drop %65
+    %67 s: ptr = show %61
+    %68 s: ptr = concat %66, %67
+    drop %67
+    perform std::console::Console.print(%68) -> b20()
+  b20(%69 r: unit):
+    %70 box: word = box %69
+    %71 unbox: unit = unbox %70
+    drop %70
+    ret %71
+  b21(%76 s: ptr, %77 i: i64, %78 counts: i64):
+    %79 lit: i64 = const 5
+    %80 t: bool = lt.int %77, %79
+    if %80 then b23(%76, %77, %78) else b24(%76, %77, %78)
+  b22(%81 v: unit, %82 s: ptr, %83 i: i64, %84 counts: i64):
+    jump b21(%82, %83, %84)
+  b23(%85 s: ptr, %86 i: i64, %87 counts: i64):
+    call put_and_count#3(%85, %86) -> b25(%86, %87)
+  b24(%88 s: ptr, %89 i: i64, %90 counts: i64):
+    jump b2(%88, %89, %90)
+  b25(%91 r: ptr, %92 i: i64, %93 counts: i64):
+    %102 p: ptr = tuple_get %91.0
+    %103 p: i64 = tuple_get %91.1
+    drop %91
+    jump b26(%102, %103, %92, %93)
+  b26(%94 t: ptr, %95 c: i64, %96 i: i64, %97 counts: i64):
+    %98 t: i64 = intadd %97, %95
+    %99 lit: i64 = const 1
+    %100 t: i64 = intadd %96, %99
+    %101 lit: unit = const ()
+    jump b22(%101, %94, %100, %98)
+
+fn $entry#1 top -> unit ; main::owned_hoisted_reads, frame 1 slots [%1 bool]
+  b0():
+    %0 console: ptr = $console_host()
+    handle_push %0
+    call main#0() -> b1()
+  b1(%1 r: unit) [handle]:
+    handle_pop
+    ret %1
+
+fn fresh#2 top -> ptr ; main::owned_hoisted_reads, frame 1 slots [%0 i64]
+  b0(%0 n: i64):
+    %1 xs: ptr = alloc list()
+    %26 lit: i64 = const 0
+    jump b2(%1, %26, %0)
+  b1(%2 xs: ptr, %3 i: i64):
+    %4 lit: i64 = const 0
+    %5 lit: i64 = const 0
+    %6 rec: ptr = alloc main::owned_hoisted_reads::State(%2, %4, %5)
+    ret %6
+  b2(%7 xs: ptr, %8 i: i64, %9 n: i64):
+    %10 t: bool = lt.int %8, %9
+    if %10 then b4(%9, %7, %8) else b5(%9, %7, %8)
+  b3(%11 v: unit, %12 xs: ptr, %13 i: i64, %14 n: i64):
+    jump b2(%12, %13, %14)
+  b4(%15 n: i64, %16 xs: ptr, %17 i: i64):
+    %21 box: word = box %17
+    %22 r: ptr = $list_push(%16, %21)
+    %23 lit: i64 = const 1
+    %24 t: i64 = intadd %17, %23
+    %25 lit: unit = const ()
+    jump b3(%25, %22, %24, %15)
+  b5(%18 n: i64, %19 xs: ptr, %20 i: i64):
+    jump b1(%19, %20)
+
+fn put_and_count#3 top -> ptr ; main::owned_hoisted_reads, frame 4 slots [%0 word*, %1 i64, %4 word*, %5 word*]
+  b0(%0 s: ptr, %1 i: i64):
+    %2 lit: i64 = const 100
+    %3 t: i64 = intadd %2, %1
+    %8 s.lent: ref = lend %0
+    call put#14(%8, %1, %3) -> b1(%0)
+  b1(%4 r: ptr, %5 s: ptr):
+    %6 count: i64 = proj %5.1 main::owned_hoisted_reads::State
+    drop %5
+    %7 tup: ptr = alloc tuple#5(word, i64)(%4, %6)
+    ret %7
+
+fn show#4 top -> ptr ; main::owned_hoisted_reads, frame 4 slots [%0 word*, %7 i64, %8 word*, %9 word*]
+  b0(%0 s: ptr):
+    %1 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    %2 r: i64 = $list_len(%1)
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 1
+    %5 s: ptr = concat %3, %4
+    drop %4
+    %6 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    call sum#9(%6) -> b1(%0, %5)
+  b1(%7 r: i64, %8 s: ptr, %9 s: ptr):
+    %10 s: ptr = show %7
+    %11 s: ptr = concat %9, %10
+    drop %10
+    %12 lit: ptr = const str 1
+    %13 s: ptr = concat %11, %12
+    drop %12
+    %14 count: i64 = proj %8.1 main::owned_hoisted_reads::State
+    %15 s: ptr = show %14
+    %16 s: ptr = concat %13, %15
+    drop %15
+    %17 lit: ptr = const str 1
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %19 tag: i64 = proj %8.2 main::owned_hoisted_reads::State
+    drop %8
+    %20 s: ptr = show %19
+    %21 s: ptr = concat %18, %20
+    drop %20
+    ret %21
+
+fn append#5 top -> ptr ; main::owned_hoisted_reads, frame 2 slots [%0 word*, %1 i64]
+  b0(%0 s: ptr, %1 v: i64):
+    %2 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    %3 box: word = box %1
+    %4 r: ptr = $list_push(%2, %3)
+    %5 count: i64 = proj %0.1 main::owned_hoisted_reads::State
+    %6 tag: i64 = proj %0.2 main::owned_hoisted_reads::State
+    %7 rec: ptr = alloc main::owned_hoisted_reads::State(%4, %5, %6)
+    %8 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    drop %0
+    %9 r: i64 = $list_len(%8)
+    %10 tup: ptr = alloc tuple#5(word, i64)(%7, %9)
+    ret %10
+
+fn steps#6 top -> ptr ; main::owned_hoisted_reads, frame 5 slots [%0 word*, %1 i64, %48 word*, %49 i64, %50 i64]
+  b0(%0 start: ptr, %1 n: i64):
+    %52 lit: i64 = const 0
+    jump b1(%0, %52, %1)
+  b1(%2 s: ptr, %3 i: i64, %4 n: i64):
+    %5 t: bool = lt.int %3, %4
+    if %5 then b3(%4, %2, %3) else b4(%4, %2, %3)
+  b2(%6 v: unit, %7 s: ptr, %8 i: i64, %9 n: i64):
+    jump b1(%7, %8, %9)
+  b3(%10 n: i64, %11 s: ptr, %12 i: i64):
+    %16 lit: i64 = const 3
+    %17 t: i64 = intrem %12, %16
+    %18 lit: i64 = const 0
+    %19 t: bool = eq.int %17, %18
+    if %19 then b6(%10, %11, %12) else b7(%10, %11, %12)
+  b4(%13 n: i64, %14 s: ptr, %15 i: i64):
+    ret %14
+  b5(%20 v: unit, %21 s: ptr, %22 i: i64, %23 n: i64):
+    %24 lit: i64 = const 1
+    %25 t: i64 = intadd %22, %24
+    %26 lit: unit = const ()
+    jump b2(%26, %21, %25, %23)
+  b6(%27 n: i64, %28 s: ptr, %29 i: i64):
+    %33 tag: i64 = proj %28.2 main::owned_hoisted_reads::State
+    %34 lit: i64 = const 1
+    %35 t: i64 = intadd %33, %34
+    %36 xs: word = proj %28.0 main::owned_hoisted_reads::State
+    %37 count: i64 = proj %28.1 main::owned_hoisted_reads::State
+    %53 token: word = $reuse_reset(%28)
+    %38 rec: ptr = alloc main::owned_hoisted_reads::State(%36, %37, %35) reuse %53
+    %39 lit: unit = const ()
+    jump b5(%39, %38, %29, %27)
+  b7(%30 n: i64, %31 s: ptr, %32 i: i64):
+    %40 count: i64 = proj %31.1 main::owned_hoisted_reads::State
+    %41 lit: i64 = const 10
+    %42 t: i64 = intadd %40, %41
+    %43 xs: word = proj %31.0 main::owned_hoisted_reads::State
+    %44 tag: i64 = proj %31.2 main::owned_hoisted_reads::State
+    %54 token: word = $reuse_reset(%31)
+    %45 rec: ptr = alloc main::owned_hoisted_reads::State(%43, %42, %44) reuse %54
+    %46 lit: i64 = const 5
+    %47 t: i64 = intrem %32, %46
+    call put#8(%45, %47, %32) -> b8(%30, %32)
+  b8(%48 r: ptr, %49 n: i64, %50 i: i64):
+    %51 lit: unit = const ()
+    jump b5(%51, %48, %50, %49)
+
+fn keep_old#7 top -> ptr ; main::owned_hoisted_reads, frame 5 slots [%0 word*, %4 word*, %5 word*, %7 i64, %8 word*]
+  b0(%0 s: ptr):
+    %1 lit: i64 = const 1
+    %2 t: i64 = intneg %1
+    %3 lit: i64 = const 0
+    %10 s.lent: ref = lend %0
+    call put#14(%10, %3, %2) -> b1(%0)
+  b1(%4 r: ptr, %5 s: ptr):
+    %6 xs: word = proj %5.0 main::owned_hoisted_reads::State
+    drop %5
+    call sum#9(%6) -> b2(%4)
+  b2(%7 r: i64, %8 r: ptr):
+    %9 tup: ptr = alloc tuple#5(word, i64)(%8, %7)
+    ret %9
+
+fn put#8 top -> ptr ; main::owned_hoisted_reads, frame 5 slots [%0 word*, %1 i64, %2 i64, %6 word*, %7 word*]
+  b0(%0 s: ptr, %1 i: i64, %2 v: i64):
+    %3 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#12(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 s: ptr):
+    %8 count: i64 = proj %7.1 main::owned_hoisted_reads::State
+    %9 lit: i64 = const 1
+    %10 t: i64 = intadd %8, %9
+    %11 tag: i64 = proj %7.2 main::owned_hoisted_reads::State
+    %13 token: word = $reuse_reset(%7)
+    %12 rec: ptr = alloc main::owned_hoisted_reads::State(%6, %10, %11) reuse %13
+    ret %12
+
+fn show#13 borrowed variant of #4 -> ptr ; main::owned_hoisted_reads, frame 4 slots [%0 i64, %7 i64, %8 i64, %9 word*]
+  b0(%0 s: ref):
+    %1 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    %2 r: i64 = $list_len(%1)
+    %3 s: ptr = show %2
+    %4 lit: ptr = const str 1
+    %5 s: ptr = concat %3, %4
+    drop %4
+    %6 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    call sum#9(%6) -> b1(%0, %5)
+  b1(%7 r: i64, %8 s: ref, %9 s: ptr):
+    %10 s: ptr = show %7
+    %11 s: ptr = concat %9, %10
+    drop %10
+    %12 lit: ptr = const str 1
+    %13 s: ptr = concat %11, %12
+    drop %12
+    %14 count: i64 = proj %8.1 main::owned_hoisted_reads::State
+    %15 s: ptr = show %14
+    %16 s: ptr = concat %13, %15
+    drop %15
+    %17 lit: ptr = const str 1
+    %18 s: ptr = concat %16, %17
+    drop %17
+    %19 tag: i64 = proj %8.2 main::owned_hoisted_reads::State
+    %20 s: ptr = show %19
+    %21 s: ptr = concat %18, %20
+    drop %20
+    ret %21
+
+fn put#14 borrowed variant of #8 -> ptr ; main::owned_hoisted_reads, frame 5 slots [%0 i64, %1 i64, %2 i64, %6 word*, %7 i64]
+  b0(%0 s: ref, %1 i: i64, %2 v: i64):
+    %3 xs: word = proj %0.0 main::owned_hoisted_reads::State
+    %4 box: word = box %2
+    %5 $site: i64 = const 2
+    call set#12(%3, %1, %4, %5) -> b1(%0)
+  b1(%6 r: ptr, %7 s: ref):
+    %8 count: i64 = proj %7.1 main::owned_hoisted_reads::State
+    %9 lit: i64 = const 1
+    %10 t: i64 = intadd %8, %9
+    %11 tag: i64 = proj %7.2 main::owned_hoisted_reads::State
+    %12 rec: ptr = alloc main::owned_hoisted_reads::State(%6, %10, %11)
+    ret %12

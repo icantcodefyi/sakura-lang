@@ -416,7 +416,7 @@ pub struct LocalDecl {
 
 /// A Core expression. Every expression ends in a terminator (`Ret`, `Jump`, `Fail`, or a branch
 /// whose arms all terminate).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Expr {
     /// Evaluate `bind`, name its value `local`, continue with `body`.
     Let {
@@ -460,6 +460,64 @@ pub enum Expr {
     Try { on_fail: Label, body: Box<Expr> },
     /// `fail e`: unwind to the nearest enclosing `Try` (in this or a calling function).
     Fail(Atom),
+}
+
+/// The derived clone, but each level through [`crate::ensure_stack`]: a 100,000-binding `Let`
+/// chain would overflow the stack (the JS backend clones the module it emits).
+impl Clone for Expr {
+    fn clone(&self) -> Self {
+        crate::ensure_stack(|| match self {
+            Expr::Let {
+                local,
+                bind,
+                pos,
+                body,
+            } => Expr::Let {
+                local: *local,
+                bind: bind.clone(),
+                pos: *pos,
+                body: body.clone(),
+            },
+            Expr::Ret(a) => Expr::Ret(a.clone()),
+            Expr::Jump(l, args) => Expr::Jump(*l, args.clone()),
+            Expr::LetJoin {
+                label,
+                params,
+                join,
+                body,
+            } => Expr::LetJoin {
+                label: *label,
+                params: params.clone(),
+                join: join.clone(),
+                body: body.clone(),
+            },
+            Expr::Switch {
+                scrut,
+                on,
+                arms,
+                default,
+            } => Expr::Switch {
+                scrut: scrut.clone(),
+                on: on.clone(),
+                arms: arms.clone(),
+                default: default.clone(),
+            },
+            Expr::If { cond, then, els } => Expr::If {
+                cond: cond.clone(),
+                then: then.clone(),
+                els: els.clone(),
+            },
+            Expr::Handle { handler, body } => Expr::Handle {
+                handler: handler.clone(),
+                body: body.clone(),
+            },
+            Expr::Try { on_fail, body } => Expr::Try {
+                on_fail: *on_fail,
+                body: body.clone(),
+            },
+            Expr::Fail(a) => Expr::Fail(a.clone()),
+        })
+    }
 }
 
 /// Frees nested expressions with a worklist: a 100,000-binding `Let` chain would overflow the

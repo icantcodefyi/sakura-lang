@@ -1,0 +1,73 @@
+// milestone: M4
+// covers: design §17.149, §17.201 (3) (a read of a value after a call that takes it over sees the value from before the call; on JS it is bound before the call, so the call updates in place)
+
+type State = { xs: List<Int>, count: Int, tag: Int }
+
+// Consumes `s`: its list is updated in place through `put$o` when `s` is owned.
+fn put(s: State, i: Int, v: Int) -> State {
+  State { ..s, xs: List.set(s.xs, i, v), count: s.count + 1 }
+}
+
+// `s.count` is read after `put` took `s` over: it is the count from before the call.
+fn put_and_count(s: State, i: Int) -> (State, Int) { (put(s, i, 100 + i), s.count) }
+
+// `List.len(s.xs)` after the push: the length from before it.
+fn append(s: State, v: Int) -> (State, Int) {
+  (State { ..s, xs: List.push(s.xs, v) }, List.len(s.xs))
+}
+
+// Both arms rebuild `s` from its fields; one also calls `put`.
+fn steps(start: State, n: Int) -> State {
+  var s = start
+  var i = 0
+  while i < n {
+    if i % 3 == 0 {
+      s = State { ..s, tag: s.tag + 1 }
+    } else {
+      s = State { ..s, count: s.count + 10 }
+      s = put(s, i % 5, i)
+    }
+    i = i + 1
+  }
+  s
+}
+
+// `old` holds the list from before `put` and is passed on after it: it must keep its elements.
+fn keep_old(s: State) -> (State, Int) {
+  let t = put(s, 0, -1)
+  let old = s.xs
+  (t, List.sum(old))
+}
+
+fn fresh(n: Int) -> State {
+  var xs: List<Int> = []
+  var i = 0
+  while i < n {
+    xs = List.push(xs, i)
+    i = i + 1
+  }
+  State { xs, count: 0, tag: 0 }
+}
+
+fn show(s: State) -> String { "{List.len(s.xs)} {List.sum(s.xs)} {s.count} {s.tag}" }
+
+pub fn main() -> Unit ! {Console} {
+  var s = fresh(40)
+  var i = 0
+  var counts = 0
+  while i < 5 {
+    let (t, c) = put_and_count(s, i)
+    s = t
+    counts = counts + c
+    i = i + 1
+  }
+  Console.print("counted {show(s)} {counts}")
+
+  let (a, len) = append(s, 7)
+  Console.print("append {show(a)} {len}")
+
+  Console.print("steps {show(steps(fresh(10), 12))} {show(steps(fresh(40), 30))}")
+
+  let (k, old) = keep_old(fresh(40))
+  Console.print("kept {show(k)} {old}")
+}
