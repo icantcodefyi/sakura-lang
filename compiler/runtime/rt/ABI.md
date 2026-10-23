@@ -1470,7 +1470,9 @@ outcome or an unfinished task). Nothing else; the validator rejects extra export
 describes the **linked** module: rustc exports a `static` as a global holding its address and
 cannot return several values through `extern "C"`, so the M4-WASM linker synthesises
 `sakura_abi_version` and the multi-value exports over single-value runtime functions. The
-`sakura_rt` object alone exports `memory`, `alloc_bytes` and `drop`.
+`sakura_rt` object alone exports `memory`, `alloc_bytes` and `drop`. Its `rt_*` exports, the
+internal `rt_heap_cell` among them, resolve compiled code's calls at link time and are dropped
+from the linked module's list, so no host sees them (design §17.314 (2d)).
 
 ## 10. Memory bounds and growth
 
@@ -1484,7 +1486,8 @@ cannot return several values through `extern "C"`, so the M4-WASM linker synthes
   run size stored in a `u32` at offset −8 from the 8-aligned header), 4 KiB-granular, first fit
   over an address-ordered free list, coalesced on free, from the same bounded heap. Every size
   computation is checked before alignment and growth. Counters (reported by `stats()`):
-  `requested` (cumulative bytes requested), `live` and
+  `requested` (cumulative bytes requested from the allocator, the static block and, since
+  1.19.1, the emitter's tables included; design §17.314 (2e)), `live` and
   `peak` (bytes of live blocks at their class or run size), `live_objects` (live blocks; the
   §7.5 tests compare it), `committed` (linear memory above the heap base), `free_list_bytes`
   (small free lists plus free page runs), and since 1.1.0 (design §17.118) `frames`

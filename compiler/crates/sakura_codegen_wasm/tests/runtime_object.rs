@@ -64,3 +64,57 @@ fn the_emitter_allocates_in_the_runtime_classes() {
         .collect();
     assert_eq!(classes, sakura_codegen_wasm::CLASSES);
 }
+
+/// Design §17.314 (2d): `rt_heap_cell` is a link-time symbol between the runtime object and the
+/// emitted code, as `rt_dup_candidate` is, so the linked module exports ABI §9's list and
+/// nothing a host could take for an optional export (§17.222).
+#[test]
+fn the_linked_module_exports_only_the_abi_list() {
+    use sakura_analysis::{Analysis, BuildOptions, Snapshot};
+    if runtime().is_none() {
+        return;
+    }
+    let src = "pub fn main() -> Unit ! {Console} { Console.print(\"x\") }\n";
+    let snap = Snapshot::with_std([("file:///exports/src/main.sak".to_owned(), src.to_owned())]);
+    let opts = BuildOptions {
+        need_entry: true,
+        ..Default::default()
+    };
+    let core = Analysis::lower_core(&snap, &opts).0.expect("lowers");
+    let m = sakura_lir::from_core(&core, sakura_lir::Layout::Tagged).expect("LIR");
+    let wasm = sakura_codegen_wasm::emit(&m, &Default::default()).expect("emits");
+    let mut exports = vec![];
+    for payload in Parser::new(0).parse_all(&wasm) {
+        if let Payload::ExportSection(r) = payload.expect("the module parses") {
+            exports.extend(r.into_iter().map(|e| e.expect("an export").name.to_owned()));
+        }
+    }
+    let abi = [
+        "memory",
+        "sakura_abi_version",
+        "run",
+        "complete",
+        "alloc_bytes",
+        "drop",
+        "task_free",
+        "topic_deliver",
+        "start",
+        "layout_table",
+        "effect_table",
+        "outcome",
+        "tests",
+        "stats",
+        "invoke",
+        "workers",
+        "entries",
+        "start_entry",
+        "entry_value",
+        "_start",
+    ];
+    let extra: Vec<_> = exports
+        .iter()
+        .filter(|e| !abi.contains(&e.as_str()))
+        .collect();
+    assert!(extra.is_empty(), "exports outside ABI §9: {extra:?}");
+    assert!(exports.iter().any(|e| e == "stats"), "{exports:?}");
+}
