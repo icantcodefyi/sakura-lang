@@ -164,8 +164,9 @@ fn an_entry_result_passed_back_is_never_written() {
         "no edit chain in bump:\n{emitted}"
     );
     let script = "const dir = process.argv[1];\n\
-        const { callEntry } = await import(dir + '/__entries__.js');\n\
-        const rt = await import(dir + '/sakura_runtime.js');\n\
+        const { pathToFileURL } = process.getBuiltinModule('node:url');\n\
+        const { callEntry } = await import(pathToFileURL(dir + '/__entries__.js'));\n\
+        const rt = await import(pathToFileURL(dir + '/sakura_runtime.js'));\n\
         const seen = [];\n\
         let xs = rt.list(Array.from({ length: 70 }, (_, i) => i));\n\
         for (let k = 0; k < 4; k++) {\n  \
